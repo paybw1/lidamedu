@@ -1,12 +1,12 @@
-# Supaplate
+# Lidam Edu
 
 ## Overview
 
-Supaplate is a production-ready, full-stack web application template built with React Router, Supabase, and Drizzle ORM. It provides a solid foundation for building modern web applications with authentication, payments, internationalization, and more.
+Lidam Edu is a production-ready, full-stack web application template built with React Router, Supabase, and Drizzle ORM. It provides a solid foundation for building modern web applications with authentication, payments, internationalization, and more.
 
 ## Getting Started
 
-For detailed documentation and setup instructions, visit [supaplate.com/docs](https://supaplate.com/docs).
+For detailed documentation and setup instructions, visit [lidamedu.com/docs](https://lidamedu.com/docs).
 
 ## License
 

@@ -42,14 +42,14 @@ export default function ConfirmEmail() {
                 {`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/`}
               </Text>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
-                If you did not create an account with Supaplate, you can safely
+                If you did not create an account with Lidam Edu, you can safely
                 ignore this email.
               </Text>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
                 Best regards,
               </Text>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
-                The Supaplate Team
+                The Lidam Edu Team
               </Text>
             </Section>
           </Container>

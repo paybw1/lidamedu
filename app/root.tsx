@@ -59,6 +59,14 @@ export const links: Route.LinksFunction = () => [
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap",
   },
+  {
+    rel: "stylesheet",
+    href: "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600&family=Caveat:wght@400;600&display=swap",
+  },
+  {
+    rel: "stylesheet",
+    href: "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css",
+  },
   { rel: "stylesheet", href: nProgressStyles },
 ];
 
@@ -80,11 +88,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Validate that all required Supabase environment variables are present
   // This prevents the application from starting with incomplete configuration
   if (
-    !process.env.DATABASE_URL ||
     !process.env.SUPABASE_URL ||
     !process.env.SUPABASE_ANON_KEY ||
     !process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.DATABASE_URL === "" ||
     process.env.SUPABASE_URL === "" ||
     process.env.SUPABASE_ANON_KEY === "" ||
     process.env.SUPABASE_SERVICE_ROLE_KEY === ""

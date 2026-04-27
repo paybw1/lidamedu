@@ -145,7 +145,7 @@ export default function ForgotPassword({ actionData }: Route.ComponentProps) {
                 name="email"
                 required
                 type="email"
-                placeholder="nico@supaplate.com"
+                placeholder="nico@lidamedu.com"
               />
               {actionData &&
               "fieldErrors" in actionData &&

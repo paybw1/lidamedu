@@ -103,7 +103,7 @@ test.describe("Reset Password UI", () => {
   test("should show success message after sending reset link", async ({
     page,
   }) => {
-    await page.locator("#email").fill("nico@supaplate.com");
+    await page.locator("#email").fill("nico@lidamedu.com");
     await page.getByRole("button", { name: "Send reset link" }).click();
     await expect(
       page.getByText(
@@ -122,7 +122,7 @@ test.describe("Reset Password UI", () => {
   test("should reset the form after successful submission", async ({
     page,
   }) => {
-    await page.locator("#email").fill("nico@supaplate.com");
+    await page.locator("#email").fill("nico@lidamedu.com");
     await page.getByRole("button", { name: "Send reset link" }).click();
     await expect(page.locator("#email")).toBeEmpty();
   });

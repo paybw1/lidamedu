@@ -7,484 +7,263 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      entities: {
+      article_revisions: {
         Row: {
-          address_en: string | null
-          address_kr: string | null
-          client_code: string | null
-          country: string | null
+          article_id: string
+          body_json: Json
+          change_kind: Database["public"]["Enums"]["law_change_kind"]
           created_at: string
-          entity_type: string | null
-          has_poa: boolean | null
-          id: string
-          name_en: string | null
-          name_kr: string | null
-          representative_name: string | null
-          signature_image_url: string | null
-          signer_name: string | null
-          signer_position: string | null
-          updated_at: string
-          user_id: string
+          created_by: string | null
+          effective_date: string
+          expired_date: string | null
+          law_revision_id: string
+          revision_id: string
         }
         Insert: {
-          address_en?: string | null
-          address_kr?: string | null
-          client_code?: string | null
-          country?: string | null
+          article_id: string
+          body_json: Json
+          change_kind: Database["public"]["Enums"]["law_change_kind"]
           created_at?: string
-          entity_type?: string | null
-          has_poa?: boolean | null
-          id?: string
-          name_en?: string | null
-          name_kr?: string | null
-          representative_name?: string | null
-          signature_image_url?: string | null
-          signer_name?: string | null
-          signer_position?: string | null
-          updated_at?: string
-          user_id: string
+          created_by?: string | null
+          effective_date: string
+          expired_date?: string | null
+          law_revision_id: string
+          revision_id?: string
         }
         Update: {
-          address_en?: string | null
-          address_kr?: string | null
-          client_code?: string | null
-          country?: string | null
+          article_id?: string
+          body_json?: Json
+          change_kind?: Database["public"]["Enums"]["law_change_kind"]
           created_at?: string
-          entity_type?: string | null
-          has_poa?: boolean | null
-          id?: string
-          name_en?: string | null
-          name_kr?: string | null
-          representative_name?: string | null
-          signature_image_url?: string | null
-          signer_name?: string | null
-          signer_position?: string | null
-          updated_at?: string
-          user_id?: string
+          created_by?: string | null
+          effective_date?: string
+          expired_date?: string | null
+          law_revision_id?: string
+          revision_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "article_revisions_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_revisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "article_revisions_law_revision_id_fkey"
+            columns: ["law_revision_id"]
+            isOneToOne: false
+            referencedRelation: "law_revisions"
+            referencedColumns: ["law_revision_id"]
+          },
+        ]
       }
-      inventors: {
+      article_systematic_links: {
         Row: {
-          address_en: string | null
-          address_kr: string | null
+          article_id: string
           created_at: string
-          id: string
-          id_number: string | null
-          name_en: string | null
-          name_kr: string | null
-          nationality: string | null
-          residence_country: string | null
-          updated_at: string
-          user_id: string
-          zipcode: string | null
+          node_id: string
         }
         Insert: {
-          address_en?: string | null
-          address_kr?: string | null
+          article_id: string
           created_at?: string
-          id?: string
-          id_number?: string | null
-          name_en?: string | null
-          name_kr?: string | null
-          nationality?: string | null
-          residence_country?: string | null
-          updated_at?: string
-          user_id: string
-          zipcode?: string | null
+          node_id: string
         }
         Update: {
-          address_en?: string | null
-          address_kr?: string | null
+          article_id?: string
           created_at?: string
-          id?: string
-          id_number?: string | null
-          name_en?: string | null
-          name_kr?: string | null
-          nationality?: string | null
-          residence_country?: string | null
-          updated_at?: string
-          user_id?: string
-          zipcode?: string | null
+          node_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "article_systematic_links_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_systematic_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+        ]
       }
-      patents: {
+      articles: {
         Row: {
-          abandonment_date: string | null
-          abandonment_reason: string | null
-          annuity_due_date: string | null
-          applicant: Json | null
-          applicant_reference: string | null
-          application_number: string | null
-          application_type: string
-          assignee: Json | null
-          attorney_name: string | null
-          claims_due_date: string | null
-          claims_submitted_at: string | null
-          country_code: string | null
+          article_id: string
+          article_number: string | null
           created_at: string
-          decision_to_register_date: string | null
-          earliest_priority_date: string | null
-          electronic_certificate_selected: boolean | null
-          examination_request_due: string | null
-          examination_requested: Database["public"]["Enums"]["yes_no"] | null
-          examination_requested_at: string | null
-          expedited_examination_date: string | null
-          expedited_examination_requested: boolean | null
-          filing_date: string | null
-          filing_deadline: string | null
-          final_claim_count: number | null
-          id: string
-          inventor: Json | null
-          is_annuity_managed: boolean | null
-          late_registration_penalty_due: string | null
-          metadata: Json | null
-          our_ref: string | null
-          pct_application_date: string | null
-          pct_application_number: string | null
-          prior_disclosure_documents: Json | null
-          prior_disclosure_exception_claimed: boolean | null
-          priority_claimed: Database["public"]["Enums"]["yes_no"] | null
-          priority_date: string | null
-          priority_rights: Json | null
-          protection_term: string | null
-          publication_date: string | null
-          publication_number: string | null
-          registration_date: string | null
-          registration_deadline: string | null
-          registration_number: string | null
-          request_date: string | null
-          status: string
-          title_en: string | null
-          title_kr: string | null
+          current_revision_id: string | null
+          deleted_at: string | null
+          display_label: string
+          importance: number | null
+          law_id: string
+          level: Database["public"]["Enums"]["article_level"]
+          parent_id: string | null
+          path: unknown
           updated_at: string
-          user_id: string | null
         }
         Insert: {
-          abandonment_date?: string | null
-          abandonment_reason?: string | null
-          annuity_due_date?: string | null
-          applicant?: Json | null
-          applicant_reference?: string | null
-          application_number?: string | null
-          application_type: string
-          assignee?: Json | null
-          attorney_name?: string | null
-          claims_due_date?: string | null
-          claims_submitted_at?: string | null
-          country_code?: string | null
+          article_id?: string
+          article_number?: string | null
           created_at?: string
-          decision_to_register_date?: string | null
-          earliest_priority_date?: string | null
-          electronic_certificate_selected?: boolean | null
-          examination_request_due?: string | null
-          examination_requested?: Database["public"]["Enums"]["yes_no"] | null
-          examination_requested_at?: string | null
-          expedited_examination_date?: string | null
-          expedited_examination_requested?: boolean | null
-          filing_date?: string | null
-          filing_deadline?: string | null
-          final_claim_count?: number | null
-          id?: string
-          inventor?: Json | null
-          is_annuity_managed?: boolean | null
-          late_registration_penalty_due?: string | null
-          metadata?: Json | null
-          our_ref?: string | null
-          pct_application_date?: string | null
-          pct_application_number?: string | null
-          prior_disclosure_documents?: Json | null
-          prior_disclosure_exception_claimed?: boolean | null
-          priority_claimed?: Database["public"]["Enums"]["yes_no"] | null
-          priority_date?: string | null
-          priority_rights?: Json | null
-          protection_term?: string | null
-          publication_date?: string | null
-          publication_number?: string | null
-          registration_date?: string | null
-          registration_deadline?: string | null
-          registration_number?: string | null
-          request_date?: string | null
-          status: string
-          title_en?: string | null
-          title_kr?: string | null
+          current_revision_id?: string | null
+          deleted_at?: string | null
+          display_label: string
+          importance?: number | null
+          law_id: string
+          level: Database["public"]["Enums"]["article_level"]
+          parent_id?: string | null
+          path: unknown
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
-          abandonment_date?: string | null
-          abandonment_reason?: string | null
-          annuity_due_date?: string | null
-          applicant?: Json | null
-          applicant_reference?: string | null
-          application_number?: string | null
-          application_type?: string
-          assignee?: Json | null
-          attorney_name?: string | null
-          claims_due_date?: string | null
-          claims_submitted_at?: string | null
-          country_code?: string | null
+          article_id?: string
+          article_number?: string | null
           created_at?: string
-          decision_to_register_date?: string | null
-          earliest_priority_date?: string | null
-          electronic_certificate_selected?: boolean | null
-          examination_request_due?: string | null
-          examination_requested?: Database["public"]["Enums"]["yes_no"] | null
-          examination_requested_at?: string | null
-          expedited_examination_date?: string | null
-          expedited_examination_requested?: boolean | null
-          filing_date?: string | null
-          filing_deadline?: string | null
-          final_claim_count?: number | null
-          id?: string
-          inventor?: Json | null
-          is_annuity_managed?: boolean | null
-          late_registration_penalty_due?: string | null
-          metadata?: Json | null
-          our_ref?: string | null
-          pct_application_date?: string | null
-          pct_application_number?: string | null
-          prior_disclosure_documents?: Json | null
-          prior_disclosure_exception_claimed?: boolean | null
-          priority_claimed?: Database["public"]["Enums"]["yes_no"] | null
-          priority_date?: string | null
-          priority_rights?: Json | null
-          protection_term?: string | null
-          publication_date?: string | null
-          publication_number?: string | null
-          registration_date?: string | null
-          registration_deadline?: string | null
-          registration_number?: string | null
-          request_date?: string | null
+          current_revision_id?: string | null
+          deleted_at?: string | null
+          display_label?: string
+          importance?: number | null
+          law_id?: string
+          level?: Database["public"]["Enums"]["article_level"]
+          parent_id?: string | null
+          path?: unknown
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articles_current_revision_fk"
+            columns: ["current_revision_id"]
+            isOneToOne: false
+            referencedRelation: "article_revisions"
+            referencedColumns: ["revision_id"]
+          },
+          {
+            foreignKeyName: "articles_law_id_fkey"
+            columns: ["law_id"]
+            isOneToOne: false
+            referencedRelation: "laws"
+            referencedColumns: ["law_id"]
+          },
+          {
+            foreignKeyName: "articles_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+        ]
+      }
+      law_revisions: {
+        Row: {
+          comparison_pdf: string | null
+          created_at: string
+          effective_date: string
+          explanation_md: string | null
+          law_id: string
+          law_revision_id: string
+          promulgated_at: string
+          published_at: string | null
+          published_by: string | null
+          reason_md: string | null
+          revision_number: string
+          status: string
+          video_url: string | null
+        }
+        Insert: {
+          comparison_pdf?: string | null
+          created_at?: string
+          effective_date: string
+          explanation_md?: string | null
+          law_id: string
+          law_revision_id?: string
+          promulgated_at: string
+          published_at?: string | null
+          published_by?: string | null
+          reason_md?: string | null
+          revision_number: string
           status?: string
-          title_en?: string | null
-          title_kr?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      payments: {
-        Row: {
-          approved_at: string
-          created_at: string
-          metadata: Json
-          order_id: string
-          order_name: string
-          payment_id: number
-          payment_key: string
-          raw_data: Json
-          receipt_url: string
-          requested_at: string
-          status: string
-          total_amount: number
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          approved_at: string
-          created_at?: string
-          metadata: Json
-          order_id: string
-          order_name: string
-          payment_id?: never
-          payment_key: string
-          raw_data: Json
-          receipt_url: string
-          requested_at: string
-          status: string
-          total_amount: number
-          updated_at?: string
-          user_id?: string | null
+          video_url?: string | null
         }
         Update: {
-          approved_at?: string
+          comparison_pdf?: string | null
           created_at?: string
-          metadata?: Json
-          order_id?: string
-          order_name?: string
-          payment_id?: never
-          payment_key?: string
-          raw_data?: Json
-          receipt_url?: string
-          requested_at?: string
+          effective_date?: string
+          explanation_md?: string | null
+          law_id?: string
+          law_revision_id?: string
+          promulgated_at?: string
+          published_at?: string | null
+          published_by?: string | null
+          reason_md?: string | null
+          revision_number?: string
           status?: string
-          total_amount?: number
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "law_revisions_law_id_fkey"
+            columns: ["law_id"]
+            isOneToOne: false
+            referencedRelation: "laws"
+            referencedColumns: ["law_id"]
+          },
+          {
+            foreignKeyName: "law_revisions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      laws: {
+        Row: {
+          created_at: string
+          display_label: string
+          law_code: string
+          law_id: string
+          ord: number
+          short_label: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_label: string
+          law_code: string
+          law_id?: string
+          ord?: number
+          short_label: string
           updated_at?: string
-          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_label?: string
+          law_code?: string
+          law_id?: string
+          ord?: number
+          short_label?: string
+          updated_at?: string
         }
         Relationships: []
-      }
-      payments_patents: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          paid_at: string | null
-          patent_id: string
-          payment_method: string | null
-          payment_ref: string | null
-          process_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          id?: string
-          paid_at?: string | null
-          patent_id: string
-          payment_method?: string | null
-          payment_ref?: string | null
-          process_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          paid_at?: string | null
-          patent_id?: string
-          payment_method?: string | null
-          payment_ref?: string | null
-          process_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_patents_patent_id_patents_id_fk"
-            columns: ["patent_id"]
-            isOneToOne: false
-            referencedRelation: "patents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_patents_process_id_processes_patents_id_fk"
-            columns: ["process_id"]
-            isOneToOne: false
-            referencedRelation: "processes_patents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      processes_patent_alarms: {
-        Row: {
-          created_at: string
-          id: number
-          is_sent: boolean | null
-          process_patent_id: string
-          scheduled_at: string
-          sent_at: string | null
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          is_sent?: boolean | null
-          process_patent_id: string
-          scheduled_at: string
-          sent_at?: string | null
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          is_sent?: boolean | null
-          process_patent_id?: string
-          scheduled_at?: string
-          sent_at?: string | null
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "processes_patent_alarms_process_patent_id_processes_patents_id_"
-            columns: ["process_patent_id"]
-            isOneToOne: false
-            referencedRelation: "processes_patents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      processes_patents: {
-        Row: {
-          attached_files: Json | null
-          case_id: string
-          client_request: string | null
-          created_at: string
-          id: string
-          is_paid: boolean | null
-          is_urgent: boolean | null
-          our_ref: string | null
-          paid_at: string | null
-          payment_amount: number | null
-          payment_method: string | null
-          payment_ref: string | null
-          staff_note: string | null
-          status: string | null
-          step_name: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          attached_files?: Json | null
-          case_id: string
-          client_request?: string | null
-          created_at?: string
-          id?: string
-          is_paid?: boolean | null
-          is_urgent?: boolean | null
-          our_ref?: string | null
-          paid_at?: string | null
-          payment_amount?: number | null
-          payment_method?: string | null
-          payment_ref?: string | null
-          staff_note?: string | null
-          status?: string | null
-          step_name: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          attached_files?: Json | null
-          case_id?: string
-          client_request?: string | null
-          created_at?: string
-          id?: string
-          is_paid?: boolean | null
-          is_urgent?: boolean | null
-          our_ref?: string | null
-          paid_at?: string | null
-          payment_amount?: number | null
-          payment_method?: string | null
-          payment_ref?: string | null
-          staff_note?: string | null
-          status?: string | null
-          step_name?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "processes_patents_case_id_patents_id_fk"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "patents"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       profiles: {
         Row: {
@@ -493,6 +272,7 @@ export type Database = {
           marketing_consent: boolean
           name: string
           profile_id: string
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
@@ -501,6 +281,7 @@ export type Database = {
           marketing_consent?: boolean
           name: string
           profile_id: string
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Update: {
@@ -509,107 +290,63 @@ export type Database = {
           marketing_consent?: boolean
           name?: string
           profile_id?: string
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Relationships: []
+      }
+      systematic_nodes: {
+        Row: {
+          created_at: string
+          display_label: string
+          law_code: string
+          node_id: string
+          ord: number
+          parent_id: string | null
+          path: unknown
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_label: string
+          law_code: string
+          node_id?: string
+          ord?: number
+          parent_id?: string | null
+          path: unknown
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_label?: string
+          law_code?: string
+          node_id?: string
+          ord?: number
+          parent_id?: string | null
+          path?: unknown
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "systematic_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      create_or_update_provisional_application: {
-        Args:
-          | {
-              p_patent_id: string
-              p_user_id: string
-              p_title_en: string
-              p_applicant: Json
-              p_inventor: Json
-              p_attached_files: Json
-              p_status: string
-            }
-          | {
-              p_patent_id: string
-              p_user_id: string
-              p_title_en: string
-              p_applicant: Json
-              p_inventor: Json
-              p_attached_files: Json
-              p_status: string
-              p_process_id?: string
-            }
-        Returns: {
-          patent_id: string
-          our_ref: string
-        }[]
-      }
-      create_provisional_application: {
-        Args: {
-          p_user_id: string
-          p_title_en: string
-          p_applicant: Json
-          p_inventor: Json
-          p_attached_files: Json
-          p_client_request: string
-          p_is_urgent: boolean
-        }
-        Returns: {
-          patent_id: string
-          our_ref: string
-          process_id: string
-        }[]
-      }
-      pop: {
-        Args: { queue_name: string }
-        Returns: {
-          msg_id: number
-          read_ct: number
-          enqueued_at: string
-          vt: string
-          message: Json
-        }[]
-      }
-      submit_patent_payment: {
-        Args: {
-          _user_id: string
-          _patent_id: string
-          _process_id: string
-          _amount: number
-          _payment_method: string
-          _payment_ref: string
-        }
-        Returns: undefined
-      }
-      update_provisional_application: {
-        Args:
-          | {
-              p_patent_id: string
-              p_user_id: string
-              p_title_en: string
-              p_applicant: Json
-              p_inventor: Json
-              p_attached_files: Json
-            }
-          | {
-              p_patent_id: string
-              p_user_id: string
-              p_title_en: string
-              p_applicant: Json
-              p_inventor: Json
-              p_attached_files: Json
-              p_client_request: string
-              p_is_urgent: boolean
-            }
-        Returns: {
-          patent_id: string
-          our_ref: string
-          process_id: string
-        }[]
-      }
+      email_already_registered: { Args: { p_email: string }; Returns: boolean }
     }
     Enums: {
-      yes_no: "예" | "아니오"
+      article_level: "part" | "chapter" | "section" | "article"
+      law_change_kind: "created" | "amended" | "deleted"
+      user_role: "student" | "instructor" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -737,7 +474,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      yes_no: ["예", "아니오"],
+      article_level: ["part", "chapter", "section", "article"],
+      law_change_kind: ["created", "amended", "deleted"],
+      user_role: ["student", "instructor", "admin"],
     },
   },
 } as const

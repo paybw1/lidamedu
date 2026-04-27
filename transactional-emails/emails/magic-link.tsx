@@ -17,10 +17,10 @@ export default function MagicLink() {
       <Html>
         <Head />
         <Body className="bg-white font-sans">
-          <Preview>Supaplate Magic Link</Preview>
+          <Preview>Lidam Edu Magic Link</Preview>
           <Container className="mx-auto max-w-[560px] py-5 pb-12">
             <Heading className="pt-4 text-center text-2xl leading-tight font-normal tracking-[-0.5px] text-black">
-              Supaplate Magic Link
+              Lidam Edu Magic Link
             </Heading>
             <Section>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
@@ -51,7 +51,7 @@ export default function MagicLink() {
                 Best regards,
               </Text>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
-                The Supaplate Team
+                The Lidam Edu Team
               </Text>
             </Section>
           </Container>

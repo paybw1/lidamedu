@@ -149,3 +149,10 @@ dist
 .pnp.*
 .open-next/
 .vercel/
+
+# Claude Code local state
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
+
+# Design bundle 임시 추출본 (원본 tar.gz 만 보존)
+source/design/extracted/

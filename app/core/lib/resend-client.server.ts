@@ -33,6 +33,6 @@ import { Resend } from "resend";
  *   html: '<p>Thanks for signing up!</p>',
  * });
  */
-const resendClient = new Resend(process.env.RESEND_API_KEY);
+const resendClient = new Resend(process.env.RESEND_API_KEY ?? "re_placeholder");
 
 export default resendClient;

@@ -192,7 +192,7 @@ export default function OtpComplete({
               required
               type="email"
               defaultValue={loaderData.email}
-              placeholder="nico@supaplate.com"
+              placeholder="nico@lidamedu.com"
             />
 
             {/* Specialized OTP input component with 6 digit slots */}
