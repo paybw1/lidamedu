@@ -32,6 +32,11 @@ export default [
         "features/users/api/disconnect-provider.tsx",
       ),
     ]),
+    ...prefix("/annotations", [
+      route("/bookmark", "features/annotations/api/bookmark.tsx"),
+      route("/memo", "features/annotations/api/memo.tsx"),
+      route("/highlight", "features/annotations/api/highlight.tsx"),
+    ]),
   ]),
 
   // Pages with top navigation + footer
@@ -89,6 +94,18 @@ export default [
         route(
           "/civil-procedure",
           "features/subjects/screens/civil-procedure.tsx",
+        ),
+        route(
+          "/:subject/articles/:articlePath",
+          "features/subjects/screens/article-viewer.tsx",
+        ),
+        route(
+          "/:subject/cases/:caseId",
+          "features/subjects/screens/case-viewer.tsx",
+        ),
+        route(
+          "/:subject/problems/:problemId",
+          "features/subjects/screens/problem-viewer.tsx",
         ),
         ...prefix("/science", [
           route("/physics", "features/subjects/screens/science/physics.tsx"),

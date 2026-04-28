@@ -14,6 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      article_article_links: {
+        Row: {
+          article_a: string
+          article_b: string
+          created_at: string
+          created_by: string | null
+          link_id: string
+          note: string | null
+          relation_type: Database["public"]["Enums"]["aa_relation_type"]
+        }
+        Insert: {
+          article_a: string
+          article_b: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          relation_type: Database["public"]["Enums"]["aa_relation_type"]
+        }
+        Update: {
+          article_a?: string
+          article_b?: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          relation_type?: Database["public"]["Enums"]["aa_relation_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_article_links_article_a_fkey"
+            columns: ["article_a"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_article_links_article_b_fkey"
+            columns: ["article_b"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_article_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      article_case_links: {
+        Row: {
+          article_id: string
+          case_id: string
+          created_at: string
+          created_by: string | null
+          link_id: string
+          note: string | null
+          relation_type: Database["public"]["Enums"]["ac_relation_type"]
+        }
+        Insert: {
+          article_id: string
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          relation_type: Database["public"]["Enums"]["ac_relation_type"]
+        }
+        Update: {
+          article_id?: string
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          relation_type?: Database["public"]["Enums"]["ac_relation_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_case_links_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_case_links_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "article_case_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       article_revisions: {
         Row: {
           article_id: string
@@ -172,6 +276,69 @@ export type Database = {
           },
         ]
       }
+      cases: {
+        Row: {
+          case_id: string
+          case_number: string
+          case_title: string
+          comment_body_md: string | null
+          comment_source: string | null
+          court: Database["public"]["Enums"]["case_court"]
+          created_at: string
+          decided_at: string
+          deleted_at: string | null
+          full_text_pdf: string | null
+          importance: number | null
+          is_en_banc: boolean
+          reasoning_md: string | null
+          search_tsv: unknown
+          subject_laws: string[]
+          summary_body_md: string | null
+          summary_title: string | null
+          updated_at: string
+        }
+        Insert: {
+          case_id?: string
+          case_number: string
+          case_title: string
+          comment_body_md?: string | null
+          comment_source?: string | null
+          court: Database["public"]["Enums"]["case_court"]
+          created_at?: string
+          decided_at: string
+          deleted_at?: string | null
+          full_text_pdf?: string | null
+          importance?: number | null
+          is_en_banc?: boolean
+          reasoning_md?: string | null
+          search_tsv?: unknown
+          subject_laws: string[]
+          summary_body_md?: string | null
+          summary_title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string
+          case_number?: string
+          case_title?: string
+          comment_body_md?: string | null
+          comment_source?: string | null
+          court?: Database["public"]["Enums"]["case_court"]
+          created_at?: string
+          decided_at?: string
+          deleted_at?: string | null
+          full_text_pdf?: string | null
+          importance?: number | null
+          is_en_banc?: boolean
+          reasoning_md?: string | null
+          search_tsv?: unknown
+          subject_laws?: string[]
+          summary_body_md?: string | null
+          summary_title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       law_revisions: {
         Row: {
           comparison_pdf: string | null
@@ -265,6 +432,152 @@ export type Database = {
         }
         Relationships: []
       }
+      problem_choices: {
+        Row: {
+          body_md: string
+          choice_id: string
+          choice_index: number
+          created_at: string
+          explanation_md: string | null
+          is_correct: boolean
+          problem_id: string
+          related_article_id: string | null
+          related_case_id: string | null
+        }
+        Insert: {
+          body_md: string
+          choice_id?: string
+          choice_index: number
+          created_at?: string
+          explanation_md?: string | null
+          is_correct?: boolean
+          problem_id: string
+          related_article_id?: string | null
+          related_case_id?: string | null
+        }
+        Update: {
+          body_md?: string
+          choice_id?: string
+          choice_index?: number
+          created_at?: string
+          explanation_md?: string | null
+          is_correct?: boolean
+          problem_id?: string
+          related_article_id?: string | null
+          related_case_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_choices_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "problem_choices_related_article_id_fkey"
+            columns: ["related_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "problem_choices_related_case_id_fkey"
+            columns: ["related_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
+      problems: {
+        Row: {
+          body_md: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          exam_round: Database["public"]["Enums"]["problem_exam_round"]
+          exam_round_no: number | null
+          examined_at: string | null
+          format: Database["public"]["Enums"]["problem_format"]
+          law_id: string | null
+          origin: Database["public"]["Enums"]["problem_origin"]
+          polarity: Database["public"]["Enums"]["problem_polarity"] | null
+          primary_article_id: string | null
+          problem_id: string
+          problem_number: number | null
+          scope: Database["public"]["Enums"]["problem_scope"] | null
+          subject_type: Database["public"]["Enums"]["problem_subject_type"]
+          total_points: number | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          body_md: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          exam_round: Database["public"]["Enums"]["problem_exam_round"]
+          exam_round_no?: number | null
+          examined_at?: string | null
+          format: Database["public"]["Enums"]["problem_format"]
+          law_id?: string | null
+          origin: Database["public"]["Enums"]["problem_origin"]
+          polarity?: Database["public"]["Enums"]["problem_polarity"] | null
+          primary_article_id?: string | null
+          problem_id?: string
+          problem_number?: number | null
+          scope?: Database["public"]["Enums"]["problem_scope"] | null
+          subject_type: Database["public"]["Enums"]["problem_subject_type"]
+          total_points?: number | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          exam_round?: Database["public"]["Enums"]["problem_exam_round"]
+          exam_round_no?: number | null
+          examined_at?: string | null
+          format?: Database["public"]["Enums"]["problem_format"]
+          law_id?: string | null
+          origin?: Database["public"]["Enums"]["problem_origin"]
+          polarity?: Database["public"]["Enums"]["problem_polarity"] | null
+          primary_article_id?: string | null
+          problem_id?: string
+          problem_number?: number | null
+          scope?: Database["public"]["Enums"]["problem_scope"] | null
+          subject_type?: Database["public"]["Enums"]["problem_subject_type"]
+          total_points?: number | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problems_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problems_law_id_fkey"
+            columns: ["law_id"]
+            isOneToOne: false
+            referencedRelation: "laws"
+            referencedColumns: ["law_id"]
+          },
+          {
+            foreignKeyName: "problems_primary_article_id_fkey"
+            columns: ["primary_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -294,6 +607,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      study_sessions: {
+        Row: {
+          duration_ms: number | null
+          ended_at: string | null
+          scope: Json
+          session_id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          duration_ms?: number | null
+          ended_at?: string | null
+          scope: Json
+          session_id?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          duration_ms?: number | null
+          ended_at?: string | null
+          scope?: Json
+          session_id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
       }
       systematic_nodes: {
         Row: {
@@ -336,6 +684,144 @@ export type Database = {
           },
         ]
       }
+      user_bookmarks: {
+        Row: {
+          bookmark_id: string
+          created_at: string
+          deleted_at: string | null
+          note_md: string | null
+          star_level: number
+          target_id: string
+          target_type: Database["public"]["Enums"]["annotation_target_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bookmark_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          note_md?: string | null
+          star_level: number
+          target_id: string
+          target_type: Database["public"]["Enums"]["annotation_target_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bookmark_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          note_md?: string | null
+          star_level?: number
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["annotation_target_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_bookmarks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      user_highlights: {
+        Row: {
+          color: string
+          content_hash: string
+          created_at: string
+          deleted_at: string | null
+          end_offset: number
+          field_path: string
+          highlight_id: string
+          label: string | null
+          start_offset: number
+          target_id: string
+          target_type: Database["public"]["Enums"]["annotation_target_type"]
+          user_id: string
+        }
+        Insert: {
+          color: string
+          content_hash: string
+          created_at?: string
+          deleted_at?: string | null
+          end_offset: number
+          field_path: string
+          highlight_id?: string
+          label?: string | null
+          start_offset: number
+          target_id: string
+          target_type: Database["public"]["Enums"]["annotation_target_type"]
+          user_id: string
+        }
+        Update: {
+          color?: string
+          content_hash?: string
+          created_at?: string
+          deleted_at?: string | null
+          end_offset?: number
+          field_path?: string
+          highlight_id?: string
+          label?: string | null
+          start_offset?: number
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["annotation_target_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_highlights_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      user_memos: {
+        Row: {
+          body_md: string
+          created_at: string
+          deleted_at: string | null
+          memo_id: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["annotation_target_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_md: string
+          created_at?: string
+          deleted_at?: string | null
+          memo_id?: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["annotation_target_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          deleted_at?: string | null
+          memo_id?: string
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["annotation_target_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_memos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -344,8 +830,32 @@ export type Database = {
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
     }
     Enums: {
+      aa_relation_type:
+        | "cross_reference"
+        | "parent_child"
+        | "precondition"
+        | "exception"
+      ac_relation_type:
+        | "directly_interprets"
+        | "cites"
+        | "similar_to"
+        | "contrary_to"
+      annotation_target_type: "article" | "case" | "problem" | "problem_choice"
       article_level: "part" | "chapter" | "section" | "article"
+      case_court: "supreme" | "patent_court" | "high_court" | "district_court"
       law_change_kind: "created" | "amended" | "deleted"
+      problem_exam_round: "first" | "second"
+      problem_format:
+        | "mc_short"
+        | "mc_box"
+        | "mc_case"
+        | "ox"
+        | "blank"
+        | "subjective"
+      problem_origin: "past_exam" | "past_exam_variant" | "expected" | "mock"
+      problem_polarity: "positive" | "negative"
+      problem_scope: "unit" | "comprehensive"
+      problem_subject_type: "law" | "science"
       user_role: "student" | "instructor" | "admin"
     }
     CompositeTypes: {
@@ -474,8 +984,35 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      aa_relation_type: [
+        "cross_reference",
+        "parent_child",
+        "precondition",
+        "exception",
+      ],
+      ac_relation_type: [
+        "directly_interprets",
+        "cites",
+        "similar_to",
+        "contrary_to",
+      ],
+      annotation_target_type: ["article", "case", "problem", "problem_choice"],
       article_level: ["part", "chapter", "section", "article"],
+      case_court: ["supreme", "patent_court", "high_court", "district_court"],
       law_change_kind: ["created", "amended", "deleted"],
+      problem_exam_round: ["first", "second"],
+      problem_format: [
+        "mc_short",
+        "mc_box",
+        "mc_case",
+        "ox",
+        "blank",
+        "subjective",
+      ],
+      problem_origin: ["past_exam", "past_exam_variant", "expected", "mock"],
+      problem_polarity: ["positive", "negative"],
+      problem_scope: ["unit", "comprehensive"],
+      problem_subject_type: ["law", "science"],
       user_role: ["student", "instructor", "admin"],
     },
   },

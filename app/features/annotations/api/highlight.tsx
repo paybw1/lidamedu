@@ -1,0 +1,95 @@
+import { data } from "react-router";
+import { z } from "zod";
+
+import makeServerClient from "~/core/lib/supa-client.server";
+
+import {
+  annotationTargetTypeSchema,
+  createHighlight,
+  highlightColorSchema,
+  softDeleteHighlight,
+} from "../queries.server";
+
+import type { Route } from "./+types/highlight";
+
+const createSchema = z.object({
+  intent: z.literal("create"),
+  targetType: annotationTargetTypeSchema,
+  targetId: z.string().uuid(),
+  fieldPath: z.string().max(200),
+  startOffset: z.coerce.number().int().min(0),
+  endOffset: z.coerce.number().int().positive(),
+  contentHash: z.string().max(128),
+  color: highlightColorSchema,
+  excerpt: z.string().min(1).max(500),
+});
+
+const deleteSchema = z.object({
+  intent: z.literal("delete"),
+  highlightId: z.string().uuid(),
+});
+
+const schema = z.discriminatedUnion("intent", [createSchema, deleteSchema]);
+
+export async function action({ request }: Route.ActionArgs) {
+  if (request.method !== "POST") {
+    return data({ ok: false, error: "method-not-allowed" }, { status: 405 });
+  }
+
+  const [client, headers] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) {
+    return data({ ok: false, error: "unauthorized" }, { status: 401, headers });
+  }
+
+  const formData = await request.formData();
+  const parsed = schema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return data(
+      { ok: false, error: "invalid-input", issues: parsed.error.issues },
+      { status: 400, headers },
+    );
+  }
+
+  if (parsed.data.intent === "create") {
+    const {
+      targetType,
+      targetId,
+      fieldPath,
+      startOffset,
+      endOffset,
+      contentHash,
+      color,
+      excerpt,
+    } = parsed.data;
+
+    if (endOffset <= startOffset) {
+      return data(
+        { ok: false, error: "invalid-range" },
+        { status: 400, headers },
+      );
+    }
+
+    const highlight = await createHighlight(
+      client,
+      user.id,
+      targetType,
+      targetId,
+      {
+        fieldPath,
+        startOffset,
+        endOffset,
+        contentHash,
+        color,
+        label: null,
+        excerpt,
+      },
+    );
+    return data({ ok: true, highlight }, { headers });
+  }
+
+  await softDeleteHighlight(client, user.id, parsed.data.highlightId);
+  return data({ ok: true }, { headers });
+}

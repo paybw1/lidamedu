@@ -208,7 +208,7 @@ export function NavigationBar({
   loading: boolean;
 }) {
   return (
-    <nav className="bg-background mx-auto flex h-16 w-full items-center justify-between border-b px-5 shadow-xs backdrop-blur-lg transition-opacity md:px-10">
+    <nav className="bg-background relative z-50 mx-auto flex h-16 w-full items-center justify-between border-b px-5 shadow-xs backdrop-blur-lg transition-opacity md:px-10">
       <div className="mx-auto flex h-full w-full max-w-screen-2xl items-center justify-between py-3">
         <Link to="/">
           <h1 className="text-primary text-lg font-extrabold">Lidam Edu</h1>

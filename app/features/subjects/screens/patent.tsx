@@ -1,9 +1,25 @@
 import type { Route } from "./+types/patent";
 
-import ComingSoon from "~/core/components/coming-soon";
+import { SubjectHub } from "../components/subject-hub";
+import { loadSubjectHub } from "../lib/loader.server";
+import { LAW_SUBJECTS } from "../lib/subjects";
 
 export const meta: Route.MetaFunction = () => [{ title: "특허법 | Lidam Edu" }];
 
-export default function SubjectPatent() {
-  return <ComingSoon title="특허법" />;
+export async function loader({ request }: Route.LoaderArgs) {
+  return loadSubjectHub(request, "patent");
+}
+
+export default function SubjectPatent({ loaderData }: Route.ComponentProps) {
+  return (
+    <SubjectHub
+      subject={LAW_SUBJECTS.patent}
+      articles={loaderData.articles}
+      cases={loaderData.cases}
+      problems={loaderData.problems}
+      caseQuery={loaderData.caseQuery}
+      progress={loaderData.progress}
+      recentRevisionDate={loaderData.recentRevisionDate}
+    />
+  );
 }
