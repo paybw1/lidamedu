@@ -42,7 +42,7 @@ export const LAW_SUBJECTS: Record<LawSubjectSlug, LawSubjectMeta> = {
     category: "industrial",
     categoryLabel: "산업재산권법",
     exam: "both",
-    description: "발명의 보호와 이용을 통한 기술발전과 산업발전에 이바지",
+    description: "",
   },
   trademark: {
     slug: "trademark",
@@ -51,7 +51,7 @@ export const LAW_SUBJECTS: Record<LawSubjectSlug, LawSubjectMeta> = {
     category: "industrial",
     categoryLabel: "산업재산권법",
     exam: "both",
-    description: "상표 사용자의 업무상 신용유지와 수요자의 이익 보호",
+    description: "",
   },
   design: {
     slug: "design",
@@ -60,7 +60,7 @@ export const LAW_SUBJECTS: Record<LawSubjectSlug, LawSubjectMeta> = {
     category: "industrial",
     categoryLabel: "산업재산권법",
     exam: "first",
-    description: "디자인의 보호와 이용을 통한 디자인 창작 장려",
+    description: "",
   },
   civil: {
     slug: "civil",
@@ -69,7 +69,7 @@ export const LAW_SUBJECTS: Record<LawSubjectSlug, LawSubjectMeta> = {
     category: "civil",
     categoryLabel: "민법",
     exam: "first",
-    description: "재산법·신분법 일반의 법률관계",
+    description: "",
   },
   "civil-procedure": {
     slug: "civil-procedure",
@@ -78,7 +78,7 @@ export const LAW_SUBJECTS: Record<LawSubjectSlug, LawSubjectMeta> = {
     category: "civil-procedure",
     categoryLabel: "민사소송법",
     exam: "second",
-    description: "민사 권리구제를 위한 소송절차",
+    description: "",
   },
 };
 

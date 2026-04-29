@@ -2,9 +2,16 @@ import {
   getArticleSkeleton,
   getLatestPublishedRevisionDate,
   getLawByCode,
+  getSystematicSkeleton,
   type ArticleNode,
   type LawHeader,
+  type SystematicNode,
 } from "~/features/laws/queries.server";
+import {
+  getUserArticleAnnotationCounts,
+  getUserArticleBookmarkLevels,
+  type ArticleAnnotationCounts,
+} from "~/features/annotations/queries.server";
 import {
   listCasesBySubject,
   type CaseListItem,
@@ -24,10 +31,13 @@ import type { LawSubjectSlug } from "./subjects";
 export interface SubjectHubData {
   law: LawHeader | null;
   articles: ArticleNode[];
+  systematicNodes: SystematicNode[];
   cases: CaseListItem[];
   problems: ProblemListItem[];
   recentRevisionDate: string | null;
   progress: SubjectProgress | null;
+  bookmarkLevels: Record<string, number>;
+  annotationCounts: Record<string, ArticleAnnotationCounts>;
 }
 
 export async function loadSubjectHub(
@@ -43,36 +53,48 @@ export async function loadSubjectHub(
     return {
       law: null,
       articles: [],
+      systematicNodes: [],
       cases: [],
       problems: [],
       recentRevisionDate: null,
       progress: null,
+      bookmarkLevels: {},
+      annotationCounts: {},
       caseQuery,
     };
   }
-  const [articles, cases, problems, recentRevisionDate] = await Promise.all([
-    getArticleSkeleton(client, law.lawId),
-    listCasesBySubject(client, lawCode, caseQuery || undefined),
-    listProblemsBySubject(client, lawCode),
-    getLatestPublishedRevisionDate(client, law.lawId),
-  ]);
+  const [articles, systematicNodes, cases, problems, recentRevisionDate] =
+    await Promise.all([
+      getArticleSkeleton(client, law.lawId),
+      getSystematicSkeleton(client, lawCode),
+      listCasesBySubject(client, lawCode, caseQuery || undefined),
+      listProblemsBySubject(client, lawCode),
+      getLatestPublishedRevisionDate(client, law.lawId),
+    ]);
 
   const totalArticleCount = articles.filter((a) => a.level === "article").length;
 
   const {
     data: { user },
   } = await client.auth.getUser();
-  const progress = user
-    ? await getSubjectProgress(client, user.id, lawCode, totalArticleCount)
-    : null;
+  const [progress, bookmarkLevels, annotationCounts] = user
+    ? await Promise.all([
+        getSubjectProgress(client, user.id, lawCode, totalArticleCount),
+        getUserArticleBookmarkLevels(client, user.id),
+        getUserArticleAnnotationCounts(client, user.id),
+      ])
+    : [null, {}, {}];
 
   return {
     law,
     articles,
+    systematicNodes,
     cases,
     problems,
     recentRevisionDate,
     progress,
+    bookmarkLevels,
+    annotationCounts,
     caseQuery,
   };
 }

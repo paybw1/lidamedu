@@ -15,7 +15,11 @@ import {
   TabsTrigger,
 } from "~/core/components/ui/tabs";
 
-import type { ArticleNode } from "~/features/laws/queries.server";
+import type {
+  ArticleNode,
+  SystematicNode,
+} from "~/features/laws/queries.server";
+import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
 import type { CaseListItem } from "~/features/cases/queries.server";
 import type { ProblemListItem } from "~/features/problems/queries.server";
 import type { SubjectProgress } from "~/features/study/queries.server";
@@ -35,11 +39,14 @@ import { ProblemsTab } from "./tabs/problems-tab";
 interface SubjectHubProps {
   subject: LawSubjectMeta;
   articles?: ArticleNode[];
+  systematicNodes?: SystematicNode[];
   cases?: CaseListItem[];
   problems?: ProblemListItem[];
   caseQuery?: string;
   progress?: SubjectProgress | null;
   recentRevisionDate?: string | null;
+  bookmarkLevels?: Record<string, number>;
+  annotationCounts?: Record<string, ArticleAnnotationCounts>;
 }
 
 export function SubjectHub(props: SubjectHubProps) {
@@ -53,11 +60,14 @@ export function SubjectHub(props: SubjectHubProps) {
 function SubjectHubInner({
   subject,
   articles,
+  systematicNodes,
   cases,
   problems,
   caseQuery,
   progress,
   recentRevisionDate,
+  bookmarkLevels,
+  annotationCounts,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -116,7 +126,10 @@ function SubjectHubInner({
           <ArticlesTab
             subject={subject}
             articles={articles ?? []}
+            systematicNodes={systematicNodes ?? []}
             progress={progress ?? null}
+            bookmarkLevels={bookmarkLevels}
+            annotationCounts={annotationCounts}
           />
         </TabsContent>
         <TabsContent value="cases">
@@ -159,7 +172,9 @@ function SubjectHeader({
             </Badge>
           ) : null}
         </div>
-        <p className="text-muted-foreground text-sm">{subject.description}</p>
+        {subject.description ? (
+          <p className="text-muted-foreground text-sm">{subject.description}</p>
+        ) : null}
         <ProgressLine pct={progressPct} />
       </div>
       <SortAxisToggle />

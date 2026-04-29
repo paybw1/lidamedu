@@ -1,5 +1,6 @@
 import {
   CheckSquareIcon,
+  GavelIcon,
   HeartIcon,
   HighlighterIcon,
   MessageCircleQuestionIcon,
@@ -25,6 +26,14 @@ import type {
   HighlightRecord,
   MemoRecord,
 } from "~/features/annotations/labels";
+import { RelatedCasesList } from "~/features/laws/components/related-chips";
+import { QnaPanel } from "~/features/qna/components/qna-panel";
+import type {
+  QnaTargetType,
+  QnaThreadSummary,
+} from "~/features/qna/labels";
+import type { RelatedCase } from "~/features/relations/labels";
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 interface PanelTab {
   value: string;
@@ -56,34 +65,43 @@ const PLACEHOLDER_TABS: PanelTab[] = [
     featId: "feat-4-A-115",
     hint: "강사·운영자가 작성한 평석/학습자료. 마크다운 + 하이라이트.",
   },
-  {
-    value: "qna",
-    label: "Q&A",
-    icon: MessageCircleQuestionIcon,
-    featId: "feat-4-A-116",
-    hint: "검색 → 새 질문 → 강사 알림 → 답변 → 답변자 평가(상/중/하).",
-  },
 ];
+
+// annotation_target_type → qna_target_type 매핑. problem_choice 는 부모 problem 으로.
+function toQnaTargetType(t: AnnotationTargetType): QnaTargetType | null {
+  if (t === "article") return "article";
+  if (t === "case") return "case";
+  if (t === "problem") return "problem";
+  return null; // problem_choice 등은 Q&A 미지원
+}
 
 export function ArticleRightPanel({
   target,
   bookmark,
   memos,
   highlights,
+  qnaThreads = [],
+  relatedCases,
+  subjectSlug,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
   memos: MemoRecord[];
   highlights: HighlightRecord[];
+  qnaThreads?: QnaThreadSummary[];
+  relatedCases?: RelatedCase[];
+  subjectSlug?: LawSubjectSlug;
 }) {
+  const qnaTargetType = toQnaTargetType(target.type);
+  const showCases = relatedCases !== undefined && subjectSlug !== undefined;
   return (
     <div className="flex h-full flex-col">
       <Tabs defaultValue="bookmark" className="h-full gap-3">
         <TabsList className="h-auto flex-wrap gap-1">
-          <TabsTrigger value="bookmark" className="px-2.5 text-xs">
+          <TabsTrigger value="bookmark" className="h-7 flex-none px-2.5 text-xs">
             <HeartIcon /> 즐겨찾기
           </TabsTrigger>
-          <TabsTrigger value="memo" className="px-2.5 text-xs">
+          <TabsTrigger value="memo" className="h-7 flex-none px-2.5 text-xs">
             <NotebookPenIcon /> 메모
             {memos.length > 0 ? (
               <span className="text-muted-foreground ml-1 tabular-nums">
@@ -91,7 +109,10 @@ export function ArticleRightPanel({
               </span>
             ) : null}
           </TabsTrigger>
-          <TabsTrigger value="highlight" className="px-2.5 text-xs">
+          <TabsTrigger
+            value="highlight"
+            className="h-7 flex-none px-2.5 text-xs"
+          >
             <HighlighterIcon /> 하이라이트
             {highlights.length > 0 ? (
               <span className="text-muted-foreground ml-1 tabular-nums">
@@ -99,13 +120,33 @@ export function ArticleRightPanel({
               </span>
             ) : null}
           </TabsTrigger>
+          {showCases ? (
+            <TabsTrigger value="cases" className="h-7 flex-none px-2.5 text-xs">
+              <GavelIcon /> 판례
+              {relatedCases.length > 0 ? (
+                <span className="text-muted-foreground ml-1 tabular-nums">
+                  {relatedCases.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ) : null}
+          {qnaTargetType ? (
+            <TabsTrigger value="qna" className="h-7 flex-none px-2.5 text-xs">
+              <MessageCircleQuestionIcon /> Q&A
+              {qnaThreads.length > 0 ? (
+                <span className="text-muted-foreground ml-1 tabular-nums">
+                  {qnaThreads.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ) : null}
           {PLACEHOLDER_TABS.map((t) => {
             const Icon = t.icon;
             return (
               <TabsTrigger
                 key={t.value}
                 value={t.value}
-                className="px-2.5 text-xs"
+                className="h-7 flex-none px-2.5 text-xs"
               >
                 <Icon /> {t.label}
               </TabsTrigger>
@@ -136,6 +177,22 @@ export function ArticleRightPanel({
             initial={highlights}
           />
         </TabsContent>
+
+        {showCases ? (
+          <TabsContent value="cases">
+            <RelatedCasesList cases={relatedCases} subject={subjectSlug} />
+          </TabsContent>
+        ) : null}
+
+        {qnaTargetType ? (
+          <TabsContent value="qna">
+            <QnaPanel
+              threads={qnaThreads}
+              targetType={qnaTargetType}
+              targetId={target.id}
+            />
+          </TabsContent>
+        ) : null}
 
         {PLACEHOLDER_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="space-y-2">

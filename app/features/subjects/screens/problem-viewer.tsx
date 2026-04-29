@@ -15,6 +15,8 @@ import {
   SCOPE_LABEL,
   getProblemById,
 } from "~/features/problems/queries.server";
+import { QnaPanel } from "~/features/qna/components/qna-panel";
+import { listThreadsForTarget } from "~/features/qna/queries.server";
 import {
   EXAM_LABEL,
   LAW_SUBJECTS,
@@ -49,14 +51,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Problem not found", { status: 404 });
   }
 
+  const qnaThreads = await listThreadsForTarget(
+    client,
+    "problem",
+    problem.problemId,
+    20,
+  );
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     problem,
+    qnaThreads,
   };
 }
 
 export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
-  const { subject, problem } = loaderData;
+  const { subject, problem, qnaThreads } = loaderData;
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
 
@@ -219,6 +229,22 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
               </CardContent>
             </Card>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            Q&A
+          </p>
+        </CardHeader>
+        <Separator />
+        <CardContent className="pt-5">
+          <QnaPanel
+            threads={qnaThreads}
+            targetType="problem"
+            targetId={problem.problemId}
+          />
         </CardContent>
       </Card>
     </div>

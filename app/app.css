@@ -180,4 +180,22 @@ body {
   #nprogress .spinner-icon {
     @apply border-t-primary! border-l-primary!;
   }
+
+  /* 사용자 하이라이트 (CSS Custom Highlight Registry) — 색상별로 4개 highlight name 사용 */
+  ::highlight(lidam-hl-yellow) {
+    background-color: rgba(253, 230, 138, 0.7); /* amber-200 */
+    color: inherit;
+  }
+  ::highlight(lidam-hl-green) {
+    background-color: rgba(167, 243, 208, 0.7); /* emerald-200 */
+    color: inherit;
+  }
+  ::highlight(lidam-hl-red) {
+    background-color: rgba(254, 205, 211, 0.7); /* rose-200 */
+    color: inherit;
+  }
+  ::highlight(lidam-hl-blue) {
+    background-color: rgba(186, 230, 253, 0.7); /* sky-200 */
+    color: inherit;
+  }
 }

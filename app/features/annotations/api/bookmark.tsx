@@ -5,21 +5,32 @@ import makeServerClient from "~/core/lib/supa-client.server";
 
 import {
   annotationTargetTypeSchema,
-  upsertBookmark,
+  upsertBookmarkRating,
+  upsertBookmarkStepNote,
 } from "../queries.server";
 
 import type { Route } from "./+types/bookmark";
 
-const schema = z.object({
+const ratingSchema = z.object({
+  intent: z.literal("rating"),
   targetType: annotationTargetTypeSchema,
   targetId: z.string().uuid(),
   starLevel: z.coerce.number().int().min(0).max(5),
-  noteMd: z
+});
+
+const stepSchema = z.object({
+  intent: z.literal("step"),
+  targetType: annotationTargetTypeSchema,
+  targetId: z.string().uuid(),
+  stepLevel: z.coerce.number().int().min(1).max(5),
+  stepNote: z
     .string()
     .max(2000)
     .optional()
     .transform((v) => (v && v.trim().length > 0 ? v : null)),
 });
+
+const schema = z.discriminatedUnion("intent", [ratingSchema, stepSchema]);
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -43,16 +54,26 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  const { targetType, targetId, starLevel, noteMd } = parsed.data;
+  if (parsed.data.intent === "rating") {
+    const { targetType, targetId, starLevel } = parsed.data;
+    const bookmark = await upsertBookmarkRating(
+      client,
+      user.id,
+      targetType,
+      targetId,
+      starLevel,
+    );
+    return data({ ok: true, bookmark }, { headers });
+  }
 
-  const bookmark = await upsertBookmark(
+  const { targetType, targetId, stepLevel, stepNote } = parsed.data;
+  const bookmark = await upsertBookmarkStepNote(
     client,
     user.id,
     targetType,
     targetId,
-    starLevel,
-    noteMd ?? null,
+    stepLevel,
+    stepNote,
   );
-
   return data({ ok: true, bookmark }, { headers });
 }

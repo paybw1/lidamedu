@@ -4,49 +4,74 @@ import { Link } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import type { ArticleNode } from "~/features/laws/queries.server";
+import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
+import type {
+  ArticleNode,
+  SystematicNode,
+} from "~/features/laws/queries.server";
 import type { SubjectProgress } from "~/features/study/queries.server";
 
 import { ArticleTree } from "../article-tree";
-import { useSortAxis } from "../sort-axis";
+import { SystematicTree } from "../systematic-tree";
+import { SortAxisToggle, useSortAxis } from "../sort-axis";
 import type { LawSubjectMeta } from "../../lib/subjects";
 
 export function ArticlesTab({
   subject,
   articles,
+  systematicNodes,
   progress,
+  bookmarkLevels,
+  annotationCounts,
 }: {
   subject: LawSubjectMeta;
   articles: ArticleNode[];
+  systematicNodes: SystematicNode[];
   progress: SubjectProgress | null;
+  bookmarkLevels?: Record<string, number>;
+  annotationCounts?: Record<string, ArticleAnnotationCounts>;
 }) {
   const { axis } = useSortAxis();
-  const axisLabel = axis === "systematic" ? "체계도" : "조문 순서";
   const articleCount = articles.filter((a) => a.level === "article").length;
+  const systematicEmpty = systematicNodes.length === 0;
+  const renderSystematic = axis === "systematic" && !systematicEmpty;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
       <aside className="space-y-3">
         <Card className="py-4">
-          <CardHeader className="px-4 pb-2">
-            <div className="flex items-center justify-between">
+          <CardHeader className="px-4 pb-3">
+            <div className="flex items-center justify-between gap-2">
               <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                조문 트리
+                {renderSystematic ? "테크 트리" : "조문 트리"}
               </p>
-              <Badge variant="outline" className="font-normal">
-                {axisLabel}
-              </Badge>
+              <SortAxisToggle
+                size="sm"
+                disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+              />
             </div>
           </CardHeader>
           <CardContent className="px-2 pb-2">
-            <ArticleTree
-              nodes={articles}
-              emptyHint={`${subject.name} 조문 시드가 아직 없습니다.`}
-              lawCode={subject.slug}
-            />
-            {axis === "systematic" ? (
+            {renderSystematic ? (
+              <SystematicTree
+                nodes={systematicNodes}
+                lawCode={subject.slug}
+                emptyHint={`${subject.name} 테크 트리가 아직 등록되지 않았습니다.`}
+                bookmarkLevels={bookmarkLevels}
+                annotationCounts={annotationCounts}
+              />
+            ) : (
+              <ArticleTree
+                nodes={articles}
+                emptyHint={`${subject.name} 조문 시드가 아직 없습니다.`}
+                lawCode={subject.slug}
+                bookmarkLevels={bookmarkLevels}
+                annotationCounts={annotationCounts}
+              />
+            )}
+            {axis === "systematic" && systematicEmpty ? (
               <p className="text-muted-foreground mt-2 px-2 text-xs">
-                * 체계도 분류 데이터(systematic_nodes) 미입력 — 조문 순서로 표시
+                * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
               </p>
             ) : null}
           </CardContent>

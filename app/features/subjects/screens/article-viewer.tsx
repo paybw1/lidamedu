@@ -4,8 +4,7 @@ import {
   ChevronRightIcon,
   EyeIcon,
   EyeOffIcon,
-  GavelIcon,
-  NetworkIcon,
+  PencilLineIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, data } from "react-router";
@@ -18,17 +17,19 @@ import { Separator } from "~/core/components/ui/separator";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   getBookmark,
+  getUserArticleAnnotationCounts,
+  getUserArticleBookmarkLevels,
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
 import { recordStudySession } from "~/features/study/queries.server";
+import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
+import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
+import { BlankOwnerSelector } from "~/features/blanks/components/blank-owner-selector";
+import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
-import {
-  RelatedArticlesChips,
-  RelatedCasesList,
-  RelatedSection,
-} from "~/features/laws/components/related-chips";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 import {
   articleDisplayPrefix,
@@ -39,12 +40,17 @@ import {
   getArticleByNumber,
   getArticleSkeleton,
   getLawByCode,
+  getSystematicSkeleton,
 } from "~/features/laws/queries.server";
-import {
-  getRelatedArticlesByArticle,
-  getRelatedCasesByArticle,
-} from "~/features/relations/queries.server";
+import { listThreadsForTarget } from "~/features/qna/queries.server";
+import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
+import {
+  SortAxisProvider,
+  SortAxisToggle,
+  useSortAxis,
+} from "~/features/subjects/components/sort-axis";
+import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import {
   EXAM_LABEL,
   LAW_SUBJECTS,
@@ -84,9 +90,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const lookupArticleNumber = articleNumberText(ident);
-  const [article, articles] = await Promise.all([
+  const [article, articles, systematicNodes] = await Promise.all([
     getArticleByNumber(client, law.lawId, lookupArticleNumber),
     getArticleSkeleton(client, law.lawId),
+    getSystematicSkeleton(client, lawCode),
   ]);
 
   if (!article) {
@@ -100,14 +107,31 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Unauthorized", { status: 401 });
   }
 
-  const [relatedCases, relatedArticles, bookmark, memos, highlights] =
-    await Promise.all([
-      getRelatedCasesByArticle(client, article.articleId),
-      getRelatedArticlesByArticle(client, article.articleId),
-      getBookmark(client, user.id, "article", article.articleId),
-      listMemos(client, user.id, "article", article.articleId),
-      listHighlights(client, user.id, "article", article.articleId),
-    ]);
+  const [
+    relatedCases,
+    bookmark,
+    memos,
+    highlights,
+    bookmarkLevels,
+    annotationCounts,
+    qnaThreads,
+    blankSets,
+  ] = await Promise.all([
+    getRelatedCasesByArticle(client, article.articleId),
+    getBookmark(client, user.id, "article", article.articleId),
+    listMemos(client, user.id, "article", article.articleId),
+    listHighlights(client, user.id, "article", article.articleId),
+    getUserArticleBookmarkLevels(client, user.id),
+    getUserArticleAnnotationCounts(client, user.id),
+    listThreadsForTarget(client, "article", article.articleId, 20),
+    listBlankSetsByArticle(client, article.articleId),
+  ]);
+  // ?blank=<setId> 로 owner 선택 가능. 없으면 첫 set.
+  const blankSetIdParam = new URL(request.url).searchParams.get("blank");
+  const blankSet =
+    blankSetIdParam != null
+      ? blankSets.find((s) => s.setId === blankSetIdParam) ?? blankSets[0] ?? null
+      : blankSets[0] ?? null;
 
   // 진도 기록 (loader 안에서 1번 fire-and-forget; 실패해도 화면은 계속)
   recordStudySession(client, user.id, {
@@ -122,26 +146,51 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     article,
     body: parseArticleBody(article.bodyJson),
     articles,
+    systematicNodes,
     relatedCases,
-    relatedArticles,
     bookmark,
     memos,
     highlights,
+    bookmarkLevels,
+    annotationCounts,
+    qnaThreads,
+    blankSets,
+    blankSet,
   };
 }
 
 export default function ArticleViewer({ loaderData }: Route.ComponentProps) {
+  return (
+    <SortAxisProvider>
+      <ArticleViewerInner loaderData={loaderData} />
+    </SortAxisProvider>
+  );
+}
+
+function ArticleViewerInner({
+  loaderData,
+}: {
+  loaderData: Route.ComponentProps["loaderData"];
+}) {
   const {
     subject,
     article,
     body,
     articles,
+    systematicNodes,
     relatedCases,
-    relatedArticles,
     bookmark,
     memos,
     highlights,
+    bookmarkLevels,
+    annotationCounts,
+    qnaThreads,
+    blankSets,
+    blankSet,
   } = loaderData;
+  const { axis } = useSortAxis();
+  const systematicEmpty = systematicNodes.length === 0;
+  const renderSystematic = axis === "systematic" && !systematicEmpty;
 
   const titleMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -170,31 +219,61 @@ export default function ArticleViewer({ loaderData }: Route.ComponentProps) {
   }, [articles, article.articleId]);
 
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
+  const [blankMode, setBlankMode] = useState(false);
+  const blankAvailable = blankSet !== null && blankSet.blanks.length > 0;
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+      <HighlightToolbar
+        targetType="article"
+        targetId={article.articleId}
+      />
       <Link
         to={`/subjects/${subject.slug}`}
         viewTransition
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
       >
-        <ArrowLeftIcon className="size-4" /> {subject.name} 조문 트리
+        <ArrowLeftIcon className="size-4" /> {subject.name}{" "}
+        {renderSystematic ? "테크 트리" : "조문 트리"}
       </Link>
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
         <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="py-4">
-            <CardHeader className="px-4 pb-2">
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                {subject.name} 조문 트리
-              </p>
+            <CardHeader className="px-4 pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  {renderSystematic ? "테크 트리" : "조문 트리"}
+                </p>
+                <SortAxisToggle
+                  size="sm"
+                  disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                />
+              </div>
             </CardHeader>
             <CardContent className="px-2 pb-2">
-              <ArticleTree
-                nodes={articles}
-                activeArticleId={article.articleId}
-                lawCode={subject.slug}
-              />
+              {renderSystematic ? (
+                <SystematicTree
+                  nodes={systematicNodes}
+                  activeArticleId={article.articleId}
+                  lawCode={subject.slug}
+                  bookmarkLevels={bookmarkLevels}
+                  annotationCounts={annotationCounts}
+                />
+              ) : (
+                <ArticleTree
+                  nodes={articles}
+                  activeArticleId={article.articleId}
+                  lawCode={subject.slug}
+                  bookmarkLevels={bookmarkLevels}
+                  annotationCounts={annotationCounts}
+                />
+              )}
+              {axis === "systematic" && systematicEmpty ? (
+                <p className="text-muted-foreground mt-2 px-2 text-xs">
+                  * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </aside>
@@ -232,73 +311,85 @@ export default function ArticleViewer({ loaderData }: Route.ComponentProps) {
                   </Badge>
                 ) : null}
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-muted-foreground text-xs">
                   {subject.name} ·{" "}
                   {article.articleNumber
                     ? articleDisplayPrefix(article.articleNumber)
                     : ""}
                 </p>
-                <Button
-                  variant={subtitlesOnly ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSubtitlesOnly((v) => !v)}
-                  className="h-7 gap-1 text-xs"
-                >
-                  {subtitlesOnly ? (
-                    <EyeIcon className="size-3.5" />
-                  ) : (
-                    <EyeOffIcon className="size-3.5" />
-                  )}
-                  소제목만 보기
-                </Button>
+                <div className="flex flex-wrap items-center gap-1">
+                  {blankAvailable ? (
+                    <>
+                      <Button
+                        variant={blankMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBlankMode((v) => !v)}
+                        className="h-7 gap-1 text-xs"
+                      >
+                        <PencilLineIcon className="size-3.5" />
+                        빈칸 모드
+                        <span className="text-muted-foreground ml-0.5 tabular-nums">
+                          {blankSet!.blanks.length}
+                        </span>
+                      </Button>
+                      {blankMode && blankSets.length > 1 ? (
+                        <BlankOwnerSelector
+                          options={blankSets}
+                          currentSetId={blankSet!.setId}
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
+                  <Button
+                    variant={subtitlesOnly ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSubtitlesOnly((v) => !v)}
+                    disabled={blankMode}
+                    className="h-7 gap-1 text-xs"
+                  >
+                    {subtitlesOnly ? (
+                      <EyeIcon className="size-3.5" />
+                    ) : (
+                      <EyeOffIcon className="size-3.5" />
+                    )}
+                    소제목만 보기
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <Separator />
             <CardContent className="pt-6">
-              <div data-highlight-field="article.body">
-                {body ? (
-                  <ArticleBodyView
-                    body={body}
-                    titleMap={titleMap}
-                    subtitlesOnly={subtitlesOnly}
-                    lawCode={subject.slug}
-                  />
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    본문이 등록되지 않았거나 파싱할 수 없는 형식입니다.
-                  </p>
-                )}
-              </div>
+              {blankMode && blankSet && body ? (
+                <BlankFillView
+                  setId={blankSet.setId}
+                  body={body}
+                  blanks={blankSet.blanks}
+                  titleMap={titleMap}
+                  lawCode={subject.slug}
+                />
+              ) : (
+                <HighlightOverlay
+                  fieldPath="article.body"
+                  highlights={highlights}
+                >
+                  {body ? (
+                    <ArticleBodyView
+                      body={body}
+                      titleMap={titleMap}
+                      subtitlesOnly={subtitlesOnly}
+                      lawCode={subject.slug}
+                    />
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      본문이 등록되지 않았거나 파싱할 수 없는 형식입니다.
+                    </p>
+                  )}
+                </HighlightOverlay>
+              )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                관련 자료
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <RelatedSection
-                title="관련 조문"
-                icon={NetworkIcon}
-                count={relatedArticles.length}
-              >
-                <RelatedArticlesChips
-                  articles={relatedArticles}
-                  subject={subject.slug}
-                />
-              </RelatedSection>
-              <RelatedSection
-                title="관련 판례"
-                icon={GavelIcon}
-                count={relatedCases.length}
-              >
-                <RelatedCasesList cases={relatedCases} subject={subject.slug} />
-              </RelatedSection>
-            </CardContent>
-          </Card>
         </main>
 
         <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
@@ -314,6 +405,9 @@ export default function ArticleViewer({ loaderData }: Route.ComponentProps) {
                 bookmark={bookmark}
                 memos={memos}
                 highlights={highlights}
+                qnaThreads={qnaThreads}
+                relatedCases={relatedCases}
+                subjectSlug={subject.slug}
               />
             </CardContent>
           </Card>

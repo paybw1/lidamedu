@@ -50,7 +50,7 @@ export function CasesTab({
   initialQuery: string;
 }) {
   const { axis } = useSortAxis();
-  const axisLabel = axis === "systematic" ? "체계도" : "조문 순서";
+  const axisLabel = axis === "systematic" ? "테크 트리" : "조문";
   const [filter, setFilter] = useState<CaseFilter>("all");
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();

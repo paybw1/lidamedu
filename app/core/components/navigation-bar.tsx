@@ -79,6 +79,7 @@ const flatMenus: SimpleLink[] = [
 const trailingMenus: SimpleLink[] = [
   { label: "온라인 GS", to: "/gs" },
   { label: "커뮤니티", to: "/community" },
+  { label: "Q&A", to: "/qna" },
   { label: "운영자", to: "/admin" },
 ];
 

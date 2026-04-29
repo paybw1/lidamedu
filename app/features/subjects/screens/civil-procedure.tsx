@@ -19,11 +19,14 @@ export default function SubjectCivilProcedure({
     <SubjectHub
       subject={LAW_SUBJECTS["civil-procedure"]}
       articles={loaderData.articles}
+      systematicNodes={loaderData.systematicNodes}
       cases={loaderData.cases}
       problems={loaderData.problems}
       caseQuery={loaderData.caseQuery}
       progress={loaderData.progress}
       recentRevisionDate={loaderData.recentRevisionDate}
+      bookmarkLevels={loaderData.bookmarkLevels}
+      annotationCounts={loaderData.annotationCounts}
     />
   );
 }

@@ -19,12 +19,20 @@ export const annotationTargetTypeSchema = z.enum([
   "problem_choice",
 ]);
 
+// step_notes: 키는 "1"~"5" (문자열), 값은 markdown 메모.
+// 사용자가 하트 N 단계를 거치면서 누적되는 단계별 메모.
+export type BookmarkStepNotes = Partial<Record<"1" | "2" | "3" | "4" | "5", string>>;
+
 export interface BookmarkRecord {
   bookmarkId: string;
   starLevel: number;
   noteMd: string | null;
+  stepNotes: BookmarkStepNotes;
   updatedAt: string;
 }
+
+export const BOOKMARK_STEP_LEVELS = [1, 2, 3, 4, 5] as const;
+export type BookmarkStepLevel = (typeof BOOKMARK_STEP_LEVELS)[number];
 
 export interface MemoRecord {
   memoId: string;

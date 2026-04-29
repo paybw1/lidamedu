@@ -1,8 +1,15 @@
-import { ChevronRightIcon, FileTextIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  FileTextIcon,
+  HeartIcon,
+  HighlighterIcon,
+  StickyNoteIcon,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
+import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
 import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
 import type { ArticleNode } from "~/features/laws/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
@@ -46,25 +53,34 @@ function findAncestorIds(
 }
 
 type ImportanceFilter = 0 | 1 | 2 | 3; // 0=전체, 1=★+, 2=★★+, 3=★★★
+type BookmarkFilter = 0 | 1 | 2 | 3 | 4 | 5; // 0=전체, N=N개 이상
 
 const FILTER_LABELS: Record<ImportanceFilter, string> = {
   0: "전체",
-  1: "★ 이상",
-  2: "★★ 이상",
-  3: "★★★",
+  1: "1+",
+  2: "2+",
+  3: "3",
 };
 
-function filterTreeByImportance(
+const BOOKMARK_FILTER_LABELS: Record<BookmarkFilter, string> = {
+  0: "전체",
+  1: "1+",
+  2: "2+",
+  3: "3+",
+  4: "4+",
+  5: "5",
+};
+
+// 트리에서 article 노드만 조건으로 필터. 장(chapter) 등 상위 노드는 자식이 남으면 유지.
+function filterArticleTree(
   tree: TreeNode[],
-  threshold: ImportanceFilter,
+  predicate: (article: TreeNode) => boolean,
 ): TreeNode[] {
-  if (threshold === 0) return tree;
-  // article 만 필터. chapter 는 자식이 남으면 표시.
   const recur = (nodes: TreeNode[]): TreeNode[] => {
     const out: TreeNode[] = [];
     for (const n of nodes) {
       if (n.level === "article") {
-        if (n.importance >= threshold) out.push({ ...n, children: [] });
+        if (predicate(n)) out.push({ ...n, children: [] });
       } else {
         const kids = recur(n.children);
         if (kids.length > 0) out.push({ ...n, children: kids });
@@ -80,22 +96,38 @@ export function ArticleTree({
   emptyHint,
   activeArticleId,
   lawCode,
+  bookmarkLevels,
+  annotationCounts,
 }: {
   nodes: ArticleNode[];
   emptyHint?: string;
   activeArticleId?: string;
   lawCode: LawSubjectSlug;
+  bookmarkLevels?: Record<string, number>;
+  annotationCounts?: Record<string, ArticleAnnotationCounts>;
 }) {
   const tree = useMemo(() => buildTree(nodes), [nodes]);
   const expandedIds = useMemo(
     () => findAncestorIds(nodes, activeArticleId),
     [nodes, activeArticleId],
   );
-  const [filter, setFilter] = useState<ImportanceFilter>(0);
-  const visible = useMemo(
-    () => filterTreeByImportance(tree, filter),
-    [tree, filter],
-  );
+  const [importanceFilter, setImportanceFilter] = useState<ImportanceFilter>(0);
+  const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
+  const showBookmarkFilter = bookmarkLevels !== undefined;
+
+  const visible = useMemo(() => {
+    if (importanceFilter === 0 && bookmarkFilter === 0) return tree;
+    return filterArticleTree(tree, (article) => {
+      if (importanceFilter !== 0 && article.importance < importanceFilter) {
+        return false;
+      }
+      if (bookmarkFilter !== 0) {
+        const lvl = bookmarkLevels?.[article.articleId] ?? 0;
+        if (lvl < bookmarkFilter) return false;
+      }
+      return true;
+    });
+  }, [tree, importanceFilter, bookmarkFilter, bookmarkLevels]);
 
   const articleCount = useMemo(() => {
     let n = 0;
@@ -109,6 +141,8 @@ export function ArticleTree({
     return n;
   }, [visible]);
 
+  const filterActive = importanceFilter !== 0 || bookmarkFilter !== 0;
+
   if (tree.length === 0) {
     return (
       <p className="text-muted-foreground px-2 py-4 text-xs">
@@ -119,32 +153,64 @@ export function ArticleTree({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-1 px-2">
-        {([0, 1, 2, 3] as ImportanceFilter[]).map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setFilter(v)}
-            aria-pressed={filter === v}
-            className={cn(
-              "rounded-md border px-1.5 py-0.5 text-[11px] transition-colors",
-              filter === v
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background hover:bg-accent text-muted-foreground border-input",
-            )}
-          >
-            {FILTER_LABELS[v]}
-          </button>
-        ))}
-        {filter !== 0 ? (
-          <span className="text-muted-foreground ml-auto text-[11px]">
-            {articleCount}조
+      <div className="space-y-1.5 px-2">
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-muted-foreground mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
+            <span className="text-amber-500">★</span>
+            중요도
           </span>
+          {([0, 1, 2, 3] as ImportanceFilter[]).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setImportanceFilter(v)}
+              aria-pressed={importanceFilter === v}
+              className={cn(
+                "rounded-md border px-1.5 py-0.5 text-[11px] transition-colors",
+                importanceFilter === v
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background hover:bg-accent text-muted-foreground border-input",
+              )}
+            >
+              {FILTER_LABELS[v]}
+            </button>
+          ))}
+        </div>
+        {showBookmarkFilter ? (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-muted-foreground mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
+              <HeartIcon className="size-3 fill-rose-500 stroke-rose-500" />
+              즐겨찾기
+            </span>
+            {([0, 1, 2, 3, 4, 5] as BookmarkFilter[]).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setBookmarkFilter(v)}
+                aria-pressed={bookmarkFilter === v}
+                className={cn(
+                  "rounded-md border px-1.5 py-0.5 text-[11px] transition-colors",
+                  bookmarkFilter === v
+                    ? "bg-rose-500 text-white border-rose-500"
+                    : "bg-background hover:bg-accent text-muted-foreground border-input",
+                )}
+              >
+                {BOOKMARK_FILTER_LABELS[v]}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {filterActive ? (
+          <p className="text-muted-foreground text-right text-[11px] tabular-nums">
+            {articleCount}조
+          </p>
         ) : null}
       </div>
       {visible.length === 0 ? (
         <p className="text-muted-foreground px-2 py-4 text-xs">
-          중요도 {FILTER_LABELS[filter]} 조문이 없습니다.
+          {bookmarkFilter !== 0
+            ? `즐겨찾기 ${BOOKMARK_FILTER_LABELS[bookmarkFilter]} 조문이 없습니다.`
+            : `중요도 ${FILTER_LABELS[importanceFilter]} 조문이 없습니다.`}
         </p>
       ) : (
         <ul className="space-y-0.5 text-sm">
@@ -156,6 +222,8 @@ export function ArticleTree({
               activeArticleId={activeArticleId}
               forceOpen={expandedIds}
               lawCode={lawCode}
+              bookmarkLevels={bookmarkLevels}
+              annotationCounts={annotationCounts}
             />
           ))}
         </ul>
@@ -170,27 +238,80 @@ function TreeItem({
   activeArticleId,
   forceOpen,
   lawCode,
+  bookmarkLevels,
+  annotationCounts,
 }: {
   node: TreeNode;
   depth: number;
   activeArticleId?: string;
   forceOpen: Set<string>;
   lawCode: LawSubjectSlug;
+  bookmarkLevels?: Record<string, number>;
+  annotationCounts?: Record<string, ArticleAnnotationCounts>;
 }) {
   const hasChildren = node.children.length > 0;
-  const initialOpen = depth < 1 || forceOpen.has(node.articleId);
+  // 장(chapter) 은 기본적으로 접혀 있고 클릭해야 펼쳐짐 — 단, 활성 조문의 조상 장은 자동 펼침
+  const initialOpen = forceOpen.has(node.articleId);
   const [open, setOpen] = useState(initialOpen);
   const isArticle = node.level === "article";
   const isActive = activeArticleId === node.articleId;
+  const bookmarkLevel = isArticle
+    ? (bookmarkLevels?.[node.articleId] ?? 0)
+    : 0;
+  const annotation = isArticle ? annotationCounts?.[node.articleId] : undefined;
+  const memos = annotation?.memos ?? 0;
+  const highlights = annotation?.highlights ?? 0;
 
   const labelEl = (
     <span className="flex-1 truncate">{node.displayLabel}</span>
   );
-  const starEl = isArticle ? (
-    <span className="text-amber-500 text-[11px] tabular-nums shrink-0">
-      {"★".repeat(Math.max(0, Math.min(3, node.importance)))}
-    </span>
-  ) : null;
+  const importance = Math.max(0, Math.min(3, node.importance));
+  const starEl =
+    isArticle && importance > 0 ? (
+      <span
+        className="inline-flex shrink-0 items-center text-amber-500"
+        aria-label={`중요도 ${importance}`}
+        title={`중요도 ${importance}`}
+      >
+        <span className="text-[11px] leading-none">★</span>
+        <span className="ml-0.5 text-[10px] tabular-nums">{importance}</span>
+      </span>
+    ) : null;
+  const memoEl =
+    isArticle && memos > 0 ? (
+      <span
+        className="inline-flex shrink-0 items-center text-emerald-600 dark:text-emerald-400"
+        aria-label={`메모 ${memos}개`}
+        title={`메모 ${memos}개`}
+      >
+        <StickyNoteIcon className="size-3" />
+        <span className="ml-0.5 text-[10px] tabular-nums">{memos}</span>
+      </span>
+    ) : null;
+  const highlightEl =
+    isArticle && highlights > 0 ? (
+      <span
+        className="inline-flex shrink-0 items-center text-yellow-600 dark:text-yellow-400"
+        aria-label={`하이라이트 ${highlights}개`}
+        title={`하이라이트 ${highlights}개`}
+      >
+        <HighlighterIcon className="size-3" />
+        <span className="ml-0.5 text-[10px] tabular-nums">{highlights}</span>
+      </span>
+    ) : null;
+  const heartEl =
+    isArticle && bookmarkLevel > 0 ? (
+      <span
+        className="inline-flex shrink-0 items-center text-rose-500"
+        aria-label={`즐겨찾기 ${bookmarkLevel}단계`}
+        title={`즐겨찾기 ${bookmarkLevel}`}
+      >
+        <HeartIcon className="size-3 fill-current" />
+        <span className="ml-0.5 text-[10px] tabular-nums">
+          {bookmarkLevel}
+        </span>
+      </span>
+    ) : null;
   const fileEl = isArticle ? (
     <FileTextIcon className="text-muted-foreground size-3.5 shrink-0" />
   ) : null;
@@ -204,21 +325,32 @@ function TreeItem({
   );
   const rowStyle = { paddingLeft: `${depth * 12 + 6}px` };
 
+  // chevron — 장(chapter) 행은 부모 button 이 토글 담당 (button-in-button 금지) 이라 icon 만 표시.
+  // 조문(article) 행은 Link 라서 기존처럼 별도 button 으로 토글 (드물지만 자식 있는 조문 대비).
+  const chevronIcon = (
+    <ChevronRightIcon
+      className={cn("size-3.5 transition-transform", open && "rotate-90")}
+    />
+  );
   const expandToggle = hasChildren ? (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setOpen((o) => !o);
-      }}
-      aria-label={open ? "접기" : "펼치기"}
-      className="text-muted-foreground hover:text-foreground inline-flex size-5 items-center justify-center"
-    >
-      <ChevronRightIcon
-        className={cn("size-3.5 transition-transform", open && "rotate-90")}
-      />
-    </button>
+    isArticle ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        aria-label={open ? "접기" : "펼치기"}
+        className="text-muted-foreground hover:text-foreground inline-flex size-5 items-center justify-center"
+      >
+        {chevronIcon}
+      </button>
+    ) : (
+      <span className="text-muted-foreground inline-flex size-5 items-center justify-center">
+        {chevronIcon}
+      </span>
+    )
   ) : (
     <span className="inline-block size-5" />
   );
@@ -236,13 +368,35 @@ function TreeItem({
           {expandToggle}
           {fileEl}
           {labelEl}
+          {memoEl}
+          {highlightEl}
+          {heartEl}
           {starEl}
         </Link>
+      ) : hasChildren ? (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className={cn(rowClass, "w-full cursor-pointer")}
+          style={rowStyle}
+        >
+          {expandToggle}
+          {fileEl}
+          {labelEl}
+          {memoEl}
+          {highlightEl}
+          {heartEl}
+          {starEl}
+        </button>
       ) : (
         <div className={rowClass} style={rowStyle}>
           {expandToggle}
           {fileEl}
           {labelEl}
+          {memoEl}
+          {highlightEl}
+          {heartEl}
           {starEl}
         </div>
       )}
@@ -256,6 +410,8 @@ function TreeItem({
               activeArticleId={activeArticleId}
               forceOpen={forceOpen}
               lawCode={lawCode}
+              bookmarkLevels={bookmarkLevels}
+              annotationCounts={annotationCounts}
             />
           ))}
         </ul>

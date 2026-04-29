@@ -37,6 +37,16 @@ export default [
       route("/memo", "features/annotations/api/memo.tsx"),
       route("/highlight", "features/annotations/api/highlight.tsx"),
     ]),
+    ...prefix("/blanks", [
+      route("/attempt", "features/blanks/api/attempt.tsx"),
+      route("/admin-answer", "features/blanks/api/admin-answer.tsx"),
+      route("/admin-add-blank", "features/blanks/api/admin-add-blank.tsx"),
+      route("/admin-remove-blank", "features/blanks/api/admin-remove-blank.tsx"),
+      route("/fork", "features/blanks/api/fork.tsx"),
+    ]),
+    ...prefix("/qna", [
+      route("/thread", "features/qna/api/thread.tsx"),
+    ]),
   ]),
 
   // Pages with top navigation + footer
@@ -77,6 +87,7 @@ export default [
       route("/logout", "features/auth/screens/logout.tsx"),
 
       route("/goals", "features/goals/screens/goals.tsx"),
+      route("/study/blanks", "features/blanks/screens/blanks-stats.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),
@@ -98,6 +109,10 @@ export default [
         route(
           "/:subject/articles/:articlePath",
           "features/subjects/screens/article-viewer.tsx",
+        ),
+        route(
+          "/:subject/systematic/:nodeId",
+          "features/subjects/screens/systematic-node-viewer.tsx",
         ),
         route(
           "/:subject/cases/:caseId",
@@ -124,6 +139,21 @@ export default [
       route("/gs", "features/gs/screens/gs.tsx"),
       route("/community", "features/community/screens/community.tsx"),
       route("/admin", "features/admin/screens/admin.tsx"),
+      ...prefix("/admin/blanks", [
+        index("features/blanks/screens/admin-blanks-list.tsx"),
+        route("/upload", "features/blanks/screens/admin-blanks-upload.tsx"),
+        route(
+          "/unmapped",
+          "features/blanks/screens/admin-blanks-unmapped.tsx",
+        ),
+        route("/:setId", "features/blanks/screens/admin-blanks-edit.tsx"),
+      ]),
+
+      ...prefix("/qna", [
+        index("features/qna/screens/qna-list.tsx"),
+        route("/new", "features/qna/screens/qna-new.tsx"),
+        route("/:threadId", "features/qna/screens/qna-detail.tsx"),
+      ]),
 
       route("/account/edit", "features/users/screens/account.tsx"),
     ]),

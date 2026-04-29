@@ -27,6 +27,11 @@ const inlineSubtitleSchema = z.object({
   text: z.string(),
 });
 
+const inlineAnnotationSchema = z.object({
+  type: z.literal("annotation"),
+  text: z.string(),
+});
+
 const inlineRefArticleSchema = z.object({
   type: z.literal("ref_article"),
   raw: z.string(),
@@ -54,6 +59,7 @@ const inlineSchema = z.discriminatedUnion("type", [
   inlineTextSchema,
   inlineUnderlineSchema,
   inlineSubtitleSchema,
+  inlineAnnotationSchema,
   inlineRefArticleSchema,
   inlineRefLawSchema,
   inlineAmendmentNoteSchema,

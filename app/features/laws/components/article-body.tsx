@@ -1,8 +1,15 @@
 import { ChevronRightIcon, ScrollIcon } from "lucide-react";
-import { createContext, Fragment, useContext, useState } from "react";
+import {
+  createContext,
+  Fragment,
+  type ReactNode,
+  useContext,
+  useState,
+} from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
+import { useBlanksRender } from "~/features/blanks/components/blanks-context";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type {
@@ -361,6 +368,17 @@ function tailText(s: string): string {
 }
 
 function InlineRun({ inline }: { inline: Inline[] }) {
+  // 각 node 의 직후 text/underline 토큰들 prefix (최대 100자) — 라벨 lookahead 용
+  const nextPrefixes = inline.map((_, i) => {
+    let s = "";
+    for (let j = i + 1; j < inline.length && s.length < 100; j++) {
+      const t = inline[j];
+      if (t.type === "text" || t.type === "underline") s += t.text;
+      else break;
+    }
+    return s.slice(0, 100);
+  });
+
   // 직전 텍스트성 토큰의 끝부분 (text/underline 만 누적)
   let prevSuffix = "";
   return (
@@ -373,7 +391,14 @@ function InlineRun({ inline }: { inline: Inline[] }) {
           // 비-텍스트 토큰은 reset (단독 chip 들 사이 prefix 영향 차단)
           prevSuffix = "";
         }
-        return <InlineNode key={i} node={node} prevSuffix={carry} />;
+        return (
+          <InlineNode
+            key={i}
+            node={node}
+            prevSuffix={carry}
+            nextPrefix={nextPrefixes[i]}
+          />
+        );
       })}
     </>
   );
@@ -381,15 +406,27 @@ function InlineRun({ inline }: { inline: Inline[] }) {
 
 // 한국어 본문 ref 패턴: 가지조는 "제N조의M" (의가 조 뒤). 항/호/목은 그 뒤에 옴.
 //   "제55조제1항", "제132조의7", "제29조의2제2항", "제29조제1항제2호 가목"
+//   "제187조 단서" → 단서/본문/전단/후단 suffix 도 link 에 포함 (네비게이션 타깃은 동일)
 const KOREAN_REF_RE =
-  /제(\d+)조(?:의(\d+))?(?:\s*제(\d+)항)?(?:\s*제(\d+)호)?(?:\s*([가-하])목)?/g;
+  /제(\d+)조(?:의(\d+))?(?:\s*제(\d+)항)?(?:\s*제(\d+)호)?(?:\s*([가-하])목)?(?:\s*(전단|후단|단서|본문))?/g;
+// 가까운 직전 ref 의 article 컨텍스트를 이어받는 단독 항/호/목 ref:
+//   "제138조제1항 또는 제3항" → 두번째 "제3항" 은 제138조 의 ③
+//   "제42조제1항제2호 또는 제3호" → 두번째 "제3호" 는 제42조 ① 의 호 (article+clause 이어받음)
+//   "제186조제1항에 따른 소 또는 같은 조 제8항" → 같은 조 ⇒ 제186조 의 ⑧
+//   "제84조제1항제2호·제6호" → "제6호" 는 제84조 ① 의 ⑥호 (article+clause 이어받음)
+// 연결자 (또는|및|·|ㆍ|,|같은 조) 뒤에 등장한 단독 ref 매칭.
+// 두 모드:
+//   (a) 제K항[제M호][가목] — article 만 prev 에서 이어받음. m[1]=clause, m[2]=item, m[3]=sub
+//   (b) 제K호[가목]       — article + clause 둘 다 prev 에서 이어받음. m[4]=item, m[5]=sub
+const STANDALONE_REF_RE =
+  /(?:또는|및|·|ㆍ|,|같은\s*조)\s*(?:제(\d+)항(?:\s*제(\d+)호)?(?:\s*([가-하])목)?|제(\d+)호(?:\s*([가-하])목)?)/g;
 // amendment 메타 (텍스트로 합쳐 들어온 경우): <개정 ...>, [전문개정 ...], [제목개정 ...], [본조신설 ...] 등
 // 한글 단어 + (개정|신설|일자) + 연도 형태 또는 단독 <YYYY.M.D.> 도 포함
 const INLINE_AMENDMENT_RE =
   /<\s*(?:[가-힣]*(?:개정|신설|삭제|시행|타법개정))[^>]*>|<\s*\d{4}\.\s*\d+\.\s*\d+\.?\s*>|\[[가-힣]*(?:개정|신설|일자|타법개정)\s+\d{4}[^\]]*\]/g;
-// 강사 보강 라벨: "[국내우선권주장]", "[거절결정불복심판청구]" 등 — 인용 조문의 제목을 표기
-// (amendment 와 구별 — amendment 가 우선 매칭됨)
-const ANNOTATION_LABEL_RE = /\[([가-힣A-Za-z0-9·、,\s]+?)\]/g;
+// 강사 보강 라벨 lookahead 용 — ref 직후 [라벨] 가 붙은 경우를 식별 (Bold span 으로 별도 토큰화 됨)
+// 한글 가운뎃점 두 종류 모두 허용: · (U+00B7), ㆍ (U+318D); 괄호 (), 슬래시도 라벨 본문에 등장
+const ANNOTATION_LOOKAHEAD_RE = /^\s*\[[가-힣A-Za-z0-9·ㆍ、,()\/\s]+\]/;
 
 type TextPart =
   | { type: "text"; text: string }
@@ -411,7 +448,11 @@ interface RawMatch {
   part: TextPart;
 }
 
-function splitInlineParts(text: string, prevSuffix = ""): TextPart[] {
+function splitInlineParts(
+  text: string,
+  prevSuffix = "",
+  nextPrefix = "",
+): TextPart[] {
   const matches: RawMatch[] = [];
   // amendment 우선 (전문개정/개정/신설 등)
   for (const m of text.matchAll(INLINE_AMENDMENT_RE)) {
@@ -426,6 +467,10 @@ function splitInlineParts(text: string, prevSuffix = ""): TextPart[] {
     if (m.index === undefined) continue;
     // ref 직전 컨텍스트 = (이전 토큰 suffix) + (현재 토큰 매칭 시작점 이전)
     const before = prevSuffix + text.slice(0, m.index);
+    // ref 직후에 강사 보강 라벨([…])이 붙어있으면 본법 ref 로 강제 (외부법 컨텍스트 override)
+    // — 같은 토큰 내 + 다음 토큰들의 prefix 까지 결합해서 검사 (라벨이 별도 Bold span 으로 쪼개지는 케이스 보정)
+    const after = text.slice(m.index + m[0].length) + nextPrefix;
+    const hasAnnotationAfter = ANNOTATION_LOOKAHEAD_RE.test(after);
     // 외부법 컨텍스트: 직전 문장 안에 「외부법」 또는 외부법명이 등장하면 후속 ref 들도 외부법으로 간주
     // (단, "본법/이 법/특허법" 으로 컨텍스트가 재설정되면 다시 link 활성)
     const lastSentenceEnd = Math.max(
@@ -445,7 +490,12 @@ function splitInlineParts(text: string, prevSuffix = ""): TextPart[] {
       /본법|이\s*법(?:에|의|에서|을|이|와|과|상|에서는)?|특허법(?:에|의|에서|을|이|와|과|상|에서는)?/,
     );
     const localAt = localResetMatch?.index ?? -1;
-    if (foreignAt >= 0 && (localAt < 0 || localAt < foreignAt)) continue;
+    if (
+      !hasAnnotationAfter &&
+      foreignAt >= 0 &&
+      (localAt < 0 || localAt < foreignAt)
+    )
+      continue;
     matches.push({
       start: m.index,
       end: m.index + m[0].length,
@@ -460,14 +510,49 @@ function splitInlineParts(text: string, prevSuffix = ""): TextPart[] {
       },
     });
   }
-  for (const m of text.matchAll(ANNOTATION_LABEL_RE)) {
+  // 단독 항/호/목 ref — 직전 full ref 의 article(+clause) 컨텍스트를 이어받음
+  for (const m of text.matchAll(STANDALONE_REF_RE)) {
     if (m.index === undefined) continue;
+    // 시작 위치는 첫 "제" 또는 한글 가지 위치 (연결자 + 공백 다음)
+    const clauseStart = m.index + m[0].indexOf("제");
+    // 이미 full ref (KOREAN_REF_RE) 매칭에 포함된 위치면 skip
+    const overlapsFullRef = matches.some(
+      (mt) =>
+        mt.part.type === "kref" &&
+        clauseStart >= mt.start &&
+        clauseStart < mt.end,
+    );
+    if (overlapsFullRef) continue;
+    // 직전 (위치상 가장 가까운) full ref 의 article/branch/clause 컨텍스트
+    const prevFull = [...matches]
+      .filter((mt) => mt.part.type === "kref" && mt.end <= clauseStart)
+      .sort((a, b) => b.end - a.end)[0];
+    if (!prevFull || prevFull.part.type !== "kref") continue;
+    const ctx = prevFull.part;
+    // 모드 (a): 제K항... — article 만 이어받음
+    // 모드 (b): 제K호... — article + clause 이어받음
+    const isClauseMode = m[1] !== undefined;
+    const isItemMode = m[4] !== undefined;
+    if (!isClauseMode && !isItemMode) continue;
     matches.push({
-      start: m.index,
+      start: clauseStart,
       end: m.index + m[0].length,
-      part: { type: "annotation", text: m[1] },
+      part: {
+        type: "kref",
+        raw: m[0].slice(m[0].indexOf("제")),
+        article: ctx.article,
+        branch: ctx.branch,
+        clause: isClauseMode ? Number(m[1]) : ctx.clause,
+        item: isClauseMode
+          ? m[2]
+            ? Number(m[2])
+            : undefined
+          : Number(m[4]),
+        subItem: isClauseMode ? m[3] : m[5],
+      },
     });
   }
+  // (annotation [라벨] 은 파서에서 inline annotation 토큰으로 분리됨 — 여기서 별도 매칭 안 함)
   matches.sort((a, b) => a.start - b.start);
 
   // 겹침 제거 (먼저 시작한 매칭 우선)
@@ -534,21 +619,33 @@ function KoreanRefLink({
 function InlineNode({
   node,
   prevSuffix = "",
+  nextPrefix = "",
 }: {
   node: Inline;
   prevSuffix?: string;
+  nextPrefix?: string;
 }) {
   const { titleMap, insideSubArticle } = useContext(Ctx);
+  const blanksRender = useBlanksRender();
+  // text 안의 빈칸 자리를 input 으로 치환할 수 있으면 ReactNode 반환, 아니면 plain string fallback.
+  const renderTextWithBlanks = (txt: string): ReactNode => {
+    if (!blanksRender) return txt;
+    const replaced = blanksRender.resolveText(txt);
+    return replaced ?? txt;
+  };
   switch (node.type) {
     case "text": {
-      const parts = splitInlineParts(node.text, prevSuffix);
+      const parts = splitInlineParts(node.text, prevSuffix, nextPrefix);
       if (parts.length === 1 && parts[0].type === "text") {
-        return <Fragment>{node.text}</Fragment>;
+        return <Fragment>{renderTextWithBlanks(node.text)}</Fragment>;
       }
       return (
         <>
           {parts.map((p, i) => {
-            if (p.type === "text") return <Fragment key={i}>{p.text}</Fragment>;
+            if (p.type === "text")
+              return (
+                <Fragment key={i}>{renderTextWithBlanks(p.text)}</Fragment>
+              );
             if (p.type === "kref") {
               return (
                 <KoreanRefLink
@@ -596,6 +693,15 @@ function InlineNode({
       return (
         <span className="bg-primary/10 text-primary mx-0.5 rounded px-1.5 py-0.5 text-xs font-semibold">
           ({node.text})
+        </span>
+      );
+    case "annotation":
+      return (
+        <span
+          title="강사 보강 라벨"
+          className="rounded bg-amber-100 px-1 text-[12px] font-medium text-amber-900 [box-decoration-break:clone] [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
+        >
+          [{node.text}]
         </span>
       );
     case "ref_article": {

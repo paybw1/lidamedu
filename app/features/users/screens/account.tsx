@@ -57,6 +57,8 @@ export default function Account({ loaderData }: Route.ComponentProps) {
                 name={profile.name}
                 marketingConsent={profile.marketing_consent}
                 avatarUrl={profile.avatar_url}
+                phoneE164={profile.phone_e164}
+                notifyChannels={profile.notify_channels}
               />
             );
           }}

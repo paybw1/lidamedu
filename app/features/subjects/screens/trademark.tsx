@@ -15,11 +15,14 @@ export default function SubjectTrademark({ loaderData }: Route.ComponentProps) {
     <SubjectHub
       subject={LAW_SUBJECTS.trademark}
       articles={loaderData.articles}
+      systematicNodes={loaderData.systematicNodes}
       cases={loaderData.cases}
       problems={loaderData.problems}
       caseQuery={loaderData.caseQuery}
       progress={loaderData.progress}
       recentRevisionDate={loaderData.recentRevisionDate}
+      bookmarkLevels={loaderData.bookmarkLevels}
+      annotationCounts={loaderData.annotationCounts}
     />
   );
 }

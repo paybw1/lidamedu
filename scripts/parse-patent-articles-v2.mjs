@@ -73,7 +73,8 @@ function classifySpan($el) {
   return { kind: "text", text };
 }
 
-// 인접 bold span 들을 합쳐서 (...) 패턴이면 subtitle, 아니면 text 로 변환.
+// 인접 bold span 들을 합쳐서 (...) 는 subtitle, [...] 는 강사 보강 annotation, 그 외 text 로 변환.
+// (Bold 출처는 강사 의도가 있는 강조 — Light 본문에서 우연히 [...] 가 등장하는 케이스와 구별.)
 function mergeAdjacentBold(tokens) {
   const out = [];
   let i = 0;
@@ -86,9 +87,12 @@ function mergeAdjacentBold(tokens) {
         merged += tokens[j].text;
         j++;
       }
-      const m = /^(\s*)\((.+)\)(\s*)$/.exec(merged);
-      if (m) {
-        out.push({ kind: "subtitle", text: m[2] });
+      const subtitleM = /^(\s*)\((.+)\)(\s*)$/.exec(merged);
+      const annotM = /^(\s*)\[(.+)\](\s*)$/.exec(merged);
+      if (subtitleM) {
+        out.push({ kind: "subtitle", text: subtitleM[2] });
+      } else if (annotM) {
+        out.push({ kind: "annotation", text: annotM[2] });
       } else {
         out.push({ kind: "text", text: merged });
       }
@@ -259,6 +263,7 @@ function paragraphTokens($p) {
       if (t.kind === "text") return { type: "text", text: t.text };
       if (t.kind === "underline") return { type: "underline", text: t.text };
       if (t.kind === "subtitle") return { type: "subtitle", text: t.text };
+      if (t.kind === "annotation") return { type: "annotation", text: t.text };
       if (t.kind === "amendment") return { type: "amendment_note", text: t.text };
       if (t.kind === "ref_article") return { type: "ref_article", raw: t.raw, target: t.target };
       return null;

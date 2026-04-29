@@ -66,6 +66,60 @@ export type Database = {
           },
         ]
       }
+      article_blank_sets: {
+        Row: {
+          article_id: string
+          blanks: Json
+          body_text: string
+          created_at: string
+          display_name: string | null
+          importance: number | null
+          owner_id: string
+          set_id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          article_id: string
+          blanks?: Json
+          body_text: string
+          created_at?: string
+          display_name?: string | null
+          importance?: number | null
+          owner_id: string
+          set_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          article_id?: string
+          blanks?: Json
+          body_text?: string
+          created_at?: string
+          display_name?: string | null
+          importance?: number | null
+          owner_id?: string
+          set_id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_blank_sets_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_blank_sets_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       article_case_links: {
         Row: {
           article_id: string
@@ -584,6 +638,8 @@ export type Database = {
           created_at: string
           marketing_consent: boolean
           name: string
+          notify_channels: string[]
+          phone_e164: string | null
           profile_id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -593,6 +649,8 @@ export type Database = {
           created_at?: string
           marketing_consent?: boolean
           name: string
+          notify_channels?: string[]
+          phone_e164?: string | null
           profile_id: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -602,11 +660,83 @@ export type Database = {
           created_at?: string
           marketing_consent?: boolean
           name?: string
+          notify_channels?: string[]
+          phone_e164?: string | null
           profile_id?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Relationships: []
+      }
+      qna_threads: {
+        Row: {
+          answer_md: string | null
+          answered_at: string | null
+          answerer_id: string | null
+          asker_id: string
+          created_at: string
+          deleted_at: string | null
+          quality_grade: Database["public"]["Enums"]["qna_quality_grade"] | null
+          question_md: string
+          status: Database["public"]["Enums"]["qna_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["qna_target_type"]
+          thread_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          answer_md?: string | null
+          answered_at?: string | null
+          answerer_id?: string | null
+          asker_id: string
+          created_at?: string
+          deleted_at?: string | null
+          quality_grade?:
+            | Database["public"]["Enums"]["qna_quality_grade"]
+            | null
+          question_md: string
+          status?: Database["public"]["Enums"]["qna_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["qna_target_type"]
+          thread_id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          answer_md?: string | null
+          answered_at?: string | null
+          answerer_id?: string | null
+          asker_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          quality_grade?:
+            | Database["public"]["Enums"]["qna_quality_grade"]
+            | null
+          question_md?: string
+          status?: Database["public"]["Enums"]["qna_status"]
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["qna_target_type"]
+          thread_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qna_threads_answerer_id_fkey"
+            columns: ["answerer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_threads_asker_id_fkey"
+            columns: ["asker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
       }
       study_sessions: {
         Row: {
@@ -684,6 +814,44 @@ export type Database = {
           },
         ]
       }
+      user_blank_attempts: {
+        Row: {
+          attempt_id: string
+          attempted_at: string
+          blank_idx: number
+          is_correct: boolean
+          set_id: string
+          user_id: string
+          user_input: string | null
+        }
+        Insert: {
+          attempt_id?: string
+          attempted_at?: string
+          blank_idx: number
+          is_correct: boolean
+          set_id: string
+          user_id: string
+          user_input?: string | null
+        }
+        Update: {
+          attempt_id?: string
+          attempted_at?: string
+          blank_idx?: number
+          is_correct?: boolean
+          set_id?: string
+          user_id?: string
+          user_input?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blank_attempts_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "article_blank_sets"
+            referencedColumns: ["set_id"]
+          },
+        ]
+      }
       user_bookmarks: {
         Row: {
           bookmark_id: string
@@ -691,6 +859,7 @@ export type Database = {
           deleted_at: string | null
           note_md: string | null
           star_level: number
+          step_notes: Json
           target_id: string
           target_type: Database["public"]["Enums"]["annotation_target_type"]
           updated_at: string
@@ -702,6 +871,7 @@ export type Database = {
           deleted_at?: string | null
           note_md?: string | null
           star_level: number
+          step_notes?: Json
           target_id: string
           target_type: Database["public"]["Enums"]["annotation_target_type"]
           updated_at?: string
@@ -713,6 +883,7 @@ export type Database = {
           deleted_at?: string | null
           note_md?: string | null
           star_level?: number
+          step_notes?: Json
           target_id?: string
           target_type?: Database["public"]["Enums"]["annotation_target_type"]
           updated_at?: string
@@ -856,6 +1027,9 @@ export type Database = {
       problem_polarity: "positive" | "negative"
       problem_scope: "unit" | "comprehensive"
       problem_subject_type: "law" | "science"
+      qna_quality_grade: "high" | "mid" | "low"
+      qna_status: "open" | "answered" | "closed"
+      qna_target_type: "article" | "case" | "problem"
       user_role: "student" | "instructor" | "admin"
     }
     CompositeTypes: {
@@ -1013,6 +1187,9 @@ export const Constants = {
       problem_polarity: ["positive", "negative"],
       problem_scope: ["unit", "comprehensive"],
       problem_subject_type: ["law", "science"],
+      qna_quality_grade: ["high", "mid", "low"],
+      qna_status: ["open", "answered", "closed"],
+      qna_target_type: ["article", "case", "problem"],
       user_role: ["student", "instructor", "admin"],
     },
   },

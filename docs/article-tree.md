@@ -351,6 +351,20 @@ create table public.article_systematic_links (
 
 체계도 시드는 강사가 `/admin/content/laws/:lawCode/systematic` 에서 입력 (결정사항 #14).
 
+> **현재 시드 상태 (2026-04 기준)**: `patent` 만 시드 완료. 입력 데이터는 `source/_converted/systematic-tree-patent.json` (체계도2.hwp 의 텍스트 트리 기준, 임병웅 변리사 작성), 시드 스크립트는 `scripts/seed-systematic-patent.mjs`.
+>
+> **파서 규칙**:
+> - 약식 표기(`法 29`, `法 89-93`, `法 132의2-132의15`, `법 28-28의5`, `발명진흥법 ...`)를 articles 의 `article_number` 와 매칭.
+> - range 구분자는 `~` 또는 `-` 둘 다 허용.
+> - **보수적 룰**: `X-Y`(둘 다 본조)는 X..Y 본조만 매핑. 가지조는 ref 토큰으로 명시 (`X-Y, X의Z` 등). 의도치 않은 over-match 방지.
+> - `X-Y의Z`, `X의A-Y`, `X의A-X의B`, `X-X의Z` 같은 가지조 명시 표기는 정상 펼침.
+> - 원숫자(`①②③`)와 한글 trailing(`본문`, `각호`)는 article 단위 매핑에서 무시.
+> - 발진법 / 발명진흥법 토큰은 분리해서 외부 법 처리(노드만 유지, 링크 skip). 같은 ref 안의 法 토큰은 정상 매핑.
+>
+> **정합성 (특허법 체계도2 시드 후)**: systematic_nodes 107개, article_systematic_links 301개. 학습 조문 누락 0건. 중복 매핑은 모두 체계도2 가 의도한 다중 분류(예: 제29조 → 산업상 이용가능성/신규성/진보성/확대된 선출원).
+>
+> 다른 4개 법(상표·디자인·민법·민사소송법)은 동일 포맷의 JSON + 동일 스크립트 패턴으로 추후 시드.
+
 ### 7.2 트리 렌더 시
 
 | 모드 | 트리 데이터 소스 |

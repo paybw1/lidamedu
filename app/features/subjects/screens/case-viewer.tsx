@@ -30,6 +30,7 @@ import {
   getArticleSkeleton,
   getLawByCode,
 } from "~/features/laws/queries.server";
+import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
@@ -87,12 +88,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Unauthorized", { status: 401 });
   }
 
-  const [relatedArticles, bookmark, memos, highlights] = await Promise.all([
-    getRelatedArticlesByCase(client, kase.caseId),
-    getBookmark(client, user.id, "case", kase.caseId),
-    listMemos(client, user.id, "case", kase.caseId),
-    listHighlights(client, user.id, "case", kase.caseId),
-  ]);
+  const [relatedArticles, bookmark, memos, highlights, qnaThreads] =
+    await Promise.all([
+      getRelatedArticlesByCase(client, kase.caseId),
+      getBookmark(client, user.id, "case", kase.caseId),
+      listMemos(client, user.id, "case", kase.caseId),
+      listHighlights(client, user.id, "case", kase.caseId),
+      listThreadsForTarget(client, "case", kase.caseId, 20),
+    ]);
 
   recordStudySession(client, user.id, {
     subject: lawCode,
@@ -109,6 +112,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     bookmark,
     memos,
     highlights,
+    qnaThreads,
   };
 }
 
@@ -121,6 +125,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     bookmark,
     memos,
     highlights,
+    qnaThreads,
   } = loaderData;
 
   return (
@@ -247,6 +252,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 bookmark={bookmark}
                 memos={memos}
                 highlights={highlights}
+                qnaThreads={qnaThreads}
               />
             </CardContent>
           </Card>
