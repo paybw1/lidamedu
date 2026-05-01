@@ -1,4 +1,9 @@
-import { ArrowRightIcon, FileEditIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  BarChart3Icon,
+  FileEditIcon,
+  ListChecksIcon,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -21,8 +26,20 @@ export default function Admin() {
         <AdminCard
           to="/admin/blanks"
           title="빈칸 자료 관리"
-          description="조문 빈칸 정답 보강 (자동 추출 미매칭 항목)"
+          subtitle="강사별 빈칸 set 등록·편집"
           icon={FileEditIcon}
+        />
+        <AdminCard
+          to="/admin/blanks/stats"
+          title="빈칸 학습 통계"
+          subtitle="내용·주체·시기 모드 정답률 / 약점 분석"
+          icon={BarChart3Icon}
+        />
+        <AdminCard
+          to="/admin/problems"
+          title="객관식 문제 관리"
+          subtitle="출처/유형/극성/연도/scope 분류 + 지문 유형 보강"
+          icon={ListChecksIcon}
         />
       </div>
     </div>
@@ -32,12 +49,12 @@ export default function Admin() {
 function AdminCard({
   to,
   title,
-  description,
+  subtitle,
   icon: Icon,
 }: {
   to: string;
   title: string;
-  description: string;
+  subtitle?: string;
   icon: typeof FileEditIcon;
 }) {
   return (
@@ -52,7 +69,9 @@ function AdminCard({
         </CardHeader>
         <CardContent>
           <h2 className="font-semibold">{title}</h2>
-          <p className="text-muted-foreground mt-1 text-xs">{description}</p>
+          {subtitle ? (
+            <p className="text-muted-foreground mt-1 text-xs">{subtitle}</p>
+          ) : null}
           <span className="text-primary mt-3 inline-flex items-center gap-1 text-xs">
             이동 <ArrowRightIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
           </span>

@@ -1,15 +1,22 @@
-import { ChevronRightIcon, ScrollIcon } from "lucide-react";
+import { ChevronRightIcon, ScrollIcon, StickyNoteIcon } from "lucide-react";
 import {
   createContext,
   Fragment,
   type ReactNode,
   useContext,
+  useMemo,
   useState,
 } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
+import type { MemoRecord } from "~/features/annotations/labels";
 import { useBlanksRender } from "~/features/blanks/components/blanks-context";
+import {
+  blockCumulativeText,
+  inlineTokenLength,
+  walkBlocks,
+} from "~/features/blanks/lib/blank-layout";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type {
@@ -36,17 +43,114 @@ const Ctx = createContext<ArticleBodyContext>({
   refTone: "primary",
 });
 
+// 현재 렌더 중인 block 을 InlineRun/InlineNode 까지 전달.
+// blanks-context 의 사전 계산된 block hits 를 조회하기 위해 필요.
+const BlockCtx = createContext<Block | null>(null);
+
+// 각 block 의 walkBlocks pre-order 인덱스. ArticleBodyView 에서 사전 계산.
+// captureSelection 이 DOM 의 data-block-index 로 정확 위치를 캡처할 때 사용.
+const BlockIndexCtx = createContext<Map<Block, number> | null>(null);
+
+// 메모 snippet → 그 단어/구문에 attach 된 memo records.
+// 모든 메모를 PositionedMemo 로 정규화 — legacy 메모는 walkBlocks 를 1회 순회해서 snippet 의 첫
+// occurrence (article 전체 기준) 를 찾아 그 좌표를 부여. 같은 단어가 여러 곳에 등장해도 한 곳만 마크.
+// positioned 메모는 사용자가 selection 으로 캡처한 정확 좌표 그대로 사용.
+interface PositionedMemo {
+  memo: MemoRecord;
+  blockIndex: number;
+  cumOffset: number;
+  length: number;
+}
+interface MemoMarksValue {
+  byBlockIndex: Map<number, PositionedMemo[]>;
+}
+const MemoMarksCtx = createContext<MemoMarksValue | null>(null);
+
 export function ArticleBodyView({
   body,
   titleMap,
   subtitlesOnly = false,
   lawCode = null,
+  memos,
 }: {
   body: ArticleBody;
   titleMap?: Map<string, string>;
   subtitlesOnly?: boolean;
   lawCode?: LawSubjectSlug | null;
+  memos?: MemoRecord[];
 }) {
+  const blockIndexMap = useMemo(() => {
+    const m = new Map<Block, number>();
+    let i = 0;
+    walkBlocks(body, (block) => {
+      m.set(block, i++);
+    });
+    return m;
+  }, [body]);
+  const memoMarks = useMemo<MemoMarksValue | null>(() => {
+    if (!memos || memos.length === 0) return null;
+    const byBlockIndex = new Map<number, PositionedMemo[]>();
+
+    // legacy 메모는 walkBlocks 를 한 번 순회해서 snippet 의 첫 occurrence 를 찾아 좌표 부여.
+    const legacyMemos = memos.filter(
+      (m) =>
+        m.snippet?.trim() &&
+        (typeof m.blockIndex !== "number" ||
+          typeof m.cumOffset !== "number"),
+    );
+    if (legacyMemos.length > 0) {
+      const blockIndexByBlock = new Map<Block, number>();
+      let bi = 0;
+      walkBlocks(body, (b) => {
+        blockIndexByBlock.set(b, bi++);
+      });
+      const legacyTaken = new Set<string>();
+      walkBlocks(body, (b) => {
+        const idx = blockIndexByBlock.get(b);
+        if (idx === undefined) return;
+        const text = blockCumulativeText(b);
+        if (text.length === 0) return;
+        for (const memo of legacyMemos) {
+          if (legacyTaken.has(memo.memoId)) continue;
+          const snip = memo.snippet?.trim() ?? "";
+          if (!snip) continue;
+          const at = text.indexOf(snip);
+          if (at < 0) continue;
+          legacyTaken.add(memo.memoId);
+          const arr = byBlockIndex.get(idx) ?? [];
+          arr.push({
+            memo,
+            blockIndex: idx,
+            cumOffset: at,
+            length: snip.length,
+          });
+          byBlockIndex.set(idx, arr);
+        }
+      });
+    }
+
+    // positioned 메모 — 캡처된 좌표 그대로.
+    for (const memo of memos) {
+      const s = memo.snippet?.trim();
+      if (!s) continue;
+      if (
+        typeof memo.blockIndex !== "number" ||
+        typeof memo.cumOffset !== "number"
+      )
+        continue;
+      const arr = byBlockIndex.get(memo.blockIndex) ?? [];
+      arr.push({
+        memo,
+        blockIndex: memo.blockIndex,
+        cumOffset: memo.cumOffset,
+        length: s.length,
+      });
+      byBlockIndex.set(memo.blockIndex, arr);
+    }
+
+    if (byBlockIndex.size === 0) return null;
+    return { byBlockIndex };
+  }, [body, memos]);
   if (body.blocks.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">본문이 비어 있습니다.</p>
@@ -62,16 +166,38 @@ export function ArticleBodyView({
         refTone: "primary",
       }}
     >
-      <div className="space-y-3 text-[15px] leading-relaxed">
-        {body.blocks.map((b, i) => (
-          <BlockView key={i} block={b} depth={0} />
-        ))}
-      </div>
+      <BlockIndexCtx.Provider value={blockIndexMap}>
+        <MemoMarksCtx.Provider value={memoMarks}>
+          <div className="space-y-3 text-[15px] leading-relaxed">
+            {body.blocks.map((b, i) => (
+              <BlockView key={i} block={b} depth={0} />
+            ))}
+          </div>
+        </MemoMarksCtx.Provider>
+      </BlockIndexCtx.Provider>
     </Ctx.Provider>
   );
 }
 
 function BlockView({ block, depth }: { block: Block; depth: number }) {
+  const blockIndexMap = useContext(BlockIndexCtx);
+  const blockIndex = blockIndexMap?.get(block);
+  return (
+    <BlockCtx.Provider value={block}>
+      {blockIndex !== undefined ? (
+        // display:contents 로 layout 영향 없이 DOM marker 만 추가.
+        // captureSelection 이 walk-up 으로 이 인덱스를 찾아 정확 좌표 계산.
+        <div data-block-index={blockIndex} style={{ display: "contents" }}>
+          <BlockBody block={block} depth={depth} />
+        </div>
+      ) : (
+        <BlockBody block={block} depth={depth} />
+      )}
+    </BlockCtx.Provider>
+  );
+}
+
+function BlockBody({ block, depth }: { block: Block; depth: number }) {
   switch (block.kind) {
     case "para": {
       const { main, tail } = splitTrailingRefs(block.inline);
@@ -185,9 +311,16 @@ function RefsCollapsible({
       </button>
       {open ? (
         <Ctx.Provider value={{ ...useContext(Ctx), refTone: "indigo" }}>
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-indigo-500/20 px-3 py-2 dark:border-indigo-400/20">
-            <InlineRun inline={refs} />
-          </div>
+          {/* RefsCollapsible 의 inline (tail refs 또는 header refs) 은 상위 block 의 cumulative
+              text 안에서 main 뒤에 위치하지만, 여기서는 refs 만 단독으로 0 offset 부터 렌더된다.
+              상위 block 의 BlockCtx 를 그대로 쓰면 blockHits 의 offset 이 어긋나 main 영역의
+              hit 이 refs 자리에 잘못 그려질 수 있어 BlockCtx 를 null 로 차단. refs 영역은
+              빈칸 매칭 대상이 아니므로 legacy per-token resolveText 로 fallback 되는 것이 안전. */}
+          <BlockCtx.Provider value={null}>
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-indigo-500/20 px-3 py-2 dark:border-indigo-400/20">
+              <InlineRun inline={refs} />
+            </div>
+          </BlockCtx.Provider>
         </Ctx.Provider>
       ) : null}
     </aside>
@@ -284,7 +417,35 @@ function SubArticleGroup({
 }: {
   block: Extract<Block, { kind: "sub_article_group" }>;
 }) {
-  const [open, setOpen] = useState(false);
+  const blanksRender = useBlanksRender();
+  // 그룹 안의 어떤 block 이라도 blank hit 을 가지면 기본 펼침. 운영자가 sub_article 안의 텍스트를
+  // 빈칸으로 추가해도 그룹이 닫혀 있어 빈칸이 안 보이는 문제를 막는다.
+  const hasBlanksInside = useMemo(() => {
+    if (!blanksRender) return false;
+    const map = blanksRender.blockHits;
+    if (map.size === 0) return false;
+    const checkBlocks = (blocks: Block[]): boolean => {
+      for (const b of blocks) {
+        const hits = map.get(b);
+        if (hits && hits.length > 0) return true;
+        if (b.kind === "clause" || b.kind === "item" || b.kind === "sub") {
+          if (checkBlocks(b.children)) return true;
+        }
+        if (b.kind === "sub_article_group") {
+          if (b.preface && checkBlocks(b.preface)) return true;
+          for (const sa of b.articles) if (checkBlocks(sa.blocks)) return true;
+        }
+      }
+      return false;
+    };
+    if (block.preface && checkBlocks(block.preface)) return true;
+    for (const sa of block.articles) if (checkBlocks(sa.blocks)) return true;
+    return false;
+  }, [blanksRender, block]);
+  // userOpen 이 null 인 동안에는 hasBlanksInside 를 따라간다 (blank 가 추가되면 자동 펼침).
+  // 사용자가 클릭해서 토글하면 그 후로는 사용자 의지를 우선.
+  const [userOpen, setUserOpen] = useState<boolean | null>(null);
+  const open = userOpen ?? hasBlanksInside;
   const articleCount = block.articles.length;
   const ctx = useContext(Ctx);
 
@@ -292,7 +453,7 @@ function SubArticleGroup({
     <aside className="bg-muted/40 my-2 overflow-hidden rounded-md border-l-4 border-emerald-500/60">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setUserOpen(!open)}
         aria-expanded={open}
         className="hover:bg-muted/60 flex w-full items-center gap-1.5 p-3 text-left transition-colors"
       >
@@ -379,6 +540,18 @@ function InlineRun({ inline }: { inline: Inline[] }) {
     return s.slice(0, 100);
   });
 
+  // block 단위 cumulative text 안에서 각 토큰의 시작 offset.
+  // blank-layout.computeBlockBlankHits 에서 쓰는 cumulative text 와 동일 규칙으로 계산해
+  // 사전 계산된 hits 의 위치와 정확히 정합되도록 한다.
+  const tokenOffsets: number[] = [];
+  {
+    let pos = 0;
+    for (const t of inline) {
+      tokenOffsets.push(pos);
+      pos += inlineTokenLength(t);
+    }
+  }
+
   // 직전 텍스트성 토큰의 끝부분 (text/underline 만 누적)
   let prevSuffix = "";
   return (
@@ -397,6 +570,7 @@ function InlineRun({ inline }: { inline: Inline[] }) {
             node={node}
             prevSuffix={carry}
             nextPrefix={nextPrefixes[i]}
+            tokenOffset={tokenOffsets[i]}
           />
         );
       })}
@@ -620,65 +794,146 @@ function InlineNode({
   node,
   prevSuffix = "",
   nextPrefix = "",
+  tokenOffset = 0,
 }: {
   node: Inline;
   prevSuffix?: string;
   nextPrefix?: string;
+  // block cumulative text 안에서 이 토큰의 시작 offset. 사전 계산된 block hits 의 위치와 정합.
+  tokenOffset?: number;
 }) {
   const { titleMap, insideSubArticle } = useContext(Ctx);
+  const block = useContext(BlockCtx);
+  const blockIndexMap = useContext(BlockIndexCtx);
   const blanksRender = useBlanksRender();
+  const memoMarks = useContext(MemoMarksCtx);
+  const currentBlockIndex = block ? blockIndexMap?.get(block) ?? null : null;
   // text 안의 빈칸 자리를 input 으로 치환할 수 있으면 ReactNode 반환, 아니면 plain string fallback.
-  const renderTextWithBlanks = (txt: string): ReactNode => {
-    if (!blanksRender) return txt;
-    const replaced = blanksRender.resolveText(txt);
-    return replaced ?? txt;
+  // partOffset 은 이 텍스트 조각이 속한 토큰 안에서의 시작 offset (kref/annotation 으로 split 된 경우 누적).
+  // 추가로 data-cumoffset 으로 wrap 해 captureSelection 이 정확 좌표를 캡처할 수 있게 한다.
+  // 빈칸 매칭이 없을 때만 memo snippet marker 를 적용 (빈칸 input 위에 markup 중첩하지 않도록).
+  const renderTextWithBlanks = (txt: string, partOffset = 0): ReactNode => {
+    const cumoffset = tokenOffset + partOffset;
+    const fallback = (): ReactNode => {
+      const marked = applyMemoMarks(
+        txt,
+        memoMarks,
+        currentBlockIndex,
+        cumoffset,
+      );
+      return block ? (
+        <span data-cumoffset={cumoffset}>{marked}</span>
+      ) : (
+        <>{marked}</>
+      );
+    };
+    if (!blanksRender) return fallback();
+    const opts = block ? { block, offsetInBlock: cumoffset } : undefined;
+    const replaced = blanksRender.resolveText(txt, opts);
+    if (replaced) return replaced;
+    return fallback();
   };
+  // kref/annotation/amendment part 가 사전 계산된 빈칸 hit 와 겹치는지 검사.
+  // 빈칸 답이 본문에서 ref 로 자동 인식된 텍스트 (예: "제47조제1항제1호") 인 경우,
+  // 기본 split rendering 은 해당 part 를 KoreanRefLink (또는 amendment span) 로 그려 빈칸이 사라진다.
+  // 이 함수가 hit 을 찾으면 part 를 resolveText 로 다시 그려 빈칸 input 으로 대체한다.
+  const partHasBlankHit = (partStart: number, partLength: number): boolean => {
+    if (!blanksRender || !block) return false;
+    const partGlobalStart = tokenOffset + partStart;
+    const partGlobalEnd = partGlobalStart + partLength;
+    const hits = blanksRender.blockHits.get(block) ?? [];
+    return hits.some((h) => h.start < partGlobalEnd && h.end > partGlobalStart);
+  };
+  // 토큰 전체 (token offset, length) 가 사전 계산된 빈칸 hit 와 겹치는지.
+  // ref_article / ref_law / annotation / amendment_note 등 자체 모양으로 렌더되는 토큰이
+  // 빈칸 자리에 해당될 때 빈칸 input 으로 대체할지 판단.
+  const tokenHasBlankHit = (tokenLength: number): boolean =>
+    partHasBlankHit(0, tokenLength);
   switch (node.type) {
     case "text": {
       const parts = splitInlineParts(node.text, prevSuffix, nextPrefix);
       if (parts.length === 1 && parts[0].type === "text") {
-        return <Fragment>{renderTextWithBlanks(node.text)}</Fragment>;
+        return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
       }
+      // splitInlineParts 의 parts 는 원문을 분할 — 각 part 의 텍스트/raw 길이가 곧 원문에서의 길이.
+      // 토큰 안의 partOffset 누적해 renderTextWithBlanks 에 전달.
+      let partCursor = 0;
       return (
         <>
           {parts.map((p, i) => {
-            if (p.type === "text")
-              return (
-                <Fragment key={i}>{renderTextWithBlanks(p.text)}</Fragment>
+            const partStart = partCursor;
+            let partLen = 0;
+            let rendered: ReactNode;
+            if (p.type === "text") {
+              partLen = p.text.length;
+              rendered = (
+                <Fragment key={i}>
+                  {renderTextWithBlanks(p.text, partStart)}
+                </Fragment>
               );
-            if (p.type === "kref") {
-              return (
-                <KoreanRefLink
-                  key={i}
-                  raw={p.raw}
-                  article={p.article}
-                  branch={p.branch}
-                  clause={p.clause}
-                  item={p.item}
-                  subItem={p.subItem}
-                />
-              );
+            } else if (p.type === "kref") {
+              partLen = p.raw.length;
+              if (partHasBlankHit(partStart, partLen)) {
+                // 빈칸이 이 ref 위치를 덮음 — KoreanRefLink 대신 빈칸 input/placeholder 로 렌더.
+                rendered = (
+                  <Fragment key={i}>
+                    {renderTextWithBlanks(p.raw, partStart)}
+                  </Fragment>
+                );
+              } else {
+                rendered = (
+                  <KoreanRefLink
+                    key={i}
+                    raw={p.raw}
+                    article={p.article}
+                    branch={p.branch}
+                    clause={p.clause}
+                    item={p.item}
+                    subItem={p.subItem}
+                  />
+                );
+              }
+            } else if (p.type === "amendment") {
+              partLen = p.text.length;
+              if (partHasBlankHit(partStart, partLen)) {
+                rendered = (
+                  <Fragment key={i}>
+                    {renderTextWithBlanks(p.text, partStart)}
+                  </Fragment>
+                );
+              } else {
+                rendered = (
+                  <span
+                    key={i}
+                    className="text-muted-foreground/70 ml-1 align-baseline text-[10px] italic"
+                  >
+                    {p.text}
+                  </span>
+                );
+              }
+            } else {
+              // annotation — 강사 보강 라벨 (inline + box-decoration-clone 으로 단어 단위 wrap 허용)
+              partLen = p.text.length;
+              if (partHasBlankHit(partStart, partLen)) {
+                rendered = (
+                  <Fragment key={i}>
+                    {renderTextWithBlanks(p.text, partStart)}
+                  </Fragment>
+                );
+              } else {
+                rendered = (
+                  <span
+                    key={i}
+                    title="강사 보강 라벨"
+                    className="rounded bg-amber-100 px-1 text-[12px] font-medium text-amber-900 [box-decoration-break:clone] [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
+                  >
+                    {p.text}
+                  </span>
+                );
+              }
             }
-            if (p.type === "amendment") {
-              return (
-                <span
-                  key={i}
-                  className="text-muted-foreground/70 ml-1 align-baseline text-[10px] italic"
-                >
-                  {p.text}
-                </span>
-              );
-            }
-            // annotation — 강사 보강 라벨 (inline + box-decoration-clone 으로 단어 단위 wrap 허용)
-            return (
-              <span
-                key={i}
-                title="강사 보강 라벨"
-                className="rounded bg-amber-100 px-1 text-[12px] font-medium text-amber-900 [box-decoration-break:clone] [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
-              >
-                {p.text}
-              </span>
-            );
+            partCursor += partLen;
+            return rendered;
           })}
         </>
       );
@@ -686,16 +941,20 @@ function InlineNode({
     case "underline":
       return (
         <span className="underline decoration-amber-600 decoration-2 underline-offset-2 dark:decoration-amber-400">
-          {node.text}
+          {renderTextWithBlanks(node.text, 0)}
         </span>
       );
     case "subtitle":
       return (
         <span className="bg-primary/10 text-primary mx-0.5 rounded px-1.5 py-0.5 text-xs font-semibold">
-          ({node.text})
+          ({renderTextWithBlanks(node.text, 0)})
         </span>
       );
     case "annotation":
+      // 빈칸이 이 annotation 토큰을 덮고 있으면 [...] 라벨 대신 빈칸으로 렌더.
+      if (tokenHasBlankHit(node.text.length)) {
+        return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
+      }
       return (
         <span
           title="강사 보강 라벨"
@@ -710,6 +969,11 @@ function InlineNode({
       const articleKey = `${t.article}${t.branch ? `의${t.branch}` : ""}`;
       const targetTitle = titleMap.get(articleKey);
       const ctx = useContext(Ctx);
+      // 빈칸이 이 ref 토큰을 덮으면 chip/Link 대신 빈칸 input 으로 렌더.
+      // (cumulative text 에는 ref.raw 가 그대로 들어있어 hit 의 offset 이 토큰 시작과 정합.)
+      if (tokenHasBlankHit(node.raw.length)) {
+        return <Fragment>{renderTextWithBlanks(node.raw, 0)}</Fragment>;
+      }
       if (insideSubArticle) {
         return (
           <span className="text-muted-foreground mx-0.5 rounded bg-muted/50 px-1 text-[12px]">
@@ -717,30 +981,42 @@ function InlineNode({
           </span>
         );
       }
-      const toneCls =
-        ctx.refTone === "indigo"
-          ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-900/60"
-          : "bg-primary/10 text-primary hover:bg-primary/20";
+      const target = `/subjects/${t.law_code}/articles/${articleKey}${hash}`;
+      // header_refs / 관련조문 collapsible (refTone="indigo") 안에서는 박스 영역이라 chip 유지.
+      // 본문 안에서는 KoreanRefLink 와 동일한 단순 dotted underline 링크 — chip 의 시각적 강조 줄여
+      // annotation 라벨(노란) 과 충돌하지 않게.
+      if (ctx.refTone === "indigo") {
+        return (
+          <Link
+            to={target}
+            viewTransition
+            title={targetTitle ?? undefined}
+            className="mx-0.5 inline-flex items-center gap-1 rounded bg-indigo-100 px-1.5 py-0.5 text-[12px] font-medium text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-200 dark:hover:bg-indigo-900/60"
+          >
+            <span>{node.raw}</span>
+            {targetTitle ? (
+              <span className="text-muted-foreground hidden font-normal sm:inline">
+                [{targetTitle}]
+              </span>
+            ) : null}
+          </Link>
+        );
+      }
       return (
         <Link
-          to={`/subjects/${t.law_code}/articles/${articleKey}${hash}`}
+          to={target}
           viewTransition
           title={targetTitle ?? undefined}
-          className={cn(
-            "mx-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-medium",
-            toneCls,
-          )}
+          className="text-primary underline decoration-dotted underline-offset-2 hover:bg-primary/10 hover:decoration-solid"
         >
-          <span>{node.raw}</span>
-          {targetTitle ? (
-            <span className="text-muted-foreground hidden font-normal sm:inline">
-              [{targetTitle}]
-            </span>
-          ) : null}
+          {node.raw}
         </Link>
       );
     }
     case "ref_law":
+      if (tokenHasBlankHit(node.raw.length)) {
+        return <Fragment>{renderTextWithBlanks(node.raw, 0)}</Fragment>;
+      }
       return (
         <Link
           to={`/subjects/${node.lawCode}`}
@@ -751,6 +1027,9 @@ function InlineNode({
         </Link>
       );
     case "amendment_note":
+      if (tokenHasBlankHit(node.text.length)) {
+        return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
+      }
       return (
         <span className="text-muted-foreground/70 ml-1 align-baseline text-[10px] italic">
           {node.text}
@@ -775,4 +1054,90 @@ function articleAnchor(t: {
   }
   if (t.clause !== undefined) return `#clause-${t.clause}`;
   return "";
+}
+
+// 이 text 조각이 위치한 block + block 안 시작 offset 기준으로, 그 좌표에 정확히 떨어지는
+// memo 만 mark. 같은 단어가 여러 곳에 등장해도 사용자가 선택한 그 위치만 표시된다.
+// substring 검증으로 article revision 후 좌표 stale 도 방어.
+function applyMemoMarks(
+  text: string,
+  memoMarks: MemoMarksValue | null,
+  currentBlockIndex: number | null,
+  textBaseOffset: number,
+): ReactNode {
+  if (!memoMarks || text.length === 0 || currentBlockIndex === null) return text;
+  type Match = { start: number; end: number; memos: MemoRecord[] };
+  const matches: Match[] = [];
+  const taken = new Array<boolean>(text.length).fill(false);
+  const list = memoMarks.byBlockIndex.get(currentBlockIndex) ?? [];
+  for (const pm of list) {
+    const localStart = pm.cumOffset - textBaseOffset;
+    const localEnd = localStart + pm.length;
+    if (localStart < 0 || localEnd > text.length) continue;
+    const expected = pm.memo.snippet?.trim() ?? "";
+    if (expected.length === 0) continue;
+    if (text.slice(localStart, localEnd) !== expected) continue;
+    let conflict = false;
+    for (let i = localStart; i < localEnd; i++) {
+      if (taken[i]) {
+        conflict = true;
+        break;
+      }
+    }
+    if (conflict) continue;
+    const existing = matches.find(
+      (m) => m.start === localStart && m.end === localEnd,
+    );
+    if (existing) existing.memos.push(pm.memo);
+    else matches.push({ start: localStart, end: localEnd, memos: [pm.memo] });
+    for (let i = localStart; i < localEnd; i++) taken[i] = true;
+  }
+  if (matches.length === 0) return text;
+  matches.sort((a, b) => a.start - b.start);
+  const out: ReactNode[] = [];
+  let cursor = 0;
+  let key = 0;
+  for (const m of matches) {
+    if (m.start > cursor) {
+      out.push(
+        <Fragment key={key++}>{text.slice(cursor, m.start)}</Fragment>,
+      );
+    }
+    out.push(
+      <MemoSnippetMark key={key++} memos={m.memos}>
+        {text.slice(m.start, m.end)}
+      </MemoSnippetMark>,
+    );
+    cursor = m.end;
+  }
+  if (cursor < text.length) {
+    out.push(<Fragment key={key++}>{text.slice(cursor)}</Fragment>);
+  }
+  return <>{out}</>;
+}
+
+function MemoSnippetMark({
+  memos,
+  children,
+}: {
+  memos: MemoRecord[];
+  children: ReactNode;
+}) {
+  // tooltip 에 메모 본문 표시 (여러 개면 separator 로 join). title attribute 라 plain text only.
+  const tooltip =
+    memos.length === 1
+      ? memos[0].bodyMd
+      : memos.map((m, i) => `[${i + 1}] ${m.bodyMd}`).join("\n———\n");
+  return (
+    <span
+      className="bg-amber-100/70 dark:bg-amber-900/40 underline decoration-amber-500 decoration-dotted underline-offset-2 cursor-help"
+      title={tooltip}
+    >
+      {children}
+      <StickyNoteIcon
+        className="ml-0.5 inline size-3 align-text-top text-amber-600 dark:text-amber-400"
+        aria-label={`메모 ${memos.length}개`}
+      />
+    </span>
+  );
 }

@@ -5,6 +5,14 @@
 /build/
 .env
 
+# HWPX 추출/파싱 결과 — 원본 hwpx 에서 derive 가능. 대용량 (수 MB).
+/source/_converted/problem-extracted/
+/source/_converted/answer-extracted/
+/source/_converted/problem.json
+/source/_converted/answer.json
+/source/_converted/problems-merged.json
+/scripts/output/
+
 # Playwright
 node_modules/
 /test-results/

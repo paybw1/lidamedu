@@ -2,6 +2,11 @@ import { useState } from "react";
 import { Link, redirect } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import {
+  getUserAutoBlankStats,
+  getUserBlankStats,
+} from "~/features/blanks/queries.server";
+import { getUserRecitationStats } from "~/features/recitation/queries.server";
 
 import type { Route } from "./+types/dashboard";
 import CozyCard from "../components/cozy-card";
@@ -36,10 +41,43 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   const name =
     (user.user_metadata?.name as string | undefined)?.trim() || "사용자";
+
+  // 빈칸 학습 요약 — 3 모드 + 암기 모드 병렬 조회.
+  const [content, subject, period, recitation] = await Promise.all([
+    getUserBlankStats(client, user.id),
+    getUserAutoBlankStats(client, user.id, "subject"),
+    getUserAutoBlankStats(client, user.id, "period"),
+    getUserRecitationStats(client, user.id),
+  ]);
+  const summarize = (s: {
+    totalAttempts: number;
+    correctAttempts: number;
+    weakBlanks: { length: number };
+  }) => ({
+    total: s.totalAttempts,
+    correct: s.correctAttempts,
+    accuracy:
+      s.totalAttempts > 0
+        ? Math.round((s.correctAttempts / s.totalAttempts) * 100)
+        : 0,
+    weak: s.weakBlanks.length,
+  });
+
   return {
     user: {
       name,
       cohort: "27기 · 1차 준비",
+    },
+    blankSummary: {
+      content: summarize(content),
+      subject: summarize(subject),
+      period: summarize(period),
+      recitation: {
+        total: recitation.totalAttempts,
+        correct: recitation.completedAttempts,
+        accuracy: Math.round(recitation.averageSimilarity * 100),
+        weak: recitation.weakArticles.length,
+      },
     },
   };
 }
@@ -85,7 +123,7 @@ const EXAM_DDAY = 87;
 const EXAM_DATE_LABEL = "2026년 7월 23일 (토)";
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
-  const { user } = loaderData;
+  const { user, blankSummary } = loaderData;
   const palette = COZY_PALETTES.sage;
   const [checklist, setChecklist] = useState(INITIAL_CHECKLIST);
   const completedCount = checklist.filter((i) => i.done).length;
@@ -471,6 +509,60 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             <CozyWeeklyBars palette={palette} />
           </CozyCard>
         </div>
+
+        <div style={{ marginTop: 18 }}>
+          <CozyCard
+            title="빈칸 · 암기 학습"
+            subtitle="내용 · 주체 · 시기 · 암기 모드 정답률 / 유사도"
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 10,
+                marginBottom: 14,
+              }}
+            >
+              <BlankSummaryTile
+                label="내용 빈칸"
+                summary={blankSummary.content}
+                palette={palette}
+              />
+              <BlankSummaryTile
+                label="주체 빈칸"
+                summary={blankSummary.subject}
+                palette={palette}
+              />
+              <BlankSummaryTile
+                label="시기 빈칸"
+                summary={blankSummary.period}
+                palette={palette}
+              />
+              <BlankSummaryTile
+                label="암기"
+                summary={blankSummary.recitation}
+                palette={palette}
+              />
+            </div>
+            <Link
+              to="/study/blanks"
+              style={{
+                display: "block",
+                textDecoration: "none",
+                cursor: "pointer",
+                textAlign: "center",
+                padding: "10px",
+                borderRadius: 10,
+                background: palette.primary,
+                color: "#FFF",
+                fontSize: 12.5,
+                fontWeight: 600,
+              }}
+            >
+              상세 통계 보기 →
+            </Link>
+          </CozyCard>
+        </div>
       </main>
 
       <style>{`
@@ -487,6 +579,71 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
           .cozy-grid-3 > :first-child { grid-column: span 2; }
         }
       `}</style>
+    </div>
+  );
+}
+
+function BlankSummaryTile({
+  label,
+  summary,
+  palette,
+}: {
+  label: string;
+  summary: { total: number; correct: number; accuracy: number; weak: number };
+  palette: { primary: string; tint: string; soft: string; accent: string };
+}) {
+  return (
+    <div
+      style={{
+        background: palette.tint,
+        borderRadius: 12,
+        padding: "12px 14px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          color: COZY_INK_SOFT,
+          fontWeight: 600,
+          letterSpacing: "0.02em",
+          marginBottom: 6,
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 22,
+          fontWeight: 700,
+          fontVariantNumeric: "tabular-nums",
+          lineHeight: 1.1,
+        }}
+      >
+        {summary.accuracy}
+        <span style={{ fontSize: 13, fontWeight: 500, marginLeft: 2 }}>%</span>
+      </div>
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 11,
+          color: COZY_INK_SOFT,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {summary.correct} / {summary.total} 정답
+        {summary.weak > 0 ? (
+          <span
+            style={{
+              marginLeft: 6,
+              color: "#C44A36",
+              fontWeight: 600,
+            }}
+          >
+            · 약점 {summary.weak}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

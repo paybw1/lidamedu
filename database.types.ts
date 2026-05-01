@@ -491,6 +491,7 @@ export type Database = {
           body_md: string
           choice_id: string
           choice_index: number
+          choice_type: Database["public"]["Enums"]["problem_choice_type"] | null
           created_at: string
           explanation_md: string | null
           is_correct: boolean
@@ -502,6 +503,9 @@ export type Database = {
           body_md: string
           choice_id?: string
           choice_index: number
+          choice_type?:
+            | Database["public"]["Enums"]["problem_choice_type"]
+            | null
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
@@ -513,6 +517,9 @@ export type Database = {
           body_md?: string
           choice_id?: string
           choice_index?: number
+          choice_type?:
+            | Database["public"]["Enums"]["problem_choice_type"]
+            | null
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
@@ -544,6 +551,50 @@ export type Database = {
           },
         ]
       }
+      problem_source_docs: {
+        Row: {
+          created_at: string
+          edition: string | null
+          file_name: string
+          kind: Database["public"]["Enums"]["problem_source_doc_kind"]
+          label: string
+          metadata: Json
+          paired_with_doc_id: string | null
+          source_doc_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          edition?: string | null
+          file_name: string
+          kind: Database["public"]["Enums"]["problem_source_doc_kind"]
+          label: string
+          metadata?: Json
+          paired_with_doc_id?: string | null
+          source_doc_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          edition?: string | null
+          file_name?: string
+          kind?: Database["public"]["Enums"]["problem_source_doc_kind"]
+          label?: string
+          metadata?: Json
+          paired_with_doc_id?: string | null
+          source_doc_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_source_docs_paired_with_doc_id_fkey"
+            columns: ["paired_with_doc_id"]
+            isOneToOne: false
+            referencedRelation: "problem_source_docs"
+            referencedColumns: ["source_doc_id"]
+          },
+        ]
+      }
       problems: {
         Row: {
           body_md: string
@@ -561,6 +612,7 @@ export type Database = {
           problem_id: string
           problem_number: number | null
           scope: Database["public"]["Enums"]["problem_scope"] | null
+          source_doc_id: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
           total_points: number | null
           updated_at: string
@@ -582,6 +634,7 @@ export type Database = {
           problem_id?: string
           problem_number?: number | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
+          source_doc_id?: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
           total_points?: number | null
           updated_at?: string
@@ -603,6 +656,7 @@ export type Database = {
           problem_id?: string
           problem_number?: number | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
+          source_doc_id?: string | null
           subject_type?: Database["public"]["Enums"]["problem_subject_type"]
           total_points?: number | null
           updated_at?: string
@@ -629,6 +683,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "articles"
             referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "problems_source_doc_id_fkey"
+            columns: ["source_doc_id"]
+            isOneToOne: false
+            referencedRelation: "problem_source_docs"
+            referencedColumns: ["source_doc_id"]
           },
         ]
       }
@@ -814,6 +875,53 @@ export type Database = {
           },
         ]
       }
+      user_auto_blank_attempts: {
+        Row: {
+          answer: string
+          article_id: string
+          attempt_id: string
+          attempted_at: string
+          blank_type: Database["public"]["Enums"]["auto_blank_type"]
+          block_index: number
+          cum_offset: number
+          is_correct: boolean
+          user_id: string
+          user_input: string
+        }
+        Insert: {
+          answer: string
+          article_id: string
+          attempt_id?: string
+          attempted_at?: string
+          blank_type: Database["public"]["Enums"]["auto_blank_type"]
+          block_index: number
+          cum_offset: number
+          is_correct: boolean
+          user_id: string
+          user_input: string
+        }
+        Update: {
+          answer?: string
+          article_id?: string
+          attempt_id?: string
+          attempted_at?: string
+          blank_type?: Database["public"]["Enums"]["auto_blank_type"]
+          block_index?: number
+          cum_offset?: number
+          is_correct?: boolean
+          user_id?: string
+          user_input?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_auto_blank_attempts_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+        ]
+      }
       user_blank_attempts: {
         Row: {
           attempt_id: string
@@ -954,30 +1062,39 @@ export type Database = {
       }
       user_memos: {
         Row: {
+          block_index: number | null
           body_md: string
           created_at: string
+          cum_offset: number | null
           deleted_at: string | null
           memo_id: string
+          snippet: string | null
           target_id: string
           target_type: Database["public"]["Enums"]["annotation_target_type"]
           updated_at: string
           user_id: string
         }
         Insert: {
+          block_index?: number | null
           body_md: string
           created_at?: string
+          cum_offset?: number | null
           deleted_at?: string | null
           memo_id?: string
+          snippet?: string | null
           target_id: string
           target_type: Database["public"]["Enums"]["annotation_target_type"]
           updated_at?: string
           user_id: string
         }
         Update: {
+          block_index?: number | null
           body_md?: string
           created_at?: string
+          cum_offset?: number | null
           deleted_at?: string | null
           memo_id?: string
+          snippet?: string | null
           target_id?: string
           target_type?: Database["public"]["Enums"]["annotation_target_type"]
           updated_at?: string
@@ -990,6 +1107,50 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      user_recitation_attempts: {
+        Row: {
+          article_id: string
+          attempt_id: string
+          attempted_at: string
+          block_index: number | null
+          expected_text: string
+          is_complete: boolean
+          similarity: number
+          user_id: string
+          user_input: string
+        }
+        Insert: {
+          article_id: string
+          attempt_id?: string
+          attempted_at?: string
+          block_index?: number | null
+          expected_text: string
+          is_complete: boolean
+          similarity: number
+          user_id: string
+          user_input: string
+        }
+        Update: {
+          article_id?: string
+          attempt_id?: string
+          attempted_at?: string
+          block_index?: number | null
+          expected_text?: string
+          is_complete?: boolean
+          similarity?: number
+          user_id?: string
+          user_input?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_recitation_attempts_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
           },
         ]
       }
@@ -1013,8 +1174,10 @@ export type Database = {
         | "contrary_to"
       annotation_target_type: "article" | "case" | "problem" | "problem_choice"
       article_level: "part" | "chapter" | "section" | "article"
+      auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
       law_change_kind: "created" | "amended" | "deleted"
+      problem_choice_type: "statute" | "precedent" | "theory"
       problem_exam_round: "first" | "second"
       problem_format:
         | "mc_short"
@@ -1026,6 +1189,7 @@ export type Database = {
       problem_origin: "past_exam" | "past_exam_variant" | "expected" | "mock"
       problem_polarity: "positive" | "negative"
       problem_scope: "unit" | "comprehensive"
+      problem_source_doc_kind: "problem" | "answer"
       problem_subject_type: "law" | "science"
       qna_quality_grade: "high" | "mid" | "low"
       qna_status: "open" | "answered" | "closed"
@@ -1172,8 +1336,10 @@ export const Constants = {
       ],
       annotation_target_type: ["article", "case", "problem", "problem_choice"],
       article_level: ["part", "chapter", "section", "article"],
+      auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
       law_change_kind: ["created", "amended", "deleted"],
+      problem_choice_type: ["statute", "precedent", "theory"],
       problem_exam_round: ["first", "second"],
       problem_format: [
         "mc_short",
@@ -1186,6 +1352,7 @@ export const Constants = {
       problem_origin: ["past_exam", "past_exam_variant", "expected", "mock"],
       problem_polarity: ["positive", "negative"],
       problem_scope: ["unit", "comprehensive"],
+      problem_source_doc_kind: ["problem", "answer"],
       problem_subject_type: ["law", "science"],
       qna_quality_grade: ["high", "mid", "low"],
       qna_status: ["open", "answered", "closed"],

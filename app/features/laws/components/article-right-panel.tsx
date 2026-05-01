@@ -3,12 +3,18 @@ import {
   GavelIcon,
   HeartIcon,
   HighlighterIcon,
+  HistoryIcon,
   MessageCircleQuestionIcon,
   NotebookPenIcon,
   PaperclipIcon,
   ScrollTextIcon,
 } from "lucide-react";
-import { type ComponentType } from "react";
+import { type ComponentType, useEffect, useState } from "react";
+
+import {
+  MEMO_SNIPPET_EVENT,
+  type MemoSnippetEventDetail,
+} from "~/features/annotations/lib/memo-selection-event";
 
 import { Badge } from "~/core/components/ui/badge";
 import {
@@ -27,6 +33,8 @@ import type {
   MemoRecord,
 } from "~/features/annotations/labels";
 import { RelatedCasesList } from "~/features/laws/components/related-chips";
+import { RevisionHistory } from "~/features/laws/components/revision-history";
+import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
 import type {
   QnaTargetType,
@@ -83,6 +91,7 @@ export function ArticleRightPanel({
   qnaThreads = [],
   relatedCases,
   subjectSlug,
+  revisions,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
@@ -91,12 +100,28 @@ export function ArticleRightPanel({
   qnaThreads?: QnaThreadSummary[];
   relatedCases?: RelatedCase[];
   subjectSlug?: LawSubjectSlug;
+  // staff(instructor/admin) 일 때만 전달. 비어있거나 undefined 이면 탭 자체가 표시되지 않음.
+  revisions?: RevisionHistoryEntry[];
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
+  const showRevisions = revisions !== undefined;
+  // 본문 selection → "메모" 버튼 클릭 시 자동으로 memo 탭 활성화. (snippet 자동 fill 은 MemoList 가 처리)
+  const [activeTab, setActiveTab] = useState("bookmark");
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<MemoSnippetEventDetail>).detail;
+      if (!detail) return;
+      if (detail.targetType !== target.type || detail.targetId !== target.id)
+        return;
+      setActiveTab("memo");
+    };
+    document.addEventListener(MEMO_SNIPPET_EVENT, handler);
+    return () => document.removeEventListener(MEMO_SNIPPET_EVENT, handler);
+  }, [target.type, target.id]);
   return (
     <div className="flex h-full flex-col">
-      <Tabs defaultValue="bookmark" className="h-full gap-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full gap-3">
         <TabsList className="h-auto flex-wrap gap-1">
           <TabsTrigger value="bookmark" className="h-7 flex-none px-2.5 text-xs">
             <HeartIcon /> 즐겨찾기
@@ -136,6 +161,19 @@ export function ArticleRightPanel({
               {qnaThreads.length > 0 ? (
                 <span className="text-muted-foreground ml-1 tabular-nums">
                   {qnaThreads.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ) : null}
+          {showRevisions ? (
+            <TabsTrigger
+              value="revisions"
+              className="h-7 flex-none px-2.5 text-xs"
+            >
+              <HistoryIcon /> 개정이력
+              {revisions.length > 0 ? (
+                <span className="text-muted-foreground ml-1 tabular-nums">
+                  {revisions.length}
                 </span>
               ) : null}
             </TabsTrigger>
@@ -191,6 +229,12 @@ export function ArticleRightPanel({
               targetType={qnaTargetType}
               targetId={target.id}
             />
+          </TabsContent>
+        ) : null}
+
+        {showRevisions ? (
+          <TabsContent value="revisions">
+            <RevisionHistory revisions={revisions} />
           </TabsContent>
         ) : null}
 

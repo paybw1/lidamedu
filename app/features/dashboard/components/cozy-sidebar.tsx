@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 import type { CozyPalette } from "~/core/lib/cozy-tokens";
 
-type IconName = "home" | "book" | "pen" | "chart" | "chat" | "note";
+type IconName = "home" | "book" | "pen" | "chart" | "chat" | "note" | "blank";
 
 type NavItem = {
   icon: IconName;
@@ -14,6 +14,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { icon: "home", label: "대시보드", to: "/dashboard", active: true },
   { icon: "book", label: "강의", to: "/subjects/patent" },
+  { icon: "blank", label: "빈칸 학습", to: "/study/blanks" },
   { icon: "pen", label: "실전 모의고사", to: "/gs" },
   { icon: "chart", label: "진도 현황", to: "/goals" },
   { icon: "chat", label: "Q&A", to: "/community" },
@@ -224,6 +225,24 @@ function NavIcon({ name }: { name: IconName }) {
           stroke={stroke}
           strokeWidth={sw}
           strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  if (name === "blank") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path
+          d="M3 9h3M8 9h2M12 9h3M3 13h12"
+          stroke={stroke}
+          strokeWidth={sw}
+          strokeLinecap="round"
+        />
+        <path
+          d="M3 5h12"
+          stroke={stroke}
+          strokeWidth={sw}
+          strokeLinecap="round"
         />
       </svg>
     );

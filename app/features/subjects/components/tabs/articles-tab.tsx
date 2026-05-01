@@ -41,10 +41,7 @@ export function ArticlesTab({
       <aside className="space-y-3">
         <Card className="py-4">
           <CardHeader className="px-4 pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                {renderSystematic ? "테크 트리" : "조문 트리"}
-              </p>
+            <div className="flex items-center justify-end gap-2">
               <SortAxisToggle
                 size="sm"
                 disabledAxes={systematicEmpty ? ["systematic"] : undefined}

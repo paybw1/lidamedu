@@ -39,13 +39,25 @@ export default [
     ]),
     ...prefix("/blanks", [
       route("/attempt", "features/blanks/api/attempt.tsx"),
+      route("/auto-attempt", "features/blanks/api/auto-attempt.tsx"),
       route("/admin-answer", "features/blanks/api/admin-answer.tsx"),
       route("/admin-add-blank", "features/blanks/api/admin-add-blank.tsx"),
       route("/admin-remove-blank", "features/blanks/api/admin-remove-blank.tsx"),
+      route("/admin-remove-blanks", "features/blanks/api/admin-remove-blanks.tsx"),
+      route("/admin-create-set", "features/blanks/api/admin-create-set.tsx"),
       route("/fork", "features/blanks/api/fork.tsx"),
+    ]),
+    ...prefix("/recitation", [
+      route("/attempt", "features/recitation/api/attempt.tsx"),
     ]),
     ...prefix("/qna", [
       route("/thread", "features/qna/api/thread.tsx"),
+    ]),
+    ...prefix("/laws", [
+      route(
+        "/admin-edit-article",
+        "features/laws/api/admin-edit-article.tsx",
+      ),
     ]),
   ]),
 
@@ -111,6 +123,10 @@ export default [
           "features/subjects/screens/article-viewer.tsx",
         ),
         route(
+          "/:subject/chapters/:chapterId",
+          "features/subjects/screens/chapter-viewer.tsx",
+        ),
+        route(
           "/:subject/systematic/:nodeId",
           "features/subjects/screens/systematic-node-viewer.tsx",
         ),
@@ -141,12 +157,16 @@ export default [
       route("/admin", "features/admin/screens/admin.tsx"),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
-        route("/upload", "features/blanks/screens/admin-blanks-upload.tsx"),
+        route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),
         route(
-          "/unmapped",
-          "features/blanks/screens/admin-blanks-unmapped.tsx",
+          "/law/:lawCode",
+          "features/blanks/screens/admin-blanks-all.tsx",
         ),
         route("/:setId", "features/blanks/screens/admin-blanks-edit.tsx"),
+      ]),
+      ...prefix("/admin/problems", [
+        index("features/problems/screens/admin-problems-list.tsx"),
+        route("/:problemId", "features/problems/screens/admin-problem-edit.tsx"),
       ]),
 
       ...prefix("/qna", [

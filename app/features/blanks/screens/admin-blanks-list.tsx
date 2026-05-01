@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -88,19 +88,11 @@ export default function AdminBlanksList({ loaderData }: Route.ComponentProps) {
           </p>
           <div className="flex items-center gap-3">
             <Link
-              to={`/admin/blanks/unmapped?law=${lawCode}&owner=${currentOwner}`}
+              to={`/admin/blanks/law/${lawCode}`}
               viewTransition
-              className="inline-flex items-center gap-1 text-xs text-amber-700 hover:underline dark:text-amber-400"
+              className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
             >
-              <AlertTriangleIcon className="size-3" />
-              미매칭 일괄 검수 <ArrowRightIcon className="size-3" />
-            </Link>
-            <Link
-              to="/admin/blanks/upload"
-              viewTransition
-              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-            >
-              새 자료 업로드 <ArrowRightIcon className="size-3" />
+              모든 조문 한 화면에서 편집 <ArrowRightIcon className="size-3" />
             </Link>
           </div>
         </div>

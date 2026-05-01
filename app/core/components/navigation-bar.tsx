@@ -211,8 +211,14 @@ export function NavigationBar({
   return (
     <nav className="bg-background relative z-50 mx-auto flex h-16 w-full items-center justify-between border-b px-5 shadow-xs backdrop-blur-lg transition-opacity md:px-10">
       <div className="mx-auto flex h-full w-full max-w-screen-2xl items-center justify-between py-3">
-        <Link to="/">
-          <h1 className="text-primary text-lg font-extrabold">Lidam Edu</h1>
+        <Link to="/" aria-label="리담변리사학원 홈">
+          {/* 로고 PNG 의 텍스트 부분이 검정이라 dark 모드에서 안 보임. invert + hue-rotate(180)
+              조합으로 검정→흰색 변환하면서 심볼 브랜드 컬러는 그대로 보존. */}
+          <img
+            src="/lidam-logo.png"
+            alt="리담변리사학원"
+            className="h-7 w-auto dark:[filter:invert(1)_hue-rotate(180deg)]"
+          />
         </Link>
 
         <div className="hidden h-full items-center gap-3 md:flex">

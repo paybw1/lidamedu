@@ -23,6 +23,9 @@ export default defineConfig((config) => {
   }
   return {
     server: {
+      // 0.0.0.0 으로 IPv4 bind — 기본 'localhost' 는 Node 18+ 에서 IPv6 (::1) 만 listen 하는
+      // 케이스가 있어 브라우저(IPv4 우선) 에서 ERR_CONNECTION_REFUSED 발생.
+      host: true,
       allowedHosts: true,
       watch: {
         ignored: [

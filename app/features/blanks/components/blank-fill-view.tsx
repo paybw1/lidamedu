@@ -14,16 +14,21 @@ import type { ArticleBody } from "~/features/laws/lib/article-body";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import type { BlankItem } from "~/features/blanks/queries.server";
 
-import { BlanksRenderProvider } from "./blanks-context";
+import { BlanksRenderProvider, type AutoBlankMeta } from "./blanks-context";
 
 export function BlankFillView({
   setId,
+  autoMeta,
   body,
   blanks,
   titleMap,
   lawCode,
 }: {
-  setId: string;
+  // setId 가 있으면 (내용 빈칸 모드) /api/blanks/attempt 로 저장.
+  // setId 가 null 이고 autoMeta 가 있으면 (주체/시기 빈칸 모드) /api/blanks/auto-attempt 로 저장.
+  // 둘 다 없으면 attempt 저장 안 함 (legacy 즉석 빈칸).
+  setId: string | null;
+  autoMeta?: AutoBlankMeta;
   body: ArticleBody;
   blanks: BlankItem[];
   titleMap: Map<string, string>;
@@ -77,8 +82,10 @@ export function BlankFillView({
       <BlanksRenderProvider
         key={resetKey}
         setId={setId}
+        autoMeta={autoMeta}
         blanks={blanks}
         reveal={reveal}
+        body={body}
       >
         <ArticleBodyView
           body={body}

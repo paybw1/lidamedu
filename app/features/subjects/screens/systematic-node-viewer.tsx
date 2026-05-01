@@ -8,7 +8,16 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
 import { BlankOwnerPageSelector } from "~/features/blanks/components/blank-owner-page-selector";
-import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
+import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambiguous-panel";
+import {
+  computePeriodBlanks,
+  type PeriodAmbiguousCase,
+} from "~/features/blanks/lib/period-blanks";
+import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
+import {
+  listBlankSetsByArticle,
+  type BlankItem,
+} from "~/features/blanks/queries.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
@@ -200,11 +209,52 @@ function Inner({
   const renderSystematic = axis === "systematic" && !systematicEmpty;
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
   const [blankMode, setBlankMode] = useState(false);
+  const [subjectBlankMode, setSubjectBlankMode] = useState(false);
+  const [periodBlankMode, setPeriodBlankMode] = useState(false);
   const blankAvailableCount = useMemo(
     () =>
       node.articles.filter((a) => blankSetsByArticle[a.articleId]).length,
     [node.articles, blankSetsByArticle],
   );
+  const subjectBlanksByArticle = useMemo(() => {
+    const m = new Map<string, BlankItem[]>();
+    for (const a of node.articles) {
+      const body = parseArticleBody(a.bodyJson);
+      if (!body) continue;
+      const sb = computeSubjectBlanks(body);
+      if (sb.length > 0) m.set(a.articleId, sb);
+    }
+    return m;
+  }, [node.articles]);
+  const subjectBlankAvailableCount = subjectBlanksByArticle.size;
+  const periodResultByArticle = useMemo(() => {
+    const m = new Map<
+      string,
+      { blanks: BlankItem[]; ambiguous: PeriodAmbiguousCase[] }
+    >();
+    for (const a of node.articles) {
+      const body = parseArticleBody(a.bodyJson);
+      if (!body) continue;
+      const r = computePeriodBlanks(body, {
+        articleId: a.articleId,
+        articleLabel: a.displayLabel,
+        articleNumber: a.articleNumber,
+        lawCode: subject.slug,
+      });
+      if (r.blanks.length > 0 || r.ambiguous.length > 0) {
+        m.set(a.articleId, r);
+      }
+    }
+    return m;
+  }, [node.articles, subject.slug]);
+  const periodBlankAvailableCount = periodResultByArticle.size;
+  const periodAmbiguousAll = useMemo(() => {
+    const out: PeriodAmbiguousCase[] = [];
+    for (const r of periodResultByArticle.values()) {
+      out.push(...r.ambiguous);
+    }
+    return out;
+  }, [periodResultByArticle]);
 
   const titleMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -223,23 +273,11 @@ function Inner({
       {/* multi-article 환경: HighlightToolbar 1개를 root 에 mount, prop 없이 selection 컨테이너의 dataset 으로 article 결정 */}
       <HighlightToolbar />
 
-      <Link
-        to={`/subjects/${subject.slug}`}
-        viewTransition
-        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
-      >
-        <ArrowLeftIcon className="size-4" /> {subject.name}{" "}
-        {renderSystematic ? "테크 트리" : "조문 트리"}
-      </Link>
-
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="py-4">
             <CardHeader className="px-4 pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  {renderSystematic ? "테크 트리" : "조문 트리"}
-                </p>
+              <div className="flex items-center justify-end gap-2">
                 <SortAxisToggle
                   size="sm"
                   disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -287,11 +325,17 @@ function Inner({
                       <Button
                         variant={blankMode ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setBlankMode((v) => !v)}
+                        onClick={() => {
+                          setBlankMode((v) => !v);
+                          if (!blankMode) {
+                            setSubjectBlankMode(false);
+                            setPeriodBlankMode(false);
+                          }
+                        }}
                         className="h-7 gap-1 text-xs"
                       >
                         <PencilLineIcon className="size-3.5" />
-                        빈칸 모드
+                        내용 빈칸 모드
                         <span className="text-muted-foreground ml-0.5 tabular-nums">
                           {blankAvailableCount}/{node.articles.length}
                         </span>
@@ -304,11 +348,54 @@ function Inner({
                       ) : null}
                     </>
                   ) : null}
+                  {subjectBlankAvailableCount > 0 ? (
+                    <Button
+                      variant={subjectBlankMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setSubjectBlankMode((v) => !v);
+                        if (!subjectBlankMode) {
+                          setBlankMode(false);
+                          setPeriodBlankMode(false);
+                        }
+                      }}
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <PencilLineIcon className="size-3.5" />
+                      주체 빈칸 모드
+                      <span className="text-muted-foreground ml-0.5 tabular-nums">
+                        {subjectBlankAvailableCount}/{node.articles.length}
+                      </span>
+                    </Button>
+                  ) : null}
+                  {periodBlankAvailableCount > 0 ? (
+                    <Button
+                      variant={periodBlankMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setPeriodBlankMode((v) => !v);
+                        if (!periodBlankMode) {
+                          setBlankMode(false);
+                          setSubjectBlankMode(false);
+                        }
+                      }}
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <PencilLineIcon className="size-3.5" />
+                      기간 빈칸 모드
+                      <span className="text-muted-foreground ml-0.5 tabular-nums">
+                        {periodBlankAvailableCount}/{node.articles.length}
+                        {periodAmbiguousAll.length > 0
+                          ? ` · ?${periodAmbiguousAll.length}`
+                          : ""}
+                      </span>
+                    </Button>
+                  ) : null}
                   <Button
                     variant={subtitlesOnly ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSubtitlesOnly((v) => !v)}
-                    disabled={blankMode}
+                    disabled={blankMode || subjectBlankMode || periodBlankMode}
                     className="h-7 gap-1 text-xs"
                   >
                     {subtitlesOnly ? (
@@ -322,6 +409,10 @@ function Inner({
               </div>
             </CardHeader>
           </Card>
+
+          {periodBlankMode && periodAmbiguousAll.length > 0 ? (
+            <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
+          ) : null}
 
           {node.articles.length === 0 ? (
             <Card>
@@ -387,6 +478,32 @@ function Inner({
                           titleMap={titleMap}
                           lawCode={subject.slug}
                         />
+                      ) : subjectBlankMode && body ? (
+                        <BlankFillView
+                          setId={null}
+                          autoMeta={{
+                            articleId: a.articleId,
+                            blankType: "subject",
+                          }}
+                          body={body}
+                          blanks={subjectBlanksByArticle.get(a.articleId) ?? []}
+                          titleMap={titleMap}
+                          lawCode={subject.slug}
+                        />
+                      ) : periodBlankMode && body ? (
+                        <BlankFillView
+                          setId={null}
+                          autoMeta={{
+                            articleId: a.articleId,
+                            blankType: "period",
+                          }}
+                          body={body}
+                          blanks={
+                            periodResultByArticle.get(a.articleId)?.blanks ?? []
+                          }
+                          titleMap={titleMap}
+                          lawCode={subject.slug}
+                        />
                       ) : (
                         <HighlightOverlay
                           fieldPath="article.body"
@@ -400,6 +517,7 @@ function Inner({
                               titleMap={titleMap}
                               subtitlesOnly={subtitlesOnly}
                               lawCode={subject.slug}
+                              memos={memos}
                             />
                           ) : (
                             <p className="text-muted-foreground text-sm">

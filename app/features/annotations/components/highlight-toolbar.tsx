@@ -3,6 +3,7 @@
 //
 // 주의: 색상 버튼 클릭 시 selection 이 사라지지 않도록 onMouseDown + preventDefault 사용.
 
+import { NotebookPenIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
@@ -14,6 +15,7 @@ import {
   type HighlightColor,
 } from "../labels";
 import { captureContainerSelection } from "../lib/highlight-dom";
+import { dispatchMemoSnippet } from "../lib/memo-selection-event";
 
 const COLOR_BTN: Record<HighlightColor, string> = {
   yellow: "bg-amber-200 hover:bg-amber-300",
@@ -38,6 +40,10 @@ interface PendingSelection {
   // 컨테이너에서 읽은 target — multi-article viewer 에서 article 별 저장에 사용
   containerTargetType: string | null;
   containerTargetId: string | null;
+  // 본문 위 정확 위치 — selection start 의 가장 가까운 data-block-index + data-cumoffset 에서
+  // 계산. 같은 snippet 이 여러 곳에 등장해도 그 자리만 식별 가능하게 하기 위해 메모용으로 캡처.
+  blockIndex: number | null;
+  cumOffset: number | null;
 }
 
 async function digestSha256(text: string): Promise<string> {
@@ -55,14 +61,51 @@ function captureWithRect(): PendingSelection | null {
   const range = sel.getRangeAt(0);
   let node: Node | null = range.startContainer;
   let containerEl: HTMLElement | null = null;
+  // 메모용 정확 위치 캡처 — 가장 가까운 data-block-index + data-cumoffset wrapper 찾기.
+  let blockIndex: number | null = null;
+  let cumOffsetSpan: HTMLElement | null = null;
   while (node) {
-    if (node instanceof HTMLElement && node.dataset.highlightField) {
-      containerEl = node;
-      break;
+    if (node instanceof HTMLElement) {
+      if (
+        cumOffsetSpan === null &&
+        node.dataset.cumoffset !== undefined
+      ) {
+        cumOffsetSpan = node;
+      }
+      if (blockIndex === null && node.dataset.blockIndex !== undefined) {
+        const v = Number(node.dataset.blockIndex);
+        if (Number.isFinite(v)) blockIndex = v;
+      }
+      if (node.dataset.highlightField) {
+        containerEl = node;
+        break;
+      }
     }
     node = node.parentNode;
   }
   if (!containerEl) return null;
+  // cumOffsetSpan 안에서 selection start 까지의 char count 더해 정확 위치 계산.
+  let cumOffset: number | null = null;
+  if (cumOffsetSpan) {
+    const base = Number(cumOffsetSpan.dataset.cumoffset);
+    if (Number.isFinite(base)) {
+      let offsetInSpan = 0;
+      const walker = document.createTreeWalker(
+        cumOffsetSpan,
+        NodeFilter.SHOW_TEXT,
+      );
+      let tn = walker.nextNode();
+      while (tn) {
+        if (tn === range.startContainer) {
+          offsetInSpan += range.startOffset;
+          cumOffset = base + offsetInSpan;
+          break;
+        }
+        offsetInSpan += tn.nodeValue?.length ?? 0;
+        tn = walker.nextNode();
+      }
+    }
+  }
   const info = captureContainerSelection(containerEl);
   if (!info) return null;
   const rect = range.getBoundingClientRect();
@@ -79,6 +122,8 @@ function captureWithRect(): PendingSelection | null {
     },
     containerTargetType: containerEl.dataset.highlightTargetType ?? null,
     containerTargetId: containerEl.dataset.highlightTargetId ?? null,
+    blockIndex,
+    cumOffset,
   };
 }
 
@@ -150,8 +195,27 @@ export function HighlightToolbar({
 
   if (!pending) return null;
 
-  // 화면 위치 계산 (selection rect 의 위쪽 가운데)
-  const TOOLBAR_W = 168;
+  const handleMemo = () => {
+    const target = pending ?? lastPendingRef.current;
+    if (!target) return;
+    const effTargetType = targetType ?? target.containerTargetType;
+    const effTargetId = targetId ?? target.containerTargetId;
+    if (!effTargetType || !effTargetId) return;
+    dispatchMemoSnippet({
+      snippet: target.text,
+      targetType: effTargetType,
+      targetId: effTargetId,
+      blockIndex: target.blockIndex,
+      cumOffset: target.cumOffset,
+    });
+    // toolbar 닫고 selection 해제 (메모 입력으로 focus 이동될 것)
+    setPending(null);
+    lastPendingRef.current = null;
+    window.getSelection()?.removeAllRanges();
+  };
+
+  // 화면 위치 계산 (selection rect 의 위쪽 가운데). 메모 버튼 추가로 너비 늘림.
+  const TOOLBAR_W = 208;
   const TOOLBAR_H = 36;
   const left = Math.max(
     8,
@@ -193,6 +257,19 @@ export function HighlightToolbar({
           )}
         />
       ))}
+      <span className="bg-border mx-0.5 h-5 w-px" aria-hidden />
+      <button
+        type="button"
+        aria-label="이 단어로 메모 추가"
+        title="이 단어로 메모 추가"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          handleMemo();
+        }}
+        className="hover:bg-accent inline-flex size-7 items-center justify-center rounded text-amber-600 transition-colors dark:text-amber-400"
+      >
+        <NotebookPenIcon className="size-4" />
+      </button>
     </div>
   );
 }

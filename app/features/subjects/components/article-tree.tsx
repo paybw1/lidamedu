@@ -1,11 +1,12 @@
 import {
+  BrainIcon,
   ChevronRightIcon,
   FileTextIcon,
   HeartIcon,
   HighlighterIcon,
   StickyNoteIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -95,6 +96,7 @@ export function ArticleTree({
   nodes,
   emptyHint,
   activeArticleId,
+  activeChapterId,
   lawCode,
   bookmarkLevels,
   annotationCounts,
@@ -102,15 +104,22 @@ export function ArticleTree({
   nodes: ArticleNode[];
   emptyHint?: string;
   activeArticleId?: string;
+  // chapter-viewer 에서 진입했을 때 현재 보고 있는 chapter/section/part 의 id — 트리에서 강조.
+  activeChapterId?: string;
   lawCode: LawSubjectSlug;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
 }) {
   const tree = useMemo(() => buildTree(nodes), [nodes]);
-  const expandedIds = useMemo(
-    () => findAncestorIds(nodes, activeArticleId),
-    [nodes, activeArticleId],
-  );
+  const expandedIds = useMemo(() => {
+    const ids = findAncestorIds(nodes, activeArticleId);
+    // chapter-viewer 진입 시 그 chapter 의 조상도 펼쳐 트리에서 위치 인지 가능.
+    if (activeChapterId) {
+      for (const id of findAncestorIds(nodes, activeChapterId)) ids.add(id);
+      ids.add(activeChapterId);
+    }
+    return ids;
+  }, [nodes, activeArticleId, activeChapterId]);
   const [importanceFilter, setImportanceFilter] = useState<ImportanceFilter>(0);
   const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
   const showBookmarkFilter = bookmarkLevels !== undefined;
@@ -177,8 +186,8 @@ export function ArticleTree({
           ))}
         </div>
         {showBookmarkFilter ? (
-          <div className="flex flex-wrap items-center gap-1">
-            <span className="text-muted-foreground mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
+          <div className="flex flex-nowrap items-center gap-0.5">
+            <span className="text-muted-foreground mr-0.5 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
               <HeartIcon className="size-3 fill-rose-500 stroke-rose-500" />
               즐겨찾기
             </span>
@@ -189,7 +198,7 @@ export function ArticleTree({
                 onClick={() => setBookmarkFilter(v)}
                 aria-pressed={bookmarkFilter === v}
                 className={cn(
-                  "rounded-md border px-1.5 py-0.5 text-[11px] transition-colors",
+                  "rounded-md border px-1 py-0.5 text-[11px] tabular-nums transition-colors",
                   bookmarkFilter === v
                     ? "bg-rose-500 text-white border-rose-500"
                     : "bg-background hover:bg-accent text-muted-foreground border-input",
@@ -220,6 +229,7 @@ export function ArticleTree({
               node={n}
               depth={0}
               activeArticleId={activeArticleId}
+              activeChapterId={activeChapterId}
               forceOpen={expandedIds}
               lawCode={lawCode}
               bookmarkLevels={bookmarkLevels}
@@ -236,6 +246,7 @@ function TreeItem({
   node,
   depth,
   activeArticleId,
+  activeChapterId,
   forceOpen,
   lawCode,
   bookmarkLevels,
@@ -244,17 +255,25 @@ function TreeItem({
   node: TreeNode;
   depth: number;
   activeArticleId?: string;
+  activeChapterId?: string;
   forceOpen: Set<string>;
   lawCode: LawSubjectSlug;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
 }) {
   const hasChildren = node.children.length > 0;
-  // 장(chapter) 은 기본적으로 접혀 있고 클릭해야 펼쳐짐 — 단, 활성 조문의 조상 장은 자동 펼침
+  // 장(chapter) 은 기본적으로 접혀 있고 클릭해야 펼쳐짐 — 단, 활성 조문/chapter 의 조상 장은 자동 펼침
   const initialOpen = forceOpen.has(node.articleId);
   const [open, setOpen] = useState(initialOpen);
+  // navigation 으로 forceOpen set 이 바뀌면 (다른 chapter/article 로 이동) 새 활성 노드의 조상을 자동 펼침.
+  // 이미 펼쳐 둔 상태는 강제로 닫지 않는다 — 사용자가 수동으로 펼친 다른 가지는 유지.
+  useEffect(() => {
+    if (forceOpen.has(node.articleId)) setOpen(true);
+  }, [forceOpen, node.articleId]);
   const isArticle = node.level === "article";
-  const isActive = activeArticleId === node.articleId;
+  const isActive =
+    activeArticleId === node.articleId ||
+    activeChapterId === node.articleId;
   const bookmarkLevel = isArticle
     ? (bookmarkLevels?.[node.articleId] ?? 0)
     : 0;
@@ -275,6 +294,17 @@ function TreeItem({
       >
         <span className="text-[11px] leading-none">★</span>
         <span className="ml-0.5 text-[10px] tabular-nums">{importance}</span>
+      </span>
+    ) : null;
+  // 별 2개 이상 → 암기 추천. 학생에게 시각적으로 알림 (BrainIcon).
+  const recitationHintEl =
+    isArticle && importance >= 2 ? (
+      <span
+        className="inline-flex shrink-0 items-center text-violet-600 dark:text-violet-400"
+        aria-label="암기 추천"
+        title="중요 조문 — 암기 모드를 권장합니다"
+      >
+        <BrainIcon className="size-3" />
       </span>
     ) : null;
   const memoEl =
@@ -325,32 +355,25 @@ function TreeItem({
   );
   const rowStyle = { paddingLeft: `${depth * 12 + 6}px` };
 
-  // chevron — 장(chapter) 행은 부모 button 이 토글 담당 (button-in-button 금지) 이라 icon 만 표시.
-  // 조문(article) 행은 Link 라서 기존처럼 별도 button 으로 토글 (드물지만 자식 있는 조문 대비).
+  // chevron — 모든 row 에서 별도 button 으로 토글. button-in-link 도 안전 (preventDefault).
   const chevronIcon = (
     <ChevronRightIcon
       className={cn("size-3.5 transition-transform", open && "rotate-90")}
     />
   );
   const expandToggle = hasChildren ? (
-    isArticle ? (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setOpen((o) => !o);
-        }}
-        aria-label={open ? "접기" : "펼치기"}
-        className="text-muted-foreground hover:text-foreground inline-flex size-5 items-center justify-center"
-      >
-        {chevronIcon}
-      </button>
-    ) : (
-      <span className="text-muted-foreground inline-flex size-5 items-center justify-center">
-        {chevronIcon}
-      </span>
-    )
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen((o) => !o);
+      }}
+      aria-label={open ? "접기" : "펼치기"}
+      className="text-muted-foreground hover:text-foreground inline-flex size-5 items-center justify-center"
+    >
+      {chevronIcon}
+    </button>
   ) : (
     <span className="inline-block size-5" />
   );
@@ -372,14 +395,16 @@ function TreeItem({
           {highlightEl}
           {heartEl}
           {starEl}
+          {recitationHintEl}
         </Link>
-      ) : hasChildren ? (
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          className={cn(rowClass, "w-full cursor-pointer")}
+      ) : !isArticle ? (
+        // 장/절/편 — 클릭하면 그 안의 모든 조문 모아보기. chevron 으로 별도 토글.
+        <Link
+          to={`/subjects/${lawCode}/chapters/${node.articleId}`}
+          viewTransition
+          className={rowClass}
           style={rowStyle}
+          aria-current={isActive ? "page" : undefined}
         >
           {expandToggle}
           {fileEl}
@@ -388,7 +413,8 @@ function TreeItem({
           {highlightEl}
           {heartEl}
           {starEl}
-        </button>
+          {recitationHintEl}
+        </Link>
       ) : (
         <div className={rowClass} style={rowStyle}>
           {expandToggle}
@@ -408,6 +434,7 @@ function TreeItem({
               node={c}
               depth={depth + 1}
               activeArticleId={activeArticleId}
+              activeChapterId={activeChapterId}
               forceOpen={forceOpen}
               lawCode={lawCode}
               bookmarkLevels={bookmarkLevels}

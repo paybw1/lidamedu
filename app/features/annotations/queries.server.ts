@@ -137,7 +137,9 @@ export async function listMemosByArticleIds(
   if (articleIds.length === 0) return {};
   const { data, error } = await client
     .from("user_memos")
-    .select("memo_id, target_id, body_md, created_at, updated_at")
+    .select(
+      "memo_id, target_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
+    )
     .eq("user_id", userId)
     .eq("target_type", "article")
     .in("target_id", articleIds)
@@ -150,6 +152,9 @@ export async function listMemosByArticleIds(
     list.push({
       memoId: row.memo_id,
       bodyMd: row.body_md,
+      snippet: row.snippet ?? null,
+      blockIndex: row.block_index ?? null,
+      cumOffset: row.cum_offset ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     });
@@ -308,7 +313,9 @@ export async function listMemos(
 ): Promise<MemoRecord[]> {
   const { data, error } = await client
     .from("user_memos")
-    .select("memo_id, body_md, created_at, updated_at")
+    .select(
+      "memo_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
+    )
     .eq("user_id", userId)
     .eq("target_type", targetType)
     .eq("target_id", targetId)
@@ -319,6 +326,9 @@ export async function listMemos(
   return (data ?? []).map((row) => ({
     memoId: row.memo_id,
     bodyMd: row.body_md,
+    snippet: row.snippet ?? null,
+    blockIndex: row.block_index ?? null,
+    cumOffset: row.cum_offset ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -330,6 +340,8 @@ export async function createMemo(
   targetType: AnnotationTargetType,
   targetId: string,
   bodyMd: string,
+  snippet?: string | null,
+  position?: { blockIndex: number; cumOffset: number } | null,
 ): Promise<MemoRecord> {
   const { data, error } = await client
     .from("user_memos")
@@ -338,14 +350,22 @@ export async function createMemo(
       target_type: targetType,
       target_id: targetId,
       body_md: bodyMd,
+      snippet: snippet?.trim() ? snippet.trim() : null,
+      block_index: position?.blockIndex ?? null,
+      cum_offset: position?.cumOffset ?? null,
     })
-    .select("memo_id, body_md, created_at, updated_at")
+    .select(
+      "memo_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
+    )
     .single();
 
   if (error) throw error;
   return {
     memoId: data.memo_id,
     bodyMd: data.body_md,
+    snippet: data.snippet ?? null,
+    blockIndex: data.block_index ?? null,
+    cumOffset: data.cum_offset ?? null,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
