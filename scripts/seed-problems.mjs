@@ -155,6 +155,8 @@ for (const p of problems) {
   const primaryArticleId = articleNumber
     ? articleByNumber.get(articleNumber) ?? null
     : null;
+  // matcher 가 박스 항목을 발견했으면 mc_box 강제, 아니면 stem 기반 추정.
+  const format = p.format ?? inferFormat(p.stem);
   const { data: probRow, error } = await supa
     .from("problems")
     .insert({
@@ -162,13 +164,14 @@ for (const p of problems) {
       exam_round: "first",
       subject_type: "law",
       origin: p.origin,
-      format: inferFormat(p.stem),
+      format,
       scope: p.scope,
       polarity: inferPolarity(p.stem),
       year: p.year,
       problem_number: p.problemNumber,
       primary_article_id: primaryArticleId,
       body_md: p.stem,
+      explanation_md: p.explanation || null, // 문제 단위 종합 해설 (표 포함).
       source_doc_id: problemDocId,
     })
     .select("problem_id")
@@ -177,11 +180,16 @@ for (const p of problems) {
     console.error(`  insert 실패 [${p.chapter}/${p.section}/${p.problemNumber}]`, error.message);
     continue;
   }
+  // 정답 표기 처리:
+  //  - noAnswer: 모든 choice is_correct=false (정답취소).
+  //  - correctList(배열): 다중 정답 — 모든 해당 choice 를 is_correct=true.
+  //  - correctIndex(단일): 단일 정답.
+  const correctSet = new Set(p.correctList ?? (p.correctIndex != null ? [p.correctIndex] : []));
   const choiceRows = p.choices.map((c) => ({
     problem_id: probRow.problem_id,
     choice_index: c.index,
     body_md: c.body,
-    is_correct: p.correctIndex === c.index,
+    is_correct: !p.noAnswer && correctSet.has(c.index),
     explanation_md: p.choiceExplanations?.[c.index] ?? null,
     choice_type: p.choiceTypes?.[c.index] ?? null,
   }));
@@ -189,6 +197,23 @@ for (const p of problems) {
   if (cErr) {
     console.error(`  choices insert 실패`, cErr.message);
     continue;
+  }
+
+  // 박스 항목 insert (mc_box 한정).
+  if (p.boxItems && p.boxItems.length > 0) {
+    const boxRows = p.boxItems.map((bi) => ({
+      problem_id: probRow.problem_id,
+      position_index: bi.position,
+      marker: bi.marker,
+      body_md: bi.body,
+      explanation_md: bi.explanation,
+      ox_truth: bi.oxTruth,
+      choice_type: bi.choiceType,
+    }));
+    const { error: bErr } = await supa.from("problem_box_items").insert(boxRows);
+    if (bErr) {
+      console.error(`  box_items insert 실패`, bErr.message);
+    }
   }
   inserted++;
 }

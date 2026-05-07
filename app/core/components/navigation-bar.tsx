@@ -217,7 +217,7 @@ export function NavigationBar({
           <img
             src="/lidam-logo.png"
             alt="리담변리사학원"
-            className="h-7 w-auto dark:[filter:invert(1)_hue-rotate(180deg)]"
+            className="h-10 w-auto shrink-0 dark:[filter:invert(1)_hue-rotate(180deg)]"
           />
         </Link>
 

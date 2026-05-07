@@ -9,6 +9,7 @@ export type ProblemPolarity = Database["public"]["Enums"]["problem_polarity"];
 export type ProblemScope = Database["public"]["Enums"]["problem_scope"];
 export type ProblemChoiceType =
   Database["public"]["Enums"]["problem_choice_type"];
+export type OxTruth = Database["public"]["Enums"]["ox_truth"];
 
 export const FORMAT_LABEL: Record<ProblemFormat, string> = {
   mc_short: "단답형",
@@ -73,6 +74,14 @@ export interface ProblemListItem {
   primaryArticleNumber: string | null;
   primaryArticleLabel: string | null;
   unclassifiedChoices: number;
+  reviewedAt: string | null;
+  // 문제-해설 불일치 등으로 운영자가 "재검토 필요" 표시한 시각.
+  mismatchFlaggedAt: string | null;
+  explanationMd: string | null;
+  // 종합/지문/박스 해설 어딘가에 마크다운 표가 있는지.
+  hasTable: boolean;
+  // 종합/지문/박스 해설 어딘가에 이미지가 있는지.
+  hasImage: boolean;
 }
 
 export interface ProblemChoice {
@@ -83,9 +92,29 @@ export interface ProblemChoice {
   explanationMd: string | null;
   choiceType: ProblemChoiceType | null;
   relatedArticleId: string | null;
+  relatedArticleNumber: string | null;
   relatedCaseId: string | null;
+  relatedCaseNumber: string | null;
+  oxIneligible: boolean;
+  oxTruth: OxTruth | null;
+}
+
+export interface ProblemBoxItem {
+  boxItemId: string;
+  positionIndex: number;
+  marker: string;
+  bodyMd: string;
+  explanationMd: string | null;
+  choiceType: ProblemChoiceType | null;
+  relatedArticleId: string | null;
+  relatedArticleNumber: string | null;
+  relatedCaseId: string | null;
+  relatedCaseNumber: string | null;
+  oxIneligible: boolean;
+  oxTruth: OxTruth | null;
 }
 
 export interface ProblemDetail extends ProblemListItem {
   choices: ProblemChoice[];
+  boxItems: ProblemBoxItem[];
 }

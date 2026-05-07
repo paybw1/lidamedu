@@ -3,6 +3,7 @@ import {
   BarChart3Icon,
   FileEditIcon,
   ListChecksIcon,
+  NetworkIcon,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -40,6 +41,12 @@ export default function Admin() {
           title="객관식 문제 관리"
           subtitle="출처/유형/극성/연도/scope 분류 + 지문 유형 보강"
           icon={ListChecksIcon}
+        />
+        <AdminCard
+          to="/admin/problems/by-system"
+          title="체계도 기반 문제 편집"
+          subtitle="01 총칙/보칙 ~ 08 국제출원 단위로 한 화면에서 일괄 편집"
+          icon={NetworkIcon}
         />
       </div>
     </div>

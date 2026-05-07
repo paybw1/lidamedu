@@ -486,6 +486,86 @@ export type Database = {
         }
         Relationships: []
       }
+      problem_box_items: {
+        Row: {
+          body_md: string
+          box_item_id: string
+          choice_type: Database["public"]["Enums"]["problem_choice_type"] | null
+          created_at: string
+          explanation_md: string | null
+          marker: string
+          ox_ineligible: boolean
+          ox_truth: Database["public"]["Enums"]["ox_truth"] | null
+          position_index: number
+          problem_id: string
+          related_article_id: string | null
+          related_article_number: string | null
+          related_case_id: string | null
+          related_case_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_md: string
+          box_item_id?: string
+          choice_type?:
+            | Database["public"]["Enums"]["problem_choice_type"]
+            | null
+          created_at?: string
+          explanation_md?: string | null
+          marker: string
+          ox_ineligible?: boolean
+          ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
+          position_index: number
+          problem_id: string
+          related_article_id?: string | null
+          related_article_number?: string | null
+          related_case_id?: string | null
+          related_case_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_md?: string
+          box_item_id?: string
+          choice_type?:
+            | Database["public"]["Enums"]["problem_choice_type"]
+            | null
+          created_at?: string
+          explanation_md?: string | null
+          marker?: string
+          ox_ineligible?: boolean
+          ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
+          position_index?: number
+          problem_id?: string
+          related_article_id?: string | null
+          related_article_number?: string | null
+          related_case_id?: string | null
+          related_case_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_box_items_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "problem_box_items_related_article_id_fkey"
+            columns: ["related_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "problem_box_items_related_case_id_fkey"
+            columns: ["related_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
       problem_choices: {
         Row: {
           body_md: string
@@ -495,9 +575,13 @@ export type Database = {
           created_at: string
           explanation_md: string | null
           is_correct: boolean
+          ox_ineligible: boolean
+          ox_truth: Database["public"]["Enums"]["ox_truth"] | null
           problem_id: string
           related_article_id: string | null
+          related_article_number: string | null
           related_case_id: string | null
+          related_case_number: string | null
         }
         Insert: {
           body_md: string
@@ -509,9 +593,13 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
+          ox_ineligible?: boolean
+          ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
           problem_id: string
           related_article_id?: string | null
+          related_article_number?: string | null
           related_case_id?: string | null
+          related_case_number?: string | null
         }
         Update: {
           body_md?: string
@@ -523,9 +611,13 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
+          ox_ineligible?: boolean
+          ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
           problem_id?: string
           related_article_id?: string | null
+          related_article_number?: string | null
           related_case_id?: string | null
+          related_case_number?: string | null
         }
         Relationships: [
           {
@@ -604,13 +696,18 @@ export type Database = {
           exam_round: Database["public"]["Enums"]["problem_exam_round"]
           exam_round_no: number | null
           examined_at: string | null
+          explanation_md: string | null
           format: Database["public"]["Enums"]["problem_format"]
           law_id: string | null
+          mismatch_flagged_at: string | null
+          mismatch_flagged_by: string | null
           origin: Database["public"]["Enums"]["problem_origin"]
           polarity: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id: string | null
           problem_id: string
           problem_number: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           scope: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
@@ -626,13 +723,18 @@ export type Database = {
           exam_round: Database["public"]["Enums"]["problem_exam_round"]
           exam_round_no?: number | null
           examined_at?: string | null
+          explanation_md?: string | null
           format: Database["public"]["Enums"]["problem_format"]
           law_id?: string | null
+          mismatch_flagged_at?: string | null
+          mismatch_flagged_by?: string | null
           origin: Database["public"]["Enums"]["problem_origin"]
           polarity?: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id?: string | null
           problem_id?: string
           problem_number?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
@@ -648,13 +750,18 @@ export type Database = {
           exam_round?: Database["public"]["Enums"]["problem_exam_round"]
           exam_round_no?: number | null
           examined_at?: string | null
+          explanation_md?: string | null
           format?: Database["public"]["Enums"]["problem_format"]
           law_id?: string | null
+          mismatch_flagged_at?: string | null
+          mismatch_flagged_by?: string | null
           origin?: Database["public"]["Enums"]["problem_origin"]
           polarity?: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id?: string | null
           problem_id?: string
           problem_number?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
           subject_type?: Database["public"]["Enums"]["problem_subject_type"]
@@ -678,11 +785,25 @@ export type Database = {
             referencedColumns: ["law_id"]
           },
           {
+            foreignKeyName: "problems_mismatch_flagged_by_fkey"
+            columns: ["mismatch_flagged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "problems_primary_article_id_fkey"
             columns: ["primary_article_id"]
             isOneToOne: false
             referencedRelation: "articles"
             referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "problems_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "problems_source_doc_id_fkey"
@@ -1177,6 +1298,7 @@ export type Database = {
       auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
       law_change_kind: "created" | "amended" | "deleted"
+      ox_truth: "O" | "X"
       problem_choice_type: "statute" | "precedent" | "theory"
       problem_exam_round: "first" | "second"
       problem_format:
@@ -1339,6 +1461,7 @@ export const Constants = {
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
       law_change_kind: ["created", "amended", "deleted"],
+      ox_truth: ["O", "X"],
       problem_choice_type: ["statute", "precedent", "theory"],
       problem_exam_round: ["first", "second"],
       problem_format: [

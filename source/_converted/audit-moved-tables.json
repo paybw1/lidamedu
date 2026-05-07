@@ -1,0 +1,767 @@
+[
+  {
+    "problemId": "ec25b79c-649e-4746-bab6-7f5e56394035",
+    "year": 1992,
+    "round": 0,
+    "problemNumber": 1,
+    "primaryArticleNumber": "132의16",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| ① 심판관 또는 그 배우자이거나 배우자이었던 사람이 사건의 당사자, 참가인 또는 특허취소신청인인 경우 ② 심판관이 사건의 당사자, 참가인 또는 특허취소신청인의 친족이거나 친족이었던 경우 ③ 심판관이 사건의 당사자, 참가인 또는 특허취소신청인의 법정대리인이거나 법정대리인이었던 경우 ④ 심판관이 사건에 대한 증인, 감정인이거나 감정인이었던 경우 ⑤ 심판관이 사건의 당사자, 참가인 또는 특허취소신청인의 대리인이거나 대리인이었던 경우 ⑥ 심판관이 사건에 대하여 심사관 또는 심판관으로서 특허여부결정 또는 심결에 관여한 경우 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "1ef5451b-223c-45e5-b0d1-6669fa4d333d",
+    "year": 1994,
+    "round": 0,
+    "problemNumber": 2,
+    "primaryArticleNumber": "100",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 유 형 |  | 성립요건 | 효력범위 | 효력 내용 |",
+        "articles": [
+          "10",
+          "105",
+          "122",
+          "103의2",
+          "104",
+          "2",
+          "81",
+          "103",
+          "182",
+          "183",
+          "33",
+          "44",
+          "29",
+          "36"
+        ]
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 유 형 |  | 성립요건 | 효력범위 | 효력 내용 |",
+        "articles": [
+          "10",
+          "105",
+          "122",
+          "103의2",
+          "104",
+          "2",
+          "81",
+          "103",
+          "182",
+          "183",
+          "33",
+          "44",
+          "29",
+          "36"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "c067b367-8b99-4e6e-8867-7731b517af8b",
+    "year": 1995,
+    "round": 0,
+    "problemNumber": 1,
+    "primaryArticleNumber": "67의3",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 제 도 |  |  | 출원의 취하 | 출원의 포기 |",
+        "articles": [
+          "215의2",
+          "42의2",
+          "42의3",
+          "53",
+          "59",
+          "56",
+          "196",
+          "194",
+          "201",
+          "202",
+          "206",
+          "41",
+          "81",
+          "29",
+          "36",
+          "65",
+          "84"
+        ]
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 제 도 |  |  | 출원의 취하 | 출원의 포기 |",
+        "articles": [
+          "215의2",
+          "42의2",
+          "42의3",
+          "53",
+          "59",
+          "56",
+          "196",
+          "194",
+          "201",
+          "202",
+          "206",
+          "41",
+          "81",
+          "29",
+          "36",
+          "65",
+          "84"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "91c03835-8081-42e9-babe-967c4e5dd988",
+    "year": 1999,
+    "round": 0,
+    "problemNumber": 1,
+    "primaryArticleNumber": "29",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 산업상 이용가능성 | 의료업 | 비의료업 | 비고 |",
+        "articles": [
+          "32"
+        ]
+      },
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| 산업상 이용가능성 | 의료업 | 비의료업 | 비고 |",
+        "articles": [
+          "32"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "b6c0a6a1-da0f-4432-a13b-918195a36bdb",
+    "year": 1999,
+    "round": 0,
+    "problemNumber": 1,
+    "primaryArticleNumber": "37",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 구분 | 일반승계 | 특정승계 |",
+        "articles": [
+          "38"
+        ]
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 구분 | 일반승계 | 특정승계 |",
+        "articles": [
+          "38"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "2db08c76-bf3c-4e08-98d7-0bb5aeaf4c2d",
+    "year": 2000,
+    "round": 0,
+    "problemNumber": 2,
+    "primaryArticleNumber": "3",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "<table>",
+        "articles": [
+          "25",
+          "3",
+          "46",
+          "16",
+          "7의2",
+          "4",
+          "5",
+          "206"
+        ]
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "54585bac-a039-4b24-9931-c333c02bd71d",
+    "year": 2001,
+    "round": 0,
+    "problemNumber": 1,
+    "primaryArticleNumber": "106의2",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| ① 특허권자가 심신장애로 인한 활동불능의 경우(의료기관장이 증명한 경우에 한함) ② 특허발명의 실시에 필요한 정부기관이나 타인의 인ㆍ허가, 동의 또는 승낙을 받지 못한 경우 ③ 특허발명의 실시가 법령으로 금지 또는 제한된 경우 ④ 특허발명의 실시에 필요한 원료 또는 시설이 국내에 없거나 수입이 금지된 경우 ⑤ 물건의 수요가 없거나 그 수요가 적어 이를 영업적 규모로 실시할 수 없는 경우 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "4978dd47-85a7-4e12-8a41-79a44e08bea1",
+    "year": 2003,
+    "round": 0,
+    "problemNumber": 1,
+    "primaryArticleNumber": "132의3",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "박스 ㉳",
+        "tableHeader": "| 제 도 |  |  |  | 특허의 정정 | 정정심판 |",
+        "articles": [
+          "132의3"
+        ]
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "8b0d15a9-9ed6-426a-8a79-439a37c41e91",
+    "year": 2007,
+    "round": 0,
+    "problemNumber": 8,
+    "primaryArticleNumber": "42",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 종 류 | 형 태 | 미 국 | 한 국 |",
+        "articles": [
+          "42"
+        ]
+      },
+      {
+        "heading": "지문 ③",
+        "tableHeader": "| 종 류 | 형 태 | 미 국 | 한 국 |",
+        "articles": [
+          "42"
+        ]
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "c32035a9-0fa5-4528-aeba-af83f980de14",
+    "year": 2008,
+    "round": 0,
+    "problemNumber": 3,
+    "primaryArticleNumber": "119",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "박스 ㉡",
+        "tableHeader": "| 장래를 향해 소멸 | 소급하여 소멸 |",
+        "articles": []
+      },
+      {
+        "heading": "박스 ㉤",
+        "tableHeader": "| 장래를 향해 소멸 | 소급하여 소멸 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "a6f53186-0eaa-42af-883d-b64d0ad046be",
+    "year": 2008,
+    "round": 0,
+    "problemNumber": 3,
+    "primaryArticleNumber": "97",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 발명의 특정 | 특허요건 판단 | 보호범위 판단 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "ff9e15cb-4dcd-45c9-a14a-bbff0bb05c19",
+    "year": 2010,
+    "round": 0,
+    "problemNumber": 2,
+    "primaryArticleNumber": "53",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "박스 ㈃",
+        "tableHeader": "| 제 도 |  |  | 분할출원(法 52) | 분리출원(法 52의2) | 변경출원(法 53) |",
+        "articles": [
+          "52",
+          "52의2",
+          "53",
+          "47",
+          "42의2",
+          "208",
+          "209",
+          "186"
+        ]
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "8377d43f-91ce-4636-9fa9-200afd573b9b",
+    "year": 2012,
+    "round": 0,
+    "problemNumber": 7,
+    "primaryArticleNumber": "47",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| ① 자진보정이 있었는지와 관계없이 심사가 착수된 이후 첫 번째의 거절이유통지인 경우 ② 보정되지 아니한 보정식별항목(특허법 시행규칙 별지 제9호서식 기재요령의 식별항목으로서 식별번호 등을 말한다. 이하 같다)에 거절이유가 있는 경우 ③ 거절이유통지 후 보정된 발명의 설명 또는 청구범위에 존재하는 거절이유라고 하더라도 그 거절이유가 보정에 의하여 발생한 것이 아니라 최초거절이유통지시에도 발명의 설명 또는 청구범위에 존재하던 거절이유인 경우 ④ 보정 외적인 요인에 의하여 거절이유가 발생한 경우(예를 들어 심사에 착수하여 최초거절이유를 통지할 때에는 외국인으로서 권리능력에 관한 흠결이 없었으나 보정 이후 제25조에 따라 특허에 관한 권리를 누릴 수 없게 된 경우)  ⑤ 직권 재심사를 하려고 특허출원인에게 특허결정을 취소한다는 사실을 통지한 후 그 통지 전의 거절이유통지에 대한 보정에 따라 발생한 거절이유를 발견한 경우 ⑥ 거절결정불복심판에서 취소환송되었는데 취소환송 전의 거절이유통지에 대한 보정에 따라 발생한 거절이유를 발견한 경우 |",
+        "articles": [
+          "25"
+        ]
+      },
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| ① 자진보정이 있었는지와 관계없이 심사가 착수된 이후 첫 번째의 거절이유통지인 경우 ② 보정되지 아니한 보정식별항목(특허법 시행규칙 별지 제9호서식 기재요령의 식별항목으로서 식별번호 등을 말한다. 이하 같다)에 거절이유가 있는 경우 ③ 거절이유통지 후 보정된 발명의 설명 또는 청구범위에 존재하는 거절이유라고 하더라도 그 거절이유가 보정에 의하여 발생한 것이 아니라 최초거절이유통지시에도 발명의 설명 또는 청구범위에 존재하던 거절이유인 경우 ④ 보정 외적인 요인에 의하여 거절이유가 발생한 경우(예를 들어 심사에 착수하여 최초거절이유를 통지할 때에는 외국인으로서 권리능력에 관한 흠결이 없었으나 보정 이후 제25조에 따라 특허에 관한 권리를 누릴 수 없게 된 경우)  ⑤ 직권 재심사를 하려고 특허출원인에게 특허결정을 취소한다는 사실을 통지한 후 그 통지 전의 거절이유통지에 대한 보정에 따라 발생한 거절이유를 발견한 경우 ⑥ 거절결정불복심판에서 취소환송되었는데 취소환송 전의 거절이유통지에 대한 보정에 따라 발생한 거절이유를 발견한 경우 |",
+        "articles": [
+          "25"
+        ]
+      },
+      {
+        "heading": "지문 ③",
+        "tableHeader": "| ① 자진보정이 있었는지와 관계없이 심사가 착수된 이후 첫 번째의 거절이유통지인 경우 ② 보정되지 아니한 보정식별항목(특허법 시행규칙 별지 제9호서식 기재요령의 식별항목으로서 식별번호 등을 말한다. 이하 같다)에 거절이유가 있는 경우 ③ 거절이유통지 후 보정된 발명의 설명 또는 청구범위에 존재하는 거절이유라고 하더라도 그 거절이유가 보정에 의하여 발생한 것이 아니라 최초거절이유통지시에도 발명의 설명 또는 청구범위에 존재하던 거절이유인 경우 ④ 보정 외적인 요인에 의하여 거절이유가 발생한 경우(예를 들어 심사에 착수하여 최초거절이유를 통지할 때에는 외국인으로서 권리능력에 관한 흠결이 없었으나 보정 이후 제25조에 따라 특허에 관한 권리를 누릴 수 없게 된 경우)  ⑤ 직권 재심사를 하려고 특허출원인에게 특허결정을 취소한다는 사실을 통지한 후 그 통지 전의 거절이유통지에 대한 보정에 따라 발생한 거절이유를 발견한 경우 ⑥ 거절결정불복심판에서 취소환송되었는데 취소환송 전의 거절이유통지에 대한 보정에 따라 발생한 거절이유를 발견한 경우 |",
+        "articles": [
+          "25"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "660644bc-58bc-4e11-818a-1b78b3e2a325",
+    "year": 2013,
+    "round": 0,
+    "problemNumber": 4,
+    "primaryArticleNumber": "135",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 청구방식  대상 |  | 적극적 | 소극적 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "6358fc12-958d-499a-ab7a-1a5f10f241a1",
+    "year": 2013,
+    "round": 0,
+    "problemNumber": 5,
+    "primaryArticleNumber": "106의2",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 권 리 |  | 특허권 | 전용실시권 | 통상실시권 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "f8596b23-2485-406f-ab4f-1843595fba16",
+    "year": 2013,
+    "round": 0,
+    "problemNumber": 5,
+    "primaryArticleNumber": "135",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| 청구방식  대상 |  | 적극적 | 소극적 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "96d7c9ec-9f44-4ce8-a1b4-424e53291aa4",
+    "year": 2014,
+    "round": 0,
+    "problemNumber": 2,
+    "primaryArticleNumber": "67의3",
+    "bodyArticles": [
+      "67",
+      "132"
+    ],
+    "sections": [
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| 구 분 | 취급 |",
+        "articles": [
+          "67",
+          "11"
+        ]
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "eb70e50f-3996-489e-8972-828ae13d547d",
+    "year": 2014,
+    "round": 0,
+    "problemNumber": 5,
+    "primaryArticleNumber": "100",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 권 리 |  | 특허권 | 전용실시권 | 통상실시권 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "863a0045-46d0-4a3d-b4c9-95bb3153a5c4",
+    "year": 2014,
+    "round": 0,
+    "problemNumber": 6,
+    "primaryArticleNumber": "88",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 제 도 |  | 허가 등에 따른 존속기간연장등록제도 | 등록지연에 따른 존속기간연장등록제도 |",
+        "articles": [
+          "89",
+          "92의2",
+          "95",
+          "94",
+          "92",
+          "57",
+          "63",
+          "67",
+          "78",
+          "148"
+        ]
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 제 도 |  | 허가 등에 따른 존속기간연장등록제도 | 등록지연에 따른 존속기간연장등록제도 |",
+        "articles": [
+          "89",
+          "92의2",
+          "95",
+          "94",
+          "92",
+          "57",
+          "63",
+          "67",
+          "78",
+          "148"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "d1673497-4438-4a5a-ac5a-3ffdc360ad9c",
+    "year": 2014,
+    "round": 0,
+    "problemNumber": 9,
+    "primaryArticleNumber": "47",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ④",
+        "tableHeader": "| ① 우선권주장의 기초가 된 제1국 출원 또는 선출원은 특허출원서에 최초로 첨부한 명세서 또는 도면에 해당되지 않으므로 신규사항의 추가 여부 판단의 기초로 사용할 수 없다. ② 요약서는 명세서 또는 도면에 해당하지 않으므로 신규사항 추가 여부를 판단하는 기준이 되는 최초 명세서 등에 포함되지 아니한다. ③ 미완성발명을 완성시키는 보정을 한 경우 그 보정은 신규사항을 추가한 것으로 된다. ④ 상위개념을 하위개념으로 보정하여 범위를 축소하였더라도(재질이나 용도한정의 경우 포함), 최초 명세서 등에 그 하위개념이 개시되어 있거나, 출원 시의 기술상식을 참작하여 통상의 기술자에게 그러한 상위개념이라고 하면 보정된 하위개념으로 바로 인식될 정도가 아니면 신규사항 추가에 해당한다. ⑤ 하위개념을 상위개념으로 보정하는 경우, 그 상위개념 중에 최초 명세서 등의 하위개념과 비교하여 발명의 효과 또는 과제해결 여부가 달라지는 부분이 포함되면 신규사항의 추가에 해당한다. 일부 구성을 삭제하는 경우에도 그 삭제되는 구성이 최초 명세서 등에서 과제해결을 위하여 필수적인 것으로 기재된 것이라면 신규사항추가에 해당한다. 다만 과제해결과 관계없이 임의로 부가된 사항을 삭제하여 상위개념이 되는 경우라면 최초 명세서 등 범위 내의 보정으로 볼 수 있다. ⑥ 수치범위를 추가하거나 변경 또는 감축하는 보정의 경우에, 새로운 수치범위가 최초 명세서 등에 기재되어 있지 않고, 최초 명세서 등의 기재로부터 자명하지 않은 경우에는 신규사항 추가에 해당한다. ⑦ 청구항에서 일정한 사항을 제외하는 보정(이른바 ‘제외 클레임’ 보정)은, 그러한 제외하는 한정이 최초 명세서 등에 기재된 것으로 볼 수 없는 새로운 기술적 사항이 도입되는 것이 아니라면 허용된다. 특히 의료방법 관련 발명의 대상이 사람인지 동물인지가 명시되어 있지 아니한 경우, 그 발명이 특정 동물만을 대상으로 하는 것은 아닌 것이 자명할 때 사람에 해당하는 부분을 삭제하기 위하여 한정하는 보정은 신규사항이 추가된 것으로 보지 않는다. ⑧ 최초 명세서 등에 독립적으로 기재된 개별구성이나 실시예들을 하나의 발명으로 결합하는 보정을 하는 경우, 그러한 결합이 최초 명세서 등에 언급되어 있거나 통상의 기술자가 출원 시의 기술상식에 비추어 당연히 상정할 수 있는 정도가 아니면 신규사항 추가에 해당한다. ⑨ 일반적으로 실시예 또는 시험예를 추가하는 보정은 신규사항 추가에 해당한다. 다만 최초 명세서 등의 기재 범위 내로 볼 수 있는 경우에는 신규사항 추가에 해당하지 않는다. ⑩ 일반적으로 발명의 새로운 효과를 추가하는 보정은 신규사항 추가에 해당한다. 다만 최초 명세서 등에 기재된 발명의 구성 등으로부터 통상의 기술자가 당연히 예측할 수 있는 정도이거나 최초 명세서 등에 기재된 발명의 구성이 그러한 효과를 나타낸다는 것이 해당 기술분야에서 잘 알려진 사실인 경우에는 신규사항 추가에 해당되지 않는다. ⑪ 선행기술 문헌명을 명세서에 단순히 추가하는 보정과 선행기술 문헌명과 함께 그 문헌 내용의 간략한 요약만을 추가하는 보정은 신규사항 추가로 보지 않는다. 다만 미완성 발명이 완성되도록 하거나 발명의 실시 등에 관한 발명의 설명 기재요건 미비를 해소하기 위하여 선행기술문헌의 내용을 추가하는 보정, 또는 출원발명의 이점을 제시하기 위하여 출원발명과 선행기술을 비교하는 내용을 추가하는 보정은 일반적으로 신규사항 추가에 해당한다. ⑫ 통상의 기술자가 최초 명세서 또는 도면에 오기가 있음을 인식할 수 있고, 그러한 오기가 무엇으로 정정되어야 하는지도 명확히 알 수 있다면, 그와 같은 오기의 정정은 신규사항 추가로 보지 않는다. 또한 명세서 또는 도면 중에 상충하는 2개 이상의 기재 중 어느 것이 올바른 지가 최초 명세서 등의 기재로부터 통상의 기술자에게 자명한 경우, 그 올바른 기재로 일치시키는 보정은 신규사항 추가가 아니다. ⑬ 보정된 사항이 주지관용기술이더라도 그것이 통상의 기술자가 최초 명세서 또는 도면에 기재되어 있는 것과 마찬가지라고 이해할 수 있는 사항이 아니라면, 이를 추가하는 보정은 최초 명세서 또는 도면에 기재된 사항의 범위를 벗어난 것이어서 허용될 수 없다. |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "3c27952d-01c1-4cac-bdbc-8c3b175aee41",
+    "year": 2015,
+    "round": 0,
+    "problemNumber": 3,
+    "primaryArticleNumber": "25",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "박스 ㉠",
+        "tableHeader": "| 구분 | 내용 |",
+        "articles": []
+      },
+      {
+        "heading": "박스 ㉡",
+        "tableHeader": "| 구분 | 내용 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "bdc24876-aa11-4173-8103-cd3abfe2a0db",
+    "year": 2015,
+    "round": 0,
+    "problemNumber": 6,
+    "primaryArticleNumber": "100",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ④",
+        "tableHeader": "| 권 리 |  | 특허권 | 전용실시권 | 통상실시권 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "5378bc8d-ea39-46ca-b672-e086dc5a6e0e",
+    "year": 2015,
+    "round": 0,
+    "problemNumber": 11,
+    "primaryArticleNumber": "36",
+    "bodyArticles": [
+      "29",
+      "36"
+    ],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 요 건 |  |  |  |  | 선출원주의 | 확대된 선출원 |",
+        "articles": [
+          "62",
+          "63의2",
+          "132의2",
+          "133"
+        ]
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 요 건 |  |  |  |  | 선출원주의 | 확대된 선출원 |",
+        "articles": [
+          "62",
+          "63의2",
+          "132의2",
+          "133"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "bde12f21-1aa5-48f9-bdff-84bec3e83b20",
+    "year": 2015,
+    "round": 0,
+    "problemNumber": 13,
+    "primaryArticleNumber": "126",
+    "bodyArticles": [
+      "128"
+    ],
+    "sections": [
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| 구분 | 항목 |  | CASE1 | CASE2 | CASE3 |",
+        "articles": [
+          "128"
+        ]
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "e0257945-55d4-48c4-99c0-db546f712b60",
+    "year": 2016,
+    "round": 0,
+    "problemNumber": 15,
+    "primaryArticleNumber": "126",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "박스 ㉠",
+        "tableHeader": "| 진보성 위반 | 종전 판례 (대법원 97후2095 등) | 최근 판례 (대법원 2010다95390) |",
+        "articles": []
+      },
+      {
+        "heading": "박스 ㉡",
+        "tableHeader": "| 진보성 위반 | 종전 판례 (대법원 97후2095 등) | 최근 판례 (대법원 2010다95390) |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "a07b4319-e0de-495c-9d9b-510309cac7a7",
+    "year": 2016,
+    "round": 0,
+    "problemNumber": 16,
+    "primaryArticleNumber": "42",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 발명의 특정 | 특허요건 판단 | 보호범위 판단 |",
+        "articles": []
+      },
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| 발명의 특정 | 특허요건 판단 | 보호범위 판단 |",
+        "articles": []
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 발명의 특정 | 특허요건 판단 | 보호범위 판단 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "f6aa22ff-c3d9-49d7-8f28-32d3b3472430",
+    "year": 2018,
+    "round": null,
+    "problemNumber": 1,
+    "primaryArticleNumber": "132의2",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 제 도 |  | 특허취소신청 | 특허무효심판 |",
+        "articles": [
+          "132의2",
+          "133",
+          "65",
+          "181",
+          "84",
+          "104",
+          "132",
+          "33",
+          "44",
+          "29"
+        ]
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 제 도 |  | 특허취소신청 | 특허무효심판 |",
+        "articles": [
+          "132의2",
+          "133",
+          "65",
+          "181",
+          "84",
+          "104",
+          "132",
+          "33",
+          "44",
+          "29"
+        ]
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "a68592f3-767b-47ca-a912-bbd0ae819ec3",
+    "year": 2019,
+    "round": 0,
+    "problemNumber": 18,
+    "primaryArticleNumber": "126",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 구분 | 항목 |  | 2016년 | 2017년 | 2018년 |",
+        "articles": [
+          "128"
+        ]
+      },
+      {
+        "heading": "지문 ⑤",
+        "tableHeader": "| 구분 | 항목 |  | 2016년 | 2017년 | 2018년 |",
+        "articles": [
+          "128"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "d0de7a8b-1e5f-40d1-ab97-c1130ca8a99a",
+    "year": 2020,
+    "round": 0,
+    "problemNumber": 7,
+    "primaryArticleNumber": "99의2",
+    "bodyArticles": [],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 구 분 | 원 고 | 피 고 |",
+        "articles": [
+          "29"
+        ]
+      },
+      {
+        "heading": "지문 ②",
+        "tableHeader": "| 구 분 | 원 고 | 피 고 |",
+        "articles": [
+          "29"
+        ]
+      }
+    ],
+    "suspect": true
+  },
+  {
+    "problemId": "4eee2ce6-b1e5-45de-bee8-7f25da0abb97",
+    "year": 2020,
+    "round": 0,
+    "problemNumber": 12,
+    "primaryArticleNumber": "47",
+    "bodyArticles": [
+      "51"
+    ],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| 【예】【최초출원서】 청구항 1 : A+B 청구항 2 : 청구항 1에 있어서, C를 부가 청구항 3 : 청구항 2에 있어서, D를 부가 청구항 4 : 청구항 2에 있어서, E를 부가 【최초거절이유통지】청구항 1은 작동위주, 불명료 【최초보정 후의 명세서】 청구항 1 : A+B+C 청구항 2 : 청구항 2에 있어서, D를 부가 청구항 3 : 삭제 청구항 4 : 청구항 3에 있어서, E를 부가 【최후거절이유통지】 청구항 4는 삭제된 제3항을 인용하고 있음 【최후보정 후의 명세서】 청구항 1 : A+B+C 청구항 2 : 청구항 1에 있어서, D를 부가 청구항 3 : 삭제 청구항 4 : 청구항 1에 있어서, E를 부가 |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  },
+  {
+    "problemId": "4a35e28a-20ef-4b62-934e-f77d25af5ab9",
+    "year": 2026,
+    "round": 0,
+    "problemNumber": 8,
+    "primaryArticleNumber": "64",
+    "bodyArticles": [
+      "65",
+      "29"
+    ],
+    "sections": [
+      {
+        "heading": "지문 ①",
+        "tableHeader": "| • | 특허권의 발생 |  |",
+        "articles": []
+      }
+    ],
+    "suspect": false
+  }
+]

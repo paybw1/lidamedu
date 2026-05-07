@@ -28,10 +28,7 @@ export default function Footer() {
       <div className="mx-auto flex h-full w-full max-w-screen-2xl flex-col items-center justify-between gap-2.5 md:order-none md:flex-row md:gap-0">
         {/* Copyright notice - appears second on mobile, first on desktop */}
         <div className="order-2 md:order-none">
-          <p>
-            &copy; {new Date().getFullYear()} {import.meta.env.VITE_APP_NAME}.
-            All rights reserved.
-          </p>
+          <p>Copyright (c) 리담지식재산교육원 주식회사 All Rights Reserved.</p>
         </div>
         
         {/* Legal links - appears first on mobile, second on desktop */}

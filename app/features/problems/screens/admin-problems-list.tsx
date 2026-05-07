@@ -1,7 +1,7 @@
 // 운영자 객관식 문제 리뷰 목록 — 출처/유형/극성/연도/scope/조문 필터 + 체계도/조문 순서 정렬.
 
-import { ArrowRightIcon, FilterIcon } from "lucide-react";
-import { Form, Link, data } from "react-router";
+import { FilterIcon } from "lucide-react";
+import { Form, Link, data, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -20,12 +20,14 @@ import {
   ORIGIN_LABEL,
   POLARITY_LABEL,
   SCOPE_LABEL,
-  listProblemYears,
-  listProblemsBySubject,
   type ProblemFormat,
   type ProblemOrigin,
   type ProblemPolarity,
   type ProblemScope,
+} from "~/features/problems/labels";
+import {
+  listProblemYears,
+  listProblemsBySubject,
 } from "~/features/problems/queries.server";
 import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
@@ -60,6 +62,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     ? (subjectParam as (typeof LAW_SUBJECT_SLUGS)[number])
     : "patent";
 
+  const reviewParam = url.searchParams.get("review");
+  const mediaParam = url.searchParams.get("media");
   const filters = {
     origin: (url.searchParams.get("origin") || undefined) as
       | ProblemOrigin
@@ -77,6 +81,19 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? Number(url.searchParams.get("year"))
       : undefined,
     hasUnclassified: url.searchParams.get("unclassified") === "1",
+    reviewStatus:
+      reviewParam === "reviewed" ||
+      reviewParam === "pending" ||
+      reviewParam === "mismatch"
+        ? (reviewParam as "reviewed" | "pending" | "mismatch")
+        : undefined,
+    mediaStatus:
+      mediaParam === "table" ||
+      mediaParam === "image" ||
+      mediaParam === "any" ||
+      mediaParam === "none"
+        ? (mediaParam as "table" | "image" | "any" | "none")
+        : undefined,
   };
 
   const [problems, years] = await Promise.all([
@@ -90,6 +107,9 @@ export default function AdminProblemsList({
   loaderData,
 }: Route.ComponentProps) {
   const { problems, years, subject, filters } = loaderData;
+  // 편집 화면 진입 시 현재 필터 쿼리를 그대로 전달 → 편집 화면의 "←" 가 같은 쿼리로 되돌아갈 수 있게.
+  const [searchParams] = useSearchParams();
+  const filterQs = searchParams.toString();
   const subjectMeta = LAW_SUBJECTS[subject];
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
@@ -178,6 +198,29 @@ export default function AdminProblemsList({
                 ...years.map((y) => ({ value: String(y), label: `${y}년` })),
               ]}
             />
+            <FilterSelect
+              name="review"
+              label="검토"
+              value={filters.reviewStatus ?? ""}
+              options={[
+                { value: "", label: "전체" },
+                { value: "pending", label: "미검토" },
+                { value: "reviewed", label: "검토 완료" },
+                { value: "mismatch", label: "재검토 필요" },
+              ]}
+            />
+            <FilterSelect
+              name="media"
+              label="해설 미디어"
+              value={filters.mediaStatus ?? ""}
+              options={[
+                { value: "", label: "전체" },
+                { value: "any", label: "표·이미지 포함" },
+                { value: "table", label: "표 포함" },
+                { value: "image", label: "이미지 포함" },
+                { value: "none", label: "텍스트만" },
+              ]}
+            />
             <label className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
               <input
                 type="checkbox"
@@ -218,6 +261,7 @@ export default function AdminProblemsList({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-14"></TableHead>
                   <TableHead className="w-32">조문</TableHead>
                   <TableHead className="w-20 text-xs">출처</TableHead>
                   <TableHead className="w-16 text-xs">유형</TableHead>
@@ -225,12 +269,23 @@ export default function AdminProblemsList({
                   <TableHead className="w-16 text-xs">scope</TableHead>
                   <TableHead className="w-20 text-xs">연도/회차</TableHead>
                   <TableHead>본문 (앞부분)</TableHead>
-                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {problems.map((p) => (
                   <TableRow key={p.problemId}>
+                    <TableCell>
+                      <Link
+                        to={
+                          filterQs
+                            ? `/admin/problems/${p.problemId}?${filterQs}`
+                            : `/admin/problems/${p.problemId}`
+                        }
+                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                      >
+                        편집
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       {p.primaryArticleNumber ? (
                         <span className="text-xs font-medium">
@@ -273,15 +328,40 @@ export default function AdminProblemsList({
                             ?{p.unclassifiedChoices}
                           </Badge>
                         ) : null}
+                        {p.mismatchFlaggedAt ? (
+                          <Badge
+                            className="shrink-0 bg-amber-100 text-[10px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                            title="문제-해설 불일치 — 재검토 필요"
+                          >
+                            ⚠
+                          </Badge>
+                        ) : p.reviewedAt ? (
+                          <Badge
+                            className="shrink-0 bg-emerald-100 text-[10px] text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            title="검토 완료"
+                          >
+                            ✓
+                          </Badge>
+                        ) : null}
+                        {p.hasTable ? (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 border-sky-500 bg-sky-50 text-[10px] text-sky-800 dark:bg-sky-950/40 dark:text-sky-300"
+                            title="해설에 표 포함"
+                          >
+                            표
+                          </Badge>
+                        ) : null}
+                        {p.hasImage ? (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 border-violet-500 bg-violet-50 text-[10px] text-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
+                            title="해설에 이미지 포함"
+                          >
+                            이미지
+                          </Badge>
+                        ) : null}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/admin/problems/${p.problemId}`}
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        편집 <ArrowRightIcon className="size-3" />
-                      </Link>
                     </TableCell>
                   </TableRow>
                 ))}

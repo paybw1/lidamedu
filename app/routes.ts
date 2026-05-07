@@ -59,6 +59,12 @@ export default [
         "features/laws/api/admin-edit-article.tsx",
       ),
     ]),
+    ...prefix("/problems", [
+      route(
+        "/upload-explanation-image",
+        "features/problems/api/upload-explanation-image.tsx",
+      ),
+    ]),
   ]),
 
   // Pages with top navigation + footer
@@ -166,6 +172,11 @@ export default [
       ]),
       ...prefix("/admin/problems", [
         index("features/problems/screens/admin-problems-list.tsx"),
+        route("/by-system", "features/problems/screens/admin-problems-by-system.tsx"),
+        route(
+          "/system/:nodeId",
+          "features/problems/screens/admin-problems-system-edit.tsx",
+        ),
         route("/:problemId", "features/problems/screens/admin-problem-edit.tsx"),
       ]),
 
