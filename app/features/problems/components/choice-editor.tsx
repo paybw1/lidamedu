@@ -5,8 +5,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
+import { ExplanationEditor } from "~/features/problems/components/explanation-editor";
 import {
   CHOICE_TYPE_COLOR,
   CHOICE_TYPE_LABEL,
@@ -275,20 +275,22 @@ export function ChoiceEditor({
         </div>
       </div>
 
-      <Textarea
+      <ExplanationEditor
+        compact
         name={`choice_${choice.choiceIndex}_body`}
         defaultValue={choice.bodyMd}
         rows={2}
+        placeholder="지문(보기) 본문"
         className={fontCls}
       />
 
-      <Textarea
+      <ExplanationEditor
+        compact
         name={`choice_${choice.choiceIndex}_explanation`}
         value={explanation}
-        onChange={(e) => setExplanation(e.target.value)}
+        onChange={setExplanation}
         rows={2}
         placeholder="해설 (답안 hwp 에서 자동 분류 + 운영자 보강)"
-        className="text-muted-foreground text-xs"
       />
 
       {/* 조문번호 / 판례번호.

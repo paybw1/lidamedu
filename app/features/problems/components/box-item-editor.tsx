@@ -5,8 +5,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
+import { ExplanationEditor } from "~/features/problems/components/explanation-editor";
 import {
   CHOICE_TYPE_COLOR,
   CHOICE_TYPE_LABEL,
@@ -242,21 +242,23 @@ export function BoxItemEditor({
         </div>
       </div>
 
-      <Textarea
+      <ExplanationEditor
+        compact
         name={`${prefix}_body`}
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         rows={2}
+        placeholder="박스 항목 본문"
         className={fontCls}
       />
 
-      <Textarea
+      <ExplanationEditor
+        compact
         name={`${prefix}_explanation`}
         value={explanation}
-        onChange={(e) => setExplanation(e.target.value)}
+        onChange={setExplanation}
         rows={2}
         placeholder="해설"
-        className="text-muted-foreground text-xs"
       />
 
       {type === "precedent" ? (

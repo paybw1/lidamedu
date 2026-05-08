@@ -13,6 +13,19 @@
 /source/_converted/problems-merged.json
 /scripts/output/
 
+# 해설 이미지 파이프라인 중간 산출물 — 원본 hwpx + redraw script 에서 derive 가능
+/source/_converted/current-images/
+/source/_converted/current-images-meta.json
+/source/_converted/redrawn/
+/source/_converted/img-trimmed/
+/source/_converted/trimmed-preview/
+/source/_converted/test-300dpi/
+/source/_converted/test-aspect/
+/source/_converted/wmf-png/
+/source/_converted/wmf-png-hires/
+/source/_converted/wmf-src/
+/source/_converted/orig-image23.png
+
 # Playwright
 node_modules/
 /test-results/
