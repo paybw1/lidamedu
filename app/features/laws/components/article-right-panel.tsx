@@ -4,6 +4,7 @@ import {
   HeartIcon,
   HighlighterIcon,
   HistoryIcon,
+  ListChecksIcon,
   MessageCircleQuestionIcon,
   NotebookPenIcon,
   PaperclipIcon,
@@ -32,9 +33,19 @@ import type {
   HighlightRecord,
   MemoRecord,
 } from "~/features/annotations/labels";
+import { ArticleCommentPanel } from "~/features/laws/components/article-comment-panel";
 import { RelatedCasesList } from "~/features/laws/components/related-chips";
+import { OxQuestionsPanel } from "~/features/problems/components/ox-questions-panel";
+import { RelatedProblemsList } from "~/features/problems/components/related-problems-list";
+import type {
+  OxQuestionItem,
+  RelatedProblemItem,
+} from "~/features/problems/queries.server";
 import { RevisionHistory } from "~/features/laws/components/revision-history";
-import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
+import type {
+  ArticleComment,
+  RevisionHistoryEntry,
+} from "~/features/laws/queries.server";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
 import type {
   QnaTargetType,
@@ -90,6 +101,10 @@ export function ArticleRightPanel({
   highlights,
   qnaThreads = [],
   relatedCases,
+  relatedProblems,
+  oxQuestions,
+  comment,
+  canEditComment = false,
   subjectSlug,
   revisions,
 }: {
@@ -99,12 +114,22 @@ export function ArticleRightPanel({
   highlights: HighlightRecord[];
   qnaThreads?: QnaThreadSummary[];
   relatedCases?: RelatedCase[];
+  // problem-viewer 에서 같은 조문 다른 문제 노출용. undefined 면 탭 미표시.
+  relatedProblems?: RelatedProblemItem[];
+  // article-viewer 에서 이 조문에 연결된 OX 가능 지문 풀이용. undefined 면 placeholder 유지.
+  oxQuestions?: OxQuestionItem[];
+  // article 코멘트/평석. null = 미작성. undefined = 탭 자체 비활성 (placeholder 유지).
+  comment?: ArticleComment | null;
+  canEditComment?: boolean;
   subjectSlug?: LawSubjectSlug;
   // staff(instructor/admin) 일 때만 전달. 비어있거나 undefined 이면 탭 자체가 표시되지 않음.
   revisions?: RevisionHistoryEntry[];
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
+  const showRelatedProblems = relatedProblems !== undefined;
+  const showOxLive = oxQuestions !== undefined && subjectSlug !== undefined;
+  const showCommentLive = comment !== undefined && target.type === "article";
   const showRevisions = revisions !== undefined;
   // 본문 selection → "메모" 버튼 클릭 시 자동으로 memo 탭 활성화. (snippet 자동 fill 은 MemoList 가 처리)
   const [activeTab, setActiveTab] = useState("bookmark");
@@ -155,6 +180,19 @@ export function ArticleRightPanel({
               ) : null}
             </TabsTrigger>
           ) : null}
+          {showRelatedProblems ? (
+            <TabsTrigger
+              value="related-problems"
+              className="h-7 flex-none px-2.5 text-xs"
+            >
+              <ListChecksIcon /> 유사 문제
+              {relatedProblems.length > 0 ? (
+                <span className="text-muted-foreground ml-1 tabular-nums">
+                  {relatedProblems.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ) : null}
           {qnaTargetType ? (
             <TabsTrigger value="qna" className="h-7 flex-none px-2.5 text-xs">
               <MessageCircleQuestionIcon /> Q&A
@@ -178,7 +216,34 @@ export function ArticleRightPanel({
               ) : null}
             </TabsTrigger>
           ) : null}
-          {PLACEHOLDER_TABS.map((t) => {
+          {showOxLive ? (
+            <TabsTrigger value="ox" className="h-7 flex-none px-2.5 text-xs">
+              <CheckSquareIcon /> 정오문제
+              {oxQuestions.length > 0 ? (
+                <span className="text-muted-foreground ml-1 tabular-nums">
+                  {oxQuestions.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ) : null}
+          {showCommentLive ? (
+            <TabsTrigger
+              value="comment"
+              className="h-7 flex-none px-2.5 text-xs"
+            >
+              <ScrollTextIcon /> 코멘트
+              {comment ? (
+                <span className="text-muted-foreground ml-1 tabular-nums">
+                  ●
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ) : null}
+          {PLACEHOLDER_TABS.filter(
+            (t) =>
+              !(t.value === "ox" && showOxLive) &&
+              !(t.value === "comment" && showCommentLive),
+          ).map((t) => {
             const Icon = t.icon;
             return (
               <TabsTrigger
@@ -222,6 +287,12 @@ export function ArticleRightPanel({
           </TabsContent>
         ) : null}
 
+        {showRelatedProblems ? (
+          <TabsContent value="related-problems">
+            <RelatedProblemsList items={relatedProblems} />
+          </TabsContent>
+        ) : null}
+
         {qnaTargetType ? (
           <TabsContent value="qna">
             <QnaPanel
@@ -238,7 +309,27 @@ export function ArticleRightPanel({
           </TabsContent>
         ) : null}
 
-        {PLACEHOLDER_TABS.map((t) => (
+        {showOxLive ? (
+          <TabsContent value="ox">
+            <OxQuestionsPanel items={oxQuestions} subject={subjectSlug} />
+          </TabsContent>
+        ) : null}
+
+        {showCommentLive ? (
+          <TabsContent value="comment">
+            <ArticleCommentPanel
+              articleId={target.id}
+              initial={comment}
+              canEdit={canEditComment}
+            />
+          </TabsContent>
+        ) : null}
+
+        {PLACEHOLDER_TABS.filter(
+          (t) =>
+            !(t.value === "ox" && showOxLive) &&
+            !(t.value === "comment" && showCommentLive),
+        ).map((t) => (
           <TabsContent key={t.value} value={t.value} className="space-y-2">
             <Badge variant="outline" className="font-normal">
               {t.featId}

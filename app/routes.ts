@@ -58,12 +58,18 @@ export default [
         "/admin-edit-article",
         "features/laws/api/admin-edit-article.tsx",
       ),
+      route("/article-comment", "features/laws/api/article-comment.tsx"),
     ]),
     ...prefix("/problems", [
       route(
         "/upload-explanation-image",
         "features/problems/api/upload-explanation-image.tsx",
       ),
+      route("/attempt", "features/problems/api/attempt.tsx"),
+    ]),
+    ...prefix("/study", [
+      route("/session-complete", "features/study/api/session-complete.tsx"),
+      route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
     ]),
   ]),
 
@@ -106,6 +112,7 @@ export default [
 
       route("/goals", "features/goals/screens/goals.tsx"),
       route("/study/blanks", "features/blanks/screens/blanks-stats.tsx"),
+      route("/study/wrong-note", "features/study/screens/wrong-note.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),
@@ -141,8 +148,24 @@ export default [
           "features/subjects/screens/case-viewer.tsx",
         ),
         route(
+          "/:subject/problems/system",
+          "features/subjects/screens/problems-system-index.tsx",
+        ),
+        route(
           "/:subject/problems/:problemId",
           "features/subjects/screens/problem-viewer.tsx",
+        ),
+        route(
+          "/:subject/quiz/setup",
+          "features/subjects/screens/quiz-setup.tsx",
+        ),
+        route(
+          "/:subject/ox",
+          "features/subjects/screens/subject-ox.tsx",
+        ),
+        route(
+          "/:subject/quiz/result/:sessionId",
+          "features/subjects/screens/quiz-result.tsx",
         ),
         ...prefix("/science", [
           route("/physics", "features/subjects/screens/science/physics.tsx"),

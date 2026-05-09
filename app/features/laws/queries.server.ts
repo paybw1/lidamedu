@@ -128,6 +128,139 @@ export async function getArticleByNumber(
   };
 }
 
+// 조문 코멘트/평석 — staff 작성, 학생 read-only.
+export interface ArticleComment {
+  bodyMd: string;
+  authorId: string | null;
+  updatedAt: string;
+}
+
+export async function getArticleComment(
+  client: SupabaseClient<Database>,
+  articleId: string,
+): Promise<ArticleComment | null> {
+  const { data, error } = await client
+    .from("article_comments")
+    .select("body_md, author_id, updated_at")
+    .eq("article_id", articleId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    bodyMd: data.body_md,
+    authorId: data.author_id,
+    updatedAt: data.updated_at,
+  };
+}
+
+export async function upsertArticleComment(
+  client: SupabaseClient<Database>,
+  articleId: string,
+  authorId: string,
+  bodyMd: string,
+): Promise<void> {
+  const { error } = await client.from("article_comments").upsert(
+    {
+      article_id: articleId,
+      body_md: bodyMd,
+      author_id: authorId,
+    },
+    { onConflict: "article_id" },
+  );
+  if (error) throw error;
+}
+
+export async function deleteArticleComment(
+  client: SupabaseClient<Database>,
+  articleId: string,
+): Promise<void> {
+  const { error } = await client
+    .from("article_comments")
+    .delete()
+    .eq("article_id", articleId);
+  if (error) throw error;
+}
+
+// 최근 published 법 개정 (대시보드 위젯). 모든 과목 통합.
+export interface RecentRevisionItem {
+  lawRevisionId: string;
+  lawId: string;
+  lawCode: string;
+  lawName: string;
+  revisionNumber: string | null;
+  promulgatedAt: string | null;
+  effectiveDate: string | null;
+  publishedAt: string | null;
+  // 이 개정에 포함된 article_revisions 개수 (영향 조문 수).
+  affectedArticleCount: number;
+  // 본인이 즐겨찾기한 조문 중 영향받은 개수 (≥1 이면 강조).
+  myBookmarkedAffectedCount: number;
+}
+
+export async function listRecentLawRevisions(
+  client: SupabaseClient<Database>,
+  limit = 5,
+  userId?: string,
+): Promise<RecentRevisionItem[]> {
+  const { data, error } = await client
+    .from("law_revisions")
+    .select(
+      "law_revision_id, law_id, revision_number, promulgated_at, effective_date, published_at, laws!inner(law_code, display_label, short_label)",
+    )
+    .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  // 영향 조문 수 + 본인 즐겨찾기 매칭.
+  const lawRevisionIds = rows.map((r) => r.law_revision_id);
+  const { data: arRows } = await client
+    .from("article_revisions")
+    .select("law_revision_id, article_id")
+    .in("law_revision_id", lawRevisionIds);
+  const articlesByRevision = new Map<string, string[]>();
+  for (const r of arRows ?? []) {
+    if (!r.law_revision_id) continue;
+    const arr = articlesByRevision.get(r.law_revision_id) ?? [];
+    arr.push(r.article_id);
+    articlesByRevision.set(r.law_revision_id, arr);
+  }
+
+  // 본인 즐겨찾기 조문 (전체) 한 번만 조회.
+  let myBookmarkedArticles = new Set<string>();
+  if (userId) {
+    const { data: bms } = await client
+      .from("user_bookmarks")
+      .select("target_id")
+      .eq("user_id", userId)
+      .eq("target_type", "article")
+      .is("deleted_at", null)
+      .gt("star_level", 0);
+    for (const b of bms ?? []) myBookmarkedArticles.add(b.target_id);
+  }
+
+  return rows.map((r) => {
+    const affected = articlesByRevision.get(r.law_revision_id) ?? [];
+    const myMatched = affected.filter((id) =>
+      myBookmarkedArticles.has(id),
+    ).length;
+    return {
+      lawRevisionId: r.law_revision_id,
+      lawId: r.law_id,
+      lawCode: r.laws.law_code,
+      lawName: r.laws.short_label ?? r.laws.display_label,
+      revisionNumber: r.revision_number,
+      promulgatedAt: r.promulgated_at,
+      effectiveDate: r.effective_date,
+      publishedAt: r.published_at,
+      affectedArticleCount: affected.length,
+      myBookmarkedAffectedCount: myMatched,
+    };
+  });
+}
+
 export async function getLatestPublishedRevisionDate(
   client: SupabaseClient<Database>,
   lawId: string,

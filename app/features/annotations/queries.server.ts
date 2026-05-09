@@ -199,6 +199,150 @@ export async function listHighlightsByArticleIds(
   return out;
 }
 
+// 대시보드 즐겨찾기 빠른 접근 위젯용 — star_level 높은 순.
+export interface QuickBookmarkItem {
+  targetType: AnnotationTargetType;
+  targetId: string;
+  starLevel: number;
+  // type 별 표시 라벨 + href.
+  label: string;
+  href: string;
+  subject: string | null;
+}
+
+export async function listTopBookmarks(
+  client: SupabaseClient<Database>,
+  userId: string,
+  limit = 8,
+): Promise<QuickBookmarkItem[]> {
+  const { data: rows, error } = await client
+    .from("user_bookmarks")
+    .select("target_type, target_id, star_level")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .gt("star_level", 0)
+    .order("star_level", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const list = rows ?? [];
+  if (list.length === 0) return [];
+
+  const articleIds = list
+    .filter((r) => r.target_type === "article")
+    .map((r) => r.target_id);
+  const caseIds = list
+    .filter((r) => r.target_type === "case")
+    .map((r) => r.target_id);
+  const problemIds = list
+    .filter((r) => r.target_type === "problem")
+    .map((r) => r.target_id);
+
+  const { parseLtreePath, toSlug } = await import(
+    "~/features/laws/lib/identifier"
+  );
+  const articleMap = new Map<
+    string,
+    { displayLabel: string; lawCode: string; pathSlug: string }
+  >();
+  if (articleIds.length > 0) {
+    const { data: rs } = await client
+      .from("articles")
+      .select("article_id, display_label, path, laws!inner(law_code)")
+      .in("article_id", articleIds);
+    for (const r of rs ?? []) {
+      const ident = parseLtreePath(String(r.path));
+      if (!ident) continue;
+      articleMap.set(r.article_id, {
+        displayLabel: r.display_label,
+        lawCode: r.laws.law_code,
+        pathSlug: toSlug(ident),
+      });
+    }
+  }
+
+  const caseMap = new Map<string, { caseNumber: string; lawCode: string }>();
+  if (caseIds.length > 0) {
+    const { data: rs } = await client
+      .from("cases")
+      .select("case_id, case_number, subject_laws")
+      .in("case_id", caseIds);
+    for (const r of rs ?? []) {
+      caseMap.set(r.case_id, {
+        caseNumber: r.case_number,
+        lawCode: (r.subject_laws as string[] | null)?.[0] ?? "patent",
+      });
+    }
+  }
+
+  const problemMap = new Map<
+    string,
+    { year: number | null; problemNumber: number | null; lawCode: string }
+  >();
+  if (problemIds.length > 0) {
+    const { data: rs } = await client
+      .from("problems")
+      .select("problem_id, year, problem_number, laws!inner(law_code)")
+      .in("problem_id", problemIds);
+    for (const r of rs ?? []) {
+      problemMap.set(r.problem_id, {
+        year: r.year,
+        problemNumber: r.problem_number,
+        lawCode: r.laws.law_code,
+      });
+    }
+  }
+
+  return list.flatMap((r): QuickBookmarkItem[] => {
+    if (r.target_type === "article") {
+      const a = articleMap.get(r.target_id);
+      if (!a) return [];
+      return [
+        {
+          targetType: "article",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          label: a.displayLabel,
+          href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
+          subject: a.lawCode,
+        },
+      ];
+    }
+    if (r.target_type === "case") {
+      const c = caseMap.get(r.target_id);
+      if (!c) return [];
+      return [
+        {
+          targetType: "case",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          label: c.caseNumber,
+          href: `/subjects/${c.lawCode}/cases/${r.target_id}`,
+          subject: c.lawCode,
+        },
+      ];
+    }
+    if (r.target_type === "problem") {
+      const p = problemMap.get(r.target_id);
+      if (!p) return [];
+      const yearLabel = p.year
+        ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+        : "문제";
+      return [
+        {
+          targetType: "problem",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          label: yearLabel,
+          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+          subject: p.lawCode,
+        },
+      ];
+    }
+    return [];
+  });
+}
+
 export async function getBookmark(
   client: SupabaseClient<Database>,
   userId: string,

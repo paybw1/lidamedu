@@ -1,4 +1,9 @@
-import { BookOpenIcon, ClockIcon, StarIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  ClockIcon,
+  CompassIcon,
+  StarIcon,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -9,7 +14,10 @@ import type {
   ArticleNode,
   SystematicNode,
 } from "~/features/laws/queries.server";
-import type { SubjectProgress } from "~/features/study/queries.server";
+import type {
+  RecommendedArticleItem,
+  SubjectProgress,
+} from "~/features/study/queries.server";
 
 import { ArticleTree } from "../article-tree";
 import { SystematicTree } from "../systematic-tree";
@@ -23,6 +31,7 @@ export function ArticlesTab({
   progress,
   bookmarkLevels,
   annotationCounts,
+  recommendedArticles,
 }: {
   subject: LawSubjectMeta;
   articles: ArticleNode[];
@@ -30,6 +39,7 @@ export function ArticlesTab({
   progress: SubjectProgress | null;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
+  recommendedArticles: RecommendedArticleItem[];
 }) {
   const { axis } = useSortAxis();
   const articleCount = articles.filter((a) => a.level === "article").length;
@@ -108,15 +118,41 @@ export function ArticlesTab({
           <Card className="py-4">
             <CardHeader className="px-4 pb-1">
               <div className="flex items-center gap-2">
-                <StarIcon className="text-primary size-4" />
+                <CompassIcon className="text-primary size-4" />
                 <p className="text-sm font-semibold">미열람 권장</p>
               </div>
             </CardHeader>
-            <CardContent className="px-4 pb-1">
-              <p className="text-muted-foreground text-sm">
-                중요도 ★ 높은 미열람 조문이 우선 노출됩니다.
+            <CardContent
+              className="px-4 pb-1"
+              data-testid="recommended-articles"
+            >
+              {recommendedArticles.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  모든 조문을 한 번씩 열어봤습니다 🎉
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {recommendedArticles.map((a) => (
+                    <Link
+                      key={a.articleId}
+                      to={`/subjects/${subject.slug}/articles/${a.pathSlug}`}
+                      viewTransition
+                      className="bg-muted hover:bg-accent inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                      title={a.displayLabel}
+                    >
+                      {a.importance >= 2 ? (
+                        <StarIcon className="size-3 text-amber-500" />
+                      ) : null}
+                      <span className="max-w-[140px] truncate">
+                        {a.displayLabel}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+              <p className="text-muted-foreground mt-1 text-xs">
+                중요도 ★ 높은 순. 클릭 시 조문 viewer 진입.
               </p>
-              <p className="text-muted-foreground mt-1 text-xs">feat-4-A-104</p>
             </CardContent>
           </Card>
         </div>

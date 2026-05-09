@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import { parseLtreePath, toSlug } from "~/features/laws/lib/identifier";
 
 export type {
   ProblemExamRound,
@@ -39,6 +40,8 @@ export interface ListProblemsFilters {
   polarity?: ProblemPolarity;
   scope?: ProblemScope;
   year?: number;
+  // 본문 ILIKE 부분문자열 검색 (Korean/한자 혼재 → FTS 대신 단순 매칭).
+  search?: string;
   // 특정 조문에 연결된 문제만.
   primaryArticleId?: string;
   // 분류되지 않은 choice 가 1개 이상인 문제만 (운영자 보강 대기열).
@@ -77,6 +80,13 @@ export async function listProblemsBySubject(
   if (filters.polarity) query = query.eq("polarity", filters.polarity);
   if (filters.scope) query = query.eq("scope", filters.scope);
   if (filters.year != null) query = query.eq("year", filters.year);
+  if (filters.search && filters.search.trim().length > 0) {
+    // PostgREST .ilike() — % 와 _ 만 와일드카드로 escape 후 양쪽 % 추가.
+    const safe = filters.search
+      .trim()
+      .replace(/[%_]/g, (m) => `\\${m}`);
+    query = query.ilike("body_md", `%${safe}%`);
+  }
   if (filters.primaryArticleId)
     query = query.eq("primary_article_id", filters.primaryArticleId);
   if (filters.reviewStatus === "reviewed") query = query.not("reviewed_at", "is", null);
@@ -263,6 +273,295 @@ function compareArticlePath(a: string, b: string): number {
     }
   }
   return ka.length - kb.length;
+}
+
+// 최근 등록된 객관식 문제 — /latest/mcq 통합 피드.
+export interface RecentProblemItem {
+  problemId: string;
+  bodySnippet: string;
+  format: string;
+  origin: string;
+  year: number | null;
+  problemNumber: number | null;
+  createdAt: string;
+  lawCode: string;
+}
+
+export async function listRecentProblems(
+  client: SupabaseClient<Database>,
+  limit = 50,
+  formatFilter: "mcq" | "subjective" = "mcq",
+): Promise<RecentProblemItem[]> {
+  const formats: ProblemFormat[] =
+    formatFilter === "mcq"
+      ? ["mc_short", "mc_box", "mc_case", "ox", "blank"]
+      : ["subjective"];
+  const { data, error } = await client
+    .from("problems")
+    .select(
+      "problem_id, body_md, format, origin, year, problem_number, created_at, laws!inner(law_code)",
+    )
+    .in("format", formats)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    problemId: r.problem_id,
+    bodySnippet:
+      (r.body_md ?? "").length > 100
+        ? `${(r.body_md ?? "").slice(0, 100)}…`
+        : r.body_md ?? "",
+    format: r.format,
+    origin: r.origin,
+    year: r.year,
+    problemNumber: r.problem_number,
+    createdAt: r.created_at,
+    lawCode: r.laws.law_code,
+  }));
+}
+
+// 정오문제 — 특정 조문에 연결된 OX 가능 지문 (객관식 choice + box-item 통합).
+// article-viewer 우측 "정오문제" 탭에서 무작위 풀이용.
+export type OxTruth = "O" | "X";
+
+export interface OxQuestionItem {
+  // PK 후보 — choice 또는 box-item 단위.
+  refType: "choice" | "box";
+  refId: string;
+  problemId: string;
+  bodyMd: string;
+  oxTruth: OxTruth;
+  explanationMd: string | null;
+  // 출제 메타.
+  year: number | null;
+  problemNumber: number | null;
+  origin: string;
+}
+
+// 과목 전체 OX 가능 지문 — /subjects/:subject/ox 풀이용. 셔플은 클라에서.
+export async function getOxQuestionsForSubject(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  limit = 200,
+): Promise<OxQuestionItem[]> {
+  const { data: law } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (!law) return [];
+
+  const out: OxQuestionItem[] = [];
+
+  const { data: choiceRows } = await client
+    .from("problem_choices")
+    .select(
+      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at, law_id)",
+    )
+    .eq("problems.law_id", law.law_id)
+    .eq("ox_ineligible", false)
+    .not("ox_truth", "is", null)
+    .limit(limit);
+  for (const r of choiceRows ?? []) {
+    if (r.problems.deleted_at) continue;
+    out.push({
+      refType: "choice",
+      refId: r.choice_id,
+      problemId: r.problem_id,
+      bodyMd: r.body_md,
+      oxTruth: r.ox_truth as OxTruth,
+      explanationMd: r.explanation_md,
+      year: r.problems.year,
+      problemNumber: r.problems.problem_number,
+      origin: r.problems.origin,
+    });
+  }
+
+  return out;
+}
+
+export async function getOxQuestionsForArticle(
+  client: SupabaseClient<Database>,
+  articleId: string,
+  limit = 50,
+): Promise<OxQuestionItem[]> {
+  const out: OxQuestionItem[] = [];
+
+  // 1. problem_choices.
+  const { data: choiceRows } = await client
+    .from("problem_choices")
+    .select(
+      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+    )
+    .eq("related_article_id", articleId)
+    .eq("ox_ineligible", false)
+    .not("ox_truth", "is", null)
+    .limit(limit);
+  for (const r of choiceRows ?? []) {
+    if (r.problems.deleted_at) continue;
+    out.push({
+      refType: "choice",
+      refId: r.choice_id,
+      problemId: r.problem_id,
+      bodyMd: r.body_md,
+      oxTruth: r.ox_truth as OxTruth,
+      explanationMd: r.explanation_md,
+      year: r.problems.year,
+      problemNumber: r.problems.problem_number,
+      origin: r.problems.origin,
+    });
+  }
+
+  // 2. problem_box_items (박스형 사례 지문).
+  const { data: boxRows } = await client
+    .from("problem_box_items")
+    .select(
+      "box_item_id, problem_id, body_md, ox_truth, explanation_md, marker, problems!inner(year, problem_number, origin, deleted_at)",
+    )
+    .eq("related_article_id", articleId)
+    .eq("ox_ineligible", false)
+    .not("ox_truth", "is", null)
+    .limit(limit);
+  for (const r of boxRows ?? []) {
+    if (r.problems.deleted_at) continue;
+    out.push({
+      refType: "box",
+      refId: r.box_item_id,
+      problemId: r.problem_id,
+      bodyMd: r.marker ? `[${r.marker}] ${r.body_md}` : r.body_md,
+      oxTruth: r.ox_truth as OxTruth,
+      explanationMd: r.explanation_md,
+      year: r.problems.year,
+      problemNumber: r.problems.problem_number,
+      origin: r.problems.origin,
+    });
+  }
+
+  // 정렬: 연도 DESC, 문항 ASC. 같은 연도 내에서는 안정적 순서로.
+  out.sort((a, b) => {
+    const ya = a.year ?? 0;
+    const yb = b.year ?? 0;
+    if (ya !== yb) return yb - ya;
+    return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+  });
+
+  return out.slice(0, limit);
+}
+
+// 해설 — 지문별 "관련 조문 / 관련 판례" 링크 노출용. choice·box-item 들이 가리키는
+// article/case ID 를 bulk lookup → article path + display label / case 번호 + 제목.
+export interface ChoiceLinkRefs {
+  articles: Map<
+    string,
+    { articleId: string; lawCode: string; pathSlug: string; displayLabel: string }
+  >;
+  cases: Map<string, { caseId: string; lawCode: string; caseNumber: string; caseTitle: string }>;
+}
+
+export async function getChoiceLinkRefs(
+  client: SupabaseClient<Database>,
+  articleIds: string[],
+  caseIds: string[],
+): Promise<ChoiceLinkRefs> {
+  const articleMap = new Map<
+    string,
+    { articleId: string; lawCode: string; pathSlug: string; displayLabel: string }
+  >();
+  const caseMap = new Map<
+    string,
+    { caseId: string; lawCode: string; caseNumber: string; caseTitle: string }
+  >();
+
+  if (articleIds.length > 0) {
+    const unique = Array.from(new Set(articleIds));
+    const { data: rows } = await client
+      .from("articles")
+      .select(
+        "article_id, display_label, path, laws!inner(law_code)",
+      )
+      .in("article_id", unique);
+    for (const r of rows ?? []) {
+      const ident = parseLtreePath(String(r.path));
+      if (!ident) continue;
+      articleMap.set(r.article_id, {
+        articleId: r.article_id,
+        lawCode: r.laws.law_code,
+        pathSlug: toSlug(ident),
+        displayLabel: r.display_label,
+      });
+    }
+  }
+
+  if (caseIds.length > 0) {
+    const unique = Array.from(new Set(caseIds));
+    const { data: rows } = await client
+      .from("cases")
+      .select("case_id, case_number, case_title, subject_laws")
+      .in("case_id", unique)
+      .is("deleted_at", null);
+    for (const r of rows ?? []) {
+      caseMap.set(r.case_id, {
+        caseId: r.case_id,
+        lawCode: (r.subject_laws as string[] | null)?.[0] ?? "patent",
+        caseNumber: r.case_number,
+        caseTitle: r.case_title,
+      });
+    }
+  }
+
+  return { articles: articleMap, cases: caseMap };
+}
+
+// 같은 primary_article 의 다른 문제 — problem-viewer 우측 "유사 문제" 탭.
+export interface RelatedProblemItem {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  bodySnippet: string;
+  format: string;
+  origin: string;
+  lawCode: string;
+}
+
+export async function getRelatedProblems(
+  client: SupabaseClient<Database>,
+  problemId: string,
+  limit = 8,
+): Promise<RelatedProblemItem[]> {
+  // 1. self problem 의 primary_article_id, law_id 조회.
+  const { data: self } = await client
+    .from("problems")
+    .select("primary_article_id, law_id")
+    .eq("problem_id", problemId)
+    .maybeSingle();
+  if (!self?.primary_article_id) return [];
+
+  // 2. 같은 article 다른 문제 (deleted 제외, 자기 자신 제외).
+  const { data: rows, error } = await client
+    .from("problems")
+    .select(
+      "problem_id, year, problem_number, body_md, format, origin, laws!inner(law_code)",
+    )
+    .eq("primary_article_id", self.primary_article_id)
+    .neq("problem_id", problemId)
+    .is("deleted_at", null)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("problem_number", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return (rows ?? []).map((r) => ({
+    problemId: r.problem_id,
+    year: r.year,
+    problemNumber: r.problem_number,
+    bodySnippet:
+      (r.body_md ?? "").length > 100
+        ? `${(r.body_md ?? "").slice(0, 100)}…`
+        : r.body_md ?? "",
+    format: r.format,
+    origin: r.origin,
+    lawCode: r.laws.law_code,
+  }));
 }
 
 export async function getProblemById(
@@ -629,6 +928,94 @@ export async function getSystematicNodeProblems(
     node: { nodeId: node.node_id, path: nodePath, displayLabel: node.display_label },
     articleGroups,
     emptyArticles,
+  };
+}
+
+export interface NodeProblemSequence {
+  node: { nodeId: string; path: string; displayLabel: string };
+  // 조문 순서 → 문제 순서대로 평탄화된 ID 목록 + 라벨.
+  problems: Array<{
+    problemId: string;
+    articleId: string;
+    articleLabel: string;
+    problemNumber: number | null;
+    year: number | null;
+  }>;
+}
+
+// 노드 runner용 — 노드 subtree 안의 모든 문제 ID 를 조문 순서대로 + (year DESC, problem_number ASC) 로 반환.
+// 무거운 ProblemDetail 은 fetch 하지 않고 prev/next nav 에 필요한 최소 정보만.
+export async function getSystematicNodeProblemSequence(
+  client: SupabaseClient<Database>,
+  nodeId: string,
+): Promise<NodeProblemSequence | null> {
+  const { data: node } = await client
+    .from("systematic_nodes")
+    .select("node_id, path, display_label, law_code")
+    .eq("node_id", nodeId)
+    .maybeSingle();
+  if (!node) return null;
+
+  const { data: subtreeNodes } = await client
+    .from("systematic_nodes")
+    .select("node_id, path")
+    .eq("law_code", node.law_code);
+  const nodePath = String(node.path);
+  const subtreeIds = (subtreeNodes ?? [])
+    .filter(
+      (n) => String(n.path) === nodePath || String(n.path).startsWith(nodePath + "."),
+    )
+    .map((n) => n.node_id);
+
+  const { data: links } = await client
+    .from("article_systematic_links")
+    .select("article_id")
+    .in("node_id", subtreeIds);
+  const articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
+  if (articleIds.length === 0) {
+    return {
+      node: { nodeId: node.node_id, path: nodePath, displayLabel: node.display_label },
+      problems: [],
+    };
+  }
+
+  const { data: articles } = await client
+    .from("articles")
+    .select("article_id, display_label, path")
+    .in("article_id", articleIds);
+  const sortedArticles = [...(articles ?? [])].sort((a, b) =>
+    compareArticlePath(String(a.path), String(b.path)),
+  );
+
+  const { data: problemRows } = await client
+    .from("problems")
+    .select("problem_id, primary_article_id, year, problem_number")
+    .in("primary_article_id", articleIds)
+    .is("deleted_at", null);
+  const list = problemRows ?? [];
+
+  const problems: NodeProblemSequence["problems"] = [];
+  for (const a of sortedArticles) {
+    const inArticle = list
+      .filter((p) => p.primary_article_id === a.article_id)
+      .sort((x, y) => {
+        if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
+        return (x.problem_number ?? 0) - (y.problem_number ?? 0);
+      });
+    for (const p of inArticle) {
+      problems.push({
+        problemId: p.problem_id,
+        articleId: a.article_id,
+        articleLabel: a.display_label,
+        problemNumber: p.problem_number,
+        year: p.year,
+      });
+    }
+  }
+
+  return {
+    node: { nodeId: node.node_id, path: nodePath, displayLabel: node.display_label },
+    problems,
   };
 }
 

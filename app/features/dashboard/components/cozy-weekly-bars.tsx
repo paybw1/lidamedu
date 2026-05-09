@@ -1,11 +1,16 @@
 import { COZY_INK_SOFT, type CozyPalette } from "~/core/lib/cozy-tokens";
 
+type WeekDay = { d: string; h: number; today: boolean };
+
 type Props = {
   palette: CozyPalette;
   dense?: boolean;
+  // 월~일 7일치 (시간 단위, 0 가능). 없으면 synthetic.
+  days?: ReadonlyArray<WeekDay>;
+  weeklyGoalHours?: number;
 };
 
-const DAYS = [
+const FALLBACK_DAYS: WeekDay[] = [
   { d: "월", h: 3.2, today: false },
   { d: "화", h: 4.1, today: false },
   { d: "수", h: 2.6, today: false },
@@ -15,11 +20,17 @@ const DAYS = [
   { d: "일", h: 0, today: false },
 ];
 
-const WEEKLY_GOAL = 25;
-const MAX = 5;
+export default function CozyWeeklyBars({
+  palette,
+  dense = false,
+  days,
+  weeklyGoalHours = 25,
+}: Props) {
+  const items = days ?? FALLBACK_DAYS;
+  const total = items.reduce((s, d) => s + d.h, 0);
+  // 최대 막대 높이 — 가장 긴 날 기준 (최소 5h 보장 → 짧은 막대도 보이도록).
+  const max = Math.max(5, ...items.map((d) => d.h));
 
-export default function CozyWeeklyBars({ palette, dense = false }: Props) {
-  const total = DAYS.reduce((s, d) => s + d.h, 0);
   return (
     <div>
       <div
@@ -37,11 +48,12 @@ export default function CozyWeeklyBars({ palette, dense = false }: Props) {
             fontVariantNumeric: "tabular-nums",
             letterSpacing: "-0.02em",
           }}
+          data-testid="weekly-total-hours"
         >
           {total.toFixed(1)}h
         </span>
         <span style={{ fontSize: 11, color: COZY_INK_SOFT }}>
-          / {WEEKLY_GOAL}h
+          / {weeklyGoalHours}h
         </span>
       </div>
       <div
@@ -52,9 +64,9 @@ export default function CozyWeeklyBars({ palette, dense = false }: Props) {
           height: dense ? 90 : 110,
         }}
       >
-        {DAYS.map((d) => (
+        {items.map((d, i) => (
           <div
-            key={d.d}
+            key={i}
             style={{
               flex: 1,
               display: "flex",
@@ -75,7 +87,7 @@ export default function CozyWeeklyBars({ palette, dense = false }: Props) {
               <div
                 style={{
                   width: "100%",
-                  height: `${(d.h / MAX) * 100}%`,
+                  height: `${(d.h / max) * 100}%`,
                   minHeight: d.h > 0 ? 4 : 0,
                   borderRadius: 5,
                   background: d.today

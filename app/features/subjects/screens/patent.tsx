@@ -23,6 +23,11 @@ export default function SubjectPatent({ loaderData }: Route.ComponentProps) {
       recentRevisionDate={loaderData.recentRevisionDate}
       bookmarkLevels={loaderData.bookmarkLevels}
       annotationCounts={loaderData.annotationCounts}
+      problemYears={loaderData.problemYears}
+      problemFilters={loaderData.problemFilters}
+      problemStats={loaderData.problemStats}
+      problemAggStats={loaderData.problemAggStats}
+      recommendedArticles={loaderData.recommendedArticles}
     />
   );
 }

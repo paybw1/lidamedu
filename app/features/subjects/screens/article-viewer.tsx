@@ -47,6 +47,7 @@ import {
 } from "~/features/laws/lib/identifier";
 import {
   getArticleByNumber,
+  getArticleComment,
   getArticleSkeleton,
   getLawByCode,
   getStaffRole,
@@ -54,6 +55,7 @@ import {
   listArticleRevisionHistory,
   type RevisionHistoryEntry,
 } from "~/features/laws/queries.server";
+import { getOxQuestionsForArticle } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
@@ -129,6 +131,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaThreads,
     blankSets,
     staffRole,
+    oxQuestions,
+    articleComment,
   ] = await Promise.all([
     getRelatedCasesByArticle(client, article.articleId),
     getBookmark(client, user.id, "article", article.articleId),
@@ -139,6 +143,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listThreadsForTarget(client, "article", article.articleId, 20),
     listBlankSetsByArticle(client, article.articleId),
     getStaffRole(client, user.id),
+    getOxQuestionsForArticle(client, article.articleId, 50),
+    getArticleComment(client, article.articleId),
   ]);
 
   // 개정 이력은 staff (instructor/admin) 만 조회 — 학생에게는 노출 안 함.
@@ -191,6 +197,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankSet,
     staffRole,
     revisions,
+    oxQuestions,
+    articleComment,
   };
 }
 
@@ -225,6 +233,8 @@ function ArticleViewerInner({
     blankSet,
     staffRole,
     revisions,
+    oxQuestions,
+    articleComment,
   } = loaderData;
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
@@ -653,6 +663,9 @@ function ArticleViewerInner({
                 highlights={highlights}
                 qnaThreads={qnaThreads}
                 relatedCases={relatedCases}
+                oxQuestions={oxQuestions}
+                comment={articleComment}
+                canEditComment={staffRole !== null}
                 subjectSlug={subject.slug}
                 revisions={revisions ?? undefined}
               />

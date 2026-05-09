@@ -22,7 +22,13 @@ import type {
 import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
 import type { CaseListItem } from "~/features/cases/queries.server";
 import type { ProblemListItem } from "~/features/problems/queries.server";
-import type { SubjectProgress } from "~/features/study/queries.server";
+import type { ProblemFiltersApplied } from "../lib/loader.server";
+import type { ProblemAggregateStats } from "~/features/study/lib/difficulty";
+import type {
+  RecommendedArticleItem,
+  SubjectProgress,
+  UserProblemStats,
+} from "~/features/study/queries.server";
 
 import {
   DEFAULT_SUBJECT_TAB,
@@ -47,6 +53,11 @@ interface SubjectHubProps {
   recentRevisionDate?: string | null;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
+  problemYears?: number[];
+  problemFilters?: ProblemFiltersApplied;
+  problemStats?: UserProblemStats | null;
+  problemAggStats?: Record<string, ProblemAggregateStats>;
+  recommendedArticles?: RecommendedArticleItem[];
 }
 
 export function SubjectHub(props: SubjectHubProps) {
@@ -68,6 +79,11 @@ function SubjectHubInner({
   recentRevisionDate,
   bookmarkLevels,
   annotationCounts,
+  problemYears,
+  problemFilters,
+  problemStats,
+  problemAggStats,
+  recommendedArticles,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -103,6 +119,11 @@ function SubjectHubInner({
         subject={subject}
         progressPct={progress?.pctViewed}
         recentRevisionDate={recentRevisionDate}
+        articleCount={
+          (articles ?? []).filter((a) => a.level === "article").length
+        }
+        caseCount={(cases ?? []).length}
+        problemCount={(problems ?? []).length}
       />
 
       <Tabs
@@ -130,6 +151,7 @@ function SubjectHubInner({
             progress={progress ?? null}
             bookmarkLevels={bookmarkLevels}
             annotationCounts={annotationCounts}
+            recommendedArticles={recommendedArticles ?? []}
           />
         </TabsContent>
         <TabsContent value="cases">
@@ -140,7 +162,14 @@ function SubjectHubInner({
           />
         </TabsContent>
         <TabsContent value="problems">
-          <ProblemsTab subject={subject} problems={problems ?? []} />
+          <ProblemsTab
+            subject={subject}
+            problems={problems ?? []}
+            availableYears={problemYears ?? []}
+            appliedFilters={problemFilters ?? {}}
+            stats={problemStats ?? null}
+            aggStats={problemAggStats ?? {}}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -151,10 +180,16 @@ function SubjectHeader({
   subject,
   progressPct,
   recentRevisionDate,
+  articleCount,
+  caseCount,
+  problemCount,
 }: {
   subject: LawSubjectMeta;
   progressPct?: number;
   recentRevisionDate?: string | null;
+  articleCount: number;
+  caseCount: number;
+  problemCount: number;
 }) {
   return (
     <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -175,6 +210,20 @@ function SubjectHeader({
         {subject.description ? (
           <p className="text-muted-foreground text-sm">{subject.description}</p>
         ) : null}
+        <div
+          className="flex flex-wrap items-center gap-1.5 text-xs"
+          data-testid="subject-kpi"
+        >
+          <Badge variant="outline" className="gap-1 tabular-nums">
+            <BookmarkIcon className="size-3" /> 조문 {articleCount.toLocaleString("ko-KR")}
+          </Badge>
+          <Badge variant="outline" className="gap-1 tabular-nums">
+            <GavelIcon className="size-3" /> 판례 {caseCount.toLocaleString("ko-KR")}
+          </Badge>
+          <Badge variant="outline" className="gap-1 tabular-nums">
+            <ListChecksIcon className="size-3" /> 문제 {problemCount.toLocaleString("ko-KR")}
+          </Badge>
+        </div>
         <ProgressLine pct={progressPct} />
       </div>
       <SortAxisToggle />

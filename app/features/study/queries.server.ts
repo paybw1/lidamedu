@@ -5,6 +5,7 @@ import type {
   AnnotationTargetType,
 } from "~/features/annotations/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import { parseLtreePath, toSlug } from "~/features/laws/lib/identifier";
 
 export interface StudyScope {
   subject: LawSubjectSlug;
@@ -94,4 +95,1011 @@ export async function getSubjectProgress(
     pctViewed: pct,
     lastVisited: last,
   };
+}
+
+// 문제 시도 기록.
+export async function recordProblemAttempt(
+  client: SupabaseClient<Database>,
+  userId: string,
+  input: {
+    problemId: string;
+    selectedChoiceId: string | null;
+    selectedChoiceIndex: number | null;
+    isCorrect: boolean;
+    mode?: "study" | "exam";
+    timeSpentMs?: number | null;
+    sessionId?: string | null;
+  },
+): Promise<void> {
+  const { error } = await client.from("user_problem_attempts").insert({
+    user_id: userId,
+    problem_id: input.problemId,
+    selected_choice_id: input.selectedChoiceId,
+    selected_choice_index: input.selectedChoiceIndex,
+    is_correct: input.isCorrect,
+    mode: input.mode ?? "study",
+    time_spent_ms: input.timeSpentMs ?? null,
+    session_id: input.sessionId ?? null,
+  });
+  if (error) throw error;
+}
+
+// ---- 퀴즈 세션 ----
+
+export type QuizMode = "study" | "exam";
+export type QuizScopeType = "node" | "filter" | "wrong-note" | "free";
+
+export interface QuizSession {
+  sessionId: string;
+  mode: QuizMode;
+  lawCode: LawSubjectSlug;
+  scopeType: QuizScopeType;
+  scopePayload: Record<string, unknown>;
+  problemIds: string[];
+  timeLimitSec: number | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export async function createQuizSession(
+  client: SupabaseClient<Database>,
+  userId: string,
+  input: {
+    mode: QuizMode;
+    lawCode: LawSubjectSlug;
+    scopeType: QuizScopeType;
+    scopePayload?: Record<string, unknown>;
+    problemIds: string[];
+    timeLimitSec?: number | null;
+  },
+): Promise<string> {
+  const { data, error } = await client
+    .from("quiz_sessions")
+    .insert({
+      user_id: userId,
+      mode: input.mode,
+      law_code: input.lawCode,
+      scope_type: input.scopeType,
+      scope_payload: (input.scopePayload ?? {}) as Database["public"]["Tables"]["quiz_sessions"]["Insert"]["scope_payload"],
+      problem_ids: input.problemIds,
+      time_limit_sec: input.timeLimitSec ?? null,
+    })
+    .select("session_id")
+    .single();
+  if (error) throw error;
+  return data.session_id;
+}
+
+export async function completeQuizSession(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  const { error } = await client
+    .from("quiz_sessions")
+    .update({ completed_at: new Date().toISOString() })
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .is("completed_at", null);
+  if (error) throw error;
+}
+
+export async function getQuizSession(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<QuizSession | null> {
+  const { data, error } = await client
+    .from("quiz_sessions")
+    .select(
+      "session_id, mode, law_code, scope_type, scope_payload, problem_ids, time_limit_sec, started_at, completed_at",
+    )
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    sessionId: data.session_id,
+    mode: data.mode as QuizMode,
+    lawCode: data.law_code as LawSubjectSlug,
+    scopeType: data.scope_type as QuizScopeType,
+    scopePayload: (data.scope_payload as Record<string, unknown>) ?? {},
+    problemIds: data.problem_ids,
+    timeLimitSec: data.time_limit_sec,
+    startedAt: data.started_at,
+    completedAt: data.completed_at,
+  };
+}
+
+export interface QuizSessionResultItem {
+  problemId: string;
+  problemNumber: number | null;
+  year: number | null;
+  bodySnippet: string;
+  isCorrect: boolean | null; // null = 미응답
+  selectedChoiceIndex: number | null;
+  timeSpentMs: number | null;
+  primaryArticleLabel: string | null;
+}
+
+export interface QuizSessionResult {
+  session: QuizSession;
+  items: QuizSessionResultItem[];
+  attemptedCount: number;
+  correctCount: number;
+  totalTimeMs: number;
+}
+
+export async function getQuizSessionResult(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<QuizSessionResult | null> {
+  const session = await getQuizSession(client, userId, sessionId);
+  if (!session) return null;
+
+  // 세션 안의 모든 attempt — 동일 problem 다수 시도 시 최신 한 건만 사용.
+  const { data: attemptRows, error: aErr } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, selected_choice_index, is_correct, time_spent_ms, attempted_at",
+    )
+    .eq("user_id", userId)
+    .eq("session_id", sessionId)
+    .order("attempted_at", { ascending: false });
+  if (aErr) throw aErr;
+  const latestByProblem = new Map<
+    string,
+    {
+      isCorrect: boolean;
+      selectedChoiceIndex: number | null;
+      timeSpentMs: number | null;
+    }
+  >();
+  for (const r of attemptRows ?? []) {
+    if (!latestByProblem.has(r.problem_id)) {
+      latestByProblem.set(r.problem_id, {
+        isCorrect: r.is_correct,
+        selectedChoiceIndex: r.selected_choice_index,
+        timeSpentMs: r.time_spent_ms,
+      });
+    }
+  }
+
+  const { data: problemRows, error: pErr } = await client
+    .from("problems")
+    .select(
+      "problem_id, problem_number, year, body_md, articles!primary_article_id(display_label)",
+    )
+    .in("problem_id", session.problemIds);
+  if (pErr) throw pErr;
+  const problemById = new Map(
+    (problemRows ?? []).map((p) => [p.problem_id, p] as const),
+  );
+
+  let attemptedCount = 0;
+  let correctCount = 0;
+  let totalTimeMs = 0;
+  const items: QuizSessionResultItem[] = session.problemIds.map((pid) => {
+    const p = problemById.get(pid);
+    const att = latestByProblem.get(pid);
+    if (att) {
+      attemptedCount += 1;
+      if (att.isCorrect) correctCount += 1;
+      if (att.timeSpentMs) totalTimeMs += att.timeSpentMs;
+    }
+    const body = p?.body_md ?? "";
+    return {
+      problemId: pid,
+      problemNumber: p?.problem_number ?? null,
+      year: p?.year ?? null,
+      bodySnippet: body.length > 100 ? `${body.slice(0, 100)}…` : body,
+      isCorrect: att ? att.isCorrect : null,
+      selectedChoiceIndex: att?.selectedChoiceIndex ?? null,
+      timeSpentMs: att?.timeSpentMs ?? null,
+      primaryArticleLabel: p?.articles?.display_label ?? null,
+    };
+  });
+
+  return {
+    session,
+    items,
+    attemptedCount,
+    correctCount,
+    totalTimeMs,
+  };
+}
+
+// ---- 문제 난이도 (전체 사용자 시도 집계) ----
+// 표시용 상수/타입은 client-safe 한 ./lib/difficulty 로 분리.
+import {
+  bucketDifficulty,
+  emptyProblemAggregate,
+  MIN_ATTEMPTS_FOR_DIFFICULTY,
+  type ProblemAggregateStats,
+} from "./lib/difficulty";
+
+export type {
+  DifficultyBucket,
+  ProblemAggregateStats,
+} from "./lib/difficulty";
+
+export async function getProblemStatsBulk(
+  client: SupabaseClient<Database>,
+  problemIds: string[],
+): Promise<Map<string, ProblemAggregateStats>> {
+  const out = new Map<string, ProblemAggregateStats>();
+  if (problemIds.length === 0) return out;
+  const unique = Array.from(new Set(problemIds));
+  // PostgREST RPC URL 길이 제한 회피 — 청크.
+  const CHUNK = 200;
+  for (let i = 0; i < unique.length; i += CHUNK) {
+    const slice = unique.slice(i, i + CHUNK);
+    const { data, error } = await client.rpc("get_problem_stats", {
+      p_ids: slice,
+    });
+    if (error) throw error;
+    for (const r of data ?? []) {
+      const accuracyPct =
+        r.attempts > 0 ? Math.round((r.correct_attempts / r.attempts) * 100) : null;
+      out.set(r.problem_id, {
+        attempts: r.attempts,
+        correctAttempts: r.correct_attempts,
+        distinctUsers: r.distinct_users,
+        accuracyPct,
+        bucket:
+          r.attempts >= MIN_ATTEMPTS_FOR_DIFFICULTY && accuracyPct !== null
+            ? bucketDifficulty(accuracyPct)
+            : null,
+      });
+    }
+  }
+  return out;
+}
+
+export async function getProblemStats(
+  client: SupabaseClient<Database>,
+  problemId: string,
+): Promise<ProblemAggregateStats> {
+  const map = await getProblemStatsBulk(client, [problemId]);
+  return map.get(problemId) ?? emptyProblemAggregate();
+}
+
+// ---- 미열람 권장 조문 (subject hub Articles 탭) ----
+// 사용자가 아직 study_sessions 으로 방문하지 않은 article 중 importance 높은 순.
+
+export interface RecommendedArticleItem {
+  articleId: string;
+  pathSlug: string;
+  displayLabel: string;
+  importance: number;
+}
+
+export async function getRecommendedArticles(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCode: LawSubjectSlug,
+  limit = 6,
+): Promise<RecommendedArticleItem[]> {
+  // 1. 본인이 본 article 모음.
+  const { data: sessRows } = await client
+    .from("study_sessions")
+    .select("scope")
+    .eq("user_id", userId)
+    .limit(5000);
+  const visited = new Set<string>();
+  for (const r of sessRows ?? []) {
+    const scope = r.scope as Partial<StudyScope> | null;
+    if (
+      scope?.subject === lawCode &&
+      scope.target_type === "article" &&
+      scope.target_id
+    ) {
+      visited.add(scope.target_id);
+    }
+  }
+
+  // 2. importance 높은 순으로 articles fetch — visited 제외.
+  const { data: law } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (!law) return [];
+
+  // limit 보다 많이 가져와서 클라에서 visited 제외 후 잘라야.
+  const { data: rows } = await client
+    .from("articles")
+    .select("article_id, display_label, path, importance")
+    .eq("law_id", law.law_id)
+    .eq("level", "article")
+    .order("importance", { ascending: false, nullsFirst: false })
+    .order("path", { ascending: true })
+    .limit(limit + visited.size + 20);
+  const out: RecommendedArticleItem[] = [];
+  for (const r of rows ?? []) {
+    if (visited.has(r.article_id)) continue;
+    const ident = parseLtreePath(String(r.path));
+    if (!ident) continue;
+    out.push({
+      articleId: r.article_id,
+      pathSlug: toSlug(ident),
+      displayLabel: r.display_label,
+      importance: r.importance ?? 0,
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+// ---- 최근 학습 피드 (대시보드) ----
+// study_sessions 시간순. article/case/problem 라벨 lookup.
+
+export type ActivityType = "article" | "case" | "problem";
+
+export interface RecentActivityItem {
+  type: ActivityType;
+  targetId: string;
+  startedAt: string;
+  subject: LawSubjectSlug | null;
+  // 표시 라벨 (조문 표기 / 사건번호+제목 / 연도+문항 또는 본문 단편).
+  label: string;
+  // 클릭 이동 href.
+  href: string;
+}
+
+export async function getRecentActivity(
+  client: SupabaseClient<Database>,
+  userId: string,
+  limit = 12,
+): Promise<RecentActivityItem[]> {
+  // 1. 최근 study_sessions (target_id 가 있는 것만).
+  const { data: sessRows, error } = await client
+    .from("study_sessions")
+    .select("scope, started_at")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+
+  // dedup: 같은 (type+id) 중 최근 1개만.
+  const seen = new Set<string>();
+  type Pending = {
+    type: ActivityType;
+    targetId: string;
+    startedAt: string;
+    subject: LawSubjectSlug | null;
+  };
+  const pending: Pending[] = [];
+  for (const r of sessRows ?? []) {
+    const scope = r.scope as Partial<StudyScope> | null;
+    if (!scope?.target_id || !scope.target_type) continue;
+    if (
+      scope.target_type !== "article" &&
+      scope.target_type !== "case" &&
+      scope.target_type !== "problem"
+    )
+      continue;
+    const key = `${scope.target_type}:${scope.target_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pending.push({
+      type: scope.target_type as ActivityType,
+      targetId: scope.target_id,
+      startedAt: r.started_at,
+      subject: (scope.subject as LawSubjectSlug | undefined) ?? null,
+    });
+    if (pending.length >= limit) break;
+  }
+  if (pending.length === 0) return [];
+
+  // 2. 라벨 lookup — type 별 bulk.
+  const articleIds = pending.filter((p) => p.type === "article").map((p) => p.targetId);
+  const caseIds = pending.filter((p) => p.type === "case").map((p) => p.targetId);
+  const problemIds = pending.filter((p) => p.type === "problem").map((p) => p.targetId);
+
+  const articleMap = new Map<
+    string,
+    { displayLabel: string; lawCode: string; pathSlug: string }
+  >();
+  if (articleIds.length > 0) {
+    const { data: rows } = await client
+      .from("articles")
+      .select(
+        "article_id, display_label, path, laws!inner(law_code)",
+      )
+      .in("article_id", articleIds);
+    for (const r of rows ?? []) {
+      const ident = parseLtreePath(String(r.path));
+      if (!ident) continue;
+      articleMap.set(r.article_id, {
+        displayLabel: r.display_label,
+        lawCode: r.laws.law_code,
+        pathSlug: toSlug(ident),
+      });
+    }
+  }
+
+  const caseMap = new Map<
+    string,
+    { caseNumber: string; caseTitle: string; lawCode: string }
+  >();
+  if (caseIds.length > 0) {
+    const { data: rows } = await client
+      .from("cases")
+      .select("case_id, case_number, case_title, subject_laws")
+      .in("case_id", caseIds);
+    for (const r of rows ?? []) {
+      caseMap.set(r.case_id, {
+        caseNumber: r.case_number,
+        caseTitle: r.case_title,
+        lawCode: (r.subject_laws as string[] | null)?.[0] ?? "patent",
+      });
+    }
+  }
+
+  const problemMap = new Map<
+    string,
+    { snippet: string; year: number | null; problemNumber: number | null; lawCode: string }
+  >();
+  if (problemIds.length > 0) {
+    const { data: rows } = await client
+      .from("problems")
+      .select(
+        "problem_id, body_md, year, problem_number, laws!inner(law_code)",
+      )
+      .in("problem_id", problemIds);
+    for (const r of rows ?? []) {
+      const body = r.body_md ?? "";
+      problemMap.set(r.problem_id, {
+        snippet: body.length > 60 ? `${body.slice(0, 60)}…` : body,
+        year: r.year,
+        problemNumber: r.problem_number,
+        lawCode: r.laws.law_code,
+      });
+    }
+  }
+
+  return pending.flatMap((p): RecentActivityItem[] => {
+    if (p.type === "article") {
+      const a = articleMap.get(p.targetId);
+      if (!a) return [];
+      return [
+        {
+          type: "article",
+          targetId: p.targetId,
+          startedAt: p.startedAt,
+          subject: (a.lawCode as LawSubjectSlug) ?? p.subject,
+          label: a.displayLabel,
+          href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
+        },
+      ];
+    }
+    if (p.type === "case") {
+      const c = caseMap.get(p.targetId);
+      if (!c) return [];
+      return [
+        {
+          type: "case",
+          targetId: p.targetId,
+          startedAt: p.startedAt,
+          subject: (c.lawCode as LawSubjectSlug) ?? p.subject,
+          label: `${c.caseNumber} · ${c.caseTitle}`,
+          href: `/subjects/${c.lawCode}/cases/${p.targetId}`,
+        },
+      ];
+    }
+    const pr = problemMap.get(p.targetId);
+    if (!pr) return [];
+    const yearLabel = pr.year
+      ? `${pr.year}년${pr.problemNumber ? ` · ${pr.problemNumber}번` : ""} — `
+      : "";
+    return [
+      {
+        type: "problem",
+        targetId: p.targetId,
+        startedAt: p.startedAt,
+        subject: (pr.lawCode as LawSubjectSlug) ?? p.subject,
+        label: `${yearLabel}${pr.snippet}`,
+        href: `/subjects/${pr.lawCode}/problems/${p.targetId}`,
+      },
+    ];
+  });
+}
+
+// ---- 전체 학습 진척도 (대시보드 도넛) ----
+// 모든 과목 합산: 조문(study_sessions article 방문) · 판례(study_sessions case 방문) · 문제(시도한 distinct).
+
+export interface OverallProgress {
+  articles: { visited: number; total: number; pct: number };
+  cases: { visited: number; total: number; pct: number };
+  problems: { attempted: number; total: number; pct: number };
+}
+
+export async function getOverallProgress(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<OverallProgress> {
+  // 총 조문/판례/문제 수.
+  const [
+    { count: totalArticles },
+    { count: totalCases },
+    { count: totalProblems },
+  ] = await Promise.all([
+    client
+      .from("articles")
+      .select("article_id", { head: true, count: "exact" })
+      .eq("level", "article"),
+    client
+      .from("cases")
+      .select("case_id", { head: true, count: "exact" })
+      .is("deleted_at", null),
+    client
+      .from("problems")
+      .select("problem_id", { head: true, count: "exact" })
+      .is("deleted_at", null),
+  ]);
+
+  // 본인 study_sessions — article/case 방문 distinct.
+  const { data: sessRows } = await client
+    .from("study_sessions")
+    .select("scope")
+    .eq("user_id", userId)
+    .limit(5000);
+  const visitedArticles = new Set<string>();
+  const visitedCases = new Set<string>();
+  for (const r of sessRows ?? []) {
+    const scope = r.scope as Partial<StudyScope> | null;
+    if (!scope?.target_id) continue;
+    if (scope.target_type === "article") visitedArticles.add(scope.target_id);
+    else if (scope.target_type === "case") visitedCases.add(scope.target_id);
+  }
+
+  // 본인 attempt distinct.
+  const { data: attRows } = await client
+    .from("user_problem_attempts")
+    .select("problem_id")
+    .eq("user_id", userId)
+    .limit(10000);
+  const attempted = new Set<string>();
+  for (const r of attRows ?? []) attempted.add(r.problem_id);
+
+  const pctOf = (cur: number, total: number) =>
+    total > 0 ? Math.round((cur / total) * 100) : 0;
+  return {
+    articles: {
+      visited: visitedArticles.size,
+      total: totalArticles ?? 0,
+      pct: pctOf(visitedArticles.size, totalArticles ?? 0),
+    },
+    cases: {
+      visited: visitedCases.size,
+      total: totalCases ?? 0,
+      pct: pctOf(visitedCases.size, totalCases ?? 0),
+    },
+    problems: {
+      attempted: attempted.size,
+      total: totalProblems ?? 0,
+      pct: pctOf(attempted.size, totalProblems ?? 0),
+    },
+  };
+}
+
+// ---- 일별 학습 통계 (히트맵·주간 그래프) ----
+
+export interface DailyStudyDay {
+  // YYYY-MM-DD (로컬 KST 기준).
+  date: string;
+  attemptCount: number;
+  correctCount: number;
+  timeMs: number;
+}
+
+export interface DailyStudyStats {
+  // 가장 오래된 날짜부터 오늘까지 daysBack 일치 (활동 없는 날은 0).
+  days: DailyStudyDay[];
+  totalActiveDays: number;
+  avgHoursPerActiveDay: number;
+  // 오늘 또는 어제부터 연속으로 활동한 일수.
+  currentStreak: number;
+}
+
+function ymdKst(d: Date): string {
+  // KST = UTC+9. supabase 는 UTC timestamptz 로 저장 → 변환.
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export async function getDailyStudyStats(
+  client: SupabaseClient<Database>,
+  userId: string,
+  daysBack = 84,
+): Promise<DailyStudyStats> {
+  const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select("attempted_at, is_correct, time_spent_ms")
+    .eq("user_id", userId)
+    .gte("attempted_at", since.toISOString())
+    .order("attempted_at", { ascending: true })
+    .limit(10000);
+  if (error) throw error;
+
+  const byDate = new Map<string, DailyStudyDay>();
+  for (const r of rows ?? []) {
+    const d = ymdKst(new Date(r.attempted_at));
+    const cur = byDate.get(d) ?? {
+      date: d,
+      attemptCount: 0,
+      correctCount: 0,
+      timeMs: 0,
+    };
+    cur.attemptCount += 1;
+    if (r.is_correct) cur.correctCount += 1;
+    if (r.time_spent_ms) cur.timeMs += r.time_spent_ms;
+    byDate.set(d, cur);
+  }
+
+  // 오래된 → 오늘까지 빈 날 채움.
+  const days: DailyStudyDay[] = [];
+  for (let i = daysBack - 1; i >= 0; i -= 1) {
+    const dt = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const ymd = ymdKst(dt);
+    days.push(
+      byDate.get(ymd) ?? {
+        date: ymd,
+        attemptCount: 0,
+        correctCount: 0,
+        timeMs: 0,
+      },
+    );
+  }
+
+  const activeDays = days.filter((d) => d.attemptCount > 0);
+  const totalActiveDays = activeDays.length;
+  const avgHoursPerActiveDay =
+    totalActiveDays > 0
+      ? activeDays.reduce((s, d) => s + d.timeMs, 0) /
+        totalActiveDays /
+        (60 * 60 * 1000)
+      : 0;
+
+  // 오늘부터 거꾸로 연속 활동 카운트. 오늘 활동이 없으면 어제부터.
+  let currentStreak = 0;
+  for (let i = days.length - 1; i >= 0; i -= 1) {
+    if (days[i].attemptCount > 0) currentStreak += 1;
+    else if (i === days.length - 1) continue; // 오늘 0 이면 어제부터 시작 가능
+    else break;
+  }
+
+  return { days, totalActiveDays, avgHoursPerActiveDay, currentStreak };
+}
+
+// 대시보드 상단 3종 KPI — 모든 과목 합산.
+export interface DashboardKpis {
+  // 누적 풀이 시간 (ms). user_problem_attempts.time_spent_ms 합.
+  totalProblemTimeMs: number;
+  // 시도한 distinct 문제 수 (모든 과목 합).
+  totalProblemsAttempted: number;
+  // 모든 시도 중 정답률 % (정수). 시도 0 이면 0.
+  overallAccuracyPct: number;
+  // 최근 7일 KPI (델타 계산용).
+  last7d: {
+    totalProblemTimeMs: number;
+    totalProblemsAttempted: number;
+  };
+}
+
+export async function getDashboardKpis(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<DashboardKpis> {
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select("problem_id, is_correct, time_spent_ms, attempted_at")
+    .eq("user_id", userId)
+    .order("attempted_at", { ascending: false })
+    .limit(5000);
+  if (error) throw error;
+  const list = rows ?? [];
+
+  const distinct = new Set<string>();
+  let correct = 0;
+  let timeMs = 0;
+  const distinct7d = new Set<string>();
+  let timeMs7d = 0;
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  for (const r of list) {
+    distinct.add(r.problem_id);
+    if (r.is_correct) correct += 1;
+    if (r.time_spent_ms) timeMs += r.time_spent_ms;
+    const t = new Date(r.attempted_at).getTime();
+    if (t >= sevenDaysAgo) {
+      distinct7d.add(r.problem_id);
+      if (r.time_spent_ms) timeMs7d += r.time_spent_ms;
+    }
+  }
+
+  return {
+    totalProblemTimeMs: timeMs,
+    totalProblemsAttempted: distinct.size,
+    overallAccuracyPct: list.length > 0 ? Math.round((correct / list.length) * 100) : 0,
+    last7d: {
+      totalProblemTimeMs: timeMs7d,
+      totalProblemsAttempted: distinct7d.size,
+    },
+  };
+}
+
+export interface SubjectProgressRow {
+  lawCode: LawSubjectSlug;
+  name: string;
+  pctViewed: number;
+  visitedCount: number;
+  totalArticleCount: number;
+  problemsAttempted: number;
+  accuracyPct: number | null;
+}
+
+// 5과목 진도 한 번에. UI 가 카드 5개 동시에 그릴 때 사용.
+export async function getAllSubjectsProgress(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCodes: ReadonlyArray<{ slug: LawSubjectSlug; name: string }>,
+): Promise<SubjectProgressRow[]> {
+  // 각 law 의 article 총수 한 번에.
+  const slugs = lawCodes.map((s) => s.slug) as string[];
+  const { data: lawRows } = await client
+    .from("laws")
+    .select("law_id, law_code")
+    .in("law_code", slugs);
+  const lawByCode = new Map((lawRows ?? []).map((l) => [l.law_code, l.law_id]));
+
+  // article 총수 — laws.law_id 별 count.
+  const totals = new Map<string, number>();
+  await Promise.all(
+    Array.from(lawByCode.entries()).map(async ([code, lid]) => {
+      const { count } = await client
+        .from("articles")
+        .select("article_id", { head: true, count: "exact" })
+        .eq("law_id", lid)
+        .eq("level", "article");
+      totals.set(code, count ?? 0);
+    }),
+  );
+
+  // 본 article (study_sessions). 한 번에 가져와 과목별 분류.
+  const { data: sessRows } = await client
+    .from("study_sessions")
+    .select("scope, started_at")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false })
+    .limit(2000);
+  const visitedBySubject = new Map<string, Set<string>>();
+  for (const r of sessRows ?? []) {
+    const scope = r.scope as Partial<StudyScope> | null;
+    if (!scope?.subject || scope.target_type !== "article" || !scope.target_id) continue;
+    if (!visitedBySubject.has(scope.subject))
+      visitedBySubject.set(scope.subject, new Set());
+    visitedBySubject.get(scope.subject)!.add(scope.target_id);
+  }
+
+  // 문제 시도 — law_id 조인.
+  const { data: attRows } = await client
+    .from("user_problem_attempts")
+    .select("problem_id, is_correct, problems!inner(law_id)")
+    .eq("user_id", userId)
+    .limit(5000);
+  const distinctByLaw = new Map<string, Set<string>>();
+  const correctByLaw = new Map<string, { correct: number; total: number }>();
+  for (const r of attRows ?? []) {
+    const lid = r.problems.law_id;
+    if (!lid) continue;
+    if (!distinctByLaw.has(lid)) distinctByLaw.set(lid, new Set());
+    distinctByLaw.get(lid)!.add(r.problem_id);
+    const cur = correctByLaw.get(lid) ?? { correct: 0, total: 0 };
+    cur.total += 1;
+    if (r.is_correct) cur.correct += 1;
+    correctByLaw.set(lid, cur);
+  }
+
+  return lawCodes.map(({ slug, name }) => {
+    const lid = lawByCode.get(slug);
+    const total = totals.get(slug) ?? 0;
+    const visited = visitedBySubject.get(slug)?.size ?? 0;
+    const distinctAttempted = lid ? (distinctByLaw.get(lid)?.size ?? 0) : 0;
+    const acc = lid ? correctByLaw.get(lid) : null;
+    return {
+      lawCode: slug,
+      name,
+      pctViewed: total > 0 ? Math.round((visited / total) * 100) : 0,
+      visitedCount: visited,
+      totalArticleCount: total,
+      problemsAttempted: distinctAttempted,
+      accuracyPct: acc && acc.total > 0 ? Math.round((acc.correct / acc.total) * 100) : null,
+    };
+  });
+}
+
+export interface UserProblemStats {
+  // 시도한 distinct 문제 수.
+  attemptedCount: number;
+  // 한 번이라도 정답 본 문제 수.
+  correctCount: number;
+  // 가장 최근 시도가 오답인 문제 수 (오답노트 큐).
+  wrongCount: number;
+  // 전체 시도 횟수 (대수롭지 않은 보조 지표).
+  totalAttempts: number;
+}
+
+// 과목 단위 문제 풀이 통계 — 1차/2차 합산. lawCode 필터로 좁힘.
+export async function getUserProblemStats(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCode: LawSubjectSlug,
+): Promise<UserProblemStats> {
+  // 시도한 모든 (problem_id, attempted_at, is_correct) 가져온 뒤 클라에서 집계.
+  // 과목 필터: problems.law_id 매핑.
+  const { data: law } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (!law) {
+    return { attemptedCount: 0, correctCount: 0, wrongCount: 0, totalAttempts: 0 };
+  }
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select("problem_id, is_correct, attempted_at, problems!inner(law_id)")
+    .eq("user_id", userId)
+    .eq("problems.law_id", law.law_id)
+    .order("attempted_at", { ascending: false });
+  if (error) throw error;
+  const list = rows ?? [];
+  const distinct = new Set<string>();
+  const everCorrect = new Set<string>();
+  const lastByProblem = new Map<string, boolean>();
+  for (const r of list) {
+    distinct.add(r.problem_id);
+    if (r.is_correct) everCorrect.add(r.problem_id);
+    if (!lastByProblem.has(r.problem_id)) {
+      lastByProblem.set(r.problem_id, r.is_correct);
+    }
+  }
+  let wrongCount = 0;
+  for (const v of lastByProblem.values()) if (!v) wrongCount += 1;
+  return {
+    attemptedCount: distinct.size,
+    correctCount: everCorrect.size,
+    wrongCount,
+    totalAttempts: list.length,
+  };
+}
+
+export interface WrongAttemptItem {
+  problemId: string;
+  lastAttemptedAt: string;
+  attempts: number;
+  bodySnippet: string;
+  primaryArticleLabel: string | null;
+  lawCode: LawSubjectSlug;
+  year: number | null;
+  problemNumber: number | null;
+}
+
+// ---- 약점 지표 (대시보드 위젯) ----
+// "내 오답 + 글로벌 난이도(어려움 우선)" 정렬된 top N.
+
+export interface WeakAreaItem {
+  problemId: string;
+  bodySnippet: string;
+  lawCode: LawSubjectSlug;
+  primaryArticleLabel: string | null;
+  year: number | null;
+  problemNumber: number | null;
+  // 내 시도 통계.
+  myAttempts: number;
+  myLastWrongAt: string;
+  // 글로벌 통계.
+  globalAccuracyPct: number | null;
+  globalAttempts: number;
+  bucket: import("./lib/difficulty").DifficultyBucket | null;
+}
+
+export async function getWeakAreas(
+  client: SupabaseClient<Database>,
+  userId: string,
+  limit = 5,
+): Promise<WeakAreaItem[]> {
+  // 1. 본인 attempts 최신 → 마지막이 오답인 problem 만 후보.
+  const wrongs = await listWrongAttempts(client, userId);
+  if (wrongs.length === 0) return [];
+
+  // 2. 후보 problem_id 들의 글로벌 통계.
+  const aggMap = await getProblemStatsBulk(
+    client,
+    wrongs.map((w) => w.problemId),
+  );
+
+  // 3. 정렬: 어려운 글로벌 (낮은 정답률) 먼저, 동률이면 본인 시도 많은 순.
+  const enriched: WeakAreaItem[] = wrongs.map((w) => {
+    const agg = aggMap.get(w.problemId);
+    return {
+      problemId: w.problemId,
+      bodySnippet: w.bodySnippet,
+      lawCode: w.lawCode,
+      primaryArticleLabel: w.primaryArticleLabel,
+      year: w.year,
+      problemNumber: w.problemNumber,
+      myAttempts: w.attempts,
+      myLastWrongAt: w.lastAttemptedAt,
+      globalAccuracyPct: agg?.accuracyPct ?? null,
+      globalAttempts: agg?.attempts ?? 0,
+      bucket: agg?.bucket ?? null,
+    };
+  });
+  enriched.sort((a, b) => {
+    const accA = a.globalAccuracyPct ?? 100;
+    const accB = b.globalAccuracyPct ?? 100;
+    if (accA !== accB) return accA - accB;
+    return b.myAttempts - a.myAttempts;
+  });
+  return enriched.slice(0, limit);
+}
+
+// 가장 최근 시도가 오답인 문제 목록 (오답노트). lawCode 미지정 시 전체 과목.
+export async function listWrongAttempts(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCode?: LawSubjectSlug,
+): Promise<WrongAttemptItem[]> {
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, is_correct, attempted_at, problems!inner(body_md, year, problem_number, primary_article_id, law_id, articles!primary_article_id(display_label), laws!inner(law_code))",
+    )
+    .eq("user_id", userId)
+    .order("attempted_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  const list = rows ?? [];
+  const lastByProblem = new Map<
+    string,
+    { row: (typeof list)[number]; attempts: number }
+  >();
+  for (const r of list) {
+    const cur = lastByProblem.get(r.problem_id);
+    if (!cur) {
+      lastByProblem.set(r.problem_id, { row: r, attempts: 1 });
+    } else {
+      cur.attempts += 1;
+    }
+  }
+  const out: WrongAttemptItem[] = [];
+  for (const { row, attempts } of lastByProblem.values()) {
+    if (row.is_correct) continue;
+    const probLawCode = (row.problems.laws.law_code as LawSubjectSlug) ?? "patent";
+    if (lawCode && probLawCode !== lawCode) continue;
+    const body = row.problems.body_md ?? "";
+    out.push({
+      problemId: row.problem_id,
+      lastAttemptedAt: row.attempted_at,
+      attempts,
+      bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+      primaryArticleLabel: row.problems.articles?.display_label ?? null,
+      lawCode: probLawCode,
+      year: row.problems.year,
+      problemNumber: row.problems.problem_number,
+    });
+  }
+  out.sort(
+    (a, b) =>
+      new Date(b.lastAttemptedAt).getTime() -
+      new Date(a.lastAttemptedAt).getTime(),
+  );
+  return out;
 }

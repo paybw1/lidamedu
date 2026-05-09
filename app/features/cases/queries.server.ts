@@ -38,6 +38,35 @@ function rowToListItem(row: CaseListRow): CaseListItem {
   };
 }
 
+export interface RecentCasesFilters {
+  // 특정 과목만 (cases.subject_laws contains).
+  subject?: LawSubjectSlug;
+  // 중요도 임계값 (importance >= minImportance).
+  minImportance?: number;
+}
+
+// 최근 판례 (대시보드 위젯 + /latest/cases). decided_at 내림차순.
+export async function listRecentCases(
+  client: SupabaseClient<Database>,
+  limit = 5,
+  filters: RecentCasesFilters = {},
+): Promise<CaseListItem[]> {
+  let q = client
+    .from("cases")
+    .select(
+      "case_id, court, decided_at, case_number, case_title, is_en_banc, importance, summary_title, subject_laws",
+    )
+    .is("deleted_at", null);
+  if (filters.subject) q = q.contains("subject_laws", [filters.subject]);
+  if (filters.minImportance != null)
+    q = q.gte("importance", filters.minImportance);
+  const { data, error } = await q
+    .order("decided_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => rowToListItem(r as CaseListRow));
+}
+
 export async function listCasesBySubject(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,

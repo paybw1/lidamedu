@@ -74,6 +74,7 @@ const subjectSections: Section[] = [
 const flatMenus: SimpleLink[] = [
   { label: "대시보드", to: "/dashboard" },
   { label: "학습목표 및 과목별 진도", to: "/goals" },
+  { label: "오답노트", to: "/study/wrong-note" },
 ];
 
 const trailingMenus: SimpleLink[] = [

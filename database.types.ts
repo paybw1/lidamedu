@@ -172,6 +172,48 @@ export type Database = {
           },
         ]
       }
+      article_comments: {
+        Row: {
+          article_id: string
+          author_id: string | null
+          body_md: string
+          comment_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          article_id: string
+          author_id?: string | null
+          body_md: string
+          comment_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          article_id?: string
+          author_id?: string | null
+          body_md?: string
+          comment_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_comments_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: true
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "article_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       article_revisions: {
         Row: {
           article_id: string
@@ -920,6 +962,94 @@ export type Database = {
           },
         ]
       }
+      quiz_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          law_code: string
+          mode: string
+          problem_ids: string[]
+          scope_payload: Json
+          scope_type: string
+          session_id: string
+          started_at: string
+          time_limit_sec: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          law_code: string
+          mode?: string
+          problem_ids: string[]
+          scope_payload?: Json
+          scope_type: string
+          session_id?: string
+          started_at?: string
+          time_limit_sec?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          law_code?: string
+          mode?: string
+          problem_ids?: string[]
+          scope_payload?: Json
+          scope_type?: string
+          session_id?: string
+          started_at?: string
+          time_limit_sec?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      study_goals: {
+        Row: {
+          exam_date: string | null
+          exam_type: string
+          notes: string | null
+          target_score: number | null
+          updated_at: string
+          user_id: string
+          weekly_goal_hours: number
+        }
+        Insert: {
+          exam_date?: string | null
+          exam_type?: string
+          notes?: string | null
+          target_score?: number | null
+          updated_at?: string
+          user_id: string
+          weekly_goal_hours?: number
+        }
+        Update: {
+          exam_date?: string | null
+          exam_type?: string
+          notes?: string | null
+          target_score?: number | null
+          updated_at?: string
+          user_id?: string
+          weekly_goal_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       study_sessions: {
         Row: {
           duration_ms: number | null
@@ -1231,6 +1361,74 @@ export type Database = {
           },
         ]
       }
+      user_problem_attempts: {
+        Row: {
+          attempt_id: string
+          attempted_at: string
+          is_correct: boolean
+          mode: string
+          problem_id: string
+          selected_choice_id: string | null
+          selected_choice_index: number | null
+          session_id: string | null
+          time_spent_ms: number | null
+          user_id: string
+        }
+        Insert: {
+          attempt_id?: string
+          attempted_at?: string
+          is_correct: boolean
+          mode?: string
+          problem_id: string
+          selected_choice_id?: string | null
+          selected_choice_index?: number | null
+          session_id?: string | null
+          time_spent_ms?: number | null
+          user_id: string
+        }
+        Update: {
+          attempt_id?: string
+          attempted_at?: string
+          is_correct?: boolean
+          mode?: string
+          problem_id?: string
+          selected_choice_id?: string | null
+          selected_choice_index?: number | null
+          session_id?: string | null
+          time_spent_ms?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_problem_attempts_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "user_problem_attempts_selected_choice_id_fkey"
+            columns: ["selected_choice_id"]
+            isOneToOne: false
+            referencedRelation: "problem_choices"
+            referencedColumns: ["choice_id"]
+          },
+          {
+            foreignKeyName: "user_problem_attempts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "user_problem_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       user_recitation_attempts: {
         Row: {
           article_id: string
@@ -1281,6 +1479,15 @@ export type Database = {
     }
     Functions: {
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
+      get_problem_stats: {
+        Args: { p_ids: string[] }
+        Returns: {
+          attempts: number
+          correct_attempts: number
+          distinct_users: number
+          problem_id: string
+        }[]
+      }
     }
     Enums: {
       aa_relation_type:
