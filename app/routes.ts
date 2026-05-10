@@ -190,6 +190,10 @@ export default [
             "/earth-science",
             "features/subjects/screens/science/earth-science.tsx",
           ),
+          route(
+            "/:scienceSubject/quiz/setup",
+            "features/subjects/screens/science/quiz-setup.tsx",
+          ),
         ]),
       ]),
 

@@ -152,19 +152,25 @@ export async function createQuizSession(
   userId: string,
   input: {
     mode: QuizMode;
-    lawCode: LawSubjectSlug;
+    // 둘 중 정확히 하나 (DB check 가 강제) — 법률 vs 자연과학.
+    lawCode?: LawSubjectSlug;
+    scienceSubject?: "physics" | "chemistry" | "biology" | "earth_science";
     scopeType: QuizScopeType;
     scopePayload?: Record<string, unknown>;
     problemIds: string[];
     timeLimitSec?: number | null;
   },
 ): Promise<string> {
+  if (!!input.lawCode === !!input.scienceSubject) {
+    throw new Error("createQuizSession: lawCode XOR scienceSubject");
+  }
   const { data, error } = await client
     .from("quiz_sessions")
     .insert({
       user_id: userId,
       mode: input.mode,
-      law_code: input.lawCode,
+      law_code: input.lawCode ?? null,
+      science_subject: input.scienceSubject ?? null,
       scope_type: input.scopeType,
       scope_payload: (input.scopePayload ?? {}) as Database["public"]["Tables"]["quiz_sessions"]["Insert"]["scope_payload"],
       problem_ids: input.problemIds,

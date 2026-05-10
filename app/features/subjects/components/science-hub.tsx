@@ -24,20 +24,30 @@ export default function ScienceHub({
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1">
-        <Link
-          to="/subjects/science"
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          ← 자연과학
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-          <span className="mr-2">{meta.emoji}</span>
-          {meta.name}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          변리사 1차 자연과학 선택과목 · 객관식 문제 풀이
-        </p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1">
+          <Link
+            to="/subjects/science"
+            className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
+          >
+            ← 자연과학
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            <span className="mr-2">{meta.emoji}</span>
+            {meta.name}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            변리사 1차 자연과학 선택과목 · 객관식 문제 풀이
+          </p>
+        </div>
+        {totalProblems > 0 ? (
+          <Link
+            to={`/subjects/science/${subject}/quiz/setup`}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium"
+          >
+            맞춤 퀴즈 시작 →
+          </Link>
+        ) : null}
       </header>
 
       {/* KPI placeholder — 추후 정답률·풀이수 등 연결. */}

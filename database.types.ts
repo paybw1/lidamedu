@@ -1478,9 +1478,10 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
-          law_code: string
+          law_code: string | null
           mode: string
           problem_ids: string[]
+          science_subject: Database["public"]["Enums"]["science_subject"] | null
           scope_payload: Json
           scope_type: string
           session_id: string
@@ -1491,9 +1492,12 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
-          law_code: string
+          law_code?: string | null
           mode?: string
           problem_ids: string[]
+          science_subject?:
+            | Database["public"]["Enums"]["science_subject"]
+            | null
           scope_payload?: Json
           scope_type: string
           session_id?: string
@@ -1504,9 +1508,12 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
-          law_code?: string
+          law_code?: string | null
           mode?: string
           problem_ids?: string[]
+          science_subject?:
+            | Database["public"]["Enums"]["science_subject"]
+            | null
           scope_payload?: Json
           scope_type?: string
           session_id?: string
