@@ -5,10 +5,13 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 
+import { type RubricCriterion } from "~/features/gs/queries.server";
+
 export interface AiGradingDraft {
   score: number;
   feedback: string;
   reasoning?: string;
+  rubricScores?: Record<string, number>; // criterionId → 항목 점수 (rubric 모드일 때만).
 }
 
 interface GradeArgs {
@@ -18,6 +21,7 @@ interface GradeArgs {
   maxScore: number;
   studentAnswerText: string; // 첨부들의 ocrText 를 합친 것.
   legibilityWarnings?: string[]; // 판독률 부족 등 경고.
+  rubric?: RubricCriterion[]; // 비어있지 않으면 항목별 점수 모드.
 }
 
 const SYSTEM_PROMPT = `당신은 대한민국 변리사 2차 시험(주관식·논술)의 채점 보조 AI 입니다.
@@ -38,7 +42,21 @@ export async function generateGradingDraft(
 
   const client = new Anthropic({ apiKey });
 
-  // 캐시 가능한 prefix (문제 + 모범답안 + 만점) — 같은 회차의 다른 학생 채점 시 재사용.
+  const useRubric = (args.rubric ?? []).length > 0;
+  const rubricBlock = useRubric
+    ? [
+        "",
+        `# 채점 항목 (rubric)`,
+        ...(args.rubric ?? []).map(
+          (c, i) =>
+            `${i + 1}. [${c.criterionId}] ${c.label} — 만점 ${c.maxPoints}점${c.descriptionMd ? `\n   ${c.descriptionMd}` : ""}`,
+        ),
+        "",
+        "각 항목별로 0..해당 만점 범위의 점수를 매기세요. 합이 문항 총점이 됩니다.",
+      ].join("\n")
+    : "";
+
+  // 캐시 가능한 prefix (문제 + 모범답안 + 만점 + rubric) — 같은 회차의 다른 학생 채점 시 재사용.
   // 변동 부분 (학생 답안) 은 마지막에 둬서 prefix-match 캐시 정합.
   const promptPrefix = [
     `# 문제`,
@@ -50,6 +68,7 @@ export async function generateGradingDraft(
     "",
     `# 만점`,
     `${args.maxScore}점`,
+    rubricBlock,
   ]
     .filter(Boolean)
     .join("\n");
@@ -74,26 +93,50 @@ export async function generateGradingDraft(
         effort: "high",
         format: {
           type: "json_schema",
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              score: {
-                type: "number",
-                description: `0 이상 ${args.maxScore} 이하의 부분 점수. 정수 또는 .5 단위.`,
+          schema: useRubric
+            ? {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  rubric_scores: {
+                    type: "object",
+                    additionalProperties: { type: "number" },
+                    description:
+                      "각 채점 항목의 criterionId 를 key 로, 부여 점수(0..max) 를 value 로. 모든 항목 포함.",
+                  },
+                  feedback: {
+                    type: "string",
+                    description:
+                      "학생에게 보낼 마크다운 피드백. 강점→부족한 점→개선 방향 순.",
+                  },
+                  reasoning: {
+                    type: "string",
+                    description:
+                      "항목별 점수 산정 근거를 채점자에게 짧게 설명 (참고용).",
+                  },
+                },
+                required: ["rubric_scores", "feedback", "reasoning"],
+              }
+            : {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  score: {
+                    type: "number",
+                    description: `0 이상 ${args.maxScore} 이하의 부분 점수. 정수 또는 .5 단위.`,
+                  },
+                  feedback: {
+                    type: "string",
+                    description:
+                      "학생에게 보낼 마크다운 피드백. 강점→부족한 점→개선 방향 순.",
+                  },
+                  reasoning: {
+                    type: "string",
+                    description: "점수 산정 근거를 채점자에게 짧게 설명 (참고용).",
+                  },
+                },
+                required: ["score", "feedback", "reasoning"],
               },
-              feedback: {
-                type: "string",
-                description:
-                  "학생에게 보낼 마크다운 피드백. 강점→부족한 점→개선 방향 순.",
-              },
-              reasoning: {
-                type: "string",
-                description: "점수 산정 근거를 채점자에게 짧게 설명 (참고용).",
-              },
-            },
-            required: ["score", "feedback", "reasoning"],
-          },
         },
       },
       system: SYSTEM_PROMPT,
@@ -138,11 +181,27 @@ export async function generateGradingDraft(
 
   if (!parsed || typeof parsed !== "object") return null;
   const obj = parsed as Record<string, unknown>;
-  const rawScore = typeof obj.score === "number" ? obj.score : null;
-  if (rawScore == null || !Number.isFinite(rawScore)) return null;
-  const score = Math.max(0, Math.min(args.maxScore, Math.round(rawScore * 2) / 2));
   const feedback = typeof obj.feedback === "string" ? obj.feedback : "";
   const reasoning = typeof obj.reasoning === "string" ? obj.reasoning : undefined;
 
+  if (useRubric) {
+    const raw = obj.rubric_scores;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const rubricScores: Record<string, number> = {};
+    let sum = 0;
+    for (const c of args.rubric ?? []) {
+      const v = (raw as Record<string, unknown>)[c.criterionId];
+      const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
+      const clamped = Math.max(0, Math.min(c.maxPoints, Math.round(n * 2) / 2));
+      rubricScores[c.criterionId] = clamped;
+      sum += clamped;
+    }
+    const total = Math.max(0, Math.min(args.maxScore, Math.round(sum * 2) / 2));
+    return { score: total, feedback, reasoning, rubricScores };
+  }
+
+  const rawScore = typeof obj.score === "number" ? obj.score : null;
+  if (rawScore == null || !Number.isFinite(rawScore)) return null;
+  const score = Math.max(0, Math.min(args.maxScore, Math.round(rawScore * 2) / 2));
   return { score, feedback, reasoning };
 }

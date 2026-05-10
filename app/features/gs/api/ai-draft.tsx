@@ -90,6 +90,7 @@ export async function action({ request }: Route.ActionArgs) {
     maxScore: question.maxScore,
     studentAnswerText,
     legibilityWarnings: warnings,
+    rubric: question.rubric,
   });
 
   if (!draft) {

@@ -432,7 +432,12 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
 interface AiDraftResponse {
   ok?: boolean;
   error?: string;
-  draft?: { score: number; feedback: string; reasoning?: string };
+  draft?: {
+    score: number;
+    feedback: string;
+    reasoning?: string;
+    rubricScores?: Record<string, number>;
+  };
 }
 
 function QuestionGradeCard({
@@ -516,6 +521,10 @@ function QuestionGradeCard({
       setFeedback(d.draft.feedback);
       setAiReasoning(d.draft.reasoning ?? null);
       setAiError(null);
+      // rubric 모드 + AI 가 항목별 점수를 제안하면 자동 채움.
+      if (useRubric && d.draft.rubricScores) {
+        setRubricScores(d.draft.rubricScores);
+      }
     }
   }, [aiFetcher.state, aiFetcher.data]);
 
