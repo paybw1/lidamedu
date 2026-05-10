@@ -68,7 +68,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const existing = await getOwnSubmission(client, user.id, roundId);
   if (existing?.submittedAt) {
-    return redirect(`/gs/${roundId}`);
+    return redirect(`/gs/${roundId}/result`);
   }
   if (now > end && !existing) {
     throw data("응시 종료 시각이 지났습니다.", { status: 403 });
@@ -662,6 +662,9 @@ function PageSlot({
 
   return (
     <Card
+      data-testid={`gs-page-slot-${pageNumber}`}
+      data-empty={empty ? "true" : "false"}
+      data-confirmed={confirmed ? "true" : "false"}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -678,6 +681,7 @@ function PageSlot({
           <button
             type="button"
             draggable
+            data-testid={`gs-page-grip-${pageNumber}`}
             onDragStart={onDragStart}
             aria-label={`페이지 ${pageNumber} 드래그`}
             title="다른 슬롯으로 드래그해 페이지 교환"
@@ -716,6 +720,7 @@ function PageSlot({
       <CardContent className="space-y-2 p-3">
         <input
           ref={fileInputRef}
+          data-testid={`gs-page-file-input-${pageNumber}`}
           type="file"
           accept="image/jpeg,image/png,image/webp,application/pdf"
           onChange={onPick}
@@ -762,6 +767,8 @@ function PageSlot({
                     <button
                       key={q.questionId}
                       type="button"
+                      data-testid={`gs-page-${pageNumber}-question-${q.orderIndex + 1}`}
+                      data-on={on ? "true" : "false"}
                       onClick={() => onToggleQuestion(q.questionId)}
                       disabled={mapFetcher.state !== "idle"}
                       className={cn(
@@ -786,6 +793,7 @@ function PageSlot({
             <label className="flex items-start gap-1.5 cursor-pointer rounded-md border bg-background p-2">
               <input
                 type="checkbox"
+                data-testid={`gs-page-confirm-${pageNumber}`}
                 checked={confirmed}
                 onChange={(e) => onToggleConfirm(e.target.checked)}
                 disabled={confirmFetcher.state !== "idle"}
