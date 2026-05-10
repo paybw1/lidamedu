@@ -110,11 +110,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const lookupArticleNumber = articleNumberText(ident);
 
   // 시점 조회 ?at=YYYY-MM-DD — 그 시점에 시행 중이던 revision 을 반환.
-  // 미지정/형식 불량이면 현재 조회.
+  // 비교 모드 ?compare=YYYY-MM-DD — 동시에 다른 시점 본문을 한 화면에 함께 노출.
   const reqUrl0 = new URL(request.url);
   const atRaw = reqUrl0.searchParams.get("at");
   const atDate =
     atRaw && /^\d{4}-\d{2}-\d{2}$/.test(atRaw) ? atRaw : null;
+  const compareRaw = reqUrl0.searchParams.get("compare");
+  const compareDate =
+    compareRaw && /^\d{4}-\d{2}-\d{2}$/.test(compareRaw) ? compareRaw : null;
 
   const [article, articles, systematicNodes] = await Promise.all([
     atDate
@@ -127,6 +130,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!article) {
     throw data("Article not found", { status: 404 });
   }
+
+  // 비교 본문 — compare 가 지정되고 article 이 있을 때만 별도 fetch.
+  const compareArticle = compareDate
+    ? await getArticleByNumberAt(
+        client,
+        law.lawId,
+        lookupArticleNumber,
+        compareDate,
+      )
+    : null;
 
   const {
     data: { user },
@@ -201,6 +214,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     article,
     body: parseArticleBody(article.bodyJson),
     atDate,
+    compareDate,
+    compareBody: compareArticle
+      ? parseArticleBody(compareArticle.bodyJson)
+      : null,
+    compareEffectiveDate: compareArticle?.effectiveDate ?? null,
     initialBlankMode: {
       subject: subjectBlankParam,
       period: periodBlankParam,
@@ -243,6 +261,9 @@ function ArticleViewerInner({
     article,
     body,
     atDate,
+    compareDate,
+    compareBody,
+    compareEffectiveDate,
     initialBlankMode,
     articles,
     systematicNodes,
@@ -342,14 +363,12 @@ function ArticleViewerInner({
         targetId={article.articleId}
       />
 
-      {atDate ? (
+      {atDate || compareDate ? (
         <div className="mb-4 rounded-md border border-amber-300 bg-amber-50/40 dark:border-amber-700/40 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center gap-2">
           <span>
-            <strong>시점 조회 모드</strong> · {atDate} 시점에 시행 중이던 본문을
-            보고 있습니다.
-            {article.effectiveDate
-              ? ` (이 본문 시행일: ${article.effectiveDate})`
-              : null}
+            {compareDate ? <strong>시점 비교 모드</strong> : <strong>시점 조회 모드</strong>}
+            {atDate ? ` · 기준 ${atDate}` : null}
+            {compareDate ? ` · 비교 ${compareDate}` : null}
           </span>
           <a
             href={
@@ -675,7 +694,46 @@ function ArticleViewerInner({
                   fieldPath="article.body"
                   highlights={highlights}
                 >
-                  {body ? (
+                  {compareBody ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+                          {atDate ? `시점 ${atDate}` : "현재"}
+                          {article.effectiveDate
+                            ? ` (시행 ${article.effectiveDate})`
+                            : ""}
+                        </p>
+                        {body ? (
+                          <ArticleBodyView
+                            body={body}
+                            titleMap={titleMap}
+                            subtitlesOnly={subtitlesOnly}
+                            lawCode={subject.slug}
+                            memos={memos}
+                          />
+                        ) : (
+                          <p className="text-muted-foreground text-sm italic">
+                            본문 없음
+                          </p>
+                        )}
+                      </div>
+                      <div className="border-l md:pl-3">
+                        <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+                          비교 시점 {compareDate}
+                          {compareEffectiveDate
+                            ? ` (시행 ${compareEffectiveDate})`
+                            : ""}
+                        </p>
+                        <ArticleBodyView
+                          body={compareBody}
+                          titleMap={titleMap}
+                          subtitlesOnly={subtitlesOnly}
+                          lawCode={subject.slug}
+                          memos={[]}
+                        />
+                      </div>
+                    </div>
+                  ) : body ? (
                     <ArticleBodyView
                       body={body}
                       titleMap={titleMap}
