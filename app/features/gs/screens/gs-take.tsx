@@ -381,6 +381,12 @@ function PageSlot({
   const mapFetcher = useFetcher<{ ok?: true; error?: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // PDF 다페이지 분할 상태 — 분할 중에는 progress 표시.
+  const [splitProgress, setSplitProgress] = useState<{
+    phase: "split" | "upload";
+    cur: number;
+    total: number;
+  } | null>(null);
 
   // 낙관적 매핑 — fetcher 진행 중인 값 우선.
   const submittingMap = mapFetcher.formData?.get("questionIds");
@@ -423,6 +429,70 @@ function PageSlot({
       return;
     }
 
+    // PDF 다페이지 분할 — 페이지 수 > 1 이면 사용자에게 자동 분배 여부 확인.
+    if (file.type === "application/pdf") {
+      try {
+        const { getPdfPageCount, splitPdfToJpegs } = await import(
+          "~/features/gs/lib/pdf-split.client"
+        );
+        const numPages = await getPdfPageCount(file);
+        if (numPages > 1) {
+          const start = pageNumber;
+          const end = start + numPages - 1;
+          if (end > round.expectedPages) {
+            setError(
+              `이 PDF 는 ${numPages}페이지인데 슬롯 ${start}~${end} 가 필요합니다 ` +
+                `(회차 최대 ${round.expectedPages}페이지). 시작 슬롯을 앞쪽으로 옮기거나 ` +
+                `회차의 답안지 페이지 수를 늘려 주세요.`,
+            );
+            return;
+          }
+          const yes = window.confirm(
+            `이 PDF 는 ${numPages}페이지입니다.\n\n` +
+              `[확인] 슬롯 ${start}~${end} 에 페이지별 이미지로 자동 분배 (각 페이지 OCR 가능).\n` +
+              `[취소] 슬롯 ${start} 에 PDF 그대로 첨부 (다페이지 PDF 1개로 1슬롯).`,
+          );
+          if (yes) {
+            setSplitProgress({ phase: "split", cur: 0, total: numPages });
+            const baseName = file.name.replace(/\.pdf$/i, "");
+            let images: File[];
+            try {
+              images = await splitPdfToJpegs(file, baseName, 2, (cur, total) =>
+                setSplitProgress({ phase: "split", cur, total }),
+              );
+            } catch (e) {
+              setSplitProgress(null);
+              setError(`PDF 분할 실패: ${(e as Error).message}`);
+              return;
+            }
+            // 분할된 페이지를 순차 업로드.
+            for (let i = 0; i < images.length; i++) {
+              setSplitProgress({
+                phase: "upload",
+                cur: i + 1,
+                total: images.length,
+              });
+              const result = await uploadOneRaw(start + i, images[i]);
+              if (!result.ok) {
+                setSplitProgress(null);
+                setError(`페이지 ${start + i} 업로드 실패: ${result.error}`);
+                onChange();
+                return;
+              }
+            }
+            setSplitProgress(null);
+            onChange();
+            return;
+          }
+          // confirm 거부 → fallthrough: PDF 그대로 단일 업로드.
+        }
+      } catch (e) {
+        setError(`PDF 분석 실패: ${(e as Error).message}`);
+        return;
+      }
+    }
+
+    // 단일 파일 (이미지 또는 1페이지 PDF 또는 사용자가 PDF 그대로 선택).
     let width: number | undefined;
     let height: number | undefined;
     if (file.type.startsWith("image/")) {
@@ -454,6 +524,47 @@ function PageSlot({
       action: "/api/gs/take",
       encType: "multipart/form-data",
     });
+  };
+
+  // 분할-분배용 단일 페이지 업로드 (plain fetch — useFetcher 가 슬롯 1개에 묶여 있어서 사용 불가).
+  const uploadOneRaw = async (
+    targetPage: number,
+    file: File,
+  ): Promise<{ ok: true } | { ok: false; error: string }> => {
+    let width: number | undefined;
+    let height: number | undefined;
+    if (file.type.startsWith("image/")) {
+      try {
+        const dim = await readImageDimensions(file);
+        width = dim.width;
+        height = dim.height;
+      } catch {
+        return { ok: false, error: "이미지 메타 추출 실패" };
+      }
+    }
+    const fd = new FormData();
+    fd.set("intent", "upload-page");
+    fd.set("roundId", round.roundId);
+    fd.set("pageNumber", String(targetPage));
+    if (width != null) fd.set("width", String(width));
+    if (height != null) fd.set("height", String(height));
+    fd.set("file", file);
+    let res: Response;
+    try {
+      res = await fetch("/api/gs/take", { method: "POST", body: fd });
+    } catch (e) {
+      return { ok: false, error: `네트워크 오류: ${(e as Error).message}` };
+    }
+    let json: { error?: string; ok?: boolean } = {};
+    try {
+      json = await res.json();
+    } catch {
+      // ignore
+    }
+    if (!res.ok || json.error) {
+      return { ok: false, error: json.error ?? `HTTP ${res.status}` };
+    }
+    return { ok: true };
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -492,7 +603,8 @@ function PageSlot({
     mapFetcher.submit(fd, { method: "post", action: "/api/gs/take" });
   };
 
-  const isUploading = uploadFetcher.state !== "idle";
+  const isSplitting = splitProgress != null;
+  const isUploading = uploadFetcher.state !== "idle" || isSplitting;
   const empty = page == null;
 
   return (
@@ -550,11 +662,23 @@ function PageSlot({
             className="w-full h-24 border-dashed text-xs"
           >
             <UploadIcon className="size-4" />
-            {isUploading ? "업로드 중…" : "사진/PDF 업로드"}
+            {isSplitting
+              ? splitProgress.phase === "split"
+                ? `분할 중… ${splitProgress.cur}/${splitProgress.total}`
+                : `업로드 중… ${splitProgress.cur}/${splitProgress.total}`
+              : isUploading
+                ? "업로드 중…"
+                : "사진/PDF 업로드"}
           </Button>
         ) : (
           <PagePreview attachment={page.attachment} />
         )}
+        {isSplitting ? (
+          <p className="text-muted-foreground text-[10px]">
+            다페이지 PDF 를 슬롯 {pageNumber}부터{" "}
+            {pageNumber + splitProgress.total - 1} 까지 분배 중…
+          </p>
+        ) : null}
         {error ? <p className="text-rose-600 text-[11px]">{error}</p> : null}
         {!empty ? (
           <>
