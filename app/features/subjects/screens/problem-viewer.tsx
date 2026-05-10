@@ -580,7 +580,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             </CardHeader>
             <Separator />
             <CardContent className="space-y-5 pt-6">
-              <p className="text-base leading-relaxed font-medium">
+              <p className="font-serif text-base leading-relaxed font-medium">
                 {problem.bodyMd}
               </p>
 
@@ -615,7 +615,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                         <span className="text-muted-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums">
                           {c.choiceIndex}
                         </span>
-                        <span className="flex-1">{c.bodyMd}</span>
+                        <span className="font-serif flex-1">{c.bodyMd}</span>
                         {showCorrect ? (
                           <CircleCheckIcon className="size-5 shrink-0 text-emerald-600" />
                         ) : null}

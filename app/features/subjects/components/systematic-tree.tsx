@@ -286,9 +286,21 @@ function SystematicItem({
   const hasArticles = node.articles.length > 0;
   const expandable = hasChildren || hasArticles;
 
+  // 체계도 위계 그라데이션:
+  //   depth 0 (01, 02) — 가장 진함.
+  //   depth ≥ 1 + 자식 그룹 있음 (예: [01], [02]) — 진하게, depth 별로 살짝 옅어짐.
+  //   depth ≥ 1 + 자식 그룹 없음 (예: 목적, 발명, 특허소송, 변리사 보수) — 조문 leaf shelf 라
+  //     section 헤더로 보일 필요 없음. 옅게 처리해 article leaf 와 자연스럽게 이어짐.
+  const groupClass = (() => {
+    if (depth === 0) return "text-foreground font-bold";
+    if (!hasChildren) return "text-foreground/70";
+    if (depth === 1) return "text-foreground font-semibold";
+    if (depth === 2) return "text-foreground/85 font-medium";
+    return "text-foreground/70";
+  })();
   const rowClass = cn(
     "group flex w-full items-center gap-1 rounded-md py-1.5 pr-2 text-left",
-    depth === 0 ? "font-medium" : "",
+    groupClass,
     "hover:bg-accent",
   );
   const rowStyle = { paddingLeft: `${depth * 12 + 6}px` };
@@ -399,9 +411,12 @@ function ArticleLeafLink({
 }) {
   const isActive = activeArticleId === article.articleId;
   const importance = Math.max(0, Math.min(3, article.importance));
+  // article-tree 의 조와 동일한 옅은 톤.
   const rowClass = cn(
     "flex items-center gap-1 rounded-md py-1.5 pr-2 text-left",
-    isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent",
+    isActive
+      ? "bg-accent text-accent-foreground"
+      : "text-foreground/65 hover:bg-accent",
   );
   const rowStyle = { paddingLeft: `${depth * 12 + 6}px` };
 

@@ -124,7 +124,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </CardHeader>
         <Separator />
         <CardContent className="pt-5">
-          <p className="text-sm leading-relaxed whitespace-pre-line">
+          <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
             {thread.questionMd}
           </p>
         </CardContent>
@@ -147,7 +147,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           </CardHeader>
           <Separator />
           <CardContent className="pt-5">
-            <p className="text-sm leading-relaxed whitespace-pre-line">
+            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
               {thread.answerMd}
             </p>
           </CardContent>

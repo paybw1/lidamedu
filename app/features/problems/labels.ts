@@ -1,6 +1,11 @@
 // 클라이언트·서버 공용 타입/라벨.
 import type { Database } from "database.types";
 
+import type {
+  BookmarkRecord,
+  MemoRecord,
+} from "~/features/annotations/labels";
+
 export type ProblemExamRound =
   Database["public"]["Enums"]["problem_exam_round"];
 export type ProblemFormat = Database["public"]["Enums"]["problem_format"];
@@ -10,6 +15,27 @@ export type ProblemScope = Database["public"]["Enums"]["problem_scope"];
 export type ProblemChoiceType =
   Database["public"]["Enums"]["problem_choice_type"];
 export type OxTruth = Database["public"]["Enums"]["ox_truth"];
+
+// OX 지문 — 조문 viewer 우측 패널/서브젝트 OX 풀이용.
+// queries.server.ts 의 fetcher 가 반환하는 데이터 형태 (route loader → 컴포넌트 prop 으로 전달).
+// 타입을 labels.ts (non-server) 에 두어 RR vite plugin 이 component → loader 타입 추적 시
+// `.server.ts` 의존을 만들지 않게 한다.
+export interface OxQuestionItem {
+  refType: "choice" | "box";
+  refId: string;
+  problemId: string;
+  bodyMd: string;
+  oxTruth: OxTruth;
+  explanationMd: string | null;
+  year: number | null;
+  problemNumber: number | null;
+  origin: string;
+}
+
+export interface OxRefAnnotations {
+  memos: MemoRecord[];
+  bookmark: BookmarkRecord | null;
+}
 
 export const FORMAT_LABEL: Record<ProblemFormat, string> = {
   mc_short: "단답형",

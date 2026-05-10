@@ -1,8 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import {
+  getBookmarksByTargets,
+  listMemosByTargets,
+} from "~/features/annotations/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import { parseLtreePath, toSlug } from "~/features/laws/lib/identifier";
+import type {
+  OxQuestionItem,
+  OxRefAnnotations,
+  OxTruth,
+} from "./labels";
 
 export type {
   ProblemExamRound,
@@ -14,6 +23,9 @@ export type {
   ProblemListItem,
   ProblemChoice,
   ProblemDetail,
+  OxTruth,
+  OxQuestionItem,
+  OxRefAnnotations,
 } from "./labels";
 export {
   CHOICE_TYPE_COLOR,
@@ -323,20 +335,214 @@ export async function listRecentProblems(
 
 // 정오문제 — 특정 조문에 연결된 OX 가능 지문 (객관식 choice + box-item 통합).
 // article-viewer 우측 "정오문제" 탭에서 무작위 풀이용.
-export type OxTruth = "O" | "X";
+// 타입(OxTruth, OxQuestionItem, OxRefAnnotations) 은 ./labels 에 정의 — RR vite plugin
+// 의 module-graph 분석이 component → loader 타입 추적 시 `.server.ts` 의존성을 만들지 않게.
 
-export interface OxQuestionItem {
-  // PK 후보 — choice 또는 box-item 단위.
+// 운영자 OX 검토용 — 학생 노출(ox_truth NOT NULL + ineligible=false + article 매핑) 조건과
+// 무관하게 후보 지문을 모두 조회. 운영자는 이 화면에서 ox_truth 수정 / ineligible 토글 가능.
+export type OxReviewStatus = "all" | "active" | "ineligible" | "untruthed";
+export interface OxReviewItem {
   refType: "choice" | "box";
   refId: string;
   problemId: string;
-  bodyMd: string;
-  oxTruth: OxTruth;
-  explanationMd: string | null;
-  // 출제 메타.
-  year: number | null;
   problemNumber: number | null;
+  year: number | null;
   origin: string;
+  bodyMd: string;
+  marker: string | null; // box-item 만
+  oxTruth: OxTruth | null;
+  oxIneligible: boolean;
+  relatedArticleId: string | null;
+  relatedArticleLabel: string | null;
+  relatedArticleNumber: string | null;
+  isCorrect: boolean | null; // choice 만 (auto 추론 참고)
+}
+
+export async function listOxItemsForReview(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  filters: {
+    status?: OxReviewStatus;
+    articleId?: string | null;
+    year?: number | null;
+    limit?: number;
+  } = {},
+): Promise<OxReviewItem[]> {
+  const status: OxReviewStatus = filters.status ?? "all";
+  const limit = filters.limit ?? 500;
+
+  const { data: law } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .single();
+  if (!law) return [];
+
+  const out: OxReviewItem[] = [];
+
+  // 1) problem_choices.
+  let choiceQuery = client
+    .from("problem_choices")
+    .select(
+      "choice_id, problem_id, body_md, ox_truth, ox_ineligible, related_article_id, is_correct, problems!inner(year, problem_number, origin, deleted_at, law_id)",
+    )
+    .eq("problems.law_id", law.law_id)
+    .limit(limit);
+  if (filters.articleId) {
+    choiceQuery = choiceQuery.eq("related_article_id", filters.articleId);
+  }
+  if (filters.year != null) {
+    choiceQuery = choiceQuery.eq("problems.year", filters.year);
+  }
+  const { data: choiceRows } = await choiceQuery;
+  for (const r of choiceRows ?? []) {
+    if (r.problems.deleted_at) continue;
+    out.push({
+      refType: "choice",
+      refId: r.choice_id,
+      problemId: r.problem_id,
+      problemNumber: r.problems.problem_number,
+      year: r.problems.year,
+      origin: r.problems.origin,
+      bodyMd: r.body_md,
+      marker: null,
+      oxTruth: r.ox_truth as OxTruth | null,
+      oxIneligible: r.ox_ineligible ?? false,
+      relatedArticleId: r.related_article_id,
+      relatedArticleLabel: null,
+      relatedArticleNumber: null,
+      isCorrect: r.is_correct ?? null,
+    });
+  }
+
+  // 2) problem_box_items.
+  let boxQuery = client
+    .from("problem_box_items")
+    .select(
+      "box_item_id, problem_id, body_md, marker, ox_truth, ox_ineligible, related_article_id, problems!inner(year, problem_number, origin, deleted_at, law_id)",
+    )
+    .eq("problems.law_id", law.law_id)
+    .limit(limit);
+  if (filters.articleId) {
+    boxQuery = boxQuery.eq("related_article_id", filters.articleId);
+  }
+  if (filters.year != null) {
+    boxQuery = boxQuery.eq("problems.year", filters.year);
+  }
+  const { data: boxRows } = await boxQuery;
+  for (const r of boxRows ?? []) {
+    if (r.problems.deleted_at) continue;
+    out.push({
+      refType: "box",
+      refId: r.box_item_id,
+      problemId: r.problem_id,
+      problemNumber: r.problems.problem_number,
+      year: r.problems.year,
+      origin: r.problems.origin,
+      bodyMd: r.body_md,
+      marker: r.marker,
+      oxTruth: r.ox_truth as OxTruth | null,
+      oxIneligible: r.ox_ineligible ?? false,
+      relatedArticleId: r.related_article_id,
+      relatedArticleLabel: null,
+      relatedArticleNumber: null,
+      isCorrect: null,
+    });
+  }
+
+  // 3) 상태 필터 — DB 단에서 mixed AND/OR 가 복잡해 메모리에서 처리.
+  const filtered = out.filter((it) => {
+    if (status === "active") {
+      return it.oxIneligible === false && it.oxTruth != null && it.relatedArticleId != null;
+    }
+    if (status === "ineligible") {
+      return it.oxIneligible === true;
+    }
+    if (status === "untruthed") {
+      return !it.oxIneligible && (it.oxTruth == null || it.relatedArticleId == null);
+    }
+    return true;
+  });
+
+  // 4) 매핑된 article id 들에 대해 라벨/번호 보강.
+  const articleIds = Array.from(
+    new Set(
+      filtered
+        .map((it) => it.relatedArticleId)
+        .filter((x): x is string => x != null),
+    ),
+  );
+  if (articleIds.length > 0) {
+    const { data: arts } = await client
+      .from("articles")
+      .select("article_id, display_label, article_number")
+      .in("article_id", articleIds);
+    const map = new Map<
+      string,
+      { displayLabel: string; articleNumber: string | null }
+    >();
+    for (const a of arts ?? []) {
+      map.set(a.article_id, {
+        displayLabel: a.display_label,
+        articleNumber: a.article_number,
+      });
+    }
+    for (const it of filtered) {
+      if (it.relatedArticleId) {
+        const a = map.get(it.relatedArticleId);
+        if (a) {
+          it.relatedArticleLabel = a.displayLabel;
+          it.relatedArticleNumber = a.articleNumber;
+        }
+      }
+    }
+  }
+
+  // 5) 정렬 — 연도 DESC, 문항 ASC, refType (choice 먼저), refId 안정 정렬.
+  filtered.sort((a, b) => {
+    const ya = a.year ?? 0;
+    const yb = b.year ?? 0;
+    if (ya !== yb) return yb - ya;
+    const pa = a.problemNumber ?? 0;
+    const pb = b.problemNumber ?? 0;
+    if (pa !== pb) return pa - pb;
+    if (a.refType !== b.refType) return a.refType === "choice" ? -1 : 1;
+    return a.refId.localeCompare(b.refId);
+  });
+
+  return filtered.slice(0, limit);
+}
+
+// 운영자가 review 화면에서 OX 한 항목을 수정할 때 사용.
+// truth 와 ineligible 의 cross-rule(ineligible=true → truth=null)을 서버에서 강제.
+export async function updateOxReviewItem(
+  client: SupabaseClient<Database>,
+  refType: "choice" | "box",
+  refId: string,
+  patch: { oxTruth?: OxTruth | null; oxIneligible?: boolean },
+): Promise<void> {
+  const ineligible = patch.oxIneligible ?? undefined;
+  const truth =
+    ineligible === true ? null : patch.oxTruth === undefined ? undefined : patch.oxTruth;
+
+  const update: Record<string, unknown> = {};
+  if (truth !== undefined) update.ox_truth = truth;
+  if (ineligible !== undefined) update.ox_ineligible = ineligible;
+  if (Object.keys(update).length === 0) return;
+
+  if (refType === "choice") {
+    const { error } = await client
+      .from("problem_choices")
+      .update(update)
+      .eq("choice_id", refId);
+    if (error) throw error;
+  } else {
+    const { error } = await client
+      .from("problem_box_items")
+      .update(update)
+      .eq("box_item_id", refId);
+    if (error) throw error;
+  }
 }
 
 // 과목 전체 OX 가능 지문 — /subjects/:subject/ox 풀이용. 셔플은 클라에서.
@@ -447,6 +653,46 @@ export async function getOxQuestionsForArticle(
   });
 
   return out.slice(0, limit);
+}
+
+// OX 패널에서 사용자가 정답 확인 후 메모/즐겨찾기를 달 수 있게,
+// 각 OX ref(choice/box-item) 별 memo / bookmark 를 한 번에 fetch 해서 refId 키로 반환.
+export async function getOxAnnotationsForRefs(
+  client: SupabaseClient<Database>,
+  userId: string,
+  items: OxQuestionItem[],
+): Promise<Record<string, OxRefAnnotations>> {
+  if (items.length === 0) return {};
+  const choiceIds: string[] = [];
+  const boxIds: string[] = [];
+  for (const it of items) {
+    if (it.refType === "choice") choiceIds.push(it.refId);
+    else if (it.refType === "box") boxIds.push(it.refId);
+  }
+
+  const [choiceMemos, choiceBookmarks, boxMemos, boxBookmarks] =
+    await Promise.all([
+      listMemosByTargets(client, userId, "problem_choice", choiceIds),
+      getBookmarksByTargets(client, userId, "problem_choice", choiceIds),
+      listMemosByTargets(client, userId, "problem_box_item", boxIds),
+      getBookmarksByTargets(client, userId, "problem_box_item", boxIds),
+    ]);
+
+  const out: Record<string, OxRefAnnotations> = {};
+  for (const it of items) {
+    if (it.refType === "choice") {
+      out[it.refId] = {
+        memos: choiceMemos[it.refId] ?? [],
+        bookmark: choiceBookmarks[it.refId] ?? null,
+      };
+    } else {
+      out[it.refId] = {
+        memos: boxMemos[it.refId] ?? [],
+        bookmark: boxBookmarks[it.refId] ?? null,
+      };
+    }
+  }
+  return out;
 }
 
 // 해설 — 지문별 "관련 조문 / 관련 판례" 링크 노출용. choice·box-item 들이 가리키는

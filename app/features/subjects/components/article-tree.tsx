@@ -19,6 +19,39 @@ interface TreeNode extends ArticleNode {
   children: TreeNode[];
 }
 
+// 조문 트리에서 숨길 placeholder chapter — 자료상 등록만 되어 있고 실제 조문은 매핑되지 않은
+// 외부 참조용 헤딩들. 학생에게 노출 시 클릭해도 빈 chapter-viewer 가 떠 학습에 방해.
+const HIDDEN_CHAPTER_LABELS = new Set<string>(["국제조약", "실용신안법"]);
+
+function pruneHidden(nodes: ArticleNode[]): ArticleNode[] {
+  const hiddenIds = new Set<string>();
+  for (const n of nodes) {
+    if (
+      n.level !== "article" &&
+      HIDDEN_CHAPTER_LABELS.has(n.displayLabel.trim())
+    ) {
+      hiddenIds.add(n.articleId);
+    }
+  }
+  if (hiddenIds.size === 0) return nodes;
+  // 숨긴 노드의 후손까지 재귀로 함께 제거.
+  const visible: ArticleNode[] = [];
+  const isDescendantOfHidden = (n: ArticleNode): boolean => {
+    let cur: ArticleNode | undefined = n;
+    while (cur?.parentId) {
+      if (hiddenIds.has(cur.parentId)) return true;
+      cur = nodes.find((x) => x.articleId === cur!.parentId);
+    }
+    return false;
+  };
+  for (const n of nodes) {
+    if (hiddenIds.has(n.articleId)) continue;
+    if (isDescendantOfHidden(n)) continue;
+    visible.push(n);
+  }
+  return visible;
+}
+
 function buildTree(nodes: ArticleNode[]): TreeNode[] {
   const map = new Map<string, TreeNode>();
   const roots: TreeNode[] = [];
@@ -110,7 +143,7 @@ export function ArticleTree({
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
 }) {
-  const tree = useMemo(() => buildTree(nodes), [nodes]);
+  const tree = useMemo(() => buildTree(pruneHidden(nodes)), [nodes]);
   const expandedIds = useMemo(() => {
     const ids = findAncestorIds(nodes, activeArticleId);
     // chapter-viewer 진입 시 그 chapter 의 조상도 펼쳐 트리에서 위치 인지 가능.
@@ -346,9 +379,23 @@ function TreeItem({
     <FileTextIcon className="text-muted-foreground size-3.5 shrink-0" />
   ) : null;
 
+  // 위계별 진하기 그라데이션: 편(가장 진함) → 장 → 절 → 조(가장 옅음).
+  // 같은 viewer 안에 동시에 보이는 수준이 다양해도 한눈에 위계가 인지되도록.
+  const levelClass = (() => {
+    switch (node.level) {
+      case "part":
+        return "text-foreground font-bold";
+      case "chapter":
+        return "text-foreground font-semibold";
+      case "section":
+        return "text-foreground/85 font-medium";
+      default:
+        return "text-foreground/65"; // article
+    }
+  })();
   const rowClass = cn(
     "group flex items-center gap-1 rounded-md py-1.5 pr-2 text-left",
-    isArticle ? "" : "font-medium",
+    levelClass,
     isActive
       ? "bg-accent text-accent-foreground"
       : "hover:bg-accent",

@@ -1,9 +1,14 @@
 import {
   ArrowRightIcon,
   BarChart3Icon,
+  ChartLineIcon,
+  CheckSquareIcon,
+  ClipboardListIcon,
+  CoinsIcon,
   FileEditIcon,
   ListChecksIcon,
   NetworkIcon,
+  TrendingUpIcon,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -47,6 +52,36 @@ export default function Admin() {
           title="체계도 기반 문제 편집"
           subtitle="01 총칙/보칙 ~ 08 국제출원 단위로 한 화면에서 일괄 편집"
           icon={NetworkIcon}
+        />
+        <AdminCard
+          to="/admin/problems/ox"
+          title="정오문제 관리"
+          subtitle="OX 후보 지문 일괄 검토 — ox_truth / OX 불가 인라인 토글"
+          icon={CheckSquareIcon}
+        />
+        <AdminCard
+          to="/admin/problems/stats"
+          title="문제 통계 분석"
+          subtitle="객관식·정오문제 풀이 정답률 / 어려운 문제 TOP / 연도별 추이"
+          icon={TrendingUpIcon}
+        />
+        <AdminCard
+          to="/admin/gs"
+          title="온라인 GS 관리"
+          subtitle="정기 모의고사 회차·문제 등록 / 채점 / 동료 채점 / 분쟁 문항"
+          icon={ClipboardListIcon}
+        />
+        <AdminCard
+          to="/admin/gs/series"
+          title="GS 시리즈 통계"
+          subtitle="8회 시리즈 학생별 추이 / 누적 z-score / 회차별 평균·분포"
+          icon={ChartLineIcon}
+        />
+        <AdminCard
+          to="/admin/gs/points"
+          title="GS 포인트 관리"
+          subtitle="우수 답안 자동 지급 + 학생별 잔액 / 수동 지급·차감"
+          icon={CoinsIcon}
         />
       </div>
     </div>

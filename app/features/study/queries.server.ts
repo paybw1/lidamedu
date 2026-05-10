@@ -98,6 +98,8 @@ export async function getSubjectProgress(
 }
 
 // 문제 시도 기록.
+// OX 자동 채점: selectedChoiceId(또는 selectedBoxItemId) + oxAnswer ('O'|'X') 가 함께 오면 OX 시도로 기록.
+// 일반 객관식: selectedChoiceId + selectedChoiceIndex 만 오고 oxAnswer 는 null.
 export async function recordProblemAttempt(
   client: SupabaseClient<Database>,
   userId: string,
@@ -105,6 +107,8 @@ export async function recordProblemAttempt(
     problemId: string;
     selectedChoiceId: string | null;
     selectedChoiceIndex: number | null;
+    selectedBoxItemId?: string | null;
+    oxAnswer?: "O" | "X" | null;
     isCorrect: boolean;
     mode?: "study" | "exam";
     timeSpentMs?: number | null;
@@ -116,6 +120,8 @@ export async function recordProblemAttempt(
     problem_id: input.problemId,
     selected_choice_id: input.selectedChoiceId,
     selected_choice_index: input.selectedChoiceIndex,
+    selected_box_item_id: input.selectedBoxItemId ?? null,
+    ox_answer: input.oxAnswer ?? null,
     is_correct: input.isCorrect,
     mode: input.mode ?? "study",
     time_spent_ms: input.timeSpentMs ?? null,
@@ -1051,7 +1057,8 @@ export async function getWeakAreas(
   return enriched.slice(0, limit);
 }
 
-// 가장 최근 시도가 오답인 문제 목록 (오답노트). lawCode 미지정 시 전체 과목.
+// 가장 최근 시도가 오답인 문제 목록 (오답노트 — 일반 객관식). lawCode 미지정 시 전체 과목.
+// OX 시도는 ref(choice/box-item) 단위 채점이라 별도 listOxWrongAttempts 가 처리.
 export async function listWrongAttempts(
   client: SupabaseClient<Database>,
   userId: string,
@@ -1063,6 +1070,7 @@ export async function listWrongAttempts(
       "problem_id, is_correct, attempted_at, problems!inner(body_md, year, problem_number, primary_article_id, law_id, articles!primary_article_id(display_label), laws!inner(law_code))",
     )
     .eq("user_id", userId)
+    .is("ox_answer", null)
     .order("attempted_at", { ascending: false })
     .limit(500);
   if (error) throw error;
@@ -1096,6 +1104,243 @@ export async function listWrongAttempts(
       problemNumber: row.problems.problem_number,
     });
   }
+  out.sort(
+    (a, b) =>
+      new Date(b.lastAttemptedAt).getTime() -
+      new Date(a.lastAttemptedAt).getTime(),
+  );
+  return out;
+}
+
+export interface OxWrongAttemptItem {
+  refType: "choice" | "box";
+  refId: string;
+  problemId: string;
+  bodySnippet: string;
+  oxTruth: "O" | "X";
+  myAnswer: "O" | "X";
+  lastAttemptedAt: string;
+  attempts: number;
+  primaryArticleLabel: string | null;
+  articleNumber: string | null;
+  lawCode: LawSubjectSlug;
+  year: number | null;
+  problemNumber: number | null;
+}
+
+// OX 오답 목록. ref(choice 또는 box_item) 단위로 dedup 한 뒤,
+// 가장 최근 응답이 오답인 항목만 노출. 정답 후에는 자동 제거.
+export async function listOxWrongAttempts(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCode?: LawSubjectSlug,
+): Promise<OxWrongAttemptItem[]> {
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, selected_choice_id, selected_box_item_id, ox_answer, is_correct, attempted_at",
+    )
+    .eq("user_id", userId)
+    .not("ox_answer", "is", null)
+    .order("attempted_at", { ascending: false })
+    .limit(2000);
+  if (error) throw error;
+  const list = rows ?? [];
+
+  type Row = (typeof list)[number];
+  const byRef = new Map<string, { row: Row; attempts: number }>();
+  for (const r of list) {
+    const refKey = r.selected_choice_id
+      ? `c:${r.selected_choice_id}`
+      : r.selected_box_item_id
+        ? `b:${r.selected_box_item_id}`
+        : null;
+    if (!refKey) continue;
+    const cur = byRef.get(refKey);
+    if (!cur) {
+      byRef.set(refKey, { row: r, attempts: 1 });
+    } else {
+      cur.attempts += 1;
+    }
+  }
+
+  const choiceIds: string[] = [];
+  const boxIds: string[] = [];
+  const wrongRefs: { refKey: string; row: Row; attempts: number }[] = [];
+  for (const [refKey, v] of byRef.entries()) {
+    if (v.row.is_correct) continue;
+    wrongRefs.push({ refKey, ...v });
+    if (v.row.selected_choice_id) choiceIds.push(v.row.selected_choice_id);
+    else if (v.row.selected_box_item_id) boxIds.push(v.row.selected_box_item_id);
+  }
+  if (wrongRefs.length === 0) return [];
+
+  const choiceMap = new Map<
+    string,
+    {
+      bodyMd: string | null;
+      articleId: string | null;
+      problemId: string;
+    }
+  >();
+  if (choiceIds.length > 0) {
+    const { data: cRows } = await client
+      .from("problem_choices")
+      .select("choice_id, body_md, related_article_id, problem_id")
+      .in("choice_id", choiceIds);
+    for (const c of cRows ?? []) {
+      choiceMap.set(c.choice_id, {
+        bodyMd: c.body_md,
+        articleId: c.related_article_id,
+        problemId: c.problem_id,
+      });
+    }
+  }
+
+  const boxMap = new Map<
+    string,
+    {
+      bodyMd: string | null;
+      marker: string | null;
+      articleId: string | null;
+      problemId: string;
+    }
+  >();
+  if (boxIds.length > 0) {
+    const { data: bRows } = await client
+      .from("problem_box_items")
+      .select("box_item_id, body_md, marker, related_article_id, problem_id")
+      .in("box_item_id", boxIds);
+    for (const b of bRows ?? []) {
+      boxMap.set(b.box_item_id, {
+        bodyMd: b.body_md,
+        marker: b.marker,
+        articleId: b.related_article_id,
+        problemId: b.problem_id,
+      });
+    }
+  }
+
+  const articleIds = new Set<string>();
+  for (const c of choiceMap.values()) if (c.articleId) articleIds.add(c.articleId);
+  for (const b of boxMap.values()) if (b.articleId) articleIds.add(b.articleId);
+
+  const articleMap = new Map<
+    string,
+    { displayLabel: string; articleNumber: string | null }
+  >();
+  if (articleIds.size > 0) {
+    const { data: aRows } = await client
+      .from("articles")
+      .select("article_id, display_label, article_number")
+      .in("article_id", [...articleIds]);
+    for (const a of aRows ?? []) {
+      articleMap.set(a.article_id, {
+        displayLabel: a.display_label,
+        articleNumber: a.article_number,
+      });
+    }
+  }
+
+  const problemIds = new Set<string>();
+  for (const c of choiceMap.values()) problemIds.add(c.problemId);
+  for (const b of boxMap.values()) problemIds.add(b.problemId);
+
+  const problemMap = new Map<
+    string,
+    { year: number | null; problemNumber: number | null; lawCode: LawSubjectSlug }
+  >();
+  if (problemIds.size > 0) {
+    const { data: pRows } = await client
+      .from("problems")
+      .select("problem_id, year, problem_number, deleted_at, laws!inner(law_code)")
+      .in("problem_id", [...problemIds]);
+    for (const p of pRows ?? []) {
+      if (p.deleted_at) continue;
+      problemMap.set(p.problem_id, {
+        year: p.year,
+        problemNumber: p.problem_number,
+        lawCode: (p.laws.law_code as LawSubjectSlug) ?? "patent",
+      });
+    }
+  }
+
+  // OX 정답(ox_truth) 은 ref 의 원본에서 다시 조회. 시점 차이로 ox_truth 가 바뀌었어도
+  // 사용자가 최근에 잘못 답한 사실은 유효 — 현재 정답값을 표시.
+  const choiceTruthMap = new Map<string, "O" | "X" | null>();
+  if (choiceIds.length > 0) {
+    const { data: ct } = await client
+      .from("problem_choices")
+      .select("choice_id, ox_truth")
+      .in("choice_id", choiceIds);
+    for (const r of ct ?? []) choiceTruthMap.set(r.choice_id, r.ox_truth as "O" | "X" | null);
+  }
+  const boxTruthMap = new Map<string, "O" | "X" | null>();
+  if (boxIds.length > 0) {
+    const { data: bt } = await client
+      .from("problem_box_items")
+      .select("box_item_id, ox_truth")
+      .in("box_item_id", boxIds);
+    for (const r of bt ?? []) boxTruthMap.set(r.box_item_id, r.ox_truth as "O" | "X" | null);
+  }
+
+  const out: OxWrongAttemptItem[] = [];
+  for (const w of wrongRefs) {
+    const myAnswer = w.row.ox_answer as "O" | "X";
+    if (w.row.selected_choice_id) {
+      const c = choiceMap.get(w.row.selected_choice_id);
+      if (!c) continue;
+      const prob = problemMap.get(c.problemId);
+      if (!prob) continue;
+      const truth = choiceTruthMap.get(w.row.selected_choice_id);
+      if (!truth) continue;
+      if (lawCode && prob.lawCode !== lawCode) continue;
+      const body = c.bodyMd ?? "";
+      const art = c.articleId ? articleMap.get(c.articleId) : null;
+      out.push({
+        refType: "choice",
+        refId: w.row.selected_choice_id,
+        problemId: c.problemId,
+        bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+        oxTruth: truth,
+        myAnswer,
+        lastAttemptedAt: w.row.attempted_at,
+        attempts: w.attempts,
+        primaryArticleLabel: art?.displayLabel ?? null,
+        articleNumber: art?.articleNumber ?? null,
+        lawCode: prob.lawCode,
+        year: prob.year,
+        problemNumber: prob.problemNumber,
+      });
+    } else if (w.row.selected_box_item_id) {
+      const b = boxMap.get(w.row.selected_box_item_id);
+      if (!b) continue;
+      const prob = problemMap.get(b.problemId);
+      if (!prob) continue;
+      const truth = boxTruthMap.get(w.row.selected_box_item_id);
+      if (!truth) continue;
+      if (lawCode && prob.lawCode !== lawCode) continue;
+      const rawBody = b.bodyMd ?? "";
+      const body = b.marker ? `[${b.marker}] ${rawBody}` : rawBody;
+      const art = b.articleId ? articleMap.get(b.articleId) : null;
+      out.push({
+        refType: "box",
+        refId: w.row.selected_box_item_id,
+        problemId: b.problemId,
+        bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+        oxTruth: truth,
+        myAnswer,
+        lastAttemptedAt: w.row.attempted_at,
+        attempts: w.attempts,
+        primaryArticleLabel: art?.displayLabel ?? null,
+        articleNumber: art?.articleNumber ?? null,
+        lawCode: prob.lawCode,
+        year: prob.year,
+        problemNumber: prob.problemNumber,
+      });
+    }
+  }
+
   out.sort(
     (a, b) =>
       new Date(b.lastAttemptedAt).getTime() -

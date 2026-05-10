@@ -435,6 +435,409 @@ export type Database = {
         }
         Relationships: []
       }
+      gs_answers: {
+        Row: {
+          answer_id: string
+          attachments: Json
+          body_md: string
+          feedback_md: string | null
+          legibility_confirmed: boolean
+          question_id: string
+          score: number | null
+          submission_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer_id?: string
+          attachments?: Json
+          body_md?: string
+          feedback_md?: string | null
+          legibility_confirmed?: boolean
+          question_id: string
+          score?: number | null
+          submission_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer_id?: string
+          attachments?: Json
+          body_md?: string
+          feedback_md?: string | null
+          legibility_confirmed?: boolean
+          question_id?: string
+          score?: number | null
+          submission_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "gs_questions"
+            referencedColumns: ["question_id"]
+          },
+          {
+            foreignKeyName: "gs_answers_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "gs_submissions"
+            referencedColumns: ["submission_id"]
+          },
+        ]
+      }
+      gs_distinguished_answers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          distinction_id: string
+          is_anonymous: boolean
+          is_published: boolean
+          points_awarded: number
+          question_id: string | null
+          reason: string | null
+          round_id: string
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          distinction_id?: string
+          is_anonymous?: boolean
+          is_published?: boolean
+          points_awarded?: number
+          question_id?: string | null
+          reason?: string | null
+          round_id: string
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          distinction_id?: string
+          is_anonymous?: boolean
+          is_published?: boolean
+          points_awarded?: number
+          question_id?: string | null
+          reason?: string | null
+          round_id?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_distinguished_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "gs_questions"
+            referencedColumns: ["question_id"]
+          },
+          {
+            foreignKeyName: "gs_distinguished_answers_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "gs_rounds"
+            referencedColumns: ["round_id"]
+          },
+          {
+            foreignKeyName: "gs_distinguished_answers_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "gs_submissions"
+            referencedColumns: ["submission_id"]
+          },
+        ]
+      }
+      gs_peer_assignments: {
+        Row: {
+          assigned_at: string
+          assignment_id: string
+          reviewer_user_id: string
+          round_id: string
+          submission_id: string
+          submitted_at: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assignment_id?: string
+          reviewer_user_id: string
+          round_id: string
+          submission_id: string
+          submitted_at?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assignment_id?: string
+          reviewer_user_id?: string
+          round_id?: string
+          submission_id?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_peer_assignments_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "gs_rounds"
+            referencedColumns: ["round_id"]
+          },
+          {
+            foreignKeyName: "gs_peer_assignments_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "gs_submissions"
+            referencedColumns: ["submission_id"]
+          },
+        ]
+      }
+      gs_peer_review_answers: {
+        Row: {
+          assignment_id: string
+          feedback_md: string | null
+          question_id: string
+          review_answer_id: string
+          score: number | null
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          feedback_md?: string | null
+          question_id: string
+          review_answer_id?: string
+          score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          feedback_md?: string | null
+          question_id?: string
+          review_answer_id?: string
+          score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_peer_review_answers_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "gs_peer_assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "gs_peer_review_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "gs_questions"
+            referencedColumns: ["question_id"]
+          },
+        ]
+      }
+      gs_points_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ledger_id: string
+          source: string
+          source_ref: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ledger_id?: string
+          source: string
+          source_ref?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ledger_id?: string
+          source?: string
+          source_ref?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gs_questions: {
+        Row: {
+          body_md: string
+          created_at: string
+          max_score: number
+          model_answer_md: string | null
+          order_index: number
+          question_id: string
+          round_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_md: string
+          created_at?: string
+          max_score?: number
+          model_answer_md?: string | null
+          order_index?: number
+          question_id?: string
+          round_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          max_score?: number
+          model_answer_md?: string | null
+          order_index?: number
+          question_id?: string
+          round_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_questions_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "gs_rounds"
+            referencedColumns: ["round_id"]
+          },
+        ]
+      }
+      gs_rounds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description_md: string | null
+          duration_min: number
+          end_at: string
+          round_id: string
+          round_number: number | null
+          series_id: string | null
+          start_at: string
+          status: Database["public"]["Enums"]["gs_round_status"]
+          subject: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description_md?: string | null
+          duration_min?: number
+          end_at: string
+          round_id?: string
+          round_number?: number | null
+          series_id?: string | null
+          start_at: string
+          status?: Database["public"]["Enums"]["gs_round_status"]
+          subject: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description_md?: string | null
+          duration_min?: number
+          end_at?: string
+          round_id?: string
+          round_number?: number | null
+          series_id?: string | null
+          start_at?: string
+          status?: Database["public"]["Enums"]["gs_round_status"]
+          subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_rounds_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "gs_series"
+            referencedColumns: ["series_id"]
+          },
+        ]
+      }
+      gs_series: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description_md: string | null
+          expected_rounds: number
+          series_id: string
+          subject: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description_md?: string | null
+          expected_rounds?: number
+          series_id?: string
+          subject: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description_md?: string | null
+          expected_rounds?: number
+          series_id?: string
+          subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gs_submissions: {
+        Row: {
+          graded_at: string | null
+          graded_by: string | null
+          round_id: string
+          started_at: string
+          submission_id: string
+          submitted_at: string | null
+          total_score: number | null
+          user_id: string
+        }
+        Insert: {
+          graded_at?: string | null
+          graded_by?: string | null
+          round_id: string
+          started_at?: string
+          submission_id?: string
+          submitted_at?: string | null
+          total_score?: number | null
+          user_id: string
+        }
+        Update: {
+          graded_at?: string | null
+          graded_by?: string | null
+          round_id?: string
+          started_at?: string
+          submission_id?: string
+          submitted_at?: string | null
+          total_score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_submissions_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "gs_rounds"
+            referencedColumns: ["round_id"]
+          },
+        ]
+      }
       law_revisions: {
         Row: {
           comparison_pdf: string | null
@@ -1367,7 +1770,9 @@ export type Database = {
           attempted_at: string
           is_correct: boolean
           mode: string
+          ox_answer: Database["public"]["Enums"]["ox_truth"] | null
           problem_id: string
+          selected_box_item_id: string | null
           selected_choice_id: string | null
           selected_choice_index: number | null
           session_id: string | null
@@ -1379,7 +1784,9 @@ export type Database = {
           attempted_at?: string
           is_correct: boolean
           mode?: string
+          ox_answer?: Database["public"]["Enums"]["ox_truth"] | null
           problem_id: string
+          selected_box_item_id?: string | null
           selected_choice_id?: string | null
           selected_choice_index?: number | null
           session_id?: string | null
@@ -1391,7 +1798,9 @@ export type Database = {
           attempted_at?: string
           is_correct?: boolean
           mode?: string
+          ox_answer?: Database["public"]["Enums"]["ox_truth"] | null
           problem_id?: string
+          selected_box_item_id?: string | null
           selected_choice_id?: string | null
           selected_choice_index?: number | null
           session_id?: string | null
@@ -1405,6 +1814,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "problems"
             referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "user_problem_attempts_selected_box_item_id_fkey"
+            columns: ["selected_box_item_id"]
+            isOneToOne: false
+            referencedRelation: "problem_box_items"
+            referencedColumns: ["box_item_id"]
           },
           {
             foreignKeyName: "user_problem_attempts_selected_choice_id_fkey"
@@ -1475,9 +1891,75 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      gs_points_balance_v: {
+        Row: {
+          balance: number | null
+          tx_count: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      admin_mcq_problem_stats: {
+        Args: { p_law_code: string; p_limit?: number; p_min_attempts?: number }
+        Returns: {
+          accuracy: number
+          attempts: number
+          body_md: string
+          correct_count: number
+          origin: string
+          primary_article_label: string
+          primary_article_number: string
+          problem_id: string
+          problem_number: number
+          unique_users: number
+          year: number
+        }[]
+      }
+      admin_mcq_year_stats: {
+        Args: { p_law_code: string }
+        Returns: {
+          accuracy: number
+          attempts: number
+          correct_count: number
+          problem_count: number
+          year: number
+        }[]
+      }
+      admin_ox_ref_stats: {
+        Args: { p_law_code: string; p_limit?: number; p_min_attempts?: number }
+        Returns: {
+          accuracy: number
+          attempts: number
+          body_md: string
+          correct_count: number
+          origin: string
+          ox_truth: string
+          problem_id: string
+          problem_number: number
+          ref_id: string
+          ref_type: string
+          related_article_label: string
+          related_article_number: string
+          unique_users: number
+          year: number
+        }[]
+      }
+      admin_problem_summary: {
+        Args: { p_law_code: string }
+        Returns: {
+          mcq_attempt_count: number
+          mcq_correct_count: number
+          mcq_problem_count: number
+          mcq_unique_users: number
+          ox_attempt_count: number
+          ox_correct_count: number
+          ox_ref_active: number
+          ox_ref_total: number
+          ox_unique_users: number
+        }[]
+      }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
       get_problem_stats: {
         Args: { p_ids: string[] }
@@ -1486,6 +1968,123 @@ export type Database = {
           correct_attempts: number
           distinct_users: number
           problem_id: string
+        }[]
+      }
+      gs_my_points_balance: {
+        Args: never
+        Returns: {
+          balance: number
+          tx_count: number
+        }[]
+      }
+      gs_my_series_list: {
+        Args: never
+        Returns: {
+          expected_rounds: number
+          rounds_taken: number
+          series_id: string
+          subject: string
+          title: string
+        }[]
+      }
+      gs_points_top_balances: {
+        Args: { p_limit?: number }
+        Returns: {
+          balance: number
+          tx_count: number
+          user_id: string
+          user_name: string
+        }[]
+      }
+      gs_round_question_stats: {
+        Args: { p_round_id: string }
+        Returns: {
+          avg_score: number
+          max_actual: number
+          max_score: number
+          median_score: number
+          min_score: number
+          n: number
+          order_index: number
+          q1: number
+          q3: number
+          question_id: string
+          stdev: number
+          title: string
+        }[]
+      }
+      gs_round_student_stats: {
+        Args: { p_round_id: string }
+        Returns: {
+          graded_count: number
+          percentile: number
+          rank: number
+          total_score: number
+          user_id: string
+          user_name: string
+          z_score: number
+        }[]
+      }
+      gs_series_matrix: {
+        Args: { p_series_id: string }
+        Returns: {
+          round_id: string
+          round_number: number
+          total_score: number
+          user_id: string
+          user_name: string
+          z_score: number
+        }[]
+      }
+      gs_series_my_progress: {
+        Args: { p_series_id: string }
+        Returns: {
+          cohort_avg: number
+          cohort_n: number
+          cohort_stdev: number
+          my_percentile: number
+          my_rank: number
+          my_total: number
+          my_z: number
+          round_id: string
+          round_number: number
+          round_title: string
+          start_at: string
+        }[]
+      }
+      gs_series_my_summary: {
+        Args: { p_series_id: string }
+        Returns: {
+          avg_total: number
+          avg_z: number
+          rounds_taken: number
+          series_rank: number
+          total_students: number
+        }[]
+      }
+      gs_series_round_summary: {
+        Args: { p_series_id: string }
+        Returns: {
+          avg_total: number
+          max_total: number
+          min_total: number
+          n: number
+          round_id: string
+          round_number: number
+          start_at: string
+          stdev: number
+          title: string
+        }[]
+      }
+      gs_series_student_stats: {
+        Args: { p_series_id: string }
+        Returns: {
+          avg_total: number
+          avg_z_score: number
+          rounds_taken: number
+          series_rank: number
+          user_id: string
+          user_name: string
         }[]
       }
     }
@@ -1500,10 +2099,16 @@ export type Database = {
         | "cites"
         | "similar_to"
         | "contrary_to"
-      annotation_target_type: "article" | "case" | "problem" | "problem_choice"
+      annotation_target_type:
+        | "article"
+        | "case"
+        | "problem"
+        | "problem_choice"
+        | "problem_box_item"
       article_level: "part" | "chapter" | "section" | "article"
       auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
+      gs_round_status: "draft" | "published" | "closed"
       law_change_kind: "created" | "amended" | "deleted"
       ox_truth: "O" | "X"
       problem_choice_type: "statute" | "precedent" | "theory"
@@ -1663,10 +2268,17 @@ export const Constants = {
         "similar_to",
         "contrary_to",
       ],
-      annotation_target_type: ["article", "case", "problem", "problem_choice"],
+      annotation_target_type: [
+        "article",
+        "case",
+        "problem",
+        "problem_choice",
+        "problem_box_item",
+      ],
       article_level: ["part", "chapter", "section", "article"],
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
+      gs_round_status: ["draft", "published", "closed"],
       law_change_kind: ["created", "amended", "deleted"],
       ox_truth: ["O", "X"],
       problem_choice_type: ["statute", "precedent", "theory"],

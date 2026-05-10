@@ -39,8 +39,9 @@ import { OxQuestionsPanel } from "~/features/problems/components/ox-questions-pa
 import { RelatedProblemsList } from "~/features/problems/components/related-problems-list";
 import type {
   OxQuestionItem,
-  RelatedProblemItem,
-} from "~/features/problems/queries.server";
+  OxRefAnnotations,
+} from "~/features/problems/labels";
+import type { RelatedProblemItem } from "~/features/problems/queries.server";
 import { RevisionHistory } from "~/features/laws/components/revision-history";
 import type {
   ArticleComment,
@@ -103,6 +104,7 @@ export function ArticleRightPanel({
   relatedCases,
   relatedProblems,
   oxQuestions,
+  oxAnnotationsByRef,
   comment,
   canEditComment = false,
   subjectSlug,
@@ -118,6 +120,8 @@ export function ArticleRightPanel({
   relatedProblems?: RelatedProblemItem[];
   // article-viewer 에서 이 조문에 연결된 OX 가능 지문 풀이용. undefined 면 placeholder 유지.
   oxQuestions?: OxQuestionItem[];
+  // 각 OX refId 별 메모/즐겨찾기 — 정답 확인 후 패널 안에서 저장 가능.
+  oxAnnotationsByRef?: Record<string, OxRefAnnotations>;
   // article 코멘트/평석. null = 미작성. undefined = 탭 자체 비활성 (placeholder 유지).
   comment?: ArticleComment | null;
   canEditComment?: boolean;
@@ -311,7 +315,11 @@ export function ArticleRightPanel({
 
         {showOxLive ? (
           <TabsContent value="ox">
-            <OxQuestionsPanel items={oxQuestions} subject={subjectSlug} />
+            <OxQuestionsPanel
+              items={oxQuestions}
+              subject={subjectSlug}
+              annotationsByRef={oxAnnotationsByRef}
+            />
           </TabsContent>
         ) : null}
 

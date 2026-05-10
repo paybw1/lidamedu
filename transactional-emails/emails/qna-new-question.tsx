@@ -51,7 +51,7 @@ export default function QnaNewQuestion({
             <Section className="mt-6">
               <Button
                 href={link}
-                className="rounded-md bg-[#635bff] px-5 py-3 text-[14px] font-semibold text-white"
+                className="rounded-md bg-[#2563eb] px-5 py-3 text-[14px] font-semibold text-white"
               >
                 답변하러 가기
               </Button>

@@ -4,38 +4,59 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   CircleXIcon,
+  HeartIcon,
+  NotebookPenIcon,
   RefreshCcwIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
+import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
+import { MemoList } from "~/features/annotations/components/memo-list";
 import { ORIGIN_LABEL, type ProblemOrigin } from "~/features/problems/labels";
 import type {
   OxQuestionItem,
+  OxRefAnnotations,
   OxTruth,
-} from "~/features/problems/queries.server";
+} from "~/features/problems/labels";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export function OxQuestionsPanel({
   items,
   subject,
+  annotationsByRef,
 }: {
   items: OxQuestionItem[];
   subject: LawSubjectSlug;
+  annotationsByRef?: Record<string, OxRefAnnotations>;
 }) {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<OxTruth | null>(null);
   const [revealed, setRevealed] = useState(false);
+  // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'memo' | null.
+  const [annoOpen, setAnnoOpen] = useState<"bookmark" | "memo" | null>(null);
+  const attemptFetcher = useFetcher();
+  const startedAtRef = useRef<number>(Date.now());
+  // 한 지문당 1회만 기록 (다시 풀기 → 동일 지문 재기록 방지). refId 단위.
+  const recordedRefIdRef = useRef<string | null>(null);
 
-  // items 가 바뀌면 처음으로.
+  // items 가 "내용상" 바뀌면 처음으로 (다른 조문/장으로 이동 등).
+  // 단순히 items 참조만 비교하면 fetcher.submit 의 loader revalidate 로 새 배열이
+  // 내려올 때마다 idx/picked/revealed 가 리셋되어 정답 확인 박스가 접힘.
+  // refId 시퀀스 시그니처로 비교해 실제 변경된 경우에만 리셋.
+  const itemsKey = items.map((it) => it.refId).join("|");
   useEffect(() => {
     setIdx(0);
     setPicked(null);
     setRevealed(false);
-  }, [items]);
+    setAnnoOpen(null);
+    startedAtRef.current = Date.now();
+    recordedRefIdRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsKey]);
 
   if (items.length === 0) {
     return (
@@ -53,18 +74,49 @@ export function OxQuestionsPanel({
     if (revealed) return;
     setPicked(choice);
     setRevealed(true);
+    // 첫 응답만 기록. 같은 지문에서 다시 풀기 후 같은 답을 골라도 중복 기록 안 함.
+    if (recordedRefIdRef.current === cur.refId) return;
+    recordedRefIdRef.current = cur.refId;
+    const fd = new FormData();
+    fd.set("problemId", cur.problemId);
+    fd.set("oxAnswer", choice);
+    fd.set("isCorrect", choice === cur.oxTruth ? "true" : "false");
+    fd.set("mode", "study");
+    fd.set(
+      "timeSpentMs",
+      String(Math.max(0, Date.now() - startedAtRef.current)),
+    );
+    if (cur.refType === "choice") {
+      fd.set("selectedChoiceId", cur.refId);
+    } else {
+      fd.set("selectedBoxItemId", cur.refId);
+    }
+    attemptFetcher.submit(fd, {
+      method: "post",
+      action: "/api/problems/attempt",
+    });
   };
 
   const goNext = () => {
     setIdx((i) => (i + 1) % items.length);
     setPicked(null);
     setRevealed(false);
+    setAnnoOpen(null);
+    startedAtRef.current = Date.now();
+    recordedRefIdRef.current = null;
   };
 
   const reset = () => {
     setPicked(null);
     setRevealed(false);
+    setAnnoOpen(null);
   };
+
+  const annoTargetType =
+    cur.refType === "choice" ? "problem_choice" : "problem_box_item";
+  const curAnno = annotationsByRef?.[cur.refId];
+  const memoCount = curAnno?.memos.length ?? 0;
+  const starLevel = curAnno?.bookmark?.starLevel ?? 0;
 
   return (
     <div className="space-y-3" data-testid="ox-panel">
@@ -83,7 +135,7 @@ export function OxQuestionsPanel({
         </span>
       </div>
 
-      <p className="text-sm leading-relaxed">{cur.bodyMd}</p>
+      <p className="font-serif text-sm leading-relaxed">{cur.bodyMd}</p>
 
       <div className="flex gap-2">
         <Button
@@ -149,7 +201,50 @@ export function OxQuestionsPanel({
               해설 미입력.
             </p>
           )}
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-1 pt-1">
+            <Button
+              type="button"
+              variant={annoOpen === "bookmark" ? "default" : "outline"}
+              size="sm"
+              onClick={() =>
+                setAnnoOpen((v) => (v === "bookmark" ? null : "bookmark"))
+              }
+              className="h-7 gap-1 text-xs"
+              aria-pressed={annoOpen === "bookmark"}
+              data-testid="ox-toggle-bookmark"
+            >
+              <HeartIcon
+                className={cn(
+                  "size-3",
+                  starLevel > 0 && "fill-rose-500 text-rose-500",
+                )}
+              />
+              즐겨찾기
+              {starLevel > 0 ? (
+                <span className="text-muted-foreground tabular-nums">
+                  {starLevel}
+                </span>
+              ) : null}
+            </Button>
+            <Button
+              type="button"
+              variant={annoOpen === "memo" ? "default" : "outline"}
+              size="sm"
+              onClick={() =>
+                setAnnoOpen((v) => (v === "memo" ? null : "memo"))
+              }
+              className="h-7 gap-1 text-xs"
+              aria-pressed={annoOpen === "memo"}
+              data-testid="ox-toggle-memo"
+            >
+              <NotebookPenIcon className="size-3" />
+              메모
+              {memoCount > 0 ? (
+                <span className="text-muted-foreground tabular-nums">
+                  {memoCount}
+                </span>
+              ) : null}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -161,7 +256,7 @@ export function OxQuestionsPanel({
             <Button
               size="sm"
               onClick={goNext}
-              className="h-7 flex-1 text-xs"
+              className="ml-auto h-7 text-xs"
               data-testid="ox-next"
             >
               다음 지문 <ArrowRightIcon className="size-3" />
@@ -180,6 +275,34 @@ export function OxQuestionsPanel({
               </Link>
             </Button>
           </div>
+
+          {annoOpen === "bookmark" ? (
+            <div
+              className="bg-background mt-2 rounded-md border p-3"
+              data-testid="ox-bookmark-panel"
+            >
+              <BookmarkStars
+                key={`bm:${cur.refId}`}
+                targetType={annoTargetType}
+                targetId={cur.refId}
+                initial={curAnno?.bookmark ?? null}
+              />
+            </div>
+          ) : null}
+
+          {annoOpen === "memo" ? (
+            <div
+              className="bg-background mt-2 rounded-md border p-3"
+              data-testid="ox-memo-panel"
+            >
+              <MemoList
+                key={`memo:${cur.refId}`}
+                targetType={annoTargetType}
+                targetId={cur.refId}
+                initial={curAnno?.memos ?? []}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

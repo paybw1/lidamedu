@@ -43,6 +43,11 @@ import {
   getLawByCode,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import type { OxRefAnnotations } from "~/features/problems/labels";
+import {
+  getOxAnnotationsForRefs,
+  getOxQuestionsForArticle,
+} from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
@@ -115,6 +120,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     highlightsByArticle,
     qnaByArticle,
     allBlankSetsByArticle,
+    oxQuestionsByArticle,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
@@ -134,6 +140,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       articleIds.map((id) =>
         listBlankSetsByArticle(client, id).then(
           (sets) => [id, sets] as const,
+        ),
+      ),
+    ).then((entries) => Object.fromEntries(entries)),
+    Promise.all(
+      articleIds.map((id) =>
+        getOxQuestionsForArticle(client, id, 50).then(
+          (items) => [id, items] as const,
         ),
       ),
     ).then((entries) => Object.fromEntries(entries)),
@@ -169,6 +182,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
   const blankOwners = [...ownerMap.values()];
 
+  // 모든 OX refId 를 모아 한 번에 메모/즐겨찾기 prefetch — 카드별 OxQuestionsPanel 에 그대로 전달.
+  const allOxItems = Object.values(oxQuestionsByArticle).flat();
+  const oxAnnotationsByRef: Record<string, OxRefAnnotations> =
+    await getOxAnnotationsForRefs(client, user.id, allOxItems);
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     chapter,
@@ -182,6 +200,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaByArticle,
     blankSetsByArticle,
     blankOwners,
+    oxQuestionsByArticle,
+    oxAnnotationsByRef,
     selectedBlankOwner: ownerParam,
   };
 }
@@ -212,6 +232,8 @@ function Inner({
     qnaByArticle,
     blankSetsByArticle,
     blankOwners,
+    oxQuestionsByArticle,
+    oxAnnotationsByRef,
     selectedBlankOwner,
   } = loaderData;
   const { axis } = useSortAxis();
@@ -546,6 +568,9 @@ function Inner({
                         memos={memos}
                         highlights={highlights}
                         qnaThreads={qnaThreads}
+                        oxQuestions={oxQuestionsByArticle[a.articleId] ?? []}
+                        oxAnnotationsByRef={oxAnnotationsByRef}
+                        subjectSlug={subject.slug}
                       />
                     </div>
                   </CardContent>

@@ -168,7 +168,7 @@ export function ArticleBodyView({
     >
       <BlockIndexCtx.Provider value={blockIndexMap}>
         <MemoMarksCtx.Provider value={memoMarks}>
-          <div className="space-y-3 text-[15px] leading-relaxed">
+          <div className="font-serif space-y-3 text-[15px] leading-relaxed">
             {body.blocks.map((b, i) => (
               <BlockView key={i} block={b} depth={0} />
             ))}
@@ -390,7 +390,7 @@ function LabeledBlock({
       <p>
         <span className={labelClass}>{label}</span>
         {subtitle ? (
-          <span className="bg-primary/10 text-primary mr-1.5 rounded px-1.5 py-0.5 text-xs font-semibold">
+          <span className="text-foreground mr-1.5 font-bold tracking-tight">
             ({subtitle})
           </span>
         ) : null}
@@ -946,7 +946,7 @@ function InlineNode({
       );
     case "subtitle":
       return (
-        <span className="bg-primary/10 text-primary mx-0.5 rounded px-1.5 py-0.5 text-xs font-semibold">
+        <span className="text-foreground mx-0.5 font-bold tracking-tight">
           ({renderTextWithBlanks(node.text, 0)})
         </span>
       );

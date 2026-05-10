@@ -66,10 +66,22 @@ export default [
         "features/problems/api/upload-explanation-image.tsx",
       ),
       route("/attempt", "features/problems/api/attempt.tsx"),
+      route(
+        "/ox-review-update",
+        "features/problems/api/ox-review-update.tsx",
+      ),
     ]),
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
+    ]),
+    ...prefix("/gs", [
+      route("/take", "features/gs/api/take.tsx"),
+      route("/ai-draft", "features/gs/api/ai-draft.tsx"),
+      route("/peer", "features/gs/api/peer.tsx"),
+    ]),
+    ...prefix("/cron", [
+      route("/gs-auto-assign", "features/gs/api/cron-auto-assign.tsx"),
     ]),
   ]),
 
@@ -182,6 +194,21 @@ export default [
       ]),
 
       route("/gs", "features/gs/screens/gs.tsx"),
+      route("/gs/:roundId/take", "features/gs/screens/gs-take.tsx"),
+      route("/gs/:roundId/result", "features/gs/screens/gs-result.tsx"),
+      route(
+        "/gs/peer-review/:assignmentId",
+        "features/gs/screens/gs-peer-review.tsx",
+      ),
+      route(
+        "/gs/series/:seriesId",
+        "features/gs/screens/gs-my-series.tsx",
+      ),
+      route(
+        "/gs/:roundId/distinguished",
+        "features/gs/screens/gs-distinguished.tsx",
+      ),
+      route("/gs/points", "features/gs/screens/gs-points.tsx"),
       route("/community", "features/community/screens/community.tsx"),
       route("/admin", "features/admin/screens/admin.tsx"),
       ...prefix("/admin/blanks", [
@@ -193,9 +220,62 @@ export default [
         ),
         route("/:setId", "features/blanks/screens/admin-blanks-edit.tsx"),
       ]),
+      ...prefix("/admin/gs", [
+        index("features/gs/screens/admin-gs-list.tsx"),
+        route(
+          "/series",
+          "features/gs/screens/admin-gs-series-list.tsx",
+          { id: "admin-gs-series-list" },
+        ),
+        route(
+          "/series/new",
+          "features/gs/screens/admin-gs-series-edit.tsx",
+          { id: "admin-gs-series-new" },
+        ),
+        route(
+          "/series/:seriesId",
+          "features/gs/screens/admin-gs-series-edit.tsx",
+        ),
+        route(
+          "/series/:seriesId/stats",
+          "features/gs/screens/admin-gs-series-stats.tsx",
+        ),
+        route("/new", "features/gs/screens/admin-gs-edit.tsx", { id: "admin-gs-new" }),
+        route("/:roundId", "features/gs/screens/admin-gs-edit.tsx"),
+        route(
+          "/:roundId/stats",
+          "features/gs/screens/admin-gs-round-stats.tsx",
+        ),
+        route(
+          "/:roundId/grade",
+          "features/gs/screens/admin-gs-grade-list.tsx",
+        ),
+        route(
+          "/:roundId/grade/:submissionId",
+          "features/gs/screens/admin-gs-grade.tsx",
+        ),
+        route(
+          "/:roundId/peer-review",
+          "features/gs/screens/admin-gs-peer-review.tsx",
+        ),
+        route(
+          "/:roundId/disputes",
+          "features/gs/screens/admin-gs-disputes.tsx",
+        ),
+        route(
+          "/:roundId/distinctions",
+          "features/gs/screens/admin-gs-distinctions.tsx",
+        ),
+        route(
+          "/points",
+          "features/gs/screens/admin-gs-points.tsx",
+        ),
+      ]),
       ...prefix("/admin/problems", [
         index("features/problems/screens/admin-problems-list.tsx"),
         route("/by-system", "features/problems/screens/admin-problems-by-system.tsx"),
+        route("/ox", "features/problems/screens/admin-ox-review.tsx"),
+        route("/stats", "features/admin/screens/admin-problem-stats.tsx"),
         route(
           "/system/:nodeId",
           "features/problems/screens/admin-problems-system-edit.tsx",

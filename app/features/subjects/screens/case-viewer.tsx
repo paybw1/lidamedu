@@ -286,7 +286,7 @@ function Section({
 
 function Prose({ text }: { text: string }) {
   return (
-    <div className="space-y-3 text-[15px] leading-relaxed whitespace-pre-line">
+    <div className="font-serif space-y-3 text-[15px] leading-relaxed whitespace-pre-line">
       {text}
     </div>
   );

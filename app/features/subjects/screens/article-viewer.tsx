@@ -55,7 +55,10 @@ import {
   listArticleRevisionHistory,
   type RevisionHistoryEntry,
 } from "~/features/laws/queries.server";
-import { getOxQuestionsForArticle } from "~/features/problems/queries.server";
+import {
+  getOxAnnotationsForRefs,
+  getOxQuestionsForArticle,
+} from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
@@ -155,6 +158,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         article.currentRevisionId,
       )
     : null;
+
+  // OX 지문 별 메모/즐겨찾기 — 정답 확인 후 저장 가능하도록 oxQuestions 의 refId 단위로 prefetch.
+  const oxAnnotationsByRef = await getOxAnnotationsForRefs(
+    client,
+    user.id,
+    oxQuestions,
+  );
   // ?blank=<setId> 로 owner 선택 가능. 없으면 첫 set.
   // ?subjectBlank=1 / ?periodBlank=1 / ?recitation=1 — 통계 화면에서 진입 시 해당 모드로 바로 시작.
   const reqUrl = new URL(request.url);
@@ -198,6 +208,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     staffRole,
     revisions,
     oxQuestions,
+    oxAnnotationsByRef,
     articleComment,
   };
 }
@@ -234,6 +245,7 @@ function ArticleViewerInner({
     staffRole,
     revisions,
     oxQuestions,
+    oxAnnotationsByRef,
     articleComment,
   } = loaderData;
   const { axis } = useSortAxis();
@@ -664,6 +676,7 @@ function ArticleViewerInner({
                 qnaThreads={qnaThreads}
                 relatedCases={relatedCases}
                 oxQuestions={oxQuestions}
+                oxAnnotationsByRef={oxAnnotationsByRef}
                 comment={articleComment}
                 canEditComment={staffRole !== null}
                 subjectSlug={subject.slug}

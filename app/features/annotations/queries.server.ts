@@ -199,6 +199,72 @@ export async function listHighlightsByArticleIds(
   return out;
 }
 
+// polymorphic bulk: 같은 target_type 의 여러 target_id 에 대한 bookmark / memos 를
+// 한 번에 조회. OX 패널처럼 한 화면에서 다수의 problem_choice / problem_box_item
+// 주석을 동시에 다뤄야 할 때 사용.
+export async function getBookmarksByTargets(
+  client: SupabaseClient<Database>,
+  userId: string,
+  targetType: AnnotationTargetType,
+  targetIds: string[],
+): Promise<Record<string, BookmarkRecord>> {
+  if (targetIds.length === 0) return {};
+  const { data, error } = await client
+    .from("user_bookmarks")
+    .select("bookmark_id, target_id, star_level, note_md, step_notes, updated_at")
+    .eq("user_id", userId)
+    .eq("target_type", targetType)
+    .in("target_id", targetIds)
+    .is("deleted_at", null);
+  if (error) throw error;
+  const out: Record<string, BookmarkRecord> = {};
+  for (const row of data ?? []) {
+    out[row.target_id] = {
+      bookmarkId: row.bookmark_id,
+      starLevel: row.star_level,
+      noteMd: row.note_md,
+      stepNotes: parseStepNotes(row.step_notes),
+      updatedAt: row.updated_at,
+    };
+  }
+  return out;
+}
+
+export async function listMemosByTargets(
+  client: SupabaseClient<Database>,
+  userId: string,
+  targetType: AnnotationTargetType,
+  targetIds: string[],
+): Promise<Record<string, MemoRecord[]>> {
+  if (targetIds.length === 0) return {};
+  const { data, error } = await client
+    .from("user_memos")
+    .select(
+      "memo_id, target_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
+    )
+    .eq("user_id", userId)
+    .eq("target_type", targetType)
+    .in("target_id", targetIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const out: Record<string, MemoRecord[]> = {};
+  for (const row of data ?? []) {
+    const list = out[row.target_id] ?? [];
+    list.push({
+      memoId: row.memo_id,
+      bodyMd: row.body_md,
+      snippet: row.snippet ?? null,
+      blockIndex: row.block_index ?? null,
+      cumOffset: row.cum_offset ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    });
+    out[row.target_id] = list;
+  }
+  return out;
+}
+
 // 대시보드 즐겨찾기 빠른 접근 위젯용 — star_level 높은 순.
 export interface QuickBookmarkItem {
   targetType: AnnotationTargetType;
