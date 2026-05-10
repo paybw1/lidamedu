@@ -744,6 +744,7 @@ function PageSlot({
         ) : null}
         <button
           type="button"
+          data-testid={`gs-page-insert-${pageNumber}`}
           onClick={() => onInsertBefore(pageNumber)}
           aria-label={`페이지 ${pageNumber} 자리에 빈 페이지 끼워넣기`}
           title={`페이지 ${pageNumber} 자리에 빈 페이지 끼워넣기 (이후 한 칸 밀림)`}
