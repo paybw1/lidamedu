@@ -6,6 +6,7 @@ import {
   ArrowLeftIcon,
   AwardIcon,
   BarChart3Icon,
+  CheckCircle2Icon,
   ClipboardCheckIcon,
   FileTextIcon,
   PlusIcon,
@@ -14,7 +15,7 @@ import {
   UploadIcon,
   UsersIcon,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Form, Link, data, redirect, useFetcher } from "react-router";
 import { z } from "zod";
 
@@ -530,6 +531,14 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
               hasFile={round.answerKeyPdfPath != null}
             />
           </CardContent>
+          {paperUrl ? (
+            <CardContent className="pt-0">
+              <PaperPageHint
+                paperUrl={paperUrl}
+                expectedPages={round.expectedPages}
+              />
+            </CardContent>
+          ) : null}
         </Card>
       ) : null}
 
@@ -866,6 +875,103 @@ function PaperSlot({
           </p>
         ) : null}
       </uploadFetcher.Form>
+    </div>
+  );
+}
+
+// 시험지 PDF 의 페이지 수를 클라이언트에서 추출(pdfjs) 후 회차의 expected_pages 와
+// 비교해 차이가 있으면 안내 + "이 값으로 맞추기" 버튼.
+// 응답 데이터를 비교하므로 운영자가 시험지를 바꿀 때마다 자연스럽게 갱신.
+function PaperPageHint({
+  paperUrl,
+  expectedPages,
+}: {
+  paperUrl: string;
+  expectedPages: number;
+}) {
+  const [paperPages, setPaperPages] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPaperPages(null);
+    setError(null);
+    (async () => {
+      try {
+        const res = await fetch(paperUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        const file = new File([buf], "paper.pdf", { type: "application/pdf" });
+        const { getPdfPageCount } = await import(
+          "~/features/gs/lib/pdf-split.client"
+        );
+        const n = await getPdfPageCount(file);
+        if (!cancelled) setPaperPages(n);
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [paperUrl]);
+
+  if (error) {
+    return (
+      <p className="text-muted-foreground text-[11px]">
+        시험지 페이지 수 추출 실패: {error}
+      </p>
+    );
+  }
+  if (paperPages == null) {
+    return (
+      <p className="text-muted-foreground text-[11px]">시험지 페이지 수 분석 중…</p>
+    );
+  }
+
+  const matches = paperPages === expectedPages;
+  if (matches) {
+    return (
+      <div className="border-emerald-300 bg-emerald-50/40 dark:border-emerald-700/40 dark:bg-emerald-950/20 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] text-emerald-800 dark:text-emerald-200">
+        <CheckCircle2Icon className="size-3" />
+        시험지 {paperPages}페이지 = 답안지 페이지 수 {expectedPages}. 일치.
+      </div>
+    );
+  }
+
+  // input value 직접 변경 — 폼이 uncontrolled 라 setNativeValue 로 React 가 인식하게.
+  const setExpectedTo = (n: number) => {
+    const input = document.querySelector<HTMLInputElement>(
+      'input[name="expectedPages"]',
+    );
+    if (!input) return;
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(input, String(n));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  return (
+    <div className="border-amber-300 bg-amber-50/40 dark:border-amber-700/40 dark:bg-amber-950/20 flex flex-wrap items-center gap-2 rounded-md border p-2 text-[11px] text-amber-900 dark:text-amber-200">
+      <AlertTriangleIcon className="size-3.5" />
+      <span>
+        시험지 <strong>{paperPages}페이지</strong> ≠ 답안지 페이지 수{" "}
+        <strong>{expectedPages}</strong>. 답안지를 시험지와 같은 페이지 수로
+        맞추는 게 일반적입니다.
+      </span>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="ml-auto h-7"
+        onClick={() => setExpectedTo(paperPages)}
+      >
+        답안지 페이지 수를 {paperPages}로 맞추기
+      </Button>
     </div>
   );
 }
