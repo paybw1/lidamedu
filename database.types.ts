@@ -664,6 +664,45 @@ export type Database = {
         }
         Relationships: []
       }
+      gs_question_pages: {
+        Row: {
+          created_at: string
+          order_index: number
+          page_number: number
+          question_id: string
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          order_index?: number
+          page_number: number
+          question_id: string
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          order_index?: number
+          page_number?: number
+          question_id?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_question_pages_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "gs_questions"
+            referencedColumns: ["question_id"]
+          },
+          {
+            foreignKeyName: "gs_question_pages_submission_id_page_number_fkey"
+            columns: ["submission_id", "page_number"]
+            isOneToOne: false
+            referencedRelation: "gs_submission_pages"
+            referencedColumns: ["submission_id", "page_number"]
+          },
+        ]
+      }
       gs_questions: {
         Row: {
           body_md: string
@@ -710,11 +749,14 @@ export type Database = {
       }
       gs_rounds: {
         Row: {
+          answer_key_pdf_path: string | null
           created_at: string
           created_by: string | null
           description_md: string | null
           duration_min: number
           end_at: string
+          expected_pages: number
+          paper_pdf_path: string | null
           round_id: string
           round_number: number | null
           series_id: string | null
@@ -725,11 +767,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          answer_key_pdf_path?: string | null
           created_at?: string
           created_by?: string | null
           description_md?: string | null
           duration_min?: number
           end_at: string
+          expected_pages?: number
+          paper_pdf_path?: string | null
           round_id?: string
           round_number?: number | null
           series_id?: string | null
@@ -740,11 +785,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          answer_key_pdf_path?: string | null
           created_at?: string
           created_by?: string | null
           description_md?: string | null
           duration_min?: number
           end_at?: string
+          expected_pages?: number
+          paper_pdf_path?: string | null
           round_id?: string
           round_number?: number | null
           series_id?: string | null
@@ -796,6 +844,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      gs_submission_pages: {
+        Row: {
+          attachment: Json
+          created_at: string
+          legibility_confirmed: boolean
+          page_id: string
+          page_number: number
+          submission_id: string
+          updated_at: string
+        }
+        Insert: {
+          attachment: Json
+          created_at?: string
+          legibility_confirmed?: boolean
+          page_id?: string
+          page_number: number
+          submission_id: string
+          updated_at?: string
+        }
+        Update: {
+          attachment?: Json
+          created_at?: string
+          legibility_confirmed?: boolean
+          page_id?: string
+          page_number?: number
+          submission_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_submission_pages_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "gs_submissions"
+            referencedColumns: ["submission_id"]
+          },
+        ]
       }
       gs_submissions: {
         Row: {

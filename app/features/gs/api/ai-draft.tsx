@@ -8,10 +8,9 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { generateGradingDraft } from "~/features/gs/lib/ai-grader.server";
 import {
-  ensureAnswerRow,
   getGsRound,
-  listAnswersForSubmission,
   listGsQuestions,
+  listPagesForQuestion,
 } from "~/features/gs/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
@@ -43,30 +42,24 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "Invalid input" }, { status: 400 });
   }
 
-  // 답안 + 문제 fetch.
-  const answer = await ensureAnswerRow(
+  // 이 문항에 매핑된 페이지들의 첨부에서 OCR 텍스트 합치기.
+  const mappedPages = await listPagesForQuestion(
     client,
     parsed.data.submissionId,
     parsed.data.questionId,
   );
-  const allAnswers = await listAnswersForSubmission(
-    client,
-    parsed.data.submissionId,
-  );
-  const _ans = allAnswers.find((a) => a.questionId === parsed.data.questionId);
-
-  // 답안의 첨부에서 OCR 텍스트 합치기.
-  const attachments = (_ans ?? answer).attachments;
   const ocrTexts: string[] = [];
   const warnings: string[] = [];
-  for (const att of attachments) {
+  for (const p of mappedPages) {
+    const att = p.attachment;
+    const label = `페이지 ${p.pageNumber}`;
     if (att.ocrText && att.ocrText.trim().length > 0) {
-      ocrTexts.push(`[${att.fileName}]\n${att.ocrText}`);
+      ocrTexts.push(`[${label}]\n${att.ocrText}`);
     } else if (att.mime.startsWith("image/")) {
-      warnings.push(`${att.fileName}: OCR 텍스트 없음`);
+      warnings.push(`${label}: OCR 텍스트 없음`);
     }
     if (att.ocrLevel === "bad") {
-      warnings.push(`${att.fileName}: 판독률 부족`);
+      warnings.push(`${label}: 판독률 부족`);
     }
   }
   const studentAnswerText = ocrTexts.join("\n\n---\n\n");

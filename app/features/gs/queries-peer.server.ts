@@ -4,10 +4,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import {
-  type GsAttachment,
-  listAnswersForSubmission,
+  type GsPage,
   listGsQuestions,
   listGsSubmissionsForRound,
+  listSubmissionPages,
 } from "~/features/gs/queries.server";
 
 export interface PeerAssignment {
@@ -217,12 +217,12 @@ export async function listOwnPeerAssignments(
   }));
 }
 
-// 학생 채점 화면 데이터 — assignment + 답안 첨부 + 본인이 작성한 review answer 들.
+// 학생 채점 화면 데이터 — assignment + 답안지 페이지(문항별 매핑) + 본인이 작성한 review answer 들.
 // 답안 작성자 ID 는 RLS 가 차단(본 함수는 staff/reviewer 만 호출). 학생에게 노출되는 응답에서는 user_id 제거.
 export interface PeerReviewDetail {
   assignment: PeerAssignment;
-  attachmentsByQuestion: Map<string, GsAttachment[]>;
-  ocrTextByQuestion: Map<string, string>;
+  pagesByQuestion: Map<string, GsPage[]>; // 문항 → 매핑된 페이지(order_index 순).
+  ocrTextByQuestion: Map<string, string>; // 매핑 페이지의 OCR 합본.
   myAnswers: Map<string, PeerReviewAnswer>;
 }
 
@@ -238,29 +238,48 @@ export async function getPeerReviewDetail(
   if (!aRow) return null;
   const assignment = mapAssignment(aRow);
 
-  const ans = await listAnswersForSubmission(client, assignment.submissionId);
-  const attMap = new Map<string, GsAttachment[]>();
-  const ocrMap = new Map<string, string>();
-  for (const a of ans) {
-    attMap.set(a.questionId, a.attachments);
-    const ocr = a.attachments
-      .map((x) => x.ocrText?.trim())
+  const [pages, mappingsRes, rAnsRes] = await Promise.all([
+    listSubmissionPages(client, assignment.submissionId),
+    client
+      .from("gs_question_pages")
+      .select("question_id, page_number, order_index")
+      .eq("submission_id", assignment.submissionId)
+      .order("order_index", { ascending: true }),
+    client
+      .from("gs_peer_review_answers")
+      .select("*")
+      .eq("assignment_id", assignmentId),
+  ]);
+
+  const pageByNum = new Map<number, GsPage>();
+  for (const p of pages) pageByNum.set(p.pageNumber, p);
+
+  const pagesByQuestion = new Map<string, GsPage[]>();
+  const ocrTextByQuestion = new Map<string, string>();
+  for (const m of mappingsRes.data ?? []) {
+    const p = pageByNum.get(m.page_number);
+    if (!p) continue;
+    const list = pagesByQuestion.get(m.question_id) ?? [];
+    list.push(p);
+    pagesByQuestion.set(m.question_id, list);
+  }
+  for (const [qid, list] of pagesByQuestion.entries()) {
+    const ocr = list
+      .map((x) => x.attachment.ocrText?.trim())
       .filter((s): s is string => !!s)
       .join("\n\n---\n\n");
-    if (ocr) ocrMap.set(a.questionId, ocr);
+    if (ocr) ocrTextByQuestion.set(qid, ocr);
   }
 
-  const { data: rAns } = await client
-    .from("gs_peer_review_answers")
-    .select("*")
-    .eq("assignment_id", assignmentId);
   const myAnswers = new Map<string, PeerReviewAnswer>();
-  for (const r of rAns ?? []) myAnswers.set(r.question_id, mapReviewAnswer(r));
+  for (const r of rAnsRes.data ?? []) {
+    myAnswers.set(r.question_id, mapReviewAnswer(r));
+  }
 
   return {
     assignment,
-    attachmentsByQuestion: attMap,
-    ocrTextByQuestion: ocrMap,
+    pagesByQuestion,
+    ocrTextByQuestion,
     myAnswers,
   };
 }

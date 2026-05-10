@@ -18,6 +18,9 @@ export interface GsRound {
   status: GsRoundStatus;
   seriesId: string | null;
   roundNumber: number | null;
+  paperPdfPath: string | null;
+  answerKeyPdfPath: string | null;
+  expectedPages: number;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -67,6 +70,9 @@ function mapRound(
     status: r.status as GsRoundStatus,
     seriesId: r.series_id,
     roundNumber: r.round_number,
+    paperPdfPath: r.paper_pdf_path,
+    answerKeyPdfPath: r.answer_key_pdf_path,
+    expectedPages: r.expected_pages,
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -249,6 +255,7 @@ export async function createGsRound(
     status?: GsRoundStatus;
     seriesId?: string | null;
     roundNumber?: number | null;
+    expectedPages?: number;
   },
 ): Promise<GsRound> {
   const { data, error } = await client
@@ -263,12 +270,45 @@ export async function createGsRound(
       status: input.status ?? "draft",
       series_id: input.seriesId ?? null,
       round_number: input.roundNumber ?? null,
+      expected_pages: input.expectedPages ?? 20,
       created_by: userId,
     })
     .select("*")
     .single();
   if (error) throw error;
   return mapRound(data);
+}
+
+// ---- 시험지·모범답안 PDF (회차 단위) ----
+
+export type GsPaperKind = "paper" | "answer_key";
+
+export async function setGsRoundPaperPath(
+  client: SupabaseClient<Database>,
+  roundId: string,
+  kind: GsPaperKind,
+  path: string | null,
+): Promise<void> {
+  const col = kind === "paper" ? "paper_pdf_path" : "answer_key_pdf_path";
+  const { error } = await client
+    .from("gs_rounds")
+    .update({ [col]: path })
+    .eq("round_id", roundId);
+  if (error) throw error;
+}
+
+export async function getGsPaperSignedUrl(
+  client: SupabaseClient<Database>,
+  path: string,
+  expiresInSec = 3600,
+): Promise<string | null> {
+  const { data, error } = await client.storage
+    .from("gs-papers")
+    .createSignedUrl(path, expiresInSec, {
+      download: path.split("/").pop() ?? "paper.pdf",
+    });
+  if (error) return null;
+  return data?.signedUrl ?? null;
 }
 
 // 변리사 표준 4문제 (30·20·30·20점) 시드 — 회차에 문제가 0개일 때만 안전 동작.
@@ -308,6 +348,7 @@ export async function updateGsRound(
     status: GsRoundStatus;
     seriesId: string | null;
     roundNumber: number | null;
+    expectedPages: number;
   }>,
 ): Promise<void> {
   const upd: Record<string, unknown> = {};
@@ -320,6 +361,7 @@ export async function updateGsRound(
   if (patch.status !== undefined) upd.status = patch.status;
   if (patch.seriesId !== undefined) upd.series_id = patch.seriesId;
   if (patch.roundNumber !== undefined) upd.round_number = patch.roundNumber;
+  if (patch.expectedPages !== undefined) upd.expected_pages = patch.expectedPages;
   if (Object.keys(upd).length === 0) return;
   const { error } = await client
     .from("gs_rounds")
@@ -788,34 +830,39 @@ function mapAnswer(
   };
 }
 
+function parseAttachment(raw: unknown): GsAttachment | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.path !== "string" || typeof o.fileName !== "string") return null;
+  const att: GsAttachment = {
+    path: o.path,
+    fileName: o.fileName,
+    mime: typeof o.mime === "string" ? o.mime : "application/octet-stream",
+    size: typeof o.size === "number" ? o.size : 0,
+    createdAt:
+      typeof o.createdAt === "string" ? o.createdAt : new Date().toISOString(),
+  };
+  if (typeof o.width === "number") att.width = o.width;
+  if (typeof o.height === "number") att.height = o.height;
+  if (typeof o.pageCount === "number") att.pageCount = o.pageCount;
+  if (typeof o.ocrText === "string") att.ocrText = o.ocrText;
+  if (typeof o.ocrCharCount === "number") att.ocrCharCount = o.ocrCharCount;
+  if (typeof o.ocrKoreanCharCount === "number")
+    att.ocrKoreanCharCount = o.ocrKoreanCharCount;
+  if (typeof o.ocrConfidence === "number") att.ocrConfidence = o.ocrConfidence;
+  if (o.ocrLevel === "good" || o.ocrLevel === "warn" || o.ocrLevel === "bad") {
+    att.ocrLevel = o.ocrLevel;
+  }
+  if (typeof o.ocrCheckedAt === "string") att.ocrCheckedAt = o.ocrCheckedAt;
+  return att;
+}
+
 function parseAttachments(raw: unknown): GsAttachment[] {
   if (!Array.isArray(raw)) return [];
   const out: GsAttachment[] = [];
   for (const it of raw) {
-    if (!it || typeof it !== "object") continue;
-    const o = it as Record<string, unknown>;
-    if (typeof o.path !== "string" || typeof o.fileName !== "string") continue;
-    const att: GsAttachment = {
-      path: o.path,
-      fileName: o.fileName,
-      mime: typeof o.mime === "string" ? o.mime : "application/octet-stream",
-      size: typeof o.size === "number" ? o.size : 0,
-      createdAt:
-        typeof o.createdAt === "string" ? o.createdAt : new Date().toISOString(),
-    };
-    if (typeof o.width === "number") att.width = o.width;
-    if (typeof o.height === "number") att.height = o.height;
-    if (typeof o.pageCount === "number") att.pageCount = o.pageCount;
-    if (typeof o.ocrText === "string") att.ocrText = o.ocrText;
-    if (typeof o.ocrCharCount === "number") att.ocrCharCount = o.ocrCharCount;
-    if (typeof o.ocrKoreanCharCount === "number")
-      att.ocrKoreanCharCount = o.ocrKoreanCharCount;
-    if (typeof o.ocrConfidence === "number") att.ocrConfidence = o.ocrConfidence;
-    if (o.ocrLevel === "good" || o.ocrLevel === "warn" || o.ocrLevel === "bad") {
-      att.ocrLevel = o.ocrLevel;
-    }
-    if (typeof o.ocrCheckedAt === "string") att.ocrCheckedAt = o.ocrCheckedAt;
-    out.push(att);
+    const att = parseAttachment(it);
+    if (att) out.push(att);
   }
   return out;
 }
@@ -854,57 +901,184 @@ export async function ensureAnswerRow(
   return mapAnswer(data);
 }
 
-export async function appendAttachment(
+// ---- 답안지 페이지 (submission 단위 N슬롯, 각 슬롯=1파일, 페이지 ↔ 문항 M:N 매핑) ----
+
+export interface GsPage {
+  pageId: string;
+  submissionId: string;
+  pageNumber: number;
+  attachment: GsAttachment;
+  legibilityConfirmed: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // 이 페이지가 매핑된 문항 ID 들. 0개면 메모/여백 페이지.
+  questionIds: string[];
+}
+
+function mapPage(
+  r: Database["public"]["Tables"]["gs_submission_pages"]["Row"],
+  questionIds: string[],
+): GsPage | null {
+  const att = parseAttachment(r.attachment);
+  if (!att) return null;
+  return {
+    pageId: r.page_id,
+    submissionId: r.submission_id,
+    pageNumber: r.page_number,
+    attachment: att,
+    legibilityConfirmed: r.legibility_confirmed,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    questionIds,
+  };
+}
+
+// 한 제출의 모든 페이지(매핑 정보 포함). 페이지 번호 오름차순.
+export async function listSubmissionPages(
   client: SupabaseClient<Database>,
   submissionId: string,
-  questionId: string,
+): Promise<GsPage[]> {
+  const [pagesRes, mapsRes] = await Promise.all([
+    client
+      .from("gs_submission_pages")
+      .select("*")
+      .eq("submission_id", submissionId)
+      .order("page_number", { ascending: true }),
+    client
+      .from("gs_question_pages")
+      .select("question_id, page_number, order_index")
+      .eq("submission_id", submissionId),
+  ]);
+  if (pagesRes.error) throw pagesRes.error;
+  if (mapsRes.error) throw mapsRes.error;
+
+  const qByPage = new Map<number, string[]>();
+  for (const m of mapsRes.data ?? []) {
+    const list = qByPage.get(m.page_number) ?? [];
+    list.push(m.question_id);
+    qByPage.set(m.page_number, list);
+  }
+
+  const out: GsPage[] = [];
+  for (const r of pagesRes.data ?? []) {
+    const p = mapPage(r, qByPage.get(r.page_number) ?? []);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+// 페이지 1슬롯 upsert — 신규 또는 교체. 매핑은 별도(setPageQuestions).
+export async function upsertSubmissionPage(
+  client: SupabaseClient<Database>,
+  submissionId: string,
+  pageNumber: number,
   attachment: GsAttachment,
 ): Promise<void> {
-  const row = await ensureAnswerRow(client, submissionId, questionId);
-  const next = [...row.attachments, attachment];
   const { error } = await client
-    .from("gs_answers")
-    .update({
-      attachments:
-        next as unknown as Database["public"]["Tables"]["gs_answers"]["Update"]["attachments"],
-    })
-    .eq("answer_id", row.answerId);
+    .from("gs_submission_pages")
+    .upsert(
+      {
+        submission_id: submissionId,
+        page_number: pageNumber,
+        attachment:
+          attachment as unknown as Database["public"]["Tables"]["gs_submission_pages"]["Insert"]["attachment"],
+        // 새 파일이면 자가확인 리셋.
+        legibility_confirmed: false,
+      },
+      { onConflict: "submission_id,page_number" },
+    );
   if (error) throw error;
 }
 
-export async function removeAttachment(
+// 페이지 삭제 — storage 파일 제거는 caller 가 책임. 매핑은 FK CASCADE 로 함께 삭제.
+export async function deleteSubmissionPage(
   client: SupabaseClient<Database>,
   submissionId: string,
-  questionId: string,
-  path: string,
+  pageNumber: number,
 ): Promise<void> {
-  const row = await ensureAnswerRow(client, submissionId, questionId);
-  const next = row.attachments.filter((a) => a.path !== path);
   const { error } = await client
-    .from("gs_answers")
-    .update({
-      attachments:
-        next as unknown as Database["public"]["Tables"]["gs_answers"]["Update"]["attachments"],
-    })
-    .eq("answer_id", row.answerId);
+    .from("gs_submission_pages")
+    .delete()
+    .eq("submission_id", submissionId)
+    .eq("page_number", pageNumber);
   if (error) throw error;
 }
 
-export async function setLegibilityConfirmed(
+// 페이지 → 문항 매핑 전체 교체 (단일 트랜잭션). 빈 배열이면 매핑 모두 제거(메모/여백 페이지).
+export async function setPageQuestions(
   client: SupabaseClient<Database>,
   submissionId: string,
-  questionId: string,
+  pageNumber: number,
+  questionIds: string[],
+): Promise<void> {
+  // 기존 매핑 삭제 → 신규 insert. trip 회피 위해 트랜잭션은 RPC 가 없으니 순차 처리(짧은 시간 정합 갭).
+  const del = await client
+    .from("gs_question_pages")
+    .delete()
+    .eq("submission_id", submissionId)
+    .eq("page_number", pageNumber);
+  if (del.error) throw del.error;
+  if (questionIds.length === 0) return;
+  const rows = questionIds.map((qid, i) => ({
+    submission_id: submissionId,
+    question_id: qid,
+    page_number: pageNumber,
+    order_index: i,
+  }));
+  const ins = await client.from("gs_question_pages").insert(rows);
+  if (ins.error) throw ins.error;
+}
+
+export async function setPageLegibilityConfirmed(
+  client: SupabaseClient<Database>,
+  submissionId: string,
+  pageNumber: number,
   confirmed: boolean,
 ): Promise<void> {
-  const row = await ensureAnswerRow(client, submissionId, questionId);
   const { error } = await client
-    .from("gs_answers")
+    .from("gs_submission_pages")
     .update({ legibility_confirmed: confirmed })
-    .eq("answer_id", row.answerId);
+    .eq("submission_id", submissionId)
+    .eq("page_number", pageNumber);
   if (error) throw error;
 }
 
-// 학생: 응시 제출. 모든 답안의 legibility_confirmed=true 조건은 caller(loader/action)에서 확인.
+// 한 문항에 매핑된 페이지들(첨부+OCR 포함). order_index 오름차순.
+export async function listPagesForQuestion(
+  client: SupabaseClient<Database>,
+  submissionId: string,
+  questionId: string,
+): Promise<GsPage[]> {
+  const { data: maps, error } = await client
+    .from("gs_question_pages")
+    .select("page_number, order_index")
+    .eq("submission_id", submissionId)
+    .eq("question_id", questionId)
+    .order("order_index", { ascending: true });
+  if (error) throw error;
+  const pageNums = (maps ?? []).map((m) => m.page_number);
+  if (pageNums.length === 0) return [];
+
+  const { data: pages, error: e2 } = await client
+    .from("gs_submission_pages")
+    .select("*")
+    .eq("submission_id", submissionId)
+    .in("page_number", pageNums);
+  if (e2) throw e2;
+  const byNum = new Map<number, Database["public"]["Tables"]["gs_submission_pages"]["Row"]>();
+  for (const r of pages ?? []) byNum.set(r.page_number, r);
+
+  const out: GsPage[] = [];
+  for (const m of maps ?? []) {
+    const r = byNum.get(m.page_number);
+    if (!r) continue;
+    const p = mapPage(r, [questionId]);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+// 학생: 응시 제출. 모든 페이지의 legibility_confirmed=true + 모든 문항이 1+ 페이지 매핑 조건은 caller 에서 확인.
 export async function submitOwnSubmission(
   client: SupabaseClient<Database>,
   submissionId: string,
@@ -983,6 +1157,8 @@ export interface GradingDetail {
   studentName: string | null;
   questions: GsQuestion[];
   answersByQuestion: Map<string, GsAnswerRecord>;
+  pages: GsPage[]; // 답안지 전체 페이지 (1..N 순서).
+  pagesByQuestion: Map<string, GsPage[]>; // 문항 → order_index 순서로 매핑된 페이지.
 }
 
 export async function getGradingDetail(
@@ -998,7 +1174,7 @@ export async function getGradingDetail(
   if (!subRow) return null;
   const submission = mapSubmission(subRow);
 
-  const [profile, questions, answers] = await Promise.all([
+  const [profile, questions, answers, pages, mappingsRes] = await Promise.all([
     client
       .from("profiles")
       .select("name")
@@ -1006,16 +1182,37 @@ export async function getGradingDetail(
       .maybeSingle(),
     listGsQuestions(client, submission.roundId),
     listAnswersForSubmission(client, submission.submissionId),
+    listSubmissionPages(client, submission.submissionId),
+    client
+      .from("gs_question_pages")
+      .select("question_id, page_number, order_index")
+      .eq("submission_id", submission.submissionId)
+      .order("order_index", { ascending: true }),
   ]);
+  if (mappingsRes.error) throw mappingsRes.error;
 
-  const map = new Map<string, GsAnswerRecord>();
-  for (const a of answers) map.set(a.questionId, a);
+  const answersByQuestion = new Map<string, GsAnswerRecord>();
+  for (const a of answers) answersByQuestion.set(a.questionId, a);
+
+  const pageByNum = new Map<number, GsPage>();
+  for (const p of pages) pageByNum.set(p.pageNumber, p);
+
+  const pagesByQuestion = new Map<string, GsPage[]>();
+  for (const m of mappingsRes.data ?? []) {
+    const p = pageByNum.get(m.page_number);
+    if (!p) continue;
+    const list = pagesByQuestion.get(m.question_id) ?? [];
+    list.push(p);
+    pagesByQuestion.set(m.question_id, list);
+  }
 
   return {
     submission,
     studentName: profile.data?.name ?? null,
     questions,
-    answersByQuestion: map,
+    answersByQuestion,
+    pages,
+    pagesByQuestion,
   };
 }
 

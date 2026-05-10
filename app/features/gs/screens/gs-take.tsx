@@ -1,10 +1,10 @@
-// 학생 GS 응시 화면 — 오프라인에 답안지를 작성하고, 사진/PDF 업로드 후 판독 자가확인 → 제출.
+// 학생 GS 응시 화면 — 답안지를 페이지 슬롯에 업로드하고 페이지마다 어느 문항인지 매핑.
+// 좌: 문제 목록(읽기). 우: N슬롯 페이지 그리드. 슬롯 = 빈 상태 또는 (썸네일 + 문항 매핑 + 판독 확인).
 
 import {
   AlertCircleIcon,
   CheckIcon,
-  ClockIcon,
-  EyeIcon,
+  DownloadIcon,
   FileImageIcon,
   FileTextIcon,
   TimerIcon,
@@ -12,32 +12,24 @@ import {
   UploadIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Form,
-  Link,
-  data,
-  redirect,
-  useFetcher,
-  useNavigate,
-  useRevalidator,
-} from "react-router";
+import { Link, data, redirect, useFetcher, useRevalidator } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import {
-  type GsAnswerRecord,
-  type GsAttachment,
+  type GsPage,
   type GsQuestion,
   type GsRound,
+  getGsPaperSignedUrl,
   getGsRound,
   getOrCreateOwnSubmission,
   getOwnSubmission,
-  listAnswersForSubmission,
   listGsQuestions,
+  listSubmissionPages,
 } from "~/features/gs/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
@@ -63,7 +55,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const round = await getGsRound(client, roundId);
   if (!round) throw data("Round not found", { status: 404 });
 
-  // 응시 가능 시간 검증.
   const now = Date.now();
   const start = new Date(round.startAt).getTime();
   const end = new Date(round.endAt).getTime();
@@ -73,9 +64,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (now < start) {
     throw data("아직 응시 시작 시각이 아닙니다.", { status: 403 });
   }
-  // 종료/closed 라도 이미 응시 시작한 경우 답안 수정 가능 — 단, submitted_at 없을 때.
 
-  // 이미 제출된 응시는 결과 페이지 (구현 예정) 로 redirect — 우선은 응시 화면 read-only 표기.
   const existing = await getOwnSubmission(client, user.id, roundId);
   if (existing?.submittedAt) {
     return redirect(`/gs/${roundId}`);
@@ -85,33 +74,40 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const submission = await getOrCreateOwnSubmission(client, user.id, roundId);
-  const [questions, answers] = await Promise.all([
+  const [questions, pages, paperUrl] = await Promise.all([
     listGsQuestions(client, roundId),
-    listAnswersForSubmission(client, submission.submissionId),
+    listSubmissionPages(client, submission.submissionId),
+    round.paperPdfPath ? getGsPaperSignedUrl(client, round.paperPdfPath) : null,
   ]);
 
-  return { round, submission, questions, answers };
+  return { round, submission, questions, pages, paperUrl };
 }
 
 export default function GsTake({ loaderData }: Route.ComponentProps) {
-  const { round, submission, questions, answers } = loaderData;
+  const { round, submission, questions, pages, paperUrl } = loaderData;
   const submitFetcher = useFetcher<{ error?: string; ok?: true }>();
   const revalidator = useRevalidator();
 
-  // 답안을 questionId 키로 매핑.
-  const answerByQ = useMemo(
-    () => new Map(answers.map((a) => [a.questionId, a])),
-    [answers],
+  const pageByNum = useMemo(() => {
+    const m = new Map<number, GsPage>();
+    for (const p of pages) m.set(p.pageNumber, p);
+    return m;
+  }, [pages]);
+
+  // 매핑된 문항 집합 — 모든 문항이 ≥1 페이지 매핑되어야 제출 가능.
+  const mappedQuestionIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of pages) for (const qid of p.questionIds) s.add(qid);
+    return s;
+  }, [pages]);
+
+  const allQuestionsMapped = questions.every((q) =>
+    mappedQuestionIds.has(q.questionId),
   );
+  const allPagesConfirmed =
+    pages.length > 0 && pages.every((p) => p.legibilityConfirmed);
+  const allReady = allQuestionsMapped && allPagesConfirmed;
 
-  const allReady = useMemo(() => {
-    return questions.every((q) => {
-      const a = answerByQ.get(q.questionId);
-      return a && a.attachments.length > 0 && a.legibilityConfirmed;
-    });
-  }, [questions, answerByQ]);
-
-  // 응시 종료 카운트다운 — round.endAt 또는 (started_at + duration_min) 중 빠른 것.
   const deadline = useMemo(() => {
     const endByRound = new Date(round.endAt).getTime();
     const endByDuration =
@@ -119,8 +115,13 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
     return Math.min(endByRound, endByDuration);
   }, [round.endAt, submission.startedAt, round.durationMin]);
 
+  const slots = useMemo(
+    () => Array.from({ length: round.expectedPages }, (_, i) => i + 1),
+    [round.expectedPages],
+  );
+
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
+    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
       <header className="mb-6 space-y-2">
         <Link
           to="/gs"
@@ -146,31 +147,105 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
         ) : null}
         <Card className="border-amber-300/60 bg-amber-50/40 dark:border-amber-700/40 dark:bg-amber-950/20">
           <CardContent className="text-amber-900 dark:text-amber-200 pt-4 text-xs leading-relaxed">
-            오프라인 답안지에 작성한 후 사진(JPG/PNG/WebP) 또는 PDF 로 업로드합니다.
-            업로드 후 <strong>풀사이즈 미리보기</strong> 로 본인의 글씨가 또렷하게
-            판독 가능한지 확인하고, 각 문항의 <strong>"판독 가능 확인"</strong>{" "}
-            체크박스를 모두 체크해야 제출할 수 있습니다.
+            오프라인 답안지에 작성한 후 페이지별로 사진(JPG/PNG/WebP) 또는 PDF 를
+            업로드합니다. 각 페이지가 어느 문항에 해당하는지 칩으로 선택하고,
+            페이지마다 <strong>판독 가능 확인</strong> 체크박스를 채워 주세요.
+            모든 문항이 한 페이지 이상 매핑되고 모든 페이지가 판독 확인되어야
+            제출할 수 있습니다.
           </CardContent>
         </Card>
+        {paperUrl ? (
+          <Card>
+            <CardContent className="flex flex-wrap items-center gap-3 py-3">
+              <FileTextIcon className="text-primary size-5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold">시험지 PDF</p>
+                <p className="text-muted-foreground text-[11px]">
+                  강사가 출제한 시험지를 다운로드해 답안지에 작성하세요.
+                </p>
+              </div>
+              <Button asChild size="sm">
+                <a href={paperUrl} target="_blank" rel="noreferrer">
+                  <DownloadIcon className="size-4" /> 다운로드
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
       </header>
 
-      <div className="space-y-4">
-        {questions.map((q) => (
-          <QuestionCard
-            key={q.questionId}
-            round={round}
-            question={q}
-            answer={answerByQ.get(q.questionId) ?? null}
-            onChange={() => revalidator.revalidate()}
-          />
-        ))}
-      </div>
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        {/* 좌측 — 문제 목록 (읽기) */}
+        <aside className="space-y-3">
+          <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            문제 ({questions.length})
+          </h2>
+          {questions.map((q) => {
+            const mapped = mappedQuestionIds.has(q.questionId);
+            return (
+              <Card
+                key={q.questionId}
+                className={cn(
+                  !mapped && "border-rose-300 bg-rose-50/40 dark:border-rose-700/40 dark:bg-rose-950/20",
+                )}
+              >
+                <CardContent className="space-y-1 py-3 text-xs">
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-[10px]">
+                      #{q.orderIndex + 1}
+                    </Badge>
+                    {q.title ? (
+                      <span className="font-semibold">{q.title}</span>
+                    ) : null}
+                    <Badge variant="secondary" className="ml-auto text-[10px]">
+                      {q.maxScore}점
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground line-clamp-3 font-serif leading-snug">
+                    {q.bodyMd}
+                  </p>
+                  <p
+                    className={cn(
+                      "text-[10px] font-semibold",
+                      mapped
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-rose-700 dark:text-rose-400",
+                    )}
+                  >
+                    {mapped ? "✓ 페이지 매핑됨" : "⚠ 매핑된 페이지 없음"}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </aside>
 
-      {questions.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center text-sm">
-          등록된 문항이 없습니다.
-        </p>
-      ) : null}
+        {/* 우측 — 페이지 슬롯 그리드 */}
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              답안지 페이지 ({pages.length} / {round.expectedPages})
+            </h2>
+            <ProgressDots
+              total={round.expectedPages}
+              filled={pages.map((p) => p.pageNumber)}
+              confirmed={pages.filter((p) => p.legibilityConfirmed).map((p) => p.pageNumber)}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {slots.map((n) => (
+              <PageSlot
+                key={n}
+                round={round}
+                pageNumber={n}
+                page={pageByNum.get(n) ?? null}
+                questions={questions}
+                onChange={() => revalidator.revalidate()}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
 
       <Separator className="my-6" />
 
@@ -178,12 +253,20 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
         <CardContent className="space-y-3 pt-6">
           {allReady ? (
             <p className="text-emerald-700 dark:text-emerald-400 text-sm font-semibold inline-flex items-center gap-1">
-              <CheckIcon className="size-4" /> 모든 문항이 준비되었습니다.
+              <CheckIcon className="size-4" /> 모든 문항이 매핑되고 모든 페이지가 판독
+              확인되었습니다.
             </p>
           ) : (
-            <p className="text-muted-foreground text-sm inline-flex items-center gap-1">
-              <AlertCircleIcon className="size-4" /> 모든 문항에 파일을 올리고
-              판독 확인을 해 주세요.
+            <p className="text-muted-foreground text-sm inline-flex items-start gap-1">
+              <AlertCircleIcon className="size-4 mt-0.5" />
+              <span>
+                {!allQuestionsMapped
+                  ? "모든 문항에 한 페이지 이상을 매핑해 주세요. "
+                  : ""}
+                {!allPagesConfirmed
+                  ? "모든 페이지의 판독 가능 여부를 확인해 주세요."
+                  : ""}
+              </span>
             </p>
           )}
           {submitFetcher.data?.error ? (
@@ -229,7 +312,12 @@ function Countdown({ deadlineMs }: { deadlineMs: number }) {
   const mm = Math.floor((left % 3_600_000) / 60_000);
   const ss = Math.floor((left % 60_000) / 1000);
   const fmt = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-  const tone = left < 5 * 60_000 ? "text-rose-600" : left < 30 * 60_000 ? "text-amber-600" : "text-foreground";
+  const tone =
+    left < 5 * 60_000
+      ? "text-rose-600"
+      : left < 30 * 60_000
+        ? "text-amber-600"
+        : "text-foreground";
   return (
     <div
       className={cn(
@@ -243,32 +331,72 @@ function Countdown({ deadlineMs }: { deadlineMs: number }) {
   );
 }
 
-function QuestionCard({
+function ProgressDots({
+  total,
+  filled,
+  confirmed,
+}: {
+  total: number;
+  filled: number[];
+  confirmed: number[];
+}) {
+  const filledSet = new Set(filled);
+  const confirmedSet = new Set(confirmed);
+  return (
+    <div className="flex flex-wrap gap-0.5" aria-label={`페이지 진척 ${filled.length}/${total}`}>
+      {Array.from({ length: total }, (_, i) => i + 1).map((n) => (
+        <span
+          key={n}
+          title={`페이지 ${n}${confirmedSet.has(n) ? " (확인됨)" : filledSet.has(n) ? " (확인 필요)" : " (미업로드)"}`}
+          className={cn(
+            "size-2 rounded-full",
+            confirmedSet.has(n)
+              ? "bg-emerald-500"
+              : filledSet.has(n)
+                ? "bg-amber-500"
+                : "bg-muted",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PageSlot({
   round,
-  question,
-  answer,
+  pageNumber,
+  page,
+  questions,
   onChange,
 }: {
   round: GsRound;
-  question: GsQuestion;
-  answer: GsAnswerRecord | null;
+  pageNumber: number;
+  page: GsPage | null;
+  questions: GsQuestion[];
   onChange: () => void;
 }) {
   const uploadFetcher = useFetcher<{ ok?: true; error?: string }>();
   const removeFetcher = useFetcher<{ ok?: true; error?: string }>();
   const confirmFetcher = useFetcher<{ ok?: true; error?: string }>();
+  const mapFetcher = useFetcher<{ ok?: true; error?: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 답안이 바뀌면 (revalidate 후) 자가확인 fetcher 의 낙관 값 표시 우선.
+  // 낙관적 매핑 — fetcher 진행 중인 값 우선.
+  const submittingMap = mapFetcher.formData?.get("questionIds");
+  const mappedIds =
+    submittingMap == null
+      ? page?.questionIds ?? []
+      : String(submittingMap)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
   const submittingConfirm = confirmFetcher.formData?.get("confirmed");
   const confirmed =
     submittingConfirm == null
-      ? (answer?.legibilityConfirmed ?? false)
+      ? page?.legibilityConfirmed ?? false
       : submittingConfirm === "true";
 
-  // 업로드 fetcher 완료 시 revalidate.
   useEffect(() => {
     if (uploadFetcher.state === "idle" && uploadFetcher.data) {
       if (uploadFetcher.data.error) setError(uploadFetcher.data.error);
@@ -284,6 +412,9 @@ function QuestionCard({
   useEffect(() => {
     if (confirmFetcher.state === "idle" && confirmFetcher.data?.ok) onChange();
   }, [confirmFetcher.state, confirmFetcher.data, onChange]);
+  useEffect(() => {
+    if (mapFetcher.state === "idle" && mapFetcher.data?.ok) onChange();
+  }, [mapFetcher.state, mapFetcher.data, onChange]);
 
   const handleFile = async (file: File) => {
     setError(null);
@@ -292,7 +423,6 @@ function QuestionCard({
       return;
     }
 
-    // 이미지면 클라이언트 해상도 추출.
     let width: number | undefined;
     let height: number | undefined;
     if (file.type.startsWith("image/")) {
@@ -313,19 +443,17 @@ function QuestionCard({
     }
 
     const fd = new FormData();
-    fd.set("intent", "upload");
+    fd.set("intent", "upload-page");
     fd.set("roundId", round.roundId);
-    fd.set("questionId", question.questionId);
+    fd.set("pageNumber", String(pageNumber));
     if (width != null) fd.set("width", String(width));
     if (height != null) fd.set("height", String(height));
     fd.set("file", file);
-    setUploading(true);
     uploadFetcher.submit(fd, {
       method: "post",
       action: "/api/gs/take",
       encType: "multipart/form-data",
     });
-    setUploading(false);
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -334,175 +462,169 @@ function QuestionCard({
     e.target.value = "";
   };
 
-  const onRemove = (path: string) => {
-    if (!confirm("이 파일을 삭제할까요?")) return;
+  const onRemove = () => {
+    if (!confirm(`페이지 ${pageNumber} 를 삭제할까요?`)) return;
     const fd = new FormData();
-    fd.set("intent", "remove");
+    fd.set("intent", "remove-page");
     fd.set("roundId", round.roundId);
-    fd.set("questionId", question.questionId);
-    fd.set("path", path);
-    removeFetcher.submit(fd, {
-      method: "post",
-      action: "/api/gs/take",
-    });
+    fd.set("pageNumber", String(pageNumber));
+    removeFetcher.submit(fd, { method: "post", action: "/api/gs/take" });
   };
 
   const onToggleConfirm = (next: boolean) => {
     const fd = new FormData();
-    fd.set("intent", "confirm");
+    fd.set("intent", "confirm-page");
     fd.set("roundId", round.roundId);
-    fd.set("questionId", question.questionId);
+    fd.set("pageNumber", String(pageNumber));
     fd.set("confirmed", next ? "true" : "false");
-    confirmFetcher.submit(fd, {
-      method: "post",
-      action: "/api/gs/take",
-    });
+    confirmFetcher.submit(fd, { method: "post", action: "/api/gs/take" });
   };
 
-  const attachments = answer?.attachments ?? [];
-  const hasFiles = attachments.length > 0;
-  const ocrSummary = useMemo(() => {
-    const imgAtts = attachments.filter((a) => a.mime.startsWith("image/"));
-    if (imgAtts.length === 0) return null;
-    const checked = imgAtts.filter((a) => a.ocrLevel != null);
-    if (checked.length === 0) return { state: "unchecked" as const };
-    const bad = checked.filter((a) => a.ocrLevel === "bad").length;
-    const warn = checked.filter((a) => a.ocrLevel === "warn").length;
-    if (bad > 0) return { state: "bad" as const, bad };
-    if (warn > 0) return { state: "warn" as const, warn };
-    return { state: "good" as const };
-  }, [attachments]);
+  const onToggleQuestion = (qid: string) => {
+    const next = mappedIds.includes(qid)
+      ? mappedIds.filter((x) => x !== qid)
+      : [...mappedIds, qid];
+    const fd = new FormData();
+    fd.set("intent", "set-page-questions");
+    fd.set("roundId", round.roundId);
+    fd.set("pageNumber", String(pageNumber));
+    fd.set("questionIds", next.join(","));
+    mapFetcher.submit(fd, { method: "post", action: "/api/gs/take" });
+  };
+
+  const isUploading = uploadFetcher.state !== "idle";
+  const empty = page == null;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
-            #{question.orderIndex + 1}
-          </Badge>
-          {question.title ? (
-            <h2 className="font-semibold">{question.title}</h2>
-          ) : null}
-          <Badge variant="secondary" className="ml-auto text-[10px]">
-            {question.maxScore}점
-          </Badge>
-        </div>
+    <Card
+      className={cn(
+        "relative overflow-hidden",
+        empty && "border-dashed",
+        page && !confirmed && "border-amber-400/70",
+        page && confirmed && "border-emerald-400/70",
+      )}
+    >
+      <CardHeader className="flex-row items-center gap-2 space-y-0 px-4 py-2">
+        <Badge variant="outline" className="text-[10px]">
+          페이지 {pageNumber}
+        </Badge>
+        {page ? (
+          confirmed ? (
+            <Badge className="bg-emerald-600 text-white text-[10px] hover:bg-emerald-600">
+              확인됨
+            </Badge>
+          ) : (
+            <Badge className="bg-amber-500 text-white text-[10px] hover:bg-amber-500">
+              확인 필요
+            </Badge>
+          )
+        ) : null}
+        {page ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={removeFetcher.state !== "idle"}
+            aria-label="페이지 삭제"
+            className="text-muted-foreground hover:text-rose-600 ml-auto"
+          >
+            <Trash2Icon className="size-3.5" />
+          </button>
+        ) : null}
       </CardHeader>
       <Separator />
-      <CardContent className="space-y-4 pt-4">
-        <div className="rounded-md border bg-muted/30 p-3">
-          <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
-            {question.bodyMd}
-          </p>
-        </div>
-
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              답안 첨부
-            </p>
-            <span className="text-muted-foreground text-[11px]">
-              {attachments.length} / 6 · JPG·PNG·WebP·PDF · 10MB 이하
-            </span>
-          </div>
-          <div className="space-y-2">
-            {attachments.map((att) => (
-              <AttachmentPreview
-                key={att.path}
-                attachment={att}
-                onRemove={() => onRemove(att.path)}
-                disabled={removeFetcher.state !== "idle"}
+      <CardContent className="space-y-2 p-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          onChange={onPick}
+          className="hidden"
+        />
+        {empty ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="w-full h-24 border-dashed text-xs"
+          >
+            <UploadIcon className="size-4" />
+            {isUploading ? "업로드 중…" : "사진/PDF 업로드"}
+          </Button>
+        ) : (
+          <PagePreview attachment={page.attachment} />
+        )}
+        {error ? <p className="text-rose-600 text-[11px]">{error}</p> : null}
+        {!empty ? (
+          <>
+            <div>
+              <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+                이 페이지가 해당하는 문항
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {questions.map((q) => {
+                  const on = mappedIds.includes(q.questionId);
+                  return (
+                    <button
+                      key={q.questionId}
+                      type="button"
+                      onClick={() => onToggleQuestion(q.questionId)}
+                      disabled={mapFetcher.state !== "idle"}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition",
+                        on
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {on ? <CheckIcon className="size-3" /> : null}
+                      {q.title ?? `문 ${q.orderIndex + 1}`}
+                    </button>
+                  );
+                })}
+              </div>
+              {mappedIds.length === 0 ? (
+                <p className="text-muted-foreground mt-1 text-[10px] italic">
+                  매핑되지 않은 페이지 — 메모/여백으로 처리됩니다.
+                </p>
+              ) : null}
+            </div>
+            <label className="flex items-start gap-1.5 cursor-pointer rounded-md border bg-background p-2">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => onToggleConfirm(e.target.checked)}
+                disabled={confirmFetcher.state !== "idle"}
+                className="mt-0.5 size-3.5"
               />
-            ))}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              onChange={onPick}
-              className="hidden"
-            />
+              <span className="text-[10px] leading-snug">
+                <span className="font-semibold">판독 가능 확인.</span>{" "}
+                <span className="text-muted-foreground">
+                  풀사이즈로 확인했고 글씨가 채점자(AI/강사)가 알아볼 수
+                  있는 수준임.
+                </span>
+              </span>
+            </label>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={
-                uploading ||
-                uploadFetcher.state !== "idle" ||
-                attachments.length >= 6
-              }
-              className="w-full"
+              disabled={isUploading}
+              className="w-full h-7 text-[10px]"
             >
-              <UploadIcon className="size-4" />
-              {uploadFetcher.state !== "idle" ? "업로드 중…" : "파일 선택"}
+              <UploadIcon className="size-3" />
+              {isUploading ? "교체 중…" : "교체"}
             </Button>
-            {error ? (
-              <p className="text-rose-600 text-xs">{error}</p>
-            ) : null}
-          </div>
-        </div>
-
-        {hasFiles ? (
-          <div className="space-y-2">
-            {ocrSummary?.state === "bad" ? (
-              <div className="border-rose-300 bg-rose-50 dark:border-rose-700/40 dark:bg-rose-950/20 rounded-md border p-3">
-                <p className="text-rose-800 dark:text-rose-200 text-xs font-semibold">
-                  ⚠️ AI/강사가 판독하기 어려운 파일이 포함되어 있습니다.
-                </p>
-                <p className="text-rose-700 dark:text-rose-300 mt-1 text-[11px]">
-                  채점은 손글씨를 인식한 텍스트 기준으로 일부 자동화될 예정입니다.
-                  판독률이 낮으면 점수에 불이익이 있을 수 있으니 가급적 다시 촬영/스캔해
-                  올려 주세요. 그래도 진행하시려면 아래 체크박스를 직접 확인해 주세요.
-                </p>
-              </div>
-            ) : ocrSummary?.state === "warn" ? (
-              <div className="border-amber-300 bg-amber-50 dark:border-amber-700/40 dark:bg-amber-950/20 rounded-md border p-3 text-[11px] text-amber-800 dark:text-amber-200">
-                일부 첨부의 판독이 흐릿합니다. 가능하면 더 밝은 곳에서 다시 촬영해
-                보세요.
-              </div>
-            ) : ocrSummary?.state === "good" ? (
-              <div className="border-emerald-300 bg-emerald-50 dark:border-emerald-700/40 dark:bg-emerald-950/20 rounded-md border p-2 text-[11px] text-emerald-800 dark:text-emerald-300">
-                ✓ 모든 첨부의 판독률이 양호합니다.
-              </div>
-            ) : ocrSummary?.state === "unchecked" ? (
-              <div className="bg-muted/40 rounded-md border p-2 text-[11px] text-muted-foreground">
-                자동 판독 검사가 실행되지 않았습니다 (서버 OCR 미설정). 풀사이즈
-                미리보기로 본인이 직접 확인해 주세요.
-              </div>
-            ) : null}
-            <div className="rounded-md border bg-background p-3">
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(e) => onToggleConfirm(e.target.checked)}
-                  disabled={confirmFetcher.state !== "idle"}
-                  className="mt-0.5 size-4"
-                />
-                <span className="text-sm leading-snug">
-                  <span className="font-semibold">판독 가능 확인.</span>{" "}
-                  <span className="text-muted-foreground text-xs">
-                    업로드한 파일을 모두 풀사이즈로 미리보기하여 확인했고, 본인의
-                    글씨가 채점자(AI/강사) 가 알아볼 수 있는 수준임을 확인합니다.
-                  </span>
-                </span>
-              </label>
-            </div>
-          </div>
+          </>
         ) : null}
       </CardContent>
     </Card>
   );
 }
 
-function AttachmentPreview({
-  attachment,
-  onRemove,
-  disabled,
-}: {
-  attachment: GsAttachment;
-  onRemove: () => void;
-  disabled: boolean;
-}) {
+function PagePreview({ attachment }: { attachment: GsPage["attachment"] }) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const isImage = attachment.mime.startsWith("image/");
@@ -510,9 +632,7 @@ function AttachmentPreview({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(
-      `/api/gs/take?path=${encodeURIComponent(attachment.path)}`,
-    )
+    fetch(`/api/gs/take?path=${encodeURIComponent(attachment.path)}`)
       .then((r) => r.json())
       .then((j: { url?: string }) => {
         if (!cancelled) setSignedUrl(j.url ?? null);
@@ -527,45 +647,41 @@ function AttachmentPreview({
   }, [attachment.path]);
 
   return (
-    <div className="rounded-md border bg-muted/20 p-2">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-1 text-[10px]">
         {isImage ? (
-          <FileImageIcon className="text-muted-foreground size-3.5" />
+          <FileImageIcon className="text-muted-foreground size-3" />
         ) : (
-          <FileTextIcon className="text-muted-foreground size-3.5" />
+          <FileTextIcon className="text-muted-foreground size-3" />
         )}
         <span className="flex-1 truncate font-medium">{attachment.fileName}</span>
         <OcrBadge attachment={attachment} />
-        <span className="text-muted-foreground tabular-nums">
-          {Math.round(attachment.size / 1024)}KB
-          {attachment.width && attachment.height
-            ? ` · ${attachment.width}x${attachment.height}`
-            : ""}
-        </span>
-        {signedUrl ? (
-          <a
-            href={signedUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary inline-flex items-center gap-0.5 hover:underline"
-          >
-            <EyeIcon className="size-3" /> 풀사이즈
-          </a>
-        ) : null}
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={disabled}
-          aria-label="파일 삭제"
-          className="text-muted-foreground hover:text-rose-600 disabled:opacity-50"
-        >
-          <Trash2Icon className="size-3.5" />
-        </button>
       </div>
+      {signedUrl && isImage ? (
+        <a href={signedUrl} target="_blank" rel="noreferrer" className="block">
+          <img
+            src={signedUrl}
+            alt={attachment.fileName}
+            loading="lazy"
+            className="bg-background w-full rounded border object-contain max-h-48"
+          />
+        </a>
+      ) : signedUrl && !isImage ? (
+        <a
+          href={signedUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="bg-muted/40 block rounded border p-3 text-center text-[11px] hover:bg-muted/60"
+        >
+          PDF 풀사이즈 열기
+        </a>
+      ) : loading ? (
+        <div className="bg-muted h-24 w-full animate-pulse rounded" />
+      ) : null}
       {attachment.ocrLevel ? (
         <p
           className={cn(
-            "mt-1 text-[11px]",
+            "text-[10px]",
             attachment.ocrLevel === "good"
               ? "text-emerald-700 dark:text-emerald-400"
               : attachment.ocrLevel === "warn"
@@ -573,61 +689,46 @@ function AttachmentPreview({
                 : "text-rose-700 dark:text-rose-400",
           )}
         >
-          OCR 인식: 한글 {attachment.ocrKoreanCharCount ?? 0}자 · 신뢰도{" "}
+          OCR 한글 {attachment.ocrKoreanCharCount ?? 0}자 · 신뢰도{" "}
           {Math.round((attachment.ocrConfidence ?? 0) * 100)}%
-          {attachment.ocrLevel === "bad"
-            ? " — 판독률이 낮습니다. 더 밝은 곳에서 정자로 또렷하게 다시 촬영하시거나 스캔본 사용을 권합니다. 채점 시 AI/강사가 알아보기 어려울 수 있습니다."
-            : attachment.ocrLevel === "warn"
-              ? " — 판독은 가능하나 일부 글자가 흐릿합니다."
-              : " — 양호합니다."}
         </p>
-      ) : null}
-      {isImage && signedUrl ? (
-        <img
-          src={signedUrl}
-          alt={attachment.fileName}
-          loading="lazy"
-          className="mt-2 max-h-[480px] w-full rounded border object-contain bg-background"
-        />
-      ) : isImage && loading ? (
-        <div className="bg-muted mt-2 h-32 w-full animate-pulse rounded" />
       ) : null}
     </div>
   );
 }
 
-function OcrBadge({ attachment }: { attachment: GsAttachment }) {
+function OcrBadge({ attachment }: { attachment: GsPage["attachment"] }) {
   if (!attachment.mime.startsWith("image/")) {
     return (
-      <Badge variant="outline" className="text-[10px]">
+      <Badge variant="outline" className="text-[9px]">
         PDF
       </Badge>
     );
   }
   if (!attachment.ocrLevel) {
     return (
-      <Badge variant="outline" className="text-[10px]">
+      <Badge variant="outline" className="text-[9px]">
         OCR 미검사
       </Badge>
     );
   }
   if (attachment.ocrLevel === "good") {
     return (
-      <Badge className="bg-emerald-600 text-white text-[10px] hover:bg-emerald-600">
-        판독 양호
+      <Badge className="bg-emerald-600 text-white text-[9px] hover:bg-emerald-600">
+        양호
       </Badge>
     );
   }
   if (attachment.ocrLevel === "warn") {
     return (
-      <Badge className="bg-amber-500 text-white text-[10px] hover:bg-amber-500">
-        판독 주의
+      <Badge className="bg-amber-500 text-white text-[9px] hover:bg-amber-500">
+        주의
       </Badge>
     );
   }
   return (
-    <Badge className="bg-rose-600 text-white text-[10px] hover:bg-rose-600">
-      판독 부족
+    <Badge className="bg-rose-600 text-white text-[9px] hover:bg-rose-600">
+      부족
     </Badge>
   );
 }

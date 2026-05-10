@@ -1,6 +1,6 @@
 // 학생 — 회차 우수 답안 모음.
 // 공개(is_published=true) 마킹된 답안만. 작성자 이름은 익명/공개 옵션에 따라.
-// 답안 첨부는 admin client 로 signed URL 발급 (peer-review 와 동일 패턴).
+// 답안 페이지는 admin client 로 signed URL 발급 (peer-review 와 동일 패턴).
 
 import { ArrowLeftIcon, AwardIcon, CrownIcon, EyeIcon } from "lucide-react";
 import { Link, data } from "react-router";
@@ -29,6 +29,23 @@ export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   },
 ];
 
+interface PageItem {
+  pageNumber: number;
+  attachment: GsAttachment;
+  signedUrl: string | null;
+}
+
+interface Item {
+  kind: "round" | "question";
+  distinction: Awaited<
+    ReturnType<typeof listPublishedDistinctionsForRound>
+  >[number];
+  questionId: string | null;
+  pages: PageItem[];
+  ocrTexts: string[];
+  authorName: string | null;
+}
+
 export async function loader({ params, request }: Route.LoaderArgs) {
   const roundId = params.roundId;
   if (!roundId) throw data("Missing roundId", { status: 404 });
@@ -52,23 +69,23 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const questions = await listGsQuestions(client, roundId);
 
-  // 답안 + 작성자 이름 lookup (admin client 로 — 학생 RLS 가 다른 학생 답안 차단).
+  // 답안지 페이지 + 매핑 + 작성자 이름 lookup (admin client 우회).
   const submissionIds = Array.from(
     new Set(distinctions.map((d) => d.submissionId)),
   );
-  const { data: ansRows } = await adminClient
-    .from("gs_answers")
-    .select("submission_id, question_id, attachments")
+  const { data: pageRows } = await adminClient
+    .from("gs_submission_pages")
+    .select("submission_id, page_number, attachment")
     .in("submission_id", submissionIds);
-  const attBy = new Map<string, GsAttachment[]>();
-  for (const a of ansRows ?? []) {
-    const key = `${a.submission_id}:${a.question_id}`;
-    attBy.set(key, parseAttachments(a.attachments));
-  }
+  const { data: mapRows } = await adminClient
+    .from("gs_question_pages")
+    .select("submission_id, question_id, page_number, order_index")
+    .in("submission_id", submissionIds);
   const { data: subRows } = await adminClient
     .from("gs_submissions")
     .select("submission_id, user_id")
     .in("submission_id", submissionIds);
+
   const subUser = new Map<string, string>();
   for (const s of subRows ?? []) subUser.set(s.submission_id, s.user_id);
   const userIds = Array.from(new Set([...subUser.values()]));
@@ -79,52 +96,72 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const nameByUser = new Map<string, string | null>();
   for (const p of profiles ?? []) nameByUser.set(p.profile_id, p.name);
 
-  // 우수 항목 + signed URL prefetch.
+  // (submission, page) → attachment.
+  const pageByKey = new Map<string, GsAttachment>();
+  for (const r of pageRows ?? []) {
+    const att = parseSingleAttachment(r.attachment);
+    if (att) pageByKey.set(`${r.submission_id}:${r.page_number}`, att);
+  }
+  // (submission, question) → page numbers (order_index 순).
+  const pagesByQ = new Map<string, number[]>();
+  for (const m of (mapRows ?? []).slice().sort((a, b) => a.order_index - b.order_index)) {
+    const key = `${m.submission_id}:${m.question_id}`;
+    const arr = pagesByQ.get(key) ?? [];
+    arr.push(m.page_number);
+    pagesByQ.set(key, arr);
+  }
+
+  const signUrl = async (path: string): Promise<string | null> => {
+    const { data: url } = await adminClient.storage
+      .from("gs-answers")
+      .createSignedUrl(path, 600);
+    return url?.signedUrl ?? null;
+  };
+
   const items: Item[] = [];
   for (const d of distinctions) {
     const uid = subUser.get(d.submissionId);
     const authorName = !d.isAnonymous && uid ? nameByUser.get(uid) ?? null : null;
 
     if (d.questionId) {
-      const att = attBy.get(`${d.submissionId}:${d.questionId}`) ?? [];
-      const signed: Record<string, string> = {};
-      for (const a of att) {
-        const { data: url } = await adminClient.storage
-          .from("gs-answers")
-          .createSignedUrl(a.path, 600);
-        if (url?.signedUrl) signed[a.path] = url.signedUrl;
+      const pageNums = pagesByQ.get(`${d.submissionId}:${d.questionId}`) ?? [];
+      const pages: PageItem[] = [];
+      const ocrParts: string[] = [];
+      for (const n of pageNums) {
+        const att = pageByKey.get(`${d.submissionId}:${n}`);
+        if (!att) continue;
+        const url = await signUrl(att.path);
+        pages.push({ pageNumber: n, attachment: att, signedUrl: url });
+        if (att.ocrText) ocrParts.push(att.ocrText);
       }
       items.push({
         kind: "question",
         distinction: d,
         questionId: d.questionId,
-        attachments: att,
-        signedUrls: signed,
-        ocrTexts: att.map((x) => x.ocrText ?? "").filter(Boolean),
+        pages,
+        ocrTexts: ocrParts,
         authorName,
       });
     } else {
-      // 회차 종합 — 모든 문항의 첨부.
-      const allAtt: GsAttachment[] = [];
+      // 회차 종합 — 답안지 모든 페이지(매핑 무관, 페이지 번호 순).
+      const allNums = (pageRows ?? [])
+        .filter((r) => r.submission_id === d.submissionId)
+        .map((r) => r.page_number)
+        .sort((a, b) => a - b);
+      const pages: PageItem[] = [];
       const ocrParts: string[] = [];
-      const signed: Record<string, string> = {};
-      for (const q of questions) {
-        const att = attBy.get(`${d.submissionId}:${q.questionId}`) ?? [];
-        for (const a of att) {
-          allAtt.push(a);
-          if (a.ocrText) ocrParts.push(`[#${q.orderIndex + 1}] ${a.ocrText}`);
-          const { data: url } = await adminClient.storage
-            .from("gs-answers")
-            .createSignedUrl(a.path, 600);
-          if (url?.signedUrl) signed[a.path] = url.signedUrl;
-        }
+      for (const n of allNums) {
+        const att = pageByKey.get(`${d.submissionId}:${n}`);
+        if (!att) continue;
+        const url = await signUrl(att.path);
+        pages.push({ pageNumber: n, attachment: att, signedUrl: url });
+        if (att.ocrText) ocrParts.push(`[페이지 ${n}] ${att.ocrText}`);
       }
       items.push({
         kind: "round",
         distinction: d,
         questionId: null,
-        attachments: allAtt,
-        signedUrls: signed,
+        pages,
         ocrTexts: ocrParts,
         authorName,
       });
@@ -132,18 +169,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   return { round, questions, items };
-}
-
-interface Item {
-  kind: "round" | "question";
-  distinction: Awaited<
-    ReturnType<typeof listPublishedDistinctionsForRound>
-  >[number];
-  questionId: string | null;
-  attachments: GsAttachment[];
-  signedUrls: Record<string, string>;
-  ocrTexts: string[];
-  authorName: string | null;
 }
 
 export default function GsDistinguished({ loaderData }: Route.ComponentProps) {
@@ -287,21 +312,23 @@ function DistinguishedItem({ item }: { item: Item }) {
         </span>
       </div>
       <div className="space-y-2">
-        {item.attachments.map((att) => {
-          const url = item.signedUrls[att.path];
-          const isImage = att.mime.startsWith("image/");
+        {item.pages.map((p) => {
+          const isImage = p.attachment.mime.startsWith("image/");
           return (
             <div
-              key={att.path}
+              key={`${p.pageNumber}-${p.attachment.path}`}
               className="bg-background rounded border p-2"
             >
               <div className="flex items-center gap-2 text-[11px]">
+                <Badge variant="outline" className="text-[10px]">
+                  페이지 {p.pageNumber}
+                </Badge>
                 <span className="text-muted-foreground">
-                  답안 파일 ({att.mime.split("/")[1]?.toUpperCase() ?? "FILE"})
+                  ({p.attachment.mime.split("/")[1]?.toUpperCase() ?? "FILE"})
                 </span>
-                {url ? (
+                {p.signedUrl ? (
                   <a
-                    href={url}
+                    href={p.signedUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="text-primary ml-auto inline-flex items-center gap-0.5 hover:underline"
@@ -310,13 +337,22 @@ function DistinguishedItem({ item }: { item: Item }) {
                   </a>
                 ) : null}
               </div>
-              {isImage && url ? (
+              {isImage && p.signedUrl ? (
                 <img
-                  src={url}
-                  alt="우수 답안"
+                  src={p.signedUrl}
+                  alt={`페이지 ${p.pageNumber}`}
                   loading="lazy"
                   className="mt-2 max-h-[480px] w-full rounded border object-contain bg-background"
                 />
+              ) : !isImage && p.signedUrl ? (
+                <a
+                  href={p.signedUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-background hover:bg-muted mt-2 block rounded border p-3 text-center text-xs"
+                >
+                  PDF 풀사이즈 열기
+                </a>
               ) : null}
             </div>
           );
@@ -336,23 +372,25 @@ function DistinguishedItem({ item }: { item: Item }) {
   );
 }
 
-function parseAttachments(raw: unknown): GsAttachment[] {
-  if (!Array.isArray(raw)) return [];
-  const out: GsAttachment[] = [];
-  for (const it of raw) {
-    if (!it || typeof it !== "object") continue;
-    const o = it as Record<string, unknown>;
-    if (typeof o.path !== "string" || typeof o.fileName !== "string") continue;
-    const att: GsAttachment = {
-      path: o.path,
-      fileName: o.fileName,
-      mime: typeof o.mime === "string" ? o.mime : "application/octet-stream",
-      size: typeof o.size === "number" ? o.size : 0,
-      createdAt:
-        typeof o.createdAt === "string" ? o.createdAt : new Date().toISOString(),
-    };
-    if (typeof o.ocrText === "string") att.ocrText = o.ocrText;
-    out.push(att);
+// 단일 첨부 파싱 (queries.server 의 parseAttachment 와 동일하지만 admin-client 직접 쿼리에 인라인).
+function parseSingleAttachment(raw: unknown): GsAttachment | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.path !== "string" || typeof o.fileName !== "string") return null;
+  const att: GsAttachment = {
+    path: o.path,
+    fileName: o.fileName,
+    mime: typeof o.mime === "string" ? o.mime : "application/octet-stream",
+    size: typeof o.size === "number" ? o.size : 0,
+    createdAt:
+      typeof o.createdAt === "string" ? o.createdAt : new Date().toISOString(),
+  };
+  if (typeof o.width === "number") att.width = o.width;
+  if (typeof o.height === "number") att.height = o.height;
+  if (typeof o.ocrText === "string") att.ocrText = o.ocrText;
+  if (typeof o.ocrConfidence === "number") att.ocrConfidence = o.ocrConfidence;
+  if (o.ocrLevel === "good" || o.ocrLevel === "warn" || o.ocrLevel === "bad") {
+    att.ocrLevel = o.ocrLevel;
   }
-  return out;
+  return att;
 }

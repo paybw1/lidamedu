@@ -7,12 +7,14 @@ import {
   AwardIcon,
   BarChart3Icon,
   ClipboardCheckIcon,
+  FileTextIcon,
   PlusIcon,
   SaveIcon,
   Trash2Icon,
+  UploadIcon,
   UsersIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Form, Link, data, redirect, useFetcher } from "react-router";
 import { z } from "zod";
 
@@ -27,12 +29,15 @@ import {
   createGsRound,
   deleteGsQuestion,
   deleteGsRound,
+  getGsPaperSignedUrl,
   getGsRound,
+  type GsPaperKind,
   type GsSeries,
   listAllGsSeries,
   listGsQuestions,
   type GsRoundStatus,
   seedDefaultGsQuestions,
+  setGsRoundPaperPath,
   updateGsRound,
   upsertGsQuestion,
 } from "~/features/gs/queries.server";
@@ -63,6 +68,7 @@ const roundSchema = z.object({
   status: z.enum(["draft", "published", "closed"]),
   seriesId: z.string().uuid().optional().nullable(),
   roundNumber: z.coerce.number().int().min(1).max(50).optional().nullable(),
+  expectedPages: z.coerce.number().int().min(1).max(100),
 });
 
 const questionSchema = z.object({
@@ -86,14 +92,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const roundId = params.roundId;
   const allSeries = await listAllGsSeries(client);
   if (!roundId || roundId === "new") {
-    return { round: null, questions: [], allSeries };
+    return { round: null, questions: [], allSeries, paperUrl: null, answerKeyUrl: null };
   }
   const [round, questions] = await Promise.all([
     getGsRound(client, roundId),
     listGsQuestions(client, roundId),
   ]);
   if (!round) throw data("Round not found", { status: 404 });
-  return { round, questions, allSeries };
+
+  const [paperUrl, answerKeyUrl] = await Promise.all([
+    round.paperPdfPath ? getGsPaperSignedUrl(client, round.paperPdfPath) : null,
+    round.answerKeyPdfPath
+      ? getGsPaperSignedUrl(client, round.answerKeyPdfPath)
+      : null,
+  ]);
+  return { round, questions, allSeries, paperUrl, answerKeyUrl };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -120,6 +133,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       status: fd.get("status"),
       seriesId: fd.get("seriesId") || null,
       roundNumber: fd.get("roundNumber") || null,
+      expectedPages: fd.get("expectedPages"),
     });
     if (!parsed.success) return { ok: false, error: "Invalid input" } as const;
     if (!roundId) {
@@ -133,6 +147,7 @@ export async function action({ params, request }: Route.ActionArgs) {
         status: parsed.data.status as GsRoundStatus,
         seriesId: parsed.data.seriesId ?? null,
         roundNumber: parsed.data.roundNumber ?? null,
+        expectedPages: parsed.data.expectedPages,
       });
       return redirect(`/admin/gs/${created.roundId}`);
     }
@@ -146,6 +161,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       status: parsed.data.status as GsRoundStatus,
       seriesId: parsed.data.seriesId ?? null,
       roundNumber: parsed.data.roundNumber ?? null,
+      expectedPages: parsed.data.expectedPages,
     });
     return { ok: true };
   }
@@ -154,6 +170,57 @@ export async function action({ params, request }: Route.ActionArgs) {
     if (!roundId) return { ok: false, error: "Save round first" } as const;
     const result = await seedDefaultGsQuestions(client, roundId);
     return { ok: true, seeded: result.seeded } as const;
+  }
+
+  if (intent === "upload-paper" || intent === "upload-answer-key") {
+    if (!roundId) return { ok: false, error: "Save round first" } as const;
+    const kind: GsPaperKind = intent === "upload-paper" ? "paper" : "answer_key";
+    const file = fd.get("file");
+    if (!(file instanceof File))
+      return { ok: false, error: "파일이 없습니다." } as const;
+    if (file.type !== "application/pdf")
+      return { ok: false, error: "PDF 만 업로드할 수 있습니다." } as const;
+    if (file.size > 30 * 1024 * 1024)
+      return { ok: false, error: "30MB 를 초과합니다." } as const;
+
+    // 기존 파일 있으면 먼저 제거.
+    const round = await getGsRound(client, roundId);
+    if (round) {
+      const existing =
+        kind === "paper" ? round.paperPdfPath : round.answerKeyPdfPath;
+      if (existing) {
+        await client.storage.from("gs-papers").remove([existing]);
+      }
+    }
+
+    const path = `${roundId}/${kind}-${Date.now()}.pdf`;
+    const buf = await file.arrayBuffer();
+    const upload = await client.storage
+      .from("gs-papers")
+      .upload(path, buf, { contentType: "application/pdf", upsert: false });
+    if (upload.error) {
+      return {
+        ok: false,
+        error: `업로드 실패: ${upload.error.message}`,
+      } as const;
+    }
+    await setGsRoundPaperPath(client, roundId, kind, path);
+    return { ok: true } as const;
+  }
+
+  if (intent === "remove-paper" || intent === "remove-answer-key") {
+    if (!roundId) return { ok: false, error: "Save round first" } as const;
+    const kind: GsPaperKind = intent === "remove-paper" ? "paper" : "answer_key";
+    const round = await getGsRound(client, roundId);
+    if (round) {
+      const existing =
+        kind === "paper" ? round.paperPdfPath : round.answerKeyPdfPath;
+      if (existing) {
+        await client.storage.from("gs-papers").remove([existing]);
+      }
+    }
+    await setGsRoundPaperPath(client, roundId, kind, null);
+    return { ok: true } as const;
   }
 
   if (intent === "save-question") {
@@ -203,7 +270,7 @@ function toLocalInput(iso: string | undefined): string {
 }
 
 export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
-  const { round, questions, allSeries } = loaderData;
+  const { round, questions, allSeries, paperUrl, answerKeyUrl } = loaderData;
   const isNew = round === null;
   const roundFetcher = useFetcher<typeof action>();
   const deleteFetcher = useFetcher<typeof action>();
@@ -394,6 +461,24 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
                 className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm tabular-nums"
               />
             </label>
+            <label className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                답안지 페이지 수
+              </span>
+              <input
+                type="number"
+                name="expectedPages"
+                required
+                min={1}
+                max={100}
+                defaultValue={round?.expectedPages ?? 20}
+                placeholder="20"
+                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm tabular-nums"
+              />
+              <span className="text-muted-foreground text-[10px]">
+                학생 응시 화면의 슬롯 수 (변리사 표준 답안지: 20페이지).
+              </span>
+            </label>
             <label className="space-y-1 sm:col-span-2">
               <span className="text-muted-foreground text-xs font-medium">
                 안내 (마크다운, 선택)
@@ -421,6 +506,32 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
           </roundFetcher.Form>
         </CardContent>
       </Card>
+
+      {!isNew && round ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <h2 className="text-sm font-semibold tracking-tight">시험지 / 모범답안 PDF</h2>
+            <p className="text-muted-foreground text-xs">
+              학생은 응시 화면에서 시험지 PDF 를 다운로드해 답안을 작성합니다. 모범답안 PDF
+              는 채점 완료 후 학생 결과 화면에 노출됩니다. PDF, 30MB 이하.
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <PaperSlot
+              label="시험지"
+              kind="paper"
+              currentUrl={paperUrl}
+              hasFile={round.paperPdfPath != null}
+            />
+            <PaperSlot
+              label="모범답안"
+              kind="answer-key"
+              currentUrl={answerKeyUrl}
+              hasFile={round.answerKeyPdfPath != null}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {!isNew && round ? (
         <Card>
@@ -649,6 +760,112 @@ function QuestionEditor({
           </Button>
         </fetcher.Form>
       </div>
+    </div>
+  );
+}
+
+function PaperSlot({
+  label,
+  kind,
+  currentUrl,
+  hasFile,
+}: {
+  label: string;
+  kind: "paper" | "answer-key";
+  currentUrl: string | null;
+  hasFile: boolean;
+}) {
+  const uploadFetcher = useFetcher<typeof action>();
+  const removeFetcher = useFetcher<typeof action>();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const intent = kind === "paper" ? "upload-paper" : "upload-answer-key";
+  const removeIntent = kind === "paper" ? "remove-paper" : "remove-answer-key";
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-3">
+      <div className="flex items-center gap-2">
+        <FileTextIcon className="text-muted-foreground size-4" />
+        <span className="text-sm font-medium">{label}</span>
+        {hasFile ? (
+          <Badge className="bg-emerald-600 text-white text-[10px] hover:bg-emerald-600">
+            업로드됨
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-[10px]">
+            없음
+          </Badge>
+        )}
+        {currentUrl ? (
+          <a
+            href={currentUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary ml-auto text-xs hover:underline"
+          >
+            다운로드 →
+          </a>
+        ) : null}
+      </div>
+      <uploadFetcher.Form
+        method="post"
+        encType="multipart/form-data"
+        className="mt-3"
+        onSubmit={() => {
+          // 자동 제출 — 파일 선택 후 즉시.
+        }}
+      >
+        <input type="hidden" name="intent" value={intent} />
+        <input
+          ref={inputRef}
+          type="file"
+          name="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files?.[0]) e.currentTarget.form?.requestSubmit();
+          }}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploadFetcher.state !== "idle"}
+            className="h-8"
+          >
+            <UploadIcon className="size-3.5" />
+            {uploadFetcher.state !== "idle"
+              ? "업로드 중…"
+              : hasFile
+                ? "교체"
+                : "PDF 선택"}
+          </Button>
+          {hasFile ? (
+            <removeFetcher.Form method="post" className="inline">
+              <input type="hidden" name="intent" value={removeIntent} />
+              <Button
+                type="submit"
+                variant="ghost"
+                size="sm"
+                className="text-destructive h-8"
+                onClick={(e) => {
+                  if (!confirm("이 PDF 를 삭제할까요?")) e.preventDefault();
+                }}
+              >
+                <Trash2Icon className="size-3.5" /> 삭제
+              </Button>
+            </removeFetcher.Form>
+          ) : null}
+        </div>
+        {uploadFetcher.data &&
+        "error" in uploadFetcher.data &&
+        uploadFetcher.data.error ? (
+          <p className="text-rose-600 mt-2 text-xs">
+            {uploadFetcher.data.error}
+          </p>
+        ) : null}
+      </uploadFetcher.Form>
     </div>
   );
 }

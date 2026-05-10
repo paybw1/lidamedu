@@ -11,7 +11,7 @@ import {
   submitPeerReview,
   upsertPeerReviewAnswer,
 } from "~/features/gs/queries-peer.server";
-import { listAnswersForSubmission } from "~/features/gs/queries.server";
+import { listSubmissionPages } from "~/features/gs/queries.server";
 
 import type { Route } from "./+types/peer";
 
@@ -58,10 +58,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     return data({ error: "Forbidden" }, { status: 403 });
   }
 
-  // path 가 실제 답안 첨부에 속하는지(임의 path 우회 방지).
-  const answers = await listAnswersForSubmission(client, assign.submission_id);
+  // path 가 실제 답안지 페이지 첨부에 속하는지(임의 path 우회 방지).
+  const pages = await listSubmissionPages(client, assign.submission_id);
   const allPaths = new Set<string>();
-  for (const a of answers) for (const at of a.attachments) allPaths.add(at.path);
+  for (const p of pages) allPaths.add(p.attachment.path);
   if (!allPaths.has(path)) {
     return data({ error: "Forbidden" }, { status: 403 });
   }

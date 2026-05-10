@@ -1,7 +1,7 @@
 // 운영자 채점 상세 — 한 학생의 제출에 대해 문항별 점수·피드백 입력 후 마무리.
 //
-// 좌측: 문제 본문 + 모범답안.
-// 우측: 학생 답안 첨부(이미지 미리보기 + PDF 링크) + OCR 텍스트 + 점수/피드백 입력.
+// 답안지 모델: submission 단위 N페이지. 각 문항마다 매핑된 페이지들(순서대로)을 합본 갤러리로 표시.
+// 보조 패널: 전체 답안지 페이지 인덱스 (페이지 번호 클릭 시 anchor 스크롤).
 
 import {
   ArrowLeftIcon,
@@ -13,7 +13,7 @@ import {
   SparklesIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, data, redirect, useFetcher } from "react-router";
+import { Link, data, useFetcher } from "react-router";
 import { z } from "zod";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -21,16 +21,16 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { Textarea } from "~/core/components/ui/textarea";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import {
+  type GsAnswerRecord,
+  type GsPage,
+  type GsQuestion,
   finalizeGrading,
   getAttachmentSignedUrl,
   getGradingDetail,
   getGsRound,
-  type GsAnswerRecord,
-  type GsAttachment,
-  type GsQuestion,
   unsealGrading,
   updateAnswerGrading,
 } from "~/features/gs/queries.server";
@@ -85,15 +85,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!detail || detail.submission.roundId !== roundId)
     throw data("Submission not found", { status: 404 });
 
-  // 첨부 signed url prefetch — 채점 화면에서 한 번에 보여주기.
-  const attUrls = new Map<string, string>();
-  for (const a of detail.questions) {
-    const ans = detail.answersByQuestion.get(a.questionId);
-    if (!ans) continue;
-    for (const att of ans.attachments) {
-      const url = await getAttachmentSignedUrl(client, att.path, 1200);
-      if (url) attUrls.set(att.path, url);
-    }
+  // 페이지 첨부 signed url prefetch.
+  const attUrls: Record<string, string> = {};
+  for (const p of detail.pages) {
+    const url = await getAttachmentSignedUrl(client, p.attachment.path, 1200);
+    if (url) attUrls[p.attachment.path] = url;
   }
 
   // Map 을 직렬화 가능한 객체로 변환.
@@ -101,8 +97,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   detail.answersByQuestion.forEach((v, k) => {
     answersByQ[k] = v;
   });
+  const pagesByQ: Record<string, GsPage[]> = {};
+  detail.pagesByQuestion.forEach((v, k) => {
+    pagesByQ[k] = v;
+  });
 
-  // 문항별 동료 채점 묶기 — reviewer 익명화(이름·ID 제거).
+  // 문항별 동료 채점 묶기 — reviewer 익명화.
   const peerByQ: Record<
     string,
     { score: number | null; feedbackMd: string | null }[]
@@ -115,7 +115,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
   const peerStats = {
-    submissions: peerReviews.length, // 제출 완료된 reviewer 수.
+    submissions: peerReviews.length,
   };
 
   return {
@@ -125,8 +125,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       studentName: detail.studentName,
       questions: detail.questions,
       answersByQ,
+      pagesByQ,
+      pages: detail.pages,
     },
-    attUrls: Object.fromEntries(attUrls),
+    attUrls,
     peerByQ,
     peerStats,
   };
@@ -204,14 +206,17 @@ export async function action({ params, request }: Route.ActionArgs) {
 
 export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
   const { round, detail, attUrls, peerByQ, peerStats } = loaderData;
-  const { submission, studentName, questions, answersByQ } = detail;
+  const { submission, studentName, questions, answersByQ, pagesByQ, pages } =
+    detail;
   const finalizeFetcher = useFetcher<typeof action>();
 
   const totalGraded = questions.reduce((sum, q) => {
     const a = answersByQ[q.questionId];
     return sum + (a?.score ?? 0);
   }, 0);
-  const allGraded = questions.every((q) => answersByQ[q.questionId]?.score != null);
+  const allGraded = questions.every(
+    (q) => answersByQ[q.questionId]?.score != null,
+  );
   const isFinalized = submission.gradedAt != null;
 
   return (
@@ -250,6 +255,36 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
         </div>
       </header>
 
+      {/* 답안지 인덱스 — 전체 페이지를 페이지 번호 별 anchor 칩으로. */}
+      {pages.length > 0 ? (
+        <Card className="mb-6">
+          <CardContent className="py-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-muted-foreground font-semibold tracking-wide uppercase text-[10px]">
+                답안지 페이지 ({pages.length} / {round.expectedPages})
+              </span>
+              {pages.map((p) => (
+                <a
+                  key={p.pageId}
+                  href={`#page-${p.pageNumber}`}
+                  className="border-input hover:bg-muted inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px]"
+                  title={
+                    p.questionIds.length === 0
+                      ? "매핑 없음 (메모/여백)"
+                      : `매핑: ${p.questionIds.length}개 문항`
+                  }
+                >
+                  {p.pageNumber}
+                  {p.questionIds.length === 0 ? (
+                    <span className="text-muted-foreground">·</span>
+                  ) : null}
+                </a>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {peerStats.submissions > 0 ? (
         <p className="text-muted-foreground mb-4 text-xs">
           동료 채점 제출 {peerStats.submissions}건이 도착했습니다 — 각 문항 카드에
@@ -263,6 +298,7 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
             key={q.questionId}
             question={q}
             answer={answersByQ[q.questionId] ?? null}
+            mappedPages={pagesByQ[q.questionId] ?? []}
             attUrls={attUrls}
             submissionId={submission.submissionId}
             disabled={isFinalized}
@@ -270,6 +306,28 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
           />
         ))}
       </div>
+
+      {/* 매핑 안된 페이지 (메모/여백) — 채점 보조용 보기. */}
+      {pages.filter((p) => p.questionIds.length === 0).length > 0 ? (
+        <Card className="mt-6 bg-muted/30">
+          <CardHeader>
+            <h2 className="text-sm font-semibold tracking-tight">
+              매핑되지 않은 페이지 (메모/여백)
+            </h2>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {pages
+              .filter((p) => p.questionIds.length === 0)
+              .map((p) => (
+                <PageView
+                  key={p.pageId}
+                  page={p}
+                  url={attUrls[p.attachment.path]}
+                />
+              ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Separator className="my-6" />
 
@@ -353,6 +411,7 @@ interface AiDraftResponse {
 function QuestionGradeCard({
   question,
   answer,
+  mappedPages,
   attUrls,
   submissionId,
   disabled,
@@ -360,6 +419,7 @@ function QuestionGradeCard({
 }: {
   question: GsQuestion;
   answer: GsAnswerRecord | null;
+  mappedPages: GsPage[];
   attUrls: Record<string, string>;
   submissionId: string;
   disabled: boolean;
@@ -375,7 +435,6 @@ function QuestionGradeCard({
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // 외부에서 answer 가 바뀌면 (revalidate) draft sync.
   useEffect(() => {
     setScore(answer?.score != null ? String(answer.score) : "");
     setFeedback(answer?.feedbackMd ?? "");
@@ -392,7 +451,6 @@ function QuestionGradeCard({
     }
   }, [fetcher.state, fetcher.data]);
 
-  // AI 초안 도착 시 score / feedback 필드 prefill.
   useEffect(() => {
     if (aiFetcher.state !== "idle") return;
     const d = aiFetcher.data;
@@ -421,8 +479,8 @@ function QuestionGradeCard({
     });
   };
   const aiBusy = aiFetcher.state !== "idle";
-  const hasOcrText = (answer?.attachments ?? []).some(
-    (a) => a.ocrText && a.ocrText.trim().length > 0,
+  const hasOcrText = mappedPages.some(
+    (p) => p.attachment.ocrText && p.attachment.ocrText.trim().length > 0,
   );
 
   // 동료 채점 통계.
@@ -439,7 +497,6 @@ function QuestionGradeCard({
     scoredPeer.length > 0
       ? Math.max(...scoredPeer.map((p) => p.score ?? 0))
       : null;
-  // 표준편차 — 채점자 간 의견 차이가 큰지(분쟁 가능성) 운영자가 보게.
   const peerStdev =
     scoredPeer.length >= 2
       ? Math.sqrt(
@@ -474,6 +531,12 @@ function QuestionGradeCard({
           {question.title ? (
             <h2 className="font-semibold">{question.title}</h2>
           ) : null}
+          <span className="text-muted-foreground text-[11px]">
+            매핑 페이지{" "}
+            {mappedPages.length === 0
+              ? "없음"
+              : mappedPages.map((p) => p.pageNumber).join(", ")}
+          </span>
           <Badge variant="secondary" className="ml-auto text-[10px]">
             {question.maxScore}점 만점
           </Badge>
@@ -499,7 +562,13 @@ function QuestionGradeCard({
                 <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
                   모범답안 / 채점 기준
                 </p>
-                <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-700/40 rounded-md border p-3">
+                <div
+                  className={cn(
+                    "bg-emerald-50/60 dark:bg-emerald-950/20",
+                    "border-emerald-200/60 dark:border-emerald-700/40",
+                    "rounded-md border p-3",
+                  )}
+                >
                   <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
                     {question.modelAnswerMd}
                   </p>
@@ -508,46 +577,47 @@ function QuestionGradeCard({
             ) : null}
           </div>
 
-          {/* 우: 학생 답안 + 점수/피드백 */}
+          {/* 우: 학생 답안(매핑 페이지 합본) + 점수/피드백 */}
           <div className="space-y-3">
             <section>
               <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
-                학생 답안 (첨부)
+                학생 답안 — 매핑된 페이지
               </p>
-              {!answer || answer.attachments.length === 0 ? (
+              {mappedPages.length === 0 ? (
                 <p className="text-muted-foreground text-sm italic">
-                  첨부 없음
+                  매핑된 페이지 없음
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {answer.attachments.map((att) => (
-                    <AttachmentView
-                      key={att.path}
-                      attachment={att}
-                      url={attUrls[att.path]}
+                  {mappedPages.map((p) => (
+                    <PageView
+                      key={p.pageId}
+                      page={p}
+                      url={attUrls[p.attachment.path]}
                     />
                   ))}
                 </div>
               )}
             </section>
 
-            {answer && answer.attachments.some((a) => a.ocrText) ? (
+            {hasOcrText ? (
               <section>
                 <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
                   OCR 인식 텍스트 (참고)
                 </p>
                 <div className="bg-background max-h-60 overflow-auto rounded-md border p-3">
-                  {answer.attachments.map((att, i) =>
-                    att.ocrText ? (
-                      <div key={att.path} className="space-y-1 text-xs">
-                        {i > 0 ? (
-                          <Separator className="my-2" />
-                        ) : null}
+                  {mappedPages.map((p, i) =>
+                    p.attachment.ocrText ? (
+                      <div
+                        key={p.pageId}
+                        className="space-y-1 text-xs"
+                      >
+                        {i > 0 ? <Separator className="my-2" /> : null}
                         <p className="text-muted-foreground text-[10px]">
-                          {att.fileName}
+                          페이지 {p.pageNumber} · {p.attachment.fileName}
                         </p>
                         <p className="whitespace-pre-line font-mono leading-snug">
-                          {att.ocrText}
+                          {p.attachment.ocrText}
                         </p>
                       </div>
                     ) : null,
@@ -591,7 +661,8 @@ function QuestionGradeCard({
                     variant="ghost"
                     size="sm"
                     onClick={() =>
-                      peerAvg != null && setScore(String(Math.round(peerAvg * 2) / 2))
+                      peerAvg != null &&
+                      setScore(String(Math.round(peerAvg * 2) / 2))
                     }
                     disabled={disabled || peerAvg == null}
                     className="ml-auto h-6 px-2 text-[11px]"
@@ -600,13 +671,16 @@ function QuestionGradeCard({
                     평균 적용
                   </Button>
                 </div>
-                <div className="bg-amber-50/40 dark:bg-amber-950/15 border-amber-200/60 dark:border-amber-700/30 max-h-72 overflow-auto rounded-md border p-2">
+                <div
+                  className={cn(
+                    "bg-amber-50/40 dark:bg-amber-950/15",
+                    "border-amber-200/60 dark:border-amber-700/30",
+                    "max-h-72 overflow-auto rounded-md border p-2",
+                  )}
+                >
                   <ul className="space-y-2">
                     {peerReviews.map((p, i) => (
-                      <li
-                        key={i}
-                        className="bg-background rounded border p-2"
-                      >
+                      <li key={i} className="bg-background rounded border p-2">
                         <div className="mb-1 flex items-center gap-1.5 text-[11px]">
                           <span className="text-muted-foreground">
                             동료 {i + 1}
@@ -721,31 +795,41 @@ function QuestionGradeCard({
   );
 }
 
-function AttachmentView({
-  attachment,
+function PageView({
+  page,
   url,
 }: {
-  attachment: GsAttachment;
+  page: GsPage;
   url: string | undefined;
 }) {
-  const isImage = attachment.mime.startsWith("image/");
+  const isImage = page.attachment.mime.startsWith("image/");
   return (
-    <div className="rounded-md border bg-muted/20 p-2">
+    <div id={`page-${page.pageNumber}`} className="rounded-md border bg-muted/20 p-2">
       <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge variant="outline" className="text-[10px]">
+          페이지 {page.pageNumber}
+        </Badge>
         <FileTextIcon className="text-muted-foreground size-3.5" />
-        <span className="flex-1 truncate font-medium">{attachment.fileName}</span>
-        {attachment.ocrLevel ? (
+        <span className="flex-1 truncate font-medium">
+          {page.attachment.fileName}
+        </span>
+        {page.attachment.ocrLevel ? (
           <Badge
             className={cn(
               "text-[10px]",
-              attachment.ocrLevel === "good"
+              page.attachment.ocrLevel === "good"
                 ? "bg-emerald-600 text-white hover:bg-emerald-600"
-                : attachment.ocrLevel === "warn"
+                : page.attachment.ocrLevel === "warn"
                   ? "bg-amber-500 text-white hover:bg-amber-500"
                   : "bg-rose-600 text-white hover:bg-rose-600",
             )}
           >
-            판독 {attachment.ocrLevel === "good" ? "양호" : attachment.ocrLevel === "warn" ? "주의" : "부족"}
+            판독{" "}
+            {page.attachment.ocrLevel === "good"
+              ? "양호"
+              : page.attachment.ocrLevel === "warn"
+                ? "주의"
+                : "부족"}
           </Badge>
         ) : null}
         {url ? (
@@ -762,10 +846,19 @@ function AttachmentView({
       {isImage && url ? (
         <img
           src={url}
-          alt={attachment.fileName}
+          alt={page.attachment.fileName}
           loading="lazy"
-          className="mt-2 max-h-[600px] w-full rounded border object-contain bg-background"
+          className="bg-background mt-2 max-h-[600px] w-full rounded border object-contain"
         />
+      ) : !isImage && url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="bg-background hover:bg-muted mt-2 block rounded border p-3 text-center text-xs"
+        >
+          PDF 풀사이즈 열기
+        </a>
       ) : null}
     </div>
   );

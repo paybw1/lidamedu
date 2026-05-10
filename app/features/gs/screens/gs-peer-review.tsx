@@ -20,7 +20,7 @@ import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
-  type GsAttachment,
+  type GsPage,
   type GsQuestion,
   getGsRound,
   listGsQuestions,
@@ -61,9 +61,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const questions = await listGsQuestions(client, round.roundId);
 
   // Map 직렬화 — JSON serializable 객체로.
-  const attachmentsByQuestion: Record<string, GsAttachment[]> = {};
-  detail.attachmentsByQuestion.forEach((v, k) => {
-    attachmentsByQuestion[k] = v;
+  const pagesByQuestion: Record<string, GsPage[]> = {};
+  detail.pagesByQuestion.forEach((v, k) => {
+    pagesByQuestion[k] = v;
   });
   const ocrTextByQuestion: Record<string, string> = {};
   detail.ocrTextByQuestion.forEach((v, k) => {
@@ -78,7 +78,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     round,
     questions,
     assignment: detail.assignment,
-    attachmentsByQuestion,
+    pagesByQuestion,
     ocrTextByQuestion,
     myAnswers,
   };
@@ -89,7 +89,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
     round,
     questions,
     assignment,
-    attachmentsByQuestion,
+    pagesByQuestion,
     ocrTextByQuestion,
     myAnswers,
   } = loaderData;
@@ -145,7 +145,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
           <PeerQuestionCard
             key={q.questionId}
             question={q}
-            attachments={attachmentsByQuestion[q.questionId] ?? []}
+            mappedPages={pagesByQuestion[q.questionId] ?? []}
             ocrText={ocrTextByQuestion[q.questionId] ?? ""}
             myAnswer={myAnswers[q.questionId] ?? null}
             assignmentId={assignment.assignmentId}
@@ -209,14 +209,14 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
 
 function PeerQuestionCard({
   question,
-  attachments,
+  mappedPages,
   ocrText,
   myAnswer,
   assignmentId,
   disabled,
 }: {
   question: GsQuestion;
-  attachments: GsAttachment[];
+  mappedPages: GsPage[];
   ocrText: string;
   myAnswer: PeerReviewAnswer | null;
   assignmentId: string;
@@ -300,16 +300,16 @@ function PeerQuestionCard({
 
         <section>
           <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
-            동료의 답안 (익명)
+            동료의 답안 — 매핑된 페이지 (익명)
           </p>
-          {attachments.length === 0 ? (
+          {mappedPages.length === 0 ? (
             <p className="text-muted-foreground text-sm italic">제출 없음</p>
           ) : (
             <div className="space-y-2">
-              {attachments.map((att) => (
-                <PeerAttachmentView
-                  key={att.path}
-                  attachment={att}
+              {mappedPages.map((p) => (
+                <PeerPageView
+                  key={p.pageId}
+                  page={p}
                   assignmentId={assignmentId}
                 />
               ))}
@@ -381,20 +381,20 @@ function PeerQuestionCard({
   );
 }
 
-function PeerAttachmentView({
-  attachment,
+function PeerPageView({
+  page,
   assignmentId,
 }: {
-  attachment: GsAttachment;
+  page: GsPage;
   assignmentId: string;
 }) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const isImage = attachment.mime.startsWith("image/");
+  const isImage = page.attachment.mime.startsWith("image/");
 
   useEffect(() => {
     let cancelled = false;
     fetch(
-      `/api/gs/peer?assignmentId=${encodeURIComponent(assignmentId)}&path=${encodeURIComponent(attachment.path)}`,
+      `/api/gs/peer?assignmentId=${encodeURIComponent(assignmentId)}&path=${encodeURIComponent(page.attachment.path)}`,
     )
       .then((r) => r.json())
       .then((j: { url?: string }) => {
@@ -404,15 +404,18 @@ function PeerAttachmentView({
     return () => {
       cancelled = true;
     };
-  }, [assignmentId, attachment.path]);
+  }, [assignmentId, page.attachment.path]);
 
   return (
     <div className="rounded-md border bg-muted/20 p-2">
       <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge variant="outline" className="text-[10px]">
+          페이지 {page.pageNumber}
+        </Badge>
         <FileTextIcon className="text-muted-foreground size-3.5" />
         <span className="flex-1 truncate font-medium">
           {/* 파일명에 작성자 정보가 들어있을 수 있어 익명 라벨로 대체 */}
-          답안 파일 ({attachment.mime.split("/")[1]?.toUpperCase() ?? "FILE"})
+          답안 파일 ({page.attachment.mime.split("/")[1]?.toUpperCase() ?? "FILE"})
         </span>
         {signedUrl ? (
           <a
@@ -428,12 +431,21 @@ function PeerAttachmentView({
       {isImage && signedUrl ? (
         <img
           src={signedUrl}
-          alt="답안 첨부"
+          alt={`페이지 ${page.pageNumber}`}
           loading="lazy"
           className={cn(
             "mt-2 max-h-[480px] w-full rounded border object-contain bg-background",
           )}
         />
+      ) : !isImage && signedUrl ? (
+        <a
+          href={signedUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="bg-background hover:bg-muted mt-2 block rounded border p-3 text-center text-xs"
+        >
+          PDF 풀사이즈 열기
+        </a>
       ) : null}
     </div>
   );

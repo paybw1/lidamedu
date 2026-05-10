@@ -1,22 +1,25 @@
-// 학생 GS 응시 액션 — 첨부 업로드 / 삭제 / 판독 자가확인 / 제출.
-// intent 로 분기. 모두 본인 submission 에 대해서만 (RLS + auth.uid() 검사).
+// 학생 GS 응시 액션 — 답안지 페이지 단위 (1슬롯=1파일).
+// intent: upload-page / remove-page / set-page-questions / confirm-page / submit.
+// RLS + auth.uid() 로 본인 submission 검증.
 
 import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import {
-  appendAttachment,
-  getAttachmentSignedUrl,
-  getOwnSubmission,
-  listAnswersForSubmission,
-  listGsQuestions,
-  removeAttachment,
-  setLegibilityConfirmed,
-  submitOwnSubmission,
-  type GsAttachment,
-} from "~/features/gs/queries.server";
 import { analyzeHandwriting } from "~/features/gs/lib/ocr.server";
+import {
+  type GsAttachment,
+  deleteSubmissionPage,
+  getAttachmentSignedUrl,
+  getGsRound,
+  getOwnSubmission,
+  listGsQuestions,
+  listSubmissionPages,
+  setPageLegibilityConfirmed,
+  setPageQuestions,
+  submitOwnSubmission,
+  upsertSubmissionPage,
+} from "~/features/gs/queries.server";
 
 import type { Route } from "./+types/take";
 
@@ -47,27 +50,33 @@ const ALLOWED_MIME = new Set([
 ]);
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIN_FILE_SIZE = 20 * 1024; // 20KB — 너무 작으면 썸네일/공백.
-const MAX_FILES_PER_QUESTION = 6;
 
-const attachSchema = z.object({
-  intent: z.literal("upload"),
+const uploadSchema = z.object({
+  intent: z.literal("upload-page"),
   roundId: z.string().uuid(),
-  questionId: z.string().uuid(),
+  pageNumber: z.coerce.number().int().min(1).max(100),
   width: z.coerce.number().int().min(0).optional(),
   height: z.coerce.number().int().min(0).optional(),
 });
 
 const removeSchema = z.object({
-  intent: z.literal("remove"),
+  intent: z.literal("remove-page"),
   roundId: z.string().uuid(),
-  questionId: z.string().uuid(),
-  path: z.string().min(1),
+  pageNumber: z.coerce.number().int().min(1).max(100),
+});
+
+const setQuestionsSchema = z.object({
+  intent: z.literal("set-page-questions"),
+  roundId: z.string().uuid(),
+  pageNumber: z.coerce.number().int().min(1).max(100),
+  // 콤마로 구분된 questionId 리스트. 빈 문자열이면 매핑 제거.
+  questionIds: z.string().optional(),
 });
 
 const confirmSchema = z.object({
-  intent: z.literal("confirm"),
+  intent: z.literal("confirm-page"),
   roundId: z.string().uuid(),
-  questionId: z.string().uuid(),
+  pageNumber: z.coerce.number().int().min(1).max(100),
   confirmed: z.union([z.literal("true"), z.literal("false")]),
 });
 
@@ -75,6 +84,21 @@ const submitSchema = z.object({
   intent: z.literal("submit"),
   roundId: z.string().uuid(),
 });
+
+function extOf(mime: string): string {
+  switch (mime) {
+    case "image/jpeg":
+      return "jpg";
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
+    case "application/pdf":
+      return "pdf";
+    default:
+      return "bin";
+  }
+}
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -89,7 +113,6 @@ export async function action({ request }: Route.ActionArgs) {
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
 
-  // 본인 submission 검증 helper
   const ensureSubmission = async (roundId: string) => {
     const sub = await getOwnSubmission(client, user.id, roundId);
     if (!sub) {
@@ -101,16 +124,26 @@ export async function action({ request }: Route.ActionArgs) {
     return sub;
   };
 
-  if (intent === "upload") {
-    const parsed = attachSchema.safeParse({
+  if (intent === "upload-page") {
+    const parsed = uploadSchema.safeParse({
       intent,
       roundId: fd.get("roundId"),
-      questionId: fd.get("questionId"),
+      pageNumber: fd.get("pageNumber"),
       width: fd.get("width") ?? undefined,
       height: fd.get("height") ?? undefined,
     });
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
     const sub = await ensureSubmission(parsed.data.roundId);
+    const round = await getGsRound(client, parsed.data.roundId);
+    if (!round) return data({ error: "Round not found" }, { status: 404 });
+    if (parsed.data.pageNumber > round.expectedPages) {
+      return data(
+        {
+          error: `이 회차의 답안지는 최대 ${round.expectedPages} 페이지입니다.`,
+        },
+        { status: 400 },
+      );
+    }
 
     const file = fd.get("file");
     if (!(file instanceof File)) {
@@ -132,17 +165,6 @@ export async function action({ request }: Route.ActionArgs) {
       );
     }
 
-    // 답안당 첨부 상한.
-    const answers = await listAnswersForSubmission(client, sub.submissionId);
-    const cur = answers.find((a) => a.questionId === parsed.data.questionId);
-    if ((cur?.attachments.length ?? 0) >= MAX_FILES_PER_QUESTION) {
-      return data(
-        { error: `한 문항에 최대 ${MAX_FILES_PER_QUESTION}개까지 업로드할 수 있습니다.` },
-        { status: 400 },
-      );
-    }
-
-    // 이미지 해상도 검사 — 클라이언트가 width/height 전송. 미전송이면 PDF 로 간주.
     if (file.type.startsWith("image/")) {
       const w = parsed.data.width ?? 0;
       const h = parsed.data.height ?? 0;
@@ -156,23 +178,19 @@ export async function action({ request }: Route.ActionArgs) {
       }
     }
 
-    // 경로: {userId}/{roundId}/{questionId}/{uuid}.{ext}
-    const ext = (() => {
-      switch (file.type) {
-        case "image/jpeg":
-          return "jpg";
-        case "image/png":
-          return "png";
-        case "image/webp":
-          return "webp";
-        case "application/pdf":
-          return "pdf";
-        default:
-          return "bin";
-      }
-    })();
+    // 기존 페이지가 있으면 storage 파일 제거.
+    const existingPages = await listSubmissionPages(client, sub.submissionId);
+    const existing = existingPages.find(
+      (p) => p.pageNumber === parsed.data.pageNumber,
+    );
+    if (existing) {
+      await client.storage.from("gs-answers").remove([existing.attachment.path]);
+    }
+
+    // 경로: {userId}/{roundId}/page-{nn}-{uuid}.{ext} — questionId 가 페이지 단위이므로 폴더에서 제외.
+    const pageStr = String(parsed.data.pageNumber).padStart(2, "0");
     const fileId = crypto.randomUUID();
-    const path = `${user.id}/${parsed.data.roundId}/${parsed.data.questionId}/${fileId}.${ext}`;
+    const path = `${user.id}/${parsed.data.roundId}/page-${pageStr}-${fileId}.${extOf(file.type)}`;
 
     const arrayBuf = await file.arrayBuffer();
     const upload = await client.storage
@@ -185,7 +203,7 @@ export async function action({ request }: Route.ActionArgs) {
       );
     }
 
-    // 한국어 손글씨 OCR 검사 — 이미지에 한해. API 키 미설정/실패 시 null → 미검사로 표시.
+    // 한국어 손글씨 OCR — 이미지에 한해. PDF 는 미실행.
     const ocr = await analyzeHandwriting(arrayBuf, file.type);
 
     const attachment: GsAttachment = {
@@ -205,61 +223,80 @@ export async function action({ request }: Route.ActionArgs) {
       attachment.ocrLevel = ocr.level;
       attachment.ocrCheckedAt = new Date().toISOString();
     }
-    await appendAttachment(
+    await upsertSubmissionPage(
       client,
       sub.submissionId,
-      parsed.data.questionId,
+      parsed.data.pageNumber,
       attachment,
-    );
-    // 첨부가 바뀌면 자가확인 리셋 — 새 파일이라 다시 봐야 함.
-    await setLegibilityConfirmed(
-      client,
-      sub.submissionId,
-      parsed.data.questionId,
-      false,
     );
     return data({ ok: true, attachment });
   }
 
-  if (intent === "remove") {
+  if (intent === "remove-page") {
     const parsed = removeSchema.safeParse({
       intent,
       roundId: fd.get("roundId"),
-      questionId: fd.get("questionId"),
-      path: fd.get("path"),
+      pageNumber: fd.get("pageNumber"),
     });
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
     const sub = await ensureSubmission(parsed.data.roundId);
-    // 파일 + 메타 동시 제거.
-    await client.storage.from("gs-answers").remove([parsed.data.path]);
-    await removeAttachment(
-      client,
-      sub.submissionId,
-      parsed.data.questionId,
-      parsed.data.path,
+
+    const existingPages = await listSubmissionPages(client, sub.submissionId);
+    const existing = existingPages.find(
+      (p) => p.pageNumber === parsed.data.pageNumber,
     );
-    await setLegibilityConfirmed(
-      client,
-      sub.submissionId,
-      parsed.data.questionId,
-      false,
-    );
+    if (existing) {
+      await client.storage.from("gs-answers").remove([existing.attachment.path]);
+      await deleteSubmissionPage(
+        client,
+        sub.submissionId,
+        parsed.data.pageNumber,
+      );
+    }
     return data({ ok: true });
   }
 
-  if (intent === "confirm") {
+  if (intent === "set-page-questions") {
+    const parsed = setQuestionsSchema.safeParse({
+      intent,
+      roundId: fd.get("roundId"),
+      pageNumber: fd.get("pageNumber"),
+      questionIds: fd.get("questionIds") ?? "",
+    });
+    if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
+    const sub = await ensureSubmission(parsed.data.roundId);
+
+    const ids = (parsed.data.questionIds ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    // 회차에 속한 questionId 만 허용.
+    if (ids.length > 0) {
+      const questions = await listGsQuestions(client, parsed.data.roundId);
+      const allowed = new Set(questions.map((q) => q.questionId));
+      for (const id of ids) {
+        if (!allowed.has(id)) {
+          return data({ error: "잘못된 문항 ID" }, { status: 400 });
+        }
+      }
+    }
+    await setPageQuestions(client, sub.submissionId, parsed.data.pageNumber, ids);
+    return data({ ok: true });
+  }
+
+  if (intent === "confirm-page") {
     const parsed = confirmSchema.safeParse({
       intent,
       roundId: fd.get("roundId"),
-      questionId: fd.get("questionId"),
+      pageNumber: fd.get("pageNumber"),
       confirmed: fd.get("confirmed"),
     });
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
     const sub = await ensureSubmission(parsed.data.roundId);
-    await setLegibilityConfirmed(
+    await setPageLegibilityConfirmed(
       client,
       sub.submissionId,
-      parsed.data.questionId,
+      parsed.data.pageNumber,
       parsed.data.confirmed === "true",
     );
     return data({ ok: true });
@@ -273,25 +310,30 @@ export async function action({ request }: Route.ActionArgs) {
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
     const sub = await ensureSubmission(parsed.data.roundId);
 
-    // 검증: 모든 문제에 첨부가 1개 이상 + 모든 답안에 자가확인 = true.
-    const [questions, answers] = await Promise.all([
+    // 검증: 모든 문항이 1+ 페이지 매핑 + 모든 페이지가 자가확인 = true.
+    const [questions, pages] = await Promise.all([
       listGsQuestions(client, parsed.data.roundId),
-      listAnswersForSubmission(client, sub.submissionId),
+      listSubmissionPages(client, sub.submissionId),
     ]);
-    const answerByQ = new Map(answers.map((a) => [a.questionId, a]));
+    if (pages.length === 0) {
+      return data({ error: "답안지를 1페이지 이상 업로드해 주세요." }, { status: 400 });
+    }
+    const mappedQuestions = new Set<string>();
+    for (const p of pages) {
+      for (const qid of p.questionIds) mappedQuestions.add(qid);
+    }
     for (const q of questions) {
-      const a = answerByQ.get(q.questionId);
-      if (!a || a.attachments.length === 0) {
+      if (!mappedQuestions.has(q.questionId)) {
         return data(
-          { error: `문항 "${q.title ?? "본문"}" 에 답안 파일이 없습니다.` },
+          { error: `문항 "${q.title ?? "본문"}" 에 매핑된 페이지가 없습니다.` },
           { status: 400 },
         );
       }
-      if (!a.legibilityConfirmed) {
+    }
+    for (const p of pages) {
+      if (!p.legibilityConfirmed) {
         return data(
-          {
-            error: `문항 "${q.title ?? "본문"}" 의 판독 가능 여부를 확인해 주세요.`,
-          },
+          { error: `페이지 ${p.pageNumber} 의 판독 가능 여부를 확인해 주세요.` },
           { status: 400 },
         );
       }
