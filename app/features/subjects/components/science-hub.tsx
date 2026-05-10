@@ -15,12 +15,18 @@ import {
 export default function ScienceHub({
   subject,
   sections,
+  progress,
 }: {
   subject: ScienceSubjectSlug;
   sections: ScienceSection[];
+  progress: { attempted: number; correct: number; total: number };
 }) {
   const meta = SCIENCE_SUBJECTS[subject];
   const totalProblems = sections.reduce((s, x) => s + x.problemCount, 0);
+  const correctRate =
+    progress.attempted > 0
+      ? Math.round((progress.correct / progress.attempted) * 100)
+      : null;
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -67,8 +73,11 @@ export default function ScienceHub({
             <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
               내 풀이
             </p>
-            <p className="mt-1 text-muted-foreground text-sm italic">
-              집계 연동 예정
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {progress.attempted}
+              <span className="text-muted-foreground ml-1 text-sm font-normal">
+                / {progress.total}
+              </span>
             </p>
           </CardContent>
         </Card>
@@ -77,8 +86,19 @@ export default function ScienceHub({
             <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
               내 정답률
             </p>
-            <p className="mt-1 text-muted-foreground text-sm italic">
-              집계 연동 예정
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {correctRate != null ? (
+                <>
+                  {correctRate}
+                  <span className="text-muted-foreground ml-1 text-sm font-normal">
+                    % ({progress.correct}/{progress.attempted})
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground text-sm italic">
+                  풀이 없음
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>

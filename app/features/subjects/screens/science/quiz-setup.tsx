@@ -13,8 +13,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { createQuizSession } from "~/features/study/queries.server";
 import {
   SCIENCE_SUBJECTS,
-  SCIENCE_SUBJECT_SLUGS,
-  type ScienceSubjectSlug,
+  normalizeScienceSlug,
 } from "~/features/subjects/lib/science";
 import {
   listScienceProblems,
@@ -31,11 +30,9 @@ export const meta: Route.MetaFunction = ({ data: ld }) => {
   return [{ title: `${ld.subjectMeta.name} 맞춤 퀴즈 | Lidam Edu` }];
 };
 
-const subjectSchema = z.enum(SCIENCE_SUBJECT_SLUGS);
-
 export async function loader({ params, request }: Route.LoaderArgs) {
-  const subject = subjectSchema.safeParse(params.scienceSubject);
-  if (!subject.success) throw data("Unknown science subject", { status: 404 });
+  const subject = normalizeScienceSlug(params.scienceSubject ?? "");
+  if (!subject) throw data("Unknown science subject", { status: 404 });
 
   const [client] = makeServerClient(request);
   const {
@@ -43,10 +40,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
-  const sections = await listSectionsWithCounts(client, subject.data);
+  const sections = await listSectionsWithCounts(client, subject);
   return {
-    scienceSubject: subject.data,
-    subjectMeta: SCIENCE_SUBJECTS[subject.data],
+    scienceSubject: subject,
+    subjectMeta: SCIENCE_SUBJECTS[subject],
     sections,
   };
 }
@@ -58,8 +55,8 @@ const actionSchema = z.object({
 });
 
 export async function action({ params, request }: Route.ActionArgs) {
-  const subject = subjectSchema.safeParse(params.scienceSubject);
-  if (!subject.success) throw data("Unknown science subject", { status: 404 });
+  const subject = normalizeScienceSlug(params.scienceSubject ?? "");
+  if (!subject) throw data("Unknown science subject", { status: 404 });
 
   const [client] = makeServerClient(request);
   const {
@@ -80,7 +77,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   const candidates = await listScienceProblems(
     client,
-    subject.data,
+    subject,
     parsed.data.sectionIds ?? [],
   );
   if (candidates.length === 0) {
@@ -102,7 +99,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   const sessionId = await createQuizSession(client, user.id, {
     mode: parsed.data.mode,
-    scienceSubject: subject.data,
+    scienceSubject: subject,
     scopeType: "filter",
     scopePayload: {
       sectionIds: parsed.data.sectionIds ?? [],
@@ -115,9 +112,10 @@ export async function action({ params, request }: Route.ActionArgs) {
         : null,
   });
 
-  // 풀이 viewer 는 후속. 일단 세션 ID 를 result 로 보냄 (placeholder).
+  const sciencePath =
+    subject === "earth_science" ? "earth-science" : subject;
   return redirect(
-    `/subjects/science/${subject.data}?session=${sessionId}&pending=1`,
+    `/subjects/science/${sciencePath}/problems/${problemIds[0]}?session=${sessionId}`,
   );
 }
 

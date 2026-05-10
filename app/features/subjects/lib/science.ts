@@ -9,6 +9,15 @@ export const SCIENCE_SUBJECT_SLUGS = [
 
 export type ScienceSubjectSlug = (typeof SCIENCE_SUBJECT_SLUGS)[number];
 
+// URL 호환 — hub 라우트는 /earth-science(dash) 를 쓰지만 DB enum 은 underscore.
+// 둘 중 어느 쪽이 URL 에 와도 정규화한다.
+export function normalizeScienceSlug(raw: string): ScienceSubjectSlug | null {
+  const normalized = raw === "earth-science" ? "earth_science" : raw;
+  return (SCIENCE_SUBJECT_SLUGS as readonly string[]).includes(normalized)
+    ? (normalized as ScienceSubjectSlug)
+    : null;
+}
+
 export const SCIENCE_SUBJECTS: Record<
   ScienceSubjectSlug,
   { name: string; emoji: string }

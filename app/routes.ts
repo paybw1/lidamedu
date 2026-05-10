@@ -197,6 +197,10 @@ export default [
             "/:scienceSubject/quiz/setup",
             "features/subjects/screens/science/quiz-setup.tsx",
           ),
+          route(
+            "/:scienceSubject/problems/:problemId",
+            "features/subjects/screens/science/problem-viewer.tsx",
+          ),
         ]),
       ]),
 

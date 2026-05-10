@@ -138,7 +138,13 @@ export type QuizScopeType = "node" | "filter" | "wrong-note" | "free";
 export interface QuizSession {
   sessionId: string;
   mode: QuizMode;
-  lawCode: LawSubjectSlug;
+  lawCode: LawSubjectSlug | null;
+  scienceSubject:
+    | "physics"
+    | "chemistry"
+    | "biology"
+    | "earth_science"
+    | null;
   scopeType: QuizScopeType;
   scopePayload: Record<string, unknown>;
   problemIds: string[];
@@ -204,7 +210,7 @@ export async function getQuizSession(
   const { data, error } = await client
     .from("quiz_sessions")
     .select(
-      "session_id, mode, law_code, scope_type, scope_payload, problem_ids, time_limit_sec, started_at, completed_at",
+      "session_id, mode, law_code, science_subject, scope_type, scope_payload, problem_ids, time_limit_sec, started_at, completed_at",
     )
     .eq("session_id", sessionId)
     .eq("user_id", userId)
@@ -214,7 +220,9 @@ export async function getQuizSession(
   return {
     sessionId: data.session_id,
     mode: data.mode as QuizMode,
-    lawCode: data.law_code as LawSubjectSlug,
+    lawCode: data.law_code as LawSubjectSlug | null,
+    scienceSubject:
+      data.science_subject as QuizSession["scienceSubject"],
     scopeType: data.scope_type as QuizScopeType,
     scopePayload: (data.scope_payload as Record<string, unknown>) ?? {},
     problemIds: data.problem_ids,
