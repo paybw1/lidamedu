@@ -4,6 +4,7 @@
 import {
   AlertCircleIcon,
   CheckIcon,
+  CornerDownRightIcon,
   DownloadIcon,
   FileImageIcon,
   FileTextIcon,
@@ -143,6 +144,39 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
     revalidator.revalidate();
   };
 
+  // 페이지 N 자리에 빈 슬롯 끼워넣기 — N 이상 모두 +1.
+  const onInsertBefore = async (pageNumber: number) => {
+    const maxFilled = pages.reduce((m, p) => Math.max(m, p.pageNumber), 0);
+    if (maxFilled >= round.expectedPages) {
+      alert(
+        `마지막 페이지(${round.expectedPages})가 이미 채워져 있어 끼워넣기 시 페이지가 잘립니다. 먼저 마지막 페이지를 비워 주세요.`,
+      );
+      return;
+    }
+    if (
+      !confirm(
+        `페이지 ${pageNumber} 자리에 빈 슬롯을 추가합니다. 페이지 ${pageNumber} 부터 끝까지 한 칸씩 뒤로 밀립니다. 진행할까요?`,
+      )
+    )
+      return;
+    const fd = new FormData();
+    fd.set("intent", "shift-pages-down");
+    fd.set("roundId", round.roundId);
+    fd.set("fromPage", String(pageNumber));
+    try {
+      const res = await fetch("/api/gs/take", { method: "POST", body: fd });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert(`끼워넣기 실패: ${j.error ?? `HTTP ${res.status}`}`);
+        return;
+      }
+    } catch (e) {
+      alert(`네트워크 오류: ${(e as Error).message}`);
+      return;
+    }
+    revalidator.revalidate();
+  };
+
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
       <header className="mb-6 space-y-2">
@@ -257,7 +291,8 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
           </div>
           <p className="text-muted-foreground mb-2 text-[11px]">
             슬롯 좌상단 손잡이를 드래그해 다른 슬롯에 놓으면 페이지가 교환됩니다 (빈
-            슬롯이면 이동).
+            슬롯이면 이동). 슬롯 헤더의 ↳ 버튼으로 그 자리에 빈 페이지를 끼워넣습니다
+            (이후 페이지가 한 칸씩 밀림).
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {slots.map((n) => (
@@ -269,6 +304,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
                 questions={questions}
                 onChange={() => revalidator.revalidate()}
                 onSwap={onSwap}
+                onInsertBefore={onInsertBefore}
               />
             ))}
           </div>
@@ -397,6 +433,7 @@ function PageSlot({
   questions,
   onChange,
   onSwap,
+  onInsertBefore,
 }: {
   round: GsRound;
   pageNumber: number;
@@ -404,6 +441,7 @@ function PageSlot({
   questions: GsQuestion[];
   onChange: () => void;
   onSwap: (fromPage: number, toPage: number) => void | Promise<void>;
+  onInsertBefore: (pageNumber: number) => void | Promise<void>;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const uploadFetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -704,6 +742,18 @@ function PageSlot({
             </Badge>
           )
         ) : null}
+        <button
+          type="button"
+          onClick={() => onInsertBefore(pageNumber)}
+          aria-label={`페이지 ${pageNumber} 자리에 빈 페이지 끼워넣기`}
+          title={`페이지 ${pageNumber} 자리에 빈 페이지 끼워넣기 (이후 한 칸 밀림)`}
+          className={cn(
+            "text-muted-foreground hover:text-foreground",
+            page ? "" : "ml-auto",
+          )}
+        >
+          <CornerDownRightIcon className="size-3.5" />
+        </button>
         {page ? (
           <button
             type="button"

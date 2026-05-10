@@ -17,6 +17,7 @@ import {
   listSubmissionPages,
   setPageLegibilityConfirmed,
   setPageQuestions,
+  shiftPagesDown,
   submitOwnSubmission,
   swapSubmissionPages,
   upsertSubmissionPage,
@@ -91,6 +92,12 @@ const swapSchema = z.object({
   roundId: z.string().uuid(),
   pageNumberA: z.coerce.number().int().min(1).max(100),
   pageNumberB: z.coerce.number().int().min(1).max(100),
+});
+
+const shiftSchema = z.object({
+  intent: z.literal("shift-pages-down"),
+  roundId: z.string().uuid(),
+  fromPage: z.coerce.number().int().min(1).max(100),
 });
 
 function extOf(mime: string): string {
@@ -328,6 +335,34 @@ export async function action({ request }: Route.ActionArgs) {
       parsed.data.pageNumberA,
       parsed.data.pageNumberB,
     );
+    return data({ ok: true });
+  }
+
+  if (intent === "shift-pages-down") {
+    const parsed = shiftSchema.safeParse({
+      intent,
+      roundId: fd.get("roundId"),
+      fromPage: fd.get("fromPage"),
+    });
+    if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
+    const sub = await ensureSubmission(parsed.data.roundId);
+    const round = await getGsRound(client, parsed.data.roundId);
+    if (!round) return data({ error: "Round not found" }, { status: 404 });
+    // 가드: 마지막 페이지가 채워져 있으면 시프트 시 expected_pages 초과 → 차단.
+    const pages = await listSubmissionPages(client, sub.submissionId);
+    const maxFilled = pages.reduce((m, p) => Math.max(m, p.pageNumber), 0);
+    if (maxFilled >= round.expectedPages) {
+      return data(
+        {
+          error: `마지막 페이지(${round.expectedPages})가 채워져 있어 끼워넣기 시 페이지가 초과됩니다. 마지막 페이지를 비우거나 회차의 답안지 페이지 수를 늘려 주세요.`,
+        },
+        { status: 400 },
+      );
+    }
+    if (parsed.data.fromPage > round.expectedPages) {
+      return data({ error: "범위 밖 페이지" }, { status: 400 });
+    }
+    await shiftPagesDown(client, sub.submissionId, parsed.data.fromPage);
     return data({ ok: true });
   }
 

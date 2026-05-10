@@ -1029,6 +1029,20 @@ export async function setPageQuestions(
   if (ins.error) throw ins.error;
 }
 
+// 페이지 N 자리에 빈 슬롯 만들기 — N 이상의 모든 페이지를 한 칸 뒤로 시프트.
+// 호출 측에서 마지막 페이지가 expected_pages 를 초과하지 않는지 검증할 것.
+export async function shiftPagesDown(
+  client: SupabaseClient<Database>,
+  submissionId: string,
+  fromPage: number,
+): Promise<void> {
+  const { error } = await client.rpc("gs_shift_pages_down", {
+    p_submission_id: submissionId,
+    p_from_page: fromPage,
+  });
+  if (error) throw error;
+}
+
 // 두 페이지의 page_number 를 swap (RPC 경유 — 빈 슬롯도 허용 = 편도 이동).
 // 매핑은 ON UPDATE CASCADE 로 자동 따라옴.
 export async function swapSubmissionPages(

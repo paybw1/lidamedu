@@ -2173,6 +2173,10 @@ export type Database = {
           user_name: string
         }[]
       }
+      gs_shift_pages_down: {
+        Args: { p_from_page: number; p_submission_id: string }
+        Returns: undefined
+      }
       gs_swap_pages: {
         Args: { p_page_a: number; p_page_b: number; p_submission_id: string }
         Returns: undefined
