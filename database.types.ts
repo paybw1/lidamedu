@@ -1245,6 +1245,8 @@ export type Database = {
           problem_number: number | null
           reviewed_at: string | null
           reviewed_by: string | null
+          science_section_id: string | null
+          science_subject: Database["public"]["Enums"]["science_subject"] | null
           scope: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
@@ -1272,6 +1274,10 @@ export type Database = {
           problem_number?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          science_section_id?: string | null
+          science_subject?:
+            | Database["public"]["Enums"]["science_subject"]
+            | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
@@ -1299,6 +1305,10 @@ export type Database = {
           problem_number?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          science_section_id?: string | null
+          science_subject?:
+            | Database["public"]["Enums"]["science_subject"]
+            | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
           subject_type?: Database["public"]["Enums"]["problem_subject_type"]
@@ -1341,6 +1351,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problems_science_section_id_fkey"
+            columns: ["science_section_id"]
+            isOneToOne: false
+            referencedRelation: "science_sections"
+            referencedColumns: ["section_id"]
           },
           {
             foreignKeyName: "problems_source_doc_id_fkey"
@@ -1504,6 +1521,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      science_sections: {
+        Row: {
+          code: string | null
+          created_at: string
+          description_md: string | null
+          label: string
+          order_index: number
+          parent_id: string | null
+          science_subject: Database["public"]["Enums"]["science_subject"]
+          section_id: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          description_md?: string | null
+          label: string
+          order_index?: number
+          parent_id?: string | null
+          science_subject: Database["public"]["Enums"]["science_subject"]
+          section_id?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          description_md?: string | null
+          label?: string
+          order_index?: number
+          parent_id?: string | null
+          science_subject?: Database["public"]["Enums"]["science_subject"]
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "science_sections_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "science_sections"
+            referencedColumns: ["section_id"]
           },
         ]
       }
@@ -2228,6 +2286,7 @@ export type Database = {
       qna_quality_grade: "high" | "mid" | "low"
       qna_status: "open" | "answered" | "closed"
       qna_target_type: "article" | "case" | "problem"
+      science_subject: "physics" | "chemistry" | "biology" | "earth_science"
       user_role: "student" | "instructor" | "admin"
     }
     CompositeTypes: {
@@ -2399,6 +2458,7 @@ export const Constants = {
       qna_quality_grade: ["high", "mid", "low"],
       qna_status: ["open", "answered", "closed"],
       qna_target_type: ["article", "case", "problem"],
+      science_subject: ["physics", "chemistry", "biology", "earth_science"],
       user_role: ["student", "instructor", "admin"],
     },
   },
