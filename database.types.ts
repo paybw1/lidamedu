@@ -2173,6 +2173,10 @@ export type Database = {
           user_name: string
         }[]
       }
+      gs_swap_pages: {
+        Args: { p_page_a: number; p_page_b: number; p_submission_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       aa_relation_type:

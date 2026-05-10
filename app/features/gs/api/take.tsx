@@ -18,6 +18,7 @@ import {
   setPageLegibilityConfirmed,
   setPageQuestions,
   submitOwnSubmission,
+  swapSubmissionPages,
   upsertSubmissionPage,
 } from "~/features/gs/queries.server";
 
@@ -83,6 +84,13 @@ const confirmSchema = z.object({
 const submitSchema = z.object({
   intent: z.literal("submit"),
   roundId: z.string().uuid(),
+});
+
+const swapSchema = z.object({
+  intent: z.literal("swap-pages"),
+  roundId: z.string().uuid(),
+  pageNumberA: z.coerce.number().int().min(1).max(100),
+  pageNumberB: z.coerce.number().int().min(1).max(100),
 });
 
 function extOf(mime: string): string {
@@ -298,6 +306,27 @@ export async function action({ request }: Route.ActionArgs) {
       sub.submissionId,
       parsed.data.pageNumber,
       parsed.data.confirmed === "true",
+    );
+    return data({ ok: true });
+  }
+
+  if (intent === "swap-pages") {
+    const parsed = swapSchema.safeParse({
+      intent,
+      roundId: fd.get("roundId"),
+      pageNumberA: fd.get("pageNumberA"),
+      pageNumberB: fd.get("pageNumberB"),
+    });
+    if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
+    const sub = await ensureSubmission(parsed.data.roundId);
+    if (parsed.data.pageNumberA === parsed.data.pageNumberB) {
+      return data({ ok: true });
+    }
+    await swapSubmissionPages(
+      client,
+      sub.submissionId,
+      parsed.data.pageNumberA,
+      parsed.data.pageNumberB,
     );
     return data({ ok: true });
   }

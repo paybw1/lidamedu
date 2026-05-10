@@ -1029,6 +1029,23 @@ export async function setPageQuestions(
   if (ins.error) throw ins.error;
 }
 
+// 두 페이지의 page_number 를 swap (RPC 경유 — 빈 슬롯도 허용 = 편도 이동).
+// 매핑은 ON UPDATE CASCADE 로 자동 따라옴.
+export async function swapSubmissionPages(
+  client: SupabaseClient<Database>,
+  submissionId: string,
+  pageA: number,
+  pageB: number,
+): Promise<void> {
+  if (pageA === pageB) return;
+  const { error } = await client.rpc("gs_swap_pages", {
+    p_submission_id: submissionId,
+    p_page_a: pageA,
+    p_page_b: pageB,
+  });
+  if (error) throw error;
+}
+
 export async function setPageLegibilityConfirmed(
   client: SupabaseClient<Database>,
   submissionId: string,

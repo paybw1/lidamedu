@@ -7,6 +7,7 @@ import {
   DownloadIcon,
   FileImageIcon,
   FileTextIcon,
+  GripVerticalIcon,
   TimerIcon,
   Trash2Icon,
   UploadIcon,
@@ -120,6 +121,28 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
     [round.expectedPages],
   );
 
+  // 페이지 swap (드래그&드롭) — 부모에서 fetch 로 처리, useFetcher 는 슬롯별로 묶여 있어 부적합.
+  const onSwap = async (fromPage: number, toPage: number) => {
+    if (fromPage === toPage) return;
+    const fd = new FormData();
+    fd.set("intent", "swap-pages");
+    fd.set("roundId", round.roundId);
+    fd.set("pageNumberA", String(fromPage));
+    fd.set("pageNumberB", String(toPage));
+    try {
+      const res = await fetch("/api/gs/take", { method: "POST", body: fd });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert(`페이지 교환 실패: ${j.error ?? `HTTP ${res.status}`}`);
+        return;
+      }
+    } catch (e) {
+      alert(`네트워크 오류: ${(e as Error).message}`);
+      return;
+    }
+    revalidator.revalidate();
+  };
+
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
       <header className="mb-6 space-y-2">
@@ -232,6 +255,10 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
               confirmed={pages.filter((p) => p.legibilityConfirmed).map((p) => p.pageNumber)}
             />
           </div>
+          <p className="text-muted-foreground mb-2 text-[11px]">
+            슬롯 좌상단 손잡이를 드래그해 다른 슬롯에 놓으면 페이지가 교환됩니다 (빈
+            슬롯이면 이동).
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {slots.map((n) => (
               <PageSlot
@@ -241,6 +268,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
                 page={pageByNum.get(n) ?? null}
                 questions={questions}
                 onChange={() => revalidator.revalidate()}
+                onSwap={onSwap}
               />
             ))}
           </div>
@@ -368,13 +396,16 @@ function PageSlot({
   page,
   questions,
   onChange,
+  onSwap,
 }: {
   round: GsRound;
   pageNumber: number;
   page: GsPage | null;
   questions: GsQuestion[];
   onChange: () => void;
+  onSwap: (fromPage: number, toPage: number) => void | Promise<void>;
 }) {
+  const [dragOver, setDragOver] = useState(false);
   const uploadFetcher = useFetcher<{ ok?: true; error?: string }>();
   const removeFetcher = useFetcher<{ ok?: true; error?: string }>();
   const confirmFetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -607,16 +638,54 @@ function PageSlot({
   const isUploading = uploadFetcher.state !== "idle" || isSplitting;
   const empty = page == null;
 
+  // 드래그 핸들러 — 채워진 슬롯에서 시작 가능, 빈 슬롯에도 drop 가능 (편도 이동).
+  const onDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("text/plain", String(pageNumber));
+    e.dataTransfer.effectAllowed = "move";
+  };
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!dragOver) setDragOver(true);
+  };
+  const onDragLeave = () => {
+    if (dragOver) setDragOver(false);
+  };
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const raw = e.dataTransfer.getData("text/plain");
+    const fromPage = Number(raw);
+    if (!Number.isFinite(fromPage) || fromPage < 1 || fromPage === pageNumber) return;
+    void onSwap(fromPage, pageNumber);
+  };
+
   return (
     <Card
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
       className={cn(
         "relative overflow-hidden",
         empty && "border-dashed",
         page && !confirmed && "border-amber-400/70",
         page && confirmed && "border-emerald-400/70",
+        dragOver && "ring-primary ring-2 ring-offset-1",
       )}
     >
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-4 py-2">
+        {page ? (
+          <button
+            type="button"
+            draggable
+            onDragStart={onDragStart}
+            aria-label={`페이지 ${pageNumber} 드래그`}
+            title="다른 슬롯으로 드래그해 페이지 교환"
+            className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing -ml-1"
+          >
+            <GripVerticalIcon className="size-4" />
+          </button>
+        ) : null}
         <Badge variant="outline" className="text-[10px]">
           페이지 {pageNumber}
         </Badge>
