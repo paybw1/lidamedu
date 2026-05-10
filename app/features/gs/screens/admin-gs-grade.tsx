@@ -353,6 +353,7 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
                 />
                 <Button
                   type="submit"
+                  data-testid="grade-finalize"
                   disabled={!allGraded || finalizeFetcher.state !== "idle"}
                   onClick={(e) => {
                     if (
@@ -717,6 +718,7 @@ function QuestionGradeCard({
                   <span className="text-muted-foreground mr-1">점수</span>
                   <input
                     type="number"
+                    data-testid={`grade-score-${question.orderIndex + 1}`}
                     min={0}
                     max={question.maxScore}
                     step="0.5"
@@ -778,6 +780,7 @@ function QuestionGradeCard({
               <div className="mt-2 flex items-center justify-end">
                 <Button
                   type="button"
+                  data-testid={`grade-save-${question.orderIndex + 1}`}
                   size="sm"
                   onClick={submit}
                   disabled={

@@ -113,7 +113,10 @@ export default function AdminGsGradeList({ loaderData }: Route.ComponentProps) {
               </TableHeader>
               <TableBody>
                 {submitted.map((t) => (
-                  <TableRow key={t.submission.submissionId}>
+                  <TableRow
+                    key={t.submission.submissionId}
+                    data-testid={`grade-row-${t.submission.submissionId}`}
+                  >
                     <TableCell className="font-medium">
                       {t.studentName ?? (
                         <span className="text-muted-foreground italic">
@@ -144,6 +147,7 @@ export default function AdminGsGradeList({ loaderData }: Route.ComponentProps) {
                     <TableCell>
                       <Link
                         to={`/admin/gs/${round.roundId}/grade/${t.submission.submissionId}`}
+                        data-testid={`grade-link-${t.submission.submissionId}`}
                         className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
                       >
                         채점 <ArrowRightIcon className="size-3" />

@@ -313,16 +313,16 @@
 | feat-4-A-321 | 주관식 분류 라벨 (기출/변형/예상, 키워드, 사례·논점) | P1 | 🔲 |
 | feat-4-A-322 | 채점기준·모범답안·채점결과 우측 패널 | P1 | 🔲 |
 | feat-4-A-323 | 답안 작성 시간제한·자동 저장 | P1 | 🔲 |
-| feat-4-A-330 | 2차 답안 업로드 — submission 단위 N페이지 슬롯 그리드 (1슬롯=1파일, JPG/PNG/WebP/PDF), 페이지별 OCR + 판독 자가확인. `gs_submission_pages` + `gs_question_pages` (M:N 매핑). 페이지 순서 재배치 UI 는 후속 | P1 | 🟡 |
-| feat-4-A-331 | 답안지 N분할 — `gs_rounds.expected_pages` (default 20) 기반 슬롯 그리드. 페이지 ↔ 문항 매핑은 학생 수동(다중 선택 칩); 자동 분배는 후속(PDF 다페이지 분할 포함) | P1 | 🟡 |
-| feat-4-A-332 | 답안 교차 배정 (M명 채점자 부작위 매칭) | P1 | 🔲 |
-| feat-4-A-333 | 채점기준·채점표 양식 제공 (정량+정성) | P1 | 🔲 |
-| feat-4-A-334 | 채점 입력 UI (소문제별 점수 + 정성 평가 + 코멘트) | P1 | 🔲 |
-| feat-4-A-335 | 평균/표준점수/등급/순위 자동 계산 | P1 | 🔲 |
-| feat-4-A-336 | AI 채점 (Claude API, 출제자 채점과 비교 보조) | P2 | 🔲 |
-| feat-4-A-337 | 채점결과 통계 화면 (회차별, 피채점자별) | P1 | 🔲 |
-| feat-4-A-338 | 우수답안 노출 (모범답안 + 채점자 우수 답안 함께) | P1 | 🔲 |
-| feat-4-A-339 | 포인트 지급 시스템 (순위 백분위 기반) | P2 | 🔲 |
+| feat-4-A-330 | 2차 답안 업로드 — submission 단위 N페이지 슬롯 그리드 (1슬롯=1파일, JPG/PNG/WebP/PDF), 페이지별 OCR + 판독 자가확인, swap/끼워넣기 재배치. `gs_submission_pages` + `gs_question_pages` (M:N 매핑). → 5.5.1 GS 응시 흐름과 동일 모델 | P1 | ✅ |
+| feat-4-A-331 | 답안지 N분할 — `gs_rounds.expected_pages` (default 20) 기반 슬롯 그리드 + PDF 다페이지 자동 분할. 페이지 ↔ 문항 매핑은 수동 다중 선택 | P1 | ✅ |
+| feat-4-A-332 | 답안 교차 배정 (M명 채점자 부작위 매칭) → 5.5.2-203 (gs_peer_assignments) | P1 | ✅ |
+| feat-4-A-333 | 채점기준·채점표 양식 제공 (정량+정성). 현재 GS 는 점수 + 마크다운 피드백만 — 정량 rubric 템플릿 미구현 | P1 | 🔲 |
+| feat-4-A-334 | 채점 입력 UI (소문제별 점수 + 정성 평가 + 코멘트) → 5.5.2-201 admin-gs-grade | P1 | ✅ |
+| feat-4-A-335 | 평균/표준점수/등급/순위 자동 계산 → 5.5.3-301..303 RPCs (gs_round_student_stats 등) | P1 | ✅ |
+| feat-4-A-336 | AI 채점 (Claude API) → 5.5.2-202 ai-grader.server.ts | P2 | ✅ |
+| feat-4-A-337 | 채점결과 통계 화면 → 5.5.3-301..303 admin-gs-round-stats / admin-gs-series-stats | P1 | ✅ |
+| feat-4-A-338 | 우수답안 노출 → 5.5.3-304 gs-distinguished + admin-gs-distinctions | P1 | ✅ |
+| feat-4-A-339 | 포인트 지급 시스템 (순위 백분위 기반) → 5.5.3-305 gs-points | P2 | ✅ |
 
 ### 5.4.B — 자연과학 학습 허브 (문제만)
 

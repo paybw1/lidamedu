@@ -161,7 +161,10 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
           {isGraded ? (
             <div className="text-right">
               <p className="text-muted-foreground text-[11px]">총점</p>
-              <p className="text-3xl font-bold tabular-nums">
+              <p
+                data-testid="result-total-score"
+                className="text-3xl font-bold tabular-nums"
+              >
                 {submission.totalScore ?? 0}
                 <span className="text-muted-foreground ml-1 text-base font-normal">
                   / {questions.reduce((s, q) => s + q.maxScore, 0)}점
@@ -263,7 +266,10 @@ function ResultPageCard({
   const isImage = page.attachment.mime.startsWith("image/");
   const mappedQ = questions.filter((q) => page.questionIds.includes(q.questionId));
   return (
-    <Card id={`page-${page.pageNumber}`}>
+    <Card
+      id={`page-${page.pageNumber}`}
+      data-testid={`result-page-${page.pageNumber}`}
+    >
       <CardHeader className="flex-row items-center gap-2 space-y-0 px-3 py-2">
         <Badge variant="outline" className="text-[10px]">
           페이지 {page.pageNumber}

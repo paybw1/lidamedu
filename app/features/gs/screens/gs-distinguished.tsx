@@ -288,7 +288,10 @@ export default function GsDistinguished({ loaderData }: Route.ComponentProps) {
 
 function DistinguishedItem({ item }: { item: Item }) {
   return (
-    <div className="bg-amber-50/40 dark:bg-amber-950/15 border-amber-200/60 dark:border-amber-700/30 rounded-md border p-3">
+    <div
+      data-testid={`distinguished-${item.distinction.distinctionId}`}
+      className="bg-amber-50/40 dark:bg-amber-950/15 border-amber-200/60 dark:border-amber-700/30 rounded-md border p-3"
+    >
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge className="bg-amber-500 text-white text-[10px] hover:bg-amber-500">
           <CrownIcon className="size-3" /> 우수
