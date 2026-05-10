@@ -80,6 +80,9 @@ export default [
       route("/ai-draft", "features/gs/api/ai-draft.tsx"),
       route("/peer", "features/gs/api/peer.tsx"),
     ]),
+    ...prefix("/laws", [
+      route("/article-children", "features/laws/api/article-children.tsx"),
+    ]),
     ...prefix("/cron", [
       route("/gs-auto-assign", "features/gs/api/cron-auto-assign.tsx"),
     ]),

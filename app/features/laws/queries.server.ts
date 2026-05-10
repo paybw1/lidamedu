@@ -70,6 +70,36 @@ export async function getArticleSkeleton(
   }));
 }
 
+// 큰 법령 lazy-load 용 — 한 부모의 직속 자식만 가져옴.
+// parentId === null 이면 최상위(편/장 등) 노드 반환.
+// 민법 1118조 시드 시 ArticleTree 가 펼침 이벤트로 호출.
+export async function getArticleChildren(
+  client: SupabaseClient<Database>,
+  lawId: string,
+  parentId: string | null,
+): Promise<ArticleNode[]> {
+  let q = client
+    .from("articles")
+    .select(
+      "article_id, parent_id, level, path, article_number, display_label, importance, current_revision_id",
+    )
+    .eq("law_id", lawId)
+    .is("deleted_at", null);
+  q = parentId === null ? q.is("parent_id", null) : q.eq("parent_id", parentId);
+  const { data, error } = await q.order("path");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    articleId: row.article_id,
+    parentId: row.parent_id,
+    level: row.level,
+    path: typeof row.path === "string" ? row.path : String(row.path ?? ""),
+    articleNumber: row.article_number,
+    displayLabel: row.display_label,
+    importance: row.importance ?? 1,
+    hasBody: row.current_revision_id !== null,
+  }));
+}
+
 export interface ArticleDetail {
   articleId: string;
   articleNumber: string | null;
