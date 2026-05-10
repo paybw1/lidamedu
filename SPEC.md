@@ -258,9 +258,9 @@
 | feat-4-A-105 | 조문 뷰어 (3분할: 트리/본문/관련자료) | P0 | ✅ |
 | feat-4-A-106 | 조문 본문 하이라이트·메모·즐겨찾기 (polymorphic 주석) | P0 | ✅ |
 | feat-4-A-107 | 관련 자료 사이드바 (조문/판례/문제/개정/메모 탭 + 정오/코멘트) | P0 | ✅ |
-| feat-4-A-108 | 조문 시점 조회 (`?at=YYYY-MM-DD`, 비교 모드) | P1 | 🔲 |
-| feat-4-A-109 | 조문 트리 검색 (트리 내 키워드, pg_trgm) | P1 | 🔲 |
-| feat-4-A-110 | 큰 법 lazy-load (민법 1118조 대응) | P1 | 🔲 |
+| feat-4-A-108 | 조문 시점 조회 (`?at=YYYY-MM-DD`) — getArticleByNumberAt + 시점 모드 안내 배너. 비교 모드(현재 vs 시점)는 후속 | P1 | 🟡 |
+| feat-4-A-109 | 조문 트리 검색 — 트리 카드 안 검색 인풋, displayLabel substring 매칭 + 매칭 노드의 조상까지 노출 | P1 | ✅ |
+| feat-4-A-110 | 큰 법 lazy-load — 본문(article_revisions.body_json)은 이미 활성 조문만 fetch. 트리 메타데이터(현재 최대 특허법 315) 는 일괄 로드. 민법 1118조 시드 시 트리 가상화/parent_id 부분 fetch RPC 추가 필요 | P1 | 🟡 |
 | feat-4-A-111 | 관련조문 inline 링크 (`法 89` 등 약식 표기 파서 + 클릭 이동, 본문 안에서는 dotted underline 형태 / header_refs 안에서는 chip) | P0 | ✅ |
 | feat-4-A-112 | 해설 링크 → 코멘트 탭 활성 | P1 | 🔲 |
 | feat-4-A-113 | 제목만 보기 (항 단위 본문 접기) | P1 | ✅ |
@@ -316,7 +316,7 @@
 | feat-4-A-330 | 2차 답안 업로드 — submission 단위 N페이지 슬롯 그리드 (1슬롯=1파일, JPG/PNG/WebP/PDF), 페이지별 OCR + 판독 자가확인, swap/끼워넣기 재배치. `gs_submission_pages` + `gs_question_pages` (M:N 매핑). → 5.5.1 GS 응시 흐름과 동일 모델 | P1 | ✅ |
 | feat-4-A-331 | 답안지 N분할 — `gs_rounds.expected_pages` (default 20) 기반 슬롯 그리드 + PDF 다페이지 자동 분할. 페이지 ↔ 문항 매핑은 수동 다중 선택 | P1 | ✅ |
 | feat-4-A-332 | 답안 교차 배정 (M명 채점자 부작위 매칭) → 5.5.2-203 (gs_peer_assignments) | P1 | ✅ |
-| feat-4-A-333 | 채점기준·채점표 양식 제공 (정량+정성). 현재 GS 는 점수 + 마크다운 피드백만 — 정량 rubric 템플릿 미구현 | P1 | 🔲 |
+| feat-4-A-333 | 채점기준·채점표 양식 (정량+정성) — `gs_questions.rubric` (criterion 배열) + `gs_answers.rubric_scores`. 항목별 점수 입력 → 합산 자동, 합>만점 가드. 정성 평가는 기존 마크다운 피드백 재사용 | P1 | ✅ |
 | feat-4-A-334 | 채점 입력 UI (소문제별 점수 + 정성 평가 + 코멘트) → 5.5.2-201 admin-gs-grade | P1 | ✅ |
 | feat-4-A-335 | 평균/표준점수/등급/순위 자동 계산 → 5.5.3-301..303 RPCs (gs_round_student_stats 등) | P1 | ✅ |
 | feat-4-A-336 | AI 채점 (Claude API) → 5.5.2-202 ai-grader.server.ts | P2 | ✅ |
@@ -328,13 +328,13 @@
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-4-B-001 | 자연과학 과목 허브 레이아웃 (탭 없음, 단일 화면) | P1 | 🔲 |
-| feat-4-B-002 | 자연과학 데이터 모델 (`science_section` + problem 분기) | P1 | 🔲 |
-| feat-4-B-003 | KPI 카드 (출제/풀이/정답률) | P1 | 🔲 |
+| feat-4-B-001 | 자연과학 과목 허브 레이아웃 — 4과목 공용 ScienceHub (헤더 + KPI placeholder + 단원 카드). KPI 실값/풀이 진입점은 후속 | P1 | 🟡 |
+| feat-4-B-002 | 자연과학 데이터 모델 — `science_subject` enum, `science_sections` 테이블 (parent_id 자기참조), `problems.science_subject` + `problems.science_section_id` + 정합성 가드 | P1 | ✅ |
+| feat-4-B-003 | KPI 카드 (출제/풀이/정답률) — 출제 카드 ✅, 풀이/정답률 placeholder | P1 | 🟡 |
 | feat-4-B-004 | 단원별 정답률 표 | P1 | 🔲 |
 | feat-4-B-005 | 퀴즈 설정 폼 (단원/난이도/범위) — 5.4.A.3 일부 재사용 | P1 | 🔲 |
 | feat-4-B-006 | 자연과학 문제 풀이 Runner (객관식 + LaTeX/도식 지원) | P1 | 🔲 |
-| feat-4-B-007 | 단원 시드 데이터 (4과목 × 단원 분류표) | P1 | 🔲 |
+| feat-4-B-007 | 단원 시드 데이터 — 4과목 × 5~6 대단원 (총 21개) 마이그레이션 시드. 추후 변리사 협회 공식 분류 검증 필요 | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-4-subjects-A.md` ✅ (5.4 도메인 모델·UX·결정사항·feat ID 정리), `docs/db-schema.md` ✅, `docs/article-tree.md` ✅, `docs/relations.md` ✅. `docs/spec-detail-5-4-subjects-B.md` (자연과학 — 작성 예정).
 

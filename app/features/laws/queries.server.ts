@@ -128,6 +128,47 @@ export async function getArticleByNumber(
   };
 }
 
+// 조문 시점 조회 — 주어진 날짜에 시행 중이던 article_revisions 를 반환.
+// 현재 조회는 currentRevisionId 가 가리키는 가장 최신 시행 본을 그대로 쓰지만,
+// 시점이 지정된 경우 effective_date <= at < expired_date 조건의 revision 을 찾는다.
+export async function getArticleByNumberAt(
+  client: SupabaseClient<Database>,
+  lawId: string,
+  articleNumber: string,
+  atDate: string, // "YYYY-MM-DD"
+): Promise<ArticleDetail | null> {
+  const { data: art, error } = await client
+    .from("articles")
+    .select("article_id, article_number, display_label, importance")
+    .eq("law_id", lawId)
+    .eq("article_number", articleNumber)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!art) return null;
+
+  const { data: rev, error: revErr } = await client
+    .from("article_revisions")
+    .select("revision_id, body_json, effective_date, expired_date")
+    .eq("article_id", art.article_id)
+    .lte("effective_date", atDate)
+    .or(`expired_date.is.null,expired_date.gt.${atDate}`)
+    .order("effective_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (revErr) throw revErr;
+
+  return {
+    articleId: art.article_id,
+    articleNumber: art.article_number,
+    displayLabel: art.display_label,
+    importance: art.importance ?? 1,
+    bodyJson: rev?.body_json ?? null,
+    effectiveDate: rev?.effective_date ?? null,
+    currentRevisionId: rev?.revision_id ?? null,
+  };
+}
+
 // 조문 코멘트/평석 — staff 작성, 학생 read-only.
 export interface ArticleComment {
   bodyMd: string;

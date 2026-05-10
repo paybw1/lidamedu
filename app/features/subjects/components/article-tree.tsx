@@ -155,21 +155,43 @@ export function ArticleTree({
   }, [nodes, activeArticleId, activeChapterId]);
   const [importanceFilter, setImportanceFilter] = useState<ImportanceFilter>(0);
   const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const showBookmarkFilter = bookmarkLevels !== undefined;
+  const trimmedQuery = searchQuery.trim().toLowerCase();
 
   const visible = useMemo(() => {
-    if (importanceFilter === 0 && bookmarkFilter === 0) return tree;
-    return filterArticleTree(tree, (article) => {
-      if (importanceFilter !== 0 && article.importance < importanceFilter) {
-        return false;
+    if (
+      importanceFilter === 0 &&
+      bookmarkFilter === 0 &&
+      trimmedQuery === ""
+    )
+      return tree;
+
+    // 검색은 모든 노드(chapter/section/article) 레이블 매칭. 매칭되는 노드와 그
+    // 조상은 보이고, 다른 자손은 숨김. 부분 검색은 단순 substring (트리만 N≤수백개).
+    const matches = (label: string) =>
+      trimmedQuery === "" || label.toLowerCase().includes(trimmedQuery);
+
+    const recur = (nodes: TreeNode[]): TreeNode[] => {
+      const out: TreeNode[] = [];
+      for (const n of nodes) {
+        const articleOk =
+          n.level !== "article" ||
+          ((importanceFilter === 0 || n.importance >= importanceFilter) &&
+            (bookmarkFilter === 0 ||
+              (bookmarkLevels?.[n.articleId] ?? 0) >= bookmarkFilter));
+        if (!articleOk) continue;
+
+        const selfHit = matches(n.displayLabel);
+        const kids = recur(n.children);
+        if (selfHit || kids.length > 0) {
+          out.push({ ...n, children: kids });
+        }
       }
-      if (bookmarkFilter !== 0) {
-        const lvl = bookmarkLevels?.[article.articleId] ?? 0;
-        if (lvl < bookmarkFilter) return false;
-      }
-      return true;
-    });
-  }, [tree, importanceFilter, bookmarkFilter, bookmarkLevels]);
+      return out;
+    };
+    return recur(tree);
+  }, [tree, importanceFilter, bookmarkFilter, bookmarkLevels, trimmedQuery]);
 
   const articleCount = useMemo(() => {
     let n = 0;
@@ -196,6 +218,26 @@ export function ArticleTree({
   return (
     <div className="space-y-2">
       <div className="space-y-1.5 px-2">
+        <div className="relative">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="조문 검색 — 예: 신규성, 제29조"
+            aria-label="조문 트리 내 검색"
+            className="border-input bg-background h-7 w-full rounded-md border px-2 pr-7 text-[11px]"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="검색 지우기"
+              className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
+            >
+              ✕
+            </button>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-center gap-1">
           <span className="text-muted-foreground mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
             <span className="text-amber-500">★</span>

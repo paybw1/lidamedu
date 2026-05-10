@@ -47,6 +47,7 @@ import {
 } from "~/features/laws/lib/identifier";
 import {
   getArticleByNumber,
+  getArticleByNumberAt,
   getArticleComment,
   getArticleSkeleton,
   getLawByCode,
@@ -107,8 +108,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const lookupArticleNumber = articleNumberText(ident);
+
+  // 시점 조회 ?at=YYYY-MM-DD — 그 시점에 시행 중이던 revision 을 반환.
+  // 미지정/형식 불량이면 현재 조회.
+  const reqUrl0 = new URL(request.url);
+  const atRaw = reqUrl0.searchParams.get("at");
+  const atDate =
+    atRaw && /^\d{4}-\d{2}-\d{2}$/.test(atRaw) ? atRaw : null;
+
   const [article, articles, systematicNodes] = await Promise.all([
-    getArticleByNumber(client, law.lawId, lookupArticleNumber),
+    atDate
+      ? getArticleByNumberAt(client, law.lawId, lookupArticleNumber, atDate)
+      : getArticleByNumber(client, law.lawId, lookupArticleNumber),
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
   ]);
@@ -189,6 +200,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     subject: LAW_SUBJECTS[lawCode],
     article,
     body: parseArticleBody(article.bodyJson),
+    atDate,
     initialBlankMode: {
       subject: subjectBlankParam,
       period: periodBlankParam,
@@ -230,6 +242,7 @@ function ArticleViewerInner({
     subject,
     article,
     body,
+    atDate,
     initialBlankMode,
     articles,
     systematicNodes,
@@ -328,6 +341,28 @@ function ArticleViewerInner({
         targetType="article"
         targetId={article.articleId}
       />
+
+      {atDate ? (
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50/40 dark:border-amber-700/40 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center gap-2">
+          <span>
+            <strong>시점 조회 모드</strong> · {atDate} 시점에 시행 중이던 본문을
+            보고 있습니다.
+            {article.effectiveDate
+              ? ` (이 본문 시행일: ${article.effectiveDate})`
+              : null}
+          </span>
+          <a
+            href={
+              typeof window !== "undefined"
+                ? window.location.pathname
+                : "."
+            }
+            className="text-primary ml-auto hover:underline"
+          >
+            현재 시점으로 돌아가기 →
+          </a>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
         <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
