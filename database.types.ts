@@ -437,6 +437,10 @@ export type Database = {
       }
       gs_answers: {
         Row: {
+          ai_suggested_at: string | null
+          ai_suggested_rubric_scores: Json | null
+          ai_suggested_score: number | null
+          ai_suggestion_feedback: string | null
           answer_id: string
           attachments: Json
           body_md: string
@@ -449,6 +453,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_suggested_at?: string | null
+          ai_suggested_rubric_scores?: Json | null
+          ai_suggested_score?: number | null
+          ai_suggestion_feedback?: string | null
           answer_id?: string
           attachments?: Json
           body_md?: string
@@ -461,6 +469,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_suggested_at?: string | null
+          ai_suggested_rubric_scores?: Json | null
+          ai_suggested_score?: number | null
+          ai_suggestion_feedback?: string | null
           answer_id?: string
           attachments?: Json
           body_md?: string

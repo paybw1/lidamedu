@@ -1098,6 +1098,31 @@ export async function shiftPagesDown(
   if (error) throw error;
 }
 
+// AI 채점 제안값 로깅 — 강사 최종 점수와 차이 분석용.
+export async function logAiSuggestion(
+  client: SupabaseClient<Database>,
+  submissionId: string,
+  questionId: string,
+  patch: {
+    score: number;
+    rubricScores?: Record<string, number>;
+    feedback?: string;
+  },
+): Promise<void> {
+  const row = await ensureAnswerRow(client, submissionId, questionId);
+  const { error } = await client
+    .from("gs_answers")
+    .update({
+      ai_suggested_score: patch.score,
+      ai_suggested_rubric_scores:
+        (patch.rubricScores ?? null) as unknown as Database["public"]["Tables"]["gs_answers"]["Update"]["ai_suggested_rubric_scores"],
+      ai_suggested_at: new Date().toISOString(),
+      ai_suggestion_feedback: patch.feedback ?? null,
+    })
+    .eq("answer_id", row.answerId);
+  if (error) throw error;
+}
+
 // 두 페이지의 page_number 를 swap (RPC 경유 — 빈 슬롯도 허용 = 편도 이동).
 // 매핑은 ON UPDATE CASCADE 로 자동 따라옴.
 export async function swapSubmissionPages(

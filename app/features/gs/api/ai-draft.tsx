@@ -11,6 +11,7 @@ import {
   getGsRound,
   listGsQuestions,
   listPagesForQuestion,
+  logAiSuggestion,
 } from "~/features/gs/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
@@ -101,6 +102,23 @@ export async function action({ request }: Route.ActionArgs) {
       },
       { status: 500 },
     );
+  }
+
+  // 제안값 로깅 — 강사 최종값과 차이 분석에 사용.
+  try {
+    await logAiSuggestion(
+      client,
+      parsed.data.submissionId,
+      parsed.data.questionId,
+      {
+        score: draft.score,
+        rubricScores: draft.rubricScores,
+        feedback: draft.feedback,
+      },
+    );
+  } catch (e) {
+    // 로깅 실패는 사용자에 영향 주지 않음 — 콘솔에만.
+    console.error("AI suggestion log failed", e);
   }
 
   return data({ ok: true, draft });

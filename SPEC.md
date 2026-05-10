@@ -316,7 +316,7 @@
 | feat-4-A-330 | 2차 답안 업로드 — submission 단위 N페이지 슬롯 그리드 (1슬롯=1파일, JPG/PNG/WebP/PDF), 페이지별 OCR + 판독 자가확인, swap/끼워넣기 재배치. `gs_submission_pages` + `gs_question_pages` (M:N 매핑). → 5.5.1 GS 응시 흐름과 동일 모델 | P1 | ✅ |
 | feat-4-A-331 | 답안지 N분할 — `gs_rounds.expected_pages` (default 20) 기반 슬롯 그리드 + PDF 다페이지 자동 분할. 페이지 ↔ 문항 매핑은 수동 다중 선택 | P1 | ✅ |
 | feat-4-A-332 | 답안 교차 배정 (M명 채점자 부작위 매칭) → 5.5.2-203 (gs_peer_assignments) | P1 | ✅ |
-| feat-4-A-333 | 채점기준·채점표 양식 (정량+정성) — `gs_questions.rubric` (criterion 배열) + `gs_answers.rubric_scores`. 항목별 점수 입력 → 합산 자동, 합>만점 가드. 정성 평가는 기존 마크다운 피드백 재사용 | P1 | ✅ |
+| feat-4-A-333 | 채점기준·채점표 양식 (정량+정성) — `gs_questions.rubric` + `gs_answers.rubric_scores`. 항목별 입력 → 합산 자동. AI 채점도 rubric 항목별 점수 제안 (ai_grader 분기). AI 제안값은 `gs_answers.ai_suggested_*` 로 로깅 — 강사 최종값과 차이 분석 가능 | P1 | ✅ |
 | feat-4-A-334 | 채점 입력 UI (소문제별 점수 + 정성 평가 + 코멘트) → 5.5.2-201 admin-gs-grade | P1 | ✅ |
 | feat-4-A-335 | 평균/표준점수/등급/순위 자동 계산 → 5.5.3-301..303 RPCs (gs_round_student_stats 등) | P1 | ✅ |
 | feat-4-A-336 | AI 채점 (Claude API) → 5.5.2-202 ai-grader.server.ts | P2 | ✅ |
@@ -328,13 +328,13 @@
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-4-B-001 | 자연과학 과목 허브 레이아웃 — 4과목 공용 ScienceHub (헤더 + KPI placeholder + 단원 카드). KPI 실값/풀이 진입점은 후속 | P1 | 🟡 |
+| feat-4-B-001 | 자연과학 과목 허브 레이아웃 — 4과목 공용 ScienceHub (헤더 + KPI 실값 + 단원 카드 + 맞춤 퀴즈 진입) | P1 | ✅ |
 | feat-4-B-002 | 자연과학 데이터 모델 — `science_subject` enum, `science_sections` 테이블 (parent_id 자기참조), `problems.science_subject` + `problems.science_section_id` + 정합성 가드 | P1 | ✅ |
-| feat-4-B-003 | KPI 카드 (출제/풀이/정답률) — 출제 카드 ✅, 풀이/정답률 placeholder | P1 | 🟡 |
+| feat-4-B-003 | KPI 카드 — 출제 / 내 풀이 / 내 정답률 (user_problem_attempts 조인) | P1 | ✅ |
 | feat-4-B-004 | 단원별 정답률 표 | P1 | 🔲 |
-| feat-4-B-005 | 퀴즈 설정 폼 — `/subjects/science/:subject/quiz/setup` 라우트, 단원 다중 선택 + 문항수 + 모드. quiz_sessions.science_subject 컬럼으로 세션 생성 | P1 | ✅ |
-| feat-4-B-006 | 자연과학 문제 풀이 Runner (객관식 + LaTeX/도식 지원) — setup 까지 도착 후 viewer 진입은 미구현. 5.4.A.3 객관식 viewer 의 law 분기 후 재사용 | P1 | 🔲 |
-| feat-4-B-007 | 단원 시드 데이터 — 4과목 × 5~6 대단원 (총 21개) 마이그레이션 시드. 추후 변리사 협회 공식 분류 검증 필요 | P1 | ✅ |
+| feat-4-B-005 | 퀴즈 설정 폼 — `/subjects/science/:subject/quiz/setup`. 단원 다중 선택 + 문항수 + 모드 | P1 | ✅ |
+| feat-4-B-006 | 자연과학 문제 풀이 Runner — `/subjects/science/:subject/problems/:id` 최소 viewer (선지 4지 + 정답·해설 + 세션 prev/next). LaTeX/도식 후속 | P1 | 🟡 |
+| feat-4-B-007 | 단원 시드 데이터 — 4과목 × 5~6 대단원 (총 21개). 샘플 문제 8개(과목별 2) 도 함께 시드. 변리사 협회 공식 분류 검증 후속 | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-4-subjects-A.md` ✅ (5.4 도메인 모델·UX·결정사항·feat ID 정리), `docs/db-schema.md` ✅, `docs/article-tree.md` ✅, `docs/relations.md` ✅. `docs/spec-detail-5-4-subjects-B.md` (자연과학 — 작성 예정).
 
