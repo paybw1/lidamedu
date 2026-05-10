@@ -54,6 +54,7 @@ const gradeSchema = z.object({
   questionId: z.string().uuid(),
   score: z.string().optional(),
   feedbackMd: z.string().optional(),
+  rubricScores: z.string().optional(),
 });
 const finalizeSchema = z.object({
   intent: z.literal("finalize"),
@@ -156,6 +157,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       questionId: fd.get("questionId"),
       score: fd.get("score") ?? undefined,
       feedbackMd: fd.get("feedbackMd") ?? undefined,
+      rubricScores: fd.get("rubricScores") ?? undefined,
     });
     if (!parsed.success) return { ok: false, error: "Invalid input" } as const;
     const scoreStr = parsed.data.score?.trim() ?? "";
@@ -168,11 +170,35 @@ export async function action({ params, request }: Route.ActionArgs) {
         : parsed.data.feedbackMd === ""
           ? null
           : parsed.data.feedbackMd;
+
+    let rubricScoresPayload:
+      | Record<string, { score: number; note?: string }>
+      | undefined;
+    if (parsed.data.rubricScores) {
+      try {
+        const obj = JSON.parse(parsed.data.rubricScores);
+        if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+          const out: Record<string, { score: number; note?: string }> = {};
+          for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+            if (!v || typeof v !== "object") continue;
+            const o = v as Record<string, unknown>;
+            const s = typeof o.score === "number" ? o.score : null;
+            if (s == null || !Number.isFinite(s)) continue;
+            out[k] = { score: s };
+            if (typeof o.note === "string") out[k].note = o.note;
+          }
+          rubricScoresPayload = out;
+        }
+      } catch {
+        return { ok: false, error: "Invalid rubricScores" } as const;
+      }
+    }
+
     await updateAnswerGrading(
       client,
       parsed.data.submissionId,
       parsed.data.questionId,
-      { score, feedbackMd: feedback },
+      { score, feedbackMd: feedback, rubricScores: rubricScoresPayload },
     );
     return { ok: true } as const;
   }
@@ -428,10 +454,21 @@ function QuestionGradeCard({
 }) {
   const fetcher = useFetcher<typeof action>();
   const aiFetcher = useFetcher<AiDraftResponse>();
+  const useRubric = question.rubric.length > 0;
   const [score, setScore] = useState(
     answer?.score != null ? String(answer.score) : "",
   );
   const [feedback, setFeedback] = useState(answer?.feedbackMd ?? "");
+  const [rubricScores, setRubricScores] = useState<Record<string, number>>(
+    () => {
+      const out: Record<string, number> = {};
+      if (answer?.rubricScores) {
+        for (const [k, v] of Object.entries(answer.rubricScores))
+          out[k] = v.score;
+      }
+      return out;
+    },
+  );
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -439,7 +476,21 @@ function QuestionGradeCard({
   useEffect(() => {
     setScore(answer?.score != null ? String(answer.score) : "");
     setFeedback(answer?.feedbackMd ?? "");
+    const out: Record<string, number> = {};
+    if (answer?.rubricScores) {
+      for (const [k, v] of Object.entries(answer.rubricScores))
+        out[k] = v.score;
+    }
+    setRubricScores(out);
   }, [answer?.answerId, answer?.score, answer?.feedbackMd]);
+
+  // rubric 모드면 항목 점수 합을 점수 필드에 자동 반영.
+  const rubricSum = useRubric
+    ? question.rubric.reduce((s, c) => s + (rubricScores[c.criterionId] ?? 0), 0)
+    : 0;
+  useEffect(() => {
+    if (useRubric) setScore(String(rubricSum));
+  }, [useRubric, rubricSum]);
 
   useEffect(() => {
     if (
@@ -508,9 +559,18 @@ function QuestionGradeCard({
         )
       : null;
 
+  // isDirty — score/feedback/rubricScores 어느 하나라도 다르면 변경.
+  const rubricDirty = useRubric
+    ? question.rubric.some(
+        (c) =>
+          (rubricScores[c.criterionId] ?? 0) !==
+          (answer?.rubricScores?.[c.criterionId]?.score ?? 0),
+      )
+    : false;
   const isDirty =
     String(answer?.score ?? "") !== score ||
-    (answer?.feedbackMd ?? "") !== feedback;
+    (answer?.feedbackMd ?? "") !== feedback ||
+    rubricDirty;
 
   const submit = () => {
     const fd = new FormData();
@@ -519,6 +579,13 @@ function QuestionGradeCard({
     fd.set("questionId", question.questionId);
     fd.set("score", score);
     fd.set("feedbackMd", feedback);
+    if (useRubric) {
+      const payload: Record<string, { score: number }> = {};
+      for (const c of question.rubric) {
+        payload[c.criterionId] = { score: rubricScores[c.criterionId] ?? 0 };
+      }
+      fd.set("rubricScores", JSON.stringify(payload));
+    }
     fetcher.submit(fd, { method: "post" });
   };
 
@@ -713,9 +780,48 @@ function QuestionGradeCard({
             ) : null}
 
             <section className="rounded-md border p-3">
+              {useRubric ? (
+                <div className="mb-3 space-y-1.5 rounded-md bg-muted/30 p-2">
+                  <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                    채점 항목
+                  </p>
+                  {question.rubric.map((c, idx) => (
+                    <div
+                      key={c.criterionId}
+                      className="flex items-center gap-2 text-xs"
+                    >
+                      <span className="text-muted-foreground w-5 tabular-nums">
+                        {idx + 1}
+                      </span>
+                      <span className="flex-1">{c.label}</span>
+                      <input
+                        type="number"
+                        data-testid={`grade-rubric-${question.orderIndex + 1}-${idx + 1}`}
+                        min={0}
+                        max={c.maxPoints}
+                        step="0.5"
+                        value={rubricScores[c.criterionId] ?? ""}
+                        disabled={disabled}
+                        onChange={(e) =>
+                          setRubricScores((m) => ({
+                            ...m,
+                            [c.criterionId]: Number(e.target.value) || 0,
+                          }))
+                        }
+                        className="border-input bg-background h-7 w-16 rounded-md border px-2 text-xs tabular-nums"
+                      />
+                      <span className="text-muted-foreground tabular-nums w-12 text-right">
+                        / {c.maxPoints}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <label className="text-xs">
-                  <span className="text-muted-foreground mr-1">점수</span>
+                  <span className="text-muted-foreground mr-1">
+                    {useRubric ? "총점 (자동)" : "점수"}
+                  </span>
                   <input
                     type="number"
                     data-testid={`grade-score-${question.orderIndex + 1}`}
@@ -723,9 +829,13 @@ function QuestionGradeCard({
                     max={question.maxScore}
                     step="0.5"
                     value={score}
-                    disabled={disabled}
+                    disabled={disabled || useRubric}
+                    readOnly={useRubric}
                     onChange={(e) => setScore(e.target.value)}
-                    className="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm tabular-nums"
+                    className={cn(
+                      "border-input bg-background h-8 w-20 rounded-md border px-2 text-sm tabular-nums",
+                      useRubric && "bg-muted/40",
+                    )}
                   />
                   <span className="text-muted-foreground ml-1 text-xs">
                     / {question.maxScore}

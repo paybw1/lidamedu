@@ -36,6 +36,13 @@ export interface GsSeries {
   updatedAt: string;
 }
 
+export interface RubricCriterion {
+  criterionId: string;
+  label: string;
+  maxPoints: number;
+  descriptionMd?: string;
+}
+
 export interface GsQuestion {
   questionId: string;
   roundId: string;
@@ -44,6 +51,42 @@ export interface GsQuestion {
   bodyMd: string;
   modelAnswerMd: string | null;
   maxScore: number;
+  rubric: RubricCriterion[];
+}
+
+export type RubricScores = Record<string, { score: number; note?: string }>;
+
+function parseRubric(raw: unknown): RubricCriterion[] {
+  if (!Array.isArray(raw)) return [];
+  const out: RubricCriterion[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    if (typeof o.criterionId !== "string" || typeof o.label !== "string")
+      continue;
+    if (typeof o.maxPoints !== "number") continue;
+    const c: RubricCriterion = {
+      criterionId: o.criterionId,
+      label: o.label,
+      maxPoints: o.maxPoints,
+    };
+    if (typeof o.descriptionMd === "string") c.descriptionMd = o.descriptionMd;
+    out.push(c);
+  }
+  return out;
+}
+
+function parseRubricScores(raw: unknown): RubricScores {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: RubricScores = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!v || typeof v !== "object") continue;
+    const o = v as Record<string, unknown>;
+    if (typeof o.score !== "number") continue;
+    out[k] = { score: o.score };
+    if (typeof o.note === "string") out[k].note = o.note;
+  }
+  return out;
 }
 
 export interface GsSubmissionSummary {
@@ -156,6 +199,7 @@ export async function listGsQuestions(
     bodyMd: r.body_md,
     modelAnswerMd: r.model_answer_md,
     maxScore: r.max_score,
+    rubric: parseRubric(r.rubric),
   }));
 }
 
@@ -741,18 +785,26 @@ export async function upsertGsQuestion(
     bodyMd: string;
     modelAnswerMd: string | null;
     maxScore: number;
+    rubric?: RubricCriterion[];
   },
 ): Promise<string> {
+  // jsonb 컬럼은 supabase-js 가 직접 직렬화 — 객체 형태 그대로 전달.
+  const rubricJson = input.rubric
+    ? (input.rubric as unknown as Database["public"]["Tables"]["gs_questions"]["Insert"]["rubric"])
+    : undefined;
+
   if (input.questionId) {
+    const upd: Record<string, unknown> = {
+      order_index: input.orderIndex,
+      title: input.title,
+      body_md: input.bodyMd,
+      model_answer_md: input.modelAnswerMd,
+      max_score: input.maxScore,
+    };
+    if (rubricJson !== undefined) upd.rubric = rubricJson;
     const { error } = await client
       .from("gs_questions")
-      .update({
-        order_index: input.orderIndex,
-        title: input.title,
-        body_md: input.bodyMd,
-        model_answer_md: input.modelAnswerMd,
-        max_score: input.maxScore,
-      })
+      .update(upd)
       .eq("question_id", input.questionId);
     if (error) throw error;
     return input.questionId;
@@ -766,6 +818,7 @@ export async function upsertGsQuestion(
       body_md: input.bodyMd,
       model_answer_md: input.modelAnswerMd,
       max_score: input.maxScore,
+      ...(rubricJson !== undefined ? { rubric: rubricJson } : {}),
     })
     .select("question_id")
     .single();
@@ -813,6 +866,7 @@ export interface GsAnswerRecord {
   legibilityConfirmed: boolean;
   score: number | null;
   feedbackMd: string | null;
+  rubricScores: RubricScores;
 }
 
 function mapAnswer(
@@ -827,6 +881,7 @@ function mapAnswer(
     legibilityConfirmed: r.legibility_confirmed,
     score: r.score == null ? null : Number(r.score),
     feedbackMd: r.feedback_md,
+    rubricScores: parseRubricScores(r.rubric_scores),
   };
 }
 
@@ -1252,12 +1307,17 @@ export async function updateAnswerGrading(
   client: SupabaseClient<Database>,
   submissionId: string,
   questionId: string,
-  patch: { score?: number | null; feedbackMd?: string | null },
+  patch: {
+    score?: number | null;
+    feedbackMd?: string | null;
+    rubricScores?: RubricScores;
+  },
 ): Promise<void> {
   const row = await ensureAnswerRow(client, submissionId, questionId);
   const upd: Record<string, unknown> = {};
   if (patch.score !== undefined) upd.score = patch.score;
   if (patch.feedbackMd !== undefined) upd.feedback_md = patch.feedbackMd;
+  if (patch.rubricScores !== undefined) upd.rubric_scores = patch.rubricScores;
   if (Object.keys(upd).length === 0) return;
   const { error } = await client
     .from("gs_answers")

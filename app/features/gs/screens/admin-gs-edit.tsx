@@ -34,6 +34,7 @@ import {
   getGsRound,
   type GsPaperKind,
   type GsSeries,
+  type RubricCriterion,
   listAllGsSeries,
   listGsQuestions,
   type GsRoundStatus,
@@ -72,6 +73,13 @@ const roundSchema = z.object({
   expectedPages: z.coerce.number().int().min(1).max(100),
 });
 
+const rubricCriterionSchema = z.object({
+  criterionId: z.string().min(1),
+  label: z.string().min(1).max(200),
+  maxPoints: z.coerce.number().min(0).max(1000),
+  descriptionMd: z.string().optional().nullable(),
+});
+
 const questionSchema = z.object({
   questionId: z.string().uuid().optional().nullable(),
   orderIndex: z.coerce.number().int().min(0),
@@ -79,6 +87,7 @@ const questionSchema = z.object({
   bodyMd: z.string().min(1),
   modelAnswerMd: z.string().optional().nullable(),
   maxScore: z.coerce.number().int().min(1).max(1000),
+  rubric: z.array(rubricCriterionSchema).optional(),
 });
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -226,6 +235,20 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   if (intent === "save-question") {
     if (!roundId) return { ok: false, error: "Save round first" } as const;
+    // rubric 은 hidden input 에 JSON 으로 직렬화돼서 들어옴.
+    const rubricRaw = fd.get("rubric");
+    let rubricParsed: z.infer<typeof rubricCriterionSchema>[] | undefined;
+    if (typeof rubricRaw === "string" && rubricRaw.length > 0) {
+      try {
+        const arr = JSON.parse(rubricRaw);
+        const r = z.array(rubricCriterionSchema).safeParse(arr);
+        if (!r.success) return { ok: false, error: "Invalid rubric" } as const;
+        rubricParsed = r.data;
+      } catch {
+        return { ok: false, error: "Invalid rubric JSON" } as const;
+      }
+    }
+
     const parsed = questionSchema.safeParse({
       questionId: fd.get("questionId") || null,
       orderIndex: fd.get("orderIndex"),
@@ -235,6 +258,18 @@ export async function action({ params, request }: Route.ActionArgs) {
       maxScore: fd.get("maxScore"),
     });
     if (!parsed.success) return { ok: false, error: "Invalid question" } as const;
+
+    // rubric 항목 합 ≤ max_score 가드 (소수점 오차 0.01 허용).
+    if (rubricParsed && rubricParsed.length > 0) {
+      const sum = rubricParsed.reduce((s, c) => s + c.maxPoints, 0);
+      if (sum > parsed.data.maxScore + 0.01) {
+        return {
+          ok: false,
+          error: `채점 항목 배점 합(${sum})이 만점(${parsed.data.maxScore})을 초과합니다.`,
+        } as const;
+      }
+    }
+
     await upsertGsQuestion(client, {
       questionId: parsed.data.questionId ?? undefined,
       roundId,
@@ -243,6 +278,12 @@ export async function action({ params, request }: Route.ActionArgs) {
       bodyMd: parsed.data.bodyMd,
       modelAnswerMd: parsed.data.modelAnswerMd ?? null,
       maxScore: parsed.data.maxScore,
+      rubric: rubricParsed?.map((c) => ({
+        criterionId: c.criterionId,
+        label: c.label,
+        maxPoints: c.maxPoints,
+        descriptionMd: c.descriptionMd ?? undefined,
+      })),
     });
     return { ok: true };
   }
@@ -588,6 +629,7 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
                     bodyMd: q.bodyMd,
                     modelAnswerMd: q.modelAnswerMd ?? "",
                     maxScore: q.maxScore,
+                    rubric: q.rubric,
                   }}
                 />
               ))
@@ -601,6 +643,7 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
                 bodyMd: "",
                 modelAnswerMd: "",
                 maxScore: 100,
+                rubric: [],
               }}
               isNew
             />
@@ -626,12 +669,38 @@ function QuestionEditor({
     bodyMd: string;
     modelAnswerMd: string;
     maxScore: number;
+    rubric: RubricCriterion[];
   };
   isNew?: boolean;
 }) {
   const fetcher = useFetcher<typeof action>();
   const deleteFetcher = useFetcher<typeof action>();
   const [draft, setDraft] = useState(initial);
+
+  const rubricSum = draft.rubric.reduce((s, c) => s + c.maxPoints, 0);
+  const rubricOver = rubricSum > draft.maxScore + 0.01;
+  const addCriterion = () =>
+    setDraft((d) => ({
+      ...d,
+      rubric: [
+        ...d.rubric,
+        {
+          criterionId: crypto.randomUUID(),
+          label: "",
+          maxPoints: 0,
+        },
+      ],
+    }));
+  const updateCriterion = (idx: number, patch: Partial<RubricCriterion>) =>
+    setDraft((d) => ({
+      ...d,
+      rubric: d.rubric.map((c, i) => (i === idx ? { ...c, ...patch } : c)),
+    }));
+  const removeCriterion = (idx: number) =>
+    setDraft((d) => ({
+      ...d,
+      rubric: d.rubric.filter((_, i) => i !== idx),
+    }));
   const saved = fetcher.data && "ok" in fetcher.data && fetcher.data.ok;
 
   return (
@@ -713,6 +782,80 @@ function QuestionEditor({
             placeholder="채점 기준·모범답안. 학생에게는 제출 후 노출됩니다."
           />
         </label>
+        <div className="rounded-md border bg-muted/20 p-3">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <p className="text-muted-foreground text-xs font-medium">
+              채점 항목 (rubric, 선택)
+            </p>
+            <span
+              className={cn(
+                "ml-auto text-[11px] tabular-nums",
+                rubricOver ? "text-rose-600 font-semibold" : "text-muted-foreground",
+              )}
+            >
+              합 {rubricSum} / 만점 {draft.maxScore}
+              {rubricOver ? " (초과!)" : ""}
+            </span>
+          </div>
+          {draft.rubric.length === 0 ? (
+            <p className="text-muted-foreground text-[11px] italic mb-2">
+              항목 없음 — 단일 점수 모드. 추가하면 채점 화면이 항목별 점수 입력으로 전환됩니다.
+            </p>
+          ) : (
+            <div className="space-y-1.5 mb-2">
+              {draft.rubric.map((c, idx) => (
+                <div
+                  key={c.criterionId}
+                  className="flex flex-wrap items-center gap-1.5"
+                >
+                  <span className="text-muted-foreground text-[10px] tabular-nums w-5">
+                    {idx + 1}
+                  </span>
+                  <input
+                    type="text"
+                    value={c.label}
+                    onChange={(e) =>
+                      updateCriterion(idx, { label: e.target.value })
+                    }
+                    placeholder="항목 — 예: 신규성 인정 여부"
+                    className="border-input bg-background h-7 flex-1 rounded-md border px-2 text-xs"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    max={1000}
+                    step="0.5"
+                    value={c.maxPoints}
+                    onChange={(e) =>
+                      updateCriterion(idx, {
+                        maxPoints: Number(e.target.value) || 0,
+                      })
+                    }
+                    placeholder="배점"
+                    className="border-input bg-background h-7 w-16 rounded-md border px-2 text-xs tabular-nums"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeCriterion(idx)}
+                    className="text-muted-foreground hover:text-rose-600"
+                    aria-label="항목 삭제"
+                  >
+                    <Trash2Icon className="size-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addCriterion}
+            className="h-7 text-[11px]"
+          >
+            <PlusIcon className="size-3" /> 항목 추가
+          </Button>
+        </div>
       </div>
       <div className="mt-3 flex items-center justify-end gap-2">
         {saved ? (
@@ -758,11 +901,21 @@ function QuestionEditor({
             value={draft.modelAnswerMd}
           />
           <input type="hidden" name="maxScore" value={draft.maxScore} />
+          <input
+            type="hidden"
+            name="rubric"
+            value={draft.rubric.length > 0 ? JSON.stringify(draft.rubric) : ""}
+          />
           <Button
             type="submit"
             size="sm"
-            disabled={fetcher.state !== "idle" || !draft.bodyMd.trim()}
+            disabled={
+              fetcher.state !== "idle" || !draft.bodyMd.trim() || rubricOver
+            }
             className="h-8"
+            title={
+              rubricOver ? "rubric 합이 만점 초과 — 배점 재조정 필요" : undefined
+            }
           >
             <SaveIcon className="size-3.5" />
             {isNew ? "문항 추가" : "문항 저장"}

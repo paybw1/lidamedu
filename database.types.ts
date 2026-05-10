@@ -443,6 +443,7 @@ export type Database = {
           feedback_md: string | null
           legibility_confirmed: boolean
           question_id: string
+          rubric_scores: Json
           score: number | null
           submission_id: string
           updated_at: string
@@ -454,6 +455,7 @@ export type Database = {
           feedback_md?: string | null
           legibility_confirmed?: boolean
           question_id: string
+          rubric_scores?: Json
           score?: number | null
           submission_id: string
           updated_at?: string
@@ -465,6 +467,7 @@ export type Database = {
           feedback_md?: string | null
           legibility_confirmed?: boolean
           question_id?: string
+          rubric_scores?: Json
           score?: number | null
           submission_id?: string
           updated_at?: string
@@ -712,6 +715,7 @@ export type Database = {
           order_index: number
           question_id: string
           round_id: string
+          rubric: Json
           title: string | null
           updated_at: string
         }
@@ -723,6 +727,7 @@ export type Database = {
           order_index?: number
           question_id?: string
           round_id: string
+          rubric?: Json
           title?: string | null
           updated_at?: string
         }
@@ -734,6 +739,7 @@ export type Database = {
           order_index?: number
           question_id?: string
           round_id?: string
+          rubric?: Json
           title?: string | null
           updated_at?: string
         }
