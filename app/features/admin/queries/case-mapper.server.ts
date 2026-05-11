@@ -71,16 +71,34 @@ export async function listCasesForMapper(
   const allCases = caseRows ?? [];
   const caseTotal = caseTotalCount ?? allCases.length;
 
-  // 2) 한 번에 article_case_links join (현재 페이지 후보 case_id 만).
+  // 2) article_case_links + articles 를 2단계로 fetch — nested join 의 RLS/캐시
+  //    이슈로 articles 가 null 반환되어 linkCount 가 잘못 계산되는 사례 방지.
   const caseIds = allCases.map((c) => c.case_id);
   const linksByCase = new Map<string, CaseLinkChip[]>();
   if (caseIds.length > 0) {
     const { data: linkRows } = await client
       .from("article_case_links")
-      .select("case_id, note, articles(article_number)")
+      .select("case_id, article_id, note")
       .in("case_id", caseIds);
+
+    // 사용된 article_id 들 → article_number 매핑.
+    const articleIds = Array.from(
+      new Set((linkRows ?? []).map((r) => r.article_id).filter(Boolean)),
+    );
+    const articleNumberById = new Map<string, string>();
+    if (articleIds.length > 0) {
+      const { data: artRows } = await client
+        .from("articles")
+        .select("article_id, article_number")
+        .in("article_id", articleIds);
+      for (const a of artRows ?? []) {
+        if (a.article_number)
+          articleNumberById.set(a.article_id, a.article_number);
+      }
+    }
+
     for (const r of linkRows ?? []) {
-      const num = r.articles?.article_number;
+      const num = articleNumberById.get(r.article_id);
       if (!num) continue;
       const arr = linksByCase.get(r.case_id) ?? [];
       // 같은 article_number 가 여러 relation_type 으로 들어있을 수 있으나 표시 단위 1개로.
