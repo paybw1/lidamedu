@@ -11,6 +11,7 @@ import {
   NewspaperIcon,
   PencilIcon,
   PlusIcon,
+  RefreshCwIcon,
   SearchIcon,
   Trash2Icon,
   XIcon,
@@ -126,15 +127,18 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
         <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
           <NewspaperIcon className="size-3.5" /> 최신 정보
         </p>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
             <ListChecksIcon className="text-primary size-6" />
             1차 객관식 문제 색인
           </h1>
           {canEdit && !showAdd ? (
-            <Button size="sm" onClick={() => setShowAdd(true)}>
-              <PlusIcon className="size-3.5" /> 문제집 추가
-            </Button>
+            <div className="flex gap-2">
+              <RegenPastExamButton />
+              <Button size="sm" onClick={() => setShowAdd(true)}>
+                <PlusIcon className="size-3.5" /> 문제집 추가
+              </Button>
+            </div>
           ) : null}
         </div>
         <p className="text-muted-foreground text-sm">
@@ -236,6 +240,73 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// 기존 problems(origin=past_exam, exam_round=first)을 (subject_scope, year)별로 묶어
+// past_exam 팩을 자동 생성/갱신. 기존 팩이 있으면 문제 목록 교체.
+function RegenPastExamButton() {
+  const fetcher = useFetcher<
+    | { ok: true; packsUpserted: number; problemsTotal: number }
+    | { error: string }
+  >();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isLoading = fetcher.state !== "idle";
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
+  const result =
+    fetcher.data && "ok" in fetcher.data && fetcher.data.ok
+      ? fetcher.data
+      : null;
+  const err =
+    fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+  return (
+    <div className="flex items-center gap-2">
+      <fetcher.Form
+        method="post"
+        action="/api/admin/mcq-pack"
+        onSubmit={(e) => {
+          if (
+            !confirm(
+              "기존 객관식 기출 문제를 (과목, 년도) 별로 자동 묶어 'YYYY년 1차 기출' 팩을 생성/갱신합니다.\n수동으로 추가한 문제는 사라질 수 있습니다.\n진행할까요?",
+            )
+          ) {
+            e.preventDefault();
+          }
+        }}
+      >
+        <input type="hidden" name="intent" value="regen_past_exam" />
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          disabled={isLoading}
+        >
+          <RefreshCwIcon
+            className={"size-3.5 " + (isLoading ? "animate-spin" : "")}
+          />
+          기출 자동 재생성
+        </Button>
+      </fetcher.Form>
+      {result ? (
+        <span className="text-emerald-600 text-xs tabular-nums">
+          {result.packsUpserted}개 팩 · {result.problemsTotal}문항
+        </span>
+      ) : null}
+      {err ? <span className="text-rose-600 text-xs">{err}</span> : null}
     </div>
   );
 }

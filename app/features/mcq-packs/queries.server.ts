@@ -320,6 +320,161 @@ export async function getPackProblemIds(
   return (data ?? []).map((r) => r.problem_id);
 }
 
+// 기출 팩 자동 재생성 — problems 의 (subject_scope, year) 별로 past_exam 1차 문제 묶음.
+// 같은 (kind=past_exam, subject_scope, year) 페어가 이미 있으면 제목/문제 목록을 갱신.
+// 자연과학(science) 은 subject_type='science' 로 분기.
+export interface RegeneratePastExamResult {
+  packsUpserted: number;
+  problemsTotal: number;
+  groups: Array<{
+    subjectScope: McqPackSubjectScope;
+    year: number;
+    problemCount: number;
+  }>;
+}
+
+function mapLawCodeToScope(
+  code: string | null | undefined,
+): McqPackSubjectScope | null {
+  if (!code) return null;
+  if (code === "patent" || code === "trademark" || code === "design")
+    return "industrial";
+  if (code === "civil") return "civil";
+  if (code === "civil-procedure") return "civil_procedure";
+  return null;
+}
+
+export async function regeneratePastExamPacks(
+  client: SupabaseClient<Database>,
+  authorId: string,
+): Promise<RegeneratePastExamResult> {
+  // 1차 객관식 기출만. (2차 주관식은 /latest/essay 영역, science 도 1차 선택과목이라 포함.)
+  const PAGE = 1000;
+  const allRows: Array<{
+    problem_id: string;
+    year: number | null;
+    subject_type: string;
+    laws: { law_code: string } | null;
+  }> = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await client
+      .from("problems")
+      .select("problem_id, year, subject_type, laws(law_code)")
+      .eq("origin", "past_exam")
+      .eq("exam_round", "first")
+      .is("deleted_at", null)
+      .not("year", "is", null)
+      .order("problem_number", { ascending: true, nullsFirst: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data) allRows.push(r as (typeof allRows)[number]);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  // (scope, year) 별 문제 ID 모음.
+  const groups = new Map<
+    string,
+    { scope: McqPackSubjectScope; year: number; problemIds: string[] }
+  >();
+  for (const r of allRows) {
+    if (r.year === null) continue;
+    let scope: McqPackSubjectScope | null = null;
+    if (r.subject_type === "science") {
+      scope = "science";
+    } else {
+      scope = mapLawCodeToScope(r.laws?.law_code);
+    }
+    if (!scope) continue;
+    const key = `${scope}|${r.year}`;
+    const g = groups.get(key) ?? { scope, year: r.year, problemIds: [] };
+    g.problemIds.push(r.problem_id);
+    groups.set(key, g);
+  }
+
+  // 각 그룹 upsert.
+  const summary: RegeneratePastExamResult["groups"] = [];
+  for (const g of groups.values()) {
+    const title = `${g.year}년 1차 기출`;
+    const { data: existing } = await client
+      .from("mcq_packs")
+      .select("pack_id")
+      .eq("kind", "past_exam")
+      .eq("subject_scope", g.scope)
+      .eq("year", g.year)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    let packId: string;
+    if (existing) {
+      packId = existing.pack_id;
+      const { error: upErr } = await client
+        .from("mcq_packs")
+        .update({ title })
+        .eq("pack_id", packId);
+      if (upErr) throw upErr;
+    } else {
+      const { data: inserted, error: insErr } = await client
+        .from("mcq_packs")
+        .insert({
+          kind: "past_exam",
+          subject_scope: g.scope,
+          title,
+          year: g.year,
+          is_published: true,
+          created_by: authorId,
+        })
+        .select("pack_id")
+        .single();
+      if (insErr) throw insErr;
+      packId = inserted.pack_id;
+    }
+
+    // 기존 매핑 삭제 후 재삽입.
+    const { error: delErr } = await client
+      .from("mcq_pack_problems")
+      .delete()
+      .eq("pack_id", packId);
+    if (delErr) throw delErr;
+    if (g.problemIds.length > 0) {
+      const rows = g.problemIds.map((pid, i) => ({
+        pack_id: packId,
+        problem_id: pid,
+        ord: i,
+      }));
+      // 1000 한도 분할.
+      const CHUNK = 1000;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const slice = rows.slice(i, i + CHUNK);
+        const { error: insRowErr } = await client
+          .from("mcq_pack_problems")
+          .insert(slice);
+        if (insRowErr) throw insRowErr;
+      }
+    }
+    summary.push({
+      subjectScope: g.scope,
+      year: g.year,
+      problemCount: g.problemIds.length,
+    });
+  }
+
+  // 결과 정리: scope, year 내림차순.
+  summary.sort((a, b) => {
+    if (a.subjectScope !== b.subjectScope)
+      return a.subjectScope.localeCompare(b.subjectScope);
+    return b.year - a.year;
+  });
+
+  return {
+    packsUpserted: groups.size,
+    problemsTotal: allRows.length,
+    groups: summary,
+  };
+}
+
 // 통계 — 팩 안 모든 문제의 전체 attempt 집계.
 export interface PackTypeStats {
   // format 별 (mc_short/mc_box/mc_case 등) 정답률

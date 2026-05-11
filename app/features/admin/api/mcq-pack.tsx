@@ -9,6 +9,7 @@ import {
   addPackProblem,
   createPack,
   deletePack,
+  regeneratePastExamPacks,
   removePackProblem,
   updatePack,
 } from "~/features/mcq-packs/queries.server";
@@ -153,6 +154,11 @@ export async function action({ request }: Route.ActionArgs) {
     const res = await addPackProblem(client, packId, problemId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
+  }
+
+  if (intent === "regen_past_exam") {
+    const result = await regeneratePastExamPacks(client, user.id);
+    return data({ ok: true, ...result });
   }
 
   if (intent === "remove_problem") {
