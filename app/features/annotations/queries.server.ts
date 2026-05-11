@@ -408,6 +408,296 @@ export async function listTopBookmarks(
   });
 }
 
+// 즐겨찾기 모음 페이지(`/study/bookmarks`) 용 — 5개 target 전부 fetch.
+// limit 없이 deleted_at IS NULL && star_level > 0 전부 — 별점 매긴 항목만.
+export interface BookmarkListItem {
+  bookmarkId: string;
+  targetType: AnnotationTargetType;
+  targetId: string;
+  starLevel: number;
+  notePreview: string | null;
+  updatedAt: string;
+  // 표시 정보.
+  lawCode: string | null;
+  primaryLabel: string;
+  secondaryLabel: string | null;
+  bodySnippet: string | null;
+  href: string;
+  // OX(choice/box) 의 경우 정답 O/X 표시용.
+  oxTruth: "O" | "X" | null;
+}
+
+export async function listAllBookmarks(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<BookmarkListItem[]> {
+  const { data: rows, error } = await client
+    .from("user_bookmarks")
+    .select("bookmark_id, target_type, target_id, star_level, note_md, step_notes, updated_at")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .gt("star_level", 0)
+    .order("star_level", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(2000);
+  if (error) throw error;
+  const list = rows ?? [];
+  if (list.length === 0) return [];
+
+  const articleIds = list.filter((r) => r.target_type === "article").map((r) => r.target_id);
+  const caseIds = list.filter((r) => r.target_type === "case").map((r) => r.target_id);
+  const problemIds = list.filter((r) => r.target_type === "problem").map((r) => r.target_id);
+  const choiceIds = list.filter((r) => r.target_type === "problem_choice").map((r) => r.target_id);
+  const boxItemIds = list.filter((r) => r.target_type === "problem_box_item").map((r) => r.target_id);
+
+  const { articleSlug } = await import("~/features/laws/lib/identifier");
+  // article
+  const articleMap = new Map<
+    string,
+    { displayLabel: string; articleNumber: string | null; lawCode: string; pathSlug: string }
+  >();
+  if (articleIds.length > 0) {
+    const { data: rs } = await client
+      .from("articles")
+      .select("article_id, article_number, display_label, laws!inner(law_code)")
+      .in("article_id", articleIds);
+    for (const r of rs ?? []) {
+      if (!r.article_number) continue;
+      articleMap.set(r.article_id, {
+        displayLabel: r.display_label,
+        articleNumber: r.article_number,
+        lawCode: r.laws.law_code,
+        pathSlug: articleSlug(r.article_number),
+      });
+    }
+  }
+  // case
+  const caseMap = new Map<
+    string,
+    { caseNumber: string; caseTitle: string | null; lawCode: string }
+  >();
+  if (caseIds.length > 0) {
+    const { data: rs } = await client
+      .from("cases")
+      .select("case_id, case_number, case_title, subject_laws")
+      .in("case_id", caseIds);
+    for (const r of rs ?? []) {
+      caseMap.set(r.case_id, {
+        caseNumber: r.case_number,
+        caseTitle: r.case_title,
+        lawCode: (r.subject_laws as string[] | null)?.[0] ?? "patent",
+      });
+    }
+  }
+  // problem_choice / box_item → 부모 problem 으로 viewer 진입. 본문 발췌 + ox_truth 도 보존.
+  const choiceProblemMap = new Map<
+    string,
+    { problemId: string; bodyMd: string | null; oxTruth: "O" | "X" | null }
+  >();
+  if (choiceIds.length > 0) {
+    const { data: cs } = await client
+      .from("problem_choices")
+      .select("choice_id, problem_id, body_md, ox_truth")
+      .in("choice_id", choiceIds);
+    for (const c of cs ?? []) {
+      choiceProblemMap.set(c.choice_id, {
+        problemId: c.problem_id,
+        bodyMd: c.body_md,
+        oxTruth: c.ox_truth as "O" | "X" | null,
+      });
+    }
+  }
+  const boxItemProblemMap = new Map<
+    string,
+    {
+      problemId: string;
+      bodyMd: string | null;
+      marker: string | null;
+      oxTruth: "O" | "X" | null;
+    }
+  >();
+  if (boxItemIds.length > 0) {
+    const { data: bs } = await client
+      .from("problem_box_items")
+      .select("box_item_id, problem_id, body_md, marker, ox_truth")
+      .in("box_item_id", boxItemIds);
+    for (const b of bs ?? []) {
+      boxItemProblemMap.set(b.box_item_id, {
+        problemId: b.problem_id,
+        bodyMd: b.body_md,
+        marker: b.marker,
+        oxTruth: b.ox_truth as "O" | "X" | null,
+      });
+    }
+  }
+
+  // problem 정보 — bookmark target 인 problem + 위 choice/box 의 부모 problem 모두 포함.
+  const problemMap = new Map<
+    string,
+    {
+      year: number | null;
+      problemNumber: number | null;
+      bodySnippet: string;
+      lawCode: string;
+    }
+  >();
+  const allProblemIds = new Set<string>(problemIds);
+  for (const v of choiceProblemMap.values()) allProblemIds.add(v.problemId);
+  for (const v of boxItemProblemMap.values()) allProblemIds.add(v.problemId);
+  if (allProblemIds.size > 0) {
+    const { data: ps } = await client
+      .from("problems")
+      .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+      .in("problem_id", [...allProblemIds]);
+    for (const p of ps ?? []) {
+      const body = p.body_md ?? "";
+      problemMap.set(p.problem_id, {
+        year: p.year,
+        problemNumber: p.problem_number,
+        bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
+        lawCode: p.laws.law_code,
+      });
+    }
+  }
+
+  function notePreview(noteMd: string | null, stepNotes: unknown): string | null {
+    if (noteMd && noteMd.trim().length > 0) {
+      const t = noteMd.trim().replace(/\s+/g, " ");
+      return t.length > 80 ? `${t.slice(0, 80)}…` : t;
+    }
+    if (stepNotes && typeof stepNotes === "object" && !Array.isArray(stepNotes)) {
+      // 가장 최근 단계 메모.
+      for (const key of ["5", "4", "3", "2", "1"] as const) {
+        const v = (stepNotes as Record<string, unknown>)[key];
+        if (typeof v === "string" && v.trim().length > 0) {
+          const t = v.trim().replace(/\s+/g, " ");
+          return t.length > 80 ? `${t.slice(0, 80)}…` : t;
+        }
+      }
+    }
+    return null;
+  }
+
+  return list.flatMap((r): BookmarkListItem[] => {
+    const preview = notePreview(r.note_md, r.step_notes);
+    if (r.target_type === "article") {
+      const a = articleMap.get(r.target_id);
+      if (!a) return [];
+      return [
+        {
+          bookmarkId: r.bookmark_id,
+          targetType: "article",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          notePreview: preview,
+          updatedAt: r.updated_at,
+          lawCode: a.lawCode,
+          primaryLabel: a.displayLabel,
+          secondaryLabel: a.articleNumber ? `제${a.articleNumber}조` : null,
+          bodySnippet: null,
+          href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
+          oxTruth: null,
+        },
+      ];
+    }
+    if (r.target_type === "case") {
+      const c = caseMap.get(r.target_id);
+      if (!c) return [];
+      return [
+        {
+          bookmarkId: r.bookmark_id,
+          targetType: "case",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          notePreview: preview,
+          updatedAt: r.updated_at,
+          lawCode: c.lawCode,
+          primaryLabel: c.caseTitle ?? c.caseNumber,
+          secondaryLabel: c.caseTitle ? c.caseNumber : null,
+          bodySnippet: null,
+          href: `/subjects/${c.lawCode}/cases/${r.target_id}`,
+          oxTruth: null,
+        },
+      ];
+    }
+    if (r.target_type === "problem") {
+      const p = problemMap.get(r.target_id);
+      if (!p) return [];
+      const yearLabel = p.year
+        ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+        : "문제";
+      return [
+        {
+          bookmarkId: r.bookmark_id,
+          targetType: "problem",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          notePreview: preview,
+          updatedAt: r.updated_at,
+          lawCode: p.lawCode,
+          primaryLabel: yearLabel,
+          secondaryLabel: null,
+          bodySnippet: p.bodySnippet,
+          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+          oxTruth: null,
+        },
+      ];
+    }
+    if (r.target_type === "problem_choice") {
+      const c = choiceProblemMap.get(r.target_id);
+      if (!c) return [];
+      const p = problemMap.get(c.problemId);
+      if (!p) return [];
+      const body = c.bodyMd ?? "";
+      return [
+        {
+          bookmarkId: r.bookmark_id,
+          targetType: "problem_choice",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          notePreview: preview,
+          updatedAt: r.updated_at,
+          lawCode: p.lawCode,
+          primaryLabel: `OX 지문`,
+          secondaryLabel: p.year
+            ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+            : "문제",
+          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          href: `/subjects/${p.lawCode}/problems/${c.problemId}`,
+          oxTruth: c.oxTruth,
+        },
+      ];
+    }
+    if (r.target_type === "problem_box_item") {
+      const b = boxItemProblemMap.get(r.target_id);
+      if (!b) return [];
+      const p = problemMap.get(b.problemId);
+      if (!p) return [];
+      const raw = b.bodyMd ?? "";
+      const body = b.marker ? `[${b.marker}] ${raw}` : raw;
+      return [
+        {
+          bookmarkId: r.bookmark_id,
+          targetType: "problem_box_item",
+          targetId: r.target_id,
+          starLevel: r.star_level,
+          notePreview: preview,
+          updatedAt: r.updated_at,
+          lawCode: p.lawCode,
+          primaryLabel: `OX 박스 항목`,
+          secondaryLabel: p.year
+            ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+            : "문제",
+          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          href: `/subjects/${p.lawCode}/problems/${b.problemId}`,
+          oxTruth: b.oxTruth,
+        },
+      ];
+    }
+    return [];
+  });
+}
+
 export async function getBookmark(
   client: SupabaseClient<Database>,
   userId: string,

@@ -151,12 +151,17 @@ export default [
       route("/goals", "features/goals/screens/goals.tsx"),
       route("/study/blanks", "features/blanks/screens/blanks-stats.tsx"),
       route("/study/wrong-note", "features/study/screens/wrong-note.tsx"),
+      route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),
         route("/cases", "features/latest/screens/cases.tsx"),
         route("/mcq", "features/latest/screens/mcq.tsx"),
         route("/mcq/:packId", "features/latest/screens/mcq-pack-detail.tsx"),
+        route(
+          "/mcq/:packId/sheet/:sessionId",
+          "features/latest/screens/mcq-pack-sheet.tsx",
+        ),
         route(
           "/mcq/:packId/result/:sessionId",
           "features/latest/screens/mcq-pack-result.tsx",

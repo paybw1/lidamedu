@@ -1099,6 +1099,122 @@ export async function getProblemById(
   };
 }
 
+// 여러 문제를 한 번에 ProblemDetail 형태로 — MCQ 팩 시험지 view 등에서 사용.
+// session.problemIds 순서를 유지해 반환한다. 누락된 문제는 결과에서 제외.
+export async function getProblemDetailsByIds(
+  client: SupabaseClient<Database>,
+  problemIds: string[],
+): Promise<ProblemDetail[]> {
+  if (problemIds.length === 0) return [];
+  const { data: problemRows, error } = await client
+    .from("problems")
+    .select(
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, articles!primary_article_id(article_number, display_label)",
+    )
+    .in("problem_id", problemIds)
+    .is("deleted_at", null);
+  if (error) throw error;
+  const problemList = problemRows ?? [];
+  if (problemList.length === 0) return [];
+
+  const boxItemsByProblem = new Map<string, ProblemDetail["boxItems"]>();
+  const { data: boxRows } = await client
+    .from("problem_box_items")
+    .select(
+      "box_item_id, problem_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+    )
+    .in("problem_id", problemIds)
+    .order("position_index");
+  for (const b of boxRows ?? []) {
+    const arr = boxItemsByProblem.get(b.problem_id) ?? [];
+    arr.push({
+      boxItemId: b.box_item_id,
+      positionIndex: b.position_index,
+      marker: b.marker,
+      bodyMd: b.body_md,
+      explanationMd: b.explanation_md,
+      choiceType: b.choice_type,
+      relatedArticleId: b.related_article_id,
+      relatedArticleNumber: b.related_article_number,
+      relatedCaseId: b.related_case_id,
+      relatedCaseNumber: b.related_case_number,
+      oxIneligible: b.ox_ineligible,
+      oxTruth: b.ox_truth,
+    });
+    boxItemsByProblem.set(b.problem_id, arr);
+  }
+
+  const choicesByProblem = new Map<string, ProblemDetail["choices"]>();
+  const { data: choiceRows } = await client
+    .from("problem_choices")
+    .select(
+      "choice_id, problem_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+    )
+    .in("problem_id", problemIds)
+    .order("choice_index");
+  for (const c of choiceRows ?? []) {
+    const arr = choicesByProblem.get(c.problem_id) ?? [];
+    arr.push({
+      choiceId: c.choice_id,
+      choiceIndex: c.choice_index,
+      bodyMd: c.body_md,
+      isCorrect: c.is_correct,
+      explanationMd: c.explanation_md,
+      choiceType: c.choice_type,
+      relatedArticleId: c.related_article_id,
+      relatedArticleNumber: c.related_article_number,
+      relatedCaseId: c.related_case_id,
+      relatedCaseNumber: c.related_case_number,
+      oxIneligible: c.ox_ineligible,
+      oxTruth: c.ox_truth,
+    });
+    choicesByProblem.set(c.problem_id, arr);
+  }
+
+  const byId = new Map<string, ProblemDetail>();
+  for (const p of problemList) {
+    const choices = choicesByProblem.get(p.problem_id) ?? [];
+    const boxItems = boxItemsByProblem.get(p.problem_id) ?? [];
+    byId.set(p.problem_id, {
+      problemId: p.problem_id,
+      examRound: p.exam_round,
+      format: p.format,
+      origin: p.origin,
+      polarity: p.polarity,
+      scope: p.scope,
+      year: p.year,
+      examRoundNo: p.exam_round_no,
+      problemNumber: p.problem_number,
+      bodyMd: p.body_md,
+      primaryArticleId: p.primary_article_id,
+      primaryArticleNumber: p.articles?.article_number ?? null,
+      primaryArticleLabel: p.articles?.display_label ?? null,
+      unclassifiedChoices:
+        p.format === "mc_box"
+          ? 0
+          : choices.filter((c) => c.choiceType === null).length,
+      reviewedAt: p.reviewed_at,
+      mismatchFlaggedAt: p.mismatch_flagged_at,
+      explanationMd: p.explanation_md,
+      hasTable:
+        hasTableMd(p.explanation_md) ||
+        choices.some((c) => hasTableMd(c.explanationMd)) ||
+        boxItems.some((b) => hasTableMd(b.explanationMd)),
+      hasImage:
+        hasImageMd(p.explanation_md) ||
+        choices.some((c) => hasImageMd(c.explanationMd)) ||
+        boxItems.some((b) => hasImageMd(b.explanationMd)),
+      choices,
+      boxItems,
+    });
+  }
+  // problemIds 순서 보존.
+  return problemIds.flatMap((id) => {
+    const detail = byId.get(id);
+    return detail ? [detail] : [];
+  });
+}
+
 // ──────── 체계도 기반 admin 화면용 헬퍼 ────────
 
 export interface SystematicTopNode {

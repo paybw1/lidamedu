@@ -1094,6 +1094,20 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                 ))}
               </div>
             )}
+            <Link
+              to="/study/bookmarks"
+              style={{
+                display: "inline-block",
+                marginTop: 10,
+                fontSize: 11.5,
+                color: palette.primary,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+              data-testid="quick-bookmarks-all"
+            >
+              즐겨찾기 모두 보기 (조문 · 판례 · 문제 · OX) →
+            </Link>
           </CozyCard>
         </div>
 

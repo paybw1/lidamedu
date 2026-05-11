@@ -1,5 +1,5 @@
-// MCQ 팩 응시 시작 — quiz_session 을 생성하고 첫 문제로 redirect.
-// study 모드: 학습 (즉시 해설), 시간제한 없음.
+// MCQ 팩 응시 시작 — quiz_session 을 생성하고 시험지(sheet) 페이지로 redirect.
+// study 모드: 학습 (전 문항 한 페이지 + 채점/해설), 시간제한 없음.
 // exam 모드: 모의고사 (타이머 기반, 시간 초과 시 일괄 제출).
 
 import { data, redirect } from "react-router";
@@ -10,36 +10,13 @@ import {
   getPackById,
   getPackProblemIds,
 } from "~/features/mcq-packs/queries.server";
-import {
-  isMockKind,
-  type McqPackSubjectScope,
-} from "~/features/mcq-packs/labels";
+import { isMockKind } from "~/features/mcq-packs/labels";
 import { createQuizSession } from "~/features/study/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/start";
 
 const MODE_VALUES = ["study", "exam"] as const;
-
-// subject_scope → 첫 problem 의 law_code 또는 science_subject 가 없을 때 fallback URL slug.
-function fallbackSubjectSlug(scope: McqPackSubjectScope): string {
-  switch (scope) {
-    case "patent":
-      return "patent";
-    case "trademark":
-      return "trademark";
-    case "design":
-      return "design";
-    case "industrial":
-      return "patent";
-    case "civil":
-      return "civil";
-    case "civil_procedure":
-      return "civil-procedure";
-    case "science":
-      return "science/physics";
-  }
-}
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -78,34 +55,14 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "팩에 문제가 없습니다." }, { status: 400 });
   }
 
-  // ?startAt=<problemId> 가 있고 팩에 포함된 문제면 그 문제부터 시작.
-  // exam 모드는 첫 문제부터 시작해야 타이머 일관성 — startAt 무시.
-  const startAtRaw = String(fd.get("startAt") ?? "").trim();
-  const startAt =
-    mode === "study" &&
-    z.string().uuid().safeParse(startAtRaw).success &&
-    problemIds.includes(startAtRaw)
-      ? startAtRaw
-      : problemIds[0];
-
+  // session 생성 시 law_code / science_subject 둘 중 하나가 필수 (DB check).
+  // 시험지 view 자체는 과목과 무관하게 동작하므로 첫 문제 기준으로 결정만 한다.
   const { data: firstRow } = await client
     .from("problems")
     .select("problem_id, science_subject, laws(law_code)")
-    .eq("problem_id", startAt)
+    .eq("problem_id", problemIds[0])
     .maybeSingle();
-  let subjectUrl: string;
-  if (firstRow?.science_subject) {
-    const sci = firstRow.science_subject;
-    subjectUrl = `/subjects/science/${sci.replace("_", "-")}`;
-  } else if (firstRow?.laws?.law_code) {
-    subjectUrl = `/subjects/${firstRow.laws.law_code as LawSubjectSlug}`;
-  } else {
-    subjectUrl = `/subjects/${fallbackSubjectSlug(pack.subjectScope)}`;
-  }
-
-  // 자연과학 / 법률 둘 중 하나로 결정.
-  const lawCode =
-    firstRow?.laws?.law_code ?? undefined;
+  const lawCode = firstRow?.laws?.law_code ?? undefined;
   const scienceSubject =
     (firstRow?.science_subject as
       | "physics"
@@ -133,13 +90,14 @@ export async function action({ request }: Route.ActionArgs) {
     packId,
   });
 
-  // startAt 또는 첫 문제 viewer 로 redirect.
-  let runnerUrl: string;
-  if (scienceSubject) {
-    const sci = scienceSubject.replace("_", "-");
-    runnerUrl = `/subjects/science/${sci}/problems/${startAt}?session=${sessionId}`;
-  } else {
-    runnerUrl = `${subjectUrl}/problems/${startAt}?session=${sessionId}`;
-  }
-  return redirect(runnerUrl);
+  // ?startAt=<problemId> 가 포함된 경우 시험지 안에서 해당 문항으로 스크롤 anchor.
+  // exam 모드는 첫 문제부터 시작 — startAt 무시.
+  const startAtRaw = String(fd.get("startAt") ?? "").trim();
+  const startIdx =
+    mode === "study" && z.string().uuid().safeParse(startAtRaw).success
+      ? problemIds.indexOf(startAtRaw)
+      : -1;
+  const anchor = startIdx >= 0 ? `#p-${startIdx + 1}` : "";
+
+  return redirect(`/latest/mcq/${packId}/sheet/${sessionId}${anchor}`);
 }

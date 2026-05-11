@@ -240,6 +240,44 @@ export async function getQuizSession(
   };
 }
 
+// 한 세션 안에서 사용자가 이미 응답한 attempts — problemId → 최신 응답 1건 매핑.
+// 시험지(sheet) view 가 새로고침되어도 이전 응답을 복원하기 위해 사용.
+export interface SessionAttemptEntry {
+  selectedChoiceId: string | null;
+  selectedChoiceIndex: number | null;
+  isCorrect: boolean;
+  timeSpentMs: number | null;
+  attemptedAt: string;
+}
+
+export async function getSessionAttemptsMap(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<Map<string, SessionAttemptEntry>> {
+  const map = new Map<string, SessionAttemptEntry>();
+  const { data, error } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, selected_choice_id, selected_choice_index, is_correct, time_spent_ms, attempted_at",
+    )
+    .eq("user_id", userId)
+    .eq("session_id", sessionId)
+    .order("attempted_at", { ascending: false });
+  if (error) throw error;
+  for (const r of data ?? []) {
+    if (map.has(r.problem_id)) continue;
+    map.set(r.problem_id, {
+      selectedChoiceId: r.selected_choice_id,
+      selectedChoiceIndex: r.selected_choice_index,
+      isCorrect: r.is_correct,
+      timeSpentMs: r.time_spent_ms,
+      attemptedAt: r.attempted_at,
+    });
+  }
+  return map;
+}
+
 export interface QuizSessionResultItem {
   problemId: string;
   problemNumber: number | null;
