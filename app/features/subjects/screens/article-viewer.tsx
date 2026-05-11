@@ -8,6 +8,7 @@ import {
   FileEditIcon,
   PencilIcon,
   PencilLineIcon,
+  ScrollTextIcon,
   WorkflowIcon,
   XIcon,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import { Link, data, useFetcher } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
+import { dispatchOpenCommentTab } from "~/features/laws/lib/comment-event";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -647,6 +649,25 @@ function ArticleViewerInner({
                     )}
                     소제목만 보기
                   </Button>
+                  {articleComment ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() =>
+                        dispatchOpenCommentTab({
+                          targetType: "article",
+                          targetId: article.articleId,
+                        })
+                      }
+                      title="강사 평석/해설 — 우측 코멘트 탭 활성"
+                      data-testid="open-article-comment"
+                    >
+                      <ScrollTextIcon className="size-3.5" />
+                      해설 보기
+                    </Button>
+                  ) : null}
                   {relatedCases.length > 0 && article.articleNumber ? (
                     <form
                       method="post"

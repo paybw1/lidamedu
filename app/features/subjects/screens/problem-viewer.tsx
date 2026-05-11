@@ -6,6 +6,7 @@ import {
   CircleXIcon,
   FlagIcon,
   TimerIcon,
+  VideoIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -630,6 +631,18 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 ) : (
                   <span>아직 풀이 데이터가 없습니다</span>
                 )}
+                {problem.videoUrl ? (
+                  <a
+                    href={problem.videoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:bg-accent ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs"
+                    data-testid="problem-video-link"
+                    title="강사 풀이 동영상 (외부 링크)"
+                  >
+                    <VideoIcon className="size-3" /> 동영상 풀이 보기
+                  </a>
+                ) : null}
               </div>
             </CardHeader>
             <Separator />

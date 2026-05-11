@@ -1935,6 +1935,7 @@ export type Database = {
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
           total_points: number | null
           updated_at: string
+          video_url: string | null
           year: number | null
         }
         Insert: {
@@ -1966,6 +1967,7 @@ export type Database = {
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
           total_points?: number | null
           updated_at?: string
+          video_url?: string | null
           year?: number | null
         }
         Update: {
@@ -1997,6 +1999,7 @@ export type Database = {
           subject_type?: Database["public"]["Enums"]["problem_subject_type"]
           total_points?: number | null
           updated_at?: string
+          video_url?: string | null
           year?: number | null
         }
         Relationships: [
@@ -2945,6 +2948,10 @@ export type Database = {
         Args: { p_page_a: number; p_page_b: number; p_submission_id: string }
         Returns: undefined
       }
+      is_announcement_author: {
+        Args: { p_announcement_id: string; p_user_id: string }
+        Returns: boolean
+      }
       publish_law_revision: {
         Args: {
           p_effective_date: string
@@ -2953,6 +2960,14 @@ export type Database = {
           p_published_by: string
         }
         Returns: undefined
+      }
+      user_is_in_cohort: {
+        Args: { p_cohort_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_owns_cohort: {
+        Args: { p_cohort_id: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {

@@ -16,6 +16,10 @@ import {
   MEMO_SNIPPET_EVENT,
   type MemoSnippetEventDetail,
 } from "~/features/annotations/lib/memo-selection-event";
+import {
+  OPEN_COMMENT_TAB_EVENT,
+  type OpenCommentTabEventDetail,
+} from "~/features/laws/lib/comment-event";
 
 import { Badge } from "~/core/components/ui/badge";
 import {
@@ -147,6 +151,18 @@ export function ArticleRightPanel({
     };
     document.addEventListener(MEMO_SNIPPET_EVENT, handler);
     return () => document.removeEventListener(MEMO_SNIPPET_EVENT, handler);
+  }, [target.type, target.id]);
+  // "해설 보기" 클릭 (feat-4-A-112) → 코멘트 탭 활성화.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<OpenCommentTabEventDetail>).detail;
+      if (!detail) return;
+      if (detail.targetType !== target.type || detail.targetId !== target.id)
+        return;
+      setActiveTab("comment");
+    };
+    document.addEventListener(OPEN_COMMENT_TAB_EVENT, handler);
+    return () => document.removeEventListener(OPEN_COMMENT_TAB_EVENT, handler);
   }, [target.type, target.id]);
   return (
     <div className="flex h-full flex-col">

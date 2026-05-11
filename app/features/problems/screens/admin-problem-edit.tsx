@@ -181,6 +181,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   const update: Record<string, unknown> = {
     body_md: String(fd.get("bodyMd") ?? ""),
     explanation_md: stringOrNull(fd.get("explanationMd")),
+    video_url: stringOrNull(fd.get("videoUrl")),
     origin: String(fd.get("origin") ?? "past_exam"),
     format: String(fd.get("format") ?? "mc_short"),
     polarity: stringOrNull(fd.get("polarity")),
@@ -576,6 +577,28 @@ export default function AdminProblemEdit({
           </CardHeader>
           <CardContent>
             <ExplanationEditor defaultValue={problem.explanationMd ?? ""} rows={10} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              풀이 동영상 URL (강사 업로드 — 외부 링크)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <input
+              name="videoUrl"
+              type="url"
+              maxLength={2000}
+              defaultValue={problem.videoUrl ?? ""}
+              placeholder="https://www.youtube.com/watch?v=…"
+              className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
+              data-testid="problem-video-url"
+            />
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              빈 값으로 저장하면 학생 viewer 에서 동영상 풀이 버튼이 숨겨집니다.
+            </p>
           </CardContent>
         </Card>
 

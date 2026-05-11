@@ -17,6 +17,7 @@ export default [
 
   // API Routes (no UI)
   ...prefix("/api", [
+    route("/search", "features/search/api/search.tsx"),
     ...prefix("/settings", [
       route("/theme", "features/settings/api/set-theme.tsx"),
       route("/locale", "features/settings/api/set-locale.tsx"),

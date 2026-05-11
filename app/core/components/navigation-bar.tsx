@@ -1,5 +1,7 @@
-import { CogIcon, HomeIcon, LogOutIcon, MenuIcon } from "lucide-react";
+import { CogIcon, HomeIcon, LogOutIcon, MenuIcon, SearchIcon } from "lucide-react";
 import { Link } from "react-router";
+
+import { openCommandPalette } from "./command-palette";
 
 import {
   NavigationMenu,
@@ -164,6 +166,20 @@ function AuthButtons() {
 function Actions() {
   return (
     <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-muted-foreground inline-flex h-8 items-center gap-1.5 px-2"
+        onClick={() => openCommandPalette()}
+        aria-label="전역 검색 (⌘K)"
+        data-testid="open-command-palette"
+      >
+        <SearchIcon className="size-3.5" />
+        <span className="hidden text-xs sm:inline">검색</span>
+        <kbd className="bg-muted hidden rounded border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
+          ⌘K
+        </kbd>
+      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild className="cursor-pointer">
           <Button variant="ghost" size="icon">
