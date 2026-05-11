@@ -14,6 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_audiences: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          announcement_id: string
+          audience_id: string
+          audience_type: Database["public"]["Enums"]["announcement_audience_target"]
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          announcement_id: string
+          audience_id: string
+          audience_type: Database["public"]["Enums"]["announcement_audience_target"]
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          announcement_id?: string
+          audience_id?: string
+          audience_type?: Database["public"]["Enums"]["announcement_audience_target"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_audiences_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "announcement_audiences_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["announcement_id"]
+          },
+        ]
+      }
+      announcement_reads: {
+        Row: {
+          announcement_id: string
+          profile_id: string
+          read_at: string
+        }
+        Insert: {
+          announcement_id: string
+          profile_id: string
+          read_at?: string
+        }
+        Update: {
+          announcement_id?: string
+          profile_id?: string
+          read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["announcement_id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          announcement_id: string
+          audience_kind: Database["public"]["Enums"]["announcement_audience_kind"]
+          author_id: string
+          body_md: string
+          created_at: string
+          deleted_at: string | null
+          is_pinned: boolean
+          published_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          announcement_id?: string
+          audience_kind?: Database["public"]["Enums"]["announcement_audience_kind"]
+          author_id: string
+          body_md?: string
+          created_at?: string
+          deleted_at?: string | null
+          is_pinned?: boolean
+          published_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          announcement_id?: string
+          audience_kind?: Database["public"]["Enums"]["announcement_audience_kind"]
+          author_id?: string
+          body_md?: string
+          created_at?: string
+          deleted_at?: string | null
+          is_pinned?: boolean
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       article_article_links: {
         Row: {
           article_a: string
@@ -2853,6 +2972,8 @@ export type Database = {
         | "problem"
         | "problem_choice"
         | "problem_box_item"
+      announcement_audience_kind: "all" | "cohort" | "user"
+      announcement_audience_target: "cohort" | "user"
       article_level: "part" | "chapter" | "section" | "article"
       auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
@@ -3025,6 +3146,8 @@ export const Constants = {
         "problem_choice",
         "problem_box_item",
       ],
+      announcement_audience_kind: ["all", "cohort", "user"],
+      announcement_audience_target: ["cohort", "user"],
       article_level: ["part", "chapter", "section", "article"],
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],

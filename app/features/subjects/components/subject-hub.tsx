@@ -51,6 +51,7 @@ interface SubjectHubProps {
   lawId?: string;
   articles?: ArticleNode[];
   systematicNodes?: SystematicNode[];
+  progressByArticle?: import("./node-progress-gauge").NodeProgressByArticle;
   cases?: CaseListItem[];
   casesTotal?: number;
   caseFilters?: CaseFiltersApplied;
@@ -96,6 +97,7 @@ function SubjectHubInner({
   problemStats,
   problemAggStats,
   recommendedArticles,
+  progressByArticle,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -165,6 +167,7 @@ function SubjectHubInner({
             bookmarkLevels={bookmarkLevels}
             annotationCounts={annotationCounts}
             recommendedArticles={recommendedArticles ?? []}
+            progressByArticle={progressByArticle}
           />
         </TabsContent>
         <TabsContent value="cases">

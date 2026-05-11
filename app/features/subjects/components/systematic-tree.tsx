@@ -16,6 +16,11 @@ import type {
   SystematicNode,
 } from "~/features/laws/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import {
+  NodeProgressGauge,
+  sumNodeProgress,
+  type NodeProgressByArticle,
+} from "~/features/subjects/components/node-progress-gauge";
 
 type ImportanceFilter = 0 | 1 | 2 | 3;
 type BookmarkFilter = 0 | 1 | 2 | 3 | 4 | 5;
@@ -129,6 +134,7 @@ export function SystematicTree({
   emptyHint,
   bookmarkLevels,
   annotationCounts,
+  progressByArticle,
 }: {
   nodes: SystematicNode[];
   activeArticleId?: string;
@@ -136,6 +142,7 @@ export function SystematicTree({
   emptyHint?: string;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
+  progressByArticle?: NodeProgressByArticle;
 }) {
   const tree = useMemo(() => buildTree(nodes), [nodes]);
   const expandedIds = useMemo(
@@ -255,6 +262,7 @@ export function SystematicTree({
               lawCode={lawCode}
               bookmarkLevels={bookmarkLevels}
               annotationCounts={annotationCounts}
+              progressByArticle={progressByArticle}
             />
           ))}
         </ul>
@@ -271,6 +279,7 @@ function SystematicItem({
   lawCode,
   bookmarkLevels,
   annotationCounts,
+  progressByArticle,
 }: {
   node: TreeNode;
   depth: number;
@@ -279,6 +288,7 @@ function SystematicItem({
   lawCode: LawSubjectSlug;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
+  progressByArticle?: NodeProgressByArticle;
 }) {
   const initialOpen = forceOpen.has(node.nodeId) || depth === 0;
   const [open, setOpen] = useState(initialOpen);
@@ -324,6 +334,24 @@ function SystematicItem({
       </span>
     ) : null;
 
+  // 노드 subtree articleIds 합산 → 게이지.
+  const subtreeArticleIds: string[] = (() => {
+    if (!progressByArticle) return [];
+    const set = new Set<string>();
+    const walk = (n: TreeNode) => {
+      for (const a of n.articles) set.add(a.articleId);
+      for (const c of n.children) walk(c);
+    };
+    walk(node);
+    return [...set];
+  })();
+  const totals = progressByArticle
+    ? sumNodeProgress(subtreeArticleIds, progressByArticle)
+    : null;
+  const gaugeEl = totals && totals.articleTotal > 0 ? (
+    <NodeProgressGauge totals={totals} compact />
+  ) : null;
+
   return (
     <li>
       {expandable ? (
@@ -344,6 +372,7 @@ function SystematicItem({
             className="flex min-w-0 flex-1 items-center gap-1 hover:underline"
           >
             {labelEl}
+            {gaugeEl}
             {countEl}
           </Link>
         </div>
@@ -351,6 +380,7 @@ function SystematicItem({
         <div className={rowClass} style={rowStyle}>
           <span className="inline-block size-5" />
           {labelEl}
+          {gaugeEl}
           {countEl}
         </div>
       )}
@@ -384,6 +414,7 @@ function SystematicItem({
                   lawCode={lawCode}
                   bookmarkLevels={bookmarkLevels}
                   annotationCounts={annotationCounts}
+                  progressByArticle={progressByArticle}
                 />
               ))}
             </ul>

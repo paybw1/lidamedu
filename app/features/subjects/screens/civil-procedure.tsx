@@ -36,6 +36,7 @@ export default function SubjectCivilProcedure({
       problemStats={loaderData.problemStats}
       problemAggStats={loaderData.problemAggStats}
       recommendedArticles={loaderData.recommendedArticles}
+      progressByArticle={loaderData.progressByArticle}
     />
   );
 }

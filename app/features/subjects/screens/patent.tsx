@@ -32,6 +32,7 @@ export default function SubjectPatent({ loaderData }: Route.ComponentProps) {
       problemStats={loaderData.problemStats}
       problemAggStats={loaderData.problemAggStats}
       recommendedArticles={loaderData.recommendedArticles}
+      progressByArticle={loaderData.progressByArticle}
     />
   );
 }

@@ -840,6 +840,44 @@ export async function getRelatedProblems(
   }));
 }
 
+// 체계도 노드 미니그래프 / 진척도용 — 여러 article 의 primary 문제 일괄 조회.
+// 한 article 당 여러 문제 가능. 반환: articleId → 문제 목록.
+export async function listProblemsByArticleIds(
+  client: SupabaseClient<Database>,
+  articleIds: string[],
+  limitPerArticle = 30,
+): Promise<Record<string, { problemId: string; year: number | null; problemNumber: number | null; format: string; origin: string }[]>> {
+  if (articleIds.length === 0) return {};
+  const { data, error } = await client
+    .from("problems")
+    .select(
+      "problem_id, primary_article_id, year, problem_number, format, origin",
+    )
+    .in("primary_article_id", articleIds)
+    .is("deleted_at", null)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("problem_number", { ascending: true });
+  if (error) throw error;
+  const result: Record<
+    string,
+    { problemId: string; year: number | null; problemNumber: number | null; format: string; origin: string }[]
+  > = {};
+  for (const aid of articleIds) result[aid] = [];
+  for (const r of data ?? []) {
+    if (!r.primary_article_id) continue;
+    const arr = result[r.primary_article_id];
+    if (!arr || arr.length >= limitPerArticle) continue;
+    arr.push({
+      problemId: r.problem_id,
+      year: r.year,
+      problemNumber: r.problem_number,
+      format: r.format,
+      origin: r.origin,
+    });
+  }
+  return result;
+}
+
 // case 의 관련 조문(article_case_links) 들이 primary_article_id 인 문제 — 입체 학습용.
 // case-viewer 우측 패널 "유사 문제" 탭에서 노출.
 // 직접 인용(problem_case_links)이 있으면 그 문제들이 isCited=true 로 먼저 정렬.

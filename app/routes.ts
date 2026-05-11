@@ -71,6 +71,10 @@ export default [
       route("/user-role", "features/admin/api/user-role.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
       route("/law-revision", "features/admin/api/law-revision.tsx"),
+      route("/announcement", "features/admin/api/announcement.tsx"),
+    ]),
+    ...prefix("/announcements", [
+      route("/read", "features/announcements/api/read.tsx"),
     ]),
     ...prefix("/problems", [
       route(
@@ -86,6 +90,7 @@ export default [
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
+      route("/start-flow", "features/study/api/start-flow.tsx"),
     ]),
     ...prefix("/mcq-pack", [
       route("/start", "features/mcq-packs/api/start.tsx"),
@@ -243,7 +248,19 @@ export default [
       ),
       route("/gs/points", "features/gs/screens/gs-points.tsx"),
       route("/community", "features/community/screens/community.tsx"),
+      route(
+        "/announcements",
+        "features/announcements/screens/announcements-inbox.tsx",
+      ),
       route("/admin", "features/admin/screens/admin.tsx"),
+      route(
+        "/admin/announcements",
+        "features/admin/screens/admin-announcements.tsx",
+      ),
+      route(
+        "/admin/announcements/audiences",
+        "features/admin/screens/admin-announcement-audiences.tsx",
+      ),
       route("/admin/cases", "features/admin/screens/admin-cases.tsx"),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
       route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),

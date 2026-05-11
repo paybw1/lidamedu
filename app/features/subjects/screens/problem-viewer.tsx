@@ -39,6 +39,11 @@ import {
   SCOPE_LABEL,
 } from "~/features/problems/labels";
 import {
+  deriveBoxItemOxTruth,
+  deriveChoiceOxTruth,
+} from "~/features/problems/lib/auto-ox";
+import { FlowNav } from "~/features/study/components/flow-nav";
+import {
   getCasesCitedByProblem,
   getChoiceLinkRefs,
   getProblemById,
@@ -451,6 +456,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+      <FlowNav
+        subjectSlug={subject.slug}
+        currentType="problem"
+        currentId={problem.problemId}
+      />
       <HighlightToolbar targetType="problem" targetId={problem.problemId} />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -621,6 +631,24 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 {problem.bodyMd}
               </p>
 
+              {problem.boxItems.length > 0 ? (
+                <div className="border-foreground/40 bg-muted/30 rounded-md border-2 px-4 py-3">
+                  <ul className="space-y-1.5">
+                    {problem.boxItems.map((bi) => (
+                      <li
+                        key={bi.boxItemId}
+                        className="font-serif flex gap-2 text-sm leading-relaxed"
+                      >
+                        <span className="text-foreground/80 shrink-0 font-medium">
+                          {bi.marker}
+                        </span>
+                        <span className="flex-1">{bi.bodyMd}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               <ul className="space-y-2">
                 {problem.choices.map((c) => {
                   const isSelected = selected === c.choiceIndex;
@@ -713,11 +741,91 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 <Card className="border-dashed">
                   <CardHeader>
                     <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                      해설 — 지문별 O/X
+                      해설 — {problem.format === "mc_box" ? "박스 항목" : "지문"}별 O/X
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {problem.choices.map((c) => (
+                    {problem.boxItems.length > 0
+                      ? (() => {
+                          const correctChoiceBody =
+                            problem.choices.find((c) => c.isCorrect)?.bodyMd ??
+                            null;
+                          return problem.boxItems.map((bi) => {
+                            const truth: "O" | "X" | null = bi.oxIneligible
+                              ? null
+                              : (bi.oxTruth ??
+                                deriveBoxItemOxTruth({
+                                  polarity: problem.polarity,
+                                  format: problem.format,
+                                  marker: bi.marker,
+                                  correctChoiceBody,
+                                  oxIneligible: bi.oxIneligible,
+                                }));
+                            return (
+                              <div
+                                key={bi.boxItemId}
+                                className="flex items-start gap-2 text-sm"
+                              >
+                                <span
+                                  className={cn(
+                                    "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                                    truth === "O"
+                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                      : truth === "X"
+                                        ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200"
+                                        : "bg-muted text-muted-foreground",
+                                  )}
+                                >
+                                  {bi.marker}
+                                </span>
+                                <div className="flex-1 space-y-0.5">
+                                  <p>
+                                    <span className="font-semibold">
+                                      {truth ?? "—"}
+                                    </span>
+                                    {bi.explanationMd ? (
+                                      <span className="text-muted-foreground ml-2">
+                                        {bi.explanationMd}
+                                      </span>
+                                    ) : null}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()
+                      : null}
+                    {problem.boxItems.length > 0 && problem.choices.length > 0 ? (
+                      <div className="border-t pt-2">
+                        <p className="text-muted-foreground mb-1 text-xs">
+                          정답 보기
+                        </p>
+                      </div>
+                    ) : null}
+                    {problem.choices.map((c) => {
+                      // mc_box: 보기는 박스 묶음이라 per-choice OX 의미 없음 → 정답만 표시.
+                      // mc_short(긍정/부정형 단답): 헬퍼로 polarity 반영해 O/X 산출.
+                      // 그 외(mc_case 등): 정답 여부만 표시.
+                      const derivedOx =
+                        problem.format === "mc_short"
+                          ? (c.oxTruth ??
+                            deriveChoiceOxTruth({
+                              polarity: problem.polarity,
+                              format: problem.format,
+                              isCorrect: c.isCorrect,
+                              oxIneligible: c.oxIneligible,
+                            }))
+                          : null;
+                      const label =
+                        problem.format === "mc_box"
+                          ? c.isCorrect
+                            ? "정답"
+                            : ""
+                          : (derivedOx ?? (c.isCorrect ? "정답" : ""));
+                      const tone = c.isCorrect
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                        : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200";
+                      return (
                       <div
                         key={c.choiceId}
                         className="flex items-start gap-2 text-sm"
@@ -725,18 +833,14 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                         <span
                           className={cn(
                             "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
-                            c.isCorrect
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200",
+                            tone,
                           )}
                         >
                           {c.choiceIndex}
                         </span>
                         <div className="flex-1 space-y-0.5">
                           <p>
-                            <span className="font-semibold">
-                              {c.isCorrect ? "O" : "X"}
-                            </span>
+                            <span className="font-semibold">{label || "—"}</span>
                             {c.explanationMd ? (
                               <span className="text-muted-foreground ml-2">
                                 {c.explanationMd}
@@ -797,10 +901,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                           </div>
                         </div>
                       </div>
-                    ))}
-                    <p className="text-muted-foreground pt-2 text-xs">
-                      Runner(타이머·일괄 제출·오답노트)는 추후 (feat-4-A-303~307).
-                    </p>
+                      );
+                    })}
                   </CardContent>
                 </Card>
               ) : null}

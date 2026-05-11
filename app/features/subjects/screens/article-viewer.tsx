@@ -8,6 +8,7 @@ import {
   FileEditIcon,
   PencilIcon,
   PencilLineIcon,
+  WorkflowIcon,
   XIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -29,6 +30,7 @@ import {
 import { recordStudySession } from "~/features/study/queries.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { FlowNav } from "~/features/study/components/flow-nav";
 import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
 import { RecitationView } from "~/features/recitation/components/recitation-view";
 import { BlankOwnerSelector } from "~/features/blanks/components/blank-owner-selector";
@@ -360,6 +362,13 @@ function ArticleViewerInner({
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+      {article.articleNumber ? (
+        <FlowNav
+          subjectSlug={subject.slug}
+          currentType="article"
+          currentId={article.articleNumber}
+        />
+      ) : null}
       <HighlightToolbar
         targetType="article"
         targetId={article.articleId}
@@ -638,6 +647,34 @@ function ArticleViewerInner({
                     )}
                     소제목만 보기
                   </Button>
+                  {relatedCases.length > 0 && article.articleNumber ? (
+                    <form
+                      method="post"
+                      action="/api/study/start-flow"
+                    >
+                      <input type="hidden" name="subject" value={subject.slug} />
+                      <input
+                        type="hidden"
+                        name="articleId"
+                        value={article.articleId}
+                      />
+                      <input
+                        type="hidden"
+                        name="articleNumber"
+                        value={article.articleNumber}
+                      />
+                      <Button
+                        type="submit"
+                        variant="default"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        title="조문 → 관련 판례 → 그 판례를 다룬 문제 순회"
+                      >
+                        <WorkflowIcon className="size-3.5" />
+                        흐름 학습
+                      </Button>
+                    </form>
+                  ) : null}
                 </div>
               </div>
             </CardHeader>

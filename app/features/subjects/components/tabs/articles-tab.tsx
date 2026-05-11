@@ -20,6 +20,7 @@ import type {
 } from "~/features/study/queries.server";
 
 import { ArticleTree } from "../article-tree";
+import type { NodeProgressByArticle } from "../node-progress-gauge";
 import { SystematicTree } from "../systematic-tree";
 import { SortAxisToggle, useSortAxis } from "../sort-axis";
 import type { LawSubjectMeta } from "../../lib/subjects";
@@ -33,6 +34,7 @@ export function ArticlesTab({
   bookmarkLevels,
   annotationCounts,
   recommendedArticles,
+  progressByArticle,
 }: {
   subject: LawSubjectMeta;
   lawId?: string;
@@ -42,6 +44,7 @@ export function ArticlesTab({
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
   recommendedArticles: RecommendedArticleItem[];
+  progressByArticle?: NodeProgressByArticle;
 }) {
   const { axis } = useSortAxis();
   const articleCount = articles.filter((a) => a.level === "article").length;
@@ -68,6 +71,7 @@ export function ArticlesTab({
                 emptyHint={`${subject.name} 테크 트리가 아직 등록되지 않았습니다.`}
                 bookmarkLevels={bookmarkLevels}
                 annotationCounts={annotationCounts}
+                progressByArticle={progressByArticle}
               />
             ) : (
               <ArticleTree

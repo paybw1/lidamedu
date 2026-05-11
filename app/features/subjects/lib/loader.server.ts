@@ -42,6 +42,8 @@ import {
   type SubjectProgress,
   type UserProblemStats,
 } from "~/features/study/queries.server";
+import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
+import type { NodeProgressByArticle } from "~/features/subjects/components/node-progress-gauge";
 import type {
   DifficultyBucket,
   ProblemAggregateStats,
@@ -108,6 +110,7 @@ export interface SubjectHubData {
   problemStats: UserProblemStats | null;
   problemAggStats: Record<string, ProblemAggregateStats>;
   recommendedArticles: RecommendedArticleItem[];
+  progressByArticle: NodeProgressByArticle;
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
@@ -359,6 +362,7 @@ export async function loadSubjectHub(
       problemStats: null,
       problemAggStats: {},
       recommendedArticles: [],
+      progressByArticle: {} as NodeProgressByArticle,
     };
   }
   // 1단계 — 트리/판례 카운트 등 case-filter 결정에 선행해야 하는 데이터.
@@ -430,6 +434,7 @@ export async function loadSubjectHub(
     annotationCounts,
     problemStats,
     recommendedArticles,
+    progressByArticle,
   ] = user
     ? await Promise.all([
         getSubjectProgress(client, user.id, lawCode, totalArticleCount),
@@ -437,8 +442,13 @@ export async function loadSubjectHub(
         getUserArticleAnnotationCounts(client, user.id),
         getUserProblemStats(client, user.id, lawCode),
         getRecommendedArticles(client, user.id, lawCode, 6),
+        buildNodeProgressByArticle(
+          client,
+          user.id,
+          articles.filter((a) => a.level === "article").map((a) => a.articleId),
+        ),
       ])
-    : [null, {}, {}, null, []];
+    : [null, {}, {}, null, [], {} as NodeProgressByArticle];
 
   // 표시되는 문제 ID 들의 전체 사용자 정답률 집계 (난이도 뱃지용).
   const aggMap = await getProblemStatsBulk(
@@ -496,5 +506,6 @@ export async function loadSubjectHub(
     problemStats,
     problemAggStats,
     recommendedArticles,
+    progressByArticle,
   };
 }

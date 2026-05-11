@@ -15,6 +15,7 @@ import {
   GavelIcon,
   ListChecksIcon,
   LockIcon,
+  MegaphoneIcon,
   NetworkIcon,
   NewspaperIcon,
   ShieldCheckIcon,
@@ -140,6 +141,12 @@ const USER_CARDS: AdminCardData[] = [
     title: "반 / 기수 관리",
     subtitle: "강사별 반 CRUD + 학생 멤버 할당",
     icon: BookOpenIcon,
+  },
+  {
+    to: "/admin/announcements",
+    title: "공지사항 발송",
+    subtitle: "전체 / 반 / 개별 사용자 대상 공지 작성·발행",
+    icon: MegaphoneIcon,
   },
 ];
 

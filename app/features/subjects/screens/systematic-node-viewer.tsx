@@ -41,14 +41,18 @@ import type { OxRefAnnotations } from "~/features/problems/labels";
 import {
   getOxAnnotationsForRefs,
   getOxQuestionsForArticle,
+  listProblemsByArticleIds,
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
+import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
+import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
   SortAxisProvider,
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
+import { NodeMiniGraph } from "~/features/subjects/components/node-mini-graph";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import {
   EXAM_LABEL,
@@ -109,6 +113,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaByArticle,
     allBlankSetsByArticle,
     oxQuestionsByArticle,
+    relatedCasesByArticle,
+    problemsByArticle,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
@@ -139,6 +145,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         ),
       ),
     ).then((entries) => Object.fromEntries(entries)),
+    Promise.all(
+      articleIds.map((id) =>
+        getRelatedCasesByArticle(client, id).then(
+          (cases) => [id, cases] as const,
+        ),
+      ),
+    ).then((entries) => Object.fromEntries(entries)),
+    listProblemsByArticleIds(client, articleIds),
   ]);
 
   // ?blank-owner=<uuid> 로 모든 카드의 빈칸 set 일괄 owner 적용. 없으면 article별 첫 set.
@@ -175,6 +189,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const oxAnnotationsByRef: Record<string, OxRefAnnotations> =
     await getOxAnnotationsForRefs(client, user.id, allOxItems);
 
+  // 노드 진척도 — 사이드바 트리 게이지용. 전체 article skeleton 으로 계산.
+  const allArticleIds = articles
+    .filter((a) => a.level === "article")
+    .map((a) => a.articleId);
+  const progressByArticle = await buildNodeProgressByArticle(
+    client,
+    user.id,
+    allArticleIds,
+  );
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     lawId: law.lawId,
@@ -191,6 +215,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankOwners,
     oxQuestionsByArticle,
     oxAnnotationsByRef,
+    relatedCasesByArticle,
+    problemsByArticle,
+    progressByArticle,
     selectedBlankOwner: ownerParam,
   };
 }
@@ -226,6 +253,9 @@ function Inner({
     blankOwners,
     oxQuestionsByArticle,
     oxAnnotationsByRef,
+    relatedCasesByArticle,
+    problemsByArticle,
+    progressByArticle,
     selectedBlankOwner,
   } = loaderData;
   const { axis } = useSortAxis();
@@ -316,6 +346,7 @@ function Inner({
                   lawCode={subject.slug}
                   bookmarkLevels={bookmarkLevels}
                   annotationCounts={annotationCounts}
+                  progressByArticle={progressByArticle}
                 />
               ) : (
                 <ArticleTree
@@ -441,6 +472,19 @@ function Inner({
             <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
           ) : null}
 
+          {node.articles.length > 0 ? (
+            <NodeMiniGraph
+              articles={node.articles.map((a) => ({
+                articleId: a.articleId,
+                articleNumber: a.articleNumber,
+                displayLabel: a.displayLabel,
+              }))}
+              relatedCasesByArticle={relatedCasesByArticle}
+              problemsByArticle={problemsByArticle}
+              subjectSlug={subject.slug}
+            />
+          ) : null}
+
           {node.articles.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
@@ -562,6 +606,7 @@ function Inner({
                         qnaThreads={qnaThreads}
                         oxQuestions={oxQuestionsByArticle[a.articleId] ?? []}
                         oxAnnotationsByRef={oxAnnotationsByRef}
+                        relatedCases={relatedCasesByArticle[a.articleId] ?? []}
                         subjectSlug={subject.slug}
                       />
                     </div>

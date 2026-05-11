@@ -19,6 +19,7 @@ import {
 } from "~/features/annotations/queries.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { COURT_LABELS } from "~/features/cases/labels";
 import {
@@ -166,6 +167,11 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+      <FlowNav
+        subjectSlug={subject.slug}
+        currentType="case"
+        currentId={kase.caseId}
+      />
       <HighlightToolbar targetType="case" targetId={kase.caseId} />
       <Link
         to={`/subjects/${subject.slug}?tab=cases`}
