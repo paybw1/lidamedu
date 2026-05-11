@@ -25,6 +25,7 @@ import {
   getCaseById,
 } from "~/features/cases/queries.server";
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
+import { CiteCopyButton } from "~/features/cases/components/cite-copy";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
   RelatedArticlesChips,
@@ -224,6 +225,13 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 <span className="text-muted-foreground text-xs tabular-nums">
                   {kase.decidedAt} 선고
                 </span>
+                <CiteCopyButton
+                  court={kase.court}
+                  decidedAt={kase.decidedAt}
+                  caseNumber={kase.caseNumber}
+                  caseType={kase.caseType}
+                  isEnBanc={kase.isEnBanc}
+                />
               </div>
               <h1 className="text-2xl font-bold tracking-tight">
                 {kase.caseTitle}
@@ -286,18 +294,38 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </Section>
               ) : null}
               {kase.fullTextPdf ? (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={kase.fullTextPdf} target="_blank" rel="noreferrer">
-                    <FileTextIcon /> 판결전문 PDF
-                  </a>
-                </Button>
-              ) : (
-                <p className="text-muted-foreground text-xs">
-                  판결전문 PDF 미첨부 (feat-4-A-211)
-                </p>
-              )}
+                <Section title="판결전문 PDF">
+                  <div className="space-y-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={kase.fullTextPdf}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <FileTextIcon className="size-4" /> 새 탭에서 열기
+                      </a>
+                    </Button>
+                    <iframe
+                      title="판결전문 PDF"
+                      src={kase.fullTextPdf}
+                      className="h-[80vh] w-full rounded-md border"
+                      loading="lazy"
+                    />
+                  </div>
+                </Section>
+              ) : null}
               {kase.commentBodyMd ? (
-                <Section title="비고" meta={kase.commentSource ?? undefined}>
+                <Section title="비고">
+                  {kase.commentSource ? (
+                    <div className="border-muted-foreground/30 mb-2 border-l-2 pl-2">
+                      <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                        출처
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {kase.commentSource}
+                      </p>
+                    </div>
+                  ) : null}
                   <HighlightOverlay
                     fieldPath="case.comment"
                     targetType="case"

@@ -279,13 +279,13 @@
 | feat-4-A-204 | 판례 카드 목록 (사건번호, 사건유형, 요약, 선고일, 기출년도 chip 1차=blue/2차=rose). | P0 | ✅ |
 | feat-4-A-205 | 판례 상세 뷰어 — 헤더(법원·사건번호·사건유형·전합·중요도·선고일·기출년도) / 판결요지(복수 [1][2] 분리) / 판시이유 / 비고. 좌측 조문트리 · 우측 패널 3분할. | P0 | ✅ |
 | feat-4-A-206 | 판례 본문 하이라이트 — 요지·이유·비고 3 영역에 fieldPath 별 HighlightOverlay + 상단 HighlightToolbar. 메모/즐겨찾기는 우측 패널(ArticleRightPanel). | P0 | ✅ |
-| feat-4-A-207 | 인용 복사 버튼 (학술 표기 형식) | P1 | 🔲 |
+| feat-4-A-207 | 인용 복사 버튼 — case-viewer 헤더 우측 "인용 복사" / buildCitation: "{법원} {YYYY. M. D.} 선고 {사건번호} 판결 【{유형}】". 클립보드 API + 폴백 prompt. | P1 | ✅ |
 | feat-4-A-208 | 판례 전문 검색 (Postgres tsvector + pg_trgm) | P1 | 🟡 |
 | feat-4-A-209 | 판례 색인 화면 (테이블 — 중요·법원·선고일·사건번호·사건유형·사건명+기출년도·전합). 검색·정렬·기출 필터·페이지네이션(50/페이지). | P0 | ✅ |
 | feat-4-A-210 | 판례 트리 진입 (체계도/조문 순서, leaf 카운트) | P1 | 🔲 |
-| feat-4-A-211 | 판결전문 PDF 뷰어 | P0 | 🔲 |
+| feat-4-A-211 | 판결전문 PDF 뷰어 — cases.full_text_pdf URL 이 있으면 case-viewer 본문에 iframe 임베드(80vh) + "새 탭에서 열기" 버튼. 미첨부 case 는 섹션 자체 숨김. | P0 | ✅ |
 | feat-4-A-212 | 관련문제 패널 — case-viewer 우측 패널 "유사 문제" 탭: `getRelatedProblemsByCase` (article_case_links 가 가리키는 article 의 primary_article_id 문제 12건). 1차/2차 양방향 링크는 explicit problem_case_links 모델 추가 시 보강. | P0 | ✅ |
-| feat-4-A-213 | 코멘트(평석) 출처/내용 분리, 하이라이트 | P0 | 🟡 |
+| feat-4-A-213 | 비고/코멘트(평석) 출처/내용 분리 — comment_source 가 있으면 본문 위에 별도 박스(왼쪽 border-l)로 노출. 내용은 HighlightOverlay 로 wrap. | P0 | ✅ |
 | feat-4-A-214 | 관련논문/기사 링크 (PDF/외부) | P1 | 🔲 |
 | feat-4-A-215 | Q&A 패널 (공통 컴포넌트) | P0 | 🟡 |
 
