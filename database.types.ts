@@ -1116,6 +1116,166 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_article_links: {
+        Row: {
+          article_id: string
+          created_at: string
+          created_by: string | null
+          link_id: string
+          note: string | null
+          paper_id: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          paper_id: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          paper_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_article_links_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "paper_article_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "paper_article_links_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["paper_id"]
+          },
+        ]
+      }
+      paper_case_links: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string | null
+          link_id: string
+          note: string | null
+          paper_id: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          paper_id: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          paper_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_case_links_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "paper_case_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "paper_case_links_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["paper_id"]
+          },
+        ]
+      }
+      papers: {
+        Row: {
+          abstract: string | null
+          authors: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          importance: number
+          paper_id: string
+          pdf_url: string | null
+          published_at: string | null
+          source: string | null
+          subject_laws: string[]
+          tags: string[]
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          abstract?: string | null
+          authors?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          importance?: number
+          paper_id?: string
+          pdf_url?: string | null
+          published_at?: string | null
+          source?: string | null
+          subject_laws?: string[]
+          tags?: string[]
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          abstract?: string | null
+          authors?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          importance?: number
+          paper_id?: string
+          pdf_url?: string | null
+          published_at?: string | null
+          source?: string | null
+          subject_laws?: string[]
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "papers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       problem_box_items: {
         Row: {
           body_md: string

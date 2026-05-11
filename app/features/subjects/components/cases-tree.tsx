@@ -3,8 +3,8 @@
 // 각 노드 옆에 leaf 카운트(판례 수) chip 표시. 0건 노드는 trim.
 // 노드 클릭 → 현재 URL search 에 case_article / case_chapter / case_node 셋업 → 셔플.
 
-import { ChevronRightIcon, GavelIcon, XIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronRightIcon, GavelIcon, SearchIcon, XIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -110,6 +110,65 @@ function pruneSystematicTree(
   return recur(nodes);
 }
 
+// 검색 — 노드 라벨 substring 매칭. 매칭 노드 자신 + 조상 라인 유지.
+function searchArticleTree(
+  tree: ArticleTreeNode[],
+  query: string,
+): ArticleTreeNode[] {
+  const q = query.trim().toLowerCase();
+  if (q === "") return tree;
+  const recur = (xs: ArticleTreeNode[]): ArticleTreeNode[] => {
+    const out: ArticleTreeNode[] = [];
+    for (const n of xs) {
+      const self = n.displayLabel.toLowerCase().includes(q);
+      const kids = recur(n.children);
+      if (self || kids.length > 0) {
+        out.push({ ...n, children: kids });
+      }
+    }
+    return out;
+  };
+  return recur(tree);
+}
+
+function searchSystematicTree(
+  tree: SystematicTreeNode[],
+  query: string,
+): SystematicTreeNode[] {
+  const q = query.trim().toLowerCase();
+  if (q === "") return tree;
+  const recur = (xs: SystematicTreeNode[]): SystematicTreeNode[] => {
+    const out: SystematicTreeNode[] = [];
+    for (const n of xs) {
+      const self = n.displayLabel.toLowerCase().includes(q);
+      const kids = recur(n.children);
+      if (self || kids.length > 0) {
+        out.push({ ...n, children: kids });
+      }
+    }
+    return out;
+  };
+  return recur(tree);
+}
+
+// 검색 매칭 시 모든 조상 자동 펼침을 위해, 결과 트리의 모든 비-leaf 노드 ID 수집.
+function collectAllAncestorIds(
+  tree: ArticleTreeNode[] | SystematicTreeNode[],
+  idOf: (n: ArticleTreeNode | SystematicTreeNode) => string,
+): Set<string> {
+  const out = new Set<string>();
+  const walk = (xs: (ArticleTreeNode | SystematicTreeNode)[]) => {
+    for (const x of xs) {
+      if (x.children.length > 0) {
+        out.add(idOf(x));
+        walk(x.children);
+      }
+    }
+  };
+  walk(tree);
+  return out;
+}
+
 function activeArticleAncestors(
   articles: ArticleNode[],
   activeId: string | undefined,
@@ -182,10 +241,11 @@ export function CasesTree({
   emptyHint?: string;
 }) {
   const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState("");
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
 
-  const articleTree = useMemo(
+  const articleTreeBase = useMemo(
     () =>
       pruneArticleTree(
         buildArticleTree(articles),
@@ -194,7 +254,7 @@ export function CasesTree({
       ),
     [articles, caseTreeCounts.byArticleId, caseTreeCounts.byChapterId],
   );
-  const systematicTree = useMemo(
+  const systematicTreeBase = useMemo(
     () =>
       pruneSystematicTree(
         buildSystematicTree(systematicNodes),
@@ -203,13 +263,30 @@ export function CasesTree({
     [systematicNodes, caseTreeCounts.byNodeId],
   );
 
+  const articleTree = useMemo(
+    () => searchArticleTree(articleTreeBase, searchQuery),
+    [articleTreeBase, searchQuery],
+  );
+  const systematicTree = useMemo(
+    () => searchSystematicTree(systematicTreeBase, searchQuery),
+    [systematicTreeBase, searchQuery],
+  );
+
   const activeArticleId =
     active?.kind === "article" ? active.articleId : undefined;
   const activeChapterId =
     active?.kind === "chapter" ? active.chapterId : undefined;
   const activeNodeId = active?.kind === "node" ? active.nodeId : undefined;
 
+  const trimmedQuery = searchQuery.trim();
+
   const articleForceOpen = useMemo(() => {
+    // 검색 중에는 결과 트리의 모든 조상을 자동 펼침 (매칭 노드까지 한 번에 보이도록).
+    if (trimmedQuery !== "") {
+      return collectAllAncestorIds(articleTree, (n) =>
+        (n as ArticleTreeNode).articleId,
+      );
+    }
     const set = activeArticleAncestors(articles, activeArticleId);
     if (activeChapterId) {
       for (const id of activeArticleAncestors(articles, activeChapterId))
@@ -217,19 +294,52 @@ export function CasesTree({
       set.add(activeChapterId);
     }
     return set;
-  }, [articles, activeArticleId, activeChapterId]);
+  }, [articles, activeArticleId, activeChapterId, trimmedQuery, articleTree]);
 
   const systematicForceOpen = useMemo(() => {
+    if (trimmedQuery !== "") {
+      return collectAllAncestorIds(systematicTree, (n) =>
+        (n as SystematicTreeNode).nodeId,
+      );
+    }
     const set = activeSystematicAncestors(systematicNodes, activeNodeId);
     if (activeNodeId) set.add(activeNodeId);
     return set;
-  }, [systematicNodes, activeNodeId]);
+  }, [systematicNodes, activeNodeId, trimmedQuery, systematicTree]);
 
   const tree = renderSystematic ? systematicTree : articleTree;
   const isEmpty = tree.length === 0;
 
   return (
     <div className="space-y-2">
+      <div className="px-2">
+        <div className="relative">
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2 size-3 -translate-y-1/2" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={
+              renderSystematic
+                ? "체계도 검색 — 예: 진보성, 신규성"
+                : "조문 검색 — 예: 신규성, 제29조"
+            }
+            aria-label="판례 트리 내 검색"
+            className="border-input bg-background h-7 w-full rounded-md border pl-7 pr-7 text-[11px]"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="검색 지우기"
+              className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
+            >
+              ✕
+            </button>
+          ) : null}
+        </div>
+      </div>
+
       {active ? (
         <div className="bg-accent/40 mx-2 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px]">
           <GavelIcon className="text-primary size-3.5" />
@@ -246,10 +356,12 @@ export function CasesTree({
 
       {isEmpty ? (
         <p className="text-muted-foreground px-2 py-4 text-xs">
-          {emptyHint ??
-            (renderSystematic
-              ? "체계도 노드에 매핑된 판례가 없습니다."
-              : "조문에 매핑된 판례가 없습니다.")}
+          {trimmedQuery !== ""
+            ? `"${trimmedQuery}" 와 일치하는 항목이 없습니다.`
+            : emptyHint ??
+              (renderSystematic
+                ? "체계도 노드에 매핑된 판례가 없습니다."
+                : "조문에 매핑된 판례가 없습니다.")}
         </p>
       ) : renderSystematic ? (
         <ul className="space-y-0.5 text-sm">
@@ -324,6 +436,10 @@ function ArticleItem({
   const isArticle = node.level === "article";
   const initialOpen = forceOpen.has(node.articleId) || depth === 0;
   const [open, setOpen] = useState(initialOpen);
+  // forceOpen 이 검색 등으로 갱신되면 기존 마운트된 노드도 자동 펼침.
+  useEffect(() => {
+    if (forceOpen.has(node.articleId)) setOpen(true);
+  }, [forceOpen, node.articleId]);
   const hasChildren = node.children.length > 0;
   const isActive =
     activeArticleId === node.articleId || activeChapterId === node.articleId;
@@ -429,6 +545,9 @@ function SystematicItem({
 }) {
   const initialOpen = forceOpen.has(node.nodeId) || depth === 0;
   const [open, setOpen] = useState(initialOpen);
+  useEffect(() => {
+    if (forceOpen.has(node.nodeId)) setOpen(true);
+  }, [forceOpen, node.nodeId]);
   const hasChildren = node.children.length > 0;
   const isActive = activeNodeId === node.nodeId;
   const count = byNodeId[node.nodeId] ?? 0;

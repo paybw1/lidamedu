@@ -223,9 +223,9 @@
 | feat-3-401 | 신규 주관식 문제 피드 | P1 | ✅ |
 | feat-3-402 | 모범답안 보기 + 첨삭 요청 | P1 | 🔲 |
 | **5.3.5 논문** | | | |
-| feat-3-501 | 논문 데이터 모델 (`papers`) | P1 | 🔲 |
-| feat-3-502 | 논문 등록/수정 (강사용) | P1 | 🔲 |
-| feat-3-503 | 논문 피드 + 관련 조문/판례 링크 | P1 | 🔲 |
+| feat-3-501 | 논문 데이터 모델 — `papers` (title/authors/source/publishedAt/abstract/url/pdfUrl/subject_laws[]/importance/tags) + `paper_article_links` + `paper_case_links`. RLS: public read, staff write. pg_trgm 인덱스 + 다과목 GIN. Soft delete. | P1 | ✅ |
+| feat-3-502 | 논문 등록/수정 — `/api/admin/paper` (create/update/delete, Zod 검증) + `/api/admin/paper-link` (add/remove article/case by number). staff inline 폼 on /latest/papers. | P1 | ✅ |
+| feat-3-503 | 논문 피드 + 관련 링크 — `/latest/papers` 검색·과목·중요 필터 + 페이지네이션. 카드: 제목·저자·출처·초록·subject 배지·관련 조문/판례 chip·외부 링크/PDF 버튼. staff: inline 추가/수정/삭제 + 링크 관리 토글. | P1 | ✅ |
 | feat-3-504 | PDF 첨부 (Supabase Storage) | P2 | 🔲 |
 
 상세 스펙: `docs/spec-detail-5-3-latest.md` (작성 예정).
