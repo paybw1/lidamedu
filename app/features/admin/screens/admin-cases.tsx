@@ -323,7 +323,10 @@ function CaseMapperCard({
       addFetcher.data.ok
     ) {
       setDraft("");
-      navigate(location.pathname + location.search, { replace: true });
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
     }
   }, [addFetcher.state, addFetcher.data, navigate, location.pathname, location.search]);
 
@@ -461,7 +464,10 @@ function ArticleChip({
       "ok" in fetcher.data &&
       fetcher.data.ok
     ) {
-      navigate(location.pathname + location.search, { replace: true });
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
     }
   }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
   // 출처 별 색상 — 자동 vs 수동 구분.
