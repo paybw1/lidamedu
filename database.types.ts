@@ -1918,9 +1918,11 @@ export type Database = {
           examined_at: string | null
           explanation_md: string | null
           format: Database["public"]["Enums"]["problem_format"]
+          grading_rubric_md: string | null
           law_id: string | null
           mismatch_flagged_at: string | null
           mismatch_flagged_by: string | null
+          model_answer_md: string | null
           origin: Database["public"]["Enums"]["problem_origin"]
           polarity: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id: string | null
@@ -1948,9 +1950,11 @@ export type Database = {
           examined_at?: string | null
           explanation_md?: string | null
           format: Database["public"]["Enums"]["problem_format"]
+          grading_rubric_md?: string | null
           law_id?: string | null
           mismatch_flagged_at?: string | null
           mismatch_flagged_by?: string | null
+          model_answer_md?: string | null
           origin: Database["public"]["Enums"]["problem_origin"]
           polarity?: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id?: string | null
@@ -1980,9 +1984,11 @@ export type Database = {
           examined_at?: string | null
           explanation_md?: string | null
           format?: Database["public"]["Enums"]["problem_format"]
+          grading_rubric_md?: string | null
           law_id?: string | null
           mismatch_flagged_at?: string | null
           mismatch_flagged_by?: string | null
+          model_answer_md?: string | null
           origin?: Database["public"]["Enums"]["problem_origin"]
           polarity?: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id?: string | null

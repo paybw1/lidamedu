@@ -84,7 +84,7 @@ export async function listProblemsBySubject(
   let query = client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, video_url, articles!primary_article_id(article_number, display_label, path)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label, path)",
     )
     .eq("law_id", law.law_id)
     .is("deleted_at", null);
@@ -194,6 +194,8 @@ export async function listProblemsBySubject(
       reviewedAt: row.reviewed_at,
       mismatchFlaggedAt: row.mismatch_flagged_at,
       explanationMd: row.explanation_md,
+      modelAnswerMd: row.model_answer_md,
+      gradingRubricMd: row.grading_rubric_md,
       videoUrl: row.video_url,
       hasTable: m.hasTable,
       hasImage: m.hasImage,
@@ -1012,7 +1014,7 @@ export async function getProblemById(
   const { data: problem, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, video_url, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label)",
     )
     .eq("problem_id", problemId)
     .is("deleted_at", null)
@@ -1061,6 +1063,8 @@ export async function getProblemById(
     reviewedAt: problem.reviewed_at,
     mismatchFlaggedAt: problem.mismatch_flagged_at,
     explanationMd: problem.explanation_md,
+    modelAnswerMd: problem.model_answer_md,
+    gradingRubricMd: problem.grading_rubric_md,
     videoUrl: problem.video_url,
     hasTable:
       hasTableMd(problem.explanation_md) ||
@@ -1111,7 +1115,7 @@ export async function getProblemDetailsByIds(
   const { data: problemRows, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, video_url, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label)",
     )
     .in("problem_id", problemIds)
     .is("deleted_at", null);
@@ -1198,6 +1202,8 @@ export async function getProblemDetailsByIds(
       reviewedAt: p.reviewed_at,
       mismatchFlaggedAt: p.mismatch_flagged_at,
       explanationMd: p.explanation_md,
+      modelAnswerMd: p.model_answer_md,
+      gradingRubricMd: p.grading_rubric_md,
       videoUrl: p.video_url,
       hasTable:
         hasTableMd(p.explanation_md) ||
@@ -1355,7 +1361,7 @@ export async function getSystematicNodeProblems(
   const { data: problemRows } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, video_url, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label)",
     )
     .in("primary_article_id", articleIds)
     .is("deleted_at", null);
@@ -1452,6 +1458,8 @@ export async function getSystematicNodeProblems(
         reviewedAt: p.reviewed_at,
         mismatchFlaggedAt: p.mismatch_flagged_at,
         explanationMd: p.explanation_md,
+        modelAnswerMd: p.model_answer_md,
+        gradingRubricMd: p.grading_rubric_md,
         videoUrl: p.video_url,
         hasTable:
           hasTableMd(p.explanation_md) ||

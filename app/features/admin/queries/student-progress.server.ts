@@ -20,6 +20,10 @@ export interface CohortMemberProgress {
   blanksAttempts: number;
   blanksCorrect: number;
   blanksAccuracyPct: number | null;
+  // 학습 보조 활동 (feat-7-003) — 학생이 능동적으로 표시한 것.
+  memos: number;
+  bookmarks: number;
+  highlights: number;
   lastActivityAt: string | null;
 }
 
@@ -104,6 +108,35 @@ export async function listCohortProgressSummary(
     from += PAGE;
   }
 
+  // 학습 보조 (memo / bookmark / highlight) 합산 — deleted_at IS NULL.
+  const memosByUser = new Map<string, number>();
+  const bookmarksByUser = new Map<string, number>();
+  const highlightsByUser = new Map<string, number>();
+  const [memoRes, bookmarkRes, highlightRes] = await Promise.all([
+    admin
+      .from("user_memos")
+      .select("user_id")
+      .in("user_id", profileIds)
+      .is("deleted_at", null),
+    admin
+      .from("user_bookmarks")
+      .select("user_id, star_level")
+      .in("user_id", profileIds)
+      .is("deleted_at", null)
+      .gt("star_level", 0),
+    admin
+      .from("user_highlights")
+      .select("user_id")
+      .in("user_id", profileIds)
+      .is("deleted_at", null),
+  ]);
+  for (const r of memoRes.data ?? [])
+    memosByUser.set(r.user_id, (memosByUser.get(r.user_id) ?? 0) + 1);
+  for (const r of bookmarkRes.data ?? [])
+    bookmarksByUser.set(r.user_id, (bookmarksByUser.get(r.user_id) ?? 0) + 1);
+  for (const r of highlightRes.data ?? [])
+    highlightsByUser.set(r.user_id, (highlightsByUser.get(r.user_id) ?? 0) + 1);
+
   // 빈칸 시도.
   const blanksByUser = new Map<
     string,
@@ -166,6 +199,9 @@ export async function listCohortProgressSummary(
       blanksAttempts,
       blanksCorrect,
       blanksAccuracyPct,
+      memos: memosByUser.get(m.profile_id) ?? 0,
+      bookmarks: bookmarksByUser.get(m.profile_id) ?? 0,
+      highlights: highlightsByUser.get(m.profile_id) ?? 0,
       lastActivityAt,
     };
   });

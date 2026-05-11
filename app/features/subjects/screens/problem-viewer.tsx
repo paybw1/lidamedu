@@ -669,6 +669,15 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : null}
 
+              {problem.format === "subjective" ? (
+                <SubjectivePanel
+                  problemId={problem.problemId}
+                  modelAnswerMd={problem.modelAnswerMd}
+                  gradingRubricMd={problem.gradingRubricMd}
+                  explanationMd={problem.explanationMd}
+                />
+              ) : (
+              <>
               <ul className="space-y-2">
                 {problem.choices.map((c) => {
                   const isSelected = selected === c.choiceIndex;
@@ -926,6 +935,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   </CardContent>
                 </Card>
               ) : null}
+              </>
+              )}
             </CardContent>
           </Card>
         </main>
@@ -956,6 +967,119 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
           </Card>
         </aside>
       </div>
+    </div>
+  );
+}
+
+// 주관식(format='subjective') 학습 — 답안 textarea + 모범답안/채점기준 reveal.
+// 답안 저장(DB persist) 은 후속 (feat-4-A-305). 1차 슬라이스는 self-grading 학습용 UI 만.
+function SubjectivePanel({
+  problemId,
+  modelAnswerMd,
+  gradingRubricMd,
+  explanationMd,
+}: {
+  problemId: string;
+  modelAnswerMd: string | null;
+  gradingRubricMd: string | null;
+  explanationMd: string | null;
+}) {
+  const [draft, setDraft] = useState("");
+  const [revealedModel, setRevealedModel] = useState(false);
+  const [revealedRubric, setRevealedRubric] = useState(false);
+  useEffect(() => {
+    setDraft("");
+    setRevealedModel(false);
+    setRevealedRubric(false);
+  }, [problemId]);
+  const hasModel = (modelAnswerMd ?? "").trim().length > 0;
+  const hasRubric = (gradingRubricMd ?? "").trim().length > 0;
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase">
+          답안 작성 (자기채점용 · 저장되지 않음)
+        </p>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={12}
+          placeholder="목차를 잡고 본문을 작성해보세요. 모범답안과 채점 기준은 아래 버튼으로 확인할 수 있습니다."
+          className="border-input bg-background w-full rounded-md border px-3 py-2 font-serif text-sm leading-relaxed"
+          data-testid="subjective-answer-draft"
+        />
+        <p className="text-muted-foreground mt-1 text-[11px] tabular-nums">
+          {draft.length}자
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={revealedModel ? "outline" : "default"}
+          size="sm"
+          onClick={() => setRevealedModel((v) => !v)}
+          disabled={!hasModel}
+          data-testid="subjective-reveal-model"
+        >
+          {revealedModel ? "모범답안 숨기기" : "모범답안 보기"}
+          {!hasModel ? " (미등록)" : ""}
+        </Button>
+        <Button
+          variant={revealedRubric ? "outline" : "secondary"}
+          size="sm"
+          onClick={() => setRevealedRubric((v) => !v)}
+          disabled={!hasRubric}
+          data-testid="subjective-reveal-rubric"
+        >
+          {revealedRubric ? "채점기준 숨기기" : "채점기준 보기"}
+          {!hasRubric ? " (미등록)" : ""}
+        </Button>
+      </div>
+
+      {revealedRubric && hasRubric ? (
+        <Card className="border-dashed">
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              채점 기준
+            </p>
+          </CardHeader>
+          <CardContent>
+            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+              {gradingRubricMd}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {revealedModel && hasModel ? (
+        <Card className="border-dashed">
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              모범답안
+            </p>
+          </CardHeader>
+          <CardContent>
+            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+              {modelAnswerMd}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {explanationMd ? (
+        <Card className="border-dashed">
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              해설
+            </p>
+          </CardHeader>
+          <CardContent>
+            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+              {explanationMd}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

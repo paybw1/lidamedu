@@ -168,6 +168,12 @@ export default function AdminCohortProgress({
                   <TableHead className="text-right">정답률</TableHead>
                   <TableHead className="text-right">조문 열람</TableHead>
                   <TableHead className="text-right">빈칸</TableHead>
+                  <TableHead
+                    className="text-right"
+                    title="학생이 표시한 학습 보조 — 메모 · 즐겨찾기 · 하이라이트"
+                  >
+                    메모/즐겨/하이
+                  </TableHead>
                   <TableHead className="text-right">최근 활동</TableHead>
                   <TableHead className="w-20"></TableHead>
                 </TableRow>
@@ -246,6 +252,22 @@ function MemberRow({
           </span>
         ) : (
           "—"
+        )}
+      </TableCell>
+      <TableCell className="text-right text-xs tabular-nums">
+        {m.memos + m.bookmarks + m.highlights === 0 ? (
+          "—"
+        ) : (
+          <span
+            className="text-muted-foreground"
+            title={`메모 ${m.memos} · 즐겨찾기 ${m.bookmarks} · 하이라이트 ${m.highlights}`}
+          >
+            {m.memos}
+            <span className="text-muted-foreground/60"> · </span>
+            {m.bookmarks}
+            <span className="text-muted-foreground/60"> · </span>
+            {m.highlights}
+          </span>
         )}
       </TableCell>
       <TableCell className="text-muted-foreground text-right text-xs tabular-nums">

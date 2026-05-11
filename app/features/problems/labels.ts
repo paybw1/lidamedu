@@ -104,6 +104,9 @@ export interface ProblemListItem {
   // 문제-해설 불일치 등으로 운영자가 "재검토 필요" 표시한 시각.
   mismatchFlaggedAt: string | null;
   explanationMd: string | null;
+  // 주관식 (format='subjective') 모범답안 + 채점기준 (feat-4-A-322). null = 미등록.
+  modelAnswerMd: string | null;
+  gradingRubricMd: string | null;
   // 강사 풀이 동영상 URL (feat-4-A-315). null = 미등록.
   videoUrl: string | null;
   // 종합/지문/박스 해설 어딘가에 마크다운 표가 있는지.

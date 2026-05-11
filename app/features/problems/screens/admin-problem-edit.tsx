@@ -181,6 +181,8 @@ export async function action({ params, request }: Route.ActionArgs) {
   const update: Record<string, unknown> = {
     body_md: String(fd.get("bodyMd") ?? ""),
     explanation_md: stringOrNull(fd.get("explanationMd")),
+    model_answer_md: stringOrNull(fd.get("modelAnswerMd")),
+    grading_rubric_md: stringOrNull(fd.get("gradingRubricMd")),
     video_url: stringOrNull(fd.get("videoUrl")),
     origin: String(fd.get("origin") ?? "past_exam"),
     format: String(fd.get("format") ?? "mc_short"),
@@ -601,6 +603,45 @@ export default function AdminProblemEdit({
             </p>
           </CardContent>
         </Card>
+
+        {format === "subjective" ? (
+          <>
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  주관식 모범답안 (Markdown)
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  name="modelAnswerMd"
+                  rows={10}
+                  defaultValue={problem.modelAnswerMd ?? ""}
+                  placeholder="목차 + 본문 — 학생이 '모범답안 보기' 클릭 시 노출됩니다."
+                  data-testid="problem-model-answer"
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  채점 기준 (Markdown — 필수 논점/키워드)
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  name="gradingRubricMd"
+                  rows={6}
+                  defaultValue={problem.gradingRubricMd ?? ""}
+                  placeholder={
+                    "예) 1. 신규성 요건 정의 (10점)\n2. 공지 예외 사유 (10점)\n3. 사례 적용 (10점)"
+                  }
+                  data-testid="problem-grading-rubric"
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : null}
 
         {problem.boxItems.length > 0 ? (
           <Card>
