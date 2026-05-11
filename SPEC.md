@@ -43,7 +43,8 @@
    ├─ 최근 판례
    ├─ 객관식 문제
    ├─ 주관식 문제
-   └─ 논문
+   ├─ 논문
+   └─ 도서 추록·정오표
 4. 과목별 학습
    ├─ 민법                    [조문/판례/문제]
    ├─ 산업재산권법
@@ -227,6 +228,10 @@
 | feat-3-502 | 논문 등록/수정 — `/api/admin/paper` (create/update/delete, Zod 검증) + `/api/admin/paper-link` (add/remove article/case by number). staff inline 폼 on /latest/papers. | P1 | ✅ |
 | feat-3-503 | 논문 피드 + 관련 링크 — `/latest/papers` 검색·과목·중요 필터 + 페이지네이션. 카드: 제목·저자·출처·초록·subject 배지·관련 조문/판례 chip·외부 링크/PDF 버튼. staff: inline 추가/수정/삭제 + 링크 관리 토글. | P1 | ✅ |
 | feat-3-504 | PDF 첨부 (Supabase Storage) | P2 | 🔲 |
+| **5.3.6 도서 추록·정오표** | | | |
+| feat-3-601 | 도서 추록/정오표 데이터 모델 — `book_updates` (book_title/publisher/edition/kind:supplement\|errata\|other/title/description/publishedAt/url/pdfUrl/subject_laws[]/importance/tags). RLS: public read, staff write. trgm + subject_laws GIN 인덱스. Soft delete. | P1 | ✅ |
+| feat-3-602 | 도서 자료 등록/수정 — `/api/admin/book-update` (create/update/delete, Zod 검증) + staff inline 폼 on /latest/book-updates. | P1 | ✅ |
+| feat-3-603 | 도서 추록/정오표 피드 — `/latest/book-updates` 검색·과목·유형·중요 필터 + 페이지네이션. 카드: 자료 제목·책 제목·판/쇄·출판사·내용·subject 배지·외부 링크/PDF 버튼. 네비게이션 메뉴 6번째 항목. | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-3-latest.md` (작성 예정).
 
@@ -524,6 +529,7 @@
 | 최신 정보 (객관식) | `/latest/mcq` | feat-3-3* |
 | 최신 정보 (주관식) | `/latest/essay` | feat-3-4* |
 | 최신 정보 (논문) | `/latest/papers` | feat-3-5* |
+| 최신 정보 (도서 추록/정오표) | `/latest/book-updates` | feat-3-6* |
 | 민법 학습 | `/subjects/civil` | feat-4-A-* |
 | 특허법 학습 | `/subjects/patent` | feat-4-A-* |
 | 상표법 학습 | `/subjects/trademark` | feat-4-A-* |

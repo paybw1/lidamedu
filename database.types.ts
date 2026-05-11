@@ -372,6 +372,74 @@ export type Database = {
           },
         ]
       }
+      book_updates: {
+        Row: {
+          book_title: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          edition: string | null
+          importance: number
+          kind: string
+          pdf_url: string | null
+          published_at: string | null
+          publisher: string | null
+          subject_laws: string[]
+          tags: string[]
+          title: string
+          update_id: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          book_title: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          edition?: string | null
+          importance?: number
+          kind: string
+          pdf_url?: string | null
+          published_at?: string | null
+          publisher?: string | null
+          subject_laws?: string[]
+          tags?: string[]
+          title: string
+          update_id?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          book_title?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          edition?: string | null
+          importance?: number
+          kind?: string
+          pdf_url?: string | null
+          published_at?: string | null
+          publisher?: string | null
+          subject_laws?: string[]
+          tags?: string[]
+          title?: string
+          update_id?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_updates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       case_references: {
         Row: {
           authors: string | null

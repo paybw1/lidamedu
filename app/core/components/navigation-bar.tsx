@@ -41,6 +41,7 @@ const latestItems: SimpleLink[] = [
   { label: "객관식 문제", to: "/latest/mcq" },
   { label: "주관식 문제", to: "/latest/essay" },
   { label: "논문", to: "/latest/papers" },
+  { label: "도서 추록·정오표", to: "/latest/book-updates" },
 ];
 
 const subjectSections: Section[] = [

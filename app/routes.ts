@@ -66,6 +66,7 @@ export default [
       route("/case-reference", "features/admin/api/case-reference.tsx"),
       route("/paper", "features/admin/api/paper.tsx"),
       route("/paper-link", "features/admin/api/paper-link.tsx"),
+      route("/book-update", "features/admin/api/book-update.tsx"),
     ]),
     ...prefix("/problems", [
       route(
@@ -139,6 +140,7 @@ export default [
         route("/mcq", "features/latest/screens/mcq.tsx"),
         route("/essay", "features/latest/screens/essay.tsx"),
         route("/papers", "features/latest/screens/papers.tsx"),
+        route("/book-updates", "features/latest/screens/book-updates.tsx"),
       ]),
 
       ...prefix("/subjects", [
