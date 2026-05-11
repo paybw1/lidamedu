@@ -157,6 +157,7 @@ export default [
       route("/study/wrong-note", "features/study/screens/wrong-note.tsx"),
       route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
       route("/study/notes", "features/study/screens/notes.tsx"),
+      route("/study/highlights", "features/study/screens/highlights.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),

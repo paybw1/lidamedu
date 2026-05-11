@@ -18,6 +18,7 @@ import {
   getDashboardKpis,
   getOverallProgress,
   getRecentActivity,
+  getStudyAidCounts,
   getWeakAreas,
 } from "~/features/study/queries.server";
 import {
@@ -100,6 +101,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     topBookmarks,
     scienceProgress,
     weakNodes,
+    studyAidCounts,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -108,6 +110,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     listTopBookmarks(client, user.id, 8),
     getAllScienceSubjectsProgress(client, user.id),
     getWeakNodes(client, user.id, [...LAW_SUBJECT_SLUGS], 4),
+    getStudyAidCounts(client, user.id),
   ]);
 
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
@@ -158,6 +161,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     recentActivity,
     topBookmarks,
     weakNodes,
+    studyAidCounts,
     todayLabel,
   };
 }
@@ -203,6 +207,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     recentActivity,
     topBookmarks,
     weakNodes,
+    studyAidCounts,
     todayLabel,
   } = loaderData;
 
@@ -1037,6 +1042,52 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 
         <div style={{ marginTop: 18 }}>
           <CozyCard
+            title="재학습 진입점"
+            subtitle="오답노트 · 즐겨찾기 · 내 메모 — 한 곳에서 다시 학습"
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 10,
+                marginTop: 4,
+              }}
+              data-testid="study-aid-tiles"
+            >
+              <StudyAidTile
+                palette={palette}
+                href="/study/wrong-note"
+                label="오답노트"
+                count={studyAidCounts.wrongMcq + studyAidCounts.wrongOx}
+                hint={`객관식 ${studyAidCounts.wrongMcq} · OX ${studyAidCounts.wrongOx}`}
+              />
+              <StudyAidTile
+                palette={palette}
+                href="/study/bookmarks"
+                label="즐겨찾기"
+                count={studyAidCounts.bookmarks}
+                hint="별점 매긴 조문·판례·문제·OX"
+              />
+              <StudyAidTile
+                palette={palette}
+                href="/study/notes"
+                label="내 메모"
+                count={studyAidCounts.memos}
+                hint="작성한 메모 검색·열람"
+              />
+              <StudyAidTile
+                palette={palette}
+                href="/study/highlights"
+                label="내 하이라이트"
+                count={studyAidCounts.highlights}
+                hint="색칠한 본문 발췌 모음"
+              />
+            </div>
+          </CozyCard>
+        </div>
+
+        <div style={{ marginTop: 18 }}>
+          <CozyCard
             title="즐겨찾기 빠른 접근"
             subtitle={
               topBookmarks.length > 0
@@ -1539,6 +1590,65 @@ function QuickAction({
     >
       {icon}
       {label}
+    </Link>
+  );
+}
+
+function StudyAidTile({
+  href,
+  label,
+  count,
+  hint,
+  palette,
+}: {
+  href: string;
+  label: string;
+  count: number;
+  hint: string;
+  palette: { primary: string; tint: string; accent: string };
+}) {
+  return (
+    <Link
+      to={href}
+      style={{
+        background: palette.tint,
+        borderRadius: 12,
+        padding: "12px 14px",
+        textDecoration: "none",
+        color: "inherit",
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 10.5,
+          letterSpacing: "0.04em",
+          color: palette.primary,
+          fontWeight: 700,
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 22,
+          fontWeight: 700,
+          color: COZY_INK,
+          lineHeight: 1.1,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {count.toLocaleString("ko-KR")}
+        <span style={{ fontSize: 11, color: COZY_INK_SOFT, marginLeft: 4 }}>
+          건
+        </span>
+      </span>
+      <span style={{ fontSize: 11, color: COZY_INK_SOFT, lineHeight: 1.3 }}>
+        {hint}
+      </span>
     </Link>
   );
 }

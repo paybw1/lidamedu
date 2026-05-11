@@ -241,6 +241,51 @@ export async function getQuizSession(
   };
 }
 
+// 재학습 진입점 위젯용 — 오답 / 즐겨찾기 / 메모 카운트.
+// 학생은 한 학기 누적이라도 수천 건 단위 — 정확 count(*) HEAD 요청으로 가볍게.
+export interface StudyAidCounts {
+  wrongMcq: number; // 최근 시도가 오답인 객관식 문제
+  wrongOx: number; // 최근 시도가 오답인 OX 지문
+  bookmarks: number;
+  memos: number;
+  highlights: number;
+}
+
+export async function getStudyAidCounts(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<StudyAidCounts> {
+  const [wrongs, oxWrongs, bookmarkRes, memoRes, highlightRes] = await Promise.all([
+    // 객관식 오답 카운트 — 최근 시도 기준 정확 카운트는 expensive 라서
+    // 정확한 listWrongAttempts 를 한 번 돌려 길이를 본다 (실제 위젯 표시용).
+    listWrongAttempts(client, userId),
+    listOxWrongAttempts(client, userId),
+    client
+      .from("user_bookmarks")
+      .select("bookmark_id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .gt("star_level", 0),
+    client
+      .from("user_memos")
+      .select("memo_id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("deleted_at", null),
+    client
+      .from("user_highlights")
+      .select("highlight_id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("deleted_at", null),
+  ]);
+  return {
+    wrongMcq: wrongs.length,
+    wrongOx: oxWrongs.length,
+    bookmarks: bookmarkRes.count ?? 0,
+    memos: memoRes.count ?? 0,
+    highlights: highlightRes.count ?? 0,
+  };
+}
+
 // 한 세션 안에서 사용자가 이미 응답한 attempts — problemId → 최신 응답 1건 매핑.
 // 시험지(sheet) view 가 새로고침되어도 이전 응답을 복원하기 위해 사용.
 export interface SessionAttemptEntry {
