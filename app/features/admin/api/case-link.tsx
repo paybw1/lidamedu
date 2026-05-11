@@ -30,6 +30,15 @@ const removeSchema = z.object({
   articleNumber: z.string().min(1).max(20),
 });
 
+// "제29조", "29조", "29" → "29"
+function normalizeArticleNumber(raw: string): string {
+  let s = raw.trim();
+  s = s.replace(/^제\s*/, "");
+  s = s.replace(/\s*조$/, "");
+  s = s.replace(/\s+/g, "");
+  return s;
+}
+
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
     return data({ error: "Method not allowed" }, { status: 405 });
@@ -50,7 +59,9 @@ export async function action({ request }: Route.ActionArgs) {
       intent,
       caseId: fd.get("caseId"),
       lawCode: fd.get("lawCode"),
-      articleNumber: String(fd.get("articleNumber") ?? "").trim(),
+      articleNumber: normalizeArticleNumber(
+        String(fd.get("articleNumber") ?? ""),
+      ),
     });
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
     if (!(LAW_SUBJECT_SLUGS as readonly string[]).includes(parsed.data.lawCode))
@@ -71,7 +82,9 @@ export async function action({ request }: Route.ActionArgs) {
       intent,
       caseId: fd.get("caseId"),
       lawCode: fd.get("lawCode"),
-      articleNumber: String(fd.get("articleNumber") ?? "").trim(),
+      articleNumber: normalizeArticleNumber(
+        String(fd.get("articleNumber") ?? ""),
+      ),
     });
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
     if (!(LAW_SUBJECT_SLUGS as readonly string[]).includes(parsed.data.lawCode))

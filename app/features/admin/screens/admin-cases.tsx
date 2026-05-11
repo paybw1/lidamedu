@@ -106,8 +106,9 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
           {subjectName} 판례 ↔ 조문 매핑
         </h1>
         <p className="text-muted-foreground text-sm">
-          관련 조문이 자동 추출되지 않은 판례를 수동 매핑합니다. 매핑은 즉시
-          반영되어 조문 viewer / case viewer 양측에서 보입니다.
+          자동 추출 매핑(파란 chip — 본문 인용/책 절/객관식 지문) 과 수동 매핑(초록 chip)
+          을 한 화면에서 관리. 같은 페어가 자동으로 이미 들어가 있으면 "이미 매핑됨"
+          으로 안내됩니다 — 위 chip 에 표시된 조문은 다시 추가할 필요 없습니다.
         </p>
       </header>
 
@@ -242,6 +243,15 @@ function KpiCard({
   );
 }
 
+// "제29조", "29조", "29" → "29". "제29조의2" → "29의2".
+function normalizeArticleNumber(raw: string): string {
+  let s = raw.trim();
+  s = s.replace(/^제\s*/, "");
+  s = s.replace(/\s*조$/, "");
+  s = s.replace(/\s+/g, "");
+  return s;
+}
+
 function CaseMapperCard({
   item,
   lawCode,
@@ -251,6 +261,9 @@ function CaseMapperCard({
 }) {
   const addFetcher = useFetcher<{ ok?: true; error?: string }>();
   const [draft, setDraft] = useState("");
+  const normalized = normalizeArticleNumber(draft);
+  const alreadyMapped =
+    normalized.length > 0 && item.articleNumbers.includes(normalized);
   const isSaving = addFetcher.state !== "idle";
   const hasError = addFetcher.data && "error" in addFetcher.data;
 
@@ -295,16 +308,22 @@ function CaseMapperCard({
           {item.summaryTitle ?? item.caseTitle}
         </Link>
 
-        {item.articleNumbers.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {item.articleNumbers.map((n) => (
-              <ArticleChip
-                key={n}
-                articleNumber={n}
-                caseId={item.caseId}
-                lawCode={lawCode}
-              />
-            ))}
+        {item.links.length > 0 ? (
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+              현재 매핑 ({item.linkCount}건) — 클릭 시 조문 viewer / × 삭제
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {item.links.map((l) => (
+                <ArticleChip
+                  key={l.articleNumber}
+                  articleNumber={l.articleNumber}
+                  note={l.note}
+                  caseId={item.caseId}
+                  lawCode={lawCode}
+                />
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -313,16 +332,9 @@ function CaseMapperCard({
           action="/api/admin/case-link"
           className="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
-            const trimmed = draft.trim();
-            if (!trimmed) {
+            if (!normalized || alreadyMapped) {
               e.preventDefault();
               return;
-            }
-          }}
-          // 성공 시 draft 비우기.
-          onChange={() => {
-            if (addFetcher.data && "ok" in addFetcher.data) {
-              // ignore — managed by useEffect not used here for brevity
             }
           }}
         >
@@ -331,21 +343,34 @@ function CaseMapperCard({
           <input type="hidden" name="lawCode" value={lawCode} />
           <Input
             name="articleNumber"
-            placeholder='조문 번호 — 예: 29 / 29의2'
+            placeholder='조문 번호 — 예: 29 / 29의2 / 제29조'
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="h-8 w-40 text-xs"
+            className={
+              "h-8 w-44 text-xs " +
+              (alreadyMapped
+                ? "border-amber-400 focus-visible:ring-amber-400"
+                : "")
+            }
             disabled={isSaving}
           />
-          <Button type="submit" size="sm" className="h-8" disabled={isSaving || !draft.trim()}>
+          <Button
+            type="submit"
+            size="sm"
+            className="h-8"
+            disabled={isSaving || !normalized || alreadyMapped}
+          >
             <PlusIcon className="size-3.5" /> 매핑 추가
           </Button>
-          {hasError ? (
+          {alreadyMapped ? (
+            <span className="text-amber-700 dark:text-amber-300 text-xs">
+              제{normalized}조는 이미 매핑되어 있습니다 (위 chip)
+            </span>
+          ) : hasError ? (
             <span className="text-rose-600 text-xs">
               {(addFetcher.data as { error: string }).error}
             </span>
-          ) : null}
-          {addFetcher.data && "ok" in addFetcher.data ? (
+          ) : addFetcher.data && "ok" in addFetcher.data ? (
             <span className="text-emerald-600 text-xs">
               저장됨 — 새로고침으로 갱신
             </span>
@@ -358,20 +383,29 @@ function CaseMapperCard({
 
 function ArticleChip({
   articleNumber,
+  note,
   caseId,
   lawCode,
 }: {
   articleNumber: string;
+  note: string | null;
   caseId: string;
   lawCode: LawSubjectSlug;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const removed = fetcher.data && "ok" in fetcher.data && fetcher.data.ok;
+  // 출처 별 색상 — 자동 vs 수동 구분.
+  const isManual = !note || note.includes("수동");
+  const isAuto = !!note && !isManual;
   return (
     <span
+      title={note ?? "수동 매핑"}
       className={
         "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs " +
-        (removed ? "opacity-50 line-through" : "")
+        (removed ? "opacity-50 line-through " : "") +
+        (isAuto
+          ? "border-sky-300 dark:border-sky-700 bg-sky-50/50 dark:bg-sky-950/20"
+          : "border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20")
       }
     >
       <Link

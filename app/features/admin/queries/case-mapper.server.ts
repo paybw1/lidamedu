@@ -5,6 +5,11 @@ import type { Database } from "database.types";
 
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
+export interface CaseLinkChip {
+  articleNumber: string;
+  note: string | null;
+}
+
 export interface CaseMapperRow {
   caseId: string;
   caseNumber: string;
@@ -15,7 +20,8 @@ export interface CaseMapperRow {
   court: string;
   importance: number;
   linkCount: number;
-  articleNumbers: string[]; // 표시용. unique sorted.
+  links: CaseLinkChip[]; // articleNumber + 출처 note
+  articleNumbers: string[]; // 단순 number 셋 (client dedupe).
 }
 
 export interface CaseMapperPage {
@@ -67,26 +73,31 @@ export async function listCasesForMapper(
 
   // 2) 한 번에 article_case_links join (현재 페이지 후보 case_id 만).
   const caseIds = allCases.map((c) => c.case_id);
-  const linksByCase = new Map<string, string[]>();
+  const linksByCase = new Map<string, CaseLinkChip[]>();
   if (caseIds.length > 0) {
     const { data: linkRows } = await client
       .from("article_case_links")
-      .select("case_id, articles(article_number)")
+      .select("case_id, note, articles(article_number)")
       .in("case_id", caseIds);
     for (const r of linkRows ?? []) {
       const num = r.articles?.article_number;
       if (!num) continue;
       const arr = linksByCase.get(r.case_id) ?? [];
-      arr.push(num);
+      // 같은 article_number 가 여러 relation_type 으로 들어있을 수 있으나 표시 단위 1개로.
+      if (arr.some((x) => x.articleNumber === num)) continue;
+      arr.push({ articleNumber: num, note: r.note ?? null });
       linksByCase.set(r.case_id, arr);
     }
   }
 
   // 3) row 매핑 + onlyUnmapped 필터 (post-filter).
   let rows: CaseMapperRow[] = allCases.map((c) => {
-    const articleNumbers = Array.from(
-      new Set(linksByCase.get(c.case_id) ?? []),
-    ).sort((a, b) => Number(a.split("의")[0]) - Number(b.split("의")[0]));
+    const links = (linksByCase.get(c.case_id) ?? []).slice().sort(
+      (a, b) =>
+        Number(a.articleNumber.split("의")[0]) -
+        Number(b.articleNumber.split("의")[0]),
+    );
+    const articleNumbers = links.map((x) => x.articleNumber);
     return {
       caseId: c.case_id,
       caseNumber: c.case_number,
@@ -96,7 +107,8 @@ export async function listCasesForMapper(
       decidedAt: c.decided_at,
       court: c.court,
       importance: c.importance ?? 1,
-      linkCount: articleNumbers.length,
+      linkCount: links.length,
+      links,
       articleNumbers,
     };
   });
