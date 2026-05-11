@@ -96,6 +96,10 @@ export default [
     ]),
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
+      route(
+        "/subjective-attempt",
+        "features/study/api/subjective-attempt.tsx",
+      ),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
       route(
         "/session-from-bookmarks",

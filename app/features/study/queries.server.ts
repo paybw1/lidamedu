@@ -286,6 +286,84 @@ export async function getStudyAidCounts(
   };
 }
 
+// ──────── 주관식 답안 + 자기채점 (feat-4-A-305) ────────
+export interface SubjectiveAttempt {
+  attemptId: string;
+  answerMd: string;
+  selfScore: number | null;
+  selfScoreNote: string | null;
+  submittedAt: string | null;
+  updatedAt: string;
+}
+
+export async function getSubjectiveAttempt(
+  client: SupabaseClient<Database>,
+  userId: string,
+  problemId: string,
+): Promise<SubjectiveAttempt | null> {
+  const { data, error } = await client
+    .from("user_subjective_attempts")
+    .select(
+      "attempt_id, answer_md, self_score, self_score_note, submitted_at, updated_at",
+    )
+    .eq("user_id", userId)
+    .eq("problem_id", problemId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    attemptId: data.attempt_id,
+    answerMd: data.answer_md,
+    selfScore: data.self_score,
+    selfScoreNote: data.self_score_note,
+    submittedAt: data.submitted_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+export async function upsertSubjectiveAttempt(
+  client: SupabaseClient<Database>,
+  userId: string,
+  problemId: string,
+  input: {
+    answerMd: string;
+    // submit=true 시 self_score / submitted_at 동시 갱신.
+    submit?: { selfScore: number | null; selfScoreNote: string | null };
+  },
+): Promise<SubjectiveAttempt> {
+  const row: Database["public"]["Tables"]["user_subjective_attempts"]["Insert"] = {
+    user_id: userId,
+    problem_id: problemId,
+    answer_md: input.answerMd,
+    ...(input.submit
+      ? {
+          self_score: input.submit.selfScore,
+          self_score_note: input.submit.selfScoreNote,
+          submitted_at: new Date().toISOString(),
+        }
+      : {}),
+  };
+  const { data, error } = await client
+    .from("user_subjective_attempts")
+    .upsert(row, {
+      onConflict: "user_id,problem_id",
+    })
+    .select(
+      "attempt_id, answer_md, self_score, self_score_note, submitted_at, updated_at",
+    )
+    .single();
+  if (error) throw error;
+  return {
+    attemptId: data.attempt_id,
+    answerMd: data.answer_md,
+    selfScore: data.self_score,
+    selfScoreNote: data.self_score_note,
+    submittedAt: data.submitted_at,
+    updatedAt: data.updated_at,
+  };
+}
+
 // 한 세션 안에서 사용자가 이미 응답한 attempts — problemId → 최신 응답 1건 매핑.
 // 시험지(sheet) view 가 새로고침되어도 이전 응답을 복원하기 위해 사용.
 export interface SessionAttemptEntry {

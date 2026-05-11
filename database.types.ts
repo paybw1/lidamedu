@@ -2748,6 +2748,60 @@ export type Database = {
           },
         ]
       }
+      user_subjective_attempts: {
+        Row: {
+          answer_md: string
+          attempt_id: string
+          created_at: string
+          deleted_at: string | null
+          problem_id: string
+          self_score: number | null
+          self_score_note: string | null
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_md?: string
+          attempt_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          problem_id: string
+          self_score?: number | null
+          self_score_note?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_md?: string
+          attempt_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          problem_id?: string
+          self_score?: number | null
+          self_score_note?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subjective_attempts_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "user_subjective_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
     }
     Views: {
       gs_points_balance_v: {

@@ -62,8 +62,10 @@ import {
   createQuizSession,
   getProblemStats,
   getQuizSession,
+  getSubjectiveAttempt,
   recordStudySession,
   type QuizMode,
+  type SubjectiveAttempt,
 } from "~/features/study/queries.server";
 import {
   DIFFICULTY_LABEL,
@@ -283,6 +285,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
+  // 주관식 답안 (있으면) — 미작성/객관식이면 null.
+  const subjectiveAttempt =
+    problem.format === "subjective"
+      ? await getSubjectiveAttempt(client, user.id, problem.problemId)
+      : null;
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     problem,
@@ -300,6 +308,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     citedCases,
     choiceArticleRefs,
     choiceCaseRefs,
+    subjectiveAttempt,
   };
 }
 
@@ -360,6 +369,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     citedCases,
     choiceArticleRefs,
     choiceCaseRefs,
+    subjectiveAttempt,
   } = loaderData;
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -675,6 +685,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   modelAnswerMd={problem.modelAnswerMd}
                   gradingRubricMd={problem.gradingRubricMd}
                   explanationMd={problem.explanationMd}
+                  initialAttempt={subjectiveAttempt}
                 />
               ) : (
               <>
@@ -971,40 +982,147 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
   );
 }
 
-// 주관식(format='subjective') 학습 — 답안 textarea + 모범답안/채점기준 reveal.
-// 답안 저장(DB persist) 은 후속 (feat-4-A-305). 1차 슬라이스는 self-grading 학습용 UI 만.
+// 주관식(format='subjective') 학습 — 답안 textarea + autosave + 자기채점 + 모범답안/채점기준 reveal.
 function SubjectivePanel({
   problemId,
   modelAnswerMd,
   gradingRubricMd,
   explanationMd,
+  initialAttempt,
 }: {
   problemId: string;
   modelAnswerMd: string | null;
   gradingRubricMd: string | null;
   explanationMd: string | null;
+  initialAttempt: SubjectiveAttempt | null;
 }) {
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialAttempt?.answerMd ?? "");
   const [revealedModel, setRevealedModel] = useState(false);
   const [revealedRubric, setRevealedRubric] = useState(false);
+  const [lastSaved, setLastSaved] = useState<SubjectiveAttempt | null>(initialAttempt);
+  const [showScoreForm, setShowScoreForm] = useState(false);
+  const [scoreDraft, setScoreDraft] = useState<string>(
+    initialAttempt?.selfScore != null ? String(initialAttempt.selfScore) : "",
+  );
+  const [scoreNote, setScoreNote] = useState<string>(
+    initialAttempt?.selfScoreNote ?? "",
+  );
+  const autosaveFetcher = useFetcher<{
+    ok?: true;
+    attempt?: SubjectiveAttempt;
+    error?: string;
+  }>();
+  const submitFetcher = useFetcher<{
+    ok?: true;
+    attempt?: SubjectiveAttempt;
+    error?: string;
+  }>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentRef = useRef<string>(initialAttempt?.answerMd ?? "");
+
+  // problem 바뀌면 상태 리셋 (useEffect 안전).
   useEffect(() => {
-    setDraft("");
+    setDraft(initialAttempt?.answerMd ?? "");
+    setLastSaved(initialAttempt);
+    setScoreDraft(
+      initialAttempt?.selfScore != null ? String(initialAttempt.selfScore) : "",
+    );
+    setScoreNote(initialAttempt?.selfScoreNote ?? "");
+    setShowScoreForm(false);
     setRevealedModel(false);
     setRevealedRubric(false);
+    lastSentRef.current = initialAttempt?.answerMd ?? "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [problemId]);
+
+  // autosave: 디바운스 1.5초, 변경 있을 때만 전송.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (draft === lastSentRef.current) return;
+    debounceRef.current = setTimeout(() => {
+      const fd = new FormData();
+      fd.set("intent", "autosave");
+      fd.set("problemId", problemId);
+      fd.set("answerMd", draft);
+      autosaveFetcher.submit(fd, {
+        method: "post",
+        action: "/api/study/subjective-attempt",
+      });
+      lastSentRef.current = draft;
+    }, 1500);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, problemId]);
+
+  // autosave 응답 → lastSaved 갱신.
+  useEffect(() => {
+    if (
+      autosaveFetcher.state === "idle" &&
+      autosaveFetcher.data &&
+      autosaveFetcher.data.ok &&
+      autosaveFetcher.data.attempt
+    ) {
+      setLastSaved(autosaveFetcher.data.attempt);
+    }
+  }, [autosaveFetcher.state, autosaveFetcher.data]);
+
+  // submit 응답 → lastSaved + form 닫기.
+  useEffect(() => {
+    if (
+      submitFetcher.state === "idle" &&
+      submitFetcher.data &&
+      submitFetcher.data.ok &&
+      submitFetcher.data.attempt
+    ) {
+      setLastSaved(submitFetcher.data.attempt);
+      setShowScoreForm(false);
+    }
+  }, [submitFetcher.state, submitFetcher.data]);
+
   const hasModel = (modelAnswerMd ?? "").trim().length > 0;
   const hasRubric = (gradingRubricMd ?? "").trim().length > 0;
+  const isDirty = draft !== (lastSaved?.answerMd ?? "");
+  const isSaving =
+    autosaveFetcher.state !== "idle" || submitFetcher.state !== "idle";
+
+  const onSubmitScore = () => {
+    const score = scoreDraft.trim() === "" ? null : Number(scoreDraft);
+    if (score !== null && (Number.isNaN(score) || score < 0 || score > 100)) {
+      alert("자기채점 점수는 0~100 사이로 입력하세요.");
+      return;
+    }
+    const fd = new FormData();
+    fd.set("intent", "submit");
+    fd.set("problemId", problemId);
+    fd.set("answerMd", draft);
+    if (score !== null) fd.set("selfScore", String(score));
+    if (scoreNote.trim()) fd.set("selfScoreNote", scoreNote.trim());
+    submitFetcher.submit(fd, {
+      method: "post",
+      action: "/api/study/subjective-attempt",
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-muted-foreground mb-1 text-xs font-semibold tracking-wide uppercase">
-          답안 작성 (자기채점용 · 저장되지 않음)
-        </p>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <p className="text-muted-foreground font-semibold tracking-wide uppercase">
+            답안 작성 (자동 저장)
+          </p>
+          <SavingStatus
+            isSaving={isSaving}
+            isDirty={isDirty}
+            updatedAt={lastSaved?.updatedAt ?? null}
+          />
+        </div>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          rows={12}
-          placeholder="목차를 잡고 본문을 작성해보세요. 모범답안과 채점 기준은 아래 버튼으로 확인할 수 있습니다."
+          rows={14}
+          placeholder="목차를 잡고 본문을 작성해보세요. 작성 중 1.5초 정지 시 자동 저장됩니다."
           className="border-input bg-background w-full rounded-md border px-3 py-2 font-serif text-sm leading-relaxed"
           data-testid="subjective-answer-draft"
         />
@@ -1034,7 +1152,93 @@ function SubjectivePanel({
           {revealedRubric ? "채점기준 숨기기" : "채점기준 보기"}
           {!hasRubric ? " (미등록)" : ""}
         </Button>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => setShowScoreForm((v) => !v)}
+          disabled={isSaving}
+          data-testid="subjective-grade-toggle"
+        >
+          {showScoreForm ? "자기채점 닫기" : "자기채점 완료"}
+        </Button>
       </div>
+
+      {lastSaved?.submittedAt ? (
+        <div className="border-foreground/10 text-muted-foreground rounded-md border-l-2 bg-emerald-50/40 px-3 py-2 text-xs dark:bg-emerald-950/20">
+          <p>
+            마지막 자기채점:{" "}
+            <span className="text-foreground font-bold tabular-nums">
+              {lastSaved.selfScore !== null ? `${lastSaved.selfScore}점` : "—"}
+            </span>{" "}
+            · {lastSaved.submittedAt.slice(0, 10)}
+          </p>
+          {lastSaved.selfScoreNote ? (
+            <p className="mt-1 whitespace-pre-line">{lastSaved.selfScoreNote}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showScoreForm ? (
+        <Card className="border-primary/40">
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              자기채점
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <label className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground w-16 shrink-0">
+                점수 (0~100)
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={scoreDraft}
+                onChange={(e) => setScoreDraft(e.target.value)}
+                placeholder="예: 75"
+                className="border-input bg-background h-8 w-24 rounded-md border px-2 text-xs tabular-nums"
+                data-testid="subjective-score-input"
+              />
+            </label>
+            <label className="flex items-start gap-2 text-xs">
+              <span className="text-muted-foreground mt-1 w-16 shrink-0">
+                자기 평가
+              </span>
+              <textarea
+                value={scoreNote}
+                onChange={(e) => setScoreNote(e.target.value)}
+                rows={3}
+                placeholder="놓친 논점, 보완할 내용 등"
+                className="border-input bg-background flex-1 rounded-md border px-2 py-1 text-xs"
+                data-testid="subjective-score-note"
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowScoreForm(false)}
+              >
+                취소
+              </Button>
+              <Button
+                size="sm"
+                onClick={onSubmitScore}
+                disabled={isSaving}
+                data-testid="subjective-score-submit"
+              >
+                저장
+              </Button>
+            </div>
+            {submitFetcher.data && "error" in submitFetcher.data ? (
+              <p className="text-rose-600 text-xs">
+                {submitFetcher.data.error}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {revealedRubric && hasRubric ? (
         <Card className="border-dashed">
@@ -1082,4 +1286,29 @@ function SubjectivePanel({
       ) : null}
     </div>
   );
+}
+
+function SavingStatus({
+  isSaving,
+  isDirty,
+  updatedAt,
+}: {
+  isSaving: boolean;
+  isDirty: boolean;
+  updatedAt: string | null;
+}) {
+  if (isSaving) {
+    return <span className="text-muted-foreground">저장 중…</span>;
+  }
+  if (isDirty) {
+    return <span className="text-amber-600">미저장</span>;
+  }
+  if (updatedAt) {
+    return (
+      <span className="text-emerald-600">
+        저장됨 · {updatedAt.slice(11, 16)}
+      </span>
+    );
+  }
+  return <span className="text-muted-foreground">미저장</span>;
 }
