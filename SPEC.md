@@ -266,7 +266,7 @@
 | feat-4-A-113 | 제목만 보기 (항 단위 본문 접기) | P1 | ✅ |
 | feat-4-A-114 | 정오문제 위젯 (객관식 자동 연동 + 별도 업로드, 무작위 노출, 정답+해설) | P0 | ✅ |
 | feat-4-A-115 | 코멘트 / 평석 패널 (staff 작성, 학생 read-only, 마크다운) | P0 | ✅ |
-| feat-4-A-116 | Q&A 패널 (검색 + 새 질문 → 알림 + 답변자 질문수준 평가 상/중/하) | P0 | 🟡 |
+| feat-4-A-116 | Q&A 패널 — 동일 공용 컴포넌트(QnaPanel/qna-list). 검색 + 새 질문 → staff 알림 + 답변자 질문수준 평가 상/중/하. | P0 | ✅ |
 | feat-4-A-130 | 조문 빈칸 채우기 학습 (article_blank_sets, 빈칸 모드 토글, 입력+채점, 시도 기록). 운영자 편집은 article-viewer "빈칸 자료" 버튼 → 자기 set 자동 생성+편집 / 모든 조문 한 화면(setless 카드도 drag→자동 생성). 매칭: ±30자 컨텍스트 + ANCHOR_LENGTHS=[30,20,12,10,8,6,4] + cross-token cumulative fallback. 미매칭 일괄검수/새 자료 업로드 진입점은 제거(article-viewer 통합 흐름) | P0 | 🟡 |
 
 ### 5.4.A.2 — 판례 탭
@@ -280,14 +280,14 @@
 | feat-4-A-205 | 판례 상세 뷰어 — 헤더(법원·사건번호·사건유형·전합·중요도·선고일·기출년도) / 판결요지(복수 [1][2] 분리) / 판시이유 / 비고. 좌측 조문트리 · 우측 패널 3분할. | P0 | ✅ |
 | feat-4-A-206 | 판례 본문 하이라이트 — 요지·이유·비고 3 영역에 fieldPath 별 HighlightOverlay + 상단 HighlightToolbar. 메모/즐겨찾기는 우측 패널(ArticleRightPanel). | P0 | ✅ |
 | feat-4-A-207 | 인용 복사 버튼 — case-viewer 헤더 우측 "인용 복사" / buildCitation: "{법원} {YYYY. M. D.} 선고 {사건번호} 판결 【{유형}】". 클립보드 API + 폴백 prompt. | P1 | ✅ |
-| feat-4-A-208 | 판례 전문 검색 (Postgres tsvector + pg_trgm) | P1 | 🟡 |
+| feat-4-A-208 | 판례 전문 검색 — case_number / case_title / summary_title / summary_body_md / reasoning_md / comment_body_md 에 pg_trgm GIN 인덱스 + ilike 다중 컬럼 OR. 한국어 부분 매칭 안정 작동. search_tsv(simple config) 는 generated 컬럼으로 유지 — 향후 정확 매칭 ranking 도입 시 활용 가능. | P1 | ✅ |
 | feat-4-A-209 | 판례 색인 화면 (테이블 — 중요·법원·선고일·사건번호·사건유형·사건명+기출년도·전합). 검색·정렬·기출 필터·페이지네이션(50/페이지). | P0 | ✅ |
 | feat-4-A-210 | 판례 트리 진입 (체계도/조문 순서, leaf 카운트) | P1 | 🔲 |
 | feat-4-A-211 | 판결전문 PDF 뷰어 — cases.full_text_pdf URL 이 있으면 case-viewer 본문에 iframe 임베드(80vh) + "새 탭에서 열기" 버튼. 미첨부 case 는 섹션 자체 숨김. | P0 | ✅ |
 | feat-4-A-212 | 관련문제 패널 — case-viewer 우측 패널 "유사 문제" 탭: `getRelatedProblemsByCase` (article_case_links 가 가리키는 article 의 primary_article_id 문제 12건). 1차/2차 양방향 링크는 explicit problem_case_links 모델 추가 시 보강. | P0 | ✅ |
 | feat-4-A-213 | 비고/코멘트(평석) 출처/내용 분리 — comment_source 가 있으면 본문 위에 별도 박스(왼쪽 border-l)로 노출. 내용은 HighlightOverlay 로 wrap. | P0 | ✅ |
 | feat-4-A-214 | 관련논문/기사 링크 (PDF/외부) | P1 | 🔲 |
-| feat-4-A-215 | Q&A 패널 (공통 컴포넌트) | P0 | 🟡 |
+| feat-4-A-215 | Q&A 패널 — 우측 패널 통합(article/case/problem 공용). qna-list 검색 + 필터(scope/target/q). 새 질문 → 모든 staff fanout 알림(이메일+카카오 Alimtalk). 답변 시 질문수준 평가 상/중/하(qna_quality_grade) + asker 알림. | P0 | ✅ |
 
 ### 5.4.A.3 — 문제 탭
 
@@ -308,7 +308,7 @@
 | feat-4-A-313 | 지문별 색인 (problem_choice 자식 entity) + 정오문제 자동 연동 (article 패널 + /:subject/ox 페이지) | P0 | ✅ |
 | feat-4-A-314 | 해설 — 지문별 O/X + 분류(조문/판례/실무) + 링크 | P0 | ✅ |
 | feat-4-A-315 | 동영상 풀이 (강사 업로드, 문제 우측 패널) | P1 | 🔲 |
-| feat-4-A-316 | Q&A 패널 (공통 컴포넌트) | P0 | 🟡 |
+| feat-4-A-316 | Q&A 패널 — 공용 QnaPanel. ArticleRightPanel 통해 problem 타깃도 동일 흐름. | P0 | ✅ |
 | feat-4-A-320 | 주관식 색인 화면 (기출+모의 통합 테이블) | P1 | 🔲 |
 | feat-4-A-321 | 주관식 분류 라벨 (기출/변형/예상, 키워드, 사례·논점) | P1 | 🔲 |
 | feat-4-A-322 | 채점기준·모범답안·채점결과 우측 패널 | P1 | 🔲 |
