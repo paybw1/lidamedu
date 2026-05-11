@@ -63,6 +63,7 @@ export default [
     ]),
     ...prefix("/admin", [
       route("/case-link", "features/admin/api/case-link.tsx"),
+      route("/case-reference", "features/admin/api/case-reference.tsx"),
     ]),
     ...prefix("/problems", [
       route(

@@ -38,3 +38,22 @@ export interface CaseDetail extends CaseListItem {
   commentSource: string | null;
   commentBodyMd: string | null;
 }
+
+// feat-4-A-214 관련논문/기사 링크.
+export type CaseReferenceKind = "paper" | "article" | "other";
+
+export interface CaseReference {
+  referenceId: string;
+  caseId: string;
+  kind: CaseReferenceKind;
+  title: string;
+  authors: string | null;
+  source: string | null;
+  publishedAt: string | null; // YYYY-MM-DD
+  url: string | null;
+  pdfUrl: string | null;
+  note: string | null;
+  ord: number;
+  createdAt: string;
+  updatedAt: string;
+}

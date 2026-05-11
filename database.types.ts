@@ -372,6 +372,72 @@ export type Database = {
           },
         ]
       }
+      case_references: {
+        Row: {
+          authors: string | null
+          case_id: string
+          created_at: string
+          created_by: string | null
+          kind: string
+          note: string | null
+          ord: number
+          pdf_url: string | null
+          published_at: string | null
+          reference_id: string
+          source: string | null
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          authors?: string | null
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          kind: string
+          note?: string | null
+          ord?: number
+          pdf_url?: string | null
+          published_at?: string | null
+          reference_id?: string
+          source?: string | null
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          authors?: string | null
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          kind?: string
+          note?: string | null
+          ord?: number
+          pdf_url?: string | null
+          published_at?: string | null
+          reference_id?: string
+          source?: string | null
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_references_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_references_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       cases: {
         Row: {
           case_id: string

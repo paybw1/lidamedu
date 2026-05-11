@@ -8,6 +8,8 @@ export type {
   CaseListItem,
   CaseDetail,
   SummaryItem,
+  CaseReference,
+  CaseReferenceKind,
 } from "./labels";
 export { COURT_LABELS } from "./labels";
 
@@ -15,6 +17,8 @@ import type {
   CaseCourt,
   CaseListItem,
   CaseDetail,
+  CaseReference,
+  CaseReferenceKind,
   SummaryItem,
 } from "./labels";
 
@@ -105,6 +109,9 @@ export interface ListCasesBySubjectOptions {
   // 페이지네이션 (1-based)
   page?: number;
   pageSize?: number;
+  // 판례 트리 필터 — 활성 시 이 case_id 들로만 제한. 빈 배열은 결과 0건.
+  // undefined 또는 null = 트리 필터 비활성.
+  filterCaseIds?: readonly string[] | null;
 }
 
 export interface CaseListPage {
@@ -124,11 +131,19 @@ export async function listCasesBySubject(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  if (options.filterCaseIds && options.filterCaseIds.length === 0) {
+    return { items: [], total: 0, page, pageSize };
+  }
+
   let q = client
     .from("cases")
     .select(LIST_COLUMNS, { count: "exact" })
     .contains("subject_laws", [lawCode])
     .is("deleted_at", null);
+
+  if (options.filterCaseIds) {
+    q = q.in("case_id", options.filterCaseIds);
+  }
 
   const trimmed = options.query?.trim();
   if (trimmed) {
@@ -176,6 +191,179 @@ export async function listCasesBySubject(
     page,
     pageSize,
   };
+}
+
+// 조문별 case 개수 — 판례 트리 진입 (feat-4-A-210) 의 leaf 카운트.
+// article_case_links 의 article_id 별 distinct case 개수. 같은 case 가 같은 article 에
+// 여러 relation_type 으로 들어있어도 1개로 카운트한다.
+export async function getCaseCountsByArticle(
+  client: SupabaseClient<Database>,
+  lawId: string,
+): Promise<Record<string, number>> {
+  const PAGE = 1000;
+  const seenPair = new Set<string>(); // `${articleId}::${caseId}` — 중복 relation_type 제거.
+  const counts: Record<string, number> = {};
+  let from = 0;
+  for (;;) {
+    const { data, error } = await client
+      .from("article_case_links")
+      .select(
+        "article_id, case_id, articles!inner(law_id, deleted_at), cases!inner(deleted_at)",
+      )
+      .eq("articles.law_id", lawId)
+      .is("articles.deleted_at", null)
+      .is("cases.deleted_at", null)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data) {
+      const key = `${r.article_id}::${r.case_id}`;
+      if (seenPair.has(key)) continue;
+      seenPair.add(key);
+      counts[r.article_id] = (counts[r.article_id] ?? 0) + 1;
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return counts;
+}
+
+// 트리 노드 클릭 필터링 — 주어진 조문들과 연결된 판례 ID 셋.
+// 빈 배열을 받으면 빈 배열을 반환 (filter caller 가 0건으로 처리).
+export async function getCaseIdsByArticleIds(
+  client: SupabaseClient<Database>,
+  articleIds: readonly string[],
+): Promise<string[]> {
+  if (articleIds.length === 0) return [];
+  const out = new Set<string>();
+  const CHUNK = 200; // IN 절 크기 상한.
+  const PAGE = 1000;
+  for (let i = 0; i < articleIds.length; i += CHUNK) {
+    const slice = articleIds.slice(i, i + CHUNK);
+    let from = 0;
+    for (;;) {
+      const { data, error } = await client
+        .from("article_case_links")
+        .select("case_id")
+        .in("article_id", slice)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      for (const r of data) out.add(r.case_id);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+  return [...out];
+}
+
+// feat-4-A-214 관련논문/기사 링크.
+// case 한 건에 연결된 외부 자료 (논문/기사/기타). 읽기는 공개, 쓰기는 staff.
+// 타입은 ./labels 에 정의 — 클라이언트 번들 안전 import.
+
+export async function listCaseReferences(
+  client: SupabaseClient<Database>,
+  caseId: string,
+): Promise<CaseReference[]> {
+  const { data, error } = await client
+    .from("case_references")
+    .select(
+      "reference_id, case_id, kind, title, authors, source, published_at, url, pdf_url, note, ord, created_at, updated_at",
+    )
+    .eq("case_id", caseId)
+    .order("ord", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    referenceId: r.reference_id,
+    caseId: r.case_id,
+    kind: r.kind as CaseReferenceKind,
+    title: r.title,
+    authors: r.authors,
+    source: r.source,
+    publishedAt: r.published_at,
+    url: r.url,
+    pdfUrl: r.pdf_url,
+    note: r.note,
+    ord: r.ord,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export interface UpsertCaseReferenceInput {
+  caseId: string;
+  kind: CaseReferenceKind;
+  title: string;
+  authors?: string | null;
+  source?: string | null;
+  publishedAt?: string | null;
+  url?: string | null;
+  pdfUrl?: string | null;
+  note?: string | null;
+  ord?: number;
+}
+
+export async function createCaseReference(
+  client: SupabaseClient<Database>,
+  input: UpsertCaseReferenceInput,
+  authorId: string,
+): Promise<{ ok: true; referenceId: string } | { ok: false; error: string }> {
+  const { data, error } = await client
+    .from("case_references")
+    .insert({
+      case_id: input.caseId,
+      kind: input.kind,
+      title: input.title,
+      authors: input.authors ?? null,
+      source: input.source ?? null,
+      published_at: input.publishedAt ?? null,
+      url: input.url ?? null,
+      pdf_url: input.pdfUrl ?? null,
+      note: input.note ?? null,
+      ord: input.ord ?? 0,
+      created_by: authorId,
+    })
+    .select("reference_id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, referenceId: data.reference_id };
+}
+
+export async function updateCaseReference(
+  client: SupabaseClient<Database>,
+  referenceId: string,
+  patch: Partial<Omit<UpsertCaseReferenceInput, "caseId">>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const update: Record<string, unknown> = {};
+  if (patch.kind !== undefined) update.kind = patch.kind;
+  if (patch.title !== undefined) update.title = patch.title;
+  if (patch.authors !== undefined) update.authors = patch.authors;
+  if (patch.source !== undefined) update.source = patch.source;
+  if (patch.publishedAt !== undefined) update.published_at = patch.publishedAt;
+  if (patch.url !== undefined) update.url = patch.url;
+  if (patch.pdfUrl !== undefined) update.pdf_url = patch.pdfUrl;
+  if (patch.note !== undefined) update.note = patch.note;
+  if (patch.ord !== undefined) update.ord = patch.ord;
+  if (Object.keys(update).length === 0) return { ok: true };
+  const { error } = await client
+    .from("case_references")
+    .update(update)
+    .eq("reference_id", referenceId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function deleteCaseReference(
+  client: SupabaseClient<Database>,
+  referenceId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await client
+    .from("case_references")
+    .delete()
+    .eq("reference_id", referenceId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 export async function getCaseById(

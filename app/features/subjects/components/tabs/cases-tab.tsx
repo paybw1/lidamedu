@@ -7,7 +7,7 @@ import {
   StarIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Form, Link, useNavigation, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -22,12 +22,19 @@ import {
   TableHeader,
   TableRow,
 } from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
+import type {
+  ArticleNode,
+  SystematicNode,
+} from "~/features/laws/queries.server";
 
-import type { CaseFiltersApplied } from "../../lib/loader.server";
-import { useSortAxis } from "../sort-axis";
+import type {
+  CaseFiltersApplied,
+  CaseTreeCounts,
+} from "../../lib/loader.server";
+import { SortAxisToggle, useSortAxis } from "../sort-axis";
+import { CasesTree } from "../cases-tree";
 import type { LawSubjectMeta } from "../../lib/subjects";
 
 const COURT_OPTIONS = [
@@ -66,18 +73,48 @@ export function CasesTab({
   casesTotal,
   caseFilters,
   initialQuery,
+  articles,
+  systematicNodes,
+  caseTreeCounts,
 }: {
   subject: LawSubjectMeta;
   cases: CaseListItem[];
   casesTotal: number;
   caseFilters?: CaseFiltersApplied;
   initialQuery: string;
+  articles: ArticleNode[];
+  systematicNodes: SystematicNode[];
+  caseTreeCounts: CaseTreeCounts;
 }) {
   const filters = caseFilters ?? { ...DEFAULT_FILTERS, q: initialQuery };
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
   const { axis } = useSortAxis();
   const axisLabel = axis === "systematic" ? "테크 트리" : "조문";
+  const treeFilter = filters.tree ?? null;
+  const systematicEmpty = systematicNodes.length === 0;
+  const treeFilterLabel = useMemo(() => {
+    if (!treeFilter) return null;
+    if (treeFilter.kind === "article") {
+      const a = articles.find((x) => x.articleId === treeFilter.articleId);
+      return a ? a.displayLabel : "조문";
+    }
+    if (treeFilter.kind === "chapter") {
+      const c = articles.find((x) => x.articleId === treeFilter.chapterId);
+      return c ? c.displayLabel : "장/절";
+    }
+    const n = systematicNodes.find((x) => x.nodeId === treeFilter.nodeId);
+    return n ? n.displayLabel : "체계도 항목";
+  }, [treeFilter, articles, systematicNodes]);
+  // 트리 필터 해제 href — case_* / case_page 만 제거.
+  const clearTreeHref = useMemo(() => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("case_article");
+    sp.delete("case_chapter");
+    sp.delete("case_node");
+    sp.delete("case_page");
+    return `?${sp.toString()}`;
+  }, [searchParams]);
 
   const [draft, setDraft] = useState(filters.q);
   useEffect(() => {
@@ -93,7 +130,7 @@ export function CasesTab({
 
   const totalPages = Math.max(1, Math.ceil(casesTotal / filters.pageSize));
 
-  // hidden inputs — 검색폼 submit 시 다른 필터 보존.
+  // hidden inputs — 검색폼 submit 시 다른 필터 보존 (트리 필터 포함).
   const hidden: Array<{ name: string; value: string }> = [];
   if (tabParam) hidden.push({ name: "tab", value: tabParam });
   if (filters.court !== "all")
@@ -102,9 +139,50 @@ export function CasesTab({
     hidden.push({ name: "case_exam", value: filters.exam });
   if (filters.sort !== "decided_desc")
     hidden.push({ name: "case_sort", value: filters.sort });
+  if (treeFilter?.kind === "article")
+    hidden.push({ name: "case_article", value: treeFilter.articleId });
+  else if (treeFilter?.kind === "chapter")
+    hidden.push({ name: "case_chapter", value: treeFilter.chapterId });
+  else if (treeFilter?.kind === "node")
+    hidden.push({ name: "case_node", value: treeFilter.nodeId });
+
+  // FilterGroup 들의 hidden — 트리 필터·검색어 보존.
+  const baseHidden: Array<{ name: string; value: string }> = [
+    { name: "tab", value: tabParam },
+    { name: "q", value: filters.q },
+  ];
+  if (treeFilter?.kind === "article")
+    baseHidden.push({ name: "case_article", value: treeFilter.articleId });
+  else if (treeFilter?.kind === "chapter")
+    baseHidden.push({ name: "case_chapter", value: treeFilter.chapterId });
+  else if (treeFilter?.kind === "node")
+    baseHidden.push({ name: "case_node", value: treeFilter.nodeId });
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="space-y-3">
+        <Card className="py-4">
+          <CardHeader className="px-4 pb-3">
+            <div className="flex items-center justify-end gap-2">
+              <SortAxisToggle
+                size="sm"
+                disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="px-2 pb-2">
+            <CasesTree
+              axis={axis}
+              articles={articles}
+              systematicNodes={systematicNodes}
+              caseTreeCounts={caseTreeCounts}
+              active={treeFilter}
+            />
+          </CardContent>
+        </Card>
+      </aside>
+
+      <section className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <KpiCard label="전체 판례" value={String(casesTotal)} hint="모든 필터 무시" />
         <KpiCard
@@ -118,6 +196,21 @@ export function CasesTab({
           hint="현재 페이지 1·2차 기출 표시"
         />
       </div>
+
+      {treeFilter ? (
+        <div className="bg-accent/40 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs">
+          <GavelIcon className="text-primary size-3.5" />
+          <span className="text-muted-foreground">트리 필터:</span>
+          <Badge variant="secondary" className="max-w-[260px] truncate">
+            {treeFilterLabel}
+          </Badge>
+          <Button asChild variant="ghost" size="sm" className="h-6 px-2">
+            <Link to={clearTreeHref} preventScrollReset>
+              <XIcon className="size-3" /> 전체 보기
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader className="space-y-3">
@@ -158,21 +251,33 @@ export function CasesTab({
               name="case_court"
               value={filters.court}
               options={COURT_OPTIONS}
-              hidden={[{ name: "tab", value: tabParam }, { name: "q", value: filters.q }, { name: "case_exam", value: filters.exam }, { name: "case_sort", value: filters.sort }]}
+              hidden={[
+                ...baseHidden,
+                { name: "case_exam", value: filters.exam },
+                { name: "case_sort", value: filters.sort },
+              ]}
             />
             <FilterGroup
               label="기출"
               name="case_exam"
               value={filters.exam}
               options={EXAM_OPTIONS}
-              hidden={[{ name: "tab", value: tabParam }, { name: "q", value: filters.q }, { name: "case_court", value: filters.court }, { name: "case_sort", value: filters.sort }]}
+              hidden={[
+                ...baseHidden,
+                { name: "case_court", value: filters.court },
+                { name: "case_sort", value: filters.sort },
+              ]}
             />
             <FilterGroup
               label="정렬"
               name="case_sort"
               value={filters.sort}
               options={SORT_OPTIONS}
-              hidden={[{ name: "tab", value: tabParam }, { name: "q", value: filters.q }, { name: "case_court", value: filters.court }, { name: "case_exam", value: filters.exam }]}
+              hidden={[
+                ...baseHidden,
+                { name: "case_court", value: filters.court },
+                { name: "case_exam", value: filters.exam },
+              ]}
             />
             <span className="text-muted-foreground ml-auto text-xs tabular-nums">
               {filters.q ? `"${filters.q}" · ` : ""}
@@ -220,6 +325,7 @@ export function CasesTab({
           </CardContent>
         ) : null}
       </Card>
+      </section>
     </div>
   );
 }
@@ -275,6 +381,12 @@ function Pagination({
     if (filters.court !== "all") sp.set("case_court", filters.court);
     if (filters.exam !== "any") sp.set("case_exam", filters.exam);
     if (filters.sort !== "decided_desc") sp.set("case_sort", filters.sort);
+    if (filters.tree?.kind === "article")
+      sp.set("case_article", filters.tree.articleId);
+    else if (filters.tree?.kind === "chapter")
+      sp.set("case_chapter", filters.tree.chapterId);
+    else if (filters.tree?.kind === "node")
+      sp.set("case_node", filters.tree.nodeId);
     if (page !== 1) sp.set("case_page", String(page));
     return `?${sp.toString()}`;
   };

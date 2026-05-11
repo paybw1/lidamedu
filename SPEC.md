@@ -282,11 +282,11 @@
 | feat-4-A-207 | 인용 복사 버튼 — case-viewer 헤더 우측 "인용 복사" / buildCitation: "{법원} {YYYY. M. D.} 선고 {사건번호} 판결 【{유형}】". 클립보드 API + 폴백 prompt. | P1 | ✅ |
 | feat-4-A-208 | 판례 전문 검색 — case_number / case_title / summary_title / summary_body_md / reasoning_md / comment_body_md 에 pg_trgm GIN 인덱스 + ilike 다중 컬럼 OR. 한국어 부분 매칭 안정 작동. search_tsv(simple config) 는 generated 컬럼으로 유지 — 향후 정확 매칭 ranking 도입 시 활용 가능. | P1 | ✅ |
 | feat-4-A-209 | 판례 색인 화면 (테이블 — 중요·법원·선고일·사건번호·사건유형·사건명+기출년도·전합). 검색·정렬·기출 필터·페이지네이션(50/페이지). | P0 | ✅ |
-| feat-4-A-210 | 판례 트리 진입 (체계도/조문 순서, leaf 카운트) | P1 | 🔲 |
+| feat-4-A-210 | 판례 트리 진입 — cases 탭 좌측 사이드바: 조문 트리 + 체계도(SortAxisToggle 공유). 각 노드별 leaf 카운트(판례 수). 클릭 시 `?case_article` / `?case_chapter` / `?case_node` URL 파라미터로 필터링 + 필터 활성 chip + 전체 보기 해제 버튼. chapter 는 자손 article 합산, systematic 노드는 부분트리 article 합산(중복 제거). 0건 노드는 hide. | P1 | ✅ |
 | feat-4-A-211 | 판결전문 PDF 뷰어 — cases.full_text_pdf URL 이 있으면 case-viewer 본문에 iframe 임베드(80vh) + "새 탭에서 열기" 버튼. 미첨부 case 는 섹션 자체 숨김. | P0 | ✅ |
 | feat-4-A-212 | 관련문제 패널 — case-viewer 우측 패널 "유사 문제" 탭: `getRelatedProblemsByCase` (article_case_links 가 가리키는 article 의 primary_article_id 문제 12건). 1차/2차 양방향 링크는 explicit problem_case_links 모델 추가 시 보강. | P0 | ✅ |
 | feat-4-A-213 | 비고/코멘트(평석) 출처/내용 분리 — comment_source 가 있으면 본문 위에 별도 박스(왼쪽 border-l)로 노출. 내용은 HighlightOverlay 로 wrap. | P0 | ✅ |
-| feat-4-A-214 | 관련논문/기사 링크 (PDF/외부) | P1 | 🔲 |
+| feat-4-A-214 | 관련논문/기사 링크 — `case_references` 테이블(kind: paper/article/other, title/authors/source/publishedAt/url/pdfUrl/note/ord). case-viewer 본문에 패널 추가, 학생은 read-only (외부 링크 + PDF 열기 버튼). staff(instructor/admin) 는 inline 추가/수정/삭제. API: `/api/admin/case-reference` (create/update/delete). RLS: public read, staff write. | P1 | ✅ |
 | feat-4-A-215 | Q&A 패널 — 우측 패널 통합(article/case/problem 공용). qna-list 검색 + 필터(scope/target/q). 새 질문 → 모든 staff fanout 알림(이메일+카카오 Alimtalk). 답변 시 질문수준 평가 상/중/하(qna_quality_grade) + asker 알림. | P0 | ✅ |
 
 ### 5.4.A.3 — 문제 탭

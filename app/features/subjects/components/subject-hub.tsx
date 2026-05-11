@@ -24,6 +24,7 @@ import type { CaseListItem } from "~/features/cases/queries.server";
 import type { ProblemListItem } from "~/features/problems/queries.server";
 import type {
   CaseFiltersApplied,
+  CaseTreeCounts,
   ProblemFiltersApplied,
 } from "../lib/loader.server";
 import type { ProblemAggregateStats } from "~/features/study/lib/difficulty";
@@ -53,6 +54,7 @@ interface SubjectHubProps {
   cases?: CaseListItem[];
   casesTotal?: number;
   caseFilters?: CaseFiltersApplied;
+  caseTreeCounts?: CaseTreeCounts;
   problems?: ProblemListItem[];
   caseQuery?: string;
   progress?: SubjectProgress | null;
@@ -82,6 +84,7 @@ function SubjectHubInner({
   cases,
   casesTotal,
   caseFilters,
+  caseTreeCounts,
   problems,
   caseQuery,
   progress,
@@ -171,6 +174,11 @@ function SubjectHubInner({
             casesTotal={casesTotal ?? (cases?.length ?? 0)}
             caseFilters={caseFilters}
             initialQuery={caseQuery ?? ""}
+            articles={articles ?? []}
+            systematicNodes={systematicNodes ?? []}
+            caseTreeCounts={
+              caseTreeCounts ?? { byArticleId: {}, byChapterId: {}, byNodeId: {} }
+            }
           />
         </TabsContent>
         <TabsContent value="problems">

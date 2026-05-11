@@ -20,12 +20,14 @@ import {
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import { recordStudySession } from "~/features/study/queries.server";
+import { COURT_LABELS } from "~/features/cases/labels";
 import {
-  COURT_LABELS,
   getCaseById,
+  listCaseReferences,
 } from "~/features/cases/queries.server";
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
+import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
   RelatedArticlesChips,
@@ -34,6 +36,7 @@ import {
 import {
   getArticleSkeleton,
   getLawByCode,
+  getStaffRole,
 } from "~/features/laws/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedProblemsByCase } from "~/features/problems/queries.server";
@@ -101,6 +104,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     memos,
     highlights,
     qnaThreads,
+    references,
+    staffRole,
   ] = await Promise.all([
     getRelatedArticlesByCase(client, kase.caseId),
     getRelatedProblemsByCase(client, kase.caseId, 12),
@@ -108,6 +113,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listMemos(client, user.id, "case", kase.caseId),
     listHighlights(client, user.id, "case", kase.caseId),
     listThreadsForTarget(client, "case", kase.caseId, 20),
+    listCaseReferences(client, kase.caseId),
+    getStaffRole(client, user.id),
   ]);
 
   recordStudySession(client, user.id, {
@@ -128,6 +135,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     memos,
     highlights,
     qnaThreads,
+    references,
+    canEditReferences: staffRole !== null,
   };
 }
 
@@ -143,6 +152,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     memos,
     highlights,
     qnaThreads,
+    references,
+    canEditReferences,
   } = loaderData;
 
   // summaryItems 가 있으면 우선 사용. 없으면 legacy summary_body_md 를 한 묶음으로 폴백.
@@ -275,6 +286,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                           body={it.body}
                           showLabel={summaryItems.length > 1}
                           index={i}
+                          caseTitle={kase.caseTitle}
                         />
                       ))}
                     </div>
@@ -313,6 +325,13 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     />
                   </div>
                 </Section>
+              ) : null}
+              {(references.length > 0 || canEditReferences) ? (
+                <CaseReferencesPanel
+                  caseId={kase.caseId}
+                  references={references}
+                  canEdit={canEditReferences}
+                />
               ) : null}
               {kase.commentBodyMd ? (
                 <Section title="비고">
@@ -388,16 +407,20 @@ function Section({
 
 // 복수 요지 한 항목 — [N] 라벨이 있는 제목과 내용을 함께 표시.
 // 파서는 title 앞에 "[1] " 같은 prefix 를 이미 붙여 두지만, 여러 항목일 때 시각적 라벨 분리.
+// caseTitle 과 displayTitle 이 동일하면 헤더와 중복이라 제목은 숨기고 본문만 표시.
+// (다항목일 땐 [N] 라벨만 남겨 항목 구분).
 function SummaryBlock({
   title,
   body,
   showLabel,
   index,
+  caseTitle,
 }: {
   title: string;
   body: string;
   showLabel: boolean;
   index: number;
+  caseTitle: string;
 }) {
   // [N] 으로 시작하는 prefix 추출. 단일 요지면 prefix 가 없으니 그대로.
   let label: string | null = null;
@@ -410,14 +433,18 @@ function SummaryBlock({
   if (showLabel && !label) {
     label = `[${index + 1}]`;
   }
+  const duplicatesHeader =
+    displayTitle.trim() !== "" &&
+    displayTitle.trim() === caseTitle.trim();
+  const shownTitle = duplicatesHeader ? "" : displayTitle;
   return (
     <div className="space-y-1">
-      {(label || displayTitle) ? (
+      {(label || shownTitle) ? (
         <p className="text-sm font-semibold leading-snug">
           {label ? (
             <span className="text-primary mr-1.5">{label}</span>
           ) : null}
-          {displayTitle}
+          {shownTitle}
         </p>
       ) : null}
       {body ? <Prose text={body} /> : null}
