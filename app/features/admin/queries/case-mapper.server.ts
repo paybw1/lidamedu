@@ -162,7 +162,9 @@ export async function addCaseArticleLink(
     created_by: authorId,
   });
   if (error) {
-    if (error.code === "23505") return { ok: false, error: "이미 매핑됨" };
+    // UNIQUE 위배 = 이미 동일 페어가 존재. 사용자 의도(매핑 보장)는 충족된 상태이므로
+    // silent success — UI 가 revalidate 로 chip 영역 갱신만 수행.
+    if (error.code === "23505") return { ok: true };
     return { ok: false, error: error.message };
   }
   return { ok: true };
