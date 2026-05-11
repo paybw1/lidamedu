@@ -78,11 +78,20 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "팩에 문제가 없습니다." }, { status: 400 });
   }
 
-  // 첫 문제의 law_code / science_subject 로 viewer URL prefix 결정.
+  // ?startAt=<problemId> 가 있고 팩에 포함된 문제면 그 문제부터 시작.
+  // exam 모드는 첫 문제부터 시작해야 타이머 일관성 — startAt 무시.
+  const startAtRaw = String(fd.get("startAt") ?? "").trim();
+  const startAt =
+    mode === "study" &&
+    z.string().uuid().safeParse(startAtRaw).success &&
+    problemIds.includes(startAtRaw)
+      ? startAtRaw
+      : problemIds[0];
+
   const { data: firstRow } = await client
     .from("problems")
     .select("problem_id, science_subject, laws(law_code)")
-    .eq("problem_id", problemIds[0])
+    .eq("problem_id", startAt)
     .maybeSingle();
   let subjectUrl: string;
   if (firstRow?.science_subject) {
@@ -124,14 +133,13 @@ export async function action({ request }: Route.ActionArgs) {
     packId,
   });
 
-  // 첫 문제 viewer 로 redirect (자연과학은 science/:subject/problems/:id, 법률은 :subject/problems/:id).
-  const firstProblemId = problemIds[0];
+  // startAt 또는 첫 문제 viewer 로 redirect.
   let runnerUrl: string;
   if (scienceSubject) {
     const sci = scienceSubject.replace("_", "-");
-    runnerUrl = `/subjects/science/${sci}/problems/${firstProblemId}?session=${sessionId}`;
+    runnerUrl = `/subjects/science/${sci}/problems/${startAt}?session=${sessionId}`;
   } else {
-    runnerUrl = `${subjectUrl}/problems/${firstProblemId}?session=${sessionId}`;
+    runnerUrl = `${subjectUrl}/problems/${startAt}?session=${sessionId}`;
   }
   return redirect(runnerUrl);
 }

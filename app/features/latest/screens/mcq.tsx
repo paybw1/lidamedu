@@ -6,10 +6,13 @@
 import {
   BookOpenCheckIcon,
   ChevronRightIcon,
+  ClockIcon,
   FilterXIcon,
+  InfoIcon,
   ListChecksIcon,
   NewspaperIcon,
   PencilIcon,
+  PlayIcon,
   PlusIcon,
   RefreshCwIcon,
   SearchIcon,
@@ -356,6 +359,11 @@ const KIND_BADGE_VARIANT: Record<
   other: "outline",
 };
 
+// 팩 종류별 기본 응시 모드 — 기출/기타는 학습 모드(즉시 해설), 모의는 시험 모드(타이머).
+function defaultStartMode(kind: McqPackKind): "study" | "exam" {
+  return kind === "mock_full" || kind === "mock_progressive" ? "exam" : "study";
+}
+
 function PackRow({
   pack,
   index,
@@ -366,6 +374,8 @@ function PackRow({
   canEdit: boolean;
 }) {
   const detailHref = `/latest/mcq/${pack.packId}`;
+  const mode = defaultStartMode(pack.kind);
+  const isMock = mode === "exam";
   return (
     <TableRow>
       <TableCell className="text-muted-foreground text-center text-xs tabular-nums">
@@ -384,13 +394,40 @@ function PackRow({
         </Badge>
       </TableCell>
       <TableCell>
+        {/* 팩 제목 = 응시 즉시 시작 폼 버튼.
+            mode 는 팩 종류에 따라 자동 선택 (기출=학습 모드, 모의=시험 모드). */}
+        <Form
+          method="post"
+          action="/api/mcq-pack/start"
+          className="inline-flex items-center gap-1.5"
+        >
+          <input type="hidden" name="packId" value={pack.packId} />
+          <input type="hidden" name="mode" value={mode} />
+          <button
+            type="submit"
+            disabled={pack.problemCount === 0}
+            className="hover:text-primary inline-flex items-center gap-1 text-left text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+            title={
+              isMock
+                ? "모의고사 응시 — 타이머 기반"
+                : "응시 시작 — 즉시 해설 모드"
+            }
+          >
+            {isMock ? (
+              <ClockIcon className="text-primary size-3" />
+            ) : (
+              <PlayIcon className="text-primary size-3" />
+            )}
+            {pack.title}
+          </button>
+        </Form>
         <Link
           to={detailHref}
           viewTransition
-          className="hover:text-primary inline-flex items-center gap-1 text-sm font-medium"
+          className="text-muted-foreground hover:text-foreground ml-2 inline-flex items-center gap-0.5 text-[11px]"
+          title="문제 목록·동영상·결과자료 보기"
         >
-          {pack.title}
-          <ChevronRightIcon className="text-muted-foreground size-3" />
+          <InfoIcon className="size-2.5" /> 상세
         </Link>
         {pack.description ? (
           <p className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">

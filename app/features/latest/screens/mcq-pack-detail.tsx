@@ -73,17 +73,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return { pack, problems, canEdit: role !== null };
 }
 
-function problemHref(p: McqPackProblemItem): string | null {
-  if (p.scienceSubject) {
-    const slug = p.scienceSubject.replace("_", "-");
-    return `/subjects/science/${slug}/problems/${p.problemId}`;
-  }
-  if (p.lawCode) {
-    return `/subjects/${p.lawCode}/problems/${p.problemId}`;
-  }
-  return null;
-}
-
 export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
   const { pack, problems, canEdit } = loaderData;
   const mockPack = isMockKind(pack.kind);
@@ -264,7 +253,6 @@ function ProblemRow({
   index: number;
   canEdit: boolean;
 }) {
-  const href = problemHref(problem);
   const delFetcher = useFetcher<{ ok?: true; error?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -298,20 +286,23 @@ function ProblemRow({
           <Badge variant="secondary">{problem.format}</Badge>
           <Badge variant="outline">{problem.origin}</Badge>
         </div>
-        {href ? (
-          <Link
-            to={href}
-            viewTransition
-            className="hover:text-primary inline-flex items-center gap-1 text-sm leading-snug"
+        {/* 문제 클릭 = 학습 모드 세션 시작 + 이 문제부터. 팩 끝까지 풀이 + 결과 확인 흐름. */}
+        <Form
+          method="post"
+          action="/api/mcq-pack/start"
+          className="w-full"
+        >
+          <input type="hidden" name="packId" value={pack} />
+          <input type="hidden" name="mode" value="study" />
+          <input type="hidden" name="startAt" value={problem.problemId} />
+          <button
+            type="submit"
+            className="hover:text-primary inline-flex w-full items-center gap-1 text-left text-sm leading-snug"
           >
             <span className="line-clamp-2">{problem.bodySnippet}</span>
             <ChevronRightIcon className="text-muted-foreground size-3 shrink-0" />
-          </Link>
-        ) : (
-          <span className="text-muted-foreground line-clamp-2 text-sm">
-            {problem.bodySnippet}
-          </span>
-        )}
+          </button>
+        </Form>
       </div>
       {canEdit ? (
         <delFetcher.Form
