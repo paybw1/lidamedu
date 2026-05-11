@@ -218,8 +218,9 @@
 | feat-3-202 | 과목별 필터 + 중요판례 필터 (importance ≥ 3) | P0 | ✅ |
 | feat-3-203 | 판례 카드에서 판례 상세로 이동 | P0 | ✅ |
 | **5.3.3 객관식 문제** | | | |
-| feat-3-301 | 신규 객관식 문제 피드 (등록일 최신순) | P1 | ✅ |
-| feat-3-302 | "지금 풀어보기" CTA (단일 문제 풀이) | P1 | ✅ |
+| feat-3-301 | 객관식 문제 색인 (PPT 운영계획 반영) — `mcq_packs` 테이블(kind: past_exam/mock_full/mock_progressive/other, subject_scope: industrial/civil/civil_procedure/science, year/exam_round_no/duration_min/video_url/result_doc_url/published_at) + `mcq_pack_problems` (pack↔problem 매핑). `quiz_sessions.pack_id` 추가. RLS: 학생은 published만 read, staff CRUD. `/latest/mcq` 표 색인(No·과목·구분·명칭·출제일·문항), staff inline CRUD. | P1 | ✅ |
+| feat-3-302 | 팩 상세 페이지 — `/latest/mcq/:packId` 헤더(과목·구분·명칭·출제일·문항·제한시간) + 동영상/결과자료 카드 + 학습/모의고사 시작 액션 + 문제 목록 (staff: problem_id로 추가/제거). 학습 시작은 quiz_session(mode=study), 모의는 mode=exam + time_limit. | P1 | ✅ |
+| feat-3-303 | 팩 응시 결과 통계 — `/latest/mcq/:packId/result/:sessionId`. KPI(본인 정답률/총문항/오답/소요시간). 유형별(단답/박스/사례) + 지문별(조문/판례/이론) 정답률 — 본인 vs 전체 평균. 문제별 본인 정답 + 전체 정답률(get_problem_stats RPC). mock 완료 시 자동 리디렉트. | P1 | ✅ |
 | **5.3.4 주관식 문제** | | | |
 | feat-3-401 | 신규 주관식 문제 피드 | P1 | ✅ |
 | feat-3-402 | 모범답안 보기 + 첨삭 요청 | P1 | 🔲 |

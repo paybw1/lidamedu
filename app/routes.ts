@@ -67,6 +67,7 @@ export default [
       route("/paper", "features/admin/api/paper.tsx"),
       route("/paper-link", "features/admin/api/paper-link.tsx"),
       route("/book-update", "features/admin/api/book-update.tsx"),
+      route("/mcq-pack", "features/admin/api/mcq-pack.tsx"),
     ]),
     ...prefix("/problems", [
       route(
@@ -82,6 +83,9 @@ export default [
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
+    ]),
+    ...prefix("/mcq-pack", [
+      route("/start", "features/mcq-packs/api/start.tsx"),
     ]),
     ...prefix("/gs", [
       route("/take", "features/gs/api/take.tsx"),
@@ -138,6 +142,11 @@ export default [
         route("/laws", "features/latest/screens/laws.tsx"),
         route("/cases", "features/latest/screens/cases.tsx"),
         route("/mcq", "features/latest/screens/mcq.tsx"),
+        route("/mcq/:packId", "features/latest/screens/mcq-pack-detail.tsx"),
+        route(
+          "/mcq/:packId/result/:sessionId",
+          "features/latest/screens/mcq-pack-result.tsx",
+        ),
         route("/essay", "features/latest/screens/essay.tsx"),
         route("/papers", "features/latest/screens/papers.tsx"),
         route("/book-updates", "features/latest/screens/book-updates.tsx"),

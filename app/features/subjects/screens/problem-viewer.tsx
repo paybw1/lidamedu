@@ -198,7 +198,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   let runnerNav: {
     sessionId: string | null;
     mode: QuizMode;
-    scopeType: "node" | "filter" | "wrong-note" | "free";
+    scopeType: "node" | "filter" | "wrong-note" | "free" | "pack";
     label: string;
     backHref: string;
     index: number;
@@ -207,24 +207,43 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     nextId: string | null;
     timeLimitSec: number | null;
     startedAt: string | null;
+    // MCQ 팩 응시일 때 — 완료 시 pack 결과 페이지로 redirect.
+    packId: string | null;
   } | null = null;
   const navProblemIds = session
     ? session.problemIds
     : nodeSequence
       ? nodeSequence.problems.map((p) => p.problemId)
       : null;
+  const packIdFromPayload =
+    session && typeof session.scopePayload.packId === "string"
+      ? session.scopePayload.packId
+      : null;
+  const packTitleFromPayload =
+    session && typeof session.scopePayload.packTitle === "string"
+      ? session.scopePayload.packTitle
+      : null;
   const navLabel = session
-    ? typeof session.scopePayload.nodeLabel === "string"
-      ? `체계: ${session.scopePayload.nodeLabel}`
-      : session.scopeType === "filter"
-        ? "맞춤 퀴즈"
-        : "퀴즈 세션"
+    ? packTitleFromPayload
+      ? `문제집: ${packTitleFromPayload}`
+      : typeof session.scopePayload.nodeLabel === "string"
+        ? `체계: ${session.scopePayload.nodeLabel}`
+        : session.scopeType === "filter"
+          ? "맞춤 퀴즈"
+          : "퀴즈 세션"
     : nodeSequence
       ? `체계: ${nodeSequence.node.displayLabel}`
       : null;
-  const navScopeType = session?.scopeType ?? (nodeSequence ? "node" : "free");
-  const navBackHref =
-    navScopeType === "node"
+  const navScopeType = (session?.scopeType ??
+    (nodeSequence ? "node" : "free")) as
+    | "node"
+    | "filter"
+    | "wrong-note"
+    | "free"
+    | "pack";
+  const navBackHref = packIdFromPayload
+    ? `/latest/mcq/${packIdFromPayload}`
+    : navScopeType === "node"
       ? `/subjects/${lawCode}/problems/system`
       : navScopeType === "filter"
         ? `/subjects/${lawCode}/quiz/setup`
@@ -246,6 +265,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         nextId: idx < navProblemIds.length - 1 ? navProblemIds[idx + 1] : null,
         timeLimitSec: session?.timeLimitSec ?? null,
         startedAt: session?.startedAt ?? null,
+        packId: packIdFromPayload,
       };
     }
   }
@@ -406,7 +426,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     if (!runnerNav?.sessionId) return;
     const fd = new FormData();
     fd.set("sessionId", runnerNav.sessionId);
-    fd.set("redirectTo", `/subjects/${subject.slug}/quiz/result/${runnerNav.sessionId}`);
+    const resultUrl = runnerNav.packId
+      ? `/latest/mcq/${runnerNav.packId}/result/${runnerNav.sessionId}`
+      : `/subjects/${subject.slug}/quiz/result/${runnerNav.sessionId}`;
+    fd.set("redirectTo", resultUrl);
     completeFetcher.submit(fd, {
       method: "post",
       action: "/api/study/session-complete",

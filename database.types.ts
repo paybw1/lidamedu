@@ -1184,6 +1184,107 @@ export type Database = {
         }
         Relationships: []
       }
+      mcq_pack_problems: {
+        Row: {
+          created_at: string
+          ord: number
+          pack_id: string
+          problem_id: string
+        }
+        Insert: {
+          created_at?: string
+          ord?: number
+          pack_id: string
+          problem_id: string
+        }
+        Update: {
+          created_at?: string
+          ord?: number
+          pack_id?: string
+          problem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcq_pack_problems_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "mcq_packs"
+            referencedColumns: ["pack_id"]
+          },
+          {
+            foreignKeyName: "mcq_pack_problems_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+        ]
+      }
+      mcq_packs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          duration_min: number | null
+          exam_round_no: number | null
+          is_published: boolean
+          kind: string
+          pack_id: string
+          published_at: string | null
+          result_doc_url: string | null
+          subject_scope: string
+          title: string
+          updated_at: string
+          video_url: string | null
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          duration_min?: number | null
+          exam_round_no?: number | null
+          is_published?: boolean
+          kind: string
+          pack_id?: string
+          published_at?: string | null
+          result_doc_url?: string | null
+          subject_scope: string
+          title: string
+          updated_at?: string
+          video_url?: string | null
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          duration_min?: number | null
+          exam_round_no?: number | null
+          is_published?: boolean
+          kind?: string
+          pack_id?: string
+          published_at?: string | null
+          result_doc_url?: string | null
+          subject_scope?: string
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcq_packs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       paper_article_links: {
         Row: {
           article_id: string
@@ -1853,6 +1954,7 @@ export type Database = {
           created_at: string
           law_code: string | null
           mode: string
+          pack_id: string | null
           problem_ids: string[]
           science_subject: Database["public"]["Enums"]["science_subject"] | null
           scope_payload: Json
@@ -1867,6 +1969,7 @@ export type Database = {
           created_at?: string
           law_code?: string | null
           mode?: string
+          pack_id?: string | null
           problem_ids: string[]
           science_subject?:
             | Database["public"]["Enums"]["science_subject"]
@@ -1883,6 +1986,7 @@ export type Database = {
           created_at?: string
           law_code?: string | null
           mode?: string
+          pack_id?: string | null
           problem_ids?: string[]
           science_subject?:
             | Database["public"]["Enums"]["science_subject"]
@@ -1895,6 +1999,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "mcq_packs"
+            referencedColumns: ["pack_id"]
+          },
           {
             foreignKeyName: "quiz_sessions_user_id_fkey"
             columns: ["user_id"]

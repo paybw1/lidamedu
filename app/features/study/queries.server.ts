@@ -133,7 +133,12 @@ export async function recordProblemAttempt(
 // ---- 퀴즈 세션 ----
 
 export type QuizMode = "study" | "exam";
-export type QuizScopeType = "node" | "filter" | "wrong-note" | "free";
+export type QuizScopeType =
+  | "node"
+  | "filter"
+  | "wrong-note"
+  | "free"
+  | "pack";
 
 export interface QuizSession {
   sessionId: string;
@@ -165,6 +170,8 @@ export async function createQuizSession(
     scopePayload?: Record<string, unknown>;
     problemIds: string[];
     timeLimitSec?: number | null;
+    // MCQ 팩 응시 시 — 응시 결과를 pack 단위 통계와 묶기 위함.
+    packId?: string | null;
   },
 ): Promise<string> {
   if (!!input.lawCode === !!input.scienceSubject) {
@@ -181,6 +188,7 @@ export async function createQuizSession(
       scope_payload: (input.scopePayload ?? {}) as Database["public"]["Tables"]["quiz_sessions"]["Insert"]["scope_payload"],
       problem_ids: input.problemIds,
       time_limit_sec: input.timeLimitSec ?? null,
+      pack_id: input.packId ?? null,
     })
     .select("session_id")
     .single();
