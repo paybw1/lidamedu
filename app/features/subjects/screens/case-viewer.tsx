@@ -10,12 +10,15 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   getBookmark,
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
+import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
+import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import { recordStudySession } from "~/features/study/queries.server";
 import {
   COURT_LABELS,
@@ -130,8 +133,17 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     qnaThreads,
   } = loaderData;
 
+  // summaryItems 가 있으면 우선 사용. 없으면 legacy summary_body_md 를 한 묶음으로 폴백.
+  const summaryItems =
+    kase.summaryItems.length > 0
+      ? kase.summaryItems
+      : kase.summaryBodyMd
+        ? [{ title: kase.summaryTitle ?? "", body: kase.summaryBodyMd }]
+        : [];
+
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+      <HighlightToolbar targetType="case" targetId={kase.caseId} />
       <Link
         to={`/subjects/${subject.slug}?tab=cases`}
         viewTransition
@@ -184,7 +196,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   {COURT_LABELS[kase.court]}
                 </Badge>
                 <span className="font-mono text-sm">{kase.caseNumber}</span>
-                <Badge variant="secondary">{EXAM_LABEL[subject.exam]}</Badge>
+                {kase.caseType ? (
+                  <Badge variant="secondary">{kase.caseType}</Badge>
+                ) : null}
+                <Badge variant="outline" className="text-xs">
+                  {EXAM_LABEL[subject.exam]}
+                </Badge>
                 {kase.isEnBanc ? (
                   <Badge variant="default">전원합의체</Badge>
                 ) : null}
@@ -200,27 +217,70 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               <h1 className="text-2xl font-bold tracking-tight">
                 {kase.caseTitle}
               </h1>
-              {kase.summaryTitle ? (
-                <p className="text-muted-foreground text-sm">
-                  {kase.summaryTitle}
-                </p>
+              {kase.exam1stYears.length + kase.exam2ndYears.length > 0 ? (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {kase.exam1stYears.map((y) => (
+                    <Badge
+                      key={`1-${y}`}
+                      variant="outline"
+                      className={cn(
+                        "border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 text-[10px]",
+                      )}
+                      title="1차 시험 기출"
+                    >
+                      1차 {y}
+                    </Badge>
+                  ))}
+                  {kase.exam2ndYears.map((y) => (
+                    <Badge
+                      key={`2-${y}`}
+                      variant="outline"
+                      className={cn(
+                        "border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-[10px]",
+                      )}
+                      title="2차 시험 기출"
+                    >
+                      2차 {y}
+                    </Badge>
+                  ))}
+                </div>
               ) : null}
             </CardHeader>
             <Separator />
             <CardContent className="space-y-6 pt-6">
-              {kase.summaryBodyMd ? (
-                <div data-highlight-field="case.summary">
-                  <Section title="판결요지">
-                    <Prose text={kase.summaryBodyMd} />
-                  </Section>
-                </div>
+              {summaryItems.length > 0 ? (
+                <Section title="판결요지">
+                  <HighlightOverlay
+                    fieldPath="case.summary"
+                    targetType="case"
+                    targetId={kase.caseId}
+                    highlights={highlights}
+                  >
+                    <div className="space-y-4">
+                      {summaryItems.map((it, i) => (
+                        <SummaryBlock
+                          key={i}
+                          title={it.title}
+                          body={it.body}
+                          showLabel={summaryItems.length > 1}
+                          index={i}
+                        />
+                      ))}
+                    </div>
+                  </HighlightOverlay>
+                </Section>
               ) : null}
               {kase.reasoningMd ? (
-                <div data-highlight-field="case.reasoning">
-                  <Section title="판시이유">
+                <Section title="판시이유">
+                  <HighlightOverlay
+                    fieldPath="case.reasoning"
+                    targetType="case"
+                    targetId={kase.caseId}
+                    highlights={highlights}
+                  >
                     <Prose text={kase.reasoningMd} />
-                  </Section>
-                </div>
+                  </HighlightOverlay>
+                </Section>
               ) : null}
               {kase.fullTextPdf ? (
                 <Button variant="outline" size="sm" asChild>
@@ -234,14 +294,16 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </p>
               )}
               {kase.commentBodyMd ? (
-                <div data-highlight-field="case.comment">
-                  <Section
-                    title="코멘트"
-                    meta={kase.commentSource ?? undefined}
+                <Section title="비고" meta={kase.commentSource ?? undefined}>
+                  <HighlightOverlay
+                    fieldPath="case.comment"
+                    targetType="case"
+                    targetId={kase.caseId}
+                    highlights={highlights}
                   >
                     <Prose text={kase.commentBodyMd} />
-                  </Section>
-                </div>
+                  </HighlightOverlay>
+                </Section>
               ) : null}
             </CardContent>
           </Card>
@@ -292,10 +354,55 @@ function Section({
   );
 }
 
-function Prose({ text }: { text: string }) {
+// 복수 요지 한 항목 — [N] 라벨이 있는 제목과 내용을 함께 표시.
+// 파서는 title 앞에 "[1] " 같은 prefix 를 이미 붙여 두지만, 여러 항목일 때 시각적 라벨 분리.
+function SummaryBlock({
+  title,
+  body,
+  showLabel,
+  index,
+}: {
+  title: string;
+  body: string;
+  showLabel: boolean;
+  index: number;
+}) {
+  // [N] 으로 시작하는 prefix 추출. 단일 요지면 prefix 가 없으니 그대로.
+  let label: string | null = null;
+  let displayTitle = title;
+  const m = title.match(/^\[(\d+)\]\s*(.*)$/);
+  if (m) {
+    label = `[${m[1]}]`;
+    displayTitle = m[2];
+  }
+  if (showLabel && !label) {
+    label = `[${index + 1}]`;
+  }
   return (
-    <div className="font-serif space-y-3 text-[15px] leading-relaxed whitespace-pre-line">
-      {text}
+    <div className="space-y-1">
+      {(label || displayTitle) ? (
+        <p className="text-sm font-semibold leading-snug">
+          {label ? (
+            <span className="text-primary mr-1.5">{label}</span>
+          ) : null}
+          {displayTitle}
+        </p>
+      ) : null}
+      {body ? <Prose text={body} /> : null}
+    </div>
+  );
+}
+
+function Prose({ text }: { text: string }) {
+  // 빈 줄 2개로 단락 분리. 한 단락 안에선 줄바꿈 보존.
+  const paras = text.split(/\n{2,}/).filter((s) => s.trim() !== "");
+  return (
+    <div className="font-serif space-y-3 text-[15px] leading-relaxed">
+      {paras.map((p, i) => (
+        <p key={i} className="whitespace-pre-line">
+          {p}
+        </p>
+      ))}
     </div>
   );
 }
