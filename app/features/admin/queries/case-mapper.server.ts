@@ -71,33 +71,51 @@ export async function listCasesForMapper(
   const allCases = caseRows ?? [];
   const caseTotal = caseTotalCount ?? allCases.length;
 
-  // 2) article_case_links + articles 를 2단계로 fetch — nested join 의 RLS/캐시
-  //    이슈로 articles 가 null 반환되어 linkCount 가 잘못 계산되는 사례 방지.
+  // 2) article_case_links + articles 를 2단계로 fetch.
+  //    PostgREST 기본 max-rows(1000) 우회 — .range() 로 명시적 페이지네이션.
   const caseIds = allCases.map((c) => c.case_id);
   const linksByCase = new Map<string, CaseLinkChip[]>();
   if (caseIds.length > 0) {
-    const { data: linkRows } = await client
-      .from("article_case_links")
-      .select("case_id, article_id, note")
-      .in("case_id", caseIds);
+    const allLinkRows: { case_id: string; article_id: string; note: string | null }[] = [];
+    const PAGE = 1000;
+    let from = 0;
+    for (;;) {
+      const { data, error } = await client
+        .from("article_case_links")
+        .select("case_id, article_id, note")
+        .in("case_id", caseIds)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      for (const r of data) allLinkRows.push(r);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
 
-    // 사용된 article_id 들 → article_number 매핑.
+    // 사용된 article_id 들 → article_number 매핑 (페이지네이션).
     const articleIds = Array.from(
-      new Set((linkRows ?? []).map((r) => r.article_id).filter(Boolean)),
+      new Set(allLinkRows.map((r) => r.article_id).filter(Boolean)),
     );
     const articleNumberById = new Map<string, string>();
     if (articleIds.length > 0) {
-      const { data: artRows } = await client
-        .from("articles")
-        .select("article_id, article_number")
-        .in("article_id", articleIds);
-      for (const a of artRows ?? []) {
-        if (a.article_number)
-          articleNumberById.set(a.article_id, a.article_number);
+      let af = 0;
+      for (;;) {
+        const slice = articleIds.slice(af, af + PAGE);
+        if (slice.length === 0) break;
+        const { data: artRows, error: artErr } = await client
+          .from("articles")
+          .select("article_id, article_number")
+          .in("article_id", slice);
+        if (artErr) throw artErr;
+        for (const a of artRows ?? []) {
+          if (a.article_number)
+            articleNumberById.set(a.article_id, a.article_number);
+        }
+        af += PAGE;
       }
     }
 
-    for (const r of linkRows ?? []) {
+    for (const r of allLinkRows) {
       const num = articleNumberById.get(r.article_id);
       if (!num) continue;
       const arr = linksByCase.get(r.case_id) ?? [];
