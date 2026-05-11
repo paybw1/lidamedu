@@ -221,7 +221,7 @@ export type Database = {
           change_kind: Database["public"]["Enums"]["law_change_kind"]
           created_at: string
           created_by: string | null
-          effective_date: string
+          effective_date: string | null
           expired_date: string | null
           law_revision_id: string
           revision_id: string
@@ -232,7 +232,7 @@ export type Database = {
           change_kind: Database["public"]["Enums"]["law_change_kind"]
           created_at?: string
           created_by?: string | null
-          effective_date: string
+          effective_date?: string | null
           expired_date?: string | null
           law_revision_id: string
           revision_id?: string
@@ -243,7 +243,7 @@ export type Database = {
           change_kind?: Database["public"]["Enums"]["law_change_kind"]
           created_at?: string
           created_by?: string | null
-          effective_date?: string
+          effective_date?: string | null
           expired_date?: string | null
           law_revision_id?: string
           revision_id?: string
@@ -1185,11 +1185,11 @@ export type Database = {
         Row: {
           comparison_pdf: string | null
           created_at: string
-          effective_date: string
+          effective_date: string | null
           explanation_md: string | null
           law_id: string
           law_revision_id: string
-          promulgated_at: string
+          promulgated_at: string | null
           published_at: string | null
           published_by: string | null
           reason_md: string | null
@@ -1200,11 +1200,11 @@ export type Database = {
         Insert: {
           comparison_pdf?: string | null
           created_at?: string
-          effective_date: string
+          effective_date?: string | null
           explanation_md?: string | null
           law_id: string
           law_revision_id?: string
-          promulgated_at: string
+          promulgated_at?: string | null
           published_at?: string | null
           published_by?: string | null
           reason_md?: string | null
@@ -1215,11 +1215,11 @@ export type Database = {
         Update: {
           comparison_pdf?: string | null
           created_at?: string
-          effective_date?: string
+          effective_date?: string | null
           explanation_md?: string | null
           law_id?: string
           law_revision_id?: string
-          promulgated_at?: string
+          promulgated_at?: string | null
           published_at?: string | null
           published_by?: string | null
           reason_md?: string | null
@@ -2824,6 +2824,15 @@ export type Database = {
       }
       gs_swap_pages: {
         Args: { p_page_a: number; p_page_b: number; p_submission_id: string }
+        Returns: undefined
+      }
+      publish_law_revision: {
+        Args: {
+          p_effective_date: string
+          p_law_revision_id: string
+          p_promulgated_at: string
+          p_published_by: string
+        }
         Returns: undefined
       }
     }

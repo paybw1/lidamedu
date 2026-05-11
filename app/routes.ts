@@ -70,6 +70,7 @@ export default [
       route("/mcq-pack", "features/admin/api/mcq-pack.tsx"),
       route("/user-role", "features/admin/api/user-role.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
+      route("/law-revision", "features/admin/api/law-revision.tsx"),
     ]),
     ...prefix("/problems", [
       route(
@@ -257,6 +258,14 @@ export default [
       route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",
+      ),
+      route(
+        "/admin/laws/:lawCode/revisions",
+        "features/admin/screens/admin-law-revisions.tsx",
+      ),
+      route(
+        "/admin/laws/:lawCode/revisions/:revisionId",
+        "features/admin/screens/admin-law-revision-workspace.tsx",
       ),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),

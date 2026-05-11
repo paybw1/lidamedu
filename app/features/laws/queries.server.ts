@@ -728,7 +728,8 @@ export async function saveArticleQuickEdit(
 
 export interface RevisionHistoryEntry {
   revisionId: string;
-  effectiveDate: string;
+  // draft 상태에서는 NULL.
+  effectiveDate: string | null;
   changeKind: Database["public"]["Enums"]["law_change_kind"];
   createdAt: string;
   createdBy: string | null;

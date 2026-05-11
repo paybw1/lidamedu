@@ -437,7 +437,7 @@
 | feat-7-001 | 운영자 메뉴 진입 가드 — `/admin` loader 가 staff role 확인. 비로그인은 /login 리다이렉트, 학생은 권한 안내 화면(추천 액션 — 대시보드/특허법/최신 정보/학습 목표 링크). | P0 | ✅ |
 | feat-7-002 | 콘텐츠 관리 허브 — 콘텐츠 등록·수정(빈칸/문제/판례 매핑/MCQ 팩/논문/도서 추록·정오표) + 통계 분석 + 온라인 GS 3개 섹션으로 정리. 각 카드에 진입 링크 + "최신 정보" 배지. | P0 | ✅ |
 | feat-7-003 | 강사 대시보드 (반 진도, 콘텐츠 현황) | P1 | 🔲 |
-| feat-7-004 | 법 개정 워크스페이스 (draft → review → publish) | P0 | 🔲 |
+| feat-7-004 | 법 개정 워크스페이스 — `/admin/laws/:lawCode/revisions` 상태별(draft/review/published) 일람 + 새 초안 생성. `/admin/laws/:lawCode/revisions/:revisionId` 워크스페이스: 조문 추가(현재 본문 자동 복사) · 본문 JSON 인라인 편집 · 변경 종류(신설/개정/폐지) · before/after 비교 · 발행 dialog. RPC `publish_law_revision` 가 transactional 발행(article_revisions effective_date set + articles.current_revision_id swap). 발행 후 article_revisions 불변(트리거). | P0 | ✅ |
 | feat-7-005 | 판례 등록/수정 폼 (참조조문/참조판례 동시 지정) | P0 | 🔲 |
 | feat-7-006 | 문제 출제 폼 (유형별, 연관 조문/판례 지정) | P0 | 🔲 |
 | feat-7-007 | 논문 등록/수정 폼 | P1 | 🔲 |

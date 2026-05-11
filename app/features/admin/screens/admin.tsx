@@ -54,6 +54,12 @@ interface AdminCardData {
 // 콘텐츠 관리 카드 — 운영자가 자주 쓰는 작업 위주.
 const CONTENT_CARDS: AdminCardData[] = [
   {
+    to: "/admin/laws/patent/revisions",
+    title: "법 개정 워크스페이스",
+    subtitle: "특허법 draft → review → publish (조문 단위 편집 + 트랜잭션 발행)",
+    icon: FileEditIcon,
+  },
+  {
     to: "/admin/blanks",
     title: "빈칸 자료 관리",
     subtitle: "강사별 빈칸 set 등록·편집",
