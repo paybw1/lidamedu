@@ -16,8 +16,8 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
-import { cn } from "~/core/lib/utils";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
+import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   LAW_SUBJECTS,
@@ -236,13 +236,9 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
         <div className="space-y-2" data-testid="latest-cases-list">
           {cases.map((c) => {
             const firstSubject = c.subjectLaws[0] ?? "patent";
+            const caseHref = `/subjects/${firstSubject}/cases/${c.caseId}`;
             return (
-              <Link
-                key={c.caseId}
-                to={`/subjects/${firstSubject}/cases/${c.caseId}`}
-                viewTransition
-                className="group block"
-              >
+              <div key={c.caseId} className="group block">
                 <Card className="hover:border-primary transition-colors">
                   <CardHeader className="px-4 pb-2">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -273,41 +269,43 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
                     </div>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 text-sm">
-                    <p className="font-medium leading-snug">
+                    <Link
+                      to={caseHref}
+                      viewTransition
+                      className="hover:text-primary block font-medium leading-snug"
+                    >
                       {c.summaryTitle ?? c.caseTitle}
-                    </p>
+                    </Link>
                     {c.exam1stYears.length + c.exam2ndYears.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {c.exam1stYears.map((y) => (
-                          <Badge
+                          <ExamYearChip
                             key={`1-${y}`}
-                            variant="outline"
-                            className={cn(
-                              "border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 text-[10px]",
-                            )}
-                          >
-                            1차 {y}
-                          </Badge>
+                            subjectSlug={firstSubject as LawSubjectSlug}
+                            round="first"
+                            year={y}
+                          />
                         ))}
                         {c.exam2ndYears.map((y) => (
-                          <Badge
+                          <ExamYearChip
                             key={`2-${y}`}
-                            variant="outline"
-                            className={cn(
-                              "border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-[10px]",
-                            )}
-                          >
-                            2차 {y}
-                          </Badge>
+                            subjectSlug={firstSubject as LawSubjectSlug}
+                            round="second"
+                            year={y}
+                          />
                         ))}
                       </div>
                     ) : null}
-                    <p className="text-primary mt-2 inline-flex items-center gap-1 text-xs">
+                    <Link
+                      to={caseHref}
+                      viewTransition
+                      className="text-primary mt-2 inline-flex items-center gap-1 text-xs hover:underline"
+                    >
                       판례 본문 보기 <ArrowRightIcon className="size-3" />
-                    </p>
+                    </Link>
                   </CardContent>
                 </Card>
-              </Link>
+              </div>
             );
           })}
         </div>

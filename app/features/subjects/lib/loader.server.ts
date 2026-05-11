@@ -25,6 +25,7 @@ import {
   type ProblemListItem,
 } from "~/features/problems/queries.server";
 import type {
+  ProblemExamRound,
   ProblemFormat,
   ProblemOrigin,
   ProblemPolarity,
@@ -52,6 +53,7 @@ export type ProblemSort = "number" | "hardest" | "easiest" | "newest";
 export interface ProblemFiltersApplied {
   origin?: ProblemOrigin;
   year?: number;
+  examRound?: ProblemExamRound;
   format?: ProblemFormat;
   polarity?: ProblemPolarity;
   scope?: ProblemScope;
@@ -165,6 +167,10 @@ function parseProblemFilters(url: URL): ProblemFiltersApplied {
   }
   const yearStr = url.searchParams.get("p_year");
   if (yearStr && /^\d{4}$/.test(yearStr)) f.year = Number(yearStr);
+  const round = url.searchParams.get("p_round");
+  if (round === "first" || round === "second") {
+    f.examRound = round;
+  }
   const format = url.searchParams.get("p_format");
   if (format && (PROBLEM_FORMATS as readonly string[]).includes(format)) {
     f.format = format as ProblemFormat;

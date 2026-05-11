@@ -24,6 +24,7 @@ import {
   COURT_LABELS,
   getCaseById,
 } from "~/features/cases/queries.server";
+import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
   RelatedArticlesChips,
@@ -220,28 +221,20 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               {kase.exam1stYears.length + kase.exam2ndYears.length > 0 ? (
                 <div className="flex flex-wrap gap-1 pt-1">
                   {kase.exam1stYears.map((y) => (
-                    <Badge
+                    <ExamYearChip
                       key={`1-${y}`}
-                      variant="outline"
-                      className={cn(
-                        "border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 text-[10px]",
-                      )}
-                      title="1차 시험 기출"
-                    >
-                      1차 {y}
-                    </Badge>
+                      subjectSlug={subject.slug}
+                      round="first"
+                      year={y}
+                    />
                   ))}
                   {kase.exam2ndYears.map((y) => (
-                    <Badge
+                    <ExamYearChip
                       key={`2-${y}`}
-                      variant="outline"
-                      className={cn(
-                        "border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-[10px]",
-                      )}
-                      title="2차 시험 기출"
-                    >
-                      2차 {y}
-                    </Badge>
+                      subjectSlug={subject.slug}
+                      round="second"
+                      year={y}
+                    />
                   ))}
                 </div>
               ) : null}

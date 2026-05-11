@@ -248,6 +248,15 @@ export function ProblemsTab({
           }))}
         />
         <FilterSelect
+          label="시험"
+          name="p_round"
+          value={appliedFilters.examRound ?? ""}
+          options={[
+            { value: "first", label: "1차" },
+            { value: "second", label: "2차" },
+          ]}
+        />
+        <FilterSelect
           label="유형"
           name="p_format"
           value={appliedFilters.format ?? ""}

@@ -39,6 +39,7 @@ export {
 
 import type {
   ProblemDetail,
+  ProblemExamRound,
   ProblemListItem,
   ProblemOrigin,
   ProblemFormat,
@@ -51,6 +52,7 @@ export interface ListProblemsFilters {
   format?: ProblemFormat;
   polarity?: ProblemPolarity;
   scope?: ProblemScope;
+  examRound?: ProblemExamRound;
   year?: number;
   // 본문 ILIKE 부분문자열 검색 (Korean/한자 혼재 → FTS 대신 단순 매칭).
   search?: string;
@@ -91,6 +93,7 @@ export async function listProblemsBySubject(
   if (filters.format) query = query.eq("format", filters.format);
   if (filters.polarity) query = query.eq("polarity", filters.polarity);
   if (filters.scope) query = query.eq("scope", filters.scope);
+  if (filters.examRound) query = query.eq("exam_round", filters.examRound);
   if (filters.year != null) query = query.eq("year", filters.year);
   if (filters.search && filters.search.trim().length > 0) {
     // PostgREST .ilike() — % 와 _ 만 와일드카드로 escape 후 양쪽 % 추가.
