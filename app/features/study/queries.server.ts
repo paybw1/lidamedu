@@ -5,7 +5,7 @@ import type {
   AnnotationTargetType,
 } from "~/features/annotations/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
-import { parseLtreePath, toSlug } from "~/features/laws/lib/identifier";
+import { articleSlug } from "~/features/laws/lib/identifier";
 
 export interface StudyScope {
   subject: LawSubjectSlug;
@@ -431,7 +431,7 @@ export async function getRecommendedArticles(
   // limit 보다 많이 가져와서 클라에서 visited 제외 후 잘라야.
   const { data: rows } = await client
     .from("articles")
-    .select("article_id, display_label, path, importance")
+    .select("article_id, article_number, display_label, importance")
     .eq("law_id", law.law_id)
     .eq("level", "article")
     .order("importance", { ascending: false, nullsFirst: false })
@@ -440,11 +440,10 @@ export async function getRecommendedArticles(
   const out: RecommendedArticleItem[] = [];
   for (const r of rows ?? []) {
     if (visited.has(r.article_id)) continue;
-    const ident = parseLtreePath(String(r.path));
-    if (!ident) continue;
+    if (!r.article_number) continue;
     out.push({
       articleId: r.article_id,
-      pathSlug: toSlug(ident),
+      pathSlug: articleSlug(r.article_number),
       displayLabel: r.display_label,
       importance: r.importance ?? 0,
     });
@@ -527,16 +526,15 @@ export async function getRecentActivity(
     const { data: rows } = await client
       .from("articles")
       .select(
-        "article_id, display_label, path, laws!inner(law_code)",
+        "article_id, article_number, display_label, laws!inner(law_code)",
       )
       .in("article_id", articleIds);
     for (const r of rows ?? []) {
-      const ident = parseLtreePath(String(r.path));
-      if (!ident) continue;
+      if (!r.article_number) continue;
       articleMap.set(r.article_id, {
         displayLabel: r.display_label,
         lawCode: r.laws.law_code,
-        pathSlug: toSlug(ident),
+        pathSlug: articleSlug(r.article_number),
       });
     }
   }

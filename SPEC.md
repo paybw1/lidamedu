@@ -252,7 +252,7 @@
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
 | feat-4-A-101 | 조문 트리 데이터 모델 (`articles`, 조/항/호/목, ltree 또는 path) | P0 | ✅ |
-| feat-4-A-102 | 조문 식별자 양방향 변환 유틸 (`§29②2.가` ↔ struct ↔ URL) | P0 | 🟡 |
+| feat-4-A-102 | 조문 식별자 양방향 변환 유틸 (`§29②2.가` ↔ struct ↔ URL). 표시(parseDisplay/toDisplay), 본문 약식(parseShorthand/toShorthand `法 29의2②2.가`), URL slug(parseSlug/toSlug — 가지조 branch round-trip 포함), inline ref 추출(extractRefs) 모두 대칭. DB 조회 caller 는 `articleSlug(article_number)` 직접 사용 (ltree 경유는 branch 손실). | P0 | ✅ |
 | feat-4-A-103 | 조문 트리 렌더 (편/장/조 펼침, 진도 마커, 즐겨찾기 별) | P0 | ✅ |
 | feat-4-A-104 | "최근 학습"·"미열람 권장" 카드 (importance 기반 chips) | P0 | ✅ |
 | feat-4-A-105 | 조문 뷰어 (3분할: 트리/본문/관련자료) | P0 | ✅ |

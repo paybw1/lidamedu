@@ -6,7 +6,7 @@ import {
   listMemosByTargets,
 } from "~/features/annotations/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
-import { parseLtreePath, toSlug } from "~/features/laws/lib/identifier";
+import { articleSlug } from "~/features/laws/lib/identifier";
 import type {
   OxQuestionItem,
   OxRefAnnotations,
@@ -724,16 +724,15 @@ export async function getChoiceLinkRefs(
     const { data: rows } = await client
       .from("articles")
       .select(
-        "article_id, display_label, path, laws!inner(law_code)",
+        "article_id, article_number, display_label, laws!inner(law_code)",
       )
       .in("article_id", unique);
     for (const r of rows ?? []) {
-      const ident = parseLtreePath(String(r.path));
-      if (!ident) continue;
+      if (!r.article_number) continue;
       articleMap.set(r.article_id, {
         articleId: r.article_id,
         lawCode: r.laws.law_code,
-        pathSlug: toSlug(ident),
+        pathSlug: articleSlug(r.article_number),
         displayLabel: r.display_label,
       });
     }

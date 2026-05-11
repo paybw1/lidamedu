@@ -179,7 +179,9 @@ export function parseSlug(
 }
 
 export function toSlug(ident: ArticleIdent): string {
-  const parts: string[] = [String(ident.article)];
+  // 첫 segment 는 articleNumberText — "29" 또는 가지조 "29의2".
+  // parseSlug 의 정규식이 의N 을 그대로 받기 때문에 round-trip 가능.
+  const parts: string[] = [articleNumberText(ident)];
   if (ident.clause !== undefined) parts.push(String(ident.clause));
   if (ident.item !== undefined) {
     if (ident.clause === undefined) parts.push("0");
@@ -191,6 +193,14 @@ export function toSlug(ident: ArticleIdent): string {
     if (letter) parts.push(letter.toLowerCase());
   }
   return parts.join("-");
+}
+
+// articles.article_number 컬럼 값("29" 또는 "29의2")을 그대로 URL slug 로.
+// 조 단위 navigation 의 정식 진입점 — clause/item/subItem 없는 article-level URL.
+// parseLtreePath 가 가지조 branch 를 잃기 때문에, DB 에서 article_number 가 있을 때는
+// 이 헬퍼를 우선 사용.
+export function articleSlug(articleNumber: string): string {
+  return articleNumber;
 }
 
 // ── ltree path: "patent.ch02.s01.a29.c01.i02.gA"

@@ -304,9 +304,7 @@ export async function listTopBookmarks(
     .filter((r) => r.target_type === "problem")
     .map((r) => r.target_id);
 
-  const { parseLtreePath, toSlug } = await import(
-    "~/features/laws/lib/identifier"
-  );
+  const { articleSlug } = await import("~/features/laws/lib/identifier");
   const articleMap = new Map<
     string,
     { displayLabel: string; lawCode: string; pathSlug: string }
@@ -314,15 +312,16 @@ export async function listTopBookmarks(
   if (articleIds.length > 0) {
     const { data: rs } = await client
       .from("articles")
-      .select("article_id, display_label, path, laws!inner(law_code)")
+      .select(
+        "article_id, article_number, display_label, laws!inner(law_code)",
+      )
       .in("article_id", articleIds);
     for (const r of rs ?? []) {
-      const ident = parseLtreePath(String(r.path));
-      if (!ident) continue;
+      if (!r.article_number) continue;
       articleMap.set(r.article_id, {
         displayLabel: r.display_label,
         lawCode: r.laws.law_code,
-        pathSlug: toSlug(ident),
+        pathSlug: articleSlug(r.article_number),
       });
     }
   }
