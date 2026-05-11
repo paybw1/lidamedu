@@ -19,6 +19,7 @@ import {
   NewspaperIcon,
   ShieldCheckIcon,
   TrendingUpIcon,
+  UsersIcon,
 } from "lucide-react";
 import { Link, data, redirect } from "react-router";
 
@@ -120,6 +121,22 @@ const STATS_CARDS: AdminCardData[] = [
   },
 ];
 
+const USER_CARDS: AdminCardData[] = [
+  {
+    to: "/admin/users",
+    title: "사용자 관리",
+    subtitle: "가입자 일람·역할 변경 (수험생/강사/원장)",
+    icon: UsersIcon,
+    badge: "원장 전용",
+  },
+  {
+    to: "/admin/cohorts",
+    title: "반 / 기수 관리",
+    subtitle: "강사별 반 CRUD + 학생 멤버 할당",
+    icon: BookOpenIcon,
+  },
+];
+
 const GS_CARDS: AdminCardData[] = [
   {
     to: "/admin/gs",
@@ -168,6 +185,14 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
       </header>
 
       <Section title="콘텐츠 등록·수정" cards={CONTENT_CARDS} />
+      <Section
+        title="사용자 · 반"
+        cards={
+          role === "admin"
+            ? USER_CARDS
+            : USER_CARDS.filter((c) => c.badge !== "원장 전용")
+        }
+      />
       <Section title="통계 · 분석" cards={STATS_CARDS} />
       <Section title="온라인 GS" cards={GS_CARDS} />
     </div>

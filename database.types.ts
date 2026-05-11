@@ -581,6 +581,96 @@ export type Database = {
         }
         Relationships: []
       }
+      cohort_members: {
+        Row: {
+          added_by: string | null
+          cohort_id: string
+          joined_at: string
+          profile_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          cohort_id: string
+          joined_at?: string
+          profile_id: string
+        }
+        Update: {
+          added_by?: string | null
+          cohort_id?: string
+          joined_at?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_members_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_members_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "cohort_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      cohorts: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          ends_on: string | null
+          is_archived: boolean
+          name: string
+          owner_id: string
+          starts_on: string | null
+          updated_at: string
+        }
+        Insert: {
+          cohort_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          ends_on?: string | null
+          is_archived?: boolean
+          name: string
+          owner_id: string
+          starts_on?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          ends_on?: string | null
+          is_archived?: boolean
+          name?: string
+          owner_id?: string
+          starts_on?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohorts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       gs_answers: {
         Row: {
           ai_suggested_at: string | null

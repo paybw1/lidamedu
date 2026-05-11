@@ -68,6 +68,8 @@ export default [
       route("/paper-link", "features/admin/api/paper-link.tsx"),
       route("/book-update", "features/admin/api/book-update.tsx"),
       route("/mcq-pack", "features/admin/api/mcq-pack.tsx"),
+      route("/user-role", "features/admin/api/user-role.tsx"),
+      route("/cohort", "features/admin/api/cohort.tsx"),
     ]),
     ...prefix("/problems", [
       route(
@@ -242,6 +244,12 @@ export default [
       route("/community", "features/community/screens/community.tsx"),
       route("/admin", "features/admin/screens/admin.tsx"),
       route("/admin/cases", "features/admin/screens/admin-cases.tsx"),
+      route("/admin/users", "features/admin/screens/admin-users.tsx"),
+      route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),
+      route(
+        "/admin/cohorts/:cohortId",
+        "features/admin/screens/admin-cohort-detail.tsx",
+      ),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),
