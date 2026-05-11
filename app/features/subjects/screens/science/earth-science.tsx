@@ -4,7 +4,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import ScienceHub from "~/features/subjects/components/science-hub";
 import {
   getScienceProgress,
-  listSectionsWithCounts,
+  listSectionsWithStats,
 } from "~/features/subjects/lib/science.server";
 
 export const meta: Route.MetaFunction = () => [
@@ -17,7 +17,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   const [sections, progress] = await Promise.all([
-    listSectionsWithCounts(client, "earth_science"),
+    listSectionsWithStats(client, "earth_science", user?.id ?? null),
     user
       ? getScienceProgress(client, user.id, "earth_science")
       : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),

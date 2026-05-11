@@ -29,6 +29,7 @@ import { listRecentCases } from "~/features/cases/queries.server";
 import { listRecentLawRevisions } from "~/features/laws/queries.server";
 import { listTopBookmarks } from "~/features/annotations/queries.server";
 import { LAW_SUBJECT_SLUGS, LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
 
 import type { Route } from "./+types/dashboard";
 import CozyCard from "../components/cozy-card";
@@ -96,12 +97,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     overallProgress,
     recentActivity,
     topBookmarks,
+    scienceProgress,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
     getOverallProgress(client, user.id),
     getRecentActivity(client, user.id, 12),
     listTopBookmarks(client, user.id, 8),
+    getAllScienceSubjectsProgress(client, user.id),
   ]);
 
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
@@ -142,6 +145,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
     kpis,
     subjectsProgress,
+    scienceProgress,
     dailyStats,
     goals,
     weakAreas,
@@ -185,6 +189,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     blankSummary,
     kpis,
     subjectsProgress,
+    scienceProgress,
     dailyStats,
     goals,
     weakAreas,
@@ -601,6 +606,82 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                   palette={palette}
                 />
               </div>
+            </div>
+          </CozyCard>
+
+          <CozyCard
+            title="자연과학 (1차 선택)"
+            subtitle="4과목 풀이/정답률 — 선택 과목만 학습"
+          >
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              data-testid="science-progress"
+            >
+              {scienceProgress.map((s) => {
+                const sectionSlug = s.slug.replace("_", "-");
+                const seeded = s.total > 0;
+                return (
+                  <Link
+                    key={s.slug}
+                    to={`/subjects/science/${sectionSlug}`}
+                    style={{
+                      textDecoration: "none",
+                      color: "inherit",
+                      opacity: seeded ? 1 : 0.55,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "baseline",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>
+                        <span style={{ marginRight: 6 }}>{s.emoji}</span>
+                        {s.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          color: COZY_INK_SOFT,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {seeded
+                          ? `${s.attempted}/${s.total}${
+                              s.accuracyPct !== null
+                                ? ` · ${s.accuracyPct}%`
+                                : ""
+                            }`
+                          : "문제 미시드"}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 6,
+                        borderRadius: 3,
+                        background: palette.tint,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${
+                            s.total > 0
+                              ? Math.min(100, Math.round((s.attempted / s.total) * 100))
+                              : 0
+                          }%`,
+                          height: "100%",
+                          background: `linear-gradient(90deg, ${palette.accent}, ${palette.primary})`,
+                          borderRadius: 3,
+                        }}
+                      />
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </CozyCard>
 

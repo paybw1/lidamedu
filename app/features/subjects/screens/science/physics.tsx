@@ -4,7 +4,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import ScienceHub from "~/features/subjects/components/science-hub";
 import {
   getScienceProgress,
-  listSectionsWithCounts,
+  listSectionsWithStats,
 } from "~/features/subjects/lib/science.server";
 
 export const meta: Route.MetaFunction = () => [{ title: "물리 | Lidam Edu" }];
@@ -15,7 +15,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   const [sections, progress] = await Promise.all([
-    listSectionsWithCounts(client, "physics"),
+    listSectionsWithStats(client, "physics", user?.id ?? null),
     user
       ? getScienceProgress(client, user.id, "physics")
       : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),

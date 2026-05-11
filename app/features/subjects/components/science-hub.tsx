@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import {
   SCIENCE_SUBJECTS,
-  type ScienceSection,
+  type ScienceSectionStats,
   type ScienceSubjectSlug,
 } from "~/features/subjects/lib/science";
 
@@ -18,7 +18,7 @@ export default function ScienceHub({
   progress,
 }: {
   subject: ScienceSubjectSlug;
-  sections: ScienceSection[];
+  sections: ScienceSectionStats[];
   progress: { attempted: number; correct: number; total: number };
 }) {
   const meta = SCIENCE_SUBJECTS[subject];
@@ -121,27 +121,65 @@ export default function ScienceHub({
               등록된 단원이 없습니다.
             </p>
           ) : (
-            sections.map((s) => (
-              <div
-                key={s.sectionId}
-                className="hover:bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border p-3"
-              >
-                <span className="text-muted-foreground text-[11px] tabular-nums w-6">
-                  {s.orderIndex + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{s.label}</p>
-                  {s.descriptionMd ? (
-                    <p className="text-muted-foreground text-[11px]">
-                      {s.descriptionMd}
+            sections.map((s) => {
+              const acc = s.accuracyPct;
+              const accTone =
+                acc === null
+                  ? "text-muted-foreground"
+                  : acc >= 80
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : acc >= 60
+                      ? "text-lime-600 dark:text-lime-400"
+                      : acc >= 40
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-rose-600 dark:text-rose-400";
+              const pctOfTotal =
+                s.problemCount > 0
+                  ? Math.min(100, Math.round((s.attempted / s.problemCount) * 100))
+                  : 0;
+              return (
+                <div
+                  key={s.sectionId}
+                  className="hover:bg-muted/40 grid grid-cols-[24px_1fr_auto_auto_auto] items-center gap-2 rounded-md border p-3"
+                >
+                  <span className="text-muted-foreground text-[11px] tabular-nums">
+                    {s.orderIndex + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{s.label}</p>
+                    {s.descriptionMd ? (
+                      <p className="text-muted-foreground text-[11px]">
+                        {s.descriptionMd}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Badge variant="outline" className="text-[10px] tabular-nums">
+                    {s.problemCount} 문제
+                  </Badge>
+                  <div className="text-right">
+                    <p className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+                      풀이
                     </p>
-                  ) : null}
+                    <p className="text-xs tabular-nums">
+                      {s.attempted} / {s.problemCount}{" "}
+                      <span className="text-muted-foreground">
+                        ({pctOfTotal}%)
+                      </span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+                      정답률
+                    </p>
+                    <p
+                      className={"text-xs font-semibold tabular-nums " + accTone}
+                    >
+                      {acc === null ? "—" : `${acc}%`}
+                    </p>
+                  </div>
                 </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {s.problemCount} 문제
-                </Badge>
-              </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>

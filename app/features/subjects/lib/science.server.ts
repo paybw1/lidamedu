@@ -4,9 +4,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import {
+  SCIENCE_SUBJECTS,
+  SCIENCE_SUBJECT_SLUGS,
   type ScienceSection,
+  type ScienceSectionStats,
   type ScienceSubjectSlug,
 } from "~/features/subjects/lib/science";
+
+export type { ScienceSectionStats } from "~/features/subjects/lib/science";
 
 export interface ScienceProblem {
   problemId: string;
@@ -96,6 +101,77 @@ export async function getScienceProblem(
 }
 
 // 사용자의 자연과학 진척도 — 풀이 수, 정답 수.
+// 모든 자연과학 4과목 progress 일괄 — 대시보드용. 빈 과목(문제 0) 도 결과에 포함.
+export async function getAllScienceSubjectsProgress(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<
+  Array<{
+    slug: ScienceSubjectSlug;
+    name: string;
+    emoji: string;
+    attempted: number;
+    correct: number;
+    total: number;
+    accuracyPct: number | null;
+  }>
+> {
+  // 모든 자연과학 문제 — subject_type='science' 만 한 번 fetch 해서 in-memory 그룹핑.
+  const { data: totals } = await client
+    .from("problems")
+    .select("science_subject")
+    .eq("subject_type", "science")
+    .is("deleted_at", null);
+  const totalBySubject = new Map<string, number>();
+  for (const r of totals ?? []) {
+    if (!r.science_subject) continue;
+    totalBySubject.set(
+      r.science_subject,
+      (totalBySubject.get(r.science_subject) ?? 0) + 1,
+    );
+  }
+
+  // 본인 시도 — 같은 문제 여러 번 시도해도 distinct 로 세기.
+  const { data: attempts } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, is_correct, problems!inner(science_subject, subject_type)",
+    )
+    .eq("user_id", userId)
+    .eq("problems.subject_type", "science");
+  const attemptedBySubject = new Map<string, Set<string>>();
+  const correctBySubject = new Map<string, Set<string>>();
+  for (const a of attempts ?? []) {
+    const subj = a.problems?.science_subject;
+    if (!subj) continue;
+    const aSet = attemptedBySubject.get(subj) ?? new Set();
+    aSet.add(a.problem_id);
+    attemptedBySubject.set(subj, aSet);
+    if (a.is_correct) {
+      const cSet = correctBySubject.get(subj) ?? new Set();
+      cSet.add(a.problem_id);
+      correctBySubject.set(subj, cSet);
+    }
+  }
+
+  return SCIENCE_SUBJECT_SLUGS.map((slug) => {
+    const total = totalBySubject.get(slug) ?? 0;
+    const attempted = attemptedBySubject.get(slug)?.size ?? 0;
+    const correct = correctBySubject.get(slug)?.size ?? 0;
+    const accuracyPct =
+      attempted > 0 ? Math.round((correct / attempted) * 100) : null;
+    return {
+      slug,
+      name: SCIENCE_SUBJECTS[slug].name,
+      emoji: SCIENCE_SUBJECTS[slug].emoji,
+      attempted,
+      correct,
+      total,
+      accuracyPct,
+    };
+  });
+}
+
 export async function getScienceProgress(
   client: SupabaseClient<Database>,
   userId: string,
@@ -129,6 +205,59 @@ export async function getScienceProgress(
     correct: correctSet.size,
     total: total ?? 0,
   };
+}
+
+// 한 과목의 단원 목록 + 단원별 문제 수 + 본인 풀이/정답률 (feat-4-B-004).
+// 타입은 ./science 에 정의 — 클라이언트 번들 안전 import.
+
+export async function listSectionsWithStats(
+  client: SupabaseClient<Database>,
+  subject: ScienceSubjectSlug,
+  userId: string | null,
+): Promise<ScienceSectionStats[]> {
+  const sections = await listSectionsWithCounts(client, subject);
+  if (sections.length === 0) return [];
+  if (!userId) {
+    return sections.map((s) => ({
+      ...s,
+      attempted: 0,
+      correct: 0,
+      accuracyPct: null,
+    }));
+  }
+
+  // section_id 별 본인 시도 집계.
+  const { data: attempts } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, is_correct, problems!inner(science_subject, science_section_id, subject_type)",
+    )
+    .eq("user_id", userId)
+    .eq("problems.subject_type", "science")
+    .eq("problems.science_subject", subject);
+
+  const attemptedBySection = new Map<string, Set<string>>();
+  const correctBySection = new Map<string, Set<string>>();
+  for (const a of attempts ?? []) {
+    const sec = a.problems?.science_section_id;
+    if (!sec) continue;
+    const aSet = attemptedBySection.get(sec) ?? new Set();
+    aSet.add(a.problem_id);
+    attemptedBySection.set(sec, aSet);
+    if (a.is_correct) {
+      const cSet = correctBySection.get(sec) ?? new Set();
+      cSet.add(a.problem_id);
+      correctBySection.set(sec, cSet);
+    }
+  }
+
+  return sections.map((s) => {
+    const attempted = attemptedBySection.get(s.sectionId)?.size ?? 0;
+    const correct = correctBySection.get(s.sectionId)?.size ?? 0;
+    const accuracyPct =
+      attempted > 0 ? Math.round((correct / attempted) * 100) : null;
+    return { ...s, attempted, correct, accuracyPct };
+  });
 }
 
 // 한 과목의 단원 목록 + 단원별 문제 수.

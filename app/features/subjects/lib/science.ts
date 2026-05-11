@@ -38,3 +38,9 @@ export interface ScienceSection {
   descriptionMd: string | null;
   problemCount: number;
 }
+
+export interface ScienceSectionStats extends ScienceSection {
+  attempted: number;
+  correct: number;
+  accuracyPct: number | null;
+}
