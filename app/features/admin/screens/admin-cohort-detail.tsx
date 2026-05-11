@@ -9,6 +9,7 @@ import {
   PlusIcon,
   SearchIcon,
   Trash2Icon,
+  TrendingUpIcon,
   UserIcon,
   UsersIcon,
   XIcon,
@@ -112,9 +113,20 @@ export default function AdminCohortDetail({
             {cohort.name}
           </h1>
           {!editing ? (
-            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-              <PencilIcon className="size-3.5" /> 반 정보 수정
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild size="sm">
+                <Link to={`/admin/cohorts/${cohort.cohortId}/progress`}>
+                  <TrendingUpIcon className="size-3.5" /> 진도 모니터링
+                </Link>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(true)}
+              >
+                <PencilIcon className="size-3.5" /> 반 정보 수정
+              </Button>
+            </div>
           ) : null}
         </div>
         {cohort.description ? (
@@ -255,7 +267,13 @@ function MemberRow({
       <UserIcon className="text-muted-foreground size-4 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-sm font-medium">{member.name}</span>
+          <Link
+            to={`/admin/students/${member.profileId}`}
+            viewTransition
+            className="hover:text-primary text-sm font-medium"
+          >
+            {member.name}
+          </Link>
           <Badge variant={ROLE_BADGE[member.role]} className="text-[10px]">
             {ROLE_LABEL[member.role]}
           </Badge>

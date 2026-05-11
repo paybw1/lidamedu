@@ -250,6 +250,14 @@ export default [
         "/admin/cohorts/:cohortId",
         "features/admin/screens/admin-cohort-detail.tsx",
       ),
+      route(
+        "/admin/cohorts/:cohortId/progress",
+        "features/admin/screens/admin-cohort-progress.tsx",
+      ),
+      route(
+        "/admin/students/:profileId",
+        "features/admin/screens/admin-student-detail.tsx",
+      ),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),

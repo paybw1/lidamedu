@@ -443,7 +443,7 @@
 | feat-7-007 | 논문 등록/수정 폼 | P1 | 🔲 |
 | feat-7-008 | 연관관계 일괄 편집 | P1 | 🔲 |
 | feat-7-009 | 반/기수 관리 — `cohorts` (name/description/owner_id/starts_on/ends_on/is_archived) + `cohort_members` (N:M). RLS: admin 전부, instructor 본인 소유, student 자기 row read. `/admin/cohorts` 카드 일람 + 신규/수정 폼, `/admin/cohorts/:id` 상세에 멤버 목록 + 학생 검색 추가/제거. | P1 | ✅ |
-| feat-7-010 | 학생 진도 모니터링 | P1 | 🔲 |
+| feat-7-010 | 학생 진도 모니터링 — `/admin/cohorts/:id/progress` 반 학생 요약 테이블(문제 풀이·정답률·조문 열람·빈칸·최근 활동) + KPI 4종. `/admin/students/:profileId` 학생 상세(과목별·자연과학별 진도, 최근 12건 활동, 빈칸 통계). admin client 로 RLS 우회, staff 권한 검사는 loader 에서. | P1 | ✅ |
 | feat-7-011 | 공지사항 발송 (반/전체) | P1 | 🔲 |
 | feat-7-012 | 사용자 관리 — `/admin/users` admin 전용. listAdminUsers (admin client 로 auth.users + profiles 조인) + 검색·역할 필터 + 페이지네이션. 인라인 select 로 역할 변경(student/instructor/admin), 본인 강등 차단. | P1 | ✅ |
 | feat-7-013 | 강사 권한 관리 — feat-7-012 에 통합 (admin 이 user role 을 instructor 로 승격/강등). | P1 | ✅ |
