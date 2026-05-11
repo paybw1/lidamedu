@@ -30,6 +30,7 @@ import { COURT_LABELS, type CaseCourt } from "~/features/cases/labels";
 import {
   listCasesForMapper,
   type CaseMapperRow,
+  type CaseMapperSort,
 } from "~/features/admin/queries/case-mapper.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -59,7 +60,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     ? (lawCodeRaw as LawSubjectSlug)
     : "patent";
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-  const onlyUnmapped = url.searchParams.get("only_unmapped") !== "0";
+  // default: 전체 case 노출. 미매핑만 보고 싶을 때 ?only_unmapped=1 명시.
+  const onlyUnmapped = url.searchParams.get("only_unmapped") === "1";
+  const sortRaw = url.searchParams.get("sort") ?? "unmapped_first";
+  const sort: CaseMapperSort = (
+    ["unmapped_first", "many_first", "decided_desc", "case_no"] as const
+  ).includes(sortRaw as CaseMapperSort)
+    ? (sortRaw as CaseMapperSort)
+    : "unmapped_first";
   const pageRaw = Number(url.searchParams.get("page") ?? "1");
   const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
 
@@ -67,10 +75,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     lawCode,
     query: q || undefined,
     onlyUnmapped,
+    sort,
     page,
     pageSize: 30,
   });
-  return { ...result, lawCode, q, onlyUnmapped, role };
+  return { ...result, lawCode, q, onlyUnmapped, sort, role };
 }
 
 export default function AdminCases({ loaderData }: Route.ComponentProps) {
@@ -83,6 +92,7 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
     lawCode,
     q,
     onlyUnmapped,
+    sort,
   } = loaderData;
   const subjectName = LAW_SUBJECTS[lawCode].name;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -90,7 +100,8 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
   const baseSp = new URLSearchParams();
   baseSp.set("law", lawCode);
   if (q) baseSp.set("q", q);
-  if (!onlyUnmapped) baseSp.set("only_unmapped", "0");
+  if (onlyUnmapped) baseSp.set("only_unmapped", "1");
+  if (sort !== "unmapped_first") baseSp.set("sort", sort);
   const makePage = (n: number) => {
     const sp = new URLSearchParams(baseSp);
     if (n !== 1) sp.set("page", String(n));
@@ -112,21 +123,28 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
         <h1 className="text-2xl font-bold tracking-tight">
           {subjectName} 판례 ↔ 조문 매핑
         </h1>
-        <p className="text-muted-foreground text-sm">
-          자동 추출 매핑(파란 chip — 본문 인용/책 절/객관식 지문) 과 수동 매핑(초록 chip)
-          을 한 화면에서 관리. 같은 페어가 자동으로 이미 들어가 있으면 "이미 매핑됨"
-          으로 안내됩니다 — 위 chip 에 표시된 조문은 다시 추가할 필요 없습니다.
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          모든 판례의 조문 매핑을 한 화면에서 관리합니다.
+          {" · "}
+          chip <span className="text-emerald-700 dark:text-emerald-300">초록</span>=
+          수동, <span className="text-sky-700 dark:text-sky-300">파랑</span>=자동 추출
+          (본문 인용 / 책 절 / 객관식 지문). chip 의 × 로 삭제, 아래 입력으로 새 조문
+          추가 — 둘을 조합해 매핑을 수정할 수 있습니다.
         </p>
       </header>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:grid-cols-4">
         <KpiCard label="현재 결과" value={String(total)} />
-        <KpiCard label="매핑 0건 case" value={String(unmappedTotal)} warn={unmappedTotal > 0} />
+        <KpiCard
+          label="매핑 0건"
+          value={String(unmappedTotal)}
+          warn={unmappedTotal > 0}
+        />
         <KpiCard label="페이지" value={`${page}/${totalPages}`} />
+        <KpiCard label="정렬" value={SORT_LABEL[sort]} />
       </div>
 
-      <Form method="get" className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
-        <input type="hidden" name="law" value={lawCode} />
+      <Form method="get" className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
         <div className="relative">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
@@ -137,6 +155,29 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
             className="pl-9"
           />
         </div>
+        <select
+          name="law"
+          defaultValue={lawCode}
+          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
+          title="과목"
+        >
+          {LAW_SUBJECT_SLUGS.map((s) => (
+            <option key={s} value={s}>
+              {LAW_SUBJECTS[s].name}
+            </option>
+          ))}
+        </select>
+        <select
+          name="sort"
+          defaultValue={sort}
+          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
+          title="정렬"
+        >
+          <option value="unmapped_first">미매핑 우선</option>
+          <option value="many_first">매핑 많은 순</option>
+          <option value="decided_desc">선고일 ↓</option>
+          <option value="case_no">사건번호</option>
+        </select>
         <label className="border-input flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs">
           <input
             type="checkbox"
@@ -145,19 +186,8 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
             defaultChecked={onlyUnmapped}
             className="size-3.5"
           />
-          매핑 0건만
+          미매핑만
         </label>
-        <select
-          name="law"
-          defaultValue={lawCode}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          {LAW_SUBJECT_SLUGS.map((s) => (
-            <option key={s} value={s}>
-              {LAW_SUBJECTS[s].name}
-            </option>
-          ))}
-        </select>
         <Button type="submit" size="sm" className="h-9">
           적용
         </Button>
@@ -221,6 +251,13 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
     </div>
   );
 }
+
+const SORT_LABEL: Record<CaseMapperSort, string> = {
+  unmapped_first: "미매핑 우선",
+  many_first: "매핑 많은 순",
+  decided_desc: "선고일 ↓",
+  case_no: "사건번호",
+};
 
 function KpiCard({
   label,

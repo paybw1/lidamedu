@@ -32,10 +32,17 @@ export interface CaseMapperPage {
   pageSize: number;
 }
 
+export type CaseMapperSort =
+  | "unmapped_first"
+  | "many_first"
+  | "decided_desc"
+  | "case_no";
+
 export interface ListCasesForMapperOptions {
   lawCode: LawSubjectSlug;
   query?: string;
   onlyUnmapped?: boolean;
+  sort?: CaseMapperSort;
   page?: number;
   pageSize?: number;
 }
@@ -152,12 +159,28 @@ export async function listCasesForMapper(
   if (options.onlyUnmapped) {
     rows = rows.filter((r) => r.linkCount === 0);
   }
-  // 매핑 없는 case 가 위로 오도록 정렬.
-  rows.sort((a, b) => {
-    if (a.linkCount === 0 && b.linkCount !== 0) return -1;
-    if (a.linkCount !== 0 && b.linkCount === 0) return 1;
-    return b.decidedAt.localeCompare(a.decidedAt);
-  });
+  // 정렬.
+  const sortMode: CaseMapperSort = options.sort ?? "unmapped_first";
+  switch (sortMode) {
+    case "many_first":
+      rows.sort((a, b) => {
+        if (b.linkCount !== a.linkCount) return b.linkCount - a.linkCount;
+        return b.decidedAt.localeCompare(a.decidedAt);
+      });
+      break;
+    case "decided_desc":
+      rows.sort((a, b) => b.decidedAt.localeCompare(a.decidedAt));
+      break;
+    case "case_no":
+      rows.sort((a, b) => a.caseNumber.localeCompare(b.caseNumber));
+      break;
+    default:
+      rows.sort((a, b) => {
+        if (a.linkCount === 0 && b.linkCount !== 0) return -1;
+        if (a.linkCount !== 0 && b.linkCount === 0) return 1;
+        return b.decidedAt.localeCompare(a.decidedAt);
+      });
+  }
 
   const total = rows.length;
   const from = (page - 1) * pageSize;
