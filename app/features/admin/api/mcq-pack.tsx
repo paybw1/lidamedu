@@ -22,6 +22,9 @@ import type { Route } from "./+types/mcq-pack";
 
 const KINDS = ["past_exam", "mock_full", "mock_progressive", "other"] as const;
 const SCOPES = [
+  "patent",
+  "trademark",
+  "design",
   "industrial",
   "civil",
   "civil_procedure",

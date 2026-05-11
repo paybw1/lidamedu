@@ -55,6 +55,9 @@ function isPackKind(value: string): value is McqPackKind {
 
 function isSubjectScope(value: string): value is McqPackSubjectScope {
   return (
+    value === "patent" ||
+    value === "trademark" ||
+    value === "design" ||
     value === "industrial" ||
     value === "civil" ||
     value === "civil_procedure" ||
@@ -68,7 +71,7 @@ function rowToItem(row: PackRow, problemCount: number): McqPackItem {
     kind: isPackKind(row.kind) ? row.kind : "other",
     subjectScope: isSubjectScope(row.subject_scope)
       ? row.subject_scope
-      : "industrial",
+      : "patent",
     title: row.title,
     description: row.description,
     year: row.year,
@@ -106,7 +109,9 @@ export async function listPacks(
     const pattern = `%${escaped}%`;
     q = q.or(`title.ilike.${pattern},description.ilike.${pattern}`);
   }
+  // 명칭(연도) 내림차순 — year DESC, year 없으면 published_at, 그래도 없으면 created_at.
   const { data: packRows, error } = await q
+    .order("year", { ascending: false, nullsFirst: false })
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(500);
@@ -337,8 +342,9 @@ function mapLawCodeToScope(
   code: string | null | undefined,
 ): McqPackSubjectScope | null {
   if (!code) return null;
-  if (code === "patent" || code === "trademark" || code === "design")
-    return "industrial";
+  if (code === "patent") return "patent";
+  if (code === "trademark") return "trademark";
+  if (code === "design") return "design";
   if (code === "civil") return "civil";
   if (code === "civil-procedure") return "civil_procedure";
   return null;
@@ -348,7 +354,7 @@ export async function regeneratePastExamPacks(
   client: SupabaseClient<Database>,
   authorId: string,
 ): Promise<RegeneratePastExamResult> {
-  // 1차 객관식 기출만. (2차 주관식은 /latest/essay 영역, science 도 1차 선택과목이라 포함.)
+  // 1차 객관식 기출 + 기출변형 모두 포함. (2차 주관식은 /latest/essay 영역.)
   const PAGE = 1000;
   const allRows: Array<{
     problem_id: string;
@@ -361,7 +367,7 @@ export async function regeneratePastExamPacks(
     const { data, error } = await client
       .from("problems")
       .select("problem_id, year, subject_type, laws(law_code)")
-      .eq("origin", "past_exam")
+      .in("origin", ["past_exam", "past_exam_variant"])
       .eq("exam_round", "first")
       .is("deleted_at", null)
       .not("year", "is", null)

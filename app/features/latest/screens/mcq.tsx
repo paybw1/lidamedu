@@ -67,6 +67,9 @@ const KINDS: Array<{ value: McqPackKind | "all"; label: string }> = [
 
 const SCOPES: Array<{ value: McqPackSubjectScope | "all"; label: string }> = [
   { value: "all", label: "전체 과목" },
+  { value: "patent", label: MCQ_PACK_SUBJECT_LABELS.patent },
+  { value: "trademark", label: MCQ_PACK_SUBJECT_LABELS.trademark },
+  { value: "design", label: MCQ_PACK_SUBJECT_LABELS.design },
   { value: "industrial", label: MCQ_PACK_SUBJECT_LABELS.industrial },
   { value: "civil", label: MCQ_PACK_SUBJECT_LABELS.civil },
   { value: "civil_procedure", label: MCQ_PACK_SUBJECT_LABELS.civil_procedure },
@@ -90,6 +93,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const subjectScopeRaw = url.searchParams.get("subject");
   const subjectScope: McqPackSubjectScope | undefined =
+    subjectScopeRaw === "patent" ||
+    subjectScopeRaw === "trademark" ||
+    subjectScopeRaw === "design" ||
     subjectScopeRaw === "industrial" ||
     subjectScopeRaw === "civil" ||
     subjectScopeRaw === "civil_procedure" ||

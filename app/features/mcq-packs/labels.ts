@@ -26,16 +26,23 @@ export function isMockKind(kind: McqPackKind): boolean {
 }
 
 export type McqPackSubjectScope =
-  | "industrial"
+  | "patent"
+  | "trademark"
+  | "design"
   | "civil"
   | "civil_procedure"
-  | "science";
+  | "science"
+  // 산업재산권법 합본 (특허+상표+디자인) — 합본 모의 등에 사용.
+  | "industrial";
 
 export const MCQ_PACK_SUBJECT_LABELS: Record<McqPackSubjectScope, string> = {
-  industrial: "산업재산권법",
+  patent: "특허법",
+  trademark: "상표법",
+  design: "디자인보호법",
   civil: "민법",
   civil_procedure: "민사소송법",
   science: "자연과학",
+  industrial: "산업재산권법",
 };
 
 export interface McqPackItem {

@@ -24,6 +24,12 @@ const MODE_VALUES = ["study", "exam"] as const;
 // subject_scope → 첫 problem 의 law_code 또는 science_subject 가 없을 때 fallback URL slug.
 function fallbackSubjectSlug(scope: McqPackSubjectScope): string {
   switch (scope) {
+    case "patent":
+      return "patent";
+    case "trademark":
+      return "trademark";
+    case "design":
+      return "design";
     case "industrial":
       return "patent";
     case "civil":
