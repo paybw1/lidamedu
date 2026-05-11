@@ -80,6 +80,7 @@ interface Filters {
   q: string;
   subjectScope?: McqPackSubjectScope;
   kind?: McqPackKind;
+  year?: number;
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -111,12 +112,15 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? kindRaw
       : undefined;
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-  const filters: Filters = { q, subjectScope, kind };
+  const yearRaw = url.searchParams.get("year");
+  const year = yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined;
+  const filters: Filters = { q, subjectScope, kind, year };
 
   const packs = await listPacks(client, {
     query: filters.q || undefined,
     subjectScope: filters.subjectScope,
     kind: filters.kind,
+    year: filters.year,
   });
 
   return { packs, filters, canEdit: role !== null };
@@ -125,7 +129,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   const { packs, filters, canEdit } = loaderData;
   const [showAdd, setShowAdd] = useState(false);
-  const filterActive = !!filters.subjectScope || !!filters.kind || filters.q !== "";
+  const filterActive =
+    !!filters.subjectScope ||
+    !!filters.kind ||
+    !!filters.year ||
+    filters.q !== "";
+  // 빠른 year 옵션 — 최근 12년.
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 13 }, (_, i) => currentYear - i);
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
@@ -148,8 +159,14 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
           ) : null}
         </div>
         <p className="text-muted-foreground text-sm">
-          기출문제와 모의고사문제의 목록입니다. 클릭하면 문제·정답·해설·동영상 풀이가 열리고,
-          모의고사는 정해진 시간 안에 풀이 후 결과 통계를 확인할 수 있습니다.
+          {packs.length}건
+          {filters.subjectScope
+            ? ` · ${MCQ_PACK_SUBJECT_LABELS[filters.subjectScope]}`
+            : ""}
+          {filters.kind ? ` · ${filters.kind === "past_exam" ? "기출" : "모의"}` : ""}
+          {filters.year ? ` · ${filters.year}년` : ""}
+          {filters.q ? ` · "${filters.q}" 검색` : ""}
+          {" "}— 기출/모의 클릭 시 문제·해설·동영상·결과 통계로 진입.
         </p>
       </header>
 
@@ -161,7 +178,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
 
       <Form
         method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]"
+        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]"
       >
         <div className="relative">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -192,6 +209,18 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
           {KINDS.map((o) => (
             <option key={o.value} value={o.value === "all" ? "" : o.value}>
               {o.label}
+            </option>
+          ))}
+        </select>
+        <select
+          name="year"
+          defaultValue={filters.year ?? ""}
+          className="border-input bg-background h-9 rounded-md border px-2 text-xs tabular-nums"
+        >
+          <option value="">전체 년도</option>
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>
+              {y}
             </option>
           ))}
         </select>

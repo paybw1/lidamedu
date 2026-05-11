@@ -57,6 +57,7 @@ interface PaperFilters {
   q: string;
   subject?: LawSubjectSlug;
   importantOnly: boolean;
+  year?: number;
   page: number;
   pageSize: number;
 }
@@ -78,16 +79,27 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? (subjectParam as LawSubjectSlug)
       : undefined;
   const importantOnly = url.searchParams.get("important") === "1";
+  const yearRaw = url.searchParams.get("year");
+  const year =
+    yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined;
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const pageRaw = Number(url.searchParams.get("page") ?? "1");
   const page =
     Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
-  const filters: PaperFilters = { q, subject, importantOnly, page, pageSize: 20 };
+  const filters: PaperFilters = {
+    q,
+    subject,
+    importantOnly,
+    year,
+    page,
+    pageSize: 20,
+  };
 
   const { items, total } = await listPapersWithLinks(client, {
     query: filters.q || undefined,
     subject: filters.subject,
     importantOnly: filters.importantOnly,
+    year: filters.year,
     page: filters.page,
     pageSize: filters.pageSize,
   });
@@ -108,13 +120,20 @@ export default function LatestPapers({ loaderData }: Route.ComponentProps) {
   const { papers, total, filters, canEdit } = loaderData;
   const [showAdd, setShowAdd] = useState(false);
   const filterActive =
-    !!filters.subject || filters.importantOnly || filters.q !== "";
+    !!filters.subject ||
+    filters.importantOnly ||
+    !!filters.year ||
+    filters.q !== "";
+  // 빠른 year 옵션 — 최근 12년.
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 13 }, (_, i) => currentYear - i);
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
 
   const makeUrl = (overrides: Record<string, string | null>) => {
     const sp = new URLSearchParams();
     if (filters.subject) sp.set("subject", filters.subject);
     if (filters.importantOnly) sp.set("important", "1");
+    if (filters.year) sp.set("year", String(filters.year));
     if (filters.q) sp.set("q", filters.q);
     if (filters.page !== 1) sp.set("page", String(filters.page));
     for (const [k, v] of Object.entries(overrides)) {
@@ -142,6 +161,7 @@ export default function LatestPapers({ loaderData }: Route.ComponentProps) {
         <p className="text-muted-foreground text-sm">
           {total}건
           {filters.subject ? ` · ${lawName(filters.subject)}` : ""}
+          {filters.year ? ` · ${filters.year}년` : ""}
           {filters.importantOnly ? " · 중요 (★3+)" : ""}
           {filters.q ? ` · "${filters.q}" 검색` : ""}
         </p>
@@ -155,7 +175,7 @@ export default function LatestPapers({ loaderData }: Route.ComponentProps) {
 
       <Form
         method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]"
+        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]"
       >
         <div className="relative">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -176,6 +196,18 @@ export default function LatestPapers({ loaderData }: Route.ComponentProps) {
           {LAW_SUBJECT_SLUGS.map((s) => (
             <option key={s} value={s}>
               {LAW_SUBJECTS[s].name}
+            </option>
+          ))}
+        </select>
+        <select
+          name="year"
+          defaultValue={filters.year ?? ""}
+          className="border-input bg-background h-9 rounded-md border px-2 text-xs tabular-nums"
+        >
+          <option value="">전체 년도</option>
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>
+              {y}
             </option>
           ))}
         </select>

@@ -64,6 +64,7 @@ interface BookUpdateFilters {
   subject?: LawSubjectSlug;
   kind?: BookUpdateKind;
   importantOnly: boolean;
+  year?: number;
   page: number;
   pageSize: number;
 }
@@ -91,6 +92,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? kindParam
       : undefined;
   const importantOnly = url.searchParams.get("important") === "1";
+  const yearRaw = url.searchParams.get("year");
+  const year =
+    yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined;
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const pageRaw = Number(url.searchParams.get("page") ?? "1");
   const page =
@@ -100,6 +104,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     subject,
     kind,
     importantOnly,
+    year,
     page,
     pageSize: 20,
   };
@@ -109,6 +114,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     subject: filters.subject,
     kind: filters.kind,
     importantOnly: filters.importantOnly,
+    year: filters.year,
     page: filters.page,
     pageSize: filters.pageSize,
   });
@@ -131,7 +137,11 @@ export default function LatestBookUpdates({
     !!filters.subject ||
     !!filters.kind ||
     filters.importantOnly ||
+    !!filters.year ||
     filters.q !== "";
+  // 빠른 year 옵션 — 최근 12년.
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 13 }, (_, i) => currentYear - i);
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
 
   const makeUrl = (overrides: Record<string, string | null>) => {
@@ -139,6 +149,7 @@ export default function LatestBookUpdates({
     if (filters.subject) sp.set("subject", filters.subject);
     if (filters.kind) sp.set("kind", filters.kind);
     if (filters.importantOnly) sp.set("important", "1");
+    if (filters.year) sp.set("year", String(filters.year));
     if (filters.q) sp.set("q", filters.q);
     if (filters.page !== 1) sp.set("page", String(filters.page));
     for (const [k, v] of Object.entries(overrides)) {
@@ -170,6 +181,7 @@ export default function LatestBookUpdates({
           {total}건
           {filters.kind ? ` · ${BOOK_UPDATE_KIND_LABELS[filters.kind]}` : ""}
           {filters.subject ? ` · ${LAW_SUBJECTS[filters.subject].name}` : ""}
+          {filters.year ? ` · ${filters.year}년` : ""}
           {filters.importantOnly ? " · 중요 (★3+)" : ""}
           {filters.q ? ` · "${filters.q}" 검색` : ""}
         </p>
@@ -183,7 +195,7 @@ export default function LatestBookUpdates({
 
       <Form
         method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]"
+        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto_auto]"
       >
         <div className="relative">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -215,6 +227,18 @@ export default function LatestBookUpdates({
           {LAW_SUBJECT_SLUGS.map((s) => (
             <option key={s} value={s}>
               {LAW_SUBJECTS[s].name}
+            </option>
+          ))}
+        </select>
+        <select
+          name="year"
+          defaultValue={filters.year ?? ""}
+          className="border-input bg-background h-9 rounded-md border px-2 text-xs tabular-nums"
+        >
+          <option value="">전체 년도</option>
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>
+              {y}
             </option>
           ))}
         </select>

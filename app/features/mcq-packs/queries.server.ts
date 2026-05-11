@@ -91,6 +91,7 @@ export interface ListPacksOptions {
   subjectScope?: McqPackSubjectScope;
   kind?: McqPackKind;
   query?: string;
+  year?: number;
 }
 
 export async function listPacks(
@@ -103,6 +104,7 @@ export async function listPacks(
     .is("deleted_at", null);
   if (options.subjectScope) q = q.eq("subject_scope", options.subjectScope);
   if (options.kind) q = q.eq("kind", options.kind);
+  if (options.year !== undefined) q = q.eq("year", options.year);
   const trimmed = options.query?.trim();
   if (trimmed) {
     const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");

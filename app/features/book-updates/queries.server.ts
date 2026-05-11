@@ -68,6 +68,8 @@ export interface ListBookUpdatesOptions {
   subject?: LawSubjectSlug;
   kind?: BookUpdateKind;
   importantOnly?: boolean;
+  // 발행 년도 (published_at 의 YYYY).
+  year?: number;
   page?: number;
   pageSize?: number;
 }
@@ -95,6 +97,11 @@ export async function listBookUpdates(
   if (options.subject) q = q.contains("subject_laws", [options.subject]);
   if (options.kind) q = q.eq("kind", options.kind);
   if (options.importantOnly) q = q.gte("importance", 3);
+  if (options.year !== undefined) {
+    q = q
+      .gte("published_at", `${options.year}-01-01`)
+      .lte("published_at", `${options.year}-12-31`);
+  }
   const trimmed = options.query?.trim();
   if (trimmed) {
     const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");

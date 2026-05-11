@@ -302,22 +302,48 @@ export interface RecentProblemItem {
   lawCode: string;
 }
 
+export interface ListRecentProblemsOptions {
+  limit?: number;
+  formatFilter?: "mcq" | "subjective";
+  subject?: string; // law_code
+  year?: number;
+  origin?: ProblemOrigin;
+  query?: string; // body_md substring
+}
+
 export async function listRecentProblems(
   client: SupabaseClient<Database>,
-  limit = 50,
-  formatFilter: "mcq" | "subjective" = "mcq",
+  optionsOrLimit: ListRecentProblemsOptions | number = 50,
+  formatFilterArg: "mcq" | "subjective" = "mcq",
 ): Promise<RecentProblemItem[]> {
+  // 하위 호환: 기존 (client, limit, formatFilter) 시그니처 유지.
+  const options: ListRecentProblemsOptions =
+    typeof optionsOrLimit === "number"
+      ? { limit: optionsOrLimit, formatFilter: formatFilterArg }
+      : optionsOrLimit;
+  const limit = options.limit ?? 50;
+  const formatFilter = options.formatFilter ?? "mcq";
   const formats: ProblemFormat[] =
     formatFilter === "mcq"
       ? ["mc_short", "mc_box", "mc_case", "ox", "blank"]
       : ["subjective"];
-  const { data, error } = await client
+  let q = client
     .from("problems")
     .select(
       "problem_id, body_md, format, origin, year, problem_number, created_at, laws!inner(law_code)",
     )
     .in("format", formats)
-    .is("deleted_at", null)
+    .is("deleted_at", null);
+  if (options.subject) q = q.eq("laws.law_code", options.subject);
+  if (options.year !== undefined) q = q.eq("year", options.year);
+  if (options.origin) q = q.eq("origin", options.origin);
+  const trimmed = options.query?.trim();
+  if (trimmed) {
+    const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
+    const pattern = `%${escaped}%`;
+    q = q.ilike("body_md", pattern);
+  }
+  const { data, error } = await q
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

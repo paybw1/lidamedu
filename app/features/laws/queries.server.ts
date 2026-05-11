@@ -268,17 +268,33 @@ export interface RecentRevisionItem {
   myBookmarkedAffectedCount: number;
 }
 
+export interface ListLawRevisionsOptions {
+  subject?: LawSubjectSlug;
+  query?: string; // 법명·개정 번호 검색
+}
+
 export async function listRecentLawRevisions(
   client: SupabaseClient<Database>,
   limit = 5,
   userId?: string,
+  options: ListLawRevisionsOptions = {},
 ): Promise<RecentRevisionItem[]> {
-  const { data, error } = await client
+  let q = client
     .from("law_revisions")
     .select(
       "law_revision_id, law_id, revision_number, promulgated_at, effective_date, published_at, laws!inner(law_code, display_label, short_label)",
     )
-    .eq("status", "published")
+    .eq("status", "published");
+  if (options.subject) q = q.eq("laws.law_code", options.subject);
+  const trimmed = options.query?.trim();
+  if (trimmed) {
+    const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
+    const pattern = `%${escaped}%`;
+    q = q.or(
+      `revision_number.ilike.${pattern},laws.display_label.ilike.${pattern},laws.short_label.ilike.${pattern}`,
+    );
+  }
+  const { data, error } = await q
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw error;

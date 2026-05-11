@@ -68,6 +68,8 @@ export interface ListPapersOptions {
   query?: string;
   subject?: LawSubjectSlug;
   importantOnly?: boolean;
+  // 발행 년도 (published_at 의 YYYY) — 정확 일치.
+  year?: number;
   page?: number;
   pageSize?: number;
 }
@@ -94,6 +96,11 @@ export async function listPapers(
     .is("deleted_at", null);
   if (options.subject) q = q.contains("subject_laws", [options.subject]);
   if (options.importantOnly) q = q.gte("importance", 3);
+  if (options.year !== undefined) {
+    q = q
+      .gte("published_at", `${options.year}-01-01`)
+      .lte("published_at", `${options.year}-12-31`);
+  }
   const trimmed = options.query?.trim();
   if (trimmed) {
     const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
