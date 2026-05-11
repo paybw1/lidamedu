@@ -77,6 +77,7 @@ const flatMenus: SimpleLink[] = [
   { label: "학습목표 및 과목별 진도", to: "/goals" },
   { label: "오답노트", to: "/study/wrong-note" },
   { label: "즐겨찾기", to: "/study/bookmarks" },
+  { label: "내 메모", to: "/study/notes" },
 ];
 
 const trailingMenus: SimpleLink[] = [

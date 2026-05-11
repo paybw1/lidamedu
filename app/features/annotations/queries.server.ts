@@ -698,6 +698,239 @@ export async function listAllBookmarks(
   });
 }
 
+// 메모 모아보기 페이지(`/study/notes`) — 5 target type 전체.
+// 메모 작성 시점이 최근 학습 활동의 지표 — 정렬: updated_at DESC.
+export interface MemoListItem {
+  memoId: string;
+  targetType: AnnotationTargetType;
+  targetId: string;
+  bodyMd: string;
+  snippet: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // 표시 정보.
+  lawCode: string | null;
+  primaryLabel: string;
+  secondaryLabel: string | null;
+  bodySnippet: string | null;
+  href: string;
+}
+
+export async function listAllMemos(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<MemoListItem[]> {
+  const { data: rows, error } = await client
+    .from("user_memos")
+    .select(
+      "memo_id, target_type, target_id, body_md, snippet, created_at, updated_at",
+    )
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(2000);
+  if (error) throw error;
+  const list = rows ?? [];
+  if (list.length === 0) return [];
+
+  const articleIds = list.filter((r) => r.target_type === "article").map((r) => r.target_id);
+  const caseIds = list.filter((r) => r.target_type === "case").map((r) => r.target_id);
+  const problemIds = list.filter((r) => r.target_type === "problem").map((r) => r.target_id);
+  const choiceIds = list.filter((r) => r.target_type === "problem_choice").map((r) => r.target_id);
+  const boxItemIds = list.filter((r) => r.target_type === "problem_box_item").map((r) => r.target_id);
+
+  const { articleSlug } = await import("~/features/laws/lib/identifier");
+  const articleMap = new Map<
+    string,
+    { displayLabel: string; articleNumber: string | null; lawCode: string; pathSlug: string }
+  >();
+  if (articleIds.length > 0) {
+    const { data: rs } = await client
+      .from("articles")
+      .select("article_id, article_number, display_label, laws!inner(law_code)")
+      .in("article_id", articleIds);
+    for (const r of rs ?? []) {
+      if (!r.article_number) continue;
+      articleMap.set(r.article_id, {
+        displayLabel: r.display_label,
+        articleNumber: r.article_number,
+        lawCode: r.laws.law_code,
+        pathSlug: articleSlug(r.article_number),
+      });
+    }
+  }
+  const caseMap = new Map<
+    string,
+    { caseNumber: string; caseTitle: string | null; lawCode: string }
+  >();
+  if (caseIds.length > 0) {
+    const { data: rs } = await client
+      .from("cases")
+      .select("case_id, case_number, case_title, subject_laws")
+      .in("case_id", caseIds);
+    for (const r of rs ?? []) {
+      caseMap.set(r.case_id, {
+        caseNumber: r.case_number,
+        caseTitle: r.case_title,
+        lawCode: (r.subject_laws as string[] | null)?.[0] ?? "patent",
+      });
+    }
+  }
+  // choice / box → 부모 problem.
+  const choiceParentMap = new Map<
+    string,
+    { problemId: string; bodyMd: string | null }
+  >();
+  if (choiceIds.length > 0) {
+    const { data: cs } = await client
+      .from("problem_choices")
+      .select("choice_id, problem_id, body_md")
+      .in("choice_id", choiceIds);
+    for (const c of cs ?? [])
+      choiceParentMap.set(c.choice_id, { problemId: c.problem_id, bodyMd: c.body_md });
+  }
+  const boxParentMap = new Map<
+    string,
+    { problemId: string; bodyMd: string | null; marker: string | null }
+  >();
+  if (boxItemIds.length > 0) {
+    const { data: bs } = await client
+      .from("problem_box_items")
+      .select("box_item_id, problem_id, body_md, marker")
+      .in("box_item_id", boxItemIds);
+    for (const b of bs ?? [])
+      boxParentMap.set(b.box_item_id, {
+        problemId: b.problem_id,
+        bodyMd: b.body_md,
+        marker: b.marker,
+      });
+  }
+  const problemMap = new Map<
+    string,
+    {
+      year: number | null;
+      problemNumber: number | null;
+      bodySnippet: string;
+      lawCode: string;
+    }
+  >();
+  const allProblemIds = new Set<string>(problemIds);
+  for (const v of choiceParentMap.values()) allProblemIds.add(v.problemId);
+  for (const v of boxParentMap.values()) allProblemIds.add(v.problemId);
+  if (allProblemIds.size > 0) {
+    const { data: ps } = await client
+      .from("problems")
+      .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+      .in("problem_id", [...allProblemIds]);
+    for (const p of ps ?? []) {
+      const body = p.body_md ?? "";
+      problemMap.set(p.problem_id, {
+        year: p.year,
+        problemNumber: p.problem_number,
+        bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
+        lawCode: p.laws.law_code,
+      });
+    }
+  }
+
+  return list.flatMap((r): MemoListItem[] => {
+    const base = {
+      memoId: r.memo_id,
+      targetType: r.target_type,
+      targetId: r.target_id,
+      bodyMd: r.body_md,
+      snippet: r.snippet ?? null,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    };
+    if (r.target_type === "article") {
+      const a = articleMap.get(r.target_id);
+      if (!a) return [];
+      return [
+        {
+          ...base,
+          lawCode: a.lawCode,
+          primaryLabel: a.displayLabel,
+          secondaryLabel: a.articleNumber ? `제${a.articleNumber}조` : null,
+          bodySnippet: null,
+          href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
+        },
+      ];
+    }
+    if (r.target_type === "case") {
+      const c = caseMap.get(r.target_id);
+      if (!c) return [];
+      return [
+        {
+          ...base,
+          lawCode: c.lawCode,
+          primaryLabel: c.caseTitle ?? c.caseNumber,
+          secondaryLabel: c.caseTitle ? c.caseNumber : null,
+          bodySnippet: null,
+          href: `/subjects/${c.lawCode}/cases/${r.target_id}`,
+        },
+      ];
+    }
+    if (r.target_type === "problem") {
+      const p = problemMap.get(r.target_id);
+      if (!p) return [];
+      const yearLabel = p.year
+        ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+        : "문제";
+      return [
+        {
+          ...base,
+          lawCode: p.lawCode,
+          primaryLabel: yearLabel,
+          secondaryLabel: null,
+          bodySnippet: p.bodySnippet,
+          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+        },
+      ];
+    }
+    if (r.target_type === "problem_choice") {
+      const c = choiceParentMap.get(r.target_id);
+      if (!c) return [];
+      const p = problemMap.get(c.problemId);
+      if (!p) return [];
+      const body = c.bodyMd ?? "";
+      return [
+        {
+          ...base,
+          lawCode: p.lawCode,
+          primaryLabel: "OX 지문",
+          secondaryLabel: p.year
+            ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+            : "문제",
+          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          href: `/subjects/${p.lawCode}/problems/${c.problemId}`,
+        },
+      ];
+    }
+    if (r.target_type === "problem_box_item") {
+      const b = boxParentMap.get(r.target_id);
+      if (!b) return [];
+      const p = problemMap.get(b.problemId);
+      if (!p) return [];
+      const raw = b.bodyMd ?? "";
+      const body = b.marker ? `[${b.marker}] ${raw}` : raw;
+      return [
+        {
+          ...base,
+          lawCode: p.lawCode,
+          primaryLabel: "OX 박스 항목",
+          secondaryLabel: p.year
+            ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+            : "문제",
+          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          href: `/subjects/${p.lawCode}/problems/${b.problemId}`,
+        },
+      ];
+    }
+    return [];
+  });
+}
+
 // 즐겨찾기 문제 ID 만 — 세션 시작용. 정렬: star DESC, updated_at DESC.
 // lawCode 가 주어지면 그 과목 problem 만. minStar 미지정 = 1.
 export interface BookmarkedProblemRef {
