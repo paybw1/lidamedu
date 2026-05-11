@@ -22,7 +22,10 @@ import type {
 import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
 import type { CaseListItem } from "~/features/cases/queries.server";
 import type { ProblemListItem } from "~/features/problems/queries.server";
-import type { ProblemFiltersApplied } from "../lib/loader.server";
+import type {
+  CaseFiltersApplied,
+  ProblemFiltersApplied,
+} from "../lib/loader.server";
 import type { ProblemAggregateStats } from "~/features/study/lib/difficulty";
 import type {
   RecommendedArticleItem,
@@ -48,6 +51,8 @@ interface SubjectHubProps {
   articles?: ArticleNode[];
   systematicNodes?: SystematicNode[];
   cases?: CaseListItem[];
+  casesTotal?: number;
+  caseFilters?: CaseFiltersApplied;
   problems?: ProblemListItem[];
   caseQuery?: string;
   progress?: SubjectProgress | null;
@@ -75,6 +80,8 @@ function SubjectHubInner({
   articles,
   systematicNodes,
   cases,
+  casesTotal,
+  caseFilters,
   problems,
   caseQuery,
   progress,
@@ -161,6 +168,8 @@ function SubjectHubInner({
           <CasesTab
             subject={subject}
             cases={cases ?? []}
+            casesTotal={casesTotal ?? (cases?.length ?? 0)}
+            caseFilters={caseFilters}
             initialQuery={caseQuery ?? ""}
           />
         </TabsContent>

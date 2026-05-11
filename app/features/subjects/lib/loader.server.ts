@@ -14,7 +14,10 @@ import {
 } from "~/features/annotations/queries.server";
 import {
   listCasesBySubject,
+  type CaseCourtFilter,
+  type CaseExamFilter,
   type CaseListItem,
+  type CaseSubjectSort,
 } from "~/features/cases/queries.server";
 import {
   listProblemsBySubject,
@@ -57,11 +60,22 @@ export interface ProblemFiltersApplied {
   search?: string;
 }
 
+export interface CaseFiltersApplied {
+  q: string;
+  court: CaseCourtFilter;
+  exam: CaseExamFilter;
+  sort: CaseSubjectSort;
+  page: number;
+  pageSize: number;
+}
+
 export interface SubjectHubData {
   law: LawHeader | null;
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
   cases: CaseListItem[];
+  casesTotal: number;
+  caseFilters: CaseFiltersApplied;
   problems: ProblemListItem[];
   recentRevisionDate: string | null;
   progress: SubjectProgress | null;
@@ -72,6 +86,44 @@ export interface SubjectHubData {
   problemStats: UserProblemStats | null;
   problemAggStats: Record<string, ProblemAggregateStats>;
   recommendedArticles: RecommendedArticleItem[];
+}
+
+const CASE_SORTS: readonly CaseSubjectSort[] = [
+  "decided_desc",
+  "decided_asc",
+  "case_no",
+];
+const CASE_COURT_FILTERS: readonly CaseCourtFilter[] = [
+  "all",
+  "supreme",
+  "patent_court",
+  "high_court",
+  "district_court",
+];
+const CASE_EXAM_FILTERS: readonly CaseExamFilter[] = [
+  "any",
+  "exam_1st",
+  "exam_2nd",
+  "exam_both",
+];
+
+function parseCaseFilters(url: URL): CaseFiltersApplied {
+  const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
+  const sortRaw = url.searchParams.get("case_sort") ?? "decided_desc";
+  const sort = (CASE_SORTS as readonly string[]).includes(sortRaw)
+    ? (sortRaw as CaseSubjectSort)
+    : "decided_desc";
+  const courtRaw = url.searchParams.get("case_court") ?? "all";
+  const court = (CASE_COURT_FILTERS as readonly string[]).includes(courtRaw)
+    ? (courtRaw as CaseCourtFilter)
+    : "all";
+  const examRaw = url.searchParams.get("case_exam") ?? "any";
+  const exam = (CASE_EXAM_FILTERS as readonly string[]).includes(examRaw)
+    ? (examRaw as CaseExamFilter)
+    : "any";
+  const pageRaw = Number(url.searchParams.get("case_page") ?? "1");
+  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
+  return { q, court, exam, sort, page, pageSize: 50 };
 }
 
 const PROBLEM_ORIGINS: readonly ProblemOrigin[] = [
@@ -151,7 +203,8 @@ export async function loadSubjectHub(
   lawCode: LawSubjectSlug,
 ): Promise<SubjectHubData & { caseQuery: string }> {
   const url = new URL(request.url);
-  const caseQuery = url.searchParams.get("q") ?? "";
+  const caseFilters = parseCaseFilters(url);
+  const caseQuery = caseFilters.q;
   const problemFilters = parseProblemFilters(url);
 
   const [client] = makeServerClient(request);
@@ -162,6 +215,8 @@ export async function loadSubjectHub(
       articles: [],
       systematicNodes: [],
       cases: [],
+      casesTotal: 0,
+      caseFilters,
       problems: [],
       recentRevisionDate: null,
       progress: null,
@@ -178,18 +233,27 @@ export async function loadSubjectHub(
   const [
     articles,
     systematicNodes,
-    cases,
+    casesPage,
     problems,
     recentRevisionDate,
     problemYears,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
-    listCasesBySubject(client, lawCode, caseQuery || undefined),
+    listCasesBySubject(client, lawCode, {
+      query: caseFilters.q || undefined,
+      sort: caseFilters.sort,
+      court: caseFilters.court,
+      examFilter: caseFilters.exam,
+      page: caseFilters.page,
+      pageSize: caseFilters.pageSize,
+    }),
     listProblemsBySubject(client, lawCode, problemFilters),
     getLatestPublishedRevisionDate(client, law.lawId),
     listProblemYears(client, lawCode),
   ]);
+  const cases = casesPage.items;
+  const casesTotal = casesPage.total;
 
   const totalArticleCount = articles.filter((a) => a.level === "article").length;
 
@@ -254,6 +318,8 @@ export async function loadSubjectHub(
     articles,
     systematicNodes,
     cases,
+    casesTotal,
+    caseFilters,
     problems: displayedProblems,
     recentRevisionDate,
     progress,

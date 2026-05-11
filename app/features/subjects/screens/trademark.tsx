@@ -18,6 +18,8 @@ export default function SubjectTrademark({ loaderData }: Route.ComponentProps) {
       articles={loaderData.articles}
       systematicNodes={loaderData.systematicNodes}
       cases={loaderData.cases}
+      casesTotal={loaderData.casesTotal}
+      caseFilters={loaderData.caseFilters}
       problems={loaderData.problems}
       caseQuery={loaderData.caseQuery}
       progress={loaderData.progress}

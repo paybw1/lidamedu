@@ -1,8 +1,17 @@
-import { GavelIcon, SearchIcon, SlidersHorizontalIcon, StarIcon, XIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  GavelIcon,
+  SearchIcon,
+  SlidersHorizontalIcon,
+  StarIcon,
+  XIcon,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Form, Link, useNavigation, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
+import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import {
@@ -13,72 +22,108 @@ import {
   TableHeader,
   TableRow,
 } from "~/core/components/ui/table";
+import { cn } from "~/core/lib/utils";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 
+import type { CaseFiltersApplied } from "../../lib/loader.server";
 import { useSortAxis } from "../sort-axis";
 import type { LawSubjectMeta } from "../../lib/subjects";
 
-type CaseFilter = "all" | "important" | "en_banc" | "supreme";
-
-const FILTERS: { value: CaseFilter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "important", label: "중요" },
-  { value: "en_banc", label: "전원합의체" },
+const COURT_OPTIONS = [
+  { value: "all", label: "전체 법원" },
   { value: "supreme", label: "대법원" },
-];
+  { value: "patent_court", label: "특허법원" },
+  { value: "high_court", label: "고등법원" },
+  { value: "district_court", label: "지방법원" },
+] as const;
 
-function applyFilter(items: CaseListItem[], filter: CaseFilter): CaseListItem[] {
-  switch (filter) {
-    case "important":
-      return items.filter((c) => c.importance >= 3);
-    case "en_banc":
-      return items.filter((c) => c.isEnBanc);
-    case "supreme":
-      return items.filter((c) => c.court === "supreme");
-    default:
-      return items;
-  }
-}
+const EXAM_OPTIONS = [
+  { value: "any", label: "전체" },
+  { value: "exam_1st", label: "1차 기출" },
+  { value: "exam_2nd", label: "2차 기출" },
+  { value: "exam_both", label: "1·2차 모두" },
+] as const;
+
+const SORT_OPTIONS = [
+  { value: "decided_desc", label: "선고일 ↓" },
+  { value: "decided_asc", label: "선고일 ↑" },
+  { value: "case_no", label: "사건번호" },
+] as const;
+
+const DEFAULT_FILTERS: CaseFiltersApplied = {
+  q: "",
+  court: "all",
+  exam: "any",
+  sort: "decided_desc",
+  page: 1,
+  pageSize: 50,
+};
 
 export function CasesTab({
   subject,
   cases,
+  casesTotal,
+  caseFilters,
   initialQuery,
 }: {
   subject: LawSubjectMeta;
   cases: CaseListItem[];
+  casesTotal: number;
+  caseFilters?: CaseFiltersApplied;
   initialQuery: string;
 }) {
-  const { axis } = useSortAxis();
-  const axisLabel = axis === "systematic" ? "테크 트리" : "조문";
-  const [filter, setFilter] = useState<CaseFilter>("all");
+  const filters = caseFilters ?? { ...DEFAULT_FILTERS, q: initialQuery };
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
-  const [draft, setDraft] = useState(initialQuery);
-  const isSearching =
-    navigation.state !== "idle" &&
-    navigation.location?.search.includes("q=");
+  const { axis } = useSortAxis();
+  const axisLabel = axis === "systematic" ? "테크 트리" : "조문";
 
-  const filtered = useMemo(() => applyFilter(cases, filter), [cases, filter]);
+  const [draft, setDraft] = useState(filters.q);
+  useEffect(() => {
+    setDraft(filters.q);
+  }, [filters.q]);
+  const isLoading = navigation.state !== "idle";
 
-  const totalCount = cases.length;
-  const importantCount = cases.filter((c) => c.importance >= 3).length;
   const tabParam = searchParams.get("tab") ?? "";
+  const importantCount = cases.filter((c) => c.importance >= 3).length;
+  const examCount = cases.filter(
+    (c) => c.exam1stYears.length + c.exam2ndYears.length > 0,
+  ).length;
+
+  const totalPages = Math.max(1, Math.ceil(casesTotal / filters.pageSize));
+
+  // hidden inputs — 검색폼 submit 시 다른 필터 보존.
+  const hidden: Array<{ name: string; value: string }> = [];
+  if (tabParam) hidden.push({ name: "tab", value: tabParam });
+  if (filters.court !== "all")
+    hidden.push({ name: "case_court", value: filters.court });
+  if (filters.exam !== "any")
+    hidden.push({ name: "case_exam", value: filters.exam });
+  if (filters.sort !== "decided_desc")
+    hidden.push({ name: "case_sort", value: filters.sort });
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard label="전체 판례" value={String(totalCount)} hint="feat-4-A-202" />
-        <KpiCard label="내가 본 판례" value="0" hint="feat-4-A-202 (열람 추적 미구현)" />
-        <KpiCard label="중요 판례" value={String(importantCount)} hint="중요도 ★3" />
+        <KpiCard label="전체 판례" value={String(casesTotal)} hint="모든 필터 무시" />
+        <KpiCard
+          label="중요 판례"
+          value={String(importantCount)}
+          hint="현재 페이지 ★3 이상"
+        />
+        <KpiCard
+          label="기출 보유"
+          value={String(examCount)}
+          hint="현재 페이지 1·2차 기출 표시"
+        />
       </div>
 
       <Card>
         <CardHeader className="space-y-3">
           <Form method="get" className="flex items-center gap-2">
-            {tabParam ? (
-              <input type="hidden" name="tab" value={tabParam} />
-            ) : null}
+            {hidden.map((h) => (
+              <input key={h.name} type="hidden" name={h.name} value={h.value} />
+            ))}
             <div className="relative flex-1">
               <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               <Input
@@ -86,9 +131,9 @@ export function CasesTab({
                 name="q"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="사건번호·사건명·요지·이유 검색"
+                placeholder="사건번호·사건명·사건유형·요지·이유 검색"
                 className="pl-9"
-                disabled={isSearching}
+                disabled={isLoading}
               />
               {draft ? (
                 <button
@@ -101,65 +146,178 @@ export function CasesTab({
                 </button>
               ) : null}
             </div>
+            <Button type="submit" size="sm" disabled={isLoading}>
+              검색
+            </Button>
           </Form>
           <div className="flex flex-wrap items-center gap-2">
             <SlidersHorizontalIcon className="text-muted-foreground size-4" />
-            {FILTERS.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => setFilter(f.value)}
-                aria-pressed={filter === f.value}
-              >
-                <Badge
-                  variant={filter === f.value ? "default" : "outline"}
-                  className="cursor-pointer"
-                >
-                  {f.label}
-                </Badge>
-              </button>
-            ))}
-            {initialQuery ? (
-              <span className="text-muted-foreground ml-auto text-xs">
-                "{initialQuery}" 검색 결과 {totalCount}건
-              </span>
-            ) : null}
+            <FilterGroup
+              label="법원"
+              name="case_court"
+              value={filters.court}
+              options={COURT_OPTIONS}
+              hidden={[{ name: "tab", value: tabParam }, { name: "q", value: filters.q }, { name: "case_exam", value: filters.exam }, { name: "case_sort", value: filters.sort }]}
+            />
+            <FilterGroup
+              label="기출"
+              name="case_exam"
+              value={filters.exam}
+              options={EXAM_OPTIONS}
+              hidden={[{ name: "tab", value: tabParam }, { name: "q", value: filters.q }, { name: "case_court", value: filters.court }, { name: "case_sort", value: filters.sort }]}
+            />
+            <FilterGroup
+              label="정렬"
+              name="case_sort"
+              value={filters.sort}
+              options={SORT_OPTIONS}
+              hidden={[{ name: "tab", value: tabParam }, { name: "q", value: filters.q }, { name: "case_court", value: filters.court }, { name: "case_exam", value: filters.exam }]}
+            />
+            <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+              {filters.q ? `"${filters.q}" · ` : ""}
+              {casesTotal}건 · 페이지 {filters.page}/{totalPages}
+            </span>
           </div>
         </CardHeader>
         <CardContent>
-          {filtered.length === 0 ? (
+          {cases.length === 0 ? (
             <div className="bg-muted/40 rounded-md border border-dashed p-8 text-center">
               <GavelIcon className="text-muted-foreground mx-auto size-8" />
               <p className="text-muted-foreground mt-3 text-sm">
-                {totalCount === 0
+                {casesTotal === 0
                   ? `${subject.name} 판례가 아직 등록되지 않았습니다.`
                   : "필터에 해당하는 판례가 없습니다."}
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
-                정렬 기준: {axisLabel} (현재는 선고일 정렬)
+                정렬 기준: {axisLabel}
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">중요</TableHead>
+                  <TableHead className="w-12 text-center">★</TableHead>
                   <TableHead className="w-24">법원</TableHead>
                   <TableHead className="w-28">선고일</TableHead>
                   <TableHead className="w-32">사건번호</TableHead>
-                  <TableHead>사건명</TableHead>
-                  <TableHead className="w-20 text-center">전합</TableHead>
+                  <TableHead className="w-32">사건유형</TableHead>
+                  <TableHead>사건명 / 기출</TableHead>
+                  <TableHead className="w-14 text-center">전합</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => (
+                {cases.map((c) => (
                   <CaseRow key={c.caseId} subject={subject} item={c} />
                 ))}
               </TableBody>
             </Table>
           )}
         </CardContent>
+        {totalPages > 1 ? (
+          <CardContent className="border-t pt-3">
+            <Pagination filters={filters} totalPages={totalPages} tab={tabParam} />
+          </CardContent>
+        ) : null}
       </Card>
+    </div>
+  );
+}
+
+function FilterGroup<T extends string>({
+  label,
+  name,
+  value,
+  options,
+  hidden,
+}: {
+  label: string;
+  name: string;
+  value: T;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  hidden: Array<{ name: string; value: string }>;
+}) {
+  return (
+    <Form method="get" className="inline-flex items-center gap-1">
+      {hidden.map((h) => (
+        <input key={h.name} type="hidden" name={h.name} value={h.value} />
+      ))}
+      <span className="text-muted-foreground text-xs">{label}</span>
+      <select
+        name={name}
+        value={value}
+        onChange={(e) => e.currentTarget.form?.requestSubmit()}
+        className="border-input bg-background h-7 rounded-md border px-2 text-xs"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </Form>
+  );
+}
+
+function Pagination({
+  filters,
+  totalPages,
+  tab,
+}: {
+  filters: CaseFiltersApplied;
+  totalPages: number;
+  tab: string;
+}) {
+  const make = (page: number) => {
+    const sp = new URLSearchParams();
+    if (tab) sp.set("tab", tab);
+    if (filters.q) sp.set("q", filters.q);
+    if (filters.court !== "all") sp.set("case_court", filters.court);
+    if (filters.exam !== "any") sp.set("case_exam", filters.exam);
+    if (filters.sort !== "decided_desc") sp.set("case_sort", filters.sort);
+    if (page !== 1) sp.set("case_page", String(page));
+    return `?${sp.toString()}`;
+  };
+  const prev = filters.page > 1 ? filters.page - 1 : null;
+  const next = filters.page < totalPages ? filters.page + 1 : null;
+  return (
+    <div className="flex items-center justify-center gap-2 text-xs">
+      <Button
+        asChild={prev != null}
+        variant="outline"
+        size="sm"
+        disabled={prev == null}
+        className="h-7"
+      >
+        {prev != null ? (
+          <Link to={make(prev)} preventScrollReset>
+            <ChevronLeftIcon className="size-3" /> 이전
+          </Link>
+        ) : (
+          <span>
+            <ChevronLeftIcon className="size-3" /> 이전
+          </span>
+        )}
+      </Button>
+      <span className="text-muted-foreground tabular-nums">
+        {filters.page} / {totalPages}
+      </span>
+      <Button
+        asChild={next != null}
+        variant="outline"
+        size="sm"
+        disabled={next == null}
+        className="h-7"
+      >
+        {next != null ? (
+          <Link to={make(next)} preventScrollReset>
+            다음 <ChevronRightIcon className="size-3" />
+          </Link>
+        ) : (
+          <span>
+            다음 <ChevronRightIcon className="size-3" />
+          </span>
+        )}
+      </Button>
     </div>
   );
 }
@@ -195,11 +353,13 @@ function CaseRow({
   subject: LawSubjectMeta;
   item: CaseListItem;
 }) {
+  const detailLabel = item.summaryTitle ?? item.caseTitle;
+  const subLabel = item.summaryTitle ? item.caseTitle : null;
   return (
-    <TableRow className="cursor-pointer">
-      <TableCell>
+    <TableRow>
+      <TableCell className="text-center">
         {item.importance >= 3 ? (
-          <StarIcon className="size-4 text-amber-500" />
+          <StarIcon className="mx-auto size-4 text-amber-500" />
         ) : null}
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">
@@ -207,18 +367,47 @@ function CaseRow({
       </TableCell>
       <TableCell className="text-xs tabular-nums">{item.decidedAt}</TableCell>
       <TableCell className="font-mono text-xs">{item.caseNumber}</TableCell>
+      <TableCell className="text-muted-foreground text-xs">
+        {item.caseType ?? ""}
+      </TableCell>
       <TableCell>
         <Link
           to={`/subjects/${subject.slug}/cases/${item.caseId}`}
           viewTransition
           className="hover:text-primary block truncate text-sm font-medium"
         >
-          {item.summaryTitle ?? item.caseTitle}
+          {detailLabel}
         </Link>
-        {item.summaryTitle ? (
-          <p className="text-muted-foreground truncate text-xs">
-            {item.caseTitle}
-          </p>
+        {subLabel ? (
+          <p className="text-muted-foreground truncate text-xs">{subLabel}</p>
+        ) : null}
+        {item.exam1stYears.length + item.exam2ndYears.length > 0 ? (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {item.exam1stYears.map((y) => (
+              <Badge
+                key={`1-${y}`}
+                variant="outline"
+                className={cn(
+                  "border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 text-[10px]",
+                )}
+                title="1차 시험 기출"
+              >
+                1차 {y}
+              </Badge>
+            ))}
+            {item.exam2ndYears.map((y) => (
+              <Badge
+                key={`2-${y}`}
+                variant="outline"
+                className={cn(
+                  "border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-[10px]",
+                )}
+                title="2차 시험 기출"
+              >
+                2차 {y}
+              </Badge>
+            ))}
+          </div>
         ) : null}
       </TableCell>
       <TableCell className="text-center text-xs">

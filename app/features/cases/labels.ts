@@ -16,14 +16,23 @@ export interface CaseListItem {
   decidedAt: string;
   caseNumber: string;
   caseTitle: string;
+  caseType: string | null;
   isEnBanc: boolean;
   importance: number;
   summaryTitle: string | null;
   subjectLaws: string[];
+  exam1stYears: number[];
+  exam2ndYears: number[];
+}
+
+export interface SummaryItem {
+  title: string;
+  body: string;
 }
 
 export interface CaseDetail extends CaseListItem {
   summaryBodyMd: string | null;
+  summaryItems: SummaryItem[];
   reasoningMd: string | null;
   fullTextPdf: string | null;
   commentSource: string | null;
