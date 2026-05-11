@@ -96,6 +96,10 @@ export default [
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
+      route(
+        "/session-from-bookmarks",
+        "features/study/api/session-from-bookmarks.tsx",
+      ),
       route("/start-flow", "features/study/api/start-flow.tsx"),
     ]),
     ...prefix("/mcq-pack", [

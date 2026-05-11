@@ -137,6 +137,7 @@ export type QuizScopeType =
   | "node"
   | "filter"
   | "wrong-note"
+  | "bookmark"
   | "free"
   | "pack";
 

@@ -4,11 +4,14 @@
 import {
   ArrowRightIcon,
   BookmarkIcon,
+  PlayIcon,
   StarIcon,
+  TimerIcon,
 } from "lucide-react";
 import { Form, Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
+import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -113,6 +116,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function Bookmarks({ loaderData }: Route.ComponentProps) {
   const { items, counts, filters } = loaderData;
+  // 객관식 문제 즐겨찾기 묶어 풀기 CTA — 현재 필터 결과 안에 문제가 있을 때.
+  const problemCountInView = items.filter((b) => b.targetType === "problem")
+    .length;
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -133,6 +139,53 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
           <span>· OX <span className="text-foreground font-bold">{counts.ox}</span></span>
         </div>
       </header>
+
+      {problemCountInView > 0 ? (
+        <Form
+          method="post"
+          action="/api/study/session-from-bookmarks"
+          className="bg-primary/5 border-primary/30 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3"
+        >
+          <div className="flex items-center gap-2 text-sm">
+            <PlayIcon className="text-primary size-4" />
+            즐겨찾기 객관식 문제{" "}
+            <span className="font-bold">{problemCountInView}</span>건을 한 세션으로 묶어 풀기
+          </div>
+          {filters.subject ? (
+            <input type="hidden" name="subject" value={filters.subject} />
+          ) : null}
+          {filters.minStar > 1 ? (
+            <input
+              type="hidden"
+              name="minStar"
+              value={String(filters.minStar)}
+            />
+          ) : null}
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              name="mode"
+              value="study"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              data-testid="bookmark-start-study"
+            >
+              학습 모드 <ArrowRightIcon className="size-3.5" />
+            </Button>
+            <Button
+              type="submit"
+              name="mode"
+              value="exam"
+              size="sm"
+              className="h-8"
+              data-testid="bookmark-start-exam"
+            >
+              <TimerIcon className="size-3.5" /> 시험 모드
+            </Button>
+          </div>
+        </Form>
+      ) : null}
 
       <Form method="get" className="mb-5 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-0.5 text-xs">

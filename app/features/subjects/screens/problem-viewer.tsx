@@ -203,7 +203,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   let runnerNav: {
     sessionId: string | null;
     mode: QuizMode;
-    scopeType: "node" | "filter" | "wrong-note" | "free" | "pack";
+    scopeType: "node" | "filter" | "wrong-note" | "bookmark" | "free" | "pack";
     label: string;
     backHref: string;
     index: number;
@@ -235,7 +235,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         ? `체계: ${session.scopePayload.nodeLabel}`
         : session.scopeType === "filter"
           ? "맞춤 퀴즈"
-          : "퀴즈 세션"
+          : session.scopeType === "wrong-note"
+            ? "오답노트 세션"
+            : session.scopeType === "bookmark"
+              ? "즐겨찾기 세션"
+              : "퀴즈 세션"
     : nodeSequence
       ? `체계: ${nodeSequence.node.displayLabel}`
       : null;
@@ -244,6 +248,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     | "node"
     | "filter"
     | "wrong-note"
+    | "bookmark"
     | "free"
     | "pack";
   const navBackHref = packIdFromPayload
@@ -254,7 +259,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         ? `/subjects/${lawCode}/quiz/setup`
         : navScopeType === "wrong-note"
           ? `/study/wrong-note?subject=${lawCode}`
-          : `/subjects/${lawCode}?tab=problems`;
+          : navScopeType === "bookmark"
+            ? `/study/bookmarks?subject=${lawCode}&type=problem`
+            : `/subjects/${lawCode}?tab=problems`;
   if (navProblemIds && navLabel) {
     const idx = navProblemIds.findIndex((id) => id === problem.problemId);
     if (idx >= 0) {

@@ -698,6 +698,61 @@ export async function listAllBookmarks(
   });
 }
 
+// 즐겨찾기 문제 ID 만 — 세션 시작용. 정렬: star DESC, updated_at DESC.
+// lawCode 가 주어지면 그 과목 problem 만. minStar 미지정 = 1.
+export interface BookmarkedProblemRef {
+  problemId: string;
+  lawCode: string;
+  starLevel: number;
+}
+
+export async function listBookmarkedProblems(
+  client: SupabaseClient<Database>,
+  userId: string,
+  opts: { lawCode?: string; minStar?: number } = {},
+): Promise<BookmarkedProblemRef[]> {
+  const minStar = opts.minStar ?? 1;
+  const { data: rows, error } = await client
+    .from("user_bookmarks")
+    .select("target_id, star_level, updated_at")
+    .eq("user_id", userId)
+    .eq("target_type", "problem")
+    .is("deleted_at", null)
+    .gte("star_level", minStar)
+    .order("star_level", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(2000);
+  if (error) throw error;
+  const list = rows ?? [];
+  if (list.length === 0) return [];
+
+  const { data: ps } = await client
+    .from("problems")
+    .select("problem_id, deleted_at, laws!inner(law_code)")
+    .in(
+      "problem_id",
+      list.map((r) => r.target_id),
+    );
+  const lawByProblem = new Map<string, string>();
+  for (const p of ps ?? []) {
+    if (p.deleted_at) continue;
+    lawByProblem.set(p.problem_id, p.laws.law_code);
+  }
+
+  const out: BookmarkedProblemRef[] = [];
+  for (const r of list) {
+    const lawCode = lawByProblem.get(r.target_id);
+    if (!lawCode) continue;
+    if (opts.lawCode && lawCode !== opts.lawCode) continue;
+    out.push({
+      problemId: r.target_id,
+      lawCode,
+      starLevel: r.star_level,
+    });
+  }
+  return out;
+}
+
 export async function getBookmark(
   client: SupabaseClient<Database>,
   userId: string,
