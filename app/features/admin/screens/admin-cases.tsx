@@ -11,8 +11,8 @@ import {
   SearchIcon,
   XIcon,
 } from "lucide-react";
-import { useState } from "react";
-import { Form, Link, data, useFetcher } from "react-router";
+import { useEffect, useState } from "react";
+import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -260,12 +260,26 @@ function CaseMapperCard({
   lawCode: LawSubjectSlug;
 }) {
   const addFetcher = useFetcher<{ ok?: true; error?: string }>();
+  const { revalidate } = useRevalidator();
   const [draft, setDraft] = useState("");
   const normalized = normalizeArticleNumber(draft);
   const alreadyMapped =
     normalized.length > 0 && item.articleNumbers.includes(normalized);
   const isSaving = addFetcher.state !== "idle";
   const hasError = addFetcher.data && "error" in addFetcher.data;
+
+  // 성공 시 입력 비우고 loader 재실행 → 카드 chip / linkCount 즉시 갱신.
+  useEffect(() => {
+    if (
+      addFetcher.state === "idle" &&
+      addFetcher.data &&
+      "ok" in addFetcher.data &&
+      addFetcher.data.ok
+    ) {
+      setDraft("");
+      revalidate();
+    }
+  }, [addFetcher.state, addFetcher.data, revalidate]);
 
   return (
     <Card>
@@ -371,9 +385,7 @@ function CaseMapperCard({
               {(addFetcher.data as { error: string }).error}
             </span>
           ) : addFetcher.data && "ok" in addFetcher.data ? (
-            <span className="text-emerald-600 text-xs">
-              저장됨 — 새로고침으로 갱신
-            </span>
+            <span className="text-emerald-600 text-xs">저장됨</span>
           ) : null}
         </addFetcher.Form>
       </CardContent>
@@ -393,7 +405,18 @@ function ArticleChip({
   lawCode: LawSubjectSlug;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const { revalidate } = useRevalidator();
   const removed = fetcher.data && "ok" in fetcher.data && fetcher.data.ok;
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      revalidate();
+    }
+  }, [fetcher.state, fetcher.data, revalidate]);
   // 출처 별 색상 — 자동 vs 수동 구분.
   const isManual = !note || note.includes("수동");
   const isAuto = !!note && !isManual;
