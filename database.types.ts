@@ -610,6 +610,7 @@ export type Database = {
           feedback_md: string | null
           question_id: string
           review_answer_id: string
+          rubric_scores: Json
           score: number | null
           updated_at: string
         }
@@ -618,6 +619,7 @@ export type Database = {
           feedback_md?: string | null
           question_id: string
           review_answer_id?: string
+          rubric_scores?: Json
           score?: number | null
           updated_at?: string
         }
@@ -626,6 +628,7 @@ export type Database = {
           feedback_md?: string | null
           question_id?: string
           review_answer_id?: string
+          rubric_scores?: Json
           score?: number | null
           updated_at?: string
         }

@@ -59,6 +59,7 @@ export default [
         "features/laws/api/admin-edit-article.tsx",
       ),
       route("/article-comment", "features/laws/api/article-comment.tsx"),
+      route("/article-children", "features/laws/api/article-children.tsx"),
     ]),
     ...prefix("/problems", [
       route(
@@ -79,9 +80,6 @@ export default [
       route("/take", "features/gs/api/take.tsx"),
       route("/ai-draft", "features/gs/api/ai-draft.tsx"),
       route("/peer", "features/gs/api/peer.tsx"),
-    ]),
-    ...prefix("/laws", [
-      route("/article-children", "features/laws/api/article-children.tsx"),
     ]),
     ...prefix("/cron", [
       route("/gs-auto-assign", "features/gs/api/cron-auto-assign.tsx"),
@@ -210,6 +208,10 @@ export default [
       route(
         "/gs/peer-review/:assignmentId",
         "features/gs/screens/gs-peer-review.tsx",
+      ),
+      route(
+        "/gs/peer-review/round/:roundId",
+        "features/gs/screens/gs-peer-review-round.tsx",
       ),
       route(
         "/gs/series/:seriesId",

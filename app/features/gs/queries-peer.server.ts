@@ -1,14 +1,36 @@
 // 동료 채점(peer review) — 한 답안에 다수의 학생 reviewer 를 배정하고 채점 양식을 받는다.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "database.types";
+import type { Database, Json } from "database.types";
 
 import {
   type GsPage,
+  type GsQuestion,
+  type RubricScores,
   listGsQuestions,
   listGsSubmissionsForRound,
   listSubmissionPages,
 } from "~/features/gs/queries.server";
+
+function parseRubricScoresSafe(raw: unknown): RubricScores {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: RubricScores = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!v || typeof v !== "object") continue;
+    const o = v as Record<string, unknown>;
+    if (typeof o.score !== "number") continue;
+    out[k] = { score: o.score };
+    if (typeof o.note === "string") out[k].note = o.note;
+  }
+  return out;
+}
+
+// rubric_scores 의 모든 criterion 점수 합산 — score 컬럼에 자동 채움(통계 일관성).
+export function sumRubricScores(scores: RubricScores): number {
+  let total = 0;
+  for (const v of Object.values(scores)) total += v.score;
+  return total;
+}
 
 export interface PeerAssignment {
   assignmentId: string;
@@ -36,7 +58,9 @@ export interface PeerReviewAnswer {
   reviewAnswerId: string;
   assignmentId: string;
   questionId: string;
+  // score 는 rubric_scores 합으로 자동 채움. rubric 미사용 시(legacy) 수동 입력값.
   score: number | null;
+  rubricScores: RubricScores;
   feedbackMd: string | null;
   updatedAt: string;
 }
@@ -49,6 +73,7 @@ function mapReviewAnswer(
     assignmentId: r.assignment_id,
     questionId: r.question_id,
     score: r.score == null ? null : Number(r.score),
+    rubricScores: parseRubricScoresSafe(r.rubric_scores),
     feedbackMd: r.feedback_md,
     updatedAt: r.updated_at,
   };
@@ -288,19 +313,31 @@ export async function upsertPeerReviewAnswer(
   client: SupabaseClient<Database>,
   assignmentId: string,
   questionId: string,
-  patch: { score?: number | null; feedbackMd?: string | null },
+  patch: {
+    score?: number | null;
+    rubricScores?: RubricScores;
+    feedbackMd?: string | null;
+  },
 ): Promise<void> {
   // assignment 가 본인 reviewer 인지 RLS 가 검증.
   const { data: existing } = await client
     .from("gs_peer_review_answers")
-    .select("review_answer_id")
+    .select("review_answer_id, rubric_scores")
     .eq("assignment_id", assignmentId)
     .eq("question_id", questionId)
     .maybeSingle();
 
+  // rubricScores 가 들어오면 합산값을 score 에 자동 반영.
+  const effectiveScore =
+    patch.rubricScores !== undefined
+      ? sumRubricScores(patch.rubricScores)
+      : patch.score;
+
   if (existing) {
     const upd: Record<string, unknown> = {};
-    if (patch.score !== undefined) upd.score = patch.score;
+    if (effectiveScore !== undefined) upd.score = effectiveScore;
+    if (patch.rubricScores !== undefined)
+      upd.rubric_scores = patch.rubricScores as unknown as Json;
     if (patch.feedbackMd !== undefined) upd.feedback_md = patch.feedbackMd;
     if (Object.keys(upd).length === 0) return;
     const { error } = await client
@@ -312,7 +349,9 @@ export async function upsertPeerReviewAnswer(
     const { error } = await client.from("gs_peer_review_answers").insert({
       assignment_id: assignmentId,
       question_id: questionId,
-      score: patch.score ?? null,
+      score: effectiveScore ?? null,
+      rubric_scores:
+        (patch.rubricScores ?? {}) as unknown as Json,
       feedback_md: patch.feedbackMd ?? null,
     });
     if (error) throw error;
@@ -328,6 +367,128 @@ export async function submitPeerReview(
     .update({ submitted_at: new Date().toISOString() })
     .eq("assignment_id", assignmentId);
   if (error) throw error;
+}
+
+// 라운드 단위 matrix 채점 — 한 reviewer 에게 배정된 모든 답안을 한 화면에서 동시에 채점.
+// 답안 N개를 컬럼으로, 문제·criterion 을 행으로 배치하는 표 UI 의 데이터 소스.
+// PPT 6페이지("한 채점자에 5개 답안 배정") 와 동일 레이아웃.
+export interface PeerRoundAnswerColumn {
+  assignmentId: string;
+  submissionId: string;
+  submittedAt: string | null; // peer 의 채점 제출(submit) 시각.
+  // 답안 작성자 정보(userId/이름) 는 익명성 유지 위해 노출 X.
+  // 표시 라벨은 컬럼 인덱스(답안 1, 답안 2...) — 진입 화면에서 부여.
+  pagesByQuestion: Record<string, GsPage[]>;
+  ocrTextByQuestion: Record<string, string>;
+  reviewAnswers: Record<string, PeerReviewAnswer>; // questionId → 본인이 입력한 채점.
+}
+
+export interface PeerRoundMatrix {
+  questions: GsQuestion[];
+  columns: PeerRoundAnswerColumn[];
+}
+
+export async function getPeerRoundMatrix(
+  client: SupabaseClient<Database>,
+  roundId: string,
+  reviewerUserId: string,
+): Promise<PeerRoundMatrix> {
+  // 1) reviewer 본인의 라운드 내 모든 assignment.
+  const { data: aRows, error: aErr } = await client
+    .from("gs_peer_assignments")
+    .select("*")
+    .eq("round_id", roundId)
+    .eq("reviewer_user_id", reviewerUserId)
+    .order("assigned_at", { ascending: true });
+  if (aErr) throw aErr;
+  const assignments = (aRows ?? []).map(mapAssignment);
+
+  // 2) 문항(라운드 공용).
+  const questions = await listGsQuestions(client, roundId);
+  if (assignments.length === 0) {
+    return { questions, columns: [] };
+  }
+
+  // 3) 페이지(매핑 포함) — submission 단위로 listSubmissionPages 재사용.
+  //    한 reviewer 의 배정 수가 보통 5건 안팎이라 N+1 부담 없음.
+  const assignmentIds = assignments.map((a) => a.assignmentId);
+  const pagesBySubmission = new Map<string, GsPage[]>();
+  await Promise.all(
+    assignments.map(async (a) => {
+      const pages = await listSubmissionPages(client, a.submissionId);
+      pagesBySubmission.set(a.submissionId, pages);
+    }),
+  );
+
+  // question_id → page_number[] (order_index 순) 매핑.
+  const { data: mappingRows } = await client
+    .from("gs_question_pages")
+    .select("submission_id, question_id, page_number, order_index")
+    .in(
+      "submission_id",
+      Array.from(new Set(assignments.map((a) => a.submissionId))),
+    )
+    .order("order_index", { ascending: true });
+  const mappingsBySub = new Map<string, Map<string, number[]>>();
+  for (const m of mappingRows ?? []) {
+    const inner = mappingsBySub.get(m.submission_id) ?? new Map();
+    const list = inner.get(m.question_id) ?? [];
+    list.push(m.page_number);
+    inner.set(m.question_id, list);
+    mappingsBySub.set(m.submission_id, inner);
+  }
+
+  // 본인 채점값.
+  const { data: reviewRows } = await client
+    .from("gs_peer_review_answers")
+    .select("*")
+    .in("assignment_id", assignmentIds);
+  const reviewsByAssign = new Map<string, Map<string, PeerReviewAnswer>>();
+  for (const r of reviewRows ?? []) {
+    const mapped = mapReviewAnswer(r);
+    const inner = reviewsByAssign.get(r.assignment_id) ?? new Map();
+    inner.set(r.question_id, mapped);
+    reviewsByAssign.set(r.assignment_id, inner);
+  }
+
+  const columns: PeerRoundAnswerColumn[] = assignments.map((a) => {
+    const pages = pagesBySubmission.get(a.submissionId) ?? [];
+    const pageByNum = new Map<number, GsPage>();
+    for (const p of pages) pageByNum.set(p.pageNumber, p);
+    const mappings = mappingsBySub.get(a.submissionId);
+    const pagesByQuestion: Record<string, GsPage[]> = {};
+    const ocrTextByQuestion: Record<string, string> = {};
+    if (mappings) {
+      for (const [qid, nums] of mappings.entries()) {
+        const list: GsPage[] = [];
+        for (const n of nums) {
+          const p = pageByNum.get(n);
+          if (p) list.push(p);
+        }
+        pagesByQuestion[qid] = list;
+        const ocr = list
+          .map((x) => x.attachment.ocrText?.trim())
+          .filter((s): s is string => !!s)
+          .join("\n\n---\n\n");
+        if (ocr) ocrTextByQuestion[qid] = ocr;
+      }
+    }
+    const reviewAnswers: Record<string, PeerReviewAnswer> = {};
+    const inner = reviewsByAssign.get(a.assignmentId);
+    if (inner) {
+      for (const [qid, ans] of inner.entries()) reviewAnswers[qid] = ans;
+    }
+    return {
+      assignmentId: a.assignmentId,
+      submissionId: a.submissionId,
+      submittedAt: a.submittedAt,
+      pagesByQuestion,
+      ocrTextByQuestion,
+      reviewAnswers,
+    };
+  });
+
+  return { questions, columns };
 }
 
 // 운영자/학생 결과화면 — 한 제출에 도달한 모든 동료 채점 (제출 완료된 것만).

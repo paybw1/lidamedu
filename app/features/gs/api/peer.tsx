@@ -20,6 +20,8 @@ const saveSchema = z.object({
   assignmentId: z.string().uuid(),
   questionId: z.string().uuid(),
   score: z.string().optional(),
+  // rubric_scores 전체 JSON. { [criterionId]: { score: number, note?: string } }
+  rubricScoresJson: z.string().optional(),
   feedbackMd: z.string().optional(),
 });
 const submitSchema = z.object({
@@ -93,12 +95,39 @@ export async function action({ request }: Route.ActionArgs) {
       assignmentId: fd.get("assignmentId"),
       questionId: fd.get("questionId"),
       score: fd.get("score") ?? undefined,
+      rubricScoresJson: fd.get("rubricScoresJson") ?? undefined,
       feedbackMd: fd.get("feedbackMd") ?? undefined,
     });
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
 
+    // rubricScoresJson 이 들어오면 우선 — 합산값을 서버에서 score 로 자동 반영.
+    let rubricScores: Record<string, { score: number; note?: string }> | undefined;
+    if (parsed.data.rubricScoresJson !== undefined) {
+      try {
+        const raw = JSON.parse(parsed.data.rubricScoresJson);
+        if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+          const out: Record<string, { score: number; note?: string }> = {};
+          for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+            if (!v || typeof v !== "object") continue;
+            const o = v as Record<string, unknown>;
+            if (typeof o.score !== "number" || !Number.isFinite(o.score)) continue;
+            out[k] = { score: o.score };
+            if (typeof o.note === "string") out[k].note = o.note;
+          }
+          rubricScores = out;
+        }
+      } catch {
+        return data({ error: "Invalid rubricScoresJson" }, { status: 400 });
+      }
+    }
+
     const scoreStr = parsed.data.score?.trim() ?? "";
-    const score: number | null = scoreStr === "" ? null : Number(scoreStr);
+    const score: number | null | undefined =
+      rubricScores !== undefined
+        ? undefined // upsert 가 rubric 합으로 자동 계산
+        : scoreStr === ""
+          ? null
+          : Number(scoreStr);
     if (score != null && !Number.isFinite(score))
       return data({ error: "score must be number" }, { status: 400 });
     const feedback =
@@ -112,7 +141,7 @@ export async function action({ request }: Route.ActionArgs) {
       client,
       parsed.data.assignmentId,
       parsed.data.questionId,
-      { score, feedbackMd: feedback },
+      { score, rubricScores, feedbackMd: feedback },
     );
     return data({ ok: true });
   }

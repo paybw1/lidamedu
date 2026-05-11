@@ -375,7 +375,7 @@
 | feat-5-201 | 강사 채점 화면 — 답안지 인덱스 + 문항별 매핑 페이지 합본 갤러리 + 점수/피드백 | P0 | ✅ |
 | feat-5-202 | AI 채점 초안 (Claude API + OCR 합본) | P0 | ✅ |
 | feat-5-203 | 동료 채점 배정 (M명 균등 분배, 자기 답안 제외) — `gs_peer_assignments` | P1 | ✅ |
-| feat-5-204 | 동료 채점 화면 (익명) — 매핑 페이지 합본, 점수·피드백 | P1 | ✅ |
+| feat-5-204 | 동료 채점 화면 (익명) — 단일 답안 모드(/gs/peer-review/:assignmentId) + 매트릭스 모드(/gs/peer-review/round/:roundId, 한 라운드의 배정 답안 N개를 컬럼으로 늘어놓고 문제·rubric criterion 행 × 답안 컬럼 입력, 소계·총계·순위 실시간, 정성평가 textarea, 디바운스 자동 저장 — 채점강의 PPT 6페이지 레이아웃 반영). gs_peer_review_answers.rubric_scores jsonb 컬럼 추가, score 는 rubric 합으로 자동 채움. | P1 | ✅ |
 | feat-5-205 | 채점 마무리 → 학생에게 결과 공개 (`graded_at`, `total_score`) | P0 | ✅ |
 | feat-5-206 | 채점 분쟁 표시 (동료 채점 표준편차 ≥ maxScore × 0.15) | P1 | ✅ |
 | feat-5-207 | 자동 동료 배정 cron (응시 종료 후) | P1 | ✅ |

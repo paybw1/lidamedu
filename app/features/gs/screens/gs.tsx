@@ -195,6 +195,42 @@ function PeerAssignmentSection({
     ? T
     : never;
 }) {
+  // 라운드 단위로 묶기 — 한 reviewer 가 같은 라운드에서 여러 답안을 받았으면
+  // 매트릭스(/gs/peer-review/round/:roundId) 진입이 기본.
+  const byRound = new Map<
+    string,
+    {
+      roundId: string;
+      roundTitle: string;
+      roundSubject: string;
+      pending: typeof pending;
+      done: typeof done;
+    }
+  >();
+  for (const a of pending) {
+    const r = byRound.get(a.roundId) ?? {
+      roundId: a.roundId,
+      roundTitle: a.roundTitle,
+      roundSubject: a.roundSubject,
+      pending: [],
+      done: [],
+    };
+    r.pending.push(a);
+    byRound.set(a.roundId, r);
+  }
+  for (const a of done) {
+    const r = byRound.get(a.roundId) ?? {
+      roundId: a.roundId,
+      roundTitle: a.roundTitle,
+      roundSubject: a.roundSubject,
+      pending: [],
+      done: [],
+    };
+    r.done.push(a);
+    byRound.set(a.roundId, r);
+  }
+  const groups = [...byRound.values()];
+
   return (
     <section className="mb-6">
       <h2 className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold tracking-tight">
@@ -205,51 +241,70 @@ function PeerAssignmentSection({
         </span>
       </h2>
       <div className="space-y-2">
-        {pending.map((a) => (
-          <Link
-            key={a.assignmentId}
-            to={`/gs/peer-review/${a.assignmentId}`}
-            viewTransition
-            className="block"
-          >
-            <Card className="hover:border-primary transition-colors">
-              <CardContent className="flex flex-wrap items-center gap-2 py-3 text-sm">
-                <Badge className="bg-amber-500 text-white text-[10px] hover:bg-amber-500">
-                  진행 중
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">
-                  {LAW_SUBJECTS[a.roundSubject as keyof typeof LAW_SUBJECTS]
-                    ?.name ?? a.roundSubject}
-                </Badge>
-                <span className="font-medium">{a.roundTitle}</span>
-                <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
-                  진행 {a.questionsScored}/{a.questionsTotal}
-                </span>
+        {groups.map((g) => {
+          const total = g.pending.length + g.done.length;
+          const allDone = g.pending.length === 0;
+          return (
+            <Card
+              key={g.roundId}
+              className={cn(
+                "hover:border-primary transition-colors",
+                allDone && "opacity-70",
+              )}
+            >
+              <CardContent className="space-y-2 py-3">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge
+                    className={cn(
+                      "text-[10px]",
+                      allDone
+                        ? "bg-emerald-600 text-white hover:bg-emerald-600"
+                        : "bg-amber-500 text-white hover:bg-amber-500",
+                    )}
+                  >
+                    {allDone ? "완료" : "진행 중"}
+                  </Badge>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {LAW_SUBJECTS[g.roundSubject as keyof typeof LAW_SUBJECTS]
+                      ?.name ?? g.roundSubject}
+                  </Badge>
+                  <span className="font-medium">{g.roundTitle}</span>
+                  <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+                    배정 {total}개 · 완료 {g.done.length}/{total}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild size="sm" className="h-8">
+                    <Link
+                      to={`/gs/peer-review/round/${g.roundId}`}
+                      viewTransition
+                    >
+                      매트릭스로 채점 ({total}개 동시) →
+                    </Link>
+                  </Button>
+                  <details className="text-muted-foreground text-[11px]">
+                    <summary className="cursor-pointer hover:underline">
+                      답안별 보기 ({total})
+                    </summary>
+                    <ul className="mt-1 space-y-0.5">
+                      {[...g.pending, ...g.done].map((a, i) => (
+                        <li key={a.assignmentId}>
+                          <Link
+                            to={`/gs/peer-review/${a.assignmentId}`}
+                            className="hover:underline"
+                          >
+                            답안 {i + 1}
+                          </Link>{" "}
+                          {a.submittedAt ? "· 완료" : `· ${a.questionsScored}/${a.questionsTotal}`}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
               </CardContent>
             </Card>
-          </Link>
-        ))}
-        {done.map((a) => (
-          <Link
-            key={a.assignmentId}
-            to={`/gs/peer-review/${a.assignmentId}`}
-            viewTransition
-            className="block opacity-70"
-          >
-            <Card className="hover:border-primary transition-colors">
-              <CardContent className="flex flex-wrap items-center gap-2 py-3 text-sm">
-                <Badge className="bg-emerald-600 text-white text-[10px] hover:bg-emerald-600">
-                  완료
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">
-                  {LAW_SUBJECTS[a.roundSubject as keyof typeof LAW_SUBJECTS]
-                    ?.name ?? a.roundSubject}
-                </Badge>
-                <span className="font-medium">{a.roundTitle}</span>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
