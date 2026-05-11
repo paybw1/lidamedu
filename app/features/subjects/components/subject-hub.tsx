@@ -44,6 +44,7 @@ import { ProblemsTab } from "./tabs/problems-tab";
 
 interface SubjectHubProps {
   subject: LawSubjectMeta;
+  lawId?: string;
   articles?: ArticleNode[];
   systematicNodes?: SystematicNode[];
   cases?: CaseListItem[];
@@ -70,6 +71,7 @@ export function SubjectHub(props: SubjectHubProps) {
 
 function SubjectHubInner({
   subject,
+  lawId,
   articles,
   systematicNodes,
   cases,
@@ -146,6 +148,7 @@ function SubjectHubInner({
         <TabsContent value="articles">
           <ArticlesTab
             subject={subject}
+            lawId={lawId}
             articles={articles ?? []}
             systematicNodes={systematicNodes ?? []}
             progress={progress ?? null}

@@ -26,6 +26,7 @@ import type { LawSubjectMeta } from "../../lib/subjects";
 
 export function ArticlesTab({
   subject,
+  lawId,
   articles,
   systematicNodes,
   progress,
@@ -34,6 +35,7 @@ export function ArticlesTab({
   recommendedArticles,
 }: {
   subject: LawSubjectMeta;
+  lawId?: string;
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
   progress: SubjectProgress | null;
@@ -74,6 +76,11 @@ export function ArticlesTab({
                 lawCode={subject.slug}
                 bookmarkLevels={bookmarkLevels}
                 annotationCounts={annotationCounts}
+                lazyExpand={
+                  subject.slug === "civil" && lawId
+                    ? { lawId }
+                    : undefined
+                }
               />
             )}
             {axis === "systematic" && systematicEmpty ? (

@@ -106,6 +106,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   return {
     subject: LAW_SUBJECTS[lawCode],
+    lawId: law.lawId,
     kase,
     articles,
     relatedArticles,
@@ -119,6 +120,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const {
     subject,
+    lawId,
     kase,
     articles,
     relatedArticles,
@@ -147,7 +149,13 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               </p>
             </CardHeader>
             <CardContent className="px-2 pb-2">
-              <ArticleTree nodes={articles} lawCode={subject.slug} />
+              <ArticleTree
+                nodes={articles}
+                lawCode={subject.slug}
+                lazyExpand={
+                  subject.slug === "civil" ? { lawId } : undefined
+                }
+              />
             </CardContent>
           </Card>
         </aside>

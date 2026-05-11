@@ -211,6 +211,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   return {
     subject: LAW_SUBJECTS[lawCode],
+    lawId: law.lawId,
     article,
     body: parseArticleBody(article.bodyJson),
     atDate,
@@ -258,6 +259,7 @@ function ArticleViewerInner({
 }) {
   const {
     subject,
+    lawId,
     article,
     body,
     atDate,
@@ -410,6 +412,9 @@ function ArticleViewerInner({
                   lawCode={subject.slug}
                   bookmarkLevels={bookmarkLevels}
                   annotationCounts={annotationCounts}
+                  lazyExpand={
+                    subject.slug === "civil" ? { lawId } : undefined
+                  }
                 />
               )}
               {axis === "systematic" && systematicEmpty ? (

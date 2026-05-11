@@ -18,6 +18,7 @@ export default function SubjectCivilProcedure({
   return (
     <SubjectHub
       subject={LAW_SUBJECTS["civil-procedure"]}
+      lawId={loaderData.law?.lawId}
       articles={loaderData.articles}
       systematicNodes={loaderData.systematicNodes}
       cases={loaderData.cases}

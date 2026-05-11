@@ -260,7 +260,7 @@
 | feat-4-A-107 | 관련 자료 사이드바 (조문/판례/문제/개정/메모 탭 + 정오/코멘트) | P0 | ✅ |
 | feat-4-A-108 | 조문 시점 조회 (`?at=YYYY-MM-DD`) + 비교 모드(`?compare=`) — 본문 영역 2칼럼 분할, 시행일 캡션 | P1 | ✅ |
 | feat-4-A-109 | 조문 트리 검색 — 트리 카드 안 검색 인풋, displayLabel substring 매칭 + 매칭 노드의 조상까지 노출 | P1 | ✅ |
-| feat-4-A-110 | 큰 법 lazy-load — 본문은 활성 조문만 fetch. 서버 `getArticleChildren(lawId, parentId)` + `/api/laws/article-children` 라우트 준비 완료. 민법 1118조 시드 시 ArticleTree 에 lazy expand 모드 연결 + 트리 가상화 후속 | P1 | 🟡 |
+| feat-4-A-110 | 큰 법 lazy-load — 본문은 활성 조문만 fetch. 서버 `getArticleChildren(lawId, parentId)` + `/api/laws/article-children` 라우트 + ArticleTree `lazyExpand={lawId}` UI 연결 완료(민법 적용). 펼침 시 fetch + 로딩 스피너 + 자식 dedup 누적. 전체 skeleton 이 미리 로드되어 있으면 fetch 가 no-op 라 안전. 트리 가상화(react-window 등) 는 1000+ 노드 노출 시 후속 | P1 | ✅ |
 | feat-4-A-111 | 관련조문 inline 링크 (`法 89` 등 약식 표기 파서 + 클릭 이동, 본문 안에서는 dotted underline 형태 / header_refs 안에서는 chip) | P0 | ✅ |
 | feat-4-A-112 | 해설 링크 → 코멘트 탭 활성 | P1 | 🔲 |
 | feat-4-A-113 | 제목만 보기 (항 단위 본문 접기) | P1 | ✅ |

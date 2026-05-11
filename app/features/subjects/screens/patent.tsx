@@ -14,6 +14,7 @@ export default function SubjectPatent({ loaderData }: Route.ComponentProps) {
   return (
     <SubjectHub
       subject={LAW_SUBJECTS.patent}
+      lawId={loaderData.law?.lawId}
       articles={loaderData.articles}
       systematicNodes={loaderData.systematicNodes}
       cases={loaderData.cases}

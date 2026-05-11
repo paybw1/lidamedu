@@ -177,6 +177,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   return {
     subject: LAW_SUBJECTS[lawCode],
+    lawId: law.lawId,
     node,
     articles,
     systematicNodes,
@@ -211,6 +212,7 @@ function Inner({
 }) {
   const {
     subject,
+    lawId,
     node,
     articles,
     systematicNodes,
@@ -322,6 +324,9 @@ function Inner({
                   lawCode={subject.slug}
                   bookmarkLevels={bookmarkLevels}
                   annotationCounts={annotationCounts}
+                  lazyExpand={
+                    subject.slug === "civil" ? { lawId } : undefined
+                  }
                 />
               )}
             </CardContent>

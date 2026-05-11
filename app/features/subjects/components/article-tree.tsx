@@ -4,9 +4,10 @@ import {
   FileTextIcon,
   HeartIcon,
   HighlighterIcon,
+  Loader2Icon,
   StickyNoteIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -17,6 +18,14 @@ import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 interface TreeNode extends ArticleNode {
   children: TreeNode[];
+}
+
+// Lazy-expand 옵션 — 큰 법령(민법 1118조 등)에서 사용.
+// `nodes` 가 부분 skeleton 일 때, 사용자가 펼친 미로드 노드의 자식을 on-demand 로 fetch.
+// 전체 skeleton 이 미리 로드된 법령(예: 특허법)에서는 prop 만 켜져 있어도 자식이
+// 이미 메모리에 있어 fetch 가 발생하지 않는다 (no-op). 따라서 caller 측 가드 없이도 안전.
+export interface LazyExpandConfig {
+  lawId: string;
 }
 
 // 조문 트리에서 숨길 placeholder chapter — 자료상 등록만 되어 있고 실제 조문은 매핑되지 않은
@@ -133,6 +142,7 @@ export function ArticleTree({
   lawCode,
   bookmarkLevels,
   annotationCounts,
+  lazyExpand,
 }: {
   nodes: ArticleNode[];
   emptyHint?: string;
@@ -142,17 +152,89 @@ export function ArticleTree({
   lawCode: LawSubjectSlug;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
+  lazyExpand?: LazyExpandConfig;
 }) {
-  const tree = useMemo(() => buildTree(pruneHidden(nodes)), [nodes]);
+  // Lazy 모드용 — 펼침 이벤트로 fetch 한 자식 노드 누적.
+  // nodes prop 이 바뀌면(다른 법령으로 이동 등) 리셋.
+  const [extraNodes, setExtraNodes] = useState<ArticleNode[]>([]);
+  const [loadedParents, setLoadedParents] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [pendingParents, setPendingParents] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const prevNodesRef = useRef(nodes);
+  useEffect(() => {
+    if (prevNodesRef.current !== nodes) {
+      prevNodesRef.current = nodes;
+      setExtraNodes([]);
+      setLoadedParents(new Set());
+      setPendingParents(new Set());
+    }
+  }, [nodes]);
+
+  const allNodes = useMemo(() => {
+    if (extraNodes.length === 0) return nodes;
+    const seen = new Set(nodes.map((n) => n.articleId));
+    const merged = nodes.slice();
+    for (const e of extraNodes) {
+      if (!seen.has(e.articleId)) {
+        merged.push(e);
+        seen.add(e.articleId);
+      }
+    }
+    return merged;
+  }, [nodes, extraNodes]);
+
+  const requestChildren = useCallback(
+    async (parentId: string) => {
+      if (!lazyExpand) return;
+      if (loadedParents.has(parentId)) return;
+      if (pendingParents.has(parentId)) return;
+      setPendingParents((prev) => {
+        const s = new Set(prev);
+        s.add(parentId);
+        return s;
+      });
+      try {
+        const url = `/api/laws/article-children?lawId=${encodeURIComponent(
+          lazyExpand.lawId,
+        )}&parentId=${encodeURIComponent(parentId)}`;
+        const resp = await fetch(url, { credentials: "same-origin" });
+        if (!resp.ok) return;
+        const json = (await resp.json()) as { children?: ArticleNode[] };
+        const children = json.children ?? [];
+        setExtraNodes((prev) => {
+          const seen = new Set(prev.map((n) => n.articleId));
+          const fresh = children.filter((c) => !seen.has(c.articleId));
+          return fresh.length === 0 ? prev : [...prev, ...fresh];
+        });
+        setLoadedParents((prev) => {
+          const s = new Set(prev);
+          s.add(parentId);
+          return s;
+        });
+      } finally {
+        setPendingParents((prev) => {
+          const s = new Set(prev);
+          s.delete(parentId);
+          return s;
+        });
+      }
+    },
+    [lazyExpand, loadedParents, pendingParents],
+  );
+
+  const tree = useMemo(() => buildTree(pruneHidden(allNodes)), [allNodes]);
   const expandedIds = useMemo(() => {
-    const ids = findAncestorIds(nodes, activeArticleId);
+    const ids = findAncestorIds(allNodes, activeArticleId);
     // chapter-viewer 진입 시 그 chapter 의 조상도 펼쳐 트리에서 위치 인지 가능.
     if (activeChapterId) {
-      for (const id of findAncestorIds(nodes, activeChapterId)) ids.add(id);
+      for (const id of findAncestorIds(allNodes, activeChapterId)) ids.add(id);
       ids.add(activeChapterId);
     }
     return ids;
-  }, [nodes, activeArticleId, activeChapterId]);
+  }, [allNodes, activeArticleId, activeChapterId]);
   const [importanceFilter, setImportanceFilter] = useState<ImportanceFilter>(0);
   const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -309,6 +391,10 @@ export function ArticleTree({
               lawCode={lawCode}
               bookmarkLevels={bookmarkLevels}
               annotationCounts={annotationCounts}
+              lazyExpand={lazyExpand}
+              loadedParents={loadedParents}
+              pendingParents={pendingParents}
+              requestChildren={requestChildren}
             />
           ))}
         </ul>
@@ -326,6 +412,10 @@ function TreeItem({
   lawCode,
   bookmarkLevels,
   annotationCounts,
+  lazyExpand,
+  loadedParents,
+  pendingParents,
+  requestChildren,
 }: {
   node: TreeNode;
   depth: number;
@@ -335,8 +425,23 @@ function TreeItem({
   lawCode: LawSubjectSlug;
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
+  lazyExpand?: LazyExpandConfig;
+  loadedParents: Set<string>;
+  pendingParents: Set<string>;
+  requestChildren: (parentId: string) => void;
 }) {
-  const hasChildren = node.children.length > 0;
+  const isArticleLeaf = node.level === "article";
+  // 자식 후보: 이미 메모리에 있는 자식 + lazy 모드에서 미로드 chapter (자식 unknown)
+  const knownHasChildren = node.children.length > 0;
+  // lazy 모드에서 chapter/section/part 는 자식을 아직 fetch 하지 않았다면 "있을 수 있음" 으로 간주.
+  // 한 번 fetch 했으나 0건이면 (loadedParents 에 있고 knownHasChildren===false) chevron 숨김.
+  const maybeHasLazyChildren =
+    !!lazyExpand &&
+    !isArticleLeaf &&
+    !knownHasChildren &&
+    !loadedParents.has(node.articleId);
+  const hasChildren = knownHasChildren || maybeHasLazyChildren;
+  const isPending = pendingParents.has(node.articleId);
   // 장(chapter) 은 기본적으로 접혀 있고 클릭해야 펼쳐짐 — 단, 활성 조문/chapter 의 조상 장은 자동 펼침
   const initialOpen = forceOpen.has(node.articleId);
   const [open, setOpen] = useState(initialOpen);
@@ -345,7 +450,29 @@ function TreeItem({
   useEffect(() => {
     if (forceOpen.has(node.articleId)) setOpen(true);
   }, [forceOpen, node.articleId]);
-  const isArticle = node.level === "article";
+  // 강제 펼침으로 open 이 켜졌는데 자식이 아직 메모리에 없는 lazy 노드라면 fetch.
+  useEffect(() => {
+    if (
+      open &&
+      lazyExpand &&
+      !isArticleLeaf &&
+      !knownHasChildren &&
+      !loadedParents.has(node.articleId) &&
+      !pendingParents.has(node.articleId)
+    ) {
+      requestChildren(node.articleId);
+    }
+  }, [
+    open,
+    lazyExpand,
+    isArticleLeaf,
+    knownHasChildren,
+    loadedParents,
+    pendingParents,
+    node.articleId,
+    requestChildren,
+  ]);
+  const isArticle = isArticleLeaf;
   const isActive =
     activeArticleId === node.articleId ||
     activeChapterId === node.articleId;
@@ -445,7 +572,9 @@ function TreeItem({
   const rowStyle = { paddingLeft: `${depth * 12 + 6}px` };
 
   // chevron — 모든 row 에서 별도 button 으로 토글. button-in-link 도 안전 (preventDefault).
-  const chevronIcon = (
+  const chevronIcon = isPending ? (
+    <Loader2Icon className="size-3.5 animate-spin" />
+  ) : (
     <ChevronRightIcon
       className={cn("size-3.5 transition-transform", open && "rotate-90")}
     />
@@ -456,6 +585,15 @@ function TreeItem({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // lazy 모드: 미로드 노드는 펼치는 순간 fetch 트리거. useEffect 도 백업으로 동작.
+        if (
+          lazyExpand &&
+          !isArticleLeaf &&
+          !knownHasChildren &&
+          !loadedParents.has(node.articleId)
+        ) {
+          requestChildren(node.articleId);
+        }
         setOpen((o) => !o);
       }}
       aria-label={open ? "접기" : "펼치기"}
@@ -515,7 +653,7 @@ function TreeItem({
           {starEl}
         </div>
       )}
-      {hasChildren && open ? (
+      {knownHasChildren && open ? (
         <ul className="space-y-0.5">
           {node.children.map((c) => (
             <TreeItem
@@ -528,6 +666,10 @@ function TreeItem({
               lawCode={lawCode}
               bookmarkLevels={bookmarkLevels}
               annotationCounts={annotationCounts}
+              lazyExpand={lazyExpand}
+              loadedParents={loadedParents}
+              pendingParents={pendingParents}
+              requestChildren={requestChildren}
             />
           ))}
         </ul>
