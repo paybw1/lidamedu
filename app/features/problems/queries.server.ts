@@ -812,6 +812,47 @@ export async function getRelatedProblems(
   }));
 }
 
+// case 의 관련 조문(article_case_links) 들이 primary_article_id 인 문제 — 입체 학습용.
+// case-viewer 우측 패널 "유사 문제" 탭에서 노출.
+export async function getRelatedProblemsByCase(
+  client: SupabaseClient<Database>,
+  caseId: string,
+  limit = 8,
+): Promise<RelatedProblemItem[]> {
+  const { data: linkRows } = await client
+    .from("article_case_links")
+    .select("article_id")
+    .eq("case_id", caseId);
+  const articleIds = Array.from(
+    new Set((linkRows ?? []).map((r) => r.article_id).filter(Boolean)),
+  );
+  if (articleIds.length === 0) return [];
+
+  const { data: rows, error } = await client
+    .from("problems")
+    .select(
+      "problem_id, year, problem_number, body_md, format, origin, laws!inner(law_code)",
+    )
+    .in("primary_article_id", articleIds)
+    .is("deleted_at", null)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("problem_number", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return (rows ?? []).map((r) => ({
+    problemId: r.problem_id,
+    year: r.year,
+    problemNumber: r.problem_number,
+    bodySnippet:
+      (r.body_md ?? "").length > 100
+        ? `${(r.body_md ?? "").slice(0, 100)}…`
+        : r.body_md ?? "",
+    format: r.format,
+    origin: r.origin,
+    lawCode: r.laws.law_code,
+  }));
+}
+
 export async function getProblemById(
   client: SupabaseClient<Database>,
   problemId: string,

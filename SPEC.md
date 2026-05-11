@@ -284,7 +284,7 @@
 | feat-4-A-209 | 판례 색인 화면 (테이블 — 중요·법원·선고일·사건번호·사건유형·사건명+기출년도·전합). 검색·정렬·기출 필터·페이지네이션(50/페이지). | P0 | ✅ |
 | feat-4-A-210 | 판례 트리 진입 (체계도/조문 순서, leaf 카운트) | P1 | 🔲 |
 | feat-4-A-211 | 판결전문 PDF 뷰어 | P0 | 🔲 |
-| feat-4-A-212 | 관련문제 패널 (1차 기출 / 2차 기출 / 2차 예상 — 양방향 링크) | P0 | 🔲 |
+| feat-4-A-212 | 관련문제 패널 — case-viewer 우측 패널 "유사 문제" 탭: `getRelatedProblemsByCase` (article_case_links 가 가리키는 article 의 primary_article_id 문제 12건). 1차/2차 양방향 링크는 explicit problem_case_links 모델 추가 시 보강. | P0 | ✅ |
 | feat-4-A-213 | 코멘트(평석) 출처/내용 분리, 하이라이트 | P0 | 🟡 |
 | feat-4-A-214 | 관련논문/기사 링크 (PDF/외부) | P1 | 🔲 |
 | feat-4-A-215 | Q&A 패널 (공통 컴포넌트) | P0 | 🟡 |

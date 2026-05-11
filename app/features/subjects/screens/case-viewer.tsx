@@ -35,6 +35,7 @@ import {
   getLawByCode,
 } from "~/features/laws/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
+import { getRelatedProblemsByCase } from "~/features/problems/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
@@ -92,14 +93,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Unauthorized", { status: 401 });
   }
 
-  const [relatedArticles, bookmark, memos, highlights, qnaThreads] =
-    await Promise.all([
-      getRelatedArticlesByCase(client, kase.caseId),
-      getBookmark(client, user.id, "case", kase.caseId),
-      listMemos(client, user.id, "case", kase.caseId),
-      listHighlights(client, user.id, "case", kase.caseId),
-      listThreadsForTarget(client, "case", kase.caseId, 20),
-    ]);
+  const [
+    relatedArticles,
+    relatedProblems,
+    bookmark,
+    memos,
+    highlights,
+    qnaThreads,
+  ] = await Promise.all([
+    getRelatedArticlesByCase(client, kase.caseId),
+    getRelatedProblemsByCase(client, kase.caseId, 12),
+    getBookmark(client, user.id, "case", kase.caseId),
+    listMemos(client, user.id, "case", kase.caseId),
+    listHighlights(client, user.id, "case", kase.caseId),
+    listThreadsForTarget(client, "case", kase.caseId, 20),
+  ]);
 
   recordStudySession(client, user.id, {
     subject: lawCode,
@@ -114,6 +122,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     kase,
     articles,
     relatedArticles,
+    relatedProblems,
     bookmark,
     memos,
     highlights,
@@ -128,6 +137,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     kase,
     articles,
     relatedArticles,
+    relatedProblems,
     bookmark,
     memos,
     highlights,
@@ -316,6 +326,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 memos={memos}
                 highlights={highlights}
                 qnaThreads={qnaThreads}
+                relatedProblems={relatedProblems}
               />
             </CardContent>
           </Card>
