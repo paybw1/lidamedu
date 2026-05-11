@@ -62,7 +62,9 @@ export default [
       route("/article-children", "features/laws/api/article-children.tsx"),
     ]),
     ...prefix("/admin", [
+      route("/case", "features/admin/api/case.tsx"),
       route("/case-link", "features/admin/api/case-link.tsx"),
+      route("/problem-create", "features/admin/api/problem-create.tsx"),
       route("/case-reference", "features/admin/api/case-reference.tsx"),
       route("/paper", "features/admin/api/paper.tsx"),
       route("/paper-link", "features/admin/api/paper-link.tsx"),
@@ -72,6 +74,10 @@ export default [
       route("/cohort", "features/admin/api/cohort.tsx"),
       route("/law-revision", "features/admin/api/law-revision.tsx"),
       route("/announcement", "features/admin/api/announcement.tsx"),
+      route(
+        "/article-relation-search",
+        "features/admin/api/article-relation-search.tsx",
+      ),
     ]),
     ...prefix("/announcements", [
       route("/read", "features/announcements/api/read.tsx"),
@@ -262,6 +268,15 @@ export default [
         "features/admin/screens/admin-announcement-audiences.tsx",
       ),
       route("/admin/cases", "features/admin/screens/admin-cases.tsx"),
+      route(
+        "/admin/cases/edit",
+        "features/admin/screens/admin-case-edit.tsx",
+        { id: "admin-case-new" },
+      ),
+      route(
+        "/admin/cases/edit/:caseId",
+        "features/admin/screens/admin-case-edit.tsx",
+      ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
       route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),
       route(
@@ -275,6 +290,14 @@ export default [
       route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",
+      ),
+      route(
+        "/admin/relations/gaps",
+        "features/admin/screens/admin-relation-gaps.tsx",
+      ),
+      route(
+        "/admin/relations/article/:lawCode/:articleNumber",
+        "features/admin/screens/admin-article-relations.tsx",
       ),
       route(
         "/admin/laws/:lawCode/revisions",
@@ -346,6 +369,7 @@ export default [
       ]),
       ...prefix("/admin/problems", [
         index("features/problems/screens/admin-problems-list.tsx"),
+        route("/new", "features/admin/screens/admin-problem-new.tsx"),
         route("/by-system", "features/problems/screens/admin-problems-by-system.tsx"),
         route("/ox", "features/problems/screens/admin-ox-review.tsx"),
         route("/stats", "features/admin/screens/admin-problem-stats.tsx"),

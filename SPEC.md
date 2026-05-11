@@ -273,7 +273,7 @@
 | feat-4-A-114 | 정오문제 위젯 (객관식 자동 연동 + 별도 업로드, 무작위 노출, 정답+해설) | P0 | ✅ |
 | feat-4-A-115 | 코멘트 / 평석 패널 (staff 작성, 학생 read-only, 마크다운) | P0 | ✅ |
 | feat-4-A-116 | Q&A 패널 — 동일 공용 컴포넌트(QnaPanel/qna-list). 검색 + 새 질문 → staff 알림 + 답변자 질문수준 평가 상/중/하. | P0 | ✅ |
-| feat-4-A-130 | 조문 빈칸 채우기 학습 (article_blank_sets, 빈칸 모드 토글, 입력+채점, 시도 기록). 운영자 편집은 article-viewer "빈칸 자료" 버튼 → 자기 set 자동 생성+편집 / 모든 조문 한 화면(setless 카드도 drag→자동 생성). 매칭: ±30자 컨텍스트 + ANCHOR_LENGTHS=[30,20,12,10,8,6,4] + cross-token cumulative fallback. 미매칭 일괄검수/새 자료 업로드 진입점은 제거(article-viewer 통합 흐름) | P0 | 🟡 |
+| feat-4-A-130 | 조문 빈칸 채우기 학습 (article_blank_sets, 빈칸 모드 토글, 입력+채점, 시도 기록). 운영자 편집은 article-viewer "빈칸 자료" 버튼 → 자기 set 자동 생성+편집 / 모든 조문 한 화면(setless 카드도 drag→자동 생성). 매칭: ±30자 컨텍스트 + ANCHOR_LENGTHS=[30,20,12,10,8,6,4] + cross-token cumulative fallback (queries.server.ts collectCumulativeOccurrences) + blockIndex/cumOffset hints 로 정확 위치 추적. 미매칭 일괄검수/새 자료 업로드 진입점은 제거(article-viewer 통합 흐름) | P0 | ✅ |
 
 ### 5.4.A.2 — 판례 탭
 
@@ -299,8 +299,8 @@
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-4-A-301 | 문제 데이터 모델 (`problems`, 4유형: mc/ox/blank/subjective) | P0 | 🟡 |
-| feat-4-A-302 | 문제 KPI 카드 (출제/풀이/정답률) | P0 | 🟡 |
+| feat-4-A-301 | 문제 데이터 모델 — `problems` + 4유형(mc_short/mc_box/mc_case + ox + blank + subjective). enum problem_format 에 6종 모두 포함. OX 는 별도 풀이 흐름 (feat-4-A-313 /:subject/ox), blank 는 feat-4-A-130, subjective Runner 는 feat-4-A-305 (P1) 별도. | P0 | ✅ |
+| feat-4-A-302 | 문제 KPI — subject hub 헤더 칩에 "문제 N · 풀이 N · 정답률 N%" + ProblemsTab 카드 3종(출제·내 풀이·정답률). problemStats(getUserProblemStats) 기반. | P0 | ✅ |
 | feat-4-A-303 | 퀴즈 설정 폼 (유형/연도/극성/문항수/모드) + 오답만 모드 | P0 | ✅ |
 | feat-4-A-304 | 문제 풀이 Runner — 객관식 (mc_short) | P0 | ✅ |
 | feat-4-A-305 | 문제 풀이 Runner — 주관식 (자기채점 + 첨삭 요청) | P1 | 🔲 |
@@ -309,7 +309,7 @@
 | feat-4-A-308 | 문제 북마크·메모·하이라이트 (polymorphic 패널) | P0 | ✅ |
 | feat-4-A-309 | 유사 문제 추천 (같은 primary_article) | P2 | ✅ |
 | feat-4-A-310 | 객관식 색인 화면 — 정렬·필터·난이도·본문 검색 | P0 | ✅ |
-| feat-4-A-311 | 분류 라벨 시스템 (기출/변형/예상/모의 × 단원/종합 × 단답/박스/사례 × 긍정/부정) | P0 | 🟡 |
+| feat-4-A-311 | 분류 라벨 시스템 (기출/변형/예상/모의 × 단원/종합 × 단답/박스/사례 × 긍정/부정). problems 테이블 origin/scope/format/polarity 4 enum + 운영자 편집 폼 + 학생/운영자 색인 4축 필터 + 학생 색인 표에 4축 모두 노출. 시드 데이터 97.86% 라벨링 완료. | P0 | ✅ |
 | feat-4-A-312 | 정답률 기반 난이도 동적 계산 (RPC + 5단계 버킷) | P0 | ✅ |
 | feat-4-A-313 | 지문별 색인 (problem_choice 자식 entity) + 정오문제 자동 연동 (article 패널 + /:subject/ox 페이지) | P0 | ✅ |
 | feat-4-A-314 | 해설 — 지문별 O/X + 분류(조문/판례/실무) + 링크 | P0 | ✅ |
@@ -438,8 +438,8 @@
 | feat-7-002 | 콘텐츠 관리 허브 — 콘텐츠 등록·수정(빈칸/문제/판례 매핑/MCQ 팩/논문/도서 추록·정오표) + 통계 분석 + 온라인 GS 3개 섹션으로 정리. 각 카드에 진입 링크 + "최신 정보" 배지. | P0 | ✅ |
 | feat-7-003 | 강사 대시보드 (반 진도, 콘텐츠 현황) | P1 | 🔲 |
 | feat-7-004 | 법 개정 워크스페이스 — `/admin/laws/:lawCode/revisions` 상태별(draft/review/published) 일람 + 새 초안 생성. `/admin/laws/:lawCode/revisions/:revisionId` 워크스페이스: 조문 추가(현재 본문 자동 복사) · 본문 JSON 인라인 편집 · 변경 종류(신설/개정/폐지) · before/after 비교 · 발행 dialog. RPC `publish_law_revision` 가 transactional 발행(article_revisions effective_date set + articles.current_revision_id swap). 발행 후 article_revisions 불변(트리거). | P0 | ✅ |
-| feat-7-005 | 판례 등록/수정 폼 (참조조문/참조판례 동시 지정) | P0 | 🔲 |
-| feat-7-006 | 문제 출제 폼 (유형별, 연관 조문/판례 지정) | P0 | 🔲 |
+| feat-7-005 | 판례 등록/수정 폼 — `/admin/cases/edit` (신규) / `/admin/cases/edit/:caseId` (수정). 사건번호/사건명/법원/선고일/전합/중요도/사건유형/1·2차 기출연도/요지·이유·비고 Markdown/판결전문 PDF URL. POST `/api/admin/case` (create/update/delete soft). 관련 조문 매핑은 `/admin/cases?law=` 또는 `/admin/relations/*` 별도 진입. | P0 | ✅ |
+| feat-7-006 | 문제 출제 폼 — `/admin/problems/new` 최소 메타(과목·차수·출처·유형·극성·scope·연도·회차·번호·지문수) + 본문 입력 → INSERT (mc 계열은 빈 choices 자동 생성) → `/admin/problems/:problemId` 상세 편집으로 redirect. 상세 편집에서 지문·해설·연관 조문/판례 매핑 진행. | P0 | ✅ |
 | feat-7-007 | 논문 등록/수정 폼 | P1 | 🔲 |
 | feat-7-008 | 연관관계 일괄 편집 | P1 | 🔲 |
 | feat-7-009 | 반/기수 관리 — `cohorts` (name/description/owner_id/starts_on/ends_on/is_archived) + `cohort_members` (N:M). RLS: admin 전부, instructor 본인 소유, student 자기 row read. `/admin/cohorts` 카드 일람 + 신규/수정 폼, `/admin/cohorts/:id` 상세에 멤버 목록 + 학생 검색 추가/제거. | P1 | ✅ |

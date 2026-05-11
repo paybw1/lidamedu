@@ -138,6 +138,14 @@ function SubjectHubInner({
         }
         caseCount={(cases ?? []).length}
         problemCount={(problems ?? []).length}
+        problemAttempts={problemStats?.totalAttempts ?? 0}
+        problemAccuracyPct={
+          problemStats && problemStats.attemptedCount > 0
+            ? Math.round(
+                (problemStats.correctCount / problemStats.attemptedCount) * 100,
+              )
+            : null
+        }
       />
 
       <Tabs
@@ -206,6 +214,8 @@ function SubjectHeader({
   articleCount,
   caseCount,
   problemCount,
+  problemAttempts,
+  problemAccuracyPct,
 }: {
   subject: LawSubjectMeta;
   progressPct?: number;
@@ -213,6 +223,8 @@ function SubjectHeader({
   articleCount: number;
   caseCount: number;
   problemCount: number;
+  problemAttempts: number;
+  problemAccuracyPct: number | null;
 }) {
   return (
     <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -245,6 +257,14 @@ function SubjectHeader({
           </Badge>
           <Badge variant="outline" className="gap-1 tabular-nums">
             <ListChecksIcon className="size-3" /> 문제 {problemCount.toLocaleString("ko-KR")}
+            {problemAttempts > 0 ? (
+              <span className="text-muted-foreground">
+                · 풀이 {problemAttempts.toLocaleString("ko-KR")}
+                {problemAccuracyPct !== null
+                  ? ` · 정답률 ${problemAccuracyPct}%`
+                  : ""}
+              </span>
+            ) : null}
           </Badge>
         </div>
         <ProgressLine pct={progressPct} />

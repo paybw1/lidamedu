@@ -349,6 +349,7 @@ export function ProblemsTab({
                   <TableHead className="w-20">출처</TableHead>
                   <TableHead className="w-20">유형</TableHead>
                   <TableHead className="w-20">극성</TableHead>
+                  <TableHead className="w-20">단원/종합</TableHead>
                   <TableHead className="w-24">연도/회차</TableHead>
                   <TableHead className="w-28">난이도</TableHead>
                   <TableHead>본문</TableHead>
@@ -483,6 +484,9 @@ function ProblemRow({
       </TableCell>
       <TableCell className="text-xs">
         {item.polarity ? POLARITY_LABEL[item.polarity] : "—"}
+      </TableCell>
+      <TableCell className="text-xs">
+        {item.scope ? SCOPE_LABEL[item.scope] : "—"}
       </TableCell>
       <TableCell className="text-xs tabular-nums">{yearLabel}</TableCell>
       <TableCell>

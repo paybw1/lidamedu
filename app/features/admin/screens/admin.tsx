@@ -4,6 +4,7 @@
 // - 비로그인: /login 으로 리다이렉트
 
 import {
+  AlertTriangleIcon,
   ArrowRightIcon,
   BarChart3Icon,
   BookOpenIcon,
@@ -73,6 +74,12 @@ const CONTENT_CARDS: AdminCardData[] = [
     icon: ListChecksIcon,
   },
   {
+    to: "/admin/problems/new",
+    title: "문제 신규 출제",
+    subtitle: "메타 + 본문 입력 → 상세 편집으로 자동 이동",
+    icon: ListChecksIcon,
+  },
+  {
     to: "/admin/problems/by-system",
     title: "체계도 기반 문제 편집",
     subtitle: "01 총칙/보칙 ~ 08 국제출원 단위로 한 화면에서 일괄 편집",
@@ -89,6 +96,18 @@ const CONTENT_CARDS: AdminCardData[] = [
     title: "판례 매핑 관리",
     subtitle: "자동 추출 안 된 case 의 관련 조문 수동 매핑 / 잘못된 매핑 삭제",
     icon: GavelIcon,
+  },
+  {
+    to: "/admin/cases/edit",
+    title: "판례 신규 등록",
+    subtitle: "사건번호/요지/이유/평석 등록 + 1·2차 기출 연도 표시",
+    icon: GavelIcon,
+  },
+  {
+    to: "/admin/relations/gaps?law=patent",
+    title: "연관관계 일괄 편집",
+    subtitle: "조문 단위 — 그 조문의 관련 판례·문제 인라인 추가/제거",
+    icon: NetworkIcon,
   },
   {
     to: "/latest/mcq",
@@ -125,6 +144,12 @@ const STATS_CARDS: AdminCardData[] = [
     title: "문제 통계 분석",
     subtitle: "객관식·정오문제 풀이 정답률 / 어려운 문제 TOP / 연도별 추이",
     icon: TrendingUpIcon,
+  },
+  {
+    to: "/admin/relations/gaps?law=patent",
+    title: "미배정 자료 점검",
+    subtitle: "체계도 미매핑 조문·조문 없는 판례·primary 없는 문제 일람",
+    icon: AlertTriangleIcon,
   },
 ];
 

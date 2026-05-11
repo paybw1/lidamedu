@@ -30,6 +30,7 @@ import { listRecentLawRevisions } from "~/features/laws/queries.server";
 import { listTopBookmarks } from "~/features/annotations/queries.server";
 import { LAW_SUBJECT_SLUGS, LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
+import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
 
 import type { Route } from "./+types/dashboard";
 import CozyCard from "../components/cozy-card";
@@ -98,6 +99,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     recentActivity,
     topBookmarks,
     scienceProgress,
+    weakNodes,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -105,6 +107,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getRecentActivity(client, user.id, 12),
     listTopBookmarks(client, user.id, 8),
     getAllScienceSubjectsProgress(client, user.id),
+    getWeakNodes(client, user.id, [...LAW_SUBJECT_SLUGS], 4),
   ]);
 
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
@@ -154,6 +157,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     overallProgress,
     recentActivity,
     topBookmarks,
+    weakNodes,
     todayLabel,
   };
 }
@@ -198,6 +202,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     overallProgress,
     recentActivity,
     topBookmarks,
+    weakNodes,
     todayLabel,
   } = loaderData;
 
@@ -859,6 +864,113 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               >
                 전체 오답노트 보기 →
               </Link>
+            </div>
+          </CozyCard>
+
+          <CozyCard
+            title="약점 단원 (체계도)"
+            subtitle={
+              weakNodes.length > 0
+                ? `정답률 낮은 ${weakNodes.length}개 단원`
+                : "충분한 풀이 데이터가 없습니다"
+            }
+          >
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: 8 }}
+              data-testid="weak-nodes"
+            >
+              {weakNodes.length === 0 ? (
+                <p
+                  style={{
+                    fontSize: 12.5,
+                    color: COZY_INK_SOFT,
+                    margin: "8px 0",
+                  }}
+                >
+                  단원별 약점을 보려면 더 많은 문제를 풀어보세요 (단원당 5문제
+                  이상).
+                </p>
+              ) : (
+                weakNodes.map((n) => (
+                  <Link
+                    key={n.nodeId}
+                    to={`/subjects/${n.lawCode}/systematic/${n.nodeId}`}
+                    style={{
+                      textDecoration: "none",
+                      color: "inherit",
+                      display: "flex",
+                      gap: 10,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      background: palette.tint,
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 4,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            color: palette.primary,
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {LAW_SUBJECTS[n.lawCode].name}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            padding: "1px 6px",
+                            borderRadius: 999,
+                            background:
+                              n.accuracyPct < 30
+                                ? "#fecaca"
+                                : n.accuracyPct < 60
+                                  ? "#fde68a"
+                                  : "#bbf7d0",
+                            color:
+                              n.accuracyPct < 30
+                                ? "#9f1239"
+                                : n.accuracyPct < 60
+                                  ? "#92400e"
+                                  : "#166534",
+                          }}
+                        >
+                          정답률 {n.accuracyPct}%
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9.5,
+                            color: COZY_INK_SOFT,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {n.problemAttempts}회 풀이
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          lineHeight: 1.4,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {n.displayLabel}
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </CozyCard>
         </div>
