@@ -37,6 +37,18 @@ import {
 type SimpleLink = { label: string; to: string };
 type Section = { label: string; items: SimpleLink[] };
 
+// 상단 네비게이션 7개 top-level (좌→우):
+// 대시보드(flat) · 학습▾ · 최신 정보▾ · 과목▾ · 학습 보조▾ · 커뮤니티▾ · 운영자(flat)
+
+const leadingFlats: SimpleLink[] = [
+  { label: "대시보드", to: "/dashboard" },
+];
+
+const studyItems: SimpleLink[] = [
+  { label: "학습목표 및 과목별 진도", to: "/goals" },
+  { label: "빈칸 학습 통계", to: "/study/blanks" },
+];
+
 const latestItems: SimpleLink[] = [
   { label: "법 개정", to: "/latest/laws" },
   { label: "최근 판례", to: "/latest/cases" },
@@ -74,20 +86,21 @@ const subjectSections: Section[] = [
   },
 ];
 
-const flatMenus: SimpleLink[] = [
-  { label: "대시보드", to: "/dashboard" },
-  { label: "학습목표 및 과목별 진도", to: "/goals" },
+const studyAidItems: SimpleLink[] = [
   { label: "오답노트", to: "/study/wrong-note" },
   { label: "즐겨찾기", to: "/study/bookmarks" },
   { label: "내 메모", to: "/study/notes" },
   { label: "내 하이라이트", to: "/study/highlights" },
 ];
 
-const trailingMenus: SimpleLink[] = [
+const communityItems: SimpleLink[] = [
   { label: "온라인 GS", to: "/gs" },
   { label: "커뮤니티", to: "/community" },
   { label: "Q&A", to: "/qna" },
   { label: "공지사항", to: "/announcements" },
+];
+
+const trailingFlats: SimpleLink[] = [
   { label: "운영자", to: "/admin" },
 ];
 
@@ -209,12 +222,61 @@ function Actions() {
   );
 }
 
+// 모바일 sheet 안에서 그룹 헤더 + 들여쓴 링크들.
+function MobileGroup({ label, items }: { label: string; items: SimpleLink[] }) {
+  return (
+    <>
+      <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
+        {label}
+      </p>
+      {items.map((m) => (
+        <SheetClose key={m.to} asChild>
+          <Link to={m.to} className="hover:bg-accent rounded-md px-3 py-2 pl-5">
+            {m.label}
+          </Link>
+        </SheetClose>
+      ))}
+    </>
+  );
+}
+
 function FlatLink({ to, label }: SimpleLink) {
   return (
     <NavigationMenuItem>
       <Link className={navigationMenuTriggerStyle()} to={to} viewTransition>
         {label}
       </Link>
+    </NavigationMenuItem>
+  );
+}
+
+// 단순 SimpleLink 목록 드롭다운 (한 컬럼). 학습/학습 보조/커뮤니티/최신 정보 공용.
+function SimpleDropdown({
+  label,
+  items,
+}: {
+  label: string;
+  items: SimpleLink[];
+}) {
+  return (
+    <NavigationMenuItem>
+      <NavigationMenuTrigger>{label}</NavigationMenuTrigger>
+      <NavigationMenuContent>
+        <ul className="grid w-[240px] gap-1 p-2">
+          {items.map((item) => (
+            <li key={item.to}>
+              <NavigationMenuLink asChild>
+                <Link
+                  to={item.to}
+                  className="hover:bg-accent focus:bg-accent block rounded-md px-3 py-2 text-sm leading-none no-underline transition-colors outline-none"
+                >
+                  {item.label}
+                </Link>
+              </NavigationMenuLink>
+            </li>
+          ))}
+        </ul>
+      </NavigationMenuContent>
     </NavigationMenuItem>
   );
 }
@@ -246,34 +308,16 @@ export function NavigationBar({
         <div className="hidden h-full items-center gap-3 md:flex">
           <NavigationMenu>
             <NavigationMenuList>
-              {flatMenus.map((m) => (
+              {leadingFlats.map((m) => (
                 <FlatLink key={m.to} {...m} />
               ))}
 
-              {/* 최신 정보 dropdown */}
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>최신 정보</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="grid w-[260px] gap-1 p-2">
-                    {latestItems.map((item) => (
-                      <li key={item.to}>
-                        <NavigationMenuLink asChild>
-                          <Link
-                            to={item.to}
-                            className="hover:bg-accent focus:bg-accent block rounded-md px-3 py-2 text-sm leading-none no-underline transition-colors outline-none"
-                          >
-                            {item.label}
-                          </Link>
-                        </NavigationMenuLink>
-                      </li>
-                    ))}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
+              <SimpleDropdown label="학습" items={studyItems} />
+              <SimpleDropdown label="최신 정보" items={latestItems} />
 
-              {/* 과목별 학습 dropdown */}
+              {/* 과목 dropdown (2칼럼 sections) */}
               <NavigationMenuItem>
-                <NavigationMenuTrigger>과목별 학습</NavigationMenuTrigger>
+                <NavigationMenuTrigger>과목</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="grid w-[520px] grid-cols-2 gap-x-4 gap-y-3 p-3">
                     {subjectSections.map((section) => (
@@ -301,7 +345,10 @@ export function NavigationBar({
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              {trailingMenus.map((m) => (
+              <SimpleDropdown label="학습 보조" items={studyAidItems} />
+              <SimpleDropdown label="커뮤니티" items={communityItems} />
+
+              {trailingFlats.map((m) => (
                 <FlatLink key={m.to} {...m} />
               ))}
             </NavigationMenuList>
@@ -329,7 +376,7 @@ export function NavigationBar({
         <SheetContent>
           <SheetHeader>
             <nav className="flex flex-col gap-1 text-sm">
-              {flatMenus.map((m) => (
+              {leadingFlats.map((m) => (
                 <SheetClose key={m.to} asChild>
                   <Link
                     to={m.to}
@@ -340,22 +387,11 @@ export function NavigationBar({
                 </SheetClose>
               ))}
 
-              <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
-                최신 정보
-              </p>
-              {latestItems.map((m) => (
-                <SheetClose key={m.to} asChild>
-                  <Link
-                    to={m.to}
-                    className="hover:bg-accent rounded-md px-3 py-2 pl-5"
-                  >
-                    {m.label}
-                  </Link>
-                </SheetClose>
-              ))}
+              <MobileGroup label="학습" items={studyItems} />
+              <MobileGroup label="최신 정보" items={latestItems} />
 
               <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
-                과목별 학습
+                과목
               </p>
               {subjectSections.flatMap((section) =>
                 section.items.map((item) => (
@@ -372,7 +408,10 @@ export function NavigationBar({
                 )),
               )}
 
-              {trailingMenus.map((m) => (
+              <MobileGroup label="학습 보조" items={studyAidItems} />
+              <MobileGroup label="커뮤니티" items={communityItems} />
+
+              {trailingFlats.map((m) => (
                 <SheetClose key={m.to} asChild>
                   <Link
                     to={m.to}
