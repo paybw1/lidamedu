@@ -4,6 +4,8 @@
 import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 
+import { parseLawArg } from "./lib-args.mjs";
+
 loadEnv();
 
 const url = process.env.SUPABASE_URL;
@@ -37,27 +39,28 @@ function extractCaseNumbers(text) {
   return out;
 }
 
-async function main() {
-  // 1) 특허법 cases case_number → case_id map.
-  const { data: caseRows } = await supabase
-    .from("cases")
-    .select("case_id, case_number")
-    .contains("subject_laws", ["patent"])
-    .is("deleted_at", null);
-  const caseByNumber = new Map();
-  for (const r of caseRows ?? []) caseByNumber.set(r.case_number, r.case_id);
-  console.log(`patent cases loaded: ${caseByNumber.size}`);
-
-  // 2) 특허법 problems body + explanation.
+async function runForLaw(lawCode) {
+  console.log(`\n=== ${lawCode} ===`);
+  // 0) law_id.
   const { data: lawRow } = await supabase
     .from("laws")
     .select("law_id")
-    .eq("law_code", "patent")
+    .eq("law_code", lawCode)
     .maybeSingle();
   if (!lawRow) {
-    console.error("patent law row 없음");
-    process.exit(1);
+    console.log(`  law row 없음 — skip`);
+    return;
   }
+  // 1) 해당 과목 cases case_number → case_id map.
+  const { data: caseRows } = await supabase
+    .from("cases")
+    .select("case_id, case_number")
+    .contains("subject_laws", [lawCode])
+    .is("deleted_at", null);
+  const caseByNumber = new Map();
+  for (const r of caseRows ?? []) caseByNumber.set(r.case_number, r.case_id);
+  console.log(`  cases: ${caseByNumber.size}`);
+  if (caseByNumber.size === 0) return;
   const problems = [];
   const PAGE = 500;
   let from = 0;
@@ -77,7 +80,8 @@ async function main() {
     if (data.length < PAGE) break;
     from += PAGE;
   }
-  console.log(`patent problems loaded: ${problems.length}`);
+  console.log(`  problems: ${problems.length}`);
+  if (problems.length === 0) return;
 
   // 3) 기존 link (problem_id, case_id) 셋.
   const existing = new Set();
@@ -149,7 +153,13 @@ async function main() {
       inserted += slice.length;
     }
   }
-  console.log(`\n=== 완료 === inserted: ${inserted}`);
+  console.log(`  inserted: ${inserted}`);
+}
+
+async function main() {
+  const laws = parseLawArg(process.argv);
+  console.log(`targets: ${laws.join(", ")}`);
+  for (const code of laws) await runForLaw(code);
 }
 
 main().catch((e) => {

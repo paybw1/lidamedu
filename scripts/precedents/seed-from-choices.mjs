@@ -12,6 +12,8 @@
 import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 
+import { parseLawArg } from "./lib-args.mjs";
+
 loadEnv();
 
 const url = process.env.SUPABASE_URL;
@@ -38,18 +40,30 @@ function normalizeCaseNumber(raw) {
   return `${m[1]}${m[2]}${m[3]}`;
 }
 
-async function main() {
-  // 1) 특허법 cases (case_number → case_id).
+async function runForLaw(lawCode) {
+  console.log(`\n=== ${lawCode} ===`);
+  // 0) law_id.
+  const { data: law } = await supabase
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (!law) {
+    console.log(`  law row 없음 — skip`);
+    return;
+  }
+  // 1) 해당 과목 cases (case_number → case_id).
   const { data: caseRows } = await supabase
     .from("cases")
     .select("case_id, case_number")
-    .contains("subject_laws", ["patent"])
+    .contains("subject_laws", [lawCode])
     .is("deleted_at", null);
   const caseByNumber = new Map();
   for (const r of caseRows ?? []) caseByNumber.set(r.case_number, r.case_id);
-  console.log(`patent cases: ${caseByNumber.size}`);
+  console.log(`  cases: ${caseByNumber.size}`);
+  if (caseByNumber.size === 0) return;
 
-  // 2) 매핑 후보 — related_case_number 있는 choice 모두 + 그 부모 problem 의 primary_article_id.
+  // 2) 매핑 후보 — 해당 law 의 problem 의 choice 중 related_case_number 있는 것.
   const choices = [];
   const PAGE = 500;
   let from = 0;
@@ -57,8 +71,9 @@ async function main() {
     const { data, error } = await supabase
       .from("problem_choices")
       .select(
-        "choice_id, problem_id, related_article_id, related_case_number, problems!inner(primary_article_id, deleted_at)",
+        "choice_id, problem_id, related_article_id, related_case_number, problems!inner(law_id, primary_article_id, deleted_at)",
       )
+      .eq("problems.law_id", law.law_id)
       .not("related_case_number", "is", null)
       .neq("related_case_number", "")
       .range(from, from + PAGE - 1);
@@ -190,7 +205,13 @@ async function main() {
 
   const ai = await batchInsert("article_case_links", aclInserts);
   const pi = await batchInsert("problem_case_links", pclInserts);
-  console.log(`\n=== 완료 === article_case_links: +${ai}, problem_case_links: +${pi}`);
+  console.log(`  inserted — article_case_links: +${ai}, problem_case_links: +${pi}`);
+}
+
+async function main() {
+  const laws = parseLawArg(process.argv);
+  console.log(`targets: ${laws.join(", ")}`);
+  for (const code of laws) await runForLaw(code);
 }
 
 main().catch((e) => {

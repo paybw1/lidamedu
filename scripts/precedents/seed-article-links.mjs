@@ -10,9 +10,10 @@
 //    조문도 같이 매칭됨. 핵심 조문은 보통 case 의 첫 문장에 등장하지만 강한 신호로 separated 않음.
 //  - false positive 일부 허용 — 운영자가 잘못된 매핑 삭제 가능.
 
-import { readFileSync } from "node:fs";
 import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+
+import { parseLawArg } from "./lib-args.mjs";
 
 loadEnv();
 
@@ -47,16 +48,17 @@ function extractArticleNumbers(text) {
   return out;
 }
 
-async function main() {
-  // 1) 특허법 articles map: article_number → article_id (level='article' 만).
+async function runForLaw(lawCode) {
+  console.log(`\n=== ${lawCode} ===`);
+  // 1) 해당 law articles map: article_number → article_id (level='article' 만).
   const { data: law } = await supabase
     .from("laws")
     .select("law_id")
-    .eq("law_code", "patent")
+    .eq("law_code", lawCode)
     .maybeSingle();
   if (!law) {
-    console.error("patent law row 없음");
-    process.exit(1);
+    console.log(`  law row 없음 — skip`);
+    return;
   }
   const { data: articleRows } = await supabase
     .from("articles")
@@ -68,27 +70,38 @@ async function main() {
   for (const r of articleRows ?? []) {
     if (r.article_number) articleByNumber.set(r.article_number, r.article_id);
   }
-  console.log(`patent articles loaded: ${articleByNumber.size}`);
+  console.log(`  articles: ${articleByNumber.size}`);
 
-  // 2) 특허법 cases 텍스트 모두 fetch.
+  // 2) 해당 과목 cases 텍스트 모두 fetch.
   const { data: caseRows } = await supabase
     .from("cases")
     .select(
       "case_id, summary_title, summary_body_md, reasoning_md, comment_body_md, summary_items",
     )
-    .contains("subject_laws", ["patent"])
+    .contains("subject_laws", [lawCode])
     .is("deleted_at", null);
-  console.log(`patent cases loaded: ${caseRows?.length ?? 0}`);
+  console.log(`  cases: ${caseRows?.length ?? 0}`);
+  if ((caseRows?.length ?? 0) === 0) return;
 
-  // 3) 기존 link (case_id, article_id) 셋 — 중복 insert 방지.
-  const { data: existingLinks } = await supabase
-    .from("article_case_links")
-    .select("article_id, case_id, relation_type")
-    .eq("relation_type", "directly_interprets");
-  const existing = new Set(
-    (existingLinks ?? []).map((r) => `${r.case_id}:${r.article_id}`),
-  );
-  console.log(`existing directly_interprets links: ${existing.size}`);
+  // 3) 기존 link (case_id, article_id) 셋 — 중복 insert 방지. 페이지네이션.
+  const existing = new Set();
+  {
+    let f = 0;
+    const PAGE = 1000;
+    for (;;) {
+      const { data, error } = await supabase
+        .from("article_case_links")
+        .select("article_id, case_id, relation_type")
+        .eq("relation_type", "directly_interprets")
+        .range(f, f + PAGE - 1);
+      if (error) { console.error("  existing 조회:", error.message); break; }
+      if (!data || data.length === 0) break;
+      for (const r of data) existing.add(`${r.case_id}:${r.article_id}`);
+      if (data.length < PAGE) break;
+      f += PAGE;
+    }
+  }
+  console.log(`  existing directly_interprets links: ${existing.size}`);
 
   // 4) 추출 + 후보 link 생성.
   const inserts = [];
@@ -129,7 +142,7 @@ async function main() {
     if (matched > 0) casesMatched++;
   }
 
-  console.log(`prepared inserts: ${inserts.length} (cases matched: ${casesMatched})`);
+  console.log(`  prepared inserts: ${inserts.length} (cases matched: ${casesMatched})`);
 
   // 5) batch insert.
   const BATCH = 200;
@@ -140,8 +153,7 @@ async function main() {
       .from("article_case_links")
       .insert(slice);
     if (error) {
-      console.error(`batch ${i}~${i + slice.length} 실패: ${error.message}`);
-      // 한 건씩 재시도.
+      console.error(`  batch ${i}~${i + slice.length} 실패: ${error.message}`);
       for (const row of slice) {
         const { error: e } = await supabase
           .from("article_case_links")
@@ -152,7 +164,13 @@ async function main() {
       inserted += slice.length;
     }
   }
-  console.log(`\n=== 완료 === inserted: ${inserted}`);
+  console.log(`  inserted: ${inserted}`);
+}
+
+async function main() {
+  const laws = parseLawArg(process.argv);
+  console.log(`targets: ${laws.join(", ")}`);
+  for (const code of laws) await runForLaw(code);
 }
 
 main().catch((e) => {
