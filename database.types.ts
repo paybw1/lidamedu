@@ -377,12 +377,15 @@ export type Database = {
           case_id: string
           case_number: string
           case_title: string
+          case_type: string | null
           comment_body_md: string | null
           comment_source: string | null
           court: Database["public"]["Enums"]["case_court"]
           created_at: string
           decided_at: string
           deleted_at: string | null
+          exam_1st_years: number[]
+          exam_2nd_years: number[]
           full_text_pdf: string | null
           importance: number | null
           is_en_banc: boolean
@@ -390,6 +393,7 @@ export type Database = {
           search_tsv: unknown
           subject_laws: string[]
           summary_body_md: string | null
+          summary_items: Json
           summary_title: string | null
           updated_at: string
         }
@@ -397,12 +401,15 @@ export type Database = {
           case_id?: string
           case_number: string
           case_title: string
+          case_type?: string | null
           comment_body_md?: string | null
           comment_source?: string | null
           court: Database["public"]["Enums"]["case_court"]
           created_at?: string
           decided_at: string
           deleted_at?: string | null
+          exam_1st_years?: number[]
+          exam_2nd_years?: number[]
           full_text_pdf?: string | null
           importance?: number | null
           is_en_banc?: boolean
@@ -410,6 +417,7 @@ export type Database = {
           search_tsv?: unknown
           subject_laws: string[]
           summary_body_md?: string | null
+          summary_items?: Json
           summary_title?: string | null
           updated_at?: string
         }
@@ -417,12 +425,15 @@ export type Database = {
           case_id?: string
           case_number?: string
           case_title?: string
+          case_type?: string | null
           comment_body_md?: string | null
           comment_source?: string | null
           court?: Database["public"]["Enums"]["case_court"]
           created_at?: string
           decided_at?: string
           deleted_at?: string | null
+          exam_1st_years?: number[]
+          exam_2nd_years?: number[]
           full_text_pdf?: string | null
           importance?: number | null
           is_en_banc?: boolean
@@ -430,6 +441,7 @@ export type Database = {
           search_tsv?: unknown
           subject_laws?: string[]
           summary_body_md?: string | null
+          summary_items?: Json
           summary_title?: string | null
           updated_at?: string
         }
