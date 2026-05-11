@@ -12,7 +12,14 @@ import {
   XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
+import {
+  Form,
+  Link,
+  data,
+  useFetcher,
+  useLocation,
+  useNavigate,
+} from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -260,7 +267,8 @@ function CaseMapperCard({
   lawCode: LawSubjectSlug;
 }) {
   const addFetcher = useFetcher<{ ok?: true; error?: string }>();
-  const { revalidate } = useRevalidator();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [draft, setDraft] = useState("");
   const normalized = normalizeArticleNumber(draft);
   const alreadyMapped =
@@ -268,7 +276,8 @@ function CaseMapperCard({
   const isSaving = addFetcher.state !== "idle";
   const hasError = addFetcher.data && "error" in addFetcher.data;
 
-  // 성공 시 입력 비우고 loader 재실행 → 카드 chip / linkCount 즉시 갱신.
+  // 성공 시 입력 비우고 명시적으로 같은 URL 로 navigate → loader 강제 재실행.
+  // useRevalidator 보다 견고 (fetcher submission 과 page loader 가 같은 endpoint 라도 정확히 갱신).
   useEffect(() => {
     if (
       addFetcher.state === "idle" &&
@@ -277,9 +286,9 @@ function CaseMapperCard({
       addFetcher.data.ok
     ) {
       setDraft("");
-      revalidate();
+      navigate(location.pathname + location.search, { replace: true });
     }
-  }, [addFetcher.state, addFetcher.data, revalidate]);
+  }, [addFetcher.state, addFetcher.data, navigate, location.pathname, location.search]);
 
   return (
     <Card>
@@ -405,7 +414,8 @@ function ArticleChip({
   lawCode: LawSubjectSlug;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
-  const { revalidate } = useRevalidator();
+  const navigate = useNavigate();
+  const location = useLocation();
   const removed = fetcher.data && "ok" in fetcher.data && fetcher.data.ok;
   useEffect(() => {
     if (
@@ -414,9 +424,9 @@ function ArticleChip({
       "ok" in fetcher.data &&
       fetcher.data.ok
     ) {
-      revalidate();
+      navigate(location.pathname + location.search, { replace: true });
     }
-  }, [fetcher.state, fetcher.data, revalidate]);
+  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
   // 출처 별 색상 — 자동 vs 수동 구분.
   const isManual = !note || note.includes("수동");
   const isAuto = !!note && !isManual;
