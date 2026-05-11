@@ -15,7 +15,12 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const RE_EXAM = /^기출\s+(\d{4})\s*$/;
-const RE_SECTION = /^(제\d+(?:절|장|편)\b.*?)\s*(?:\d+)?\s*$/;
+// `\b` 가 한글 word-boundary 에 매칭 안 되므로 명시적으로 다음 문자 조건 부여.
+// 매칭 케이스:
+//   "제1장"           (단독)
+//   "제1절  발 명"    (목차 또는 본문)
+//   "제2절 신규성\t43" (목차, 페이지 번호 trailing)
+const RE_SECTION = /^(제\d+(?:절|장|편)(?:\s+[^\d][^\t]*?)?)\s*\d*\s*$/;
 const RE_CASE_HEAD = new RegExp(
   String.raw`^(?<seq>\d+)\s+` +
   String.raw`(?<court>대법원|특허법원|헌법재판소|서울고등법원|서울중앙지방법원|` +

@@ -1130,6 +1130,58 @@ export type Database = {
           },
         ]
       }
+      problem_case_links: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string | null
+          link_id: string
+          note: string | null
+          problem_id: string
+          relation_type: Database["public"]["Enums"]["pc_relation_type"]
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          problem_id: string
+          relation_type?: Database["public"]["Enums"]["pc_relation_type"]
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          link_id?: string
+          note?: string | null
+          problem_id?: string
+          relation_type?: Database["public"]["Enums"]["pc_relation_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_case_links_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "problem_case_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problem_case_links_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+        ]
+      }
       problem_choices: {
         Row: {
           body_md: string
@@ -2303,6 +2355,7 @@ export type Database = {
       gs_round_status: "draft" | "published" | "closed"
       law_change_kind: "created" | "amended" | "deleted"
       ox_truth: "O" | "X"
+      pc_relation_type: "cited" | "illustrates" | "contrasts" | "similar"
       problem_choice_type: "statute" | "precedent" | "theory"
       problem_exam_round: "first" | "second"
       problem_format:
@@ -2474,6 +2527,7 @@ export const Constants = {
       gs_round_status: ["draft", "published", "closed"],
       law_change_kind: ["created", "amended", "deleted"],
       ox_truth: ["O", "X"],
+      pc_relation_type: ["cited", "illustrates", "contrasts", "similar"],
       problem_choice_type: ["statute", "precedent", "theory"],
       problem_exam_round: ["first", "second"],
       problem_format: [

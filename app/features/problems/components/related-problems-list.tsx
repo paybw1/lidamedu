@@ -35,6 +35,11 @@ export function RelatedProblemsList({
           className="hover:border-primary block rounded-md border px-3 py-2 transition-colors"
         >
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            {it.isCited ? (
+              <Badge className="bg-amber-500 text-white text-[10px] hover:bg-amber-500">
+                직접 인용
+              </Badge>
+            ) : null}
             <Badge variant="secondary" className="text-[10px]">
               {ORIGIN_LABEL[it.origin as ProblemOrigin] ?? it.origin}
             </Badge>

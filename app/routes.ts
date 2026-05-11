@@ -61,6 +61,9 @@ export default [
       route("/article-comment", "features/laws/api/article-comment.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
     ]),
+    ...prefix("/admin", [
+      route("/case-link", "features/admin/api/case-link.tsx"),
+    ]),
     ...prefix("/problems", [
       route(
         "/upload-explanation-image",
@@ -224,6 +227,7 @@ export default [
       route("/gs/points", "features/gs/screens/gs-points.tsx"),
       route("/community", "features/community/screens/community.tsx"),
       route("/admin", "features/admin/screens/admin.tsx"),
+      route("/admin/cases", "features/admin/screens/admin-cases.tsx"),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),

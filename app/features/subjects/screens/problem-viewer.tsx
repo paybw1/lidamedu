@@ -39,6 +39,7 @@ import {
   SCOPE_LABEL,
 } from "~/features/problems/labels";
 import {
+  getCasesCitedByProblem,
   getChoiceLinkRefs,
   getProblemById,
   getRelatedProblems,
@@ -143,6 +144,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaThreads,
     problemStats,
     relatedProblems,
+    citedCases,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -153,6 +155,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listThreadsForTarget(client, "problem", problem.problemId, 20),
     getProblemStats(client, problem.problemId),
     getRelatedProblems(client, problem.problemId, 8),
+    getCasesCitedByProblem(client, problem.problemId),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -261,10 +264,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     sessionCompleted: session?.completedAt != null,
     problemStats,
     relatedProblems,
+    citedCases,
     choiceArticleRefs,
     choiceCaseRefs,
   };
 }
+
+// problem_case_links 의 pc_relation_type → article_case_links 의 ac_relation_type 매핑
+// (ArticleRightPanel 의 "판례" 탭 라벨 호환).
+const PC_TO_AC: Record<string, "directly_interprets" | "cites" | "similar_to" | "contrary_to"> = {
+  cited: "cites",
+  illustrates: "directly_interprets",
+  contrasts: "contrary_to",
+  similar: "similar_to",
+};
 
 // 시험 모드 카운트다운 — server-issued startedAt + timeLimitSec 기준.
 function useExamTimer(
@@ -311,6 +324,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     sessionCompleted,
     problemStats,
     relatedProblems,
+    citedCases,
     choiceArticleRefs,
     choiceCaseRefs,
   } = loaderData;
@@ -781,6 +795,17 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 highlights={highlights}
                 qnaThreads={qnaThreads}
                 relatedProblems={relatedProblems}
+                subjectSlug={subject.slug}
+                relatedCases={citedCases.map((c) => ({
+                  caseId: c.caseId,
+                  caseNumber: c.caseNumber,
+                  caseTitle: c.caseTitle,
+                  summaryTitle: c.summaryTitle,
+                  decidedAt: c.decidedAt,
+                  importance: c.importance,
+                  relationType: PC_TO_AC[c.relationType] ?? "cites",
+                  note: null,
+                }))}
               />
             </CardContent>
           </Card>

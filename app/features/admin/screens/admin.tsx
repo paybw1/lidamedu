@@ -6,6 +6,7 @@ import {
   ClipboardListIcon,
   CoinsIcon,
   FileEditIcon,
+  GavelIcon,
   ListChecksIcon,
   NetworkIcon,
   TrendingUpIcon,
@@ -82,6 +83,12 @@ export default function Admin() {
           title="GS 포인트 관리"
           subtitle="우수 답안 자동 지급 + 학생별 잔액 / 수동 지급·차감"
           icon={CoinsIcon}
+        />
+        <AdminCard
+          to="/admin/cases?law=patent"
+          title="판례 매핑 관리"
+          subtitle="자동 추출 안 된 case 의 관련 조문 수동 매핑 / 잘못된 매핑 삭제"
+          icon={GavelIcon}
         />
       </div>
     </div>

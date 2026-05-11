@@ -770,6 +770,8 @@ export interface RelatedProblemItem {
   format: string;
   origin: string;
   lawCode: string;
+  // case-viewer 의 유사문제에서만 의미 — true 면 problem_case_links 직접 인용.
+  isCited?: boolean;
 }
 
 export async function getRelatedProblems(
@@ -814,43 +816,128 @@ export async function getRelatedProblems(
 
 // case 의 관련 조문(article_case_links) 들이 primary_article_id 인 문제 — 입체 학습용.
 // case-viewer 우측 패널 "유사 문제" 탭에서 노출.
+// 직접 인용(problem_case_links)이 있으면 그 문제들이 isCited=true 로 먼저 정렬.
 export async function getRelatedProblemsByCase(
   client: SupabaseClient<Database>,
   caseId: string,
   limit = 8,
 ): Promise<RelatedProblemItem[]> {
-  const { data: linkRows } = await client
-    .from("article_case_links")
-    .select("article_id")
-    .eq("case_id", caseId);
-  const articleIds = Array.from(
-    new Set((linkRows ?? []).map((r) => r.article_id).filter(Boolean)),
-  );
-  if (articleIds.length === 0) return [];
-
-  const { data: rows, error } = await client
-    .from("problems")
+  // (a) 직접 인용 — problem_case_links.
+  const { data: directRows } = await client
+    .from("problem_case_links")
     .select(
-      "problem_id, year, problem_number, body_md, format, origin, laws!inner(law_code)",
+      "relation_type, problems!inner(problem_id, year, problem_number, body_md, format, origin, deleted_at, laws!inner(law_code))",
     )
-    .in("primary_article_id", articleIds)
-    .is("deleted_at", null)
-    .order("year", { ascending: false, nullsFirst: false })
-    .order("problem_number", { ascending: true })
-    .limit(limit);
+    .eq("case_id", caseId);
+  const directProblems: RelatedProblemItem[] = [];
+  const directIds = new Set<string>();
+  for (const r of directRows ?? []) {
+    const p = r.problems;
+    if (!p || p.deleted_at) continue;
+    if (directIds.has(p.problem_id)) continue;
+    directIds.add(p.problem_id);
+    directProblems.push({
+      problemId: p.problem_id,
+      year: p.year,
+      problemNumber: p.problem_number,
+      bodySnippet:
+        (p.body_md ?? "").length > 100
+          ? `${(p.body_md ?? "").slice(0, 100)}…`
+          : p.body_md ?? "",
+      format: p.format,
+      origin: p.origin,
+      lawCode: p.laws.law_code,
+      isCited: true,
+    });
+  }
+  directProblems.sort((a, b) => {
+    if ((b.year ?? 0) !== (a.year ?? 0)) return (b.year ?? 0) - (a.year ?? 0);
+    return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+  });
+
+  // (b) 관련 조문 우회.
+  let viaArticleProblems: RelatedProblemItem[] = [];
+  if (directProblems.length < limit) {
+    const { data: linkRows } = await client
+      .from("article_case_links")
+      .select("article_id")
+      .eq("case_id", caseId);
+    const articleIds = Array.from(
+      new Set((linkRows ?? []).map((r) => r.article_id).filter(Boolean)),
+    );
+    if (articleIds.length > 0) {
+      const { data: rows, error } = await client
+        .from("problems")
+        .select(
+          "problem_id, year, problem_number, body_md, format, origin, laws!inner(law_code)",
+        )
+        .in("primary_article_id", articleIds)
+        .is("deleted_at", null)
+        .order("year", { ascending: false, nullsFirst: false })
+        .order("problem_number", { ascending: true })
+        .limit(limit + directIds.size);
+      if (error) throw error;
+      viaArticleProblems = (rows ?? [])
+        .filter((r) => !directIds.has(r.problem_id))
+        .map((r) => ({
+          problemId: r.problem_id,
+          year: r.year,
+          problemNumber: r.problem_number,
+          bodySnippet:
+            (r.body_md ?? "").length > 100
+              ? `${(r.body_md ?? "").slice(0, 100)}…`
+              : r.body_md ?? "",
+          format: r.format,
+          origin: r.origin,
+          lawCode: r.laws.law_code,
+          isCited: false,
+        }));
+    }
+  }
+
+  return [...directProblems, ...viaArticleProblems].slice(0, limit);
+}
+
+// problem-viewer 우측 패널 — 이 문제가 인용한 판례.
+export interface CitedCaseItem {
+  caseId: string;
+  caseNumber: string;
+  caseTitle: string;
+  summaryTitle: string | null;
+  decidedAt: string;
+  importance: number;
+  lawCode: string;
+  relationType: string;
+}
+
+export async function getCasesCitedByProblem(
+  client: SupabaseClient<Database>,
+  problemId: string,
+): Promise<CitedCaseItem[]> {
+  const { data, error } = await client
+    .from("problem_case_links")
+    .select(
+      "relation_type, cases!inner(case_id, case_number, case_title, summary_title, decided_at, importance, subject_laws, deleted_at)",
+    )
+    .eq("problem_id", problemId);
   if (error) throw error;
-  return (rows ?? []).map((r) => ({
-    problemId: r.problem_id,
-    year: r.year,
-    problemNumber: r.problem_number,
-    bodySnippet:
-      (r.body_md ?? "").length > 100
-        ? `${(r.body_md ?? "").slice(0, 100)}…`
-        : r.body_md ?? "",
-    format: r.format,
-    origin: r.origin,
-    lawCode: r.laws.law_code,
-  }));
+  const out: CitedCaseItem[] = [];
+  for (const r of data ?? []) {
+    const c = r.cases;
+    if (!c || c.deleted_at) continue;
+    out.push({
+      caseId: c.case_id,
+      caseNumber: c.case_number,
+      caseTitle: c.case_title,
+      summaryTitle: c.summary_title,
+      decidedAt: c.decided_at,
+      importance: c.importance ?? 1,
+      lawCode: (c.subject_laws as string[] | null)?.[0] ?? "patent",
+      relationType: r.relation_type,
+    });
+  }
+  out.sort((a, b) => b.decidedAt.localeCompare(a.decidedAt));
+  return out;
 }
 
 export async function getProblemById(
