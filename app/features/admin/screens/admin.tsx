@@ -30,6 +30,7 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getStaffContentStats } from "~/features/admin/queries/staff-content.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin";
@@ -43,7 +44,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/admin");
   const role = await getStaffRole(client, user.id);
-  return { role, userEmail: user.email ?? null };
+  const contentStats = role ? await getStaffContentStats(client, user.id) : null;
+  return { role, userEmail: user.email ?? null, contentStats };
 }
 
 interface AdminCardData {
@@ -204,7 +206,7 @@ const GS_CARDS: AdminCardData[] = [
 ];
 
 export default function Admin({ loaderData }: Route.ComponentProps) {
-  const { role } = loaderData;
+  const { role, contentStats } = loaderData;
 
   if (!role) {
     return <StudentGuidance />;
@@ -229,6 +231,8 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
         </p>
       </header>
 
+      {contentStats ? <ContentStatsCard stats={contentStats} /> : null}
+
       <Section title="콘텐츠 등록·수정" cards={CONTENT_CARDS} />
       <Section
         title="사용자 · 반"
@@ -241,6 +245,74 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
       <Section title="통계 · 분석" cards={STATS_CARDS} />
       <Section title="온라인 GS" cards={GS_CARDS} />
     </div>
+  );
+}
+
+function ContentStatsCard({
+  stats,
+}: {
+  stats: {
+    cases: number;
+    problems: number;
+    papers: number;
+    bookUpdates: number;
+    articleComments: number;
+    subjectiveReviews: number;
+    articleRevisions: number;
+  };
+}) {
+  const tiles: Array<{ label: string; value: number; hint: string }> = [
+    { label: "내 판례", value: stats.cases, hint: "등록한 판례" },
+    { label: "내 문제", value: stats.problems, hint: "등록한 객관식/주관식" },
+    { label: "내 논문", value: stats.papers, hint: "등록한 논문" },
+    {
+      label: "도서 추록",
+      value: stats.bookUpdates,
+      hint: "등록한 추록/정오표",
+    },
+    {
+      label: "조문 코멘트",
+      value: stats.articleComments,
+      hint: "작성한 평석 코멘트",
+    },
+    {
+      label: "조문 개정",
+      value: stats.articleRevisions,
+      hint: "참여한 개정 revision",
+    },
+    {
+      label: "첨삭 완료",
+      value: stats.subjectiveReviews,
+      hint: "주관식 검토",
+    },
+  ];
+  return (
+    <Card className="mb-6">
+      <CardHeader className="pb-2">
+        <p className="text-sm font-semibold">내 콘텐츠 현황</p>
+        <p className="text-muted-foreground text-xs">
+          본인이 등록 / 작성 / 검토한 콘텐츠 누적 카운트
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          {tiles.map((t) => (
+            <div
+              key={t.label}
+              className="bg-muted/40 rounded-md px-3 py-2"
+              title={t.hint}
+            >
+              <p className="text-muted-foreground text-[10.5px] font-semibold tracking-wide uppercase">
+                {t.label}
+              </p>
+              <p className="text-foreground mt-0.5 text-xl font-bold tabular-nums">
+                {t.value.toLocaleString("ko-KR")}
+              </p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

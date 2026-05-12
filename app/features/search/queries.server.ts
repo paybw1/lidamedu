@@ -56,111 +56,104 @@ export async function runGlobalSearch(
   if (q.length < MIN_QUERY_LEN) return empty;
   const pattern = `%${escapeForIlike(q)}%`;
 
-  // articles — display_label 매칭 + 본문(article_revisions.body_text) 매칭 합집합.
+  // articles — similarity ranked. RPC 가 조문 ID 만 반환 → label/href hydration.
   async function fetchArticles(): Promise<SearchHit[]> {
-    const [byLabel, byBody] = await Promise.all([
-      client
-        .from("articles")
-        .select(
-          "article_id, article_number, display_label, current_revision_id, laws!inner(law_code)",
-        )
-        .is("deleted_at", null)
-        .ilike("display_label", pattern)
-        .limit(GROUP_LIMIT),
-      // 현재 시행 중 조문(current_revision_id) 의 body_text 매칭 → 조문으로 역조회.
-      client
-        .from("article_revisions")
-        .select(
-          "revision_id, articles!inner(article_id, article_number, display_label, current_revision_id, deleted_at, laws!inner(law_code))",
-        )
-        .ilike("body_text", pattern)
-        .limit(GROUP_LIMIT * 2), // 매칭 revision 중 현재 시행 중 인 것만 keep.
-    ]);
-
-    const seen = new Set<string>();
-    const out: SearchHit[] = [];
-    function push(
-      articleId: string,
-      articleNumber: string | null,
-      displayLabel: string,
-      lawCode: string,
-    ) {
-      if (!articleNumber || seen.has(articleId)) return;
-      seen.add(articleId);
-      out.push({
-        group: "article",
-        id: articleId,
-        primaryLabel: displayLabel,
-        secondaryLabel: `제${articleNumber}조`,
-        bodySnippet: null,
-        href: `/subjects/${lawCode}/articles/${articleSlug(articleNumber)}`,
-        lawCode,
-      });
-    }
-
-    for (const r of byLabel.data ?? []) {
-      push(r.article_id, r.article_number, r.display_label, r.laws.law_code);
-    }
-    for (const r of byBody.data ?? []) {
-      const a = r.articles;
-      // 현재 시행 중 조문만 — current_revision_id 가 이 revision 인 article.
-      if (!a || a.deleted_at || a.current_revision_id !== r.revision_id) continue;
-      push(a.article_id, a.article_number, a.display_label, a.laws.law_code);
-      if (out.length >= GROUP_LIMIT) break;
-    }
-    return out.slice(0, GROUP_LIMIT);
+    const { data: ranked } = await client.rpc("search_articles_ranked", {
+      q,
+      lim: GROUP_LIMIT,
+    });
+    const ids = (ranked ?? []).map((r) => r.article_id);
+    if (ids.length === 0) return [];
+    const { data: rows } = await client
+      .from("articles")
+      .select(
+        "article_id, article_number, display_label, laws!inner(law_code)",
+      )
+      .in("article_id", ids);
+    const byId = new Map((rows ?? []).map((r) => [r.article_id, r] as const));
+    // RPC ranking 순서 보존.
+    return ids.flatMap((id): SearchHit[] => {
+      const r = byId.get(id);
+      if (!r || !r.article_number) return [];
+      return [
+        {
+          group: "article",
+          id: r.article_id,
+          primaryLabel: r.display_label,
+          secondaryLabel: `제${r.article_number}조`,
+          bodySnippet: null,
+          href: `/subjects/${r.laws.law_code}/articles/${articleSlug(r.article_number)}`,
+          lawCode: r.laws.law_code,
+        },
+      ];
+    });
   }
 
-  // cases — case_number / case_title / summary_title / summary_body_md.
+  // cases — similarity ranked.
   async function fetchCases(): Promise<SearchHit[]> {
-    const { data } = await client
+    const { data: ranked } = await client.rpc("search_cases_ranked", {
+      q,
+      lim: GROUP_LIMIT,
+    });
+    const ids = (ranked ?? []).map((r) => r.case_id);
+    if (ids.length === 0) return [];
+    const { data: rows } = await client
       .from("cases")
       .select(
         "case_id, case_number, case_title, summary_title, summary_body_md, subject_laws",
       )
-      .is("deleted_at", null)
-      .or(
-        `case_number.ilike.${pattern},case_title.ilike.${pattern},summary_title.ilike.${pattern},summary_body_md.ilike.${pattern}`,
-      )
-      .limit(GROUP_LIMIT);
-    return (data ?? []).map((r) => {
+      .in("case_id", ids);
+    const byId = new Map((rows ?? []).map((r) => [r.case_id, r] as const));
+    return ids.flatMap((id): SearchHit[] => {
+      const r = byId.get(id);
+      if (!r) return [];
       const lawCode = (r.subject_laws as string[] | null)?.[0] ?? "patent";
-      return {
-        group: "case" as const,
-        id: r.case_id,
-        primaryLabel: r.case_title ?? r.case_number,
-        secondaryLabel: r.case_title ? r.case_number : r.summary_title,
-        bodySnippet: snippet(r.summary_body_md),
-        href: `/subjects/${lawCode}/cases/${r.case_id}`,
-        lawCode,
-      };
+      return [
+        {
+          group: "case",
+          id: r.case_id,
+          primaryLabel: r.case_title ?? r.case_number,
+          secondaryLabel: r.case_title ? r.case_number : r.summary_title,
+          bodySnippet: snippet(r.summary_body_md),
+          href: `/subjects/${lawCode}/cases/${r.case_id}`,
+          lawCode,
+        },
+      ];
     });
   }
 
-  // problems — body_md.
+  // problems — similarity ranked.
   async function fetchProblems(): Promise<SearchHit[]> {
-    const { data } = await client
+    const { data: ranked } = await client.rpc("search_problems_ranked", {
+      q,
+      lim: GROUP_LIMIT,
+    });
+    const ids = (ranked ?? []).map((r) => r.problem_id);
+    if (ids.length === 0) return [];
+    const { data: rows } = await client
       .from("problems")
       .select(
         "problem_id, year, problem_number, body_md, laws!inner(law_code)",
       )
-      .is("deleted_at", null)
-      .ilike("body_md", pattern)
-      .limit(GROUP_LIMIT);
-    return (data ?? []).map((r) => {
-      const lawCode = r.laws.law_code;
+      .in("problem_id", ids);
+    const byId = new Map((rows ?? []).map((r) => [r.problem_id, r] as const));
+    return ids.flatMap((id): SearchHit[] => {
+      const r = byId.get(id);
+      if (!r) return [];
       const yearLabel = r.year
         ? `${r.year}년${r.problem_number ? ` · ${r.problem_number}번` : ""}`
         : "문제";
-      return {
-        group: "problem" as const,
-        id: r.problem_id,
-        primaryLabel: yearLabel,
-        secondaryLabel: null,
-        bodySnippet: snippet(r.body_md),
-        href: `/subjects/${lawCode}/problems/${r.problem_id}`,
-        lawCode,
-      };
+      return [
+        {
+          group: "problem",
+          id: r.problem_id,
+          primaryLabel: yearLabel,
+          secondaryLabel: null,
+          bodySnippet: snippet(r.body_md),
+          href: `/subjects/${r.laws.law_code}/problems/${r.problem_id}`,
+          lawCode: r.laws.law_code,
+        },
+      ];
     });
   }
 

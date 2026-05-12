@@ -1933,11 +1933,15 @@ export type Database = {
           problem_number: number | null
           reviewed_at: string | null
           reviewed_by: string | null
+          rubric_items: Json | null
           science_section_id: string | null
           science_subject: Database["public"]["Enums"]["science_subject"] | null
           scope: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
+          subjective_keywords: string[] | null
+          subjective_kind: Database["public"]["Enums"]["subjective_kind"] | null
+          subjective_topic: string | null
           total_points: number | null
           updated_at: string
           video_url: string | null
@@ -1965,6 +1969,7 @@ export type Database = {
           problem_number?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          rubric_items?: Json | null
           science_section_id?: string | null
           science_subject?:
             | Database["public"]["Enums"]["science_subject"]
@@ -1972,6 +1977,11 @@ export type Database = {
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
+          subjective_keywords?: string[] | null
+          subjective_kind?:
+            | Database["public"]["Enums"]["subjective_kind"]
+            | null
+          subjective_topic?: string | null
           total_points?: number | null
           updated_at?: string
           video_url?: string | null
@@ -1999,6 +2009,7 @@ export type Database = {
           problem_number?: number | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          rubric_items?: Json | null
           science_section_id?: string | null
           science_subject?:
             | Database["public"]["Enums"]["science_subject"]
@@ -2006,6 +2017,11 @@ export type Database = {
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
           subject_type?: Database["public"]["Enums"]["problem_subject_type"]
+          subjective_keywords?: string[] | null
+          subjective_kind?:
+            | Database["public"]["Enums"]["subjective_kind"]
+            | null
+          subjective_topic?: string | null
           total_points?: number | null
           updated_at?: string
           video_url?: string | null
@@ -2763,6 +2779,7 @@ export type Database = {
           reviewer_comment_md: string | null
           reviewer_id: string | null
           reviewer_score: number | null
+          rubric_self_check: Json | null
           self_score: number | null
           self_score_note: string | null
           submitted_at: string | null
@@ -2780,6 +2797,7 @@ export type Database = {
           reviewer_comment_md?: string | null
           reviewer_id?: string | null
           reviewer_score?: number | null
+          rubric_self_check?: Json | null
           self_score?: number | null
           self_score_note?: string | null
           submitted_at?: string | null
@@ -2797,6 +2815,7 @@ export type Database = {
           reviewer_comment_md?: string | null
           reviewer_id?: string | null
           reviewer_score?: number | null
+          rubric_self_check?: Json | null
           self_score?: number | null
           self_score_note?: string | null
           submitted_at?: string | null
@@ -3046,6 +3065,27 @@ export type Database = {
         }
         Returns: undefined
       }
+      search_articles_ranked: {
+        Args: { lim?: number; q: string }
+        Returns: {
+          article_id: string
+          score: number
+        }[]
+      }
+      search_cases_ranked: {
+        Args: { lim?: number; q: string }
+        Returns: {
+          case_id: string
+          score: number
+        }[]
+      }
+      search_problems_ranked: {
+        Args: { lim?: number; q: string }
+        Returns: {
+          problem_id: string
+          score: number
+        }[]
+      }
       user_is_in_cohort: {
         Args: { p_cohort_id: string; p_user_id: string }
         Returns: boolean
@@ -3099,6 +3139,7 @@ export type Database = {
       qna_status: "open" | "answered" | "closed"
       qna_target_type: "article" | "case" | "problem"
       science_subject: "physics" | "chemistry" | "biology" | "earth_science"
+      subjective_kind: "case_based" | "theory" | "mixed"
       user_role: "student" | "instructor" | "admin"
     }
     CompositeTypes: {
@@ -3274,6 +3315,7 @@ export const Constants = {
       qna_status: ["open", "answered", "closed"],
       qna_target_type: ["article", "case", "problem"],
       science_subject: ["physics", "chemistry", "biology", "earth_science"],
+      subjective_kind: ["case_based", "theory", "mixed"],
       user_role: ["student", "instructor", "admin"],
     },
   },

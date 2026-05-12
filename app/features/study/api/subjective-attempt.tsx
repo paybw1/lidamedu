@@ -10,9 +10,26 @@ import { upsertSubjectiveAttempt } from "~/features/study/queries.server";
 
 import type { Route } from "./+types/subjective-attempt";
 
+// rubric_self_check 는 JSON 인코딩된 number[] 로 전달.
+const rubricCheckSchema = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((raw): number[] | undefined => {
+    if (raw == null || raw === "") return undefined;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return undefined;
+      return parsed.filter((v): v is number => typeof v === "number");
+    } catch {
+      return undefined;
+    }
+  });
+
 const baseSchema = z.object({
   problemId: z.string().uuid(),
   answerMd: z.string().max(20000),
+  rubricSelfCheck: rubricCheckSchema,
 });
 
 const submitSchema = baseSchema.extend({

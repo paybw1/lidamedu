@@ -16,7 +16,9 @@ import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   ORIGIN_LABEL,
+  SUBJECTIVE_KIND_LABEL,
   type ProblemOrigin,
+  type SubjectiveKind,
 } from "~/features/problems/labels";
 import { listRecentProblems } from "~/features/problems/queries.server";
 import {
@@ -36,6 +38,8 @@ interface Filters {
   subject?: LawSubjectSlug;
   year?: number;
   origin?: ProblemOrigin;
+  subjectiveKind?: SubjectiveKind;
+  subjectiveKeyword?: string;
 }
 
 const ORIGINS: Array<{ value: ProblemOrigin | "all"; label: string }> = [
@@ -72,7 +76,20 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? originRaw
       : undefined;
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-  const filters: Filters = { q, subject, year, origin };
+  const kindRaw = url.searchParams.get("kind");
+  const subjectiveKind: SubjectiveKind | undefined =
+    kindRaw === "case_based" || kindRaw === "theory" || kindRaw === "mixed"
+      ? kindRaw
+      : undefined;
+  const keyword = (url.searchParams.get("keyword") ?? "").trim().slice(0, 50);
+  const filters: Filters = {
+    q,
+    subject,
+    year,
+    origin,
+    subjectiveKind,
+    subjectiveKeyword: keyword || undefined,
+  };
 
   const problems = await listRecentProblems(client, {
     limit: 100,
@@ -81,6 +98,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     year: filters.year,
     origin: filters.origin,
     query: filters.q || undefined,
+    subjectiveKind: filters.subjectiveKind,
+    subjectiveKeyword: filters.subjectiveKeyword,
   });
   return { problems, filters };
 }
@@ -96,6 +115,8 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
     !!filters.subject ||
     !!filters.year ||
     !!filters.origin ||
+    !!filters.subjectiveKind ||
+    !!filters.subjectiveKeyword ||
     filters.q !== "";
 
   // 빠른 year 옵션 — 최근 10년.
@@ -169,6 +190,24 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
             </option>
           ))}
         </select>
+        <select
+          name="kind"
+          defaultValue={filters.subjectiveKind ?? ""}
+          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
+          aria-label="주관식 유형"
+        >
+          <option value="">전체 유형</option>
+          <option value="case_based">사례형</option>
+          <option value="theory">논점형</option>
+          <option value="mixed">혼합형</option>
+        </select>
+        <Input
+          type="search"
+          name="keyword"
+          defaultValue={filters.subjectiveKeyword ?? ""}
+          placeholder="키워드 (정확 일치)"
+          className="h-9 w-32"
+        />
         <Button type="submit" size="sm" className="h-9">
           적용
         </Button>
@@ -213,12 +252,22 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
                         {p.problemNumber ? ` · ${p.problemNumber}번` : ""}
                       </Badge>
                     ) : null}
+                    {p.subjectiveKind ? (
+                      <Badge variant="default" className="text-xs">
+                        {SUBJECTIVE_KIND_LABEL[p.subjectiveKind]}
+                      </Badge>
+                    ) : null}
                     <span className="text-muted-foreground ml-auto text-xs tabular-nums">
                       등록 {p.createdAt.slice(0, 10)}
                     </span>
                   </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 text-sm">
+                  {p.subjectiveTopic ? (
+                    <p className="text-muted-foreground mb-1 text-xs">
+                      논점 — {p.subjectiveTopic}
+                    </p>
+                  ) : null}
                   <p className="line-clamp-2 leading-snug">{p.bodySnippet}</p>
                   <p className="text-primary mt-2 inline-flex items-center gap-1 text-xs">
                     지금 풀어보기 <ArrowRightIcon className="size-3" />

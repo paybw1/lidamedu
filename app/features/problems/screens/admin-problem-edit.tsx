@@ -184,6 +184,44 @@ export async function action({ params, request }: Route.ActionArgs) {
     model_answer_md: stringOrNull(fd.get("modelAnswerMd")),
     grading_rubric_md: stringOrNull(fd.get("gradingRubricMd")),
     video_url: stringOrNull(fd.get("videoUrl")),
+    subjective_kind: (() => {
+      const v = stringOrNull(fd.get("subjectiveKind"));
+      if (v === "case_based" || v === "theory" || v === "mixed") return v;
+      return null;
+    })(),
+    subjective_keywords: (() => {
+      const raw = stringOrNull(fd.get("subjectiveKeywords"));
+      if (!raw) return null;
+      const arr = raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      return arr.length > 0 ? arr : null;
+    })(),
+    subjective_topic: stringOrNull(fd.get("subjectiveTopic")),
+    rubric_items: (() => {
+      const raw = stringOrNull(fd.get("rubricItemsText"));
+      if (!raw) return null;
+      // 줄 단위 — "라벨 | 배점" 또는 "라벨 (배점)" 또는 "라벨, 배점".
+      const items: { label: string; points: number }[] = [];
+      for (const line of raw.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (trimmed === "") continue;
+        // 끝쪽에서 숫자 추출.
+        const m = trimmed.match(/^(.*?)[\s|·,()\[\]]+(\d{1,3})\s*점?\s*\)?\s*$/);
+        if (m) {
+          const label = m[1].trim();
+          const points = Number(m[2]);
+          if (label.length > 0 && points >= 0 && points <= 100) {
+            items.push({ label, points });
+            continue;
+          }
+        }
+        // 점수 없는 줄은 1점.
+        items.push({ label: trimmed, points: 1 });
+      }
+      return items.length > 0 ? items : null;
+    })(),
     origin: String(fd.get("origin") ?? "past_exam"),
     format: String(fd.get("format") ?? "mc_short"),
     polarity: stringOrNull(fd.get("polarity")),
@@ -609,6 +647,57 @@ export default function AdminProblemEdit({
             <Card>
               <CardHeader>
                 <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  주관식 분류 라벨
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <label className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted-foreground w-20 shrink-0">
+                    유형
+                  </span>
+                  <select
+                    name="subjectiveKind"
+                    defaultValue={problem.subjectiveKind ?? ""}
+                    className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+                    data-testid="problem-subjective-kind"
+                  >
+                    <option value="">미지정</option>
+                    <option value="case_based">사례형</option>
+                    <option value="theory">논점형</option>
+                    <option value="mixed">혼합형</option>
+                  </select>
+                </label>
+                <label className="flex items-start gap-2 text-xs">
+                  <span className="text-muted-foreground mt-1 w-20 shrink-0">
+                    주제(논점)
+                  </span>
+                  <input
+                    name="subjectiveTopic"
+                    maxLength={200}
+                    defaultValue={problem.subjectiveTopic ?? ""}
+                    placeholder="예: 신규성 의제와 공지 예외의 관계"
+                    className="border-input bg-background h-8 flex-1 rounded-md border px-2 text-xs"
+                    data-testid="problem-subjective-topic"
+                  />
+                </label>
+                <label className="flex items-start gap-2 text-xs">
+                  <span className="text-muted-foreground mt-1 w-20 shrink-0">
+                    키워드
+                  </span>
+                  <input
+                    name="subjectiveKeywords"
+                    maxLength={500}
+                    defaultValue={(problem.subjectiveKeywords ?? []).join(", ")}
+                    placeholder="쉼표로 구분 — 예: 신규성, 공지예외, 우선권주장"
+                    className="border-input bg-background h-8 flex-1 rounded-md border px-2 text-xs"
+                    data-testid="problem-subjective-keywords"
+                  />
+                </label>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                   주관식 모범답안 (Markdown)
                 </p>
               </CardHeader>
@@ -625,7 +714,7 @@ export default function AdminProblemEdit({
             <Card>
               <CardHeader>
                 <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  채점 기준 (Markdown — 필수 논점/키워드)
+                  채점 기준 (Markdown — 자유 기술)
                 </p>
               </CardHeader>
               <CardContent>
@@ -634,10 +723,33 @@ export default function AdminProblemEdit({
                   rows={6}
                   defaultValue={problem.gradingRubricMd ?? ""}
                   placeholder={
-                    "예) 1. 신규성 요건 정의 (10점)\n2. 공지 예외 사유 (10점)\n3. 사례 적용 (10점)"
+                    "자유 기술 — 학생에게 풀이 방향 안내용"
                   }
                   data-testid="problem-grading-rubric"
                 />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  채점 항목 체크리스트 (구조화 · 자기채점 UI)
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  name="rubricItemsText"
+                  rows={6}
+                  defaultValue={(problem.rubricItems ?? [])
+                    .map((it) => `${it.label} | ${it.points}`)
+                    .join("\n")}
+                  placeholder={
+                    "한 줄에 하나씩 — '항목 | 배점' 형식\n예) 신규성 요건 정의 | 10\n공지 예외 사유 | 10\n사례 적용 | 10"
+                  }
+                  data-testid="problem-rubric-items"
+                />
+                <p className="text-muted-foreground mt-1 text-[11px]">
+                  학생 viewer 에서 체크리스트로 변환되어 자기채점 점수 산출.
+                </p>
               </CardContent>
             </Card>
           </>

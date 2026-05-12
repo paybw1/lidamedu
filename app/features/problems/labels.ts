@@ -15,6 +15,32 @@ export type ProblemScope = Database["public"]["Enums"]["problem_scope"];
 export type ProblemChoiceType =
   Database["public"]["Enums"]["problem_choice_type"];
 export type OxTruth = Database["public"]["Enums"]["ox_truth"];
+export type SubjectiveKind = Database["public"]["Enums"]["subjective_kind"];
+
+export const SUBJECTIVE_KIND_LABEL: Record<SubjectiveKind, string> = {
+  case_based: "사례형",
+  theory: "논점형",
+  mixed: "혼합형",
+};
+
+// 채점기준 한 항목 — feat-4-A-322.
+export interface RubricItem {
+  label: string;
+  points: number;
+}
+
+export function parseRubricItems(raw: unknown): RubricItem[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: RubricItem[] = [];
+  for (const r of raw) {
+    if (!r || typeof r !== "object") continue;
+    const label = (r as Record<string, unknown>).label;
+    const points = (r as Record<string, unknown>).points;
+    if (typeof label !== "string" || typeof points !== "number") continue;
+    out.push({ label, points });
+  }
+  return out.length > 0 ? out : null;
+}
 
 // OX 지문 — 조문 viewer 우측 패널/서브젝트 OX 풀이용.
 // queries.server.ts 의 fetcher 가 반환하는 데이터 형태 (route loader → 컴포넌트 prop 으로 전달).
@@ -109,6 +135,12 @@ export interface ProblemListItem {
   gradingRubricMd: string | null;
   // 강사 풀이 동영상 URL (feat-4-A-315). null = 미등록.
   videoUrl: string | null;
+  // 주관식 분류 (feat-4-A-321). format='subjective' 에서만 의미.
+  subjectiveKind: SubjectiveKind | null;
+  subjectiveKeywords: string[] | null;
+  subjectiveTopic: string | null;
+  // 채점기준 구조화 (feat-4-A-322) — [{label, points}].
+  rubricItems: RubricItem[] | null;
   // 종합/지문/박스 해설 어딘가에 마크다운 표가 있는지.
   hasTable: boolean;
   // 종합/지문/박스 해설 어딘가에 이미지가 있는지.

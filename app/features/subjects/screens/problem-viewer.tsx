@@ -38,6 +38,7 @@ import {
   ORIGIN_LABEL,
   POLARITY_LABEL,
   SCOPE_LABEL,
+  SUBJECTIVE_KIND_LABEL,
 } from "~/features/problems/labels";
 import {
   deriveBoxItemOxTruth,
@@ -605,6 +606,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 {problem.scope ? (
                   <Badge variant="outline">{SCOPE_LABEL[problem.scope]}</Badge>
                 ) : null}
+                {problem.subjectiveKind ? (
+                  <Badge variant="secondary">
+                    {SUBJECTIVE_KIND_LABEL[problem.subjectiveKind]}
+                  </Badge>
+                ) : null}
                 {problem.year ? (
                   <span className="text-muted-foreground ml-auto text-xs tabular-nums">
                     {problem.year}년
@@ -685,6 +691,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   modelAnswerMd={problem.modelAnswerMd}
                   gradingRubricMd={problem.gradingRubricMd}
                   explanationMd={problem.explanationMd}
+                  rubricItems={problem.rubricItems}
                   initialAttempt={subjectiveAttempt}
                 />
               ) : (
@@ -988,12 +995,14 @@ function SubjectivePanel({
   modelAnswerMd,
   gradingRubricMd,
   explanationMd,
+  rubricItems,
   initialAttempt,
 }: {
   problemId: string;
   modelAnswerMd: string | null;
   gradingRubricMd: string | null;
   explanationMd: string | null;
+  rubricItems: { label: string; points: number }[] | null;
   initialAttempt: SubjectiveAttempt | null;
 }) {
   const [draft, setDraft] = useState(initialAttempt?.answerMd ?? "");
@@ -1011,6 +1020,10 @@ function SubjectivePanel({
   const [timedStartedAt, setTimedStartedAt] = useState<number | null>(null);
   const [timedLimitMin, setTimedLimitMin] = useState<number>(30);
   const [timedExpired, setTimedExpired] = useState(false);
+  // 채점기준 체크리스트 (feat-4-A-322). null = rubric 없음.
+  const [checkedIdx, setCheckedIdx] = useState<Set<number>>(
+    new Set(initialAttempt?.rubricSelfCheck ?? []),
+  );
   const autosaveFetcher = useFetcher<{
     ok?: true;
     attempt?: SubjectiveAttempt;
@@ -1037,6 +1050,7 @@ function SubjectivePanel({
     setRevealedRubric(false);
     setTimedStartedAt(null);
     setTimedExpired(false);
+    setCheckedIdx(new Set(initialAttempt?.rubricSelfCheck ?? []));
     lastSentRef.current = initialAttempt?.answerMd ?? "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [problemId]);
@@ -1061,6 +1075,26 @@ function SubjectivePanel({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, problemId]);
+
+  // 체크리스트 변경 시 즉시 저장 (디바운스 없이 — 토글 한 번에 1 req).
+  const toggleRubric = (i: number) => {
+    setCheckedIdx((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      const arr = [...next].sort((a, b) => a - b);
+      const fd = new FormData();
+      fd.set("intent", "autosave");
+      fd.set("problemId", problemId);
+      fd.set("answerMd", draft);
+      fd.set("rubricSelfCheck", JSON.stringify(arr));
+      autosaveFetcher.submit(fd, {
+        method: "post",
+        action: "/api/study/subjective-attempt",
+      });
+      return next;
+    });
+  };
 
   // autosave 응답 → lastSaved 갱신.
   useEffect(() => {
@@ -1185,6 +1219,14 @@ function SubjectivePanel({
           {draft.length}자
         </p>
       </div>
+
+      {rubricItems && rubricItems.length > 0 && !timedActive ? (
+        <RubricChecklist
+          items={rubricItems}
+          checked={checkedIdx}
+          onToggle={toggleRubric}
+        />
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <Button
@@ -1349,6 +1391,73 @@ function SubjectivePanel({
         </Card>
       ) : null}
     </div>
+  );
+}
+
+// 채점기준 체크리스트 (feat-4-A-322) — 학생이 자기 답안에서 충족한 항목 체크.
+function RubricChecklist({
+  items,
+  checked,
+  onToggle,
+}: {
+  items: { label: string; points: number }[];
+  checked: Set<number>;
+  onToggle: (i: number) => void;
+}) {
+  const total = items.reduce((s, it) => s + it.points, 0);
+  const got = items.reduce(
+    (s, it, i) => s + (checked.has(i) ? it.points : 0),
+    0,
+  );
+  const pct = total > 0 ? Math.round((got / total) * 100) : 0;
+  return (
+    <Card className="border-primary/30">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between text-xs">
+          <p className="text-muted-foreground font-semibold tracking-wide uppercase">
+            채점 체크리스트
+          </p>
+          <span className="tabular-nums">
+            <span className="text-primary font-bold">{got}</span>
+            <span className="text-muted-foreground"> / {total} 점</span>
+            <span className="text-muted-foreground ml-2">({pct}%)</span>
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-1.5" data-testid="rubric-checklist">
+          {items.map((it, i) => {
+            const isChecked = checked.has(i);
+            return (
+              <li key={i}>
+                <label
+                  className={cn(
+                    "flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors",
+                    isChecked
+                      ? "border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-950/30"
+                      : "hover:bg-accent",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-3.5"
+                    checked={isChecked}
+                    onChange={() => onToggle(i)}
+                    data-testid={`rubric-item-${i}`}
+                  />
+                  <span className="flex-1">
+                    <span className={cn(isChecked && "line-through")}>{it.label}</span>
+                  </span>
+                  <span className="text-muted-foreground shrink-0 tabular-nums">
+                    {it.points}점
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 

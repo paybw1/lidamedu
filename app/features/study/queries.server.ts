@@ -300,10 +300,12 @@ export interface SubjectiveAttempt {
   reviewerId: string | null;
   reviewerScore: number | null;
   reviewerCommentMd: string | null;
+  // 채점기준 체크리스트 체크된 항목 인덱스 (feat-4-A-322).
+  rubricSelfCheck: number[] | null;
 }
 
 const ATTEMPT_COLUMNS =
-  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md";
+  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md, rubric_self_check";
 
 function rowToAttempt(row: {
   attempt_id: string;
@@ -317,6 +319,7 @@ function rowToAttempt(row: {
   reviewer_id: string | null;
   reviewer_score: number | null;
   reviewer_comment_md: string | null;
+  rubric_self_check: unknown;
 }): SubjectiveAttempt {
   return {
     attemptId: row.attempt_id,
@@ -330,6 +333,11 @@ function rowToAttempt(row: {
     reviewerId: row.reviewer_id,
     reviewerScore: row.reviewer_score,
     reviewerCommentMd: row.reviewer_comment_md,
+    rubricSelfCheck: Array.isArray(row.rubric_self_check)
+      ? (row.rubric_self_check as unknown[]).filter(
+          (v): v is number => typeof v === "number",
+        )
+      : null,
   };
 }
 
@@ -470,6 +478,8 @@ export async function upsertSubjectiveAttempt(
     answerMd: string;
     // submit=true 시 self_score / submitted_at 동시 갱신.
     submit?: { selfScore: number | null; selfScoreNote: string | null };
+    // rubric 체크리스트 — 항상 갱신 가능 (자기채점 진행 중에도).
+    rubricSelfCheck?: number[] | null;
   },
 ): Promise<SubjectiveAttempt> {
   const row: Database["public"]["Tables"]["user_subjective_attempts"]["Insert"] = {
@@ -482,6 +492,9 @@ export async function upsertSubjectiveAttempt(
           self_score_note: input.submit.selfScoreNote,
           submitted_at: new Date().toISOString(),
         }
+      : {}),
+    ...(input.rubricSelfCheck !== undefined
+      ? { rubric_self_check: input.rubricSelfCheck }
       : {}),
   };
   const { data, error } = await client

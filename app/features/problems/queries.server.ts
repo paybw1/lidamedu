@@ -7,10 +7,11 @@ import {
 } from "~/features/annotations/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import { articleSlug } from "~/features/laws/lib/identifier";
-import type {
-  OxQuestionItem,
-  OxRefAnnotations,
-  OxTruth,
+import {
+  parseRubricItems,
+  type OxQuestionItem,
+  type OxRefAnnotations,
+  type OxTruth,
 } from "./labels";
 
 export type {
@@ -84,7 +85,7 @@ export async function listProblemsBySubject(
   let query = client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label, path)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
     )
     .eq("law_id", law.law_id)
     .is("deleted_at", null);
@@ -197,6 +198,10 @@ export async function listProblemsBySubject(
       modelAnswerMd: row.model_answer_md,
       gradingRubricMd: row.grading_rubric_md,
       videoUrl: row.video_url,
+      subjectiveKind: row.subjective_kind,
+      subjectiveKeywords: row.subjective_keywords,
+      subjectiveTopic: row.subjective_topic,
+      rubricItems: parseRubricItems(row.rubric_items),
       hasTable: m.hasTable,
       hasImage: m.hasImage,
     };
@@ -303,6 +308,8 @@ export interface RecentProblemItem {
   problemNumber: number | null;
   createdAt: string;
   lawCode: string;
+  subjectiveKind: "case_based" | "theory" | "mixed" | null;
+  subjectiveTopic: string | null;
 }
 
 export interface ListRecentProblemsOptions {
@@ -312,6 +319,8 @@ export interface ListRecentProblemsOptions {
   year?: number;
   origin?: ProblemOrigin;
   query?: string; // body_md substring
+  subjectiveKind?: "case_based" | "theory" | "mixed";
+  subjectiveKeyword?: string; // single keyword - array contains
 }
 
 export async function listRecentProblems(
@@ -333,13 +342,17 @@ export async function listRecentProblems(
   let q = client
     .from("problems")
     .select(
-      "problem_id, body_md, format, origin, year, problem_number, created_at, laws!inner(law_code)",
+      "problem_id, body_md, format, origin, year, problem_number, created_at, subjective_kind, subjective_topic, laws!inner(law_code)",
     )
     .in("format", formats)
     .is("deleted_at", null);
   if (options.subject) q = q.eq("laws.law_code", options.subject);
   if (options.year !== undefined) q = q.eq("year", options.year);
   if (options.origin) q = q.eq("origin", options.origin);
+  if (options.subjectiveKind) q = q.eq("subjective_kind", options.subjectiveKind);
+  if (options.subjectiveKeyword) {
+    q = q.contains("subjective_keywords", [options.subjectiveKeyword]);
+  }
   const trimmed = options.query?.trim();
   if (trimmed) {
     const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
@@ -362,6 +375,8 @@ export async function listRecentProblems(
     problemNumber: r.problem_number,
     createdAt: r.created_at,
     lawCode: r.laws.law_code,
+    subjectiveKind: r.subjective_kind,
+    subjectiveTopic: r.subjective_topic,
   }));
 }
 
@@ -1014,7 +1029,7 @@ export async function getProblemById(
   const { data: problem, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .eq("problem_id", problemId)
     .is("deleted_at", null)
@@ -1066,6 +1081,10 @@ export async function getProblemById(
     modelAnswerMd: problem.model_answer_md,
     gradingRubricMd: problem.grading_rubric_md,
     videoUrl: problem.video_url,
+    subjectiveKind: problem.subjective_kind,
+    subjectiveKeywords: problem.subjective_keywords,
+    subjectiveTopic: problem.subjective_topic,
+    rubricItems: parseRubricItems(problem.rubric_items),
     hasTable:
       hasTableMd(problem.explanation_md) ||
       choiceList.some((c) => hasTableMd(c.explanation_md)) ||
@@ -1115,7 +1134,7 @@ export async function getProblemDetailsByIds(
   const { data: problemRows, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .in("problem_id", problemIds)
     .is("deleted_at", null);
@@ -1205,6 +1224,10 @@ export async function getProblemDetailsByIds(
       modelAnswerMd: p.model_answer_md,
       gradingRubricMd: p.grading_rubric_md,
       videoUrl: p.video_url,
+      subjectiveKind: p.subjective_kind,
+      subjectiveKeywords: p.subjective_keywords,
+      subjectiveTopic: p.subjective_topic,
+      rubricItems: parseRubricItems(p.rubric_items),
       hasTable:
         hasTableMd(p.explanation_md) ||
         choices.some((c) => hasTableMd(c.explanationMd)) ||
@@ -1361,7 +1384,7 @@ export async function getSystematicNodeProblems(
   const { data: problemRows } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .in("primary_article_id", articleIds)
     .is("deleted_at", null);
@@ -1461,6 +1484,10 @@ export async function getSystematicNodeProblems(
         modelAnswerMd: p.model_answer_md,
         gradingRubricMd: p.grading_rubric_md,
         videoUrl: p.video_url,
+        subjectiveKind: p.subjective_kind,
+        subjectiveKeywords: p.subjective_keywords,
+        subjectiveTopic: p.subjective_topic,
+        rubricItems: parseRubricItems(p.rubric_items),
         hasTable:
           hasTableMd(p.explanation_md) ||
           (choicesByProblem.get(p.problem_id) ?? []).some((c) => hasTableMd(c.explanationMd)) ||
