@@ -143,19 +143,19 @@
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-000-001 | React Router 7 + Cloudflare Workers SSR 부트스트랩 | P0 | 🔲 |
-| feat-000-002 | Supabase Auth (이메일/비밀번호, 매직링크, 소셜) | P0 | 🔲 |
-| feat-000-003 | Drizzle + Supabase 연결, RLS 기본 정책 | P0 | 🔲 |
-| feat-000-004 | `profile` 테이블 + 역할(student/instructor/admin) | P0 | 🔲 |
-| feat-000-005 | 역할 기반 가드 (`requireAuth`, `requireRole`) | P0 | 🔲 |
-| feat-000-006 | shadcn/ui 도입 + 테마(라이트/다크) | P0 | 🔲 |
-| feat-000-007 | 상단 네비게이션 (메뉴 트리, 드롭다운, 모바일 햄버거) | P0 | 🔲 |
-| feat-000-008 | Resend 연동 + 가입/비밀번호 재설정 템플릿 | P0 | 🔲 |
-| feat-000-009 | 전역 검색 — Command Palette (⌘K, 조문/판례/문제 통합) | P1 | 🔲 |
-| feat-000-010 | Sentry 에러 모니터링 | P1 | 🔲 |
-| feat-000-011 | 콘텐츠 공통 스키마 (`articles`, `article_revisions`, `cases`, `problems`) | P0 | 🟡 |
+| feat-000-001 | React Router 7 + Cloudflare Workers SSR 부트스트랩 | P0 | ✅ |
+| feat-000-002 | Supabase Auth (이메일/비밀번호, 매직링크, 소셜) | P0 | ✅ |
+| feat-000-003 | Drizzle + Supabase 연결, RLS 기본 정책 | P0 | ✅ |
+| feat-000-004 | `profile` 테이블 + 역할(student/instructor/admin) | P0 | ✅ |
+| feat-000-005 | 역할 기반 가드 (`requireAuth`, `requireRole`) | P0 | ✅ |
+| feat-000-006 | shadcn/ui 도입 + 테마(라이트/다크) | P0 | ✅ |
+| feat-000-007 | 상단 네비게이션 (메뉴 트리, 드롭다운, 모바일 햄버거) — 7 top-level 그룹핑(`d33a08e`) | P0 | ✅ |
+| feat-000-008 | Resend 연동 + 가입/비밀번호 재설정 템플릿 | P0 | ✅ |
+| feat-000-009 | 전역 검색 — Command Palette (⌘K, 조문/판례/문제 통합) + 검색 ranking + 최근 검색어 히스토리 | P1 | ✅ |
+| feat-000-010 | Sentry 에러 모니터링 (`@sentry/react-router` + browser/node profiling) | P1 | ✅ |
+| feat-000-011 | 콘텐츠 공통 스키마 (`articles`, `article_revisions`, `cases`, `problems`) | P0 | ✅ |
 | feat-000-012 | Polymorphic 주석 시스템 (북마크/메모/하이라이트, target_type/id) | P0 | ✅ |
-| feat-000-013 | 5종 연관관계 스키마 + RLS | P0 | 🟡 |
+| feat-000-013 | 5종 연관관계 스키마 + RLS | P0 | ✅ |
 | feat-000-014 | 학습 진도 자동 기록 미들웨어 (loader hook) | P0 | ✅ |
 | feat-000-015 | `daily_study_stat` 일별 집계 배치 (읽기 시점 GROUP BY; Workers Cron 보류) | P1 | ✅ |
 
@@ -208,7 +208,7 @@
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-3-000 | 최신 정보 공통 레이아웃 (탭, 필터, 무한스크롤) | P0 | 🔲 |
+| feat-3-000 | 최신 정보 공통 레이아웃 — 각 탭(/latest/laws, /cases, /mcq, /essay, /papers, /book-updates)이 독립 페이지로 구현. 상단 네비게이션이 탭 라우팅 담당. 공통 레이아웃 컴포넌트는 미적용(YAGNI — 각 탭의 필터/색인 형태가 상이) | P0 | ⛔ |
 | **5.3.1 법 개정** | | | |
 | feat-3-101 | 법 개정 피드 (`law_revisions` published 시간순) | P0 | ✅ |
 | feat-3-102 | 영향 조문 수 + 내 즐겨찾기 포함 여부 표시 | P0 | ✅ |
@@ -223,7 +223,7 @@
 | feat-3-303 | 팩 응시 결과 통계 — `/latest/mcq/:packId/result/:sessionId`. KPI(본인 정답률/총문항/오답/소요시간). 유형별(단답/박스/사례) + 지문별(조문/판례/이론) 정답률 — 본인 vs 전체 평균. 문제별 본인 정답 + 전체 정답률(get_problem_stats RPC). mock 완료 시 자동 리디렉트. | P1 | ✅ |
 | **5.3.4 주관식 문제** | | | |
 | feat-3-401 | 신규 주관식 문제 피드 | P1 | ✅ |
-| feat-3-402 | 모범답안 보기 + 첨삭 요청 | P1 | 🔲 |
+| feat-3-402 | 모범답안 보기 + 첨삭 요청 — subjective problem-viewer 의 모범답안/채점기준 reveal + `/api/study/subjective-attempt` autosave + 첨삭 요청 워크플로우 + 강사 알림(이메일 + Kakao Alimtalk). | P1 | ✅ |
 | **5.3.5 논문** | | | |
 | feat-3-501 | 논문 데이터 모델 — `papers` (title/authors/source/publishedAt/abstract/url/pdfUrl/subject_laws[]/importance/tags) + `paper_article_links` + `paper_case_links`. RLS: public read, staff write. pg_trgm 인덱스 + 다과목 GIN. Soft delete. | P1 | ✅ |
 | feat-3-502 | 논문 등록/수정 — `/api/admin/paper` (create/update/delete, Zod 검증) + `/api/admin/paper-link` (add/remove article/case by number). staff inline 폼 on /latest/papers. | P1 | ✅ |
@@ -268,7 +268,7 @@
 | feat-4-A-109 | 조문 트리 검색 — 트리 카드 안 검색 인풋, displayLabel substring 매칭 + 매칭 노드의 조상까지 노출 | P1 | ✅ |
 | feat-4-A-110 | 큰 법 lazy-load — 본문은 활성 조문만 fetch. 서버 `getArticleChildren(lawId, parentId)` + `/api/laws/article-children` 라우트 + ArticleTree `lazyExpand={lawId}` UI 연결 완료(민법 적용). 펼침 시 fetch + 로딩 스피너 + 자식 dedup 누적. 전체 skeleton 이 미리 로드되어 있으면 fetch 가 no-op 라 안전. 트리 가상화(react-window 등) 는 1000+ 노드 노출 시 후속 | P1 | ✅ |
 | feat-4-A-111 | 관련조문 inline 링크 (`法 89` 등 약식 표기 파서 + 클릭 이동, 본문 안에서는 dotted underline 형태 / header_refs 안에서는 chip) | P0 | ✅ |
-| feat-4-A-112 | 해설 링크 → 코멘트 탭 활성 | P1 | 🔲 |
+| feat-4-A-112 | 해설 링크 → 코멘트 탭 활성 — problem-viewer 해설 안의 조문/판례 ref 클릭 시 article-viewer 우측 패널 코멘트 탭으로 진입(comment_target_id 자동 스크롤). | P1 | ✅ |
 | feat-4-A-113 | 제목만 보기 (항 단위 본문 접기) | P1 | ✅ |
 | feat-4-A-114 | 정오문제 위젯 (객관식 자동 연동 + 별도 업로드, 무작위 노출, 정답+해설) | P0 | ✅ |
 | feat-4-A-115 | 코멘트 / 평석 패널 (staff 작성, 학생 read-only, 마크다운) | P0 | ✅ |
@@ -303,7 +303,7 @@
 | feat-4-A-302 | 문제 KPI — subject hub 헤더 칩에 "문제 N · 풀이 N · 정답률 N%" + ProblemsTab 카드 3종(출제·내 풀이·정답률). problemStats(getUserProblemStats) 기반. | P0 | ✅ |
 | feat-4-A-303 | 퀴즈 설정 폼 (유형/연도/극성/문항수/모드) + 오답만 모드 | P0 | ✅ |
 | feat-4-A-304 | 문제 풀이 Runner — 객관식 (mc_short) | P0 | ✅ |
-| feat-4-A-305 | 문제 풀이 Runner — 주관식 (자기채점 + 첨삭 요청) | P1 | 🔲 |
+| feat-4-A-305 | 문제 풀이 Runner — 주관식 (자기채점 + 첨삭 요청). problem-viewer subjective 분기 + 답안 textarea autosave (`/api/study/subjective-attempt`) + 자기채점 점수 입력 + 모범답안/채점기준 reveal + 첨삭 요청 액션 + 시간제한 응시(타이머 + 자동 제출). | P1 | ✅ |
 | feat-4-A-306 | 학습 모드 (즉시 해설) vs 시험 모드 (타이머 + 일괄 제출) | P0 | ✅ |
 | feat-4-A-307 | 풀이 결과 화면 + 오답 노트 자동 수집 | P0 | ✅ |
 | feat-4-A-308 | 문제 북마크·메모·하이라이트 (polymorphic 패널) | P0 | ✅ |
@@ -313,12 +313,12 @@
 | feat-4-A-312 | 정답률 기반 난이도 동적 계산 (RPC + 5단계 버킷) | P0 | ✅ |
 | feat-4-A-313 | 지문별 색인 (problem_choice 자식 entity) + 정오문제 자동 연동 (article 패널 + /:subject/ox 페이지) | P0 | ✅ |
 | feat-4-A-314 | 해설 — 지문별 O/X + 분류(조문/판례/실무) + 링크 | P0 | ✅ |
-| feat-4-A-315 | 동영상 풀이 (강사 업로드, 문제 우측 패널) | P1 | 🔲 |
+| feat-4-A-315 | 동영상 풀이 (강사 업로드, 문제 우측 패널) — problem-viewer 우측 패널 동영상 임베드(YouTube/Vimeo URL) + admin-problem-edit 폼에 video_url 컬럼. | P1 | ✅ |
 | feat-4-A-316 | Q&A 패널 — 공용 QnaPanel. ArticleRightPanel 통해 problem 타깃도 동일 흐름. | P0 | ✅ |
 | feat-4-A-320 | 주관식 색인 화면 (기출+모의 통합 테이블) | P1 | 🔲 |
-| feat-4-A-321 | 주관식 분류 라벨 (기출/변형/예상, 키워드, 사례·논점) | P1 | 🔲 |
-| feat-4-A-322 | 채점기준·모범답안·채점결과 우측 패널 | P1 | 🔲 |
-| feat-4-A-323 | 답안 작성 시간제한·자동 저장 | P1 | 🔲 |
+| feat-4-A-321 | 주관식 분류 라벨 (기출/변형/예상, 키워드, 사례·논점) — `problems.subjective_kind`(case_study/issue_set/discussion) + `subjective_keyword` 컬럼 + /latest/essay 필터. 색인은 /latest/essay 가 담당(과목 hub 의 ProblemsTab 은 MC 만 — feat-4-A-320 별도). | P1 | ✅ |
+| feat-4-A-322 | 채점기준·모범답안·채점결과 우측 패널 — subjective problem-viewer 의 model answer + rubric reveal + self-score 입력 + 채점 체크리스트. admin-problem-edit 에서 모범답안/채점기준 작성. | P1 | ✅ |
+| feat-4-A-323 | 답안 작성 시간제한·자동 저장 — 시간제한 응시 모드(타이머 + 만료시 자동 제출) + 답안 textarea autosave(debounce → `/api/study/subjective-attempt`). | P1 | ✅ |
 | feat-4-A-330 | 2차 답안 업로드 — submission 단위 N페이지 슬롯 그리드 (1슬롯=1파일, JPG/PNG/WebP/PDF), 페이지별 OCR + 판독 자가확인, swap/끼워넣기 재배치. `gs_submission_pages` + `gs_question_pages` (M:N 매핑). → 5.5.1 GS 응시 흐름과 동일 모델 | P1 | ✅ |
 | feat-4-A-331 | 답안지 N분할 — `gs_rounds.expected_pages` (default 20) 기반 슬롯 그리드 + PDF 다페이지 자동 분할. 페이지 ↔ 문항 매핑은 수동 다중 선택 | P1 | ✅ |
 | feat-4-A-332 | 답안 교차 배정 (M명 채점자 부작위 매칭) → 5.5.2-203 (gs_peer_assignments) | P1 | ✅ |
@@ -339,7 +339,7 @@
 | feat-4-B-003 | KPI 카드 — 출제 / 내 풀이 / 내 정답률 (user_problem_attempts 조인) | P1 | ✅ |
 | feat-4-B-004 | 단원별 정답률 표 — science hub 단원 행에 풀이수/문제수·정답률 컬럼 추가. accuracy tone 4단계 색상(emerald/lime/amber/rose). | P1 | ✅ |
 | feat-4-B-005 | 퀴즈 설정 폼 — `/subjects/science/:subject/quiz/setup`. 단원 다중 선택 + 문항수 + 모드 | P1 | ✅ |
-| feat-4-B-006 | 자연과학 문제 풀이 Runner — `/subjects/science/:subject/problems/:id` 최소 viewer (선지 4지 + 정답·해설 + 세션 prev/next). LaTeX/도식 후속 | P1 | 🟡 |
+| feat-4-B-006 | 자연과학 문제 풀이 Runner — `/subjects/science/:subject/problems/:id` 최소 viewer (선지 4지 + 정답·해설 + 세션 prev/next). KaTeX 수식 렌더 적용(`$...$`/`$$...$$`/`\(...\)`). 도식 이미지는 problem.body markdown 으로. | P1 | ✅ |
 | feat-4-B-007 | 단원 시드 데이터 — 4과목 × 5~6 대단원 (총 21개). 샘플 문제 8개(과목별 2) 도 함께 시드. 변리사 협회 공식 분류 검증 후속 | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-4-subjects-A.md` ✅ (5.4 도메인 모델·UX·결정사항·feat ID 정리), `docs/db-schema.md` ✅, `docs/article-tree.md` ✅, `docs/relations.md` ✅. `docs/spec-detail-5-4-subjects-B.md` (자연과학 — 작성 예정).
@@ -423,7 +423,7 @@
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-6-001 | 커뮤니티 메뉴 라벨 + Placeholder 화면 | P0 | 🔲 |
+| feat-6-001 | 커뮤니티 메뉴 라벨 + Placeholder 화면 — `/community` ComingSoon 컴포넌트 사용. | P0 | ✅ |
 | feat-6-XXX | 게시판/Q&A/합격수기 | P1+ | 🔲 |
 
 ---
@@ -436,19 +436,19 @@
 |----|------|:-------:|:---:|
 | feat-7-001 | 운영자 메뉴 진입 가드 — `/admin` loader 가 staff role 확인. 비로그인은 /login 리다이렉트, 학생은 권한 안내 화면(추천 액션 — 대시보드/특허법/최신 정보/학습 목표 링크). | P0 | ✅ |
 | feat-7-002 | 콘텐츠 관리 허브 — 콘텐츠 등록·수정(빈칸/문제/판례 매핑/MCQ 팩/논문/도서 추록·정오표) + 통계 분석 + 온라인 GS 3개 섹션으로 정리. 각 카드에 진입 링크 + "최신 정보" 배지. | P0 | ✅ |
-| feat-7-003 | 강사 대시보드 (반 진도, 콘텐츠 현황) | P1 | 🔲 |
+| feat-7-003 | 강사 대시보드 (반 진도, 콘텐츠 현황) — `/admin` 운영자 허브가 staff 본인의 콘텐츠 통계(getStaffContentStats — 작성한 문제/판례/논문/도서 자료 수) + 반 진도(feat-7-010 `/admin/cohorts/:id/progress`) 진입점을 제공. | P1 | ✅ |
 | feat-7-004 | 법 개정 워크스페이스 — `/admin/laws/:lawCode/revisions` 상태별(draft/review/published) 일람 + 새 초안 생성. `/admin/laws/:lawCode/revisions/:revisionId` 워크스페이스: 조문 추가(현재 본문 자동 복사) · 본문 JSON 인라인 편집 · 변경 종류(신설/개정/폐지) · before/after 비교 · 발행 dialog. RPC `publish_law_revision` 가 transactional 발행(article_revisions effective_date set + articles.current_revision_id swap). 발행 후 article_revisions 불변(트리거). | P0 | ✅ |
 | feat-7-005 | 판례 등록/수정 폼 — `/admin/cases/edit` (신규) / `/admin/cases/edit/:caseId` (수정). 사건번호/사건명/법원/선고일/전합/중요도/사건유형/1·2차 기출연도/요지·이유·비고 Markdown/판결전문 PDF URL. POST `/api/admin/case` (create/update/delete soft). 관련 조문 매핑은 `/admin/cases?law=` 또는 `/admin/relations/*` 별도 진입. | P0 | ✅ |
 | feat-7-006 | 문제 출제 폼 — `/admin/problems/new` 최소 메타(과목·차수·출처·유형·극성·scope·연도·회차·번호·지문수) + 본문 입력 → INSERT (mc 계열은 빈 choices 자동 생성) → `/admin/problems/:problemId` 상세 편집으로 redirect. 상세 편집에서 지문·해설·연관 조문/판례 매핑 진행. | P0 | ✅ |
-| feat-7-007 | 논문 등록/수정 폼 | P1 | 🔲 |
-| feat-7-008 | 연관관계 일괄 편집 | P1 | 🔲 |
+| feat-7-007 | 논문 등록/수정 폼 — feat-3-502 가 흡수 (/latest/papers staff inline 폼 + `/api/admin/paper`). | P1 | ✅ |
+| feat-7-008 | 연관관계 일괄 편집 — TSV/CSV bulk import (`/admin/relations/bulk`). 5종 link 테이블(article-article/article-case/case-case/problem-article/problem-case) 전부 지원. dry-run preview + commit. | P1 | ✅ |
 | feat-7-009 | 반/기수 관리 — `cohorts` (name/description/owner_id/starts_on/ends_on/is_archived) + `cohort_members` (N:M). RLS: admin 전부, instructor 본인 소유, student 자기 row read. `/admin/cohorts` 카드 일람 + 신규/수정 폼, `/admin/cohorts/:id` 상세에 멤버 목록 + 학생 검색 추가/제거. | P1 | ✅ |
 | feat-7-010 | 학생 진도 모니터링 — `/admin/cohorts/:id/progress` 반 학생 요약 테이블(문제 풀이·정답률·조문 열람·빈칸·최근 활동) + KPI 4종. `/admin/students/:profileId` 학생 상세(과목별·자연과학별 진도, 최근 12건 활동, 빈칸 통계). admin client 로 RLS 우회, staff 권한 검사는 loader 에서. | P1 | ✅ |
 | feat-7-011 | 공지사항 발송 — `announcements` + `announcement_audiences` (대상 종류: all/cohort/user) + `announcement_reads` (PK announcement_id, profile_id). RLS: staff(admin 전부 / instructor 본인 작성분) write, 일반 사용자는 자기에게 발송된 published 만 read (audience 측 RLS 가 join 필터링). `/admin/announcements` 인라인 작성 폼(전체/반 다중선택/사용자 검색·태그) + 발행/언발행/삭제 + 고정. 학생은 `/announcements` 수신함에서 카드 펼침 시 자동 읽음 처리. | P1 | ✅ |
 | feat-7-012 | 사용자 관리 — `/admin/users` admin 전용. listAdminUsers (admin client 로 auth.users + profiles 조인) + 검색·역할 필터 + 페이지네이션. 인라인 select 로 역할 변경(student/instructor/admin), 본인 강등 차단. | P1 | ✅ |
 | feat-7-013 | 강사 권한 관리 — feat-7-012 에 통합 (admin 이 user role 을 instructor 로 승격/강등). | P1 | ✅ |
 | feat-7-014 | 수강권/결제 관리 (admin 전용) | P2 | 🔲 |
-| feat-7-015 | 감사 로그 | P2 | 🔲 |
+| feat-7-015 | 감사 로그 — `audit_logs` 테이블 + 운영자 액션(콘텐츠 CRUD, 사용자 역할 변경, 공지 발송, 법 개정 발행) 추적. admin 전용 조회 화면. | P2 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 
@@ -456,37 +456,33 @@
 
 ## 6. 마일스톤
 
-### M1 — Foundation (2~3주)
-**목표**: 앱이 열리고, 로그인되고, 메뉴 트리가 동작하고, 빈 화면이라도 모든 메뉴에 진입 가능.
+### M1 — Foundation ✅
+- 5.0 인프라 P0 전부 (`feat-000-001~014`) ✅
+- 5.1 대시보드 셸 ✅
+- 5.4.A.1 조문 데이터 모델 ✅
+- 운영자 placeholder ✅
+- 메뉴별 placeholder 화면 ✅
 
-- 5.0 인프라 P0 전부 (`feat-000-001~014`)
-- 5.1 대시보드 셸 (`feat-1-001`)
-- 5.4.A.1 조문 데이터 모델 (`feat-4-A-101, 102`)
-- 운영자 placeholder (`feat-7-001`)
-- 메뉴별 placeholder 화면
+### M2 — 핵심 학습 (특허법 우선) ✅
+- 5.4.A 전체 P0 (조문 뷰어 · 판례 상세 · 문제 풀이) ✅
+- 5.7 운영자 콘텐츠 등록 P0 (`feat-7-004~006`) ✅
+- 5.3 최신 정보 P0 (법 개정/최근 판례) ✅
+- 5.1 대시보드 P0 보강 ✅
 
-### M2 — 핵심 학습 (특허법 우선) (4~6주)
-**목표**: 특허법 한 과목 한정으로 조문/판례/문제 학습 + 강사 콘텐츠 등록 풀스택.
+### M3 — 5과목 확장 + 대시보드 완성 🟡 (진행 중)
+- 5.4.A 전체 5과목 시드 데이터 🟡 — **다음 작업 포커스**. 특허법은 풀빌드, 상표/디자인/민법/민사소송법 콘텐츠 양 부족
+- 5.1 대시보드 P0 전부 + 자연과학 카드(P1) ✅
+- 5.2 학습목표 메뉴 P1 ✅
+- 5.3 최신 정보 P1 (객관식/주관식/논문) ✅
 
-- 5.4.A 전체 P0 (조문 뷰어 · 판례 상세 · 문제 풀이)
-- 5.7 운영자 콘텐츠 등록 P0 (`feat-7-004~006`)
-- 5.3 최신 정보 P0 (법 개정/최근 판례)
-- 5.1 대시보드 P0 보강
-
-### M3 — 5과목 확장 + 대시보드 완성 (3~4주)
-- 5.4.A 전체 5과목 시드 데이터
-- 5.1 대시보드 P0 전부 + 자연과학 카드(P1)
-- 5.2 학습목표 메뉴 P1
-- 5.3 최신 정보 P1 (객관식/주관식/논문)
-
-### M4 — 자연과학 + 운영 고도화 (3~4주)
-- 5.4.B 자연과학 P1 전부
-- 5.7 운영자 P1 (반 관리, 학생 진도, 공지)
-- P1 항목 순차
+### M4 — 자연과학 + 운영 고도화 ✅ (P1 항목 완료)
+- 5.4.B 자연과학 P1 전부 ✅ (Runner KaTeX 포함)
+- 5.7 운영자 P1 (반 관리·학생 진도·공지·연관관계 bulk·감사 로그·인박스 알림) ✅
 
 ### M5+ — 확장
-- 5.5 온라인 GS, 5.6 커뮤니티 본격
-- P2 항목 (그래프 시각화, 유사 문제 추천 등)
+- 5.5 온라인 GS 본격 ✅ (학생 응시·peer/AI/강사 채점·통계·우수답안·포인트 P1 항목 다 완료. 추가 폴리시는 운영 피드백 기반)
+- 5.6 커뮤니티 본격 🔲 (placeholder 만)
+- P2 잔여 항목: `feat-3-504` 논문 PDF Storage · `feat-7-014` 수강권/결제 · `feat-4-A-320` 주관식 색인(과목 hub)
 
 ---
 
@@ -508,14 +504,14 @@
 
 | 항목 | 옵션 | 결정 |
 |------|------|------|
-| 법령 원문 저장 (조문 본문) | (a) 마크다운 (b) 구조화 JSON (c) HTML | 🔲 |
-| 조문 트리 path 저장 | (a) ltree (b) materialized path 문자열 | 🔲 |
-| 판례 전문 검색 | (a) Postgres tsvector + pg_trgm (b) pgvector | 🔲 |
-| 주관식 채점 | (a) 강사 수동 (b) 자기 채점 + 강사 리뷰 (c) 키워드 매칭 보조 | 🔲 |
-| Cloudflare Workers ↔ Postgres | (a) postgres-js TCP (b) Supabase Data API | 🔲 |
-| 결제/수강권 v1 필수? | 외부(계좌이체)로 충분할 수 있음 | 🔲 |
-| 자연과학 문제의 도식/수식 | (a) MathJax/KaTeX (b) 이미지 (c) 둘 다 | 🔲 |
-| 논문 PDF 저장 위치 | (a) Supabase Storage (b) 외부 링크만 | 🔲 |
+| 법령 원문 저장 (조문 본문) | (a) 마크다운 (b) 구조화 JSON (c) HTML | ✅ (b) 구조화 JSON — `article-body.ts` Zod schema (text/underline/subtitle/annotation/ref_article inline + block list) |
+| 조문 트리 path 저장 | (a) ltree (b) materialized path 문자열 | ✅ (a) ltree — `docs/article-tree.md` |
+| 판례 전문 검색 | (a) Postgres tsvector + pg_trgm (b) pgvector | ✅ (a) pg_trgm GIN + ilike 다중 컬럼 OR (feat-4-A-208). tsvector(simple) 는 generated 컬럼으로 유지(향후 ranking 도입 시) |
+| 주관식 채점 | (a) 강사 수동 (b) 자기 채점 + 강사 리뷰 (c) 키워드 매칭 보조 | ✅ (b) 자기채점 + 강사 첨삭 요청 (feat-4-A-305 + feat-3-402). GS 는 강사/peer/AI 채점 트리오(feat-5-201~203) |
+| Cloudflare Workers ↔ Postgres | (a) postgres-js TCP (b) Supabase Data API | ✅ (a) postgres-js — drizzle-client.server.ts |
+| 결제/수강권 v1 필수? | 외부(계좌이체)로 충분할 수 있음 | ✅ v1 외부 처리 (수강권 관리 화면은 feat-7-014 P2 로 후속) |
+| 자연과학 문제의 도식/수식 | (a) MathJax/KaTeX (b) 이미지 (c) 둘 다 | ✅ (c) 둘 다 — KaTeX (`$...$` / `$$...$$` / `\(...\)`) + markdown 이미지 (feat-4-B-006) |
+| 논문 PDF 저장 위치 | (a) Supabase Storage (b) 외부 링크만 | 🟡 v1: 외부 링크 위주. Supabase Storage 첨부는 feat-3-504 P2 |
 
 ---
 
