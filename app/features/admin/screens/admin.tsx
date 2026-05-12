@@ -413,6 +413,13 @@ function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
                       <span className="text-muted-foreground ml-2 text-[10.5px]">
                         {meta?.categoryLabel}
                       </span>
+                      <Link
+                        to={`/admin/laws/${r.lawCode}/completeness`}
+                        className="text-primary ml-2 text-[10.5px] hover:underline"
+                        viewTransition
+                      >
+                        완성도 진단 →
+                      </Link>
                     </td>
                     {metrics.map((m) => {
                       const value = r[m.key];

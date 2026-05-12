@@ -2984,6 +2984,24 @@ export type Database = {
       }
     }
     Functions: {
+      admin_law_completeness: {
+        Args: { p_law_code: string }
+        Returns: {
+          articles_no_blanks: number
+          articles_no_comments: number
+          articles_no_problem: number
+          articles_no_related_article: number
+          articles_no_related_case: number
+          articles_no_revision: number
+          cases_no_article_link: number
+          cases_no_summary: number
+          mcq_no_explanation: number
+          total_articles: number
+          total_cases: number
+          total_mcq: number
+          total_subjective: number
+        }[]
+      }
       admin_mcq_problem_stats: {
         Args: { p_law_code: string; p_limit?: number; p_min_attempts?: number }
         Returns: {

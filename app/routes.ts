@@ -352,6 +352,10 @@ export default [
         "/admin/laws/:lawCode/revisions/:revisionId",
         "features/admin/screens/admin-law-revision-workspace.tsx",
       ),
+      route(
+        "/admin/laws/:lawCode/completeness",
+        "features/admin/screens/admin-law-completeness.tsx",
+      ),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),
