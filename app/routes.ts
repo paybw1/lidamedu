@@ -320,6 +320,10 @@ export default [
         "features/admin/screens/admin-relation-gaps.tsx",
       ),
       route(
+        "/admin/relations/bulk",
+        "features/admin/screens/admin-relations-bulk.tsx",
+      ),
+      route(
         "/admin/relations/article/:lawCode/:articleNumber",
         "features/admin/screens/admin-article-relations.tsx",
       ),

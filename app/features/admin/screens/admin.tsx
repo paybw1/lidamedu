@@ -108,8 +108,14 @@ const CONTENT_CARDS: AdminCardData[] = [
   },
   {
     to: "/admin/relations/gaps?law=patent",
-    title: "연관관계 일괄 편집",
+    title: "연관관계 — 미배정 자료",
     subtitle: "조문 단위 — 그 조문의 관련 판례·문제 인라인 추가/제거",
+    icon: NetworkIcon,
+  },
+  {
+    to: "/admin/relations/bulk",
+    title: "연관관계 일괄 등록",
+    subtitle: "TSV/CSV paste → 검증 → 일괄 매핑 (조문↔판례 / 문제↔판례)",
     icon: NetworkIcon,
   },
   {
