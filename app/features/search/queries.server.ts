@@ -56,29 +56,59 @@ export async function runGlobalSearch(
   if (q.length < MIN_QUERY_LEN) return empty;
   const pattern = `%${escapeForIlike(q)}%`;
 
-  // articles — display_label 매칭. (body 본문은 article_revisions 에 — v1 은 라벨만)
+  // articles — display_label 매칭 + 본문(article_revisions.body_text) 매칭 합집합.
   async function fetchArticles(): Promise<SearchHit[]> {
-    const { data } = await client
-      .from("articles")
-      .select("article_id, article_number, display_label, laws!inner(law_code)")
-      .is("deleted_at", null)
-      .ilike("display_label", pattern)
-      .limit(GROUP_LIMIT);
-    return (data ?? []).flatMap((r) => {
-      if (!r.article_number) return [];
-      const lawCode = r.laws.law_code;
-      return [
-        {
-          group: "article" as const,
-          id: r.article_id,
-          primaryLabel: r.display_label,
-          secondaryLabel: `제${r.article_number}조`,
-          bodySnippet: null,
-          href: `/subjects/${lawCode}/articles/${articleSlug(r.article_number)}`,
-          lawCode,
-        },
-      ];
-    });
+    const [byLabel, byBody] = await Promise.all([
+      client
+        .from("articles")
+        .select(
+          "article_id, article_number, display_label, current_revision_id, laws!inner(law_code)",
+        )
+        .is("deleted_at", null)
+        .ilike("display_label", pattern)
+        .limit(GROUP_LIMIT),
+      // 현재 시행 중 조문(current_revision_id) 의 body_text 매칭 → 조문으로 역조회.
+      client
+        .from("article_revisions")
+        .select(
+          "revision_id, articles!inner(article_id, article_number, display_label, current_revision_id, deleted_at, laws!inner(law_code))",
+        )
+        .ilike("body_text", pattern)
+        .limit(GROUP_LIMIT * 2), // 매칭 revision 중 현재 시행 중 인 것만 keep.
+    ]);
+
+    const seen = new Set<string>();
+    const out: SearchHit[] = [];
+    function push(
+      articleId: string,
+      articleNumber: string | null,
+      displayLabel: string,
+      lawCode: string,
+    ) {
+      if (!articleNumber || seen.has(articleId)) return;
+      seen.add(articleId);
+      out.push({
+        group: "article",
+        id: articleId,
+        primaryLabel: displayLabel,
+        secondaryLabel: `제${articleNumber}조`,
+        bodySnippet: null,
+        href: `/subjects/${lawCode}/articles/${articleSlug(articleNumber)}`,
+        lawCode,
+      });
+    }
+
+    for (const r of byLabel.data ?? []) {
+      push(r.article_id, r.article_number, r.display_label, r.laws.law_code);
+    }
+    for (const r of byBody.data ?? []) {
+      const a = r.articles;
+      // 현재 시행 중 조문만 — current_revision_id 가 이 revision 인 article.
+      if (!a || a.deleted_at || a.current_revision_id !== r.revision_id) continue;
+      push(a.article_id, a.article_number, a.display_label, a.laws.law_code);
+      if (out.length >= GROUP_LIMIT) break;
+    }
+    return out.slice(0, GROUP_LIMIT);
   }
 
   // cases — case_number / case_title / summary_title / summary_body_md.

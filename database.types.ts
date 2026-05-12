@@ -337,6 +337,7 @@ export type Database = {
         Row: {
           article_id: string
           body_json: Json
+          body_text: string | null
           change_kind: Database["public"]["Enums"]["law_change_kind"]
           created_at: string
           created_by: string | null
@@ -348,6 +349,7 @@ export type Database = {
         Insert: {
           article_id: string
           body_json: Json
+          body_text?: string | null
           change_kind: Database["public"]["Enums"]["law_change_kind"]
           created_at?: string
           created_by?: string | null
@@ -359,6 +361,7 @@ export type Database = {
         Update: {
           article_id?: string
           body_json?: Json
+          body_text?: string | null
           change_kind?: Database["public"]["Enums"]["law_change_kind"]
           created_at?: string
           created_by?: string | null

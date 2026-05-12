@@ -1007,6 +1007,10 @@ function SubjectivePanel({
   const [scoreNote, setScoreNote] = useState<string>(
     initialAttempt?.selfScoreNote ?? "",
   );
+  // 시간제한 응시 모드 — 클라이언트 상태. 새로고침 시 리셋 (자기학습용).
+  const [timedStartedAt, setTimedStartedAt] = useState<number | null>(null);
+  const [timedLimitMin, setTimedLimitMin] = useState<number>(30);
+  const [timedExpired, setTimedExpired] = useState(false);
   const autosaveFetcher = useFetcher<{
     ok?: true;
     attempt?: SubjectiveAttempt;
@@ -1031,6 +1035,8 @@ function SubjectivePanel({
     setShowScoreForm(false);
     setRevealedModel(false);
     setRevealedRubric(false);
+    setTimedStartedAt(null);
+    setTimedExpired(false);
     lastSentRef.current = initialAttempt?.answerMd ?? "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [problemId]);
@@ -1105,8 +1111,57 @@ function SubjectivePanel({
     });
   };
 
+  // 시간제한 응시 — 1초마다 강제 리렌더해 카운트다운 표시. 만료 시 1회만 onTimerExpire.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (timedStartedAt === null) return;
+    const id = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [timedStartedAt]);
+  const timedRemainSec = useMemo(() => {
+    if (timedStartedAt === null) return null;
+    const elapsed = Math.floor((Date.now() - timedStartedAt) / 1000);
+    return Math.max(0, timedLimitMin * 60 - elapsed);
+  }, [timedStartedAt, timedLimitMin]);
+  useEffect(() => {
+    if (timedStartedAt === null || timedExpired) return;
+    if (timedRemainSec === 0) {
+      setTimedExpired(true);
+      // 만료 시 자동 제출 — 현재 draft + score 미입력(null) 으로 submitted_at 만 찍는다.
+      const fd = new FormData();
+      fd.set("intent", "submit");
+      fd.set("problemId", problemId);
+      fd.set("answerMd", draft);
+      submitFetcher.submit(fd, {
+        method: "post",
+        action: "/api/study/subjective-attempt",
+      });
+    }
+    // submitFetcher 는 매 렌더 새 참조라 의존성 제외.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timedRemainSec, timedStartedAt, timedExpired, draft, problemId]);
+  const timedActive = timedStartedAt !== null && !timedExpired;
+
   return (
     <div className="space-y-4">
+      <SubjectiveTimedBar
+        timedStartedAt={timedStartedAt}
+        timedLimitMin={timedLimitMin}
+        timedRemainSec={timedRemainSec}
+        timedExpired={timedExpired}
+        onStart={(min) => {
+          setTimedLimitMin(min);
+          setTimedStartedAt(Date.now());
+          setTimedExpired(false);
+        }}
+        onCancel={() => {
+          if (confirm("시험 모드를 취소하시겠습니까? 작성한 답안은 그대로 유지됩니다.")) {
+            setTimedStartedAt(null);
+            setTimedExpired(false);
+          }
+        }}
+      />
+
       <div>
         <div className="mb-1 flex items-center justify-between text-xs">
           <p className="text-muted-foreground font-semibold tracking-wide uppercase">
@@ -1136,7 +1191,8 @@ function SubjectivePanel({
           variant={revealedModel ? "outline" : "default"}
           size="sm"
           onClick={() => setRevealedModel((v) => !v)}
-          disabled={!hasModel}
+          disabled={!hasModel || timedActive}
+          title={timedActive ? "시험 모드 중에는 모범답안 잠금" : undefined}
           data-testid="subjective-reveal-model"
         >
           {revealedModel ? "모범답안 숨기기" : "모범답안 보기"}
@@ -1146,7 +1202,8 @@ function SubjectivePanel({
           variant={revealedRubric ? "outline" : "secondary"}
           size="sm"
           onClick={() => setRevealedRubric((v) => !v)}
-          disabled={!hasRubric}
+          disabled={!hasRubric || timedActive}
+          title={timedActive ? "시험 모드 중에는 채점기준 잠금" : undefined}
           data-testid="subjective-reveal-rubric"
         >
           {revealedRubric ? "채점기준 숨기기" : "채점기준 보기"}
@@ -1284,6 +1341,104 @@ function SubjectivePanel({
           </CardContent>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+function SubjectiveTimedBar({
+  timedStartedAt,
+  timedLimitMin,
+  timedRemainSec,
+  timedExpired,
+  onStart,
+  onCancel,
+}: {
+  timedStartedAt: number | null;
+  timedLimitMin: number;
+  timedRemainSec: number | null;
+  timedExpired: boolean;
+  onStart: (min: number) => void;
+  onCancel: () => void;
+}) {
+  const [minInput, setMinInput] = useState<string>("30");
+  if (timedExpired) {
+    return (
+      <div className="rounded-md border border-rose-500/40 bg-rose-50 px-3 py-2 text-xs dark:bg-rose-950/30">
+        <p className="text-rose-700 dark:text-rose-300">
+          ⏱ 시간 만료 — 답안이 자동 제출되었습니다 ({timedLimitMin}분 응시).
+        </p>
+      </div>
+    );
+  }
+  if (timedStartedAt === null) {
+    return (
+      <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs">
+        <span className="text-muted-foreground inline-flex items-center gap-1">
+          <TimerIcon className="size-3.5" /> 시험 모드
+        </span>
+        <label className="text-muted-foreground inline-flex items-center gap-1">
+          제한 시간
+          <input
+            type="number"
+            min={1}
+            max={180}
+            value={minInput}
+            onChange={(e) => setMinInput(e.target.value)}
+            className="border-input bg-background h-6 w-14 rounded-md border px-1 text-xs tabular-nums"
+          />
+          분
+        </label>
+        <Button
+          size="sm"
+          variant="default"
+          className="h-7"
+          onClick={() => {
+            const m = Number(minInput);
+            if (Number.isNaN(m) || m < 1 || m > 180) {
+              alert("제한 시간은 1~180분 사이로 입력하세요.");
+              return;
+            }
+            onStart(m);
+          }}
+          data-testid="subjective-timed-start"
+        >
+          시험 모드 시작
+        </Button>
+        <span className="text-muted-foreground ml-auto text-[11px]">
+          시작하면 모범답안·채점기준이 잠깁니다.
+        </span>
+      </div>
+    );
+  }
+  const m = Math.floor((timedRemainSec ?? 0) / 60);
+  const s = (timedRemainSec ?? 0) % 60;
+  const lowTime = (timedRemainSec ?? 0) <= 60;
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs",
+        lowTime
+          ? "border-rose-500/60 bg-rose-50 dark:bg-rose-950/30"
+          : "border-amber-500/40 bg-amber-50 dark:bg-amber-950/30",
+      )}
+      data-testid="subjective-timed-bar"
+    >
+      <span className="inline-flex items-center gap-1 font-semibold">
+        <TimerIcon className="size-3.5" /> 시험 모드 응시 중
+      </span>
+      <span className="font-mono text-base tabular-nums">
+        {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
+      </span>
+      <span className="text-muted-foreground">/ {timedLimitMin}분</span>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="ml-auto h-7"
+        onClick={onCancel}
+        data-testid="subjective-timed-cancel"
+      >
+        취소
+      </Button>
     </div>
   );
 }

@@ -38,7 +38,7 @@ type SimpleLink = { label: string; to: string };
 type Section = { label: string; items: SimpleLink[] };
 
 // 상단 네비게이션 7개 top-level (좌→우):
-// 대시보드(flat) · 학습▾ · 최신 정보▾ · 과목▾ · 학습 보조▾ · 커뮤니티▾ · 운영자(flat)
+// 대시보드(flat) · 학습관리▾ · 최신정보▾ · 학습과목▾ · 학습보조▾ · 커뮤니티▾ · 운영자(flat)
 
 const leadingFlats: SimpleLink[] = [
   { label: "대시보드", to: "/dashboard" },
@@ -312,12 +312,12 @@ export function NavigationBar({
                 <FlatLink key={m.to} {...m} />
               ))}
 
-              <SimpleDropdown label="학습" items={studyItems} />
-              <SimpleDropdown label="최신 정보" items={latestItems} />
+              <SimpleDropdown label="학습관리" items={studyItems} />
+              <SimpleDropdown label="최신정보" items={latestItems} />
 
-              {/* 과목 dropdown (2칼럼 sections) */}
+              {/* 학습과목 dropdown (2칼럼 sections) */}
               <NavigationMenuItem>
-                <NavigationMenuTrigger>과목</NavigationMenuTrigger>
+                <NavigationMenuTrigger>학습과목</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="grid w-[520px] grid-cols-2 gap-x-4 gap-y-3 p-3">
                     {subjectSections.map((section) => (
@@ -345,7 +345,7 @@ export function NavigationBar({
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              <SimpleDropdown label="학습 보조" items={studyAidItems} />
+              <SimpleDropdown label="학습보조" items={studyAidItems} />
               <SimpleDropdown label="커뮤니티" items={communityItems} />
 
               {trailingFlats.map((m) => (
@@ -387,11 +387,11 @@ export function NavigationBar({
                 </SheetClose>
               ))}
 
-              <MobileGroup label="학습" items={studyItems} />
-              <MobileGroup label="최신 정보" items={latestItems} />
+              <MobileGroup label="학습관리" items={studyItems} />
+              <MobileGroup label="최신정보" items={latestItems} />
 
               <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
-                과목
+                학습과목
               </p>
               {subjectSections.flatMap((section) =>
                 section.items.map((item) => (
@@ -408,7 +408,7 @@ export function NavigationBar({
                 )),
               )}
 
-              <MobileGroup label="학습 보조" items={studyAidItems} />
+              <MobileGroup label="학습보조" items={studyAidItems} />
               <MobileGroup label="커뮤니티" items={communityItems} />
 
               {trailingFlats.map((m) => (
