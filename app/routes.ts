@@ -100,6 +100,10 @@ export default [
         "/subjective-attempt",
         "features/study/api/subjective-attempt.tsx",
       ),
+      route(
+        "/subjective-review",
+        "features/study/api/subjective-review.tsx",
+      ),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
       route(
         "/session-from-bookmarks",
@@ -275,6 +279,10 @@ export default [
         "features/announcements/screens/announcements-inbox.tsx",
       ),
       route("/admin", "features/admin/screens/admin.tsx"),
+      route(
+        "/admin/subjective-reviews",
+        "features/admin/screens/admin-subjective-reviews.tsx",
+      ),
       route(
         "/admin/announcements",
         "features/admin/screens/admin-announcements.tsx",

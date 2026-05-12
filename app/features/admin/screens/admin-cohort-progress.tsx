@@ -158,8 +158,8 @@ export default function AdminCohortProgress({
         </div>
       ) : (
         <Card>
-          <CardContent className="p-0">
-            <Table>
+          <CardContent className="overflow-x-auto p-0">
+            <Table className="min-w-[720px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12 text-center">No</TableHead>

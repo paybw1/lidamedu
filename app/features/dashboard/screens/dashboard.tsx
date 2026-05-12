@@ -1046,12 +1046,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             subtitle="오답노트 · 즐겨찾기 · 내 메모 — 한 곳에서 다시 학습"
           >
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-                gap: 10,
-                marginTop: 4,
-              }}
+              className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
+              style={{ marginTop: 4 }}
               data-testid="study-aid-tiles"
             >
               <StudyAidTile

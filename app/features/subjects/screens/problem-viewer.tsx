@@ -1235,6 +1235,13 @@ function SubjectivePanel({
         </div>
       ) : null}
 
+      <ReviewSection
+        problemId={problemId}
+        attempt={lastSaved}
+        onUpdated={(att) => setLastSaved(att)}
+      />
+
+
       {showScoreForm ? (
         <Card className="border-primary/40">
           <CardHeader>
@@ -1342,6 +1349,122 @@ function SubjectivePanel({
         </Card>
       ) : null}
     </div>
+  );
+}
+
+// 첨삭 요청 / 결과 (feat-3-402). 자기채점 완료(submitted_at) 후에만 요청 가능.
+function ReviewSection({
+  problemId,
+  attempt,
+  onUpdated,
+}: {
+  problemId: string;
+  attempt: SubjectiveAttempt | null;
+  onUpdated: (a: SubjectiveAttempt) => void;
+}) {
+  const fetcher = useFetcher<{
+    ok?: true;
+    attempt?: SubjectiveAttempt;
+    error?: string;
+  }>();
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok &&
+      fetcher.data.attempt
+    ) {
+      onUpdated(fetcher.data.attempt);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+  if (!attempt) return null;
+  const submitted = attempt.submittedAt !== null;
+  const requested = attempt.reviewRequestedAt !== null;
+  const completed = attempt.reviewCompletedAt !== null;
+  const inFlight = fetcher.state !== "idle";
+  const error = fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+  const onRequest = () => {
+    if (!submitted) return;
+    if (!confirm("이 답안에 대해 강사 첨삭을 요청하시겠습니까?")) return;
+    const fd = new FormData();
+    fd.set("intent", "request");
+    fd.set("problemId", problemId);
+    fetcher.submit(fd, { method: "post", action: "/api/study/subjective-review" });
+  };
+  return (
+    <Card className="border-dashed">
+      <CardHeader className="pb-2">
+        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          강사 첨삭
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2 text-xs">
+        {!submitted ? (
+          <p className="text-muted-foreground">
+            자기채점 완료 후에 첨삭 요청이 가능합니다.
+          </p>
+        ) : completed ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">
+                첨삭 완료
+              </Badge>
+              <span className="text-muted-foreground">
+                {attempt.reviewCompletedAt?.slice(0, 10)}
+              </span>
+              {attempt.reviewerScore !== null ? (
+                <span className="ml-auto font-semibold tabular-nums">
+                  강사 점수 {attempt.reviewerScore}점
+                </span>
+              ) : null}
+            </div>
+            {attempt.reviewerCommentMd ? (
+              <p className="bg-muted/40 rounded p-2 whitespace-pre-line leading-relaxed">
+                {attempt.reviewerCommentMd}
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                코멘트 없이 점수만 등록되었습니다.
+              </p>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7"
+              onClick={onRequest}
+              disabled={inFlight}
+            >
+              재요청
+            </Button>
+          </div>
+        ) : requested ? (
+          <div className="flex items-center gap-1.5">
+            <Badge variant="secondary">검토 대기</Badge>
+            <span className="text-muted-foreground">
+              요청 시각 {attempt.reviewRequestedAt?.slice(0, 10)}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-muted-foreground">
+              강사가 답안을 보고 점수·코멘트를 남깁니다.
+            </p>
+            <Button
+              size="sm"
+              className="ml-auto h-7"
+              onClick={onRequest}
+              disabled={inFlight}
+              data-testid="subjective-request-review"
+            >
+              강사 첨삭 요청
+            </Button>
+          </div>
+        )}
+        {error ? <p className="text-rose-600">{error}</p> : null}
+      </CardContent>
+    </Card>
   );
 }
 

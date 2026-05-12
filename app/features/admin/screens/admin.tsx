@@ -10,6 +10,7 @@ import {
   BookOpenIcon,
   ChartLineIcon,
   CheckSquareIcon,
+  ClipboardCheckIcon,
   ClipboardListIcon,
   CoinsIcon,
   FileEditIcon,
@@ -172,6 +173,12 @@ const USER_CARDS: AdminCardData[] = [
     title: "공지사항 발송",
     subtitle: "전체 / 반 / 개별 사용자 대상 공지 작성·발행",
     icon: MegaphoneIcon,
+  },
+  {
+    to: "/admin/subjective-reviews",
+    title: "주관식 첨삭 큐",
+    subtitle: "학생 첨삭 요청 대기 · 점수 / 코멘트 입력",
+    icon: ClipboardCheckIcon,
   },
 ];
 

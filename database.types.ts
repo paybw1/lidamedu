@@ -2758,6 +2758,11 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           problem_id: string
+          review_completed_at: string | null
+          review_requested_at: string | null
+          reviewer_comment_md: string | null
+          reviewer_id: string | null
+          reviewer_score: number | null
           self_score: number | null
           self_score_note: string | null
           submitted_at: string | null
@@ -2770,6 +2775,11 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           problem_id: string
+          review_completed_at?: string | null
+          review_requested_at?: string | null
+          reviewer_comment_md?: string | null
+          reviewer_id?: string | null
+          reviewer_score?: number | null
           self_score?: number | null
           self_score_note?: string | null
           submitted_at?: string | null
@@ -2782,6 +2792,11 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           problem_id?: string
+          review_completed_at?: string | null
+          review_requested_at?: string | null
+          reviewer_comment_md?: string | null
+          reviewer_id?: string | null
+          reviewer_score?: number | null
           self_score?: number | null
           self_score_note?: string | null
           submitted_at?: string | null
@@ -2795,6 +2810,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "problems"
             referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "user_subjective_attempts_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "user_subjective_attempts_user_id_fkey"

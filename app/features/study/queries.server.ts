@@ -286,7 +286,7 @@ export async function getStudyAidCounts(
   };
 }
 
-// ──────── 주관식 답안 + 자기채점 (feat-4-A-305) ────────
+// ──────── 주관식 답안 + 자기채점 + 첨삭 (feat-4-A-305 + feat-3-402) ────────
 export interface SubjectiveAttempt {
   attemptId: string;
   answerMd: string;
@@ -294,6 +294,43 @@ export interface SubjectiveAttempt {
   selfScoreNote: string | null;
   submittedAt: string | null;
   updatedAt: string;
+  // 첨삭(강사 검토) 상태.
+  reviewRequestedAt: string | null;
+  reviewCompletedAt: string | null;
+  reviewerId: string | null;
+  reviewerScore: number | null;
+  reviewerCommentMd: string | null;
+}
+
+const ATTEMPT_COLUMNS =
+  "attempt_id, user_id, problem_id, answer_md, self_score, self_score_note, submitted_at, updated_at, review_requested_at, review_completed_at, reviewer_id, reviewer_score, reviewer_comment_md";
+
+function rowToAttempt(row: {
+  attempt_id: string;
+  answer_md: string;
+  self_score: number | null;
+  self_score_note: string | null;
+  submitted_at: string | null;
+  updated_at: string;
+  review_requested_at: string | null;
+  review_completed_at: string | null;
+  reviewer_id: string | null;
+  reviewer_score: number | null;
+  reviewer_comment_md: string | null;
+}): SubjectiveAttempt {
+  return {
+    attemptId: row.attempt_id,
+    answerMd: row.answer_md,
+    selfScore: row.self_score,
+    selfScoreNote: row.self_score_note,
+    submittedAt: row.submitted_at,
+    updatedAt: row.updated_at,
+    reviewRequestedAt: row.review_requested_at,
+    reviewCompletedAt: row.review_completed_at,
+    reviewerId: row.reviewer_id,
+    reviewerScore: row.reviewer_score,
+    reviewerCommentMd: row.reviewer_comment_md,
+  };
 }
 
 export async function getSubjectiveAttempt(
@@ -303,23 +340,126 @@ export async function getSubjectiveAttempt(
 ): Promise<SubjectiveAttempt | null> {
   const { data, error } = await client
     .from("user_subjective_attempts")
-    .select(
-      "attempt_id, answer_md, self_score, self_score_note, submitted_at, updated_at",
-    )
+    .select(ATTEMPT_COLUMNS)
     .eq("user_id", userId)
     .eq("problem_id", problemId)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return {
-    attemptId: data.attempt_id,
-    answerMd: data.answer_md,
-    selfScore: data.self_score,
-    selfScoreNote: data.self_score_note,
-    submittedAt: data.submitted_at,
-    updatedAt: data.updated_at,
-  };
+  return rowToAttempt(data);
+}
+
+// 첨삭 요청 — 학생 본인. submitted_at 이 NULL 이면 제출되지 않은 답안이라 거부.
+export async function requestSubjectiveReview(
+  client: SupabaseClient<Database>,
+  userId: string,
+  problemId: string,
+): Promise<{ ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }> {
+  const existing = await getSubjectiveAttempt(client, userId, problemId);
+  if (!existing) return { ok: false, error: "답안이 없습니다" };
+  if (!existing.submittedAt) {
+    return { ok: false, error: "자기채점 완료(제출) 후에 첨삭 요청이 가능합니다." };
+  }
+  if (existing.reviewRequestedAt && !existing.reviewCompletedAt) {
+    return { ok: false, error: "이미 첨삭 요청 중입니다." };
+  }
+  const { data, error } = await client
+    .from("user_subjective_attempts")
+    .update({
+      review_requested_at: new Date().toISOString(),
+      review_completed_at: null,
+      reviewer_id: null,
+      reviewer_score: null,
+      reviewer_comment_md: null,
+    })
+    .eq("attempt_id", existing.attemptId)
+    .eq("user_id", userId)
+    .select(ATTEMPT_COLUMNS)
+    .single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, attempt: rowToAttempt(data) };
+}
+
+// 강사 검토 완료. staff role 검사는 caller (action) 에서.
+export async function completeSubjectiveReview(
+  client: SupabaseClient<Database>,
+  reviewerId: string,
+  attemptId: string,
+  input: { score: number | null; commentMd: string | null },
+): Promise<{ ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }> {
+  const { data, error } = await client
+    .from("user_subjective_attempts")
+    .update({
+      reviewer_id: reviewerId,
+      reviewer_score: input.score,
+      reviewer_comment_md: input.commentMd,
+      review_completed_at: new Date().toISOString(),
+    })
+    .eq("attempt_id", attemptId)
+    .not("review_requested_at", "is", null)
+    .select(ATTEMPT_COLUMNS)
+    .single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, attempt: rowToAttempt(data) };
+}
+
+// 강사 큐 — 검토 요청 대기 중. admin client 로 RLS 우회 (RLS staff_select 가 있어도 명시적 사용).
+export interface PendingReviewItem {
+  attemptId: string;
+  userId: string;
+  userName: string;
+  userEmail: string | null;
+  problemId: string;
+  problemYear: number | null;
+  problemNumber: number | null;
+  problemBodySnippet: string;
+  lawCode: string | null;
+  selfScore: number | null;
+  submittedAt: string | null;
+  requestedAt: string;
+  answerMd: string;
+}
+
+export async function listPendingSubjectiveReviews(
+  client: SupabaseClient<Database>,
+  options: { onlyCompleted?: boolean; limit?: number } = {},
+): Promise<PendingReviewItem[]> {
+  const limit = options.limit ?? 100;
+  let q = client
+    .from("user_subjective_attempts")
+    .select(
+      "attempt_id, user_id, answer_md, self_score, submitted_at, review_requested_at, review_completed_at, problem_id, problems!inner(year, problem_number, body_md, laws(law_code)), profiles!user_id(name)",
+    )
+    .is("deleted_at", null)
+    .not("review_requested_at", "is", null)
+    .order("review_requested_at", { ascending: false })
+    .limit(limit);
+  if (options.onlyCompleted) {
+    q = q.not("review_completed_at", "is", null);
+  } else {
+    q = q.is("review_completed_at", null);
+  }
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((r) => {
+    const body = r.problems?.body_md ?? "";
+    return {
+      attemptId: r.attempt_id,
+      userId: r.user_id,
+      userName: r.profiles?.name ?? "",
+      userEmail: null,
+      problemId: r.problem_id,
+      problemYear: r.problems?.year ?? null,
+      problemNumber: r.problems?.problem_number ?? null,
+      problemBodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+      lawCode: r.problems?.laws?.law_code ?? null,
+      selfScore: r.self_score,
+      submittedAt: r.submitted_at,
+      requestedAt: r.review_requested_at as string,
+      answerMd: r.answer_md,
+    };
+  });
 }
 
 export async function upsertSubjectiveAttempt(
@@ -349,19 +489,10 @@ export async function upsertSubjectiveAttempt(
     .upsert(row, {
       onConflict: "user_id,problem_id",
     })
-    .select(
-      "attempt_id, answer_md, self_score, self_score_note, submitted_at, updated_at",
-    )
+    .select(ATTEMPT_COLUMNS)
     .single();
   if (error) throw error;
-  return {
-    attemptId: data.attempt_id,
-    answerMd: data.answer_md,
-    selfScore: data.self_score,
-    selfScoreNote: data.self_score_note,
-    submittedAt: data.submitted_at,
-    updatedAt: data.updated_at,
-  };
+  return rowToAttempt(data);
 }
 
 // 한 세션 안에서 사용자가 이미 응답한 attempts — problemId → 최신 응답 1건 매핑.
