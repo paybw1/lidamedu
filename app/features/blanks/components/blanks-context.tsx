@@ -532,6 +532,15 @@ function BlankInputInline({
         onChange={(e) => onChange(e.target.value)}
         aria-label={`빈칸 ${idx}`}
         title={`빈칸 ${idx} (${answer.length}자)`}
+        // 브라우저 autofill 비활성 — 한 페이지에 비슷한 input 이 많아 직전 입력값이
+        // 다음 빈칸으로 자동 복사되는 버그 회피. 1Password/LastPass autofill 도 차단.
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        data-form-type="other"
+        data-lpignore="true"
+        name={`blank-${idx}`}
       />
       {voiceSupported && !filled ? (
         <button
