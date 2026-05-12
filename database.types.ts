@@ -1349,7 +1349,7 @@ export type Database = {
           comparison_pdf: string | null
           created_at: string
           effective_date: string | null
-          explanation_md: string | null
+          explanation_pdf: string | null
           law_id: string
           law_revision_id: string
           promulgated_at: string | null
@@ -1365,7 +1365,7 @@ export type Database = {
           comparison_pdf?: string | null
           created_at?: string
           effective_date?: string | null
-          explanation_md?: string | null
+          explanation_pdf?: string | null
           law_id: string
           law_revision_id?: string
           promulgated_at?: string | null
@@ -1381,7 +1381,7 @@ export type Database = {
           comparison_pdf?: string | null
           created_at?: string
           effective_date?: string | null
-          explanation_md?: string | null
+          explanation_pdf?: string | null
           law_id?: string
           law_revision_id?: string
           promulgated_at?: string | null

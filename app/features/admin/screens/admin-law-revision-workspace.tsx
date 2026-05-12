@@ -182,7 +182,7 @@ export default function AdminLawRevisionWorkspace({
           revisionKind: revision.revisionKind,
           reasonMd: revision.reasonMd ?? "",
           comparisonPdf: revision.comparisonPdf ?? "",
-          explanationMd: revision.explanationMd ?? "",
+          explanationPdf: revision.explanationPdf ?? "",
           videoUrl: revision.videoUrl ?? "",
         }}
       />
@@ -687,7 +687,8 @@ function PublishDialog({
   );
 }
 
-// 개정이유 / 신구조문대비표 / 개정해설 / 동영상 + 종류(법률/시행령/시행규칙) 입력 폼.
+// 첨부 폼 — 종류/개정이유/동영상은 메타 폼,
+// 신구조문대비표·개정해설은 PDF 파일 업로드 슬롯.
 function AttachmentForm({
   lawRevisionId,
   editable,
@@ -699,7 +700,61 @@ function AttachmentForm({
     revisionKind: LawRevisionKind;
     reasonMd: string;
     comparisonPdf: string;
-    explanationMd: string;
+    explanationPdf: string;
+    videoUrl: string;
+  };
+}) {
+  return (
+    <Card className="mb-6">
+      <CardHeader className="pb-2">
+        <p className="text-sm font-semibold">학생 노출 첨부</p>
+        <p className="text-muted-foreground text-xs">
+          /latest/laws 색인에서 각 칸의 <strong>O</strong> 표시 + 클릭 시 본문
+          노출. 비어있으면 — 로 표시되어 학생에게 노출되지 않습니다.
+          {!editable
+            ? " 발행된 개정은 수정할 수 없습니다."
+            : ""}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <MetaForm
+          lawRevisionId={lawRevisionId}
+          editable={editable}
+          initial={{
+            revisionKind: initial.revisionKind,
+            reasonMd: initial.reasonMd,
+            videoUrl: initial.videoUrl,
+          }}
+        />
+        <PdfUploadSlot
+          lawRevisionId={lawRevisionId}
+          field="comparison_pdf"
+          label="신구조문대비표 PDF"
+          currentUrl={initial.comparisonPdf}
+          editable={editable}
+        />
+        <PdfUploadSlot
+          lawRevisionId={lawRevisionId}
+          field="explanation_pdf"
+          label="개정해설 PDF"
+          currentUrl={initial.explanationPdf}
+          editable={editable}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function MetaForm({
+  lawRevisionId,
+  editable,
+  initial,
+}: {
+  lawRevisionId: string;
+  editable: boolean;
+  initial: {
+    revisionKind: LawRevisionKind;
+    reasonMd: string;
     videoUrl: string;
   };
 }) {
@@ -714,7 +769,6 @@ function AttachmentForm({
     fetcher.data &&
     "ok" in fetcher.data &&
     fetcher.data.ok;
-
   useEffect(() => {
     if (saved) {
       navigate(location.pathname + location.search, {
@@ -723,111 +777,182 @@ function AttachmentForm({
       });
     }
   }, [saved, navigate, location.pathname, location.search]);
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/law-revision"
+      className="space-y-3"
+    >
+      <input type="hidden" name="intent" value="update_meta" />
+      <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
+      <div className="grid gap-3 md:grid-cols-2">
+        <div>
+          <Label className="text-xs">종류</Label>
+          <select
+            name="revisionKind"
+            defaultValue={initial.revisionKind}
+            disabled={!editable}
+            className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-60"
+          >
+            {(Object.keys(LAW_REVISION_KIND_LABELS) as LawRevisionKind[]).map(
+              (k) => (
+                <option key={k} value={k}>
+                  {LAW_REVISION_KIND_LABELS[k]}
+                </option>
+              ),
+            )}
+          </select>
+        </div>
+        <div>
+          <Label className="text-xs">동영상 URL (YouTube / Vimeo 등)</Label>
+          <Input
+            name="videoUrl"
+            type="url"
+            defaultValue={initial.videoUrl}
+            placeholder="https://youtube.com/..."
+            disabled={!editable}
+            className="h-9 text-xs"
+          />
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">개정이유 (Markdown)</Label>
+        <Textarea
+          name="reasonMd"
+          defaultValue={initial.reasonMd}
+          rows={4}
+          maxLength={20000}
+          disabled={!editable}
+          placeholder="개정 배경·취지·주요 변경 사항 요약"
+          className="text-xs"
+        />
+      </div>
+      {editable ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" size="sm" disabled={isSaving}>
+            {isSaving ? "저장 중..." : "메타 저장"}
+          </Button>
+          {error ? (
+            <span className="text-xs text-rose-600">{error}</span>
+          ) : null}
+          {saved ? (
+            <span className="text-xs text-emerald-600">저장됨</span>
+          ) : null}
+        </div>
+      ) : null}
+    </fetcher.Form>
+  );
+}
+
+function PdfUploadSlot({
+  lawRevisionId,
+  field,
+  label,
+  currentUrl,
+  editable,
+}: {
+  lawRevisionId: string;
+  field: "comparison_pdf" | "explanation_pdf";
+  label: string;
+  currentUrl: string;
+  editable: boolean;
+}) {
+  const upFetcher = useFetcher<{ ok?: true; error?: string; url?: string }>();
+  const rmFetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const busy =
+    upFetcher.state !== "idle" || rmFetcher.state !== "idle";
+  const error =
+    (upFetcher.data && "error" in upFetcher.data && upFetcher.data.error) ||
+    (rmFetcher.data && "error" in rmFetcher.data && rmFetcher.data.error) ||
+    null;
+  const upSaved =
+    upFetcher.state === "idle" &&
+    upFetcher.data &&
+    "ok" in upFetcher.data &&
+    upFetcher.data.ok;
+  const rmSaved =
+    rmFetcher.state === "idle" &&
+    rmFetcher.data &&
+    "ok" in rmFetcher.data &&
+    rmFetcher.data.ok;
+  useEffect(() => {
+    if (upSaved || rmSaved) {
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [upSaved, rmSaved, navigate, location.pathname, location.search]);
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-2">
-        <p className="text-sm font-semibold">학생 노출 첨부</p>
-        <p className="text-muted-foreground text-xs">
-          /latest/laws 색인에서 각 칸의 <strong>O</strong> 표시 + 클릭 시 본문
-          노출. 비어있으면 — 로 표시되어 학생에게 노출되지 않습니다.
-          {!editable
-            ? " 발행된 개정은 수정할 수 없습니다."
-            : ""}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <fetcher.Form
+    <div className="space-y-2">
+      <Label className="text-xs">{label}</Label>
+      {currentUrl ? (
+        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border p-2 text-xs">
+          <a
+            href={currentUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary inline-flex items-center gap-1 truncate hover:underline"
+            title={currentUrl}
+          >
+            현재 파일 열기 ↗
+          </a>
+          {editable ? (
+            <rmFetcher.Form
+              method="post"
+              action="/api/admin/law-revision"
+              className="ml-auto"
+            >
+              <input type="hidden" name="intent" value="remove_pdf" />
+              <input type="hidden" name="field" value={field} />
+              <input
+                type="hidden"
+                name="lawRevisionId"
+                value={lawRevisionId}
+              />
+              <Button
+                type="submit"
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                className="text-rose-600 hover:text-rose-700"
+              >
+                삭제
+              </Button>
+            </rmFetcher.Form>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-xs">미첨부</p>
+      )}
+      {editable ? (
+        <upFetcher.Form
           method="post"
           action="/api/admin/law-revision"
-          className="space-y-3"
+          encType="multipart/form-data"
+          className="flex flex-wrap items-center gap-2"
         >
-          <input type="hidden" name="intent" value="update_meta" />
+          <input type="hidden" name="intent" value="upload_pdf" />
+          <input type="hidden" name="field" value={field} />
+          <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
           <input
-            type="hidden"
-            name="lawRevisionId"
-            value={lawRevisionId}
+            type="file"
+            name="file"
+            accept="application/pdf"
+            required
+            className="text-xs"
           />
-          <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <Label className="text-xs">종류</Label>
-              <select
-                name="revisionKind"
-                defaultValue={initial.revisionKind}
-                disabled={!editable}
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-60"
-              >
-                {(Object.keys(LAW_REVISION_KIND_LABELS) as LawRevisionKind[]).map(
-                  (k) => (
-                    <option key={k} value={k}>
-                      {LAW_REVISION_KIND_LABELS[k]}
-                    </option>
-                  ),
-                )}
-              </select>
-            </div>
-            <div>
-              <Label className="text-xs">신구조문대비표 PDF URL</Label>
-              <Input
-                name="comparisonPdf"
-                type="url"
-                defaultValue={initial.comparisonPdf}
-                placeholder="https://...pdf"
-                disabled={!editable}
-                className="h-9 text-xs"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">동영상 URL (YouTube / Vimeo 등)</Label>
-              <Input
-                name="videoUrl"
-                type="url"
-                defaultValue={initial.videoUrl}
-                placeholder="https://youtube.com/..."
-                disabled={!editable}
-                className="h-9 text-xs"
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs">개정이유 (Markdown)</Label>
-            <Textarea
-              name="reasonMd"
-              defaultValue={initial.reasonMd}
-              rows={4}
-              maxLength={20000}
-              disabled={!editable}
-              placeholder="개정 배경·취지·주요 변경 사항 요약"
-              className="text-xs"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">개정해설 (Markdown)</Label>
-            <Textarea
-              name="explanationMd"
-              defaultValue={initial.explanationMd}
-              rows={8}
-              maxLength={50000}
-              disabled={!editable}
-              placeholder="조문별 상세 해설"
-              className="text-xs"
-            />
-          </div>
-          {editable ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="submit" size="sm" disabled={isSaving}>
-                {isSaving ? "저장 중..." : "저장"}
-              </Button>
-              {error ? (
-                <span className="text-xs text-rose-600">{error}</span>
-              ) : null}
-              {saved ? (
-                <span className="text-xs text-emerald-600">저장됨</span>
-              ) : null}
-            </div>
+          <Button type="submit" size="sm" disabled={busy}>
+            {busy ? "업로드 중..." : currentUrl ? "교체" : "업로드"}
+          </Button>
+          {error ? (
+            <span className="text-xs text-rose-600">{error}</span>
           ) : null}
-        </fetcher.Form>
-      </CardContent>
-    </Card>
+        </upFetcher.Form>
+      ) : null}
+    </div>
   );
 }

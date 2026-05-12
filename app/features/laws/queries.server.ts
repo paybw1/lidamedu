@@ -271,7 +271,7 @@ export interface RecentRevisionItem {
   hasVideo: boolean;
   reasonMd: string | null;
   comparisonPdf: string | null;
-  explanationMd: string | null;
+  explanationPdf: string | null;
   videoUrl: string | null;
   // 이 개정에 포함된 article_revisions 개수 (영향 조문 수).
   affectedArticleCount: number;
@@ -293,7 +293,7 @@ export async function listRecentLawRevisions(
   let q = client
     .from("law_revisions")
     .select(
-      "law_revision_id, law_id, revision_kind, revision_number, promulgated_at, effective_date, published_at, reason_md, comparison_pdf, explanation_md, video_url, laws!inner(law_code, display_label, short_label)",
+      "law_revision_id, law_id, revision_kind, revision_number, promulgated_at, effective_date, published_at, reason_md, comparison_pdf, explanation_pdf, video_url, laws!inner(law_code, display_label, short_label)",
     )
     .eq("status", "published");
   if (options.subject) q = q.eq("laws.law_code", options.subject);
@@ -357,11 +357,11 @@ export async function listRecentLawRevisions(
       hasReason: !!r.reason_md && r.reason_md.trim().length > 0,
       hasComparison: !!r.comparison_pdf && r.comparison_pdf.trim().length > 0,
       hasExplanation:
-        !!r.explanation_md && r.explanation_md.trim().length > 0,
+        !!r.explanation_pdf && r.explanation_pdf.trim().length > 0,
       hasVideo: !!r.video_url && r.video_url.trim().length > 0,
       reasonMd: r.reason_md ?? null,
       comparisonPdf: r.comparison_pdf ?? null,
-      explanationMd: r.explanation_md ?? null,
+      explanationPdf: r.explanation_pdf ?? null,
       videoUrl: r.video_url ?? null,
       affectedArticleCount: affected.length,
       myBookmarkedAffectedCount: myMatched,

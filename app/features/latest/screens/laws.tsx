@@ -409,26 +409,20 @@ function AttachmentPanel({
         </div>
       ) : null}
       {kind === "explanation" ? (
-        <div className="bg-background rounded-md border p-4">
-          {r.explanationMd ? (
-            <MarkdownView text={r.explanationMd} />
-          ) : (
-            <p className="text-muted-foreground text-sm">내용이 없습니다.</p>
-          )}
-        </div>
+        <PdfView title="개정해설" url={r.explanationPdf} />
       ) : null}
       {kind === "comparison" ? (
-        <ComparisonView url={r.comparisonPdf} />
+        <PdfView title="신구조문대비표" url={r.comparisonPdf} />
       ) : null}
       {kind === "video" ? <VideoView url={r.videoUrl} /> : null}
     </div>
   );
 }
 
-function ComparisonView({ url }: { url: string | null }) {
+function PdfView({ title, url }: { title: string; url: string | null }) {
   if (!url) {
     return (
-      <p className="text-muted-foreground text-sm">첨부 URL 이 없습니다.</p>
+      <p className="text-muted-foreground text-sm">첨부 파일이 없습니다.</p>
     );
   }
   return (
@@ -440,10 +434,10 @@ function ComparisonView({ url }: { url: string | null }) {
         className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
       >
         <ExternalLinkIcon className="size-3" /> 새 탭에서 열기
-        <FileTextIcon className="size-3" /> {url}
+        <FileTextIcon className="size-3" /> PDF
       </a>
       <iframe
-        title="신구조문대비표"
+        title={title}
         src={url}
         className="bg-muted h-[70vh] w-full rounded-md border"
       />

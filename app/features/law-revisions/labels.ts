@@ -37,7 +37,7 @@ export interface LawRevisionListItem {
   publishedAt: string | null;
   reasonMd: string | null;
   comparisonPdf: string | null;
-  explanationMd: string | null;
+  explanationPdf: string | null;
   videoUrl: string | null;
   articleCount: number;
   createdAt: string;
