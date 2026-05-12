@@ -261,7 +261,7 @@ function buildProblemGaps(
       label: "객관식 해설 작성",
       covered: mc - s.mcqNoExplanation,
       total: mc,
-      hint: "explanation_md 필드가 비어있지 않음",
+      hint: "통합 해설(problems.explanation_md) · 지문별 해설(problem_choices) · 박스 항목별 해설(problem_box_items) 중 하나 이상 작성. 학생 화면은 자식 단위 해설을 직접 노출.",
       cta: { to: `/admin/problems`, label: "객관식 문제 관리" },
     },
     {
