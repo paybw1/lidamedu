@@ -345,8 +345,31 @@ export function BlanksRenderProvider({
   // 아직 enabled 라 IME 가 정상 commit 됨.
   const scheduleFocusNext = useCallback((idx: number) => {
     const cur = inputsRef.current.get(idx);
-    if (cur) cur.blur();
-    setTimeout(() => focusNextBlankRef.current(idx), 0);
+    if (cur) {
+      // 한국어 IME composer 강제 commit + reset.
+      // (1) 비-blur 인 input 으로 focus 잠깐 이동 → composer 가 input 단위 buffer 라면 cleanup
+      // (2) cur 자체 blur
+      // (3) document.body 로 focus 잠시 옮겨 IME 가 어떤 input 에도 묶이지 않게
+      try {
+        cur.blur();
+      } catch {
+        /* noop */
+      }
+      try {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+      } catch {
+        /* noop */
+      }
+      try {
+        document.body.focus?.();
+      } catch {
+        /* noop */
+      }
+    }
+    // 100ms 지연 — IME composition end 가 fully 완료될 시간. setTimeout(0) 는 일부
+    // 환경(Windows 한글 IME + Chrome)에서 부족해서 다음 input 첫 입력에 직전 buffer 가
+    // 누적되는 케이스 발생.
+    setTimeout(() => focusNextBlankRef.current(idx), 100);
   }, []);
 
   const checkAnswer = useCallback(
@@ -547,6 +570,12 @@ function BlankInputInline({
           }
         }}
         onCompositionStart={(e) => {
+          if (e.currentTarget.value !== value) {
+            e.currentTarget.value = value;
+          }
+        }}
+        // 첫 input event 직전 — DOM 의 누수 value 가 있으면 reset 후 새 입력 받기.
+        onBeforeInput={(e) => {
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
           }
