@@ -293,9 +293,17 @@ export function BlanksRenderProvider({
         const el = inputsRef.current.get(b.idx);
         if (!el) continue;
         if (el.disabled) continue;
+        // DOM value 를 React state 와 강제 동기화 — 직전 정답 입력이 IME composer
+        // 또는 Chrome inline autocomplete 로 다음 빈칸 input 에 새어들어오는 케이스 차단.
+        // controlled component 라 React 가 곧 valuy 를 prop 으로 다시 set 하지만,
+        // focus 직후 사용자가 보는 순간/타이핑 직전을 명시 비움.
+        const expected = states[b.idx]?.input ?? "";
+        if (el.value !== expected) {
+          el.value = expected;
+        }
         el.focus();
         try {
-          el.select();
+          el.setSelectionRange(expected.length, expected.length);
         } catch {
           /* noop */
         }
@@ -530,6 +538,19 @@ function BlankInputInline({
         value={value}
         disabled={filled}
         onChange={(e) => onChange(e.target.value)}
+        // focus 또는 IME composition 시작 직전, DOM value 가 React state 와
+        // 어긋나 있으면 (autofill / IME 누수) 명시 reset. 사용자 첫 타이핑이
+        // 이전 빈칸 답 위에 append 되는 버그 차단.
+        onFocus={(e) => {
+          if (e.currentTarget.value !== value) {
+            e.currentTarget.value = value;
+          }
+        }}
+        onCompositionStart={(e) => {
+          if (e.currentTarget.value !== value) {
+            e.currentTarget.value = value;
+          }
+        }}
         aria-label={`빈칸 ${idx}`}
         title={`빈칸 ${idx} (${answer.length}자)`}
         // 브라우저 autofill 비활성 — 한 페이지에 비슷한 input 이 많아 직전 입력값이
@@ -540,7 +561,9 @@ function BlankInputInline({
         spellCheck={false}
         data-form-type="other"
         data-lpignore="true"
-        name={`blank-${idx}`}
+        data-1p-ignore="true"
+        data-bwignore="true"
+        name={`blank-${idx}-${answer.length}`}
       />
       {voiceSupported && !filled ? (
         <button
