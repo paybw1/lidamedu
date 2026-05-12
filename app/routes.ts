@@ -22,6 +22,10 @@ export default [
       "/search/clear-history",
       "features/search/api/clear-history.tsx",
     ),
+    route(
+      "/api/notifications/mark-read",
+      "features/notifications/api/mark-read.tsx",
+    ),
     ...prefix("/settings", [
       route("/theme", "features/settings/api/set-theme.tsx"),
       route("/locale", "features/settings/api/set-locale.tsx"),
@@ -290,6 +294,10 @@ export default [
       route(
         "/admin/audit-logs",
         "features/admin/screens/admin-audit-logs.tsx",
+      ),
+      route(
+        "/admin/inbox",
+        "features/notifications/screens/staff-inbox.tsx",
       ),
       route(
         "/admin/announcements",

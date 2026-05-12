@@ -2334,6 +2334,56 @@ export type Database = {
           },
         ]
       }
+      staff_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          href: string
+          kind: Database["public"]["Enums"]["staff_notification_kind"]
+          notification_id: string
+          payload: Json | null
+          read_at: string | null
+          recipient_id: string
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          href: string
+          kind: Database["public"]["Enums"]["staff_notification_kind"]
+          notification_id?: string
+          payload?: Json | null
+          read_at?: string | null
+          recipient_id: string
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          href?: string
+          kind?: Database["public"]["Enums"]["staff_notification_kind"]
+          notification_id?: string
+          payload?: Json | null
+          read_at?: string | null
+          recipient_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       study_goals: {
         Row: {
           exam_date: string | null
@@ -3215,6 +3265,7 @@ export type Database = {
       qna_status: "open" | "answered" | "closed"
       qna_target_type: "article" | "case" | "problem"
       science_subject: "physics" | "chemistry" | "biology" | "earth_science"
+      staff_notification_kind: "subjective_review_request" | "qna_new_question"
       subjective_kind: "case_based" | "theory" | "mixed"
       user_role: "student" | "instructor" | "admin"
     }
@@ -3391,6 +3442,10 @@ export const Constants = {
       qna_status: ["open", "answered", "closed"],
       qna_target_type: ["article", "case", "problem"],
       science_subject: ["physics", "chemistry", "biology", "earth_science"],
+      staff_notification_kind: [
+        "subjective_review_request",
+        "qna_new_question",
+      ],
       subjective_kind: ["case_based", "theory", "mixed"],
       user_role: ["student", "instructor", "admin"],
     },

@@ -1,4 +1,11 @@
-import { CogIcon, HomeIcon, LogOutIcon, MenuIcon, SearchIcon } from "lucide-react";
+import {
+  BellIcon,
+  CogIcon,
+  HomeIcon,
+  LogOutIcon,
+  MenuIcon,
+  SearchIcon,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import { openCommandPalette } from "./command-palette";
@@ -176,7 +183,7 @@ function AuthButtons() {
   );
 }
 
-function Actions() {
+function Actions({ staffInbox }: { staffInbox: number | null }) {
   return (
     <>
       <Button
@@ -193,6 +200,25 @@ function Actions() {
           ⌘K
         </kbd>
       </Button>
+      {staffInbox !== null ? (
+        <Button
+          asChild
+          variant="ghost"
+          size="icon"
+          className="relative"
+          aria-label={`알림 인박스 (미읽음 ${staffInbox})`}
+          data-testid="open-staff-inbox"
+        >
+          <Link to="/admin/inbox">
+            <BellIcon className="size-4" />
+            {staffInbox > 0 ? (
+              <span className="bg-rose-600 text-white absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums">
+                {staffInbox > 99 ? "99+" : staffInbox}
+              </span>
+            ) : null}
+          </Link>
+        </Button>
+      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild className="cursor-pointer">
           <Button variant="ghost" size="icon">
@@ -286,11 +312,14 @@ export function NavigationBar({
   email,
   avatarUrl,
   loading,
+  staffInbox = null,
 }: {
   name?: string;
   email?: string;
   avatarUrl?: string | null;
   loading: boolean;
+  // staff (instructor/admin) 일 때 미읽음 알림 카운트. 학생은 null.
+  staffInbox?: number | null;
 }) {
   return (
     <nav className="bg-background relative z-50 mx-auto flex h-16 w-full items-center justify-between border-b px-5 shadow-xs backdrop-blur-lg transition-opacity md:px-10">
@@ -355,7 +384,7 @@ export function NavigationBar({
           </NavigationMenu>
 
           <Separator orientation="vertical" />
-          <Actions />
+          <Actions staffInbox={staffInbox} />
           <Separator orientation="vertical" />
 
           {loading ? (
@@ -432,7 +461,7 @@ export function NavigationBar({
               {name ? (
                 <div className="grid grid-cols-3">
                   <div className="col-span-2 flex w-full justify-between">
-                    <Actions />
+                    <Actions staffInbox={staffInbox} />
                   </div>
                   <div className="flex justify-end">
                     <UserMenu name={name} email={email} avatarUrl={avatarUrl} />
@@ -441,7 +470,7 @@ export function NavigationBar({
               ) : (
                 <div className="flex flex-col gap-5">
                   <div className="flex justify-between">
-                    <Actions />
+                    <Actions staffInbox={staffInbox} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <AuthButtons />

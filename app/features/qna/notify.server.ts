@@ -6,6 +6,7 @@ import { render } from "@react-email/render";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import resendClient from "~/core/lib/resend-client.server";
+import { createStaffNotifications } from "~/features/notifications/queries.server";
 import QnaNewAnswerEmail from "../../../transactional-emails/emails/qna-new-answer";
 import QnaNewQuestionEmail from "../../../transactional-emails/emails/qna-new-question";
 
@@ -159,6 +160,21 @@ export async function notifyNewQuestion(
     const link = `${APP_URL}/qna/${payload.threadId}`;
     const targetLabel = QNA_TARGET_LABEL[payload.targetType];
     const askerName = payload.askerName ?? "수험생";
+
+    // in-app fanout — 강사 인박스 카드. best-effort.
+    void createStaffNotifications({
+      recipientIds: recipients.map((r) => r.profileId),
+      kind: "qna_new_question",
+      entityType: "qna_thread",
+      entityId: payload.threadId,
+      title: `${askerName} — [${targetLabel}] ${payload.title}`,
+      body:
+        payload.questionMd.length > 200
+          ? payload.questionMd.slice(0, 200) + "…"
+          : payload.questionMd,
+      href: `/qna/${payload.threadId}`,
+      payload: { askerName, targetLabel },
+    });
 
     const emailHtml = await render(
       QnaNewQuestionEmail({

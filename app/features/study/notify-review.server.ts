@@ -7,6 +7,7 @@ import { render } from "@react-email/render";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import resendClient from "~/core/lib/resend-client.server";
+import { createStaffNotifications } from "~/features/notifications/queries.server";
 import {
   KakaoNotConfigured,
   sendKakaoAlimtalk,
@@ -150,6 +151,21 @@ export async function notifyReviewRequested(
       staffIds.filter((id) => id !== payload.studentId),
     );
     if (recipients.length === 0) return;
+
+    // in-app fanout — 강사 인박스 카드. best-effort.
+    void createStaffNotifications({
+      recipientIds: recipients.map((r) => r.profileId),
+      kind: "subjective_review_request",
+      entityType: "problem",
+      entityId: payload.problemId,
+      title: `${studentName} — ${payload.problemLabel} 첨삭 요청`,
+      body:
+        payload.excerpt.length > 200
+          ? payload.excerpt.slice(0, 200) + "…"
+          : payload.excerpt,
+      href: "/admin/subjective-reviews",
+      payload: { studentName, problemLabel: payload.problemLabel },
+    });
 
     const link = `${APP_URL}/admin/subjective-reviews`;
     const html = await render(

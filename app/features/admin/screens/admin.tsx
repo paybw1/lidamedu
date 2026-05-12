@@ -10,6 +10,7 @@ import {
   BookOpenIcon,
   ChartLineIcon,
   CheckSquareIcon,
+  BellIcon,
   ClipboardCheckIcon,
   ClipboardListIcon,
   CoinsIcon,
@@ -181,6 +182,12 @@ const USER_CARDS: AdminCardData[] = [
     title: "공지사항 발송",
     subtitle: "전체 / 반 / 개별 사용자 대상 공지 작성·발행",
     icon: MegaphoneIcon,
+  },
+  {
+    to: "/admin/inbox",
+    title: "알림 인박스",
+    subtitle: "첨삭 요청 · 새 질문 등 staff 받은 알림 모음",
+    icon: BellIcon,
   },
   {
     to: "/admin/subjective-reviews",
