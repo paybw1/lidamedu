@@ -6,14 +6,16 @@ import {
   CheckCircle2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
+  Code2Icon,
   FileEditIcon,
   PencilIcon,
   PlusIcon,
   RocketIcon,
   Trash2Icon,
+  WandSparklesIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Link,
   data,
@@ -29,7 +31,15 @@ import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { Separator } from "~/core/components/ui/separator";
 import { Textarea } from "~/core/components/ui/textarea";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { ArticleBlockEditor } from "~/features/laws/components/article-block-editor";
+import { articleBodySchema } from "~/features/laws/lib/article-body";
+import {
+  type EditableArticleBody,
+  bodyToEditable,
+  editableToBody,
+} from "~/features/laws/lib/article-body-marker";
 import { getLawByCode, getStaffRole } from "~/features/laws/queries.server";
 import {
   CHANGE_KIND_LABELS,
@@ -85,8 +95,27 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
   const articles = await listRevisionArticles(client, params.revisionId);
 
+  // 조문 추가 자동완성용 — 이 법령의 모든 실 조문 (level='article').
+  const { data: allArticlesRaw } = await client
+    .from("articles")
+    .select("article_number, display_label, path")
+    .eq("law_id", law.lawId)
+    .eq("level", "article")
+    .is("deleted_at", null)
+    .order("path", { ascending: true });
+  const allArticles = (allArticlesRaw ?? [])
+    .filter(
+      (a): a is { article_number: string; display_label: string; path: unknown } =>
+        a.article_number != null,
+    )
+    .map((a) => ({
+      articleNumber: a.article_number,
+      displayLabel: a.display_label,
+    }));
+
   return {
     lawCode,
+    allArticles,
     subjectName: LAW_SUBJECTS[lawCode].name,
     law,
     revision,
@@ -106,7 +135,8 @@ const STATUS_VARIANT: Record<
 export default function AdminLawRevisionWorkspace({
   loaderData,
 }: Route.ComponentProps) {
-  const { lawCode, subjectName, law, revision, articles } = loaderData;
+  const { lawCode, subjectName, law, revision, articles, allArticles } =
+    loaderData;
   const isDraft = revision.status === "draft";
   const isReview = revision.status === "review";
   const isPublished = revision.status === "published";
@@ -213,6 +243,14 @@ export default function AdminLawRevisionWorkspace({
           <AddArticleCard
             lawRevisionId={revision.lawRevisionId}
             lawId={law.lawId}
+            allArticles={allArticles}
+            existingRevisionArticleNumbers={
+              new Set(
+                articles
+                  .map((a) => a.articleNumber)
+                  .filter((n): n is string => n != null),
+              )
+            }
           />
         ) : (
           <Card>
@@ -383,6 +421,8 @@ function BodyPane({
   );
 }
 
+type EditMode = "easy" | "json";
+
 function EditArticleForm({
   entry,
   onClose,
@@ -393,17 +433,65 @@ function EditArticleForm({
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const initialJson = JSON.stringify(
-    entry.bodyJson ?? { blocks: [] },
-    null,
-    2,
+
+  const initialJson = useMemo(
+    () => JSON.stringify(entry.bodyJson ?? { blocks: [] }, null, 2),
+    [entry.bodyJson],
   );
-  const [draft, setDraft] = useState(initialJson);
+  const initialEasy = useMemo<EditableArticleBody | null>(() => {
+    try {
+      const parsed = articleBodySchema.safeParse(
+        entry.bodyJson ?? { blocks: [] },
+      );
+      if (!parsed.success) return null;
+      return bodyToEditable(parsed.data);
+    } catch {
+      return null;
+    }
+  }, [entry.bodyJson]);
+
+  const [mode, setMode] = useState<EditMode>(initialEasy ? "easy" : "json");
+  const [easy, setEasy] = useState<EditableArticleBody | null>(initialEasy);
+  const [jsonText, setJsonText] = useState(initialJson);
   const [changeKind, setChangeKind] = useState<ArticleChangeKind>(
     entry.changeKind,
   );
+
   const isSaving = fetcher.state !== "idle";
-  const hasError = fetcher.data && "error" in fetcher.data && fetcher.data.error;
+  const serverError =
+    fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+
+  // 저장 직전 jsonText 를 mode 에 맞게 산출.
+  const computedJsonText = useMemo(() => {
+    if (mode === "easy" && easy) {
+      try {
+        return JSON.stringify(editableToBody(easy), null, 2);
+      } catch {
+        return jsonText;
+      }
+    }
+    return jsonText;
+  }, [mode, easy, jsonText]);
+
+  const validation = useMemo(() => {
+    try {
+      const parsed = JSON.parse(computedJsonText);
+      const result = articleBodySchema.safeParse(parsed);
+      if (!result.success) {
+        return {
+          ok: false as const,
+          error: result.error.issues[0]?.message ?? "구조 오류",
+        };
+      }
+      return { ok: true as const };
+    } catch (e) {
+      return {
+        ok: false as const,
+        error: e instanceof Error ? e.message : "JSON 오류",
+      };
+    }
+  }, [computedJsonText]);
+
   useEffect(() => {
     if (
       fetcher.state === "idle" &&
@@ -417,20 +505,99 @@ function EditArticleForm({
         preventScrollReset: true,
       });
     }
-  }, [fetcher.state, fetcher.data, onClose, navigate, location.pathname, location.search]);
+  }, [
+    fetcher.state,
+    fetcher.data,
+    onClose,
+    navigate,
+    location.pathname,
+    location.search,
+  ]);
+
+  const switchToEasy = () => {
+    try {
+      const parsed = articleBodySchema.safeParse(JSON.parse(jsonText));
+      if (!parsed.success) return;
+      setEasy(bodyToEditable(parsed.data));
+      setMode("easy");
+    } catch {
+      /* validation.error 로 표시됨 */
+    }
+  };
+  const switchToJson = () => {
+    if (easy) {
+      try {
+        setJsonText(JSON.stringify(editableToBody(easy), null, 2));
+      } catch {
+        /* keep jsonText */
+      }
+    }
+    setMode("json");
+  };
 
   return (
     <fetcher.Form
       method="post"
       action="/api/admin/law-revision"
-      className="space-y-2"
+      className="space-y-3"
     >
       <input type="hidden" name="intent" value="update_article" />
       <input type="hidden" name="revisionId" value={entry.revisionId} />
+      <input type="hidden" name="changeKind" value={changeKind} />
+      <input type="hidden" name="bodyJson" value={computedJsonText} />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
+        <div>
+          <p className="font-semibold">개정 본문 편집</p>
+          <p className="mt-0.5 leading-relaxed">
+            <strong>쉬운 편집</strong> 으로 카드별 텍스트 수정. 강조는{" "}
+            <code className="text-[10.5px]">__밑줄__</code> ·{" "}
+            <code className="text-[10.5px]">[강조]</code> ·{" "}
+            <code className="text-[10.5px]">((소제목))</code> 마커.
+          </p>
+        </div>
+        <div className="inline-flex overflow-hidden rounded-md border border-amber-400/40 bg-white text-[11px] dark:bg-amber-950/40">
+          <button
+            type="button"
+            onClick={switchToEasy}
+            disabled={isSaving || initialEasy === null}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1",
+              mode === "easy"
+                ? "bg-amber-500 text-white"
+                : "hover:bg-amber-100 dark:hover:bg-amber-900/40",
+              initialEasy === null && "cursor-not-allowed opacity-50",
+            )}
+            title={
+              initialEasy === null
+                ? "본문 구조가 깨져 있어 JSON 모드에서만 편집 가능"
+                : "카드별 텍스트 수정 + 마커 토글"
+            }
+          >
+            <WandSparklesIcon className="size-3" />
+            쉬운 편집
+          </button>
+          <button
+            type="button"
+            onClick={switchToJson}
+            disabled={isSaving}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1",
+              mode === "json"
+                ? "bg-amber-500 text-white"
+                : "hover:bg-amber-100 dark:hover:bg-amber-900/40",
+            )}
+            title="고급 — 본문 JSON 직접 편집"
+          >
+            <Code2Icon className="size-3" />
+            JSON
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <Label className="text-muted-foreground text-[11px]">변경 종류</Label>
         <select
-          name="changeKind"
           value={changeKind}
           onChange={(e) => setChangeKind(e.target.value as ArticleChangeKind)}
           className="border-input bg-background h-7 rounded-md border px-2 text-xs"
@@ -440,19 +607,27 @@ function EditArticleForm({
           <option value="deleted">폐지</option>
         </select>
       </div>
-      <Label className="text-muted-foreground text-[11px]">본문 JSON</Label>
-      <textarea
-        name="bodyJson"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={18}
-        className="border-input bg-background w-full rounded-md border px-2 py-1 font-mono text-[11px] leading-relaxed"
-      />
-      {hasError ? (
-        <p className="text-rose-600 text-xs">
-          {(fetcher.data as { error: string }).error}
+
+      {mode === "easy" && easy ? (
+        <ArticleBlockEditor value={easy} onChange={setEasy} />
+      ) : (
+        <textarea
+          value={jsonText}
+          onChange={(e) => setJsonText(e.target.value)}
+          rows={18}
+          className="border-input bg-background w-full rounded-md border px-2 py-1 font-mono text-[11px] leading-relaxed"
+        />
+      )}
+
+      {!validation.ok ? (
+        <p className="text-xs text-rose-600">
+          본문 검증 실패: {validation.error}
         </p>
       ) : null}
+      {serverError ? (
+        <p className="text-xs text-rose-600">{serverError}</p>
+      ) : null}
+
       <div className="flex justify-end gap-2">
         <Button
           type="button"
@@ -463,7 +638,11 @@ function EditArticleForm({
         >
           <XIcon className="size-3.5" /> 취소
         </Button>
-        <Button type="submit" size="sm" disabled={isSaving}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={isSaving || !validation.ok}
+        >
           <PencilIcon className="size-3.5" /> 저장
         </Button>
       </div>
@@ -474,9 +653,13 @@ function EditArticleForm({
 function AddArticleCard({
   lawRevisionId,
   lawId,
+  allArticles,
+  existingRevisionArticleNumbers,
 }: {
   lawRevisionId: string;
   lawId: string;
+  allArticles: Array<{ articleNumber: string; displayLabel: string }>;
+  existingRevisionArticleNumbers: Set<string>;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const [articleNumber, setArticleNumber] = useState("");
@@ -500,6 +683,25 @@ function AddArticleCard({
   const err =
     fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
 
+  // 자동완성 후보: 이미 이 개정에 추가된 조문은 제외.
+  const filtered = useMemo(() => {
+    const q = articleNumber.trim();
+    return allArticles
+      .filter((a) => !existingRevisionArticleNumbers.has(a.articleNumber))
+      .filter((a) =>
+        q === "" ||
+        a.articleNumber.toLowerCase().includes(q.toLowerCase()) ||
+        a.displayLabel.toLowerCase().includes(q.toLowerCase()),
+      )
+      .slice(0, 30);
+  }, [allArticles, articleNumber, existingRevisionArticleNumbers]);
+
+  const exactMatch = useMemo(
+    () => allArticles.find((a) => a.articleNumber === articleNumber.trim()),
+    [allArticles, articleNumber],
+  );
+  const alreadyAdded = existingRevisionArticleNumbers.has(articleNumber.trim());
+
   return (
     <Card>
       <CardHeader className="px-4 pb-2">
@@ -507,7 +709,8 @@ function AddArticleCard({
           <PlusIcon className="text-primary size-4" /> 조문 추가
         </p>
         <p className="text-muted-foreground text-xs">
-          현재 시행 본문이 복사되어 편집 시작점이 됩니다.
+          개정/폐지 시 현재 시행 본문이 복사되어 편집 시작점이 됩니다.
+          신설은 빈 본문에서 시작.
         </p>
       </CardHeader>
       <Separator />
@@ -521,14 +724,40 @@ function AddArticleCard({
           <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
           <input type="hidden" name="lawId" value={lawId} />
           <div>
-            <Label className="text-muted-foreground text-[11px]">조문번호</Label>
+            <Label className="text-muted-foreground text-[11px]">조문</Label>
             <Input
               name="articleNumber"
               value={articleNumber}
               onChange={(e) => setArticleNumber(e.target.value)}
-              placeholder="예: 29 / 29의2"
+              placeholder="조 번호 또는 조 제목 검색 — 예: 29 / 29의2 / 신규성"
+              list="article-suggestions"
+              autoComplete="off"
               className="h-8 text-xs"
             />
+            <datalist id="article-suggestions">
+              {filtered.map((a) => (
+                <option
+                  key={a.articleNumber}
+                  value={a.articleNumber}
+                  label={a.displayLabel}
+                />
+              ))}
+            </datalist>
+            {articleNumber.trim() ? (
+              exactMatch ? (
+                <p className="text-muted-foreground mt-1 text-[10.5px]">
+                  ✓ {exactMatch.displayLabel}
+                </p>
+              ) : alreadyAdded ? (
+                <p className="text-rose-600 mt-1 text-[10.5px]">
+                  이미 이 개정에 포함된 조문입니다.
+                </p>
+              ) : (
+                <p className="text-amber-600 mt-1 text-[10.5px]">
+                  존재하지 않는 조문번호 — 신설 시에만 사용
+                </p>
+              )
+            ) : null}
           </div>
           <div>
             <Label className="text-muted-foreground text-[11px]">변경 종류</Label>
@@ -538,21 +767,29 @@ function AddArticleCard({
               onChange={(e) => setChangeKind(e.target.value as ArticleChangeKind)}
               className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
             >
-              <option value="amended">개정</option>
-              <option value="created">신설</option>
-              <option value="deleted">폐지</option>
+              <option value="amended">개정 (기존 조문 수정)</option>
+              <option value="created">신설 (새 조문 추가)</option>
+              <option value="deleted">폐지 (조문 삭제)</option>
             </select>
           </div>
           <Button
             type="submit"
             size="sm"
             className="h-8 w-full"
-            disabled={fetcher.state !== "idle" || !articleNumber.trim()}
+            disabled={
+              fetcher.state !== "idle" || !articleNumber.trim() || alreadyAdded
+            }
           >
             <PlusIcon className="size-3.5" /> 추가
           </Button>
           {err ? <p className="text-rose-600 text-xs">{err}</p> : null}
         </fetcher.Form>
+        {allArticles.length > 0 ? (
+          <p className="text-muted-foreground border-t pt-2 text-[10.5px]">
+            전체 조문 {allArticles.length}건 ·
+            드롭다운 또는 직접 입력으로 검색
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
