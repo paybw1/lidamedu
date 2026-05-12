@@ -150,10 +150,12 @@ export async function listRevisionArticles(
   client: SupabaseClient<Database>,
   lawRevisionId: string,
 ): Promise<RevisionArticleEntry[]> {
+  // articles 와 article_revisions 사이 FK 2개(article_id_fkey / current_revision_fk) 가
+  // 있어 PostgREST 자동 매핑이 모호 — embed FK 명시.
   const { data, error } = await client
     .from("article_revisions")
     .select(
-      "revision_id, article_id, body_json, change_kind, created_at, articles!inner(article_id, article_number, display_label, current_revision_id)",
+      "revision_id, article_id, body_json, change_kind, created_at, articles!article_revisions_article_id_fkey!inner(article_id, article_number, display_label, current_revision_id)",
     )
     .eq("law_revision_id", lawRevisionId)
     .order("created_at", { ascending: true });
