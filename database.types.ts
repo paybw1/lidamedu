@@ -3043,6 +3043,20 @@ export type Database = {
           ox_unique_users: number
         }[]
       }
+      admin_subject_coverage: {
+        Args: never
+        Returns: {
+          article_comments: number
+          articles: number
+          cases: number
+          display_label: string
+          law_code: string
+          ord: number
+          problems_mc: number
+          problems_subjective: number
+          revisions_published: number
+        }[]
+      }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
       get_problem_stats: {
         Args: { p_ids: string[] }

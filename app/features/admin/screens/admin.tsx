@@ -32,7 +32,12 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffContentStats } from "~/features/admin/queries/staff-content.server";
+import {
+  getSubjectCoverage,
+  type SubjectCoverageRow,
+} from "~/features/admin/queries/subject-coverage.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin";
 
@@ -45,8 +50,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/admin");
   const role = await getStaffRole(client, user.id);
-  const contentStats = role ? await getStaffContentStats(client, user.id) : null;
-  return { role, userEmail: user.email ?? null, contentStats };
+  const [contentStats, subjectCoverage] = role
+    ? await Promise.all([
+        getStaffContentStats(client, user.id),
+        getSubjectCoverage(client),
+      ])
+    : [null, null];
+  return {
+    role,
+    userEmail: user.email ?? null,
+    contentStats,
+    subjectCoverage,
+  };
 }
 
 interface AdminCardData {
@@ -226,7 +241,7 @@ const GS_CARDS: AdminCardData[] = [
 ];
 
 export default function Admin({ loaderData }: Route.ComponentProps) {
-  const { role, contentStats } = loaderData;
+  const { role, contentStats, subjectCoverage } = loaderData;
 
   if (!role) {
     return <StudentGuidance />;
@@ -252,6 +267,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
       </header>
 
       {contentStats ? <ContentStatsCard stats={contentStats} /> : null}
+      {subjectCoverage ? <SubjectCoverageCard rows={subjectCoverage} /> : null}
 
       <Section title="콘텐츠 등록·수정" cards={CONTENT_CARDS} />
       <Section
@@ -330,6 +346,109 @@ function ContentStatsCard({
               </p>
             </div>
           ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
+  const metrics: Array<{
+    key: keyof Pick<
+      SubjectCoverageRow,
+      "articles" | "cases" | "problemsMc" | "problemsSubjective"
+    >;
+    label: string;
+  }> = [
+    { key: "articles", label: "조문" },
+    { key: "cases", label: "판례" },
+    { key: "problemsMc", label: "객관식" },
+    { key: "problemsSubjective", label: "주관식" },
+  ];
+  const baseline: Record<typeof metrics[number]["key"], number> = metrics.reduce(
+    (acc, m) => {
+      acc[m.key] = Math.max(1, ...rows.map((r) => r[m.key]));
+      return acc;
+    },
+    {} as Record<typeof metrics[number]["key"], number>,
+  );
+  return (
+    <Card className="mb-6">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold">5과목 시드 진행률</p>
+            <p className="text-muted-foreground text-xs">
+              과목별 콘텐츠 수 — 최댓값(보통 특허법) 대비 막대로 격차 가시화. 비어있는 셀은 시드 우선순위.
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-muted-foreground border-b text-[11px] font-semibold tracking-wide uppercase">
+                <th className="py-2 pr-3 text-left">과목</th>
+                {metrics.map((m) => (
+                  <th key={m.key} className="py-2 pr-3 text-right">
+                    {m.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const meta = LAW_SUBJECTS[r.lawCode];
+                return (
+                  <tr key={r.lawCode} className="border-b last:border-b-0">
+                    <td className="py-2 pr-3">
+                      <Link
+                        to={`/subjects/${r.lawCode}`}
+                        className="font-medium hover:underline"
+                        viewTransition
+                      >
+                        {meta?.name ?? r.displayLabel}
+                      </Link>
+                      <span className="text-muted-foreground ml-2 text-[10.5px]">
+                        {meta?.categoryLabel}
+                      </span>
+                    </td>
+                    {metrics.map((m) => {
+                      const value = r[m.key];
+                      const ratio = baseline[m.key]
+                        ? value / baseline[m.key]
+                        : 0;
+                      const widthPct = Math.round(ratio * 100);
+                      const tone =
+                        value === 0
+                          ? "bg-rose-200 dark:bg-rose-900/50"
+                          : ratio < 0.1
+                            ? "bg-amber-300 dark:bg-amber-800/60"
+                            : ratio < 0.5
+                              ? "bg-sky-300 dark:bg-sky-800/60"
+                              : "bg-emerald-400 dark:bg-emerald-700/70";
+                      return (
+                        <td key={m.key} className="py-2 pr-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="bg-muted/60 hidden h-1.5 w-16 overflow-hidden rounded-full sm:block">
+                              <div
+                                className={`h-full ${tone}`}
+                                style={{ width: `${widthPct}%` }}
+                              />
+                            </div>
+                            <span className="text-foreground min-w-[3ch] text-right text-xs font-semibold tabular-nums">
+                              {value.toLocaleString("ko-KR")}
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </CardContent>
     </Card>
