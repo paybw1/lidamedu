@@ -13,6 +13,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -248,6 +249,15 @@ export function BlanksRenderProvider({
     [],
   );
 
+  // 각 idx 별 remount 시퀀스 — 자동 focus 이동 직전 next idx 의 seq 를 증가시키면
+  // React 가 DOM element 를 새로 mount 하므로, 한글 IME composer 의 잔여 buffer 가
+  // 새 input 으로 누수되는 케이스 완전 차단. 사용자가 직접 클릭/탭으로 이동할 땐
+  // remount 안 일어남.
+  const [remountSeq, setRemountSeq] = useState<Record<number, number>>({});
+  const bumpRemount = useCallback((idx: number) => {
+    setRemountSeq((prev) => ({ ...prev, [idx]: (prev[idx] ?? 0) + 1 }));
+  }, []);
+
   // 음성 인식 — 한 번에 하나의 input 만 활성화. activeVoiceIdx 가 null 이 아니면 그 input 의
   // 마이크 버튼이 active 상태로 표시된다. final transcript 가 들어오면 그 idx 의 checkAnswer 호출.
   const [activeVoiceIdx, setActiveVoiceIdx] = useState<number | null>(null);
@@ -284,43 +294,57 @@ export function BlanksRenderProvider({
   // blockHits 이 새 ref 가 되는데, useCallback deps 에 묶여 있으면 effect 의 cleanup 으로
   // pending setTimeout 이 cancel 돼버려 focus 이동이 사라진다. ref 로 해두면 effect deps 에
   // focusNextBlank 가 들어가지 않아 cleanup 이 발생하지 않는다.
+  // 다음 focus 대상 idx 만 결정 (실제 focus 는 remount 후 effect 에서 수행).
+  const findNextBlankIdx = useCallback(
+    (afterIdx: number): number | null => {
+      const list = renderOrder;
+      const tryFind = (subList: BlankItem[]) => {
+        for (const b of subList) {
+          if (!b.answer) continue;
+          if ((states[b.idx]?.status ?? "empty") === "correct") continue;
+          return b.idx;
+        }
+        return null;
+      };
+      const curPos = list.findIndex((b) => b.idx === afterIdx);
+      if (curPos === -1) return tryFind(list);
+      return (
+        tryFind(list.slice(curPos + 1)) ?? tryFind(list.slice(0, curPos))
+      );
+    },
+    [renderOrder, states],
+  );
+
+  // pending focus — remount 직후 effect 에서 처리.
+  const pendingFocusRef = useRef<number | null>(null);
   const focusNextBlankRef = useRef<(afterIdx: number) => void>(() => {});
   focusNextBlankRef.current = (afterIdx: number) => {
-    const list = renderOrder;
-    const tryFocus = (subList: BlankItem[]) => {
-      for (const b of subList) {
-        if (!b.answer) continue;
-        const el = inputsRef.current.get(b.idx);
-        if (!el) continue;
-        if (el.disabled) continue;
-        // DOM value 를 React state 와 강제 동기화 — 직전 정답 입력이 IME composer
-        // 또는 Chrome inline autocomplete 로 다음 빈칸 input 에 새어들어오는 케이스 차단.
-        // controlled component 라 React 가 곧 valuy 를 prop 으로 다시 set 하지만,
-        // focus 직후 사용자가 보는 순간/타이핑 직전을 명시 비움.
-        const expected = states[b.idx]?.input ?? "";
-        if (el.value !== expected) {
-          el.value = expected;
-        }
-        el.focus();
-        try {
-          el.setSelectionRange(expected.length, expected.length);
-        } catch {
-          /* noop */
-        }
-        return true;
-      }
-      return false;
-    };
-    const curPos = list.findIndex((b) => b.idx === afterIdx);
-    if (curPos === -1) {
-      // 현재 빈칸이 render list 에 없으면 (희귀) 처음부터 시도.
-      tryFocus(list);
-      return;
-    }
-    // 현재 다음부터 forward → 못 찾으면 wrap (처음~현재 직전).
-    if (tryFocus(list.slice(curPos + 1))) return;
-    tryFocus(list.slice(0, curPos));
+    const nextIdx = findNextBlankIdx(afterIdx);
+    if (nextIdx == null) return;
+    // next input 의 React key 를 변경해 DOM 재마운트 (IME 잔여 차단). focus 는
+    // 다음 effect 에서 새 DOM element 에 대해 수행.
+    pendingFocusRef.current = nextIdx;
+    bumpRemount(nextIdx);
   };
+
+  // remountSeq 변화에 반응해 pending focus 처리.
+  useEffect(() => {
+    const idx = pendingFocusRef.current;
+    if (idx == null) return;
+    const el = inputsRef.current.get(idx);
+    if (!el) return;
+    pendingFocusRef.current = null;
+    // DOM value 를 React state 와 동기화 + cursor 위치.
+    const expected = states[idx]?.input ?? "";
+    if (el.value !== expected) el.value = expected;
+    el.focus();
+    try {
+      el.setSelectionRange(expected.length, expected.length);
+    } catch {
+      /* noop */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remountSeq]);
 
   const updateState = useCallback(
     (idx: number, patch: Partial<BlankState>) => {
@@ -346,30 +370,15 @@ export function BlanksRenderProvider({
   const scheduleFocusNext = useCallback((idx: number) => {
     const cur = inputsRef.current.get(idx);
     if (cur) {
-      // 한국어 IME composer 강제 commit + reset.
-      // (1) 비-blur 인 input 으로 focus 잠깐 이동 → composer 가 input 단위 buffer 라면 cleanup
-      // (2) cur 자체 blur
-      // (3) document.body 로 focus 잠시 옮겨 IME 가 어떤 input 에도 묶이지 않게
       try {
         cur.blur();
       } catch {
         /* noop */
       }
-      try {
-        (document.activeElement as HTMLElement | null)?.blur?.();
-      } catch {
-        /* noop */
-      }
-      try {
-        document.body.focus?.();
-      } catch {
-        /* noop */
-      }
     }
-    // 100ms 지연 — IME composition end 가 fully 완료될 시간. setTimeout(0) 는 일부
-    // 환경(Windows 한글 IME + Chrome)에서 부족해서 다음 input 첫 입력에 직전 buffer 가
-    // 누적되는 케이스 발생.
-    setTimeout(() => focusNextBlankRef.current(idx), 100);
+    // 다음 input 의 React key 변경으로 DOM 재마운트 → IME composer 잔여 완전 제거.
+    // useEffect(pendingFocusRef + remountSeq) 가 새 element 가 마운트된 직후 focus.
+    setTimeout(() => focusNextBlankRef.current(idx), 0);
   }, []);
 
   const checkAnswer = useCallback(
@@ -446,9 +455,13 @@ export function BlanksRenderProvider({
             Math.min(40, (h.blank.answer.length || h.blank.length) * 2 + 2),
           );
           const showRevealed = reveal && state.status !== "correct";
+          // key 에 remountSeq 포함 — seq 변경 시 React 가 새 DOM element 로 remount
+          // (한글 IME composer 잔여 차단). key++ 도 포함해서 같은 idx 가 한 텍스트
+          // 안에 여러 번 등장하는 희귀 케이스에서도 key 충돌 방지.
+          const seq = remountSeq[h.blank.idx] ?? 0;
           out.push(
             <BlankInputInline
-              key={key++}
+              key={`b${h.blank.idx}s${seq}-${key++}`}
               idx={h.blank.idx}
               answer={h.blank.answer}
               value={showRevealed ? h.blank.answer : state.input}
@@ -479,6 +492,7 @@ export function BlanksRenderProvider({
       voice.isSupported,
       activeVoiceIdx,
       toggleVoice,
+      remountSeq,
     ],
   );
 
