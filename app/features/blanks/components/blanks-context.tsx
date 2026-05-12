@@ -565,8 +565,30 @@ function BlankInputInline({
         : "border-muted-foreground/40 bg-muted/30 focus:border-primary",
   );
   const filled = status === "correct" || status === "revealed";
+  // 진단용 — 첫 글자 타이핑 시 onChange 가 받는 raw value 를 console 에 기록.
+  // 사용자가 prefill 을 보고 있다면 onChange 의 v 가 어떤 모양으로 들어오는지 확인.
+  const debugOnChange = (raw: string) => {
+    if (typeof window !== "undefined" && raw.length > value.length + 2) {
+      // eslint-disable-next-line no-console
+      console.log("[blank-input] suspicious value jump", {
+        idx,
+        prev: value,
+        raw,
+        prevLen: value.length,
+        rawLen: raw.length,
+      });
+    }
+    onChange(raw);
+  };
   return (
-    <span className="inline-flex items-baseline">
+    // form 으로 wrap + autoComplete="off" — Chrome 은 form context 가 있어야
+    // form-history autocomplete 가 동작하는데, 우리는 form context 자체를 차단.
+    // onSubmit preventDefault 로 enter 키 의도치 않은 form submission 방지.
+    <form
+      onSubmit={(e) => e.preventDefault()}
+      autoComplete="off"
+      className="inline-flex items-baseline"
+    >
       <input
         ref={(el) => registerInput(idx, el)}
         type="text"
@@ -574,10 +596,7 @@ function BlankInputInline({
         style={{ width: `${widthCh}ch` }}
         value={value}
         disabled={filled}
-        onChange={(e) => onChange(e.target.value)}
-        // focus 또는 IME composition 시작 직전, DOM value 가 React state 와
-        // 어긋나 있으면 (autofill / IME 누수) 명시 reset. 사용자 첫 타이핑이
-        // 이전 빈칸 답 위에 append 되는 버그 차단.
+        onChange={(e) => debugOnChange(e.target.value)}
         onFocus={(e) => {
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
@@ -588,7 +607,6 @@ function BlankInputInline({
             e.currentTarget.value = value;
           }
         }}
-        // 첫 input event 직전 — DOM 의 누수 value 가 있으면 reset 후 새 입력 받기.
         onBeforeInput={(e) => {
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
@@ -596,8 +614,6 @@ function BlankInputInline({
         }}
         aria-label={`빈칸 ${idx}`}
         title={`빈칸 ${idx} (${answer.length}자)`}
-        // 브라우저 autofill 비활성 — 한 페이지에 비슷한 input 이 많아 직전 입력값이
-        // 다음 빈칸으로 자동 복사되는 버그 회피. 1Password/LastPass autofill 도 차단.
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
@@ -606,7 +622,8 @@ function BlankInputInline({
         data-lpignore="true"
         data-1p-ignore="true"
         data-bwignore="true"
-        name={`blank-${idx}-${answer.length}`}
+        // name 자체를 omit — Chrome 의 form-history autofill 은 input 의 name
+        // 으로 매칭하는데, name 이 없으면 history 비교 자체가 불가.
       />
       {voiceSupported && !filled ? (
         <button
@@ -631,6 +648,6 @@ function BlankInputInline({
       {filled ? (
         <CheckCircle2Icon className="ml-0.5 size-3.5 text-emerald-500" />
       ) : null}
-    </span>
+    </form>
   );
 }
