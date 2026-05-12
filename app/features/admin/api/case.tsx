@@ -4,6 +4,7 @@ import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
@@ -84,6 +85,13 @@ export async function action({ request }: Route.ActionArgs) {
       .update({ deleted_at: new Date().toISOString() })
       .eq("case_id", caseId);
     if (error) return data({ error: error.message }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "case.delete",
+      entityType: "case",
+      entityId: caseId,
+    });
     return redirect("/admin/cases?law=patent");
   }
 
@@ -160,6 +168,18 @@ export async function action({ request }: Route.ActionArgs) {
       .select("case_id")
       .single();
     if (error) return data({ error: error.message }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "case.create",
+      entityType: "case",
+      entityId: row.case_id,
+      metadata: {
+        caseNumber: input.caseNumber,
+        caseTitle: input.caseTitle,
+        court: input.court,
+      },
+    });
     throw redirect(`/admin/cases/edit/${row.case_id}`);
   }
 
@@ -173,5 +193,16 @@ export async function action({ request }: Route.ActionArgs) {
     .update(payload)
     .eq("case_id", caseId);
   if (error) return data({ error: error.message }, { status: 400 });
+  void logAuditEvent({
+    actorId: user.id,
+    actorRole: role,
+    action: "case.update",
+    entityType: "case",
+    entityId: caseId,
+    metadata: {
+      caseNumber: input.caseNumber,
+      caseTitle: input.caseTitle,
+    },
+  });
   return data({ ok: true });
 }

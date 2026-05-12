@@ -188,6 +188,13 @@ const USER_CARDS: AdminCardData[] = [
     subtitle: "학생 첨삭 요청 대기 · 점수 / 코멘트 입력",
     icon: ClipboardCheckIcon,
   },
+  {
+    to: "/admin/audit-logs",
+    title: "감사 로그",
+    subtitle: "운영자 액션 추적 — 누가 · 언제 · 무엇을",
+    icon: ShieldCheckIcon,
+    badge: "원장 전용",
+  },
 ];
 
 const GS_CARDS: AdminCardData[] = [

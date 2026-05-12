@@ -4,6 +4,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { updateUserRole } from "~/features/admin/queries/users.server";
 
@@ -48,5 +49,13 @@ export async function action({ request }: Route.ActionArgs) {
 
   const res = await updateUserRole(parsed.data.profileId, parsed.data.role);
   if (!res.ok) return data({ error: res.error }, { status: 400 });
+  void logAuditEvent({
+    actorId: user.id,
+    actorRole: role,
+    action: "user.role.update",
+    entityType: "profile",
+    entityId: parsed.data.profileId,
+    metadata: { newRole: parsed.data.role },
+  });
   return data({ ok: true });
 }

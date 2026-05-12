@@ -284,6 +284,10 @@ export default [
         "features/admin/screens/admin-subjective-reviews.tsx",
       ),
       route(
+        "/admin/audit-logs",
+        "features/admin/screens/admin-audit-logs.tsx",
+      ),
+      route(
         "/admin/announcements",
         "features/admin/screens/admin-announcements.tsx",
       ),

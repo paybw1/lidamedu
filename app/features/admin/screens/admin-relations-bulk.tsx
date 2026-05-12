@@ -17,6 +17,7 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LAW_SUBJECTS,
@@ -243,9 +244,21 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (intent === "apply") {
-    return redirect(
-      `/admin/relations/bulk?applied=${results.filter((r) => r.status === "ok").length}`,
-    );
+    const okCount = results.filter((r) => r.status === "ok").length;
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: `relation.bulk.${kind}`,
+      entityType: "relation_bulk",
+      entityId: kind,
+      metadata: {
+        ok: okCount,
+        skipped: results.filter((r) => r.status === "skipped").length,
+        error: results.filter((r) => r.status === "error").length,
+        lawCode: kind === "article_case" ? lawCode : null,
+      },
+    });
+    return redirect(`/admin/relations/bulk?applied=${okCount}`);
   }
   return data({ results });
 }

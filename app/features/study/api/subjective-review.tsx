@@ -6,6 +6,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   notifyReviewCompleted,
@@ -88,6 +89,17 @@ export async function action({ request }: Route.ActionArgs) {
       commentMd: parsed.data.commentMd ?? null,
     });
     if (!result.ok) return data({ error: result.error }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "subjective_review.complete",
+      entityType: "user_subjective_attempt",
+      entityId: parsed.data.attemptId,
+      metadata: {
+        score: parsed.data.score ?? null,
+        hasComment: !!parsed.data.commentMd,
+      },
+    });
     // 학생에게 알림 — attempt 의 user_id + problem 정보 lookup.
     void (async () => {
       const { data: row } = await client

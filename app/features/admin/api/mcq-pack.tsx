@@ -4,6 +4,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   addPackProblem,
@@ -115,6 +116,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await createPack(client, parsed.data, user.id);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "mcq_pack.create",
+      entityType: "mcq_pack",
+      entityId: res.packId,
+      metadata: { title: parsed.data.title, kind: parsed.data.kind },
+    });
     return data({ ok: true, packId: res.packId });
   }
 
@@ -132,6 +141,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await updatePack(client, packId, parsed.data);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "mcq_pack.update",
+      entityType: "mcq_pack",
+      entityId: packId,
+      metadata: { title: parsed.data.title },
+    });
     return data({ ok: true });
   }
 
@@ -142,6 +159,13 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await deletePack(client, packId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "mcq_pack.delete",
+      entityType: "mcq_pack",
+      entityId: packId,
+    });
     return data({ ok: true });
   }
 
@@ -161,6 +185,17 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === "regen_past_exam") {
     const result = await regeneratePastExamPacks(client, user.id);
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "mcq_pack.regen_past_exam",
+      entityType: "mcq_pack",
+      entityId: "*",
+      metadata: {
+        packsUpserted: result.packsUpserted,
+        problemsTotal: result.problemsTotal,
+      },
+    });
     return data({ ok: true, ...result });
   }
 
