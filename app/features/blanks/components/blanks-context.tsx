@@ -382,9 +382,46 @@ export function BlanksRenderProvider({
   }, []);
 
   const checkAnswer = useCallback(
-    (idx: number, input: string) => {
+    (idx: number, rawInput: string) => {
       const blank = blanks.find((b) => b.idx === idx);
       if (!blank?.answer) return;
+
+      // Chrome form-history autofill 누수 차단 — 자동 focus 이동 직후 새 input 의
+      // DOM value 가 다른 빈칸의 정답으로 prefill 되어 raw 가 "{직전답}{사용자입력}"
+      // 형태로 들어오는 케이스. 입력이 다른 빈칸의 정답(들) 로 시작하면 그 prefix
+      // 제거 후 사용자 입력만 채택.
+      let input = rawInput;
+      const prev = states[idx]?.input ?? "";
+      if (prev.length === 0 && input.length > 1) {
+        let changed = true;
+        let guard = 0;
+        while (changed && guard < 10 && input.length > 0) {
+          changed = false;
+          guard += 1;
+          for (const other of blanks) {
+            if (other.idx === idx || !other.answer) continue;
+            // 정답이 통째로 prefix 인 경우만 잘라냄 (부분 매칭은 위험).
+            if (input.startsWith(other.answer) && input !== other.answer) {
+              input = input.slice(other.answer.length);
+              changed = true;
+              break;
+            }
+          }
+        }
+        if (input !== rawInput) {
+          // DOM 의 input value 도 cleaned 로 강제 동기화 — 사용자가 직접 보는 값.
+          const el = inputsRef.current.get(idx);
+          if (el && el.value !== input) {
+            try {
+              el.value = input;
+              el.setSelectionRange(input.length, input.length);
+            } catch {
+              /* noop */
+            }
+          }
+        }
+      }
+
       // 입력값이 정답이 아니어도 typed value 는 state 에 반영해 사용자가 결과를 볼 수 있게 한다.
       const isCorrect =
         normalizeAnswer(input) === normalizeAnswer(blank.answer);
@@ -422,7 +459,7 @@ export function BlanksRenderProvider({
         updateState(idx, { input, status: input.length > 0 ? "wrong" : "empty" });
       }
     },
-    [blanks, fetcher, setId, autoMeta, updateState, scheduleFocusNext],
+    [blanks, fetcher, setId, autoMeta, updateState, scheduleFocusNext, states],
   );
   // 음성 인식 final → checkAnswer 직접 호출. checkAnswerRef 로 latest function 보관.
   checkAnswerRef.current = checkAnswer;
