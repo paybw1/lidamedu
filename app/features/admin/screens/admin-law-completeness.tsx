@@ -76,6 +76,20 @@ export async function action({ request }: Route.ActionArgs) {
     const row = rows?.[0];
     return {
       ok: true as const,
+      kind: "aa" as const,
+      insertedCount: Number(row?.inserted_count ?? 0),
+      totalExistingCount: Number(row?.total_existing_count ?? 0),
+    };
+  }
+  if (intent === "backfill_ac_refs") {
+    const { data: rows, error } = await client.rpc(
+      "backfill_article_case_links_from_body",
+    );
+    if (error) throw data(error.message, { status: 500 });
+    const row = rows?.[0];
+    return {
+      ok: true as const,
+      kind: "ac" as const,
       insertedCount: Number(row?.inserted_count ?? 0),
       totalExistingCount: Number(row?.total_existing_count ?? 0),
     };
@@ -99,16 +113,26 @@ export default function AdminLawCompleteness({
   const caseGaps = buildCaseGaps(snapshot, subject.slug);
   const problemGaps = buildProblemGaps(snapshot, subject.slug);
 
-  const backfillFetcher = useFetcher<typeof action>();
-  const backfillBusy = backfillFetcher.state !== "idle";
+  const aaFetcher = useFetcher<typeof action>();
+  const acFetcher = useFetcher<typeof action>();
+  const busy =
+    aaFetcher.state !== "idle" || acFetcher.state !== "idle";
   useEffect(() => {
-    const result = backfillFetcher.data;
-    if (backfillFetcher.state === "idle" && result?.ok) {
+    const r = aaFetcher.data;
+    if (aaFetcher.state === "idle" && r?.ok && r.kind === "aa") {
       toast.success(
-        `본문 inline ref 동기화 완료 — 신규 ${result.insertedCount}건 (누계 ${result.totalExistingCount}건)`,
+        `조문 inline ref 동기화 — 신규 ${r.insertedCount}건 (누계 ${r.totalExistingCount}건)`,
       );
     }
-  }, [backfillFetcher.state, backfillFetcher.data]);
+  }, [aaFetcher.state, aaFetcher.data]);
+  useEffect(() => {
+    const r = acFetcher.data;
+    if (acFetcher.state === "idle" && r?.ok && r.kind === "ac") {
+      toast.success(
+        `판례 본문 ref 동기화 — 신규 ${r.insertedCount}건 (누계 ${r.totalExistingCount}건)`,
+      );
+    }
+  }, [acFetcher.state, acFetcher.data]);
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -123,26 +147,48 @@ export default function AdminLawCompleteness({
           <h1 className="text-2xl font-bold tracking-tight">
             {subject.name} 완성도
           </h1>
-          <backfillFetcher.Form method="post">
-            <input type="hidden" name="intent" value="backfill_aa_refs" />
-            <Button
-              type="submit"
-              size="sm"
-              variant="outline"
-              disabled={backfillBusy}
-            >
-              <RefreshCwIcon
-                className={cn("size-3", backfillBusy && "animate-spin")}
-              />
-              본문 ref 동기화
-            </Button>
-          </backfillFetcher.Form>
+          <div className="flex flex-wrap gap-2">
+            <aaFetcher.Form method="post">
+              <input type="hidden" name="intent" value="backfill_aa_refs" />
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+              >
+                <RefreshCwIcon
+                  className={cn(
+                    "size-3",
+                    aaFetcher.state !== "idle" && "animate-spin",
+                  )}
+                />
+                조문 ref 동기화
+              </Button>
+            </aaFetcher.Form>
+            <acFetcher.Form method="post">
+              <input type="hidden" name="intent" value="backfill_ac_refs" />
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+              >
+                <RefreshCwIcon
+                  className={cn(
+                    "size-3",
+                    acFetcher.state !== "idle" && "animate-spin",
+                  )}
+                />
+                판례 ref 동기화
+              </Button>
+            </acFetcher.Form>
+          </div>
         </div>
         <p className="text-muted-foreground text-sm">
           실 조문({subject.exam} 시험) 기준 콘텐츠 갭 진단. 각 차원에서 미커버 항목을
-          채워 학습 자료를 완성하세요. <strong>본문 ref 동기화</strong> 는 모든 법령의
-          본문 inline <code className="text-[10.5px]">ref_article</code> 노드를
-          스캔해 <em>관련 조문</em> 연관관계를 자동 추가합니다.
+          채워 학습 자료를 완성하세요.
+          <strong> 조문 ref 동기화</strong> — 본문 body_json 의 inline <code className="text-[10.5px]">ref_article</code> 노드 → article_article_links 백필.{" "}
+          <strong>판례 ref 동기화</strong> — 판례 본문(요지/이유/평석) 의 "특허법 제N조" 자연어 패턴 → article_case_links 백필.
         </p>
       </header>
 
