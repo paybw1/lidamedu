@@ -27,6 +27,74 @@ export interface SearchResults {
 
 const GROUP_LIMIT = 6;
 const MIN_QUERY_LEN = 1;
+// 히스토리 기록 최소 길이 — 너무 짧은 부분 검색은 노이즈.
+const HISTORY_RECORD_MIN_LEN = 2;
+const HISTORY_LIST_LIMIT = 8;
+
+export interface RecentSearch {
+  query: string;
+  searchCount: number;
+  lastSearchedAt: string;
+}
+
+export async function listRecentSearches(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<RecentSearch[]> {
+  const { data, error } = await client
+    .from("user_search_history")
+    .select("query, search_count, last_searched_at")
+    .eq("user_id", userId)
+    .order("last_searched_at", { ascending: false })
+    .limit(HISTORY_LIST_LIMIT);
+  if (error) return [];
+  return (data ?? []).map((r) => ({
+    query: r.query,
+    searchCount: r.search_count,
+    lastSearchedAt: r.last_searched_at,
+  }));
+}
+
+export async function recordSearchQuery(
+  client: SupabaseClient<Database>,
+  userId: string,
+  rawQuery: string,
+): Promise<void> {
+  const q = rawQuery.trim().slice(0, 100);
+  if (q.length < HISTORY_RECORD_MIN_LEN) return;
+  try {
+    // 기존 행 있으면 count + 1 / 시간 갱신.
+    const { data: existing } = await client
+      .from("user_search_history")
+      .select("history_id, search_count")
+      .eq("user_id", userId)
+      .eq("query", q)
+      .maybeSingle();
+    if (existing) {
+      await client
+        .from("user_search_history")
+        .update({
+          search_count: existing.search_count + 1,
+          last_searched_at: new Date().toISOString(),
+        })
+        .eq("history_id", existing.history_id);
+    } else {
+      await client.from("user_search_history").insert({
+        user_id: userId,
+        query: q,
+      });
+    }
+  } catch {
+    // best-effort — 검색 실패와 무관.
+  }
+}
+
+export async function clearSearchHistory(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<void> {
+  await client.from("user_search_history").delete().eq("user_id", userId);
+}
 
 function escapeForIlike(s: string): string {
   return s.replaceAll("%", "").replaceAll(",", " ");

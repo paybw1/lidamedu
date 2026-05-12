@@ -2808,6 +2808,41 @@ export type Database = {
           },
         ]
       }
+      user_search_history: {
+        Row: {
+          created_at: string
+          history_id: string
+          last_searched_at: string
+          query: string
+          search_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          history_id?: string
+          last_searched_at?: string
+          query: string
+          search_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          history_id?: string
+          last_searched_at?: string
+          query?: string
+          search_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_search_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       user_subjective_attempts: {
         Row: {
           answer_md: string

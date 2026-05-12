@@ -4,11 +4,13 @@
 import {
   BookmarkIcon,
   BookOpenIcon,
+  ClockIcon,
   FileTextIcon,
   GavelIcon,
   ListChecksIcon,
   SearchIcon,
   StickyNoteIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useNavigate } from "react-router";
@@ -34,6 +36,12 @@ interface SearchHit {
   lawCode: string | null;
 }
 
+interface RecentSearch {
+  query: string;
+  searchCount: number;
+  lastSearchedAt: string;
+}
+
 interface SearchResults {
   query: string;
   articles: SearchHit[];
@@ -41,6 +49,7 @@ interface SearchResults {
   problems: SearchHit[];
   memos: SearchHit[];
   bookmarks: SearchHit[];
+  recentSearches: RecentSearch[];
 }
 
 const GROUP_META: Record<
@@ -89,14 +98,17 @@ export function CommandPalette() {
   }, []);
 
   // 검색어 변경 → 디바운스 후 fetcher.load.
+  // 빈 입력 + 모달 open 상태에서는 recentSearches 만 받아오기 위해 q="" 로 호출.
   useEffect(() => {
     if (!open) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const trimmed = query.trim();
-    if (trimmed.length === 0) return;
-    debounceRef.current = setTimeout(() => {
-      fetcher.load(`/api/search?q=${encodeURIComponent(trimmed)}`);
-    }, 180);
+    debounceRef.current = setTimeout(
+      () => {
+        fetcher.load(`/api/search?q=${encodeURIComponent(trimmed)}`);
+      },
+      trimmed.length === 0 ? 0 : 180,
+    );
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
@@ -108,6 +120,18 @@ export function CommandPalette() {
   useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
+
+  const clearHistoryFetcher = useFetcher<{ ok?: true; error?: string }>();
+  const clearHistory = () => {
+    if (!confirm("최근 검색 기록을 모두 지우시겠습니까?")) return;
+    const fd = new FormData();
+    clearHistoryFetcher.submit(fd, {
+      method: "post",
+      action: "/api/search/clear-history",
+    });
+    // 화면에서 즉시 사라지도록 results 새로고침.
+    fetcher.load(`/api/search?q=`);
+  };
 
   const go = useCallback(
     (href: string) => {
@@ -145,19 +169,11 @@ export function CommandPalette() {
       />
       <CommandList>
         {query.trim().length === 0 ? (
-          <div className="text-muted-foreground px-4 py-6 text-center text-xs">
-            <p>
-              검색어를 입력하세요. 단축키{" "}
-              <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                ⌘K
-              </kbd>{" "}
-              /{" "}
-              <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                Ctrl K
-              </kbd>{" "}
-              로 언제든 열 수 있습니다.
-            </p>
-          </div>
+          <EmptyState
+            recents={results?.recentSearches ?? []}
+            onPick={setQuery}
+            onClear={clearHistory}
+          />
         ) : isLoading && !hasAnyResult ? (
           <div className="text-muted-foreground px-4 py-6 text-center text-xs">
             검색 중…
@@ -172,6 +188,69 @@ export function CommandPalette() {
         결과 클릭 또는 ↵ 로 이동 · Esc 로 닫기
       </div>
     </CommandDialog>
+  );
+}
+
+function EmptyState({
+  recents,
+  onPick,
+  onClear,
+}: {
+  recents: RecentSearch[];
+  onPick: (q: string) => void;
+  onClear: () => void;
+}) {
+  if (recents.length === 0) {
+    return (
+      <div className="text-muted-foreground px-4 py-6 text-center text-xs">
+        <p>
+          검색어를 입력하세요. 단축키{" "}
+          <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
+            ⌘K
+          </kbd>{" "}
+          /{" "}
+          <kbd className="bg-muted rounded border px-1.5 py-0.5 font-mono text-[10px]">
+            Ctrl K
+          </kbd>{" "}
+          로 언제든 열 수 있습니다.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="px-3 py-3" data-testid="recent-searches">
+      <div className="flex items-center justify-between pb-2 text-[11px]">
+        <p className="text-muted-foreground inline-flex items-center gap-1 font-semibold tracking-wide uppercase">
+          <ClockIcon className="size-3" /> 최근 검색
+        </p>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          data-testid="clear-search-history"
+        >
+          <Trash2Icon className="size-3" /> 모두 지우기
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {recents.map((r) => (
+          <button
+            key={r.query}
+            type="button"
+            onClick={() => onPick(r.query)}
+            className="hover:bg-accent inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs"
+            title={`${r.searchCount}회 검색 · ${new Date(r.lastSearchedAt).toLocaleString("ko-KR")}`}
+          >
+            {r.query}
+            {r.searchCount > 1 ? (
+              <span className="text-muted-foreground tabular-nums">
+                ×{r.searchCount}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
