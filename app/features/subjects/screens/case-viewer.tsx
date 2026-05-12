@@ -1,7 +1,9 @@
 import {
   ArrowLeftIcon,
   FileTextIcon,
+  ListTreeIcon,
   NetworkIcon,
+  PanelRightIcon,
   StarIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
@@ -10,6 +12,13 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
@@ -182,7 +191,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
       </Link>
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-        <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="py-4">
             <CardHeader className="px-4 pb-2">
               <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
@@ -202,6 +211,62 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
         </aside>
 
         <main className="space-y-4">
+          {/* 모바일 드로어 트리거. */}
+          <div className="flex flex-wrap gap-2 lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  data-testid="open-tree-drawer"
+                >
+                  <ListTreeIcon className="size-3.5" /> 조문 트리
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
+                <SheetHeader>
+                  <SheetTitle>{subject.name} 조문 트리</SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-4">
+                  <ArticleTree
+                    nodes={articles}
+                    lawCode={subject.slug}
+                    lazyExpand={
+                      subject.slug === "civil" ? { lawId } : undefined
+                    }
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  data-testid="open-right-drawer"
+                >
+                  <PanelRightIcon className="size-3.5" /> 학습 보조
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
+                <SheetHeader>
+                  <SheetTitle>학습 보조</SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-4">
+                  <ArticleRightPanel
+                    target={{ type: "case", id: kase.caseId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedProblems={relatedProblems}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
           <Card>
             <CardHeader className="pb-2">
               <RelatedSection
@@ -365,7 +430,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           </Card>
         </main>
 
-        <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="h-full">
             <CardHeader>
               <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">

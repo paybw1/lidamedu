@@ -4,12 +4,25 @@
 // 구조는 systematic-node-viewer 와 비슷 — 다중 article 카드 + 우측 panel + 빈칸 모드.
 // 차이: 그룹 식별자가 systematic node 가 아니라 article 트리의 chapter article id.
 
-import { ArrowLeftIcon, EyeIcon, EyeOffIcon, PencilLineIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  EyeIcon,
+  EyeOffIcon,
+  ListTreeIcon,
+  PencilLineIcon,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/core/components/ui/sheet";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -310,7 +323,7 @@ function Inner({
       <HighlightToolbar />
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="py-4">
             <CardHeader className="px-4 pb-3">
               <div className="flex items-center justify-end gap-2">
@@ -347,6 +360,50 @@ function Inner({
         </aside>
 
         <main className="space-y-4">
+          {/* 모바일 트리 드로어. */}
+          <div className="flex flex-wrap gap-2 lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8" data-testid="open-tree-drawer">
+                  <ListTreeIcon className="size-3.5" /> 조문 트리
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
+                <SheetHeader>
+                  <SheetTitle>조문 트리</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-3 px-3 pb-4">
+                  <div className="flex justify-end">
+                    <SortAxisToggle
+                      size="sm"
+                      disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                    />
+                  </div>
+                  {renderSystematic ? (
+                    <SystematicTree
+                      nodes={systematicNodes}
+                      activeArticleId={firstArticleId}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                    />
+                  ) : (
+                    <ArticleTree
+                      nodes={articles}
+                      activeArticleId={firstArticleId}
+                      activeChapterId={chapter.chapterId}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                      lazyExpand={
+                        subject.slug === "civil" ? { lawId } : undefined
+                      }
+                    />
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-2">

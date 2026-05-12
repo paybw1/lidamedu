@@ -5,6 +5,8 @@ import {
   CircleCheckIcon,
   CircleXIcon,
   FlagIcon,
+  ListTreeIcon,
+  PanelRightIcon,
   TimerIcon,
   VideoIcon,
 } from "lucide-react";
@@ -21,6 +23,13 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
@@ -572,8 +581,9 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         ) : null}
       </div>
 
+      {/* 좌·우 패널은 데스크탑 grid, 모바일은 Sheet 드로어로 분기. */}
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-        <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="py-4">
             <CardContent className="px-2 pb-2">
               {systematicEmpty ? (
@@ -594,6 +604,79 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         </aside>
 
         <main className="space-y-4">
+          {/* 모바일 드로어 트리거 — 본문이 첫 화면. */}
+          <div className="flex flex-wrap gap-2 lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  data-testid="open-tree-drawer"
+                >
+                  <ListTreeIcon className="size-3.5" /> 체계도 트리
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
+                <SheetHeader>
+                  <SheetTitle>체계도 트리</SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-4">
+                  {systematicEmpty ? (
+                    <p className="text-muted-foreground px-2 py-4 text-xs">
+                      체계도 데이터 미입력
+                    </p>
+                  ) : (
+                    <SystematicTree
+                      nodes={systematicNodes}
+                      activeArticleId={problem.primaryArticleId ?? undefined}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                    />
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  data-testid="open-right-drawer"
+                >
+                  <PanelRightIcon className="size-3.5" /> 학습 보조
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
+                <SheetHeader>
+                  <SheetTitle>학습 보조</SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-4">
+                  <ArticleRightPanel
+                    target={{ type: "problem", id: problem.problemId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedProblems={relatedProblems}
+                    subjectSlug={subject.slug}
+                    relatedCases={citedCases.map((c) => ({
+                      caseId: c.caseId,
+                      caseNumber: c.caseNumber,
+                      caseTitle: c.caseTitle,
+                      summaryTitle: c.summaryTitle,
+                      decidedAt: c.decidedAt,
+                      importance: c.importance,
+                      relationType: PC_TO_AC[c.relationType] ?? "cites",
+                      note: null,
+                    }))}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -959,7 +1042,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
           </Card>
         </main>
 
-        <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="py-4">
             <CardContent className="px-3">
               <ArticleRightPanel
