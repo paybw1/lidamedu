@@ -8,6 +8,10 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  notifyReviewCompleted,
+  notifyReviewRequested,
+} from "~/features/study/notify-review.server";
+import {
   completeSubjectiveReview,
   requestSubjectiveReview,
 } from "~/features/study/queries.server";
@@ -46,6 +50,27 @@ export async function action({ request }: Route.ActionArgs) {
       parsed.data.problemId,
     );
     if (!result.ok) return data({ error: result.error }, { status: 400 });
+    // 알림 — 모든 staff 에게. best-effort, 응답 전 await 하지 않음.
+    void (async () => {
+      const { data: prob } = await client
+        .from("problems")
+        .select("year, problem_number, body_md, laws(law_code)")
+        .eq("problem_id", parsed.data.problemId)
+        .maybeSingle();
+      const label = prob
+        ? `${prob.year ? `${prob.year}년 ` : ""}${
+            prob.problem_number ? `${prob.problem_number}번` : "주관식"
+          } (${prob.laws?.law_code ?? "subject"})`
+        : "주관식 문제";
+      const body = result.attempt.answerMd ?? "";
+      const excerpt = body.length > 600 ? `${body.slice(0, 600)}…` : body;
+      await notifyReviewRequested({
+        studentId: user.id,
+        problemId: parsed.data.problemId,
+        problemLabel: label,
+        excerpt,
+      });
+    })();
     return data({ ok: true, attempt: result.attempt });
   }
 
@@ -63,6 +88,30 @@ export async function action({ request }: Route.ActionArgs) {
       commentMd: parsed.data.commentMd ?? null,
     });
     if (!result.ok) return data({ error: result.error }, { status: 400 });
+    // 학생에게 알림 — attempt 의 user_id + problem 정보 lookup.
+    void (async () => {
+      const { data: row } = await client
+        .from("user_subjective_attempts")
+        .select(
+          "user_id, problem_id, problems(year, problem_number, laws(law_code))",
+        )
+        .eq("attempt_id", parsed.data.attemptId)
+        .maybeSingle();
+      if (!row) return;
+      const lawCode = row.problems?.laws?.law_code ?? "patent";
+      const label = `${row.problems?.year ? `${row.problems.year}년 ` : ""}${
+        row.problems?.problem_number ? `${row.problems.problem_number}번` : "주관식"
+      } (${lawCode})`;
+      await notifyReviewCompleted({
+        studentId: row.user_id,
+        reviewerId: user.id,
+        problemId: row.problem_id,
+        problemLabel: label,
+        problemHref: `/subjects/${lawCode}/problems/${row.problem_id}`,
+        score: result.attempt.reviewerScore,
+        commentMd: result.attempt.reviewerCommentMd,
+      });
+    })();
     return data({ ok: true, attempt: result.attempt });
   }
 

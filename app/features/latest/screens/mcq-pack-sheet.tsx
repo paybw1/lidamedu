@@ -134,12 +134,38 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
   }, [attempts]);
 
   const [selected, setSelected] = useState<SelectedChoiceState>(initialSelected);
-  const [graded, setGraded] = useState(false);
+  // 학습 모드 채점 결과 — 새로고침 후에도 살아남도록 localStorage 보존.
+  // 이미 완료된 세션은 항상 채점 상태로 노출 (정답·해설 공개).
+  const gradedStorageKey = `lidam:sheet:graded:${session.sessionId}`;
+  const [graded, setGraded] = useState<boolean>(() => {
+    if (session.completedAt) return true;
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(gradedStorageKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (graded) window.localStorage.setItem(gradedStorageKey, "1");
+      else window.localStorage.removeItem(gradedStorageKey);
+    } catch {
+      // ignore quota / privacy errors
+    }
+  }, [graded, gradedStorageKey]);
   const startedAtRef = useRef<number>(Date.now());
   const attemptFetcher = useFetcher();
   const completeFetcher = useFetcher();
-  // problemId:choiceIndex 형태로 중복 기록 방지.
-  const recordedRef = useRef<Set<string>>(new Set());
+  // problemId:choiceIndex 형태로 중복 기록 방지 — 새로고침 시에도 기존 응답으로 채워둠.
+  const recordedRef = useRef<Set<string>>(
+    new Set(
+      Object.entries(initialSelected).map(
+        ([pid, ci]) => `${pid}:${ci}`,
+      ),
+    ),
+  );
 
   const totalAnswered = Object.keys(selected).length;
   const totalProblems = problems.length;
@@ -171,6 +197,14 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
   };
 
   const completeSession = () => {
+    // 세션 종료 시 임시 grading 플래그 정리.
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(gradedStorageKey);
+      } catch {
+        // ignore
+      }
+    }
     const fd = new FormData();
     fd.set("sessionId", session.sessionId);
     fd.set(
