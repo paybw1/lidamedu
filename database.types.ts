@@ -3075,6 +3075,13 @@ export type Database = {
           revisions_published: number
         }[]
       }
+      backfill_article_article_links_from_body: {
+        Args: never
+        Returns: {
+          inserted_count: number
+          total_existing_count: number
+        }[]
+      }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
       get_problem_stats: {
         Args: { p_ids: string[] }

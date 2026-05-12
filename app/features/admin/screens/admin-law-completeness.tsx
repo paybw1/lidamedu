@@ -7,8 +7,11 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   CircleSlash2Icon,
+  RefreshCwIcon,
 } from "lucide-react";
-import { Link, data } from "react-router";
+import { useEffect } from "react";
+import { Link, data, useFetcher } from "react-router";
+import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -54,6 +57,32 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   };
 }
 
+export async function action({ request }: Route.ActionArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) throw data("Unauthorized", { status: 401 });
+  const role = await getStaffRole(client, user.id);
+  if (!role) throw data("Forbidden", { status: 403 });
+
+  const form = await request.formData();
+  const intent = form.get("intent");
+  if (intent === "backfill_aa_refs") {
+    const { data: rows, error } = await client.rpc(
+      "backfill_article_article_links_from_body",
+    );
+    if (error) throw data(error.message, { status: 500 });
+    const row = rows?.[0];
+    return {
+      ok: true as const,
+      insertedCount: Number(row?.inserted_count ?? 0),
+      totalExistingCount: Number(row?.total_existing_count ?? 0),
+    };
+  }
+  throw data("Unknown intent", { status: 400 });
+}
+
 interface GapRow {
   label: string;
   covered: number;
@@ -70,6 +99,17 @@ export default function AdminLawCompleteness({
   const caseGaps = buildCaseGaps(snapshot, subject.slug);
   const problemGaps = buildProblemGaps(snapshot, subject.slug);
 
+  const backfillFetcher = useFetcher<typeof action>();
+  const backfillBusy = backfillFetcher.state !== "idle";
+  useEffect(() => {
+    const result = backfillFetcher.data;
+    if (backfillFetcher.state === "idle" && result?.ok) {
+      toast.success(
+        `본문 inline ref 동기화 완료 — 신규 ${result.insertedCount}건 (누계 ${result.totalExistingCount}건)`,
+      );
+    }
+  }, [backfillFetcher.state, backfillFetcher.data]);
+
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
       <header className="mb-6 space-y-2">
@@ -79,12 +119,30 @@ export default function AdminLawCompleteness({
             운영자 허브
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {subject.name} 완성도
-        </h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="text-2xl font-bold tracking-tight">
+            {subject.name} 완성도
+          </h1>
+          <backfillFetcher.Form method="post">
+            <input type="hidden" name="intent" value="backfill_aa_refs" />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={backfillBusy}
+            >
+              <RefreshCwIcon
+                className={cn("size-3", backfillBusy && "animate-spin")}
+              />
+              본문 ref 동기화
+            </Button>
+          </backfillFetcher.Form>
+        </div>
         <p className="text-muted-foreground text-sm">
           실 조문({subject.exam} 시험) 기준 콘텐츠 갭 진단. 각 차원에서 미커버 항목을
-          채워 학습 자료를 완성하세요.
+          채워 학습 자료를 완성하세요. <strong>본문 ref 동기화</strong> 는 모든 법령의
+          본문 inline <code className="text-[10.5px]">ref_article</code> 노드를
+          스캔해 <em>관련 조문</em> 연관관계를 자동 추가합니다.
         </p>
       </header>
 
