@@ -252,16 +252,27 @@ export async function deleteArticleComment(
   if (error) throw error;
 }
 
-// 최근 published 법 개정 (대시보드 위젯). 모든 과목 통합.
+// 최근 published 법 개정 (대시보드 위젯 + /latest/laws). 모든 과목 통합.
+export type LawRevisionKind = "act" | "decree" | "rule";
+
 export interface RecentRevisionItem {
   lawRevisionId: string;
   lawId: string;
   lawCode: string;
   lawName: string;
+  revisionKind: LawRevisionKind;
   revisionNumber: string | null;
   promulgatedAt: string | null;
   effectiveDate: string | null;
   publishedAt: string | null;
+  hasReason: boolean;
+  hasComparison: boolean;
+  hasExplanation: boolean;
+  hasVideo: boolean;
+  reasonMd: string | null;
+  comparisonPdf: string | null;
+  explanationMd: string | null;
+  videoUrl: string | null;
   // 이 개정에 포함된 article_revisions 개수 (영향 조문 수).
   affectedArticleCount: number;
   // 본인이 즐겨찾기한 조문 중 영향받은 개수 (≥1 이면 강조).
@@ -282,7 +293,7 @@ export async function listRecentLawRevisions(
   let q = client
     .from("law_revisions")
     .select(
-      "law_revision_id, law_id, revision_number, promulgated_at, effective_date, published_at, laws!inner(law_code, display_label, short_label)",
+      "law_revision_id, law_id, revision_kind, revision_number, promulgated_at, effective_date, published_at, reason_md, comparison_pdf, explanation_md, video_url, laws!inner(law_code, display_label, short_label)",
     )
     .eq("status", "published");
   if (options.subject) q = q.eq("laws.law_code", options.subject);
@@ -338,10 +349,20 @@ export async function listRecentLawRevisions(
       lawId: r.law_id,
       lawCode: r.laws.law_code,
       lawName: r.laws.short_label ?? r.laws.display_label,
+      revisionKind: (r.revision_kind ?? "act") as LawRevisionKind,
       revisionNumber: r.revision_number,
       promulgatedAt: r.promulgated_at,
       effectiveDate: r.effective_date,
       publishedAt: r.published_at,
+      hasReason: !!r.reason_md && r.reason_md.trim().length > 0,
+      hasComparison: !!r.comparison_pdf && r.comparison_pdf.trim().length > 0,
+      hasExplanation:
+        !!r.explanation_md && r.explanation_md.trim().length > 0,
+      hasVideo: !!r.video_url && r.video_url.trim().length > 0,
+      reasonMd: r.reason_md ?? null,
+      comparisonPdf: r.comparison_pdf ?? null,
+      explanationMd: r.explanation_md ?? null,
+      videoUrl: r.video_url ?? null,
       affectedArticleCount: affected.length,
       myBookmarkedAffectedCount: myMatched,
     };

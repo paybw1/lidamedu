@@ -75,13 +75,29 @@ export async function action({ request }: Route.ActionArgs) {
     const schema = z.object({
       lawRevisionId: z.string().uuid(),
       revisionNumber: z.string().trim().min(1).max(100).optional(),
-      reasonMd: z.string().trim().max(5000).nullable().optional(),
+      reasonMd: z.string().trim().max(20000).nullable().optional(),
+      comparisonPdf: z.string().trim().url().max(2000).nullable().optional(),
+      explanationMd: z.string().trim().max(50000).nullable().optional(),
+      videoUrl: z.string().trim().url().max(2000).nullable().optional(),
+      revisionKind: z.enum(["act", "decree", "rule"]).optional(),
       status: z.enum(["draft", "review", "published"]).optional(),
     });
     const parsed = schema.safeParse({
       lawRevisionId: fd.get("lawRevisionId"),
       revisionNumber: fd.get("revisionNumber") ?? undefined,
-      reasonMd: emptyToNull(fd.get("reasonMd"), 5000),
+      reasonMd:
+        fd.has("reasonMd") ? emptyToNull(fd.get("reasonMd"), 20000) : undefined,
+      comparisonPdf:
+        fd.has("comparisonPdf")
+          ? emptyToNull(fd.get("comparisonPdf"), 2000)
+          : undefined,
+      explanationMd:
+        fd.has("explanationMd")
+          ? emptyToNull(fd.get("explanationMd"), 50000)
+          : undefined,
+      videoUrl:
+        fd.has("videoUrl") ? emptyToNull(fd.get("videoUrl"), 2000) : undefined,
+      revisionKind: fd.get("revisionKind") ?? undefined,
       status: fd.get("status") ?? undefined,
     });
     if (!parsed.success) {
@@ -92,7 +108,11 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const res = await updateLawRevisionMeta(client, parsed.data.lawRevisionId, {
       revisionNumber: parsed.data.revisionNumber,
-      reasonMd: parsed.data.reasonMd ?? null,
+      reasonMd: parsed.data.reasonMd,
+      comparisonPdf: parsed.data.comparisonPdf,
+      explanationMd: parsed.data.explanationMd,
+      videoUrl: parsed.data.videoUrl,
+      revisionKind: parsed.data.revisionKind,
       // published 로 직접 전환은 발행 RPC 만 허용.
       status: parsed.data.status === "published" ? undefined : parsed.data.status,
     });

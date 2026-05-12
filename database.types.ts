@@ -1356,6 +1356,7 @@ export type Database = {
           published_at: string | null
           published_by: string | null
           reason_md: string | null
+          revision_kind: Database["public"]["Enums"]["law_revision_kind"]
           revision_number: string
           status: string
           video_url: string | null
@@ -1371,6 +1372,7 @@ export type Database = {
           published_at?: string | null
           published_by?: string | null
           reason_md?: string | null
+          revision_kind?: Database["public"]["Enums"]["law_revision_kind"]
           revision_number: string
           status?: string
           video_url?: string | null
@@ -1386,6 +1388,7 @@ export type Database = {
           published_at?: string | null
           published_by?: string | null
           reason_md?: string | null
+          revision_kind?: Database["public"]["Enums"]["law_revision_kind"]
           revision_number?: string
           status?: string
           video_url?: string | null
@@ -3284,6 +3287,7 @@ export type Database = {
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
       gs_round_status: "draft" | "published" | "closed"
       law_change_kind: "created" | "amended" | "deleted"
+      law_revision_kind: "act" | "decree" | "rule"
       ox_truth: "O" | "X"
       pc_relation_type: "cited" | "illustrates" | "contrasts" | "similar"
       problem_choice_type: "statute" | "precedent" | "theory"
@@ -3465,6 +3469,7 @@ export const Constants = {
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
       gs_round_status: ["draft", "published", "closed"],
       law_change_kind: ["created", "amended", "deleted"],
+      law_revision_kind: ["act", "decree", "rule"],
       ox_truth: ["O", "X"],
       pc_relation_type: ["cited", "illustrates", "contrasts", "similar"],
       problem_choice_type: ["statute", "precedent", "theory"],

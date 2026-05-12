@@ -23,17 +23,21 @@ export {
 } from "./labels";
 
 const LIST_COLUMNS =
-  "law_revision_id, law_id, revision_number, status, promulgated_at, effective_date, published_at, reason_md, created_at, laws!inner(law_code, short_label, display_label)";
+  "law_revision_id, law_id, revision_number, revision_kind, status, promulgated_at, effective_date, published_at, reason_md, comparison_pdf, explanation_md, video_url, created_at, laws!inner(law_code, short_label, display_label)";
 
 interface LawRevisionRow {
   law_revision_id: string;
   law_id: string;
   revision_number: string;
+  revision_kind: string | null;
   status: string;
   promulgated_at: string | null;
   effective_date: string | null;
   published_at: string | null;
   reason_md: string | null;
+  comparison_pdf: string | null;
+  explanation_md: string | null;
+  video_url: string | null;
   created_at: string;
   laws: { law_code: string; short_label: string | null; display_label: string };
 }
@@ -86,14 +90,23 @@ export async function listLawRevisionsForAdmin(
     lawCode: r.laws.law_code,
     lawName: r.laws.short_label ?? r.laws.display_label,
     revisionNumber: r.revision_number,
+    revisionKind: asKind(r.revision_kind),
     status: asStatus(r.status),
     promulgatedAt: r.promulgated_at,
     effectiveDate: r.effective_date,
     publishedAt: r.published_at,
     reasonMd: r.reason_md,
+    comparisonPdf: r.comparison_pdf,
+    explanationMd: r.explanation_md,
+    videoUrl: r.video_url,
     articleCount: countByRevision.get(r.law_revision_id) ?? 0,
     createdAt: r.created_at,
   }));
+}
+
+function asKind(value: string | null): import("./labels").LawRevisionKind {
+  if (value === "decree" || value === "rule") return value;
+  return "act";
 }
 
 export async function getLawRevisionById(
@@ -118,11 +131,15 @@ export async function getLawRevisionById(
     lawCode: r.laws.law_code,
     lawName: r.laws.short_label ?? r.laws.display_label,
     revisionNumber: r.revision_number,
+    revisionKind: asKind(r.revision_kind),
     status: asStatus(r.status),
     promulgatedAt: r.promulgated_at,
     effectiveDate: r.effective_date,
     publishedAt: r.published_at,
     reasonMd: r.reason_md,
+    comparisonPdf: r.comparison_pdf,
+    explanationMd: r.explanation_md,
+    videoUrl: r.video_url,
     articleCount: count ?? 0,
     createdAt: r.created_at,
   };
@@ -203,6 +220,10 @@ export async function createLawRevision(
 export interface UpdateLawRevisionInput {
   revisionNumber?: string;
   reasonMd?: string | null;
+  comparisonPdf?: string | null;
+  explanationMd?: string | null;
+  videoUrl?: string | null;
+  revisionKind?: import("./labels").LawRevisionKind;
   status?: LawRevisionStatus;
 }
 
@@ -215,6 +236,13 @@ export async function updateLawRevisionMeta(
   if (patch.revisionNumber !== undefined)
     update.revision_number = patch.revisionNumber;
   if (patch.reasonMd !== undefined) update.reason_md = patch.reasonMd;
+  if (patch.comparisonPdf !== undefined)
+    update.comparison_pdf = patch.comparisonPdf;
+  if (patch.explanationMd !== undefined)
+    update.explanation_md = patch.explanationMd;
+  if (patch.videoUrl !== undefined) update.video_url = patch.videoUrl;
+  if (patch.revisionKind !== undefined)
+    update.revision_kind = patch.revisionKind;
   if (patch.status !== undefined) update.status = patch.status;
   if (Object.keys(update).length === 0) return { ok: true };
   const { error } = await client
