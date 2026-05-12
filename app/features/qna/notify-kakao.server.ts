@@ -6,8 +6,10 @@
 //   KAKAO_API_KEY        — provider API key
 //   KAKAO_API_SECRET     — provider API secret (Solapi 의 경우)
 //   KAKAO_PFID           — 등록된 카카오 비즈니스 채널의 발신 프로필 ID
-//   KAKAO_TEMPLATE_NEW_QUESTION  — 새 질문 알림 템플릿 ID (사전 승인 필요)
-//   KAKAO_TEMPLATE_NEW_ANSWER    — 답변 도착 알림 템플릿 ID (사전 승인 필요)
+//   KAKAO_TEMPLATE_NEW_QUESTION         — 새 질문 알림 템플릿 ID (사전 승인 필요)
+//   KAKAO_TEMPLATE_NEW_ANSWER           — 답변 도착 알림 템플릿 ID (사전 승인 필요)
+//   KAKAO_TEMPLATE_REVIEW_REQUESTED     — 주관식 첨삭 요청 알림 (강사 수신)
+//   KAKAO_TEMPLATE_REVIEW_COMPLETED     — 주관식 첨삭 완료 알림 (학생 수신)
 //
 // 위 변수가 모두 설정되어 있지 않으면 sendKakaoAlimtalk 는 KakaoNotConfigured 를 throw 한다.
 // notify.server.ts 의 디스패처가 이를 catch 하여 다른 채널(이메일) 발송에는 영향을 주지 않는다.
@@ -19,7 +21,11 @@ export class KakaoNotConfigured extends Error {
   }
 }
 
-export type KakaoTemplateKey = "new-question" | "new-answer";
+export type KakaoTemplateKey =
+  | "new-question"
+  | "new-answer"
+  | "review-requested"
+  | "review-completed";
 
 interface KakaoConfig {
   provider: string;
@@ -36,6 +42,8 @@ function readConfig(): KakaoConfig | KakaoNotConfigured {
   const pfid = process.env.KAKAO_PFID ?? "";
   const tplQuestion = process.env.KAKAO_TEMPLATE_NEW_QUESTION ?? "";
   const tplAnswer = process.env.KAKAO_TEMPLATE_NEW_ANSWER ?? "";
+  const tplReviewRequested = process.env.KAKAO_TEMPLATE_REVIEW_REQUESTED ?? "";
+  const tplReviewCompleted = process.env.KAKAO_TEMPLATE_REVIEW_COMPLETED ?? "";
 
   const missing: string[] = [];
   if (!apiKey) missing.push("KAKAO_API_KEY");
@@ -43,6 +51,8 @@ function readConfig(): KakaoConfig | KakaoNotConfigured {
   if (!pfid) missing.push("KAKAO_PFID");
   if (!tplQuestion) missing.push("KAKAO_TEMPLATE_NEW_QUESTION");
   if (!tplAnswer) missing.push("KAKAO_TEMPLATE_NEW_ANSWER");
+  if (!tplReviewRequested) missing.push("KAKAO_TEMPLATE_REVIEW_REQUESTED");
+  if (!tplReviewCompleted) missing.push("KAKAO_TEMPLATE_REVIEW_COMPLETED");
   if (missing.length > 0) return new KakaoNotConfigured(missing);
 
   return {
@@ -53,6 +63,8 @@ function readConfig(): KakaoConfig | KakaoNotConfigured {
     templates: {
       "new-question": tplQuestion,
       "new-answer": tplAnswer,
+      "review-requested": tplReviewRequested,
+      "review-completed": tplReviewCompleted,
     },
   };
 }

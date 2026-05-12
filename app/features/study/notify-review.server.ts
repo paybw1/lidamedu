@@ -1,51 +1,132 @@
 // 주관식 첨삭 알림 (feat-3-402) — Q&A 의 notify.server.ts 패턴 재사용.
-// 요청 시: 모든 staff (instructor/admin) 에게 이메일.
-// 완료 시: 학생 본인에게 이메일.
+// 요청 시: 모든 staff (instructor/admin) 에게 fanout. 본인 채널 선호(email/kakao)에 따라.
+// 완료 시: 학생 본인에게.
 // best-effort — 실패해도 본 작업(요청/완료 DB 갱신) 진행에는 영향 없음.
 
 import { render } from "@react-email/render";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import resendClient from "~/core/lib/resend-client.server";
+import {
+  KakaoNotConfigured,
+  sendKakaoAlimtalk,
+  type KakaoTemplateKey,
+} from "~/features/qna/notify-kakao.server";
 import ReviewCompletedEmail from "../../../transactional-emails/emails/review-completed";
 import ReviewRequestedEmail from "../../../transactional-emails/emails/review-requested";
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
 const APP_URL = process.env.APP_URL ?? "http://localhost:5173";
 
-async function fetchEmail(profileId: string): Promise<string | null> {
-  try {
-    const { data, error } = await adminClient.auth.admin.getUserById(profileId);
-    if (error || !data?.user?.email) return null;
-    return data.user.email;
-  } catch {
-    return null;
-  }
+type NotifyChannel = "email" | "kakao";
+
+interface Recipient {
+  profileId: string;
+  name: string | null;
+  email: string | null;
+  phoneE164: string | null;
+  channels: NotifyChannel[];
 }
 
-async function fetchStaffEmails(): Promise<
-  Array<{ profileId: string; email: string }>
-> {
-  const { data: profiles } = await adminClient
+async function fetchRecipients(profileIds: string[]): Promise<Recipient[]> {
+  if (profileIds.length === 0) return [];
+  const { data: profiles, error } = await adminClient
+    .from("profiles")
+    .select("profile_id, name, phone_e164, notify_channels")
+    .in("profile_id", profileIds);
+  if (error || !profiles) return [];
+  const out: Recipient[] = [];
+  for (const profile of profiles) {
+    let email: string | null = null;
+    try {
+      const { data, error: authErr } = await adminClient.auth.admin.getUserById(
+        profile.profile_id,
+      );
+      if (!authErr && data?.user?.email) email = data.user.email;
+    } catch {
+      // 이메일 lookup 실패는 카카오 채널만 시도하도록 진행.
+    }
+    const validChannels = profile.notify_channels.filter(
+      (c): c is NotifyChannel => c === "email" || c === "kakao",
+    );
+    out.push({
+      profileId: profile.profile_id,
+      name: profile.name,
+      email,
+      phoneE164: profile.phone_e164,
+      channels: validChannels,
+    });
+  }
+  return out;
+}
+
+async function fetchStaffProfileIds(): Promise<string[]> {
+  const { data, error } = await adminClient
     .from("profiles")
     .select("profile_id")
     .in("role", ["instructor", "admin"]);
-  if (!profiles) return [];
-  const list: Array<{ profileId: string; email: string }> = [];
-  for (const p of profiles) {
-    const email = await fetchEmail(p.profile_id);
-    if (email) list.push({ profileId: p.profile_id, email });
-  }
-  return list;
+  if (error || !data) return [];
+  return data.map((r) => r.profile_id);
 }
 
-async function fetchProfileName(profileId: string): Promise<string | null> {
-  const { data } = await adminClient
-    .from("profiles")
-    .select("name")
-    .eq("profile_id", profileId)
-    .maybeSingle();
-  return data?.name ?? null;
+interface EmailPayload {
+  subject: string;
+  html: string;
+}
+
+interface KakaoPayload {
+  template: KakaoTemplateKey;
+  variables: Record<string, string>;
+  fallbackText: string;
+}
+
+async function dispatch(
+  recipient: Recipient,
+  email: EmailPayload,
+  kakao: KakaoPayload,
+): Promise<void> {
+  const tasks: Promise<void>[] = [];
+  if (recipient.channels.includes("email") && recipient.email) {
+    tasks.push(
+      (async () => {
+        try {
+          await resendClient.emails.send({
+            from: FROM_EMAIL,
+            to: recipient.email!,
+            subject: email.subject,
+            html: email.html,
+          });
+        } catch (err) {
+          console.error(
+            `[review:notify] email failed (profile=${recipient.profileId}):`,
+            err,
+          );
+        }
+      })(),
+    );
+  }
+  if (recipient.channels.includes("kakao") && recipient.phoneE164) {
+    tasks.push(
+      (async () => {
+        try {
+          await sendKakaoAlimtalk({
+            to: recipient.phoneE164!,
+            template: kakao.template,
+            variables: kakao.variables,
+            fallbackText: kakao.fallbackText,
+          });
+        } catch (err) {
+          if (!(err instanceof KakaoNotConfigured)) {
+            console.error(
+              `[review:notify] kakao failed (profile=${recipient.profileId}):`,
+              err,
+            );
+          }
+        }
+      })(),
+    );
+  }
+  await Promise.all(tasks);
 }
 
 interface ReviewRequestedPayload {
@@ -59,37 +140,48 @@ export async function notifyReviewRequested(
   payload: ReviewRequestedPayload,
 ): Promise<void> {
   try {
-    const [studentName, recipients] = await Promise.all([
-      fetchProfileName(payload.studentId),
-      fetchStaffEmails(),
+    const [staffIds, studentRecipients] = await Promise.all([
+      fetchStaffProfileIds(),
+      fetchRecipients([payload.studentId]),
     ]);
+    const studentName = studentRecipients[0]?.name ?? "수험생";
+
+    const recipients = await fetchRecipients(
+      staffIds.filter((id) => id !== payload.studentId),
+    );
     if (recipients.length === 0) return;
+
     const link = `${APP_URL}/admin/subjective-reviews`;
     const html = await render(
       ReviewRequestedEmail({
         link,
-        studentName: studentName ?? "수험생",
+        studentName,
         problemLabel: payload.problemLabel,
         excerpt: payload.excerpt,
       }),
     );
-    const subject = `[Lidam Edu] 새 주관식 첨삭 요청 — ${payload.problemLabel}`;
+    const emailPayload: EmailPayload = {
+      subject: `[Lidam Edu] 새 주관식 첨삭 요청 — ${payload.problemLabel}`,
+      html,
+    };
+
+    const excerptShort =
+      payload.excerpt.length > 80
+        ? payload.excerpt.slice(0, 80) + "…"
+        : payload.excerpt;
+    const kakaoPayload: KakaoPayload = {
+      template: "review-requested",
+      variables: {
+        studentName,
+        problemLabel: payload.problemLabel,
+        excerpt: excerptShort,
+        link,
+      },
+      fallbackText: `[Lidam Edu] 새 주관식 첨삭 요청 — ${payload.problemLabel}\n${studentName} 님\n${excerptShort}\n${link}`,
+    };
+
     await Promise.all(
-      recipients.map(async (r) => {
-        try {
-          await resendClient.emails.send({
-            from: FROM_EMAIL,
-            to: r.email,
-            subject,
-            html,
-          });
-        } catch (err) {
-          console.error(
-            `[review:notify] requested email failed (profile=${r.profileId}):`,
-            err,
-          );
-        }
-      }),
+      recipients.map((r) => dispatch(r, emailPayload, kakaoPayload)),
     );
   } catch (err) {
     console.error("[review] notifyReviewRequested failed:", err);
@@ -110,32 +202,50 @@ export async function notifyReviewCompleted(
   payload: ReviewCompletedPayload,
 ): Promise<void> {
   try {
-    const [studentEmail, reviewerName] = await Promise.all([
-      fetchEmail(payload.studentId),
-      fetchProfileName(payload.reviewerId),
+    const [recipients, reviewerRecipients] = await Promise.all([
+      fetchRecipients([payload.studentId]),
+      fetchRecipients([payload.reviewerId]),
     ]);
-    if (!studentEmail) return;
+    if (recipients.length === 0) return;
+    const reviewerName = reviewerRecipients[0]?.name ?? "강사";
+
     const link = `${APP_URL}${payload.problemHref}`;
     const html = await render(
       ReviewCompletedEmail({
         link,
-        reviewerName: reviewerName ?? "강사",
+        reviewerName,
         problemLabel: payload.problemLabel,
         score: payload.score,
         commentMd: payload.commentMd,
       }),
     );
-    const subject = `[Lidam Edu] 주관식 첨삭 완료 — ${payload.problemLabel}`;
-    try {
-      await resendClient.emails.send({
-        from: FROM_EMAIL,
-        to: studentEmail,
-        subject,
-        html,
-      });
-    } catch (err) {
-      console.error("[review:notify] completed email failed:", err);
-    }
+    const emailPayload: EmailPayload = {
+      subject: `[Lidam Edu] 주관식 첨삭 완료 — ${payload.problemLabel}`,
+      html,
+    };
+
+    const commentExcerpt = (() => {
+      const t = (payload.commentMd ?? "").trim();
+      if (t.length === 0) return "(코멘트 없이 점수만 등록)";
+      return t.length > 80 ? t.slice(0, 80) + "…" : t;
+    })();
+    const scoreText =
+      payload.score !== null ? `${payload.score}점` : "점수 미입력";
+    const kakaoPayload: KakaoPayload = {
+      template: "review-completed",
+      variables: {
+        reviewerName,
+        problemLabel: payload.problemLabel,
+        score: scoreText,
+        excerpt: commentExcerpt,
+        link,
+      },
+      fallbackText: `[Lidam Edu] 주관식 첨삭 완료 — ${payload.problemLabel}\n강사: ${reviewerName} · ${scoreText}\n${commentExcerpt}\n${link}`,
+    };
+
+    await Promise.all(
+      recipients.map((r) => dispatch(r, emailPayload, kakaoPayload)),
+    );
   } catch (err) {
     console.error("[review] notifyReviewCompleted failed:", err);
   }
