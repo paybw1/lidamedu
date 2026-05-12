@@ -6,8 +6,10 @@
 import { Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 
 import { cn } from "~/core/lib/utils";
 
@@ -125,8 +127,10 @@ export function MarkdownView({
       )}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        // remarkMath — $inline$ / $$display$$ LaTeX 파싱.
+        // rehypeKatex — KaTeX HTML 렌더 (자연과학 수식).
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         // raw HTML (예: rowspan/colspan 병합 표) 을 remark→rehype 변환 시 보존.
         // 이게 없으면 rehype-raw 가 처리할 HTML 자체가 hast 트리에서 사라진다.
         remarkRehypeOptions={{ allowDangerousHtml: true }}

@@ -18,12 +18,12 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { type GsPage, type GsQuestion } from "~/features/gs/queries.server";
+import type { GsPage, GsQuestion } from "~/features/gs/queries.server";
+import { getGsRound } from "~/features/gs/queries.server";
 import {
   type PeerRoundAnswerColumn,
   getPeerRoundMatrix,
 } from "~/features/gs/queries-peer.server";
-import { getGsRound } from "~/features/gs/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/gs-peer-review-round";

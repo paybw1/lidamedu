@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   getQuizSession,
   recordProblemAttempt,
@@ -192,10 +193,10 @@ export default function ScienceProblemViewer({
 
       <Card className="mb-4">
         <CardHeader>
-          <h1 className="text-base font-semibold leading-snug">
+          <div className="text-base font-semibold leading-snug">
             <span className="text-muted-foreground mr-2">{subjectMeta.emoji}</span>
-            {problem.bodyMd}
-          </h1>
+            <MarkdownView text={problem.bodyMd} className="text-base" />
+          </div>
         </CardHeader>
         <Separator />
         <CardContent className="space-y-2 pt-4">
@@ -226,7 +227,9 @@ export default function ScienceProblemViewer({
                   <span className="text-muted-foreground tabular-nums w-5">
                     {c.choiceIndex}
                   </span>
-                  <span className="flex-1">{c.bodyMd}</span>
+                  <div className="flex-1">
+                    <MarkdownView text={c.bodyMd} />
+                  </div>
                   {isThisCorrect ? (
                     <CircleCheckIcon className="text-emerald-600 size-4" />
                   ) : isThisWrongSelected ? (
@@ -234,9 +237,9 @@ export default function ScienceProblemViewer({
                   ) : null}
                 </div>
                 {revealed && c.explanationMd ? (
-                  <p className="text-muted-foreground mt-1 text-[11px] leading-snug pl-7">
-                    {c.explanationMd}
-                  </p>
+                  <div className="text-muted-foreground mt-1 leading-snug pl-7">
+                    <MarkdownView text={c.explanationMd} className="text-[11px]" />
+                  </div>
                 ) : null}
               </button>
             );

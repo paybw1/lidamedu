@@ -14,6 +14,7 @@ import type { Route } from "./+types/mark-read";
 const schema = z.object({
   notificationId: z.string().uuid().optional(),
   all: z.literal("1").optional(),
+  audience: z.enum(["staff", "student"]).optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -30,12 +31,13 @@ export async function action({ request }: Route.ActionArgs) {
   const parsed = schema.safeParse({
     notificationId: fd.get("notificationId") || undefined,
     all: fd.get("all") || undefined,
+    audience: fd.get("audience") || undefined,
   });
   if (!parsed.success) {
     return data({ error: "Invalid input" }, { status: 400 });
   }
   if (parsed.data.all === "1") {
-    await markAllNotificationsRead(client, user.id);
+    await markAllNotificationsRead(client, user.id, parsed.data.audience);
   } else if (parsed.data.notificationId) {
     await markNotificationRead(client, user.id, parsed.data.notificationId);
   } else {

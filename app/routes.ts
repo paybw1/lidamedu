@@ -175,6 +175,7 @@ export default [
       route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
       route("/study/notes", "features/study/screens/notes.tsx"),
       route("/study/highlights", "features/study/screens/highlights.tsx"),
+      route("/inbox", "features/notifications/screens/student-inbox.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),

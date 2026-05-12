@@ -54,6 +54,7 @@ const leadingFlats: SimpleLink[] = [
 const studyItems: SimpleLink[] = [
   { label: "학습목표 및 과목별 진도", to: "/goals" },
   { label: "빈칸 학습 통계", to: "/study/blanks" },
+  { label: "알림", to: "/inbox" },
 ];
 
 const latestItems: SimpleLink[] = [
@@ -183,7 +184,13 @@ function AuthButtons() {
   );
 }
 
-function Actions({ staffInbox }: { staffInbox: number | null }) {
+function Actions({
+  inboxUnread,
+  inboxHref,
+}: {
+  inboxUnread: number | null;
+  inboxHref: string | null;
+}) {
   return (
     <>
       <Button
@@ -200,20 +207,20 @@ function Actions({ staffInbox }: { staffInbox: number | null }) {
           ⌘K
         </kbd>
       </Button>
-      {staffInbox !== null ? (
+      {inboxUnread !== null && inboxHref ? (
         <Button
           asChild
           variant="ghost"
           size="icon"
           className="relative"
-          aria-label={`알림 인박스 (미읽음 ${staffInbox})`}
-          data-testid="open-staff-inbox"
+          aria-label={`알림 인박스 (미읽음 ${inboxUnread})`}
+          data-testid="open-inbox"
         >
-          <Link to="/admin/inbox">
+          <Link to={inboxHref}>
             <BellIcon className="size-4" />
-            {staffInbox > 0 ? (
+            {inboxUnread > 0 ? (
               <span className="bg-rose-600 text-white absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums">
-                {staffInbox > 99 ? "99+" : staffInbox}
+                {inboxUnread > 99 ? "99+" : inboxUnread}
               </span>
             ) : null}
           </Link>
@@ -312,14 +319,17 @@ export function NavigationBar({
   email,
   avatarUrl,
   loading,
-  staffInbox = null,
+  inboxUnread = null,
+  inboxHref = null,
 }: {
   name?: string;
   email?: string;
   avatarUrl?: string | null;
   loading: boolean;
-  // staff (instructor/admin) 일 때 미읽음 알림 카운트. 학생은 null.
-  staffInbox?: number | null;
+  // 로그인 사용자의 미읽음 알림 카운트. 비로그인 / 미산정 시 null.
+  inboxUnread?: number | null;
+  // 클릭 시 진입할 인박스 경로 — staff 는 /admin/inbox, 학생은 /inbox.
+  inboxHref?: string | null;
 }) {
   return (
     <nav className="bg-background relative z-50 mx-auto flex h-16 w-full items-center justify-between border-b px-5 shadow-xs backdrop-blur-lg transition-opacity md:px-10">
@@ -384,7 +394,7 @@ export function NavigationBar({
           </NavigationMenu>
 
           <Separator orientation="vertical" />
-          <Actions staffInbox={staffInbox} />
+          <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
           <Separator orientation="vertical" />
 
           {loading ? (
@@ -461,7 +471,7 @@ export function NavigationBar({
               {name ? (
                 <div className="grid grid-cols-3">
                   <div className="col-span-2 flex w-full justify-between">
-                    <Actions staffInbox={staffInbox} />
+                    <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
                   </div>
                   <div className="flex justify-end">
                     <UserMenu name={name} email={email} avatarUrl={avatarUrl} />
@@ -470,7 +480,7 @@ export function NavigationBar({
               ) : (
                 <div className="flex flex-col gap-5">
                   <div className="flex justify-between">
-                    <Actions staffInbox={staffInbox} />
+                    <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <AuthButtons />

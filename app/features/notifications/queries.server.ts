@@ -1,17 +1,37 @@
-// staff_notifications — 강사용 in-app 알림 인박스.
-// service_role(admin client) 로 fanout insert. 학생/강사 RLS 는 자기 행 SELECT/UPDATE.
+// user_notifications — 학생·강사 공용 in-app 알림 인박스.
+// service_role(admin client) 로 fanout insert. 본인 RLS 가 자기 행 SELECT/UPDATE.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 
-export type StaffNotificationKind =
+export type NotificationKind =
   Database["public"]["Enums"]["staff_notification_kind"];
 
-export interface StaffNotificationInput {
+// 강사용 kinds (인박스에서 staff 필터링).
+const STAFF_KINDS: NotificationKind[] = [
+  "subjective_review_request",
+  "qna_new_question",
+];
+
+// 학생용 kinds.
+const STUDENT_KINDS: NotificationKind[] = [
+  "subjective_review_completed",
+  "qna_new_answer",
+  "announcement",
+];
+
+export function isStaffKind(k: NotificationKind): boolean {
+  return STAFF_KINDS.includes(k);
+}
+export function isStudentKind(k: NotificationKind): boolean {
+  return STUDENT_KINDS.includes(k);
+}
+
+export interface NotificationInput {
   recipientIds: string[];
-  kind: StaffNotificationKind;
+  kind: NotificationKind;
   entityType: string;
   entityId: string;
   title: string;
@@ -20,9 +40,8 @@ export interface StaffNotificationInput {
   payload?: Record<string, unknown> | null;
 }
 
-// 한 사건에 대해 여러 staff 에게 fanout. best-effort.
-export async function createStaffNotifications(
-  input: StaffNotificationInput,
+export async function createUserNotifications(
+  input: NotificationInput,
 ): Promise<void> {
   if (input.recipientIds.length === 0) return;
   try {
@@ -36,19 +55,21 @@ export async function createStaffNotifications(
       href: input.href,
       payload: (input.payload ?? null) as never,
     }));
-    const { error } = await adminClient.from("staff_notifications").insert(rows);
+    const { error } = await adminClient.from("user_notifications").insert(rows);
     if (error) {
-      console.error("[notif] staff fanout failed:", error.message);
+      console.error("[notif] fanout failed:", error.message);
     }
   } catch (err) {
-    console.error("[notif] staff fanout threw:", err);
+    console.error("[notif] fanout threw:", err);
   }
 }
 
-// 본인 (수신자) 의 알림 — read 여부 별 카운트.
-export interface StaffNotificationItem {
+// Back-compat alias — 기존 caller(notify-review, qna) 가 createStaffNotifications 를 import.
+export const createStaffNotifications = createUserNotifications;
+
+export interface NotificationItem {
   notificationId: string;
-  kind: StaffNotificationKind;
+  kind: NotificationKind;
   entityType: string;
   entityId: string;
   title: string;
@@ -59,14 +80,27 @@ export interface StaffNotificationItem {
   createdAt: string;
 }
 
-export async function listStaffNotifications(
+interface ListOptions {
+  onlyUnread?: boolean;
+  limit?: number;
+  // 학생/강사 인박스 분리 — 어느 카테고리 kinds 만 가져올지.
+  audience?: "staff" | "student";
+}
+
+export async function listUserNotifications(
   client: SupabaseClient<Database>,
   userId: string,
-  options: { onlyUnread?: boolean; limit?: number } = {},
-): Promise<{ items: StaffNotificationItem[]; unreadCount: number }> {
+  options: ListOptions = {},
+): Promise<{ items: NotificationItem[]; unreadCount: number }> {
   const limit = Math.min(200, options.limit ?? 50);
+  const kinds =
+    options.audience === "staff"
+      ? STAFF_KINDS
+      : options.audience === "student"
+        ? STUDENT_KINDS
+        : null;
   let q = client
-    .from("staff_notifications")
+    .from("user_notifications")
     .select(
       "notification_id, kind, entity_type, entity_id, title, body, href, payload, read_at, created_at",
     )
@@ -74,9 +108,10 @@ export async function listStaffNotifications(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (options.onlyUnread) q = q.is("read_at", null);
+  if (kinds) q = q.in("kind", kinds);
   const { data, error } = await q;
   if (error) throw error;
-  const items: StaffNotificationItem[] = (data ?? []).map((r) => ({
+  const items: NotificationItem[] = (data ?? []).map((r) => ({
     notificationId: r.notification_id,
     kind: r.kind,
     entityType: r.entity_type,
@@ -88,25 +123,39 @@ export async function listStaffNotifications(
     readAt: r.read_at,
     createdAt: r.created_at,
   }));
-  // 미읽음 카운트 — 별도 head 쿼리.
-  const { count } = await client
-    .from("staff_notifications")
+  // 미읽음 카운트 — 같은 audience 안에서.
+  let countQ = client
+    .from("user_notifications")
     .select("notification_id", { count: "exact", head: true })
     .eq("recipient_id", userId)
     .is("read_at", null);
+  if (kinds) countQ = countQ.in("kind", kinds);
+  const { count } = await countQ;
   return { items, unreadCount: count ?? 0 };
 }
 
+export async function getUnreadCount(
+  client: SupabaseClient<Database>,
+  userId: string,
+  audience?: "staff" | "student",
+): Promise<number> {
+  let q = client
+    .from("user_notifications")
+    .select("notification_id", { count: "exact", head: true })
+    .eq("recipient_id", userId)
+    .is("read_at", null);
+  if (audience === "staff") q = q.in("kind", STAFF_KINDS);
+  else if (audience === "student") q = q.in("kind", STUDENT_KINDS);
+  const { count } = await q;
+  return count ?? 0;
+}
+
+// 기존 alias — staff 인박스 카운트만.
 export async function getStaffUnreadCount(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<number> {
-  const { count } = await client
-    .from("staff_notifications")
-    .select("notification_id", { count: "exact", head: true })
-    .eq("recipient_id", userId)
-    .is("read_at", null);
-  return count ?? 0;
+  return getUnreadCount(client, userId, "staff");
 }
 
 export async function markNotificationRead(
@@ -115,7 +164,7 @@ export async function markNotificationRead(
   notificationId: string,
 ): Promise<void> {
   await client
-    .from("staff_notifications")
+    .from("user_notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("notification_id", notificationId)
     .eq("recipient_id", userId)
@@ -125,10 +174,28 @@ export async function markNotificationRead(
 export async function markAllNotificationsRead(
   client: SupabaseClient<Database>,
   userId: string,
+  audience?: "staff" | "student",
 ): Promise<void> {
-  await client
-    .from("staff_notifications")
+  let q = client
+    .from("user_notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("recipient_id", userId)
     .is("read_at", null);
+  if (audience === "staff") q = q.in("kind", STAFF_KINDS);
+  else if (audience === "student") q = q.in("kind", STUDENT_KINDS);
+  await q;
+}
+
+// 기존 호환 alias (이전 export 이름).
+export type StaffNotificationKind = NotificationKind;
+export type StaffNotificationItem = NotificationItem;
+export async function listStaffNotifications(
+  client: SupabaseClient<Database>,
+  userId: string,
+  options: { onlyUnread?: boolean; limit?: number } = {},
+): Promise<{ items: NotificationItem[]; unreadCount: number }> {
+  return listUserNotifications(client, userId, {
+    ...options,
+    audience: "staff",
+  });
 }

@@ -46,14 +46,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { items, unreadCount, onlyUnread };
 }
 
-const KIND_LABEL: Record<StaffNotificationKind, string> = {
+const KIND_LABEL: Partial<Record<StaffNotificationKind, string>> = {
   subjective_review_request: "주관식 첨삭",
   qna_new_question: "Q&A 질문",
 };
 
-const KIND_ICON: Record<
-  StaffNotificationKind,
-  typeof ClipboardCheckIcon
+const KIND_ICON: Partial<
+  Record<StaffNotificationKind, typeof ClipboardCheckIcon>
 > = {
   subjective_review_request: ClipboardCheckIcon,
   qna_new_question: MessageCircleQuestionIcon,
@@ -137,7 +136,7 @@ export default function StaffInbox({ loaderData }: Route.ComponentProps) {
 }
 
 function NotificationCard({ item }: { item: StaffNotificationItem }) {
-  const Icon = KIND_ICON[item.kind];
+  const Icon = KIND_ICON[item.kind] ?? ClipboardCheckIcon;
   const isUnread = item.readAt === null;
   return (
     <Form
@@ -167,7 +166,7 @@ function NotificationCard({ item }: { item: StaffNotificationItem }) {
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
               <Icon className="text-primary size-4 shrink-0" />
               <Badge variant={isUnread ? "default" : "outline"}>
-                {KIND_LABEL[item.kind]}
+                {KIND_LABEL[item.kind] ?? item.kind}
               </Badge>
               {isUnread ? (
                 <Badge variant="destructive" className="text-[10px]">

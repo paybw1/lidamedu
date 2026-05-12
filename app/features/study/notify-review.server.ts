@@ -225,6 +225,27 @@ export async function notifyReviewCompleted(
     if (recipients.length === 0) return;
     const reviewerName = reviewerRecipients[0]?.name ?? "강사";
 
+    // 학생 본인에게 in-app 카드.
+    void createStaffNotifications({
+      recipientIds: [payload.studentId],
+      kind: "subjective_review_completed",
+      entityType: "problem",
+      entityId: payload.problemId,
+      title: `${reviewerName} 강사 — ${payload.problemLabel} 첨삭 완료`,
+      body:
+        payload.score !== null
+          ? `점수: ${payload.score}점${payload.commentMd ? ` · ${payload.commentMd.slice(0, 80)}` : ""}`
+          : payload.commentMd
+            ? payload.commentMd.slice(0, 120)
+            : "코멘트가 도착했습니다.",
+      href: payload.problemHref,
+      payload: {
+        reviewerName,
+        score: payload.score,
+        problemLabel: payload.problemLabel,
+      },
+    });
+
     const link = `${APP_URL}${payload.problemHref}`;
     const html = await render(
       ReviewCompletedEmail({

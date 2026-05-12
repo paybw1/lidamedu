@@ -234,6 +234,21 @@ export async function notifyNewAnswer(payload: NewAnswerPayload): Promise<void> 
     const answererName = payload.answererName ?? "강사";
     const gradeLabel = QNA_QUALITY_LABEL[payload.qualityGrade];
 
+    // 학생(질문자) in-app 카드.
+    void createStaffNotifications({
+      recipientIds: [payload.askerProfileId],
+      kind: "qna_new_answer",
+      entityType: "qna_thread",
+      entityId: payload.threadId,
+      title: `${answererName} — [${targetLabel}] ${payload.title}`,
+      body:
+        payload.answerMd.length > 200
+          ? payload.answerMd.slice(0, 200) + "…"
+          : payload.answerMd,
+      href: `/qna/${payload.threadId}`,
+      payload: { answererName, targetLabel, qualityGrade: payload.qualityGrade },
+    });
+
     const emailHtml = await render(
       QnaNewAnswerEmail({
         link,
