@@ -155,7 +155,7 @@ export async function listRevisionArticles(
   const { data, error } = await client
     .from("article_revisions")
     .select(
-      "revision_id, article_id, body_json, change_kind, created_at, articles!article_revisions_article_id_fkey!inner(article_id, article_number, display_label, current_revision_id)",
+      "revision_id, article_id, body_json, change_kind, created_at, articles!article_revisions_article_id_fkey!inner(article_id, article_number, display_label, current_revision_id, path)",
     )
     .eq("law_revision_id", lawRevisionId)
     .order("created_at", { ascending: true });
@@ -189,6 +189,7 @@ export async function listRevisionArticles(
         ? currentBodyById.get(a.current_revision_id) ?? null
         : null,
       currentRevisionId: a.current_revision_id ?? null,
+      path: a.path != null ? String(a.path) : null,
     };
   });
 }

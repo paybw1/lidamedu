@@ -237,6 +237,61 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, revisionId: res.revisionId });
   }
 
+  if (intent === "bulk_add_articles") {
+    const lawRevisionId = String(fd.get("lawRevisionId") ?? "");
+    const lawId = String(fd.get("lawId") ?? "");
+    const articleNumbersRaw = String(fd.get("articleNumbers") ?? "");
+    const changeKindRaw = String(fd.get("changeKind") ?? "amended");
+    if (
+      !z.string().uuid().safeParse(lawRevisionId).success ||
+      !z.string().uuid().safeParse(lawId).success
+    ) {
+      return data({ error: "Invalid id" }, { status: 400 });
+    }
+    const changeKind: ArticleChangeKind =
+      changeKindRaw === "created" ||
+      changeKindRaw === "amended" ||
+      changeKindRaw === "deleted"
+        ? changeKindRaw
+        : "amended";
+    // 콤마·세미콜론·줄바꿈·공백 분리.
+    const numbers = articleNumbersRaw
+      .split(/[\s,;]+/)
+      .map((s) => normalizeArticleNumber(s))
+      .filter((s) => s.length > 0);
+    if (numbers.length === 0) {
+      return data({ error: "추가할 조문 번호 없음" }, { status: 400 });
+    }
+    if (numbers.length > 50) {
+      return data(
+        { error: `한 번에 최대 50개 (입력 ${numbers.length}개)` },
+        { status: 400 },
+      );
+    }
+    const added: string[] = [];
+    const skipped: Array<{ number: string; reason: string }> = [];
+    for (const n of numbers) {
+      const article = await findArticleByNumber(client, lawId, n);
+      if (!article) {
+        skipped.push({ number: n, reason: "조문 미존재" });
+        continue;
+      }
+      const res = await addArticleToDraft(
+        client,
+        lawRevisionId,
+        article.articleId,
+        changeKind,
+        user.id,
+      );
+      if (!res.ok) {
+        skipped.push({ number: n, reason: res.error });
+        continue;
+      }
+      added.push(n);
+    }
+    return data({ ok: true, added, skipped });
+  }
+
   if (intent === "update_article") {
     const revisionId = String(fd.get("revisionId") ?? "");
     if (!z.string().uuid().safeParse(revisionId).success) {

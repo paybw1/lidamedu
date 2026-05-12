@@ -47,6 +47,7 @@ import {
   LAW_REVISION_STATUS_LABELS,
   type ArticleChangeKind,
   type LawRevisionKind,
+  type LawRevisionListItem,
   type LawRevisionStatus,
   type RevisionArticleEntry,
 } from "~/features/law-revisions/labels";
@@ -113,9 +114,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       displayLabel: a.display_label,
     }));
 
+  // 장/절 그룹화 — chapter 노드의 path → display_label 매핑.
+  const { data: chapterRows } = await client
+    .from("articles")
+    .select("path, display_label, level")
+    .eq("law_id", law.lawId)
+    .in("level", ["chapter", "section"])
+    .is("deleted_at", null);
+  const chapterLabelByPath: Record<string, string> = {};
+  for (const c of chapterRows ?? []) {
+    if (c.path != null) chapterLabelByPath[String(c.path)] = c.display_label;
+  }
+
   return {
     lawCode,
     allArticles,
+    chapterLabelByPath,
     subjectName: LAW_SUBJECTS[lawCode].name,
     law,
     revision,
@@ -135,8 +149,15 @@ const STATUS_VARIANT: Record<
 export default function AdminLawRevisionWorkspace({
   loaderData,
 }: Route.ComponentProps) {
-  const { lawCode, subjectName, law, revision, articles, allArticles } =
-    loaderData;
+  const {
+    lawCode,
+    subjectName,
+    law,
+    revision,
+    articles,
+    allArticles,
+    chapterLabelByPath,
+  } = loaderData;
   const isDraft = revision.status === "draft";
   const isReview = revision.status === "review";
   const isPublished = revision.status === "published";
@@ -180,29 +201,32 @@ export default function AdminLawRevisionWorkspace({
       </header>
 
       {isDraft || isReview ? (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {isDraft ? (
-            <StatusTransitionButton
+        <>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {isDraft ? (
+              <StatusTransitionButton
+                lawRevisionId={revision.lawRevisionId}
+                status="review"
+                label="검토 단계로"
+                icon={<ChevronRightIcon className="size-3.5" />}
+              />
+            ) : null}
+            {isReview ? (
+              <StatusTransitionButton
+                lawRevisionId={revision.lawRevisionId}
+                status="draft"
+                label="초안으로 되돌리기"
+                icon={<ChevronRightIcon className="size-3.5 rotate-180" />}
+                variant="outline"
+              />
+            ) : null}
+            <PublishDialog
               lawRevisionId={revision.lawRevisionId}
-              status="review"
-              label="검토 단계로"
-              icon={<ChevronRightIcon className="size-3.5" />}
+              disabled={articles.length === 0}
             />
-          ) : null}
-          {isReview ? (
-            <StatusTransitionButton
-              lawRevisionId={revision.lawRevisionId}
-              status="draft"
-              label="초안으로 되돌리기"
-              icon={<ChevronRightIcon className="size-3.5 rotate-180" />}
-              variant="outline"
-            />
-          ) : null}
-          <PublishDialog
-            lawRevisionId={revision.lawRevisionId}
-            disabled={articles.length === 0}
-          />
-        </div>
+          </div>
+          <PublishChecklist revision={revision} articles={articles} />
+        </>
       ) : null}
 
       <AttachmentForm
@@ -227,15 +251,11 @@ export default function AdminLawRevisionWorkspace({
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {articles.map((a) => (
-                <ArticleCard
-                  key={a.revisionId}
-                  entry={a}
-                  editable={!isPublished}
-                />
-              ))}
-            </div>
+            <GroupedArticleList
+              articles={articles}
+              chapterLabelByPath={chapterLabelByPath}
+              editable={!isPublished}
+            />
           )}
         </div>
 
@@ -276,6 +296,191 @@ const KIND_BADGE: Record<ArticleChangeKind, "default" | "secondary" | "outline">
   amended: "secondary",
   deleted: "outline",
 };
+
+// 발행 전 점검 체크리스트.
+function PublishChecklist({
+  revision,
+  articles,
+}: {
+  revision: LawRevisionListItem;
+  articles: RevisionArticleEntry[];
+}) {
+  const items: Array<{
+    key: string;
+    label: string;
+    status: "ok" | "warn" | "missing";
+    hint: string;
+  }> = [];
+
+  items.push({
+    key: "number",
+    label: "개정 번호",
+    status: revision.revisionNumber.trim().length > 0 ? "ok" : "missing",
+    hint: revision.revisionNumber || "예: 법률 제22351호",
+  });
+  items.push({
+    key: "articles",
+    label: "조문 추가",
+    status: articles.length > 0 ? "ok" : "missing",
+    hint:
+      articles.length > 0
+        ? `${articles.length}건 — 우측 카드에서 추가 가능`
+        : "발행 전 최소 1개 조문 추가 필요",
+  });
+
+  // 본문 변경 점검: 모든 amended 항목이 실제로 변경됐는가
+  const noChangeArticles = articles.filter((a) => {
+    if (a.changeKind !== "amended") return false;
+    const beforeLines = bodyToTextLines(a.currentBodyJson);
+    const afterLines = bodyToTextLines(a.bodyJson);
+    return (
+      beforeLines.length === afterLines.length &&
+      beforeLines.every((l, i) => l === afterLines[i])
+    );
+  });
+  if (articles.length > 0) {
+    items.push({
+      key: "body-changed",
+      label: "본문 변경",
+      status: noChangeArticles.length === 0 ? "ok" : "warn",
+      hint:
+        noChangeArticles.length === 0
+          ? "개정 조문에 변경이 있음"
+          : `변경 없는 조문 ${noChangeArticles.length}건 — 본문 편집 또는 제거 필요`,
+    });
+  }
+
+  items.push({
+    key: "reason",
+    label: "개정이유",
+    status:
+      revision.reasonMd && revision.reasonMd.trim().length > 0 ? "ok" : "warn",
+    hint:
+      revision.reasonMd && revision.reasonMd.trim().length > 0
+        ? "작성됨"
+        : "권장 — 학생 화면에서 개정 배경 설명",
+  });
+  items.push({
+    key: "comparison",
+    label: "신구조문대비표",
+    status: revision.comparisonPdf ? "ok" : "warn",
+    hint: revision.comparisonPdf
+      ? "PDF 첨부됨"
+      : "권장 — PDF 업로드",
+  });
+  items.push({
+    key: "explanation",
+    label: "개정해설",
+    status: revision.explanationPdf ? "ok" : "warn",
+    hint: revision.explanationPdf
+      ? "PDF 첨부됨"
+      : "권장 — PDF 업로드",
+  });
+  items.push({
+    key: "video",
+    label: "동영상",
+    status: revision.videoUrl ? "ok" : "warn",
+    hint: revision.videoUrl ? "링크 설정됨" : "선택 — YouTube/Vimeo URL",
+  });
+
+  const missing = items.filter((i) => i.status === "missing").length;
+  const warn = items.filter((i) => i.status === "warn").length;
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">발행 전 체크리스트</p>
+          <p className="text-muted-foreground text-[11px]">
+            필수 미완 {missing} · 권장 미완 {warn}
+          </p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {items.map((it) => (
+            <li
+              key={it.key}
+              className="flex items-start gap-2 text-xs"
+              data-testid={`checklist-${it.key}`}
+            >
+              <span
+                className={cn(
+                  "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                  it.status === "ok" &&
+                    "bg-emerald-500 text-white",
+                  it.status === "warn" &&
+                    "bg-amber-400 text-white dark:text-black",
+                  it.status === "missing" && "bg-rose-500 text-white",
+                )}
+              >
+                {it.status === "ok" ? "✓" : it.status === "warn" ? "!" : "×"}
+              </span>
+              <div className="flex-1">
+                <p className="font-medium">{it.label}</p>
+                <p className="text-muted-foreground text-[10.5px]">{it.hint}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+// 같은 chapter (path 의 앞 두 segment: e.g. "patent.ch02") 끼리 묶어
+// 헤더와 함께 표시.
+function GroupedArticleList({
+  articles,
+  chapterLabelByPath,
+  editable,
+}: {
+  articles: RevisionArticleEntry[];
+  chapterLabelByPath: Record<string, string>;
+  editable: boolean;
+}) {
+  const groups: Array<{
+    chapterPath: string;
+    chapterLabel: string;
+    entries: RevisionArticleEntry[];
+  }> = [];
+  let current: { chapterPath: string; entries: RevisionArticleEntry[] } | null =
+    null;
+  for (const a of articles) {
+    const segs = a.path ? a.path.split(".") : [];
+    // path 예: "patent.ch02.a30" → chapter path = "patent.ch02"
+    // 시행규칙처럼 절 안에 있는 경우 (patent.ch10.s02.a205) 도 chapter 단위로만 묶음.
+    const chapterPath = segs.length >= 2 ? `${segs[0]}.${segs[1]}` : "(미분류)";
+    if (!current || current.chapterPath !== chapterPath) {
+      current = { chapterPath, entries: [] };
+      groups.push({
+        chapterPath,
+        chapterLabel: chapterLabelByPath[chapterPath] ?? "미분류",
+        entries: current.entries,
+      });
+    }
+    current.entries.push(a);
+  }
+  return (
+    <div className="space-y-4">
+      {groups.map((g) => (
+        <section key={g.chapterPath} className="space-y-2">
+          <h3 className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+            {g.chapterLabel}{" "}
+            <span className="text-muted-foreground/70">
+              ({g.entries.length})
+            </span>
+          </h3>
+          <div className="space-y-2">
+            {g.entries.map((a) => (
+              <ArticleCard key={a.revisionId} entry={a} editable={editable} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
 
 function ArticleCard({
   entry,
@@ -374,14 +579,10 @@ function ArticleCard({
               onClose={() => setEditing(false)}
             />
           ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
-              <BodyPane title="현재 시행 본문 (Before)" body={entry.currentBodyJson} />
-              <BodyPane
-                title="개정 본문 (After)"
-                body={entry.bodyJson}
-                emphasize
-              />
-            </div>
+            <BodyDiffView
+              before={entry.currentBodyJson}
+              after={entry.bodyJson}
+            />
           )}
         </CardContent>
       ) : null}
@@ -389,34 +590,179 @@ function ArticleCard({
   );
 }
 
-function BodyPane({
-  title,
-  body,
-  emphasize,
+// 본문을 plain text lines 으로 평탄화. block.kind/label/indent 를 보존.
+function bodyToTextLines(body: unknown): string[] {
+  const lines: string[] = [];
+  const root = (body ?? { blocks: [] }) as { blocks?: unknown[] };
+  const blocks = Array.isArray(root.blocks) ? root.blocks : [];
+  const walk = (block: unknown, indent: number) => {
+    if (!block || typeof block !== "object") return;
+    const b = block as {
+      kind?: string;
+      label?: string;
+      inline?: Array<{ text?: string; raw?: string }>;
+      refs?: Array<{ text?: string; raw?: string }>;
+      children?: unknown[];
+      source?: string;
+      preface?: unknown[];
+      articles?: Array<{ title?: string; blocks?: unknown[] }>;
+      text?: string;
+      subtitle?: string;
+    };
+    const inlineText = (
+      arr: Array<{ text?: string; raw?: string }> | undefined,
+    ) =>
+      (arr ?? [])
+        .map((i) => i.text ?? i.raw ?? "")
+        .join("")
+        .trim();
+    const indentStr = "  ".repeat(indent);
+    if (b.kind === "header_refs") {
+      const txt = inlineText(b.refs);
+      if (txt) lines.push(`${indentStr}[관련] ${txt}`);
+    } else if (b.kind === "title_marker") {
+      lines.push(`${indentStr}[제목] ${b.text ?? ""}`);
+    } else if (b.kind === "para") {
+      const txt = inlineText(b.inline);
+      if (txt) lines.push(`${indentStr}${txt}`);
+    } else if (
+      b.kind === "clause" ||
+      b.kind === "item" ||
+      b.kind === "sub"
+    ) {
+      const label = b.label ?? "";
+      const sub = b.subtitle ? ` 《${b.subtitle}》` : "";
+      const txt = inlineText(b.inline);
+      lines.push(`${indentStr}${label}${sub} ${txt}`.trimEnd());
+      for (const c of b.children ?? []) walk(c, indent + 1);
+    } else if (b.kind === "sub_article_group") {
+      lines.push(`${indentStr}── ${b.source ?? "별표"} ──`);
+      for (const p of b.preface ?? []) walk(p, indent + 1);
+      for (const sa of b.articles ?? []) {
+        lines.push(`${indentStr}  • ${sa.title ?? ""}`);
+        for (const sb of sa.blocks ?? []) walk(sb, indent + 2);
+      }
+    }
+  };
+  for (const b of blocks) walk(b, 0);
+  return lines;
+}
+
+type DiffLine = { kind: "same" | "removed" | "added"; text: string };
+
+// 간단한 LCS 기반 line diff (Myers 풍 단순화).
+function diffLines(before: string[], after: string[]): DiffLine[] {
+  const n = before.length;
+  const m = after.length;
+  // LCS DP
+  const dp: number[][] = Array.from({ length: n + 1 }, () =>
+    new Array<number>(m + 1).fill(0),
+  );
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = before[i] === after[j]
+        ? dp[i + 1][j + 1] + 1
+        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const out: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (before[i] === after[j]) {
+      out.push({ kind: "same", text: before[i] });
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      out.push({ kind: "removed", text: before[i] });
+      i++;
+    } else {
+      out.push({ kind: "added", text: after[j] });
+      j++;
+    }
+  }
+  while (i < n) out.push({ kind: "removed", text: before[i++] });
+  while (j < m) out.push({ kind: "added", text: after[j++] });
+  return out;
+}
+
+function BodyDiffView({
+  before,
+  after,
 }: {
-  title: string;
-  body: unknown;
-  emphasize?: boolean;
+  before: unknown;
+  after: unknown;
 }) {
-  const text = JSON.stringify(body ?? { blocks: [] }, null, 2);
+  const beforeLines = useMemo(() => bodyToTextLines(before), [before]);
+  const afterLines = useMemo(() => bodyToTextLines(after), [after]);
+  const diff = useMemo(
+    () => diffLines(beforeLines, afterLines),
+    [beforeLines, afterLines],
+  );
+  const stats = useMemo(() => {
+    const added = diff.filter((d) => d.kind === "added").length;
+    const removed = diff.filter((d) => d.kind === "removed").length;
+    const same = diff.filter((d) => d.kind === "same").length;
+    return { added, removed, same };
+  }, [diff]);
+  const isCreation = beforeLines.length === 0 && afterLines.length > 0;
+  const isDeletion = beforeLines.length > 0 && afterLines.length === 0;
+  const noChange = stats.added === 0 && stats.removed === 0;
+
   return (
-    <div className="space-y-1">
-      <p
-        className={
-          "text-[11px] font-semibold tracking-wide uppercase " +
-          (emphasize ? "text-primary" : "text-muted-foreground")
-        }
-      >
-        {title}
-      </p>
-      <pre
-        className={
-          "bg-muted/40 max-h-[420px] overflow-auto rounded-md border p-2 text-[11px] leading-relaxed " +
-          (emphasize ? "border-primary/40" : "")
-        }
-      >
-        {text}
-      </pre>
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <span className="text-muted-foreground font-semibold tracking-wide uppercase">
+          변경 사항
+        </span>
+        {isCreation ? (
+          <Badge className="bg-emerald-500 text-white">신설</Badge>
+        ) : null}
+        {isDeletion ? (
+          <Badge className="bg-rose-500 text-white">폐지</Badge>
+        ) : null}
+        <span className="text-emerald-600 tabular-nums">
+          + {stats.added}
+        </span>
+        <span className="text-rose-600 tabular-nums">- {stats.removed}</span>
+        <span className="text-muted-foreground tabular-nums">
+          = {stats.same}
+        </span>
+      </div>
+      {noChange ? (
+        <div className="bg-muted/40 rounded-md border border-dashed p-3 text-center text-[11px]">
+          <p className="text-muted-foreground">
+            본문 변경 없음 — 운영자가 본문을 편집하면 여기에 변경이 표시됩니다.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-background max-h-[480px] overflow-auto rounded-md border font-mono text-[11px] leading-relaxed">
+          {diff.map((d, idx) => (
+            <div
+              key={idx}
+              className={cn(
+                "flex gap-2 px-2 py-0.5",
+                d.kind === "added" &&
+                  "bg-emerald-50 dark:bg-emerald-950/30",
+                d.kind === "removed" &&
+                  "bg-rose-50 dark:bg-rose-950/30 line-through opacity-80",
+              )}
+            >
+              <span
+                className={cn(
+                  "w-3 select-none",
+                  d.kind === "added" && "text-emerald-600",
+                  d.kind === "removed" && "text-rose-600",
+                  d.kind === "same" && "text-muted-foreground/50",
+                )}
+              >
+                {d.kind === "added" ? "+" : d.kind === "removed" ? "−" : " "}
+              </span>
+              <span className="whitespace-pre-wrap break-words">{d.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -650,6 +996,8 @@ function EditArticleForm({
   );
 }
 
+type AddMode = "single" | "bulk";
+
 function AddArticleCard({
   lawRevisionId,
   lawId,
@@ -661,8 +1009,15 @@ function AddArticleCard({
   allArticles: Array<{ articleNumber: string; displayLabel: string }>;
   existingRevisionArticleNumbers: Set<string>;
 }) {
-  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const fetcher = useFetcher<{
+    ok?: true;
+    error?: string;
+    added?: string[];
+    skipped?: Array<{ number: string; reason: string }>;
+  }>();
+  const [mode, setMode] = useState<AddMode>("single");
   const [articleNumber, setArticleNumber] = useState("");
+  const [bulkText, setBulkText] = useState("");
   const [changeKind, setChangeKind] = useState<ArticleChangeKind>("amended");
   const navigate = useNavigate();
   const location = useLocation();
@@ -674,6 +1029,7 @@ function AddArticleCard({
       fetcher.data.ok
     ) {
       setArticleNumber("");
+      setBulkText("");
       navigate(location.pathname + location.search, {
         replace: true,
         preventScrollReset: true,
@@ -682,6 +1038,16 @@ function AddArticleCard({
   }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
   const err =
     fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+  const bulkResult =
+    fetcher.state === "idle" &&
+    fetcher.data &&
+    "ok" in fetcher.data &&
+    fetcher.data.ok
+      ? {
+          added: fetcher.data.added ?? [],
+          skipped: fetcher.data.skipped ?? [],
+        }
+      : null;
 
   // 자동완성 후보: 이미 이 개정에 추가된 조문은 제외.
   const filtered = useMemo(() => {
@@ -705,9 +1071,37 @@ function AddArticleCard({
   return (
     <Card>
       <CardHeader className="px-4 pb-2">
-        <p className="inline-flex items-center gap-1 text-sm font-semibold">
-          <PlusIcon className="text-primary size-4" /> 조문 추가
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="inline-flex items-center gap-1 text-sm font-semibold">
+            <PlusIcon className="text-primary size-4" /> 조문 추가
+          </p>
+          <div className="inline-flex overflow-hidden rounded-md border text-[10.5px]">
+            <button
+              type="button"
+              onClick={() => setMode("single")}
+              className={cn(
+                "px-2 py-0.5",
+                mode === "single"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted",
+              )}
+            >
+              하나
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("bulk")}
+              className={cn(
+                "px-2 py-0.5",
+                mode === "bulk"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted",
+              )}
+            >
+              여러 개
+            </button>
+          </div>
+        </div>
         <p className="text-muted-foreground text-xs">
           개정/폐지 시 현재 시행 본문이 복사되어 편집 시작점이 됩니다.
           신설은 빈 본문에서 시작.
@@ -715,75 +1109,121 @@ function AddArticleCard({
       </CardHeader>
       <Separator />
       <CardContent className="space-y-2 px-4 py-3">
-        <fetcher.Form
-          method="post"
-          action="/api/admin/law-revision"
-          className="space-y-2"
-        >
-          <input type="hidden" name="intent" value="add_article" />
-          <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
-          <input type="hidden" name="lawId" value={lawId} />
-          <div>
-            <Label className="text-muted-foreground text-[11px]">조문</Label>
-            <Input
-              name="articleNumber"
-              value={articleNumber}
-              onChange={(e) => setArticleNumber(e.target.value)}
-              placeholder="조 번호 또는 조 제목 검색 — 예: 29 / 29의2 / 신규성"
-              list="article-suggestions"
-              autoComplete="off"
-              className="h-8 text-xs"
-            />
-            <datalist id="article-suggestions">
-              {filtered.map((a) => (
-                <option
-                  key={a.articleNumber}
-                  value={a.articleNumber}
-                  label={a.displayLabel}
-                />
-              ))}
-            </datalist>
-            {articleNumber.trim() ? (
-              exactMatch ? (
-                <p className="text-muted-foreground mt-1 text-[10.5px]">
-                  ✓ {exactMatch.displayLabel}
-                </p>
-              ) : alreadyAdded ? (
-                <p className="text-rose-600 mt-1 text-[10.5px]">
-                  이미 이 개정에 포함된 조문입니다.
-                </p>
-              ) : (
-                <p className="text-amber-600 mt-1 text-[10.5px]">
-                  존재하지 않는 조문번호 — 신설 시에만 사용
-                </p>
-              )
-            ) : null}
-          </div>
-          <div>
-            <Label className="text-muted-foreground text-[11px]">변경 종류</Label>
-            <select
-              name="changeKind"
-              value={changeKind}
-              onChange={(e) => setChangeKind(e.target.value as ArticleChangeKind)}
-              className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
-            >
-              <option value="amended">개정 (기존 조문 수정)</option>
-              <option value="created">신설 (새 조문 추가)</option>
-              <option value="deleted">폐지 (조문 삭제)</option>
-            </select>
-          </div>
-          <Button
-            type="submit"
-            size="sm"
-            className="h-8 w-full"
-            disabled={
-              fetcher.state !== "idle" || !articleNumber.trim() || alreadyAdded
-            }
+        {mode === "single" ? (
+          <fetcher.Form
+            method="post"
+            action="/api/admin/law-revision"
+            className="space-y-2"
           >
-            <PlusIcon className="size-3.5" /> 추가
-          </Button>
-          {err ? <p className="text-rose-600 text-xs">{err}</p> : null}
-        </fetcher.Form>
+            <input type="hidden" name="intent" value="add_article" />
+            <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
+            <input type="hidden" name="lawId" value={lawId} />
+            <div>
+              <Label className="text-muted-foreground text-[11px]">조문</Label>
+              <Input
+                name="articleNumber"
+                value={articleNumber}
+                onChange={(e) => setArticleNumber(e.target.value)}
+                placeholder="조 번호 또는 조 제목 — 예: 29 / 29의2 / 신규성"
+                list="article-suggestions"
+                autoComplete="off"
+                className="h-8 text-xs"
+              />
+              <datalist id="article-suggestions">
+                {filtered.map((a) => (
+                  <option
+                    key={a.articleNumber}
+                    value={a.articleNumber}
+                    label={a.displayLabel}
+                  />
+                ))}
+              </datalist>
+              {articleNumber.trim() ? (
+                exactMatch ? (
+                  <p className="text-muted-foreground mt-1 text-[10.5px]">
+                    ✓ {exactMatch.displayLabel}
+                  </p>
+                ) : alreadyAdded ? (
+                  <p className="text-rose-600 mt-1 text-[10.5px]">
+                    이미 이 개정에 포함된 조문입니다.
+                  </p>
+                ) : (
+                  <p className="text-amber-600 mt-1 text-[10.5px]">
+                    존재하지 않는 조문번호 — 신설 시에만 사용
+                  </p>
+                )
+              ) : null}
+            </div>
+            <ChangeKindSelect value={changeKind} onChange={setChangeKind} />
+            <Button
+              type="submit"
+              size="sm"
+              className="h-8 w-full"
+              disabled={
+                fetcher.state !== "idle" ||
+                !articleNumber.trim() ||
+                alreadyAdded
+              }
+            >
+              <PlusIcon className="size-3.5" /> 추가
+            </Button>
+            {err ? <p className="text-rose-600 text-xs">{err}</p> : null}
+          </fetcher.Form>
+        ) : (
+          <fetcher.Form
+            method="post"
+            action="/api/admin/law-revision"
+            className="space-y-2"
+          >
+            <input type="hidden" name="intent" value="bulk_add_articles" />
+            <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
+            <input type="hidden" name="lawId" value={lawId} />
+            <div>
+              <Label className="text-muted-foreground text-[11px]">
+                조 번호 목록
+              </Label>
+              <Textarea
+                name="articleNumbers"
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                rows={5}
+                placeholder="콤마·공백·줄바꿈으로 구분. 예: 29, 30, 42의2 47 50"
+                className="text-xs"
+              />
+              <p className="text-muted-foreground mt-1 text-[10.5px]">
+                최대 50개. 모든 조문에 같은 변경 종류가 적용됩니다.
+              </p>
+            </div>
+            <ChangeKindSelect value={changeKind} onChange={setChangeKind} />
+            <Button
+              type="submit"
+              size="sm"
+              className="h-8 w-full"
+              disabled={fetcher.state !== "idle" || !bulkText.trim()}
+            >
+              <PlusIcon className="size-3.5" /> 일괄 추가
+            </Button>
+            {err ? <p className="text-rose-600 text-xs">{err}</p> : null}
+            {bulkResult ? (
+              <div className="space-y-1 rounded-md border bg-muted/30 p-2 text-[10.5px]">
+                <p className="text-emerald-600 font-semibold">
+                  성공 {bulkResult.added.length}건
+                  {bulkResult.added.length > 0
+                    ? `: ${bulkResult.added.join(", ")}`
+                    : ""}
+                </p>
+                {bulkResult.skipped.length > 0 ? (
+                  <p className="text-rose-600">
+                    실패 {bulkResult.skipped.length}건:{" "}
+                    {bulkResult.skipped
+                      .map((s) => `${s.number}(${s.reason})`)
+                      .join(", ")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </fetcher.Form>
+        )}
         {allArticles.length > 0 ? (
           <p className="text-muted-foreground border-t pt-2 text-[10.5px]">
             전체 조문 {allArticles.length}건 ·
@@ -792,6 +1232,30 @@ function AddArticleCard({
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+function ChangeKindSelect({
+  value,
+  onChange,
+}: {
+  value: ArticleChangeKind;
+  onChange: (v: ArticleChangeKind) => void;
+}) {
+  return (
+    <div>
+      <Label className="text-muted-foreground text-[11px]">변경 종류</Label>
+      <select
+        name="changeKind"
+        value={value}
+        onChange={(e) => onChange(e.target.value as ArticleChangeKind)}
+        className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
+      >
+        <option value="amended">개정 (기존 조문 수정)</option>
+        <option value="created">신설 (새 조문 추가)</option>
+        <option value="deleted">폐지 (조문 삭제)</option>
+      </select>
+    </div>
   );
 }
 

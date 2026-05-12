@@ -53,4 +53,6 @@ export interface RevisionArticleEntry {
   // 현재 시행 중인 본문 (비교 용).
   currentBodyJson: unknown;
   currentRevisionId: string | null;
+  // 트리 path (ltree 문자열, 예: "patent.ch02.a30"). 장/절 그룹화에 사용.
+  path: string | null;
 }
