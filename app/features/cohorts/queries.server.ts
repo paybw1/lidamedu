@@ -115,25 +115,46 @@ export async function getCohortById(
 }
 
 // 멤버 일람 — profiles + email(admin client 로 fetch).
+// 호출자(loader) 가 staff 권한 + cohort 소유 검증을 마쳤다고 가정.
+// cohort_members + profiles join 도 adminClient 로 — profiles RLS(`select-own-profile`)
+// 가 admin/instructor 에게도 본인만 허용해서 일반 client 로는 멤버 이름이 다 가려진다.
 export async function listCohortMembers(
-  client: SupabaseClient<Database>,
+  _client: SupabaseClient<Database>,
   cohortId: string,
 ): Promise<CohortMember[]> {
-  const { data, error } = await client
+  const { data, error } = await adminClient
     .from("cohort_members")
-    .select("profile_id, joined_at, profiles!profile_id(name, role)")
+    .select(
+      "profile_id, joined_at, profiles!cohort_members_profile_id_fkey(name, role)",
+    )
     .eq("cohort_id", cohortId)
     .order("joined_at", { ascending: true });
   if (error) throw error;
   const rows = data ?? [];
   if (rows.length === 0) return [];
 
-  // 이메일은 admin client 로.
-  const admin = adminClient;
-  const authList = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  // 이메일은 admin client 로. listUsers 가 throw 하는 환경(일부 supabase 인스턴스)
+  // 에서도 페이지가 깨지지 않도록 try/catch 로 graceful fallback.
   const emailById = new Map<string, string | null>();
-  if (!authList.error) {
-    for (const u of authList.data.users) emailById.set(u.id, u.email ?? null);
+  try {
+    const authList = await adminClient.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (!authList.error) {
+      for (const u of authList.data.users)
+        emailById.set(u.id, u.email ?? null);
+    } else {
+      console.warn(
+        "[listCohortMembers] listUsers error",
+        authList.error.message,
+      );
+    }
+  } catch (e) {
+    console.warn(
+      "[listCohortMembers] listUsers threw — emails will be null",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 
   return rows
@@ -263,10 +284,29 @@ export async function searchStudents(
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
   const admin = adminClient as SupabaseClient<Database>;
-  const authList = await (
-    adminClient as typeof adminClient
-  ).auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (authList.error) return [];
+
+  // listUsers 가 throw 하는 환경에서도 페이지가 깨지지 않도록 try/catch.
+  let users: Array<{ id: string; email: string | null }> = [];
+  try {
+    const authList = await adminClient.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (authList.error) {
+      console.warn("[searchStudents] listUsers error", authList.error.message);
+      return [];
+    }
+    users = authList.data.users.map((u) => ({
+      id: u.id,
+      email: u.email ?? null,
+    }));
+  } catch (e) {
+    console.warn(
+      "[searchStudents] listUsers threw",
+      e instanceof Error ? e.message : String(e),
+    );
+    return [];
+  }
 
   const { data: profiles } = await admin
     .from("profiles")
@@ -274,13 +314,13 @@ export async function searchStudents(
   const profilesById = new Map<string, NonNullable<typeof profiles>[number]>();
   for (const p of profiles ?? []) profilesById.set(p.profile_id, p);
 
-  return authList.data.users
+  return users
     .map((u) => {
       const p = profilesById.get(u.id);
       return {
         profileId: u.id,
         name: p?.name ?? "",
-        email: u.email ?? null,
+        email: u.email,
         role: (p?.role ?? "student") as SearchStudentResult["role"],
       };
     })

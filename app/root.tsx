@@ -298,10 +298,24 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let details = "An unexpected error occurred.";
   let stack: string | undefined;
 
-  // DEV: 전체 error 객체를 stdout 으로 뿌려 진단 가능하게.
+  // DEV: 진단 가능하게 message + stack 명시적으로 분리해 출력.
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
-    console.error("[ErrorBoundary]", error);
+    console.error("[ErrorBoundary] raw:", error);
+    if (error instanceof Error) {
+      // eslint-disable-next-line no-console
+      console.error("[ErrorBoundary] message:", error.message);
+      // eslint-disable-next-line no-console
+      console.error("[ErrorBoundary] stack:", error.stack);
+    } else if (isRouteErrorResponse(error)) {
+      // eslint-disable-next-line no-console
+      console.error(
+        "[ErrorBoundary] route error:",
+        error.status,
+        error.statusText,
+        error.data,
+      );
+    }
   }
 
   if (isRouteErrorResponse(error)) {

@@ -156,13 +156,22 @@ export default function AdminCohortProgress({
             <Badge variant="secondary">담당 {cohort.ownerName}</Badge>
           ) : null}
         </div>
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <TrendingUpIcon className="text-primary size-6" />
-          {cohort.name} — 학생 진도
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          반 멤버 {members.length}명 · 학습 활동 있음 {activeCount}명
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
+              <TrendingUpIcon className="text-primary size-6" />
+              {cohort.name} — 학생 진도
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              반 멤버 {members.length}명 · 학습 활동 있음 {activeCount}명
+            </p>
+          </div>
+          <Button asChild size="sm" variant="outline">
+            <Link to={`/admin/cohorts/${cohort.cohortId}/stats`}>
+              전체 통계 →
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-4 lg:grid-cols-6">

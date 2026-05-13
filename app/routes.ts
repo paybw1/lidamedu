@@ -334,6 +334,10 @@ export default [
         "features/admin/screens/admin-cohort-progress.tsx",
       ),
       route(
+        "/admin/cohorts/:cohortId/stats",
+        "features/admin/screens/admin-cohort-stats.tsx",
+      ),
+      route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",
       ),

@@ -3,6 +3,7 @@
 import {
   ArchiveIcon,
   ArrowLeftIcon,
+  BarChart3Icon,
   CalendarRangeIcon,
   MailIcon,
   PencilIcon,
@@ -117,6 +118,11 @@ export default function AdminCohortDetail({
               <Button asChild size="sm">
                 <Link to={`/admin/cohorts/${cohort.cohortId}/progress`}>
                   <TrendingUpIcon className="size-3.5" /> 진도 모니터링
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/admin/cohorts/${cohort.cohortId}/stats`}>
+                  <BarChart3Icon className="size-3.5" /> 통계 모니터링
                 </Link>
               </Button>
               <Button

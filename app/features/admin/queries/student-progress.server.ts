@@ -6,6 +6,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import {
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
 
 export interface CohortMemberProgress {
   profileId: string;
@@ -36,7 +41,9 @@ export async function listCohortProgressSummary(
   // 멤버 + 프로필.
   const { data: members, error: mErr } = await admin
     .from("cohort_members")
-    .select("profile_id, joined_at, profiles!profile_id(name)")
+    .select(
+      "profile_id, joined_at, profiles!cohort_members_profile_id_fkey(name)",
+    )
     .eq("cohort_id", cohortId);
   if (mErr) throw mErr;
   if (!members || members.length === 0) return [];
@@ -497,5 +504,256 @@ export async function getStudentDetail(
           : null,
       articlesViewed: allArticleIds.size,
     },
+  };
+}
+
+// ─── cohort 평균/분포 통계 (feat-7-019) ────────────────────────────────────
+
+export type AccuracyBucket = "80+" | "60-79" | "40-59" | "20-39" | "0-19" | "none";
+
+export interface CohortAggregateStats {
+  memberCount: number;
+  // 평균 KPI (학생 단위 평균; null 학생은 평균에서 제외)
+  avgAccuracyPct: number | null;
+  avgProblemsAttempted: number;
+  avgArticlesViewed: number;
+  avgBlanksAttempts: number;
+  active7dCount: number;
+  // 정답률 분포
+  accuracyDistribution: Array<{ bucket: AccuracyBucket; count: number }>;
+  // 5과목 평균
+  bySubject: Array<{
+    lawCode: LawSubjectSlug;
+    name: string;
+    avgProblemsAttempted: number;
+    avgAccuracyPct: number | null;
+    avgArticlesViewed: number;
+  }>;
+  // 상/하위 5명 (정답률 기준 — 시도 ≥ 5만 후보)
+  topByAccuracy: Array<{
+    profileId: string;
+    name: string;
+    accuracyPct: number;
+    problemsAttempted: number;
+  }>;
+  bottomByAccuracy: Array<{
+    profileId: string;
+    name: string;
+    accuracyPct: number;
+    problemsAttempted: number;
+  }>;
+}
+
+const AVG_ACCURACY_MIN_ATTEMPTS = 5;
+
+function avg(xs: number[]): number {
+  if (xs.length === 0) return 0;
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+function avgOrNull(xs: number[]): number | null {
+  if (xs.length === 0) return null;
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+function bucketAccuracy(pct: number | null): AccuracyBucket {
+  if (pct === null) return "none";
+  if (pct >= 80) return "80+";
+  if (pct >= 60) return "60-79";
+  if (pct >= 40) return "40-59";
+  if (pct >= 20) return "20-39";
+  return "0-19";
+}
+
+export async function getCohortAggregateStats(
+  cohortId: string,
+): Promise<CohortAggregateStats> {
+  const admin = adminClient as SupabaseClient<Database>;
+
+  // 1) cohort 멤버 + 학생별 진척(기존 함수 재사용)
+  const members = await listCohortProgressSummary(cohortId);
+  if (members.length === 0) {
+    return {
+      memberCount: 0,
+      avgAccuracyPct: null,
+      avgProblemsAttempted: 0,
+      avgArticlesViewed: 0,
+      avgBlanksAttempts: 0,
+      active7dCount: 0,
+      accuracyDistribution: (
+        ["80+", "60-79", "40-59", "20-39", "0-19", "none"] as AccuracyBucket[]
+      ).map((b) => ({ bucket: b, count: 0 })),
+      bySubject: LAW_SUBJECT_SLUGS.map((slug) => ({
+        lawCode: slug,
+        name: LAW_SUBJECTS[slug].name,
+        avgProblemsAttempted: 0,
+        avgAccuracyPct: null,
+        avgArticlesViewed: 0,
+      })),
+      topByAccuracy: [],
+      bottomByAccuracy: [],
+    };
+  }
+
+  const profileIds = members.map((m) => m.profileId);
+
+  // 2) 평균 KPI
+  const accuraciesValid = members
+    .filter((m) => m.problemsAttempted >= AVG_ACCURACY_MIN_ATTEMPTS && m.accuracyPct !== null)
+    .map((m) => m.accuracyPct as number);
+  const avgAccuracyPct = avgOrNull(accuraciesValid);
+  const avgProblemsAttempted = avg(members.map((m) => m.problemsAttempted));
+  const avgArticlesViewed = avg(members.map((m) => m.articlesViewed));
+  const avgBlanksAttempts = avg(members.map((m) => m.blanksAttempts));
+
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const active7dCount = members.filter(
+    (m) =>
+      m.lastActivityAt !== null &&
+      now - new Date(m.lastActivityAt).getTime() < SEVEN_DAYS_MS,
+  ).length;
+
+  // 3) 정답률 분포
+  const bucketCounts = new Map<AccuracyBucket, number>();
+  for (const m of members) {
+    const pct =
+      m.problemsAttempted >= AVG_ACCURACY_MIN_ATTEMPTS ? m.accuracyPct : null;
+    const b = bucketAccuracy(pct);
+    bucketCounts.set(b, (bucketCounts.get(b) ?? 0) + 1);
+  }
+  const accuracyDistribution = (
+    ["80+", "60-79", "40-59", "20-39", "0-19", "none"] as AccuracyBucket[]
+  ).map((b) => ({ bucket: b, count: bucketCounts.get(b) ?? 0 }));
+
+  // 4) 과목별 평균 — cohort 멤버 attempts/sessions를 한 번에 가져와서 집계
+  const PAGE = 1000;
+  const memberLaw = new Map<
+    string,
+    Map<string, { att: Set<string>; cor: Set<string> }>
+  >();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin
+      .from("user_problem_attempts")
+      .select(
+        "user_id, problem_id, is_correct, problems!inner(law_id, laws!inner(law_code))",
+      )
+      .in("user_id", profileIds)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data) {
+      const code = r.problems?.laws?.law_code;
+      if (!code) continue;
+      let memMap = memberLaw.get(r.user_id);
+      if (!memMap) {
+        memMap = new Map();
+        memberLaw.set(r.user_id, memMap);
+      }
+      let entry = memMap.get(code);
+      if (!entry) {
+        entry = { att: new Set(), cor: new Set() };
+        memMap.set(code, entry);
+      }
+      entry.att.add(r.problem_id);
+      if (r.is_correct) entry.cor.add(r.problem_id);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const memberArt = new Map<string, Map<string, Set<string>>>();
+  from = 0;
+  for (;;) {
+    const { data, error } = await admin
+      .from("study_sessions")
+      .select("user_id, scope")
+      .in("user_id", profileIds)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data) {
+      const scope = r.scope as {
+        subject?: string;
+        target_type?: string;
+        target_id?: string;
+      } | null;
+      if (!scope || scope.target_type !== "article" || !scope.target_id || !scope.subject)
+        continue;
+      let memMap = memberArt.get(r.user_id);
+      if (!memMap) {
+        memMap = new Map();
+        memberArt.set(r.user_id, memMap);
+      }
+      let s = memMap.get(scope.subject);
+      if (!s) {
+        s = new Set();
+        memMap.set(scope.subject, s);
+      }
+      s.add(scope.target_id);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const bySubject = LAW_SUBJECT_SLUGS.map((slug) => {
+    const attemptedCounts: number[] = [];
+    const accuracies: number[] = [];
+    const articleViews: number[] = [];
+    for (const m of members) {
+      const law = memberLaw.get(m.profileId)?.get(slug);
+      const articles = memberArt.get(m.profileId)?.get(slug);
+      const att = law?.att.size ?? 0;
+      attemptedCounts.push(att);
+      if (att >= AVG_ACCURACY_MIN_ATTEMPTS && law) {
+        accuracies.push((law.cor.size / att) * 100);
+      }
+      articleViews.push(articles?.size ?? 0);
+    }
+    return {
+      lawCode: slug,
+      name: LAW_SUBJECTS[slug].name,
+      avgProblemsAttempted: avg(attemptedCounts),
+      avgAccuracyPct: avgOrNull(accuracies),
+      avgArticlesViewed: avg(articleViews),
+    };
+  });
+
+  // 5) 상/하위 5명 (정답률, 시도 ≥ 5)
+  const sortable = members
+    .filter(
+      (m) =>
+        m.problemsAttempted >= AVG_ACCURACY_MIN_ATTEMPTS &&
+        m.accuracyPct !== null,
+    )
+    .map((m) => ({
+      profileId: m.profileId,
+      name: m.name,
+      accuracyPct: m.accuracyPct as number,
+      problemsAttempted: m.problemsAttempted,
+    }));
+  const topByAccuracy = [...sortable]
+    .sort((a, b) => b.accuracyPct - a.accuracyPct)
+    .slice(0, 5);
+  const bottomByAccuracy = [...sortable]
+    .sort((a, b) => a.accuracyPct - b.accuracyPct)
+    .slice(0, 5);
+
+  return {
+    memberCount: members.length,
+    avgAccuracyPct: avgAccuracyPct === null ? null : Math.round(avgAccuracyPct * 10) / 10,
+    avgProblemsAttempted: Math.round(avgProblemsAttempted * 10) / 10,
+    avgArticlesViewed: Math.round(avgArticlesViewed * 10) / 10,
+    avgBlanksAttempts: Math.round(avgBlanksAttempts * 10) / 10,
+    active7dCount,
+    accuracyDistribution,
+    bySubject: bySubject.map((s) => ({
+      ...s,
+      avgProblemsAttempted: Math.round(s.avgProblemsAttempted * 10) / 10,
+      avgArticlesViewed: Math.round(s.avgArticlesViewed * 10) / 10,
+      avgAccuracyPct:
+        s.avgAccuracyPct === null ? null : Math.round(s.avgAccuracyPct * 10) / 10,
+    })),
+    topByAccuracy,
+    bottomByAccuracy,
   };
 }
