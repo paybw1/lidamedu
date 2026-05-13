@@ -386,35 +386,49 @@ export function BlanksRenderProvider({
       const blank = blanks.find((b) => b.idx === idx);
       if (!blank?.answer) return;
 
-      // Chrome form-history autofill 누수 차단 — 자동 focus 이동 직후 새 input 의
-      // DOM value 가 다른 빈칸의 정답으로 prefill 되어 raw 가 "{직전답}{사용자입력}"
-      // 형태로 들어오는 케이스. 입력이 다른 빈칸의 정답(들) 로 시작하면 그 prefix
-      // 제거 후 사용자 입력만 채택.
+      // Chrome form-history autofill 누수 차단.
+      // 케이스 1) 첫 입력: prev='', raw='이용ㅅ' (autofill='이용' + 사용자='ㅅ')
+      // 케이스 2) 후속 입력: prev='ㅅ', raw='ㅅ이용사' (autofill 이 두번째 시도)
+      //
+      // 일반 처리: prev 부분을 raw prefix 에서 분리한 후, 나머지 안의 다른 빈칸
+      // 정답을 모두 제거 → 다시 prev 와 합침. 단 raw === answer (사용자가 정답을
+      // 정확히 paste/입력한 케이스) 는 손대지 않음.
       let input = rawInput;
       const prev = states[idx]?.input ?? "";
-      if (prev.length === 0 && input.length > 1) {
+      const cur = blank.answer;
+      const isExactAnswer =
+        normalizeAnswer(rawInput) === normalizeAnswer(cur);
+      if (!isExactAnswer) {
+        let body = input;
+        let head = "";
+        if (body.startsWith(prev)) {
+          head = prev;
+          body = body.slice(prev.length);
+        }
         let changed = true;
         let guard = 0;
-        while (changed && guard < 10 && input.length > 0) {
+        while (changed && guard < 12 && body.length > 0) {
           changed = false;
           guard += 1;
           for (const other of blanks) {
             if (other.idx === idx || !other.answer) continue;
-            // 정답이 통째로 prefix 인 경우만 잘라냄 (부분 매칭은 위험).
-            if (input.startsWith(other.answer) && input !== other.answer) {
-              input = input.slice(other.answer.length);
+            const ans = other.answer;
+            const pos = body.indexOf(ans);
+            if (pos !== -1) {
+              body = body.slice(0, pos) + body.slice(pos + ans.length);
               changed = true;
               break;
             }
           }
         }
-        if (input !== rawInput) {
-          // DOM 의 input value 도 cleaned 로 강제 동기화 — 사용자가 직접 보는 값.
+        const cleaned = head + body;
+        if (cleaned !== rawInput) {
+          input = cleaned;
           const el = inputsRef.current.get(idx);
-          if (el && el.value !== input) {
+          if (el && el.value !== cleaned) {
             try {
-              el.value = input;
-              el.setSelectionRange(input.length, input.length);
+              el.value = cleaned;
+              el.setSelectionRange(cleaned.length, cleaned.length);
             } catch {
               /* noop */
             }
@@ -618,14 +632,10 @@ function BlankInputInline({
     onChange(raw);
   };
   return (
-    // form 으로 wrap + autoComplete="off" — Chrome 은 form context 가 있어야
-    // form-history autocomplete 가 동작하는데, 우리는 form context 자체를 차단.
-    // onSubmit preventDefault 로 enter 키 의도치 않은 form submission 방지.
-    <form
-      onSubmit={(e) => e.preventDefault()}
-      autoComplete="off"
-      className="inline-flex items-baseline"
-    >
+    // span 으로 inline. <form> wrap 은 <p> 안에 nested 불가(HTML 위반)라
+    // 브라우저가 form 을 p 밖으로 자동 이동 → context 안 잡힘. autofill 차단은
+    // attribute + checkAnswer 의 leak prefix 제거 로직에 의존.
+    <span className="inline-flex items-baseline">
       <input
         ref={(el) => {
           registerInput(idx, el);
@@ -697,6 +707,6 @@ function BlankInputInline({
       {filled ? (
         <CheckCircle2Icon className="ml-0.5 size-3.5 text-emerald-500" />
       ) : null}
-    </form>
+    </span>
   );
 }
