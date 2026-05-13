@@ -14,7 +14,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { icon: "home", label: "대시보드", to: "/dashboard", active: true },
   { icon: "book", label: "강의", to: "/subjects/patent" },
-  { icon: "blank", label: "빈칸 학습", to: "/study/blanks" },
+  { icon: "blank", label: "빈칸 학습", to: "/study/stats?tab=blanks" },
   { icon: "pen", label: "실전 모의고사", to: "/gs" },
   { icon: "chart", label: "진도 현황", to: "/goals" },
   { icon: "chat", label: "Q&A", to: "/community" },

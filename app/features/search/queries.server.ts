@@ -1,4 +1,4 @@
-// 전역 검색 (⌘K Command Palette) — 조문/판례/문제/내 메모/내 즐겨찾기 통합.
+// 전역 검색 (⌘K Command Palette) — 조문/판례/문제/메모/즐겨찾기 통합.
 // 각 도메인별 ILIKE 다중 컬럼 + 그룹별 최대 6건. 너무 짧은 query 는 빈 결과.
 
 import type { SupabaseClient } from "@supabase/supabase-js";

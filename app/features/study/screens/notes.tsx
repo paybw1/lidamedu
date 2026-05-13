@@ -24,7 +24,7 @@ import {
 import type { Route } from "./+types/notes";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "내 메모 | Lidam Edu" },
+  { title: "메모 | Lidam Edu" },
 ];
 
 const TARGET_LABELS: Record<AnnotationTargetType, string> = {
@@ -135,7 +135,7 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
         <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
           <StickyNoteIcon className="size-3.5" /> 학습 보조
         </p>
-        <h1 className="text-2xl font-bold tracking-tight">내 메모</h1>
+        <h1 className="text-2xl font-bold tracking-tight">메모</h1>
         <p className="text-muted-foreground text-sm">
           조문 / 판례 / 문제 / OX 지문 viewer 에서 작성한 메모를 한 곳에서 검색·열람하세요. 최근 수정 순.
         </p>

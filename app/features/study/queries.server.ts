@@ -1674,3 +1674,289 @@ export async function listOxWrongAttempts(
   );
   return out;
 }
+
+// ──────── 통합 학습 통계 페이지 (feat-2-008) ────────
+
+export interface ArticleStudyStats {
+  visitedDistinct: number;
+  totalArticles: number;
+  bookmarks: number;
+  memos: number;
+  highlights: number;
+  bySubject: Array<{
+    lawCode: LawSubjectSlug;
+    name: string;
+    visited: number;
+    total: number;
+    bookmarks: number;
+    memos: number;
+    highlights: number;
+  }>;
+}
+
+export async function getArticleStudyStats(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCodes: ReadonlyArray<{ slug: LawSubjectSlug; name: string }>,
+): Promise<ArticleStudyStats> {
+  const slugs = lawCodes.map((s) => s.slug) as string[];
+  const { data: lawRows } = await client
+    .from("laws")
+    .select("law_id, law_code")
+    .in("law_code", slugs);
+  const lawByCode = new Map((lawRows ?? []).map((l) => [l.law_code, l.law_id]));
+  const codeByLawId = new Map(
+    (lawRows ?? []).map((l) => [l.law_id, l.law_code]),
+  );
+
+  const totals = new Map<string, number>();
+  await Promise.all(
+    Array.from(lawByCode.entries()).map(async ([code, lid]) => {
+      const { count } = await client
+        .from("articles")
+        .select("article_id", { head: true, count: "exact" })
+        .eq("law_id", lid)
+        .eq("level", "article");
+      totals.set(code, count ?? 0);
+    }),
+  );
+
+  const { data: sessRows } = await client
+    .from("study_sessions")
+    .select("scope")
+    .eq("user_id", userId)
+    .limit(5000);
+  const visitedAll = new Set<string>();
+  const visitedBySubject = new Map<string, Set<string>>();
+  for (const r of sessRows ?? []) {
+    const scope = r.scope as Partial<StudyScope> | null;
+    if (!scope?.target_id || scope.target_type !== "article") continue;
+    visitedAll.add(scope.target_id);
+    const subj = scope.subject;
+    if (subj) {
+      if (!visitedBySubject.has(subj)) visitedBySubject.set(subj, new Set());
+      visitedBySubject.get(subj)!.add(scope.target_id);
+    }
+  }
+
+  const fetchAnnotationIds = async (
+    table: "user_bookmarks" | "user_memos" | "user_highlights",
+  ): Promise<string[]> => {
+    let q = client
+      .from(table)
+      .select("target_id")
+      .eq("user_id", userId)
+      .eq("target_type", "article")
+      .is("deleted_at", null);
+    if (table === "user_bookmarks") q = q.gt("star_level", 0);
+    const { data } = await q.limit(10000);
+    return (data ?? []).map((r) => r.target_id as string);
+  };
+  const [bookmarkIds, memoIds, highlightIds] = await Promise.all([
+    fetchAnnotationIds("user_bookmarks"),
+    fetchAnnotationIds("user_memos"),
+    fetchAnnotationIds("user_highlights"),
+  ]);
+
+  const allArticleIds = Array.from(
+    new Set([...bookmarkIds, ...memoIds, ...highlightIds]),
+  );
+  const lawIdByArticleId = new Map<string, string>();
+  if (allArticleIds.length > 0) {
+    const { data: arts } = await client
+      .from("articles")
+      .select("article_id, law_id")
+      .in("article_id", allArticleIds);
+    for (const a of arts ?? []) {
+      if (a.law_id) lawIdByArticleId.set(a.article_id, a.law_id);
+    }
+  }
+
+  const countBySubject = (ids: string[]): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (const aid of ids) {
+      const lid = lawIdByArticleId.get(aid);
+      const code = lid ? codeByLawId.get(lid) : undefined;
+      if (!code) continue;
+      m.set(code, (m.get(code) ?? 0) + 1);
+    }
+    return m;
+  };
+  const bookmarkBy = countBySubject(bookmarkIds);
+  const memoBy = countBySubject(memoIds);
+  const highlightBy = countBySubject(highlightIds);
+
+  return {
+    visitedDistinct: visitedAll.size,
+    totalArticles: Array.from(totals.values()).reduce((a, b) => a + b, 0),
+    bookmarks: bookmarkIds.length,
+    memos: memoIds.length,
+    highlights: highlightIds.length,
+    bySubject: lawCodes.map(({ slug, name }) => ({
+      lawCode: slug,
+      name,
+      visited: visitedBySubject.get(slug)?.size ?? 0,
+      total: totals.get(slug) ?? 0,
+      bookmarks: bookmarkBy.get(slug) ?? 0,
+      memos: memoBy.get(slug) ?? 0,
+      highlights: highlightBy.get(slug) ?? 0,
+    })),
+  };
+}
+
+export interface CaseStudyStats {
+  visitedDistinct: number;
+  totalCases: number;
+  bookmarks: number;
+  memos: number;
+  highlights: number;
+  bySubject: Array<{
+    lawCode: LawSubjectSlug;
+    name: string;
+    visited: number;
+    total: number;
+  }>;
+}
+
+export async function getCaseStudyStats(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCodes: ReadonlyArray<{ slug: LawSubjectSlug; name: string }>,
+): Promise<CaseStudyStats> {
+  const { count: totalCases } = await client
+    .from("cases")
+    .select("case_id", { head: true, count: "exact" })
+    .is("deleted_at", null);
+
+  const { data: sessRows } = await client
+    .from("study_sessions")
+    .select("scope")
+    .eq("user_id", userId)
+    .limit(5000);
+  const visitedAll = new Set<string>();
+  const visitedBySubject = new Map<string, Set<string>>();
+  for (const r of sessRows ?? []) {
+    const scope = r.scope as Partial<StudyScope> | null;
+    if (!scope?.target_id || scope.target_type !== "case") continue;
+    visitedAll.add(scope.target_id);
+    const subj = scope.subject;
+    if (subj) {
+      if (!visitedBySubject.has(subj)) visitedBySubject.set(subj, new Set());
+      visitedBySubject.get(subj)!.add(scope.target_id);
+    }
+  }
+
+  const totalsBySubject = new Map<string, number>();
+  await Promise.all(
+    lawCodes.map(async ({ slug }) => {
+      const { count } = await client
+        .from("cases")
+        .select("case_id", { head: true, count: "exact" })
+        .is("deleted_at", null)
+        .contains("subject_laws", [slug]);
+      totalsBySubject.set(slug, count ?? 0);
+    }),
+  );
+
+  const fetchCount = async (
+    table: "user_bookmarks" | "user_memos" | "user_highlights",
+  ): Promise<number> => {
+    let q = client
+      .from(table)
+      .select("target_id", { head: true, count: "exact" })
+      .eq("user_id", userId)
+      .eq("target_type", "case")
+      .is("deleted_at", null);
+    if (table === "user_bookmarks") q = q.gt("star_level", 0);
+    const { count } = await q;
+    return count ?? 0;
+  };
+  const [bookmarks, memos, highlights] = await Promise.all([
+    fetchCount("user_bookmarks"),
+    fetchCount("user_memos"),
+    fetchCount("user_highlights"),
+  ]);
+
+  return {
+    visitedDistinct: visitedAll.size,
+    totalCases: totalCases ?? 0,
+    bookmarks,
+    memos,
+    highlights,
+    bySubject: lawCodes.map(({ slug, name }) => ({
+      lawCode: slug,
+      name,
+      visited: visitedBySubject.get(slug)?.size ?? 0,
+      total: totalsBySubject.get(slug) ?? 0,
+    })),
+  };
+}
+
+export interface UserSubjectiveStats {
+  totalAttempts: number;
+  submittedAttempts: number;
+  avgSelfScore: number | null;
+  reviewRequested: number;
+  reviewCompleted: number;
+  bySubject: Array<{
+    lawCode: LawSubjectSlug;
+    name: string;
+    attempts: number;
+    avgSelfScore: number | null;
+  }>;
+}
+
+export async function getUserSubjectiveStats(
+  client: SupabaseClient<Database>,
+  userId: string,
+  lawCodes: ReadonlyArray<{ slug: LawSubjectSlug; name: string }>,
+): Promise<UserSubjectiveStats> {
+  const { data: rows, error } = await client
+    .from("user_subjective_attempts")
+    .select(
+      "attempt_id, self_score, submitted_at, review_requested_at, review_completed_at, problems!inner(law_id, laws!inner(law_code))",
+    )
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+  if (error) throw error;
+  const list = rows ?? [];
+
+  let submitted = 0;
+  let reviewRequested = 0;
+  let reviewCompleted = 0;
+  const selfScores: number[] = [];
+  const byCode = new Map<string, { attempts: number; scores: number[] }>();
+  for (const r of list) {
+    if (r.submitted_at) submitted += 1;
+    if (r.review_requested_at && !r.review_completed_at) reviewRequested += 1;
+    if (r.review_completed_at) reviewCompleted += 1;
+    if (r.self_score != null) selfScores.push(r.self_score);
+    const code = r.problems?.laws?.law_code;
+    if (code) {
+      if (!byCode.has(code)) byCode.set(code, { attempts: 0, scores: [] });
+      const c = byCode.get(code)!;
+      c.attempts += 1;
+      if (r.self_score != null) c.scores.push(r.self_score);
+    }
+  }
+  const avg = (xs: number[]): number | null =>
+    xs.length === 0
+      ? null
+      : Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10;
+  return {
+    totalAttempts: list.length,
+    submittedAttempts: submitted,
+    avgSelfScore: avg(selfScores),
+    reviewRequested,
+    reviewCompleted,
+    bySubject: lawCodes.map(({ slug, name }) => {
+      const c = byCode.get(slug);
+      return {
+        lawCode: slug,
+        name,
+        attempts: c?.attempts ?? 0,
+        avgSelfScore: c ? avg(c.scores) : null,
+      };
+    }),
+  };
+}

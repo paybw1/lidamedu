@@ -197,8 +197,9 @@
 | feat-2-005 | 과목별 "학습하러 가기" 버튼 (해당 과목 허브로 이동) | P1 | ✅ |
 | feat-2-006 | 진도 추이 그래프 (주별 12주 미니바) | P2 | ✅ |
 | feat-2-007 | 목표 달성 알림 (마일스톤 25/50/75/100% 뱃지) | P2 | ✅ |
+| feat-2-008 | 통합 학습 통계 페이지 (`/study/stats`) — 학습관리 메뉴의 "빈칸 학습 통계"를 "학습 통계"로 격상. 변리사 시험 차수(1차/2차)로 분리 — **1차 통계**(특허·상표·디자인·민법 + 자연과학) 객관식, **2차 통계**(특허·상표·디자인·민사소송법) 주관식. 탭 4종(한눈에 / 1차 통계 / 2차 통계 / 빈칸·암기). 각 차수 탭 내부에 **조문 + 판례 + 문제** sub-section을 시험 응시 과목으로 필터링해서 노출. 분기는 `LAW_SUBJECTS[code].exam` 필드(first/second/both)로 — 디자인보호법은 "first"였던 메타데이터를 "both"로 정정(`feat-2-008` 동반 fix). 한눈에=getOverallProgress+getDashboardKpis+getAllSubjectsProgress+getDailyStudyStats+getStudyAidCounts+자연과학(1차)+주관식(2차) 두 표. 신규 쿼리=getArticleStudyStats / getCaseStudyStats / getUserSubjectiveStats(study/queries.server.ts). 빈칸·암기=BlankStatsTabs 컴포넌트 추출하여 기존 4 sub-tab(내용/주체/시기/암기) 흡수. /study/blanks 라우트는 유지 + `/study/stats?tab=blanks` 로 redirect. | P1 | ✅ |
 
-상세 스펙: `docs/spec-detail-5-2-goals.md` (작성 예정).
+상세 스펙: `docs/spec-detail-5-2-goals.md` (작성 예정), `docs/features/feat-2-008-study-stats.md`.
 
 ---
 
@@ -315,7 +316,7 @@
 | feat-4-A-314 | 해설 — 지문별 O/X + 분류(조문/판례/실무) + 링크 | P0 | ✅ |
 | feat-4-A-315 | 동영상 풀이 (강사 업로드, 문제 우측 패널) — problem-viewer 우측 패널 동영상 임베드(YouTube/Vimeo URL) + admin-problem-edit 폼에 video_url 컬럼. | P1 | ✅ |
 | feat-4-A-316 | Q&A 패널 — 공용 QnaPanel. ArticleRightPanel 통해 problem 타깃도 동일 흐름. | P0 | ✅ |
-| feat-4-A-320 | 주관식 색인 화면 (기출+모의 통합 테이블) | P1 | 🔲 |
+| feat-4-A-320 | 주관식 색인 화면 (기출+모의 통합 테이블) — 과목 hub의 ProblemsTab 하단 "2차 주관식" 카드. `listProblemsBySubject` 가 반환하는 problems 중 `examRound='second'` 인 항목(secondRound)을 카드 리스트로 노출. SubjectiveCard 컴포넌트(주관식 배지·출처·연도/번호·subjective_kind·기본 조문 chip + 논점/본문 snippet/풀이 CTA). 기존 hub 필터(origin/year/format/polarity/scope/search)와 동일 필터 적용. exam !== 'first' 과목(특허·상표·디자인·민소법)에만 노출. 빈 상태는 필터 적용 시/미적용 시 안내 분기. | P1 | ✅ |
 | feat-4-A-321 | 주관식 분류 라벨 (기출/변형/예상, 키워드, 사례·논점) — `problems.subjective_kind`(case_study/issue_set/discussion) + `subjective_keyword` 컬럼 + /latest/essay 필터. 색인은 /latest/essay 가 담당(과목 hub 의 ProblemsTab 은 MC 만 — feat-4-A-320 별도). | P1 | ✅ |
 | feat-4-A-322 | 채점기준·모범답안·채점결과 우측 패널 — subjective problem-viewer 의 model answer + rubric reveal + self-score 입력 + 채점 체크리스트. admin-problem-edit 에서 모범답안/채점기준 작성. | P1 | ✅ |
 | feat-4-A-323 | 답안 작성 시간제한·자동 저장 — 시간제한 응시 모드(타이머 + 만료시 자동 제출) + 답안 textarea autosave(debounce → `/api/study/subjective-attempt`). | P1 | ✅ |
@@ -524,6 +525,7 @@
 |----------|--------|-------------|
 | 대시보드 | `/dashboard` | feat-1-* |
 | 학습목표 및 진도 | `/goals` | feat-2-* |
+| 통합 학습 통계 | `/study/stats` | feat-2-008 |
 | 최신 정보 (법 개정) | `/latest/laws` | feat-3-1* |
 | 최신 정보 (판례) | `/latest/cases` | feat-3-2* |
 | 최신 정보 (객관식) | `/latest/mcq` | feat-3-3* |

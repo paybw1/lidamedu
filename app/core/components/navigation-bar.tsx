@@ -53,7 +53,7 @@ const leadingFlats: SimpleLink[] = [
 
 const studyItems: SimpleLink[] = [
   { label: "학습목표 및 과목별 진도", to: "/goals" },
-  { label: "빈칸 학습 통계", to: "/study/blanks" },
+  { label: "학습 통계", to: "/study/stats" },
   { label: "알림", to: "/inbox" },
 ];
 
@@ -97,8 +97,8 @@ const subjectSections: Section[] = [
 const studyAidItems: SimpleLink[] = [
   { label: "오답노트", to: "/study/wrong-note" },
   { label: "즐겨찾기", to: "/study/bookmarks" },
-  { label: "내 메모", to: "/study/notes" },
-  { label: "내 하이라이트", to: "/study/highlights" },
+  { label: "메모", to: "/study/notes" },
+  { label: "하이라이트", to: "/study/highlights" },
 ];
 
 const communityItems: SimpleLink[] = [

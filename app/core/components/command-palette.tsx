@@ -59,8 +59,8 @@ const GROUP_META: Record<
   article: { label: "조문", icon: BookOpenIcon },
   case: { label: "판례", icon: GavelIcon },
   problem: { label: "객관식 문제", icon: ListChecksIcon },
-  memo: { label: "내 메모", icon: StickyNoteIcon },
-  bookmark: { label: "내 즐겨찾기", icon: BookmarkIcon },
+  memo: { label: "메모", icon: StickyNoteIcon },
+  bookmark: { label: "즐겨찾기", icon: BookmarkIcon },
 };
 
 export const COMMAND_PALETTE_OPEN_EVENT = "command-palette:open";
@@ -160,7 +160,7 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       title="전역 검색"
-      description="조문 · 판례 · 객관식 · 내 메모 · 즐겨찾기 통합 검색"
+      description="조문 · 판례 · 객관식 · 메모 · 즐겨찾기 통합 검색"
     >
       <CommandInput
         placeholder="검색어를 입력하세요 (조문 / 판례 / 문제 / 메모)"

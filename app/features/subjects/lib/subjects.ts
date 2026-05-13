@@ -59,7 +59,7 @@ export const LAW_SUBJECTS: Record<LawSubjectSlug, LawSubjectMeta> = {
     shortName: "디자인",
     category: "industrial",
     categoryLabel: "산업재산권법",
-    exam: "first",
+    exam: "both",
     description: "",
   },
   civil: {

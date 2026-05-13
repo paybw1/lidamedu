@@ -27,6 +27,7 @@ import {
   ORIGIN_LABEL,
   POLARITY_LABEL,
   SCOPE_LABEL,
+  SUBJECTIVE_KIND_LABEL,
   type ProblemFormat,
   type ProblemListItem,
   type ProblemOrigin,
@@ -383,15 +384,87 @@ export function ProblemsTab({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="bg-muted/40 rounded-md border border-dashed p-8 text-center">
-              <p className="text-muted-foreground text-sm">
-                2차 주관식은 추후 도입 (feat-4-A-320~339).
-              </p>
-            </div>
+            {secondRound.length === 0 ? (
+              <div className="bg-muted/40 rounded-md border border-dashed p-8 text-center">
+                <p className="text-muted-foreground text-sm">
+                  {filterActive
+                    ? "조건에 맞는 주관식 문제가 없습니다."
+                    : "등록된 주관식 문제가 아직 없습니다."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {secondRound.map((p) => (
+                  <SubjectiveCard
+                    key={p.problemId}
+                    subjectSlug={subject.slug}
+                    item={p}
+                  />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : null}
     </div>
+  );
+}
+
+function SubjectiveCard({
+  subjectSlug,
+  item,
+}: {
+  subjectSlug: LawSubjectMeta["slug"];
+  item: ProblemListItem;
+}) {
+  const snippet =
+    item.bodyMd.length > 160 ? `${item.bodyMd.slice(0, 160)}…` : item.bodyMd;
+  return (
+    <Link
+      to={`/subjects/${subjectSlug}/problems/${item.problemId}`}
+      viewTransition
+      className="group block"
+    >
+      <Card className="hover:border-primary transition-colors">
+        <CardHeader className="px-4 pb-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="default" className="text-xs">
+              <PencilIcon className="size-3" /> 주관식
+            </Badge>
+            <Badge variant="secondary" className="text-xs">
+              {ORIGIN_LABEL[item.origin] ?? item.origin}
+            </Badge>
+            {item.year ? (
+              <Badge variant="outline" className="text-xs tabular-nums">
+                {item.year}
+                {item.problemNumber ? ` · ${item.problemNumber}번` : ""}
+              </Badge>
+            ) : null}
+            {item.subjectiveKind ? (
+              <Badge variant="default" className="text-xs">
+                {SUBJECTIVE_KIND_LABEL[item.subjectiveKind]}
+              </Badge>
+            ) : null}
+            {item.primaryArticleLabel ? (
+              <Badge variant="outline" className="text-xs">
+                {item.primaryArticleLabel}
+              </Badge>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 text-sm">
+          {item.subjectiveTopic ? (
+            <p className="text-muted-foreground mb-1 text-xs">
+              논점 — {item.subjectiveTopic}
+            </p>
+          ) : null}
+          <p className="line-clamp-2 leading-snug">{snippet}</p>
+          <p className="text-primary mt-2 inline-flex items-center gap-1 text-xs">
+            지금 풀어보기 <ArrowRightIcon className="size-3" />
+          </p>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 

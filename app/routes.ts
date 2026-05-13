@@ -170,6 +170,7 @@ export default [
       route("/logout", "features/auth/screens/logout.tsx"),
 
       route("/goals", "features/goals/screens/goals.tsx"),
+      route("/study/stats", "features/study/screens/stats.tsx"),
       route("/study/blanks", "features/blanks/screens/blanks-stats.tsx"),
       route("/study/wrong-note", "features/study/screens/wrong-note.tsx"),
       route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),

@@ -1043,7 +1043,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         <div style={{ marginTop: 18 }}>
           <CozyCard
             title="재학습 진입점"
-            subtitle="오답노트 · 즐겨찾기 · 내 메모 — 한 곳에서 다시 학습"
+            subtitle="오답노트 · 즐겨찾기 · 메모 — 한 곳에서 다시 학습"
           >
             <div
               className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
@@ -1067,14 +1067,14 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               <StudyAidTile
                 palette={palette}
                 href="/study/notes"
-                label="내 메모"
+                label="메모"
                 count={studyAidCounts.memos}
                 hint="작성한 메모 검색·열람"
               />
               <StudyAidTile
                 palette={palette}
                 href="/study/highlights"
-                label="내 하이라이트"
+                label="하이라이트"
                 count={studyAidCounts.highlights}
                 hint="색칠한 본문 발췌 모음"
               />
@@ -1506,7 +1506,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               />
             </div>
             <Link
-              to="/study/blanks"
+              to="/study/stats?tab=blanks"
               style={{
                 display: "block",
                 textDecoration: "none",
