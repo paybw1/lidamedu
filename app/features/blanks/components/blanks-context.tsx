@@ -681,6 +681,11 @@ function BlankInputInline({
         data-lpignore="true"
         data-1p-ignore="true"
         data-bwignore="true"
+        // Ginger / Grammarly 등 grammar-check 확장 skip 힌트 (비공식이지만 일부 버전 인식).
+        data-gramm="false"
+        data-gramm_editor="false"
+        data-enable-grammarly="false"
+        data-ginger="off"
         // name 자체를 omit — Chrome 의 form-history autofill 은 input 의 name
         // 으로 매칭하는데, name 이 없으면 history 비교 자체가 불가.
       />
