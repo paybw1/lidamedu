@@ -31,8 +31,10 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  getCohortAccuracyTrend,
   getCohortAggregateStats,
   type AccuracyBucket,
+  type CohortWeeklyTrendItem,
 } from "~/features/admin/queries/student-progress.server";
 
 import type { Route } from "./+types/admin-cohort-stats";
@@ -58,8 +60,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("본인 소유 반만 조회 가능", { status: 403 });
   }
 
-  const stats = await getCohortAggregateStats(params.cohortId);
-  return { cohort, stats };
+  const [stats, trend] = await Promise.all([
+    getCohortAggregateStats(params.cohortId),
+    getCohortAccuracyTrend(params.cohortId, 4),
+  ]);
+  return { cohort, stats, trend };
 }
 
 function accuracyTone(pct: number | null): string {
@@ -91,7 +96,7 @@ const BUCKET_LABEL: Record<AccuracyBucket, string> = {
 export default function AdminCohortStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, stats } = loaderData;
+  const { cohort, stats, trend } = loaderData;
   const maxBucketCount = Math.max(
     1,
     ...stats.accuracyDistribution.map((d) => d.count),
@@ -181,6 +186,9 @@ export default function AdminCohortStats({
               }
             />
           </div>
+
+          {/* 최근 4주 추이 */}
+          <WeeklyTrendCard weeks={trend.weeks} />
 
           {/* 정답률 분포 */}
           <Card>
@@ -295,6 +303,67 @@ export default function AdminCohortStats({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function accuracyBgTone(pct: number | null): string {
+  if (pct === null) return "bg-muted-foreground/40";
+  if (pct >= 80) return "bg-emerald-500/80";
+  if (pct >= 60) return "bg-lime-500/80";
+  if (pct >= 40) return "bg-amber-500/80";
+  if (pct >= 20) return "bg-orange-500/80";
+  return "bg-rose-500/80";
+}
+
+function WeeklyTrendCard({ weeks }: { weeks: CohortWeeklyTrendItem[] }) {
+  if (weeks.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            최근 {weeks.length}주 추이
+          </p>
+          <Badge variant="outline" className="text-[10px]">
+            주별 정답률 · 시도 · 활동 학생수
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-4 gap-3">
+          {weeks.map((w) => (
+            <WeeklyBar key={w.weekStart} item={w} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WeeklyBar({ item }: { item: CohortWeeklyTrendItem }) {
+  const height = item.accuracyPct ?? 0;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="bg-muted/40 relative flex h-28 items-end overflow-hidden rounded">
+        <div
+          className={cn("w-full transition-all", accuracyBgTone(item.accuracyPct))}
+          style={{ height: `${Math.max(2, height)}%` }}
+          title={`${item.accuracyPct ?? 0}%`}
+        />
+      </div>
+      <p className="text-center text-xs font-medium">{item.label}</p>
+      <p
+        className={cn(
+          "text-center text-sm font-bold tabular-nums",
+          accuracyTone(item.accuracyPct),
+        )}
+      >
+        {item.accuracyPct === null ? "—" : `${item.accuracyPct}%`}
+      </p>
+      <p className="text-muted-foreground text-center text-[10px] tabular-nums">
+        {item.totalAttempts}문 · {item.activeMemberCount}명
+      </p>
     </div>
   );
 }

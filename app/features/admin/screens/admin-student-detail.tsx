@@ -3,14 +3,18 @@
 
 import {
   ArrowLeftIcon,
+  ArrowRightIcon,
   BookmarkIcon,
   ClockIcon,
   FileTextIcon,
   GavelIcon,
   ListChecksIcon,
   MailIcon,
+  MinusIcon,
+  TrendingDownIcon,
   TrendingUpIcon,
   UserIcon,
+  UsersIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
 
@@ -29,7 +33,11 @@ import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { getStudentDetail } from "~/features/admin/queries/student-progress.server";
+import {
+  getStudentCohortComparisons,
+  getStudentDetail,
+  type StudentCohortComparison,
+} from "~/features/admin/queries/student-progress.server";
 
 import type { Route } from "./+types/admin-student-detail";
 
@@ -62,9 +70,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  const student = await getStudentDetail(params.profileId);
+  const [student, cohortComparisons] = await Promise.all([
+    getStudentDetail(params.profileId),
+    getStudentCohortComparisons(params.profileId),
+  ]);
   if (!student) throw data("Student not found", { status: 404 });
-  return { student };
+  return { student, cohortComparisons };
 }
 
 function accuracyTone(pct: number | null): string {
@@ -78,7 +89,7 @@ function accuracyTone(pct: number | null): string {
 export default function AdminStudentDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { student } = loaderData;
+  const { student, cohortComparisons } = loaderData;
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
@@ -149,6 +160,14 @@ export default function AdminStudentDetail({
           tone={accuracyTone(student.blanks.accuracyPct)}
         />
       </div>
+
+      {cohortComparisons.length > 0 ? (
+        <div className="mb-6 space-y-3">
+          {cohortComparisons.map((c) => (
+            <CohortComparisonCard key={c.cohortId} comparison={c} />
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
@@ -342,5 +361,136 @@ function KpiCard({
         <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function CohortComparisonCard({
+  comparison,
+}: {
+  comparison: StudentCohortComparison;
+}) {
+  const c = comparison;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <UsersIcon className="text-primary size-4" />
+            반 평균 대비 — {c.cohortName}
+          </p>
+          <div className="flex items-center gap-2">
+            {c.quartile !== null ? (
+              <Badge
+                variant={c.quartile >= 3 ? "default" : "secondary"}
+                className="text-[10px]"
+              >
+                {c.quartile === 4
+                  ? "상위 25%"
+                  : c.quartile === 3
+                    ? "상위 50%"
+                    : c.quartile === 2
+                      ? "하위 50%"
+                      : "하위 25%"}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[10px]">
+                시도 부족
+              </Badge>
+            )}
+            <Link
+              to={`/admin/cohorts/${c.cohortId}/stats`}
+              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+            >
+              반 통계 <ArrowRightIcon className="size-3" />
+            </Link>
+          </div>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          멤버 {c.memberCount}명 평균 기준
+        </p>
+      </CardHeader>
+      <CardContent className="grid gap-2 sm:grid-cols-3">
+        <CompareChip
+          label="정답률"
+          self={c.selfAccuracyPct === null ? "—" : `${c.selfAccuracyPct}%`}
+          avg={c.avgAccuracyPct === null ? "—" : `${c.avgAccuracyPct}%`}
+          diff={c.diffAccuracyPct}
+          unit="%p"
+          higherIsBetter
+        />
+        <CompareChip
+          label="문제 풀이"
+          self={`${c.selfProblemsAttempted}`}
+          avg={`${c.avgProblemsAttempted}`}
+          diff={c.diffProblemsAttempted}
+          unit="문"
+          higherIsBetter
+        />
+        <CompareChip
+          label="조문 열람"
+          self={`${c.selfArticlesViewed}`}
+          avg={`${c.avgArticlesViewed}`}
+          diff={c.diffArticlesViewed}
+          unit="조"
+          higherIsBetter
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function CompareChip({
+  label,
+  self,
+  avg,
+  diff,
+  unit,
+  higherIsBetter,
+}: {
+  label: string;
+  self: string;
+  avg: string;
+  diff: number | null;
+  unit: string;
+  higherIsBetter: boolean;
+}) {
+  const diffTone =
+    diff === null
+      ? "text-muted-foreground"
+      : (diff > 0) === higherIsBetter
+        ? "text-emerald-600 dark:text-emerald-400"
+        : diff === 0
+          ? "text-muted-foreground"
+          : "text-rose-600 dark:text-rose-400";
+  const DiffIcon =
+    diff === null
+      ? MinusIcon
+      : diff > 0
+        ? TrendingUpIcon
+        : diff < 0
+          ? TrendingDownIcon
+          : MinusIcon;
+  const sign = diff === null || diff === 0 ? "" : diff > 0 ? "+" : "";
+  return (
+    <div className="bg-muted/40 rounded-md border p-3">
+      <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+        {label}
+      </p>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-lg font-bold tabular-nums">{self}</span>
+        <span className="text-muted-foreground text-xs tabular-nums">
+          평균 {avg}
+        </span>
+      </div>
+      <div
+        className={cn(
+          "mt-1 inline-flex items-center gap-1 text-xs font-semibold tabular-nums",
+          diffTone,
+        )}
+      >
+        <DiffIcon className="size-3" />
+        {diff === null ? "비교 불가" : `${sign}${diff}${unit}`}
+      </div>
+    </div>
   );
 }

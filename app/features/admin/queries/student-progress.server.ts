@@ -757,3 +757,207 @@ export async function getCohortAggregateStats(
     bottomByAccuracy,
   };
 }
+
+// ─── cohort 주별 추이 (feat-7-019 A) ────────────────────────────────────
+
+export interface CohortWeeklyTrendItem {
+  weekStart: string; // YYYY-MM-DD (KST, Monday)
+  label: string; // "이번 주", "1주 전", ...
+  totalAttempts: number;
+  correctAttempts: number;
+  accuracyPct: number | null;
+  activeMemberCount: number;
+}
+
+export interface CohortWeeklyTrend {
+  weeks: CohortWeeklyTrendItem[]; // 가장 오래된 → 최신 순
+}
+
+function ymdKst(d: Date): string {
+  // KST = UTC+9 — 단순 변환.
+  const k = new Date(d.getTime() + 9 * 3600 * 1000);
+  return k.toISOString().slice(0, 10);
+}
+
+function mondayStartKst(d: Date): Date {
+  const k = new Date(d.getTime() + 9 * 3600 * 1000);
+  const day = k.getUTCDay(); // 0 일~6 토
+  const diff = (day + 6) % 7; // 월요일까지 후퇴
+  k.setUTCHours(0, 0, 0, 0);
+  k.setUTCDate(k.getUTCDate() - diff);
+  // 다시 UTC 기준 (KST 0시 = UTC 전날 15시)
+  return new Date(k.getTime() - 9 * 3600 * 1000);
+}
+
+export async function getCohortAccuracyTrend(
+  cohortId: string,
+  weekCount = 4,
+): Promise<CohortWeeklyTrend> {
+  const admin = adminClient as SupabaseClient<Database>;
+
+  const { data: members } = await admin
+    .from("cohort_members")
+    .select("profile_id")
+    .eq("cohort_id", cohortId);
+  const ids = (members ?? []).map((m) => m.profile_id);
+  if (ids.length === 0) {
+    return { weeks: [] };
+  }
+
+  // 이번 주 월요일 → 가장 오래된 주 월요일
+  const thisWeekStart = mondayStartKst(new Date());
+  const oldestStart = new Date(
+    thisWeekStart.getTime() - (weekCount - 1) * 7 * 24 * 3600 * 1000,
+  );
+
+  const PAGE = 1000;
+  const attemptsByWeek = new Map<
+    string,
+    { total: number; correct: number; active: Set<string> }
+  >();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin
+      .from("user_problem_attempts")
+      .select("user_id, is_correct, attempted_at")
+      .in("user_id", ids)
+      .gte("attempted_at", oldestStart.toISOString())
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data) {
+      const weekStart = mondayStartKst(new Date(r.attempted_at));
+      const key = ymdKst(weekStart);
+      const entry = attemptsByWeek.get(key) ?? {
+        total: 0,
+        correct: 0,
+        active: new Set<string>(),
+      };
+      entry.total += 1;
+      if (r.is_correct) entry.correct += 1;
+      entry.active.add(r.user_id);
+      attemptsByWeek.set(key, entry);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const weeks: CohortWeeklyTrendItem[] = [];
+  for (let i = weekCount - 1; i >= 0; i--) {
+    const weekStart = new Date(
+      thisWeekStart.getTime() - i * 7 * 24 * 3600 * 1000,
+    );
+    const key = ymdKst(weekStart);
+    const entry = attemptsByWeek.get(key);
+    const total = entry?.total ?? 0;
+    const correct = entry?.correct ?? 0;
+    const label =
+      i === 0 ? "이번 주" : i === 1 ? "1주 전" : `${i}주 전`;
+    weeks.push({
+      weekStart: key,
+      label,
+      totalAttempts: total,
+      correctAttempts: correct,
+      accuracyPct: total > 0 ? Math.round((correct / total) * 1000) / 10 : null,
+      activeMemberCount: entry?.active.size ?? 0,
+    });
+  }
+  return { weeks };
+}
+
+// ─── 학생 detail — 본인 vs 소속 cohort 평균 비교 (feat-7-019 B) ────────────
+
+export interface StudentCohortComparison {
+  cohortId: string;
+  cohortName: string;
+  memberCount: number;
+  // 본인
+  selfAccuracyPct: number | null;
+  selfProblemsAttempted: number;
+  selfArticlesViewed: number;
+  // 반 평균
+  avgAccuracyPct: number | null;
+  avgProblemsAttempted: number;
+  avgArticlesViewed: number;
+  // 차이 (본인 - 평균; 양수면 평균 이상)
+  diffAccuracyPct: number | null;
+  diffProblemsAttempted: number;
+  diffArticlesViewed: number;
+  // 본인의 cohort 내 정답률 분위 (1=하위 25%, 4=상위 25%; null=시도 < 5)
+  quartile: 1 | 2 | 3 | 4 | null;
+}
+
+export async function getStudentCohortComparisons(
+  profileId: string,
+): Promise<StudentCohortComparison[]> {
+  const admin = adminClient as SupabaseClient<Database>;
+
+  // 학생이 속한 cohort 목록
+  const { data: memberships, error } = await admin
+    .from("cohort_members")
+    .select(
+      "cohort_id, cohorts!inner(cohort_id, name, deleted_at, is_archived)",
+    )
+    .eq("profile_id", profileId);
+  if (error) throw error;
+  const activeCohorts = (memberships ?? []).filter(
+    (m) => m.cohorts && m.cohorts.deleted_at === null,
+  );
+  if (activeCohorts.length === 0) return [];
+
+  const out: StudentCohortComparison[] = [];
+  for (const m of activeCohorts) {
+    const cohortId = m.cohort_id;
+    const cohortName = m.cohorts!.name;
+    const summary = await listCohortProgressSummary(cohortId);
+    const self = summary.find((s) => s.profileId === profileId);
+    if (!self || summary.length === 0) continue;
+
+    // 반 평균 (학생 단위 평균)
+    const accuraciesValid = summary
+      .filter(
+        (s) =>
+          s.problemsAttempted >= AVG_ACCURACY_MIN_ATTEMPTS &&
+          s.accuracyPct !== null,
+      )
+      .map((s) => s.accuracyPct as number);
+    const avgAccuracyPct = avgOrNull(accuraciesValid);
+    const avgProblemsAttempted = avg(summary.map((s) => s.problemsAttempted));
+    const avgArticlesViewed = avg(summary.map((s) => s.articlesViewed));
+
+    // 본인 분위 — 시도 ≥ 5 학생들 중 정답률 정렬해 본인 위치
+    let quartile: 1 | 2 | 3 | 4 | null = null;
+    if (self.problemsAttempted >= AVG_ACCURACY_MIN_ATTEMPTS && self.accuracyPct !== null) {
+      const sorted = [...accuraciesValid].sort((a, b) => a - b);
+      const rank = sorted.findIndex((v) => v >= (self.accuracyPct as number));
+      const pos = rank === -1 ? sorted.length - 1 : rank;
+      const ratio = (pos + 1) / sorted.length;
+      quartile = ratio <= 0.25 ? 1 : ratio <= 0.5 ? 2 : ratio <= 0.75 ? 3 : 4;
+    }
+
+    const diffAcc =
+      self.accuracyPct !== null && avgAccuracyPct !== null
+        ? self.accuracyPct - avgAccuracyPct
+        : null;
+
+    out.push({
+      cohortId,
+      cohortName,
+      memberCount: summary.length,
+      selfAccuracyPct: self.accuracyPct,
+      selfProblemsAttempted: self.problemsAttempted,
+      selfArticlesViewed: self.articlesViewed,
+      avgAccuracyPct:
+        avgAccuracyPct === null ? null : Math.round(avgAccuracyPct * 10) / 10,
+      avgProblemsAttempted: Math.round(avgProblemsAttempted * 10) / 10,
+      avgArticlesViewed: Math.round(avgArticlesViewed * 10) / 10,
+      diffAccuracyPct: diffAcc === null ? null : Math.round(diffAcc * 10) / 10,
+      diffProblemsAttempted:
+        Math.round((self.problemsAttempted - avgProblemsAttempted) * 10) / 10,
+      diffArticlesViewed:
+        Math.round((self.articlesViewed - avgArticlesViewed) * 10) / 10,
+      quartile,
+    });
+  }
+  return out;
+}
