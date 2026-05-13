@@ -36,6 +36,7 @@ import {
 } from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { ContentPicker } from "~/features/admin/components/content-picker";
 import {
   getAssignmentWithItems,
   listAssignmentProgress,
@@ -466,20 +467,15 @@ function NewItemForm({
             </option>
           ))}
         </select>
-        <Input
-          name={
-            kind === "case_read"
-              ? "caseId"
-              : kind === "problem"
-                ? "problemId"
-                : kind === "blank_set"
-                  ? "blankSetId"
-                  : "articleId"
-          }
-          placeholder={`${ASSIGNMENT_ITEM_KIND_LABEL[kind]} UUID (다른 화면에서 복사)`}
-          required
-          className="h-8 text-xs"
-        />
+        {kind === "case_read" ? (
+          <ContentPicker kind="case" name="caseId" required />
+        ) : kind === "problem" ? (
+          <ContentPicker kind="problem" name="problemId" required />
+        ) : kind === "blank_set" ? (
+          <ContentPicker kind="blank_set" name="blankSetId" required />
+        ) : (
+          <ContentPicker kind="article" name="articleId" required />
+        )}
       </div>
       <div className="grid grid-cols-[100px_1fr] gap-2">
         <Input

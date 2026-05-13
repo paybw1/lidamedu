@@ -114,7 +114,7 @@ export async function getAssignmentWithItems(
   const { data: itemRows } = await admin
     .from("assignment_items")
     .select(
-      "item_id, ord, kind, article_id, case_id, problem_id, blank_set_id, target_quantity, note, articles(display_label), cases(case_title, case_number), problems(body_md, year, problem_number), article_blank_sets(display_name, blanks)",
+      "item_id, ord, kind, article_id, case_id, problem_id, blank_set_id, target_quantity, note, articles(display_label, article_number, laws(law_code)), cases(case_title, case_number, subject_laws), problems(body_md, year, problem_number, laws(law_code)), article_blank_sets(display_name, blanks, articles(article_number, laws(law_code)))",
     )
     .eq("assignment_id", assignmentId)
     .order("ord", { ascending: true });
@@ -124,6 +124,32 @@ export async function getAssignmentWithItems(
     const blanksArr = Array.isArray(r.article_blank_sets?.blanks)
       ? (r.article_blank_sets!.blanks as unknown[])
       : [];
+    // 진입 URL 계산
+    const articleLawCode = r.articles?.laws?.law_code ?? null;
+    const articleNum = r.articles?.article_number ?? null;
+    const caseLawCode = Array.isArray(r.cases?.subject_laws)
+      ? (r.cases!.subject_laws[0] ?? null)
+      : null;
+    const problemLawCode = r.problems?.laws?.law_code ?? null;
+    const bsLawCode = r.article_blank_sets?.articles?.laws?.law_code ?? null;
+    const bsArticleNum = r.article_blank_sets?.articles?.article_number ?? null;
+    let entryUrl: string | null = null;
+    if (r.kind === "article_read" && articleLawCode && articleNum) {
+      entryUrl = `/subjects/${articleLawCode}/articles/${articleNum}`;
+    } else if (r.kind === "recitation" && articleLawCode && articleNum) {
+      entryUrl = `/subjects/${articleLawCode}/articles/${articleNum}?recitation=1`;
+    } else if (r.kind === "case_read" && caseLawCode && r.case_id) {
+      entryUrl = `/subjects/${caseLawCode}/cases/${r.case_id}`;
+    } else if (r.kind === "problem" && problemLawCode && r.problem_id) {
+      entryUrl = `/subjects/${problemLawCode}/problems/${r.problem_id}`;
+    } else if (
+      r.kind === "blank_set" &&
+      bsLawCode &&
+      bsArticleNum &&
+      r.blank_set_id
+    ) {
+      entryUrl = `/subjects/${bsLawCode}/articles/${bsArticleNum}?blank=${r.blank_set_id}`;
+    }
     return {
       itemId: r.item_id,
       ord: r.ord,
@@ -144,6 +170,7 @@ export async function getAssignmentWithItems(
         ? `${r.article_blank_sets.display_name ?? "(이름없음)"} · ${blanksArr.length}칸`
         : null,
       blankSetTotalBlanks: r.article_blank_sets ? blanksArr.length : null,
+      entryUrl,
       targetQuantity: r.target_quantity,
       note: r.note,
     };

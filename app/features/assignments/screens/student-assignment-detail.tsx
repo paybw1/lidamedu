@@ -2,6 +2,7 @@
 
 import {
   ArrowLeftIcon,
+  ArrowRightIcon,
   CalendarIcon,
   CheckCircle2Icon,
   CircleIcon,
@@ -163,7 +164,6 @@ function ItemCard({
       : never
     : never;
 }) {
-  // 진입 링크 (현재는 단순 표시; 추후 article slug 등으로 직접 진입 가능)
   const refLabel =
     item.kind === "article_read" || item.kind === "recitation"
       ? (item.articleLabel ?? "(조문)")
@@ -173,29 +173,49 @@ function ItemCard({
           ? (item.problemSnippet ?? "(문제)")
           : (item.blankSetLabel ?? "(빈칸 세트)");
 
+  const inner = (
+    <Card
+      className={cn(
+        "transition-colors",
+        item.entryUrl ? "hover:border-primary" : "",
+      )}
+    >
+      <CardContent className="flex items-center gap-3 px-4 py-3">
+        <CircleIcon className="text-muted-foreground size-4" />
+        <Badge variant="outline" className="w-20 justify-center text-[10px]">
+          {ASSIGNMENT_ITEM_KIND_LABEL[item.kind]}
+        </Badge>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-1 text-sm">{refLabel}</p>
+          {item.note ? (
+            <p className="text-muted-foreground text-[10px] italic">
+              {item.note}
+            </p>
+          ) : null}
+        </div>
+        {item.targetQuantity ? (
+          <Badge variant="secondary" className="text-[10px]">
+            x{item.targetQuantity}
+          </Badge>
+        ) : null}
+        {item.entryUrl ? (
+          <span className="text-primary inline-flex items-center gap-1 text-xs">
+            학습하러 가기 <ArrowRightIcon className="size-3" />
+          </span>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <li>
-      <Card>
-        <CardContent className="flex items-center gap-3 px-4 py-3">
-          <CircleIcon className="text-muted-foreground size-4" />
-          <Badge variant="outline" className="w-20 justify-center text-[10px]">
-            {ASSIGNMENT_ITEM_KIND_LABEL[item.kind]}
-          </Badge>
-          <div className="min-w-0 flex-1">
-            <p className="line-clamp-1 text-sm">{refLabel}</p>
-            {item.note ? (
-              <p className="text-muted-foreground text-[10px] italic">
-                {item.note}
-              </p>
-            ) : null}
-          </div>
-          {item.targetQuantity ? (
-            <Badge variant="secondary" className="text-[10px]">
-              x{item.targetQuantity}
-            </Badge>
-          ) : null}
-        </CardContent>
-      </Card>
+      {item.entryUrl ? (
+        <Link to={item.entryUrl} viewTransition className="block">
+          {inner}
+        </Link>
+      ) : (
+        inner
+      )}
     </li>
   );
 }

@@ -29,6 +29,7 @@ import { Separator } from "~/core/components/ui/separator";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { ContentPicker } from "~/features/admin/components/content-picker";
 import { getCurriculumWithWeeks } from "~/features/curricula/queries.server";
 import {
   CURRICULUM_ITEM_KINDS,
@@ -718,21 +719,14 @@ function NewItemForm({
             required
             className="h-8 text-xs"
           />
+        ) : kind === "case" ? (
+          <ContentPicker kind="case" name="caseId" required />
+        ) : kind === "problem" ? (
+          <ContentPicker kind="problem" name="problemId" required />
+        ) : kind === "blank_set" ? (
+          <ContentPicker kind="blank_set" name="blankSetId" required />
         ) : (
-          <Input
-            name={
-              kind === "case"
-                ? "caseId"
-                : kind === "problem"
-                  ? "problemId"
-                  : kind === "blank_set"
-                    ? "blankSetId"
-                    : "articleId"
-            }
-            placeholder={`${CURRICULUM_ITEM_KIND_LABEL[kind]} UUID (다른 화면에서 복사)`}
-            required
-            className="h-8 text-xs"
-          />
+          <ContentPicker kind="article" name="articleId" required />
         )}
       </div>
       {kind === "lecture" ? (

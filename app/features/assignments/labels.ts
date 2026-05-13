@@ -60,6 +60,8 @@ export interface AssignmentItem {
   blankSetId: string | null;
   blankSetLabel: string | null;
   blankSetTotalBlanks: number | null;
+  // 학생이 해당 항목을 학습하러 들어갈 URL (없으면 null — 진입 불가)
+  entryUrl: string | null;
   targetQuantity: number | null;
   note: string | null;
 }

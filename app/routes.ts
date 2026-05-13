@@ -352,6 +352,14 @@ export default [
         "features/admin/screens/admin-assignment-edit.tsx",
       ),
       route("/api/admin/assignment", "features/admin/api/assignment.tsx"),
+      route(
+        "/api/admin/search-content",
+        "features/admin/api/search-content.tsx",
+      ),
+      route(
+        "/api/cron/curriculum-weekly",
+        "features/cron/api/curriculum-weekly.tsx",
+      ),
       route("/assignments", "features/assignments/screens/student-assignments.tsx"),
       route(
         "/assignments/:assignmentId",
