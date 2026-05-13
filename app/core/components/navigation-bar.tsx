@@ -54,6 +54,7 @@ const leadingFlats: SimpleLink[] = [
 const studyItems: SimpleLink[] = [
   { label: "학습목표 및 과목별 진도", to: "/goals" },
   { label: "학습 통계", to: "/study/stats" },
+  { label: "내 과제", to: "/assignments" },
   { label: "알림", to: "/inbox" },
 ];
 

@@ -454,6 +454,8 @@
 | feat-7-017 | 법령 완성도 진단 — `/admin/laws/:lawCode/completeness`. `admin_law_completeness` RPC: 실 조문(level='article') 기준 미커버 카운트(현행 revision / 빈칸 / 평석 / 관련조문 / 관련판례 / primary 문제 / 판례 요지·매핑 / 객관식 해설 / 주관식). 3섹션(조문/판례/문제) × 11차원 카드. 각 차원에 진행률 막대 + 미커버 카운트 + 작업 도구 deep link. tone: ≥95% 에메랄드 / ≥50% 앰버 / 그 외 로즈. | P1 | ✅ |
 | feat-7-018 | 자동 백필 RPC 2종 — staff 권한 가드. (1) `backfill_article_article_links_from_body` — body_json 의 inline `ref_article` 노드를 jsonb_path_query 로 재귀 추출 → `article_article_links` `cross_reference` 백필. (2) `backfill_article_case_links_from_body` — 판례 본문(요지/이유/평석) "(법명) 제N조(의X)?" 자연어 패턴 추출 → `article_case_links` `cites` 백필. 완성도 페이지 헤더 버튼 2개로 수동 재실행. | P1 | ✅ |
 | feat-7-019 | 반/기수 통계 모니터링 (`/admin/cohorts/:id/stats`) — feat-7-010 진도(학생별 행)와 분리된 cohort 평균/분포 종합 화면. 평균 KPI(평균 정답률·평균 시도·평균 조문 열람·최근 7일 활동 학생수). 정답률 5구간 분포(80+/60-79/40-59/20-39/0-19) 막대. **최근 4주 주별 추이 차트**(`getCohortAccuracyTrend` — 주별 정답률 막대 + 시도/활동 학생수). 5과목 평균 표(평균 시도·평균 정답률·평균 조문 열람). 상/하위 5명 카드(정답률 기준). 학생 detail(`/admin/students/:profileId`)에 **반 평균 대비 비교 카드**(`getStudentCohortComparisons` — 정답률·시도·조문 열람 차이 chip + 분위 badge + 반 통계 deep link). 신규 함수 3종 (`getCohortAggregateStats`/`getCohortAccuracyTrend`/`getStudentCohortComparisons`) 모두 admin client RLS 우회. cohort-detail 과 progress 양쪽에 진입 링크. e2e: `e2e/admin/cohort-stats.spec.ts`. | P1 | ✅ |
+| feat-7-020 | **커리큘럼 / 학습 플랜** — 학원이 짠 N주 학습 트랙을 cohort 에 적용. **1차 종합반 우선** (객관식·빈칸·암기·조문/판례·강의). 2차(주관식)는 후속. `curricula`(이름·기간·소유자) + `curriculum_weeks`(주차·제목·목표) + `curriculum_items`(주차별 학습 단위: article/case/problem/blank_set/recitation/lecture 중 하나, kind 별 CHECK constraint) + `cohort_curricula`(cohort 적용·시작일). lecture 는 인라인 메타(title/url/duration_min) — 통합 LMS 는 후속. 운영자: `/admin/curricula` 목록 + `/admin/curricula/:id` 편집(메타·발행·주차/항목 CRUD) + cohort detail 에서 "커리큘럼 적용" + 시작일. 1차 release 는 항목 reference UUID 직접 입력(검색 UI 후속). | P0 | ✅ |
+| feat-7-021 | **과제 배포** — cohort 단위. **자동(커리큘럼 주차 → 과제 변환) + 수동(임의 신규) 병행**. `assignments`(제목·설명·할당일·마감일·source_curriculum/source_week 추적) + `assignment_items`(학습 단위) + `assignment_submissions`(학생별 상태: pending/partial/completed + 완수 시각, cache). 자동 채점/완수 판정(`recomputeSubmission`) — 문제는 정답 1번 이상, 빈칸은 모든 blank_idx 정답, 조문/판례는 study_sessions 방문 1회, 암기는 user_recitation_attempts.is_complete=true. 운영자: `/admin/cohorts/:id/assignments` CRUD + 커리큘럼 주차 자동 변환 폼 + `/admin/cohorts/:id/assignments/:aid` 편집·학생 진척. 학생: 대시보드 "마감 임박 과제" 배너 + `/assignments` 본인 과제함 + `/assignments/:id` 상세(자동 완수 진척 막대). 알림 fanout: assignment 생성 시 `announcements` + `announcement_audiences(cohort)` 자동 발송(best-effort). e2e: `e2e/admin/curriculum-assignments.spec.ts`. | P0 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 
@@ -554,6 +556,9 @@
 | 문제 출제 | `/admin/content/problems/:id?` | feat-7-006 |
 | 반 관리 | `/admin/cohorts/:id?` | feat-7-009 |
 | 반 통계 모니터링 | `/admin/cohorts/:id/stats` | feat-7-019 |
+| 커리큘럼 목록·편집 | `/admin/curricula`, `/admin/curricula/:id` | feat-7-020 |
+| 과제 배포·진척 | `/admin/cohorts/:id/assignments`, `/admin/cohorts/:id/assignments/:aid` | feat-7-021 |
+| 학생 과제함 | `/assignments` | feat-7-021 |
 | 사용자 관리 | `/admin/users` | feat-7-012 |
 | 공지사항 발송 | `/admin/announcements` | feat-7-011 |
 | 공지사항 수신함 | `/announcements` | feat-7-011 |

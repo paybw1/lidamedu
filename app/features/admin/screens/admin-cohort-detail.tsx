@@ -3,7 +3,9 @@
 import {
   ArchiveIcon,
   ArrowLeftIcon,
+  ArrowRightIcon,
   BarChart3Icon,
+  BookCheckIcon,
   CalendarRangeIcon,
   MailIcon,
   PencilIcon,
@@ -38,6 +40,12 @@ import {
   searchStudents,
   type SearchStudentResult,
 } from "~/features/cohorts/queries.server";
+import {
+  listCohortCurricula,
+  listCurricula,
+  type CohortCurriculumRow,
+  type CurriculumListItem,
+} from "~/features/curricula/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-cohort-detail";
@@ -71,19 +79,28 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const searchResults: SearchStudentResult[] =
     searchQuery.length >= 2 ? await searchStudents(searchQuery) : [];
 
+  // 적용된 커리큘럼 + 적용 가능한 전체 목록
+  const [cohortCurricula, allCurricula] = await Promise.all([
+    listCohortCurricula(params.cohortId),
+    listCurricula(),
+  ]);
+
   return {
     cohort,
     members,
     searchQuery,
     searchResults,
     role,
+    cohortCurricula,
+    allCurricula,
   };
 }
 
 export default function AdminCohortDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, members, searchQuery, searchResults } = loaderData;
+  const { cohort, members, searchQuery, searchResults, cohortCurricula, allCurricula } =
+    loaderData;
   const [editing, setEditing] = useState(false);
 
   return (
@@ -114,15 +131,20 @@ export default function AdminCohortDetail({
             {cohort.name}
           </h1>
           {!editing ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button asChild size="sm">
                 <Link to={`/admin/cohorts/${cohort.cohortId}/progress`}>
-                  <TrendingUpIcon className="size-3.5" /> 진도 모니터링
+                  <TrendingUpIcon className="size-3.5" /> 진도
                 </Link>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link to={`/admin/cohorts/${cohort.cohortId}/stats`}>
-                  <BarChart3Icon className="size-3.5" /> 통계 모니터링
+                  <BarChart3Icon className="size-3.5" /> 통계
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/admin/cohorts/${cohort.cohortId}/assignments`}>
+                  <BookCheckIcon className="size-3.5" /> 과제
                 </Link>
               </Button>
               <Button
@@ -151,6 +173,14 @@ export default function AdminCohortDetail({
           <CohortEditForm cohort={cohort} onClose={() => setEditing(false)} />
         </div>
       ) : null}
+
+      <div className="mb-6">
+        <CurriculumSection
+          cohortId={cohort.cohortId}
+          applied={cohortCurricula}
+          available={allCurricula}
+        />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Card>
@@ -383,6 +413,204 @@ function SearchResultRow({
       )}
       {err ? <span className="text-rose-600 text-[10px]">{err}</span> : null}
     </li>
+  );
+}
+
+function CurriculumSection({
+  cohortId,
+  applied,
+  available,
+}: {
+  cohortId: string;
+  applied: CohortCurriculumRow[];
+  available: CurriculumListItem[];
+}) {
+  const [showApply, setShowApply] = useState(false);
+  const appliedIds = new Set(applied.map((a) => a.curriculumId));
+  // 미적용 + 발행된 커리큘럼만 후보
+  const candidates = available.filter(
+    (c) => !appliedIds.has(c.curriculumId) && c.isPublished,
+  );
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <BookCheckIcon className="text-primary size-4" />
+            커리큘럼 ({applied.length})
+          </p>
+          {candidates.length > 0 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowApply((v) => !v)}
+            >
+              <PlusIcon className="size-3.5" /> 커리큘럼 적용
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/admin/curricula">
+                관리 <ArrowRightIcon className="size-3" />
+              </Link>
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2 px-4 pb-4">
+        {applied.length === 0 ? (
+          <p className="text-muted-foreground text-xs">
+            적용된 커리큘럼이 없습니다.
+            {candidates.length === 0
+              ? " 먼저 /admin/curricula 에서 커리큘럼을 만들고 발행하세요."
+              : ""}
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {applied.map((a) => (
+              <CurriculumAppliedRow key={a.curriculumId} row={a} />
+            ))}
+          </ul>
+        )}
+        {showApply ? (
+          <CurriculumApplyForm
+            cohortId={cohortId}
+            candidates={candidates}
+            onClose={() => setShowApply(false)}
+          />
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CurriculumAppliedRow({ row }: { row: CohortCurriculumRow }) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
+  return (
+    <li className="flex items-center gap-2 py-2">
+      <Link
+        to={`/admin/curricula/${row.curriculumId}`}
+        viewTransition
+        className="hover:text-primary min-w-0 flex-1 truncate text-sm font-medium"
+      >
+        {row.curriculumName}
+      </Link>
+      <span className="text-muted-foreground text-xs tabular-nums">
+        시작 {row.startDate}
+      </span>
+      {row.isActive ? (
+        <Badge variant="default" className="text-[10px]">
+          활성
+        </Badge>
+      ) : (
+        <Badge variant="outline" className="text-[10px]">
+          비활성
+        </Badge>
+      )}
+      <fetcher.Form method="post" action="/api/admin/curriculum">
+        <input type="hidden" name="intent" value="remove_from_cohort" />
+        <input type="hidden" name="cohortId" value={row.cohortId} />
+        <input type="hidden" name="curriculumId" value={row.curriculumId} />
+        <Button
+          type="submit"
+          size="icon"
+          variant="ghost"
+          className="size-6 text-rose-600 hover:text-rose-700"
+          onClick={(e) => {
+            if (!confirm(`"${row.curriculumName}" 적용을 해제합니까?`)) {
+              e.preventDefault();
+            }
+          }}
+          disabled={fetcher.state !== "idle"}
+        >
+          <Trash2Icon className="size-3" />
+        </Button>
+      </fetcher.Form>
+    </li>
+  );
+}
+
+function CurriculumApplyForm({
+  cohortId,
+  candidates,
+  onClose,
+}: {
+  cohortId: string;
+  candidates: CurriculumListItem[];
+  onClose: () => void;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      onClose();
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [fetcher.state, fetcher.data, onClose, navigate, location.pathname, location.search]);
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/curriculum"
+      className="bg-muted/30 mt-2 space-y-2 rounded-md border p-3"
+    >
+      <input type="hidden" name="intent" value="apply_to_cohort" />
+      <input type="hidden" name="cohortId" value={cohortId} />
+      <div className="grid grid-cols-[1fr_140px] gap-2">
+        <select
+          name="curriculumId"
+          required
+          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+        >
+          {candidates.map((c) => (
+            <option key={c.curriculumId} value={c.curriculumId}>
+              {c.name} ({c.durationWeeks}주, 항목 {c.itemCount})
+            </option>
+          ))}
+        </select>
+        <Input
+          name="startDate"
+          type="date"
+          required
+          defaultValue={new Date().toISOString().slice(0, 10)}
+          className="h-8 text-xs tabular-nums"
+        />
+      </div>
+      {fetcher.data && "error" in fetcher.data ? (
+        <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
+      ) : null}
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+          취소
+        </Button>
+        <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+          적용
+        </Button>
+      </div>
+    </fetcher.Form>
   );
 }
 

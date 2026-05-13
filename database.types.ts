@@ -494,6 +494,209 @@ export type Database = {
           },
         ]
       }
+      assignment_items: {
+        Row: {
+          article_id: string | null
+          assignment_id: string
+          blank_set_id: string | null
+          case_id: string | null
+          item_id: string
+          kind: Database["public"]["Enums"]["assignment_item_kind"]
+          note: string | null
+          ord: number
+          problem_id: string | null
+          target_quantity: number | null
+        }
+        Insert: {
+          article_id?: string | null
+          assignment_id: string
+          blank_set_id?: string | null
+          case_id?: string | null
+          item_id?: string
+          kind: Database["public"]["Enums"]["assignment_item_kind"]
+          note?: string | null
+          ord: number
+          problem_id?: string | null
+          target_quantity?: number | null
+        }
+        Update: {
+          article_id?: string | null
+          assignment_id?: string
+          blank_set_id?: string | null
+          case_id?: string | null
+          item_id?: string
+          kind?: Database["public"]["Enums"]["assignment_item_kind"]
+          note?: string | null
+          ord?: number
+          problem_id?: string | null
+          target_quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_items_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "assignment_items_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "assignment_items_blank_set_id_fkey"
+            columns: ["blank_set_id"]
+            isOneToOne: false
+            referencedRelation: "article_blank_sets"
+            referencedColumns: ["set_id"]
+          },
+          {
+            foreignKeyName: "assignment_items_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "assignment_items_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+        ]
+      }
+      assignment_submissions: {
+        Row: {
+          assignment_id: string
+          completed_at: string | null
+          completed_items: number
+          created_at: string
+          last_checked_at: string
+          status: Database["public"]["Enums"]["assignment_status"]
+          submission_id: string
+          total_items: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          completed_at?: string | null
+          completed_items?: number
+          created_at?: string
+          last_checked_at?: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          submission_id?: string
+          total_items?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignment_id?: string
+          completed_at?: string | null
+          completed_items?: number
+          created_at?: string
+          last_checked_at?: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          submission_id?: string
+          total_items?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          assigned_at: string
+          assignment_id: string
+          cohort_id: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          description_md: string | null
+          due_at: string
+          source_curriculum_id: string | null
+          source_week_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assignment_id?: string
+          cohort_id: string
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          description_md?: string | null
+          due_at: string
+          source_curriculum_id?: string | null
+          source_week_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assignment_id?: string
+          cohort_id?: string
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          description_md?: string | null
+          due_at?: string
+          source_curriculum_id?: string | null
+          source_week_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "assignments_source_curriculum_id_fkey"
+            columns: ["source_curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["curriculum_id"]
+          },
+          {
+            foreignKeyName: "assignments_source_week_id_fkey"
+            columns: ["source_week_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_weeks"
+            referencedColumns: ["week_id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -744,6 +947,55 @@ export type Database = {
         }
         Relationships: []
       }
+      cohort_curricula: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          cohort_id: string
+          curriculum_id: string
+          is_active: boolean
+          start_date: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          cohort_id: string
+          curriculum_id: string
+          is_active?: boolean
+          start_date: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          cohort_id?: string
+          curriculum_id?: string
+          is_active?: boolean
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_curricula_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_curricula_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "cohort_curricula_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["curriculum_id"]
+          },
+        ]
+      }
       cohort_members: {
         Row: {
           added_by: string | null
@@ -831,6 +1083,175 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      curricula: {
+        Row: {
+          created_at: string
+          curriculum_id: string
+          deleted_at: string | null
+          description: string | null
+          duration_weeks: number
+          is_published: boolean
+          name: string
+          owner_id: string
+          subject_laws: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curriculum_id?: string
+          deleted_at?: string | null
+          description?: string | null
+          duration_weeks: number
+          is_published?: boolean
+          name: string
+          owner_id: string
+          subject_laws?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curriculum_id?: string
+          deleted_at?: string | null
+          description?: string | null
+          duration_weeks?: number
+          is_published?: boolean
+          name?: string
+          owner_id?: string
+          subject_laws?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curricula_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      curriculum_items: {
+        Row: {
+          article_id: string | null
+          blank_set_id: string | null
+          case_id: string | null
+          created_at: string
+          item_id: string
+          kind: Database["public"]["Enums"]["curriculum_item_kind"]
+          lecture_duration_min: number | null
+          lecture_title: string | null
+          lecture_url: string | null
+          note: string | null
+          ord: number
+          problem_id: string | null
+          target_quantity: number | null
+          week_id: string
+        }
+        Insert: {
+          article_id?: string | null
+          blank_set_id?: string | null
+          case_id?: string | null
+          created_at?: string
+          item_id?: string
+          kind: Database["public"]["Enums"]["curriculum_item_kind"]
+          lecture_duration_min?: number | null
+          lecture_title?: string | null
+          lecture_url?: string | null
+          note?: string | null
+          ord: number
+          problem_id?: string | null
+          target_quantity?: number | null
+          week_id: string
+        }
+        Update: {
+          article_id?: string | null
+          blank_set_id?: string | null
+          case_id?: string | null
+          created_at?: string
+          item_id?: string
+          kind?: Database["public"]["Enums"]["curriculum_item_kind"]
+          lecture_duration_min?: number | null
+          lecture_title?: string | null
+          lecture_url?: string | null
+          note?: string | null
+          ord?: number
+          problem_id?: string | null
+          target_quantity?: number | null
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_items_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "curriculum_items_blank_set_id_fkey"
+            columns: ["blank_set_id"]
+            isOneToOne: false
+            referencedRelation: "article_blank_sets"
+            referencedColumns: ["set_id"]
+          },
+          {
+            foreignKeyName: "curriculum_items_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "curriculum_items_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "curriculum_items_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_weeks"
+            referencedColumns: ["week_id"]
+          },
+        ]
+      }
+      curriculum_weeks: {
+        Row: {
+          created_at: string
+          curriculum_id: string
+          goal_md: string | null
+          title: string
+          week_id: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          curriculum_id: string
+          goal_md?: string | null
+          title: string
+          week_id?: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string
+          curriculum_id?: string
+          goal_md?: string | null
+          title?: string
+          week_id?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_weeks_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["curriculum_id"]
           },
         ]
       }
@@ -3290,8 +3711,22 @@ export type Database = {
       announcement_audience_kind: "all" | "cohort" | "user"
       announcement_audience_target: "cohort" | "user"
       article_level: "part" | "chapter" | "section" | "article"
+      assignment_item_kind:
+        | "article_read"
+        | "case_read"
+        | "problem"
+        | "blank_set"
+        | "recitation"
+      assignment_status: "pending" | "partial" | "completed"
       auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
+      curriculum_item_kind:
+        | "article"
+        | "case"
+        | "problem"
+        | "blank_set"
+        | "recitation"
+        | "lecture"
       gs_round_status: "draft" | "published" | "closed"
       law_change_kind: "created" | "amended" | "deleted"
       law_revision_kind: "act" | "decree" | "rule"
@@ -3472,8 +3907,24 @@ export const Constants = {
       announcement_audience_kind: ["all", "cohort", "user"],
       announcement_audience_target: ["cohort", "user"],
       article_level: ["part", "chapter", "section", "article"],
+      assignment_item_kind: [
+        "article_read",
+        "case_read",
+        "problem",
+        "blank_set",
+        "recitation",
+      ],
+      assignment_status: ["pending", "partial", "completed"],
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
+      curriculum_item_kind: [
+        "article",
+        "case",
+        "problem",
+        "blank_set",
+        "recitation",
+        "lecture",
+      ],
       gs_round_status: ["draft", "published", "closed"],
       law_change_kind: ["created", "amended", "deleted"],
       law_revision_kind: ["act", "decree", "rule"],

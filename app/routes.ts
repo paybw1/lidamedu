@@ -337,6 +337,26 @@ export default [
         "/admin/cohorts/:cohortId/stats",
         "features/admin/screens/admin-cohort-stats.tsx",
       ),
+      route("/admin/curricula", "features/admin/screens/admin-curricula.tsx"),
+      route(
+        "/admin/curricula/:curriculumId",
+        "features/admin/screens/admin-curriculum-edit.tsx",
+      ),
+      route("/api/admin/curriculum", "features/admin/api/curriculum.tsx"),
+      route(
+        "/admin/cohorts/:cohortId/assignments",
+        "features/admin/screens/admin-cohort-assignments.tsx",
+      ),
+      route(
+        "/admin/cohorts/:cohortId/assignments/:assignmentId",
+        "features/admin/screens/admin-assignment-edit.tsx",
+      ),
+      route("/api/admin/assignment", "features/admin/api/assignment.tsx"),
+      route("/assignments", "features/assignments/screens/student-assignments.tsx"),
+      route(
+        "/assignments/:assignmentId",
+        "features/assignments/screens/student-assignment-detail.tsx",
+      ),
       route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",

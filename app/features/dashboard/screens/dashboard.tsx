@@ -32,6 +32,7 @@ import { listTopBookmarks } from "~/features/annotations/queries.server";
 import { LAW_SUBJECT_SLUGS, LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
+import { listStudentAssignments } from "~/features/assignments/queries.server";
 
 import type { Route } from "./+types/dashboard";
 import CozyCard from "../components/cozy-card";
@@ -102,6 +103,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     scienceProgress,
     weakNodes,
     studyAidCounts,
+    studentAssignments,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -111,7 +113,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     getAllScienceSubjectsProgress(client, user.id),
     getWeakNodes(client, user.id, [...LAW_SUBJECT_SLUGS], 4),
     getStudyAidCounts(client, user.id),
+    listStudentAssignments(user.id),
   ]);
+  // 마감 임박 진행중 과제 top 3
+  const pendingAssignments = studentAssignments
+    .filter((a) => a.submission?.status !== "completed")
+    .slice(0, 3);
 
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
@@ -134,6 +141,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   });
 
   return {
+    pendingAssignments,
     user: {
       name,
       cohort: "27기 · 1차 준비",
@@ -209,6 +217,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     weakNodes,
     studyAidCounts,
     todayLabel,
+    pendingAssignments,
   } = loaderData;
 
   const examDateIso = goals.examDate ?? EXAM_DATE_FALLBACK_ISO;
@@ -301,6 +310,10 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             cohort: user.cohort,
           }}
         />
+
+        {pendingAssignments.length > 0 ? (
+          <PendingAssignmentsBanner items={pendingAssignments} palette={palette} />
+        ) : null}
 
         <div
           style={{
@@ -1709,6 +1722,105 @@ function BlankSummaryTile({
             · 약점 {summary.weak}
           </span>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+// feat-7-021 — 마감 임박 과제 배너
+function PendingAssignmentsBanner({
+  items,
+  palette,
+}: {
+  items: Awaited<
+    ReturnType<
+      typeof import("~/features/assignments/queries.server").listStudentAssignments
+    >
+  >;
+  palette: { primary: string; tint: string };
+}) {
+  const now = Date.now();
+  return (
+    <div
+      style={{
+        marginBottom: 18,
+        padding: 14,
+        background: palette.tint,
+        borderRadius: 14,
+        border: `1px solid ${COZY_INK}1A`,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8,
+          gap: 8,
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 700, color: COZY_INK }}>
+          📌 마감 임박 과제 ({items.length})
+        </span>
+        <Link
+          to="/assignments"
+          style={{
+            fontSize: 12,
+            color: palette.primary,
+            textDecoration: "none",
+            fontWeight: 600,
+          }}
+        >
+          전체 보기 →
+        </Link>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.map((a) => {
+          const sub = a.submission;
+          const total = sub?.totalItems ?? a.itemCount;
+          const completed = sub?.completedItems ?? 0;
+          const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+          const overdue = new Date(a.dueAt).getTime() < now;
+          return (
+            <Link
+              key={a.assignmentId}
+              to={`/assignments/${a.assignmentId}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 10px",
+                background: "#FFF",
+                borderRadius: 10,
+                border: `1px solid ${COZY_INK}14`,
+                textDecoration: "none",
+                color: COZY_INK,
+              }}
+            >
+              <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>
+                {a.title}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: overdue ? "#DC2626" : COZY_INK_SOFT,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {overdue ? "🚨 " : ""}마감 {a.dueAt.slice(5, 10)}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: COZY_INK_SOFT,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {completed}/{total} ({pct}%)
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
