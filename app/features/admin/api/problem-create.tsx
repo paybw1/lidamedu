@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { addPackProblem } from "~/features/mcq-packs/queries.server";
 import {
   LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
@@ -24,6 +25,8 @@ const inputSchema = z.object({
   problemNumber: z.number().int().min(1).max(9999).nullable(),
   bodyMd: z.string().min(1).max(20_000),
   choiceCount: z.number().int().min(2).max(10).default(5),
+  mcqPackId: z.string().uuid().nullable().optional(),
+  gsRoundId: z.string().uuid().nullable().optional(),
 });
 
 function emptyToNullNum(raw: FormDataEntryValue | null): number | null {
@@ -56,6 +59,8 @@ export async function action({ request }: Route.ActionArgs) {
   if (!role) return data({ error: "Forbidden" }, { status: 403 });
 
   const fd = await request.formData();
+  const rawPackId = String(fd.get("mcqPackId") ?? "").trim();
+  const rawGsRoundId = String(fd.get("gsRoundId") ?? "").trim();
   const parsed = inputSchema.safeParse({
     lawCode: fd.get("lawCode"),
     examRound: fd.get("examRound") ?? "first",
@@ -74,6 +79,8 @@ export async function action({ request }: Route.ActionArgs) {
     problemNumber: emptyToNullNum(fd.get("problemNumber")),
     bodyMd: fd.get("bodyMd"),
     choiceCount: emptyToNullNum(fd.get("choiceCount")) ?? 5,
+    mcqPackId: rawPackId === "" ? null : rawPackId,
+    gsRoundId: rawGsRoundId === "" ? null : rawGsRoundId,
   });
   if (!parsed.success) {
     return data(
@@ -132,6 +139,31 @@ export async function action({ request }: Route.ActionArgs) {
         .eq("problem_id", prob.problem_id);
       return data({ error: cErr.message }, { status: 400 });
     }
+  }
+
+  // 선택된 mcq pack 이 있으면 매핑. 실패해도 problem 자체는 보존 — 운영자가 후속 매핑 가능.
+  if (input.mcqPackId) {
+    await addPackProblem(client, input.mcqPackId, prob.problem_id);
+  }
+
+  // 주관식 + GS 회차 선택 시 — gs_questions 에 미러 INSERT.
+  // gs_questions 는 problems 와 별도 row 라 동기화는 아니지만, 출제 시점 한 번에 묶여 만들어진다.
+  // 본문/모범답안/채점기준은 problems 에 아직 없을 수 있으므로 body_md 만 복사, 나머지는 빈 값.
+  if (input.gsRoundId && input.format === "subjective") {
+    const { data: maxOrder } = await client
+      .from("gs_questions")
+      .select("order_index")
+      .eq("round_id", input.gsRoundId)
+      .order("order_index", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextOrder = (maxOrder?.order_index ?? -1) + 1;
+    await client.from("gs_questions").insert({
+      round_id: input.gsRoundId,
+      order_index: nextOrder,
+      body_md: input.bodyMd,
+      title: input.problemNumber ? `문제 ${input.problemNumber}` : null,
+    });
   }
 
   throw redirect(`/admin/problems/${prob.problem_id}`);

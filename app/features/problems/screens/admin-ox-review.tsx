@@ -1,7 +1,12 @@
 // 운영자 정오문제(OX) 검토 — 과목별 OX 후보 지문(choice/box-item) 일괄 검토 및 인라인 수정.
 // 학생 노출 조건(active) 외에도 `ineligible`, `untruthed` 항목을 함께 보고 토글 가능.
 
-import { CheckCircle2Icon, EditIcon, FilterIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CheckCircle2Icon,
+  EditIcon,
+  FilterIcon,
+} from "lucide-react";
 import {
   Form,
   Link,
@@ -131,6 +136,12 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+      <Link
+        to="/admin"
+        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+      >
+        <ArrowLeftIcon className="size-3" /> 운영자
+      </Link>
       <header className="mb-6 space-y-2">
         <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
           <CheckCircle2Icon className="size-3.5" /> 운영자 모드 · 정오문제

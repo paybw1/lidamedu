@@ -45,7 +45,7 @@ type SimpleLink = { label: string; to: string };
 type Section = { label: string; items: SimpleLink[] };
 
 // 상단 네비게이션 7개 top-level (좌→우):
-// 대시보드(flat) · 학습관리▾ · 최신정보▾ · 학습과목▾ · 학습보조▾ · 커뮤니티▾ · 운영자(flat)
+// 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습보조▾ · 학습정보▾ · 커뮤니티▾ · 운영자(flat)
 
 const leadingFlats: SimpleLink[] = [
   { label: "대시보드", to: "/dashboard" },
@@ -63,7 +63,7 @@ const latestItems: SimpleLink[] = [
   { label: "객관식 문제", to: "/latest/mcq" },
   { label: "주관식 문제", to: "/latest/essay" },
   { label: "논문", to: "/latest/papers" },
-  { label: "도서 추록·정오표", to: "/latest/book-updates" },
+  { label: "추록·정오표", to: "/latest/book-updates" },
 ];
 
 const subjectSections: Section[] = [
@@ -352,7 +352,6 @@ export function NavigationBar({
               ))}
 
               <SimpleDropdown label="학습관리" items={studyItems} />
-              <SimpleDropdown label="최신정보" items={latestItems} />
 
               {/* 학습과목 dropdown (2칼럼 sections) */}
               <NavigationMenuItem>
@@ -385,6 +384,7 @@ export function NavigationBar({
               </NavigationMenuItem>
 
               <SimpleDropdown label="학습보조" items={studyAidItems} />
+              <SimpleDropdown label="학습정보" items={latestItems} />
               <SimpleDropdown label="커뮤니티" items={communityItems} />
 
               {trailingFlats.map((m) => (
@@ -427,7 +427,6 @@ export function NavigationBar({
               ))}
 
               <MobileGroup label="학습관리" items={studyItems} />
-              <MobileGroup label="최신정보" items={latestItems} />
 
               <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
                 학습과목
@@ -448,6 +447,7 @@ export function NavigationBar({
               )}
 
               <MobileGroup label="학습보조" items={studyAidItems} />
+              <MobileGroup label="학습정보" items={latestItems} />
               <MobileGroup label="커뮤니티" items={communityItems} />
 
               {trailingFlats.map((m) => (

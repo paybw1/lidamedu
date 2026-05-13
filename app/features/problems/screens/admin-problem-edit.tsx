@@ -35,6 +35,9 @@ import {
   ORIGIN_LABEL,
   POLARITY_LABEL,
   SCOPE_LABEL,
+  type ProblemBoxItem,
+  type ProblemChoice,
+  type ProblemDetail,
   type ProblemFormat,
   type ProblemOrigin,
   type ProblemPolarity,
@@ -77,7 +80,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!role) throw data("Forbidden", { status: 403 });
   const problem = await getProblemById(client, problemId);
   if (!problem) throw data("Problem not found", { status: 404 });
-  return { problem };
+  // 체크리스트 위젯용 — 이 문제가 매핑된 mcq pack 목록 (학생 노출 경로 확인).
+  const { data: packLinks } = await client
+    .from("mcq_pack_problems")
+    .select("pack_id, mcq_packs!inner(title, is_published)")
+    .eq("problem_id", problemId);
+  const mcqPacks = (packLinks ?? [])
+    .filter((r) => r.mcq_packs != null)
+    .map((r) => ({
+      packId: r.pack_id,
+      title: r.mcq_packs.title,
+      isPublished: r.mcq_packs.is_published,
+    }));
+  return { problem, mcqPacks };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -128,6 +143,55 @@ export async function action({ params, request }: Route.ActionArgs) {
       .eq("problem_id", problemId);
     if (error) return { ok: false, error: error.message } as const;
     return { ok: true, kind: intent } as const;
+  }
+  if (intent === "sync_choice_articles") {
+    // primary_article_id 를 모든 빈 related_article_id 의 choice / box_item 에 일괄 적용.
+    // 운영자가 명시적으로 다른 article 을 지정한 항목은 보존 (NULL 인 것만 채움).
+    const { data: cur } = await client
+      .from("problems")
+      .select(
+        "primary_article_id, articles!primary_article_id(article_number)",
+      )
+      .eq("problem_id", problemId)
+      .maybeSingle();
+    const primaryArticleId = cur?.primary_article_id ?? null;
+    const primaryArticleNumber = cur?.articles?.article_number ?? null;
+    if (!primaryArticleId) {
+      return {
+        ok: false,
+        error: "본문 조문(primary_article_id)이 설정되지 않았습니다.",
+      } as const;
+    }
+    const [{ count: choicesUpdated }, { count: boxesUpdated }] =
+      await Promise.all([
+        client
+          .from("problem_choices")
+          .update(
+            {
+              related_article_id: primaryArticleId,
+              related_article_number: primaryArticleNumber,
+            },
+            { count: "exact" },
+          )
+          .eq("problem_id", problemId)
+          .is("related_article_id", null),
+        client
+          .from("problem_box_items")
+          .update(
+            {
+              related_article_id: primaryArticleId,
+              related_article_number: primaryArticleNumber,
+            },
+            { count: "exact" },
+          )
+          .eq("problem_id", problemId)
+          .is("related_article_id", null),
+      ]);
+    return {
+      ok: true,
+      kind: intent,
+      synced: (choicesUpdated ?? 0) + (boxesUpdated ?? 0),
+    } as const;
   }
 
   // primary_article_id 변경: articleNumber 텍스트 ("29" / "28의2" / "" )를 받아 같은 law 의 articles 조회.
@@ -342,7 +406,7 @@ export default function AdminProblemEdit({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { problem } = loaderData;
+  const { problem, mcqPacks } = loaderData;
   // 목록에서 편집 진입 시 따라오는 필터 쿼리를 보존해 ← 클릭 시 같은 필터 상태로 되돌린다.
   const [editSearchParams] = useSearchParams();
   const backQs = editSearchParams.toString();
@@ -447,6 +511,8 @@ export default function AdminProblemEdit({
           )}
         </div>
       </header>
+
+      <PublishChecklist problem={problem} mcqPacks={mcqPacks} />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {problem.reviewedAt ? (
@@ -945,4 +1011,187 @@ function numberOrNull(v: FormDataEntryValue | null): number | null {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// 출제 마무리 체크리스트 — 학생 노출 경로(과목 hub / 조문 OX 위젯 / 최신 정보 mcq pack)가
+// 모두 연결되어 있는지 한눈에 확인 + 부족한 부분을 한 번에 보강할 수 있는 액션 제공.
+function PublishChecklist({
+  problem,
+  mcqPacks,
+}: {
+  problem: ProblemDetail;
+  mcqPacks: ReadonlyArray<{ packId: string; title: string; isPublished: boolean }>;
+}) {
+  const isMcq =
+    problem.format === "mc_short" ||
+    problem.format === "mc_box" ||
+    problem.format === "mc_case";
+  // mc_box 는 box 지문이 OX 후보, 그 외 mc 계열은 choices.
+  // ChoiceEditor/BoxItemEditor 가 노출하는 동일 필드(relatedArticleId, oxTruth, oxIneligible)만
+  // 정규화해서 OX 위젯 노출 조건을 한 곳에서 평가한다.
+  type OxCandidate = {
+    relatedArticleId: string | null;
+    oxTruth: ProblemChoice["oxTruth"];
+  };
+  const oxCandidates: OxCandidate[] = !isMcq
+    ? []
+    : problem.format === "mc_box"
+      ? problem.boxItems
+          .filter((b: ProblemBoxItem) => !b.oxIneligible)
+          .map((b: ProblemBoxItem) => ({
+            relatedArticleId: b.relatedArticleId,
+            oxTruth: b.oxTruth,
+          }))
+      : problem.choices
+          .filter((c: ProblemChoice) => !c.oxIneligible)
+          .map((c: ProblemChoice) => ({
+            relatedArticleId: c.relatedArticleId,
+            oxTruth: c.oxTruth,
+          }));
+  const oxMissingArticleCount = oxCandidates.filter(
+    (c) => c.relatedArticleId === null,
+  ).length;
+  const oxMissingTruthCount = oxCandidates.filter(
+    (c) => c.oxTruth === null,
+  ).length;
+  const oxReadyCount = oxCandidates.filter(
+    (c) => c.relatedArticleId !== null && c.oxTruth !== null,
+  ).length;
+
+  const hasPrimary = problem.primaryArticleId !== null;
+  const correctChoice = isMcq
+    ? problem.choices.find((c) => c.isCorrect) ?? null
+    : null;
+  const hasCorrect = !isMcq || correctChoice !== null;
+
+  const syncFetcher = useFetcher<{
+    ok?: boolean;
+    kind?: string;
+    synced?: number;
+    error?: string;
+  }>();
+  useEffect(() => {
+    const r = syncFetcher.data;
+    if (!r) return;
+    if (r.ok && r.kind === "sync_choice_articles") {
+      toast.success(`본문 조문으로 ${r.synced ?? 0}개 항목을 자동 채움`);
+    } else if (r.error) {
+      toast.error(r.error);
+    }
+  }, [syncFetcher.data]);
+  const isSyncing = syncFetcher.state !== "idle";
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <h2 className="text-sm font-semibold">출제 마무리 체크리스트</h2>
+        <p className="text-muted-foreground text-[11px]">
+          이 항목을 모두 채워야 학생 화면(과목 hub · 조문 OX 위젯 · 최신 정보 mcq)에 정상 노출됩니다.
+        </p>
+      </CardHeader>
+      <CardContent className="grid gap-1.5 text-xs">
+        <ChecklistRow
+          state={hasPrimary ? "ok" : "warn"}
+          label="본문 조문"
+          detail={
+            hasPrimary
+              ? `${problem.primaryArticleLabel} 와 연결됨`
+              : "미설정 — 아래 '관련 조문' 영역에 조문번호 입력"
+          }
+        />
+        {isMcq ? (
+          <ChecklistRow
+            state={hasCorrect ? "ok" : "warn"}
+            label="객관식 정답"
+            detail={
+              hasCorrect && correctChoice
+                ? `${correctChoice.choiceIndex}번이 정답`
+                : "미설정 — 지문 카드에서 정답 선택"
+            }
+          />
+        ) : null}
+        {isMcq ? (
+          <ChecklistRow
+            state={
+              oxCandidates.length === 0
+                ? "na"
+                : oxMissingArticleCount === 0 && oxMissingTruthCount === 0
+                  ? "ok"
+                  : "warn"
+            }
+            label="조문 OX 위젯 노출"
+            detail={
+              oxCandidates.length === 0
+                ? "OX 후보 지문 없음 (모두 OX 불가로 처리됨)"
+                : oxMissingArticleCount > 0 || oxMissingTruthCount > 0
+                  ? `노출 가능 ${oxReadyCount}/${oxCandidates.length} · 미분류: 조문 ${oxMissingArticleCount}개 · 정오(O/X) ${oxMissingTruthCount}개`
+                  : `${oxCandidates.length}개 지문 모두 학생 OX 위젯에 노출 가능`
+            }
+            action={
+              hasPrimary && oxMissingArticleCount > 0 ? (
+                <syncFetcher.Form method="post">
+                  <input
+                    type="hidden"
+                    name="intent"
+                    value="sync_choice_articles"
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    disabled={isSyncing}
+                    className="h-7 px-2 text-[11px]"
+                  >
+                    {isSyncing ? "동기화 중…" : "본문 조문으로 일괄 채우기"}
+                  </Button>
+                </syncFetcher.Form>
+              ) : null
+            }
+          />
+        ) : null}
+        {isMcq ? (
+          <ChecklistRow
+            state={mcqPacks.length > 0 ? "ok" : "warn"}
+            label="최신 정보 mcq pack"
+            detail={
+              mcqPacks.length === 0
+                ? "등록된 pack 없음 — '최신 정보 → 객관식 문제' 진입 경로가 없습니다"
+                : `${mcqPacks.length}개 pack 매핑 · 공개 ${mcqPacks.filter((p) => p.isPublished).length}개`
+            }
+          />
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChecklistRow({
+  state,
+  label,
+  detail,
+  action,
+}: {
+  state: "ok" | "warn" | "na";
+  label: string;
+  detail: string;
+  action?: React.ReactNode;
+}) {
+  const icon =
+    state === "ok" ? (
+      <CheckCircleIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
+    ) : state === "warn" ? (
+      <AlertTriangleIcon className="size-4 text-amber-600 dark:text-amber-400" />
+    ) : (
+      <CircleSlashIcon className="text-muted-foreground size-4" />
+    );
+  return (
+    <div className="flex items-start gap-2">
+      <div className="mt-0.5 shrink-0">{icon}</div>
+      <div className="flex-1 leading-relaxed">
+        <span className="font-semibold">{label}</span>
+        <span className="text-muted-foreground"> — {detail}</span>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
 }

@@ -419,7 +419,6 @@ export default [
       ...prefix("/admin/problems", [
         index("features/problems/screens/admin-problems-list.tsx"),
         route("/new", "features/admin/screens/admin-problem-new.tsx"),
-        route("/by-system", "features/problems/screens/admin-problems-by-system.tsx"),
         route("/ox", "features/problems/screens/admin-ox-review.tsx"),
         route("/stats", "features/admin/screens/admin-problem-stats.tsx"),
         route(

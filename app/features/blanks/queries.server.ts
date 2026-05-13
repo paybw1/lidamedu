@@ -869,6 +869,9 @@ export interface BlankSetSummary {
   totalBlanks: number;
   filledBlanks: number;
   unmappedBlanks: number;
+  // 조문이 속한 장 — UI 그룹/필터용.
+  chapterId: string | null;
+  chapterLabel: string | null;
 }
 
 // 빈칸 set fork — 다른 owner 의 set 을 본인 owner 로 복제.
@@ -927,10 +930,40 @@ export async function listBlankSetsWithStatus(
   if (lawErr) throw lawErr;
   if (!law) return [];
 
+  // 같은 law 의 chapter 노드 fetch — set 의 article path 와 매칭해 장 정보 부여.
+  const { data: chapterRows } = await client
+    .from("articles")
+    .select("article_id, display_label, path")
+    .eq("law_id", law.law_id)
+    .eq("level", "chapter")
+    .is("deleted_at", null);
+  const chapters = (chapterRows ?? [])
+    .map((c) => ({
+      chapterId: c.article_id,
+      displayLabel: c.display_label ?? "",
+      path: typeof c.path === "string" ? c.path : String(c.path ?? ""),
+    }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+  function findChapter(path: string): { chapterId: string; displayLabel: string } | null {
+    let best: { chapterId: string; displayLabel: string; pathLen: number } | null = null;
+    for (const c of chapters) {
+      if (path === c.path || path.startsWith(`${c.path}.`)) {
+        if (!best || c.path.length > best.pathLen) {
+          best = {
+            chapterId: c.chapterId,
+            displayLabel: c.displayLabel,
+            pathLen: c.path.length,
+          };
+        }
+      }
+    }
+    return best ? { chapterId: best.chapterId, displayLabel: best.displayLabel } : null;
+  }
+
   let q = client
     .from("article_blank_sets")
     .select(
-      "set_id, blanks, owner_id, version, display_name, articles!inner(article_id, article_number, display_label, law_id)",
+      "set_id, blanks, owner_id, version, display_name, articles!inner(article_id, article_number, display_label, law_id, path)",
     )
     .eq("articles.law_id", law.law_id);
   if (ownerId) q = q.eq("owner_id", ownerId);
@@ -943,6 +976,9 @@ export async function listBlankSetsWithStatus(
     const filled = blanks.filter((b) => b.answer.trim().length > 0).length;
     const article = row.articles;
     if (!article) continue;
+    const articlePath =
+      typeof article.path === "string" ? article.path : String(article.path ?? "");
+    const chapter = findChapter(articlePath);
     out.push({
       setId: row.set_id,
       articleId: article.article_id,
@@ -954,6 +990,8 @@ export async function listBlankSetsWithStatus(
       totalBlanks: blanks.length,
       filledBlanks: filled,
       unmappedBlanks: blanks.length - filled,
+      chapterId: chapter?.chapterId ?? null,
+      chapterLabel: chapter?.displayLabel ?? null,
     });
   }
   return out.sort((a, b) => {

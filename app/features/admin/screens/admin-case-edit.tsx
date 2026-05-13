@@ -3,12 +3,17 @@
 
 import {
   ArrowLeftIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
   GavelIcon,
   NetworkIcon,
   SaveIcon,
   Trash2Icon,
+  UploadIcon,
 } from "lucide-react";
-import { Form, Link, data } from "react-router";
+import { useEffect, useRef } from "react";
+import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
+import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -192,15 +197,10 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
                 placeholder="예: 2019"
               />
             </Field>
-            <Field label="판결전문 PDF URL" full>
-              <Input
-                name="fullTextPdf"
-                defaultValue={kase?.full_text_pdf ?? ""}
-                placeholder="https://..."
-              />
-            </Field>
           </CardContent>
         </Card>
+
+        {!isNew ? <FullTextPdfCard kase={kase} /> : <FullTextPdfNotice />}
 
         <Card>
           <CardHeader>
@@ -335,5 +335,142 @@ function DeleteForm({
         <Trash2Icon className="size-3.5" /> 삭제
       </Button>
     </Form>
+  );
+}
+
+// 신규 모드 안내 — PDF 업로드는 case_id 가 있어야 storage path 를 잡을 수 있어 저장 후로 미룬다.
+function FullTextPdfNotice() {
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <FileTextIcon className="text-muted-foreground size-4" /> 판결전문 PDF
+        </h2>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground text-xs">
+          기본 정보를 먼저 저장하면 이 화면에서 PDF 파일을 업로드할 수 있습니다 (최대 30MB).
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// 수정 모드 — 현재 PDF 표시 + 파일 업로드/제거 (multipart fetcher).
+function FullTextPdfCard({
+  kase,
+}: {
+  kase: { case_id: string; full_text_pdf: string | null };
+}) {
+  const uploadFetcher = useFetcher<{ ok?: boolean; url?: string; error?: string }>();
+  const removeFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const revalidator = useRevalidator();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentUrl = kase.full_text_pdf;
+  const isUploading = uploadFetcher.state !== "idle";
+  const isRemoving = removeFetcher.state !== "idle";
+
+  useEffect(() => {
+    const r = uploadFetcher.data;
+    if (!r) return;
+    if (r.ok) {
+      toast.success("판결전문 PDF 업로드 완료");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      revalidator.revalidate();
+    } else if (r.error) {
+      toast.error(r.error);
+    }
+  }, [uploadFetcher.data, revalidator]);
+  useEffect(() => {
+    const r = removeFetcher.data;
+    if (!r) return;
+    if (r.ok) {
+      toast.success("판결전문 PDF 제거 완료");
+      revalidator.revalidate();
+    } else if (r.error) {
+      toast.error(r.error);
+    }
+  }, [removeFetcher.data, revalidator]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <FileTextIcon className="text-muted-foreground size-4" /> 판결전문 PDF
+        </h2>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {currentUrl ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-emerald-50/40 px-3 py-2 text-xs dark:bg-emerald-950/20">
+            <a
+              href={currentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary inline-flex items-center gap-1 font-medium hover:underline"
+            >
+              <ExternalLinkIcon className="size-3.5" /> 현재 PDF 열기
+            </a>
+            <removeFetcher.Form
+              method="post"
+              action="/api/admin/case"
+              encType="multipart/form-data"
+              onSubmit={(e) => {
+                if (!confirm("판결전문 PDF 를 제거하시겠습니까?")) {
+                  e.preventDefault();
+                }
+              }}
+            >
+              <input type="hidden" name="intent" value="remove_full_text_pdf" />
+              <input type="hidden" name="caseId" value={kase.case_id} />
+              <Button
+                type="submit"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-rose-600"
+                disabled={isRemoving}
+              >
+                <Trash2Icon className="size-3.5" />{" "}
+                {isRemoving ? "제거 중…" : "제거"}
+              </Button>
+            </removeFetcher.Form>
+          </div>
+        ) : (
+          <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
+            아직 업로드된 PDF 가 없습니다.
+          </p>
+        )}
+        <uploadFetcher.Form
+          method="post"
+          action="/api/admin/case"
+          encType="multipart/form-data"
+          className="flex flex-wrap items-end gap-2"
+        >
+          <input type="hidden" name="intent" value="upload_full_text_pdf" />
+          <input type="hidden" name="caseId" value={kase.case_id} />
+          <Field label={currentUrl ? "교체 PDF 파일" : "PDF 파일"} required>
+            <Input
+              ref={fileInputRef}
+              type="file"
+              name="file"
+              accept="application/pdf"
+              required
+              className="text-xs"
+            />
+          </Field>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={isUploading}
+            className="gap-1"
+          >
+            <UploadIcon className="size-3.5" />
+            {isUploading ? "업로드 중…" : currentUrl ? "교체" : "업로드"}
+          </Button>
+        </uploadFetcher.Form>
+        <p className="text-muted-foreground text-[10px]">
+          최대 30MB · application/pdf 만 허용.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

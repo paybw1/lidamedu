@@ -1,6 +1,11 @@
 // 운영자 GS 회차 목록 — 모든 status (draft 포함). + 새 회차 생성 진입점.
 
-import { CalendarPlusIcon, ClipboardListIcon, PlusIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CalendarPlusIcon,
+  ClipboardListIcon,
+  PlusIcon,
+} from "lucide-react";
 import { Form, Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -76,6 +81,12 @@ export default function AdminGsList({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
+      <Link
+        to="/admin"
+        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+      >
+        <ArrowLeftIcon className="size-3" /> 운영자
+      </Link>
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">

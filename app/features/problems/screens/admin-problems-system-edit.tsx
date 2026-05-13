@@ -72,10 +72,10 @@ export default function AdminProblemsSystemEdit({
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
       <Link
-        to={`/admin/problems/by-system?subject=${subject}`}
+        to={`/admin/problems?subject=${subject}`}
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
       >
-        <ArrowLeftIcon className="size-4" /> 체계 목록
+        <ArrowLeftIcon className="size-4" /> 객관식 문제 관리
       </Link>
       <header className="mb-6 space-y-2">
         <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">

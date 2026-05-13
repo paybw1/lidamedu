@@ -1,4 +1,5 @@
 import {
+  ArrowLeftIcon,
   ArrowRightIcon,
   BrainIcon,
   TrendingDownIcon,
@@ -65,6 +66,12 @@ export default function AdminBlanksStats({
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
+      <Link
+        to="/admin"
+        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+      >
+        <ArrowLeftIcon className="size-3" /> 운영자
+      </Link>
       <header className="mb-6 space-y-2">
         <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
           운영 통계

@@ -7,7 +7,12 @@
 // 본문에서 텍스트를 드래그하면 해당 카드 위에 floating "새 빈칸" 버튼 표시 — top-level 에서
 // selection 을 추적해 어느 카드 영역에서 발생했는지 식별 후 적절한 set 에 빈칸 추가.
 
-import { ArrowLeftIcon, PlusCircleIcon, Trash2Icon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  FileQuestionIcon,
+  PlusCircleIcon,
+  Trash2Icon,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -15,7 +20,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, data, useFetcher, useRevalidator } from "react-router";
+import {
+  Link,
+  data,
+  redirect,
+  useFetcher,
+  useRevalidator,
+  useSearchParams,
+} from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -28,6 +40,11 @@ import {
   type BlankRowData,
 } from "~/features/blanks/components/blank-row-editor";
 import { UnplacedBlanksSection } from "~/features/blanks/components/unplaced-blanks-section";
+import {
+  BLANK_LAW_TABS,
+  isBlankLawSlug,
+  type BlankLawSlug,
+} from "~/features/blanks/lib/blank-law-slugs";
 import { computeBlockBlankHits } from "~/features/blanks/lib/blank-layout";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import {
@@ -36,7 +53,6 @@ import {
 } from "~/features/laws/lib/article-body";
 import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import {
-  lawSubjectSlugSchema,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
@@ -127,12 +143,25 @@ interface ArticleData {
   setId: string | null;
   blanks: BlankRow[];
   isOwner: boolean;
+  // 가장 가까운 chapter (없으면 null — "기타" 그룹).
+  chapterId: string | null;
 }
 
+interface ChapterInfo {
+  chapterId: string;
+  displayLabel: string;
+  path: string;
+}
+
+const UNGROUPED_CHAPTER_ID = "__ungrouped__";
+
 export async function loader({ params, request }: Route.LoaderArgs) {
-  const lawCodeParsed = lawSubjectSlugSchema.safeParse(params.lawCode);
-  if (!lawCodeParsed.success) throw data("Invalid lawCode", { status: 400 });
-  const lawCode = lawCodeParsed.data;
+  const rawLawCode = params.lawCode ?? "";
+  if (!isBlankLawSlug(rawLawCode)) {
+    // 빈칸 자료 대상 4과목 외이면 목록으로 redirect (운영 결정: 민사소송법은 빈칸 미대상).
+    throw redirect("/admin/blanks?law=patent");
+  }
+  const lawCode: BlankLawSlug = rawLawCode;
 
   const [client] = makeServerClient(request);
   // private.layout 이 이미 auth.getUser 로 세션을 검증해서 redirect 가드를 통과한 상태.
@@ -158,16 +187,48 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     .select("law_id, law_code")
     .eq("law_code", lawCode)
     .maybeSingle();
-  if (!law) throw data("Law not found", { status: 404 });
+  // 조문 미업로드 법령(law row 아예 없음) — 안내 화면을 위해 articles=[], chapters=[] 로 반환.
+  if (!law) {
+    return {
+      lawCode,
+      articles: [] as ArticleData[],
+      chapters: [] as ChapterInfo[],
+    };
+  }
 
-  const { data: articles } = await client
+  // article + chapter 노드 모두 fetch — chapter 그룹화에 사용.
+  const { data: allNodes } = await client
     .from("articles")
     .select(
-      "article_id, article_number, display_label, importance, current_revision_id",
+      "article_id, level, path, article_number, display_label, importance, current_revision_id",
     )
     .eq("law_id", law.law_id)
-    .eq("level", "article")
     .is("deleted_at", null);
+
+  const nodeRows = allNodes ?? [];
+
+  // chapter 노드 → { chapterId, label, path }, path 기준 정렬.
+  const chapterRows = nodeRows
+    .filter((n) => n.level === "chapter")
+    .map((n) => ({
+      chapterId: n.article_id,
+      displayLabel: n.display_label ?? "",
+      path: typeof n.path === "string" ? n.path : String(n.path ?? ""),
+    }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+
+  function findChapterForPath(path: string): string | null {
+    // 가장 긴 prefix 매칭 (chapter 가 중첩될 일은 없지만 path 비교는 prefix + '.' 기준).
+    let best: { chapterId: string; pathLen: number } | null = null;
+    for (const c of chapterRows) {
+      if (path === c.path || path.startsWith(`${c.path}.`)) {
+        if (!best || c.path.length > best.pathLen) {
+          best = { chapterId: c.chapterId, pathLen: c.path.length };
+        }
+      }
+    }
+    return best ? best.chapterId : null;
+  }
 
   // article_number "29의2" 같은 형식을 [major, minor] 로 파싱해 정렬.
   function articleSortKey(num: string | null): [number, number] {
@@ -176,7 +237,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     if (!m) return [0, 0];
     return [Number(m[1]), m[2] ? Number(m[2]) : 0];
   }
-  const articleRows = (articles ?? [])
+  const articleRows = nodeRows
+    .filter((n) => n.level === "article")
     .slice()
     .sort((a, b) => {
       const aK = articleSortKey(a.article_number);
@@ -216,6 +278,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const articlesData: ArticleData[] = articleRows.map((a) => {
     const rev = a.current_revision_id ? revById.get(a.current_revision_id) : null;
     const set = setByArticleId.get(a.article_id);
+    const path = typeof a.path === "string" ? a.path : String(a.path ?? "");
     return {
       articleId: a.article_id,
       articleNumber: a.article_number ?? "",
@@ -225,14 +288,70 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       setId: set?.set_id ?? null,
       blanks: set ? parseBlanks(set.blanks) : [],
       isOwner: !!set,
+      chapterId: findChapterForPath(path),
     };
   });
 
-  return { lawCode, articles: articlesData };
+  // chapter 목록 (실제로 article 이 매핑된 chapter 만 + 미분류).
+  const chapterIdsWithArticles = new Set(
+    articlesData.map((a) => a.chapterId).filter((v): v is string => v !== null),
+  );
+  const chapters: ChapterInfo[] = chapterRows
+    .filter((c) => chapterIdsWithArticles.has(c.chapterId))
+    .map((c) => ({
+      chapterId: c.chapterId,
+      displayLabel: c.displayLabel,
+      path: c.path,
+    }));
+  if (articlesData.some((a) => a.chapterId === null)) {
+    chapters.push({
+      chapterId: UNGROUPED_CHAPTER_ID,
+      displayLabel: "미분류",
+      path: "~", // 정렬 시 항상 맨 뒤.
+    });
+  }
+
+  return { lawCode, articles: articlesData, chapters };
 }
 
 export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
-  const { lawCode, articles } = loaderData;
+  const { lawCode, articles, chapters } = loaderData;
+
+  // chapter 미지정 = 장 인덱스 화면.
+  // chapter=__all__ = 모든 조문 한 화면 편집 (chapter 그룹 헤더는 유지).
+  // chapter=<chapterId> = 그 장의 조문만 편집.
+  const ALL_SENTINEL = "__all__";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const chapterParam = searchParams.get("chapter");
+  const isAllMode = chapterParam === ALL_SENTINEL;
+  const activeChapterId =
+    !isAllMode &&
+    chapterParam &&
+    chapters.some((c) => c.chapterId === chapterParam)
+      ? chapterParam
+      : null;
+  const visibleArticles = useMemo(
+    () =>
+      activeChapterId === null
+        ? articles
+        : articles.filter((a) => {
+            if (activeChapterId === UNGROUPED_CHAPTER_ID) {
+              return a.chapterId === null;
+            }
+            return a.chapterId === activeChapterId;
+          }),
+    [articles, activeChapterId],
+  );
+
+  const setChapterFilter = useCallback(
+    (chapterId: string | null) => {
+      const next = new URLSearchParams(searchParams);
+      if (chapterId === null) next.delete("chapter");
+      else next.set("chapter", chapterId);
+      setSearchParams(next, { preventScrollReset: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   // selection 의 식별자는 articleId. setId 가 없는 카드 (자료 미생성) 에서도 selection 가능 —
   // server action 이 setId 없으면 자동으로 set 을 만들고 빈칸 추가.
@@ -404,11 +523,10 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     }
   }, [addBlankFetcher.state, addBlankFetcher.data, articles, revalidator]);
 
-  // 모든 조문에 대해 미매칭 빈칸 사전 계산. articleId → unplaced blanks.
-  // 카드별로 같은 계산을 다시 하지 않도록 props 로 내려보내고, 전체 일괄 삭제 버튼이 사용.
+  // 표시 중인 조문에 대해서만 미매칭 빈칸 사전 계산. 일괄 삭제도 표시 범위 기준.
   const unplacedByArticle = useMemo(() => {
     const out = new Map<string, BlankRow[]>();
-    for (const a of articles) {
+    for (const a of visibleArticles) {
       if (!a.setId || a.blanks.length === 0) continue;
       const body = parseArticleBody(a.bodyJson);
       if (!body) {
@@ -425,7 +543,7 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
       if (unplaced.length > 0) out.set(a.articleId, unplaced);
     }
     return out;
-  }, [articles]);
+  }, [visibleArticles]);
 
   const totalUnplaced = useMemo(() => {
     let n = 0;
@@ -476,20 +594,83 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     );
     // 페이지 reload 로 loader 재실행 → 최신 데이터 반영.
     window.location.reload();
-  }, [articles, unplacedByArticle, totalUnplaced]);
+  }, [visibleArticles, unplacedByArticle, totalUnplaced]);
 
-  // 통계
-  const totalArticles = articles.length;
-  const articlesWithSet = articles.filter((a) => a.setId).length;
-  const totalBlanks = articles.reduce((s, a) => s + a.blanks.length, 0);
-  const filledBlanks = articles.reduce(
+  // 통계 — 표시 중인 범위 기준.
+  const totalArticles = visibleArticles.length;
+  const articlesWithSet = visibleArticles.filter((a) => a.setId).length;
+  const totalBlanks = visibleArticles.reduce((s, a) => s + a.blanks.length, 0);
+  const filledBlanks = visibleArticles.reduce(
     (s, a) => s + a.blanks.filter((b) => b.answer.trim().length > 0).length,
     0,
   );
 
+  // chapter 단위 그룹화 (표시 순). chapterId 가 null 인 article 은 UNGROUPED 그룹.
+  const groupedArticles = useMemo(() => {
+    const groups: Array<{ chapter: typeof chapters[number]; items: typeof visibleArticles }> = [];
+    const byChapterId = new Map<string, typeof visibleArticles>();
+    for (const a of visibleArticles) {
+      const key = a.chapterId ?? UNGROUPED_CHAPTER_ID;
+      const arr = byChapterId.get(key) ?? [];
+      arr.push(a);
+      byChapterId.set(key, arr);
+    }
+    for (const c of chapters) {
+      const items = byChapterId.get(c.chapterId);
+      if (items && items.length > 0) groups.push({ chapter: c, items });
+    }
+    return groups;
+  }, [visibleArticles, chapters]);
+
+  // chapter 별 카운트 (필터 chip 표시용).
+  const chapterCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of articles) {
+      const key = a.chapterId ?? UNGROUPED_CHAPTER_ID;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  }, [articles]);
+
+  // chapter 별 통계 (인덱스 카드 표시용) — 조문 수 / 자료 보유 / 빈칸 합계 / 입력 완료 합계.
+  interface ChapterStats {
+    articleCount: number;
+    setCount: number;
+    totalBlanks: number;
+    filledBlanks: number;
+  }
+  const chapterStats = useMemo(() => {
+    const m = new Map<string, ChapterStats>();
+    for (const a of articles) {
+      const key = a.chapterId ?? UNGROUPED_CHAPTER_ID;
+      const cur = m.get(key) ?? {
+        articleCount: 0,
+        setCount: 0,
+        totalBlanks: 0,
+        filledBlanks: 0,
+      };
+      cur.articleCount += 1;
+      if (a.setId) cur.setCount += 1;
+      cur.totalBlanks += a.blanks.length;
+      cur.filledBlanks += a.blanks.filter((b) => b.answer.trim().length > 0)
+        .length;
+      m.set(key, cur);
+    }
+    return m;
+  }, [articles]);
+
+  // 인덱스 모드 = chapter 가 존재하고 chapter param 미지정 + __all__ 도 아닌 상태.
+  // chapter=__all__ 이면 모든 조문을 한 화면에 펼쳐 편집.
+  const indexMode =
+    chapters.length > 0 && !isAllMode && activeChapterId === null;
+  // 조문 자체가 업로드되지 않은 법령 — 안내 화면.
+  const articlesEmpty = articles.length === 0;
+  const lawName =
+    BLANK_LAW_TABS.find((t) => t.slug === lawCode)?.name ?? lawCode;
+
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
-      {selection ? (
+      {selection && !articlesEmpty ? (
         <button
           type="button"
           className="fixed z-50 inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-xs text-white shadow-lg hover:bg-emerald-700"
@@ -504,31 +685,143 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
         </button>
       ) : null}
 
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground mr-1 text-xs">법령:</span>
+        {BLANK_LAW_TABS.map((t) => {
+          const active = t.slug === lawCode;
+          return (
+            <Link
+              key={t.slug}
+              to={`/admin/blanks/law/${t.slug}`}
+              className={cn(
+                "rounded-md border px-2.5 py-1 text-xs font-semibold",
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-input hover:bg-accent",
+              )}
+            >
+              {t.name}
+            </Link>
+          );
+        })}
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Link
-          to={`/admin/blanks?law=${lawCode}`}
-          viewTransition
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-        >
-          <ArrowLeftIcon className="size-4" /> 빈칸 자료 목록
-        </Link>
+        {indexMode ? (
+          <Link
+            to={`/admin/blanks?law=${lawCode}`}
+            viewTransition
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+          >
+            <ArrowLeftIcon className="size-4" /> 빈칸 자료 목록
+          </Link>
+        ) : chapters.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setChapterFilter(null)}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+          >
+            <ArrowLeftIcon className="size-4" /> 모든 장
+          </button>
+        ) : (
+          <Link
+            to={`/admin/blanks?law=${lawCode}`}
+            viewTransition
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+          >
+            <ArrowLeftIcon className="size-4" /> 빈칸 자료 목록
+          </Link>
+        )}
         <div className="flex flex-col items-end gap-0.5">
           <h1 className="text-xl font-bold tracking-tight">
-            {lawCode} — 모든 조문 빈칸 자료
+            {lawName}
+            {articlesEmpty
+              ? " — 조문 업로드 대기"
+              : indexMode
+                ? " — 장별 빈칸 자료"
+                : isAllMode
+                  ? " — 전체 조문 빈칸 자료"
+                  : activeChapterId !== null
+                    ? ` — ${
+                        chapters.find((c) => c.chapterId === activeChapterId)
+                          ?.displayLabel ?? ""
+                      }`
+                    : " — 모든 조문 빈칸 자료"}
           </h1>
-          <p className="text-muted-foreground text-xs">
-            조문 {totalArticles}개 · 자료 보유 {articlesWithSet}개 · 빈칸{" "}
-            {filledBlanks}/{totalBlanks}
-            {totalUnplaced > 0 ? (
-              <span className="ml-2 text-amber-700 dark:text-amber-400">
-                · 미매칭 {totalUnplaced}개
-              </span>
-            ) : null}
-          </p>
+          {!articlesEmpty ? (
+            <p className="text-muted-foreground text-xs">
+              {indexMode
+                ? `장 ${chapters.length}개 · 조문 ${articles.length}개 · 빈칸 ${filledBlanks}/${totalBlanks}`
+                : `조문 ${totalArticles}개 · 자료 보유 ${articlesWithSet}개 · 빈칸 ${filledBlanks}/${totalBlanks}`}
+              {totalUnplaced > 0 ? (
+                <span className="ml-2 text-amber-700 dark:text-amber-400">
+                  · 미매칭 {totalUnplaced}개
+                </span>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </div>
 
-      {totalUnplaced > 0 || bulkResult ? (
+      {/* 편집 모드에서만 다른 그룹으로 빠르게 이동할 수 있도록 chip 행 노출. */}
+      {!articlesEmpty && !indexMode && chapters.length > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground mr-1 text-xs font-semibold">
+            편집 그룹:
+          </span>
+          <button
+            type="button"
+            onClick={() => setChapterFilter(ALL_SENTINEL)}
+            className={cn(
+              "rounded-md border px-2 py-0.5 text-xs",
+              isAllMode
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-input hover:bg-accent",
+            )}
+          >
+            전체 ({articles.length})
+          </button>
+          {chapters.map((c) => {
+            const active = activeChapterId === c.chapterId;
+            const count = chapterCounts.get(c.chapterId) ?? 0;
+            return (
+              <button
+                key={c.chapterId}
+                type="button"
+                onClick={() => setChapterFilter(c.chapterId)}
+                className={cn(
+                  "rounded-md border px-2 py-0.5 text-xs",
+                  active
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-input hover:bg-accent",
+                )}
+                title={c.displayLabel}
+              >
+                {c.displayLabel} ({count})
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {articlesEmpty ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="bg-muted text-muted-foreground rounded-full p-3">
+              <FileQuestionIcon className="size-6" />
+            </div>
+            <h2 className="text-base font-bold">
+              {lawName} 조문이 아직 업로드되지 않았습니다
+            </h2>
+            <p className="text-muted-foreground max-w-md text-sm">
+              조문이 업로드되면 자동으로 이 페이지에서 빈칸 자료를 만들 수
+              있습니다. 다른 법령을 보려면 위 법령 탭을 선택하세요.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!indexMode && (totalUnplaced > 0 || bulkResult) ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300/60 bg-amber-50/60 px-3 py-2 text-xs dark:border-amber-700/60 dark:bg-amber-950/30">
           <div>
             <p className="font-semibold text-amber-900 dark:text-amber-200">
@@ -558,23 +851,81 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
-      <div className="space-y-4">
-        {articles.map((a) => (
-          <ArticleEditCard
-            key={a.articleId}
-            article={a}
-            lawCode={lawCode}
-            registerRef={registerRef}
-            recentlyAddedNewIdx={
-              addBlankFetcher.state === "idle" &&
-              (addBlankFetcher.data as { ok?: boolean; newIdx?: number })?.ok &&
-              (addBlankFetcher.data as { ok?: boolean; newIdx?: number; setId?: string })
-                ? (addBlankFetcher.data as { newIdx?: number }).newIdx ?? null
-                : null
-            }
-          />
-        ))}
-      </div>
+      {articlesEmpty ? null : indexMode ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {chapters.map((c) => {
+            const stats = chapterStats.get(c.chapterId);
+            const articleCount = stats?.articleCount ?? 0;
+            const setCount = stats?.setCount ?? 0;
+            const filled = stats?.filledBlanks ?? 0;
+            const totalB = stats?.totalBlanks ?? 0;
+            const fillPct =
+              totalB > 0 ? Math.round((filled / totalB) * 100) : 0;
+            return (
+              <button
+                key={c.chapterId}
+                type="button"
+                onClick={() => setChapterFilter(c.chapterId)}
+                className="group bg-card text-card-foreground hover:border-primary/60 hover:bg-accent/50 flex flex-col items-start gap-2 rounded-lg border p-4 text-left shadow-sm transition"
+              >
+                <p className="text-base font-bold tracking-tight">
+                  {c.displayLabel}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  조문 {articleCount}개 · 자료 보유 {setCount}개
+                </p>
+                <div className="bg-muted w-full overflow-hidden rounded-full">
+                  <div
+                    className="bg-primary h-1.5"
+                    style={{ width: `${fillPct}%` }}
+                  />
+                </div>
+                <p className="text-muted-foreground text-[11px] tabular-nums">
+                  빈칸 {filled}/{totalB} ({fillPct}%)
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {groupedArticles.length === 0 ? (
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              해당 장에 조문이 없습니다.
+            </p>
+          ) : (
+            groupedArticles.map(({ chapter, items }) => (
+              <section key={chapter.chapterId} className="space-y-3">
+                <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 border-b px-2 py-2 backdrop-blur">
+                  <h2 className="text-base font-bold tracking-tight">
+                    {chapter.displayLabel}
+                  </h2>
+                  <span className="text-muted-foreground text-xs">
+                    조문 {items.length}개
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  {items.map((a) => (
+                    <ArticleEditCard
+                      key={a.articleId}
+                      article={a}
+                      lawCode={lawCode}
+                      registerRef={registerRef}
+                      recentlyAddedNewIdx={
+                        addBlankFetcher.state === "idle" &&
+                        (addBlankFetcher.data as { ok?: boolean; newIdx?: number })?.ok &&
+                        (addBlankFetcher.data as { ok?: boolean; newIdx?: number; setId?: string })
+                          ? (addBlankFetcher.data as { newIdx?: number }).newIdx ?? null
+                          : null
+                      }
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

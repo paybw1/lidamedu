@@ -1,6 +1,6 @@
 // 운영자 객관식 문제 리뷰 목록 — 출처/유형/극성/연도/scope/조문 필터 + 체계도/조문 순서 정렬.
 
-import { FilterIcon } from "lucide-react";
+import { ArrowLeftIcon, FilterIcon } from "lucide-react";
 import { Form, Link, data, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -28,6 +28,7 @@ import {
 import {
   listProblemYears,
   listProblemsBySubject,
+  listSystematicTopNodes,
 } from "~/features/problems/queries.server";
 import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
@@ -96,23 +97,30 @@ export async function loader({ request }: Route.LoaderArgs) {
         : undefined,
   };
 
-  const [problems, years] = await Promise.all([
+  const [problems, years, systematicNodes] = await Promise.all([
     listProblemsBySubject(client, subject, filters),
     listProblemYears(client, subject),
+    listSystematicTopNodes(client, subject),
   ]);
-  return { problems, years, subject, filters };
+  return { problems, years, subject, filters, systematicNodes };
 }
 
 export default function AdminProblemsList({
   loaderData,
 }: Route.ComponentProps) {
-  const { problems, years, subject, filters } = loaderData;
+  const { problems, years, subject, filters, systematicNodes } = loaderData;
   // 편집 화면 진입 시 현재 필터 쿼리를 그대로 전달 → 편집 화면의 "←" 가 같은 쿼리로 되돌아갈 수 있게.
   const [searchParams] = useSearchParams();
   const filterQs = searchParams.toString();
   const subjectMeta = LAW_SUBJECTS[subject];
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
+      <Link
+        to="/admin"
+        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+      >
+        <ArrowLeftIcon className="size-3" /> 운영자
+      </Link>
       <header className="mb-6 space-y-2">
         <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
           운영
@@ -129,6 +137,25 @@ export default function AdminProblemsList({
           뱃지로 표시됩니다.
         </p>
       </header>
+
+      {systematicNodes.length > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground mr-1 text-xs font-semibold">
+            편집 그룹:
+          </span>
+          {systematicNodes.map((n) => (
+            <Link
+              key={n.nodeId}
+              to={`/admin/problems/system/${n.nodeId}?subject=${subject}`}
+              viewTransition
+              className="bg-primary/10 text-primary border-primary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold transition"
+              title={`${n.displayLabel} — 한 화면에서 일괄 편집`}
+            >
+              {n.displayLabel} ({n.problemCount})
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       <Card className="mb-4">
         <CardHeader className="px-4 pb-2">

@@ -89,12 +89,12 @@ const CONTENT_CARDS: AdminCardData[] = [
   {
     to: "/admin/problems",
     title: "객관식 문제 관리",
-    subtitle: "출처/유형/극성/연도/scope 분류 + 지문 유형 보강",
+    subtitle: "출처·유형·연도 색인 + 체계도 노드 단위 한 화면 일괄 편집",
     icon: ListChecksIcon,
   },
   {
     to: "/admin/problems/new",
-    title: "문제 신규 출제",
+    title: "객관식 신규 출제",
     subtitle: "메타 + 본문 입력 → 상세 편집으로 자동 이동",
     icon: ListChecksIcon,
   },
@@ -103,12 +103,6 @@ const CONTENT_CARDS: AdminCardData[] = [
     title: "주관식 신규 출제",
     subtitle: "2차 시험용 — 모범답안·채점기준·체크리스트 함께 작성",
     icon: ListChecksIcon,
-  },
-  {
-    to: "/admin/problems/by-system",
-    title: "체계도 기반 문제 편집",
-    subtitle: "01 총칙/보칙 ~ 08 국제출원 단위로 한 화면에서 일괄 편집",
-    icon: NetworkIcon,
   },
   {
     to: "/admin/problems/ox",
@@ -156,7 +150,7 @@ const CONTENT_CARDS: AdminCardData[] = [
   },
   {
     to: "/latest/book-updates",
-    title: "도서 추록 · 정오표",
+    title: "추록 · 정오표",
     subtitle: "수험서 추록·정오표 등록·수정",
     icon: BookOpenIcon,
     badge: "최신 정보",

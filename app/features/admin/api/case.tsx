@@ -49,10 +49,16 @@ const upsertSchema = z.object({
   reasoningMd: z.string().max(50_000).nullable(),
   commentSource: z.string().trim().max(500).nullable(),
   commentBodyMd: z.string().max(50_000).nullable(),
-  fullTextPdf: z.string().trim().max(2000).nullable(),
   exam1stYears: z.array(z.number().int().min(1990).max(2099)),
   exam2ndYears: z.array(z.number().int().min(1990).max(2099)),
 });
+
+// 판결전문 PDF storage 버킷.
+const FULL_TEXT_PDF_BUCKET = "case-full-text-pdfs";
+const FULL_TEXT_PDF_MAX_BYTES = 30 * 1024 * 1024;
+const FULL_TEXT_PDF_URL_RE = new RegExp(
+  `/storage/v1/object/public/${FULL_TEXT_PDF_BUCKET}/(.+)$`,
+);
 
 function emptyToNull(raw: FormDataEntryValue | null): string | null {
   if (raw === null) return null;
@@ -95,6 +101,95 @@ export async function action({ request }: Route.ActionArgs) {
     return redirect("/admin/cases?law=patent");
   }
 
+  if (intent === "upload_full_text_pdf" || intent === "remove_full_text_pdf") {
+    const caseId = String(fd.get("caseId") ?? "");
+    if (!z.string().uuid().safeParse(caseId).success) {
+      return data({ error: "Invalid caseId" }, { status: 400 });
+    }
+
+    // 기존 PDF 가 storage 에 있으면 우선 제거 (교체/제거 공통). 외부 URL 은 best-effort skip.
+    const { data: existing } = await client
+      .from("cases")
+      .select("full_text_pdf, case_number")
+      .eq("case_id", caseId)
+      .maybeSingle();
+    const existingUrl = existing?.full_text_pdf ?? null;
+    if (existingUrl) {
+      const m = existingUrl.match(FULL_TEXT_PDF_URL_RE);
+      if (m) {
+        await client.storage.from(FULL_TEXT_PDF_BUCKET).remove([m[1]]);
+      }
+    }
+
+    if (intent === "remove_full_text_pdf") {
+      const { error } = await client
+        .from("cases")
+        .update({ full_text_pdf: null })
+        .eq("case_id", caseId);
+      if (error) return data({ error: error.message }, { status: 400 });
+      void logAuditEvent({
+        actorId: user.id,
+        actorRole: role,
+        action: "case.remove_full_text_pdf",
+        entityType: "case",
+        entityId: caseId,
+      });
+      return data({ ok: true });
+    }
+
+    const file = fd.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return data({ error: "파일이 없습니다." }, { status: 400 });
+    }
+    if (file.type !== "application/pdf") {
+      return data({ error: "PDF 파일만 업로드 가능합니다." }, { status: 400 });
+    }
+    if (file.size > FULL_TEXT_PDF_MAX_BYTES) {
+      return data({ error: "파일이 30MB 를 초과합니다." }, { status: 400 });
+    }
+
+    const ts = Date.now();
+    const safeBase = (file.name || "case.pdf")
+      .replace(/\\/g, "/")
+      .split("/")
+      .pop()!
+      .replace(/[^\w.-]+/g, "_")
+      .slice(-80);
+    const objectPath = `${caseId}/${ts}-${safeBase}`;
+
+    const { error: upErr } = await client.storage
+      .from(FULL_TEXT_PDF_BUCKET)
+      .upload(objectPath, file, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+    if (upErr) return data({ error: upErr.message }, { status: 400 });
+
+    const { data: pub } = client.storage
+      .from(FULL_TEXT_PDF_BUCKET)
+      .getPublicUrl(objectPath);
+    const publicUrl = pub.publicUrl;
+
+    const { error: updErr } = await client
+      .from("cases")
+      .update({ full_text_pdf: publicUrl })
+      .eq("case_id", caseId);
+    if (updErr) return data({ error: updErr.message }, { status: 400 });
+
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "case.upload_full_text_pdf",
+      entityType: "case",
+      entityId: caseId,
+      metadata: {
+        caseNumber: existing?.case_number ?? null,
+        bytes: file.size,
+      },
+    });
+    return data({ ok: true, url: publicUrl });
+  }
+
   if (intent !== "create" && intent !== "update") {
     return data({ error: "Unknown intent" }, { status: 400 });
   }
@@ -118,7 +213,6 @@ export async function action({ request }: Route.ActionArgs) {
     reasoningMd: emptyToNull(fd.get("reasoningMd")),
     commentSource: emptyToNull(fd.get("commentSource")),
     commentBodyMd: emptyToNull(fd.get("commentBodyMd")),
-    fullTextPdf: emptyToNull(fd.get("fullTextPdf")),
     exam1stYears: parseIntList(fd.get("exam1stYears")),
     exam2ndYears: parseIntList(fd.get("exam2ndYears")),
   });
@@ -141,6 +235,7 @@ export async function action({ request }: Route.ActionArgs) {
         ]
       : [];
 
+  // full_text_pdf 컬럼은 별도 intent(upload/remove)로만 변경 — 메타 폼은 건드리지 않는다.
   const payload = {
     subject_laws: input.subjectLaws,
     court: input.court,
@@ -155,7 +250,6 @@ export async function action({ request }: Route.ActionArgs) {
     reasoning_md: input.reasoningMd,
     comment_source: input.commentSource,
     comment_body_md: input.commentBodyMd,
-    full_text_pdf: input.fullTextPdf,
     exam_1st_years: input.exam1stYears,
     exam_2nd_years: input.exam2ndYears,
     summary_items: summaryItems,

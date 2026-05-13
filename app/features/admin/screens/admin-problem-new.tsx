@@ -2,6 +2,7 @@
 // 최소 메타 + 본문 입력 → INSERT 후 상세 편집(/admin/problems/:problemId) 로 redirect.
 
 import { ArrowLeftIcon, ListChecksIcon, SaveIcon } from "lucide-react";
+import { useState } from "react";
 import { Form, Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -11,7 +12,10 @@ import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { listAllGsRounds } from "~/features/gs/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { MCQ_PACK_KIND_SHORT } from "~/features/mcq-packs/labels";
+import { listPacks } from "~/features/mcq-packs/queries.server";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
@@ -24,6 +28,11 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-problem-new";
+
+// lawCode (`civil-procedure`) → pack subject_scope (`civil_procedure`) 매핑.
+function lawCodeToPackScope(slug: string): string {
+  return slug === "civil-procedure" ? "civil_procedure" : slug;
+}
 
 export const meta: Route.MetaFunction = () => [
   { title: "문제 신규 출제 | Lidam Edu" },
@@ -52,24 +61,76 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? formatParam
       : "mc_short";
   const defaultExamRound = defaultFormat === "subjective" ? "second" : "first";
-  return { defaultFormat, defaultExamRound };
+
+  // 객관식 pack 후보 (자연과학 제외). 클라이언트에서 lawCode 변경 시 필터.
+  const allPacks = await listPacks(client);
+  const packs = allPacks
+    .filter((p) => p.subjectScope !== "science")
+    .map((p) => ({
+      packId: p.packId,
+      title: p.title,
+      kind: p.kind,
+      subjectScope: p.subjectScope,
+      year: p.year,
+      examRoundNo: p.examRoundNo,
+    }));
+
+  // 주관식: GS 회차 후보 (draft/published 모두 — closed 는 등록 의미 없음).
+  const allRounds = await listAllGsRounds(client);
+  const gsRounds = allRounds
+    .filter((r) => r.status === "draft" || r.status === "published")
+    .map((r) => ({
+      roundId: r.roundId,
+      title: r.title,
+      subject: r.subject,
+      status: r.status,
+      roundNumber: r.roundNumber,
+    }));
+
+  return { defaultFormat, defaultExamRound, packs, gsRounds };
 }
 
 export default function AdminProblemNew({
   loaderData,
 }: Route.ComponentProps) {
-  const { defaultFormat, defaultExamRound } = loaderData;
+  const { defaultFormat, defaultExamRound, packs, gsRounds } = loaderData;
+  // lawCode 와 format 을 React state 로 추적 → 그에 맞는 mcq pack / GS round 옵션을 클라이언트에서 필터.
+  const [lawCode, setLawCode] = useState<string>("patent");
+  const [format, setFormat] = useState<string>(defaultFormat);
+  const isMcqFormat =
+    format === "mc_short" || format === "mc_box" || format === "mc_case";
+  const isSubjective = format === "subjective";
+  const availablePacks = packs.filter((p) => {
+    const lawScope = lawCodeToPackScope(lawCode);
+    // 같은 과목 또는 industrial (산업재산권 통합 모의고사 — 특허/상표/디자인 모두 포함 가능).
+    if (p.subjectScope === lawScope) return true;
+    if (
+      p.subjectScope === "industrial" &&
+      (lawScope === "patent" ||
+        lawScope === "trademark" ||
+        lawScope === "design")
+    ) {
+      return true;
+    }
+    return false;
+  });
+  // GS 회차는 lawCode 와 정확히 일치하는 subject 만 (industrial 통합 GS 는 없음).
+  const availableGsRounds = gsRounds.filter((r) => r.subject === lawCode);
   return (
     <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
       <Link
-        to="/admin/problems"
+        to={defaultFormat === "subjective" ? "/admin" : "/admin/problems"}
         className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
       >
-        <ArrowLeftIcon className="size-3" /> 객관식 문제 관리
+        <ArrowLeftIcon className="size-3" />{" "}
+        {defaultFormat === "subjective" ? "운영자" : "객관식 문제 관리"}
       </Link>
       <header className="mb-6">
         <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <ListChecksIcon className="text-primary size-6" /> 문제 신규 출제
+          <ListChecksIcon className="text-primary size-6" />{" "}
+          {defaultFormat === "subjective"
+            ? "주관식 신규 출제"
+            : "객관식 신규 출제"}
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           저장하면 상세 편집 화면(지문·해설·연관 조문/판례)으로 이동합니다.
@@ -89,7 +150,8 @@ export default function AdminProblemNew({
             <Field label="과목" required>
               <select
                 name="lawCode"
-                defaultValue="patent"
+                value={lawCode}
+                onChange={(e) => setLawCode(e.target.value)}
                 required
                 className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
               >
@@ -134,7 +196,8 @@ export default function AdminProblemNew({
             <Field label="유형" required>
               <select
                 name="format"
-                defaultValue={defaultFormat}
+                value={format}
+                onChange={(e) => setFormat(e.target.value)}
                 required
                 className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
               >
@@ -196,6 +259,105 @@ export default function AdminProblemNew({
             </Field>
           </CardContent>
         </Card>
+
+        {isSubjective ? (
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold">
+                온라인 GS 회차 등록{" "}
+                <span className="text-muted-foreground text-xs font-normal">
+                  (선택)
+                </span>
+              </h2>
+            </CardHeader>
+            <CardContent>
+              <Field label="이 문제를 등록할 GS 회차">
+                <select
+                  name="gsRoundId"
+                  defaultValue=""
+                  className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                >
+                  <option value="">없음 (나중에 GS 회차에서 추가)</option>
+                  {availableGsRounds.length === 0 ? (
+                    <option value="" disabled>
+                      이 과목의 진행 중 GS 회차 없음
+                    </option>
+                  ) : (
+                    availableGsRounds.map((r) => (
+                      <option key={r.roundId} value={r.roundId}>
+                        [{r.status === "draft" ? "초안" : "공개"}]{" "}
+                        {r.roundNumber ? `${r.roundNumber}회 · ` : ""}
+                        {r.title}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </Field>
+              <p className="text-muted-foreground mt-2 text-[11px]">
+                선택하면 그 GS 회차의 문제로도 자동 등록되어, 학생이 답안지 페이지를 업로드하고 채점·통계 흐름을 탈 수 있습니다. 새 회차는{" "}
+                <Link
+                  to="/admin/gs/new"
+                  className="text-primary hover:underline"
+                  target="_blank"
+                >
+                  /admin/gs/new
+                </Link>{" "}
+                에서 만들고 돌아오세요.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {isMcqFormat ? (
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold">
+                객관식 pack 매핑{" "}
+                <span className="text-muted-foreground text-xs font-normal">
+                  (선택)
+                </span>
+              </h2>
+            </CardHeader>
+            <CardContent>
+              <Field label="이 문제를 추가할 pack">
+                <select
+                  name="mcqPackId"
+                  defaultValue=""
+                  className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                >
+                  <option value="">없음 (나중에 매핑)</option>
+                  {availablePacks.length === 0 ? (
+                    <option value="" disabled>
+                      이 과목에 해당하는 pack 없음
+                    </option>
+                  ) : (
+                    availablePacks.map((p) => (
+                      <option key={p.packId} value={p.packId}>
+                        [{MCQ_PACK_KIND_SHORT[p.kind]}] {p.title}
+                        {p.year ? ` (${p.year}년` : ""}
+                        {p.examRoundNo
+                          ? `${p.year ? " " : " ("}${p.examRoundNo}회`
+                          : ""}
+                        {p.year || p.examRoundNo ? ")" : ""}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </Field>
+              <p className="text-muted-foreground mt-2 text-[11px]">
+                pack 에 추가하면 <span className="font-semibold">최신 정보 → 객관식 문제</span> 에서 학생이 풀이를 시작할 수 있습니다. 새 pack 은{" "}
+                <Link
+                  to="/latest/mcq"
+                  className="text-primary hover:underline"
+                  target="_blank"
+                >
+                  /latest/mcq
+                </Link>{" "}
+                에서 먼저 만들고 돌아오세요.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeader>

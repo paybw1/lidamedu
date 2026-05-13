@@ -49,7 +49,7 @@ import {
 import type { Route } from "./+types/book-updates";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "도서 추록·정오표 | Lidam Edu" },
+  { title: "추록·정오표 | Lidam Edu" },
 ];
 
 const KIND_OPTIONS: Array<{ value: BookUpdateKind | "all"; label: string }> = [
@@ -169,7 +169,7 @@ export default function LatestBookUpdates({
         <div className="flex items-center justify-between">
           <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
             <BookOpenIcon className="text-primary size-6" />
-            도서 추록 · 정오표
+            추록 · 정오표
           </h1>
           {canEdit && !showAdd ? (
             <Button size="sm" onClick={() => setShowAdd(true)}>

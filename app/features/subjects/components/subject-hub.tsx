@@ -1,6 +1,5 @@
 import {
   BookmarkIcon,
-  CalendarRangeIcon,
   GavelIcon,
   ListChecksIcon,
 } from "lucide-react";
@@ -36,7 +35,6 @@ import type {
 
 import {
   DEFAULT_SUBJECT_TAB,
-  EXAM_LABEL,
   type LawSubjectMeta,
   type SubjectTab,
   subjectTabSchema,
@@ -234,13 +232,6 @@ function SubjectHeader({
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight">{subject.name}</h1>
-          <Badge variant="secondary">{EXAM_LABEL[subject.exam]}</Badge>
-          {recentRevisionDate ? (
-            <Badge variant="default" className="gap-1">
-              <CalendarRangeIcon />
-              개정 {recentRevisionDate}
-            </Badge>
-          ) : null}
         </div>
         {subject.description ? (
           <p className="text-muted-foreground text-sm">{subject.description}</p>
