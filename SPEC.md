@@ -210,9 +210,9 @@
 |----|------|:-------:|:---:|
 | feat-3-000 | 최신 정보 공통 레이아웃 — 각 탭(/latest/laws, /cases, /mcq, /essay, /papers, /book-updates)이 독립 페이지로 구현. 상단 네비게이션이 탭 라우팅 담당. 공통 레이아웃 컴포넌트는 미적용(YAGNI — 각 탭의 필터/색인 형태가 상이) | P0 | ⛔ |
 | **5.3.1 법 개정** | | | |
-| feat-3-101 | 법 개정 피드 (`law_revisions` published 시간순) | P0 | ✅ |
-| feat-3-102 | 영향 조문 수 + 내 즐겨찾기 포함 여부 표시 | P0 | ✅ |
-| feat-3-103 | 클릭 시 해당 법 과목 허브로 이동 (개정 탭 활성) | P0 | ✅ |
+| feat-3-101 | 법 개정 색인 (`/latest/laws`) — PPT 색인 양식 10컬럼 표(No/구분/명칭/법률번호/개정일/시행일/개정이유 O/신구조문대비표 O/개정해설 O/동영상 O). `law_revisions.revision_kind` ENUM(act/decree/rule) — 명칭에 '법령'/'시행령'/'시행규칙' 분기. published 시간순. | P0 | ✅ |
+| feat-3-102 | 영향 조문 수 + 내 즐겨찾기 포함 여부 chip | P0 | ✅ |
+| feat-3-103 | 첨부 O 클릭 시 행 아래 인라인 panel — 개정이유/개정해설 MarkdownView · 신구조문대비표/개정해설 PDF iframe(70vh) · 동영상 YouTube/Vimeo embed (그 외 URL은 외부 링크). | P0 | ✅ |
 | **5.3.2 최근 판례** | | | |
 | feat-3-201 | 신규 판례 피드 (선고일 최신순) | P0 | ✅ |
 | feat-3-202 | 과목별 필터 + 중요판례 필터 (importance ≥ 3) | P0 | ✅ |
@@ -273,7 +273,7 @@
 | feat-4-A-114 | 정오문제 위젯 (객관식 자동 연동 + 별도 업로드, 무작위 노출, 정답+해설) | P0 | ✅ |
 | feat-4-A-115 | 코멘트 / 평석 패널 (staff 작성, 학생 read-only, 마크다운) | P0 | ✅ |
 | feat-4-A-116 | Q&A 패널 — 동일 공용 컴포넌트(QnaPanel/qna-list). 검색 + 새 질문 → staff 알림 + 답변자 질문수준 평가 상/중/하. | P0 | ✅ |
-| feat-4-A-130 | 조문 빈칸 채우기 학습 (article_blank_sets, 빈칸 모드 토글, 입력+채점, 시도 기록). 운영자 편집은 article-viewer "빈칸 자료" 버튼 → 자기 set 자동 생성+편집 / 모든 조문 한 화면(setless 카드도 drag→자동 생성). 매칭: ±30자 컨텍스트 + ANCHOR_LENGTHS=[30,20,12,10,8,6,4] + cross-token cumulative fallback (queries.server.ts collectCumulativeOccurrences) + blockIndex/cumOffset hints 로 정확 위치 추적. 미매칭 일괄검수/새 자료 업로드 진입점은 제거(article-viewer 통합 흐름) | P0 | ✅ |
+| feat-4-A-130 | 조문 빈칸 채우기 학습 (article_blank_sets, 빈칸 모드 토글, 입력+채점, 시도 기록). 운영자 편집은 article-viewer "빈칸 자료" 버튼 → 자기 set 자동 생성+편집 / 모든 조문 한 화면(setless 카드도 drag→자동 생성). 매칭: ±30자 컨텍스트 + ANCHOR_LENGTHS=[30,20,12,10,8,6,4] + cross-token cumulative fallback (queries.server.ts collectCumulativeOccurrences) + blockIndex/cumOffset hints 로 정확 위치 추적. 입력 흐름: 정답 commit 후 **자동 focus 이동 제거** — 다음 빈칸은 시각적 highlight(primary ring + pulse) 만 표시, 사용자가 Tab/클릭으로 직접 진입(한국어 IME composer 충돌 우회). leak detection(다른 빈칸 정답 substring) 은 방어선 유지. | P0 | ✅ |
 
 ### 5.4.A.2 — 판례 탭
 
@@ -437,7 +437,7 @@
 | feat-7-001 | 운영자 메뉴 진입 가드 — `/admin` loader 가 staff role 확인. 비로그인은 /login 리다이렉트, 학생은 권한 안내 화면(추천 액션 — 대시보드/특허법/최신 정보/학습 목표 링크). | P0 | ✅ |
 | feat-7-002 | 콘텐츠 관리 허브 — 콘텐츠 등록·수정(빈칸/문제/판례 매핑/MCQ 팩/논문/도서 추록·정오표) + 통계 분석 + 온라인 GS 3개 섹션으로 정리. 각 카드에 진입 링크 + "최신 정보" 배지. | P0 | ✅ |
 | feat-7-003 | 강사 대시보드 (반 진도, 콘텐츠 현황) — `/admin` 운영자 허브가 staff 본인의 콘텐츠 통계(getStaffContentStats — 작성한 문제/판례/논문/도서 자료 수) + 반 진도(feat-7-010 `/admin/cohorts/:id/progress`) 진입점을 제공. | P1 | ✅ |
-| feat-7-004 | 법 개정 워크스페이스 — `/admin/laws/:lawCode/revisions` 상태별(draft/review/published) 일람 + 새 초안 생성. `/admin/laws/:lawCode/revisions/:revisionId` 워크스페이스: 조문 추가(현재 본문 자동 복사) · 본문 JSON 인라인 편집 · 변경 종류(신설/개정/폐지) · before/after 비교 · 발행 dialog. RPC `publish_law_revision` 가 transactional 발행(article_revisions effective_date set + articles.current_revision_id swap). 발행 후 article_revisions 불변(트리거). | P0 | ✅ |
+| feat-7-004 | 법 개정 워크스페이스 — `/admin/laws/:lawCode/revisions` 일람 + 새 초안 생성. `/admin/laws/:lawCode/revisions/:revisionId`: 조문 추가(현재 본문 자동 복사 / bulk add — 콤마/줄바꿈 구분 최대 50개) · 자동완성(조 번호/조 제목 검색 + 이미 추가 여부 안내) · 변경 종류(신설/개정/폐지) · **시각 편집기**(ArticleBlockEditor 재사용 — 카드별 텍스트 + 마커 `__밑줄__`/`[강조]`/`((소제목))` + 미리보기) ↔ JSON 모드 토글 · **Diff highlight**(before/after LCS 라인 diff, 추가/삭제 색칠) · **장/절 자동 그룹화**(path 의 chapter prefix 로 묶음 헤더) · **발행 전 체크리스트**(개정번호/조문≥1/본문변경/개정이유/신구조문대비표/개정해설/동영상 7종 점검) · 발행 dialog. **첨부 PDF 파일 업로드** — `law-revision-files` 버킷(public, 30MB, PDF only) + 정책. RPC `publish_law_revision` 가 transactional 발행 + article_revisions 불변 트리거. | P0 | ✅ |
 | feat-7-005 | 판례 등록/수정 폼 — `/admin/cases/edit` (신규) / `/admin/cases/edit/:caseId` (수정). 사건번호/사건명/법원/선고일/전합/중요도/사건유형/1·2차 기출연도/요지·이유·비고 Markdown/판결전문 PDF URL. POST `/api/admin/case` (create/update/delete soft). 관련 조문 매핑은 `/admin/cases?law=` 또는 `/admin/relations/*` 별도 진입. | P0 | ✅ |
 | feat-7-006 | 문제 출제 폼 — `/admin/problems/new` 최소 메타(과목·차수·출처·유형·극성·scope·연도·회차·번호·지문수) + 본문 입력 → INSERT (mc 계열은 빈 choices 자동 생성) → `/admin/problems/:problemId` 상세 편집으로 redirect. 상세 편집에서 지문·해설·연관 조문/판례 매핑 진행. | P0 | ✅ |
 | feat-7-007 | 논문 등록/수정 폼 — feat-3-502 가 흡수 (/latest/papers staff inline 폼 + `/api/admin/paper`). | P1 | ✅ |
@@ -449,6 +449,9 @@
 | feat-7-013 | 강사 권한 관리 — feat-7-012 에 통합 (admin 이 user role 을 instructor 로 승격/강등). | P1 | ✅ |
 | feat-7-014 | 수강권/결제 관리 (admin 전용) | P2 | 🔲 |
 | feat-7-015 | 감사 로그 — `audit_logs` 테이블 + 운영자 액션(콘텐츠 CRUD, 사용자 역할 변경, 공지 발송, 법 개정 발행) 추적. admin 전용 조회 화면. | P2 | ✅ |
+| feat-7-016 | 5과목 시드 진행률 카드 — `/admin` 운영자 허브 상단. `admin_subject_coverage` RPC: 과목별(조문/판례/객관식/주관식/평석/발행 개정) 카운트. 막대 그래프(최댓값 대비) + tone 색상(0=rose / <10%=amber / <50%=sky / 그 외=emerald). 각 행에 "완성도 진단 →" deep link. | P1 | ✅ |
+| feat-7-017 | 법령 완성도 진단 — `/admin/laws/:lawCode/completeness`. `admin_law_completeness` RPC: 실 조문(level='article') 기준 미커버 카운트(현행 revision / 빈칸 / 평석 / 관련조문 / 관련판례 / primary 문제 / 판례 요지·매핑 / 객관식 해설 / 주관식). 3섹션(조문/판례/문제) × 11차원 카드. 각 차원에 진행률 막대 + 미커버 카운트 + 작업 도구 deep link. tone: ≥95% 에메랄드 / ≥50% 앰버 / 그 외 로즈. | P1 | ✅ |
+| feat-7-018 | 자동 백필 RPC 2종 — staff 권한 가드. (1) `backfill_article_article_links_from_body` — body_json 의 inline `ref_article` 노드를 jsonb_path_query 로 재귀 추출 → `article_article_links` `cross_reference` 백필. (2) `backfill_article_case_links_from_body` — 판례 본문(요지/이유/평석) "(법명) 제N조(의X)?" 자연어 패턴 추출 → `article_case_links` `cites` 백필. 완성도 페이지 헤더 버튼 2개로 수동 재실행. | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 

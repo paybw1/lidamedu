@@ -2,6 +2,7 @@
 // 컬럼: 이름·이메일·문제풀이·정답률·조문 열람·빈칸·최근 활동.
 
 import {
+  AlertTriangleIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   ClockIcon,
@@ -9,6 +10,7 @@ import {
   TrendingUpIcon,
   UsersIcon,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -79,10 +81,45 @@ function formatLast(iso: string | null): string {
   return iso.slice(0, 10);
 }
 
+type SortKey = "default" | "accuracy_asc" | "attempts_desc" | "recent_desc" | "inactive_first";
+
+function inactiveDays(iso: string | null): number {
+  if (!iso) return Infinity;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
 export default function AdminCohortProgress({
   loaderData,
 }: Route.ComponentProps) {
   const { cohort, members } = loaderData;
+
+  const [sortKey, setSortKey] = useState<SortKey>("default");
+  const sortedMembers = useMemo(() => {
+    const arr = [...members];
+    switch (sortKey) {
+      case "accuracy_asc":
+        return arr.sort((a, b) => {
+          // 정답률 낮은 순 (null 은 아예 풀이 없음 → 뒤로)
+          const aPct = a.accuracyPct ?? 200;
+          const bPct = b.accuracyPct ?? 200;
+          return aPct - bPct;
+        });
+      case "attempts_desc":
+        return arr.sort((a, b) => b.problemsAttempted - a.problemsAttempted);
+      case "recent_desc":
+        return arr.sort(
+          (a, b) =>
+            (b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0) -
+            (a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0),
+        );
+      case "inactive_first":
+        return arr.sort(
+          (a, b) => inactiveDays(b.lastActivityAt) - inactiveDays(a.lastActivityAt),
+        );
+      default:
+        return arr;
+    }
+  }, [members, sortKey]);
 
   // KPI 요약.
   const totalAttempts = members.reduce(
@@ -91,6 +128,12 @@ export default function AdminCohortProgress({
   );
   const totalArticles = members.reduce((s, m) => s + m.articlesViewed, 0);
   const activeCount = members.filter((m) => m.lastActivityAt !== null).length;
+  const inactiveCount = members.filter(
+    (m) => inactiveDays(m.lastActivityAt) >= 7,
+  ).length;
+  const lowAccuracyCount = members.filter(
+    (m) => m.accuracyPct !== null && m.accuracyPct < 40 && m.problemsAttempted >= 5,
+  ).length;
   const avgAccuracy = (() => {
     const withData = members.filter((m) => m.accuracyPct !== null);
     if (withData.length === 0) return null;
@@ -122,7 +165,7 @@ export default function AdminCohortProgress({
         </p>
       </header>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid gap-3 sm:grid-cols-4 lg:grid-cols-6">
         <KpiCard
           label="활동 중 학생"
           value={`${activeCount}`}
@@ -143,6 +186,45 @@ export default function AdminCohortProgress({
           value={totalArticles.toLocaleString("ko-KR")}
           hint="distinct article (멤버 합산)"
         />
+        <KpiCard
+          label="비활성 (7일+)"
+          value={`${inactiveCount}`}
+          hint="최근 활동 없는 학생"
+          tone={inactiveCount > 0 ? "warn" : "default"}
+        />
+        <KpiCard
+          label="저성과 (<40%)"
+          value={`${lowAccuracyCount}`}
+          hint="문제 5개 이상 풀이 + 정답률 40% 미만"
+          tone={lowAccuracyCount > 0 ? "danger" : "default"}
+        />
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-muted-foreground">정렬:</span>
+        {(
+          [
+            { key: "default", label: "가입순" },
+            { key: "accuracy_asc", label: "정답률 낮은 순" },
+            { key: "attempts_desc", label: "풀이량 많은 순" },
+            { key: "recent_desc", label: "최근 활동순" },
+            { key: "inactive_first", label: "비활성 먼저" },
+          ] as Array<{ key: SortKey; label: string }>
+        ).map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => setSortKey(s.key)}
+            className={cn(
+              "border-input rounded-md border px-2 py-0.5",
+              sortKey === s.key
+                ? "bg-primary text-primary-foreground border-primary"
+                : "hover:bg-muted",
+            )}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
       {members.length === 0 ? (
@@ -179,7 +261,7 @@ export default function AdminCohortProgress({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((m, i) => (
+                {sortedMembers.map((m, i) => (
                   <MemberRow
                     key={m.profileId}
                     member={m}
@@ -211,7 +293,29 @@ function MemberRow({
         {index}
       </TableCell>
       <TableCell>
-        <p className="text-sm font-medium">{m.name || "(이름 없음)"}</p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className="text-sm font-medium">{m.name || "(이름 없음)"}</p>
+          {m.problemsAttempted >= 5 &&
+          m.accuracyPct !== null &&
+          m.accuracyPct < 40 ? (
+            <Badge
+              variant="outline"
+              className="border-rose-300 bg-rose-50 text-[9px] text-rose-700 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+              title="문제 5개+ 풀이 + 정답률 40% 미만"
+            >
+              저성과
+            </Badge>
+          ) : null}
+          {inactiveDays(m.lastActivityAt) >= 7 ? (
+            <Badge
+              variant="outline"
+              className="border-amber-300 bg-amber-50 text-[9px] text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+              title="최근 7일+ 활동 없음"
+            >
+              비활성
+            </Badge>
+          ) : null}
+        </div>
         {m.email ? (
           <p className="text-muted-foreground text-xs">{m.email}</p>
         ) : null}
@@ -291,19 +395,31 @@ function KpiCard({
   label,
   value,
   hint,
+  tone = "default",
 }: {
   label: string;
   value: string;
   hint: string;
+  tone?: "default" | "warn" | "danger";
 }) {
+  const valueClass =
+    tone === "danger"
+      ? "text-rose-600 dark:text-rose-400"
+      : tone === "warn"
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-primary";
   return (
     <Card className="py-4">
       <CardContent className="px-4">
         <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-medium tracking-wide uppercase">
-          <ListChecksIcon className="size-3" />
+          {tone === "danger" || tone === "warn" ? (
+            <AlertTriangleIcon className="size-3" />
+          ) : (
+            <ListChecksIcon className="size-3" />
+          )}
           {label}
         </p>
-        <p className="text-primary mt-1 text-2xl font-bold tracking-tight tabular-nums">
+        <p className={cn("mt-1 text-2xl font-bold tracking-tight tabular-nums", valueClass)}>
           {value}
         </p>
         <p className="text-muted-foreground mt-1 text-xs">{hint}</p>

@@ -99,6 +99,12 @@ const CONTENT_CARDS: AdminCardData[] = [
     icon: ListChecksIcon,
   },
   {
+    to: "/admin/problems/new?format=subjective",
+    title: "주관식 신규 출제",
+    subtitle: "2차 시험용 — 모범답안·채점기준·체크리스트 함께 작성",
+    icon: ListChecksIcon,
+  },
+  {
     to: "/admin/problems/by-system",
     title: "체계도 기반 문제 편집",
     subtitle: "01 총칙/보칙 ~ 08 국제출원 단위로 한 화면에서 일괄 편집",

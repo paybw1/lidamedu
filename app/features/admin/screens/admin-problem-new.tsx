@@ -37,10 +37,28 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
   const role = await getStaffRole(client, user.id);
   if (!role) throw data("Forbidden", { status: 403 });
-  return {};
+  const url = new URL(request.url);
+  const formatParam = url.searchParams.get("format");
+  const allowedFormats = [
+    "mc_short",
+    "mc_box",
+    "mc_case",
+    "ox",
+    "blank",
+    "subjective",
+  ];
+  const defaultFormat =
+    formatParam && allowedFormats.includes(formatParam)
+      ? formatParam
+      : "mc_short";
+  const defaultExamRound = defaultFormat === "subjective" ? "second" : "first";
+  return { defaultFormat, defaultExamRound };
 }
 
-export default function AdminProblemNew() {
+export default function AdminProblemNew({
+  loaderData,
+}: Route.ComponentProps) {
+  const { defaultFormat, defaultExamRound } = loaderData;
   return (
     <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
       <Link
@@ -85,7 +103,7 @@ export default function AdminProblemNew() {
             <Field label="시험 차수" required>
               <select
                 name="examRound"
-                defaultValue="first"
+                defaultValue={defaultExamRound}
                 className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
               >
                 <option value="first">1차</option>
@@ -116,7 +134,7 @@ export default function AdminProblemNew() {
             <Field label="유형" required>
               <select
                 name="format"
-                defaultValue="mc_short"
+                defaultValue={defaultFormat}
                 required
                 className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
               >
