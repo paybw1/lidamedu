@@ -367,23 +367,26 @@ export function BlanksRenderProvider({
   // 새 방식: onChange 안에서 (1) state 가 commit 되기 전에 cur.blur() 로 IME 강제 commit + focus 풀기,
   // (2) setTimeout(0) 으로 React commit 후 다음 input focus. cur.blur() 가 호출되는 시점엔 input 이
   // 아직 enabled 라 IME 가 정상 commit 됨.
-  // 자동 focus 이동 시각 기록 — 직후 일정 시간(ms) 내 첫 입력은 leak heuristic
-  // 에 한해 더 aggressive 하게 처리.
-  const lastAutoFocusAtRef = useRef<number>(0);
-  const scheduleFocusNext = useCallback((idx: number) => {
-    const cur = inputsRef.current.get(idx);
-    if (cur) {
-      try {
-        cur.blur();
-      } catch {
-        /* noop */
+  // 정답 후 자동 focus 이동은 한국어 IME composer 와 충돌 (자모 분리/leak prefill).
+  // 사용자는 Tab 키 또는 클릭으로 다음 빈칸으로 직접 이동. 다음 빈칸은 highlight
+  // 만 표시 — focus 는 사용자가 결정.
+  const [hintNextIdx, setHintNextIdx] = useState<number | null>(null);
+  const scheduleFocusNext = useCallback(
+    (idx: number) => {
+      const cur = inputsRef.current.get(idx);
+      if (cur) {
+        try {
+          cur.blur();
+        } catch {
+          /* noop */
+        }
       }
-    }
-    lastAutoFocusAtRef.current = Date.now();
-    // 다음 input 의 React key 변경으로 DOM 재마운트 → IME composer 잔여 완전 제거.
-    // useEffect(pendingFocusRef + remountSeq) 가 새 element 가 마운트된 직후 focus.
-    setTimeout(() => focusNextBlankRef.current(idx), 0);
-  }, []);
+      // 다음 빈칸 idx 만 결정 — 시각적 highlight 용. focus 는 안 줌.
+      const next = findNextBlankIdx(idx);
+      setHintNextIdx(next);
+    },
+    [findNextBlankIdx],
+  );
 
   const checkAnswer = useCallback(
     (idx: number, rawInput: string) => {
@@ -540,7 +543,9 @@ export function BlanksRenderProvider({
               value={showRevealed ? h.blank.answer : state.input}
               status={showRevealed ? "revealed" : state.status}
               widthCh={widthCh}
+              hintNext={hintNextIdx === h.blank.idx}
               onChange={(v) => checkAnswer(h.blank.idx, v)}
+              onFocusInput={() => setHintNextIdx(null)}
               registerInput={registerInput}
               voiceSupported={voice.isSupported}
               voiceActive={activeVoiceIdx === h.blank.idx}
@@ -566,6 +571,7 @@ export function BlanksRenderProvider({
       activeVoiceIdx,
       toggleVoice,
       remountSeq,
+      hintNextIdx,
     ],
   );
 
@@ -612,7 +618,9 @@ function BlankInputInline({
   value,
   status,
   widthCh,
+  hintNext,
   onChange,
+  onFocusInput,
   registerInput,
   voiceSupported,
   voiceActive,
@@ -623,7 +631,9 @@ function BlankInputInline({
   value: string;
   status: BlankState["status"];
   widthCh: number;
+  hintNext: boolean;
   onChange: (v: string) => void;
+  onFocusInput: () => void;
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   voiceSupported: boolean;
   voiceActive: boolean;
@@ -635,7 +645,9 @@ function BlankInputInline({
       ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-medium"
       : status === "wrong"
         ? "border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300"
-        : "border-muted-foreground/40 bg-muted/30 focus:border-primary",
+        : hintNext
+          ? "border-primary bg-primary/15 ring-2 ring-primary/40 animate-pulse"
+          : "border-muted-foreground/40 bg-muted/30 focus:border-primary",
   );
   const filled = status === "correct" || status === "revealed";
   // 진단용 — 첫 글자 타이핑 시 onChange 가 받는 raw value 를 console 에 기록.
@@ -682,6 +694,7 @@ function BlankInputInline({
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
           }
+          onFocusInput();
         }}
         onCompositionStart={(e) => {
           if (e.currentTarget.value !== value) {
