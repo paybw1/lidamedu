@@ -13,6 +13,7 @@ import {
 } from "~/core/components/ui/table";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listBlankSetsWithStatus } from "~/features/blanks/queries.server";
+import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 
 import type { Route } from "./+types/admin-blanks-list";
 
@@ -169,7 +170,9 @@ export default function AdminBlanksList({ loaderData }: Route.ComponentProps) {
                   return (
                     <TableRow key={s.setId}>
                       <TableCell className="font-mono text-xs">
-                        제{s.articleNumber}조
+                        {s.articleNumber
+                          ? articleDisplayPrefix(s.articleNumber)
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-sm">
                         {s.articleLabel.replace(/^제\d+조(?:의\d+)?\s*/, "")}
