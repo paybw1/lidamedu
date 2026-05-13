@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import {
   LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
@@ -325,7 +326,10 @@ export async function addPaperArticleLink(
     .is("deleted_at", null)
     .maybeSingle();
   if (!article)
-    return { ok: false, error: `제${articleNumber}조 조문 미존재` };
+    return {
+      ok: false,
+      error: `${articleDisplayPrefix(articleNumber)} 조문 미존재`,
+    };
   const { error } = await client.from("paper_article_links").insert({
     paper_id: paperId,
     article_id: article.article_id,

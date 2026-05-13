@@ -25,6 +25,7 @@ import type {
   HighlightColor,
   HighlightRecord,
 } from "./labels";
+import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 
 // JSONB → BookmarkStepNotes 안전 변환. 알 수 없는 키는 무시.
 function parseStepNotes(value: unknown): BookmarkStepNotes {
@@ -593,7 +594,9 @@ export async function listAllBookmarks(
           updatedAt: r.updated_at,
           lawCode: a.lawCode,
           primaryLabel: a.displayLabel,
-          secondaryLabel: a.articleNumber ? `제${a.articleNumber}조` : null,
+          secondaryLabel: a.articleNumber
+            ? articleDisplayPrefix(a.articleNumber)
+            : null,
           bodySnippet: null,
           href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
           oxTruth: null,
@@ -851,7 +854,9 @@ export async function listAllMemos(
           ...base,
           lawCode: a.lawCode,
           primaryLabel: a.displayLabel,
-          secondaryLabel: a.articleNumber ? `제${a.articleNumber}조` : null,
+          secondaryLabel: a.articleNumber
+            ? articleDisplayPrefix(a.articleNumber)
+            : null,
           bodySnippet: null,
           href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
         },
@@ -1085,7 +1090,9 @@ export async function listAllHighlights(
           ...base,
           lawCode: a.lawCode,
           primaryLabel: a.displayLabel,
-          secondaryLabel: a.articleNumber ? `제${a.articleNumber}조` : null,
+          secondaryLabel: a.articleNumber
+            ? articleDisplayPrefix(a.articleNumber)
+            : null,
           bodySnippet: null,
           href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
         },

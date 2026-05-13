@@ -4,6 +4,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   addArticleToDraft,
@@ -222,7 +223,7 @@ export async function action({ request }: Route.ActionArgs) {
     const article = await findArticleByNumber(client, lawId, articleNumber);
     if (!article) {
       return data(
-        { error: `제${articleNumber}조 조문 미존재` },
+        { error: `${articleDisplayPrefix(articleNumber)} 조문 미존재` },
         { status: 400 },
       );
     }

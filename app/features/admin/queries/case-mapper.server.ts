@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export interface CaseLinkChip {
@@ -211,7 +212,11 @@ export async function addCaseArticleLink(
     .eq("level", "article")
     .is("deleted_at", null)
     .maybeSingle();
-  if (!article) return { ok: false, error: `제${articleNumber}조 조문 미존재` };
+  if (!article)
+    return {
+      ok: false,
+      error: `${articleDisplayPrefix(articleNumber)} 조문 미존재`,
+    };
 
   const { error } = await client.from("article_case_links").insert({
     article_id: article.article_id,

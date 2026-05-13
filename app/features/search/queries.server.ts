@@ -4,7 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-import { articleSlug } from "~/features/laws/lib/identifier";
+import { articleDisplayPrefix, articleSlug } from "~/features/laws/lib/identifier";
 
 export interface SearchHit {
   group: "article" | "case" | "problem" | "memo" | "bookmark";
@@ -148,7 +148,7 @@ export async function runGlobalSearch(
           group: "article",
           id: r.article_id,
           primaryLabel: r.display_label,
-          secondaryLabel: `제${r.article_number}조`,
+          secondaryLabel: articleDisplayPrefix(r.article_number),
           bodySnippet: null,
           href: `/subjects/${r.laws.law_code}/articles/${articleSlug(r.article_number)}`,
           lawCode: r.laws.law_code,

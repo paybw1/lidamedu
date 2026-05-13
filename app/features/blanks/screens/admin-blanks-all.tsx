@@ -34,6 +34,7 @@ import {
   parseArticleBody,
   type ArticleBody,
 } from "~/features/laws/lib/article-body";
+import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import {
   lawSubjectSlugSchema,
   type LawSubjectSlug,
@@ -647,10 +648,10 @@ function ArticleEditCard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              제{articleNumber}조
+              {articleDisplayPrefix(articleNumber)}
             </p>
             <h2 className="text-base font-bold tracking-tight">
-              {displayLabel || `제${articleNumber}조`}
+              {displayLabel || articleDisplayPrefix(articleNumber)}
             </h2>
             {importance > 0 ? (
               <span className="text-amber-600 text-xs">{"★".repeat(importance)}</span>
