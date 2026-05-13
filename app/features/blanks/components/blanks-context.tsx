@@ -627,7 +627,19 @@ function BlankInputInline({
       className="inline-flex items-baseline"
     >
       <input
-        ref={(el) => registerInput(idx, el)}
+        ref={(el) => {
+          registerInput(idx, el);
+          // ref callback 은 React mount 직후 동기 호출 — Chrome autofill 보다
+          // 먼저. 이 시점에 DOM value 를 controlled value 로 강제 set 해두면
+          // autofill 이 적용되기 전에 우리 값이 자리잡음.
+          if (el && el.value !== value) {
+            try {
+              el.value = value;
+            } catch {
+              /* noop */
+            }
+          }
+        }}
         type="text"
         className={cls}
         style={{ width: `${widthCh}ch` }}
