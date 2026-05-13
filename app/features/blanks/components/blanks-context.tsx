@@ -390,18 +390,15 @@ export function BlanksRenderProvider({
       const blank = blanks.find((b) => b.idx === idx);
       if (!blank?.answer) return;
 
-      // 자동 focus 이동 직후의 prefill leak 차단.
+      // 외부 메커니즘(IME 단어학습/Ginger 같은 확장/autofill) 이 input 에
+      // 직전 답 (또는 그 일부) 를 prefill 하는 leak 차단.
       //
-      // 패턴: 정답 X 입력 → 자동 이동 → 다음 빈칸에 외부 메커니즘(IME 학습/확장
-      // /autofill)이 X 의 일부 (또는 다른 빈칸 답) 를 prefill → 사용자 첫 글자
-      // append → onChange("{leak}{사용자입력}").
-      //
-      // 가장 robust 한 방어 (3 단계):
-      //  (1) raw === 정답 또는 정답 startsWith → 손대지 않음 (정상 paste 등)
-      //  (2) 자동 이동 직후 1500ms 이내 첫 입력 (prev=='', rawLen >= 2):
-      //      한국어 IME 첫 입력은 자모 단독(1글자) 또는 합성된 1글자가 정상.
-      //      길이 ≥ 2 면 leak 의심 → raw 의 마지막 1글자만 채택.
-      //  (3) 그 외에는 기존 정답 substring 매칭 (head/body 분리 후 다른 답 제거).
+      // 처리 (모든 onChange):
+      //  (1) raw === 정답 또는 정답 startsWith → 손대지 않음 (정상 입력 보호)
+      //  (2) prev 가 raw prefix 면 head 분리, 아니면 head=''
+      //  (3) body 안에서 다른 빈칸 정답을 substring 매칭으로 모두 제거
+      //  (4) 그래도 변화 없고 (= 정답 통째 매칭 실패) 첫 입력 + body.length ≥ 2
+      //      → 마지막 1글자만 채택 (한국어 IME 첫 글자 fallback)
       let input = rawInput;
       const prev = states[idx]?.input ?? "";
       const cur = blank.answer;
@@ -410,46 +407,50 @@ export function BlanksRenderProvider({
       const isAnswerPrefix =
         rawInput.length > 0 &&
         normalizeAnswer(cur).startsWith(normalizeAnswer(rawInput));
-      const justAutoFocused =
-        Date.now() - lastAutoFocusAtRef.current < 1500;
 
       if (!isExactAnswer && !isAnswerPrefix) {
-        if (justAutoFocused && prev.length === 0 && rawInput.length >= 2) {
-          // 자동 이동 직후 첫 입력 + 길이 ≥2 → leak 의심. 마지막 1글자만 채택.
-          input = rawInput.slice(-1);
-        } else {
-          // 기존 substring 매칭.
-          let body = input;
-          let head = "";
-          if (body.startsWith(prev)) {
-            head = prev;
-            body = body.slice(prev.length);
-          }
-          let changed = true;
-          let guard = 0;
-          while (changed && guard < 12 && body.length > 0) {
-            changed = false;
-            guard += 1;
-            for (const other of blanks) {
-              if (other.idx === idx || !other.answer) continue;
-              const ans = other.answer;
-              const pos = body.indexOf(ans);
-              if (pos !== -1) {
-                body = body.slice(0, pos) + body.slice(pos + ans.length);
-                changed = true;
-                break;
-              }
+        let body = input;
+        let head = "";
+        if (body.startsWith(prev) && prev.length > 0) {
+          head = prev;
+          body = body.slice(prev.length);
+        }
+        // 다른 빈칸 정답 substring 제거 — 가장 긴 정답부터 매칭 (짧은 게 longer 의
+        // 일부일 때 잘못 제거 방지).
+        const otherAnswers = blanks
+          .filter((b) => b.idx !== idx && b.answer)
+          .map((b) => b.answer)
+          .filter((a): a is string => !!a)
+          .sort((a, b) => b.length - a.length);
+        let changed = true;
+        let guard = 0;
+        while (changed && guard < 12 && body.length > 0) {
+          changed = false;
+          guard += 1;
+          for (const ans of otherAnswers) {
+            const pos = body.indexOf(ans);
+            if (pos !== -1) {
+              body = body.slice(0, pos) + body.slice(pos + ans.length);
+              changed = true;
+              break;
             }
           }
-          input = head + body;
+        }
+        let cleaned = head + body;
+
+        // 폴백: 매칭 실패한 leak 가능성. prev=='' 일 때 길이≥2 면 마지막 1글자
+        // 만 채택. 한국어 IME 첫 입력은 자모/완성형 1글자가 정상.
+        if (cleaned === rawInput && prev.length === 0 && rawInput.length >= 2) {
+          cleaned = rawInput.slice(-1);
         }
 
-        if (input !== rawInput) {
+        if (cleaned !== rawInput) {
+          input = cleaned;
           const el = inputsRef.current.get(idx);
-          if (el && el.value !== input) {
+          if (el && el.value !== cleaned) {
             try {
-              el.value = input;
-              el.setSelectionRange(input.length, input.length);
+              el.value = cleaned;
+              el.setSelectionRange(cleaned.length, cleaned.length);
             } catch {
               /* noop */
             }
