@@ -34,7 +34,17 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years";
+
+function extractFirstSummaryTitle(raw: unknown): string | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const first = raw[0];
+  if (!first || typeof first !== "object") return null;
+  const t = (first as Record<string, unknown>).title;
+  if (typeof t !== "string") return null;
+  const trimmed = t.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 type ExamMode = "any" | "exam_1st" | "exam_2nd";
 
@@ -83,6 +93,7 @@ async function listLatestCases(
     isEnBanc: r.is_en_banc,
     importance: r.importance ?? 1,
     summaryTitle: r.summary_title,
+    summaryFirstTitle: extractFirstSummaryTitle(r.summary_items),
     subjectLaws: r.subject_laws ?? [],
     exam1stYears: r.exam_1st_years ?? [],
     exam2ndYears: r.exam_2nd_years ?? [],
@@ -278,21 +289,27 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
                     </Link>
                     {c.exam1stYears.length + c.exam2ndYears.length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {c.exam1stYears.map((y) => (
-                          <ExamYearChip
-                            key={`1-${y}`}
-                            subjectSlug={firstSubject as LawSubjectSlug}
-                            round="first"
-                            year={y}
-                          />
-                        ))}
-                        {c.exam2ndYears.map((y) => (
-                          <ExamYearChip
-                            key={`2-${y}`}
-                            subjectSlug={firstSubject as LawSubjectSlug}
-                            round="second"
-                            year={y}
-                          />
+                        {[...c.exam1stYears]
+                          .sort((a, b) => a - b)
+                          .map((y) => (
+                            <ExamYearChip
+                              key={`1-${y}`}
+                              subjectSlug={firstSubject as LawSubjectSlug}
+                              round="first"
+                              year={y}
+                              caseId={c.caseId}
+                            />
+                          ))}
+                        {[...c.exam2ndYears]
+                          .sort((a, b) => a - b)
+                          .map((y) => (
+                            <ExamYearChip
+                              key={`2-${y}`}
+                              subjectSlug={firstSubject as LawSubjectSlug}
+                              round="second"
+                              year={y}
+                              caseId={c.caseId}
+                            />
                         ))}
                       </div>
                     ) : null}

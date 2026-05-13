@@ -19,16 +19,18 @@ export async function getRelatedCasesByArticle(
   client: SupabaseClient<Database>,
   articleId: string,
 ): Promise<RelatedCase[]> {
+  // dangling link 보호: cases.deleted_at IS NULL 인 row 만 노출 — 같은 사건번호로
+  // 재등록되어 link 가 둘 남는 상황에서도 활성 row 만 chip 으로 노출된다.
   const { data, error } = await client
     .from("article_case_links")
     .select(
-      "relation_type, note, cases(case_id, case_number, case_title, summary_title, decided_at, importance)",
+      "relation_type, note, cases(case_id, case_number, case_title, summary_title, decided_at, importance, deleted_at)",
     )
     .eq("article_id", articleId);
 
   if (error) throw error;
   return (data ?? [])
-    .filter((row) => row.cases !== null)
+    .filter((row) => row.cases !== null && row.cases.deleted_at === null)
     .map((row) => {
       const c = row.cases!;
       return {
@@ -52,13 +54,13 @@ export async function getRelatedArticlesByCase(
   const { data, error } = await client
     .from("article_case_links")
     .select(
-      "relation_type, note, articles(article_id, article_number, display_label, importance, path)",
+      "relation_type, note, articles(article_id, article_number, display_label, importance, path, deleted_at)",
     )
     .eq("case_id", caseId);
 
   if (error) throw error;
   return (data ?? [])
-    .filter((row) => row.articles !== null)
+    .filter((row) => row.articles !== null && row.articles.deleted_at === null)
     .map((row) => {
       const a = row.articles!;
       return {
@@ -82,13 +84,13 @@ export async function getRelatedArticlesByArticle(
       client
         .from("article_article_links")
         .select(
-          "relation_type, note, other:articles!article_article_links_article_b_fkey(article_id, article_number, display_label, importance)",
+          "relation_type, note, other:articles!article_article_links_article_b_fkey(article_id, article_number, display_label, importance, deleted_at)",
         )
         .eq("article_a", articleId),
       client
         .from("article_article_links")
         .select(
-          "relation_type, note, other:articles!article_article_links_article_a_fkey(article_id, article_number, display_label, importance)",
+          "relation_type, note, other:articles!article_article_links_article_a_fkey(article_id, article_number, display_label, importance, deleted_at)",
         )
         .eq("article_b", articleId),
     ]);
@@ -97,10 +99,10 @@ export async function getRelatedArticlesByArticle(
   if (bErr) throw bErr;
 
   const merge = (
-    rows: { relation_type: AaRelationType; note: string | null; other: { article_id: string; article_number: string | null; display_label: string; importance: number | null } | null }[],
+    rows: { relation_type: AaRelationType; note: string | null; other: { article_id: string; article_number: string | null; display_label: string; importance: number | null; deleted_at: string | null } | null }[],
   ): RelatedArticle[] =>
     rows
-      .filter((r) => r.other !== null)
+      .filter((r) => r.other !== null && r.other.deleted_at === null)
       .map((r) => {
         const o = r.other!;
         return {

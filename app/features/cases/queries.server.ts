@@ -24,7 +24,7 @@ import type {
 
 // list 쿼리에서 select 하는 컬럼 묶음 — DRY.
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years";
 
 interface CaseListRow {
   case_id: string;
@@ -36,9 +36,20 @@ interface CaseListRow {
   is_en_banc: boolean;
   importance: number | null;
   summary_title: string | null;
+  summary_items: unknown;
   subject_laws: string[];
   exam_1st_years: number[] | null;
   exam_2nd_years: number[] | null;
+}
+
+function extractFirstSummaryTitle(raw: unknown): string | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const first = raw[0];
+  if (!first || typeof first !== "object") return null;
+  const t = (first as Record<string, unknown>).title;
+  if (typeof t !== "string") return null;
+  const trimmed = t.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function rowToListItem(row: CaseListRow): CaseListItem {
@@ -52,6 +63,7 @@ function rowToListItem(row: CaseListRow): CaseListItem {
     isEnBanc: row.is_en_banc,
     importance: row.importance ?? 1,
     summaryTitle: row.summary_title,
+    summaryFirstTitle: extractFirstSummaryTitle(row.summary_items),
     subjectLaws: row.subject_laws ?? [],
     exam1stYears: row.exam_1st_years ?? [],
     exam2ndYears: row.exam_2nd_years ?? [],
@@ -389,5 +401,39 @@ export async function getCaseById(
     fullTextPdf: data.full_text_pdf,
     commentSource: data.comment_source,
     commentBodyMd: data.comment_body_md,
+  };
+}
+
+// soft-deleted case 에 진입한 경우 — 같은 사건번호로 재등록된 활성 row 가 있으면
+// 그 case_id 를 반환해 case-viewer 가 redirect 할 수 있게 한다.
+// 활성 row 가 없으면 deleted case 자체의 정보를 반환 (친절 404 안내용).
+export async function findActiveCaseByDeletedId(
+  client: SupabaseClient<Database>,
+  caseId: string,
+): Promise<{
+  replacementCaseId: string | null;
+  deletedCaseNumber: string | null;
+}> {
+  const { data: deletedRow } = await client
+    .from("cases")
+    .select("case_number, deleted_at")
+    .eq("case_id", caseId)
+    .maybeSingle();
+  if (!deletedRow || !deletedRow.deleted_at) {
+    // case 가 아예 없거나(잘못된 UUID) deleted 가 아님(다른 원인 — 권한 등) → fallback 없음.
+    return {
+      replacementCaseId: null,
+      deletedCaseNumber: deletedRow?.case_number ?? null,
+    };
+  }
+  const { data: activeRow } = await client
+    .from("cases")
+    .select("case_id")
+    .eq("case_number", deletedRow.case_number)
+    .is("deleted_at", null)
+    .maybeSingle();
+  return {
+    replacementCaseId: activeRow?.case_id ?? null,
+    deletedCaseNumber: deletedRow.case_number,
   };
 }

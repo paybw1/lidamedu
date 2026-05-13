@@ -20,6 +20,9 @@ export interface CaseListItem {
   isEnBanc: boolean;
   importance: number;
   summaryTitle: string | null;
+  // 복수 요지(summary_items)의 [1] 제목 — list 화면 사건명 컬럼에서 우선 표시.
+  // summary_items 가 비었으면 null. legacy summary_title 보다 우선.
+  summaryFirstTitle: string | null;
   subjectLaws: string[];
   exam1stYears: number[];
   exam2ndYears: number[];

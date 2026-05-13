@@ -16,6 +16,7 @@ export interface CaseMapperRow {
   caseNumber: string;
   caseTitle: string;
   summaryTitle: string | null;
+  summaryFirstTitle: string | null;
   caseType: string | null;
   decidedAt: string;
   court: string;
@@ -59,7 +60,7 @@ export async function listCasesForMapper(
   let q = client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_title, case_type, summary_title, importance, subject_laws",
+      "case_id, court, decided_at, case_number, case_title, case_type, summary_title, summary_items, importance, subject_laws",
       { count: "exact" },
     )
     .contains("subject_laws", [options.lawCode])
@@ -142,11 +143,19 @@ export async function listCasesForMapper(
         Number(b.articleNumber.split("의")[0]),
     );
     const articleNumbers = links.map((x) => x.articleNumber);
+    // summary_items[0].title — list 사건명 컬럼에서 우선 표시.
+    let summaryFirstTitle: string | null = null;
+    if (Array.isArray(c.summary_items) && c.summary_items.length > 0) {
+      const first = c.summary_items[0] as Record<string, unknown> | null;
+      const t = first && typeof first.title === "string" ? first.title.trim() : "";
+      summaryFirstTitle = t.length > 0 ? t : null;
+    }
     return {
       caseId: c.case_id,
       caseNumber: c.case_number,
       caseTitle: c.case_title,
       summaryTitle: c.summary_title,
+      summaryFirstTitle,
       caseType: c.case_type,
       decidedAt: c.decided_at,
       court: c.court,

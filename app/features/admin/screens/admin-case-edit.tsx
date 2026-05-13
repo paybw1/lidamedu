@@ -15,6 +15,8 @@ import { useEffect, useRef } from "react";
 import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
 
+import { reflowNumbering } from "~/features/cases/lib/reflow-numbering";
+
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -70,6 +72,7 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   const isNew = kase === null;
 
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
+
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -215,17 +218,19 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               />
             </Field>
             <Field label="요지 본문 (Markdown)" full>
-              <Textarea
+              <ReflowableTextarea
                 name="summaryBodyMd"
                 defaultValue={kase?.summary_body_md ?? ""}
                 rows={5}
+                fieldLabel="요지 본문"
               />
             </Field>
             <Field label="판시이유 (Markdown)" full>
-              <Textarea
+              <ReflowableTextarea
                 name="reasoningMd"
                 defaultValue={kase?.reasoning_md ?? ""}
                 rows={8}
+                fieldLabel="판시이유"
               />
             </Field>
           </CardContent>
@@ -244,10 +249,11 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               />
             </Field>
             <Field label="비고/평석 본문 (Markdown)" full>
-              <Textarea
+              <ReflowableTextarea
                 name="commentBodyMd"
                 defaultValue={kase?.comment_body_md ?? ""}
                 rows={6}
+                fieldLabel="비고/평석 본문"
               />
             </Field>
           </CardContent>
@@ -309,6 +315,68 @@ function Field({
       </Label>
       {children}
     </div>
+  );
+}
+
+// 운영자 입력 보조: textarea 우상단 "넘버링 자동 정렬" 버튼.
+// 정규식이 날짜·사건번호 안의 구두점까지 분리할 수 있으므로 운영자가 결과 확인 후 적용.
+function ReflowableTextarea({
+  name,
+  defaultValue,
+  rows,
+  fieldLabel,
+}: {
+  name: string;
+  defaultValue: string;
+  rows: number;
+  fieldLabel: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  const onReflow = () => {
+    const el = ref.current;
+    if (!el) return;
+    const before = el.value;
+    if (!before.trim()) {
+      toast.info(`${fieldLabel} 본문이 비어 있습니다.`);
+      return;
+    }
+    const after = reflowNumbering(before);
+    if (after === before) {
+      toast.info("이미 단락이 분리되어 있어 변경할 부분이 없습니다.");
+      return;
+    }
+    if (
+      !confirm(
+        `${fieldLabel} 본문에 ${after.split("\n\n").length}개 단락 구분을 적용합니다.\n\n("2019. 12. 24." 같은 날짜·사건번호 안의 구두점도 함께 분리될 수 있으므로, 적용 후 결과를 확인하고 잘못된 곳은 직접 수정하세요.)\n\n적용할까요?`,
+      )
+    ) {
+      return;
+    }
+    el.value = after;
+    el.focus();
+    toast.success(`${fieldLabel} 넘버링 자동 정렬 적용 — 결과를 확인하고 저장하세요.`);
+  };
+  return (
+    <>
+      <div className="mb-1 flex items-center justify-end">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-[10px]"
+          onClick={onReflow}
+          title="줄바꿈 없이 붙은 1./가./1)/(1) 등 항목 앞에 단락 구분을 자동 삽입 — 결과 확인 후 잘못된 곳은 수동 수정"
+        >
+          넘버링 자동 정렬
+        </Button>
+      </div>
+      <Textarea
+        ref={ref}
+        name={name}
+        defaultValue={defaultValue}
+        rows={rows}
+      />
+    </>
   );
 }
 

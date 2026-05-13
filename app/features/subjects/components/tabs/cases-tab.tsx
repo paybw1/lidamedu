@@ -466,8 +466,24 @@ function CaseRow({
   subject: LawSubjectMeta;
   item: CaseListItem;
 }) {
-  const detailLabel = item.summaryTitle ?? item.caseTitle;
-  const subLabel = item.summaryTitle ? item.caseTitle : null;
+  // 사건명 컬럼 표시 우선순위: 요지 [1] 제목 → legacy summary_title → case_title (사건유형).
+  const detailLabel =
+    item.summaryFirstTitle ?? item.summaryTitle ?? item.caseTitle;
+  // subLabel 은 case_title 보조 노출. detailLabel 과 같거나(=요지가 없어 fallback 된 경우)
+  // 옆 caseType 컬럼과 같으면(=운영자가 같은 텍스트 입력한 흔한 경우) 중복이라 hide.
+  const caseTitleTrim = item.caseTitle.trim();
+  const detailTrim = detailLabel.trim();
+  const caseTypeTrim = (item.caseType ?? "").trim();
+  const subLabel =
+    (item.summaryFirstTitle || item.summaryTitle) &&
+    caseTitleTrim !== "" &&
+    caseTitleTrim !== detailTrim &&
+    caseTitleTrim !== caseTypeTrim
+      ? item.caseTitle
+      : null;
+  // 기출 chip — 1차/2차 구분. 각 그룹 안에서 연도 오름차순.
+  const sorted1st = [...item.exam1stYears].sort((a, b) => a - b);
+  const sorted2nd = [...item.exam2ndYears].sort((a, b) => a - b);
   return (
     <TableRow>
       <TableCell className="text-center">
@@ -494,22 +510,24 @@ function CaseRow({
         {subLabel ? (
           <p className="text-muted-foreground truncate text-xs">{subLabel}</p>
         ) : null}
-        {item.exam1stYears.length + item.exam2ndYears.length > 0 ? (
+        {sorted1st.length + sorted2nd.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
-            {item.exam1stYears.map((y) => (
+            {sorted1st.map((y) => (
               <ExamYearChip
                 key={`1-${y}`}
                 subjectSlug={subject.slug}
                 round="first"
                 year={y}
+                caseId={item.caseId}
               />
             ))}
-            {item.exam2ndYears.map((y) => (
+            {sorted2nd.map((y) => (
               <ExamYearChip
                 key={`2-${y}`}
                 subjectSlug={subject.slug}
                 round="second"
                 year={y}
+                caseId={item.caseId}
               />
             ))}
           </div>

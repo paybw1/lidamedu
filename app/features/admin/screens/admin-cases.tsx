@@ -368,7 +368,7 @@ function CaseMapperCard({
           viewTransition
           className="hover:text-primary block text-sm font-medium"
         >
-          {item.summaryTitle ?? item.caseTitle}
+          {item.summaryFirstTitle ?? item.summaryTitle ?? item.caseTitle}
         </Link>
 
         {item.links.length > 0 ? (

@@ -6,7 +6,7 @@ import {
   PanelRightIcon,
   StarIcon,
 } from "lucide-react";
-import { Link, data } from "react-router";
+import { Link, data, redirect, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -31,7 +31,9 @@ import { HighlightToolbar } from "~/features/annotations/components/highlight-to
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { COURT_LABELS } from "~/features/cases/labels";
+import { reflowNumberingSafe } from "~/features/cases/lib/reflow-numbering";
 import {
+  findActiveCaseByDeletedId,
   getCaseById,
   listCaseReferences,
 } from "~/features/cases/queries.server";
@@ -53,7 +55,6 @@ import { getRelatedProblemsByCase } from "~/features/problems/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
-  EXAM_LABEL,
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
@@ -93,7 +94,23 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   ]);
 
   if (!kase) {
-    throw data("Case not found", { status: 404 });
+    // soft-deleted case 진입 — 같은 사건번호의 활성 row 가 있으면 그쪽으로 redirect.
+    // (운영자가 case 를 삭제 후 같은 사건번호로 재등록한 경우 대비. dangling link 는
+    // cleanup_case_links_on_soft_delete 트리거가 정리하지만, 기존 즐겨찾기/공유 URL
+    // 같은 외부 진입은 여전히 deleted case_id 를 가리킬 수 있어 이 fallback 이 필요.)
+    const { replacementCaseId, deletedCaseNumber } =
+      await findActiveCaseByDeletedId(client, params.caseId);
+    if (replacementCaseId) {
+      throw redirect(
+        `/subjects/${lawCode}/cases/${replacementCaseId}?from=replaced`,
+      );
+    }
+    throw data(
+      deletedCaseNumber
+        ? `삭제된 판례입니다 (${deletedCaseNumber}). 같은 사건번호의 활성 판례가 없습니다.`
+        : "판례를 찾을 수 없습니다.",
+      { status: 404 },
+    );
   }
 
   if (!kase.subjectLaws.includes(lawCode)) {
@@ -174,6 +191,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
         ? [{ title: kase.summaryTitle ?? "", body: kase.summaryBodyMd }]
         : [];
 
+  // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
+  const [searchParams] = useSearchParams();
+  const replacedNotice = searchParams.get("from") === "replaced";
+
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
       <FlowNav
@@ -182,6 +203,11 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
         currentId={kase.caseId}
       />
       <HighlightToolbar targetType="case" targetId={kase.caseId} />
+      {replacedNotice ? (
+        <div className="mb-3 rounded-md border border-amber-300/60 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
+          이전에 같은 사건번호({kase.caseNumber})로 등록된 판례가 삭제되어, 새로 등록된 활성 판례로 이동했습니다.
+        </div>
+      ) : null}
       <Link
         to={`/subjects/${subject.slug}?tab=cases`}
         viewTransition
@@ -293,9 +319,6 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 {kase.caseType ? (
                   <Badge variant="secondary">{kase.caseType}</Badge>
                 ) : null}
-                <Badge variant="outline" className="text-xs">
-                  {EXAM_LABEL[subject.exam]}
-                </Badge>
                 {kase.isEnBanc ? (
                   <Badge variant="default">전원합의체</Badge>
                 ) : null}
@@ -315,27 +338,34 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   isEnBanc={kase.isEnBanc}
                 />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight">
-                {kase.caseTitle}
-              </h1>
+              {/* case_title 은 case_type Badge 와 사실상 같은 의미로 중복되어 헤더 h1 노출 제거.
+                  사건 식별은 위 caseNumber + caseType + court 묶음으로 충분. 학습 의미 있는
+                  요지 [1] 제목은 본문 "판결요지" 영역에서 노출된다. */}
               {kase.exam1stYears.length + kase.exam2ndYears.length > 0 ? (
                 <div className="flex flex-wrap gap-1 pt-1">
-                  {kase.exam1stYears.map((y) => (
-                    <ExamYearChip
-                      key={`1-${y}`}
-                      subjectSlug={subject.slug}
-                      round="first"
-                      year={y}
-                    />
-                  ))}
-                  {kase.exam2ndYears.map((y) => (
-                    <ExamYearChip
-                      key={`2-${y}`}
-                      subjectSlug={subject.slug}
-                      round="second"
-                      year={y}
-                    />
-                  ))}
+                  {/* 1차/2차 구분, 각 그룹 안에서 연도 오름차순. */}
+                  {[...kase.exam1stYears]
+                    .sort((a, b) => a - b)
+                    .map((y) => (
+                      <ExamYearChip
+                        key={`1-${y}`}
+                        subjectSlug={subject.slug}
+                        round="first"
+                        year={y}
+                        caseId={kase.caseId}
+                      />
+                    ))}
+                  {[...kase.exam2ndYears]
+                    .sort((a, b) => a - b)
+                    .map((y) => (
+                      <ExamYearChip
+                        key={`2-${y}`}
+                        subjectSlug={subject.slug}
+                        round="second"
+                        year={y}
+                        caseId={kase.caseId}
+                      />
+                    ))}
                 </div>
               ) : null}
             </CardHeader>
@@ -509,9 +539,9 @@ function SummaryBlock({
     displayTitle.trim() === caseTitle.trim();
   const shownTitle = duplicatesHeader ? "" : displayTitle;
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {(label || shownTitle) ? (
-        <p className="text-sm font-semibold leading-snug">
+        <p className="text-[16px] font-bold leading-snug tracking-tight">
           {label ? (
             <span className="text-primary mr-1.5">{label}</span>
           ) : null}
@@ -524,10 +554,14 @@ function SummaryBlock({
 }
 
 function Prose({ text }: { text: string }) {
-  // 빈 줄 2개로 단락 분리. 한 단락 안에선 줄바꿈 보존.
-  const paras = text.split(/\n{2,}/).filter((s) => s.trim() !== "");
+  // safe reflow — 패턴 앞이 한국어 글자(또는 한국어+종결 마침표/닫는 괄호)인 경우에만 단락 분리.
+  // 숫자 다음의 `12.` `1.` 같은 날짜·사건번호 마침표는 lookbehind 가 보호한다.
+  // 그 결과를 빈 줄 2개 단위로 단락 분리.
+  const paras = reflowNumberingSafe(text)
+    .split(/\n{2,}/)
+    .filter((s) => s.trim() !== "");
   return (
-    <div className="font-serif space-y-3 text-[15px] leading-relaxed">
+    <div className="space-y-3 text-[14px] leading-relaxed">
       {paras.map((p, i) => (
         <p key={i} className="whitespace-pre-line">
           {p}

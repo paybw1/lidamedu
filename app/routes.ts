@@ -221,6 +221,10 @@ export default [
           "features/subjects/screens/case-viewer.tsx",
         ),
         route(
+          "/:subject/cases/:caseId/exam/:round/:year",
+          "features/subjects/screens/case-exam-problems.tsx",
+        ),
+        route(
           "/:subject/problems/system",
           "features/subjects/screens/problems-system-index.tsx",
         ),
