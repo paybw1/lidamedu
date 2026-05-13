@@ -367,6 +367,9 @@ export function BlanksRenderProvider({
   // 새 방식: onChange 안에서 (1) state 가 commit 되기 전에 cur.blur() 로 IME 강제 commit + focus 풀기,
   // (2) setTimeout(0) 으로 React commit 후 다음 input focus. cur.blur() 가 호출되는 시점엔 input 이
   // 아직 enabled 라 IME 가 정상 commit 됨.
+  // 자동 focus 이동 시각 기록 — 직후 일정 시간(ms) 내 첫 입력은 leak heuristic
+  // 에 한해 더 aggressive 하게 처리.
+  const lastAutoFocusAtRef = useRef<number>(0);
   const scheduleFocusNext = useCallback((idx: number) => {
     const cur = inputsRef.current.get(idx);
     if (cur) {
@@ -376,6 +379,7 @@ export function BlanksRenderProvider({
         /* noop */
       }
     }
+    lastAutoFocusAtRef.current = Date.now();
     // 다음 input 의 React key 변경으로 DOM 재마운트 → IME composer 잔여 완전 제거.
     // useEffect(pendingFocusRef + remountSeq) 가 새 element 가 마운트된 직후 focus.
     setTimeout(() => focusNextBlankRef.current(idx), 0);
@@ -386,49 +390,66 @@ export function BlanksRenderProvider({
       const blank = blanks.find((b) => b.idx === idx);
       if (!blank?.answer) return;
 
-      // Chrome form-history autofill 누수 차단.
-      // 케이스 1) 첫 입력: prev='', raw='이용ㅅ' (autofill='이용' + 사용자='ㅅ')
-      // 케이스 2) 후속 입력: prev='ㅅ', raw='ㅅ이용사' (autofill 이 두번째 시도)
+      // 자동 focus 이동 직후의 prefill leak 차단.
       //
-      // 일반 처리: prev 부분을 raw prefix 에서 분리한 후, 나머지 안의 다른 빈칸
-      // 정답을 모두 제거 → 다시 prev 와 합침. 단 raw === answer (사용자가 정답을
-      // 정확히 paste/입력한 케이스) 는 손대지 않음.
+      // 패턴: 정답 X 입력 → 자동 이동 → 다음 빈칸에 외부 메커니즘(IME 학습/확장
+      // /autofill)이 X 의 일부 (또는 다른 빈칸 답) 를 prefill → 사용자 첫 글자
+      // append → onChange("{leak}{사용자입력}").
+      //
+      // 가장 robust 한 방어 (3 단계):
+      //  (1) raw === 정답 또는 정답 startsWith → 손대지 않음 (정상 paste 등)
+      //  (2) 자동 이동 직후 1500ms 이내 첫 입력 (prev=='', rawLen >= 2):
+      //      한국어 IME 첫 입력은 자모 단독(1글자) 또는 합성된 1글자가 정상.
+      //      길이 ≥ 2 면 leak 의심 → raw 의 마지막 1글자만 채택.
+      //  (3) 그 외에는 기존 정답 substring 매칭 (head/body 분리 후 다른 답 제거).
       let input = rawInput;
       const prev = states[idx]?.input ?? "";
       const cur = blank.answer;
       const isExactAnswer =
         normalizeAnswer(rawInput) === normalizeAnswer(cur);
-      if (!isExactAnswer) {
-        let body = input;
-        let head = "";
-        if (body.startsWith(prev)) {
-          head = prev;
-          body = body.slice(prev.length);
-        }
-        let changed = true;
-        let guard = 0;
-        while (changed && guard < 12 && body.length > 0) {
-          changed = false;
-          guard += 1;
-          for (const other of blanks) {
-            if (other.idx === idx || !other.answer) continue;
-            const ans = other.answer;
-            const pos = body.indexOf(ans);
-            if (pos !== -1) {
-              body = body.slice(0, pos) + body.slice(pos + ans.length);
-              changed = true;
-              break;
+      const isAnswerPrefix =
+        rawInput.length > 0 &&
+        normalizeAnswer(cur).startsWith(normalizeAnswer(rawInput));
+      const justAutoFocused =
+        Date.now() - lastAutoFocusAtRef.current < 1500;
+
+      if (!isExactAnswer && !isAnswerPrefix) {
+        if (justAutoFocused && prev.length === 0 && rawInput.length >= 2) {
+          // 자동 이동 직후 첫 입력 + 길이 ≥2 → leak 의심. 마지막 1글자만 채택.
+          input = rawInput.slice(-1);
+        } else {
+          // 기존 substring 매칭.
+          let body = input;
+          let head = "";
+          if (body.startsWith(prev)) {
+            head = prev;
+            body = body.slice(prev.length);
+          }
+          let changed = true;
+          let guard = 0;
+          while (changed && guard < 12 && body.length > 0) {
+            changed = false;
+            guard += 1;
+            for (const other of blanks) {
+              if (other.idx === idx || !other.answer) continue;
+              const ans = other.answer;
+              const pos = body.indexOf(ans);
+              if (pos !== -1) {
+                body = body.slice(0, pos) + body.slice(pos + ans.length);
+                changed = true;
+                break;
+              }
             }
           }
+          input = head + body;
         }
-        const cleaned = head + body;
-        if (cleaned !== rawInput) {
-          input = cleaned;
+
+        if (input !== rawInput) {
           const el = inputsRef.current.get(idx);
-          if (el && el.value !== cleaned) {
+          if (el && el.value !== input) {
             try {
-              el.value = cleaned;
-              el.setSelectionRange(cleaned.length, cleaned.length);
+              el.value = input;
+              el.setSelectionRange(input.length, input.length);
             } catch {
               /* noop */
             }
