@@ -2203,17 +2203,30 @@ function PasserBenchmarkCard({
             합격자 {benchmark.sampleSize}명과 본인 학습 누적을 비교합니다.
           </div>
         </div>
-        <Link
-          to="/study/passer-summaries"
-          style={{
-            fontSize: 11.5,
-            color: palette.primary,
-            fontWeight: 600,
-            textDecoration: "none",
-          }}
-        >
-          합격자 후기 보기 →
-        </Link>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Link
+            to="/study/passer-trend"
+            style={{
+              fontSize: 11.5,
+              color: palette.primary,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            12주 곡선 →
+          </Link>
+          <Link
+            to="/study/passer-summaries"
+            style={{
+              fontSize: 11.5,
+              color: palette.primary,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            합격자 후기 →
+          </Link>
+        </div>
       </div>
       {benchmark.fallbackReason ? (
         <div

@@ -410,6 +410,10 @@ export default [
         "features/exam-results/screens/passer-summaries.tsx",
       ),
       route(
+        "/study/passer-trend",
+        "features/exam-results/screens/passer-trend.tsx",
+      ),
+      route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",
       ),

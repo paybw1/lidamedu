@@ -486,6 +486,7 @@
 | feat-8-009 | **합격자 학습 후기 모음 (anonymized)** — `/study/passer-summaries` 학생 누구나 접근. `listPasserSummaries({year, round, scienceSubject, limit})` — 분석 동의 + `study_summary_md` 보유 합격자만, 이름/이메일 마스킹. 표시: 연도·차수·점수 버킷(`60-64점` 등)·자연과학 선택·인증 chip·markdown 본문. 대시보드 미리보기 카드 3건 + 전체 페이지. | P1 | ✅ |
 | feat-8-010 | **시연·QA 시드 데이터 도구** — `profiles.is_synthetic` flag + `seedPasserData(count)`/`cleanupSeedPassers()`/`getSeedCount()` (seed.server.ts). `/admin/analytics/passers` 상단 SeedToolBox: 1~20명 일괄 생성 / 전체 삭제. 합성: auth user(disposable email) → 트리거가 profile 생성 → mark `is_synthetic=true`/`analytics_consent_at` → exam_results(`passed`, 점수 63~92, 60% verified) + study_summary_md 랜덤 → user_problem_attempts(1500~4000건, 정답률 60~85%) + study_sessions(180~340 활동일, 800~2400h). 삭제 시 auth.users.deleteUser → FK CASCADE 정리. 시연·영업·QA 용도, 실제 합격자가 모이면 분석에서 옵션 필터링 가능. | P1 | ✅ |
 | feat-8-011 | **약점 단원 합격자 가이드** — 대시보드 "약점 단원 (체계도)" 카드 각 row 에 `PasserLawHint` 인라인 chip. `getPasserLawAverages()` — 분석 동의 합격자의 과목(law_code)별 평균 풀이 회수/정답률/learners. 행 데이터: "합격자 평균 N회 · M% 정답률 · +K회 더 풀어 보세요" (본인이 미달 시) / "이미 합격자 평균 이상" (둘 다 상회 시). tone 3단계(rose/blue/emerald). | P1 | ✅ |
+| feat-8-012 | **합격자 학습 곡선 12주 비교** — `/study/passer-trend` 학생 누구나 접근. `getPasserTrendData(userId)` — 합격자 응시일 근사(1차=2/25, 2차=7/20) 기준 D-11주~D-0주 주별 활동(study_sessions/user_problem_attempts) 평균 시리즈 + 본인의 next_exam_year/round 기반 D-W 매핑 + 현재 주차 marker. 3종 SVG 라인 차트(주별 학습 시간 / 풀이 회수 / 정답률) — 합격자 평균(solid) + 본인 곡선(dashed) + "지금" 세로선. 표본/fallback/계획 미설정 안내 배너. 대시보드 PasserBenchmarkCard 에 "12주 곡선 →" 진입 링크. | P1 | ✅ |
 | feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).
@@ -604,6 +605,7 @@
 | 시험 결과 알림 cron | `/api/cron/exam-result-reminder` | feat-8-005 |
 | 합격자 케이스 분석 | `/admin/analytics/passers` | feat-8-006 |
 | 합격자 학습 후기 | `/study/passer-summaries` | feat-8-009 |
+| 합격자 학습 곡선 비교 | `/study/passer-trend` | feat-8-012 |
 | 사용자 관리 | `/admin/users` | feat-7-012 |
 | 공지사항 발송 | `/admin/announcements` | feat-7-011 |
 | 공지사항 수신함 | `/announcements` | feat-7-011 |

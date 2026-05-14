@@ -781,6 +781,253 @@ export async function getPasserLawAverages(): Promise<
   return out;
 }
 
+// ─── Phase C: 학습 곡선 12주 비교 ───
+// 합격자: 응시일 기준 D-12주 ~ D-0주 주별 평균(시간/풀이수/정답률).
+// 본인: next_exam_year/round 기반 응시일 추정 + 현재 D-W 주차 매핑.
+
+const TREND_WEEKS = 12;
+
+// 변리사 시험 응시일 근사 — 실제 일자는 매년 다르나, 합격자별 정렬을 위한 기준일.
+//  1차: 2월 마지막 토요일 근사 → 2월 25일
+//  2차: 7월 셋째 토요일 근사 → 7월 20일
+function approximateExamDateMs(year: number, round: ExamRound): number {
+  const month = round === "first" ? 1 : 6; // 0-indexed
+  const day = round === "first" ? 25 : 20;
+  return new Date(Date.UTC(year, month, day, 0, 0, 0)).getTime();
+}
+
+export interface WeeklyTrendPoint {
+  weeksToExam: number; // -12 (12주 전) ~ 0 (응시 주)
+  passerMean: number | null;
+  passerN: number;
+  user: number | null;
+}
+
+export interface PasserTrendData {
+  sampleSize: number;
+  matchYear: number;
+  matchRound: ExamRound;
+  fallbackUsed: boolean;
+  fallbackReason: string | null;
+  hasPlan: boolean;
+  userCurrentWeek: number | null; // 음수 = D-N주, 0 = 시험 주, 양수 = 시험 지남
+  // 3종 시리즈
+  studyHours: WeeklyTrendPoint[]; // 주별 시간 (그 주에 학습한 시간)
+  problemAttempts: WeeklyTrendPoint[]; // 주별 누적 풀이 수
+  accuracyPct: WeeklyTrendPoint[]; // 주별 정답률
+}
+
+interface PassDailyActivity {
+  examDateMs: number;
+  problemsByWeek: Map<number, { attempts: number; correct: number }>;
+  studyMsByWeek: Map<number, number>;
+}
+
+async function fetchPasserActivity(
+  admin: SupabaseClient<Database>,
+  userId: string,
+  examDateMs: number,
+): Promise<PassDailyActivity> {
+  const windowStartMs = examDateMs - TREND_WEEKS * 7 * 86_400_000;
+  const windowEndMs = examDateMs;
+  const startIso = new Date(windowStartMs).toISOString();
+  const endIso = new Date(windowEndMs).toISOString();
+
+  const [problemsRes, sessionsRes] = await Promise.all([
+    admin
+      .from("user_problem_attempts")
+      .select("is_correct, attempted_at")
+      .eq("user_id", userId)
+      .gte("attempted_at", startIso)
+      .lte("attempted_at", endIso)
+      .limit(20000),
+    admin
+      .from("study_sessions")
+      .select("started_at, duration_ms")
+      .eq("user_id", userId)
+      .gte("started_at", startIso)
+      .lte("started_at", endIso)
+      .limit(20000),
+  ]);
+
+  const problemsByWeek = new Map<number, { attempts: number; correct: number }>();
+  for (const r of problemsRes.data ?? []) {
+    const t = new Date(r.attempted_at).getTime();
+    const week = Math.floor((examDateMs - t) / (7 * 86_400_000)) * -1; // 음수
+    const cur =
+      problemsByWeek.get(week) ?? { attempts: 0, correct: 0 };
+    cur.attempts += 1;
+    if (r.is_correct) cur.correct += 1;
+    problemsByWeek.set(week, cur);
+  }
+
+  const studyMsByWeek = new Map<number, number>();
+  for (const s of sessionsRes.data ?? []) {
+    if (!s.started_at) continue;
+    const t = new Date(s.started_at).getTime();
+    const week = Math.floor((examDateMs - t) / (7 * 86_400_000)) * -1;
+    studyMsByWeek.set(
+      week,
+      (studyMsByWeek.get(week) ?? 0) +
+        (typeof s.duration_ms === "number" ? s.duration_ms : 0),
+    );
+  }
+  return { examDateMs, problemsByWeek, studyMsByWeek };
+}
+
+export async function getPasserTrendData(
+  userId: string,
+): Promise<PasserTrendData | null> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("next_exam_year, next_exam_round")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  const hasPlan =
+    !!profile?.next_exam_year &&
+    (profile.next_exam_round === "first" ||
+      profile.next_exam_round === "second");
+
+  // 표본 — Phase C 컨설팅과 동일한 fallback chain
+  const candidates = await listPasserCases({ onlyConsented: true });
+  if (candidates.length === 0) return null;
+
+  let matchYear = hasPlan ? profile!.next_exam_year! : new Date().getFullYear();
+  let matchRound: ExamRound = hasPlan
+    ? (profile!.next_exam_round as ExamRound)
+    : "first";
+  let fallbackUsed = false;
+  let fallbackReason: string | null = null;
+
+  let matched = candidates.filter(
+    (c) => c.examYear === matchYear && c.examRound === matchRound,
+  );
+  if (matched.length < 3) {
+    const prev = candidates.filter(
+      (c) => c.examYear === matchYear - 1 && c.examRound === matchRound,
+    );
+    if (prev.length >= 3) {
+      matched = prev;
+      matchYear = matchYear - 1;
+      fallbackUsed = true;
+      fallbackReason = `${matchYear + 1}년 표본 부족 — ${matchYear}년 ${
+        matchRound === "first" ? "1차" : "2차"
+      } 합격자로 대체`;
+    } else {
+      matched = candidates;
+      fallbackUsed = true;
+      fallbackReason = "표본 부족 — 전체 동의 합격자로 대체";
+    }
+  }
+  if (matched.length === 0) return null;
+
+  // 합격자별 주별 활동 fetch
+  const perPasser: PassDailyActivity[] = await Promise.all(
+    matched.map((c) =>
+      fetchPasserActivity(
+        admin,
+        c.userId,
+        approximateExamDateMs(c.examYear, c.examRound),
+      ),
+    ),
+  );
+
+  // 본인 활동 — 같은 응시일 기준(매칭 year/round)으로 정렬
+  const studentExamYear = hasPlan ? profile!.next_exam_year! : matchYear;
+  const studentExamRound: ExamRound = hasPlan
+    ? (profile!.next_exam_round as ExamRound)
+    : matchRound;
+  const studentExamMs = approximateExamDateMs(
+    studentExamYear,
+    studentExamRound,
+  );
+  const userActivity = await fetchPasserActivity(admin, userId, studentExamMs);
+  const userCurrentWeek = hasPlan
+    ? Math.floor((studentExamMs - Date.now()) / (7 * 86_400_000)) * -1
+    : null;
+
+  // 주차별 평균 series 빌드
+  const studyHours: WeeklyTrendPoint[] = [];
+  const problemAttempts: WeeklyTrendPoint[] = [];
+  const accuracyPct: WeeklyTrendPoint[] = [];
+
+  for (let w = -TREND_WEEKS + 1; w <= 0; w++) {
+    // 합격자 평균
+    let hoursSum = 0;
+    let hoursN = 0;
+    let problemSum = 0;
+    let problemN = 0;
+    let accSum = 0;
+    let accN = 0;
+    for (const p of perPasser) {
+      const studyMs = p.studyMsByWeek.get(w) ?? 0;
+      hoursSum += studyMs / 3_600_000;
+      hoursN += 1;
+      const probs = p.problemsByWeek.get(w);
+      if (probs) {
+        problemSum += probs.attempts;
+        problemN += 1;
+        if (probs.attempts > 0) {
+          accSum += (probs.correct / probs.attempts) * 100;
+          accN += 1;
+        }
+      } else {
+        problemSum += 0;
+        problemN += 1;
+      }
+    }
+
+    // 본인 — userCurrentWeek 이상인 주차(미래)는 본인 값 null
+    const userVisible =
+      userCurrentWeek !== null && w >= userCurrentWeek - TREND_WEEKS && w <= userCurrentWeek
+        ? true
+        : userCurrentWeek === null
+          ? false
+          : w <= userCurrentWeek; // 본인이 지나간 주차만
+    const userStudyMs = userActivity.studyMsByWeek.get(w) ?? 0;
+    const userProbs = userActivity.problemsByWeek.get(w);
+    const userHours = userVisible ? userStudyMs / 3_600_000 : null;
+    const userProblems = userVisible ? userProbs?.attempts ?? 0 : null;
+    const userAcc =
+      userVisible && userProbs && userProbs.attempts > 0
+        ? Math.round((userProbs.correct / userProbs.attempts) * 100)
+        : null;
+
+    studyHours.push({
+      weeksToExam: w,
+      passerMean: hoursN > 0 ? hoursSum / hoursN : null,
+      passerN: hoursN,
+      user: userHours,
+    });
+    problemAttempts.push({
+      weeksToExam: w,
+      passerMean: problemN > 0 ? problemSum / problemN : null,
+      passerN: problemN,
+      user: userProblems,
+    });
+    accuracyPct.push({
+      weeksToExam: w,
+      passerMean: accN > 0 ? accSum / accN : null,
+      passerN: accN,
+      user: userAcc,
+    });
+  }
+
+  return {
+    sampleSize: matched.length,
+    matchYear,
+    matchRound,
+    fallbackUsed,
+    fallbackReason,
+    hasPlan,
+    userCurrentWeek,
+    studyHours,
+    problemAttempts,
+    accuracyPct,
+  };
+}
+
 // ─── 합격자 학습 요약 모음 (anonymized) ───
 
 export interface PasserSummary {
