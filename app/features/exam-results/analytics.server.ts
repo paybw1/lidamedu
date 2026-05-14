@@ -1255,3 +1255,143 @@ export async function getFailerBaseline(): Promise<GroupBaseline | null> {
   if (consented.length === 0) return null;
   return baselineFromCases(consented);
 }
+
+// ─── 랜딩 페이지 — 비로그인 사용자 사회적 증명용 공개 통계 ───
+// 인증·개인정보 없이 합격자 집합의 평균 지표만 노출.
+
+export interface PublicPlatformStats {
+  consentedPasserCount: number;
+  totalPasserCount: number; // 동의 안 한 합격자 포함
+  verifiedPasserCount: number;
+  avgStudyHours: number | null;
+  avgAccuracyPct: number | null;
+  avgProblemAttempts: number | null;
+  avgActiveDays: number | null;
+  totalSummaries: number; // 후기 작성 합격자 수
+}
+
+export async function getPublicPlatformStats(): Promise<PublicPlatformStats> {
+  const admin = adminClient as SupabaseClient<Database>;
+
+  // 합격자 카운트 — 동의자 + 전체 + 인증 (가볍게 count 만).
+  const [passerCount, verifiedCount, consentedRowsRes, summariesCount] =
+    await Promise.all([
+      admin
+        .from("exam_results")
+        .select("result_id", { head: true, count: "exact" })
+        .eq("status", "passed"),
+      admin
+        .from("exam_results")
+        .select("result_id", { head: true, count: "exact" })
+        .eq("status", "passed")
+        .eq("verification_status", "verified"),
+      admin
+        .from("exam_results")
+        .select(
+          "user_id, profiles!exam_results_user_id_fkey(analytics_consent_at)",
+        )
+        .eq("status", "passed")
+        .limit(500),
+      admin
+        .from("exam_results")
+        .select("result_id", { head: true, count: "exact" })
+        .eq("status", "passed")
+        .not("study_summary_md", "is", null),
+    ]);
+
+  const consentedUserIds = (consentedRowsRes.data ?? [])
+    .filter((r) => r.profiles?.analytics_consent_at !== null)
+    .map((r) => r.user_id);
+
+  let avgStudyHours: number | null = null;
+  let avgAccuracyPct: number | null = null;
+  let avgProblemAttempts: number | null = null;
+  let avgActiveDays: number | null = null;
+
+  if (consentedUserIds.length > 0) {
+    // 각 동의 합격자별 누적 학습 통계 — 응시 전년+해당 연도 구간 평균.
+    // listPasserCases 와 동일하지만 라이터하게(이메일 lookup 생략).
+    // 합격자별 examYear 정보가 필요 — consentedRowsRes 에서 user_id → exam_year 매핑.
+    const userYears = new Map<string, number>();
+    const consentedRows = consentedRowsRes.data ?? [];
+    for (const r of consentedRows) {
+      if (r.profiles?.analytics_consent_at === null) continue;
+      // 한 사용자가 같은 연도 1차/2차 모두 합격일 수 있음 — 가장 최근 연도.
+    }
+    // userYears 보강을 위해 exam_year 별도 fetch.
+    const { data: yearRows } = await admin
+      .from("exam_results")
+      .select("user_id, exam_year")
+      .eq("status", "passed")
+      .in("user_id", consentedUserIds);
+    for (const r of yearRows ?? []) {
+      const prev = userYears.get(r.user_id);
+      if (prev === undefined || r.exam_year > prev) {
+        userYears.set(r.user_id, r.exam_year);
+      }
+    }
+
+    const hours: number[] = [];
+    const accuracies: number[] = [];
+    const attempts: number[] = [];
+    const activeDayCounts: number[] = [];
+
+    await Promise.all(
+      Array.from(userYears.entries()).map(async ([uid, year]) => {
+        const startIso = `${year - 1}-01-01T00:00:00+09:00`;
+        const endIso = `${year}-12-31T23:59:59+09:00`;
+        const [problemsRes, sessionsRes] = await Promise.all([
+          admin
+            .from("user_problem_attempts")
+            .select("is_correct, attempted_at")
+            .eq("user_id", uid)
+            .gte("attempted_at", startIso)
+            .lte("attempted_at", endIso)
+            .limit(20000),
+          admin
+            .from("study_sessions")
+            .select("started_at, duration_ms")
+            .eq("user_id", uid)
+            .gte("started_at", startIso)
+            .lte("started_at", endIso)
+            .limit(20000),
+        ]);
+        const problems = problemsRes.data ?? [];
+        const sessions = sessionsRes.data ?? [];
+        let correct = 0;
+        for (const r of problems) if (r.is_correct) correct += 1;
+        const timeMs = sessions.reduce(
+          (s, r) => s + (typeof r.duration_ms === "number" ? r.duration_ms : 0),
+          0,
+        );
+        const dayKeys = new Set<string>();
+        for (const s of sessions) {
+          if (s.started_at) dayKeys.add(s.started_at.slice(0, 10));
+        }
+        hours.push(timeMs / 3_600_000);
+        attempts.push(problems.length);
+        activeDayCounts.push(dayKeys.size);
+        if (problems.length > 0)
+          accuracies.push((correct / problems.length) * 100);
+      }),
+    );
+
+    const mean = (arr: number[]) =>
+      arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+    avgStudyHours = mean(hours);
+    avgAccuracyPct = mean(accuracies);
+    avgProblemAttempts = mean(attempts);
+    avgActiveDays = mean(activeDayCounts);
+  }
+
+  return {
+    consentedPasserCount: consentedUserIds.length,
+    totalPasserCount: passerCount.count ?? 0,
+    verifiedPasserCount: verifiedCount.count ?? 0,
+    avgStudyHours,
+    avgAccuracyPct,
+    avgProblemAttempts,
+    avgActiveDays,
+    totalSummaries: summariesCount.count ?? 0,
+  };
+}

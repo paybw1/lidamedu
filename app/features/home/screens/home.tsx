@@ -9,6 +9,10 @@ import {
   COZY_PALETTES,
 } from "~/core/lib/cozy-tokens";
 import i18next from "~/core/lib/i18next.server";
+import {
+  getPublicPlatformStats,
+  type PublicPlatformStats,
+} from "~/features/exam-results/analytics.server";
 
 import type { Route } from "./+types/home";
 
@@ -21,9 +25,20 @@ export const meta: Route.MetaFunction = ({ data }) => {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const t = await i18next.getFixedT(request);
+  let stats: PublicPlatformStats | null = null;
+  try {
+    stats = await getPublicPlatformStats();
+  } catch (e) {
+    // best-effort — 통계 fetch 실패해도 랜딩은 정상 노출.
+    console.warn(
+      "[home] getPublicPlatformStats failed",
+      e instanceof Error ? e.message : String(e),
+    );
+  }
   return {
     title: t("home.title"),
     subtitle: t("home.subtitle"),
+    stats,
   };
 }
 
@@ -81,7 +96,8 @@ const STEPS = [
   },
 ];
 
-export default function Home() {
+export default function Home({ loaderData }: Route.ComponentProps) {
+  const stats = loaderData.stats;
   return (
     <div
       style={{
@@ -107,6 +123,9 @@ export default function Home() {
       />
 
       <Hero />
+      {stats && stats.consentedPasserCount > 0 ? (
+        <PasserStatsSection stats={stats} />
+      ) : null}
       <FeaturesSection />
       <SubjectsSection />
       <PreviewSection />
@@ -437,6 +456,302 @@ function HeroPreview() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function PasserStatsSection({ stats }: { stats: PublicPlatformStats }) {
+  const fmtHours = (h: number | null) =>
+    h === null ? "—" : `${Math.round(h).toLocaleString("ko-KR")}h`;
+  const fmtPct = (p: number | null) =>
+    p === null ? "—" : `${Math.round(p)}%`;
+  const fmtCount = (n: number | null) =>
+    n === null ? "—" : `${Math.round(n).toLocaleString("ko-KR")}`;
+
+  return (
+    <section
+      style={{
+        position: "relative",
+        zIndex: 1,
+        padding: "60px 24px",
+        maxWidth: 1200,
+        margin: "0 auto",
+      }}
+      aria-labelledby="passer-stats-heading"
+    >
+      <div
+        style={{
+          background: "#FFF",
+          borderRadius: 24,
+          border: `1px solid ${COZY_LINE}`,
+          padding: "32px 28px",
+          boxShadow: "0 4px 24px rgba(63, 90, 74, 0.06)",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: palette.tint,
+            color: palette.primary,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
+          }}
+        >
+          📊 합격자 데이터 기반 컨설팅
+        </div>
+        <h2
+          id="passer-stats-heading"
+          style={{
+            margin: "12px 0 0",
+            fontSize: "clamp(24px, 3.5vw, 36px)",
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.2,
+          }}
+        >
+          합격자의 학습 패턴이 곧 본인의 합격 지도가 됩니다
+        </h2>
+        <p
+          style={{
+            margin: "12px 0 0",
+            fontSize: 15,
+            color: COZY_INK_SOFT,
+            lineHeight: 1.6,
+            maxWidth: 720,
+          }}
+        >
+          실제 변리사 합격자가 직접 입력·동의한 학습 데이터(학습 시간, 문제 풀이,
+          정답률, 활동 일수)를 익명·집계 분석합니다. 가입하시면 본인 학습이
+          합격자 평균에 얼마나 가까운지 한눈에 확인할 수 있습니다.
+        </p>
+
+        <div
+          style={{
+            marginTop: 28,
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: 16,
+          }}
+          className="passer-stats-grid"
+        >
+          <StatCard
+            label="분석 합격자"
+            value={stats.consentedPasserCount.toLocaleString("ko-KR")}
+            unit="명"
+            sub={
+              stats.verifiedPasserCount > 0
+                ? `인증 ${stats.verifiedPasserCount}명 포함`
+                : `자가 신고 ${stats.totalPasserCount}명 중`
+            }
+            tone="primary"
+          />
+          <StatCard
+            label="합격자 평균 학습"
+            value={fmtHours(stats.avgStudyHours)}
+            unit=""
+            sub="응시 전년~당해 누적"
+            tone="emerald"
+          />
+          <StatCard
+            label="평균 문제 풀이"
+            value={fmtCount(stats.avgProblemAttempts)}
+            unit="회"
+            sub="시험 전 누적"
+            tone="violet"
+          />
+          <StatCard
+            label="평균 정답률"
+            value={fmtPct(stats.avgAccuracyPct)}
+            unit=""
+            sub={`활동 ${fmtCount(stats.avgActiveDays)}일`}
+            tone="amber"
+          />
+        </div>
+
+        <div
+          style={{
+            marginTop: 32,
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 14,
+          }}
+          className="passer-features-grid"
+        >
+          <FeatureTile
+            icon="📈"
+            title="합격자 평균 대비 비교"
+            body="본인 학습 지표 5종이 합격자 평균에 얼마나 가까운지 분위·차이로 표시"
+          />
+          <FeatureTile
+            icon="🎯"
+            title="자동 추천 액션"
+            body="합격자 데이터 + 본인 약점을 결합해 오늘 무엇을 해야 할지 처방"
+          />
+          <FeatureTile
+            icon="📅"
+            title="12주 학습 곡선"
+            body="합격자가 응시 D-12주에 어디까지 도달했는지 본인 곡선과 overlay"
+          />
+        </div>
+
+        <div
+          style={{
+            marginTop: 32,
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <Link
+            to="/join"
+            style={{
+              ...buttonBase,
+              background: palette.primary,
+              color: "#FFF",
+              boxShadow: "0 4px 18px rgba(63, 90, 74, 0.24)",
+            }}
+          >
+            가입하고 비교 보기 →
+          </Link>
+          {stats.totalSummaries > 0 ? (
+            <span style={{ fontSize: 12.5, color: COZY_INK_SOFT }}>
+              합격자가 직접 쓴 학습 후기 {stats.totalSummaries.toLocaleString("ko-KR")}건도 가입 후 열람 가능
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 720px) {
+          .passer-stats-grid { grid-template-columns: repeat(2, 1fr); }
+          .passer-features-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+const STAT_CARD_TONE: Record<
+  "primary" | "emerald" | "violet" | "amber",
+  { bg: string; ink: string; accent: string }
+> = {
+  primary: { bg: palette.tint, ink: palette.primary, accent: palette.primary },
+  emerald: { bg: "#ECFDF5", ink: "#065F46", accent: "#10B981" },
+  violet: { bg: "#F5F3FF", ink: "#5B21B6", accent: "#7C3AED" },
+  amber: { bg: "#FFFBEB", ink: "#92400E", accent: "#D97706" },
+};
+
+function StatCard({
+  label,
+  value,
+  unit,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  sub: string;
+  tone: keyof typeof STAT_CARD_TONE;
+}) {
+  const t = STAT_CARD_TONE[tone];
+  return (
+    <div
+      style={{
+        background: t.bg,
+        borderRadius: 16,
+        padding: "18px 20px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10.5,
+          color: t.ink,
+          opacity: 0.8,
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 4,
+          color: t.ink,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 30,
+            fontWeight: 800,
+            letterSpacing: "-0.02em",
+            fontVariantNumeric: "tabular-nums",
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+        {unit ? (
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{unit}</span>
+        ) : null}
+      </div>
+      <div
+        style={{
+          marginTop: 8,
+          fontSize: 11,
+          color: COZY_INK_SOFT,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+function FeatureTile({
+  icon,
+  title,
+  body,
+}: {
+  icon: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div
+      style={{
+        background: COZY_BASE,
+        borderRadius: 14,
+        border: `1px solid ${COZY_LINE}`,
+        padding: "16px 18px",
+      }}
+    >
+      <div style={{ fontSize: 22, marginBottom: 8 }}>{icon}</div>
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: COZY_INK,
+          marginBottom: 4,
+        }}
+      >
+        {title}
+      </div>
+      <p style={{ margin: 0, fontSize: 12.5, color: COZY_INK_SOFT, lineHeight: 1.5 }}>
+        {body}
+      </p>
     </div>
   );
 }
