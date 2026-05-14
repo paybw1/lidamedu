@@ -60,8 +60,10 @@ import {
   getOverallProgress,
   getStudyAidCounts,
   getUserAccuracyTrend,
+  getUserPassPredictionTrend,
   getUserSubjectiveStats,
   getWeakAreas,
+  type PassPredictionSnapshotItem,
   type UserWeeklyAccuracyItem,
 } from "~/features/study/queries.server";
 
@@ -130,6 +132,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getUserRecitationStats(client, user.id),
     getUserAccuracyTrend(client, user.id, 12),
   ]);
+  const passTrend = await getUserPassPredictionTrend(client, user.id, 30);
 
   return {
     overall,
@@ -143,6 +146,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     scienceProgress,
     weakAreas,
     accuracyTrend,
+    passTrend,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -262,6 +266,7 @@ function OverviewTab({
     daily,
     scienceProgress,
     accuracyTrend,
+    passTrend,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const firstExamSubjects = subjectsProgress.filter(
@@ -325,6 +330,7 @@ function OverviewTab({
       </div>
 
       <AccuracyTrendCard weeks={accuracyTrend.weeks} />
+      <PassPredictionTrendCard items={passTrend} />
 
       <Card>
         <CardHeader>
@@ -1037,6 +1043,88 @@ function accuracyTrendBgTone(pct: number | null): string {
   if (pct >= 40) return "bg-amber-500/80";
   if (pct >= 20) return "bg-orange-500/80";
   return "bg-rose-500/80";
+}
+
+// feat-7-027 — 합격 진단 점수 추이 (최근 30일)
+function passScoreBgTone(score: number): string {
+  if (score >= 80) return "bg-emerald-500/80";
+  if (score >= 60) return "bg-lime-500/80";
+  if (score >= 40) return "bg-amber-500/80";
+  if (score >= 20) return "bg-orange-500/80";
+  return "bg-rose-500/80";
+}
+
+function PassPredictionTrendCard({
+  items,
+}: {
+  items: PassPredictionSnapshotItem[];
+}) {
+  if (items.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            합격 진단 점수 추이
+          </p>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center text-xs">
+            아직 스냅샷이 없습니다. 매일 자동 누적됩니다.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  const latest = items[items.length - 1];
+  const oldest = items[0];
+  const delta = latest.score - oldest.score;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            합격 진단 점수 추이 ({items.length}일)
+          </p>
+          <Badge variant="outline" className="text-[10px]">
+            현재 {latest.score} · 시작 {oldest.score} ·{" "}
+            <span
+              className={cn(
+                delta > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : delta < 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "",
+              )}
+            >
+              {delta > 0 ? "+" : ""}
+              {delta}
+            </span>
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-end gap-1">
+          {items.map((it) => (
+            <div
+              key={it.snapshotDate}
+              className="flex flex-1 flex-col gap-1"
+              title={`${it.snapshotDate} · ${it.score}점 (${it.rating})`}
+            >
+              <div className="bg-muted/40 relative flex h-20 items-end overflow-hidden rounded">
+                <div
+                  className={cn(
+                    "w-full transition-all",
+                    passScoreBgTone(it.score),
+                  )}
+                  style={{ height: `${Math.max(2, it.score)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function AccuracyTrendCard({ weeks }: { weeks: UserWeeklyAccuracyItem[] }) {

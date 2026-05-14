@@ -2073,3 +2073,30 @@ export async function getUserAccuracyTrend(
   }
   return { weeks };
 }
+
+// 합격 진단 점수 시계열 (feat-7-027) — pass_prediction_snapshots 의 최근 N일.
+export interface PassPredictionSnapshotItem {
+  snapshotDate: string; // YYYY-MM-DD
+  score: number;
+  rating: string;
+}
+
+export async function getUserPassPredictionTrend(
+  client: SupabaseClient<Database>,
+  userId: string,
+  days = 30,
+): Promise<PassPredictionSnapshotItem[]> {
+  const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+  const { data, error } = await client
+    .from("pass_prediction_snapshots")
+    .select("snapshot_date, score, rating")
+    .eq("user_id", userId)
+    .gte("snapshot_date", since)
+    .order("snapshot_date", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    snapshotDate: r.snapshot_date,
+    score: r.score,
+    rating: r.rating,
+  }));
+}

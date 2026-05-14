@@ -44,6 +44,10 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
+  getUserPassPredictionTrend,
+  type PassPredictionSnapshotItem,
+} from "~/features/study/queries.server";
+import {
   getStudentCohortComparisons,
   getStudentDetail,
   type StudentCohortComparison,
@@ -84,16 +88,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  const [student, cohortComparisons, notes] = await Promise.all([
+  const [student, cohortComparisons, notes, passTrend] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
     listNotesForStudent(params.profileId),
+    getUserPassPredictionTrend(adminClient, params.profileId, 30),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
   return {
     student,
     cohortComparisons,
     notes,
+    passTrend,
     currentUserId: user.id,
     isAdmin: role === "admin",
   };
@@ -110,7 +116,8 @@ function accuracyTone(pct: number | null): string {
 export default function AdminStudentDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { student, cohortComparisons, notes, currentUserId, isAdmin } = loaderData;
+  const { student, cohortComparisons, notes, passTrend, currentUserId, isAdmin } =
+    loaderData;
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
@@ -187,6 +194,12 @@ export default function AdminStudentDetail({
           {cohortComparisons.map((c) => (
             <CohortComparisonCard key={c.cohortId} comparison={c} />
           ))}
+        </div>
+      ) : null}
+
+      {passTrend.length > 0 ? (
+        <div className="mb-6">
+          <PassTrendCard items={passTrend} />
         </div>
       ) : null}
 
@@ -522,6 +535,68 @@ function CompareChip({
         {diff === null ? "비교 불가" : `${sign}${diff}${unit}`}
       </div>
     </div>
+  );
+}
+
+// ─── 합격 진단 점수 추이 (feat-7-027) ───
+
+function PassTrendCard({ items }: { items: PassPredictionSnapshotItem[] }) {
+  const latest = items[items.length - 1];
+  const oldest = items[0];
+  const delta = latest.score - oldest.score;
+  const bgTone = (score: number) =>
+    score >= 80
+      ? "bg-emerald-500/80"
+      : score >= 60
+        ? "bg-lime-500/80"
+        : score >= 40
+          ? "bg-amber-500/80"
+          : score >= 20
+            ? "bg-orange-500/80"
+            : "bg-rose-500/80";
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            합격 진단 점수 추이 ({items.length}일)
+          </p>
+          <Badge variant="outline" className="text-[10px]">
+            현재 {latest.score} · 시작 {oldest.score} ·{" "}
+            <span
+              className={cn(
+                delta > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : delta < 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "",
+              )}
+            >
+              {delta > 0 ? "+" : ""}
+              {delta}
+            </span>
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-end gap-1">
+          {items.map((it) => (
+            <div
+              key={it.snapshotDate}
+              className="flex flex-1 flex-col"
+              title={`${it.snapshotDate} · ${it.score}점 (${it.rating})`}
+            >
+              <div className="bg-muted/40 relative flex h-20 items-end overflow-hidden rounded">
+                <div
+                  className={cn("w-full transition-all", bgTone(it.score))}
+                  style={{ height: `${Math.max(2, it.score)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

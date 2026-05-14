@@ -21,6 +21,7 @@ const STUDENT_KINDS: NotificationKind[] = [
   "subjective_review_completed",
   "qna_new_answer",
   "announcement",
+  "student_note_shared",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {

@@ -1861,6 +1861,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lecture_views: {
+        Row: {
+          completed_at: string | null
+          item_id: string
+          last_position_sec: number
+          updated_at: string
+          user_id: string
+          view_id: string
+          viewed_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          item_id: string
+          last_position_sec?: number
+          updated_at?: string
+          user_id: string
+          view_id?: string
+          viewed_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          item_id?: string
+          last_position_sec?: number
+          updated_at?: string
+          user_id?: string
+          view_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_views_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_items"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "lecture_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       mcq_pack_problems: {
         Row: {
           created_at: string
@@ -2116,6 +2161,47 @@ export type Database = {
           {
             foreignKeyName: "papers_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      pass_prediction_snapshots: {
+        Row: {
+          components: Json
+          gs_average_pct: number | null
+          rating: string
+          score: number
+          snapshot_at: string
+          snapshot_date: string
+          snapshot_id: string
+          user_id: string
+        }
+        Insert: {
+          components?: Json
+          gs_average_pct?: number | null
+          rating: string
+          score: number
+          snapshot_at?: string
+          snapshot_date?: string
+          snapshot_id?: string
+          user_id: string
+        }
+        Update: {
+          components?: Json
+          gs_average_pct?: number | null
+          rating?: string
+          score?: number
+          snapshot_at?: string
+          snapshot_date?: string
+          snapshot_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pass_prediction_snapshots_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
@@ -3808,6 +3894,7 @@ export type Database = {
         | "qna_new_answer"
         | "announcement"
         | "cohort_inactive_alert"
+        | "student_note_shared"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       user_role: "student" | "instructor" | "admin"
@@ -4009,6 +4096,7 @@ export const Constants = {
         "qna_new_answer",
         "announcement",
         "cohort_inactive_alert",
+        "student_note_shared",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

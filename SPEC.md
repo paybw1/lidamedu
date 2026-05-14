@@ -461,6 +461,9 @@
 | feat-7-024 | **합격 진단 점수** — 학생 대시보드 KPI. 가중평균 모델(`predictPassScore`). **GS 응시 기록이 있으면 5요소**(학습량 25 + 정답률 25 + GS 30 + 활성도 10 + 완수 10), **없으면 4요소**(학습량 40 + 정답률 40 + 활성도 10 + 완수 10) = 0~100점. rating 4단계(안정 80+/가능 60+/주의 40+/취약). 대시보드 상단 큰 카드 — 점수 + tone + component 막대 + hint. `getUserGsAveragePct` 가 채점 완료 GS 응시의 (total_score / round max_score) 평균. **`/study/stats` 한눈에 탭에 최근 12주 정답률 추이 미니 차트**(`getUserAccuracyTrend` — KST Monday 주별 막대). | P1 | ✅ |
 | feat-7-025 | **1:1 상담 코멘트** — 강사가 학생에게 비공개 메모. `student_notes` 테이블(student_id/author_id/body_md/visibility/is_pinned). visibility=`staff_only`(강사만)/`share_with_student`(학생도 read). RLS: author 본인 + admin 전부 CRUD, 학생 본인은 공유된 코멘트만 read. `/api/admin/student-note` CRUD + `/admin/students/:profileId` 코멘트 패널(핀/공유 토글, 작성자 + 시각 표시, edit/delete). | P1 | ✅ |
 | feat-7-026 | **cron 엔드포인트 e2e 회귀 보호** — `/api/cron/curriculum-weekly` · `/weekly-reports` · `/inactive-alert` 3개 엔드포인트의 인증(secret 없으면 403, 잘못된 secret 도 403) + 정상 응답 shape(ok + summary). `e2e/admin/cron-endpoints.spec.ts`. CRON_SECRET 환경변수 필수. weekly-reports 는 실제 이메일 발송이라 `RUN_WEEKLY_REPORT_E2E=1` 명시적 opt-in 시만 실행. | P1 | ✅ |
+| feat-7-027 | **합격 진단 점수 시계열** — `pass_prediction_snapshots`(user_id/score/rating/components jsonb/snapshot_date PK 일 1회). `/api/cron/pass-predict-snapshot` 일별 호출 → 모든 활성 cohort 멤버 predict + upsert. `getUserPassPredictionTrend` 최근 N일. 학생 `/study/stats` 한눈에 탭 + 운영자 `/admin/students/:id` 에 막대 차트(점수+델타 badge). RLS: 본인 + cohort owner/admin. | P1 | ✅ |
+| feat-7-028 | **상담 코멘트 학생 알림 fanout** — `staff_notification_kind` enum 에 `student_note_shared` 추가. `createNote` 시 visibility=share_with_student 면 학생 inbox 알림(best-effort). `updateNote` 시 staff_only → share 로 전환되는 경우만 알림. body preview(120자) + `/inbox` deep link. | P1 | ✅ |
+| feat-7-029 | **lecture 시청 추적** — `lecture_views`(user_id/item_id/viewed_at/completed_at/last_position_sec, UNIQUE(user,item)) + `/api/student/lecture-progress`(view/complete/position) + `/lectures/:itemId` 학생 viewer. YouTube/Vimeo URL 자동 embed(toEmbedUrl). 페이지 진입 시 자동 view 기록 + "수강 완료" 버튼. RLS: 본인 R/W + cohort owner/admin read. 통합 LMS 첫 단계 — 진행 추적까지. (영상 호스팅·진행률 자동 추적은 후속) | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 
@@ -569,6 +572,9 @@
 | 주간 리포트 cron | `/api/cron/weekly-reports` | feat-7-022 |
 | 비활성 알림 cron | `/api/cron/inactive-alert` | feat-7-023 |
 | 1:1 상담 코멘트 API | `/api/admin/student-note` | feat-7-025 |
+| 합격 진단 snapshot cron | `/api/cron/pass-predict-snapshot` | feat-7-027 |
+| 강의 진행 update API | `/api/student/lecture-progress` | feat-7-029 |
+| 학생 강의 viewer | `/lectures/:itemId` | feat-7-029 |
 | 사용자 관리 | `/admin/users` | feat-7-012 |
 | 공지사항 발송 | `/admin/announcements` | feat-7-011 |
 | 공지사항 수신함 | `/announcements` | feat-7-011 |

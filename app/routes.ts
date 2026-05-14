@@ -369,6 +369,18 @@ export default [
         "features/cron/api/inactive-alert.tsx",
       ),
       route(
+        "/api/cron/pass-predict-snapshot",
+        "features/cron/api/pass-predict-snapshot.tsx",
+      ),
+      route(
+        "/api/student/lecture-progress",
+        "features/lectures/api/progress.tsx",
+      ),
+      route(
+        "/lectures/:itemId",
+        "features/lectures/screens/lecture-viewer.tsx",
+      ),
+      route(
         "/api/admin/student-note",
         "features/admin/api/student-note.tsx",
       ),
