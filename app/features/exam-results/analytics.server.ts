@@ -68,7 +68,9 @@ export interface ListPasserCasesFilter {
   onlyConsented?: boolean;
 }
 
-export async function listPasserCases(
+// 내부 헬퍼 — 합격/비합격 공용. status 별 case + 학습 집계.
+async function listExamCasesByStatus(
+  status: "passed" | "failed",
   filter: ListPasserCasesFilter = {},
 ): Promise<PasserCase[]> {
   const admin = adminClient as SupabaseClient<Database>;
@@ -77,7 +79,7 @@ export async function listPasserCases(
     .select(
       "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, selected_science_subject, study_summary_md, profiles!exam_results_user_id_fkey(name, analytics_consent_at)",
     )
-    .eq("status", "passed")
+    .eq("status", status)
     .order("exam_year", { ascending: false })
     .order("verification_status", { ascending: true })
     .limit(200);
@@ -117,7 +119,7 @@ export async function listPasserCases(
     }
   } catch (e) {
     console.warn(
-      "[listPasserCases] listUsers threw",
+      "[listExamCasesByStatus] listUsers threw",
       e instanceof Error ? e.message : String(e),
     );
   }
@@ -147,6 +149,18 @@ export async function listPasserCases(
     analyticsConsentAt: r.analyticsConsentAt,
     aggregates: aggByResult.get(r.resultId) ?? null,
   }));
+}
+
+export async function listPasserCases(
+  filter: ListPasserCasesFilter = {},
+): Promise<PasserCase[]> {
+  return listExamCasesByStatus("passed", filter);
+}
+
+export async function listFailerCases(
+  filter: ListPasserCasesFilter = {},
+): Promise<PasserCase[]> {
+  return listExamCasesByStatus("failed", filter);
 }
 
 async function computeAggregates(
@@ -1101,3 +1115,143 @@ export async function listPasserSummaries(
   }));
 }
 
+
+// ─── 합격자 vs 비합격자 그룹 비교 (Phase B 심화) ───
+
+export interface GroupBaseline {
+  sampleSize: number;
+  studyHoursMean: number | null;
+  studyHoursMedian: number | null;
+  problemAttemptsMean: number | null;
+  problemAttemptsMedian: number | null;
+  accuracyPctMean: number | null;
+  accuracyPctMedian: number | null;
+  activeDaysMean: number | null;
+  activeDaysMedian: number | null;
+  longestStreakMean: number | null;
+  longestStreakMedian: number | null;
+}
+
+export interface MetricDelta {
+  metric:
+    | "studyHours"
+    | "problemAttempts"
+    | "accuracyPct"
+    | "activeDays"
+    | "longestStreak";
+  label: string;
+  unit: string;
+  passerMean: number | null;
+  failerMean: number | null;
+  absDelta: number | null; // 합격자 - 비합격자
+  relDeltaPct: number | null; // (absDelta / failerMean) * 100
+}
+
+export interface GroupComparison {
+  passers: GroupBaseline;
+  failers: GroupBaseline;
+  deltas: MetricDelta[]; // 절대 차이 큰 순 정렬
+}
+
+function meanOf(arr: number[]): number | null {
+  if (arr.length === 0) return null;
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
+}
+
+function medianOf(arr: number[]): number | null {
+  if (arr.length === 0) return null;
+  const sorted = [...arr].sort((a, b) => a - b);
+  return pickPercentile(sorted, 0.5);
+}
+
+function baselineFromCases(cases: PasserCase[]): GroupBaseline {
+  const consented = cases.filter((c) => c.aggregates !== null);
+  const hours = consented.map((c) => c.aggregates!.totalStudyTimeMs / 3_600_000);
+  const attempts = consented.map((c) => c.aggregates!.totalProblemAttempts);
+  const accuracies = consented
+    .map((c) => c.aggregates!.accuracyPct)
+    .filter((v): v is number => v !== null);
+  const days = consented.map((c) => c.aggregates!.activeDays);
+  const streaks = consented.map((c) => c.aggregates!.longestStreakDays);
+  return {
+    sampleSize: consented.length,
+    studyHoursMean: meanOf(hours),
+    studyHoursMedian: medianOf(hours),
+    problemAttemptsMean: meanOf(attempts),
+    problemAttemptsMedian: medianOf(attempts),
+    accuracyPctMean: meanOf(accuracies),
+    accuracyPctMedian: medianOf(accuracies),
+    activeDaysMean: meanOf(days),
+    activeDaysMedian: medianOf(days),
+    longestStreakMean: meanOf(streaks),
+    longestStreakMedian: medianOf(streaks),
+  };
+}
+
+export function computeGroupComparison(
+  passers: PasserCase[],
+  failers: PasserCase[],
+): GroupComparison {
+  const p = baselineFromCases(passers);
+  const f = baselineFromCases(failers);
+
+  function delta(
+    metric: MetricDelta["metric"],
+    label: string,
+    unit: string,
+    passerVal: number | null,
+    failerVal: number | null,
+  ): MetricDelta {
+    let abs: number | null = null;
+    let rel: number | null = null;
+    if (passerVal !== null && failerVal !== null) {
+      abs = passerVal - failerVal;
+      if (failerVal !== 0) rel = (abs / failerVal) * 100;
+    }
+    return {
+      metric,
+      label,
+      unit,
+      passerMean: passerVal,
+      failerMean: failerVal,
+      absDelta: abs,
+      relDeltaPct: rel,
+    };
+  }
+
+  const deltas: MetricDelta[] = [
+    delta("studyHours", "학습 시간", "h", p.studyHoursMean, f.studyHoursMean),
+    delta(
+      "problemAttempts",
+      "총 풀이",
+      "회",
+      p.problemAttemptsMean,
+      f.problemAttemptsMean,
+    ),
+    delta("accuracyPct", "정답률", "%", p.accuracyPctMean, f.accuracyPctMean),
+    delta("activeDays", "활동 일수", "일", p.activeDaysMean, f.activeDaysMean),
+    delta(
+      "longestStreak",
+      "최장 연속 학습",
+      "일",
+      p.longestStreakMean,
+      f.longestStreakMean,
+    ),
+  ];
+  // 절대 비율로 큰 순서.
+  deltas.sort((a, b) => {
+    const ra = a.relDeltaPct === null ? -Infinity : Math.abs(a.relDeltaPct);
+    const rb = b.relDeltaPct === null ? -Infinity : Math.abs(b.relDeltaPct);
+    return rb - ra;
+  });
+  return { passers: p, failers: f, deltas };
+}
+
+// 학생 위험 신호용 — failer baseline 만 가볍게 fetch (학습 곡선 fetch 없이 group mean 만).
+// 이미 listFailerCases 가 비싸므로 dashboard 에서 호출 시 캐싱 고려 필요.
+export async function getFailerBaseline(): Promise<GroupBaseline | null> {
+  const cases = await listFailerCases({ onlyConsented: true });
+  const consented = cases.filter((c) => c.aggregates !== null);
+  if (consented.length === 0) return null;
+  return baselineFromCases(consented);
+}

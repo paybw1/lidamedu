@@ -79,6 +79,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 const seedSchema = z.object({
   intent: z.literal("seed"),
   count: z.coerce.number().int().min(1).max(20),
+  status: z.enum(["passed", "failed"]).default("passed"),
 });
 const cleanupSchema = z.object({
   intent: z.literal("cleanup-seed"),
@@ -104,10 +105,11 @@ export async function action({ request }: Route.ActionArgs) {
     const parsed = seedSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
       return data({ error: parsed.error.issues[0]?.message ?? "입력 오류" }, { status: 400 });
-    const res = await seedPasserData(parsed.data.count);
+    const res = await seedPasserData(parsed.data.count, parsed.data.status);
+    const groupLabel = parsed.data.status === "passed" ? "합격자" : "비합격자";
     return data({
       ok: true,
-      message: `${res.created}건 시드 완료${res.errors.length > 0 ? ` (오류 ${res.errors.length})` : ""}`,
+      message: `${groupLabel} ${res.created}건 시드 완료${res.errors.length > 0 ? ` (오류 ${res.errors.length})` : ""}`,
       errors: res.errors,
     });
   }
@@ -328,9 +330,10 @@ function SeedToolBox({ seedCount }: { seedCount: number }) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <seedFetcher.Form method="post" className="flex items-center gap-1">
               <input type="hidden" name="intent" value="seed" />
+              <input type="hidden" name="status" value="passed" />
               <Input
                 type="number"
                 name="count"
@@ -346,7 +349,28 @@ function SeedToolBox({ seedCount }: { seedCount: number }) {
                 disabled={busy}
                 className="h-7 px-2 text-xs"
               >
-                시드 추가
+                합격자 시드
+              </Button>
+            </seedFetcher.Form>
+            <seedFetcher.Form method="post" className="flex items-center gap-1">
+              <input type="hidden" name="intent" value="seed" />
+              <input type="hidden" name="status" value="failed" />
+              <Input
+                type="number"
+                name="count"
+                defaultValue={5}
+                min={1}
+                max={20}
+                className="h-7 w-16 text-xs tabular-nums"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                className="h-7 px-2 text-xs"
+              >
+                비합격자 시드
               </Button>
             </seedFetcher.Form>
             <cleanupFetcher.Form method="post">
@@ -358,7 +382,7 @@ function SeedToolBox({ seedCount }: { seedCount: number }) {
                 disabled={busy || seedCount === 0}
                 className="h-7 px-2 text-xs text-rose-700 hover:text-rose-800"
                 onClick={(e) => {
-                  if (!confirm(`시드 합격자 ${seedCount}명을 모두 삭제하시겠습니까?`)) {
+                  if (!confirm(`시드 프로필 ${seedCount}명을 모두 삭제하시겠습니까?`)) {
                     e.preventDefault();
                   }
                 }}

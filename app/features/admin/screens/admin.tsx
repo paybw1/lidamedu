@@ -231,6 +231,13 @@ const USER_CARDS: AdminCardData[] = [
     icon: TrendingUpIcon,
     badge: "원장 전용",
   },
+  {
+    to: "/admin/analytics/failure-patterns",
+    title: "합격 vs 비합격 패턴",
+    subtitle: "두 그룹 학습 지표 비교 + 가장 갈리는 지표 top 3",
+    icon: TrendingUpIcon,
+    badge: "원장 전용",
+  },
 ];
 
 const GS_CARDS: AdminCardData[] = [

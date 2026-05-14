@@ -489,6 +489,7 @@
 | feat-8-012 | **합격자 학습 곡선 12주 비교** — `/study/passer-trend` 학생 누구나 접근. `getPasserTrendData(userId)` — 합격자 응시일 근사(1차=2/25, 2차=7/20) 기준 D-11주~D-0주 주별 활동(study_sessions/user_problem_attempts) 평균 시리즈 + 본인의 next_exam_year/round 기반 D-W 매핑 + 현재 주차 marker. 3종 SVG 라인 차트(주별 학습 시간 / 풀이 회수 / 정답률) — 합격자 평균(solid) + 본인 곡선(dashed) + "지금" 세로선. 표본/fallback/계획 미설정 안내 배너. 대시보드 PasserBenchmarkCard 에 "12주 곡선 →" 진입 링크. | P1 | ✅ |
 | feat-8-013 | **자동 학습 추천 액션 카드** — 대시보드 상단 `RecommendedActionsCard`. `generateRecommendedActions` 순수 함수(recommendations.ts) — 합격자 비교/약점/과제/streak/진단점수 결합해 priority(high/medium/low/celebrate) 별 액션 산출. 7종 룰: 마감 임박 과제, 학습 시간 격차, 정답률 격차, 풀이 회수 격차, 약점 단원(합격자 평균 hint), 슬럼프/연속 학습, 진단 '취약', 계획·표본 미설정 안내. 합격자 평균 모든 지표 상회 시 celebrate 카드. tone 4단계 색상 + 아이콘 + CTA + metric chip. priority 정렬 + top 5 cap. | P1 | ✅ |
 | feat-8-014 | **강사용 위험 학생 자동 분류** — `getAtRiskStudents(cohortId)` (at-risk.server.ts) — 합격자 평균(분석 동의자, 풀이 회수 + 정답률) baseline 산출 + cohort 멤버별 격차 + 비활성 일수(7/14/21일 단계)를 weighted 합산 (정답률 0.5 / 풀이 0.3 / 비활성 0.2) → 0~1 risk score → high(≥0.55) / medium(≥0.30) / low. `/admin/cohorts/:id` cohort detail 에 `AtRiskCard` (top 5, 위험 사유 chip, "1:1 코멘트" CTA → `/admin/students/:id#notes` deep link). baseline 0표본 fallback(비활성·낮은 정답률 only). 학생 상세 노트 섹션에 `id="notes"` 앵커 추가. | P1 | ✅ |
+| feat-8-015 | **합격 vs 비합격 패턴 비교 분석** — `listFailerCases` + `computeGroupComparison` (analytics.server.ts) — 두 그룹 평균/중간값/IQR + 절대·상대 격차 metric 5종(학습 시간/풀이/정답률/활동일수/streak). `/admin/analytics/failure-patterns` admin 전용 — 표본 크기 카드, 격차 큰 metric top 3 인사이트, 전체 비교 표 + 두 그룹 막대. **학생 위험 신호** — recommendations.ts 에 `failerBaseline` 입력 추가, 본인 metric 2개 이상이 비합격 평균에도 못 미치면 high priority "비합격자 패턴 위험 신호" 액션, 1개면 medium. 시드 도구에 비합격자 시드 폼 추가 — 두 그룹 분포 분리 (passers 점수 63~92/학습 800~2400h vs failers 40~62/250~1100h). | P1 | ✅ |
 | feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).
@@ -608,6 +609,7 @@
 | 합격자 케이스 분석 | `/admin/analytics/passers` | feat-8-006 |
 | 합격자 학습 후기 | `/study/passer-summaries` | feat-8-009 |
 | 합격자 학습 곡선 비교 | `/study/passer-trend` | feat-8-012 |
+| 합격 vs 비합격 패턴 | `/admin/analytics/failure-patterns` | feat-8-015 |
 | 사용자 관리 | `/admin/users` | feat-7-012 |
 | 공지사항 발송 | `/admin/announcements` | feat-7-011 |
 | 공지사항 수신함 | `/announcements` | feat-7-011 |

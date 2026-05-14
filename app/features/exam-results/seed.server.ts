@@ -11,12 +11,15 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 
 import type { ExamRound } from "./labels";
 
+type SeedExamStatus = "passed" | "failed";
+
 interface SyntheticProfile {
   userId: string;
   email: string;
   displayName: string;
   examYear: number;
   examRound: ExamRound;
+  status: SeedExamStatus;
   score: number;
   studySummary: string;
   scienceSubject: string | null;
@@ -51,26 +54,39 @@ function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function generateProfileSpec(idx: number): SyntheticProfile {
-  // 합격자 분포 (대략 실측 추정):
-  //  - 점수: 평균 73점, 표준편차 7 (60~95 사이)
-  //  - 학습 시간 누적: 1년 기준 800~2500h (평균 ~1500)
-  //  - 정답률: 60~85% (평균 70%)
-  //  - 문제 풀이수: 1500~6000 (평균 3500)
-  //  - 활동일수: 200~340 (1년+ 준비 가정)
-  const score = Math.round(rand(63, 92) * 10) / 10;
-  const studyHours = Math.round(rand(800, 2400));
-  const accuracy = Math.round(rand(60, 85));
-  const attempts = randInt(1500, 6000);
-  const activeDays = randInt(180, 340);
+function generateProfileSpec(
+  idx: number,
+  status: SeedExamStatus = "passed",
+): SyntheticProfile {
+  // 두 그룹 분포 — Phase B 비교에서 의미 있게 차이 나도록 설정.
+  //  합격자: 점수 63~92, 학습 800~2400h, 정답률 60~85%, 풀이 1500~6000, 활동 180~340일
+  //  비합격자: 점수 40~62, 학습 250~1100h, 정답률 40~62%, 풀이 400~2200, 활동 60~210일
+  const isPasser = status === "passed";
+  const score = isPasser
+    ? Math.round(rand(63, 92) * 10) / 10
+    : Math.round(rand(40, 62) * 10) / 10;
+  const studyHours = Math.round(
+    isPasser ? rand(800, 2400) : rand(250, 1100),
+  );
+  const accuracy = Math.round(isPasser ? rand(60, 85) : rand(40, 62));
+  const attempts = randInt(
+    isPasser ? 1500 : 400,
+    isPasser ? 6000 : 2200,
+  );
+  const activeDays = randInt(
+    isPasser ? 180 : 60,
+    isPasser ? 340 : 210,
+  );
   const examYear = 2026;
   const examRound: ExamRound = Math.random() < 0.55 ? "first" : "second";
+  const labelPrefix = isPasser ? "가상 합격자" : "가상 비합격자";
   return {
     userId: "", // filled later
-    email: `seed-passer-${idx}-${randomUUID().slice(0, 8)}@lidam-seed.invalid`,
-    displayName: `[SEED] 가상 합격자 ${idx + 1}`,
+    email: `seed-${status}-${idx}-${randomUUID().slice(0, 8)}@lidam-seed.invalid`,
+    displayName: `[SEED] ${labelPrefix} ${idx + 1}`,
     examYear,
     examRound,
+    status,
     score,
     studySummary: pick(STUDY_SUMMARIES),
     scienceSubject:
@@ -126,10 +142,16 @@ async function insertExamResult(
     user_id: userId,
     exam_year: spec.examYear,
     exam_round: spec.examRound,
-    status: "passed",
+    status: spec.status,
     self_reported_total_score: spec.score,
     selected_science_subject: spec.scienceSubject,
-    verification_status: Math.random() < 0.6 ? "verified" : "self_reported",
+    // 합격자는 60%가 인증, 비합격자는 인증 의미가 약하므로 self_reported 비중 높임.
+    verification_status:
+      spec.status === "passed"
+        ? Math.random() < 0.6
+          ? "verified"
+          : "self_reported"
+        : "self_reported",
     study_summary_md: spec.studySummary,
   });
 }
@@ -222,14 +244,17 @@ export interface SeedResult {
   userIds: string[];
 }
 
-export async function seedPasserData(count: number): Promise<SeedResult> {
+export async function seedPasserData(
+  count: number,
+  status: "passed" | "failed" = "passed",
+): Promise<SeedResult> {
   const admin = adminClient as SupabaseClient<Database>;
   const safeCount = Math.max(1, Math.min(20, Math.floor(count)));
   const errors: string[] = [];
   const userIds: string[] = [];
 
   for (let i = 0; i < safeCount; i++) {
-    const spec = generateProfileSpec(i);
+    const spec = generateProfileSpec(i, status);
     const uid = await createSyntheticAuthUser(spec);
     if (!uid) {
       errors.push(`#${i + 1}: auth user 생성 실패`);

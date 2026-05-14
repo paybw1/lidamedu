@@ -8,6 +8,7 @@ import type { WeakAreaItem } from "~/features/study/queries.server";
 import type { WeakNodeItem } from "~/features/subjects/lib/weak-nodes.server";
 
 import type {
+  GroupBaseline,
   PasserBenchmark,
   PasserLawAverage,
 } from "./analytics.server";
@@ -50,6 +51,7 @@ interface DailyStatsLite {
 
 export interface GenerateActionsInput {
   benchmark: PasserBenchmark | null;
+  failerBaseline: GroupBaseline | null; // 비합격자 평균 — 위험 신호 판정용
   passerLawAverages: Record<string, PasserLawAverage>;
   weakAreas: WeakAreaItem[];
   weakNodes: WeakNodeItem[];
@@ -216,6 +218,66 @@ export function generateRecommendedActions(
         body: "현재 페이스를 유지하시면 충분합니다. 시험 직전엔 새 자료보다 익숙한 자료를 반복하세요.",
         ctaLabel: "합격자 후기 보기",
         ctaUrl: "/study/passer-summaries",
+      });
+    }
+  }
+
+  // ─── 2.5) 비합격자 패턴 경고 (high) — 본인 metric 이 비합격자 평균 이하 ───
+  if (input.failerBaseline && input.failerBaseline.sampleSize >= 3) {
+    const fb = input.failerBaseline;
+    const b = input.benchmark;
+    const dangerSignals: string[] = [];
+
+    if (
+      b?.problemAttempts.user !== null &&
+      b?.problemAttempts.user !== undefined &&
+      fb.problemAttemptsMean !== null &&
+      b.problemAttempts.user < fb.problemAttemptsMean
+    ) {
+      dangerSignals.push(
+        `풀이 회수 ${Math.round(b.problemAttempts.user).toLocaleString("ko-KR")}회 < 비합격 평균 ${Math.round(fb.problemAttemptsMean).toLocaleString("ko-KR")}회`,
+      );
+    }
+    if (
+      b?.accuracyPct.user !== null &&
+      b?.accuracyPct.user !== undefined &&
+      fb.accuracyPctMean !== null &&
+      b.accuracyPct.user < fb.accuracyPctMean
+    ) {
+      dangerSignals.push(
+        `정답률 ${Math.round(b.accuracyPct.user)}% < 비합격 평균 ${Math.round(fb.accuracyPctMean)}%`,
+      );
+    }
+    if (
+      b?.studyHours.user !== null &&
+      b?.studyHours.user !== undefined &&
+      fb.studyHoursMean !== null &&
+      b.studyHours.user < fb.studyHoursMean
+    ) {
+      dangerSignals.push(
+        `학습 시간 ${Math.round(b.studyHours.user)}h < 비합격 평균 ${Math.round(fb.studyHoursMean)}h`,
+      );
+    }
+    // 2개 이상 위험 신호 시 high priority 경고
+    if (dangerSignals.length >= 2) {
+      actions.push({
+        id: "failure-pattern-warning",
+        priority: "high",
+        icon: "alert",
+        title: "⚠️ 비합격자 패턴 위험 신호",
+        body: `현재 학습 지표가 비합격자 평균(${fb.sampleSize}명)에도 못 미칩니다: ${dangerSignals.join(", ")}. 학습량/풀이 우선 늘리기 권장.`,
+        ctaLabel: "학습 목표 재설정",
+        ctaUrl: "/goals",
+      });
+    } else if (dangerSignals.length === 1) {
+      actions.push({
+        id: "failure-pattern-mild",
+        priority: "medium",
+        icon: "alert",
+        title: "한 지표에서 비합격자 평균에 근접",
+        body: `${dangerSignals[0]}. 다른 지표는 양호하지만 이 항목을 끌어올리면 안정권 진입.`,
+        ctaLabel: "전체 통계 보기",
+        ctaUrl: "/study/stats",
       });
     }
   }

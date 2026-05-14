@@ -43,6 +43,7 @@ import {
   type CurriculumItemKind,
 } from "~/features/curricula/labels";
 import {
+  getFailerBaseline,
   getPasserBenchmarks,
   getPasserLawAverages,
   listPasserSummaries,
@@ -136,6 +137,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     passerBenchmark,
     passerSummaries,
     passerLawAverages,
+    failerBaseline,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -151,6 +153,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getPasserBenchmarks(user.id),
     listPasserSummaries({ limit: 3 }),
     getPasserLawAverages(),
+    getFailerBaseline(),
   ]);
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
@@ -195,6 +198,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const recommendedActions = generateRecommendedActions({
     benchmark: passerBenchmark,
+    failerBaseline,
     passerLawAverages,
     weakAreas,
     weakNodes,

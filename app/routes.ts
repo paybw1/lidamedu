@@ -406,6 +406,10 @@ export default [
         "features/exam-results/screens/admin-passer-cases.tsx",
       ),
       route(
+        "/admin/analytics/failure-patterns",
+        "features/exam-results/screens/admin-failure-patterns.tsx",
+      ),
+      route(
         "/study/passer-summaries",
         "features/exam-results/screens/passer-summaries.tsx",
       ),
