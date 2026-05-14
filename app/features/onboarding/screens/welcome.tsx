@@ -20,8 +20,6 @@ import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   EXAM_ROUND_LABEL,
-  SCIENCE_SUBJECT_KEYS,
-  SCIENCE_SUBJECT_LABEL,
   type ExamRound,
 } from "~/features/exam-results/labels";
 import {
@@ -47,7 +45,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const { data: profile } = await client
     .from("profiles")
     .select(
-      "name, onboarded_at, next_exam_year, next_exam_round, selected_science_subject, analytics_consent_at",
+      "name, onboarded_at, next_exam_year, next_exam_round, analytics_consent_at",
     )
     .eq("profile_id", user.id)
     .maybeSingle();
@@ -67,7 +65,6 @@ const planSchema = z.object({
   intent: z.literal("plan"),
   nextExamYear: z.coerce.number().int().min(2000).max(2100),
   nextExamRound: z.enum(["first", "second"]),
-  selectedScienceSubject: z.string().optional().nullable(),
 });
 
 const consentSchema = z.object({
@@ -119,11 +116,7 @@ export async function action({ request }: Route.ActionArgs) {
     const res = await setNextExamPlan(client, user.id, {
       nextExamYear: parsed.data.nextExamYear,
       nextExamRound: parsed.data.nextExamRound as ExamRound,
-      selectedScienceSubject:
-        parsed.data.selectedScienceSubject &&
-        parsed.data.selectedScienceSubject.length > 0
-          ? parsed.data.selectedScienceSubject
-          : null,
+      selectedScienceSubject: null,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     throw redirect("/onboarding/welcome?step=2");
@@ -257,7 +250,6 @@ function PlanStep({
   profile: {
     next_exam_year: number | null;
     next_exam_round: ExamRound | null;
-    selected_science_subject: string | null;
   } | null;
 }) {
   return (
@@ -302,24 +294,9 @@ function PlanStep({
               </select>
             </div>
           </div>
-          <div>
-            <Label className="text-[11px]">자연과학 선택 (1차만)</Label>
-            <select
-              name="selectedScienceSubject"
-              defaultValue={profile?.selected_science_subject ?? ""}
-              className="border-input bg-background h-9 w-full rounded border px-2 text-sm"
-            >
-              <option value="">선택 없음 (2차 응시 등)</option>
-              {SCIENCE_SUBJECT_KEYS.map((k) => (
-                <option key={k} value={k}>
-                  {SCIENCE_SUBJECT_LABEL[k]}
-                </option>
-              ))}
-            </select>
-            <p className="text-muted-foreground mt-1 text-[10px]">
-              자연과학 선택은 1차 응시 시에만 사용됩니다. 나중에 수정 가능.
-            </p>
-          </div>
+          <p className="text-muted-foreground rounded bg-muted/40 px-2 py-1.5 text-[11px]">
+            ℹ️ 1차 자연과학은 4과목(물리·화학·생물·지구과학) 모두 필수 응시입니다.
+          </p>
           <div className="flex justify-end">
             <Button type="submit" size="sm">
               다음 <ChevronRightIcon className="size-3.5" />

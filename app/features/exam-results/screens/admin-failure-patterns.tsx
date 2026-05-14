@@ -138,7 +138,8 @@ export default function AdminFailurePatterns({
               <p className="text-sm font-semibold">전체 지표 비교</p>
             </CardHeader>
             <CardContent className="px-0 pb-3">
-              <table className="w-full text-xs">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-xs">
                 <thead>
                   <tr className="border-b text-muted-foreground">
                     <th className="px-4 py-2 text-left">지표</th>
@@ -161,6 +162,7 @@ export default function AdminFailurePatterns({
                   ))}
                 </tbody>
               </table>
+              </div>
             </CardContent>
           </Card>
 

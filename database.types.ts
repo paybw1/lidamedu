@@ -2283,6 +2283,63 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount_krw: number
+          created_at: string
+          failure_reason: string | null
+          payment_id: string
+          plan_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+          toss_order_id: string
+          toss_payment_key: string | null
+          toss_response: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_krw: number
+          created_at?: string
+          failure_reason?: string | null
+          payment_id?: string
+          plan_id: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          toss_order_id: string
+          toss_payment_key?: string | null
+          toss_response?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_krw?: number
+          created_at?: string
+          failure_reason?: string | null
+          payment_id?: string
+          plan_id?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          toss_order_id?: string
+          toss_payment_key?: string | null
+          toss_response?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       problem_box_items: {
         Row: {
           body_md: string
@@ -3061,6 +3118,48 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          display_order: number
+          duration_days: number
+          features: Json
+          is_active: boolean
+          name: string
+          plan_id: string
+          price_krw: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_days: number
+          features?: Json
+          is_active?: boolean
+          name: string
+          plan_id?: string
+          price_krw: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          duration_days?: number
+          features?: Json
+          is_active?: boolean
+          name?: string
+          plan_id?: string
+          price_krw?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       systematic_nodes: {
         Row: {
           created_at: string
@@ -3626,6 +3725,64 @@ export type Database = {
           },
         ]
       }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          payment_id: string | null
+          plan_id: string
+          started_at: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          subscription_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          payment_id?: string | null
+          plan_id: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          subscription_id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          payment_id?: string | null
+          plan_id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          subscription_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
     }
     Views: {
       gs_points_balance_v: {
@@ -3968,6 +4125,7 @@ export type Database = {
       law_change_kind: "created" | "amended" | "deleted"
       law_revision_kind: "act" | "decree" | "rule"
       ox_truth: "O" | "X"
+      payment_status: "pending" | "completed" | "failed" | "refunded"
       pc_relation_type: "cited" | "illustrates" | "contrasts" | "similar"
       problem_choice_type: "statute" | "precedent" | "theory"
       problem_exam_round: "first" | "second"
@@ -3999,6 +4157,7 @@ export type Database = {
         | "exam_result_reminder"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
+      subscription_status: "pending" | "active" | "expired" | "cancelled"
       user_role: "student" | "instructor" | "admin"
     }
     CompositeTypes: {
@@ -4179,6 +4338,7 @@ export const Constants = {
       law_change_kind: ["created", "amended", "deleted"],
       law_revision_kind: ["act", "decree", "rule"],
       ox_truth: ["O", "X"],
+      payment_status: ["pending", "completed", "failed", "refunded"],
       pc_relation_type: ["cited", "illustrates", "contrasts", "similar"],
       problem_choice_type: ["statute", "precedent", "theory"],
       problem_exam_round: ["first", "second"],
@@ -4212,6 +4372,7 @@ export const Constants = {
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
+      subscription_status: ["pending", "active", "expired", "cancelled"],
       user_role: ["student", "instructor", "admin"],
     },
   },

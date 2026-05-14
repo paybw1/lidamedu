@@ -402,6 +402,22 @@ export default [
         "features/onboarding/screens/welcome.tsx",
       ),
       route(
+        "/pricing",
+        "features/subscriptions/screens/pricing.tsx",
+      ),
+      route(
+        "/me/subscription",
+        "features/subscriptions/screens/my-subscription.tsx",
+      ),
+      route(
+        "/api/payments/create-order",
+        "features/subscriptions/api/create-order.tsx",
+      ),
+      route(
+        "/api/payments/toss/confirm",
+        "features/subscriptions/api/toss-confirm.tsx",
+      ),
+      route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",
       ),

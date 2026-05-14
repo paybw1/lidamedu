@@ -778,8 +778,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
           </CozyCard>
 
           <CozyCard
-            title="자연과학 (1차 선택)"
-            subtitle="4과목 풀이/정답률 — 선택 과목만 학습"
+            title="자연과학 (1차 필수)"
+            subtitle="4과목 모두 응시 — 물리·화학·생물·지구과학"
           >
             <div
               style={{ display: "flex", flexDirection: "column", gap: 10 }}
@@ -1708,6 +1708,16 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
           .cozy-stats { grid-template-columns: 1fr; gap: 10px; }
           .cozy-grid-3 { grid-template-columns: 1fr; gap: 12px; }
           .cozy-grid-2 { grid-template-columns: 1fr; gap: 12px; }
+          .benchmark-row {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
+          }
+          .benchmark-row > *:first-child {
+            grid-column: span 2;
+          }
+          .benchmark-row > *:last-child {
+            grid-column: span 2;
+          }
         }
         @media (min-width: 1025px) and (max-width: 1280px) {
           .cozy-grid-3 { grid-template-columns: 1fr 1fr; }
@@ -2348,6 +2358,7 @@ function BenchmarkRow({
   }
   return (
     <div
+      className="benchmark-row"
       style={{
         display: "grid",
         gridTemplateColumns: "70px 1fr 1fr 1fr 110px",

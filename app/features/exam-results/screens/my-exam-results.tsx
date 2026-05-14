@@ -61,7 +61,6 @@ const planSchema = z.object({
   intent: z.literal("plan"),
   nextExamYear: z.union([z.coerce.number().int().min(2000).max(2100), z.literal("")]),
   nextExamRound: z.union([z.enum(["first", "second"]), z.literal("")]),
-  selectedScienceSubject: z.string().optional().nullable(),
 });
 
 const consentSchema = z.object({
@@ -136,7 +135,7 @@ export async function action({ request }: Route.ActionArgs) {
       nextExamYear: parsed.data.nextExamYear === "" ? null : Number(parsed.data.nextExamYear),
       nextExamRound:
         parsed.data.nextExamRound === "" ? null : (parsed.data.nextExamRound as ExamRound),
-      selectedScienceSubject: parsed.data.selectedScienceSubject || null,
+      selectedScienceSubject: null,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
@@ -302,7 +301,7 @@ function PlanCard({
   profile,
   currentYear,
 }: {
-  profile: { nextExamYear: number | null; nextExamRound: ExamRound | null; selectedScienceSubject: string | null } | null;
+  profile: { nextExamYear: number | null; nextExamRound: ExamRound | null } | null;
   currentYear: number;
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
@@ -315,7 +314,7 @@ function PlanCard({
         </p>
       </CardHeader>
       <CardContent className="px-4 pb-3">
-        <fetcher.Form method="post" className="grid grid-cols-3 gap-2">
+        <fetcher.Form method="post" className="grid grid-cols-2 gap-2">
           <input type="hidden" name="intent" value="plan" />
           <div>
             <Label htmlFor="next-year" className="text-[11px]">
@@ -347,25 +346,10 @@ function PlanCard({
               <option value="second">2차</option>
             </select>
           </div>
-          <div>
-            <Label htmlFor="next-science" className="text-[11px]">
-              자연과학 선택
-            </Label>
-            <select
-              id="next-science"
-              name="selectedScienceSubject"
-              defaultValue={profile?.selectedScienceSubject ?? ""}
-              className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
-            >
-              <option value="">없음</option>
-              {SCIENCE_SUBJECT_KEYS.map((k) => (
-                <option key={k} value={k}>
-                  {SCIENCE_SUBJECT_LABEL[k]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-span-3 flex justify-end">
+          <p className="text-muted-foreground col-span-2 rounded bg-muted/40 px-2 py-1 text-[10px]">
+            ℹ️ 1차 자연과학은 물리·화학·생물·지구과학 4과목 모두 필수입니다.
+          </p>
+          <div className="col-span-2 flex justify-end">
             <Button size="sm" type="submit" disabled={fetcher.state !== "idle"}>
               저장
             </Button>

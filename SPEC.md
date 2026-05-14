@@ -21,9 +21,9 @@
 5. **역할 기반 콘텐츠 파이프라인** — 강사가 콘텐츠를 일상적으로 업데이트, 운영자가 사용자/결제 관리
 
 ### 시험 구조 (도메인 컨텍스트)
-- **1차 시험**: 객관식. 산업재산권법(특허·상표·디자인보호법), 민법, 자연과학(물리/화학/생물/지구과학 중 1과목 선택)
+- **1차 시험**: 객관식. 산업재산권법(특허·상표·디자인보호법), 민법, 자연과학(물리/화학/생물/지구과학 **4과목 모두 필수**)
 - **2차 시험**: 주관식/논술. 산업재산권법, 상표법, 민사소송법 등
-- **자연과학**: 1차 선택과목. 변리사 시험에서 조문/판례 개념 없이 **객관식 문제만** 다룸
+- **자연과학**: 1차 필수과목 (4과목 모두 응시). 변리사 시험에서 조문/판례 개념 없이 **객관식 문제만** 다룸
 
 ### 범위 외 (YAGNI, v1에서 제외)
 - 라이브 강의/영상 스트리밍 (외부 링크 위임)
@@ -492,6 +492,9 @@
 | feat-8-015 | **합격 vs 비합격 패턴 비교 분석** — `listFailerCases` + `computeGroupComparison` (analytics.server.ts) — 두 그룹 평균/중간값/IQR + 절대·상대 격차 metric 5종(학습 시간/풀이/정답률/활동일수/streak). `/admin/analytics/failure-patterns` admin 전용 — 표본 크기 카드, 격차 큰 metric top 3 인사이트, 전체 비교 표 + 두 그룹 막대. **학생 위험 신호** — recommendations.ts 에 `failerBaseline` 입력 추가, 본인 metric 2개 이상이 비합격 평균에도 못 미치면 high priority "비합격자 패턴 위험 신호" 액션, 1개면 medium. 시드 도구에 비합격자 시드 폼 추가 — 두 그룹 분포 분리 (passers 점수 63~92/학습 800~2400h vs failers 40~62/250~1100h). | P1 | ✅ |
 | feat-8-016 | **랜딩 페이지 합격자 통계 마케팅** — `getPublicPlatformStats()` (analytics.server.ts) — 인증 없이 합격자 카운트(전체/인증/분석동의) + 평균 학습시간/문제풀이/정답률/활동일수 + 후기 카운트. home.tsx 에 `PasserStatsSection` (hero 다음, FeaturesSection 위) — Stat 카드 4종(분석 합격자/평균 학습/평균 풀이/평균 정답률) + 기능 미리보기 3종(평균 대비 비교/자동 추천 액션/12주 곡선) + "가입하고 비교 보기" CTA. 표본 0명일 땐 섹션 숨김. 합격자 시드 도구로 즉시 시연 가능. | P1 | ✅ |
 | feat-8-017 | **가입 직후 Onboarding 3단계 wizard** — `profiles.onboarded_at` 컬럼 추가. `/onboarding/welcome` — Step 1 응시 계획(next_exam_year/round/science) → Step 2 분석 동의 → Step 3 학습 목표(examDate/weeklyGoalHours). 각 step 저장 후 진행, 어디서든 "지금은 건너뛰기" 가능, 완료/skip 시 onboarded_at 설정. 대시보드 loader 가 onboarded_at IS NULL 사용자를 wizard 로 redirect (단, 기존 설정 데이터 보유 사용자는 자동 onboarded 처리해 컬럼 도입 이전 가입자 보호). 진행 표시 dots 3단계 + CheckCircle. | P1 | ✅ |
+| feat-8-018 | **Phase D 결제·구독 인프라 (MVP)** — `subscription_plans` (code/name/price_krw/duration_days/features jsonb) + `payments` (toss_order_id 유니크, toss_payment_key/toss_response/status) + `user_subscriptions` (started_at/expires_at/status) 3 테이블 + RLS(self read, admin read all). seed 3 플랜(free/pro_monthly ₩29,900 30일/cohort 학원 상담). `/pricing` 공개 가격표 + 토스페이먼츠 client SDK 결제 + `/api/payments/create-order`(pending payment 생성) + `/api/payments/toss/confirm`(서버 confirm + payment.completed + subscription 연장/생성). `/me/subscription` 본인 구독 상태 + 결제 이력. `getActiveSubscription`/`hasFeature` helper. 환경변수 `TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY` 필요. | P1 | ✅ |
+| feat-8-019 | **권장 진도 합격자 실측 보정** — `/goals` 화면에 `PasserCalibrationCard` 추가. 합격자 평균(학습 시간/풀이/정답률) vs 본인 누적 + 격차 chip + "실측 권장 일평균 학습 시간 = 부족분/남은 일수" 계산. 본인 일 목표와 비교(±%) 안내. fallback 시 표본 부족 배너. `getPasserBenchmarks` 재활용. | P1 | ✅ |
+| feat-8-020 | **모바일 UX 폴리시** — 대시보드 PasserBenchmarkCard `BenchmarkRow` 5→2 cols 모바일 스택. 운영자 `admin-failure-patterns` 표 `overflow-x-auto` + min-width. 기존 Tailwind 반응형 utility 활용한 onboarding/pricing/my-subscription 화면은 정상 작동 확인. | P2 | ✅ |
 | feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).
@@ -608,6 +611,10 @@
 | 합격 결과 운영 | `/admin/exam-results` | feat-8-003 |
 | 분석 활용 동의 약관 | `/legal/analytics-consent` | feat-8-004 |
 | 가입 후 Onboarding | `/onboarding/welcome` | feat-8-017 |
+| 요금제 | `/pricing` | feat-8-018 |
+| 내 구독 | `/me/subscription` | feat-8-018 |
+| 결제 주문 생성 API | `/api/payments/create-order` | feat-8-018 |
+| 결제 확인 콜백 | `/api/payments/toss/confirm` | feat-8-018 |
 | 시험 결과 알림 cron | `/api/cron/exam-result-reminder` | feat-8-005 |
 | 합격자 케이스 분석 | `/admin/analytics/passers` | feat-8-006 |
 | 합격자 학습 후기 | `/study/passer-summaries` | feat-8-009 |
