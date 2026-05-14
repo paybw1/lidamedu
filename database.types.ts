@@ -2716,6 +2716,7 @@ export type Database = {
           next_exam_round: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year: number | null
           notify_channels: string[]
+          onboarded_at: string | null
           phone_e164: string | null
           profile_id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -2732,6 +2733,7 @@ export type Database = {
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year?: number | null
           notify_channels?: string[]
+          onboarded_at?: string | null
           phone_e164?: string | null
           profile_id: string
           role?: Database["public"]["Enums"]["user_role"]
@@ -2748,6 +2750,7 @@ export type Database = {
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year?: number | null
           notify_channels?: string[]
+          onboarded_at?: string | null
           phone_e164?: string | null
           profile_id?: string
           role?: Database["public"]["Enums"]["user_role"]

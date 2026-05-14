@@ -398,6 +398,10 @@ export default [
         "features/exam-results/screens/my-exam-results.tsx",
       ),
       route(
+        "/onboarding/welcome",
+        "features/onboarding/screens/welcome.tsx",
+      ),
+      route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",
       ),

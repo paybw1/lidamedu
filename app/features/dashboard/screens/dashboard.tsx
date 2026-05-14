@@ -92,6 +92,34 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   const name =
     (user.user_metadata?.name as string | undefined)?.trim() || "사용자";
+  // Onboarding 미완료 사용자는 wizard 로 redirect.
+  // 단, 기존 설정 데이터가 있는 사용자(next_exam/consent/study_goals)는 자동 onboarded 처리 — 컬럼 도입 이전 가입자 대상.
+  {
+    const { data: prof } = await client
+      .from("profiles")
+      .select("onboarded_at, next_exam_year, analytics_consent_at")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    if (prof && prof.onboarded_at === null) {
+      const { data: existingGoals } = await client
+        .from("study_goals")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const hasAnySetup =
+        prof.next_exam_year !== null ||
+        prof.analytics_consent_at !== null ||
+        existingGoals !== null;
+      if (hasAnySetup) {
+        await client
+          .from("profiles")
+          .update({ onboarded_at: new Date().toISOString() })
+          .eq("profile_id", user.id);
+      } else {
+        throw redirect("/onboarding/welcome");
+      }
+    }
+  }
 
   // 빈칸 학습 요약 + 문제풀이 KPI + 5과목 진도 + 84일 활동 병렬 조회.
   const [

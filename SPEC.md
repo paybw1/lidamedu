@@ -491,6 +491,7 @@
 | feat-8-014 | **강사용 위험 학생 자동 분류** — `getAtRiskStudents(cohortId)` (at-risk.server.ts) — 합격자 평균(분석 동의자, 풀이 회수 + 정답률) baseline 산출 + cohort 멤버별 격차 + 비활성 일수(7/14/21일 단계)를 weighted 합산 (정답률 0.5 / 풀이 0.3 / 비활성 0.2) → 0~1 risk score → high(≥0.55) / medium(≥0.30) / low. `/admin/cohorts/:id` cohort detail 에 `AtRiskCard` (top 5, 위험 사유 chip, "1:1 코멘트" CTA → `/admin/students/:id#notes` deep link). baseline 0표본 fallback(비활성·낮은 정답률 only). 학생 상세 노트 섹션에 `id="notes"` 앵커 추가. | P1 | ✅ |
 | feat-8-015 | **합격 vs 비합격 패턴 비교 분석** — `listFailerCases` + `computeGroupComparison` (analytics.server.ts) — 두 그룹 평균/중간값/IQR + 절대·상대 격차 metric 5종(학습 시간/풀이/정답률/활동일수/streak). `/admin/analytics/failure-patterns` admin 전용 — 표본 크기 카드, 격차 큰 metric top 3 인사이트, 전체 비교 표 + 두 그룹 막대. **학생 위험 신호** — recommendations.ts 에 `failerBaseline` 입력 추가, 본인 metric 2개 이상이 비합격 평균에도 못 미치면 high priority "비합격자 패턴 위험 신호" 액션, 1개면 medium. 시드 도구에 비합격자 시드 폼 추가 — 두 그룹 분포 분리 (passers 점수 63~92/학습 800~2400h vs failers 40~62/250~1100h). | P1 | ✅ |
 | feat-8-016 | **랜딩 페이지 합격자 통계 마케팅** — `getPublicPlatformStats()` (analytics.server.ts) — 인증 없이 합격자 카운트(전체/인증/분석동의) + 평균 학습시간/문제풀이/정답률/활동일수 + 후기 카운트. home.tsx 에 `PasserStatsSection` (hero 다음, FeaturesSection 위) — Stat 카드 4종(분석 합격자/평균 학습/평균 풀이/평균 정답률) + 기능 미리보기 3종(평균 대비 비교/자동 추천 액션/12주 곡선) + "가입하고 비교 보기" CTA. 표본 0명일 땐 섹션 숨김. 합격자 시드 도구로 즉시 시연 가능. | P1 | ✅ |
+| feat-8-017 | **가입 직후 Onboarding 3단계 wizard** — `profiles.onboarded_at` 컬럼 추가. `/onboarding/welcome` — Step 1 응시 계획(next_exam_year/round/science) → Step 2 분석 동의 → Step 3 학습 목표(examDate/weeklyGoalHours). 각 step 저장 후 진행, 어디서든 "지금은 건너뛰기" 가능, 완료/skip 시 onboarded_at 설정. 대시보드 loader 가 onboarded_at IS NULL 사용자를 wizard 로 redirect (단, 기존 설정 데이터 보유 사용자는 자동 onboarded 처리해 컬럼 도입 이전 가입자 보호). 진행 표시 dots 3단계 + CheckCircle. | P1 | ✅ |
 | feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).
@@ -606,6 +607,7 @@
 | 내 시험 결과 | `/me/exam-results` | feat-8-002 |
 | 합격 결과 운영 | `/admin/exam-results` | feat-8-003 |
 | 분석 활용 동의 약관 | `/legal/analytics-consent` | feat-8-004 |
+| 가입 후 Onboarding | `/onboarding/welcome` | feat-8-017 |
 | 시험 결과 알림 cron | `/api/cron/exam-result-reminder` | feat-8-005 |
 | 합격자 케이스 분석 | `/admin/analytics/passers` | feat-8-006 |
 | 합격자 학습 후기 | `/study/passer-summaries` | feat-8-009 |
