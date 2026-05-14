@@ -373,6 +373,10 @@ export default [
         "features/cron/api/pass-predict-snapshot.tsx",
       ),
       route(
+        "/api/cron/exam-result-reminder",
+        "features/cron/api/exam-result-reminder.tsx",
+      ),
+      route(
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",
       ),
@@ -396,6 +400,10 @@ export default [
       route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",
+      ),
+      route(
+        "/admin/analytics/passers",
+        "features/exam-results/screens/admin-passer-cases.tsx",
       ),
       route(
         "/admin/students/:profileId",

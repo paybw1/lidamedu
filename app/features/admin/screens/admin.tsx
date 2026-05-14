@@ -224,6 +224,13 @@ const USER_CARDS: AdminCardData[] = [
     subtitle: "학생 시험 결과 인증 + 분석 풀 사이즈 모니터링",
     icon: TrophyIcon,
   },
+  {
+    to: "/admin/analytics/passers",
+    title: "합격자 케이스 분석",
+    subtitle: "합격자 1인당 학습 요약 + 풀이/정답률/활동 집계 (Phase B)",
+    icon: TrendingUpIcon,
+    badge: "원장 전용",
+  },
 ];
 
 const GS_CARDS: AdminCardData[] = [

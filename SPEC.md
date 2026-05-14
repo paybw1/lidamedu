@@ -480,8 +480,8 @@
 | feat-8-002 | **학생 결과 입력 + 동의 화면** — `/me/exam-results`. 연도×차수별 카드(상태/자가점수/학습 요약). 합격증 업로드(클라가 직접 Supabase Storage 업로드 → `intent=certificate` action 으로 `certificate_path` 첨부 + admin 인박스 알림 fanout). 분석 활용 동의 토글(`analytics_consent_at` set/null). 차기 응시 의향(연도/차수/자연과학 선택). | P0 | ✅ |
 | feat-8-003 | **운영자 결과 일람·인증** — `/admin/exam-results`. 풀 사이즈 카드(합격 인증·합격 자가·불합격·인증 대기·분석 동의). 필터(연도/차수/상태/인증 상태/학생 검색) + 표 + 합격증 signed URL(5분) 열람 + 인증/반려 처리(admin 만). instructor 는 본인 cohort 학생만 read-only. | P0 | ✅ |
 | feat-8-004 | **분석 활용 동의 약관** — `/legal/analytics-consent`. 수집 항목/처리 방식/보유 기간/동의 거부 권리/철회 방법/인증 결과 처리 명시 (PIPA §22, §15 1.1 별도 동의). | P0 | ✅ |
-| feat-8-005 | 시즌별 결과 입력 알림 cron — `/api/cron/exam-result-reminder` (CRON_SECRET). 시험 직후 1·2·4주 후 `next_exam_year/round` 보유 + 결과 미입력 학생에 이메일/인박스 알림. | P1 | 🔲 |
-| feat-8-006 | (Phase B) 합격자 패턴 분석 운영 대시보드 — `/admin/analytics/passers`. 합격자 평균 학습량/정답률/시간대 분포 + 합격자 vs 비합격자 비교. 인증된 합격자만 가중치. | P1 | 🔲 |
+| feat-8-005 | **시즌별 결과 입력 알림 cron** — `/api/cron/exam-result-reminder` (CRON_SECRET, ?year=YYYY 옵션). `profiles.next_exam_year`/`next_exam_round` 설정 + 해당 (year,round) `exam_results` 미입력 학생을 후보로 산출 → 14일 throttle(같은 entity_id 알림 14일 내 존재 시 skip) → `user_notifications` insert(kind=`exam_result_reminder`, entity_id=`{year}-{round}`, href=`/me/exam-results`) + `notify_channels='email'` 활성 사용자에 Resend 이메일 발송(템플릿 `exam-result-reminder.tsx`). best-effort — 이메일 실패해도 인박스 알림은 유지. | P1 | ✅ |
+| feat-8-006 | **(Phase B 첫 단계) 합격자 케이스 카드 + 통계 시각화** — `/admin/analytics/passers` admin 전용. 합격자 1명당 카드 — 시험 결과·자가 학습 요약·(분석 동의자만) 학습 로그 집계(`computeAggregates`: 응시 전년도~응시 연도 user_problem_attempts/study_sessions/user_blank_attempts/user_recitation_attempts → 풀이수·정답률·시간·활동일수·최장 streak·과목별 풀이 top5·빈칸/암기). 풀 사이즈 카드(합격 총수/인증/동의/표시) + 연도·차수 분포 + 필터(연도/차수/인증만/동의자만). 미동의자는 결과+자가 요약만, 학습 로그는 가림. `listPasserCases`/`getPasserPoolStats` (analytics.server.ts). **분포 통계 시각화**(`computePasserAggregateStats`/`StatsSection`) — 자가 점수·학습 시간·정답률·활동 일수·최장 streak·총 풀이 회수 6종 히스토그램(N/중간값/평균/IQR) + 과목별 평균 풀이/정답률 막대. 분석 동의자만 표본 포함, 표본 0명일 땐 안내 배너. | P1 | ✅ |
 | feat-8-007 | (Phase C) 합격자 비교 컨설팅 — 대시보드 카드에 "유사 시점 합격자 평균 대비" 학습량/정답률/조문 열람 비교 + 합격자 학습 곡선 vs 본인 곡선 12주 차트. `predictPassScore` 휴리스틱 → 합격자 실측 기반 모델로 정밀화. | P1 | 🔲 |
 | feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
 
@@ -598,6 +598,8 @@
 | 내 시험 결과 | `/me/exam-results` | feat-8-002 |
 | 합격 결과 운영 | `/admin/exam-results` | feat-8-003 |
 | 분석 활용 동의 약관 | `/legal/analytics-consent` | feat-8-004 |
+| 시험 결과 알림 cron | `/api/cron/exam-result-reminder` | feat-8-005 |
+| 합격자 케이스 분석 | `/admin/analytics/passers` | feat-8-006 |
 | 사용자 관리 | `/admin/users` | feat-7-012 |
 | 공지사항 발송 | `/admin/announcements` | feat-7-011 |
 | 공지사항 수신함 | `/announcements` | feat-7-011 |

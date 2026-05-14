@@ -3990,6 +3990,7 @@ export type Database = {
         | "cohort_inactive_alert"
         | "student_note_shared"
         | "exam_certificate_submitted"
+        | "exam_result_reminder"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       user_role: "student" | "instructor" | "admin"
@@ -4201,6 +4202,7 @@ export const Constants = {
         "cohort_inactive_alert",
         "student_note_shared",
         "exam_certificate_submitted",
+        "exam_result_reminder",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

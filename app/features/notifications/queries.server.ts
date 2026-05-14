@@ -14,6 +14,7 @@ const STAFF_KINDS: NotificationKind[] = [
   "subjective_review_request",
   "qna_new_question",
   "cohort_inactive_alert",
+  "exam_certificate_submitted",
 ];
 
 // 학생용 kinds.
@@ -22,6 +23,7 @@ const STUDENT_KINDS: NotificationKind[] = [
   "qna_new_answer",
   "announcement",
   "student_note_shared",
+  "exam_result_reminder",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {
