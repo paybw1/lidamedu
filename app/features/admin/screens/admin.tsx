@@ -23,6 +23,7 @@ import {
   NewspaperIcon,
   ShieldCheckIcon,
   TrendingUpIcon,
+  TrophyIcon,
   UsersIcon,
 } from "lucide-react";
 import { Link, data, redirect } from "react-router";
@@ -216,6 +217,12 @@ const USER_CARDS: AdminCardData[] = [
     subtitle: "운영자 액션 추적 — 누가 · 언제 · 무엇을",
     icon: ShieldCheckIcon,
     badge: "원장 전용",
+  },
+  {
+    to: "/admin/exam-results",
+    title: "합격 결과 운영",
+    subtitle: "학생 시험 결과 인증 + 분석 풀 사이즈 모니터링",
+    icon: TrophyIcon,
   },
 ];
 

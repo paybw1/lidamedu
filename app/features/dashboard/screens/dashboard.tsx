@@ -1848,6 +1848,19 @@ function PassPredictionCard({
             <div style={{ fontSize: 12, color: COZY_INK_SOFT, maxWidth: 340 }}>
               {prediction.hint}
             </div>
+            <Link
+              to="/me/exam-results"
+              style={{
+                marginTop: 6,
+                display: "inline-block",
+                fontSize: 11,
+                color: palette.primary,
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              시험 결과 입력 / 동의 →
+            </Link>
           </div>
         </div>
         <div

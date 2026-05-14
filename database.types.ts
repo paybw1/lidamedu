@@ -1255,6 +1255,81 @@ export type Database = {
           },
         ]
       }
+      exam_results: {
+        Row: {
+          certificate_path: string | null
+          certificate_url: string | null
+          created_at: string
+          exam_round: Database["public"]["Enums"]["exam_round"]
+          exam_year: number
+          rejection_reason: string | null
+          result_id: string
+          selected_science_subject: string | null
+          self_reported_subject_scores: Json | null
+          self_reported_total_score: number | null
+          status: Database["public"]["Enums"]["exam_result_status"]
+          study_summary_md: string | null
+          updated_at: string
+          user_id: string
+          verification_status: Database["public"]["Enums"]["exam_verification_status"]
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          certificate_path?: string | null
+          certificate_url?: string | null
+          created_at?: string
+          exam_round: Database["public"]["Enums"]["exam_round"]
+          exam_year: number
+          rejection_reason?: string | null
+          result_id?: string
+          selected_science_subject?: string | null
+          self_reported_subject_scores?: Json | null
+          self_reported_total_score?: number | null
+          status: Database["public"]["Enums"]["exam_result_status"]
+          study_summary_md?: string | null
+          updated_at?: string
+          user_id: string
+          verification_status?: Database["public"]["Enums"]["exam_verification_status"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          certificate_path?: string | null
+          certificate_url?: string | null
+          created_at?: string
+          exam_round?: Database["public"]["Enums"]["exam_round"]
+          exam_year?: number
+          rejection_reason?: string | null
+          result_id?: string
+          selected_science_subject?: string | null
+          self_reported_subject_scores?: Json | null
+          self_reported_total_score?: number | null
+          status?: Database["public"]["Enums"]["exam_result_status"]
+          study_summary_md?: string | null
+          updated_at?: string
+          user_id?: string
+          verification_status?: Database["public"]["Enums"]["exam_verification_status"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "exam_results_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       gs_answers: {
         Row: {
           ai_suggested_at: string | null
@@ -2632,36 +2707,48 @@ export type Database = {
       }
       profiles: {
         Row: {
+          analytics_consent_at: string | null
           avatar_url: string | null
           created_at: string
           marketing_consent: boolean
           name: string
+          next_exam_round: Database["public"]["Enums"]["exam_round"] | null
+          next_exam_year: number | null
           notify_channels: string[]
           phone_e164: string | null
           profile_id: string
           role: Database["public"]["Enums"]["user_role"]
+          selected_science_subject: string | null
           updated_at: string
         }
         Insert: {
+          analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
           marketing_consent?: boolean
           name: string
+          next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
+          next_exam_year?: number | null
           notify_channels?: string[]
           phone_e164?: string | null
           profile_id: string
           role?: Database["public"]["Enums"]["user_role"]
+          selected_science_subject?: string | null
           updated_at?: string
         }
         Update: {
+          analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
           marketing_consent?: boolean
           name?: string
+          next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
+          next_exam_year?: number | null
           notify_channels?: string[]
           phone_e164?: string | null
           profile_id?: string
           role?: Database["public"]["Enums"]["user_role"]
+          selected_science_subject?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3864,6 +3951,13 @@ export type Database = {
         | "blank_set"
         | "recitation"
         | "lecture"
+      exam_result_status: "absent" | "pending" | "failed" | "passed"
+      exam_round: "first" | "second"
+      exam_verification_status:
+        | "self_reported"
+        | "document_submitted"
+        | "verified"
+        | "rejected"
       gs_round_status: "draft" | "published" | "closed"
       law_change_kind: "created" | "amended" | "deleted"
       law_revision_kind: "act" | "decree" | "rule"
@@ -3895,6 +3989,7 @@ export type Database = {
         | "announcement"
         | "cohort_inactive_alert"
         | "student_note_shared"
+        | "exam_certificate_submitted"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       user_role: "student" | "instructor" | "admin"
@@ -4065,6 +4160,14 @@ export const Constants = {
         "recitation",
         "lecture",
       ],
+      exam_result_status: ["absent", "pending", "failed", "passed"],
+      exam_round: ["first", "second"],
+      exam_verification_status: [
+        "self_reported",
+        "document_submitted",
+        "verified",
+        "rejected",
+      ],
       gs_round_status: ["draft", "published", "closed"],
       law_change_kind: ["created", "amended", "deleted"],
       law_revision_kind: ["act", "decree", "rule"],
@@ -4097,6 +4200,7 @@ export const Constants = {
         "announcement",
         "cohort_inactive_alert",
         "student_note_shared",
+        "exam_certificate_submitted",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

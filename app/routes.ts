@@ -390,6 +390,14 @@ export default [
         "features/assignments/screens/student-assignment-detail.tsx",
       ),
       route(
+        "/me/exam-results",
+        "features/exam-results/screens/my-exam-results.tsx",
+      ),
+      route(
+        "/admin/exam-results",
+        "features/exam-results/screens/admin-exam-results.tsx",
+      ),
+      route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",
       ),
