@@ -729,6 +729,58 @@ export async function getPasserBenchmarks(
   };
 }
 
+// ─── 합격자 과목(법령)별 평균 풀이/정답률 ───
+// 약점 단원 카드에서 "이 단원(법령)에서 합격자는 N회 풀이 / M% 정답률" 인라인 chip 노출용.
+
+export interface PasserLawAverage {
+  lawCode: string;
+  avgAttempts: number;
+  avgAccuracyPct: number | null;
+  learners: number;
+}
+
+export async function getPasserLawAverages(): Promise<
+  Record<string, PasserLawAverage>
+> {
+  const cases = await listPasserCases({ onlyConsented: true });
+  const map = new Map<
+    string,
+    { attemptsTotal: number; accuracySum: number; accuracyN: number; learners: number }
+  >();
+  for (const c of cases) {
+    if (!c.aggregates) continue;
+    for (const s of c.aggregates.subjectTopAttempts) {
+      if (!s.lawCode) continue;
+      const cur =
+        map.get(s.lawCode) ?? {
+          attemptsTotal: 0,
+          accuracySum: 0,
+          accuracyN: 0,
+          learners: 0,
+        };
+      cur.attemptsTotal += s.attempts;
+      if (s.correctRatio !== null) {
+        cur.accuracySum += s.correctRatio * 100;
+        cur.accuracyN += 1;
+      }
+      cur.learners += 1;
+      map.set(s.lawCode, cur);
+    }
+  }
+  const out: Record<string, PasserLawAverage> = {};
+  for (const [lawCode, v] of map.entries()) {
+    out[lawCode] = {
+      lawCode,
+      avgAttempts:
+        v.learners > 0 ? Math.round(v.attemptsTotal / v.learners) : 0,
+      avgAccuracyPct:
+        v.accuracyN > 0 ? Math.round(v.accuracySum / v.accuracyN) : null,
+      learners: v.learners,
+    };
+  }
+  return out;
+}
+
 // ─── 합격자 학습 요약 모음 (anonymized) ───
 
 export interface PasserSummary {

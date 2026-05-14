@@ -44,9 +44,11 @@ import {
 } from "~/features/curricula/labels";
 import {
   getPasserBenchmarks,
+  getPasserLawAverages,
   listPasserSummaries,
   type PasserBenchmark,
   type PasserBenchmarkMetric,
+  type PasserLawAverage,
   type PasserSummary,
 } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
@@ -129,6 +131,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     weekTrack,
     passerBenchmark,
     passerSummaries,
+    passerLawAverages,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -143,6 +146,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getCurrentWeekTrack(user.id),
     getPasserBenchmarks(user.id),
     listPasserSummaries({ limit: 3 }),
+    getPasserLawAverages(),
   ]);
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
@@ -189,6 +193,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     weekTrack,
     passerBenchmark,
     passerSummaries,
+    passerLawAverages,
     pendingAssignments,
     passPrediction,
     user: {
@@ -271,6 +276,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     weekTrack,
     passerBenchmark,
     passerSummaries,
+    passerLawAverages,
   } = loaderData;
 
   const examDateIso = goals.examDate ?? EXAM_DATE_FALLBACK_ISO;
@@ -1058,6 +1064,11 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                       >
                         {n.displayLabel}
                       </div>
+                      <PasserLawHint
+                        average={passerLawAverages[n.lawCode]}
+                        userAttempts={n.problemAttempts}
+                        userAccuracyPct={n.accuracyPct}
+                      />
                     </div>
                   </Link>
                 ))
@@ -1968,6 +1979,67 @@ function ComponentChip({ label, value }: { label: string; value: number }) {
           minWidth: 4,
         }}
       />
+    </div>
+  );
+}
+
+// 약점 단원 row 의 합격자 평균 hint
+function PasserLawHint({
+  average,
+  userAttempts,
+  userAccuracyPct,
+}: {
+  average: PasserLawAverage | undefined;
+  userAttempts: number;
+  userAccuracyPct: number;
+}) {
+  if (!average || average.learners === 0) return null;
+  const attemptsGap = average.avgAttempts - userAttempts;
+  const accuracyGap =
+    average.avgAccuracyPct !== null
+      ? average.avgAccuracyPct - userAccuracyPct
+      : null;
+  // 본인이 둘 다 못 미치면 강조, 둘 다 넘으면 격려.
+  const behindBoth =
+    attemptsGap > 0 && accuracyGap !== null && accuracyGap > 0;
+  const aheadBoth =
+    attemptsGap <= 0 && accuracyGap !== null && accuracyGap <= 0;
+  const tone = behindBoth
+    ? { bg: "#fff1f2", ink: "#9f1239" }
+    : aheadBoth
+      ? { bg: "#ecfdf5", ink: "#065f46" }
+      : { bg: "#eff6ff", ink: "#1e40af" };
+  return (
+    <div
+      style={{
+        marginTop: 4,
+        background: tone.bg,
+        color: tone.ink,
+        fontSize: 10,
+        padding: "3px 7px",
+        borderRadius: 6,
+        display: "flex",
+        gap: 6,
+        flexWrap: "wrap",
+        alignItems: "center",
+        fontVariantNumeric: "tabular-nums",
+        lineHeight: 1.3,
+      }}
+    >
+      <span style={{ fontWeight: 700 }}>합격자 평균</span>
+      <span>{average.avgAttempts}회 풀이</span>
+      {average.avgAccuracyPct !== null ? (
+        <span>· {average.avgAccuracyPct}% 정답률</span>
+      ) : null}
+      {attemptsGap > 0 ? (
+        <span style={{ marginLeft: "auto", fontWeight: 700 }}>
+          +{attemptsGap}회 더 풀어 보세요
+        </span>
+      ) : aheadBoth ? (
+        <span style={{ marginLeft: "auto", fontWeight: 700 }}>
+          이미 합격자 평균 이상
+        </span>
+      ) : null}
     </div>
   );
 }

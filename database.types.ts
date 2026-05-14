@@ -2710,6 +2710,7 @@ export type Database = {
           analytics_consent_at: string | null
           avatar_url: string | null
           created_at: string
+          is_synthetic: boolean
           marketing_consent: boolean
           name: string
           next_exam_round: Database["public"]["Enums"]["exam_round"] | null
@@ -2725,6 +2726,7 @@ export type Database = {
           analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
+          is_synthetic?: boolean
           marketing_consent?: boolean
           name: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
@@ -2740,6 +2742,7 @@ export type Database = {
           analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
+          is_synthetic?: boolean
           marketing_consent?: boolean
           name?: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null

@@ -6,10 +6,13 @@ import {
   CheckCircle2Icon,
   ClipboardCheckIcon,
   EyeOffIcon,
+  FlaskConicalIcon,
   ShieldCheckIcon,
+  Trash2Icon,
   TrophyIcon,
 } from "lucide-react";
-import { Form, Link, data, redirect } from "react-router";
+import { Form, Link, data, redirect, useFetcher } from "react-router";
+import { z } from "zod";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -28,6 +31,11 @@ import {
   type PasserAggregateStats,
   type PasserCase,
 } from "~/features/exam-results/analytics.server";
+import {
+  cleanupSeedPassers,
+  getSeedCount,
+  seedPasserData,
+} from "~/features/exam-results/seed.server";
 import {
   EXAM_ROUND_LABEL,
   EXAM_VERIFICATION_STATUS_LABEL,
@@ -59,12 +67,62 @@ export async function loader({ request }: Route.LoaderArgs) {
     onlyVerified: url.searchParams.get("verified") === "1",
     onlyConsented: url.searchParams.get("consented") === "1",
   };
-  const [cases, pool] = await Promise.all([
+  const [cases, pool, seedCount] = await Promise.all([
     listPasserCases(filter),
     getPasserPoolStats(),
+    getSeedCount(),
   ]);
   const stats = computePasserAggregateStats(cases);
-  return { cases, pool, stats, filter };
+  return { cases, pool, stats, seedCount, filter };
+}
+
+const seedSchema = z.object({
+  intent: z.literal("seed"),
+  count: z.coerce.number().int().min(1).max(20),
+});
+const cleanupSchema = z.object({
+  intent: z.literal("cleanup-seed"),
+});
+
+export async function action({ request }: Route.ActionArgs) {
+  if (request.method !== "POST") {
+    return data({ error: "Method not allowed" }, { status: 405 });
+  }
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return data({ error: "Unauthorized" }, { status: 401 });
+  const role = await getStaffRole(client, user.id);
+  if (role !== "admin")
+    return data({ error: "admin 권한이 필요합니다" }, { status: 403 });
+
+  const fd = await request.formData();
+  const intent = String(fd.get("intent") ?? "");
+
+  if (intent === "seed") {
+    const parsed = seedSchema.safeParse(Object.fromEntries(fd));
+    if (!parsed.success)
+      return data({ error: parsed.error.issues[0]?.message ?? "입력 오류" }, { status: 400 });
+    const res = await seedPasserData(parsed.data.count);
+    return data({
+      ok: true,
+      message: `${res.created}건 시드 완료${res.errors.length > 0 ? ` (오류 ${res.errors.length})` : ""}`,
+      errors: res.errors,
+    });
+  }
+  if (intent === "cleanup-seed") {
+    const parsed = cleanupSchema.safeParse(Object.fromEntries(fd));
+    if (!parsed.success)
+      return data({ error: "입력 오류" }, { status: 400 });
+    const res = await cleanupSeedPassers();
+    return data({
+      ok: true,
+      message: `${res.deleted}건 삭제${res.errors.length > 0 ? ` (오류 ${res.errors.length})` : ""}`,
+      errors: res.errors,
+    });
+  }
+  return data({ error: `알 수 없는 intent: ${intent}` }, { status: 400 });
 }
 
 function formatHours(ms: number): string {
@@ -74,7 +132,7 @@ function formatHours(ms: number): string {
 }
 
 export default function AdminPasserCases({ loaderData }: Route.ComponentProps) {
-  const { cases, pool, stats, filter } = loaderData;
+  const { cases, pool, stats, seedCount, filter } = loaderData;
   const totalCount = cases.length;
   const withAggCount = cases.filter((c) => c.aggregates !== null).length;
 
@@ -102,6 +160,8 @@ export default function AdminPasserCases({ loaderData }: Route.ComponentProps) {
         />
         <PoolStat label="현재 표시" value={totalCount} tone="amber" />
       </div>
+
+      <SeedToolBox seedCount={seedCount} />
 
       {pool.byYearRound.length > 0 ? (
         <Card className="mb-4">
@@ -235,6 +295,102 @@ export default function AdminPasserCases({ loaderData }: Route.ComponentProps) {
         </div>
       )}
     </div>
+  );
+}
+
+function SeedToolBox({ seedCount }: { seedCount: number }) {
+  const seedFetcher = useFetcher<{
+    ok?: boolean;
+    message?: string;
+    errors?: string[];
+    error?: string;
+  }>();
+  const cleanupFetcher = useFetcher<{
+    ok?: boolean;
+    message?: string;
+    errors?: string[];
+    error?: string;
+  }>();
+  const busy = seedFetcher.state !== "idle" || cleanupFetcher.state !== "idle";
+  return (
+    <Card className="mb-4 border-dashed border-violet-300 bg-violet-50/30">
+      <CardContent className="px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FlaskConicalIcon className="size-4 text-violet-700" />
+            <div>
+              <p className="text-sm font-semibold text-violet-900">
+                시연·QA 시드 데이터
+              </p>
+              <p className="text-violet-700/70 text-[11px]">
+                실제 합격자가 모이기 전 데모용. 모든 데이터는 `profiles.is_synthetic=true` 로 표식.
+                현재 시드 프로필 {seedCount.toLocaleString("ko-KR")}건.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <seedFetcher.Form method="post" className="flex items-center gap-1">
+              <input type="hidden" name="intent" value="seed" />
+              <Input
+                type="number"
+                name="count"
+                defaultValue={5}
+                min={1}
+                max={20}
+                className="h-7 w-16 text-xs tabular-nums"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                variant="default"
+                disabled={busy}
+                className="h-7 px-2 text-xs"
+              >
+                시드 추가
+              </Button>
+            </seedFetcher.Form>
+            <cleanupFetcher.Form method="post">
+              <input type="hidden" name="intent" value="cleanup-seed" />
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                disabled={busy || seedCount === 0}
+                className="h-7 px-2 text-xs text-rose-700 hover:text-rose-800"
+                onClick={(e) => {
+                  if (!confirm(`시드 합격자 ${seedCount}명을 모두 삭제하시겠습니까?`)) {
+                    e.preventDefault();
+                  }
+                }}
+              >
+                <Trash2Icon className="mr-1 size-3" />
+                전체 삭제
+              </Button>
+            </cleanupFetcher.Form>
+          </div>
+        </div>
+        {seedFetcher.data?.message ? (
+          <p className="mt-2 text-[11px] text-violet-900">
+            ✓ {seedFetcher.data.message}
+          </p>
+        ) : null}
+        {seedFetcher.data?.error ? (
+          <p className="mt-2 text-[11px] text-rose-700">
+            ✗ {seedFetcher.data.error}
+          </p>
+        ) : null}
+        {cleanupFetcher.data?.message ? (
+          <p className="mt-2 text-[11px] text-violet-900">
+            ✓ {cleanupFetcher.data.message}
+          </p>
+        ) : null}
+        {cleanupFetcher.data?.error ? (
+          <p className="mt-2 text-[11px] text-rose-700">
+            ✗ {cleanupFetcher.data.error}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
