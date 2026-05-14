@@ -441,3 +441,346 @@ export async function removeCurriculumFromCohort(
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+// ─── 학생: 현재 주차 트랙 (대시보드 "이번 주" 카드) ───
+// 자동 cron 의 daysBetweenKst 와 같은 방식으로 KST midnight 기준 weekNumber 계산.
+
+export interface WeekTrackItem {
+  itemId: string;
+  ord: number;
+  kind: CurriculumItemKind;
+  label: string;
+  hint: string | null;
+  entryUrl: string | null;
+  isDone: boolean;
+}
+
+export interface WeekTrack {
+  cohortId: string;
+  cohortName: string;
+  curriculumId: string;
+  curriculumName: string;
+  weekId: string;
+  weekNumber: number;
+  weekTitle: string;
+  goalMd: string | null;
+  durationWeeks: number;
+  startDate: string;
+  weekStartDate: string;
+  weekEndDate: string;
+  items: WeekTrackItem[];
+  completedCount: number;
+  totalCount: number;
+  assignmentId: string | null;
+}
+
+function ymdKstFromDate(d: Date): string {
+  const k = new Date(d.getTime() + 9 * 3600 * 1000);
+  return k.toISOString().slice(0, 10);
+}
+
+function addDaysIso(ymd: string, days: number): string {
+  const t = new Date(`${ymd}T00:00:00+09:00`).getTime();
+  return ymdKstFromDate(new Date(t + days * 86_400_000));
+}
+
+function daysBetweenKstStrict(from: string, today: Date): number {
+  const start = new Date(`${from}T00:00:00+09:00`).getTime();
+  const todayKst = new Date(`${ymdKstFromDate(today)}T00:00:00+09:00`).getTime();
+  return Math.floor((todayKst - start) / 86_400_000);
+}
+
+export async function getCurrentWeekTrack(
+  userId: string,
+): Promise<WeekTrack | null> {
+  const admin = adminClient as SupabaseClient<Database>;
+
+  // 1) 학생 cohort 멤버십
+  const { data: memberRows } = await admin
+    .from("cohort_members")
+    .select("cohort_id")
+    .eq("profile_id", userId);
+  const cohortIds = (memberRows ?? []).map((r) => r.cohort_id);
+  if (cohortIds.length === 0) return null;
+
+  // 2) 활성 cohort_curricula — 시작일/duration 으로 weekNumber 후보 산출.
+  const { data: curRows } = await admin
+    .from("cohort_curricula")
+    .select(
+      "cohort_id, curriculum_id, start_date, is_active, cohorts!inner(name, is_archived, deleted_at), curricula!inner(name, duration_weeks, is_published, deleted_at)",
+    )
+    .in("cohort_id", cohortIds)
+    .eq("is_active", true);
+
+  const today = new Date();
+  const candidates = (curRows ?? [])
+    .filter(
+      (r) =>
+        r.cohorts &&
+        !r.cohorts.is_archived &&
+        r.cohorts.deleted_at === null &&
+        r.curricula &&
+        r.curricula.is_published &&
+        r.curricula.deleted_at === null,
+    )
+    .map((r) => {
+      const days = daysBetweenKstStrict(r.start_date, today);
+      const weekNumber = Math.floor(days / 7) + 1;
+      return { ...r, days, weekNumber };
+    })
+    .filter((r) => r.days >= 0 && r.weekNumber <= r.curricula!.duration_weeks);
+
+  if (candidates.length === 0) return null;
+  // 여러 cohort 가 같은 학생을 다른 커리큘럼에 묶을 수 있으나, 대시보드는 한 트랙만 노출.
+  // 시작일 가장 최근 + (동률 시) weekNumber 작은 쪽 = 진행 초반에 가까운 것 우선.
+  candidates.sort((a, b) => {
+    if (a.start_date !== b.start_date)
+      return a.start_date < b.start_date ? 1 : -1;
+    return a.weekNumber - b.weekNumber;
+  });
+  const pick = candidates[0];
+
+  // 3) 주차 row
+  const { data: week } = await admin
+    .from("curriculum_weeks")
+    .select("week_id, week_number, title, goal_md")
+    .eq("curriculum_id", pick.curriculum_id)
+    .eq("week_number", pick.weekNumber)
+    .maybeSingle();
+  if (!week) return null;
+
+  // 4) 항목
+  const { data: itemRows } = await admin
+    .from("curriculum_items")
+    .select(
+      "item_id, ord, kind, article_id, case_id, problem_id, blank_set_id, lecture_title, lecture_url, lecture_duration_min, target_quantity, note, articles(display_label, article_number, laws(law_code)), cases(case_title, case_number, subject_laws), problems(body_md, year, problem_number, laws(law_code)), article_blank_sets(display_name, blanks, articles(article_number, laws(law_code)))",
+    )
+    .eq("week_id", week.week_id)
+    .order("ord", { ascending: true });
+  const rawItems = itemRows ?? [];
+  if (rawItems.length === 0) {
+    return {
+      cohortId: pick.cohort_id,
+      cohortName: pick.cohorts!.name,
+      curriculumId: pick.curriculum_id,
+      curriculumName: pick.curricula!.name,
+      weekId: week.week_id,
+      weekNumber: week.week_number,
+      weekTitle: week.title,
+      goalMd: week.goal_md,
+      durationWeeks: pick.curricula!.duration_weeks,
+      startDate: pick.start_date,
+      weekStartDate: addDaysIso(pick.start_date, (week.week_number - 1) * 7),
+      weekEndDate: addDaysIso(pick.start_date, week.week_number * 7 - 1),
+      items: [],
+      completedCount: 0,
+      totalCount: 0,
+      assignmentId: null,
+    };
+  }
+
+  // 5) 완수 판정용 fetch
+  const articleIds = rawItems
+    .filter((i) => i.kind === "article" || i.kind === "recitation")
+    .map((i) => i.article_id)
+    .filter(Boolean) as string[];
+  const caseIds = rawItems
+    .filter((i) => i.kind === "case")
+    .map((i) => i.case_id)
+    .filter(Boolean) as string[];
+  const problemIds = rawItems
+    .filter((i) => i.kind === "problem")
+    .map((i) => i.problem_id)
+    .filter(Boolean) as string[];
+  const blankSetIds = rawItems
+    .filter((i) => i.kind === "blank_set")
+    .map((i) => i.blank_set_id)
+    .filter(Boolean) as string[];
+  const lectureItemIds = rawItems
+    .filter((i) => i.kind === "lecture")
+    .map((i) => i.item_id);
+
+  const [
+    correctProblemsRes,
+    studyScopesRes,
+    blankAttemptsRes,
+    recitationRes,
+    lectureRes,
+  ] = await Promise.all([
+    problemIds.length > 0
+      ? admin
+          .from("user_problem_attempts")
+          .select("problem_id")
+          .eq("user_id", userId)
+          .eq("is_correct", true)
+          .in("problem_id", problemIds)
+      : Promise.resolve({ data: [] as { problem_id: string }[] }),
+    articleIds.length > 0 || caseIds.length > 0
+      ? admin
+          .from("study_sessions")
+          .select("scope")
+          .eq("user_id", userId)
+          .limit(5000)
+      : Promise.resolve({ data: [] as { scope: unknown }[] }),
+    blankSetIds.length > 0
+      ? admin
+          .from("user_blank_attempts")
+          .select("set_id, blank_idx")
+          .eq("user_id", userId)
+          .eq("is_correct", true)
+          .in("set_id", blankSetIds)
+      : Promise.resolve({ data: [] as { set_id: string; blank_idx: number }[] }),
+    articleIds.length > 0
+      ? admin
+          .from("user_recitation_attempts")
+          .select("article_id")
+          .eq("user_id", userId)
+          .eq("is_complete", true)
+          .in("article_id", articleIds)
+      : Promise.resolve({ data: [] as { article_id: string }[] }),
+    lectureItemIds.length > 0
+      ? admin
+          .from("lecture_views")
+          .select("item_id, completed_at, last_position_sec")
+          .eq("user_id", userId)
+          .in("item_id", lectureItemIds)
+      : Promise.resolve({
+          data: [] as {
+            item_id: string;
+            completed_at: string | null;
+            last_position_sec: number;
+          }[],
+        }),
+  ]);
+
+  const correctProblems = new Set<string>();
+  for (const r of correctProblemsRes.data ?? [])
+    correctProblems.add(r.problem_id);
+
+  const visitedArticles = new Set<string>();
+  const visitedCases = new Set<string>();
+  for (const r of studyScopesRes.data ?? []) {
+    const scope = r.scope as
+      | { target_type?: string; target_id?: string }
+      | null;
+    if (!scope?.target_id) continue;
+    if (scope.target_type === "article") visitedArticles.add(scope.target_id);
+    else if (scope.target_type === "case") visitedCases.add(scope.target_id);
+  }
+
+  const correctIdxBySet = new Map<string, Set<number>>();
+  for (const r of blankAttemptsRes.data ?? []) {
+    if (!correctIdxBySet.has(r.set_id)) correctIdxBySet.set(r.set_id, new Set());
+    correctIdxBySet.get(r.set_id)!.add(r.blank_idx);
+  }
+
+  const completedRecitations = new Set<string>();
+  for (const r of recitationRes.data ?? [])
+    completedRecitations.add(r.article_id);
+
+  const lectureCompleted = new Set<string>();
+  for (const r of lectureRes.data ?? []) {
+    if (r.completed_at) lectureCompleted.add(r.item_id);
+  }
+
+  // 6) 항목 매핑
+  const items: WeekTrackItem[] = rawItems.map((r) => {
+    const articleLawCode = r.articles?.laws?.law_code ?? null;
+    const articleNum = r.articles?.article_number ?? null;
+    const caseLawCode = Array.isArray(r.cases?.subject_laws)
+      ? (r.cases!.subject_laws[0] ?? null)
+      : null;
+    const problemLawCode = r.problems?.laws?.law_code ?? null;
+    const bsLawCode = r.article_blank_sets?.articles?.laws?.law_code ?? null;
+    const bsArticleNum =
+      r.article_blank_sets?.articles?.article_number ?? null;
+
+    let entryUrl: string | null = null;
+    let label = "";
+    let hint: string | null = r.note ?? null;
+    let isDone = false;
+
+    if (r.kind === "article") {
+      label = r.articles?.display_label ?? "(조문)";
+      if (articleLawCode && articleNum)
+        entryUrl = `/subjects/${articleLawCode}/articles/${articleNum}`;
+      if (r.article_id) isDone = visitedArticles.has(r.article_id);
+    } else if (r.kind === "recitation") {
+      label = r.articles?.display_label ?? "(조문 암기)";
+      if (articleLawCode && articleNum)
+        entryUrl = `/subjects/${articleLawCode}/articles/${articleNum}?recitation=1`;
+      if (r.article_id) isDone = completedRecitations.has(r.article_id);
+    } else if (r.kind === "case") {
+      label = r.cases?.case_title ?? r.cases?.case_number ?? "(판례)";
+      if (caseLawCode && r.case_id)
+        entryUrl = `/subjects/${caseLawCode}/cases/${r.case_id}`;
+      if (r.case_id) isDone = visitedCases.has(r.case_id);
+    } else if (r.kind === "problem") {
+      const body = r.problems?.body_md ?? "";
+      label = body.length > 0
+        ? `${r.problems?.year ?? ""}${r.problems?.problem_number ? ` ${r.problems.problem_number}번` : ""} ${body.slice(0, 50)}${body.length > 50 ? "…" : ""}`.trim()
+        : "(문제)";
+      if (problemLawCode && r.problem_id)
+        entryUrl = `/subjects/${problemLawCode}/problems/${r.problem_id}`;
+      if (r.problem_id) isDone = correctProblems.has(r.problem_id);
+    } else if (r.kind === "blank_set") {
+      const blanksArr = Array.isArray(r.article_blank_sets?.blanks)
+        ? (r.article_blank_sets!.blanks as unknown[])
+        : [];
+      label = r.article_blank_sets?.display_name ?? "(빈칸 세트)";
+      hint = `${blanksArr.length}칸${r.note ? ` · ${r.note}` : ""}`;
+      if (bsLawCode && bsArticleNum && r.blank_set_id)
+        entryUrl = `/subjects/${bsLawCode}/articles/${bsArticleNum}?blank=${r.blank_set_id}`;
+      if (r.blank_set_id && blanksArr.length > 0) {
+        const correctSet = correctIdxBySet.get(r.blank_set_id);
+        isDone = !!correctSet && correctSet.size >= blanksArr.length;
+      }
+    } else if (r.kind === "lecture") {
+      label = r.lecture_title ?? "(강의)";
+      hint = r.lecture_duration_min
+        ? `${r.lecture_duration_min}분${r.note ? ` · ${r.note}` : ""}`
+        : (r.note ?? null);
+      entryUrl = `/lectures/${r.item_id}`;
+      isDone = lectureCompleted.has(r.item_id);
+    }
+
+    return {
+      itemId: r.item_id,
+      ord: r.ord,
+      kind: r.kind as CurriculumItemKind,
+      label,
+      hint,
+      entryUrl,
+      isDone,
+    };
+  });
+
+  // 7) 자동 생성된 assignment id (있으면)
+  const { data: existingAssignment } = await admin
+    .from("assignments")
+    .select("assignment_id")
+    .eq("cohort_id", pick.cohort_id)
+    .eq("source_week_id", week.week_id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  const completedCount = items.filter((i) => i.isDone).length;
+  return {
+    cohortId: pick.cohort_id,
+    cohortName: pick.cohorts!.name,
+    curriculumId: pick.curriculum_id,
+    curriculumName: pick.curricula!.name,
+    weekId: week.week_id,
+    weekNumber: week.week_number,
+    weekTitle: week.title,
+    goalMd: week.goal_md,
+    durationWeeks: pick.curricula!.duration_weeks,
+    startDate: pick.start_date,
+    weekStartDate: addDaysIso(pick.start_date, (week.week_number - 1) * 7),
+    weekEndDate: addDaysIso(pick.start_date, week.week_number * 7 - 1),
+    items,
+    completedCount,
+    totalCount: items.length,
+    assignmentId: existingAssignment?.assignment_id ?? null,
+  };
+}

@@ -1,5 +1,5 @@
 // 학생 강의 viewer (feat-7-029).
-// 외부 영상 URL 임베드 + 시청 자동 기록 + "수강 완료" 버튼.
+// 외부 영상 URL 임베드 + YouTube/Vimeo postMessage 자동 진행률 추적 + 수동 "수강 완료" 버튼(폴백).
 
 import {
   ArrowLeftIcon,
@@ -7,13 +7,14 @@ import {
   ExternalLinkIcon,
   PlayCircleIcon,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { TrackedLectureFrame } from "~/features/lectures/components/tracked-lecture-frame";
 import {
   getLectureItemForUser,
   getMyLectureView,
@@ -43,7 +44,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function LectureViewer({ loaderData }: Route.ComponentProps) {
   const { item, view } = loaderData;
   const embedUrl = toEmbedUrl(item.lectureUrl);
-  const completed = !!view?.completedAt;
+  const initialCompleted = !!view?.completedAt;
+  const [autoCompleted, setAutoCompleted] = useState(false);
+  const completed = initialCompleted || autoCompleted;
   const viewFetcher = useFetcher<{ ok?: true; error?: string }>();
   const completeFetcher = useFetcher<{ ok?: true; error?: string }>();
 
@@ -103,12 +106,13 @@ export default function LectureViewer({ loaderData }: Route.ComponentProps) {
         <Card>
           <CardContent className="p-0">
             <div className="bg-black" style={{ aspectRatio: "16 / 9" }}>
-              <iframe
-                src={embedUrl}
+              <TrackedLectureFrame
+                embedUrl={embedUrl}
+                itemId={item.itemId}
                 title={item.lectureTitle}
-                className="size-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
+                initialPositionSec={view?.lastPositionSec ?? 0}
+                alreadyCompleted={initialCompleted}
+                onAutoComplete={() => setAutoCompleted(true)}
               />
             </div>
           </CardContent>
@@ -121,7 +125,12 @@ export default function LectureViewer({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
+      <div className="text-muted-foreground mt-3 text-[11px]">
+        YouTube / Vimeo 는 약 85% 시청 시 자동으로 수강 완료 처리됩니다.
+        그 외 영상은 아래 버튼으로 수동 표시하세요.
+      </div>
+
+      <div className="mt-2 flex justify-end">
         {completed ? (
           <Button size="sm" variant="outline" disabled>
             <CheckCircle2Icon className="size-3.5" /> 수강 완료됨

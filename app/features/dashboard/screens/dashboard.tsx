@@ -35,6 +35,14 @@ import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.s
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
 import { listStudentAssignments } from "~/features/assignments/queries.server";
 import {
+  getCurrentWeekTrack,
+  type WeekTrack,
+} from "~/features/curricula/queries.server";
+import {
+  CURRICULUM_ITEM_KIND_LABEL,
+  type CurriculumItemKind,
+} from "~/features/curricula/labels";
+import {
   predictPassScore,
   type PassPrediction,
 } from "~/features/study/lib/pass-predict";
@@ -110,6 +118,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     studyAidCounts,
     studentAssignments,
     gsAveragePct,
+    weekTrack,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -121,6 +130,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getStudyAidCounts(client, user.id),
     listStudentAssignments(user.id),
     getUserGsAveragePct(client, user.id),
+    getCurrentWeekTrack(user.id),
   ]);
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
@@ -164,6 +174,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   });
 
   return {
+    weekTrack,
     pendingAssignments,
     passPrediction,
     user: {
@@ -243,6 +254,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     todayLabel,
     pendingAssignments,
     passPrediction,
+    weekTrack,
   } = loaderData;
 
   const examDateIso = goals.examDate ?? EXAM_DATE_FALLBACK_ISO;
@@ -337,6 +349,10 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         />
 
         <PassPredictionCard prediction={passPrediction} palette={palette} />
+
+        {weekTrack ? (
+          <WeekTrackCard track={weekTrack} palette={palette} />
+        ) : null}
 
         {pendingAssignments.length > 0 ? (
           <PendingAssignmentsBanner items={pendingAssignments} palette={palette} />
@@ -1909,6 +1925,241 @@ function ComponentChip({ label, value }: { label: string; value: number }) {
           minWidth: 4,
         }}
       />
+    </div>
+  );
+}
+
+// 이번 주 트랙 — 학생 본인 커리큘럼 주차 항목 + 진입 링크
+const KIND_TONE: Record<CurriculumItemKind, { bg: string; ink: string }> = {
+  article: { bg: "#E0F2FE", ink: "#0369A1" },
+  case: { bg: "#FCE7F3", ink: "#9D174D" },
+  problem: { bg: "#FEF3C7", ink: "#92400E" },
+  blank_set: { bg: "#DCFCE7", ink: "#166534" },
+  recitation: { bg: "#EDE9FE", ink: "#6D28D9" },
+  lecture: { bg: "#FFE4E6", ink: "#9F1239" },
+};
+
+function WeekTrackCard({
+  track,
+  palette,
+}: {
+  track: WeekTrack;
+  palette: { primary: string; tint: string; accent: string; soft: string };
+}) {
+  const pct =
+    track.totalCount > 0
+      ? Math.round((track.completedCount / track.totalCount) * 100)
+      : 0;
+  const items = track.items.slice().sort((a, b) => a.ord - b.ord);
+  return (
+    <div
+      style={{
+        marginBottom: 18,
+        padding: 14,
+        background: palette.tint,
+        borderRadius: 14,
+        border: `1px solid ${COZY_INK}1A`,
+      }}
+      data-testid="week-track-card"
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          marginBottom: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: COZY_INK }}>
+            📅 이번 주 트랙 — W{track.weekNumber}/{track.durationWeeks}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: palette.primary }}>
+            {track.weekTitle}
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              color: COZY_INK_SOFT,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {track.curriculumName} · {track.weekStartDate.slice(5)} ~{" "}
+            {track.weekEndDate.slice(5)}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span
+            style={{
+              fontSize: 11,
+              color: COZY_INK_SOFT,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {track.completedCount}/{track.totalCount} ({pct}%)
+          </span>
+          {track.assignmentId ? (
+            <Link
+              to={`/assignments/${track.assignmentId}`}
+              style={{
+                fontSize: 12,
+                color: palette.primary,
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              과제로 보기 →
+            </Link>
+          ) : null}
+        </div>
+      </div>
+      <div
+        style={{
+          height: 6,
+          borderRadius: 3,
+          background: "#FFFFFF",
+          overflow: "hidden",
+          marginBottom: 10,
+        }}
+      >
+        <div
+          style={{
+            width: `${pct}%`,
+            height: "100%",
+            background: `linear-gradient(90deg, ${palette.accent}, ${palette.primary})`,
+          }}
+        />
+      </div>
+      {track.goalMd ? (
+        <p
+          style={{
+            margin: "0 0 10px",
+            fontSize: 12,
+            color: COZY_INK_SOFT,
+            whiteSpace: "pre-line",
+          }}
+        >
+          {track.goalMd}
+        </p>
+      ) : null}
+      {items.length === 0 ? (
+        <p style={{ fontSize: 12, color: COZY_INK_SOFT, margin: "6px 0" }}>
+          이번 주 학습 항목이 비어있습니다.
+        </p>
+      ) : (
+        <ul
+          style={{
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+            display: "grid",
+            gridTemplateColumns: "1fr",
+            gap: 6,
+          }}
+        >
+          {items.map((it) => {
+            const tone = KIND_TONE[it.kind];
+            const content = (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 10px",
+                  background: "#FFFFFF",
+                  borderRadius: 10,
+                  border: `1px solid ${COZY_INK}14`,
+                  opacity: it.isDone ? 0.7 : 1,
+                  textDecoration: "none",
+                  color: COZY_INK,
+                }}
+              >
+                <span
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    background: it.isDone ? "#10B981" : `${COZY_INK}1A`,
+                    color: "#FFF",
+                    fontSize: 10,
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                  }}
+                  aria-label={it.isDone ? "완료" : "미완료"}
+                >
+                  {it.isDone ? "✓" : ""}
+                </span>
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    padding: "2px 6px",
+                    borderRadius: 4,
+                    background: tone.bg,
+                    color: tone.ink,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {CURRICULUM_ITEM_KIND_LABEL[it.kind]}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      lineHeight: 1.3,
+                      textDecoration: it.isDone ? "line-through" : "none",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {it.label}
+                  </div>
+                  {it.hint ? (
+                    <div
+                      style={{
+                        fontSize: 10.5,
+                        color: COZY_INK_SOFT,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {it.hint}
+                    </div>
+                  ) : null}
+                </div>
+                {it.entryUrl ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: palette.primary,
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    학습 →
+                  </span>
+                ) : null}
+              </div>
+            );
+            return (
+              <li key={it.itemId}>
+                {it.entryUrl ? (
+                  <Link to={it.entryUrl} style={{ textDecoration: "none" }}>
+                    {content}
+                  </Link>
+                ) : (
+                  content
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
