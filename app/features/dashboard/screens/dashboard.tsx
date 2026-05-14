@@ -53,6 +53,10 @@ import {
 } from "~/features/exam-results/analytics.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import {
+  generateRecommendedActions,
+  type RecommendedAction,
+} from "~/features/exam-results/recommendations";
+import {
   predictPassScore,
   type PassPrediction,
 } from "~/features/study/lib/pass-predict";
@@ -189,11 +193,33 @@ export async function loader({ request }: Route.LoaderArgs) {
     weak: s.weakBlanks.length,
   });
 
+  const recommendedActions = generateRecommendedActions({
+    benchmark: passerBenchmark,
+    passerLawAverages,
+    weakAreas,
+    weakNodes,
+    pendingAssignments: pendingAssignments.map((a) => ({
+      assignmentId: a.assignmentId,
+      title: a.title,
+      dueAt: a.dueAt,
+      completedItems: a.submission?.completedItems ?? 0,
+      totalItems: a.submission?.totalItems ?? a.itemCount,
+    })),
+    dailyStats: {
+      currentStreak: dailyStats.currentStreak,
+      totalActiveDays: dailyStats.totalActiveDays,
+      avgHoursPerActiveDay: dailyStats.avgHoursPerActiveDay,
+    },
+    passPrediction,
+    hasExamPlan: !!(passerBenchmark?.hasPlan),
+  });
+
   return {
     weekTrack,
     passerBenchmark,
     passerSummaries,
     passerLawAverages,
+    recommendedActions,
     pendingAssignments,
     passPrediction,
     user: {
@@ -277,6 +303,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     passerBenchmark,
     passerSummaries,
     passerLawAverages,
+    recommendedActions,
   } = loaderData;
 
   const examDateIso = goals.examDate ?? EXAM_DATE_FALLBACK_ISO;
@@ -371,6 +398,13 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         />
 
         <PassPredictionCard prediction={passPrediction} palette={palette} />
+
+        {recommendedActions.length > 0 ? (
+          <RecommendedActionsCard
+            actions={recommendedActions}
+            palette={palette}
+          />
+        ) : null}
 
         {passerBenchmark ? (
           <PasserBenchmarkCard
@@ -1979,6 +2013,165 @@ function ComponentChip({ label, value }: { label: string; value: number }) {
           minWidth: 4,
         }}
       />
+    </div>
+  );
+}
+
+// feat-8-013 자동 학습 추천 액션 카드
+const ACTION_TONE: Record<RecommendedAction["priority"], { bg: string; ink: string; accent: string }> = {
+  high: { bg: "#FEF2F2", ink: "#991B1B", accent: "#DC2626" },
+  medium: { bg: "#FFFBEB", ink: "#92400E", accent: "#D97706" },
+  low: { bg: "#F0F9FF", ink: "#1E40AF", accent: "#2563EB" },
+  celebrate: { bg: "#F0FDF4", ink: "#166534", accent: "#16A34A" },
+};
+
+const ACTION_ICON_TEXT: Record<RecommendedAction["icon"], string> = {
+  alert: "⚠️",
+  trend: "📈",
+  target: "🎯",
+  flame: "🔥",
+  star: "⭐",
+  trophy: "🏆",
+  calendar: "📅",
+  spark: "✨",
+};
+
+function RecommendedActionsCard({
+  actions,
+  palette,
+}: {
+  actions: RecommendedAction[];
+  palette: { primary: string; tint: string };
+}) {
+  return (
+    <div
+      style={{
+        marginBottom: 18,
+        padding: 14,
+        background: palette.tint,
+        borderRadius: 14,
+        border: `1px solid ${COZY_INK}1A`,
+      }}
+      data-testid="recommended-actions-card"
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: COZY_INK }}>
+            🎯 오늘의 추천 액션
+          </div>
+          <div style={{ fontSize: 11, color: COZY_INK_SOFT, marginTop: 2 }}>
+            합격자 데이터·약점·과제를 결합해 우선순위 높은 행동을 추천합니다.
+          </div>
+        </div>
+        <span
+          style={{
+            fontSize: 11,
+            color: COZY_INK_SOFT,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {actions.length}건
+        </span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {actions.map((a) => {
+          const tone = ACTION_TONE[a.priority];
+          return (
+            <Link
+              key={a.id}
+              to={a.ctaUrl}
+              style={{
+                display: "flex",
+                gap: 10,
+                padding: "10px 12px",
+                background: tone.bg,
+                border: `1px solid ${tone.accent}33`,
+                borderRadius: 10,
+                textDecoration: "none",
+                color: COZY_INK,
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 18,
+                  lineHeight: 1,
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
+                aria-hidden
+              >
+                {ACTION_ICON_TEXT[a.icon]}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "baseline",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      color: tone.ink,
+                    }}
+                  >
+                    {a.title}
+                  </span>
+                  {a.metric ? (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: 999,
+                        background: tone.accent,
+                        color: "#FFF",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {a.metric}
+                    </span>
+                  ) : null}
+                </div>
+                <p
+                  style={{
+                    margin: "4px 0 0",
+                    fontSize: 11.5,
+                    color: COZY_INK,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {a.body}
+                </p>
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: tone.accent,
+                  whiteSpace: "nowrap",
+                  marginTop: 2,
+                }}
+              >
+                {a.ctaLabel} →
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
