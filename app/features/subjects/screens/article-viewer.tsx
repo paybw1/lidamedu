@@ -61,7 +61,6 @@ import {
 import {
   getArticleByNumber,
   getArticleByNumberAt,
-  getArticleComment,
   getArticleSkeleton,
   getLawByCode,
   getStaffRole,
@@ -69,6 +68,7 @@ import {
   listArticleRevisionHistory,
   type RevisionHistoryEntry,
 } from "~/features/laws/queries.server";
+import { listComments } from "~/features/comments/queries.server";
 import {
   getOxAnnotationsForRefs,
   getOxQuestionsForArticle,
@@ -172,7 +172,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankSets,
     staffRole,
     oxQuestions,
-    articleComment,
+    articleComments,
   ] = await Promise.all([
     getRelatedCasesByArticle(client, article.articleId),
     getBookmark(client, user.id, "article", article.articleId),
@@ -184,7 +184,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listBlankSetsByArticle(client, article.articleId),
     getStaffRole(client, user.id),
     getOxQuestionsForArticle(client, article.articleId, 50),
-    getArticleComment(client, article.articleId),
+    listComments(client, "article", article.articleId),
   ]);
 
   // 개정 이력은 staff (instructor/admin) 만 조회 — 학생에게는 노출 안 함.
@@ -253,7 +253,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     revisions,
     oxQuestions,
     oxAnnotationsByRef,
-    articleComment,
+    articleComments,
   };
 }
 
@@ -295,7 +295,7 @@ function ArticleViewerInner({
     revisions,
     oxQuestions,
     oxAnnotationsByRef,
-    articleComment,
+    articleComments,
   } = loaderData;
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
@@ -524,7 +524,7 @@ function ArticleViewerInner({
                     relatedCases={relatedCases}
                     oxQuestions={oxQuestions}
                     oxAnnotationsByRef={oxAnnotationsByRef}
-                    comment={articleComment}
+                    comments={articleComments}
                     canEditComment={staffRole !== null}
                     subjectSlug={subject.slug}
                     revisions={revisions ?? undefined}
@@ -744,7 +744,7 @@ function ArticleViewerInner({
                     )}
                     소제목만 보기
                   </Button>
-                  {articleComment ? (
+                  {articleComments.length > 0 ? (
                     <Button
                       variant="outline"
                       size="sm"
@@ -760,7 +760,7 @@ function ArticleViewerInner({
                       data-testid="open-article-comment"
                     >
                       <ScrollTextIcon className="size-3.5" />
-                      해설 보기
+                      해설 보기 ({articleComments.length})
                     </Button>
                   ) : null}
                   {relatedCases.length > 0 && article.articleNumber ? (
@@ -928,7 +928,7 @@ function ArticleViewerInner({
                 relatedCases={relatedCases}
                 oxQuestions={oxQuestions}
                 oxAnnotationsByRef={oxAnnotationsByRef}
-                comment={articleComment}
+                comments={articleComments}
                 canEditComment={staffRole !== null}
                 subjectSlug={subject.slug}
                 revisions={revisions ?? undefined}

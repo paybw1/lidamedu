@@ -199,7 +199,8 @@ export async function getArticleByNumberAt(
   };
 }
 
-// 조문 코멘트/평석 — staff 작성, 학생 read-only.
+// 조문 코멘트/평석 — content_comments 폴리모픽 (feat-8-021).
+// 호환 layer — 기존 caller 가 단일 primary 평석 1개만 다루면 첫 번째(고정 우선) 반환.
 export interface ArticleComment {
   bodyMd: string;
   authorId: string | null;
@@ -211,9 +212,13 @@ export async function getArticleComment(
   articleId: string,
 ): Promise<ArticleComment | null> {
   const { data, error } = await client
-    .from("article_comments")
+    .from("content_comments")
     .select("body_md, author_id, updated_at")
-    .eq("article_id", articleId)
+    .eq("target_type", "article")
+    .eq("target_id", articleId)
+    .order("is_pinned", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -222,34 +227,6 @@ export async function getArticleComment(
     authorId: data.author_id,
     updatedAt: data.updated_at,
   };
-}
-
-export async function upsertArticleComment(
-  client: SupabaseClient<Database>,
-  articleId: string,
-  authorId: string,
-  bodyMd: string,
-): Promise<void> {
-  const { error } = await client.from("article_comments").upsert(
-    {
-      article_id: articleId,
-      body_md: bodyMd,
-      author_id: authorId,
-    },
-    { onConflict: "article_id" },
-  );
-  if (error) throw error;
-}
-
-export async function deleteArticleComment(
-  client: SupabaseClient<Database>,
-  articleId: string,
-): Promise<void> {
-  const { error } = await client
-    .from("article_comments")
-    .delete()
-    .eq("article_id", articleId);
-  if (error) throw error;
 }
 
 // 최근 published 법 개정 (대시보드 위젯 + /latest/laws). 모든 과목 통합.

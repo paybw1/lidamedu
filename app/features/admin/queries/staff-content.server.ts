@@ -44,9 +44,10 @@ export async function getStaffContentStats(
         .eq("created_by", userId)
         .is("deleted_at", null),
       client
-        .from("article_comments")
+        .from("content_comments")
         .select("comment_id", { count: "exact", head: true })
-        .eq("created_by", userId),
+        .eq("author_id", userId)
+        .eq("target_type", "article"),
       client
         .from("user_subjective_attempts")
         .select("attempt_id", { count: "exact", head: true })

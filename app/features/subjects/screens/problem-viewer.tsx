@@ -40,8 +40,9 @@ import {
   listMemos,
 } from "~/features/annotations/queries.server";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
-import { getLawByCode, getSystematicSkeleton } from "~/features/laws/queries.server";
+import { getLawByCode, getStaffRole, getSystematicSkeleton } from "~/features/laws/queries.server";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
@@ -163,6 +164,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problemStats,
     relatedProblems,
     citedCases,
+    problemComments,
+    staffRole,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -174,6 +177,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getProblemStats(client, problem.problemId),
     getRelatedProblems(client, problem.problemId, 8),
     getCasesCitedByProblem(client, problem.problemId),
+    listComments(client, "problem", problem.problemId),
+    getStaffRole(client, user.id),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -319,6 +324,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     choiceArticleRefs,
     choiceCaseRefs,
     subjectiveAttempt,
+    problemComments,
+    canEditComment: staffRole !== null,
+    isAdmin: staffRole === "admin",
+    currentUserId: user.id,
   };
 }
 
@@ -380,6 +389,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     choiceArticleRefs,
     choiceCaseRefs,
     subjectiveAttempt,
+    problemComments,
+    canEditComment,
+    isAdmin,
+    currentUserId,
   } = loaderData;
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -672,6 +685,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       relationType: PC_TO_AC[c.relationType] ?? "cites",
                       note: null,
                     }))}
+                    comments={problemComments}
+                    canEditComment={canEditComment}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
                   />
                 </div>
               </SheetContent>
@@ -1063,6 +1080,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   relationType: PC_TO_AC[c.relationType] ?? "cites",
                   note: null,
                 }))}
+                comments={problemComments}
+                canEditComment={canEditComment}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
               />
             </CardContent>
           </Card>

@@ -291,48 +291,6 @@ export type Database = {
           },
         ]
       }
-      article_comments: {
-        Row: {
-          article_id: string
-          author_id: string | null
-          body_md: string
-          comment_id: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          article_id: string
-          author_id?: string | null
-          body_md: string
-          comment_id?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          article_id?: string
-          author_id?: string | null
-          body_md?: string
-          comment_id?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "article_comments_article_id_fkey"
-            columns: ["article_id"]
-            isOneToOne: true
-            referencedRelation: "articles"
-            referencedColumns: ["article_id"]
-          },
-          {
-            foreignKeyName: "article_comments_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["profile_id"]
-          },
-        ]
-      }
       article_revisions: {
         Row: {
           article_id: string
@@ -1080,6 +1038,47 @@ export type Database = {
           {
             foreignKeyName: "cohorts_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      content_comments: {
+        Row: {
+          author_id: string | null
+          body_md: string
+          comment_id: string
+          created_at: string
+          is_pinned: boolean
+          target_id: string
+          target_type: Database["public"]["Enums"]["content_comment_target_type"]
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body_md: string
+          comment_id?: string
+          created_at?: string
+          is_pinned?: boolean
+          target_id: string
+          target_type: Database["public"]["Enums"]["content_comment_target_type"]
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body_md?: string
+          comment_id?: string
+          created_at?: string
+          is_pinned?: boolean
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["content_comment_target_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_comments_author_id_fkey"
+            columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
@@ -4107,6 +4106,7 @@ export type Database = {
       assignment_status: "pending" | "partial" | "completed"
       auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
+      content_comment_target_type: "article" | "case" | "problem"
       curriculum_item_kind:
         | "article"
         | "case"
@@ -4318,6 +4318,7 @@ export const Constants = {
       assignment_status: ["pending", "partial", "completed"],
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
+      content_comment_target_type: ["article", "case", "problem"],
       curriculum_item_kind: [
         "article",
         "case",

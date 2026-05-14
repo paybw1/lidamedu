@@ -37,7 +37,8 @@ import type {
   HighlightRecord,
   MemoRecord,
 } from "~/features/annotations/labels";
-import { ArticleCommentPanel } from "~/features/laws/components/article-comment-panel";
+import { CommentsPanel } from "~/features/comments/components/comments-panel";
+import type { ContentComment } from "~/features/comments/queries.server";
 import { RelatedCasesList } from "~/features/laws/components/related-chips";
 import { OxQuestionsPanel } from "~/features/problems/components/ox-questions-panel";
 import { RelatedProblemsList } from "~/features/problems/components/related-problems-list";
@@ -47,10 +48,7 @@ import type {
 } from "~/features/problems/labels";
 import type { RelatedProblemItem } from "~/features/problems/queries.server";
 import { RevisionHistory } from "~/features/laws/components/revision-history";
-import type {
-  ArticleComment,
-  RevisionHistoryEntry,
-} from "~/features/laws/queries.server";
+import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
 import type {
   QnaTargetType,
@@ -109,8 +107,10 @@ export function ArticleRightPanel({
   relatedProblems,
   oxQuestions,
   oxAnnotationsByRef,
-  comment,
+  comments,
   canEditComment = false,
+  currentUserId = null,
+  isAdmin = false,
   subjectSlug,
   revisions,
 }: {
@@ -126,9 +126,11 @@ export function ArticleRightPanel({
   oxQuestions?: OxQuestionItem[];
   // 각 OX refId 별 메모/즐겨찾기 — 정답 확인 후 패널 안에서 저장 가능.
   oxAnnotationsByRef?: Record<string, OxRefAnnotations>;
-  // article 코멘트/평석. null = 미작성. undefined = 탭 자체 비활성 (placeholder 유지).
-  comment?: ArticleComment | null;
+  // 통합 코멘트(feat-8-021) — 다중 코멘트. undefined = 탭 자체 비활성 (placeholder 유지).
+  comments?: ContentComment[];
   canEditComment?: boolean;
+  currentUserId?: string | null;
+  isAdmin?: boolean;
   subjectSlug?: LawSubjectSlug;
   // staff(instructor/admin) 일 때만 전달. 비어있거나 undefined 이면 탭 자체가 표시되지 않음.
   revisions?: RevisionHistoryEntry[];
@@ -137,7 +139,11 @@ export function ArticleRightPanel({
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
   const showRelatedProblems = relatedProblems !== undefined;
   const showOxLive = oxQuestions !== undefined && subjectSlug !== undefined;
-  const showCommentLive = comment !== undefined && target.type === "article";
+  const commentTargetType: "article" | "case" | "problem" | null =
+    target.type === "article" || target.type === "case" || target.type === "problem"
+      ? target.type
+      : null;
+  const showCommentLive = comments !== undefined && commentTargetType !== null;
   const showRevisions = revisions !== undefined;
   // 본문 selection → "메모" 버튼 클릭 시 자동으로 memo 탭 활성화. (snippet 자동 fill 은 MemoList 가 처리)
   const [activeTab, setActiveTab] = useState("bookmark");
@@ -252,9 +258,9 @@ export function ArticleRightPanel({
               className="h-7 flex-none px-2.5 text-xs"
             >
               <ScrollTextIcon /> 코멘트
-              {comment ? (
+              {comments && comments.length > 0 ? (
                 <span className="text-muted-foreground ml-1 tabular-nums">
-                  ●
+                  {comments.length}
                 </span>
               ) : null}
             </TabsTrigger>
@@ -339,12 +345,15 @@ export function ArticleRightPanel({
           </TabsContent>
         ) : null}
 
-        {showCommentLive ? (
+        {showCommentLive && commentTargetType ? (
           <TabsContent value="comment">
-            <ArticleCommentPanel
-              articleId={target.id}
-              initial={comment}
-              canEdit={canEditComment}
+            <CommentsPanel
+              targetType={commentTargetType}
+              targetId={target.id}
+              comments={comments ?? []}
+              isStaff={canEditComment}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
             />
           </TabsContent>
         ) : null}

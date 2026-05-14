@@ -67,7 +67,6 @@ export default [
         "/admin-edit-article",
         "features/laws/api/admin-edit-article.tsx",
       ),
-      route("/article-comment", "features/laws/api/article-comment.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
     ]),
     ...prefix("/admin", [
@@ -416,6 +415,10 @@ export default [
       route(
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",
+      ),
+      route(
+        "/api/comments/comment",
+        "features/comments/api/comment.tsx",
       ),
       route(
         "/admin/exam-results",

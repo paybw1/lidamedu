@@ -40,6 +40,7 @@ import {
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
 import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
+import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
   RelatedArticlesChips,
@@ -133,6 +134,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaThreads,
     references,
     staffRole,
+    caseComments,
   ] = await Promise.all([
     getRelatedArticlesByCase(client, kase.caseId),
     getRelatedProblemsByCase(client, kase.caseId, 12),
@@ -142,6 +144,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listThreadsForTarget(client, "case", kase.caseId, 20),
     listCaseReferences(client, kase.caseId),
     getStaffRole(client, user.id),
+    listComments(client, "case", kase.caseId),
   ]);
 
   recordStudySession(client, user.id, {
@@ -164,6 +167,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     qnaThreads,
     references,
     canEditReferences: staffRole !== null,
+    caseComments,
+    canEditComment: staffRole !== null,
+    isAdmin: staffRole === "admin",
+    currentUserId: user.id,
   };
 }
 
@@ -181,6 +188,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     qnaThreads,
     references,
     canEditReferences,
+    caseComments,
+    canEditComment,
+    isAdmin,
+    currentUserId,
   } = loaderData;
 
   // summaryItems 가 있으면 우선 사용. 없으면 legacy summary_body_md 를 한 묶음으로 폴백.
@@ -288,6 +299,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     highlights={highlights}
                     qnaThreads={qnaThreads}
                     relatedProblems={relatedProblems}
+                    comments={caseComments}
+                    canEditComment={canEditComment}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
                   />
                 </div>
               </SheetContent>
@@ -475,6 +490,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 highlights={highlights}
                 qnaThreads={qnaThreads}
                 relatedProblems={relatedProblems}
+                comments={caseComments}
+                canEditComment={canEditComment}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
               />
             </CardContent>
           </Card>
