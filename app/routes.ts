@@ -406,6 +406,10 @@ export default [
         "features/exam-results/screens/admin-passer-cases.tsx",
       ),
       route(
+        "/study/passer-summaries",
+        "features/exam-results/screens/passer-summaries.tsx",
+      ),
+      route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",
       ),

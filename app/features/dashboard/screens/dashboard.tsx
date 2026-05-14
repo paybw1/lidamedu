@@ -43,6 +43,14 @@ import {
   type CurriculumItemKind,
 } from "~/features/curricula/labels";
 import {
+  getPasserBenchmarks,
+  listPasserSummaries,
+  type PasserBenchmark,
+  type PasserBenchmarkMetric,
+  type PasserSummary,
+} from "~/features/exam-results/analytics.server";
+import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
+import {
   predictPassScore,
   type PassPrediction,
 } from "~/features/study/lib/pass-predict";
@@ -119,6 +127,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     studentAssignments,
     gsAveragePct,
     weekTrack,
+    passerBenchmark,
+    passerSummaries,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -131,6 +141,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     listStudentAssignments(user.id),
     getUserGsAveragePct(client, user.id),
     getCurrentWeekTrack(user.id),
+    getPasserBenchmarks(user.id),
+    listPasserSummaries({ limit: 3 }),
   ]);
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
@@ -175,6 +187,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     weekTrack,
+    passerBenchmark,
+    passerSummaries,
     pendingAssignments,
     passPrediction,
     user: {
@@ -255,6 +269,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     pendingAssignments,
     passPrediction,
     weekTrack,
+    passerBenchmark,
+    passerSummaries,
   } = loaderData;
 
   const examDateIso = goals.examDate ?? EXAM_DATE_FALLBACK_ISO;
@@ -349,6 +365,20 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         />
 
         <PassPredictionCard prediction={passPrediction} palette={palette} />
+
+        {passerBenchmark ? (
+          <PasserBenchmarkCard
+            benchmark={passerBenchmark}
+            palette={palette}
+          />
+        ) : null}
+
+        {passerSummaries.length > 0 ? (
+          <PasserSummariesPreview
+            summaries={passerSummaries}
+            palette={palette}
+          />
+        ) : null}
 
         {weekTrack ? (
           <WeekTrackCard track={weekTrack} palette={palette} />
@@ -1938,6 +1968,341 @@ function ComponentChip({ label, value }: { label: string; value: number }) {
           minWidth: 4,
         }}
       />
+    </div>
+  );
+}
+
+// feat-8-007 합격자 평균 대비 비교 카드 (Phase C)
+function formatMetric(
+  value: number | null,
+  unit: string,
+  decimals = 0,
+): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  if (decimals === 0) return `${Math.round(value).toLocaleString("ko-KR")}${unit}`;
+  return `${value.toFixed(decimals)}${unit}`;
+}
+
+function PercentileChip({
+  metric,
+  higherIsBetter,
+}: {
+  metric: PasserBenchmarkMetric;
+  higherIsBetter: boolean;
+}) {
+  if (
+    metric.user === null ||
+    metric.passerMean === null ||
+    metric.userPercentile === null
+  ) {
+    return (
+      <span style={{ fontSize: 10, color: COZY_INK_SOFT }}>표본 부족</span>
+    );
+  }
+  const pctile = Math.round(metric.userPercentile * 100);
+  const ahead = higherIsBetter ? metric.user >= metric.passerMean : metric.user <= metric.passerMean;
+  const bg = ahead ? "#DCFCE7" : "#FEE2E2";
+  const ink = ahead ? "#166534" : "#991B1B";
+  return (
+    <span
+      style={{
+        background: bg,
+        color: ink,
+        fontSize: 10,
+        fontWeight: 700,
+        padding: "2px 6px",
+        borderRadius: 999,
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      합격자 분포 {pctile}분위
+    </span>
+  );
+}
+
+function BenchmarkRow({
+  label,
+  metric,
+  unit,
+  decimals,
+  higherIsBetter = true,
+}: {
+  label: string;
+  metric: PasserBenchmarkMetric;
+  unit: string;
+  decimals?: number;
+  higherIsBetter?: boolean;
+}) {
+  const userVal = metric.user;
+  const meanVal = metric.passerMean;
+  let deltaLabel: string | null = null;
+  let deltaTone: "good" | "bad" | "neutral" = "neutral";
+  if (userVal !== null && meanVal !== null) {
+    const diff = userVal - meanVal;
+    const pctDiff =
+      meanVal !== 0 ? Math.round((diff / meanVal) * 100) : null;
+    const sign = diff >= 0 ? "+" : "";
+    deltaLabel =
+      pctDiff !== null
+        ? `${sign}${pctDiff}% (${sign}${formatMetric(diff, unit, decimals ?? 0)})`
+        : `${sign}${formatMetric(diff, unit, decimals ?? 0)}`;
+    if (higherIsBetter) deltaTone = diff >= 0 ? "good" : "bad";
+    else deltaTone = diff <= 0 ? "good" : "bad";
+  }
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "70px 1fr 1fr 1fr 110px",
+        alignItems: "center",
+        gap: 8,
+        padding: "6px 0",
+        borderBottom: `1px dashed ${COZY_INK}14`,
+      }}
+    >
+      <div style={{ fontSize: 11.5, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ fontSize: 10, color: COZY_INK_SOFT }}>본인</div>
+        <div style={{ fontWeight: 700 }}>
+          {formatMetric(userVal, unit, decimals ?? 0)}
+        </div>
+      </div>
+      <div style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ fontSize: 10, color: COZY_INK_SOFT }}>합격자 평균</div>
+        <div>{formatMetric(meanVal, unit, decimals ?? 0)}</div>
+      </div>
+      <div style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ fontSize: 10, color: COZY_INK_SOFT }}>차이</div>
+        <div
+          style={{
+            color:
+              deltaTone === "good"
+                ? "#15803D"
+                : deltaTone === "bad"
+                  ? "#B91C1C"
+                  : COZY_INK_SOFT,
+            fontWeight: 600,
+          }}
+        >
+          {deltaLabel ?? "—"}
+        </div>
+      </div>
+      <div style={{ textAlign: "right" }}>
+        <PercentileChip metric={metric} higherIsBetter={higherIsBetter} />
+      </div>
+    </div>
+  );
+}
+
+function PasserBenchmarkCard({
+  benchmark,
+  palette,
+}: {
+  benchmark: PasserBenchmark;
+  palette: { primary: string; tint: string };
+}) {
+  return (
+    <div
+      style={{
+        marginBottom: 18,
+        padding: 14,
+        background: palette.tint,
+        borderRadius: 14,
+        border: `1px solid ${COZY_INK}1A`,
+      }}
+      data-testid="passer-benchmark-card"
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          marginBottom: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: COZY_INK }}>
+            📊 합격자 평균 대비
+          </div>
+          <div style={{ fontSize: 11, color: COZY_INK_SOFT, marginTop: 2 }}>
+            {benchmark.matchYear}년 {EXAM_ROUND_LABEL[benchmark.matchRound]}{" "}
+            합격자 {benchmark.sampleSize}명과 본인 학습 누적을 비교합니다.
+          </div>
+        </div>
+        <Link
+          to="/study/passer-summaries"
+          style={{
+            fontSize: 11.5,
+            color: palette.primary,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          합격자 후기 보기 →
+        </Link>
+      </div>
+      {benchmark.fallbackReason ? (
+        <div
+          style={{
+            fontSize: 10.5,
+            color: "#92400E",
+            background: "#FEF3C7",
+            border: "1px solid #FDE68A",
+            borderRadius: 8,
+            padding: "4px 8px",
+            marginBottom: 8,
+          }}
+        >
+          ⚠️ {benchmark.fallbackReason}
+        </div>
+      ) : null}
+      {!benchmark.hasPlan ? (
+        <div
+          style={{
+            fontSize: 10.5,
+            color: "#1E3A8A",
+            background: "#DBEAFE",
+            border: "1px solid #93C5FD",
+            borderRadius: 8,
+            padding: "4px 8px",
+            marginBottom: 8,
+          }}
+        >
+          ℹ️ 차기 응시 계획(연도/차수)을 설정하시면 더 정확한 비교를 받을 수
+          있습니다. <Link to="/me/exam-results" style={{ textDecoration: "underline" }}>설정하러 가기</Link>
+        </div>
+      ) : null}
+      <div>
+        <BenchmarkRow label="학습 시간" metric={benchmark.studyHours} unit="h" decimals={0} />
+        <BenchmarkRow label="총 풀이" metric={benchmark.problemAttempts} unit="회" />
+        <BenchmarkRow label="정답률" metric={benchmark.accuracyPct} unit="%" />
+        <BenchmarkRow label="활동 일수" metric={benchmark.activeDays} unit="일" />
+        <BenchmarkRow label="최장 연속" metric={benchmark.longestStreak} unit="일" />
+      </div>
+    </div>
+  );
+}
+
+// 합격자 학습 요약 (anonymized) — 대시보드 미리보기
+function PasserSummariesPreview({
+  summaries,
+  palette,
+}: {
+  summaries: PasserSummary[];
+  palette: { primary: string; tint: string };
+}) {
+  return (
+    <div
+      style={{
+        marginBottom: 18,
+        padding: 14,
+        background: palette.tint,
+        borderRadius: 14,
+        border: `1px solid ${COZY_INK}1A`,
+      }}
+      data-testid="passer-summaries-preview"
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8,
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 700, color: COZY_INK }}>
+          🎓 합격자 학습 후기 (익명)
+        </div>
+        <Link
+          to="/study/passer-summaries"
+          style={{
+            fontSize: 11.5,
+            color: palette.primary,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          전체 보기 →
+        </Link>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {summaries.map((s) => (
+          <div
+            key={s.resultId}
+            style={{
+              background: "#FFF",
+              border: `1px solid ${COZY_INK}14`,
+              borderRadius: 10,
+              padding: "10px 12px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+                marginBottom: 4,
+                flexWrap: "wrap",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  color: palette.primary,
+                  textTransform: "uppercase",
+                }}
+              >
+                {s.examYear} {EXAM_ROUND_LABEL[s.examRound]} 합격
+              </span>
+              {s.scoreBucket ? (
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    color: COZY_INK_SOFT,
+                    background: "#F3F4F6",
+                    padding: "1px 6px",
+                    borderRadius: 999,
+                  }}
+                >
+                  {s.scoreBucket}
+                </span>
+              ) : null}
+              {s.verified ? (
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    color: "#166534",
+                    background: "#DCFCE7",
+                    padding: "1px 6px",
+                    borderRadius: 999,
+                  }}
+                >
+                  인증
+                </span>
+              ) : null}
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                lineHeight: 1.45,
+                color: COZY_INK,
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                whiteSpace: "pre-line",
+              }}
+            >
+              {s.summaryMd}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -520,3 +520,285 @@ export function computePasserAggregateStats(
   };
 }
 
+// ─── Phase C: 학생 컨설팅 — 합격자 평균 대비 ───
+
+export interface PasserBenchmarkMetric {
+  user: number | null;
+  passerMean: number | null;
+  passerMedian: number | null;
+  // 본인이 합격자 분포에서 차지하는 분위 (0~1). null = 표본 부족.
+  userPercentile: number | null;
+}
+
+export interface PasserBenchmark {
+  // 매칭 표본 메타
+  matchYear: number;
+  matchRound: ExamRound;
+  sampleSize: number;
+  fallbackUsed: boolean; // 다른 연도/차수로 fallback 했는지
+  fallbackReason: string | null;
+  // 사용자가 next_exam 을 설정했는지 (false 면 카드를 다른 형태로 노출하라고 안내)
+  hasPlan: boolean;
+  // 비교 지표
+  studyHours: PasserBenchmarkMetric;
+  problemAttempts: PasserBenchmarkMetric;
+  accuracyPct: PasserBenchmarkMetric;
+  activeDays: PasserBenchmarkMetric;
+  longestStreak: PasserBenchmarkMetric;
+}
+
+const MIN_SAMPLE_FOR_DISTRIBUTION = 3;
+
+function metricFromValues(
+  userValue: number | null,
+  passerValues: number[],
+): PasserBenchmarkMetric {
+  if (passerValues.length === 0) {
+    return {
+      user: userValue,
+      passerMean: null,
+      passerMedian: null,
+      userPercentile: null,
+    };
+  }
+  const sorted = [...passerValues].sort((a, b) => a - b);
+  const mean = passerValues.reduce((s, v) => s + v, 0) / passerValues.length;
+  const median = pickPercentile(sorted, 0.5);
+  let percentile: number | null = null;
+  if (userValue !== null && passerValues.length >= MIN_SAMPLE_FOR_DISTRIBUTION) {
+    const idx = sorted.filter((v) => v <= userValue).length;
+    percentile = idx / sorted.length;
+  }
+  return {
+    user: userValue,
+    passerMean: mean,
+    passerMedian: median,
+    userPercentile: percentile,
+  };
+}
+
+async function computeUserMetricsAllTime(
+  userId: string,
+): Promise<{
+  studyHours: number;
+  problemAttempts: number;
+  accuracyPct: number | null;
+  activeDays: number;
+  longestStreak: number;
+}> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const [problemsRes, sessionsRes] = await Promise.all([
+    admin
+      .from("user_problem_attempts")
+      .select("is_correct, attempted_at")
+      .eq("user_id", userId)
+      .limit(30000),
+    admin
+      .from("study_sessions")
+      .select("started_at, duration_ms")
+      .eq("user_id", userId)
+      .limit(30000),
+  ]);
+  const problems = problemsRes.data ?? [];
+  const sessions = sessionsRes.data ?? [];
+
+  let correct = 0;
+  for (const r of problems) if (r.is_correct) correct += 1;
+  const totalTimeMs = sessions.reduce(
+    (s, r) => s + (typeof r.duration_ms === "number" ? r.duration_ms : 0),
+    0,
+  );
+
+  const dayKeys = new Set<string>();
+  for (const s of sessions) {
+    if (s.started_at) dayKeys.add(s.started_at.slice(0, 10));
+  }
+  const sortedDays = Array.from(dayKeys).sort();
+  let longest = 0;
+  let cur = 0;
+  let prevTs: number | null = null;
+  for (const d of sortedDays) {
+    const ts = Date.parse(`${d}T00:00:00Z`);
+    if (prevTs === null) cur = 1;
+    else if (ts - prevTs === 86_400_000) cur += 1;
+    else cur = 1;
+    if (cur > longest) longest = cur;
+    prevTs = ts;
+  }
+
+  return {
+    studyHours: totalTimeMs / 3_600_000,
+    problemAttempts: problems.length,
+    accuracyPct:
+      problems.length > 0 ? Math.round((correct / problems.length) * 100) : null,
+    activeDays: dayKeys.size,
+    longestStreak: longest,
+  };
+}
+
+export async function getPasserBenchmarks(
+  userId: string,
+): Promise<PasserBenchmark | null> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("next_exam_year, next_exam_round")
+    .eq("profile_id", userId)
+    .maybeSingle();
+
+  const hasPlan =
+    !!profile?.next_exam_year &&
+    (profile.next_exam_round === "first" || profile.next_exam_round === "second");
+
+  // 표본 후보 — 우선 plan 매칭, 부족하면 (year-1, same round)
+  const passerCases = await listPasserCases({
+    onlyConsented: true,
+    round: hasPlan ? (profile!.next_exam_round as ExamRound) : null,
+  });
+  const consented = passerCases.filter((c) => c.aggregates !== null);
+  if (consented.length === 0) return null;
+
+  let matchYear = hasPlan ? profile!.next_exam_year! : new Date().getFullYear();
+  let matchRound: ExamRound = hasPlan
+    ? (profile!.next_exam_round as ExamRound)
+    : "first";
+  let fallbackUsed = false;
+  let fallbackReason: string | null = null;
+
+  let matched = consented.filter(
+    (c) => c.examYear === matchYear && c.examRound === matchRound,
+  );
+  if (matched.length < MIN_SAMPLE_FOR_DISTRIBUTION) {
+    // fallback: 전년도 + 같은 차수
+    const fallback = consented.filter(
+      (c) => c.examYear === matchYear - 1 && c.examRound === matchRound,
+    );
+    if (fallback.length >= MIN_SAMPLE_FOR_DISTRIBUTION) {
+      matched = fallback;
+      matchYear = matchYear - 1;
+      fallbackUsed = true;
+      fallbackReason = `${matchYear + 1}년 표본 부족 — ${matchYear}년 ${
+        matchRound === "first" ? "1차" : "2차"
+      } 합격자로 대체`;
+    } else if (consented.length >= MIN_SAMPLE_FOR_DISTRIBUTION) {
+      // 최후 fallback: 전체 동의 합격자
+      matched = consented;
+      fallbackUsed = true;
+      fallbackReason = "연도·차수 표본 부족 — 전체 동의 합격자로 대체";
+    } else {
+      matched = consented; // 그래도 보여줌 (표본 N 라벨로 신뢰도 표시)
+      fallbackUsed = true;
+      fallbackReason = "표본 부족 — 전체 동의 합격자로 대체";
+    }
+  }
+
+  const userMetrics = await computeUserMetricsAllTime(userId);
+
+  const studyHoursValues = matched.map(
+    (c) => c.aggregates!.totalStudyTimeMs / 3_600_000,
+  );
+  const problemAttemptsValues = matched.map(
+    (c) => c.aggregates!.totalProblemAttempts,
+  );
+  const accuracyValues = matched
+    .map((c) => c.aggregates!.accuracyPct)
+    .filter((v): v is number => v !== null);
+  const activeDaysValues = matched.map((c) => c.aggregates!.activeDays);
+  const longestStreakValues = matched.map(
+    (c) => c.aggregates!.longestStreakDays,
+  );
+
+  return {
+    matchYear,
+    matchRound,
+    sampleSize: matched.length,
+    fallbackUsed,
+    fallbackReason,
+    hasPlan,
+    studyHours: metricFromValues(userMetrics.studyHours, studyHoursValues),
+    problemAttempts: metricFromValues(
+      userMetrics.problemAttempts,
+      problemAttemptsValues,
+    ),
+    accuracyPct: metricFromValues(userMetrics.accuracyPct, accuracyValues),
+    activeDays: metricFromValues(userMetrics.activeDays, activeDaysValues),
+    longestStreak: metricFromValues(
+      userMetrics.longestStreak,
+      longestStreakValues,
+    ),
+  };
+}
+
+// ─── 합격자 학습 요약 모음 (anonymized) ───
+
+export interface PasserSummary {
+  resultId: string;
+  examYear: number;
+  examRound: ExamRound;
+  scoreBucket: string | null; // "85점대", "70-79점" 등 익명 버킷
+  selectedScienceSubject: string | null;
+  verified: boolean;
+  summaryMd: string;
+  createdAt: string;
+}
+
+function bucketScore(score: number | null): string | null {
+  if (score === null) return null;
+  if (score >= 90) return "90점+";
+  if (score >= 85) return "85-89점";
+  if (score >= 80) return "80-84점";
+  if (score >= 75) return "75-79점";
+  if (score >= 70) return "70-74점";
+  if (score >= 65) return "65-69점";
+  if (score >= 60) return "60-64점";
+  return "60점 미만";
+}
+
+export interface ListPasserSummariesFilter {
+  year?: number | null;
+  round?: ExamRound | null;
+  scienceSubject?: string | null;
+  limit?: number;
+}
+
+export async function listPasserSummaries(
+  filter: ListPasserSummariesFilter = {},
+): Promise<PasserSummary[]> {
+  const admin = adminClient as SupabaseClient<Database>;
+  let q = admin
+    .from("exam_results")
+    .select(
+      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, selected_science_subject, study_summary_md, created_at, profiles!exam_results_user_id_fkey(analytics_consent_at)",
+    )
+    .eq("status", "passed")
+    .not("study_summary_md", "is", null)
+    .order("exam_year", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(Math.min(200, filter.limit ?? 50));
+  if (filter.year) q = q.eq("exam_year", filter.year);
+  if (filter.round) q = q.eq("exam_round", filter.round);
+  if (filter.scienceSubject)
+    q = q.eq("selected_science_subject", filter.scienceSubject);
+  const { data, error } = await q;
+  if (error) throw error;
+  const list = (data ?? []).filter(
+    (r) =>
+      r.profiles?.analytics_consent_at !== null &&
+      (r.study_summary_md?.trim().length ?? 0) > 0,
+  );
+  return list.map((r) => ({
+    resultId: r.result_id,
+    examYear: r.exam_year,
+    examRound: r.exam_round as ExamRound,
+    scoreBucket: bucketScore(
+      r.self_reported_total_score === null
+        ? null
+        : Number(r.self_reported_total_score),
+    ),
+    selectedScienceSubject: r.selected_science_subject,
+    verified: r.verification_status === "verified",
+    summaryMd: r.study_summary_md ?? "",
+    createdAt: r.created_at,
+  }));
+}
+

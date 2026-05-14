@@ -482,7 +482,8 @@
 | feat-8-004 | **분석 활용 동의 약관** — `/legal/analytics-consent`. 수집 항목/처리 방식/보유 기간/동의 거부 권리/철회 방법/인증 결과 처리 명시 (PIPA §22, §15 1.1 별도 동의). | P0 | ✅ |
 | feat-8-005 | **시즌별 결과 입력 알림 cron** — `/api/cron/exam-result-reminder` (CRON_SECRET, ?year=YYYY 옵션). `profiles.next_exam_year`/`next_exam_round` 설정 + 해당 (year,round) `exam_results` 미입력 학생을 후보로 산출 → 14일 throttle(같은 entity_id 알림 14일 내 존재 시 skip) → `user_notifications` insert(kind=`exam_result_reminder`, entity_id=`{year}-{round}`, href=`/me/exam-results`) + `notify_channels='email'` 활성 사용자에 Resend 이메일 발송(템플릿 `exam-result-reminder.tsx`). best-effort — 이메일 실패해도 인박스 알림은 유지. | P1 | ✅ |
 | feat-8-006 | **(Phase B 첫 단계) 합격자 케이스 카드 + 통계 시각화** — `/admin/analytics/passers` admin 전용. 합격자 1명당 카드 — 시험 결과·자가 학습 요약·(분석 동의자만) 학습 로그 집계(`computeAggregates`: 응시 전년도~응시 연도 user_problem_attempts/study_sessions/user_blank_attempts/user_recitation_attempts → 풀이수·정답률·시간·활동일수·최장 streak·과목별 풀이 top5·빈칸/암기). 풀 사이즈 카드(합격 총수/인증/동의/표시) + 연도·차수 분포 + 필터(연도/차수/인증만/동의자만). 미동의자는 결과+자가 요약만, 학습 로그는 가림. `listPasserCases`/`getPasserPoolStats` (analytics.server.ts). **분포 통계 시각화**(`computePasserAggregateStats`/`StatsSection`) — 자가 점수·학습 시간·정답률·활동 일수·최장 streak·총 풀이 회수 6종 히스토그램(N/중간값/평균/IQR) + 과목별 평균 풀이/정답률 막대. 분석 동의자만 표본 포함, 표본 0명일 땐 안내 배너. | P1 | ✅ |
-| feat-8-007 | (Phase C) 합격자 비교 컨설팅 — 대시보드 카드에 "유사 시점 합격자 평균 대비" 학습량/정답률/조문 열람 비교 + 합격자 학습 곡선 vs 본인 곡선 12주 차트. `predictPassScore` 휴리스틱 → 합격자 실측 기반 모델로 정밀화. | P1 | 🔲 |
+| feat-8-007 | **(Phase C) 합격자 비교 컨설팅 카드** — 대시보드 상단 `PasserBenchmarkCard`. `getPasserBenchmarks(userId)` — 본인 `next_exam_year/round` 매칭 합격자(분석 동의 + aggregates 보유) 표본 산출, 표본 <3 시 (year-1, same round) fallback → 그래도 부족하면 전체 동의 합격자. 5종 지표 비교(학습 시간/총 풀이/정답률/활동 일수/최장 연속) — 본인 값 / 합격자 평균 / 차이(+/-, % delta) / 분위(0~100). `metricFromValues` percentile + 색상 chip(green=ahead, red=behind). fallback 사유/계획 미설정 안내 배너. **`PasserSummariesPreview`** — 합격자 후기 top 3 대시보드 노출. | P1 | ✅ |
+| feat-8-009 | **합격자 학습 후기 모음 (anonymized)** — `/study/passer-summaries` 학생 누구나 접근. `listPasserSummaries({year, round, scienceSubject, limit})` — 분석 동의 + `study_summary_md` 보유 합격자만, 이름/이메일 마스킹. 표시: 연도·차수·점수 버킷(`60-64점` 등)·자연과학 선택·인증 chip·markdown 본문. 대시보드 미리보기 카드 3건 + 전체 페이지. | P1 | ✅ |
 | feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).
@@ -600,6 +601,7 @@
 | 분석 활용 동의 약관 | `/legal/analytics-consent` | feat-8-004 |
 | 시험 결과 알림 cron | `/api/cron/exam-result-reminder` | feat-8-005 |
 | 합격자 케이스 분석 | `/admin/analytics/passers` | feat-8-006 |
+| 합격자 학습 후기 | `/study/passer-summaries` | feat-8-009 |
 | 사용자 관리 | `/admin/users` | feat-7-012 |
 | 공지사항 발송 | `/admin/announcements` | feat-7-011 |
 | 공지사항 수신함 | `/announcements` | feat-7-011 |
