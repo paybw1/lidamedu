@@ -615,7 +615,7 @@ function NotesSection({
 }) {
   const [creating, setCreating] = useState(false);
   return (
-    <Card>
+    <Card id="notes" className="scroll-mt-20">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <p className="inline-flex items-center gap-1.5 text-sm font-semibold">

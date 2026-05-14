@@ -46,6 +46,11 @@ import {
   type CohortCurriculumRow,
   type CurriculumListItem,
 } from "~/features/curricula/queries.server";
+import {
+  getAtRiskStudents,
+  type AtRiskStudent,
+  type AtRiskSummary,
+} from "~/features/exam-results/at-risk.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-cohort-detail";
@@ -80,9 +85,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     searchQuery.length >= 2 ? await searchStudents(searchQuery) : [];
 
   // 적용된 커리큘럼 + 적용 가능한 전체 목록
-  const [cohortCurricula, allCurricula] = await Promise.all([
+  const [cohortCurricula, allCurricula, atRisk] = await Promise.all([
     listCohortCurricula(params.cohortId),
     listCurricula(),
+    getAtRiskStudents(params.cohortId),
   ]);
 
   return {
@@ -93,13 +99,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     role,
     cohortCurricula,
     allCurricula,
+    atRisk,
   };
 }
 
 export default function AdminCohortDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, members, searchQuery, searchResults, cohortCurricula, allCurricula } =
+  const { cohort, members, searchQuery, searchResults, cohortCurricula, allCurricula, atRisk } =
     loaderData;
   const [editing, setEditing] = useState(false);
 
@@ -180,6 +187,10 @@ export default function AdminCohortDetail({
           applied={cohortCurricula}
           available={allCurricula}
         />
+      </div>
+
+      <div className="mb-6">
+        <AtRiskCard summary={atRisk} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -736,5 +747,138 @@ function Field({
       </Label>
       <div className={full ? "sm:col-span-3" : ""}>{children}</div>
     </>
+  );
+}
+
+// feat-8-014 위험 학생 자동 분류
+function AtRiskCard({ summary }: { summary: AtRiskSummary }) {
+  if (summary.students.length === 0) return null;
+  const topRisk = summary.students.slice(0, 5);
+  const showBaseline = summary.baseline !== null && summary.baseline.sampleSize > 0;
+  return (
+    <Card className="border-rose-200">
+      <CardHeader className="px-4 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-rose-900">
+              🚨 1:1 상담 권장 학생
+            </p>
+            <p className="text-muted-foreground text-[11px]">
+              합격자 평균 대비 격차 + 비활성을 weighted 합산해 위험 분류.
+              {showBaseline ? (
+                <>
+                  {" "}
+                  표본 {summary.baseline!.sampleSize}명 (평균 풀이{" "}
+                  {Math.round(summary.baseline!.problemAttemptsMean).toLocaleString("ko-KR")}회 · 정답률{" "}
+                  {Math.round(summary.baseline!.accuracyPctMean)}%).
+                </>
+              ) : (
+                <span> (합격자 표본 없음 — 비활성·낮은 정답률만 기준)</span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-[11px]">
+            <Badge variant="outline" className="bg-rose-50 text-rose-800 border-rose-200">
+              위험 {summary.highRiskCount}
+            </Badge>
+            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+              주의 {summary.mediumRiskCount}
+            </Badge>
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200">
+              안정 {summary.lowRiskCount}
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <Separator />
+      <CardContent className="px-0 py-0">
+        {topRisk.length === 0 ? (
+          <p className="text-muted-foreground p-4 text-sm">
+            현재 위험 분류 학생이 없습니다.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {topRisk.map((s) => (
+              <AtRiskRow key={s.profileId} student={s} />
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AtRiskRow({ student }: { student: AtRiskStudent }) {
+  const toneClass =
+    student.riskLevel === "high"
+      ? "bg-rose-50/40"
+      : student.riskLevel === "medium"
+        ? "bg-amber-50/30"
+        : "";
+  const badgeClass =
+    student.riskLevel === "high"
+      ? "bg-rose-100 text-rose-800 border-rose-200"
+      : student.riskLevel === "medium"
+        ? "bg-amber-100 text-amber-800 border-amber-200"
+        : "bg-emerald-100 text-emerald-800 border-emerald-200";
+  const label =
+    student.riskLevel === "high"
+      ? "위험"
+      : student.riskLevel === "medium"
+        ? "주의"
+        : "안정";
+  return (
+    <li className={`flex flex-wrap items-center gap-2 px-4 py-3 ${toneClass}`}>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to={`/admin/students/${student.profileId}`}
+            className="text-sm font-semibold hover:underline"
+          >
+            {student.name}
+          </Link>
+          <Badge variant="outline" className={`text-[10px] ${badgeClass}`}>
+            {label} {Math.round(student.riskScore * 100)}점
+          </Badge>
+          {student.email ? (
+            <span className="text-muted-foreground text-[10px]">{student.email}</span>
+          ) : null}
+        </div>
+        <div className="text-muted-foreground mt-1 flex flex-wrap gap-2 text-[11px] tabular-nums">
+          <span>풀이 {student.problemsAttempted.toLocaleString("ko-KR")}회</span>
+          {student.accuracyPct !== null ? (
+            <span>· 정답률 {student.accuracyPct}%</span>
+          ) : null}
+          <span>· 조문 열람 {student.articlesViewed}</span>
+          {student.daysSinceActive !== null ? (
+            <span>
+              · 마지막 활동{" "}
+              {student.daysSinceActive === 0
+                ? "오늘"
+                : `${student.daysSinceActive}일 전`}
+            </span>
+          ) : (
+            <span>· 활동 기록 없음</span>
+          )}
+        </div>
+        {student.reasons.length > 0 ? (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {student.reasons.map((r, i) => (
+              <span
+                key={i}
+                className="rounded bg-white/60 px-1.5 py-0.5 text-[10px] text-rose-800"
+              >
+                {r}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <Button asChild size="sm" variant="default">
+        <Link to={`/admin/students/${student.profileId}#notes`}>
+          <MailIcon className="size-3.5" /> 1:1 코멘트
+        </Link>
+      </Button>
+    </li>
   );
 }
