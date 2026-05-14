@@ -3756,6 +3756,7 @@ export type Database = {
         | "subjective_review_completed"
         | "qna_new_answer"
         | "announcement"
+        | "cohort_inactive_alert"
       subjective_kind: "case_based" | "theory" | "mixed"
       user_role: "student" | "instructor" | "admin"
     }
@@ -3955,6 +3956,7 @@ export const Constants = {
         "subjective_review_completed",
         "qna_new_answer",
         "announcement",
+        "cohort_inactive_alert",
       ],
       subjective_kind: ["case_based", "theory", "mixed"],
       user_role: ["student", "instructor", "admin"],

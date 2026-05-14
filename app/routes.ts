@@ -360,6 +360,14 @@ export default [
         "/api/cron/curriculum-weekly",
         "features/cron/api/curriculum-weekly.tsx",
       ),
+      route(
+        "/api/cron/weekly-reports",
+        "features/cron/api/weekly-reports.tsx",
+      ),
+      route(
+        "/api/cron/inactive-alert",
+        "features/cron/api/inactive-alert.tsx",
+      ),
       route("/assignments", "features/assignments/screens/student-assignments.tsx"),
       route(
         "/assignments/:assignmentId",

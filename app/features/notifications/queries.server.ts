@@ -13,6 +13,7 @@ export type NotificationKind =
 const STAFF_KINDS: NotificationKind[] = [
   "subjective_review_request",
   "qna_new_question",
+  "cohort_inactive_alert",
 ];
 
 // 학생용 kinds.

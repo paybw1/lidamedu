@@ -33,6 +33,10 @@ import { LAW_SUBJECT_SLUGS, LAW_SUBJECTS } from "~/features/subjects/lib/subject
 import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
 import { listStudentAssignments } from "~/features/assignments/queries.server";
+import {
+  predictPassScore,
+  type PassPrediction,
+} from "~/features/study/lib/pass-predict";
 
 import type { Route } from "./+types/dashboard";
 import CozyCard from "../components/cozy-card";
@@ -119,6 +123,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   const pendingAssignments = studentAssignments
     .filter((a) => a.submission?.status !== "completed")
     .slice(0, 3);
+  // 합격 진단 점수 (feat-7-024)
+  const activeDaysLast14 = dailyStats.days
+    .slice(-14)
+    .filter((d) => d.attemptCount > 0).length;
+  const passPrediction = predictPassScore({
+    overallArticlesPct: overallProgress.articles.pct,
+    overallProblemsPct: overallProgress.problems.pct,
+    overallAccuracyPct: kpis.overallAccuracyPct,
+    streakDays: dailyStats.currentStreak,
+    activeDaysLast14,
+    pendingAssignmentsCount: studentAssignments.filter(
+      (a) => a.submission?.status !== "completed",
+    ).length,
+    totalAssignmentsCount: studentAssignments.length,
+  });
 
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
@@ -142,6 +161,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   return {
     pendingAssignments,
+    passPrediction,
     user: {
       name,
       cohort: "27기 · 1차 준비",
@@ -218,6 +238,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     studyAidCounts,
     todayLabel,
     pendingAssignments,
+    passPrediction,
   } = loaderData;
 
   const examDateIso = goals.examDate ?? EXAM_DATE_FALLBACK_ISO;
@@ -310,6 +331,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             cohort: user.cohort,
           }}
         />
+
+        <PassPredictionCard prediction={passPrediction} palette={palette} />
 
         {pendingAssignments.length > 0 ? (
           <PendingAssignmentsBanner items={pendingAssignments} palette={palette} />
@@ -1723,6 +1746,159 @@ function BlankSummaryTile({
           </span>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+// feat-7-024 — 합격 진단 카드
+const RATING_BG: Record<PassPrediction["rating"], string> = {
+  안정: "#16A34A",
+  가능: "#65A30D",
+  주의: "#D97706",
+  취약: "#DC2626",
+};
+
+function PassPredictionCard({
+  prediction,
+  palette,
+}: {
+  prediction: PassPrediction;
+  palette: { primary: string; tint: string };
+}) {
+  const bg = RATING_BG[prediction.rating];
+  return (
+    <div
+      style={{
+        marginBottom: 18,
+        padding: 14,
+        background: palette.tint,
+        borderRadius: 14,
+        border: `1px solid ${COZY_INK}1A`,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              width: 78,
+              height: 78,
+              borderRadius: 12,
+              background: bg,
+              color: "#FFF",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 28,
+                fontWeight: 800,
+                lineHeight: 1,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {prediction.score}
+            </div>
+            <div style={{ fontSize: 11, marginTop: 4, opacity: 0.95 }}>
+              {prediction.rating}
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: COZY_INK,
+                marginBottom: 4,
+              }}
+            >
+              🎯 합격 진단 점수
+            </div>
+            <div style={{ fontSize: 12, color: COZY_INK_SOFT, maxWidth: 340 }}>
+              {prediction.hint}
+            </div>
+          </div>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 10,
+            minWidth: 280,
+          }}
+        >
+          <ComponentChip label="학습량" value={prediction.components.study} />
+          <ComponentChip
+            label="정답률"
+            value={prediction.components.accuracy}
+          />
+          <ComponentChip
+            label="활성도"
+            value={prediction.components.activity}
+          />
+          <ComponentChip
+            label="과제 완수"
+            value={prediction.components.completion}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComponentChip({ label, value }: { label: string; value: number }) {
+  const bg =
+    value >= 80
+      ? "#DCFCE7"
+      : value >= 60
+        ? "#ECFCCB"
+        : value >= 40
+          ? "#FEF3C7"
+          : "#FEE2E2";
+  return (
+    <div
+      style={{
+        background: "#FFF",
+        border: `1px solid ${COZY_INK}14`,
+        borderRadius: 10,
+        padding: "8px 10px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: 10, color: COZY_INK_SOFT, marginBottom: 4 }}>
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 16,
+          fontWeight: 700,
+          color: COZY_INK,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value}
+      </div>
+      <div
+        style={{
+          marginTop: 4,
+          height: 4,
+          background: bg,
+          borderRadius: 2,
+          width: `${value}%`,
+          minWidth: 4,
+        }}
+      />
     </div>
   );
 }
