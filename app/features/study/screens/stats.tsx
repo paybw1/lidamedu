@@ -36,6 +36,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "~/core/components/ui/tabs";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import { BlankStatsTabs } from "~/features/blanks/components/blank-stats-tabs";
@@ -58,8 +59,10 @@ import {
   getDashboardKpis,
   getOverallProgress,
   getStudyAidCounts,
+  getUserAccuracyTrend,
   getUserSubjectiveStats,
   getWeakAreas,
+  type UserWeeklyAccuracyItem,
 } from "~/features/study/queries.server";
 
 import type { Route } from "./+types/stats";
@@ -109,6 +112,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     blankSubject,
     blankPeriod,
     recitation,
+    accuracyTrend,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id),
@@ -124,6 +128,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getUserAutoBlankStats(client, user.id, "subject"),
     getUserAutoBlankStats(client, user.id, "period"),
     getUserRecitationStats(client, user.id),
+    getUserAccuracyTrend(client, user.id, 12),
   ]);
 
   return {
@@ -137,6 +142,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     subjectiveStats,
     scienceProgress,
     weakAreas,
+    accuracyTrend,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -255,6 +261,7 @@ function OverviewTab({
     subjectiveStats,
     daily,
     scienceProgress,
+    accuracyTrend,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const firstExamSubjects = subjectsProgress.filter(
@@ -316,6 +323,8 @@ function OverviewTab({
           value={String(aidCounts.highlights)}
         />
       </div>
+
+      <AccuracyTrendCard weeks={accuracyTrend.weeks} />
 
       <Card>
         <CardHeader>
@@ -1017,5 +1026,67 @@ function EmptyMsg({ text }: { text: string }) {
     <p className="text-muted-foreground px-6 py-6 text-center text-sm">
       {text}
     </p>
+  );
+}
+
+// feat-7-024 정밀화 — 본인 주별 정답률 추이
+function accuracyTrendBgTone(pct: number | null): string {
+  if (pct === null) return "bg-muted-foreground/30";
+  if (pct >= 80) return "bg-emerald-500/80";
+  if (pct >= 60) return "bg-lime-500/80";
+  if (pct >= 40) return "bg-amber-500/80";
+  if (pct >= 20) return "bg-orange-500/80";
+  return "bg-rose-500/80";
+}
+
+function AccuracyTrendCard({ weeks }: { weeks: UserWeeklyAccuracyItem[] }) {
+  if (weeks.length === 0) return null;
+  const allEmpty = weeks.every((w) => w.totalAttempts === 0);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            최근 {weeks.length}주 정답률 추이
+          </p>
+          <Badge variant="outline" className="text-[10px]">
+            주별 시도/정답률
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {allEmpty ? (
+          <p className="text-muted-foreground text-center text-xs">
+            아직 충분한 시도 데이터가 없습니다.
+          </p>
+        ) : (
+          <div className="flex items-end gap-1.5">
+            {weeks.map((w) => {
+              const height = w.accuracyPct ?? 0;
+              return (
+                <div
+                  key={w.weekStart}
+                  className="flex flex-1 flex-col gap-1"
+                  title={`${w.label} · ${w.totalAttempts}건 · ${w.accuracyPct ?? 0}%`}
+                >
+                  <div className="bg-muted/40 relative flex h-20 items-end overflow-hidden rounded">
+                    <div
+                      className={cn(
+                        "w-full transition-all",
+                        accuracyTrendBgTone(w.accuracyPct),
+                      )}
+                      style={{ height: `${Math.max(2, height)}%` }}
+                    />
+                  </div>
+                  <div className="text-center text-[10px] tabular-nums">
+                    {w.accuracyPct === null ? "—" : `${w.accuracyPct}%`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -6,17 +6,27 @@ import {
   ArrowRightIcon,
   BookmarkIcon,
   ClockIcon,
+  EyeIcon,
+  EyeOffIcon,
   FileTextIcon,
   GavelIcon,
   ListChecksIcon,
   MailIcon,
+  MessageSquareIcon,
   MinusIcon,
+  PinIcon,
+  PlusIcon,
+  Trash2Icon,
   TrendingDownIcon,
   TrendingUpIcon,
   UserIcon,
   UsersIcon,
+  XIcon,
 } from "lucide-react";
-import { Link, data } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, data, useFetcher, useLocation, useNavigate } from "react-router";
+
+import { Button } from "~/core/components/ui/button";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -38,6 +48,10 @@ import {
   getStudentDetail,
   type StudentCohortComparison,
 } from "~/features/admin/queries/student-progress.server";
+import {
+  listNotesForStudent,
+  type StudentNote,
+} from "~/features/student-notes/queries.server";
 
 import type { Route } from "./+types/admin-student-detail";
 
@@ -70,12 +84,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  const [student, cohortComparisons] = await Promise.all([
+  const [student, cohortComparisons, notes] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
+    listNotesForStudent(params.profileId),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
-  return { student, cohortComparisons };
+  return {
+    student,
+    cohortComparisons,
+    notes,
+    currentUserId: user.id,
+    isAdmin: role === "admin",
+  };
 }
 
 function accuracyTone(pct: number | null): string {
@@ -89,7 +110,7 @@ function accuracyTone(pct: number | null): string {
 export default function AdminStudentDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { student, cohortComparisons } = loaderData;
+  const { student, cohortComparisons, notes, currentUserId, isAdmin } = loaderData;
 
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
@@ -168,6 +189,15 @@ export default function AdminStudentDetail({
           ))}
         </div>
       ) : null}
+
+      <div className="mb-6">
+        <NotesSection
+          studentId={student.profileId}
+          notes={notes}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+        />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
@@ -492,5 +522,226 @@ function CompareChip({
         {diff === null ? "비교 불가" : `${sign}${diff}${unit}`}
       </div>
     </div>
+  );
+}
+
+// ─── 1:1 상담 코멘트 (feat-7-025) ───
+
+function NotesSection({
+  studentId,
+  notes,
+  currentUserId,
+  isAdmin,
+}: {
+  studentId: string;
+  notes: StudentNote[];
+  currentUserId: string;
+  isAdmin: boolean;
+}) {
+  const [creating, setCreating] = useState(false);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <MessageSquareIcon className="text-primary size-4" />
+            상담 코멘트 ({notes.length})
+          </p>
+          <Button
+            size="sm"
+            variant={creating ? "ghost" : "outline"}
+            onClick={() => setCreating((v) => !v)}
+          >
+            {creating ? (
+              <>
+                <XIcon className="size-3.5" /> 취소
+              </>
+            ) : (
+              <>
+                <PlusIcon className="size-3.5" /> 신규
+              </>
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      <Separator />
+      <CardContent className="space-y-3 p-4">
+        {creating ? (
+          <NewNoteForm
+            studentId={studentId}
+            onClose={() => setCreating(false)}
+          />
+        ) : null}
+        {notes.length === 0 ? (
+          <p className="text-muted-foreground py-2 text-center text-xs">
+            아직 코멘트가 없습니다.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {notes.map((n) => (
+              <NoteRow
+                key={n.noteId}
+                note={n}
+                canEdit={isAdmin || n.authorId === currentUserId}
+              />
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function NewNoteForm({
+  studentId,
+  onClose,
+}: {
+  studentId: string;
+  onClose: () => void;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      onClose();
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [fetcher.state, fetcher.data, onClose, navigate, location.pathname, location.search]);
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/student-note"
+      className="bg-muted/30 space-y-2 rounded-md border p-3"
+    >
+      <input type="hidden" name="intent" value="create" />
+      <input type="hidden" name="studentId" value={studentId} />
+      <textarea
+        name="bodyMd"
+        required
+        rows={3}
+        maxLength={4000}
+        placeholder="이 학생에게 남길 코멘트… (마크다운 가능)"
+        className="border-input bg-background w-full rounded-md border px-2 py-1 text-xs"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="border-input flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+          <input
+            type="radio"
+            name="visibility"
+            value="staff_only"
+            defaultChecked
+          />
+          <EyeOffIcon className="size-3" /> 강사만
+        </label>
+        <label className="border-input flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+          <input
+            type="radio"
+            name="visibility"
+            value="share_with_student"
+          />
+          <EyeIcon className="size-3" /> 학생도 보기
+        </label>
+        <label className="border-input flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+          <input type="checkbox" name="isPinned" value="1" />
+          <PinIcon className="size-3" /> 핀
+        </label>
+        <div className="ml-auto flex gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+            취소
+          </Button>
+          <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+            저장
+          </Button>
+        </div>
+      </div>
+      {fetcher.data && "error" in fetcher.data ? (
+        <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
+      ) : null}
+    </fetcher.Form>
+  );
+}
+
+function NoteRow({
+  note,
+  canEdit,
+}: {
+  note: StudentNote;
+  canEdit: boolean;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
+  return (
+    <li className="bg-card space-y-1.5 rounded-md border p-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {note.isPinned ? (
+          <Badge variant="default" className="text-[10px]">
+            <PinIcon className="size-3" /> 핀
+          </Badge>
+        ) : null}
+        <Badge
+          variant={
+            note.visibility === "share_with_student" ? "default" : "outline"
+          }
+          className="text-[10px]"
+        >
+          {note.visibility === "share_with_student" ? (
+            <>
+              <EyeIcon className="size-3" /> 학생 공개
+            </>
+          ) : (
+            <>
+              <EyeOffIcon className="size-3" /> 강사만
+            </>
+          )}
+        </Badge>
+        <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
+          {note.authorName ?? "(작성자)"} · {note.createdAt.slice(0, 16).replace("T", " ")}
+        </span>
+        {canEdit ? (
+          <fetcher.Form method="post" action="/api/admin/student-note">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="noteId" value={note.noteId} />
+            <Button
+              type="submit"
+              size="icon"
+              variant="ghost"
+              className="size-6 text-rose-600 hover:text-rose-700"
+              onClick={(e) => {
+                if (!confirm("이 코멘트를 삭제합니까?")) {
+                  e.preventDefault();
+                }
+              }}
+              disabled={fetcher.state !== "idle"}
+            >
+              <Trash2Icon className="size-3" />
+            </Button>
+          </fetcher.Form>
+        ) : null}
+      </div>
+      <p className="text-sm whitespace-pre-line">{note.bodyMd}</p>
+    </li>
   );
 }

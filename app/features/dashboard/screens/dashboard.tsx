@@ -19,6 +19,7 @@ import {
   getOverallProgress,
   getRecentActivity,
   getStudyAidCounts,
+  getUserGsAveragePct,
   getWeakAreas,
 } from "~/features/study/queries.server";
 import {
@@ -108,6 +109,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     weakNodes,
     studyAidCounts,
     studentAssignments,
+    gsAveragePct,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -118,6 +120,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getWeakNodes(client, user.id, [...LAW_SUBJECT_SLUGS], 4),
     getStudyAidCounts(client, user.id),
     listStudentAssignments(user.id),
+    getUserGsAveragePct(client, user.id),
   ]);
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
@@ -131,6 +134,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     overallArticlesPct: overallProgress.articles.pct,
     overallProblemsPct: overallProgress.problems.pct,
     overallAccuracyPct: kpis.overallAccuracyPct,
+    gsAveragePct,
     streakDays: dailyStats.currentStreak,
     activeDaysLast14,
     pendingAssignmentsCount: studentAssignments.filter(
@@ -1833,8 +1837,11 @@ function PassPredictionCard({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 10,
+            gridTemplateColumns:
+              prediction.components.gs !== null
+                ? "repeat(5, 1fr)"
+                : "repeat(4, 1fr)",
+            gap: 8,
             minWidth: 280,
           }}
         >
@@ -1843,6 +1850,9 @@ function PassPredictionCard({
             label="정답률"
             value={prediction.components.accuracy}
           />
+          {prediction.components.gs !== null ? (
+            <ComponentChip label="GS" value={prediction.components.gs} />
+          ) : null}
           <ComponentChip
             label="활성도"
             value={prediction.components.activity}

@@ -2758,6 +2758,57 @@ export type Database = {
           },
         ]
       }
+      student_notes: {
+        Row: {
+          author_id: string
+          body_md: string
+          created_at: string
+          deleted_at: string | null
+          is_pinned: boolean
+          note_id: string
+          student_id: string
+          updated_at: string
+          visibility: Database["public"]["Enums"]["student_note_visibility"]
+        }
+        Insert: {
+          author_id: string
+          body_md: string
+          created_at?: string
+          deleted_at?: string | null
+          is_pinned?: boolean
+          note_id?: string
+          student_id: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["student_note_visibility"]
+        }
+        Update: {
+          author_id?: string
+          body_md?: string
+          created_at?: string
+          deleted_at?: string | null
+          is_pinned?: boolean
+          note_id?: string
+          student_id?: string
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["student_note_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_notes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       study_goals: {
         Row: {
           exam_date: string | null
@@ -3757,6 +3808,7 @@ export type Database = {
         | "qna_new_answer"
         | "announcement"
         | "cohort_inactive_alert"
+      student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       user_role: "student" | "instructor" | "admin"
     }
@@ -3958,6 +4010,7 @@ export const Constants = {
         "announcement",
         "cohort_inactive_alert",
       ],
+      student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
       user_role: ["student", "instructor", "admin"],
     },

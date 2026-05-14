@@ -458,7 +458,9 @@
 | feat-7-021 | **과제 배포** — cohort 단위. **자동(커리큘럼 주차 → 과제 변환) + 수동(임의 신규) 병행**. `assignments`(제목·설명·할당일·마감일·source_curriculum/source_week 추적) + `assignment_items`(학습 단위) + `assignment_submissions`(학생별 상태: pending/partial/completed + 완수 시각, cache). 자동 채점/완수 판정(`recomputeSubmission`) — 문제는 정답 1번 이상, 빈칸은 모든 blank_idx 정답, 조문/판례는 study_sessions 방문 1회, 암기는 user_recitation_attempts.is_complete=true. 운영자: `/admin/cohorts/:id/assignments` CRUD + 커리큘럼 주차 자동 변환 폼 + `/admin/cohorts/:id/assignments/:aid` 편집·학생 진척. 학생: 대시보드 "마감 임박 과제" 배너 + `/assignments` 본인 과제함 + `/assignments/:id` 상세(자동 완수 진척 막대 + **항목별 진입 URL** — article/case/problem/blank_set/recitation 각각 학습 화면으로 직접 진입). 알림 fanout: assignment 생성 시 `announcements` + `announcement_audiences(cohort)` 자동 발송(best-effort). **자동 주간 cron**(`/api/cron/curriculum-weekly`, CRON_SECRET 보호) — 활성 cohort_curricula 별로 현재 주차 계산(KST start_date 기준) → 미발송 주차를 자동 변환. 외부 cron(Cloudflare/pg_cron/GitHub Actions)에서 매주 호출. e2e: `e2e/admin/curriculum-assignments.spec.ts`. | P0 | ✅ |
 | feat-7-022 | **자동 주간 리포트** — 매주 월요일 학생/강사 이메일. 학생: 본인 진척·정답률·streak·약점 top3·미완 과제 top3 + 대시보드 deep link. 강사: cohort 평균 KPI·비활성 학생 명단·이번 주 과제 완수율. React Email 템플릿 2종 (`weekly-report-student/staff.tsx`) + `dispatchWeeklyReports` (notify.server.ts) + `/api/cron/weekly-reports` (CRON_SECRET 보호). notify_channels.email 활성자만. Resend 사용. | P1 | ✅ |
 | feat-7-023 | **비활성 학생 자동 알림** — 7일+ 미접속 학생을 staff(cohort owner) 인박스에 push. `staff_notification_kind` enum 에 `cohort_inactive_alert` 추가. `/api/cron/inactive-alert` (CRON_SECRET, `?inactiveDays=N` 매개) → 활성 cohort 순회 → `listCohortProgressSummary` 의 lastActivityAt 기준 필터 → 1명 이상 시 staff inbox 알림 1건 (cohort progress 페이지 deep link). 이메일은 feat-7-022 weekly-report 에 포함되어 중복 안 함. | P1 | ✅ |
-| feat-7-024 | **합격 진단 점수** — 학생 대시보드 KPI. 단순 가중평균 모델(`predictPassScore`): 학습량(조문/문제 진척 평균) 40 + 정답률 40 + 활성도(streak/14d) 10 + 과제 완수율 10 = 0~100점. rating 4단계(안정 80+/가능 60+/주의 40+/취약). 대시보드 상단 큰 카드 — 점수 + tone + 4 component 막대 + hint 문구. 추후 회귀/GS 보정으로 정밀화. | P1 | ✅ |
+| feat-7-024 | **합격 진단 점수** — 학생 대시보드 KPI. 가중평균 모델(`predictPassScore`). **GS 응시 기록이 있으면 5요소**(학습량 25 + 정답률 25 + GS 30 + 활성도 10 + 완수 10), **없으면 4요소**(학습량 40 + 정답률 40 + 활성도 10 + 완수 10) = 0~100점. rating 4단계(안정 80+/가능 60+/주의 40+/취약). 대시보드 상단 큰 카드 — 점수 + tone + component 막대 + hint. `getUserGsAveragePct` 가 채점 완료 GS 응시의 (total_score / round max_score) 평균. **`/study/stats` 한눈에 탭에 최근 12주 정답률 추이 미니 차트**(`getUserAccuracyTrend` — KST Monday 주별 막대). | P1 | ✅ |
+| feat-7-025 | **1:1 상담 코멘트** — 강사가 학생에게 비공개 메모. `student_notes` 테이블(student_id/author_id/body_md/visibility/is_pinned). visibility=`staff_only`(강사만)/`share_with_student`(학생도 read). RLS: author 본인 + admin 전부 CRUD, 학생 본인은 공유된 코멘트만 read. `/api/admin/student-note` CRUD + `/admin/students/:profileId` 코멘트 패널(핀/공유 토글, 작성자 + 시각 표시, edit/delete). | P1 | ✅ |
+| feat-7-026 | **cron 엔드포인트 e2e 회귀 보호** — `/api/cron/curriculum-weekly` · `/weekly-reports` · `/inactive-alert` 3개 엔드포인트의 인증(secret 없으면 403, 잘못된 secret 도 403) + 정상 응답 shape(ok + summary). `e2e/admin/cron-endpoints.spec.ts`. CRON_SECRET 환경변수 필수. weekly-reports 는 실제 이메일 발송이라 `RUN_WEEKLY_REPORT_E2E=1` 명시적 opt-in 시만 실행. | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 
@@ -566,6 +568,7 @@
 | 자동 주간 cron | `/api/cron/curriculum-weekly` | feat-7-021 |
 | 주간 리포트 cron | `/api/cron/weekly-reports` | feat-7-022 |
 | 비활성 알림 cron | `/api/cron/inactive-alert` | feat-7-023 |
+| 1:1 상담 코멘트 API | `/api/admin/student-note` | feat-7-025 |
 | 사용자 관리 | `/admin/users` | feat-7-012 |
 | 공지사항 발송 | `/admin/announcements` | feat-7-011 |
 | 공지사항 수신함 | `/announcements` | feat-7-011 |

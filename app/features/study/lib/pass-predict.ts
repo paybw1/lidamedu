@@ -5,6 +5,7 @@ export interface PassPredictInput {
   overallArticlesPct: number; // 조문 열람 %
   overallProblemsPct: number; // 문제 풀이 %
   overallAccuracyPct: number | null; // 객관식 정답률 %
+  gsAveragePct: number | null; // GS(2차 모의) 평균 점수 % — null 이면 모델에서 제외
   streakDays: number; // 연속 학습 일수
   activeDaysLast14: number; // 최근 14일 중 활동 일수
   pendingAssignmentsCount: number; // 미완 과제 수
@@ -18,7 +19,8 @@ export interface PassPrediction {
   rating: PassRating;
   components: {
     study: number; // 학습량
-    accuracy: number; // 정답률
+    accuracy: number; // 객관식 정답률
+    gs: number | null; // GS 평균 (null = GS 응시 기록 없음)
     activity: number; // 활성도
     completion: number; // 과제 완수율
   };
@@ -42,17 +44,14 @@ const RATING_HINTS: Record<PassRating, string> = {
 };
 
 export function predictPassScore(input: PassPredictInput): PassPrediction {
-  // 1) 학습량 — 진척 두 축 평균 (0~100)
   const study = Math.round(
     (input.overallArticlesPct + input.overallProblemsPct) / 2,
   );
-  // 2) 정답률 — null 이면 0
   const accuracy = Math.round(input.overallAccuracyPct ?? 0);
-  // 3) 활성도 — streak 14일이면 만점 + 최근 14일 활동일수 보정
+  const gs = input.gsAveragePct === null ? null : Math.round(input.gsAveragePct);
   const streakScore = Math.min(100, (input.streakDays / 14) * 100);
   const activeScore = Math.min(100, (input.activeDaysLast14 / 14) * 100);
   const activity = Math.round(streakScore * 0.5 + activeScore * 0.5);
-  // 4) 과제 완수율 — 과제 없으면 100 (감점 안 함)
   const completion =
     input.totalAssignmentsCount === 0
       ? 100
@@ -62,14 +61,25 @@ export function predictPassScore(input: PassPredictInput): PassPrediction {
             100,
         );
 
-  // 가중평균 — 학습량 40 / 정답률 40 / 활성도 10 / 완수율 10
-  const raw = study * 0.4 + accuracy * 0.4 + activity * 0.1 + completion * 0.1;
+  // 가중치: GS 있으면 5요소(학습 25 / 정답률 25 / GS 30 / 활성도 10 / 완수 10),
+  //         없으면 4요소(학습 40 / 정답률 40 / 활성도 10 / 완수 10)
+  let raw: number;
+  if (gs !== null) {
+    raw =
+      study * 0.25 +
+      accuracy * 0.25 +
+      gs * 0.3 +
+      activity * 0.1 +
+      completion * 0.1;
+  } else {
+    raw = study * 0.4 + accuracy * 0.4 + activity * 0.1 + completion * 0.1;
+  }
   const score = Math.max(0, Math.min(100, Math.round(raw)));
   const rating = rate(score);
   return {
     score,
     rating,
-    components: { study, accuracy, activity, completion },
+    components: { study, accuracy, gs, activity, completion },
     hint: RATING_HINTS[rating],
   };
 }

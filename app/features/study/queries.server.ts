@@ -1960,3 +1960,116 @@ export async function getUserSubjectiveStats(
     }),
   };
 }
+
+// ─── 합격 진단 정밀화 (feat-7-024 정밀화) ────────────────────────────────
+
+// 본인 GS(2차 모의) 평균 점수 % — 채점 완료된 응시만. 데이터 없으면 null.
+export async function getUserGsAveragePct(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<number | null> {
+  const { data: subs } = await client
+    .from("gs_submissions")
+    .select("submission_id, total_score, round_id")
+    .eq("user_id", userId)
+    .not("graded_at", "is", null);
+  if (!subs || subs.length === 0) return null;
+  const roundIds = Array.from(new Set(subs.map((s) => s.round_id)));
+  const { data: questions } = await client
+    .from("gs_questions")
+    .select("round_id, max_score")
+    .in("round_id", roundIds);
+  const maxByRound = new Map<string, number>();
+  for (const q of questions ?? []) {
+    maxByRound.set(
+      q.round_id,
+      (maxByRound.get(q.round_id) ?? 0) + (q.max_score ?? 0),
+    );
+  }
+  const pctList: number[] = [];
+  for (const s of subs) {
+    const max = maxByRound.get(s.round_id) ?? 0;
+    if (max > 0 && s.total_score !== null) {
+      pctList.push(((s.total_score ?? 0) / max) * 100);
+    }
+  }
+  if (pctList.length === 0) return null;
+  return (
+    Math.round((pctList.reduce((a, b) => a + b, 0) / pctList.length) * 10) / 10
+  );
+}
+
+// 본인 주별 정답률 추이 — 최근 N주(기본 12주). KST Monday 기준.
+export interface UserWeeklyAccuracyItem {
+  weekStart: string; // YYYY-MM-DD
+  label: string; // "11주 전" ~ "이번 주"
+  totalAttempts: number;
+  correctAttempts: number;
+  accuracyPct: number | null;
+}
+
+export interface UserWeeklyAccuracyTrend {
+  weeks: UserWeeklyAccuracyItem[];
+}
+
+function ymdKstLocal(d: Date): string {
+  const k = new Date(d.getTime() + 9 * 3600 * 1000);
+  return k.toISOString().slice(0, 10);
+}
+
+function mondayStartKstLocal(d: Date): Date {
+  const k = new Date(d.getTime() + 9 * 3600 * 1000);
+  const day = k.getUTCDay();
+  const diff = (day + 6) % 7;
+  k.setUTCHours(0, 0, 0, 0);
+  k.setUTCDate(k.getUTCDate() - diff);
+  return new Date(k.getTime() - 9 * 3600 * 1000);
+}
+
+export async function getUserAccuracyTrend(
+  client: SupabaseClient<Database>,
+  userId: string,
+  weekCount = 12,
+): Promise<UserWeeklyAccuracyTrend> {
+  const thisWeekStart = mondayStartKstLocal(new Date());
+  const oldestStart = new Date(
+    thisWeekStart.getTime() - (weekCount - 1) * 7 * 24 * 3600 * 1000,
+  );
+
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select("attempted_at, is_correct")
+    .eq("user_id", userId)
+    .gte("attempted_at", oldestStart.toISOString())
+    .limit(20000);
+  if (error) throw error;
+
+  const byWeek = new Map<string, { total: number; correct: number }>();
+  for (const r of rows ?? []) {
+    const weekStart = mondayStartKstLocal(new Date(r.attempted_at));
+    const key = ymdKstLocal(weekStart);
+    const entry = byWeek.get(key) ?? { total: 0, correct: 0 };
+    entry.total += 1;
+    if (r.is_correct) entry.correct += 1;
+    byWeek.set(key, entry);
+  }
+
+  const weeks: UserWeeklyAccuracyItem[] = [];
+  for (let i = weekCount - 1; i >= 0; i--) {
+    const ws = new Date(thisWeekStart.getTime() - i * 7 * 24 * 3600 * 1000);
+    const key = ymdKstLocal(ws);
+    const entry = byWeek.get(key);
+    const total = entry?.total ?? 0;
+    const correct = entry?.correct ?? 0;
+    const label = i === 0 ? "이번 주" : `${i}주 전`;
+    weeks.push({
+      weekStart: key,
+      label,
+      totalAttempts: total,
+      correctAttempts: correct,
+      accuracyPct:
+        total > 0 ? Math.round((correct / total) * 1000) / 10 : null,
+    });
+  }
+  return { weeks };
+}

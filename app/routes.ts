@@ -368,6 +368,10 @@ export default [
         "/api/cron/inactive-alert",
         "features/cron/api/inactive-alert.tsx",
       ),
+      route(
+        "/api/admin/student-note",
+        "features/admin/api/student-note.tsx",
+      ),
       route("/assignments", "features/assignments/screens/student-assignments.tsx"),
       route(
         "/assignments/:assignmentId",
