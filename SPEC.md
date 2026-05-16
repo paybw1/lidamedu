@@ -496,6 +496,7 @@
 | feat-8-019 | **권장 진도 합격자 실측 보정** — `/goals` 화면에 `PasserCalibrationCard` 추가. 합격자 평균(학습 시간/풀이/정답률) vs 본인 누적 + 격차 chip + "실측 권장 일평균 학습 시간 = 부족분/남은 일수" 계산. 본인 일 목표와 비교(±%) 안내. fallback 시 표본 부족 배너. `getPasserBenchmarks` 재활용. | P1 | ✅ |
 | feat-8-020 | **모바일 UX 폴리시** — 대시보드 PasserBenchmarkCard `BenchmarkRow` 5→2 cols 모바일 스택. 운영자 `admin-failure-patterns` 표 `overflow-x-auto` + min-width. 기존 Tailwind 반응형 utility 활용한 onboarding/pricing/my-subscription 화면은 정상 작동 확인. | P2 | ✅ |
 | feat-8-021 | **통합 코멘트 (조문/판례/문제)** — `content_comments` 폴리모픽 테이블(target_type/target_id/body_md/author/is_pinned) + RLS(public read / staff insert / author or admin update·delete). 기존 `article_comments` (단일 평석) 데이터 마이그레이션 후 DROP. `/api/comments/comment` CRUD endpoint(create/update/delete). `CommentsPanel` 공용 컴포넌트(다중 코멘트 + 핀 + 인라인 수정/삭제). article-viewer / case-viewer / problem-viewer 우측 패널에 통합 적용 — staff 작성, 모든 사용자 read. 기존 ArticleCommentPanel + /api/laws/article-comment 정리. | P0 | ✅ |
+| feat-8-022 | **하이라이트형 코멘트** — `content_comments` 에 앵커 컬럼(field_path/start_offset/end_offset/content_hash/color/label) 추가, body_md NULL 허용. 강사가 조문/판례/문제 본문 구간을 하이라이트하면 전체 학생에게 코멘트로 노출(+선택 메모). 텍스트형/하이라이트형 두 형태. `user_highlights` 앵커 구조 재사용. 상세: `docs/features/feat-8-022-comment-highlight.md` | P1 | 🟡 |
 | feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).

@@ -37,7 +37,9 @@ import {
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
+import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { getLawByCode, getStaffRole, getSystematicSkeleton } from "~/features/laws/queries.server";
@@ -500,7 +502,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         currentType="problem"
         currentId={problem.problemId}
       />
-      <HighlightToolbar targetType="problem" targetId={problem.problemId} />
+      <HighlightToolbar
+        targetType="problem"
+        targetId={problem.problemId}
+        staff={canEditComment}
+      />
 
       {/* Session top-bar — shown only when inside a session/runner nav */}
       {runnerNav ? (
@@ -807,10 +813,25 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
 
             <Separator className="mb-7" />
 
-            {/* Question stem */}
-            <p className="mb-7 text-[17px] font-medium leading-[1.8] tracking-[-0.01em] text-foreground">
-              {problem.bodyMd}
-            </p>
+            {/* Question stem — 강사 코멘트 하이라이트 + 개인 하이라이트 오버레이.
+                두 오버레이가 함께 본문 선택 툴바의 컨테이너 역할을 한다. */}
+            <CommentHighlightOverlay
+              fieldPath="problem.body"
+              targetType="problem"
+              targetId={problem.problemId}
+              comments={problemComments}
+            >
+              <HighlightOverlay
+                fieldPath="problem.body"
+                targetType="problem"
+                targetId={problem.problemId}
+                highlights={highlights}
+              >
+                <p className="mb-7 text-[17px] font-medium leading-[1.8] tracking-[-0.01em] text-foreground">
+                  {problem.bodyMd}
+                </p>
+              </HighlightOverlay>
+            </CommentHighlightOverlay>
 
               {problem.boxItems.length > 0 ? (
                 <div className="mb-6 rounded-xl border-2 border-border/70 bg-muted/30 px-5 py-4 dark:bg-muted/10">

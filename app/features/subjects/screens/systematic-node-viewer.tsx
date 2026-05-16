@@ -32,6 +32,7 @@ import {
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
 import {
   getBookmarksByArticleIds,
   getUserArticleAnnotationCounts,
@@ -353,7 +354,7 @@ function Inner({
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
       {/* multi-article 환경: HighlightToolbar 1개를 root 에 mount, prop 없이 selection 컨테이너의 dataset 으로 article 결정 */}
-      <HighlightToolbar />
+      <HighlightToolbar staff={canEditComment} />
 
       <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* ── 좌측 트리 (데스크톱) ── */}
@@ -666,6 +667,12 @@ function Inner({
                           lawCode={subject.slug}
                         />
                       ) : (
+                        <CommentHighlightOverlay
+                          fieldPath="article.body"
+                          targetType="article"
+                          targetId={a.articleId}
+                          comments={commentsByArticle[a.articleId] ?? []}
+                        >
                         <HighlightOverlay
                           fieldPath="article.body"
                           targetType="article"
@@ -688,6 +695,7 @@ function Inner({
                             </p>
                           )}
                         </HighlightOverlay>
+                        </CommentHighlightOverlay>
                       )}
                     </div>
                     {/* 우측 패널 열 */}

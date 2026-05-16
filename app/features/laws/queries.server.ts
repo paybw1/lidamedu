@@ -201,8 +201,9 @@ export async function getArticleByNumberAt(
 
 // 조문 코멘트/평석 — content_comments 폴리모픽 (feat-8-021).
 // 호환 layer — 기존 caller 가 단일 primary 평석 1개만 다루면 첫 번째(고정 우선) 반환.
+// feat-8-022: body_md 가 NULL 허용(하이라이트형 코멘트) 이 되어 bodyMd 도 nullable.
 export interface ArticleComment {
-  bodyMd: string;
+  bodyMd: string | null;
   authorId: string | null;
   updatedAt: string;
 }

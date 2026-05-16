@@ -1,5 +1,8 @@
 // 통합 코멘트 패널 — 조문/판례/문제 공용.
 // staff 작성, 학생 read-only. 다중 코멘트 + 핀 + 수정/삭제.
+// feat-8-022: 코멘트는 두 형태 — 텍스트형(anchor=null) / 하이라이트형(anchor!=null).
+//   하이라이트형은 본문 발췌(label)를 색 박스로, 메모(body_md)를 그 아래에 보인다.
+//   패널의 작성 폼은 텍스트형만 — 하이라이트형은 본문 선택 툴바에서 작성한다.
 
 import {
   EditIcon,
@@ -19,10 +22,21 @@ import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
 import type {
+  CommentHighlightColor,
   CommentTargetType,
   ContentComment,
 } from "~/features/comments/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+
+// 하이라이트형 코멘트 발췌 박스 색 — <mark> 스타일.
+const ANCHOR_MARK_CLASS: Record<CommentHighlightColor, string> = {
+  green:
+    "border-emerald-300 bg-emerald-100/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100",
+  yellow:
+    "border-amber-300 bg-amber-100/80 text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100",
+  red: "border-rose-300 bg-rose-100/80 text-rose-900 dark:border-rose-700 dark:bg-rose-900/40 dark:text-rose-100",
+  blue: "border-sky-300 bg-sky-100/80 text-sky-900 dark:border-sky-700 dark:bg-sky-900/40 dark:text-sky-100",
+};
 
 interface CommentsPanelProps {
   targetType: CommentTargetType;
@@ -68,13 +82,21 @@ export function CommentsPanel({
         ) : null}
       </div>
 
+      {/* 작성 폼은 텍스트형 코멘트 전용 — 하이라이트형은 본문 선택 툴바에서 작성. */}
       {creating && isStaff ? (
-        <CommentForm
-          targetType={targetType}
-          targetId={targetId}
-          mode="create"
-          onDone={() => setCreating(false)}
-        />
+        <>
+          <CommentForm
+            targetType={targetType}
+            targetId={targetId}
+            mode="create"
+            isAnchored={false}
+            onDone={() => setCreating(false)}
+          />
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
+            본문 구간에 앵커되는 <strong>하이라이트형 코멘트</strong>는 본문에서
+            텍스트를 선택한 뒤 툴바의 [코멘트] 버튼으로 작성하세요.
+          </p>
+        </>
       ) : null}
 
       {comments.length === 0 && !creating ? (
@@ -109,6 +131,7 @@ function CommentRow({
   const [editing, setEditing] = useState(false);
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const submitting = fetcher.state !== "idle";
+  const anchored = comment.anchor !== null;
 
   return (
     <li
@@ -116,6 +139,7 @@ function CommentRow({
         "rounded-md border bg-card px-3 py-2",
         comment.isPinned && "border-amber-300 bg-amber-50/40",
       )}
+      data-testid={`comment-${comment.commentId}`}
     >
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[11px]">
@@ -126,6 +150,15 @@ function CommentRow({
             >
               <PinIcon className="mr-1 size-3" />
               고정
+            </Badge>
+          ) : null}
+          {anchored ? (
+            <Badge
+              variant="outline"
+              className="border-primary/30 bg-primary/10 text-primary text-[10px]"
+            >
+              <HighlighterIcon className="mr-1 size-3" />
+              본문 하이라이트
             </Badge>
           ) : null}
           <span className="font-semibold">
@@ -194,6 +227,20 @@ function CommentRow({
         ) : null}
       </div>
 
+      {/* 하이라이트형: 본문 발췌를 색 박스로 노출. */}
+      {anchored && comment.anchor ? (
+        <blockquote
+          className={cn(
+            "mb-1.5 rounded-sm border-l-4 px-2 py-1 text-xs leading-relaxed",
+            ANCHOR_MARK_CLASS[comment.anchor.color],
+          )}
+        >
+          <mark className="bg-transparent text-inherit">
+            {comment.anchor.label ?? "(발췌 없음)"}
+          </mark>
+        </blockquote>
+      ) : null}
+
       {editing ? (
         <CommentForm
           targetType={comment.targetType}
@@ -201,11 +248,16 @@ function CommentRow({
           mode="update"
           commentId={comment.commentId}
           initialBodyMd={comment.bodyMd}
+          isAnchored={anchored}
           onDone={() => setEditing(false)}
         />
-      ) : (
+      ) : comment.bodyMd && comment.bodyMd.trim().length > 0 ? (
         <MarkdownView text={comment.bodyMd} className="text-sm" />
-      )}
+      ) : anchored ? (
+        <p className="text-muted-foreground text-xs italic">
+          메모 없는 하이라이트 코멘트
+        </p>
+      ) : null}
     </li>
   );
 }
@@ -215,7 +267,10 @@ interface CommentFormProps {
   targetId: string;
   mode: "create" | "update";
   commentId?: string;
-  initialBodyMd?: string;
+  /** 수정 대상 코멘트의 기존 메모. 하이라이트형은 null 일 수 있다. */
+  initialBodyMd?: string | null;
+  /** 하이라이트형 코멘트인지 — 메모를 비워둘 수 있다 (required 해제). */
+  isAnchored: boolean;
   onDone: () => void;
 }
 
@@ -225,6 +280,7 @@ function CommentForm({
   mode,
   commentId,
   initialBodyMd,
+  isAnchored,
   onDone,
 }: CommentFormProps) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
@@ -266,6 +322,13 @@ function CommentForm({
       method="post"
       action="/api/comments/comment"
       className="space-y-2 rounded-md border bg-muted/30 p-2"
+      onSubmit={(e) => {
+        // 하이라이트형 코멘트를 빈 메모로 수정 — 바꿀 내용이 없으므로 그냥 닫는다.
+        if (mode === "update" && isAnchored && body.trim().length === 0) {
+          e.preventDefault();
+          onDone();
+        }
+      }}
     >
       <input type="hidden" name="intent" value={mode} />
       {mode === "create" ? (
@@ -320,10 +383,15 @@ function CommentForm({
         ref={textareaRef}
         name="bodyMd"
         rows={5}
-        required
+        // 하이라이트형 코멘트는 메모가 없을 수 있어 required 해제.
+        required={!isAnchored}
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="코멘트 / 평석을 입력하세요. 텍스트를 선택한 뒤 [하이라이트] / [밑줄] 버튼을 눌러 강조할 수 있습니다. (Markdown · <mark> · <u> 지원)"
+        placeholder={
+          isAnchored
+            ? "하이라이트 설명 메모 (선택). Markdown · <mark> · <u> 지원"
+            : "코멘트 / 평석을 입력하세요. 텍스트를 선택한 뒤 [하이라이트] / [밑줄] 버튼을 눌러 강조할 수 있습니다. (Markdown · <mark> · <u> 지원)"
+        }
         className={cn("font-mono text-sm", previewing && "hidden")}
       />
       {previewing ? (

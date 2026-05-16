@@ -207,4 +207,28 @@ body {
     background-color: rgba(186, 230, 253, 0.7); /* sky-200 */
     color: inherit;
   }
+
+  /* 강사 코멘트 하이라이트 (feat-8-022) — 모든 학생에게 노출.
+     개인 하이라이트(lidam-hl-*)와 구분: 더 진한 틴트 + 아래쪽 실선 밑줄(강사 코멘트 표식).
+     ::highlight() 는 text-decoration shorthand 만 안정적으로 지원하므로 longhand 미사용. */
+  ::highlight(lidam-cmt-yellow) {
+    background-color: rgba(252, 211, 77, 0.5); /* amber-300 */
+    color: inherit;
+    text-decoration: underline rgb(217, 119, 6) solid 2px; /* amber-600 */
+  }
+  ::highlight(lidam-cmt-green) {
+    background-color: rgba(110, 231, 183, 0.5); /* emerald-300 */
+    color: inherit;
+    text-decoration: underline rgb(5, 150, 105) solid 2px; /* emerald-600 */
+  }
+  ::highlight(lidam-cmt-red) {
+    background-color: rgba(253, 164, 175, 0.5); /* rose-300 */
+    color: inherit;
+    text-decoration: underline rgb(225, 29, 72) solid 2px; /* rose-600 */
+  }
+  ::highlight(lidam-cmt-blue) {
+    background-color: rgba(125, 211, 252, 0.5); /* sky-300 */
+    color: inherit;
+    text-decoration: underline rgb(2, 132, 199) solid 2px; /* sky-600 */
+  }
 }

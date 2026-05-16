@@ -42,6 +42,7 @@ import {
 import { recordStudySession } from "~/features/study/queries.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
 import { RecitationView } from "~/features/recitation/components/recitation-view";
@@ -251,6 +252,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankSets,
     blankSet,
     staffRole,
+    isAdmin: staffRole === "admin",
+    currentUserId: user.id,
     revisions,
     oxQuestions,
     oxAnnotationsByRef,
@@ -293,6 +296,8 @@ function ArticleViewerInner({
     blankSets,
     blankSet,
     staffRole,
+    isAdmin,
+    currentUserId,
     revisions,
     oxQuestions,
     oxAnnotationsByRef,
@@ -399,6 +404,7 @@ function ArticleViewerInner({
       <HighlightToolbar
         targetType="article"
         targetId={article.articleId}
+        staff={staffRole !== null}
       />
 
       {/* 시점/비교 배너 — amber tone */}
@@ -548,6 +554,8 @@ function ArticleViewerInner({
                       oxAnnotationsByRef={oxAnnotationsByRef}
                       comments={articleComments}
                       canEditComment={staffRole !== null}
+                      currentUserId={currentUserId}
+                      isAdmin={isAdmin}
                       subjectSlug={subject.slug}
                       revisions={revisions ?? undefined}
                     />
@@ -959,6 +967,12 @@ function ArticleViewerInner({
                       body={body}
                     />
                   ) : (
+                    <CommentHighlightOverlay
+                      fieldPath="article.body"
+                      comments={articleComments}
+                      targetType="article"
+                      targetId={article.articleId}
+                    >
                     <HighlightOverlay
                       fieldPath="article.body"
                       highlights={highlights}
@@ -1022,6 +1036,7 @@ function ArticleViewerInner({
                         </p>
                       )}
                     </HighlightOverlay>
+                    </CommentHighlightOverlay>
                   )}
                 </div>
               </div>
@@ -1042,6 +1057,8 @@ function ArticleViewerInner({
                 oxAnnotationsByRef={oxAnnotationsByRef}
                 comments={articleComments}
                 canEditComment={staffRole !== null}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
                 subjectSlug={subject.slug}
                 revisions={revisions ?? undefined}
               />

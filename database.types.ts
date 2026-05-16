@@ -1047,30 +1047,48 @@ export type Database = {
       content_comments: {
         Row: {
           author_id: string | null
-          body_md: string
+          body_md: string | null
+          color: string | null
           comment_id: string
+          content_hash: string | null
           created_at: string
+          end_offset: number | null
+          field_path: string | null
           is_pinned: boolean
+          label: string | null
+          start_offset: number | null
           target_id: string
           target_type: Database["public"]["Enums"]["content_comment_target_type"]
           updated_at: string
         }
         Insert: {
           author_id?: string | null
-          body_md: string
+          body_md?: string | null
+          color?: string | null
           comment_id?: string
+          content_hash?: string | null
           created_at?: string
+          end_offset?: number | null
+          field_path?: string | null
           is_pinned?: boolean
+          label?: string | null
+          start_offset?: number | null
           target_id: string
           target_type: Database["public"]["Enums"]["content_comment_target_type"]
           updated_at?: string
         }
         Update: {
           author_id?: string | null
-          body_md?: string
+          body_md?: string | null
+          color?: string | null
           comment_id?: string
+          content_hash?: string | null
           created_at?: string
+          end_offset?: number | null
+          field_path?: string | null
           is_pinned?: boolean
+          label?: string | null
+          start_offset?: number | null
           target_id?: string
           target_type?: Database["public"]["Enums"]["content_comment_target_type"]
           updated_at?: string

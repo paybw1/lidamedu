@@ -28,6 +28,7 @@ import {
 } from "~/features/annotations/queries.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { COURT_LABELS } from "~/features/cases/labels";
@@ -214,7 +215,11 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           currentType="case"
           currentId={kase.caseId}
         />
-        <HighlightToolbar targetType="case" targetId={kase.caseId} />
+        <HighlightToolbar
+          targetType="case"
+          targetId={kase.caseId}
+          staff={canEditComment}
+        />
 
         {replacedNotice ? (
           <div className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50/60 px-4 py-2.5 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
@@ -427,6 +432,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               <CardContent className="px-6 py-7 space-y-8">
                 {summaryItems.length > 0 ? (
                   <BodySection title="판결요지">
+                    <CommentHighlightOverlay
+                      fieldPath="case.summary"
+                      targetType="case"
+                      targetId={kase.caseId}
+                      comments={caseComments}
+                    >
                     <HighlightOverlay
                       fieldPath="case.summary"
                       targetType="case"
@@ -446,11 +457,18 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         ))}
                       </div>
                     </HighlightOverlay>
+                    </CommentHighlightOverlay>
                   </BodySection>
                 ) : null}
 
                 {kase.reasoningMd ? (
                   <BodySection title="판시이유">
+                    <CommentHighlightOverlay
+                      fieldPath="case.reasoning"
+                      targetType="case"
+                      targetId={kase.caseId}
+                      comments={caseComments}
+                    >
                     <HighlightOverlay
                       fieldPath="case.reasoning"
                       targetType="case"
@@ -459,6 +477,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     >
                       <Prose text={kase.reasoningMd} />
                     </HighlightOverlay>
+                    </CommentHighlightOverlay>
                   </BodySection>
                 ) : null}
 
@@ -515,6 +534,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         </p>
                       </div>
                     ) : null}
+                    <CommentHighlightOverlay
+                      fieldPath="case.comment"
+                      targetType="case"
+                      targetId={kase.caseId}
+                      comments={caseComments}
+                    >
                     <HighlightOverlay
                       fieldPath="case.comment"
                       targetType="case"
@@ -523,6 +548,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     >
                       <Prose text={kase.commentBodyMd} />
                     </HighlightOverlay>
+                    </CommentHighlightOverlay>
                   </BodySection>
                 ) : null}
               </CardContent>
