@@ -2,23 +2,23 @@
 // 답안 작성자 식별자(이름/userId) 는 노출 금지. 첨부는 /api/gs/peer 의 GET 으로 signed URL 발급.
 
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   EyeIcon,
   FileTextIcon,
   SaveIcon,
   SendIcon,
+  ShieldCheckIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, data, useFetcher } from "react-router";
+import { data, useFetcher } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Separator } from "~/core/components/ui/separator";
+import { Card, CardContent } from "~/core/components/ui/card";
 import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { CommunityShell } from "~/features/community/components/community-shell";
+import { Chip, Section } from "~/features/community/components/community-ui";
 import {
   type GsPage,
   type GsQuestion,
@@ -101,46 +101,42 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
   );
 
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <Link
-          to="/gs"
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 온라인 GS
-        </Link>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-              동료 채점
+    <CommunityShell
+      category="gs"
+      width="narrow"
+      backLink={{ to: "/gs", label: "온라인 GS" }}
+      title={`동료 채점 · ${round.title}`}
+      desc="익명 답안을 문항별로 채점합니다. 점수와 피드백을 모두 입력한 뒤 제출하세요."
+      headerRight={
+        isSubmitted ? (
+          <Chip tone="emerald">
+            <CheckCircle2Icon className="size-3" /> 채점 제출 완료
+          </Chip>
+        ) : (
+          <Chip tone="outline">진행 중</Chip>
+        )
+      }
+    >
+      <Card className="border-transparent bg-amber-500/[0.12] dark:bg-amber-500/[0.1]">
+        <CardContent className="flex items-center gap-3 py-4">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-amber-500 text-white">
+            <ShieldCheckIcon className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13.5px] font-bold tracking-tight text-amber-700 dark:text-amber-400">
+              익명 답안입니다 · {LAW_SUBJECTS[round.subject]?.name ?? round.subject}
             </p>
-            <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-              {round.title}
-            </h1>
-            <p className="text-muted-foreground text-xs mt-1">
-              {LAW_SUBJECTS[round.subject]?.name ?? round.subject}
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              작성자를 알 수 없습니다. 본인의 채점도 작성자에게 익명으로
+              전달됩니다. 점수와 피드백을 모두 입력하고 마지막에{" "}
+              <strong className="text-foreground">채점 제출</strong> 버튼을 눌러야
+              마무리됩니다. 제출 전까지는 언제든 수정 가능합니다.
             </p>
           </div>
-          {isSubmitted ? (
-            <Badge className="bg-emerald-600 text-white">
-              <CheckCircle2Icon className="size-3" /> 채점 제출 완료
-            </Badge>
-          ) : (
-            <Badge variant="outline">진행 중</Badge>
-          )}
-        </div>
-        <Card className="bg-amber-50/40 border-amber-300/60 dark:border-amber-700/40 dark:bg-amber-950/20">
-          <CardContent className="text-amber-900 dark:text-amber-200 pt-4 text-xs leading-relaxed">
-            <strong>익명 동료 채점입니다.</strong> 답안 작성자 정보는 노출되지
-            않습니다. 모범답안과 본인의 학습 경험을 바탕으로 공정하게 채점해
-            주세요. 점수와 피드백을 모두 입력하고 마지막에{" "}
-            <strong>"채점 제출"</strong> 버튼을 눌러야 마무리됩니다. 제출 전까지는
-            언제든 수정 가능합니다.
-          </CardContent>
-        </Card>
-      </header>
+        </CardContent>
+      </Card>
 
-      <div className="space-y-4">
+      <div className="mt-5 space-y-3.5">
         {questions.map((q) => (
           <PeerQuestionCard
             key={q.questionId}
@@ -154,56 +150,59 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
         ))}
       </div>
 
-      <Separator className="my-6" />
-
-      <Card>
-        <CardContent className="space-y-3 pt-6">
-          {isSubmitted ? (
-            <p className="text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
-              ✓ 채점 제출이 완료되었습니다. 감사합니다.
-            </p>
-          ) : allScored ? (
-            <>
-              <p className="text-muted-foreground text-xs">
-                채점 제출 후에는 수정할 수 없습니다.
+      <Section eyebrow="채점 제출">
+        <Card>
+          <CardContent className="space-y-3 py-5">
+            {isSubmitted ? (
+              <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2Icon className="size-4" /> 채점 제출이
+                완료되었습니다. 감사합니다.
               </p>
-              {submitFetcher.data?.error ? (
-                <p className="text-rose-600 text-xs">
-                  {submitFetcher.data.error}
+            ) : allScored ? (
+              <>
+                <p className="text-muted-foreground text-xs">
+                  채점 제출 후에는 수정할 수 없습니다.
                 </p>
-              ) : null}
-              <submitFetcher.Form
-                method="post"
-                action="/api/gs/peer"
-                onSubmit={(e) => {
-                  if (!confirm("채점을 제출합니다. 진행할까요?"))
-                    e.preventDefault();
-                }}
-              >
-                <input type="hidden" name="intent" value="submit" />
-                <input
-                  type="hidden"
-                  name="assignmentId"
-                  value={assignment.assignmentId}
-                />
-                <Button
-                  type="submit"
-                  disabled={submitFetcher.state !== "idle"}
-                  className="w-full"
+                {submitFetcher.data?.error ? (
+                  <p className="text-xs text-rose-600 dark:text-rose-400">
+                    {submitFetcher.data.error}
+                  </p>
+                ) : null}
+                <submitFetcher.Form
+                  method="post"
+                  action="/api/gs/peer"
+                  onSubmit={(e) => {
+                    if (!confirm("채점을 제출합니다. 진행할까요?"))
+                      e.preventDefault();
+                  }}
                 >
-                  <SendIcon className="size-4" />
-                  {submitFetcher.state !== "idle" ? "제출 중..." : "채점 제출"}
-                </Button>
-              </submitFetcher.Form>
-            </>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              모든 문항에 점수를 입력해야 채점을 제출할 수 있습니다.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                  <input type="hidden" name="intent" value="submit" />
+                  <input
+                    type="hidden"
+                    name="assignmentId"
+                    value={assignment.assignmentId}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={submitFetcher.state !== "idle"}
+                    className="w-full rounded-full"
+                  >
+                    <SendIcon className="size-4" />
+                    {submitFetcher.state !== "idle"
+                      ? "제출 중..."
+                      : "채점 제출"}
+                  </Button>
+                </submitFetcher.Form>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                모든 문항에 점수를 입력해야 채점을 제출할 수 있습니다.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </Section>
+    </CommunityShell>
   );
 }
 
@@ -257,29 +256,40 @@ function PeerQuestionCard({
     });
   };
 
+  const scoreStatus =
+    savedAt && !isDirty
+      ? "저장됨"
+      : isDirty
+        ? "수정 중"
+        : myAnswer?.score == null
+          ? "미작성"
+          : "저장됨";
+
   return (
     <Card>
-      <CardHeader>
+      <CardContent className="space-y-4 py-5">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
-            #{question.orderIndex + 1}
-          </Badge>
+          <Chip tone="primary">문 {question.orderIndex + 1}</Chip>
           {question.title ? (
-            <h2 className="font-semibold">{question.title}</h2>
+            <h2 className="text-base font-bold tracking-tight">
+              {question.title}
+            </h2>
           ) : null}
-          <Badge variant="secondary" className="ml-auto text-[10px]">
-            {question.maxScore}점 만점
-          </Badge>
+          <span className="text-primary ml-auto text-lg font-extrabold tabular-nums">
+            {score === "" ? "—" : score}
+            <span className="text-muted-foreground text-xs font-semibold">
+              {" "}
+              / {question.maxScore}
+            </span>
+          </span>
         </div>
-      </CardHeader>
-      <Separator />
-      <CardContent className="space-y-4 pt-4">
+
         <section>
-          <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
             문제
           </p>
-          <div className="bg-muted/30 rounded-md border p-3">
-            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+          <div className="bg-muted/50 rounded-xl border p-3.5">
+            <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
               {question.bodyMd}
             </p>
           </div>
@@ -287,11 +297,11 @@ function PeerQuestionCard({
 
         {question.modelAnswerMd ? (
           <section>
-            <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+            <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
               모범답안 / 채점 기준
             </p>
-            <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-700/40 rounded-md border p-3">
-              <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] p-3.5">
+              <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
                 {question.modelAnswerMd}
               </p>
             </div>
@@ -299,7 +309,7 @@ function PeerQuestionCard({
         ) : null}
 
         <section>
-          <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
             동료의 답안 — 매핑된 페이지 (익명)
           </p>
           {mappedPages.length === 0 ? (
@@ -319,21 +329,23 @@ function PeerQuestionCard({
 
         {ocrText ? (
           <section>
-            <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
-              OCR 인식 텍스트 (참고)
+            <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              판독 텍스트 (참고)
             </p>
-            <div className="bg-background max-h-60 overflow-auto rounded-md border p-3">
-              <p className="text-xs whitespace-pre-line font-mono leading-snug">
+            <div className="bg-muted/50 max-h-60 overflow-auto rounded-xl border p-3.5">
+              <p className="text-foreground/80 font-mono text-xs leading-relaxed whitespace-pre-line">
                 {ocrText}
               </p>
             </div>
           </section>
         ) : null}
 
-        <section className="rounded-md border p-3">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <label className="text-xs">
-              <span className="text-muted-foreground mr-1">점수</span>
+        <section className="bg-muted/40 rounded-xl border p-3.5">
+          <div className="mb-2.5 flex flex-wrap items-center gap-2">
+            <label className="inline-flex items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                점수
+              </span>
               <input
                 type="number"
                 min={0}
@@ -342,28 +354,31 @@ function PeerQuestionCard({
                 value={score}
                 disabled={disabled}
                 onChange={(e) => setScore(e.target.value)}
-                className="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm tabular-nums"
+                className="border-input bg-background focus-visible:ring-ring h-8 w-20 rounded-lg border px-2 text-sm tabular-nums focus-visible:ring-2 focus-visible:outline-none"
               />
-              <span className="text-muted-foreground ml-1 text-xs">
+              <span className="text-muted-foreground text-xs">
                 / {question.maxScore}
               </span>
             </label>
-            <span className="text-muted-foreground ml-auto text-[11px]">
-              {savedAt && !isDirty
-                ? "저장됨"
-                : isDirty
-                  ? "수정 중"
-                  : myAnswer?.score == null
-                    ? "미작성"
-                    : "저장됨"}
-            </span>
+            <Chip
+              tone={
+                scoreStatus === "저장됨"
+                  ? "emerald"
+                  : scoreStatus === "수정 중"
+                    ? "amber"
+                    : "neutral"
+              }
+              className="ml-auto"
+            >
+              {scoreStatus}
+            </Chip>
           </div>
           <Textarea
             value={feedback}
             disabled={disabled}
             onChange={(e) => setFeedback(e.target.value)}
             rows={4}
-            placeholder="피드백 (마크다운). 답안 작성자에게 익명으로 전달됩니다."
+            placeholder="채점 사유와 보강이 필요한 부분을 적어 주세요. 답안 작성자에게 익명으로 전달됩니다."
           />
           <div className="mt-2 flex items-center justify-end">
             <Button
@@ -371,6 +386,7 @@ function PeerQuestionCard({
               size="sm"
               onClick={submit}
               disabled={disabled || !isDirty || fetcher.state !== "idle"}
+              className="rounded-full"
             >
               <SaveIcon className="size-3.5" /> 저장
             </Button>
@@ -407,22 +423,21 @@ function PeerPageView({
   }, [assignmentId, page.attachment.path]);
 
   return (
-    <div className="rounded-md border bg-muted/20 p-2">
+    <div className="bg-muted/40 rounded-xl border p-2">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Badge variant="outline" className="text-[10px]">
-          페이지 {page.pageNumber}
-        </Badge>
+        <Chip tone="outline">페이지 {page.pageNumber}</Chip>
         <FileTextIcon className="text-muted-foreground size-3.5" />
         <span className="flex-1 truncate font-medium">
           {/* 파일명에 작성자 정보가 들어있을 수 있어 익명 라벨로 대체 */}
-          답안 파일 ({page.attachment.mime.split("/")[1]?.toUpperCase() ?? "FILE"})
+          답안 파일 (
+          {page.attachment.mime.split("/")[1]?.toUpperCase() ?? "FILE"})
         </span>
         {signedUrl ? (
           <a
             href={signedUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary inline-flex items-center gap-0.5 hover:underline"
+            className="text-primary inline-flex items-center gap-0.5 font-semibold hover:underline"
           >
             <EyeIcon className="size-3" /> 풀사이즈
           </a>
@@ -434,7 +449,7 @@ function PeerPageView({
           alt={`페이지 ${page.pageNumber}`}
           loading="lazy"
           className={cn(
-            "mt-2 max-h-[480px] w-full rounded border object-contain bg-background",
+            "bg-background mt-2 max-h-[480px] w-full rounded-lg border object-contain",
           )}
         />
       ) : !isImage && signedUrl ? (
@@ -442,7 +457,7 @@ function PeerPageView({
           href={signedUrl}
           target="_blank"
           rel="noreferrer"
-          className="bg-background hover:bg-muted mt-2 block rounded border p-3 text-center text-xs"
+          className="bg-background hover:bg-muted mt-2 block rounded-lg border p-3 text-center text-xs font-medium"
         >
           PDF 풀사이즈 열기
         </a>

@@ -2,14 +2,19 @@
 // 공개(is_published=true) 마킹된 답안만. 작성자 이름은 익명/공개 옵션에 따라.
 // 답안 페이지는 admin client 로 signed URL 발급 (peer-review 와 동일 패턴).
 
-import { ArrowLeftIcon, AwardIcon, CrownIcon, EyeIcon } from "lucide-react";
-import { Link, data } from "react-router";
+import { AwardIcon, CrownIcon, EyeIcon } from "lucide-react";
+import { data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Separator } from "~/core/components/ui/separator";
+import { Card, CardContent } from "~/core/components/ui/card";
+import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { CommunityShell } from "~/features/community/components/community-shell";
+import {
+  Chip,
+  EmptyState,
+  Section,
+} from "~/features/community/components/community-ui";
 import {
   type GsAttachment,
   type GsQuestion,
@@ -184,148 +189,173 @@ export default function GsDistinguished({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <Link
-          to={`/gs/${round.roundId}/result`}
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 내 결과로
-        </Link>
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <AwardIcon className="size-3.5" /> 우수 답안
-        </p>
-        <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-          {round.title}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {LAW_SUBJECTS[round.subject]?.name ?? round.subject}
-          {round.roundNumber ? ` · ${round.roundNumber}회` : ""} · 운영자가
-          공개한 우수 답안
-        </p>
-      </header>
-
+    <CommunityShell
+      category="gs"
+      backLink={{ to: `/gs/${round.roundId}/result`, label: "내 결과" }}
+      title={`우수 답안 · ${round.title}`}
+      desc={`${LAW_SUBJECTS[round.subject]?.name ?? round.subject}${
+        round.roundNumber ? ` · ${round.roundNumber}회` : ""
+      } · 회차의 가장 완성도 높은 답안을 모았습니다. 본인 답안과 비교해 보세요.`}
+    >
       {items.length === 0 ? (
-        <Card>
-          <CardContent className="text-muted-foreground py-10 text-center text-sm">
-            아직 공개된 우수 답안이 없습니다.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={AwardIcon}
+          tone="subdued"
+          title="아직 공개된 우수 답안이 없습니다"
+          body="운영자가 우수 답안을 공개하면 이곳에 모입니다."
+        />
       ) : null}
 
       {roundItems.length > 0 ? (
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CrownIcon className="text-amber-500 size-5" />
-              <h2 className="text-sm font-semibold tracking-tight">
-                회차 종합 우수자 ({roundItems.length}명)
-              </h2>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Section eyebrow={`회차 종합 우수자 (${roundItems.length}명)`}>
+          <div className="space-y-2">
             {roundItems.map((it) => (
-              <DistinguishedItem key={it.distinction.distinctionId} item={it} />
+              <DistinguishedItem
+                key={it.distinction.distinctionId}
+                item={it}
+                prominent
+              />
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
       ) : null}
 
       {questions.map((q) => {
         const list = byQuestion.get(q.questionId) ?? [];
         if (list.length === 0) return null;
         return (
-          <Card key={q.questionId} className="mb-6">
-            <CardHeader>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-[10px]">
-                  #{q.orderIndex + 1}
-                </Badge>
-                <h2 className="text-sm font-semibold tracking-tight">
-                  {q.title ?? `문 ${q.orderIndex + 1}`}
-                </h2>
-                <Badge variant="secondary" className="text-[10px]">
-                  {q.maxScore}점 만점
-                </Badge>
-                <Badge variant="outline" className="ml-auto text-[10px]">
-                  우수 {list.length}명
-                </Badge>
-              </div>
-            </CardHeader>
-            <Separator />
-            <CardContent className="space-y-4 pt-4">
-              <div className="bg-muted/30 rounded-md border p-3">
-                <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase mb-1">
-                  문제
-                </p>
-                <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
-                  {q.bodyMd}
-                </p>
-              </div>
-              {q.modelAnswerMd ? (
-                <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-700/40 rounded-md border p-3">
-                  <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase mb-1">
-                    모범답안
+          <Section
+            key={q.questionId}
+            eyebrow="문항별 우수 답안"
+            right={<Chip tone="outline">우수 {list.length}명</Chip>}
+          >
+            <Card>
+              <CardContent className="space-y-3.5 py-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip tone="primary">문 {q.orderIndex + 1}</Chip>
+                  <h2 className="text-[15px] font-bold tracking-tight">
+                    {q.title ?? `문 ${q.orderIndex + 1}`}
+                  </h2>
+                  <Chip tone="neutral">{q.maxScore}점 만점</Chip>
+                </div>
+                <div className="bg-muted/50 rounded-xl border p-3.5">
+                  <p className="text-muted-foreground mb-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    문제
                   </p>
-                  <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
-                    {q.modelAnswerMd}
+                  <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
+                    {q.bodyMd}
                   </p>
                 </div>
-              ) : null}
-              {list.map((it) => (
-                <DistinguishedItem
-                  key={it.distinction.distinctionId}
-                  item={it}
-                />
-              ))}
-            </CardContent>
-          </Card>
+                {q.modelAnswerMd ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] p-3.5">
+                    <p className="text-muted-foreground mb-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                      모범답안
+                    </p>
+                    <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
+                      {q.modelAnswerMd}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  {list.map((it) => (
+                    <DistinguishedItem
+                      key={it.distinction.distinctionId}
+                      item={it}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </Section>
         );
       })}
-    </div>
+    </CommunityShell>
   );
 }
 
-function DistinguishedItem({ item }: { item: Item }) {
+function DistinguishedItem({
+  item,
+  prominent = false,
+}: {
+  item: Item;
+  prominent?: boolean;
+}) {
   return (
     <div
       data-testid={`distinguished-${item.distinction.distinctionId}`}
-      className="bg-amber-50/40 dark:bg-amber-950/15 border-amber-200/60 dark:border-amber-700/30 rounded-md border p-3"
+      className={cn(
+        "rounded-2xl border border-transparent bg-amber-500/[0.12] dark:bg-amber-500/[0.1]",
+        prominent ? "p-5" : "p-3.5",
+      )}
     >
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <Badge className="bg-amber-500 text-white text-[10px] hover:bg-amber-500">
-          <CrownIcon className="size-3" /> 우수
-        </Badge>
-        {item.authorName ? (
-          <span className="text-foreground text-sm font-semibold">
-            {item.authorName}
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2",
+          prominent ? "mb-3" : "mb-2.5",
+        )}
+      >
+        {prominent ? (
+          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
+            <CrownIcon className="size-5" />
           </span>
         ) : (
-          <span className="text-muted-foreground text-xs italic">
-            익명 답안
-          </span>
+          <AwardIcon className="size-4 shrink-0 text-amber-500" />
         )}
-        {item.distinction.reason ? (
-          <span className="text-muted-foreground text-[11px]">
-            · {item.distinction.reason}
+        <div className="min-w-0 flex-1">
+          {prominent ? (
+            <Chip tone="amber" className="mb-1">
+              <CrownIcon className="size-3" /> 회차 종합 1위
+            </Chip>
+          ) : null}
+          <div className="flex flex-wrap items-baseline gap-1.5">
+            {item.authorName ? (
+              <span
+                className={cn(
+                  "font-bold tracking-tight",
+                  prominent ? "text-base" : "text-[13px]",
+                )}
+              >
+                {item.authorName}
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-xs italic">
+                익명 답안
+              </span>
+            )}
+            {!prominent && item.distinction.reason ? (
+              <span className="text-muted-foreground text-[11px]">
+                · {item.distinction.reason}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <span className="ml-auto inline-flex items-baseline gap-0.5 font-extrabold tabular-nums text-amber-700 dark:text-amber-400">
+          <span className={prominent ? "text-2xl" : "text-base"}>
+            +{item.distinction.pointsAwarded}
           </span>
-        ) : null}
-        <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
-          +{item.distinction.pointsAwarded}P
+          <span className="text-muted-foreground text-xs font-semibold">P</span>
         </span>
       </div>
+      {prominent && item.distinction.reason ? (
+        <div className="bg-background mb-3 rounded-xl border-l-[3px] border-amber-500 p-3.5">
+          <p className="text-foreground/85 text-[13.5px] leading-relaxed">
+            <strong className="mr-1.5 font-bold text-amber-700 dark:text-amber-400">
+              선정 사유
+            </strong>
+            {item.distinction.reason}
+          </p>
+        </div>
+      ) : null}
       <div className="space-y-2">
         {item.pages.map((p) => {
           const isImage = p.attachment.mime.startsWith("image/");
           return (
             <div
               key={`${p.pageNumber}-${p.attachment.path}`}
-              className="bg-background rounded border p-2"
+              className="bg-background rounded-xl border p-2"
             >
               <div className="flex items-center gap-2 text-[11px]">
-                <Badge variant="outline" className="text-[10px]">
-                  페이지 {p.pageNumber}
-                </Badge>
+                <Chip tone="outline">페이지 {p.pageNumber}</Chip>
                 <span className="text-muted-foreground">
                   ({p.attachment.mime.split("/")[1]?.toUpperCase() ?? "FILE"})
                 </span>
@@ -334,7 +364,7 @@ function DistinguishedItem({ item }: { item: Item }) {
                     href={p.signedUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-primary ml-auto inline-flex items-center gap-0.5 hover:underline"
+                    className="text-primary ml-auto inline-flex items-center gap-0.5 font-semibold hover:underline"
                   >
                     <EyeIcon className="size-3" /> 풀사이즈
                   </a>
@@ -345,14 +375,14 @@ function DistinguishedItem({ item }: { item: Item }) {
                   src={p.signedUrl}
                   alt={`페이지 ${p.pageNumber}`}
                   loading="lazy"
-                  className="mt-2 max-h-[480px] w-full rounded border object-contain bg-background"
+                  className="bg-background mt-2 max-h-[480px] w-full rounded-lg border object-contain"
                 />
               ) : !isImage && p.signedUrl ? (
                 <a
                   href={p.signedUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="bg-background hover:bg-muted mt-2 block rounded border p-3 text-center text-xs"
+                  className="bg-background hover:bg-muted mt-2 block rounded-lg border p-3 text-center text-xs font-medium"
                 >
                   PDF 풀사이즈 열기
                 </a>
@@ -361,11 +391,11 @@ function DistinguishedItem({ item }: { item: Item }) {
           );
         })}
         {item.ocrTexts.length > 0 ? (
-          <details className="bg-background rounded border p-2">
-            <summary className="text-muted-foreground cursor-pointer text-[11px]">
+          <details className="bg-background rounded-xl border p-2">
+            <summary className="text-muted-foreground cursor-pointer text-[11px] font-medium">
               OCR 텍스트 펼치기
             </summary>
-            <p className="mt-2 whitespace-pre-line font-mono text-[11px] leading-snug">
+            <p className="text-foreground/80 mt-2 font-mono text-[11px] leading-relaxed whitespace-pre-line">
               {item.ocrTexts.join("\n\n---\n\n")}
             </p>
           </details>

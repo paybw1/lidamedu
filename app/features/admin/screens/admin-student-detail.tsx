@@ -4,7 +4,6 @@
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  BookmarkIcon,
   ClockIcon,
   EyeIcon,
   EyeOffIcon,
@@ -41,6 +40,8 @@ import {
 } from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   isFirstExamSubject,
@@ -106,6 +107,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     passTrend,
     currentUserId: user.id,
     isAdmin: role === "admin",
+    role,
   };
 }
 
@@ -120,78 +122,92 @@ function accuracyTone(pct: number | null): string {
 export default function AdminStudentDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { student, cohortComparisons, notes, passTrend, currentUserId, isAdmin } =
-    loaderData;
+  const {
+    student,
+    cohortComparisons,
+    notes,
+    passTrend,
+    currentUserId,
+    isAdmin,
+    role,
+  } = loaderData;
+  const roleLabel =
+    student.role === "admin"
+      ? "원장"
+      : student.role === "instructor"
+        ? "강사"
+        : "수험생";
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin/cohorts"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 반 목록
-      </Link>
-
-      <header className="mb-6 space-y-2">
-        <Badge variant="outline" className="gap-1">
-          <UserIcon className="size-3" />
-          {student.role === "admin"
-            ? "원장"
-            : student.role === "instructor"
-              ? "강사"
-              : "수험생"}
-        </Badge>
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <TrendingUpIcon className="text-primary size-6" />
-          {student.name || "(이름 없음)"}
-        </h1>
-        {student.email ? (
-          <p className="text-muted-foreground inline-flex items-center gap-1 text-sm">
-            <MailIcon className="size-3.5" />
-            {student.email}
-          </p>
-        ) : null}
-        <p className="text-muted-foreground text-xs">
-          가입 {student.joinedAt.slice(0, 10)}
-        </p>
-      </header>
-
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
-        <KpiCard
-          icon={<ListChecksIcon className="size-3" />}
-          label="문제 풀이"
-          value={`${student.totals.problemsCorrect} / ${student.totals.problemsAttempted}`}
-          hint="정답 / 응답 (distinct)"
-        />
-        <KpiCard
-          icon={<TrendingUpIcon className="size-3" />}
-          label="전체 정답률"
-          value={
-            student.totals.accuracyPct !== null
-              ? `${student.totals.accuracyPct}%`
-              : "—"
-          }
-          hint="distinct problem 기준"
-          tone={accuracyTone(student.totals.accuracyPct)}
-        />
-        <KpiCard
-          icon={<FileTextIcon className="size-3" />}
-          label="조문 열람"
-          value={`${student.totals.articlesViewed}`}
-          hint="distinct article"
-        />
-        <KpiCard
-          icon={<BookmarkIcon className="size-3" />}
-          label="빈칸 정답률"
-          value={
-            student.blanks.accuracyPct !== null
-              ? `${student.blanks.accuracyPct}%`
-              : "—"
-          }
-          hint={`정답 ${student.blanks.correct} / 응답 ${student.blanks.attempts}`}
-          tone={accuracyTone(student.blanks.accuracyPct)}
-        />
-      </div>
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      title={`수강생 · ${student.name || "(이름 없음)"}`}
+      desc={`${roleLabel} · 가입 ${student.joinedAt.slice(0, 10)}`}
+      headerRight={
+        <Link
+          to="/admin/cohorts"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold"
+        >
+          <ArrowLeftIcon className="size-3" /> 반 목록
+        </Link>
+      }
+    >
+      {/* ── 요약 카드 — 아바타 + 신원 + 핵심 지표 ── */}
+      <Card className="mb-4">
+        <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-4 px-5 py-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="bg-primary text-primary-foreground inline-flex size-14 shrink-0 items-center justify-center rounded-full text-xl font-extrabold">
+              {(student.name || "?").trim().charAt(0) || "?"}
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="truncate text-xl font-extrabold tracking-tight">
+                  {student.name || "(이름 없음)"}
+                </h2>
+                <Chip tone="outline">
+                  <UserIcon className="size-3" />
+                  {roleLabel}
+                </Chip>
+              </div>
+              {student.email ? (
+                <p className="text-muted-foreground mt-1 inline-flex items-center gap-1 text-sm">
+                  <MailIcon className="size-3.5" />
+                  {student.email}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="ml-auto flex flex-wrap gap-x-6 gap-y-3">
+            <SummaryStat
+              label="문제 풀이"
+              value={`${student.totals.problemsCorrect} / ${student.totals.problemsAttempted}`}
+            />
+            <SummaryStat
+              label="전체 정답률"
+              value={
+                student.totals.accuracyPct !== null
+                  ? `${student.totals.accuracyPct}%`
+                  : "—"
+              }
+              tone={accuracyTone(student.totals.accuracyPct)}
+            />
+            <SummaryStat
+              label="조문 열람"
+              value={`${student.totals.articlesViewed}`}
+            />
+            <SummaryStat
+              label="빈칸 정답률"
+              value={
+                student.blanks.accuracyPct !== null
+                  ? `${student.blanks.accuracyPct}%`
+                  : "—"
+              }
+              tone={accuracyTone(student.blanks.accuracyPct)}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {cohortComparisons.length > 0 ? (
         <div className="mb-6 space-y-3">
@@ -385,6 +401,32 @@ export default function AdminStudentDetail({
           </CardContent>
         </Card>
       </div>
+    </AdminShell>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div>
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1 text-lg font-extrabold tracking-tight tabular-nums",
+          tone ?? "text-foreground",
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -402,40 +444,6 @@ function ActivityIcon({ type }: { type: string }) {
   if (type === "case") return <GavelIcon className={cls} />;
   if (type === "problem") return <ListChecksIcon className={cls} />;
   return <ClockIcon className={cls} />;
-}
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  hint: string;
-  tone?: string;
-}) {
-  return (
-    <Card className="py-4">
-      <CardContent className="px-4">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-medium tracking-wide uppercase">
-          {icon}
-          {label}
-        </p>
-        <p
-          className={cn(
-            "mt-1 text-2xl font-bold tracking-tight tabular-nums",
-            tone ?? "text-primary",
-          )}
-        >
-          {value}
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
-      </CardContent>
-    </Card>
-  );
 }
 
 function CohortComparisonCard({

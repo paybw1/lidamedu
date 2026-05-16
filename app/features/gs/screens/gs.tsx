@@ -1,19 +1,27 @@
 // 온라인 GS — 학생 진입. Phase 1: 노출 회차 목록 + 내 응시 이력.
+// 커뮤니티 셸 reskin — 키트 lidam-community/GsHubScreen 디자인.
 
 import {
+  ArrowRightIcon,
   CalendarClockIcon,
+  CheckIcon,
   ChartLineIcon,
   ClipboardListIcon,
   CoinsIcon,
+  PencilLineIcon,
   UsersIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { CommunityShell } from "~/features/community/components/community-shell";
+import {
+  Chip,
+  EmptyState,
+  Section,
+} from "~/features/community/components/community-ui";
 import {
   type GsRound,
   type GsSubmissionSummary,
@@ -76,11 +84,6 @@ const PHASE_LABEL: Record<RoundView["phase"], string> = {
   open: "응시 가능",
   closed: "종료",
 };
-const PHASE_TONE: Record<RoundView["phase"], string> = {
-  upcoming: "bg-muted text-muted-foreground",
-  open: "bg-emerald-600 text-white",
-  closed: "bg-slate-500 text-white",
-};
 
 export default function OnlineGs({ loaderData }: Route.ComponentProps) {
   const { views, peerAssignments, mySeries, points } = loaderData;
@@ -92,69 +95,82 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
   const peerDone = peerAssignments.filter((a) => a.submittedAt != null);
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ClipboardListIcon className="size-3.5" /> 온라인 GS
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">정기 모의고사</h1>
-        <p className="text-muted-foreground text-sm">
-          공개된 회차에 응시해 답안을 작성하면 강사가 채점합니다. (응시·채점은 다음
-          단계에서 활성화 예정)
-        </p>
-      </header>
-
-      <Link to="/gs/points" viewTransition className="mb-6 block">
-        <Card className="hover:border-primary transition-colors">
-          <CardContent className="flex items-center gap-3 py-4">
-            <CoinsIcon className="text-amber-500 size-6" />
-            <div className="flex-1">
-              <p className="text-muted-foreground text-[11px] tracking-wide uppercase">
-                내 GS 포인트
-              </p>
-              <p className="text-foreground text-2xl font-bold tabular-nums">
-                {points.balance}
-                <span className="text-muted-foreground ml-1 text-sm font-normal">
-                  P
-                </span>
-              </p>
-            </div>
-            <span className="text-muted-foreground text-xs">
-              이력 보기 →
+    <CommunityShell
+      category="gs"
+      title="정기 모의고사"
+      desc={
+        <>
+          공개된 회차에 응시해 답안을 작성하면 강사가 채점합니다. 진행 중{" "}
+          <strong className="text-foreground">{open.length}</strong> · 예정{" "}
+          {upcoming.length} · 마감 {closed.length}.
+        </>
+      }
+    >
+      {/* GS 포인트 카드 */}
+      <Link
+        to="/gs/points"
+        viewTransition
+        className="border-amber-500/20 bg-amber-500/[0.07] hover:border-amber-500/40 group flex items-center gap-3.5 rounded-2xl border p-4 transition-colors"
+      >
+        <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+          <CoinsIcon className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-amber-700 dark:text-amber-400 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            GS 포인트
+          </p>
+          <p className="text-foreground text-2xl font-extrabold tracking-tight tabular-nums">
+            {points.balance.toLocaleString("ko-KR")}
+            <span className="text-muted-foreground ml-1 text-sm font-semibold">
+              P
             </span>
-          </CardContent>
-        </Card>
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            누적 거래 {points.txCount}건
+          </p>
+        </div>
+        <span className="border-border text-foreground/80 group-hover:border-foreground/30 inline-flex h-9 shrink-0 items-center gap-1 rounded-full border px-3.5 text-[13px] font-semibold transition-colors">
+          이력 보기 <ArrowRightIcon className="size-3.5" />
+        </span>
       </Link>
 
       {mySeries.length > 0 ? (
-        <section className="mb-6">
-          <h2 className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-            <ChartLineIcon className="size-3.5" />
-            내 시리즈 추이
-          </h2>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {mySeries.map((s) => (
-              <Link
-                key={s.seriesId}
-                to={`/gs/series/${s.seriesId}`}
-                viewTransition
-                className="block"
-              >
-                <Card className="hover:border-primary transition-colors">
-                  <CardContent className="flex flex-wrap items-center gap-2 py-3 text-sm">
-                    <Badge variant="secondary" className="text-[10px]">
+        <Section eyebrow="내 시리즈 추이">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {mySeries.map((s) => {
+              const pct =
+                s.expectedRounds > 0
+                  ? Math.min(100, (s.roundsTaken / s.expectedRounds) * 100)
+                  : 0;
+              return (
+                <Link
+                  key={s.seriesId}
+                  to={`/gs/series/${s.seriesId}`}
+                  viewTransition
+                  className="border-border bg-card hover:border-primary/40 block rounded-2xl border p-4 transition-colors"
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <Chip tone="primary">
                       {LAW_SUBJECTS[s.subject]?.name ?? s.subject}
-                    </Badge>
-                    <span className="font-medium">{s.title}</span>
-                    <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
-                      응시 {s.roundsTaken} / {s.expectedRounds}회
+                    </Chip>
+                    <span className="text-foreground ml-auto font-mono text-xs font-bold tabular-nums">
+                      {s.roundsTaken}/{s.expectedRounds}회
                     </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+                  </div>
+                  <p className="text-foreground mb-2.5 font-semibold tracking-tight">
+                    {s.title}
+                  </p>
+                  <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                    <div
+                      className="bg-primary h-full rounded-full"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-        </section>
+        </Section>
       ) : null}
 
       {peerAssignments.length > 0 ? (
@@ -162,25 +178,28 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       {views.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            현재 공개된 GS 회차가 없습니다.
-          </p>
+        <div className="mt-6">
+          <EmptyState
+            icon={ClipboardListIcon}
+            tone="subdued"
+            title="공개된 GS 회차가 없습니다"
+            body="새 모의고사 회차가 공개되면 이곳에 진행 중·예정·마감 순으로 모입니다."
+          />
         </div>
       ) : (
-        <div className="space-y-6">
+        <>
           {open.length > 0 ? (
-            <Section title="응시 가능" views={open} />
+            <RoundsSection title="진행 중" views={open} tone="open" />
           ) : null}
           {upcoming.length > 0 ? (
-            <Section title="예정" views={upcoming} />
+            <RoundsSection title="예정" views={upcoming} tone="upcoming" />
           ) : null}
           {closed.length > 0 ? (
-            <Section title="종료" views={closed} muted />
+            <RoundsSection title="마감" views={closed} tone="closed" />
           ) : null}
-        </div>
+        </>
       )}
-    </div>
+    </CommunityShell>
   );
 }
 
@@ -230,106 +249,97 @@ function PeerAssignmentSection({
     byRound.set(a.roundId, r);
   }
   const groups = [...byRound.values()];
+  const allComplete = pending.length === 0;
 
   return (
-    <section className="mb-6">
-      <h2 className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-        <UsersIcon className="size-3.5" />
-        동료 채점 배정
-        <span className="text-muted-foreground ml-1 text-xs font-normal tabular-nums">
-          미완료 {pending.length} / 완료 {done.length}
-        </span>
-      </h2>
+    <Section
+      eyebrow="동료 채점 배정"
+      right={
+        <Chip tone={allComplete ? "emerald" : "amber"}>
+          완료 {done.length}/{pending.length + done.length}건
+        </Chip>
+      }
+    >
       <div className="space-y-2">
         {groups.map((g) => {
           const total = g.pending.length + g.done.length;
           const allDone = g.pending.length === 0;
           return (
-            <Card
+            <Link
               key={g.roundId}
+              to={`/gs/peer-review/round/${g.roundId}`}
+              viewTransition
               className={cn(
-                "hover:border-primary transition-colors",
-                allDone && "opacity-70",
+                "border-border bg-card hover:border-primary/40 flex items-center gap-3.5 rounded-2xl border p-3.5 transition-colors",
+                allDone && "opacity-80",
               )}
             >
-              <CardContent className="space-y-2 py-3">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge
-                    className={cn(
-                      "text-[10px]",
-                      allDone
-                        ? "bg-emerald-600 text-white hover:bg-emerald-600"
-                        : "bg-amber-500 text-white hover:bg-amber-500",
-                    )}
-                  >
-                    {allDone ? "완료" : "진행 중"}
-                  </Badge>
-                  <Badge variant="secondary" className="text-[10px]">
+              <span
+                className={cn(
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-[10px]",
+                  allDone
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+                )}
+              >
+                {allDone ? (
+                  <CheckIcon className="size-4" />
+                ) : (
+                  <PencilLineIcon className="size-4" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip tone="primary">
                     {LAW_SUBJECTS[g.roundSubject as keyof typeof LAW_SUBJECTS]
                       ?.name ?? g.roundSubject}
-                  </Badge>
-                  <span className="font-medium">{g.roundTitle}</span>
-                  <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
-                    배정 {total}개 · 완료 {g.done.length}/{total}
+                  </Chip>
+                  <span className="text-foreground font-semibold">
+                    {g.roundTitle}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild size="sm" className="h-8">
-                    <Link
-                      to={`/gs/peer-review/round/${g.roundId}`}
-                      viewTransition
-                    >
-                      매트릭스로 채점 ({total}개 동시) →
-                    </Link>
-                  </Button>
-                  <details className="text-muted-foreground text-[11px]">
-                    <summary className="cursor-pointer hover:underline">
-                      답안별 보기 ({total})
-                    </summary>
-                    <ul className="mt-1 space-y-0.5">
-                      {[...g.pending, ...g.done].map((a, i) => (
-                        <li key={a.assignmentId}>
-                          <Link
-                            to={`/gs/peer-review/${a.assignmentId}`}
-                            className="hover:underline"
-                          >
-                            답안 {i + 1}
-                          </Link>{" "}
-                          {a.submittedAt ? "· 완료" : `· ${a.questionsScored}/${a.questionsTotal}`}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                </div>
-              </CardContent>
-            </Card>
+                <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+                  {allDone
+                    ? "채점 완료"
+                    : `배정 ${total}개 · 완료 ${g.done.length}/${total}`}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-semibold",
+                  allDone
+                    ? "border-border text-foreground/80 border"
+                    : "bg-primary text-primary-foreground",
+                )}
+              >
+                {allDone ? "결과 보기" : `매트릭스로 채점 (${total}개)`}
+                <ArrowRightIcon className="size-3" />
+              </span>
+            </Link>
           );
         })}
       </div>
-    </section>
+    </Section>
   );
 }
 
-function Section({
+function RoundsSection({
   title,
   views,
-  muted = false,
+  tone,
 }: {
   title: string;
   views: RoundView[];
-  muted?: boolean;
+  tone: RoundView["phase"];
 }) {
   return (
-    <section>
-      <h2 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
-        {title} ({views.length})
-      </h2>
-      <div className={cn("space-y-2", muted && "opacity-80")}>
+    <Section eyebrow={`${title} · ${views.length}회`}>
+      <div className={cn("space-y-2", tone === "closed" && "opacity-80")}>
         {views.map((v) => (
           <RoundCard key={v.round.roundId} view={v} />
         ))}
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -338,73 +348,84 @@ function RoundCard({ view }: { view: RoundView }) {
   const subjectMeta = LAW_SUBJECTS[round.subject];
   const submitted = ownSubmission?.submittedAt != null;
   const graded = ownSubmission?.gradedAt != null;
-  const status =
-    graded
-      ? `채점 완료 · ${ownSubmission?.totalScore ?? "?"}점`
-      : submitted
-        ? "제출 완료 · 채점 대기"
-        : ownSubmission
-          ? "응시 시작됨 (미제출)"
-          : null;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className={cn("text-[10px]", PHASE_TONE[phase])}>
-            {PHASE_LABEL[phase]}
-          </Badge>
-          <Badge variant="secondary" className="text-[10px]">
-            {subjectMeta?.name ?? round.subject}
-          </Badge>
-          <span className="text-muted-foreground ml-auto inline-flex items-center gap-1 text-[11px] tabular-nums">
-            <CalendarClockIcon className="size-3" />
-            {formatRange(round.startAt, round.endAt)} · {round.durationMin}분
+    <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:gap-4">
+      <Chip tone="primary" className="self-start">
+        {subjectMeta?.name ?? round.subject}
+      </Chip>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-foreground font-semibold tracking-tight">
+            {round.title}
           </span>
+          <Chip tone={phase === "open" ? "emerald" : "neutral"}>
+            {PHASE_LABEL[phase]}
+          </Chip>
+          {graded ? (
+            <Chip tone="primary">
+              채점 완료 · {ownSubmission?.totalScore ?? "?"}점
+            </Chip>
+          ) : submitted ? (
+            <Chip tone="coral">제출 완료 · 채점 대기</Chip>
+          ) : ownSubmission ? (
+            <Chip tone="amber">응시 중 (미제출)</Chip>
+          ) : null}
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <h3 className="mb-1 font-semibold">{round.title}</h3>
+        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs tabular-nums">
+          <CalendarClockIcon className="size-3" />
+          {formatRange(round.startAt, round.endAt)} · {round.durationMin}분
+          {phase === "upcoming" ? (
+            <span className="text-muted-foreground ml-1">
+              · {formatCountdown(round.startAt)}
+            </span>
+          ) : null}
+        </p>
         {round.descriptionMd ? (
-          <p className="text-muted-foreground text-sm whitespace-pre-line">
+          <p className="text-muted-foreground line-clamp-2 text-sm whitespace-pre-line">
             {round.descriptionMd}
           </p>
         ) : null}
-        {status ? (
-          <p className="text-primary mt-2 text-xs font-medium">{status}</p>
+      </div>
+      <div className="shrink-0">
+        {phase === "open" && !submitted ? (
+          <Button asChild size="sm" className="h-8 rounded-full">
+            <Link to={`/gs/${round.roundId}/take`} viewTransition>
+              {ownSubmission ? "이어서 응시" : "응시하기"}
+              <ArrowRightIcon className="size-3" />
+            </Link>
+          </Button>
+        ) : submitted && !graded ? (
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-full"
+          >
+            <Link to={`/gs/${round.roundId}/result`} viewTransition>
+              제출 답안 보기
+              <ArrowRightIcon className="size-3" />
+            </Link>
+          </Button>
+        ) : graded ? (
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-full"
+          >
+            <Link to={`/gs/${round.roundId}/result`} viewTransition>
+              결과 보기
+              <ArrowRightIcon className="size-3" />
+            </Link>
+          </Button>
+        ) : phase === "upcoming" ? (
+          <span className="text-muted-foreground inline-flex h-8 items-center text-xs">
+            대기
+          </span>
         ) : null}
-        <div className="mt-3 flex items-center gap-2">
-          {phase === "upcoming" ? (
-            <span className="text-muted-foreground text-xs">
-              {formatCountdown(round.startAt)}
-            </span>
-          ) : null}
-          {phase === "open" && !submitted ? (
-            <Button asChild size="sm" className="ml-auto h-8">
-              <Link to={`/gs/${round.roundId}/take`} viewTransition>
-                {ownSubmission ? "이어서 응시" : "응시 시작"} →
-              </Link>
-            </Button>
-          ) : null}
-          {submitted && !graded ? (
-            <Link
-              to={`/gs/${round.roundId}/result`}
-              className="text-muted-foreground text-xs hover:underline ml-auto"
-            >
-              제출 답안 보기 →
-            </Link>
-          ) : null}
-          {graded ? (
-            <Link
-              to={`/gs/${round.roundId}/result`}
-              className="text-primary text-xs hover:underline ml-auto"
-            >
-              결과 보기 →
-            </Link>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

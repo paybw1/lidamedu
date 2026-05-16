@@ -2,10 +2,10 @@
 
 import {
   AlertTriangleIcon,
-  ArrowLeftIcon,
   CheckCircleIcon,
   CircleSlashIcon,
   SaveIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -19,12 +19,18 @@ import {
 } from "react-router";
 import { toast } from "sonner";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  AdminSelect,
+  Chip,
+  Field,
+} from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { BoxItemEditor } from "~/features/problems/components/box-item-editor";
 import { ChoiceEditor } from "~/features/problems/components/choice-editor";
@@ -92,7 +98,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       title: r.mcq_packs.title,
       isPublished: r.mcq_packs.is_published,
     }));
-  return { problem, mcqPacks };
+  return { problem, mcqPacks, role };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -406,7 +412,7 @@ export default function AdminProblemEdit({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { problem, mcqPacks } = loaderData;
+  const { problem, mcqPacks, role } = loaderData;
   // 목록에서 편집 진입 시 따라오는 필터 쿼리를 보존해 ← 클릭 시 같은 필터 상태로 되돌린다.
   const [editSearchParams] = useSearchParams();
   const backQs = editSearchParams.toString();
@@ -475,104 +481,119 @@ export default function AdminProblemEdit({
     }
   }, [actionData]);
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={backTo}
-        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
-      >
-        <ArrowLeftIcon className="size-4" /> 객관식 문제 목록
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          편집
-        </p>
-        <div className="flex flex-wrap items-baseline gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {problem.primaryArticleLabel ?? "조문 미연결"}{" "}
-            {problem.problemNumber ? (
-              <span className="text-muted-foreground text-base font-normal">
-                · 문제 #{problem.problemNumber}
-              </span>
-            ) : null}
-          </h1>
-          {problem.mismatchFlaggedAt ? (
-            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-              <AlertTriangleIcon className="size-3" />
-              재검토 필요 · {new Date(problem.mismatchFlaggedAt).toLocaleDateString("ko-KR")}
-            </Badge>
-          ) : problem.reviewedAt ? (
-            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-              검토 완료 · {new Date(problem.reviewedAt).toLocaleDateString("ko-KR")}
-            </Badge>
+    <AdminShell
+      cluster="problems"
+      role={role}
+      width={1040}
+      title={
+        <span className="inline-flex flex-wrap items-baseline gap-2">
+          {problem.primaryArticleLabel ?? "조문 미연결"}
+          {problem.problemNumber ? (
+            <span className="text-muted-foreground text-base font-normal">
+              · 문제 #{problem.problemNumber}
+            </span>
+          ) : null}
+        </span>
+      }
+      desc="문제 메타·본문·지문·해설·관련 자료를 편집합니다. 저장하지 않은 변경 사항은 유실됩니다."
+      headerRight={
+        <div className="flex flex-wrap items-center gap-2">
+          {problem.reviewedAt ? (
+            <reviewFetcher.Form method="post">
+              <input type="hidden" name="intent" value="unreview" />
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                disabled={isReviewing}
+              >
+                <CircleSlashIcon className="size-4" />
+                {isReviewing ? "처리 중…" : "검토 표시 취소"}
+              </Button>
+            </reviewFetcher.Form>
           ) : (
-            <Badge variant="outline" className="text-muted-foreground">
-              미검토
-            </Badge>
+            // 검토 완료 = 현재 폼 변경사항 자동 저장 + 검토 완료 표시.
+            // form 속성으로 메인 form 을 가리켜 submit 을 위임한다.
+            <Button
+              type="submit"
+              form={FORM_ID}
+              name="intent"
+              value="save_and_review"
+              size="sm"
+              disabled={isSavingAndReviewing || isSaving}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              <CheckCircleIcon className="size-4" />
+              {isSavingAndReviewing ? "처리 중…" : "검토 완료"}
+            </Button>
           )}
-        </div>
-      </header>
-
-      <PublishChecklist problem={problem} mcqPacks={mcqPacks} />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {problem.reviewedAt ? (
-          <reviewFetcher.Form method="post">
-            <input type="hidden" name="intent" value="unreview" />
+          <mismatchFetcher.Form method="post">
+            <input
+              type="hidden"
+              name="intent"
+              value={
+                problem.mismatchFlaggedAt ? "unflag_mismatch" : "flag_mismatch"
+              }
+            />
             <Button
               type="submit"
               variant="outline"
               size="sm"
-              disabled={isReviewing}
-              className="gap-1"
+              disabled={isFlagging}
+              className={cn(
+                problem.mismatchFlaggedAt
+                  ? "border-amber-500 bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-200"
+                  : "border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/20",
+              )}
+              title="문제와 해설이 매칭되지 않아 재검토가 필요할 때 표시"
             >
-              <CircleSlashIcon className="size-4" />
-              {isReviewing ? "처리 중…" : "검토 표시 취소"}
+              <AlertTriangleIcon className="size-4" />
+              {isFlagging
+                ? "처리 중…"
+                : problem.mismatchFlaggedAt
+                  ? "재검토 표시 취소"
+                  : "재검토 필요"}
             </Button>
-          </reviewFetcher.Form>
-        ) : (
-          // 검토 완료 = 현재 폼 변경사항 자동 저장 + 검토 완료 표시.
-          // form 속성으로 메인 form 을 가리켜 submit 을 위임한다.
+          </mismatchFetcher.Form>
           <Button
             type="submit"
             form={FORM_ID}
             name="intent"
-            value="save_and_review"
+            value="save"
             size="sm"
-            disabled={isSavingAndReviewing || isSaving}
-            className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
+            disabled={isSaving}
           >
-            <CheckCircleIcon className="size-4" />
-            {isSavingAndReviewing ? "처리 중…" : "검토 완료"}
+            <SaveIcon className="size-4" /> {isSaving ? "저장 중…" : "저장"}
           </Button>
+        </div>
+      }
+    >
+      <Link
+        to={backTo}
+        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+      >
+        ← 객관식 문제 목록
+      </Link>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {problem.mismatchFlaggedAt ? (
+          <Chip tone="amber">
+            <AlertTriangleIcon className="size-3" />
+            재검토 필요 ·{" "}
+            {new Date(problem.mismatchFlaggedAt).toLocaleDateString("ko-KR")}
+          </Chip>
+        ) : problem.reviewedAt ? (
+          <Chip tone="emerald">
+            <CheckCircleIcon className="size-3" />
+            검토 완료 ·{" "}
+            {new Date(problem.reviewedAt).toLocaleDateString("ko-KR")}
+          </Chip>
+        ) : (
+          <Chip tone="neutral">미검토</Chip>
         )}
-        <mismatchFetcher.Form method="post">
-          <input
-            type="hidden"
-            name="intent"
-            value={problem.mismatchFlaggedAt ? "unflag_mismatch" : "flag_mismatch"}
-          />
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            disabled={isFlagging}
-            className={cn(
-              "gap-1",
-              problem.mismatchFlaggedAt
-                ? "border-amber-500 bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-200"
-                : "border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/20",
-            )}
-            title="문제와 해설이 매칭되지 않아 재검토가 필요할 때 표시"
-          >
-            <AlertTriangleIcon className="size-4" />
-            {isFlagging
-              ? "처리 중…"
-              : problem.mismatchFlaggedAt
-                ? "재검토 표시 취소"
-                : "재검토 필요"}
-          </Button>
-        </mismatchFetcher.Form>
       </div>
+
+      <PublishChecklist problem={problem} mcqPacks={mcqPacks} />
 
       <Form method="post" id={FORM_ID} className="space-y-4">
         <input
@@ -693,18 +714,16 @@ export default function AdminProblemEdit({
             </p>
           </CardHeader>
           <CardContent>
-            <input
-              name="videoUrl"
-              type="url"
-              maxLength={2000}
-              defaultValue={problem.videoUrl ?? ""}
-              placeholder="https://www.youtube.com/watch?v=…"
-              className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
-              data-testid="problem-video-url"
-            />
-            <p className="text-muted-foreground mt-1 text-[11px]">
-              빈 값으로 저장하면 학생 viewer 에서 동영상 풀이 버튼이 숨겨집니다.
-            </p>
+            <Field hint="빈 값으로 저장하면 학생 viewer 에서 동영상 풀이 버튼이 숨겨집니다.">
+              <Input
+                name="videoUrl"
+                type="url"
+                maxLength={2000}
+                defaultValue={problem.videoUrl ?? ""}
+                placeholder="https://www.youtube.com/watch?v=…"
+                data-testid="problem-video-url"
+              />
+            </Field>
           </CardContent>
         </Card>
 
@@ -716,49 +735,45 @@ export default function AdminProblemEdit({
                   주관식 분류 라벨
                 </p>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <label className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-muted-foreground w-20 shrink-0">
-                    유형
-                  </span>
-                  <select
+              <CardContent className="grid gap-3 sm:grid-cols-2">
+                <Field label="유형" htmlFor="subjectiveKind">
+                  <AdminSelect
+                    id="subjectiveKind"
                     name="subjectiveKind"
                     defaultValue={problem.subjectiveKind ?? ""}
-                    className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+                    className="w-full"
                     data-testid="problem-subjective-kind"
                   >
                     <option value="">미지정</option>
                     <option value="case_based">사례형</option>
                     <option value="theory">논점형</option>
                     <option value="mixed">혼합형</option>
-                  </select>
-                </label>
-                <label className="flex items-start gap-2 text-xs">
-                  <span className="text-muted-foreground mt-1 w-20 shrink-0">
-                    주제(논점)
-                  </span>
-                  <input
+                  </AdminSelect>
+                </Field>
+                <Field label="주제(논점)" htmlFor="subjectiveTopic">
+                  <Input
+                    id="subjectiveTopic"
                     name="subjectiveTopic"
                     maxLength={200}
                     defaultValue={problem.subjectiveTopic ?? ""}
                     placeholder="예: 신규성 의제와 공지 예외의 관계"
-                    className="border-input bg-background h-8 flex-1 rounded-md border px-2 text-xs"
                     data-testid="problem-subjective-topic"
                   />
-                </label>
-                <label className="flex items-start gap-2 text-xs">
-                  <span className="text-muted-foreground mt-1 w-20 shrink-0">
-                    키워드
-                  </span>
-                  <input
+                </Field>
+                <Field
+                  label="키워드 (콤마 구분)"
+                  htmlFor="subjectiveKeywords"
+                  className="sm:col-span-2"
+                >
+                  <Input
+                    id="subjectiveKeywords"
                     name="subjectiveKeywords"
                     maxLength={500}
                     defaultValue={(problem.subjectiveKeywords ?? []).join(", ")}
                     placeholder="쉼표로 구분 — 예: 신규성, 공지예외, 우선권주장"
-                    className="border-input bg-background h-8 flex-1 rounded-md border px-2 text-xs"
                     data-testid="problem-subjective-keywords"
                   />
-                </label>
+                </Field>
               </CardContent>
             </Card>
             <Card>
@@ -854,29 +869,26 @@ export default function AdminProblemEdit({
               </p>
               <div className="flex items-center gap-2">
                 {problem.unclassifiedChoices > 0 ? (
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500 bg-amber-50 text-[10px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                  >
-                    미분류 {problem.unclassifiedChoices}
-                  </Badge>
+                  <Chip tone="amber">미분류 {problem.unclassifiedChoices}</Chip>
                 ) : null}
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => triggerBulkOx(true)}
-                  className="border-input hover:bg-accent rounded-md border px-2 py-1 text-[11px] font-medium"
                   title="모든 지문/박스 항목의 OX 불가를 일괄 체크"
                 >
                   전체 OX 불가
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => triggerBulkOx(false)}
-                  className="text-muted-foreground hover:text-foreground rounded-md px-1.5 py-1 text-[11px]"
                   title="OX 불가 일괄 해제"
                 >
                   해제
-                </button>
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -896,34 +908,35 @@ export default function AdminProblemEdit({
         </Card>
 
         <div className="flex items-center justify-end">
-          <Button
-            type="submit"
-            name="intent"
-            value="save"
-            disabled={isSaving}
-            className="gap-1"
-          >
+          <Button type="submit" name="intent" value="save" disabled={isSaving}>
             <SaveIcon className="size-4" /> {isSaving ? "저장 중…" : "저장"}
           </Button>
         </div>
       </Form>
 
-      <deleteFetcher.Form method="post" className="mt-6">
-        <input type="hidden" name="intent" value="delete" />
-        <button
-          type="submit"
-          disabled={isDeleting}
-          onClick={(e) => {
-            if (!confirm("이 문제를 삭제하시겠습니까? (soft delete)")) {
-              e.preventDefault();
-            }
-          }}
-          className="text-rose-600 text-xs hover:underline disabled:opacity-50"
-        >
-          {isDeleting ? "삭제 중…" : "문제 삭제"}
-        </button>
-      </deleteFetcher.Form>
-    </div>
+      <div className="border-border/60 mt-8 flex items-center justify-between gap-3 border-t pt-5">
+        <p className="text-muted-foreground text-[11px]">
+          삭제는 soft delete 로 처리되며 학생 화면에서 즉시 숨겨집니다.
+        </p>
+        <deleteFetcher.Form method="post">
+          <input type="hidden" name="intent" value="delete" />
+          <Button
+            type="submit"
+            variant="destructive"
+            size="sm"
+            disabled={isDeleting}
+            onClick={(e) => {
+              if (!confirm("이 문제를 삭제하시겠습니까? (soft delete)")) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <Trash2Icon className="size-4" />
+            {isDeleting ? "삭제 중…" : "문제 삭제"}
+          </Button>
+        </deleteFetcher.Form>
+      </div>
+    </AdminShell>
   );
 }
 
@@ -946,25 +959,23 @@ function FormSelect({
 }) {
   const isControlled = value !== undefined && onChange !== undefined;
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
-        {label}
-      </span>
-      <select
+    <Field label={label} htmlFor={name}>
+      <AdminSelect
+        id={name}
         name={name}
         {...(isControlled
           ? { value, onChange: (e) => onChange!(e.target.value) }
           : { defaultValue: defaultValue ?? "" })}
         disabled={disabled}
-        className="border-input bg-background h-9 rounded-md border px-2 text-sm disabled:opacity-50"
+        className="w-full disabled:opacity-50"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
-      </select>
-    </label>
+      </AdminSelect>
+    </Field>
   );
 }
 
@@ -984,19 +995,16 @@ function FormInput({
   placeholder?: string;
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
-        {label}
-      </span>
-      <input
+    <Field label={label} htmlFor={name}>
+      <Input
+        id={name}
         type={type}
         name={name}
         defaultValue={defaultValue}
         disabled={disabled}
         placeholder={placeholder}
-        className="border-input bg-background h-9 rounded-md border px-2 text-sm disabled:opacity-50"
       />
-    </label>
+    </Field>
   );
 }
 

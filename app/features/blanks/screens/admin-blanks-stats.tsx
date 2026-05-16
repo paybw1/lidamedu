@@ -1,28 +1,16 @@
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  BrainIcon,
-  TrendingDownIcon,
-  UsersIcon,
-} from "lucide-react";
+import { ArrowRightIcon, BrainIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "~/core/components/ui/tabs";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import {
   getAdminAutoBlankStats,
   getAdminContentBlankStats,
@@ -56,33 +44,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     getAdminAutoBlankStats(client, "period"),
     getAdminRecitationStats(client),
   ]);
-  return { content, subject, period, recitation };
+  return { content, subject, period, recitation, role };
 }
 
 export default function AdminBlanksStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { content, subject, period, recitation } = loaderData;
+  const { content, subject, period, recitation, role } = loaderData;
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          운영 통계
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">빈칸 학습 분석</h1>
-        <p className="text-muted-foreground text-sm">
-          학습자 시도 이력을 기반으로 한 모드별 집계. 가장 많이 틀린 빈칸을
-          확인해 출제 난이도를 조절하세요.
-        </p>
-      </header>
-
+    <AdminShell
+      cluster="blanks"
+      role={role}
+      title="빈칸 학습 분석"
+      desc="학습자 시도 이력을 기반으로 한 모드별 집계. 가장 많이 틀린 빈칸을 확인해 출제 난이도를 조절하세요."
+    >
       <Tabs defaultValue="content" className="space-y-4">
         <TabsList>
           <TabsTrigger value="content">
@@ -125,7 +101,7 @@ export default function AdminBlanksStats({
           <RecitationAdminView stats={recitation} />
         </TabsContent>
       </Tabs>
-    </div>
+    </AdminShell>
   );
 }
 
@@ -143,23 +119,16 @@ function SummaryCards({
   const accuracy =
     totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
   return (
-    <div className="grid gap-3 sm:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <SummaryCard label="총 시도" value={String(totalAttempts)} />
       <SummaryCard
         label="평균 정답률"
         value={`${accuracy}%`}
         subtle={`정답 ${correctAttempts}`}
+        tone={accuracy < 60 ? "coral" : "emerald"}
       />
-      <SummaryCard
-        icon={UsersIcon}
-        label="학습자 수"
-        value={String(activeUsers)}
-      />
-      <SummaryCard
-        icon={TrendingDownIcon}
-        label="시도된 빈칸"
-        value={String(uniqueBlanks)}
-      />
+      <SummaryCard label="학습자 수" value={String(activeUsers)} />
+      <SummaryCard label="시도된 빈칸" value={String(uniqueBlanks)} />
     </div>
   );
 }
@@ -235,69 +204,97 @@ function ContentBlanksTable({
   orderBy: "wrongCount" | "attempts";
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          {title}
-        </p>
-      </CardHeader>
-      <CardContent className="px-0">
-        {rows.length === 0 ? (
-          <EmptyMsg text="시도 이력이 없습니다." />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>조문</TableHead>
-                <TableHead>정답</TableHead>
-                <TableHead className="w-14 text-right">시도</TableHead>
-                <TableHead className="w-14 text-right">오답</TableHead>
-                <TableHead className="w-14 text-right">정답률</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={`${r.setId}:${r.blankIdx}`}>
-                  <TableCell>
-                    <p className="text-sm font-medium">
-                      {r.articleLabel}
-                      <span className="text-muted-foreground ml-1 text-xs">
-                        #{r.blankIdx}
-                      </span>
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {r.lawCode} · {r.ownerName ?? "(이름없음)"}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-sm">{r.answer}</TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {r.attempts}
-                  </TableCell>
-                  <TableCell
-                    className={`text-right tabular-nums text-sm ${orderBy === "wrongCount" ? "font-semibold text-rose-600 dark:text-rose-400" : ""}`}
-                  >
-                    {r.wrongCount}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {r.accuracy}%
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/admin/blanks/${r.setId}?focus=${r.blankIdx}`}
-                      viewTransition
-                      className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                    >
-                      편집 <ArrowRightIcon className="size-3" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+    <div className="space-y-2">
+      <TableTitle title={title} />
+      {rows.length === 0 ? (
+        <EmptyMsg text="시도 이력이 없습니다." />
+      ) : (
+        <IndexTable
+          minWidth={440}
+          headers={[
+            { label: "조문" },
+            { label: "정답" },
+            { label: "시도", align: "right" },
+            { label: "오답", align: "right" },
+            { label: "정답률", align: "right", width: "8rem" },
+            { label: "", align: "right", width: "4.5rem" },
+          ]}
+        >
+          {rows.map((r) => (
+            <TR key={`${r.setId}:${r.blankIdx}`}>
+              <TD>
+                <p className="text-[13px] font-semibold">
+                  {r.articleLabel}
+                  <span className="text-muted-foreground ml-1 text-xs">
+                    #{r.blankIdx}
+                  </span>
+                </p>
+                <p className="text-muted-foreground text-[11px] font-normal">
+                  {r.lawCode} · {r.ownerName ?? "(이름없음)"}
+                </p>
+              </TD>
+              <TD>{r.answer}</TD>
+              <TD align="right" mono soft>
+                {r.attempts}
+              </TD>
+              <TD
+                align="right"
+                mono
+                className={
+                  orderBy === "wrongCount"
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-muted-foreground"
+                }
+              >
+                {r.wrongCount}
+              </TD>
+              <TD align="right">
+                <AccuracyCell accuracy={r.accuracy} />
+              </TD>
+              <TD align="right">
+                <Link
+                  to={`/admin/blanks/${r.setId}?focus=${r.blankIdx}`}
+                  viewTransition
+                  className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                >
+                  편집 <ArrowRightIcon className="size-3" />
+                </Link>
+              </TD>
+            </TR>
+          ))}
+        </IndexTable>
+      )}
+    </div>
+  );
+}
+
+// 표 위에 붙는 섹션 제목 — 디자인 시스템 eyebrow 톤.
+function TableTitle({ title }: { title: string }) {
+  return (
+    <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      {title}
+    </p>
+  );
+}
+
+// 정답률 — Bar tone="auto" (의미색) + 수치.
+function AccuracyCell({ accuracy }: { accuracy: number }) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Bar value={accuracy} tone="auto" className="w-16" />
+      <span
+        className={cn(
+          "font-mono text-[12px] font-bold tabular-nums",
+          accuracy < 50
+            ? "text-rose-600 dark:text-rose-400"
+            : accuracy < 70
+              ? "text-amber-700 dark:text-amber-400"
+              : "text-emerald-600 dark:text-emerald-400",
         )}
-      </CardContent>
-    </Card>
+      >
+        {accuracy}%
+      </span>
+    </div>
   );
 }
 
@@ -313,66 +310,64 @@ function AutoBlanksTable({
   modeQuery: string;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          {title}
-        </p>
-      </CardHeader>
-      <CardContent className="px-0">
-        {rows.length === 0 ? (
-          <EmptyMsg text="시도 이력이 없습니다." />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>조문</TableHead>
-                <TableHead>정답</TableHead>
-                <TableHead className="w-14 text-right">시도</TableHead>
-                <TableHead className="w-14 text-right">오답</TableHead>
-                <TableHead className="w-14 text-right">정답률</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow
-                  key={`${r.articleId}:${r.blockIndex}:${r.cumOffset}`}
-                >
-                  <TableCell>
-                    <p className="text-sm font-medium">{r.articleLabel}</p>
-                    <p className="text-muted-foreground text-xs">{r.lawCode}</p>
-                  </TableCell>
-                  <TableCell className="text-sm">{r.answer}</TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {r.attempts}
-                  </TableCell>
-                  <TableCell
-                    className={`text-right tabular-nums text-sm ${orderBy === "wrongCount" ? "font-semibold text-rose-600 dark:text-rose-400" : ""}`}
+    <div className="space-y-2">
+      <TableTitle title={title} />
+      {rows.length === 0 ? (
+        <EmptyMsg text="시도 이력이 없습니다." />
+      ) : (
+        <IndexTable
+          minWidth={440}
+          headers={[
+            { label: "조문" },
+            { label: "정답" },
+            { label: "시도", align: "right" },
+            { label: "오답", align: "right" },
+            { label: "정답률", align: "right", width: "8rem" },
+            { label: "", align: "right", width: "4.5rem" },
+          ]}
+        >
+          {rows.map((r) => (
+            <TR key={`${r.articleId}:${r.blockIndex}:${r.cumOffset}`}>
+              <TD>
+                <p className="text-[13px] font-semibold">{r.articleLabel}</p>
+                <p className="text-muted-foreground text-[11px] font-normal">
+                  {r.lawCode}
+                </p>
+              </TD>
+              <TD>{r.answer}</TD>
+              <TD align="right" mono soft>
+                {r.attempts}
+              </TD>
+              <TD
+                align="right"
+                mono
+                className={
+                  orderBy === "wrongCount"
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-muted-foreground"
+                }
+              >
+                {r.wrongCount}
+              </TD>
+              <TD align="right">
+                <AccuracyCell accuracy={r.accuracy} />
+              </TD>
+              <TD align="right">
+                {r.articleNumber ? (
+                  <Link
+                    to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?${modeQuery}`}
+                    viewTransition
+                    className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                   >
-                    {r.wrongCount}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {r.accuracy}%
-                  </TableCell>
-                  <TableCell>
-                    {r.articleNumber ? (
-                      <Link
-                        to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?${modeQuery}`}
-                        viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        보기 <ArrowRightIcon className="size-3" />
-                      </Link>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+                    보기 <ArrowRightIcon className="size-3" />
+                  </Link>
+                ) : null}
+              </TD>
+            </TR>
+          ))}
+        </IndexTable>
+      )}
+    </div>
   );
 }
 
@@ -381,37 +376,29 @@ function RecitationAdminView({ stats }: { stats: AdminRecitationStats }) {
     stats.totalAttempts > 0
       ? Math.round((stats.completedAttempts / stats.totalAttempts) * 100)
       : 0;
+  const avgSimilarity = Math.round(stats.averageSimilarity * 100);
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label="총 시도" value={String(stats.totalAttempts)} />
         <SummaryCard
           label="평균 유사도"
-          value={`${Math.round(stats.averageSimilarity * 100)}%`}
+          value={`${avgSimilarity}%`}
           subtle={`완료 ${stats.completedAttempts} (${completionRate}%)`}
+          tone={avgSimilarity < 70 ? "coral" : "emerald"}
         />
-        <SummaryCard
-          icon={UsersIcon}
-          label="학습자 수"
-          value={String(stats.activeUsers)}
-        />
-        <SummaryCard
-          icon={TrendingDownIcon}
-          label="시도된 조문"
-          value={String(stats.uniqueArticles)}
-        />
+        <SummaryCard label="학습자 수" value={String(stats.activeUsers)} />
+        <SummaryCard label="시도된 조문" value={String(stats.uniqueArticles)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <RecitationArticlesTable
           title="가장 많이 시도한 조문 TOP 20"
           rows={stats.topTried}
-          orderBy="attempts"
         />
         <RecitationArticlesTable
           title="평균 유사도 낮은 조문 TOP 20 (시도 ≥ 3)"
           rows={stats.weakArticles}
-          orderBy="similarity"
         />
       </div>
     </div>
@@ -421,108 +408,107 @@ function RecitationAdminView({ stats }: { stats: AdminRecitationStats }) {
 function RecitationArticlesTable({
   title,
   rows,
-  orderBy,
 }: {
   title: string;
   rows: AdminRecitationStats["topTried"];
-  orderBy: "attempts" | "similarity";
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          {title}
-        </p>
-      </CardHeader>
-      <CardContent className="px-0">
-        {rows.length === 0 ? (
-          <EmptyMsg text="시도 이력이 없습니다." />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>조문</TableHead>
-                <TableHead className="w-14 text-right">시도</TableHead>
-                <TableHead className="w-14 text-right">완료</TableHead>
-                <TableHead className="w-16 text-right">평균</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.articleId}>
-                  <TableCell>
-                    <p className="text-sm font-medium">
-                      {r.articleLabel}
-                      {r.importance >= 2 ? (
-                        <BrainIcon className="ml-1 inline size-3 text-violet-600 dark:text-violet-400" />
-                      ) : null}
-                    </p>
-                    <p className="text-muted-foreground text-xs">{r.lawCode}</p>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {r.attempts}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-sm">
-                    {r.completedAttempts}
-                  </TableCell>
-                  <TableCell
-                    className={`text-right tabular-nums text-sm ${orderBy === "similarity" && r.averageSimilarity < 0.7 ? "font-semibold text-rose-600 dark:text-rose-400" : ""}`}
+    <div className="space-y-2">
+      <TableTitle title={title} />
+      {rows.length === 0 ? (
+        <EmptyMsg text="시도 이력이 없습니다." />
+      ) : (
+        <IndexTable
+          minWidth={420}
+          headers={[
+            { label: "조문" },
+            { label: "시도", align: "right" },
+            { label: "완료", align: "right" },
+            { label: "평균 유사도", align: "right", width: "8rem" },
+            { label: "", align: "right", width: "4.5rem" },
+          ]}
+        >
+          {rows.map((r) => (
+            <TR key={r.articleId}>
+              <TD>
+                <p className="text-[13px] font-semibold">
+                  {r.articleLabel}
+                  {r.importance >= 2 ? (
+                    <BrainIcon className="ml-1 inline size-3 text-violet-600 dark:text-violet-400" />
+                  ) : null}
+                </p>
+                <p className="text-muted-foreground text-[11px] font-normal">
+                  {r.lawCode}
+                </p>
+              </TD>
+              <TD align="right" mono soft>
+                {r.attempts}
+              </TD>
+              <TD align="right" mono soft>
+                {r.completedAttempts}
+              </TD>
+              <TD align="right">
+                <AccuracyCell accuracy={Math.round(r.averageSimilarity * 100)} />
+              </TD>
+              <TD align="right">
+                {r.articleNumber ? (
+                  <Link
+                    to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?recitation=1`}
+                    viewTransition
+                    className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                   >
-                    {Math.round(r.averageSimilarity * 100)}%
-                  </TableCell>
-                  <TableCell>
-                    {r.articleNumber ? (
-                      <Link
-                        to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?recitation=1`}
-                        viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        보기 <ArrowRightIcon className="size-3" />
-                      </Link>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+                    보기 <ArrowRightIcon className="size-3" />
+                  </Link>
+                ) : null}
+              </TD>
+            </TR>
+          ))}
+        </IndexTable>
+      )}
+    </div>
   );
 }
 
 function SummaryCard({
-  icon: Icon,
   label,
   value,
   subtle,
+  tone,
 }: {
-  icon?: typeof UsersIcon;
   label: string;
   value: string;
   subtle?: string;
+  // 의미색 강조 — 정답률/유사도 등 핵심 지표.
+  tone?: "emerald" | "coral";
 }) {
   return (
-    <Card>
-      <CardContent className="space-y-1 py-4">
-        <div className="flex items-center gap-2">
-          {Icon ? <Icon className="text-primary size-4" /> : null}
-          <p className="text-muted-foreground text-xs">{label}</p>
-        </div>
-        <p className="text-2xl font-bold tabular-nums">{value}</p>
-        {subtle ? (
-          <p className="text-muted-foreground text-xs">{subtle}</p>
-        ) : null}
-      </CardContent>
-    </Card>
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 text-2xl font-extrabold tracking-tight tabular-nums",
+          tone === "emerald"
+            ? "text-emerald-600 dark:text-emerald-400"
+            : tone === "coral"
+              ? "text-rose-600 dark:text-rose-400"
+              : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+      {subtle ? (
+        <p className="text-muted-foreground mt-0.5 text-[11px]">{subtle}</p>
+      ) : null}
+    </div>
   );
 }
 
 function EmptyMsg({ text }: { text: string }) {
   return (
-    <p className="text-muted-foreground px-6 py-6 text-center text-sm">
+    <div className="border-border bg-card text-muted-foreground rounded-xl border py-12 text-center text-sm shadow-sm">
       {text}
-    </p>
+    </div>
   );
 }

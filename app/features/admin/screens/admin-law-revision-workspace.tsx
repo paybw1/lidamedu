@@ -2,12 +2,10 @@
 // draft 상태에서 조문 추가/수정/삭제 후 발행.
 
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
   Code2Icon,
-  FileEditIcon,
   PencilIcon,
   PlusIcon,
   RocketIcon,
@@ -16,13 +14,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Link,
-  data,
-  useFetcher,
-  useLocation,
-  useNavigate,
-} from "react-router";
+import { data, useFetcher, useLocation, useNavigate } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -32,6 +24,8 @@ import { Label } from "~/core/components/ui/label";
 import { Separator } from "~/core/components/ui/separator";
 import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip, StatusChip } from "~/features/admin/components/admin-ui";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { ArticleBlockEditor } from "~/features/laws/components/article-block-editor";
 import { articleBodySchema } from "~/features/laws/lib/article-body";
@@ -134,17 +128,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     law,
     revision,
     articles,
+    role,
   };
 }
-
-const STATUS_VARIANT: Record<
-  LawRevisionStatus,
-  "default" | "secondary" | "outline"
-> = {
-  draft: "outline",
-  review: "secondary",
-  published: "default",
-};
 
 export default function AdminLawRevisionWorkspace({
   loaderData,
@@ -157,137 +143,168 @@ export default function AdminLawRevisionWorkspace({
     articles,
     allArticles,
     chapterLabelByPath,
+    role,
   } = loaderData;
   const isDraft = revision.status === "draft";
   const isReview = revision.status === "review";
   const isPublished = revision.status === "published";
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={`/admin/laws/${lawCode}/revisions`}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> {subjectName} 개정 목록
-      </Link>
-
-      <header className="mb-6 space-y-2">
+    <AdminShell
+      cluster="laws"
+      role={role}
+      width={1400}
+      title={`${subjectName} · ${revision.revisionNumber}`}
+      desc="개정 워크스페이스 — 발행 전 체크리스트와 영향 조문을 한 화면에서 관리합니다."
+      headerRight={
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={STATUS_VARIANT[revision.status]}>
-            {LAW_REVISION_STATUS_LABELS[revision.status]}
-          </Badge>
+          <StatusChip
+            status={revision.status}
+            label={LAW_REVISION_STATUS_LABELS[revision.status]}
+          />
           {revision.effectiveDate ? (
-            <Badge variant="outline" className="text-xs tabular-nums">
-              시행 {revision.effectiveDate}
-            </Badge>
+            <Chip tone="outline">시행 {revision.effectiveDate}</Chip>
           ) : null}
         </div>
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <FileEditIcon className="text-primary size-6" />
-          {subjectName} · {revision.revisionNumber}
-        </h1>
-        {revision.reasonMd ? (
-          <p className="text-muted-foreground whitespace-pre-line text-sm">
-            {revision.reasonMd}
-          </p>
-        ) : null}
-        <p className="text-muted-foreground text-xs">
-          영향 조문 {articles.length}건
-          {revision.promulgatedAt ? ` · 공포 ${revision.promulgatedAt}` : ""}
-          {revision.publishedAt
-            ? ` · 발행 ${revision.publishedAt.slice(0, 10)}`
-            : ""}
-        </p>
-      </header>
-
-      {isDraft || isReview ? (
-        <>
-          <div className="mb-3 flex flex-wrap gap-2">
-            {isDraft ? (
-              <StatusTransitionButton
-                lawRevisionId={revision.lawRevisionId}
-                status="review"
-                label="검토 단계로"
-                icon={<ChevronRightIcon className="size-3.5" />}
-              />
-            ) : null}
-            {isReview ? (
-              <StatusTransitionButton
-                lawRevisionId={revision.lawRevisionId}
-                status="draft"
-                label="초안으로 되돌리기"
-                icon={<ChevronRightIcon className="size-3.5 rotate-180" />}
-                variant="outline"
-              />
-            ) : null}
-            <PublishDialog
-              lawRevisionId={revision.lawRevisionId}
-              disabled={articles.length === 0}
-            />
-          </div>
-          <PublishChecklist revision={revision} articles={articles} />
-        </>
-      ) : null}
-
-      <AttachmentForm
-        lawRevisionId={revision.lawRevisionId}
-        editable={!isPublished}
-        initial={{
-          revisionKind: revision.revisionKind,
-          reasonMd: revision.reasonMd ?? "",
-          comparisonPdf: revision.comparisonPdf ?? "",
-          explanationPdf: revision.explanationPdf ?? "",
-          videoUrl: revision.videoUrl ?? "",
-        }}
-      />
-
-      <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-3">
-          <p className="text-sm font-semibold">조문 목록 ({articles.length})</p>
-          {articles.length === 0 ? (
-            <div className="bg-muted/40 rounded-md border border-dashed p-6 text-center">
-              <p className="text-muted-foreground text-sm">
-                개정에 포함된 조문이 없습니다. 우측 카드로 조문을 추가하세요.
-              </p>
-            </div>
-          ) : (
-            <GroupedArticleList
-              articles={articles}
-              chapterLabelByPath={chapterLabelByPath}
-              editable={!isPublished}
-            />
-          )}
-        </div>
-
-        {!isPublished ? (
-          <AddArticleCard
-            lawRevisionId={revision.lawRevisionId}
-            lawId={law.lawId}
-            allArticles={allArticles}
-            existingRevisionArticleNumbers={
-              new Set(
-                articles
-                  .map((a) => a.articleNumber)
-                  .filter((n): n is string => n != null),
-              )
-            }
-          />
-        ) : (
+      }
+    >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* ── 좌측 본문 ── */}
+        <div className="flex flex-col gap-4">
+          {/* 상태 전이 + 발행 */}
           <Card>
-            <CardContent className="space-y-2 px-4 py-4 text-xs">
-              <p className="inline-flex items-center gap-1 font-semibold">
-                <CheckCircle2Icon className="size-4 text-emerald-600" />
-                발행됨
+            <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3.5">
+              <p className="text-primary font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                상태
               </p>
-              <p className="text-muted-foreground">
-                이 개정은 발행되었습니다. 조문 스냅샷은 불변이며, 새 개정을
-                만들어 후속 변경하세요.
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {isDraft ? (
+                  <StatusTransitionButton
+                    lawRevisionId={revision.lawRevisionId}
+                    status="review"
+                    label="검토 단계로"
+                    icon={<ChevronRightIcon className="size-3.5" />}
+                  />
+                ) : null}
+                {isReview ? (
+                  <StatusTransitionButton
+                    lawRevisionId={revision.lawRevisionId}
+                    status="draft"
+                    label="초안으로 되돌리기"
+                    icon={<ChevronRightIcon className="size-3.5 rotate-180" />}
+                    variant="outline"
+                  />
+                ) : null}
+                {isDraft || isReview ? (
+                  <PublishDialog
+                    lawRevisionId={revision.lawRevisionId}
+                    disabled={articles.length === 0}
+                  />
+                ) : null}
+                {isPublished ? (
+                  <span className="text-emerald-600 inline-flex items-center gap-1 text-xs font-semibold dark:text-emerald-400">
+                    <CheckCircle2Icon className="size-3.5" /> 발행 완료
+                  </span>
+                ) : null}
+              </div>
+              <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                영향 조문 {articles.length}건
+                {revision.promulgatedAt
+                  ? ` · 공포 ${revision.promulgatedAt}`
+                  : ""}
+                {revision.publishedAt
+                  ? ` · 발행 ${revision.publishedAt.slice(0, 10)}`
+                  : ""}
+              </span>
             </CardContent>
           </Card>
-        )}
+
+          {revision.reasonMd ? (
+            <p className="text-muted-foreground -mt-1 px-1 text-sm whitespace-pre-line">
+              {revision.reasonMd}
+            </p>
+          ) : null}
+
+          {isDraft || isReview ? (
+            <PublishChecklist revision={revision} articles={articles} />
+          ) : null}
+
+          <AttachmentForm
+            lawRevisionId={revision.lawRevisionId}
+            editable={!isPublished}
+            initial={{
+              revisionKind: revision.revisionKind,
+              reasonMd: revision.reasonMd ?? "",
+              comparisonPdf: revision.comparisonPdf ?? "",
+              explanationPdf: revision.explanationPdf ?? "",
+              videoUrl: revision.videoUrl ?? "",
+            }}
+          />
+
+          <Card>
+            <CardHeader className="border-border/60 flex flex-row items-baseline justify-between border-b pb-3">
+              <p className="text-sm font-semibold">
+                영향 조문{" "}
+                <span className="text-muted-foreground tabular-nums">
+                  {articles.length}
+                </span>
+              </p>
+              <p className="text-muted-foreground text-[11px]">
+                {isPublished
+                  ? "발행된 개정 — 조문 스냅샷은 불변"
+                  : "우측 패널에서 조문 추가"}
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {articles.length === 0 ? (
+                <div className="border-border bg-muted/40 rounded-lg border border-dashed p-8 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    개정에 포함된 조문이 없습니다. 우측 패널로 조문을 추가하세요.
+                  </p>
+                </div>
+              ) : (
+                <GroupedArticleList
+                  articles={articles}
+                  chapterLabelByPath={chapterLabelByPath}
+                  editable={!isPublished}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── 우측 조문 추가 패널 ── */}
+        <aside className="lg:sticky lg:top-28 lg:self-start">
+          {!isPublished ? (
+            <AddArticleCard
+              lawRevisionId={revision.lawRevisionId}
+              lawId={law.lawId}
+              allArticles={allArticles}
+              existingRevisionArticleNumbers={
+                new Set(
+                  articles
+                    .map((a) => a.articleNumber)
+                    .filter((n): n is string => n != null),
+                )
+              }
+            />
+          ) : (
+            <Card>
+              <CardContent className="space-y-2 px-4 py-4 text-xs">
+                <p className="inline-flex items-center gap-1 font-semibold">
+                  <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  발행됨
+                </p>
+                <p className="text-muted-foreground">
+                  이 개정은 발행되었습니다. 조문 스냅샷은 불변이며, 새 개정을
+                  만들어 후속 변경하세요.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </aside>
       </div>
-    </div>
+    </AdminShell>
   );
 }
 
@@ -387,39 +404,60 @@ function PublishChecklist({
   const warn = items.filter((i) => i.status === "warn").length;
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">발행 전 체크리스트</p>
-          <p className="text-muted-foreground text-[11px]">
-            필수 미완 {missing} · 권장 미완 {warn}
-          </p>
+    <Card>
+      <CardHeader className="border-border/60 flex flex-row items-center justify-between gap-2 border-b pb-3">
+        <p className="text-sm font-semibold">발행 전 체크리스트</p>
+        <div className="flex items-center gap-1.5">
+          {missing > 0 ? (
+            <Chip tone="coral">필수 미완 {missing}</Chip>
+          ) : null}
+          {warn > 0 ? <Chip tone="amber">권장 미완 {warn}</Chip> : null}
+          {missing === 0 && warn === 0 ? (
+            <Chip tone="emerald">모두 완료</Chip>
+          ) : null}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <ul className="grid gap-2 sm:grid-cols-2">
           {items.map((it) => (
             <li
               key={it.key}
-              className="flex items-start gap-2 text-xs"
+              className={cn(
+                "flex items-start gap-2.5 rounded-lg p-3 text-xs",
+                it.status === "ok" &&
+                  "bg-emerald-500/10 dark:bg-emerald-500/15",
+                it.status === "warn" && "bg-amber-500/10 dark:bg-amber-500/15",
+                it.status === "missing" && "bg-rose-500/10 dark:bg-rose-500/15",
+              )}
               data-testid={`checklist-${it.key}`}
             >
               <span
                 className={cn(
-                  "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                  it.status === "ok" &&
-                    "bg-emerald-500 text-white",
-                  it.status === "warn" &&
-                    "bg-amber-400 text-white dark:text-black",
+                  "mt-px inline-flex size-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                  it.status === "ok" && "bg-emerald-500 text-white",
+                  it.status === "warn" && "bg-amber-500 text-white",
                   it.status === "missing" && "bg-rose-500 text-white",
                 )}
               >
                 {it.status === "ok" ? "✓" : it.status === "warn" ? "!" : "×"}
               </span>
-              <div className="flex-1">
-                <p className="font-medium">{it.label}</p>
-                <p className="text-muted-foreground text-[10.5px]">{it.hint}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground font-semibold">{it.label}</p>
+                <p className="text-muted-foreground mt-0.5 text-[10.5px] leading-relaxed">
+                  {it.hint}
+                </p>
               </div>
+              <Chip
+                tone={
+                  it.status === "ok"
+                    ? "emerald"
+                    : it.status === "warn"
+                      ? "amber"
+                      : "coral"
+                }
+              >
+                {it.status === "ok" ? "OK" : it.status === "warn" ? "경고" : "누락"}
+              </Chip>
             </li>
           ))}
         </ul>
@@ -1406,8 +1444,8 @@ function AttachmentForm({
   };
 }) {
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-2">
+    <Card>
+      <CardHeader className="border-border/60 border-b pb-3">
         <p className="text-sm font-semibold">학생 노출 첨부</p>
         <p className="text-muted-foreground text-xs">
           /latest/laws 색인에서 각 칸의 <strong>O</strong> 표시 + 클릭 시 본문
@@ -1417,7 +1455,7 @@ function AttachmentForm({
             : ""}
         </p>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 pt-4">
         <MetaForm
           lawRevisionId={lawRevisionId}
           editable={editable}

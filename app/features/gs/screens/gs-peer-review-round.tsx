@@ -3,21 +3,21 @@
 // 점수/정성평가는 cell 단위 디바운스 자동 저장. 총계·순위는 실시간 클라이언트 계산.
 
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   EyeIcon,
   FileTextIcon,
   SendIcon,
+  ShieldCheckIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, data, useFetcher } from "react-router";
+import { data, useFetcher } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Separator } from "~/core/components/ui/separator";
+import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { CommunityShell } from "~/features/community/components/community-shell";
+import { Chip, Section } from "~/features/community/components/community-ui";
 import type { GsPage, GsQuestion } from "~/features/gs/queries.server";
 import { getGsRound } from "~/features/gs/queries.server";
 import {
@@ -64,55 +64,52 @@ export default function GsPeerReviewRound({
 
   if (columns.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-        <Link
-          to="/gs"
-          className="text-muted-foreground mb-3 inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 온라인 GS
-        </Link>
+      <CommunityShell
+        category="gs"
+        width="wide"
+        backLink={{ to: "/gs", label: "온라인 GS" }}
+        title={`동료 채점 라운드 · ${round.title}`}
+        desc={`${subjectLabel} · 배정받은 답안을 매트릭스 형식으로 동시에 채점합니다.`}
+      >
         <Card>
-          <CardContent className="text-muted-foreground py-10 text-center text-sm">
+          <CardContent className="text-muted-foreground py-12 text-center text-sm">
             이 회차에 배정된 동료 채점이 없습니다.
           </CardContent>
         </Card>
-      </div>
+      </CommunityShell>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-3 py-5 md:px-6 md:py-7">
-      <header className="mb-5 space-y-2">
-        <Link
-          to="/gs"
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 온라인 GS
-        </Link>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-              동료 채점 · 매트릭스 모드
+    <CommunityShell
+      category="gs"
+      width="wide"
+      backLink={{ to: "/gs", label: "온라인 GS" }}
+      title={`동료 채점 라운드 · ${round.title}`}
+      desc={`${subjectLabel} · 배정받은 ${columns.length}건을 매트릭스 형식으로 동시에 채점합니다. 셀에 입력하면 자동 저장됩니다.`}
+    >
+      <Card className="border-transparent bg-amber-500/[0.12] dark:bg-amber-500/[0.1]">
+        <CardContent className="flex items-center gap-3 py-4">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-amber-500 text-white">
+            <ShieldCheckIcon className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13.5px] font-bold tracking-tight text-amber-700 dark:text-amber-400">
+              익명 동료 채점입니다
             </p>
-            <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-              {round.title}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-xs">
-              {subjectLabel} · 배정 답안 {columns.length}개
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              답안 작성자 정보는 노출되지 않습니다. 문제별 소문제 점수를
+              입력하면 소계·총계·순위가 자동 갱신됩니다. 입력은 자동
+              저장됩니다.
             </p>
           </div>
-        </div>
-        <Card className="bg-amber-50/40 border-amber-300/60 dark:border-amber-700/40 dark:bg-amber-950/20">
-          <CardContent className="text-amber-900 dark:text-amber-200 pt-4 text-xs leading-relaxed">
-            <strong>익명 동료 채점입니다.</strong> 답안 작성자 정보는 노출되지
-            않습니다. 문제별 소문제 점수를 입력하면 소계·총계·순위가 자동 갱신
-            됩니다. 입력은 자동 저장됩니다.
-          </CardContent>
-        </Card>
-      </header>
+        </CardContent>
+      </Card>
 
-      <PeerMatrix questions={questions} columns={columns} />
-    </div>
+      <div className="mt-5">
+        <PeerMatrix questions={questions} columns={columns} />
+      </div>
+    </CommunityShell>
   );
 }
 
@@ -300,7 +297,7 @@ function PeerMatrix({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {questions.map((q, qIdx) => (
         <QuestionMatrixCard
           key={q.questionId}
@@ -317,71 +314,66 @@ function PeerMatrix({
         />
       ))}
 
-      <Card>
-        <CardHeader>
-          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            총계 · 순위 (입력값 기준 실시간)
-          </p>
-        </CardHeader>
-        <CardContent className="overflow-auto">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="sticky left-0 z-10 bg-background px-3 py-2 text-left">
-                  항목
-                </th>
-                {columns.map((c, i) => (
-                  <th
-                    key={c.assignmentId}
-                    className="border-l px-3 py-2 text-right whitespace-nowrap"
-                  >
-                    {colLabels[i]}
+      <Section eyebrow="총계 · 순위 (입력값 기준 실시간)">
+        <div className="bg-card overflow-hidden rounded-2xl border">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-sm">
+              <thead>
+                <tr className="bg-muted/60 border-b">
+                  <th className="bg-muted/60 text-muted-foreground sticky left-0 z-10 px-3 py-2.5 text-left font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
+                    항목
                   </th>
-                ))}
-                <th className="border-l px-3 py-2 text-right whitespace-nowrap">
-                  평균
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b font-semibold">
-                <td className="sticky left-0 z-10 bg-background px-3 py-2">
-                  총계
-                </td>
-                {columns.map((c) => (
-                  <td
-                    key={c.assignmentId}
-                    className="border-l px-3 py-2 text-right tabular-nums"
-                  >
-                    {totalsByCol[c.assignmentId]}
+                  {columns.map((c, i) => (
+                    <th
+                      key={c.assignmentId}
+                      className="text-muted-foreground border-l px-3 py-2.5 text-right font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase"
+                    >
+                      {colLabels[i]}
+                    </th>
+                  ))}
+                  <th className="text-muted-foreground border-l px-3 py-2.5 text-right font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase">
+                    평균
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-border/60 border-b font-bold">
+                  <td className="bg-card sticky left-0 z-10 px-3 py-2.5">
+                    총계
                   </td>
-                ))}
-                <td className="border-l px-3 py-2 text-right tabular-nums">
-                  {totalAvg}
-                </td>
-              </tr>
-              <tr>
-                <td className="sticky left-0 z-10 bg-background px-3 py-2 font-semibold">
-                  순위
-                </td>
-                {columns.map((c) => (
-                  <td
-                    key={c.assignmentId}
-                    className="border-l px-3 py-2 text-right tabular-nums"
-                  >
-                    {ranksByCol[c.assignmentId]}
+                  {columns.map((c) => (
+                    <td
+                      key={c.assignmentId}
+                      className="text-primary border-l px-3 py-2.5 text-right text-base font-extrabold tabular-nums"
+                    >
+                      {totalsByCol[c.assignmentId]}
+                    </td>
+                  ))}
+                  <td className="border-l px-3 py-2.5 text-right text-base font-extrabold tabular-nums">
+                    {totalAvg}
                   </td>
-                ))}
-                <td className="border-l px-3 py-2 text-right tabular-nums">
-                  —
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      <Separator />
+                </tr>
+                <tr>
+                  <td className="bg-card sticky left-0 z-10 px-3 py-2.5 font-bold">
+                    순위
+                  </td>
+                  {columns.map((c) => (
+                    <td
+                      key={c.assignmentId}
+                      className="border-l px-3 py-2.5 text-right font-semibold tabular-nums"
+                    >
+                      {ranksByCol[c.assignmentId]}
+                    </td>
+                  ))}
+                  <td className="text-muted-foreground border-l px-3 py-2.5 text-right tabular-nums">
+                    —
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Section>
 
       <PerAssignmentSubmit columns={columns} colLabels={colLabels} />
     </div>
@@ -415,68 +407,65 @@ function QuestionMatrixCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardContent className="space-y-3 py-5">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
-            {questionLabel}
-          </Badge>
+          <Chip tone="primary">{questionLabel}</Chip>
           {question.title ? (
-            <h2 className="font-semibold">{question.title}</h2>
+            <h2 className="text-base font-bold tracking-tight">
+              {question.title}
+            </h2>
           ) : null}
-          <Badge variant="secondary" className="ml-auto text-[10px]">
+          <Chip tone="neutral" className="ml-auto">
             {question.maxScore}점 만점
-          </Badge>
+          </Chip>
         </div>
-      </CardHeader>
-      <Separator />
-      <CardContent className="space-y-3 pt-4">
         <section>
-          <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+          <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
             문제
           </p>
-          <div className="bg-muted/30 max-h-40 overflow-auto rounded-md border p-3">
-            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+          <div className="bg-muted/50 max-h-40 overflow-auto rounded-xl border p-3.5">
+            <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
               {question.bodyMd}
             </p>
           </div>
         </section>
         {question.modelAnswerMd ? (
           <section>
-            <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+            <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
               모범답안 / 채점 기준
             </p>
-            <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-700/40 max-h-44 overflow-auto rounded-md border p-3">
-              <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+            <div className="max-h-44 overflow-auto rounded-xl border border-emerald-500/30 bg-emerald-500/[0.07] p-3.5">
+              <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">
                 {question.modelAnswerMd}
               </p>
             </div>
           </section>
         ) : null}
 
-        <div className="overflow-auto">
+        <div className="overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
-              <tr className="border-b">
-                <th className="sticky left-0 z-10 bg-background px-3 py-2 text-left w-44">
+              <tr className="bg-muted/60 border-b">
+                <th className="bg-muted/60 text-muted-foreground sticky left-0 z-10 w-44 px-3 py-2.5 text-left font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
                   소문제 / 배점
                 </th>
                 {columns.map((c, i) => (
                   <th
                     key={c.assignmentId}
-                    className="border-l px-2 py-2 text-center whitespace-nowrap"
+                    className="text-muted-foreground border-l px-2 py-2.5 text-center font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase"
                   >
                     {colLabels[i]}
                   </th>
                 ))}
-                <th className="border-l px-2 py-2 text-center whitespace-nowrap text-muted-foreground">
+                <th className="text-muted-foreground border-l px-2 py-2.5 text-center font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase">
                   평균
                 </th>
               </tr>
             </thead>
             <tbody>
               {/* 답안 페이지 미리보기 (한 번에 한 줄) */}
-              <tr className="border-b">
-                <td className="sticky left-0 z-10 bg-background px-3 py-2 align-top text-[11px] text-muted-foreground">
+              <tr className="border-border/60 border-b">
+                <td className="bg-card text-muted-foreground sticky left-0 z-10 px-3 py-2 align-top text-[11px]">
                   답안 페이지
                 </td>
                 {columns.map((c) => (
@@ -493,24 +482,28 @@ function QuestionMatrixCard({
 
               {/* criterion 별 점수 입력 */}
               {criteria.length === 0 ? (
-                <tr className="border-b">
-                  <td className="sticky left-0 z-10 bg-background px-3 py-3 text-[11px] text-muted-foreground">
+                <tr className="border-border/60 border-b">
+                  <td className="bg-card text-muted-foreground sticky left-0 z-10 px-3 py-3 text-[11px]">
                     채점기준 미설정 — 운영자에게 문의
                   </td>
                   <td
                     colSpan={columns.length + 1}
-                    className="border-l px-3 py-3 text-center text-xs text-muted-foreground"
+                    className="text-muted-foreground border-l px-3 py-3 text-center text-xs"
                   >
-                    rubric 이 설정되지 않은 문제는 매트릭스 채점을 사용할 수 없습니다.
+                    rubric 이 설정되지 않은 문제는 매트릭스 채점을 사용할 수
+                    없습니다.
                   </td>
                 </tr>
               ) : (
                 criteria.map((cr) => (
-                  <tr key={cr.criterionId} className="border-b">
-                    <td className="sticky left-0 z-10 bg-background px-3 py-2 align-top">
-                      <p className="text-sm font-medium">{cr.label}</p>
-                      <p className="text-muted-foreground text-[10px]">
-                        ({cr.maxPoints}점)
+                  <tr
+                    key={cr.criterionId}
+                    className="border-border/60 border-b"
+                  >
+                    <td className="bg-card sticky left-0 z-10 px-3 py-2 align-top">
+                      <p className="text-sm font-semibold">{cr.label}</p>
+                      <p className="text-muted-foreground font-mono text-[10px]">
+                        / {cr.maxPoints}점
                       </p>
                     </td>
                     {columns.map((c) => {
@@ -540,14 +533,14 @@ function QuestionMatrixCard({
                             }
                             disabled={c.submittedAt != null}
                             className={cn(
-                              "border-input bg-background h-8 w-16 rounded-md border px-1 text-center text-sm tabular-nums",
-                              state === "saving" && "ring-amber-300 ring-1",
+                              "border-input bg-background focus-visible:ring-ring h-8 w-16 rounded-lg border px-1 text-center font-mono text-sm font-bold tabular-nums focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60",
+                              state === "saving" && "ring-1 ring-amber-400",
                             )}
                           />
                         </td>
                       );
                     })}
-                    <td className="border-l px-2 py-2 text-center text-xs text-muted-foreground tabular-nums">
+                    <td className="text-muted-foreground border-l px-2 py-2 text-center text-xs tabular-nums">
                       {(() => {
                         const vs: number[] = [];
                         for (const c of columns) {
@@ -556,9 +549,11 @@ function QuestionMatrixCard({
                           if (typeof v === "number") vs.push(v);
                         }
                         if (vs.length === 0) return "—";
-                        return Math.round(
-                          (vs.reduce((a, b) => a + b, 0) / vs.length) * 100,
-                        ) / 100;
+                        return (
+                          Math.round(
+                            (vs.reduce((a, b) => a + b, 0) / vs.length) * 100,
+                          ) / 100
+                        );
                       })()}
                     </td>
                   </tr>
@@ -566,14 +561,14 @@ function QuestionMatrixCard({
               )}
 
               {/* 소계 */}
-              <tr className="border-b bg-muted/30 font-semibold">
-                <td className="sticky left-0 z-10 bg-muted/30 px-3 py-2">
+              <tr className="bg-muted/50 border-border/60 border-b font-bold">
+                <td className="bg-muted/50 sticky left-0 z-10 px-3 py-2">
                   소계
                 </td>
                 {columns.map((c) => (
                   <td
                     key={c.assignmentId}
-                    className="border-l px-2 py-2 text-center tabular-nums"
+                    className="text-primary border-l px-2 py-2 text-center tabular-nums"
                   >
                     {subtotalsByCol[c.assignmentId]?.[question.questionId] ?? 0}
                   </td>
@@ -585,8 +580,8 @@ function QuestionMatrixCard({
 
               {/* 정성평가 */}
               <tr>
-                <td className="sticky left-0 z-10 bg-background px-3 py-2 align-top">
-                  <p className="text-sm font-medium">정성평가</p>
+                <td className="bg-card sticky left-0 z-10 px-3 py-2 align-top">
+                  <p className="text-sm font-semibold">정성평가</p>
                   <p className="text-muted-foreground text-[10px]">
                     답안 작성자에게 익명 전달
                   </p>
@@ -609,7 +604,7 @@ function QuestionMatrixCard({
                           )
                         }
                         disabled={c.submittedAt != null}
-                        className="border-input bg-background min-h-[64px] w-full rounded-md border p-1.5 text-xs"
+                        className="border-input bg-background focus-visible:ring-ring min-h-[64px] w-full rounded-lg border p-1.5 text-xs focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60"
                         placeholder="피드백 (선택)"
                       />
                     </td>
@@ -704,11 +699,11 @@ function PeerPageView({
   }, [assignmentId, page.attachment.path]);
 
   return (
-    <div className="rounded border bg-muted/20 p-1.5">
+    <div className="bg-muted/40 rounded-lg border p-1.5">
       <div className="flex items-center gap-1 text-[10px]">
-        <Badge variant="outline" className="text-[9px]">
+        <Chip tone="outline" className="h-[18px] px-1.5 text-[9px]">
           p{page.pageNumber}
-        </Badge>
+        </Chip>
         <FileTextIcon className="text-muted-foreground size-3" />
         <span className="text-muted-foreground flex-1 truncate">
           {page.attachment.mime.split("/")[1]?.toUpperCase() ?? "FILE"}
@@ -718,7 +713,7 @@ function PeerPageView({
             href={signedUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary hover:underline"
+            className="text-primary font-semibold hover:underline"
           >
             풀
           </a>
@@ -729,14 +724,14 @@ function PeerPageView({
           src={signedUrl}
           alt={`p${page.pageNumber}`}
           loading="lazy"
-          className="mt-1 max-h-60 w-full rounded border object-contain bg-background"
+          className="bg-background mt-1 max-h-60 w-full rounded-lg border object-contain"
         />
       ) : !isImage && signedUrl ? (
         <a
           href={signedUrl}
           target="_blank"
           rel="noreferrer"
-          className="bg-background hover:bg-muted mt-1 block rounded border p-2 text-center text-[10px]"
+          className="bg-background hover:bg-muted mt-1 block rounded-lg border p-2 text-center text-[10px] font-medium"
         >
           PDF 열기
         </a>
@@ -754,26 +749,26 @@ function PerAssignmentSubmit({
   colLabels: string[];
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          답안별 채점 제출
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          답안 컬럼별로 모든 입력이 완료되면 "제출" 을 누르세요. 제출 후에는 수정할 수 없습니다.
-        </p>
-      </CardHeader>
-      <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {columns.map((c, i) => (
-          <SubmitColumnButton
-            key={c.assignmentId}
-            assignmentId={c.assignmentId}
-            label={colLabels[i]}
-            submittedAt={c.submittedAt}
-          />
-        ))}
-      </CardContent>
-    </Card>
+    <Section eyebrow="답안별 채점 제출">
+      <Card>
+        <CardContent className="space-y-3 py-5">
+          <p className="text-muted-foreground text-xs">
+            답안 컬럼별로 모든 입력이 완료되면 "제출"을 누르세요. 제출 후에는
+            수정할 수 없습니다.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {columns.map((c, i) => (
+              <SubmitColumnButton
+                key={c.assignmentId}
+                assignmentId={c.assignmentId}
+                label={colLabels[i]}
+                submittedAt={c.submittedAt}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </Section>
   );
 }
 
@@ -789,15 +784,15 @@ function SubmitColumnButton({
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const submitted = submittedAt != null || fetcher.data?.ok === true;
   return (
-    <div className="rounded-md border p-3">
+    <div className="bg-muted/40 rounded-xl border p-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-semibold">{label}</span>
+        <span className="text-sm font-bold">{label}</span>
         {submitted ? (
-          <Badge className="bg-emerald-600 text-white">
+          <Chip tone="emerald">
             <CheckCircle2Icon className="size-3" /> 제출됨
-          </Badge>
+          </Chip>
         ) : (
-          <Badge variant="outline">진행 중</Badge>
+          <Chip tone="outline">진행 중</Chip>
         )}
       </div>
       {submitted ? null : (
@@ -815,7 +810,7 @@ function SubmitColumnButton({
             type="submit"
             size="sm"
             disabled={fetcher.state !== "idle"}
-            className="w-full"
+            className="w-full rounded-full"
           >
             <SendIcon className="size-3.5" />
             {fetcher.state !== "idle" ? "제출 중..." : "채점 제출"}
@@ -823,7 +818,9 @@ function SubmitColumnButton({
         </fetcher.Form>
       )}
       {fetcher.data?.error ? (
-        <p className="text-rose-600 mt-1 text-[11px]">{fetcher.data.error}</p>
+        <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400">
+          {fetcher.data.error}
+        </p>
       ) : null}
     </div>
   );

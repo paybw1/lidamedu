@@ -2,26 +2,22 @@
 // 다른 학생 개별 점수는 노출되지 않음 (코호트 평균/표편만).
 
 import {
-  ArrowLeftIcon,
-  ChartLineIcon,
   CrownIcon,
   TrendingDownIcon,
   TrendingUpIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
+import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { CommunityShell } from "~/features/community/components/community-shell";
+import {
+  Bar,
+  Chip,
+  Section,
+  StatTile,
+} from "~/features/community/components/community-ui";
 import {
   getGsSeries,
   getMySeriesProgress,
@@ -61,41 +57,33 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function GsMySeries({ loaderData }: Route.ComponentProps) {
   const { series, progress, summary } = loaderData;
 
-  return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <Link
-          to="/gs"
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 온라인 GS
-        </Link>
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ChartLineIcon className="size-3.5" /> 내 시리즈 추이
-        </p>
-        <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-          {series.title}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {LAW_SUBJECTS[series.subject]?.name ?? series.subject} · 예정{" "}
-          {series.expectedRounds}회
-        </p>
-      </header>
+  const subjectLabel = LAW_SUBJECTS[series.subject]?.name ?? series.subject;
 
+  return (
+    <CommunityShell
+      category="gs"
+      backLink={{ to: "/gs", label: "온라인 GS" }}
+      title={`시리즈 추이 · ${series.title}`}
+      desc={
+        summary
+          ? `${subjectLabel} · 응시 ${summary.roundsTaken}회 · 코호트 평균 대비 추이`
+          : `${subjectLabel} · 예정 ${series.expectedRounds}회 · 코호트 평균 대비 추이`
+      }
+    >
       {summary ? (
-        <div className="mb-6 grid gap-3 sm:grid-cols-4">
-          <SummaryCard label="응시 회차" value={`${summary.roundsTaken}회`} />
-          <SummaryCard
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatTile label="응시 회차" value={`${summary.roundsTaken}회`} />
+          <StatTile
             label="평균 점수"
             value={String(summary.avgTotal)}
+            tone="primary"
+            emph
           />
-          <SummaryCard
+          <StatTile
             label="평균 z-score"
             value={`${summary.avgZ > 0 ? "+" : ""}${summary.avgZ.toFixed(2)}σ`}
-            tone={
-              summary.avgZ >= 1 ? "ok" : summary.avgZ <= -1 ? "bad" : undefined
-            }
-            hint={
+            tone={summary.avgZ >= 0 ? "emerald" : "coral"}
+            sub={
               summary.avgZ >= 0.5
                 ? "평균 이상"
                 : summary.avgZ <= -0.5
@@ -103,14 +91,14 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
                   : "평균 수준"
             }
           />
-          <SummaryCard
-            label="시리즈 종합 순위"
+          <StatTile
+            label="시리즈 순위"
             value={
               summary.totalStudents > 0
                 ? `${summary.seriesRank} / ${summary.totalStudents}`
                 : "—"
             }
-            hint={
+            sub={
               summary.totalStudents > 0
                 ? `상위 ${Math.round((summary.seriesRank / summary.totalStudents) * 100)}%`
                 : undefined
@@ -118,8 +106,8 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
           />
         </div>
       ) : (
-        <Card className="mb-6">
-          <CardContent className="text-muted-foreground py-6 text-center text-sm">
+        <Card>
+          <CardContent className="text-muted-foreground py-8 text-center text-sm">
             아직 채점 완료된 응시가 없습니다. 회차 채점이 끝나면 추이가
             표시됩니다.
           </CardContent>
@@ -127,128 +115,102 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
       )}
 
       {progress.length > 0 ? (
-        <Card className="mb-6">
-          <CardHeader>
-            <h2 className="text-sm font-semibold tracking-tight">
-              회차별 내 점수와 코호트 비교
-            </h2>
-            <p className="text-muted-foreground text-xs">
-              z-score 는 같은 회차의 다른 응시자 평균(0σ) 기준 본인 위치입니다. +1σ
-              ~ +2σ 가 상위권, -1σ 이하면 분발이 필요합니다. 회차마다 난이도가
-              달라도 z-score 로 객관 비교할 수 있습니다.
-            </p>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60px]">#</TableHead>
-                  <TableHead className="min-w-[180px]">회차</TableHead>
-                  <TableHead className="w-[100px]">내 점수</TableHead>
-                  <TableHead className="w-[120px]">코호트 평균</TableHead>
-                  <TableHead className="w-[120px]">z-score</TableHead>
-                  <TableHead className="w-[120px]">순위</TableHead>
-                  <TableHead>편차</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {progress.map((p, i) => (
-                  <TableRow key={p.roundId}>
-                    <TableCell className="font-medium tabular-nums">
-                      {p.roundNumber ?? i + 1}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/gs/${p.roundId}/result`}
-                        className="hover:text-primary text-sm font-medium hover:underline"
+        <Section eyebrow="회차별 코호트 비교">
+          <p className="text-muted-foreground mb-2.5 -mt-1 text-xs leading-relaxed">
+            z-score는 같은 회차의 다른 응시자 평균(0σ) 기준 본인 위치입니다.
+            +1σ ~ +2σ가 상위권, -1σ 이하면 분발이 필요합니다. 회차마다 난이도가
+            달라도 z-score로 객관 비교할 수 있습니다.
+          </p>
+          <div className="bg-card overflow-hidden rounded-2xl border">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-sm">
+                <thead>
+                  <tr className="bg-muted/60 border-b">
+                    {[
+                      ["#", "left"],
+                      ["회차", "left"],
+                      ["내 점수", "right"],
+                      ["코호트 평균", "right"],
+                      ["z-score", "left"],
+                      ["순위", "left"],
+                      ["분포 비교", "left"],
+                    ].map(([label, align]) => (
+                      <th
+                        key={label}
+                        className={cn(
+                          "text-muted-foreground px-3.5 py-2.5 font-mono text-[11px] font-bold tracking-[0.06em] whitespace-nowrap uppercase",
+                          align === "right" ? "text-right" : "text-left",
+                        )}
                       >
-                        {p.roundTitle}
-                      </Link>
-                      <p className="text-muted-foreground text-[10px]">
-                        {new Date(p.startAt).toLocaleDateString("ko-KR")}
-                      </p>
-                    </TableCell>
-                    <TableCell className="font-semibold tabular-nums">
-                      {p.myTotal}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">
-                      {p.cohortAvg}
-                      <span className="text-muted-foreground ml-1 text-[10px]">
-                        ±{p.cohortStdev}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <ZScoreBadge z={p.myZ} />
-                    </TableCell>
-                    <TableCell>
-                      <RankCell
-                        rank={p.myRank}
-                        n={p.cohortN}
-                        percentile={p.myPercentile}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <ZScoreBar z={p.myZ} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {progress.map((p, i) => (
+                    <tr
+                      key={p.roundId}
+                      className="border-border/60 hover:bg-muted/40 border-b transition-colors"
+                    >
+                      <td className="text-muted-foreground px-3.5 py-3 font-medium tabular-nums">
+                        {p.roundNumber ?? i + 1}회
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <Link
+                          to={`/gs/${p.roundId}/result`}
+                          className="hover:text-primary text-[13px] font-semibold hover:underline"
+                        >
+                          {p.roundTitle}
+                        </Link>
+                        <p className="text-muted-foreground text-[10px]">
+                          {new Date(p.startAt).toLocaleDateString("ko-KR")}
+                        </p>
+                      </td>
+                      <td className="px-3.5 py-3 text-right font-extrabold tabular-nums">
+                        {p.myTotal}
+                      </td>
+                      <td className="text-muted-foreground px-3.5 py-3 text-right tabular-nums">
+                        {p.cohortAvg}
+                        <span className="ml-1 text-[10px]">
+                          ±{p.cohortStdev}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <ZScoreBadge z={p.myZ} />
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <RankCell
+                          rank={p.myRank}
+                          n={p.cohortN}
+                          percentile={p.myPercentile}
+                        />
+                      </td>
+                      <td className="px-3.5 py-3">
+                        <ScoreBarPair
+                          myTotal={p.myTotal}
+                          cohortAvg={p.cohortAvg}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Section>
       ) : null}
 
       {progress.length >= 2 ? (
-        <Card>
-          <CardHeader>
-            <h2 className="text-sm font-semibold tracking-tight">
-              z-score 추이
-            </h2>
-            <p className="text-muted-foreground text-xs">
-              회차에 따라 본인의 상대 위치가 어떻게 변했는지 시각화. 위쪽으로 갈수록
-              상위권.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ZScoreTrend points={progress} />
-          </CardContent>
-        </Card>
+        <Section eyebrow="z-score 추이">
+          <Card>
+            <CardContent className="py-5">
+              <ZScoreTrend points={progress} />
+            </CardContent>
+          </Card>
+        </Section>
       ) : null}
-    </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "ok" | "bad";
-}) {
-  return (
-    <Card>
-      <CardContent className="pt-4">
-        <p className="text-muted-foreground text-[11px] tracking-wide uppercase">
-          {label}
-        </p>
-        <p
-          className={cn(
-            "mt-1 text-xl font-bold tabular-nums",
-            tone === "ok" && "text-emerald-600 dark:text-emerald-400",
-            tone === "bad" && "text-rose-600 dark:text-rose-400",
-          )}
-        >
-          {value}
-        </p>
-        {hint ? (
-          <p className="text-muted-foreground mt-1 text-[10px]">{hint}</p>
-        ) : null}
-      </CardContent>
-    </Card>
+    </CommunityShell>
   );
 }
 
@@ -256,50 +218,54 @@ function ZScoreBadge({ z }: { z: number }) {
   const sign = z > 0 ? "+" : "";
   if (z >= 1) {
     return (
-      <Badge className="bg-emerald-600 text-white text-[11px] tabular-nums hover:bg-emerald-600">
+      <Chip tone="emerald" className="tabular-nums">
         <TrendingUpIcon className="size-3" /> {sign}
         {z.toFixed(2)}σ
-      </Badge>
+      </Chip>
     );
   }
   if (z <= -1) {
     return (
-      <Badge className="bg-rose-600 text-white text-[11px] tabular-nums hover:bg-rose-600">
+      <Chip tone="coral" className="tabular-nums">
         <TrendingDownIcon className="size-3" /> {z.toFixed(2)}σ
-      </Badge>
+      </Chip>
     );
   }
   return (
-    <Badge variant="outline" className="text-[11px] tabular-nums">
+    <Chip tone="outline" className="tabular-nums">
       {sign}
       {z.toFixed(2)}σ
-    </Badge>
+    </Chip>
   );
 }
 
-function ZScoreBar({ z }: { z: number }) {
-  const clamped = Math.max(-2, Math.min(2, z));
-  const widthPct = (Math.abs(clamped) / 2) * 50;
-  const tone =
-    z >= 1
-      ? "bg-emerald-500"
-      : z <= -1
-        ? "bg-rose-500"
-        : "bg-muted-foreground/40";
+// 본인 점수 vs 코호트 평균 — 키트 BarPair (분포 비교 컬럼).
+function ScoreBarPair({
+  myTotal,
+  cohortAvg,
+}: {
+  myTotal: number;
+  cohortAvg: number;
+}) {
+  const max = Math.max(myTotal, cohortAvg, 1);
   return (
-    <div className="relative h-2 w-32 rounded-full bg-muted">
-      <div className="bg-foreground/30 absolute left-1/2 top-0 h-full w-px" />
-      {z >= 0 ? (
-        <div
-          className={cn("absolute left-1/2 top-0 h-full rounded-r-full", tone)}
-          style={{ width: `${widthPct}%` }}
+    <div className="w-40 space-y-1">
+      <div className="flex items-center gap-1.5">
+        <span className="text-primary w-7 shrink-0 font-mono text-[10px]">
+          본인
+        </span>
+        <Bar value={myTotal} max={max} tone="primary" className="flex-1" />
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-muted-foreground w-7 shrink-0 font-mono text-[10px]">
+          평균
+        </span>
+        <Bar
+          value={cohortAvg}
+          max={max}
+          className="bg-muted [&>div]:bg-muted-foreground/45 flex-1"
         />
-      ) : (
-        <div
-          className={cn("absolute right-1/2 top-0 h-full rounded-l-full", tone)}
-          style={{ width: `${widthPct}%` }}
-        />
-      )}
+      </div>
     </div>
   );
 }
@@ -336,48 +302,52 @@ function ZScoreTrend({
 }) {
   const max = 2; // ±2σ 클램프
   return (
-    <div className="space-y-2">
-      <div className="flex items-end gap-2 overflow-x-auto pb-2">
+    <div className="space-y-2.5">
+      <div className="flex items-end gap-2 overflow-x-auto pb-1">
         {points.map((p, i) => {
           const z = Math.max(-max, Math.min(max, p.myZ));
           const heightPct = (Math.abs(z) / max) * 100;
-          const tone =
-            p.myZ >= 1
-              ? "bg-emerald-500"
-              : p.myZ <= -1
-                ? "bg-rose-500"
-                : "bg-primary/60";
+          const positive = p.myZ >= 0;
+          const fill = positive ? "bg-emerald-500" : "bg-rose-500";
+          const text = positive
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-rose-600 dark:text-rose-400";
           return (
             <div
               key={i}
               className="flex w-12 shrink-0 flex-col items-center"
               title={`${p.roundTitle}: ${p.myZ > 0 ? "+" : ""}${p.myZ.toFixed(2)}σ`}
             >
-              <div className="bg-muted relative flex h-32 w-3 flex-col justify-center overflow-hidden rounded-full">
+              <div className="bg-muted relative flex h-32 w-4 flex-col justify-center overflow-hidden rounded-full">
                 {/* 가운데 평균선 */}
                 <div className="bg-foreground/40 absolute top-1/2 left-0 h-px w-full" />
-                {p.myZ >= 0 ? (
+                {positive ? (
                   <div
                     className={cn(
-                      "absolute bottom-1/2 left-0 w-full rounded-t-full",
-                      tone,
+                      "absolute bottom-1/2 left-0 w-full rounded-t-full transition-[height]",
+                      fill,
                     )}
                     style={{ height: `${heightPct / 2}%` }}
                   />
                 ) : (
                   <div
                     className={cn(
-                      "absolute top-1/2 left-0 w-full rounded-b-full",
-                      tone,
+                      "absolute top-1/2 left-0 w-full rounded-b-full transition-[height]",
+                      fill,
                     )}
                     style={{ height: `${heightPct / 2}%` }}
                   />
                 )}
               </div>
-              <p className="text-muted-foreground mt-1 text-[10px] tabular-nums">
+              <p className="text-muted-foreground mt-1.5 font-mono text-[10px] tabular-nums">
                 {p.roundNumber ?? i + 1}회
               </p>
-              <p className="font-mono text-[10px] tabular-nums">
+              <p
+                className={cn(
+                  "font-mono text-[10px] font-bold tabular-nums",
+                  text,
+                )}
+              >
                 {p.myZ > 0 ? "+" : ""}
                 {p.myZ.toFixed(1)}
               </p>
@@ -385,8 +355,9 @@ function ZScoreTrend({
           );
         })}
       </div>
-      <p className="text-muted-foreground text-[10px]">
-        세로 가운데 선이 코호트 평균(0σ). 위로 갈수록 상위권, 아래로 갈수록 하위권.
+      <p className="text-muted-foreground text-[11px] leading-relaxed">
+        세로 가운데 선이 코호트 평균(0σ). 위로 갈수록 상위권, 아래로 갈수록
+        하위권.
       </p>
     </div>
   );

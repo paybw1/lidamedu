@@ -1,12 +1,20 @@
-import { PencilLineIcon, SearchIcon } from "lucide-react";
+import {
+  MessageCircleQuestionIcon,
+  PencilLineIcon,
+  SearchIcon,
+  SearchXIcon,
+} from "lucide-react";
 import { Form, Link, useSearchParams } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent } from "~/core/components/ui/card";
-import { Input } from "~/core/components/ui/input";
-import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import {
+  Chip,
+  EmptyState,
+  relativeKo,
+} from "~/features/community/components/community-ui";
+import { CommunityShell } from "~/features/community/components/community-shell";
+import makeServerClient from "~/core/lib/supa-client.server";
 
 import {
   QNA_STATUS_LABEL,
@@ -28,6 +36,13 @@ const SCOPE_LABELS: Record<Scope, string> = {
 };
 
 const SCOPE_VALUES: Scope[] = ["all", "asked-by-me", "answered-by-me", "open"];
+
+// 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).
+const TARGET_TONE: Record<QnaTargetType, "primary" | "violet" | "amber"> = {
+  article: "primary",
+  case: "violet",
+  problem: "amber",
+};
 
 export const meta: Route.MetaFunction = () => [{ title: "Q&A | Lidam Patent Attorney Academy" }];
 
@@ -76,26 +91,38 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
     return `/qna?${next.toString()}`;
   };
 
+  const waitingCount = threads.filter((t) => t.status === "open").length;
+  const filterActive = scope !== "all" || !!targetType || query !== "";
+
+  const descParts = [`총 ${threads.length}건`];
+  if (waitingCount > 0) descParts.push(`답변 대기 ${waitingCount}건`);
+
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Q&A</h1>
-        <Button asChild size="sm">
+    <CommunityShell
+      category="qna"
+      title="Q&A"
+      desc={descParts.join(" · ")}
+      headerRight={
+        <Button asChild size="sm" className="h-9 rounded-full">
           <Link to="/qna/new" viewTransition>
             <PencilLineIcon className="size-4" /> 새 질문
           </Link>
         </Button>
-      </div>
-
-      <Form method="get" className="mb-4 flex items-center gap-2">
-        <div className="relative flex-1">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
+      }
+    >
+      <Form
+        method="get"
+        className="border-border bg-card mb-3.5 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-sm"
+      >
+        <div className="relative min-w-[200px] flex-1 basis-[240px] sm:max-w-[320px]">
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+          <input
             type="search"
             name="q"
             defaultValue={query}
             placeholder="제목 / 질문 / 답변 검색"
-            className="pl-9"
+            aria-label="질문 검색"
+            className="bg-muted/60 focus:bg-background focus:border-primary h-9 w-full rounded-full border border-transparent pr-3 pl-9 text-[13px] outline-none"
           />
         </div>
         {scope !== "all" ? (
@@ -104,121 +131,124 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
         {targetType ? (
           <input type="hidden" name="target" value={targetType} />
         ) : null}
-        <Button type="submit" size="sm">
+        <Button type="submit" size="sm" className="h-9 rounded-full">
           검색
         </Button>
       </Form>
 
-      <div className="mb-3 flex flex-wrap items-center gap-1">
-        <span className="text-muted-foreground mr-1 text-[10px] font-medium tracking-wide uppercase">
+      <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground mr-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
           분류
         </span>
-        {SCOPE_VALUES.map((s) => (
-          <Link
-            key={s}
-            to={buildHref({ scope: s === "all" ? null : s })}
-            className={cn(
-              "rounded-md border px-2 py-0.5 text-xs transition-colors",
-              scope === s
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background hover:bg-accent text-muted-foreground border-input",
-            )}
-          >
-            {SCOPE_LABELS[s]}
-          </Link>
-        ))}
+        {SCOPE_VALUES.map((s) => {
+          const isActive = scope === s;
+          const isWaiting = s === "open";
+          return (
+            <Link key={s} to={buildHref({ scope: s === "all" ? null : s })}>
+              <Chip
+                tone={
+                  isActive
+                    ? "solid"
+                    : isWaiting
+                      ? "coral"
+                      : "neutral"
+                }
+                className="transition-colors hover:opacity-85"
+              >
+                {SCOPE_LABELS[s]}
+                {isWaiting && waitingCount > 0 ? ` ${waitingCount}` : ""}
+              </Chip>
+            </Link>
+          );
+        })}
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-1">
-        <span className="text-muted-foreground mr-1 text-[10px] font-medium tracking-wide uppercase">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground mr-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
           대상
         </span>
-        <Link
-          to={buildHref({ target: null })}
-          className={cn(
-            "rounded-md border px-2 py-0.5 text-xs transition-colors",
-            !targetType
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background hover:bg-accent text-muted-foreground border-input",
-          )}
-        >
-          전체
-        </Link>
-        {(["article", "case", "problem"] as QnaTargetType[]).map((t) => (
-          <Link
-            key={t}
-            to={buildHref({ target: t })}
-            className={cn(
-              "rounded-md border px-2 py-0.5 text-xs transition-colors",
-              targetType === t
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background hover:bg-accent text-muted-foreground border-input",
-            )}
+        <Link to={buildHref({ target: null })}>
+          <Chip
+            tone={!targetType ? "solid" : "neutral"}
+            className="transition-colors hover:opacity-85"
           >
-            {QNA_TARGET_LABEL[t]}
-          </Link>
-        ))}
+            전체
+          </Chip>
+        </Link>
+        {(["article", "case", "problem"] as QnaTargetType[]).map((t) => {
+          const isActive = targetType === t;
+          return (
+            <Link key={t} to={buildHref({ target: t })}>
+              <Chip
+                tone={isActive ? "solid" : TARGET_TONE[t]}
+                className="transition-colors hover:opacity-85"
+              >
+                {QNA_TARGET_LABEL[t]}
+              </Chip>
+            </Link>
+          );
+        })}
       </div>
 
       {threads.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-muted-foreground text-sm">
-              조건에 맞는 질문이 없습니다.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={filterActive ? SearchXIcon : MessageCircleQuestionIcon}
+          tone={filterActive ? "subdued" : "neutral"}
+          title={
+            filterActive
+              ? "조건에 맞는 질문이 없습니다"
+              : "아직 등록된 질문이 없습니다"
+          }
+          body={
+            filterActive
+              ? "검색어나 분류·대상 필터를 바꿔 다시 찾아보세요."
+              : "조문·판례·문제 화면에서 클릭한 대상에 대해 질문할 수 있습니다."
+          }
+        />
       ) : (
-        <ul className="space-y-2">
+        <ul className="flex flex-col gap-2">
           {threads.map((t) => {
             const isMine = t.askerId === currentUserId;
             const isMyAnswer = t.answererId === currentUserId;
+            const isWaiting = t.status === "open";
             return (
               <li key={t.threadId}>
                 <Link
                   to={`/qna/${t.threadId}`}
                   viewTransition
-                  className="hover:bg-accent block rounded-md border p-3 transition-colors"
+                  className={cn(
+                    "group block rounded-2xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md",
+                    isWaiting
+                      ? "border-rose-500/30 bg-rose-500/[0.06] hover:border-rose-500/50"
+                      : "border-border bg-card hover:border-primary/30",
+                  )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                        <Badge variant="outline" className="text-[10px]">
-                          {QNA_TARGET_LABEL[t.targetType]}
-                        </Badge>
-                        <Badge
-                          variant={
-                            t.status === "answered" ? "default" : "secondary"
-                          }
-                          className="text-[10px]"
-                        >
-                          {QNA_STATUS_LABEL[t.status]}
-                        </Badge>
-                        {isMine ? (
-                          <Badge variant="outline" className="text-[10px]">
-                            내 질문
-                          </Badge>
-                        ) : null}
-                        {isMyAnswer ? (
-                          <Badge variant="outline" className="text-[10px]">
-                            내 답변
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <p className="truncate text-sm font-medium">{t.title}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {t.askerName ?? "알 수 없음"}
-                        {t.answererName ? ` → ${t.answererName}` : ""} ·{" "}
-                        {new Date(t.createdAt).toLocaleDateString("ko-KR")}
-                      </p>
-                    </div>
+                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                    <Chip tone={TARGET_TONE[t.targetType]}>
+                      {QNA_TARGET_LABEL[t.targetType]}
+                    </Chip>
+                    <Chip tone={isWaiting ? "coral" : "emerald"}>
+                      {QNA_STATUS_LABEL[t.status]}
+                    </Chip>
+                    {isMine ? <Chip tone="outline">내 질문</Chip> : null}
+                    {isMyAnswer ? <Chip tone="outline">내 답변</Chip> : null}
+                    <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">
+                      {relativeKo(t.createdAt)}
+                    </span>
                   </div>
+                  <p className="text-[15px] leading-snug font-bold tracking-tight">
+                    {t.title}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-[13px]">
+                    {t.askerName ?? "알 수 없음"}
+                    {t.answererName ? ` → ${t.answererName}` : ""}
+                  </p>
                 </Link>
               </li>
             );
           })}
         </ul>
       )}
-    </div>
+    </CommunityShell>
   );
 }
