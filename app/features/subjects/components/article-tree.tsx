@@ -241,11 +241,7 @@ export function ArticleTree({
   const trimmedQuery = searchQuery.trim().toLowerCase();
 
   const visible = useMemo(() => {
-    if (
-      importanceFilter === 0 &&
-      bookmarkFilter === 0 &&
-      trimmedQuery === ""
-    )
+    if (importanceFilter === 0 && bookmarkFilter === 0 && trimmedQuery === "")
       return tree;
 
     // 검색은 모든 노드(chapter/section/article) 레이블 매칭. 매칭되는 노드와 그
@@ -313,7 +309,7 @@ export function ArticleTree({
               type="button"
               onClick={() => setSearchQuery("")}
               aria-label="검색 지우기"
-              className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1.5 -translate-y-1/2 text-[10px]"
             >
               ✕
             </button>
@@ -356,7 +352,7 @@ export function ArticleTree({
                 className={cn(
                   "rounded-md border px-1 py-0.5 text-[11px] tabular-nums transition-colors",
                   bookmarkFilter === v
-                    ? "bg-rose-500 text-white border-rose-500"
+                    ? "border-rose-500 bg-rose-500 text-white"
                     : "bg-background hover:bg-accent text-muted-foreground border-input",
                 )}
               >
@@ -473,18 +469,13 @@ function TreeItem({
   ]);
   const isArticle = isArticleLeaf;
   const isActive =
-    activeArticleId === node.articleId ||
-    activeChapterId === node.articleId;
-  const bookmarkLevel = isArticle
-    ? (bookmarkLevels?.[node.articleId] ?? 0)
-    : 0;
+    activeArticleId === node.articleId || activeChapterId === node.articleId;
+  const bookmarkLevel = isArticle ? (bookmarkLevels?.[node.articleId] ?? 0) : 0;
   const annotation = isArticle ? annotationCounts?.[node.articleId] : undefined;
   const memos = annotation?.memos ?? 0;
   const highlights = annotation?.highlights ?? 0;
 
-  const labelEl = (
-    <span className="flex-1 truncate">{node.displayLabel}</span>
-  );
+  const labelEl = <span className="flex-1 truncate">{node.displayLabel}</span>;
   const importance = Math.max(0, Math.min(3, node.importance));
   const starEl =
     isArticle && importance > 0 ? (
@@ -512,8 +503,8 @@ function TreeItem({
     isArticle && memos > 0 ? (
       <span
         className="inline-flex shrink-0 items-center text-emerald-600 dark:text-emerald-400"
-        aria-label={`메모 ${memos}개`}
-        title={`메모 ${memos}개`}
+        aria-label={`포스트잇 ${memos}개`}
+        title={`포스트잇 ${memos}개`}
       >
         <StickyNoteIcon className="size-3" />
         <span className="ml-0.5 text-[10px] tabular-nums">{memos}</span>
@@ -538,9 +529,7 @@ function TreeItem({
         title={`즐겨찾기 ${bookmarkLevel}`}
       >
         <HeartIcon className="size-3 fill-current" />
-        <span className="ml-0.5 text-[10px] tabular-nums">
-          {bookmarkLevel}
-        </span>
+        <span className="ml-0.5 text-[10px] tabular-nums">{bookmarkLevel}</span>
       </span>
     ) : null;
   // 조문 leaf 앞 작은 dot — 가이드 라인 트리에서 leaf 임을 표시.
@@ -657,7 +646,7 @@ function TreeItem({
         </div>
       )}
       {knownHasChildren && open ? (
-        <ul className="ml-[15px] space-y-0.5 border-l-[1.5px] border-border pl-0.5">
+        <ul className="border-border ml-[15px] space-y-0.5 border-l-[1.5px] pl-0.5">
           {node.children.map((c) => (
             <TreeItem
               key={c.articleId}

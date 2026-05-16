@@ -1,3 +1,5 @@
+import type { Route } from "./+types/case-viewer";
+
 import {
   ArrowLeftIcon,
   FileTextIcon,
@@ -19,18 +21,21 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/core/components/ui/sheet";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
+import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
   getBookmark,
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
-import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
-import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
-import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
-import { FlowNav } from "~/features/study/components/flow-nav";
-import { recordStudySession } from "~/features/study/queries.server";
+import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
+import { CiteCopyButton } from "~/features/cases/components/cite-copy";
+import {
+  ExamProblemChip,
+  ExamYearChip,
+} from "~/features/cases/components/exam-year-chip";
 import { COURT_LABELS } from "~/features/cases/labels";
 import { reflowNumberingSafe } from "~/features/cases/lib/reflow-numbering";
 import {
@@ -38,9 +43,6 @@ import {
   getCaseById,
   listCaseReferences,
 } from "~/features/cases/queries.server";
-import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
-import { CiteCopyButton } from "~/features/cases/components/cite-copy";
-import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
@@ -52,16 +54,19 @@ import {
   getLawByCode,
   getStaffRole,
 } from "~/features/laws/queries.server";
+import {
+  getExamProblemsForCase,
+  getRelatedProblemsByCase,
+} from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
-import { getRelatedProblemsByCase } from "~/features/problems/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
+import { FlowNav } from "~/features/study/components/flow-nav";
+import { recordStudySession } from "~/features/study/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
-
-import type { Route } from "./+types/case-viewer";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "판례 | Lidam Patent Attorney Academy" }];
@@ -136,6 +141,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     references,
     staffRole,
     caseComments,
+    examProblems,
   ] = await Promise.all([
     getRelatedArticlesByCase(client, kase.caseId),
     getRelatedProblemsByCase(client, kase.caseId, 12),
@@ -146,6 +152,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listCaseReferences(client, kase.caseId),
     getStaffRole(client, user.id),
     listComments(client, "case", kase.caseId),
+    getExamProblemsForCase(client, kase.caseId),
   ]);
 
   recordStudySession(client, user.id, {
@@ -162,6 +169,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     articles,
     relatedArticles,
     relatedProblems,
+    examProblems,
     bookmark,
     memos,
     highlights,
@@ -183,6 +191,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     articles,
     relatedArticles,
     relatedProblems,
+    examProblems,
     bookmark,
     memos,
     highlights,
@@ -208,22 +217,19 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const replacedNotice = searchParams.get("from") === "replaced";
 
   return (
-    <div className="min-h-[calc(100vh-56px)] bg-background">
+    <div className="bg-background min-h-[calc(100vh-56px)]">
       <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
         <FlowNav
           subjectSlug={subject.slug}
           currentType="case"
           currentId={kase.caseId}
         />
-        <HighlightToolbar
-          targetType="case"
-          targetId={kase.caseId}
-          staff={canEditComment}
-        />
+        <HighlightToolbar targetType="case" targetId={kase.caseId} />
 
         {replacedNotice ? (
           <div className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50/60 px-4 py-2.5 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
-            이전에 같은 사건번호({kase.caseNumber})로 등록된 판례가 삭제되어, 새로 등록된 활성 판례로 이동했습니다.
+            이전에 같은 사건번호({kase.caseNumber})로 등록된 판례가 삭제되어,
+            새로 등록된 활성 판례로 이동했습니다.
           </div>
         ) : null}
 
@@ -232,7 +238,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           <Link
             to={`/subjects/${subject.slug}?tab=cases`}
             viewTransition
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
           >
             <ArrowLeftIcon className="size-3.5" />
             판례 목록으로
@@ -241,12 +247,11 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 
         {/* 3분할 그리드 — §5.1 */}
         <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-
           {/* ── 좌측 조문 트리 (데스크톱 sticky) ── */}
-          <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <Card className="rounded-xl border border-border shadow-sm py-3">
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <Card className="border-border rounded-xl border py-3 shadow-sm">
               <CardHeader className="px-4 pb-2">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
+                <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
                   {subject.name} 조문 트리
                 </p>
               </CardHeader>
@@ -254,9 +259,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 <ArticleTree
                   nodes={articles}
                   lawCode={subject.slug}
-                  lazyExpand={
-                    subject.slug === "civil" ? { lawId } : undefined
-                  }
+                  lazyExpand={subject.slug === "civil" ? { lawId } : undefined}
                 />
               </CardContent>
             </Card>
@@ -264,7 +267,6 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 
           {/* ── 중앙 본문 ── */}
           <main className="min-w-0 space-y-4">
-
             {/* 모바일 드로어 트리거 */}
             <div className="flex flex-wrap gap-2 lg:hidden">
               <Sheet>
@@ -278,7 +280,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     <ListTreeIcon className="size-3.5" /> 조문 트리
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
+                <SheetContent
+                  side="left"
+                  className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+                >
                   <SheetHeader>
                     <SheetTitle>{subject.name} 조문 트리</SheetTitle>
                   </SheetHeader>
@@ -304,7 +309,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     <PanelRightIcon className="size-3.5" /> 학습 보조
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
+                <SheetContent
+                  side="right"
+                  className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
+                >
                   <SheetHeader>
                     <SheetTitle>학습 보조</SheetTitle>
                   </SheetHeader>
@@ -327,7 +335,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* 관련 조문 chip 행 */}
-            <Card className="rounded-xl border border-border shadow-sm">
+            <Card className="border-border rounded-xl border shadow-sm">
               <CardHeader className="px-5 py-3">
                 <RelatedSection
                   title="관련 조문"
@@ -344,7 +352,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             </Card>
 
             {/* ── 판례 헤더 카드 (§6.4) ── */}
-            <Card className="rounded-xl border border-border shadow-sm">
+            <Card className="border-border rounded-xl border shadow-sm">
               <CardHeader className="px-6 pt-6 pb-4">
                 {/* 메타 행: 법원 · 사건번호 · 유형 · 전합 · 중요도 · 선고일 · 복사 버튼 */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -354,7 +362,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   </span>
 
                   {/* 사건번호 — mono, 강조 */}
-                  <span className="font-mono text-[14px] font-bold tracking-tight text-foreground tabular-nums">
+                  <span className="text-foreground font-mono text-[14px] font-bold tracking-tight tabular-nums">
                     {kase.caseNumber}
                   </span>
 
@@ -372,7 +380,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   {kase.isEnBanc ? (
                     <Badge
                       variant="default"
-                      className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground"
+                      className="bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[11px] font-bold"
                     >
                       전합
                     </Badge>
@@ -384,7 +392,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   ) : null}
 
                   {/* 선고일 */}
-                  <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                  <span className="text-muted-foreground ml-auto text-xs tabular-nums">
                     선고일 {kase.decidedAt}
                   </span>
 
@@ -397,30 +405,22 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   />
                 </div>
 
-                {/* 기출 연도 chip 행 */}
-                {kase.exam1stYears.length + kase.exam2ndYears.length > 0 ? (
+                {/* 기출 표시 — 1차는 출제 기출문제 칩(feat-8-024), 2차는 연도 배지 */}
+                {examProblems.length + kase.exam2ndYears.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {[...kase.exam1stYears]
-                      .sort((a, b) => a - b)
-                      .map((y) => (
-                        <ExamYearChip
-                          key={`1-${y}`}
-                          subjectSlug={subject.slug}
-                          round="first"
-                          year={y}
-                          caseId={kase.caseId}
-                        />
-                      ))}
+                    {examProblems.map((ep) => (
+                      <ExamProblemChip
+                        key={ep.problemId}
+                        lawCode={ep.lawCode}
+                        problemId={ep.problemId}
+                        year={ep.year}
+                        problemNumber={ep.problemNumber}
+                      />
+                    ))}
                     {[...kase.exam2ndYears]
                       .sort((a, b) => a - b)
                       .map((y) => (
-                        <ExamYearChip
-                          key={`2-${y}`}
-                          subjectSlug={subject.slug}
-                          round="second"
-                          year={y}
-                          caseId={kase.caseId}
-                        />
+                        <ExamYearChip key={`2-${y}`} round="second" year={y} />
                       ))}
                   </div>
                 ) : null}
@@ -429,20 +429,15 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               <Separator />
 
               {/* 본문 섹션들 */}
-              <CardContent className="px-6 py-7 space-y-8">
+              <CardContent className="space-y-8 px-6 py-7">
                 {summaryItems.length > 0 ? (
                   <BodySection title="판결요지">
-                    <CommentHighlightOverlay
-                      fieldPath="case.summary"
-                      targetType="case"
-                      targetId={kase.caseId}
-                      comments={caseComments}
-                    >
                     <HighlightOverlay
                       fieldPath="case.summary"
                       targetType="case"
                       targetId={kase.caseId}
                       highlights={highlights}
+                      viewerIsStaff={canEditComment}
                     >
                       <div className="space-y-5">
                         {summaryItems.map((it, i) => (
@@ -457,27 +452,20 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         ))}
                       </div>
                     </HighlightOverlay>
-                    </CommentHighlightOverlay>
                   </BodySection>
                 ) : null}
 
                 {kase.reasoningMd ? (
                   <BodySection title="판시이유">
-                    <CommentHighlightOverlay
-                      fieldPath="case.reasoning"
-                      targetType="case"
-                      targetId={kase.caseId}
-                      comments={caseComments}
-                    >
                     <HighlightOverlay
                       fieldPath="case.reasoning"
                       targetType="case"
                       targetId={kase.caseId}
                       highlights={highlights}
+                      viewerIsStaff={canEditComment}
                     >
                       <Prose text={kase.reasoningMd} />
                     </HighlightOverlay>
-                    </CommentHighlightOverlay>
                   </BodySection>
                 ) : null}
 
@@ -499,21 +487,23 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         </a>
                       </Button>
                       {/* PDF placeholder 영역 — 점선 박스 */}
-                      <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/40 px-6 py-10 text-center">
-                        <FileTextIcon className="size-6 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground">판결전문 PDF</p>
+                      <div className="border-border bg-muted/40 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-10 text-center">
+                        <FileTextIcon className="text-muted-foreground/50 size-6" />
+                        <p className="text-muted-foreground text-sm">
+                          판결전문 PDF
+                        </p>
                       </div>
                       <iframe
                         title="판결전문 PDF"
                         src={kase.fullTextPdf}
-                        className="h-[80vh] w-full rounded-xl border border-border"
+                        className="border-border h-[80vh] w-full rounded-xl border"
                         loading="lazy"
                       />
                     </div>
                   </BodySection>
                 ) : null}
 
-                {(references.length > 0 || canEditReferences) ? (
+                {references.length > 0 || canEditReferences ? (
                   <CaseReferencesPanel
                     caseId={kase.caseId}
                     references={references}
@@ -525,30 +515,24 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   <BodySection title="비고">
                     {/* 출처 박스 */}
                     {kase.commentSource ? (
-                      <div className="mb-3 rounded-lg border border-border bg-muted/60 px-4 py-3">
-                        <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
+                      <div className="border-border bg-muted/60 mb-3 rounded-lg border px-4 py-3">
+                        <p className="text-muted-foreground mb-0.5 font-mono text-[10px] font-bold tracking-widest uppercase">
                           출처
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                           {kase.commentSource}
                         </p>
                       </div>
                     ) : null}
-                    <CommentHighlightOverlay
-                      fieldPath="case.comment"
-                      targetType="case"
-                      targetId={kase.caseId}
-                      comments={caseComments}
-                    >
                     <HighlightOverlay
                       fieldPath="case.comment"
                       targetType="case"
                       targetId={kase.caseId}
                       highlights={highlights}
+                      viewerIsStaff={canEditComment}
                     >
                       <Prose text={kase.commentBodyMd} />
                     </HighlightOverlay>
-                    </CommentHighlightOverlay>
                   </BodySection>
                 ) : null}
               </CardContent>
@@ -556,8 +540,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           </main>
 
           {/* ── 우측 학습 패널 (데스크톱 sticky) ── */}
-          <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <Card className="rounded-xl border border-border shadow-sm h-full">
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <Card className="border-border h-full rounded-xl border shadow-sm">
               <CardContent className="p-0">
                 <ArticleRightPanel
                   target={{ type: "case", id: kase.caseId }}
@@ -583,7 +567,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 // ── 중요도 별 인디케이터 ─────────────────────────────────────
 function ImportanceStars({ level }: { level: number }) {
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`중요도 ${level}성`}>
+    <span
+      className="inline-flex items-center gap-0.5"
+      aria-label={`중요도 ${level}성`}
+    >
       {[0, 1, 2].map((i) => (
         <StarIcon
           key={i}
@@ -614,15 +601,15 @@ function BodySection({
     <section className="space-y-3">
       <div className="flex items-baseline gap-3">
         {/* eyebrow: uppercase mono, primary blue */}
-        <h2 className="text-[11px] font-bold uppercase tracking-widest text-primary font-mono">
+        <h2 className="text-primary font-mono text-[11px] font-bold tracking-widest uppercase">
           {title}
         </h2>
         {meta ? (
-          <span className="text-xs text-muted-foreground">출처: {meta}</span>
+          <span className="text-muted-foreground text-xs">출처: {meta}</span>
         ) : null}
       </div>
       {/* 섹션 구분 선 */}
-      <div className="border-t border-border/60" />
+      <div className="border-border/60 border-t" />
       {children}
     </section>
   );
@@ -656,15 +643,14 @@ function SummaryBlock({
     label = `[${index + 1}]`;
   }
   const duplicatesHeader =
-    displayTitle.trim() !== "" &&
-    displayTitle.trim() === caseTitle.trim();
+    displayTitle.trim() !== "" && displayTitle.trim() === caseTitle.trim();
   const shownTitle = duplicatesHeader ? "" : displayTitle;
   return (
     <div className="space-y-2">
       {label || shownTitle ? (
-        <p className="text-[16px] font-bold leading-snug tracking-tight">
+        <p className="text-[16px] leading-snug font-bold tracking-tight">
           {label ? (
-            <span className="mr-1.5 font-mono text-primary">{label}</span>
+            <span className="text-primary mr-1.5 font-mono">{label}</span>
           ) : null}
           {shownTitle}
         </p>
@@ -684,7 +670,7 @@ function Prose({ text }: { text: string }) {
     .split(/\n{2,}/)
     .filter((s) => s.trim() !== "");
   return (
-    <div className="space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em] text-foreground/90 dark:text-foreground/85">
+    <div className="text-foreground/90 dark:text-foreground/85 space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
       {paras.map((p, i) => (
         <p key={i} className="whitespace-pre-line">
           {p}

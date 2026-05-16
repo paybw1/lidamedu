@@ -14,12 +14,12 @@ import type {
   SystematicArticleRef,
   SystematicNode,
 } from "~/features/laws/queries.server";
-import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import {
+  type NodeProgressByArticle,
   NodeProgressGauge,
   sumNodeProgress,
-  type NodeProgressByArticle,
 } from "~/features/subjects/components/node-progress-gauge";
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 type ImportanceFilter = 0 | 1 | 2 | 3;
 type BookmarkFilter = 0 | 1 | 2 | 3 | 4 | 5;
@@ -228,7 +228,7 @@ export function SystematicTree({
                 className={cn(
                   "rounded-md border px-1.5 py-0.5 text-[11px] transition-colors",
                   bookmarkFilter === v
-                    ? "bg-rose-500 text-white border-rose-500"
+                    ? "border-rose-500 bg-rose-500 text-white"
                     : "bg-background hover:bg-accent text-muted-foreground border-input",
                 )}
               >
@@ -320,9 +320,7 @@ function SystematicItem({
     <span className="inline-block size-3" />
   );
 
-  const labelEl = (
-    <span className="flex-1 truncate">{node.displayLabel}</span>
-  );
+  const labelEl = <span className="flex-1 truncate">{node.displayLabel}</span>;
   const countEl =
     node.subtreeArticleCount > 0 ? (
       <span className="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums">
@@ -345,9 +343,10 @@ function SystematicItem({
   const totals = progressByArticle
     ? sumNodeProgress(subtreeArticleIds, progressByArticle)
     : null;
-  const gaugeEl = totals && totals.articleTotal > 0 ? (
-    <NodeProgressGauge totals={totals} compact />
-  ) : null;
+  const gaugeEl =
+    totals && totals.articleTotal > 0 ? (
+      <NodeProgressGauge totals={totals} compact />
+    ) : null;
 
   return (
     <li>
@@ -382,7 +381,7 @@ function SystematicItem({
         </div>
       )}
       {open ? (
-        <div className="ml-[15px] space-y-0.5 border-l-[1.5px] border-border pl-0.5">
+        <div className="border-border ml-[15px] space-y-0.5 border-l-[1.5px] pl-0.5">
           {hasArticles ? (
             <ul className="space-y-0.5">
               {node.articles.map((a) => (
@@ -428,7 +427,12 @@ function ArticleLeafLink({
   bookmarkLevel,
   annotation,
 }: {
-  article: { articleId: string; articleNumber: string | null; displayLabel: string; importance: number };
+  article: {
+    articleId: string;
+    articleNumber: string | null;
+    displayLabel: string;
+    importance: number;
+  };
   activeArticleId?: string;
   lawCode: LawSubjectSlug;
   bookmarkLevel: number;
@@ -502,8 +506,8 @@ function ArticleAnnotationIndicators({
       {memos > 0 ? (
         <span
           className="inline-flex shrink-0 items-center text-emerald-600 dark:text-emerald-400"
-          aria-label={`메모 ${memos}개`}
-          title={`메모 ${memos}개`}
+          aria-label={`포스트잇 ${memos}개`}
+          title={`포스트잇 ${memos}개`}
         >
           <StickyNoteIcon className="size-3" />
           <span className="ml-0.5 text-[10px] tabular-nums">{memos}</span>
@@ -526,7 +530,9 @@ function ArticleAnnotationIndicators({
           title={`즐겨찾기 ${bookmarkLevel}`}
         >
           <HeartIcon className="size-3 fill-current" />
-          <span className="ml-0.5 text-[10px] tabular-nums">{bookmarkLevel}</span>
+          <span className="ml-0.5 text-[10px] tabular-nums">
+            {bookmarkLevel}
+          </span>
         </span>
       ) : null}
     </>

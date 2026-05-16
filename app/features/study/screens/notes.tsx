@@ -1,5 +1,6 @@
-// 메모 — 조문·판례·문제 뷰어에서 작성한 메모 모아보기. 최근 수정 순.
+// 포스트잇 — 조문·판례·문제 뷰어에서 작성한 포스트잇 모아보기. 최근 수정 순.
 // 키트 lidam-study-aids/NotesScreen 디자인.
+import type { Route } from "./+types/notes";
 
 import { PencilLineIcon, SearchIcon, StickyNoteIcon } from "lucide-react";
 import { useState } from "react";
@@ -31,9 +32,9 @@ import {
   SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
 
-import type { Route } from "./+types/notes";
-
-export const meta: Route.MetaFunction = () => [{ title: "메모 | Lidam Patent Attorney Academy" }];
+export const meta: Route.MetaFunction = () => [
+  { title: "포스트잇 | Lidam Patent Attorney Academy" },
+];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -46,7 +47,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     listAllMemos(client, user.id),
     getStudyAidCounts(client, user.id),
   ]);
-  const counts = { total: items.length, article: 0, case: 0, problem: 0, ox: 0 };
+  const counts = {
+    total: items.length,
+    article: 0,
+    case: 0,
+    problem: 0,
+    ox: 0,
+  };
   for (const m of items) {
     if (m.targetType === "article") counts.article += 1;
     else if (m.targetType === "case") counts.case += 1;
@@ -107,8 +114,8 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
     <StudyAidsShell
       active="notes"
       tabCounts={toTabCounts(aidCounts)}
-      title="메모"
-      desc="조문 · 판례 · 문제 뷰어에서 작성한 메모. 최근 수정 순으로 정렬됩니다."
+      title="포스트잇"
+      desc="조문 · 판례 · 문제 뷰어에서 작성한 포스트잇. 최근 수정 순으로 정렬됩니다."
       summaryStats={[
         { label: "전체", value: counts.total, dotClass: "bg-primary" },
         { label: "조문", value: counts.article, dotClass: "bg-primary" },
@@ -120,7 +127,11 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
       <FilterBar
         hasActive={hasActive}
         onReset={reset}
-        search={{ value: q, onChange: setQ, placeholder: "메모 본문·발췌 검색" }}
+        search={{
+          value: q,
+          onChange: setQ,
+          placeholder: "포스트잇 본문·발췌 검색",
+        }}
       >
         <FilterGroup label="1차 과목">
           <FilterChip selected={!subject} onClick={() => setSubject(null)}>
@@ -154,7 +165,11 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
             전체
           </FilterChip>
           {TYPE_OPTIONS.map(([k, label]) => (
-            <FilterChip key={k} selected={type === k} onClick={() => setType(k)}>
+            <FilterChip
+              key={k}
+              selected={type === k}
+              onClick={() => setType(k)}
+            >
               {label}
             </FilterChip>
           ))}
@@ -166,15 +181,15 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
           <EmptyState
             icon={StickyNoteIcon}
             tone="neutral"
-            title="아직 메모가 없습니다"
-            body="조문·판례·문제 뷰어 본문에 메모를 남겨 보세요. 모은 메모는 이 화면에서 한 번에 검색할 수 있습니다."
+            title="아직 포스트잇이 없습니다"
+            body="조문·판례·문제 뷰어 본문에 포스트잇을 남겨 보세요. 모은 포스트잇은 이 화면에서 한 번에 검색할 수 있습니다."
             cta={{ label: "학습 시작", to: "/dashboard" }}
           />
         ) : (
           <EmptyState
             icon={SearchIcon}
             tone="subdued"
-            title="검색·필터에 해당하는 메모가 없습니다"
+            title="검색·필터에 해당하는 포스트잇이 없습니다"
             body="검색어를 줄이거나 필터를 풀어 보세요."
           />
         )

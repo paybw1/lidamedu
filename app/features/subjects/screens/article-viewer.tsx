@@ -1,3 +1,5 @@
+import type { Route } from "./+types/article-viewer";
+
 import {
   BrainIcon,
   ChevronLeftIcon,
@@ -20,8 +22,6 @@ import { Link, data, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
-import { dispatchOpenCommentTab } from "~/features/laws/lib/comment-event";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import {
@@ -32,6 +32,8 @@ import {
   SheetTrigger,
 } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
+import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
   getBookmark,
   getUserArticleAnnotationCounts,
@@ -39,28 +41,26 @@ import {
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
-import { recordStudySession } from "~/features/study/queries.server";
-import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
-import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
-import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
-import { FlowNav } from "~/features/study/components/flow-nav";
 import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
-import { RecitationView } from "~/features/recitation/components/recitation-view";
 import { BlankOwnerSelector } from "~/features/blanks/components/blank-owner-selector";
 import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambiguous-panel";
 import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
 import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
 import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
+import { listComments } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
+import { compareArticlesNatural } from "~/features/laws/lib/article-sort";
+import { dispatchOpenCommentTab } from "~/features/laws/lib/comment-event";
 import {
   articleDisplayPrefix,
   articleNumberText,
   parseSlug,
 } from "~/features/laws/lib/identifier";
 import {
+  type RevisionHistoryEntry,
   getArticleByNumber,
   getArticleByNumberAt,
   getArticleSkeleton,
@@ -68,15 +68,16 @@ import {
   getStaffRole,
   getSystematicSkeleton,
   listArticleRevisionHistory,
-  type RevisionHistoryEntry,
 } from "~/features/laws/queries.server";
-import { listComments } from "~/features/comments/queries.server";
 import {
   getOxAnnotationsForRefs,
   getOxQuestionsForArticle,
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
+import { RecitationView } from "~/features/recitation/components/recitation-view";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
+import { FlowNav } from "~/features/study/components/flow-nav";
+import { recordStudySession } from "~/features/study/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
   SortAxisProvider,
@@ -89,8 +90,6 @@ import {
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
-
-import type { Route } from "./+types/article-viewer";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "조문 | Lidam Patent Attorney Academy" }];
@@ -128,8 +127,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 비교 모드 ?compare=YYYY-MM-DD — 동시에 다른 시점 본문을 한 화면에 함께 노출.
   const reqUrl0 = new URL(request.url);
   const atRaw = reqUrl0.searchParams.get("at");
-  const atDate =
-    atRaw && /^\d{4}-\d{2}-\d{2}$/.test(atRaw) ? atRaw : null;
+  const atDate = atRaw && /^\d{4}-\d{2}-\d{2}$/.test(atRaw) ? atRaw : null;
   const compareRaw = reqUrl0.searchParams.get("compare");
   const compareDate =
     compareRaw && /^\d{4}-\d{2}-\d{2}$/.test(compareRaw) ? compareRaw : null;
@@ -213,8 +211,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const recitationParam = reqUrl.searchParams.get("recitation") === "1";
   const blankSet =
     blankSetIdParam != null
-      ? blankSets.find((s) => s.setId === blankSetIdParam) ?? blankSets[0] ?? null
-      : blankSets[0] ?? null;
+      ? (blankSets.find((s) => s.setId === blankSetIdParam) ??
+        blankSets[0] ??
+        null)
+      : (blankSets[0] ?? null);
 
   // 진도 기록 (loader 안에서 1번 fire-and-forget; 실패해도 화면은 계속)
   recordStudySession(client, user.id, {
@@ -326,10 +326,15 @@ function ArticleViewerInner({
       .filter((a) => a.level === "article" && a.articleNumber)
       .slice()
       .sort(compareArticlesNatural);
-    const idx = onlyArticles.findIndex((a) => a.articleId === article.articleId);
+    const idx = onlyArticles.findIndex(
+      (a) => a.articleId === article.articleId,
+    );
     return {
       prev: idx > 0 ? onlyArticles[idx - 1] : null,
-      next: idx >= 0 && idx < onlyArticles.length - 1 ? onlyArticles[idx + 1] : null,
+      next:
+        idx >= 0 && idx < onlyArticles.length - 1
+          ? onlyArticles[idx + 1]
+          : null,
     };
   }, [articles, article.articleId]);
 
@@ -381,19 +386,19 @@ function ArticleViewerInner({
   const activeMode = editMode
     ? "edit"
     : blankMode
-    ? "cloze"
-    : subjectBlankMode
-    ? "subject"
-    : periodBlankMode
-    ? "period"
-    : recitationMode
-    ? "memorize"
-    : subtitlesOnly
-    ? "outline"
-    : "normal";
+      ? "cloze"
+      : subjectBlankMode
+        ? "subject"
+        : periodBlankMode
+          ? "period"
+          : recitationMode
+            ? "memorize"
+            : subtitlesOnly
+              ? "outline"
+              : "normal";
 
   return (
-    <div className="flex min-h-[calc(100vh-56px)] flex-col bg-background">
+    <div className="bg-background flex min-h-[calc(100vh-56px)] flex-col">
       {article.articleNumber ? (
         <FlowNav
           subjectSlug={subject.slug}
@@ -401,28 +406,26 @@ function ArticleViewerInner({
           currentId={article.articleNumber}
         />
       ) : null}
-      <HighlightToolbar
-        targetType="article"
-        targetId={article.articleId}
-        staff={staffRole !== null}
-      />
+      <HighlightToolbar targetType="article" targetId={article.articleId} />
 
       {/* 시점/비교 배너 — amber tone */}
       {atDate || compareDate ? (
         <div className="border-b border-amber-200 bg-amber-50/60 px-4 py-2 dark:border-amber-700/40 dark:bg-amber-950/20">
           <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-2 text-xs text-amber-900 dark:text-amber-200">
             <span>
-              {compareDate ? <strong>시점 비교 모드</strong> : <strong>시점 조회 모드</strong>}
+              {compareDate ? (
+                <strong>시점 비교 모드</strong>
+              ) : (
+                <strong>시점 조회 모드</strong>
+              )}
               {atDate ? ` · 기준 ${atDate}` : null}
               {compareDate ? ` · 비교 ${compareDate}` : null}
             </span>
             <a
               href={
-                typeof window !== "undefined"
-                  ? window.location.pathname
-                  : "."
+                typeof window !== "undefined" ? window.location.pathname : "."
               }
-              className="ml-auto text-primary hover:underline"
+              className="text-primary ml-auto hover:underline"
             >
               현재 시점으로 돌아가기 →
             </a>
@@ -433,11 +436,10 @@ function ArticleViewerInner({
       {/* 3-pane shell: left tree | body | right panel */}
       <div className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-5 md:px-8 md:py-7">
         <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-
           {/* ── LEFT TREE (desktop sticky) ─────────────────────────────── */}
-          <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <div className="rounded-xl border border-border bg-card shadow-sm">
-              <div className="flex items-center justify-end gap-2 border-b border-border px-3 py-2.5">
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <div className="border-border bg-card rounded-xl border shadow-sm">
+              <div className="border-border flex items-center justify-end gap-2 border-b px-3 py-2.5">
                 <SortAxisToggle
                   size="sm"
                   disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -465,7 +467,7 @@ function ArticleViewerInner({
                   />
                 )}
                 {axis === "systematic" && systematicEmpty ? (
-                  <p className="mt-2 px-2 text-xs text-muted-foreground">
+                  <p className="text-muted-foreground mt-2 px-2 text-xs">
                     * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
                   </p>
                 ) : null}
@@ -488,7 +490,10 @@ function ArticleViewerInner({
                     <ListTreeIcon className="size-3.5" /> 조문 트리
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
+                <SheetContent
+                  side="left"
+                  className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+                >
                   <SheetHeader>
                     <SheetTitle>조문 트리</SheetTitle>
                   </SheetHeader>
@@ -496,7 +501,9 @@ function ArticleViewerInner({
                     <div className="flex justify-end">
                       <SortAxisToggle
                         size="sm"
-                        disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                        disabledAxes={
+                          systematicEmpty ? ["systematic"] : undefined
+                        }
                       />
                     </div>
                     {renderSystematic ? (
@@ -520,8 +527,9 @@ function ArticleViewerInner({
                       />
                     )}
                     {axis === "systematic" && systematicEmpty ? (
-                      <p className="mt-2 px-2 text-xs text-muted-foreground">
-                        * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
+                      <p className="text-muted-foreground mt-2 px-2 text-xs">
+                        * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로
+                        표시
                       </p>
                     ) : null}
                   </div>
@@ -538,7 +546,10 @@ function ArticleViewerInner({
                     <PanelRightIcon className="size-3.5" /> 우측 패널
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
+                <SheetContent
+                  side="right"
+                  className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
+                >
                   <SheetHeader>
                     <SheetTitle>학습 보조</SheetTitle>
                   </SheetHeader>
@@ -565,11 +576,10 @@ function ArticleViewerInner({
             </div>
 
             {/* ── Article header card ───────────────────────────────────── */}
-            <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="border-border bg-card rounded-xl border shadow-sm">
               <div className="px-6 pt-5 pb-4">
-
                 {/* Breadcrumb eyebrow */}
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                <p className="text-muted-foreground mb-3 text-[11px] font-semibold tracking-widest uppercase">
                   {subject.name}
                   {article.articleNumber
                     ? ` · ${articleDisplayPrefix(article.articleNumber)}`
@@ -581,15 +591,20 @@ function ArticleViewerInner({
                   <div className="min-w-0 flex-1">
                     {/* Law name chip + exam badge + importance stars */}
                     <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                      <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
                         {subject.name}
                       </span>
-                      <Badge variant="secondary" className="rounded-full text-[11px]">
+                      <Badge
+                        variant="secondary"
+                        className="rounded-full text-[11px]"
+                      >
                         {EXAM_LABEL[subject.exam]}
                       </Badge>
                       {article.importance >= 1 ? (
                         <span className="inline-flex items-center gap-0.5">
-                          {Array.from({ length: Math.min(3, article.importance) }).map((_, i) => (
+                          {Array.from({
+                            length: Math.min(3, article.importance),
+                          }).map((_, i) => (
                             <svg
                               key={i}
                               width="13"
@@ -603,7 +618,9 @@ function ArticleViewerInner({
                               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
                             </svg>
                           ))}
-                          {Array.from({ length: Math.max(0, 3 - article.importance) }).map((_, i) => (
+                          {Array.from({
+                            length: Math.max(0, 3 - article.importance),
+                          }).map((_, i) => (
                             <svg
                               key={`e-${i}`}
                               width="13"
@@ -622,16 +639,22 @@ function ArticleViewerInner({
                     </div>
 
                     {/* Article headline */}
-                    <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-foreground md:text-[30px]">
-                      <span className="text-primary">{article.displayLabel.split(/\s+/)[0]}</span>
-                      {" "}
-                      <span>{article.displayLabel.split(/\s+/).slice(1).join(" ")}</span>
+                    <h1 className="text-foreground text-[28px] leading-tight font-extrabold tracking-tight md:text-[30px]">
+                      <span className="text-primary">
+                        {article.displayLabel.split(/\s+/)[0]}
+                      </span>{" "}
+                      <span>
+                        {article.displayLabel.split(/\s+/).slice(1).join(" ")}
+                      </span>
                     </h1>
 
                     {/* Sub-line: effective date + snapshot */}
                     {article.effectiveDate ? (
-                      <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                        <ClockIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                      <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-[13px]">
+                        <ClockIcon
+                          className="size-3.5 shrink-0"
+                          aria-hidden="true"
+                        />
                         시행 {article.effectiveDate}
                       </p>
                     ) : null}
@@ -655,8 +678,11 @@ function ArticleViewerInner({
 
               {/* ── Snapshot / revision banner ─────────────────────────── */}
               {article.effectiveDate && !atDate && !compareDate ? (
-                <div className="mx-6 mb-4 flex items-center gap-2.5 rounded-lg border border-primary/15 bg-primary/10 px-3.5 py-2.5 text-xs text-primary">
-                  <HistoryIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                <div className="border-primary/15 bg-primary/10 text-primary mx-6 mb-4 flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-xs">
+                  <HistoryIcon
+                    className="size-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
                   <span>
                     <strong>최신 시행 ({article.effectiveDate})</strong>
                     {" · "}현재 시행 중인 개정 스냅샷입니다.
@@ -671,9 +697,9 @@ function ArticleViewerInner({
               ) : null}
 
               {/* ── Mode toolbar ───────────────────────────────────────── */}
-              <div className="mx-6 mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5">
+              <div className="border-border bg-muted/50 mx-6 mb-5 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5">
                 {/* Pill-group segmented control */}
-                <div className="inline-flex items-center gap-0.5 rounded-full border border-border bg-background p-1">
+                <div className="border-border bg-background inline-flex items-center gap-0.5 rounded-full border p-1">
                   <ModeButton
                     active={activeMode === "normal"}
                     onClick={() => {
@@ -705,7 +731,7 @@ function ArticleViewerInner({
                     >
                       <PencilLineIcon className="size-3" aria-hidden="true" />
                       내용 빈칸
-                      <span className="tabular-nums text-[10px] opacity-70">
+                      <span className="text-[10px] tabular-nums opacity-70">
                         {blankSet!.blanks.length}
                       </span>
                     </ModeButton>
@@ -727,7 +753,7 @@ function ArticleViewerInner({
                     >
                       <PencilLineIcon className="size-3" aria-hidden="true" />
                       주체 빈칸
-                      <span className="tabular-nums text-[10px] opacity-70">
+                      <span className="text-[10px] tabular-nums opacity-70">
                         {subjectBlanks.length}
                       </span>
                     </ModeButton>
@@ -749,7 +775,7 @@ function ArticleViewerInner({
                     >
                       <PencilLineIcon className="size-3" aria-hidden="true" />
                       기간 빈칸
-                      <span className="tabular-nums text-[10px] opacity-70">
+                      <span className="text-[10px] tabular-nums opacity-70">
                         {periodResult.blanks.length}
                         {periodResult.ambiguous.length > 0
                           ? `+${periodResult.ambiguous.length}?`
@@ -819,14 +845,18 @@ function ArticleViewerInner({
                     >
                       <ScrollTextIcon className="size-3" aria-hidden="true" />
                       해설
-                      <span className="tabular-nums text-[10px] opacity-70">
+                      <span className="text-[10px] tabular-nums opacity-70">
                         {articleComments.length}
                       </span>
                     </ModeButton>
                   ) : null}
                   {relatedCases.length > 0 && article.articleNumber ? (
                     <form method="post" action="/api/study/start-flow">
-                      <input type="hidden" name="subject" value={subject.slug} />
+                      <input
+                        type="hidden"
+                        name="subject"
+                        value={subject.slug}
+                      />
                       <input
                         type="hidden"
                         name="articleId"
@@ -967,27 +997,24 @@ function ArticleViewerInner({
                       body={body}
                     />
                   ) : (
-                    <CommentHighlightOverlay
-                      fieldPath="article.body"
-                      comments={articleComments}
-                      targetType="article"
-                      targetId={article.articleId}
-                    >
                     <HighlightOverlay
                       fieldPath="article.body"
                       highlights={highlights}
+                      targetType="article"
+                      targetId={article.articleId}
+                      viewerIsStaff={staffRole !== null}
                     >
                       {compareBody ? (
                         <div className="grid gap-6 md:grid-cols-2">
                           <div>
-                            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wide uppercase">
                               {atDate ? `시점 ${atDate}` : "현재"}
                               {article.effectiveDate
                                 ? ` (시행 ${article.effectiveDate})`
                                 : ""}
                             </p>
                             {body ? (
-                              <div className="text-[17px] leading-[1.85] text-foreground">
+                              <div className="text-foreground text-[17px] leading-[1.85]">
                                 <ArticleBodyView
                                   body={body}
                                   titleMap={titleMap}
@@ -997,19 +1024,19 @@ function ArticleViewerInner({
                                 />
                               </div>
                             ) : (
-                              <p className="text-sm italic text-muted-foreground">
+                              <p className="text-muted-foreground text-sm italic">
                                 본문 없음
                               </p>
                             )}
                           </div>
-                          <div className="border-l border-border md:pl-5">
-                            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <div className="border-border border-l md:pl-5">
+                            <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wide uppercase">
                               비교 시점 {compareDate}
                               {compareEffectiveDate
                                 ? ` (시행 ${compareEffectiveDate})`
                                 : ""}
                             </p>
-                            <div className="text-[17px] leading-[1.85] text-foreground">
+                            <div className="text-foreground text-[17px] leading-[1.85]">
                               <ArticleBodyView
                                 body={compareBody}
                                 titleMap={titleMap}
@@ -1021,7 +1048,7 @@ function ArticleViewerInner({
                           </div>
                         </div>
                       ) : body ? (
-                        <div className="text-[17px] leading-[1.85] text-foreground">
+                        <div className="text-foreground text-[17px] leading-[1.85]">
                           <ArticleBodyView
                             body={body}
                             titleMap={titleMap}
@@ -1031,12 +1058,11 @@ function ArticleViewerInner({
                           />
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                           본문이 등록되지 않았거나 파싱할 수 없는 형식입니다.
                         </p>
                       )}
                     </HighlightOverlay>
-                    </CommentHighlightOverlay>
                   )}
                 </div>
               </div>
@@ -1044,8 +1070,8 @@ function ArticleViewerInner({
           </main>
 
           {/* ── RIGHT PANEL (desktop sticky) ────────────────────────────── */}
-          <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <div className="rounded-xl border border-border bg-card shadow-sm">
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <div className="border-border bg-card rounded-xl border shadow-sm">
               <ArticleRightPanel
                 target={{ type: "article", id: article.articleId }}
                 bookmark={bookmark}
@@ -1096,11 +1122,11 @@ function ModeButton({
       title={title}
       data-testid={dataTestId}
       className={[
-        "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-colors duration-150",
+        "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] leading-none font-medium transition-colors duration-150",
         "disabled:pointer-events-none disabled:opacity-40",
         active
           ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-          : "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
+          : "text-foreground hover:bg-accent hover:text-accent-foreground bg-transparent",
       ].join(" ")}
     >
       {children}
@@ -1115,18 +1141,15 @@ function PrevNextButton({
   subjectSlug,
 }: {
   direction: "prev" | "next";
-  target:
-    | {
-        articleId: string;
-        articleNumber: string | null;
-        displayLabel: string;
-      }
-    | null;
+  target: {
+    articleId: string;
+    articleNumber: string | null;
+    displayLabel: string;
+  } | null;
   subjectSlug: string;
 }) {
   const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
-  const ariaLabel =
-    direction === "prev" ? "이전 조문" : "다음 조문";
+  const ariaLabel = direction === "prev" ? "이전 조문" : "다음 조문";
 
   if (!target || !target.articleNumber) {
     return (
@@ -1134,7 +1157,7 @@ function PrevNextButton({
         type="button"
         disabled
         aria-label={ariaLabel}
-        className="inline-flex h-9 cursor-not-allowed items-center gap-1 rounded-full border border-border bg-background px-3 text-xs text-muted-foreground opacity-40"
+        className="border-border bg-background text-muted-foreground inline-flex h-9 cursor-not-allowed items-center gap-1 rounded-full border px-3 text-xs opacity-40"
       >
         {direction === "prev" ? <Icon className="size-3.5" /> : null}
         <span>{direction === "prev" ? "처음" : "마지막"}</span>
@@ -1148,7 +1171,7 @@ function PrevNextButton({
       to={`/subjects/${subjectSlug}/articles/${target.articleNumber}`}
       viewTransition
       aria-label={`${ariaLabel}: ${target.displayLabel}`}
-      className="inline-flex h-9 items-center gap-1 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors"
     >
       {direction === "prev" ? <Icon className="size-3.5 shrink-0" /> : null}
       <span className="max-w-[140px] truncate">{target.displayLabel}</span>

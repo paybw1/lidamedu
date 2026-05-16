@@ -1,9 +1,7 @@
-import {
-  BookOpenIcon,
-  ClockIcon,
-  CompassIcon,
-  StarIcon,
-} from "lucide-react";
+import type { LawSubjectMeta } from "../../lib/subjects";
+import type { NodeProgressByArticle } from "../node-progress-gauge";
+
+import { BookOpenIcon, ClockIcon, CompassIcon, StarIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -18,10 +16,8 @@ import type {
 } from "~/features/study/queries.server";
 
 import { ArticleTree } from "../article-tree";
-import type { NodeProgressByArticle } from "../node-progress-gauge";
-import { SystematicTree } from "../systematic-tree";
 import { SortAxisToggle, useSortAxis } from "../sort-axis";
-import type { LawSubjectMeta } from "../../lib/subjects";
+import { SystematicTree } from "../systematic-tree";
 
 export function ArticlesTab({
   subject,
@@ -53,10 +49,10 @@ export function ArticlesTab({
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       {/* Left: chapter outline */}
       <aside>
-        <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
+        <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
           {/* Outline header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
+          <div className="border-border flex items-center justify-between border-b px-4 py-3">
+            <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.10em] uppercase">
               장별 목차
             </p>
             <SortAxisToggle
@@ -82,14 +78,12 @@ export function ArticlesTab({
                 bookmarkLevels={bookmarkLevels}
                 annotationCounts={annotationCounts}
                 lazyExpand={
-                  subject.slug === "civil" && lawId
-                    ? { lawId }
-                    : undefined
+                  subject.slug === "civil" && lawId ? { lawId } : undefined
                 }
               />
             )}
             {axis === "systematic" && systematicEmpty ? (
-              <p className="mt-2 px-2 text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-2 px-2 text-xs">
                 * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
               </p>
             ) : null}
@@ -102,30 +96,32 @@ export function ArticlesTab({
         {/* Recent / Recommended row */}
         <div className="grid gap-3 sm:grid-cols-2">
           {/* 최근 학습 card */}
-          <Card className="rounded-xl border border-border shadow-sm transition-shadow hover:shadow-md">
-            <CardHeader className="px-4 pb-2 pt-4">
-              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
+          <Card className="border-border rounded-xl border shadow-sm transition-shadow hover:shadow-md">
+            <CardHeader className="px-4 pt-4 pb-2">
+              <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.10em] uppercase">
                 최근 학습
               </p>
             </CardHeader>
             <CardContent className="px-4 pb-4">
               {progress?.lastVisited ? (
-                <ul className="space-y-0 divide-y divide-border">
+                <ul className="divide-border space-y-0 divide-y">
                   <li className="flex items-baseline gap-2 py-2">
-                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
                       {progress.lastVisited.displayLabel}
                     </span>
-                    <ClockIcon className="size-3 shrink-0 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">방금 전</span>
+                    <ClockIcon className="text-muted-foreground size-3 shrink-0" />
+                    <span className="text-muted-foreground text-xs">
+                      방금 전
+                    </span>
                   </li>
                 </ul>
               ) : null}
               {!progress?.lastVisited ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   아직 학습 기록이 없습니다.
                 </p>
               ) : null}
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-2 text-xs">
                 {progress
                   ? `${progress.visitedArticleIds.size} / ${progress.totalArticleCount} 열람`
                   : "학습 진도 연결 예정"}
@@ -134,9 +130,9 @@ export function ArticlesTab({
           </Card>
 
           {/* 미열람 권장 card */}
-          <Card className="rounded-xl border border-border shadow-sm transition-shadow hover:shadow-md">
-            <CardHeader className="px-4 pb-2 pt-4">
-              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
+          <Card className="border-border rounded-xl border shadow-sm transition-shadow hover:shadow-md">
+            <CardHeader className="px-4 pt-4 pb-2">
+              <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.10em] uppercase">
                 미열람 권장
               </p>
             </CardHeader>
@@ -145,7 +141,7 @@ export function ArticlesTab({
               data-testid="recommended-articles"
             >
               {recommendedArticles.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   모든 조문을 한 번씩 열어봤습니다 🎉
                 </p>
               ) : (
@@ -172,7 +168,7 @@ export function ArticlesTab({
                   ))}
                 </ul>
               )}
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-2 text-xs">
                 중요도 ★ 높은 순. 클릭 시 조문 viewer 진입.
               </p>
             </CardContent>
@@ -180,16 +176,16 @@ export function ArticlesTab({
         </div>
 
         {/* Empty-state hint card — spans both columns */}
-        <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-8 text-center">
-          <BookOpenIcon className="mx-auto size-5 text-muted-foreground/50" />
-          <p className="mt-2 text-sm font-semibold text-foreground">
+        <div className="border-border bg-muted/20 rounded-xl border border-dashed px-6 py-8 text-center">
+          <BookOpenIcon className="text-muted-foreground/50 mx-auto size-5" />
+          <p className="text-foreground mt-2 text-sm font-semibold">
             좌측에서 조문을 선택하세요
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            관련 판례·문제·메모가 우측 패널에 함께 표시됩니다.
+          <p className="text-muted-foreground mt-1 text-xs">
+            관련 판례·문제·포스트잇이 우측 패널에 함께 표시됩니다.
           </p>
           {articleCount > 0 ? (
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-3 text-xs">
               조문 총 {articleCount}개
             </p>
           ) : null}

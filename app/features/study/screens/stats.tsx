@@ -1,11 +1,12 @@
 // feat-2-008 — 통합 학습 통계 페이지 (/study/stats)
 // 6 탭: 한눈에 / 조문 / 판례 / 객관식 / 주관식 / 빈칸·암기.
 // 각 탭은 서버 loader 가 일괄 fetch 한 데이터에서 슬라이스만 렌더.
+import type { Route } from "./+types/stats";
 
 import {
   ArrowRightIcon,
-  BookmarkIcon,
   BookOpenIcon,
+  BookmarkIcon,
   BrainIcon,
   CalendarIcon,
   FlaskConicalIcon,
@@ -36,9 +37,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "~/core/components/ui/tabs";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-
+import { cn } from "~/core/lib/utils";
 import { BlankStatsTabs } from "~/features/blanks/components/blank-stats-tabs";
 import {
   getUserAutoBlankStats,
@@ -46,12 +46,8 @@ import {
 } from "~/features/blanks/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
 import {
-  LAW_SUBJECTS,
-  LAW_SUBJECT_SLUGS,
-  type LawSubjectSlug,
-} from "~/features/subjects/lib/subjects";
-import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
-import {
+  type PassPredictionSnapshotItem,
+  type UserWeeklyAccuracyItem,
   getAllSubjectsProgress,
   getArticleStudyStats,
   getCaseStudyStats,
@@ -63,18 +59,15 @@ import {
   getUserPassPredictionTrend,
   getUserSubjectiveStats,
   getWeakAreas,
-  type PassPredictionSnapshotItem,
-  type UserWeeklyAccuracyItem,
 } from "~/features/study/queries.server";
+import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
+import {
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
 
-import type { Route } from "./+types/stats";
-
-const TAB_VALUES = [
-  "overview",
-  "first_exam",
-  "second_exam",
-  "blanks",
-] as const;
+const TAB_VALUES = ["overview", "first_exam", "second_exam", "blanks"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const DEFAULT_TAB: TabValue = "overview";
@@ -252,11 +245,7 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
 
 // ─── 한눈에 ───
 
-function OverviewTab({
-  data,
-}: {
-  data: Route.ComponentProps["loaderData"];
-}) {
+function OverviewTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const {
     overall,
     kpis,
@@ -319,7 +308,7 @@ function OverviewTab({
         />
         <KpiCard
           icon={StickyNoteIcon}
-          label="메모"
+          label="포스트잇"
           value={String(aidCounts.memos)}
         />
         <KpiCard
@@ -481,9 +470,7 @@ function OverviewTab({
                     {row.attempts}
                   </TableCell>
                   <TableCell className="text-right text-sm tabular-nums">
-                    {row.avgSelfScore === null
-                      ? "—"
-                      : `${row.avgSelfScore}점`}
+                    {row.avgSelfScore === null ? "—" : `${row.avgSelfScore}점`}
                   </TableCell>
                   <TableCell>
                     <Link
@@ -507,10 +494,14 @@ function OverviewTab({
 // ─── 차수 분기 헬퍼 ───
 
 type FirstSubject<T extends { lawCode: LawSubjectSlug }> = T;
-function isFirstExamSubject<T extends { lawCode: LawSubjectSlug }>(r: T): r is FirstSubject<T> {
+function isFirstExamSubject<T extends { lawCode: LawSubjectSlug }>(
+  r: T,
+): r is FirstSubject<T> {
   return LAW_SUBJECTS[r.lawCode].exam !== "second";
 }
-function isSecondExamSubject<T extends { lawCode: LawSubjectSlug }>(r: T): r is T {
+function isSecondExamSubject<T extends { lawCode: LawSubjectSlug }>(
+  r: T,
+): r is T {
   return LAW_SUBJECTS[r.lawCode].exam !== "first";
 }
 
@@ -542,7 +533,7 @@ function ArticlesSection({
           </p>
           <Badge variant="outline" className="text-[10px]">
             열람 {summary.visited} / {summary.total} ({pct}%) · 즐겨찾기{" "}
-            {summary.bookmarks} · 메모 {summary.memos} · 하이라이트{" "}
+            {summary.bookmarks} · 포스트잇 {summary.memos} · 하이라이트{" "}
             {summary.highlights}
           </Badge>
         </div>
@@ -554,7 +545,7 @@ function ArticlesSection({
               <TableHead>과목</TableHead>
               <TableHead className="w-24 text-right">열람</TableHead>
               <TableHead className="w-20 text-right">즐겨찾기</TableHead>
-              <TableHead className="w-20 text-right">메모</TableHead>
+              <TableHead className="w-20 text-right">포스트잇</TableHead>
               <TableHead className="w-20 text-right">하이라이트</TableHead>
               <TableHead className="w-16"></TableHead>
             </TableRow>
@@ -666,11 +657,7 @@ function CasesSection({
 
 // ─── 1차 통계 (조문 + 판례 + 객관식) ───
 
-function FirstExamTab({
-  data,
-}: {
-  data: Route.ComponentProps["loaderData"];
-}) {
+function FirstExamTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const {
     subjectsProgress,
     scienceProgress,
@@ -893,11 +880,7 @@ function FirstExamTab({
 
 // ─── 2차 통계 (조문 + 판례 + 주관식) ───
 
-function SecondExamTab({
-  data,
-}: {
-  data: Route.ComponentProps["loaderData"];
-}) {
+function SecondExamTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
   const { subjectiveStats, articleStats, caseStats } = data;
   const secondLaw = subjectiveStats.bySubject.filter(isSecondExamSubject);
   const secondArticles = articleStats.bySubject.filter(isSecondExamSubject);

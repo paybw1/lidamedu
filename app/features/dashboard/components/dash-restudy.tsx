@@ -45,7 +45,7 @@ export function ReentryChipsCard({
       to: "/study/bookmarks",
     },
     {
-      label: "메모",
+      label: "포스트잇",
       icon: StickyNoteIcon,
       count: counts.memos,
       to: "/study/notes",

@@ -1,3 +1,6 @@
+// 하이라이트 목록 — 우측 패널 "하이라이트" 탭.
+// feat-8-023: 강사 작성 하이라이트는 모든 수험생에게 노출(읽기 전용 + "강사" 표식),
+//   본인 것만 삭제 가능.
 import { Trash2Icon } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -20,10 +23,13 @@ export function HighlightList({
   targetType: _targetType,
   targetId: _targetId,
   initial,
+  viewerIsStaff = false,
 }: {
   targetType: AnnotationTargetType;
   targetId: string;
   initial: HighlightRecord[];
+  /** 보는 사람이 강사·원장인지 — 본인 하이라이트도 강사 표식으로 표시. */
+  viewerIsStaff?: boolean;
 }) {
   const deleteFetcher = useFetcher();
 
@@ -36,8 +42,8 @@ export function HighlightList({
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-xs leading-relaxed">
-        본문에서 텍스트를 드래그하면 선택 영역 위에 색상 툴바가 떠오릅니다.
-        색을 클릭하면 저장됩니다.
+        본문에서 텍스트를 드래그하면 선택 영역 위에 색상 툴바가 떠오릅니다. 색을
+        클릭하면 저장됩니다.
       </p>
 
       <div className="space-y-2">
@@ -55,31 +61,45 @@ export function HighlightList({
           </p>
         ) : (
           <ul className="space-y-1.5">
-            {visible.map((h) => (
-              <li
-                key={h.highlightId}
-                className={cn(
-                  "group flex items-start gap-2 rounded-md border p-2 text-xs leading-relaxed",
-                  COLOR_CLASS[h.color],
-                )}
-              >
-                <span className="flex-1">{h.excerpt || "(발췌 없음)"}</span>
-                <deleteFetcher.Form
-                  method="post"
-                  action="/api/annotations/highlight"
+            {visible.map((h) => {
+              const isStaffHl = !h.isMine || viewerIsStaff;
+              return (
+                <li
+                  key={h.highlightId}
+                  className={cn(
+                    "group flex items-start gap-2 rounded-md border p-2 text-xs leading-relaxed",
+                    COLOR_CLASS[h.color],
+                  )}
                 >
-                  <input type="hidden" name="intent" value="delete" />
-                  <input type="hidden" name="highlightId" value={h.highlightId} />
-                  <button
-                    type="submit"
-                    aria-label="하이라이트 삭제"
-                    className="hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <Trash2Icon className="size-3.5" />
-                  </button>
-                </deleteFetcher.Form>
-              </li>
-            ))}
+                  {isStaffHl ? (
+                    <span className="mt-0.5 shrink-0 rounded-sm bg-black/10 px-1 py-0.5 text-[10px] font-bold">
+                      강사
+                    </span>
+                  ) : null}
+                  <span className="flex-1">{h.excerpt || "(발췌 없음)"}</span>
+                  {h.isMine ? (
+                    <deleteFetcher.Form
+                      method="post"
+                      action="/api/annotations/highlight"
+                    >
+                      <input type="hidden" name="intent" value="delete" />
+                      <input
+                        type="hidden"
+                        name="highlightId"
+                        value={h.highlightId}
+                      />
+                      <button
+                        type="submit"
+                        aria-label="하이라이트 삭제"
+                        className="hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        <Trash2Icon className="size-3.5" />
+                      </button>
+                    </deleteFetcher.Form>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

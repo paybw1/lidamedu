@@ -6,20 +6,11 @@ import {
   HistoryIcon,
   ListChecksIcon,
   MessageCircleQuestionIcon,
-  NotebookPenIcon,
   PaperclipIcon,
   ScrollTextIcon,
+  StickyNoteIcon,
 } from "lucide-react";
 import { type ComponentType, useEffect, useState } from "react";
-
-import {
-  MEMO_SNIPPET_EVENT,
-  type MemoSnippetEventDetail,
-} from "~/features/annotations/lib/memo-selection-event";
-import {
-  OPEN_COMMENT_TAB_EVENT,
-  type OpenCommentTabEventDetail,
-} from "~/features/laws/lib/comment-event";
 
 import { Badge } from "~/core/components/ui/badge";
 import {
@@ -38,9 +29,19 @@ import type {
   HighlightRecord,
   MemoRecord,
 } from "~/features/annotations/labels";
+import {
+  MEMO_SNIPPET_EVENT,
+  type MemoSnippetEventDetail,
+} from "~/features/annotations/lib/memo-selection-event";
 import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import type { ContentComment } from "~/features/comments/queries.server";
 import { RelatedCasesList } from "~/features/laws/components/related-chips";
+import { RevisionHistory } from "~/features/laws/components/revision-history";
+import {
+  OPEN_COMMENT_TAB_EVENT,
+  type OpenCommentTabEventDetail,
+} from "~/features/laws/lib/comment-event";
+import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
 import { OxQuestionsPanel } from "~/features/problems/components/ox-questions-panel";
 import { RelatedProblemsList } from "~/features/problems/components/related-problems-list";
 import type {
@@ -48,13 +49,8 @@ import type {
   OxRefAnnotations,
 } from "~/features/problems/labels";
 import type { RelatedProblemItem } from "~/features/problems/queries.server";
-import { RevisionHistory } from "~/features/laws/components/revision-history";
-import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
-import type {
-  QnaTargetType,
-  QnaThreadSummary,
-} from "~/features/qna/labels";
+import type { QnaTargetType, QnaThreadSummary } from "~/features/qna/labels";
 import type { RelatedCase } from "~/features/relations/labels";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -77,14 +73,14 @@ interface PanelTabMeta {
 
 const TAB_META: Record<TabKey, PanelTabMeta> = {
   bookmark: { label: "즐겨찾기", Icon: HeartIcon },
-  memo: { label: "메모", Icon: NotebookPenIcon },
+  memo: { label: "포스트잇", Icon: StickyNoteIcon },
   highlight: { label: "하이라이트", Icon: HighlighterIcon },
   cases: { label: "판례", Icon: GavelIcon },
   "related-problems": { label: "유사 문제", Icon: ListChecksIcon },
   qna: { label: "Q&A", Icon: MessageCircleQuestionIcon },
   revisions: { label: "개정이력", Icon: HistoryIcon },
   ox: { label: "정오문제", Icon: CheckSquareIcon },
-  comment: { label: "코멘트", Icon: ScrollTextIcon },
+  comment: { label: "메모", Icon: ScrollTextIcon },
   materials: { label: "관련자료", Icon: PaperclipIcon },
 };
 
@@ -108,7 +104,7 @@ const PLACEHOLDER_TABS: PlaceholderTab[] = [
   {
     value: "comment",
     featId: "feat-4-A-115",
-    hint: "강사·운영자가 작성한 평석/학습자료. 마크다운 + 하이라이트.",
+    hint: "수험생·강사가 본문에 남기는 메모. 강사 메모는 모두에게, 수험생 메모는 본인에게만 보입니다.",
   },
 ];
 
@@ -136,19 +132,17 @@ function RailButton({
   const Icon = meta.Icon;
   const hasContent = count !== undefined && count > 0;
   const tooltip =
-    count !== undefined && count > 0
-      ? `${meta.label} (${count})`
-      : meta.label;
+    count !== undefined && count > 0 ? `${meta.label} (${count})` : meta.label;
   return (
     <TabsTrigger
       value={value}
       title={tooltip}
       aria-label={tooltip}
       className={cn(
-        "relative h-9 w-9 flex-none rounded-md p-0 text-muted-foreground",
+        "text-muted-foreground relative h-9 w-9 flex-none rounded-md p-0",
         "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
         "data-[state=active]:shadow-[0_4px_12px_rgba(45,91,168,0.24)]",
-        "transition-colors hover:bg-muted hover:text-foreground",
+        "hover:bg-muted hover:text-foreground transition-colors",
         dim && "opacity-40",
       )}
     >
@@ -294,7 +288,7 @@ export function ArticleRightPanel({
         <TabsList
           className={cn(
             "flex h-auto w-11 flex-none flex-col items-stretch gap-1 rounded-md rounded-r-none p-1.5",
-            "border-r bg-muted/40",
+            "bg-muted/40 border-r",
           )}
         >
           <RailButton value="bookmark" count={bookmark ? 1 : 0} />
@@ -340,7 +334,7 @@ export function ArticleRightPanel({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2 border-b px-3 py-2">
-            <ActiveIcon className="size-4 text-primary" />
+            <ActiveIcon className="text-primary size-4" />
             <h3 className="text-sm font-bold tracking-tight">
               {activeMeta.label}
             </h3>
@@ -365,6 +359,7 @@ export function ArticleRightPanel({
                 targetType={target.type}
                 targetId={target.id}
                 initial={memos}
+                viewerIsStaff={canEditComment}
               />
             </TabsContent>
 
@@ -373,6 +368,7 @@ export function ArticleRightPanel({
                 targetType={target.type}
                 targetId={target.id}
                 initial={highlights}
+                viewerIsStaff={canEditComment}
               />
             </TabsContent>
 
@@ -420,7 +416,6 @@ export function ArticleRightPanel({
                   targetType={commentTargetType}
                   targetId={target.id}
                   comments={comments ?? []}
-                  isStaff={canEditComment}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
                 />

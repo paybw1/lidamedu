@@ -1,8 +1,15 @@
+import type {
+  ArticleBody,
+  Block,
+  Inline,
+  SubArticleEntry,
+} from "../lib/article-body";
+
 import { ChevronRightIcon, ScrollIcon, StickyNoteIcon } from "lucide-react";
 import {
-  createContext,
   Fragment,
   type ReactNode,
+  createContext,
   useContext,
   useMemo,
   useState,
@@ -18,13 +25,6 @@ import {
   walkBlocks,
 } from "~/features/blanks/lib/blank-layout";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
-
-import type {
-  ArticleBody,
-  Block,
-  Inline,
-  SubArticleEntry,
-} from "../lib/article-body";
 
 interface ArticleBodyContext {
   titleMap: Map<string, string>;
@@ -95,8 +95,7 @@ export function ArticleBodyView({
     const legacyMemos = memos.filter(
       (m) =>
         m.snippet?.trim() &&
-        (typeof m.blockIndex !== "number" ||
-          typeof m.cumOffset !== "number"),
+        (typeof m.blockIndex !== "number" || typeof m.cumOffset !== "number"),
     );
     if (legacyMemos.length > 0) {
       const blockIndexByBlock = new Map<Block, number>();
@@ -168,7 +167,7 @@ export function ArticleBodyView({
     >
       <BlockIndexCtx.Provider value={blockIndexMap}>
         <MemoMarksCtx.Provider value={memoMarks}>
-          <div className="font-serif space-y-3 text-[15px] leading-relaxed">
+          <div className="space-y-3 font-serif text-[15px] leading-relaxed">
             {body.blocks.map((b, i) => (
               <BlockView key={i} block={b} depth={0} />
             ))}
@@ -294,7 +293,7 @@ function RefsCollapsible({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="hover:bg-indigo-500/10 flex w-full items-center gap-1.5 px-3 py-1.5 text-left transition-colors"
+        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left transition-colors hover:bg-indigo-500/10"
       >
         <ChevronRightIcon
           className={cn(
@@ -305,7 +304,7 @@ function RefsCollapsible({
         <span className="flex-1 text-[11px] font-semibold tracking-wide text-indigo-900 uppercase dark:text-indigo-200">
           관련 조문
         </span>
-        <span className="text-[11px] tabular-nums text-indigo-700/80 dark:text-indigo-300/80">
+        <span className="text-[11px] text-indigo-700/80 tabular-nums dark:text-indigo-300/80">
           {refCount}건
         </span>
       </button>
@@ -467,14 +466,14 @@ function SubArticleGroup({
         <p className="flex-1 text-xs font-semibold tracking-wide text-emerald-900 dark:text-emerald-200">
           함께 공부할 조문 — {block.source}
         </p>
-        <span className="text-emerald-700/80 text-[11px] tabular-nums dark:text-emerald-300/80">
+        <span className="text-[11px] text-emerald-700/80 tabular-nums dark:text-emerald-300/80">
           {articleCount}개
         </span>
       </button>
       {open ? (
         <div className="space-y-3 px-3 pb-3">
           {block.preface && block.preface.length > 0 ? (
-            <div className="bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200/60 px-3 py-2 text-[13px] leading-relaxed dark:border-amber-700/40">
+            <div className="rounded border border-amber-200/60 bg-amber-50 px-3 py-2 text-[13px] leading-relaxed dark:border-amber-700/40 dark:bg-amber-900/20">
               <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
                 코멘트
               </p>
@@ -652,7 +651,8 @@ function splitInlineParts(
       before.lastIndexOf("。"),
       before.lastIndexOf(";"),
     );
-    const recent = lastSentenceEnd >= 0 ? before.slice(lastSentenceEnd + 1) : before;
+    const recent =
+      lastSentenceEnd >= 0 ? before.slice(lastSentenceEnd + 1) : before;
     const foreignAt = Math.max(
       recent.lastIndexOf("」"),
       recent.search(/같은\s*법/),
@@ -717,11 +717,7 @@ function splitInlineParts(
         article: ctx.article,
         branch: ctx.branch,
         clause: isClauseMode ? Number(m[1]) : ctx.clause,
-        item: isClauseMode
-          ? m[2]
-            ? Number(m[2])
-            : undefined
-          : Number(m[4]),
+        item: isClauseMode ? (m[2] ? Number(m[2]) : undefined) : Number(m[4]),
         subItem: isClauseMode ? m[3] : m[5],
       },
     });
@@ -783,7 +779,7 @@ function KoreanRefLink({
       to={`/subjects/${lawCode}/articles/${articleKey}${hash}`}
       viewTransition
       title={targetTitle ?? undefined}
-      className="text-primary underline decoration-dotted underline-offset-2 hover:bg-primary/10 hover:decoration-solid"
+      className="text-primary hover:bg-primary/10 underline decoration-dotted underline-offset-2 hover:decoration-solid"
     >
       {raw}
     </Link>
@@ -807,7 +803,7 @@ function InlineNode({
   const blockIndexMap = useContext(BlockIndexCtx);
   const blanksRender = useBlanksRender();
   const memoMarks = useContext(MemoMarksCtx);
-  const currentBlockIndex = block ? blockIndexMap?.get(block) ?? null : null;
+  const currentBlockIndex = block ? (blockIndexMap?.get(block) ?? null) : null;
   // text 안의 빈칸 자리를 input 으로 치환할 수 있으면 ReactNode 반환, 아니면 plain string fallback.
   // partOffset 은 이 텍스트 조각이 속한 토큰 안에서의 시작 offset (kref/annotation 으로 split 된 경우 누적).
   // 추가로 data-cumoffset 으로 wrap 해 captureSelection 이 정확 좌표를 캡처할 수 있게 한다.
@@ -925,7 +921,7 @@ function InlineNode({
                   <span
                     key={i}
                     title="강사 보강 라벨"
-                    className="rounded bg-amber-100 px-1 text-[12px] font-medium text-amber-900 [box-decoration-break:clone] [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
+                    className="rounded bg-amber-100 [box-decoration-break:clone] px-1 text-[12px] font-medium text-amber-900 [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
                   >
                     {p.text}
                   </span>
@@ -958,7 +954,7 @@ function InlineNode({
       return (
         <span
           title="강사 보강 라벨"
-          className="rounded bg-amber-100 px-1 text-[12px] font-medium text-amber-900 [box-decoration-break:clone] [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
+          className="rounded bg-amber-100 [box-decoration-break:clone] px-1 text-[12px] font-medium text-amber-900 [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
         >
           [{node.text}]
         </span>
@@ -976,7 +972,7 @@ function InlineNode({
       }
       if (insideSubArticle) {
         return (
-          <span className="text-muted-foreground mx-0.5 rounded bg-muted/50 px-1 text-[12px]">
+          <span className="text-muted-foreground bg-muted/50 mx-0.5 rounded px-1 text-[12px]">
             {node.raw}
           </span>
         );
@@ -1007,7 +1003,7 @@ function InlineNode({
           to={target}
           viewTransition
           title={targetTitle ?? undefined}
-          className="text-primary underline decoration-dotted underline-offset-2 hover:bg-primary/10 hover:decoration-solid"
+          className="text-primary hover:bg-primary/10 underline decoration-dotted underline-offset-2 hover:decoration-solid"
         >
           {node.raw}
         </Link>
@@ -1065,7 +1061,8 @@ function applyMemoMarks(
   currentBlockIndex: number | null,
   textBaseOffset: number,
 ): ReactNode {
-  if (!memoMarks || text.length === 0 || currentBlockIndex === null) return text;
+  if (!memoMarks || text.length === 0 || currentBlockIndex === null)
+    return text;
   type Match = { start: number; end: number; memos: MemoRecord[] };
   const matches: Match[] = [];
   const taken = new Array<boolean>(text.length).fill(false);
@@ -1099,9 +1096,7 @@ function applyMemoMarks(
   let key = 0;
   for (const m of matches) {
     if (m.start > cursor) {
-      out.push(
-        <Fragment key={key++}>{text.slice(cursor, m.start)}</Fragment>,
-      );
+      out.push(<Fragment key={key++}>{text.slice(cursor, m.start)}</Fragment>);
     }
     out.push(
       <MemoSnippetMark key={key++} memos={m.memos}>
@@ -1130,13 +1125,13 @@ function MemoSnippetMark({
       : memos.map((m, i) => `[${i + 1}] ${m.bodyMd}`).join("\n———\n");
   return (
     <span
-      className="bg-amber-100/70 dark:bg-amber-900/40 underline decoration-amber-500 decoration-dotted underline-offset-2 cursor-help"
+      className="cursor-help bg-amber-100/70 underline decoration-amber-500 decoration-dotted underline-offset-2 dark:bg-amber-900/40"
       title={tooltip}
     >
       {children}
       <StickyNoteIcon
         className="ml-0.5 inline size-3 align-text-top text-amber-600 dark:text-amber-400"
-        aria-label={`메모 ${memos.length}개`}
+        aria-label={`포스트잇 ${memos.length}개`}
       />
     </span>
   );

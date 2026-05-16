@@ -1,3 +1,5 @@
+import type { Route } from "./+types/systematic-node-viewer";
+
 import {
   EyeIcon,
   EyeOffIcon,
@@ -9,6 +11,7 @@ import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
+import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -16,23 +19,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/core/components/ui/sheet";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
-import { BlankOwnerPageSelector } from "~/features/blanks/components/blank-owner-page-selector";
-import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambiguous-panel";
-import {
-  computePeriodBlanks,
-  type PeriodAmbiguousCase,
-} from "~/features/blanks/lib/period-blanks";
-import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
-import {
-  listBlankSetsByArticle,
-  type BlankItem,
-} from "~/features/blanks/queries.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
-import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
 import {
   getBookmarksByArticleIds,
   getUserArticleAnnotationCounts,
@@ -40,6 +29,18 @@ import {
   listHighlightsByArticleIds,
   listMemosByArticleIds,
 } from "~/features/annotations/queries.server";
+import { BlankFillView } from "~/features/blanks/components/blank-fill-view";
+import { BlankOwnerPageSelector } from "~/features/blanks/components/blank-owner-page-selector";
+import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambiguous-panel";
+import {
+  type PeriodAmbiguousCase,
+  computePeriodBlanks,
+} from "~/features/blanks/lib/period-blanks";
+import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
+import {
+  type BlankItem,
+  listBlankSetsByArticle,
+} from "~/features/blanks/queries.server";
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
@@ -59,28 +60,27 @@ import {
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
-import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
+import { NodeMiniGraph } from "~/features/subjects/components/node-mini-graph";
 import {
   SortAxisProvider,
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { NodeMiniGraph } from "~/features/subjects/components/node-mini-graph";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
+import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 import {
   EXAM_LABEL,
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
 
-import type { Route } from "./+types/systematic-node-viewer";
-
 // 연관 자료 미니맵은 다듬기 끝날 때까지 비노출. true 로 바꾸면 다시 표시.
 const SHOW_NODE_MINI_GRAPH = false;
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "체계도 그룹 | Lidam Patent Attorney Academy" }];
+  if (!loaderData)
+    return [{ title: "체계도 그룹 | Lidam Patent Attorney Academy" }];
   return [
     {
       title: `${loaderData.subject.name} ${loaderData.node.displayLabel} | Lidam Patent Attorney Academy`,
@@ -152,9 +152,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     // article 별로 모든 owner set 조회 (owner selector dropdown 옵션 산출)
     Promise.all(
       articleIds.map((id) =>
-        listBlankSetsByArticle(client, id).then(
-          (sets) => [id, sets] as const,
-        ),
+        listBlankSetsByArticle(client, id).then((sets) => [id, sets] as const),
       ),
     ).then((entries) => Object.fromEntries(entries)),
     Promise.all(
@@ -178,7 +176,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // ?blank-owner=<uuid> 로 모든 카드의 빈칸 set 일괄 owner 적용. 없으면 article별 첫 set.
   const ownerParam = new URL(request.url).searchParams.get("blank-owner");
-  const blankSetsByArticle: Record<string, (typeof allBlankSetsByArticle)[string][number]> = {};
+  const blankSetsByArticle: Record<
+    string,
+    (typeof allBlankSetsByArticle)[string][number]
+  > = {};
   for (const [aid, sets] of Object.entries(allBlankSetsByArticle)) {
     if (sets.length === 0) continue;
     if (ownerParam) {
@@ -295,8 +296,7 @@ function Inner({
   const [subjectBlankMode, setSubjectBlankMode] = useState(false);
   const [periodBlankMode, setPeriodBlankMode] = useState(false);
   const blankAvailableCount = useMemo(
-    () =>
-      node.articles.filter((a) => blankSetsByArticle[a.articleId]).length,
+    () => node.articles.filter((a) => blankSetsByArticle[a.articleId]).length,
     [node.articles, blankSetsByArticle],
   );
   const subjectBlanksByArticle = useMemo(() => {
@@ -354,12 +354,12 @@ function Inner({
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
       {/* multi-article 환경: HighlightToolbar 1개를 root 에 mount, prop 없이 selection 컨테이너의 dataset 으로 article 결정 */}
-      <HighlightToolbar staff={canEditComment} />
+      <HighlightToolbar />
 
       <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* ── 좌측 트리 (데스크톱) ── */}
-        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-          <Card className="rounded-xl border shadow-sm py-4">
+        <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+          <Card className="rounded-xl border py-4 shadow-sm">
             <CardHeader className="px-4 pb-3">
               <div className="flex items-center justify-end gap-2">
                 <SortAxisToggle
@@ -385,9 +385,7 @@ function Inner({
                   lawCode={subject.slug}
                   bookmarkLevels={bookmarkLevels}
                   annotationCounts={annotationCounts}
-                  lazyExpand={
-                    subject.slug === "civil" ? { lawId } : undefined
-                  }
+                  lazyExpand={subject.slug === "civil" ? { lawId } : undefined}
                 />
               )}
             </CardContent>
@@ -399,11 +397,19 @@ function Inner({
           <div className="flex flex-wrap gap-2 lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-full gap-1.5" data-testid="open-tree-drawer">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-full"
+                  data-testid="open-tree-drawer"
+                >
                   <ListTreeIcon className="size-3.5" /> 조문 트리
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
+              <SheetContent
+                side="left"
+                className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+              >
                 <SheetHeader>
                   <SheetTitle>조문 트리</SheetTitle>
                 </SheetHeader>
@@ -411,7 +417,9 @@ function Inner({
                   <div className="flex justify-end">
                     <SortAxisToggle
                       size="sm"
-                      disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                      disabledAxes={
+                        systematicEmpty ? ["systematic"] : undefined
+                      }
                     />
                   </div>
                   {renderSystematic ? (
@@ -441,25 +449,32 @@ function Inner({
           </div>
 
           {/* ── 체계도 노드 헤더 카드 ── */}
-          <Card className="rounded-xl border shadow-sm overflow-hidden">
-            <CardHeader className="pb-4 pt-5 px-6">
+          <Card className="overflow-hidden rounded-xl border shadow-sm">
+            <CardHeader className="px-6 pt-5 pb-4">
               {/* eyebrow */}
-              <p className="text-primary text-[11px] font-bold tracking-widest uppercase mb-2">
+              <p className="text-primary mb-2 text-[11px] font-bold tracking-widest uppercase">
                 {subject.name} · 체계도 노드
               </p>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <h1 className="text-[28px] font-extrabold tracking-tight leading-tight text-foreground">
+                <h1 className="text-foreground text-[28px] leading-tight font-extrabold tracking-tight">
                   {node.displayLabel}
                 </h1>
-                <Badge variant="secondary" className="rounded-full text-xs font-semibold px-3 py-1 shrink-0">
+                <Badge
+                  variant="secondary"
+                  className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
+                >
                   {EXAM_LABEL[subject.exam]}
                 </Badge>
               </div>
-              <p className="text-muted-foreground text-sm mt-1">
-                매핑된 조문 <span className="tabular-nums font-medium text-foreground">{node.articles.length}</span>개
+              <p className="text-muted-foreground mt-1 text-sm">
+                매핑된 조문{" "}
+                <span className="text-foreground font-medium tabular-nums">
+                  {node.articles.length}
+                </span>
+                개
               </p>
               {/* 모드 토글 버튼 행 */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-border mt-3">
+              <div className="border-border mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3">
                 {blankAvailableCount > 0 ? (
                   <>
                     <Button
@@ -472,7 +487,7 @@ function Inner({
                           setPeriodBlankMode(false);
                         }
                       }}
-                      className="h-7 gap-1.5 text-xs rounded-full"
+                      className="h-7 gap-1.5 rounded-full text-xs"
                     >
                       <PencilLineIcon className="size-3.5" />
                       내용 빈칸 모드
@@ -499,7 +514,7 @@ function Inner({
                         setPeriodBlankMode(false);
                       }
                     }}
-                    className="h-7 gap-1.5 text-xs rounded-full"
+                    className="h-7 gap-1.5 rounded-full text-xs"
                   >
                     <PencilLineIcon className="size-3.5" />
                     주체 빈칸 모드
@@ -519,7 +534,7 @@ function Inner({
                         setSubjectBlankMode(false);
                       }
                     }}
-                    className="h-7 gap-1.5 text-xs rounded-full"
+                    className="h-7 gap-1.5 rounded-full text-xs"
                   >
                     <PencilLineIcon className="size-3.5" />
                     기간 빈칸 모드
@@ -536,7 +551,7 @@ function Inner({
                   size="sm"
                   onClick={() => setSubtitlesOnly((v) => !v)}
                   disabled={blankMode || subjectBlankMode || periodBlankMode}
-                  className="h-7 gap-1.5 text-xs rounded-full"
+                  className="h-7 gap-1.5 rounded-full text-xs"
                 >
                   {subtitlesOnly ? (
                     <EyeIcon className="size-3.5" />
@@ -589,32 +604,42 @@ function Inner({
                 <Card
                   key={a.articleId}
                   id={`article-${a.articleId}`}
-                  className="rounded-xl border shadow-sm overflow-hidden"
+                  className="overflow-hidden rounded-xl border shadow-sm"
                 >
                   {/* 조문 카드 헤더 */}
-                  <CardHeader className="px-6 pt-5 pb-4 border-b border-border">
+                  <CardHeader className="border-border border-b px-6 pt-5 pb-4">
                     <div className="flex flex-wrap items-center gap-3">
                       {/* 조문 제목 + 링크 */}
                       {a.articleNumber ? (
                         <Link
                           to={`/subjects/${subject.slug}/articles/${a.articleNumber}`}
                           viewTransition
-                          className="hover:text-primary inline-flex items-baseline gap-0 group"
+                          className="hover:text-primary group inline-flex items-baseline gap-0"
                         >
-                          <h2 className="text-[22px] font-bold tracking-tight leading-snug text-foreground group-hover:text-primary transition-colors">
+                          <h2 className="text-foreground group-hover:text-primary text-[22px] leading-snug font-bold tracking-tight transition-colors">
                             {a.displayLabel}
                           </h2>
                         </Link>
                       ) : (
-                        <h2 className="text-[22px] font-bold tracking-tight leading-snug text-foreground">
+                        <h2 className="text-foreground text-[22px] leading-snug font-bold tracking-tight">
                           {a.displayLabel}
                         </h2>
                       )}
                       {/* 중요도 별 */}
                       {importance > 0 ? (
-                        <span className="inline-flex items-center gap-0.5 text-amber-500 dark:text-amber-400 text-sm" aria-label={`중요도 ${importance}성급`}>
+                        <span
+                          className="inline-flex items-center gap-0.5 text-sm text-amber-500 dark:text-amber-400"
+                          aria-label={`중요도 ${importance}성급`}
+                        >
                           {Array.from({ length: 3 }, (_, i) => (
-                            <span key={i} className={i < importance ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground/30"}>
+                            <span
+                              key={i}
+                              className={
+                                i < importance
+                                  ? "text-amber-500 dark:text-amber-400"
+                                  : "text-muted-foreground/30"
+                              }
+                            >
                               ★
                             </span>
                           ))}
@@ -622,7 +647,7 @@ function Inner({
                       ) : null}
                       {/* 시행일 */}
                       {a.effectiveDate ? (
-                        <span className="ml-auto text-muted-foreground text-xs tabular-nums shrink-0">
+                        <span className="text-muted-foreground ml-auto shrink-0 text-xs tabular-nums">
                           시행 {a.effectiveDate}
                         </span>
                       ) : null}
@@ -631,7 +656,7 @@ function Inner({
                   {/* 조문 카드 본문 — 2열 분할 (본문 | 우측 패널) */}
                   <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
                     {/* 본문 열 */}
-                    <div className="px-6 py-5 lg:border-r lg:border-border">
+                    <div className="lg:border-border px-6 py-5 lg:border-r">
                       {blankMode && blankSet && body ? (
                         <BlankFillView
                           setId={blankSet.setId}
@@ -667,20 +692,15 @@ function Inner({
                           lawCode={subject.slug}
                         />
                       ) : (
-                        <CommentHighlightOverlay
-                          fieldPath="article.body"
-                          targetType="article"
-                          targetId={a.articleId}
-                          comments={commentsByArticle[a.articleId] ?? []}
-                        >
                         <HighlightOverlay
                           fieldPath="article.body"
                           targetType="article"
                           targetId={a.articleId}
                           highlights={highlights}
+                          viewerIsStaff={canEditComment}
                         >
                           {body ? (
-                            <div className="text-[17px] leading-[1.8] text-foreground [&_*]:leading-[1.8]">
+                            <div className="text-foreground text-[17px] leading-[1.8] [&_*]:leading-[1.8]">
                               <ArticleBodyView
                                 body={body}
                                 titleMap={titleMap}
@@ -691,11 +711,11 @@ function Inner({
                             </div>
                           ) : (
                             <p className="text-muted-foreground text-sm">
-                              본문이 등록되지 않았거나 파싱할 수 없는 형식입니다.
+                              본문이 등록되지 않았거나 파싱할 수 없는
+                              형식입니다.
                             </p>
                           )}
                         </HighlightOverlay>
-                        </CommentHighlightOverlay>
                       )}
                     </div>
                     {/* 우측 패널 열 */}

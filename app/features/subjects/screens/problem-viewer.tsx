@@ -1,3 +1,5 @@
+import type { Route } from "./+types/problem-viewer";
+
 import {
   ArrowLeftIcon,
   ChevronLeftIcon,
@@ -11,13 +13,7 @@ import {
   VideoIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Link,
-  data,
-  redirect,
-  useFetcher,
-  useNavigate,
-} from "react-router";
+import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Separator } from "~/core/components/ui/separator";
@@ -28,8 +24,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/core/components/ui/sheet";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
+import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
   getBookmark,
   getUserArticleAnnotationCounts,
@@ -37,12 +35,13 @@ import {
   listHighlights,
   listMemos,
 } from "~/features/annotations/queries.server";
-import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
-import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
-import { CommentHighlightOverlay } from "~/features/comments/components/comment-highlight-overlay";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
-import { getLawByCode, getStaffRole, getSystematicSkeleton } from "~/features/laws/queries.server";
+import {
+  getLawByCode,
+  getStaffRole,
+  getSystematicSkeleton,
+} from "~/features/laws/queries.server";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
@@ -54,7 +53,6 @@ import {
   deriveBoxItemOxTruth,
   deriveChoiceOxTruth,
 } from "~/features/problems/lib/auto-ox";
-import { FlowNav } from "~/features/study/components/flow-nav";
 import {
   getCasesCitedByProblem,
   getChoiceLinkRefs,
@@ -63,27 +61,26 @@ import {
   getSystematicNodeProblemSequence,
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
+import { FlowNav } from "~/features/study/components/flow-nav";
+import {
+  DIFFICULTY_LABEL,
+  DIFFICULTY_TONE,
+} from "~/features/study/lib/difficulty";
+import {
+  type QuizMode,
+  type SubjectiveAttempt,
+  createQuizSession,
+  getProblemStats,
+  getQuizSession,
+  getSubjectiveAttempt,
+  recordStudySession,
+} from "~/features/study/queries.server";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import {
   EXAM_LABEL,
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
-import {
-  createQuizSession,
-  getProblemStats,
-  getQuizSession,
-  getSubjectiveAttempt,
-  recordStudySession,
-  type QuizMode,
-  type SubjectiveAttempt,
-} from "~/features/study/queries.server";
-import {
-  DIFFICULTY_LABEL,
-  DIFFICULTY_TONE,
-} from "~/features/study/lib/difficulty";
-
-import type { Route } from "./+types/problem-viewer";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "문제 | Lidam Patent Attorney Academy" }];
@@ -194,14 +191,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     allCaseIds,
   );
   // Map → 직렬화 가능한 plain object 로 변환 (loader return).
-  const choiceArticleRefs: Record<string, { lawCode: string; pathSlug: string; displayLabel: string }> = {};
+  const choiceArticleRefs: Record<
+    string,
+    { lawCode: string; pathSlug: string; displayLabel: string }
+  > = {};
   for (const [k, v] of choiceLinkRefs.articles)
     choiceArticleRefs[k] = {
       lawCode: v.lawCode,
       pathSlug: v.pathSlug,
       displayLabel: v.displayLabel,
     };
-  const choiceCaseRefs: Record<string, { lawCode: string; caseNumber: string; caseTitle: string }> = {};
+  const choiceCaseRefs: Record<
+    string,
+    { lawCode: string; caseNumber: string; caseTitle: string }
+  > = {};
   for (const [k, v] of choiceLinkRefs.cases)
     choiceCaseRefs[k] = {
       lawCode: v.lawCode,
@@ -333,7 +336,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
 // problem_case_links 의 pc_relation_type → article_case_links 의 ac_relation_type 매핑
 // (ArticleRightPanel 의 "판례" 탭 라벨 호환).
-const PC_TO_AC: Record<string, "directly_interprets" | "cites" | "similar_to" | "contrary_to"> = {
+const PC_TO_AC: Record<
+  string,
+  "directly_interprets" | "cites" | "similar_to" | "contrary_to"
+> = {
   cited: "cites",
   illustrates: "directly_interprets",
   contrasts: "contrary_to",
@@ -496,21 +502,17 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
   const isLast = runnerNav ? runnerNav.nextId === null : false;
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background font-sans">
+    <div className="bg-background min-h-[calc(100vh-3.5rem)] font-sans">
       <FlowNav
         subjectSlug={subject.slug}
         currentType="problem"
         currentId={problem.problemId}
       />
-      <HighlightToolbar
-        targetType="problem"
-        targetId={problem.problemId}
-        staff={canEditComment}
-      />
+      <HighlightToolbar targetType="problem" targetId={problem.problemId} />
 
       {/* Session top-bar — shown only when inside a session/runner nav */}
       {runnerNav ? (
-        <div className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-14 z-20">
+        <div className="border-border bg-card/80 sticky top-14 z-20 border-b backdrop-blur-sm">
           <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-2 px-4 py-2 md:px-6">
             <Link
               to={runnerNav.backHref}
@@ -621,28 +623,28 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
       {/* 3-pane shell: left tree 260 / body / right panel 320 */}
       <div className="mx-auto grid max-w-screen-2xl gap-0 px-0 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
         {/* Left tree — desktop sticky */}
-        <aside className="hidden lg:block lg:sticky lg:top-[calc(3.5rem+41px)] lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r lg:border-border">
+        <aside className="lg:border-border hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r">
           <div className="py-3">
-              {systematicEmpty ? (
-                <p className="text-muted-foreground px-4 py-6 text-xs">
-                  체계도 데이터 미입력
-                </p>
-              ) : (
-                <SystematicTree
-                  nodes={systematicNodes}
-                  activeArticleId={problem.primaryArticleId ?? undefined}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                />
-              )}
+            {systematicEmpty ? (
+              <p className="text-muted-foreground px-4 py-6 text-xs">
+                체계도 데이터 미입력
+              </p>
+            ) : (
+              <SystematicTree
+                nodes={systematicNodes}
+                activeArticleId={problem.primaryArticleId ?? undefined}
+                lawCode={subject.slug}
+                bookmarkLevels={bookmarkLevels}
+                annotationCounts={annotationCounts}
+              />
+            )}
           </div>
         </aside>
 
         {/* Center body */}
-        <main className="min-w-0 border-r border-border">
+        <main className="border-border min-w-0 border-r">
           {/* Mobile drawer triggers */}
-          <div className="flex flex-wrap gap-2 border-b border-border px-4 py-2 lg:hidden">
+          <div className="border-border flex flex-wrap gap-2 border-b px-4 py-2 lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button
@@ -654,9 +656,14 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   <ListTreeIcon className="size-3.5" /> 체계도 트리
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
-                <SheetHeader className="px-4 py-3 border-b border-border">
-                  <SheetTitle className="text-sm font-semibold">체계도 트리</SheetTitle>
+              <SheetContent
+                side="left"
+                className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+              >
+                <SheetHeader className="border-border border-b px-4 py-3">
+                  <SheetTitle className="text-sm font-semibold">
+                    체계도 트리
+                  </SheetTitle>
                 </SheetHeader>
                 <div className="px-3 pb-4">
                   {systematicEmpty ? (
@@ -686,9 +693,14 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   <PanelRightIcon className="size-3.5" /> 학습 보조
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
-                <SheetHeader className="px-4 py-3 border-b border-border">
-                  <SheetTitle className="text-sm font-semibold">학습 보조</SheetTitle>
+              <SheetContent
+                side="right"
+                className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
+              >
+                <SheetHeader className="border-border border-b px-4 py-3">
+                  <SheetTitle className="text-sm font-semibold">
+                    학습 보조
+                  </SheetTitle>
                 </SheetHeader>
                 <div className="px-3 pb-4">
                   <ArticleRightPanel
@@ -725,7 +737,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             {isExam && timerText ? (
               <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-2.5 dark:border-amber-700/40 dark:bg-amber-950/30">
                 <TimerIcon className="size-4 text-amber-600 dark:text-amber-400" />
-                <span className="font-mono text-sm font-bold tabular-nums text-amber-700 dark:text-amber-300" data-testid="exam-timer-banner">
+                <span
+                  className="font-mono text-sm font-bold text-amber-700 tabular-nums dark:text-amber-300"
+                  data-testid="exam-timer-banner"
+                >
                   남은 시간 {timerText}
                 </span>
               </div>
@@ -735,35 +750,37 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             <div className="mb-6">
               {/* Chips row */}
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   {EXAM_LABEL[subject.exam]}
                 </span>
-                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+                <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   {ORIGIN_LABEL[problem.origin]}
                 </span>
-                <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
                   {FORMAT_LABEL[problem.format]}
                 </span>
                 {problem.polarity ? (
-                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                  <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
                     {POLARITY_LABEL[problem.polarity]}
                   </span>
                 ) : null}
                 {problem.scope ? (
-                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                  <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
                     {SCOPE_LABEL[problem.scope]}
                   </span>
                 ) : null}
                 {problem.subjectiveKind ? (
-                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+                  <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
                     {SUBJECTIVE_KIND_LABEL[problem.subjectiveKind]}
                   </span>
                 ) : null}
                 {problem.year ? (
-                  <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                  <span className="text-muted-foreground ml-auto text-xs tabular-nums">
                     {problem.year}년
                     {problem.examRoundNo ? ` ${problem.examRoundNo}회` : ""}
-                    {problem.problemNumber ? ` · 문제 ${problem.problemNumber}번` : ""}
+                    {problem.problemNumber
+                      ? ` · 문제 ${problem.problemNumber}번`
+                      : ""}
                   </span>
                 ) : null}
               </div>
@@ -791,17 +808,20 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   </>
                 ) : problemStats.attempts > 0 ? (
                   <span className="text-muted-foreground">
-                    시도 {problemStats.attempts}회 (난이도 표본 부족 · 5회 이상부터)
+                    시도 {problemStats.attempts}회 (난이도 표본 부족 · 5회
+                    이상부터)
                   </span>
                 ) : (
-                  <span className="text-muted-foreground">아직 풀이 데이터가 없습니다</span>
+                  <span className="text-muted-foreground">
+                    아직 풀이 데이터가 없습니다
+                  </span>
                 )}
                 {problem.videoUrl ? (
                   <a
                     href={problem.videoUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="ml-auto inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs text-primary hover:bg-muted"
+                    className="border-border text-primary hover:bg-muted ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
                     data-testid="problem-video-link"
                     title="강사 풀이 동영상 (외부 링크)"
                   >
@@ -813,372 +833,381 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
 
             <Separator className="mb-7" />
 
-            {/* Question stem — 강사 코멘트 하이라이트 + 개인 하이라이트 오버레이.
-                두 오버레이가 함께 본문 선택 툴바의 컨테이너 역할을 한다. */}
-            <CommentHighlightOverlay
+            {/* Question stem — 하이라이트 오버레이가 본문 선택 툴바의 컨테이너 역할을 겸한다. */}
+            <HighlightOverlay
               fieldPath="problem.body"
               targetType="problem"
               targetId={problem.problemId}
-              comments={problemComments}
+              highlights={highlights}
+              viewerIsStaff={canEditComment}
             >
-              <HighlightOverlay
-                fieldPath="problem.body"
-                targetType="problem"
-                targetId={problem.problemId}
-                highlights={highlights}
-              >
-                <p className="mb-7 text-[17px] font-medium leading-[1.8] tracking-[-0.01em] text-foreground">
-                  {problem.bodyMd}
-                </p>
-              </HighlightOverlay>
-            </CommentHighlightOverlay>
+              <p className="text-foreground mb-7 text-[17px] leading-[1.8] font-medium tracking-[-0.01em]">
+                {problem.bodyMd}
+              </p>
+            </HighlightOverlay>
 
-              {problem.boxItems.length > 0 ? (
-                <div className="mb-6 rounded-xl border-2 border-border/70 bg-muted/30 px-5 py-4 dark:bg-muted/10">
-                  <ul className="space-y-2">
-                    {problem.boxItems.map((bi) => (
-                      <li
-                        key={bi.boxItemId}
-                        className="flex gap-3 text-[15px] leading-[1.7] tracking-[-0.005em] text-foreground"
-                      >
-                        <span className="shrink-0 font-semibold text-foreground/70">
-                          {bi.marker}
-                        </span>
-                        <span className="flex-1">{bi.bodyMd}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+            {problem.boxItems.length > 0 ? (
+              <div className="border-border/70 bg-muted/30 dark:bg-muted/10 mb-6 rounded-xl border-2 px-5 py-4">
+                <ul className="space-y-2">
+                  {problem.boxItems.map((bi) => (
+                    <li
+                      key={bi.boxItemId}
+                      className="text-foreground flex gap-3 text-[15px] leading-[1.7] tracking-[-0.005em]"
+                    >
+                      <span className="text-foreground/70 shrink-0 font-semibold">
+                        {bi.marker}
+                      </span>
+                      <span className="flex-1">{bi.bodyMd}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-              {problem.format === "subjective" ? (
-                <SubjectivePanel
-                  problemId={problem.problemId}
-                  modelAnswerMd={problem.modelAnswerMd}
-                  gradingRubricMd={problem.gradingRubricMd}
-                  explanationMd={problem.explanationMd}
-                  rubricItems={problem.rubricItems}
-                  initialAttempt={subjectiveAttempt}
-                />
-              ) : (
+            {problem.format === "subjective" ? (
+              <SubjectivePanel
+                problemId={problem.problemId}
+                modelAnswerMd={problem.modelAnswerMd}
+                gradingRubricMd={problem.gradingRubricMd}
+                explanationMd={problem.explanationMd}
+                rubricItems={problem.rubricItems}
+                initialAttempt={subjectiveAttempt}
+              />
+            ) : (
               <>
-              {/* Choices */}
-              <ul className="mb-5 flex flex-col gap-2.5">
-                {problem.choices.map((c) => {
-                  const isSelected = selected === c.choiceIndex;
-                  // 시험 모드에서는 채점 결과 노출 X.
-                  const showCorrect = revealed && !isExam && c.isCorrect;
-                  const showWrong =
-                    revealed && !isExam && isSelected && !c.isCorrect;
-                  const locked = revealed && !isExam;
-                  return (
-                    <li key={c.choiceId}>
-                      <button
-                        type="button"
-                        data-testid={`problem-choice-${c.choiceIndex}`}
-                        onClick={() => !locked && setSelected(c.choiceIndex)}
-                        disabled={locked}
-                        aria-pressed={isSelected}
-                        className={cn(
-                          "flex w-full items-start gap-3 rounded-[10px] border px-4 py-3.5 text-left transition-all duration-150",
-                          locked
-                            ? "cursor-default"
-                            : "cursor-pointer hover:border-primary/40 hover:bg-primary/5",
-                          isSelected && !locked && "border-primary bg-primary/10 ring-1 ring-primary/30",
-                          showCorrect &&
-                            "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400/40 dark:bg-emerald-950/30",
-                          showWrong &&
-                            "border-rose-500 bg-rose-50 ring-1 ring-rose-400/40 dark:bg-rose-950/30",
-                        )}
-                      >
-                        {/* Number badge */}
-                        <span
+                {/* Choices */}
+                <ul className="mb-5 flex flex-col gap-2.5">
+                  {problem.choices.map((c) => {
+                    const isSelected = selected === c.choiceIndex;
+                    // 시험 모드에서는 채점 결과 노출 X.
+                    const showCorrect = revealed && !isExam && c.isCorrect;
+                    const showWrong =
+                      revealed && !isExam && isSelected && !c.isCorrect;
+                    const locked = revealed && !isExam;
+                    return (
+                      <li key={c.choiceId}>
+                        <button
+                          type="button"
+                          data-testid={`problem-choice-${c.choiceIndex}`}
+                          onClick={() => !locked && setSelected(c.choiceIndex)}
+                          disabled={locked}
+                          aria-pressed={isSelected}
                           className={cn(
-                            "inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold tabular-nums transition-colors",
-                            isSelected && !locked
-                              ? "bg-primary text-primary-foreground"
-                              : showCorrect
-                                ? "bg-emerald-500 text-white"
-                                : showWrong
-                                  ? "bg-rose-500 text-white"
-                                  : "bg-muted text-foreground/70",
+                            "flex w-full items-start gap-3 rounded-[10px] border px-4 py-3.5 text-left transition-all duration-150",
+                            locked
+                              ? "cursor-default"
+                              : "hover:border-primary/40 hover:bg-primary/5 cursor-pointer",
+                            isSelected &&
+                              !locked &&
+                              "border-primary bg-primary/10 ring-primary/30 ring-1",
+                            showCorrect &&
+                              "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400/40 dark:bg-emerald-950/30",
+                            showWrong &&
+                              "border-rose-500 bg-rose-50 ring-1 ring-rose-400/40 dark:bg-rose-950/30",
                           )}
                         >
-                          {c.choiceIndex}
-                        </span>
-                        <span className="flex-1 text-[15px] leading-[1.65] tracking-[-0.005em] text-foreground">
-                          {c.bodyMd}
-                        </span>
-                        {showCorrect ? (
-                          <CircleCheckIcon className="mt-0.5 size-5 shrink-0 text-emerald-500" />
-                        ) : null}
-                        {showWrong ? (
-                          <CircleXIcon className="mt-0.5 size-5 shrink-0 text-rose-500" />
-                        ) : null}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                          {/* Number badge */}
+                          <span
+                            className={cn(
+                              "inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold tabular-nums transition-colors",
+                              isSelected && !locked
+                                ? "bg-primary text-primary-foreground"
+                                : showCorrect
+                                  ? "bg-emerald-500 text-white"
+                                  : showWrong
+                                    ? "bg-rose-500 text-white"
+                                    : "bg-muted text-foreground/70",
+                            )}
+                          >
+                            {c.choiceIndex}
+                          </span>
+                          <span className="text-foreground flex-1 text-[15px] leading-[1.65] tracking-[-0.005em]">
+                            {c.bodyMd}
+                          </span>
+                          {showCorrect ? (
+                            <CircleCheckIcon className="mt-0.5 size-5 shrink-0 text-emerald-500" />
+                          ) : null}
+                          {showWrong ? (
+                            <CircleXIcon className="mt-0.5 size-5 shrink-0 text-rose-500" />
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-2">
-                {isExam ? (
-                  isLast ? (
+                {/* Action buttons */}
+                <div className="flex flex-wrap gap-2">
+                  {isExam ? (
+                    isLast ? (
+                      <Button
+                        onClick={completeSession}
+                        disabled={
+                          selected === null || completeFetcher.state !== "idle"
+                        }
+                        className="rounded-full"
+                        data-testid="exam-finish"
+                      >
+                        <FlagIcon className="size-4" /> 시험 끝내기 · 결과 보기
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={goNext}
+                        disabled={selected === null}
+                        className="rounded-full"
+                        data-testid="exam-next"
+                      >
+                        다음 문제 <ChevronRightIcon className="size-4" />
+                      </Button>
+                    )
+                  ) : !revealed ? (
                     <Button
-                      onClick={completeSession}
-                      disabled={
-                        selected === null || completeFetcher.state !== "idle"
-                      }
-                      className="rounded-full"
-                      data-testid="exam-finish"
-                    >
-                      <FlagIcon className="size-4" /> 시험 끝내기 · 결과 보기
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={goNext}
+                      onClick={submitStudy}
                       disabled={selected === null}
                       className="rounded-full"
-                      data-testid="exam-next"
                     >
-                      다음 문제 <ChevronRightIcon className="size-4" />
+                      정답 확인 (학습 모드)
                     </Button>
-                  )
-                ) : !revealed ? (
-                  <Button
-                    onClick={submitStudy}
-                    disabled={selected === null}
-                    className="rounded-full"
-                  >
-                    정답 확인 (학습 모드)
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="outline" onClick={reset} className="rounded-full">
-                      다시 풀기
-                    </Button>
-                    {runnerNav?.nextId ? (
-                      <Button asChild className="rounded-full">
-                        <Link to={buildRunnerHref(runnerNav.nextId)} viewTransition>
-                          다음 문제 <ChevronRightIcon className="size-4" />
-                        </Link>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={reset}
+                        className="rounded-full"
+                      >
+                        다시 풀기
                       </Button>
-                    ) : null}
-                  </>
-                )}
-              </div>
+                      {runnerNav?.nextId ? (
+                        <Button asChild className="rounded-full">
+                          <Link
+                            to={buildRunnerHref(runnerNav.nextId)}
+                            viewTransition
+                          >
+                            다음 문제 <ChevronRightIcon className="size-4" />
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </>
+                  )}
+                </div>
 
-              {/* Explanation + O/X panel — after submit in study mode */}
-              {revealed && !isExam ? (
-                <div className="mt-7 space-y-4">
-                  {/* Verdict pill */}
-                  {(() => {
-                    const isCorrectAns = problem.choices.find(
-                      (c) => c.choiceIndex === selected,
-                    )?.isCorrect ?? false;
-                    const correctChoice = problem.choices.find((c) => c.isCorrect);
-                    return (
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold",
-                            isCorrectAns
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200",
-                          )}
-                        >
-                          {isCorrectAns ? (
-                            <CircleCheckIcon className="size-4" />
-                          ) : (
-                            <CircleXIcon className="size-4" />
-                          )}
-                          {isCorrectAns ? "정답입니다" : "오답입니다"}
-                          {correctChoice
-                            ? ` · 정답 ${correctChoice.choiceIndex}번`
-                            : null}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                {/* Explanation + O/X panel — after submit in study mode */}
+                {revealed && !isExam ? (
+                  <div className="mt-7 space-y-4">
+                    {/* Verdict pill */}
+                    {(() => {
+                      const isCorrectAns =
+                        problem.choices.find((c) => c.choiceIndex === selected)
+                          ?.isCorrect ?? false;
+                      const correctChoice = problem.choices.find(
+                        (c) => c.isCorrect,
+                      );
+                      return (
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold",
+                              isCorrectAns
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200",
+                            )}
+                          >
+                            {isCorrectAns ? (
+                              <CircleCheckIcon className="size-4" />
+                            ) : (
+                              <CircleXIcon className="size-4" />
+                            )}
+                            {isCorrectAns ? "정답입니다" : "오답입니다"}
+                            {correctChoice
+                              ? ` · 정답 ${correctChoice.choiceIndex}번`
+                              : null}
+                          </span>
+                        </div>
+                      );
+                    })()}
 
-                  {/* Per-choice explanation cards */}
-                  <div className="rounded-xl border border-border bg-card shadow-sm">
-                    <div className="border-b border-border px-5 py-3">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                        해설 — {problem.format === "mc_box" ? "박스 항목" : "지문"}별 O/X
-                      </p>
-                    </div>
-                    <div className="divide-y divide-border">
-                    {problem.boxItems.length > 0
-                      ? (() => {
-                          const correctChoiceBody =
-                            problem.choices.find((c) => c.isCorrect)?.bodyMd ??
-                            null;
-                          return problem.boxItems.map((bi) => {
-                            const truth: "O" | "X" | null = bi.oxIneligible
-                              ? null
-                              : (bi.oxTruth ??
-                                deriveBoxItemOxTruth({
-                                  polarity: problem.polarity,
-                                  format: problem.format,
-                                  marker: bi.marker,
-                                  correctChoiceBody,
-                                  oxIneligible: bi.oxIneligible,
-                                }));
-                            return (
-                              <div
-                                key={bi.boxItemId}
-                                className="flex items-start gap-3 px-5 py-3 text-sm"
-                              >
-                                <span
-                                  className={cn(
-                                    "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
-                                    truth === "O"
-                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-                                      : truth === "X"
-                                        ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200"
-                                        : "bg-muted text-muted-foreground",
-                                  )}
-                                >
-                                  {bi.marker}
-                                </span>
-                                <div className="flex-1 space-y-0.5 leading-relaxed">
-                                  <p>
-                                    <span className="font-semibold">
-                                      {truth ?? "—"}
-                                    </span>
-                                    {bi.explanationMd ? (
-                                      <span className="ml-2 text-muted-foreground">
-                                        {bi.explanationMd}
-                                      </span>
-                                    ) : null}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          });
-                        })()
-                      : null}
-                    {problem.boxItems.length > 0 && problem.choices.length > 0 ? (
-                      <div className="px-5 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                          정답 보기
+                    {/* Per-choice explanation cards */}
+                    <div className="border-border bg-card rounded-xl border shadow-sm">
+                      <div className="border-border border-b px-5 py-3">
+                        <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
+                          해설 —{" "}
+                          {problem.format === "mc_box" ? "박스 항목" : "지문"}별
+                          O/X
                         </p>
                       </div>
-                    ) : null}
-                    {problem.choices.map((c) => {
-                      // mc_box: 보기는 박스 묶음이라 per-choice OX 의미 없음 → 정답만 표시.
-                      // mc_short(긍정/부정형 단답): 헬퍼로 polarity 반영해 O/X 산출.
-                      // 그 외(mc_case 등): 정답 여부만 표시.
-                      const derivedOx =
-                        problem.format === "mc_short"
-                          ? (c.oxTruth ??
-                            deriveChoiceOxTruth({
-                              polarity: problem.polarity,
-                              format: problem.format,
-                              isCorrect: c.isCorrect,
-                              oxIneligible: c.oxIneligible,
-                            }))
-                          : null;
-                      const label =
-                        problem.format === "mc_box"
-                          ? c.isCorrect
-                            ? "정답"
-                            : ""
-                          : (derivedOx ?? (c.isCorrect ? "정답" : ""));
-                      const tone = c.isCorrect
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-                        : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200";
-                      return (
-                      <div
-                        key={c.choiceId}
-                        className="flex items-start gap-3 px-5 py-3 text-sm"
-                      >
-                        <span
-                          className={cn(
-                            "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
-                            tone,
-                          )}
-                        >
-                          {c.choiceIndex}
-                        </span>
-                        <div className="flex-1 space-y-1 leading-relaxed">
-                          <p>
-                            <span className="font-semibold">{label || "—"}</span>
-                            {c.explanationMd ? (
-                              <span className="ml-2 text-muted-foreground">
-                                {c.explanationMd}
-                              </span>
-                            ) : null}
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(() => {
-                              const articleRef = c.relatedArticleId
-                                ? choiceArticleRefs[c.relatedArticleId]
-                                : null;
-                              if (articleRef) {
+                      <div className="divide-border divide-y">
+                        {problem.boxItems.length > 0
+                          ? (() => {
+                              const correctChoiceBody =
+                                problem.choices.find((c) => c.isCorrect)
+                                  ?.bodyMd ?? null;
+                              return problem.boxItems.map((bi) => {
+                                const truth: "O" | "X" | null = bi.oxIneligible
+                                  ? null
+                                  : (bi.oxTruth ??
+                                    deriveBoxItemOxTruth({
+                                      polarity: problem.polarity,
+                                      format: problem.format,
+                                      marker: bi.marker,
+                                      correctChoiceBody,
+                                      oxIneligible: bi.oxIneligible,
+                                    }));
                                 return (
-                                  <Link
-                                    to={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
-                                    viewTransition
-                                    data-testid="choice-related-article"
-                                    className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs text-primary hover:bg-primary/20"
+                                  <div
+                                    key={bi.boxItemId}
+                                    className="flex items-start gap-3 px-5 py-3 text-sm"
                                   >
-                                    조문 {articleRef.displayLabel}
-                                  </Link>
+                                    <span
+                                      className={cn(
+                                        "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+                                        truth === "O"
+                                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                          : truth === "X"
+                                            ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200"
+                                            : "bg-muted text-muted-foreground",
+                                      )}
+                                    >
+                                      {bi.marker}
+                                    </span>
+                                    <div className="flex-1 space-y-0.5 leading-relaxed">
+                                      <p>
+                                        <span className="font-semibold">
+                                          {truth ?? "—"}
+                                        </span>
+                                        {bi.explanationMd ? (
+                                          <span className="text-muted-foreground ml-2">
+                                            {bi.explanationMd}
+                                          </span>
+                                        ) : null}
+                                      </p>
+                                    </div>
+                                  </div>
                                 );
-                              }
-                              if (c.relatedArticleId) {
-                                return (
-                                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
-                                    조문 {c.relatedArticleNumber ?? "—"}
-                                  </span>
-                                );
-                              }
-                              return null;
-                            })()}
-                            {(() => {
-                              const caseRef = c.relatedCaseId
-                                ? choiceCaseRefs[c.relatedCaseId]
-                                : null;
-                              if (caseRef) {
-                                return (
-                                  <Link
-                                    to={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
-                                    viewTransition
-                                    data-testid="choice-related-case"
-                                    className="inline-flex items-center gap-1 rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
-                                  >
-                                    판례 {caseRef.caseNumber}
-                                  </Link>
-                                );
-                              }
-                              if (c.relatedCaseId) {
-                                return (
-                                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
-                                    판례 {c.relatedCaseNumber ?? "—"}
-                                  </span>
-                                );
-                              }
-                              return null;
-                            })()}
+                              });
+                            })()
+                          : null}
+                        {problem.boxItems.length > 0 &&
+                        problem.choices.length > 0 ? (
+                          <div className="px-5 py-2">
+                            <p className="text-muted-foreground text-[11px] font-semibold tracking-widest uppercase">
+                              정답 보기
+                            </p>
                           </div>
-                        </div>
+                        ) : null}
+                        {problem.choices.map((c) => {
+                          // mc_box: 보기는 박스 묶음이라 per-choice OX 의미 없음 → 정답만 표시.
+                          // mc_short(긍정/부정형 단답): 헬퍼로 polarity 반영해 O/X 산출.
+                          // 그 외(mc_case 등): 정답 여부만 표시.
+                          const derivedOx =
+                            problem.format === "mc_short"
+                              ? (c.oxTruth ??
+                                deriveChoiceOxTruth({
+                                  polarity: problem.polarity,
+                                  format: problem.format,
+                                  isCorrect: c.isCorrect,
+                                  oxIneligible: c.oxIneligible,
+                                }))
+                              : null;
+                          const label =
+                            problem.format === "mc_box"
+                              ? c.isCorrect
+                                ? "정답"
+                                : ""
+                              : (derivedOx ?? (c.isCorrect ? "정답" : ""));
+                          const tone = c.isCorrect
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                            : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200";
+                          return (
+                            <div
+                              key={c.choiceId}
+                              className="flex items-start gap-3 px-5 py-3 text-sm"
+                            >
+                              <span
+                                className={cn(
+                                  "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
+                                  tone,
+                                )}
+                              >
+                                {c.choiceIndex}
+                              </span>
+                              <div className="flex-1 space-y-1 leading-relaxed">
+                                <p>
+                                  <span className="font-semibold">
+                                    {label || "—"}
+                                  </span>
+                                  {c.explanationMd ? (
+                                    <span className="text-muted-foreground ml-2">
+                                      {c.explanationMd}
+                                    </span>
+                                  ) : null}
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(() => {
+                                    const articleRef = c.relatedArticleId
+                                      ? choiceArticleRefs[c.relatedArticleId]
+                                      : null;
+                                    if (articleRef) {
+                                      return (
+                                        <Link
+                                          to={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
+                                          viewTransition
+                                          data-testid="choice-related-article"
+                                          className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
+                                        >
+                                          조문 {articleRef.displayLabel}
+                                        </Link>
+                                      );
+                                    }
+                                    if (c.relatedArticleId) {
+                                      return (
+                                        <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
+                                          조문 {c.relatedArticleNumber ?? "—"}
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                  {(() => {
+                                    const caseRef = c.relatedCaseId
+                                      ? choiceCaseRefs[c.relatedCaseId]
+                                      : null;
+                                    if (caseRef) {
+                                      return (
+                                        <Link
+                                          to={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
+                                          viewTransition
+                                          data-testid="choice-related-case"
+                                          className="inline-flex items-center gap-1 rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
+                                        >
+                                          판례 {caseRef.caseNumber}
+                                        </Link>
+                                      );
+                                    }
+                                    if (c.relatedCaseId) {
+                                      return (
+                                        <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
+                                          판례 {c.relatedCaseNumber ?? "—"}
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      );
-                    })}
                     </div>
                   </div>
-                </div>
-              ) : null}
+                ) : null}
               </>
-              )}
+            )}
           </article>
         </main>
 
         {/* Right panel — desktop sticky */}
-        <aside className="hidden lg:block lg:sticky lg:top-[calc(3.5rem+41px)] lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
+        <aside className="hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
           <ArticleRightPanel
             target={{ type: "problem", id: problem.problemId }}
             bookmark={bookmark}
@@ -1227,7 +1256,9 @@ function SubjectivePanel({
   const [draft, setDraft] = useState(initialAttempt?.answerMd ?? "");
   const [revealedModel, setRevealedModel] = useState(false);
   const [revealedRubric, setRevealedRubric] = useState(false);
-  const [lastSaved, setLastSaved] = useState<SubjectiveAttempt | null>(initialAttempt);
+  const [lastSaved, setLastSaved] = useState<SubjectiveAttempt | null>(
+    initialAttempt,
+  );
   const [showScoreForm, setShowScoreForm] = useState(false);
   const [scoreDraft, setScoreDraft] = useState<string>(
     initialAttempt?.selfScore != null ? String(initialAttempt.selfScore) : "",
@@ -1408,7 +1439,11 @@ function SubjectivePanel({
           setTimedExpired(false);
         }}
         onCancel={() => {
-          if (confirm("시험 모드를 취소하시겠습니까? 작성한 답안은 그대로 유지됩니다.")) {
+          if (
+            confirm(
+              "시험 모드를 취소하시겠습니까? 작성한 답안은 그대로 유지됩니다.",
+            )
+          ) {
             setTimedStartedAt(null);
             setTimedExpired(false);
           }
@@ -1416,9 +1451,9 @@ function SubjectivePanel({
       />
 
       {/* Answer textarea */}
-      <div className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+      <div className="border-border bg-card rounded-xl border shadow-sm">
+        <div className="border-border flex items-center justify-between border-b px-5 py-3">
+          <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
             답안 작성 (자동 저장)
           </p>
           <SavingStatus
@@ -1433,10 +1468,10 @@ function SubjectivePanel({
             onChange={(e) => setDraft(e.target.value)}
             rows={14}
             placeholder="목차를 잡고 본문을 작성해보세요. 작성 중 1.5초 정지 시 자동 저장됩니다."
-            className="border-input bg-background w-full rounded-lg border px-4 py-3 text-sm leading-[1.8] tracking-[-0.005em] focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="border-input bg-background focus:ring-primary/30 w-full rounded-lg border px-4 py-3 text-sm leading-[1.8] tracking-[-0.005em] focus:ring-2 focus:outline-none"
             data-testid="subjective-answer-draft"
           />
-          <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-[11px] tabular-nums">
             {draft.length}자
           </p>
         </div>
@@ -1491,13 +1526,15 @@ function SubjectivePanel({
         <div className="rounded-xl border border-emerald-300/50 bg-emerald-50/60 px-4 py-3 text-xs dark:border-emerald-700/40 dark:bg-emerald-950/20">
           <p className="text-muted-foreground">
             마지막 자기채점:{" "}
-            <span className="font-bold tabular-nums text-foreground">
+            <span className="text-foreground font-bold tabular-nums">
               {lastSaved.selfScore !== null ? `${lastSaved.selfScore}점` : "—"}
             </span>{" "}
             · {lastSaved.submittedAt.slice(0, 10)}
           </p>
           {lastSaved.selfScoreNote ? (
-            <p className="mt-1 whitespace-pre-line text-muted-foreground">{lastSaved.selfScoreNote}</p>
+            <p className="text-muted-foreground mt-1 whitespace-pre-line">
+              {lastSaved.selfScoreNote}
+            </p>
           ) : null}
         </div>
       ) : null}
@@ -1509,15 +1546,15 @@ function SubjectivePanel({
       />
 
       {showScoreForm ? (
-        <div className="rounded-xl border border-primary/30 bg-card shadow-sm">
-          <div className="border-b border-border px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="border-primary/30 bg-card rounded-xl border shadow-sm">
+          <div className="border-border border-b px-5 py-3">
+            <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
               자기채점
             </p>
           </div>
           <div className="space-y-3 p-5">
             <label className="flex items-center gap-3 text-xs">
-              <span className="w-20 shrink-0 text-muted-foreground">
+              <span className="text-muted-foreground w-20 shrink-0">
                 점수 (0~100)
               </span>
               <input
@@ -1527,12 +1564,12 @@ function SubjectivePanel({
                 value={scoreDraft}
                 onChange={(e) => setScoreDraft(e.target.value)}
                 placeholder="예: 75"
-                className="border-input bg-background h-8 w-24 rounded-lg border px-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="border-input bg-background focus:ring-primary/30 h-8 w-24 rounded-lg border px-2 text-xs tabular-nums focus:ring-2 focus:outline-none"
                 data-testid="subjective-score-input"
               />
             </label>
             <label className="flex items-start gap-3 text-xs">
-              <span className="mt-1 w-20 shrink-0 text-muted-foreground">
+              <span className="text-muted-foreground mt-1 w-20 shrink-0">
                 자기 평가
               </span>
               <textarea
@@ -1540,7 +1577,7 @@ function SubjectivePanel({
                 onChange={(e) => setScoreNote(e.target.value)}
                 rows={3}
                 placeholder="놓친 논점, 보완할 내용 등"
-                className="border-input bg-background flex-1 rounded-lg border px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="border-input bg-background focus:ring-primary/30 flex-1 rounded-lg border px-3 py-2 text-xs leading-relaxed focus:ring-2 focus:outline-none"
                 data-testid="subjective-score-note"
               />
             </label>
@@ -1573,14 +1610,14 @@ function SubjectivePanel({
       ) : null}
 
       {revealedRubric && hasRubric ? (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="border-b border-border px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="border-border bg-card rounded-xl border shadow-sm">
+          <div className="border-border border-b px-5 py-3">
+            <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
               채점 기준
             </p>
           </div>
           <div className="px-5 py-4">
-            <p className="text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line text-foreground">
+            <p className="text-foreground text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line">
               {gradingRubricMd}
             </p>
           </div>
@@ -1588,14 +1625,14 @@ function SubjectivePanel({
       ) : null}
 
       {revealedModel && hasModel ? (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="border-b border-border px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="border-border bg-card rounded-xl border shadow-sm">
+          <div className="border-border border-b px-5 py-3">
+            <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
               모범답안
             </p>
           </div>
           <div className="px-5 py-4">
-            <p className="text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line text-foreground">
+            <p className="text-foreground text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line">
               {modelAnswerMd}
             </p>
           </div>
@@ -1603,14 +1640,14 @@ function SubjectivePanel({
       ) : null}
 
       {explanationMd ? (
-        <div className="rounded-xl border border-border bg-card shadow-sm">
-          <div className="border-b border-border px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="border-border bg-card rounded-xl border shadow-sm">
+          <div className="border-border border-b px-5 py-3">
+            <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
               해설
             </p>
           </div>
           <div className="px-5 py-4">
-            <p className="text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line text-foreground">
+            <p className="text-foreground text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line">
               {explanationMd}
             </p>
           </div>
@@ -1637,15 +1674,15 @@ function RubricChecklist({
   );
   const pct = total > 0 ? Math.round((got / total) * 100) : 0;
   return (
-    <div className="rounded-xl border border-primary/30 bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="border-primary/30 bg-card rounded-xl border shadow-sm">
+      <div className="border-border flex items-center justify-between border-b px-5 py-3">
+        <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
           채점 체크리스트
         </p>
         <span className="text-xs tabular-nums">
-          <span className="font-bold text-primary">{got}</span>
+          <span className="text-primary font-bold">{got}</span>
           <span className="text-muted-foreground"> / {total} 점</span>
-          <span className="ml-2 text-muted-foreground">({pct}%)</span>
+          <span className="text-muted-foreground ml-2">({pct}%)</span>
         </span>
       </div>
       <div className="p-4">
@@ -1664,15 +1701,19 @@ function RubricChecklist({
                 >
                   <input
                     type="checkbox"
-                    className="mt-0.5 size-3.5 accent-primary"
+                    className="accent-primary mt-0.5 size-3.5"
                     checked={isChecked}
                     onChange={() => onToggle(i)}
                     data-testid={`rubric-item-${i}`}
                   />
                   <span className="flex-1">
-                    <span className={cn(isChecked && "line-through opacity-60")}>{it.label}</span>
+                    <span
+                      className={cn(isChecked && "line-through opacity-60")}
+                    >
+                      {it.label}
+                    </span>
                   </span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                  <span className="text-muted-foreground shrink-0 tabular-nums">
                     {it.points}점
                   </span>
                 </label>
@@ -1717,19 +1758,23 @@ function ReviewSection({
   const requested = attempt.reviewRequestedAt !== null;
   const completed = attempt.reviewCompletedAt !== null;
   const inFlight = fetcher.state !== "idle";
-  const error = fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+  const error =
+    fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
   const onRequest = () => {
     if (!submitted) return;
     if (!confirm("이 답안에 대해 강사 첨삭을 요청하시겠습니까?")) return;
     const fd = new FormData();
     fd.set("intent", "request");
     fd.set("problemId", problemId);
-    fetcher.submit(fd, { method: "post", action: "/api/study/subjective-review" });
+    fetcher.submit(fd, {
+      method: "post",
+      action: "/api/study/subjective-review",
+    });
   };
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
-      <div className="border-b border-border px-5 py-3">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+    <div className="border-border bg-card rounded-xl border shadow-sm">
+      <div className="border-border border-b px-5 py-3">
+        <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
           강사 첨삭
         </p>
       </div>
@@ -1754,7 +1799,7 @@ function ReviewSection({
               ) : null}
             </div>
             {attempt.reviewerCommentMd ? (
-              <p className="rounded-lg bg-muted/50 p-3 leading-relaxed whitespace-pre-line">
+              <p className="bg-muted/50 rounded-lg p-3 leading-relaxed whitespace-pre-line">
                 {attempt.reviewerCommentMd}
               </p>
             ) : (
@@ -1774,7 +1819,7 @@ function ReviewSection({
           </div>
         ) : requested ? (
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+            <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
               검토 대기
             </span>
             <span className="text-muted-foreground">
@@ -1831,11 +1876,11 @@ function SubjectiveTimedBar({
   }
   if (timedStartedAt === null) {
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3 text-xs">
-        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+      <div className="border-border bg-muted/30 flex flex-wrap items-center gap-3 rounded-xl border border-dashed px-4 py-3 text-xs">
+        <span className="text-muted-foreground inline-flex items-center gap-1.5">
           <TimerIcon className="size-3.5" /> 시험 모드
         </span>
-        <label className="inline-flex items-center gap-1.5 text-muted-foreground">
+        <label className="text-muted-foreground inline-flex items-center gap-1.5">
           제한 시간
           <input
             type="number"
@@ -1843,7 +1888,7 @@ function SubjectiveTimedBar({
             max={180}
             value={minInput}
             onChange={(e) => setMinInput(e.target.value)}
-            className="border-input bg-background h-7 w-14 rounded-lg border px-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="border-input bg-background focus:ring-primary/30 h-7 w-14 rounded-lg border px-2 text-xs tabular-nums focus:ring-2 focus:outline-none"
           />
           분
         </label>
@@ -1863,7 +1908,7 @@ function SubjectiveTimedBar({
         >
           시험 모드 시작
         </Button>
-        <span className="ml-auto text-[11px] text-muted-foreground">
+        <span className="text-muted-foreground ml-auto text-[11px]">
           시작하면 모범답안·채점기준이 잠깁니다.
         </span>
       </div>
@@ -1915,11 +1960,15 @@ function SavingStatus({
     return <span className="text-muted-foreground tabular-nums">저장 중…</span>;
   }
   if (isDirty) {
-    return <span className="font-semibold text-amber-600 dark:text-amber-400">미저장</span>;
+    return (
+      <span className="font-semibold text-amber-600 dark:text-amber-400">
+        미저장
+      </span>
+    );
   }
   if (updatedAt) {
     return (
-      <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+      <span className="font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">
         저장됨 · {updatedAt.slice(11, 16)}
       </span>
     );

@@ -2,30 +2,24 @@
 // - staff (instructor/admin): 운영자 허브 — 9 클러스터의 단일 진입점
 // - 학생: 권한 안내 + 가능한 액션 안내 화면
 // - 비로그인: /login 으로 리다이렉트
+import type { Route } from "./+types/admin";
 
-import {
-  ArrowRightIcon,
-  ChevronRightIcon,
-  LockIcon,
-} from "lucide-react";
+import { ArrowRightIcon, ChevronRightIcon, LockIcon } from "lucide-react";
 import { Link, redirect } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import {
-  ADMIN_NAV,
-  AdminShell,
-} from "~/features/admin/components/admin-shell";
+import { cn } from "~/core/lib/utils";
+import { ADMIN_NAV, AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import {
-  getStaffContentStats,
   type StaffContentStats,
+  getStaffContentStats,
 } from "~/features/admin/queries/staff-content.server";
 import {
-  getSubjectCoverage,
   type SubjectCoverageRow,
+  getSubjectCoverage,
 } from "~/features/admin/queries/subject-coverage.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -33,8 +27,6 @@ import {
   isFirstExamSubject,
   isSecondExamSubject,
 } from "~/features/subjects/lib/subjects";
-
-import type { Route } from "./+types/admin";
 
 export const meta: Route.MetaFunction = () => [
   { title: "운영자 | Lidam Patent Attorney Academy" },
@@ -89,11 +81,15 @@ function ContentStatsRow({ stats }: { stats: StaffContentStats }) {
     { label: "내 판례", value: stats.cases, hint: "등록한 판례" },
     { label: "내 문제", value: stats.problems, hint: "등록한 객관식/주관식" },
     { label: "내 논문", value: stats.papers, hint: "등록한 논문" },
-    { label: "도서 추록", value: stats.bookUpdates, hint: "등록한 추록/정오표" },
     {
-      label: "조문 코멘트",
+      label: "도서 추록",
+      value: stats.bookUpdates,
+      hint: "등록한 추록/정오표",
+    },
+    {
+      label: "조문 메모",
       value: stats.articleComments,
-      hint: "작성한 평석 코멘트",
+      hint: "작성한 메모",
     },
     {
       label: "조문 개정",

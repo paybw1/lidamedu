@@ -1,17 +1,29 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import type {
+  ProblemDetail,
+  ProblemExamRound,
+  ProblemFormat,
+  ProblemListItem,
+  ProblemOrigin,
+  ProblemPolarity,
+  ProblemScope,
+} from "./labels";
+
 import {
   getBookmarksByTargets,
   listMemosByTargets,
 } from "~/features/annotations/queries.server";
-import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import { articleSlug } from "~/features/laws/lib/identifier";
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+
 import {
-  parseRubricItems,
+  MC_FORMATS,
   type OxQuestionItem,
   type OxRefAnnotations,
   type OxTruth,
+  parseRubricItems,
 } from "./labels";
 
 export type {
@@ -36,16 +48,6 @@ export {
   ORIGIN_LABEL,
   POLARITY_LABEL,
   SCOPE_LABEL,
-} from "./labels";
-
-import type {
-  ProblemDetail,
-  ProblemExamRound,
-  ProblemListItem,
-  ProblemOrigin,
-  ProblemFormat,
-  ProblemPolarity,
-  ProblemScope,
 } from "./labels";
 
 export interface ListProblemsFilters {
@@ -98,15 +100,15 @@ export async function listProblemsBySubject(
   if (filters.year != null) query = query.eq("year", filters.year);
   if (filters.search && filters.search.trim().length > 0) {
     // PostgREST .ilike() — % 와 _ 만 와일드카드로 escape 후 양쪽 % 추가.
-    const safe = filters.search
-      .trim()
-      .replace(/[%_]/g, (m) => `\\${m}`);
+    const safe = filters.search.trim().replace(/[%_]/g, (m) => `\\${m}`);
     query = query.ilike("body_md", `%${safe}%`);
   }
   if (filters.primaryArticleId)
     query = query.eq("primary_article_id", filters.primaryArticleId);
-  if (filters.reviewStatus === "reviewed") query = query.not("reviewed_at", "is", null);
-  else if (filters.reviewStatus === "pending") query = query.is("reviewed_at", null);
+  if (filters.reviewStatus === "reviewed")
+    query = query.not("reviewed_at", "is", null);
+  else if (filters.reviewStatus === "pending")
+    query = query.is("reviewed_at", null);
   else if (filters.reviewStatus === "mismatch")
     query = query.not("mismatch_flagged_at", "is", null);
 
@@ -123,7 +125,10 @@ export async function listProblemsBySubject(
     rows.filter((r) => r.format === "mc_box").map((r) => r.problem_id),
   );
   const unclassifiedByProblem = new Map<string, number>();
-  const mediaByProblem = new Map<string, { hasTable: boolean; hasImage: boolean }>();
+  const mediaByProblem = new Map<
+    string,
+    { hasTable: boolean; hasImage: boolean }
+  >();
   // problem-level explanation 먼저 검사.
   for (const r of rows) {
     mediaByProblem.set(r.problem_id, {
@@ -136,8 +141,15 @@ export async function listProblemsBySubject(
     // .in() 에 500+개 UUID 를 넣으면 쿼리가 잘리거나 실패한다.
     // → ID 를 청크 단위로 나눠 여러 번 호출 + 행 limit 명시.
     const CHUNK = 100;
-    const allChoiceRows: Array<{ problem_id: string; choice_type: string | null; explanation_md: string | null }> = [];
-    const allBoxRows: Array<{ problem_id: string; explanation_md: string | null }> = [];
+    const allChoiceRows: Array<{
+      problem_id: string;
+      choice_type: string | null;
+      explanation_md: string | null;
+    }> = [];
+    const allBoxRows: Array<{
+      problem_id: string;
+      explanation_md: string | null;
+    }> = [];
     for (let i = 0; i < problemIds.length; i += CHUNK) {
       const ids = problemIds.slice(i, i + CHUNK);
       const { data: choiceRows } = await client
@@ -176,7 +188,10 @@ export async function listProblemsBySubject(
   }
 
   let mapped: ProblemListItem[] = rows.map((row) => {
-    const m = mediaByProblem.get(row.problem_id) ?? { hasTable: false, hasImage: false };
+    const m = mediaByProblem.get(row.problem_id) ?? {
+      hasTable: false,
+      hasImage: false,
+    };
     return {
       problemId: row.problem_id,
       examRound: row.exam_round,
@@ -225,7 +240,10 @@ export async function listProblemsBySubject(
   //   문자열 정렬하면 a1 → a10..a19 → a2 식으로 어긋난다. segment 별로 숫자 추출 후
   //   숫자 비교하는 natural sort 키를 만들어 정렬한다.
   const pathByProblem = new Map(
-    rows.map((r) => [r.problem_id, r.articles?.path ? String(r.articles.path) : null]),
+    rows.map((r) => [
+      r.problem_id,
+      r.articles?.path ? String(r.articles.path) : null,
+    ]),
   );
   mapped.sort((a, b) => {
     const pa = pathByProblem.get(a.problemId);
@@ -239,8 +257,7 @@ export async function listProblemsBySubject(
       const cmp = compareArticlePath(pa, pb);
       if (cmp !== 0) return cmp;
     }
-    if ((b.year ?? 0) !== (a.year ?? 0))
-      return (b.year ?? 0) - (a.year ?? 0);
+    if ((b.year ?? 0) !== (a.year ?? 0)) return (b.year ?? 0) - (a.year ?? 0);
     return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
   });
 
@@ -349,7 +366,8 @@ export async function listRecentProblems(
   if (options.subject) q = q.eq("laws.law_code", options.subject);
   if (options.year !== undefined) q = q.eq("year", options.year);
   if (options.origin) q = q.eq("origin", options.origin);
-  if (options.subjectiveKind) q = q.eq("subjective_kind", options.subjectiveKind);
+  if (options.subjectiveKind)
+    q = q.eq("subjective_kind", options.subjectiveKind);
   if (options.subjectiveKeyword) {
     q = q.contains("subjective_keywords", [options.subjectiveKeyword]);
   }
@@ -368,7 +386,7 @@ export async function listRecentProblems(
     bodySnippet:
       (r.body_md ?? "").length > 100
         ? `${(r.body_md ?? "").slice(0, 100)}…`
-        : r.body_md ?? "",
+        : (r.body_md ?? ""),
     format: r.format,
     origin: r.origin,
     year: r.year,
@@ -500,13 +518,19 @@ export async function listOxItemsForReview(
   // 3) 상태 필터 — DB 단에서 mixed AND/OR 가 복잡해 메모리에서 처리.
   const filtered = out.filter((it) => {
     if (status === "active") {
-      return it.oxIneligible === false && it.oxTruth != null && it.relatedArticleId != null;
+      return (
+        it.oxIneligible === false &&
+        it.oxTruth != null &&
+        it.relatedArticleId != null
+      );
     }
     if (status === "ineligible") {
       return it.oxIneligible === true;
     }
     if (status === "untruthed") {
-      return !it.oxIneligible && (it.oxTruth == null || it.relatedArticleId == null);
+      return (
+        !it.oxIneligible && (it.oxTruth == null || it.relatedArticleId == null)
+      );
     }
     return true;
   });
@@ -570,7 +594,11 @@ export async function updateOxReviewItem(
 ): Promise<void> {
   const ineligible = patch.oxIneligible ?? undefined;
   const truth =
-    ineligible === true ? null : patch.oxTruth === undefined ? undefined : patch.oxTruth;
+    ineligible === true
+      ? null
+      : patch.oxTruth === undefined
+        ? undefined
+        : patch.oxTruth;
 
   const update: Record<string, unknown> = {};
   if (truth !== undefined) update.ox_truth = truth;
@@ -747,9 +775,17 @@ export async function getOxAnnotationsForRefs(
 export interface ChoiceLinkRefs {
   articles: Map<
     string,
-    { articleId: string; lawCode: string; pathSlug: string; displayLabel: string }
+    {
+      articleId: string;
+      lawCode: string;
+      pathSlug: string;
+      displayLabel: string;
+    }
   >;
-  cases: Map<string, { caseId: string; lawCode: string; caseNumber: string; caseTitle: string }>;
+  cases: Map<
+    string,
+    { caseId: string; lawCode: string; caseNumber: string; caseTitle: string }
+  >;
 }
 
 export async function getChoiceLinkRefs(
@@ -759,7 +795,12 @@ export async function getChoiceLinkRefs(
 ): Promise<ChoiceLinkRefs> {
   const articleMap = new Map<
     string,
-    { articleId: string; lawCode: string; pathSlug: string; displayLabel: string }
+    {
+      articleId: string;
+      lawCode: string;
+      pathSlug: string;
+      displayLabel: string;
+    }
   >();
   const caseMap = new Map<
     string,
@@ -770,9 +811,7 @@ export async function getChoiceLinkRefs(
     const unique = Array.from(new Set(articleIds));
     const { data: rows } = await client
       .from("articles")
-      .select(
-        "article_id, article_number, display_label, laws!inner(law_code)",
-      )
+      .select("article_id, article_number, display_label, laws!inner(law_code)")
       .in("article_id", unique);
     for (const r of rows ?? []) {
       if (!r.article_number) continue;
@@ -851,7 +890,7 @@ export async function getRelatedProblems(
     bodySnippet:
       (r.body_md ?? "").length > 100
         ? `${(r.body_md ?? "").slice(0, 100)}…`
-        : r.body_md ?? "",
+        : (r.body_md ?? ""),
     format: r.format,
     origin: r.origin,
     lawCode: r.laws.law_code,
@@ -864,7 +903,18 @@ export async function listProblemsByArticleIds(
   client: SupabaseClient<Database>,
   articleIds: string[],
   limitPerArticle = 30,
-): Promise<Record<string, { problemId: string; year: number | null; problemNumber: number | null; format: string; origin: string }[]>> {
+): Promise<
+  Record<
+    string,
+    {
+      problemId: string;
+      year: number | null;
+      problemNumber: number | null;
+      format: string;
+      origin: string;
+    }[]
+  >
+> {
   if (articleIds.length === 0) return {};
   const { data, error } = await client
     .from("problems")
@@ -878,7 +928,13 @@ export async function listProblemsByArticleIds(
   if (error) throw error;
   const result: Record<
     string,
-    { problemId: string; year: number | null; problemNumber: number | null; format: string; origin: string }[]
+    {
+      problemId: string;
+      year: number | null;
+      problemNumber: number | null;
+      format: string;
+      origin: string;
+    }[]
   > = {};
   for (const aid of articleIds) result[aid] = [];
   for (const r of data ?? []) {
@@ -925,7 +981,7 @@ export async function getRelatedProblemsByCase(
       bodySnippet:
         (p.body_md ?? "").length > 100
           ? `${(p.body_md ?? "").slice(0, 100)}…`
-          : p.body_md ?? "",
+          : (p.body_md ?? ""),
       format: p.format,
       origin: p.origin,
       lawCode: p.laws.law_code,
@@ -968,7 +1024,7 @@ export async function getRelatedProblemsByCase(
           bodySnippet:
             (r.body_md ?? "").length > 100
               ? `${(r.body_md ?? "").slice(0, 100)}…`
-              : r.body_md ?? "",
+              : (r.body_md ?? ""),
           format: r.format,
           origin: r.origin,
           lawCode: r.laws.law_code,
@@ -978,6 +1034,157 @@ export async function getRelatedProblemsByCase(
   }
 
   return [...directProblems, ...viaArticleProblems].slice(0, limit);
+}
+
+// 이 판례가 출제된 1차 객관식 기출문제 — problem_case_links 기반 (feat-8-024).
+// case-viewer 헤더의 기출문제 칩.
+export interface ExamProblemRef {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  lawCode: string;
+}
+
+export async function getExamProblemsForCase(
+  client: SupabaseClient<Database>,
+  caseId: string,
+): Promise<ExamProblemRef[]> {
+  const { data, error } = await client
+    .from("problem_case_links")
+    .select(
+      "problems!inner(problem_id, year, problem_number, origin, exam_round, format, deleted_at, laws!inner(law_code))",
+    )
+    .eq("case_id", caseId);
+  if (error) throw error;
+  const out: ExamProblemRef[] = [];
+  const seen = new Set<string>();
+  for (const r of data ?? []) {
+    const p = r.problems;
+    if (!p || p.deleted_at) continue;
+    // 객관식 1차 기출문제만.
+    if (p.origin !== "past_exam" || p.exam_round !== "first") continue;
+    if (!MC_FORMATS.includes(p.format)) continue;
+    if (seen.has(p.problem_id)) continue;
+    seen.add(p.problem_id);
+    out.push({
+      problemId: p.problem_id,
+      year: p.year,
+      problemNumber: p.problem_number,
+      lawCode: p.laws.law_code,
+    });
+  }
+  // 연도 내림차순, 같은 연도면 번호 오름차순.
+  out.sort((a, b) => {
+    if ((b.year ?? 0) !== (a.year ?? 0)) return (b.year ?? 0) - (a.year ?? 0);
+    return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+  });
+  return out;
+}
+
+// problem_case_links 로 각 판례가 출제된 1차 객관식 기출 연도 (feat-8-024).
+// 판례 목록의 기출 칩·"1차 기출" 필터에 사용 — case_id → 정렬된 연도 배열.
+export async function getExamYearsByCase(
+  client: SupabaseClient<Database>,
+): Promise<Map<string, number[]>> {
+  const { data, error } = await client
+    .from("problem_case_links")
+    .select(
+      "case_id, problems!inner(year, origin, exam_round, format, deleted_at)",
+    );
+  if (error) throw error;
+  const byCase = new Map<string, Set<number>>();
+  for (const r of data ?? []) {
+    const p = r.problems;
+    if (!p || p.deleted_at) continue;
+    if (p.origin !== "past_exam" || p.exam_round !== "first") continue;
+    if (!MC_FORMATS.includes(p.format)) continue;
+    if (p.year == null) continue;
+    const set = byCase.get(r.case_id) ?? new Set<number>();
+    set.add(p.year);
+    byCase.set(r.case_id, set);
+  }
+  const out = new Map<string, number[]>();
+  for (const [caseId, years] of byCase) {
+    out.set(
+      caseId,
+      [...years].sort((a, b) => a - b),
+    );
+  }
+  return out;
+}
+
+// 수동 매칭 화면(feat-8-024) — 한 과목의 1차 객관식 기출문제 + 연결된 판례 목록.
+export interface ExamCaseLink {
+  linkId: string;
+  caseId: string;
+  caseNumber: string;
+  caseTitle: string;
+  /** 자동 스캔으로 생성된 링크인지 (note='exam-scan'). false = 수동 매칭. */
+  isAuto: boolean;
+}
+
+export interface ExamCaseLinkRow {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  lawCode: string;
+  bodySnippet: string;
+  links: ExamCaseLink[];
+}
+
+export async function listExamCaseLinkRows(
+  client: SupabaseClient<Database>,
+  lawCode: string,
+): Promise<ExamCaseLinkRow[]> {
+  const { data: probs, error } = await client
+    .from("problems")
+    .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+    .eq("origin", "past_exam")
+    .eq("exam_round", "first")
+    .in("format", [...MC_FORMATS])
+    .eq("laws.law_code", lawCode)
+    .is("deleted_at", null)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("problem_number", { ascending: true });
+  if (error) throw error;
+  const problems = probs ?? [];
+  if (problems.length === 0) return [];
+
+  const { data: linkRows } = await client
+    .from("problem_case_links")
+    .select(
+      "link_id, problem_id, case_id, note, cases!inner(case_number, case_title, deleted_at)",
+    )
+    .in(
+      "problem_id",
+      problems.map((p) => p.problem_id),
+    );
+  const linksByProblem = new Map<string, ExamCaseLink[]>();
+  for (const lr of linkRows ?? []) {
+    const c = lr.cases;
+    if (!c || c.deleted_at) continue;
+    const list = linksByProblem.get(lr.problem_id) ?? [];
+    list.push({
+      linkId: lr.link_id,
+      caseId: lr.case_id,
+      caseNumber: c.case_number,
+      caseTitle: c.case_title,
+      isAuto: lr.note === "exam-scan",
+    });
+    linksByProblem.set(lr.problem_id, list);
+  }
+
+  return problems.map((p) => {
+    const body = p.body_md ?? "";
+    return {
+      problemId: p.problem_id,
+      year: p.year,
+      problemNumber: p.problem_number,
+      lawCode: p.laws.law_code,
+      bodySnippet: body.length > 140 ? `${body.slice(0, 140)}…` : body,
+      links: linksByProblem.get(p.problem_id) ?? [],
+    };
+  });
 }
 
 // problem-viewer 우측 패널 — 이 문제가 인용한 판례.
@@ -1276,7 +1483,11 @@ export async function listSystematicTopNodes(
   for (const top of tops) {
     const topPath = String(top.path);
     const subtreeNodeIds = nodes
-      .filter((n) => String(n.path) === topPath || String(n.path).startsWith(topPath + "."))
+      .filter(
+        (n) =>
+          String(n.path) === topPath ||
+          String(n.path).startsWith(topPath + "."),
+      )
       .map((n) => n.node_id);
     if (subtreeNodeIds.length === 0) {
       result.push({
@@ -1330,7 +1541,11 @@ export interface SystematicNodeProblemsResult {
     problems: ProblemDetail[];
   }>;
   // 노드에는 매핑됐지만 문제는 없는 article (이미지 트리에서 비어있다고 표시 가능)
-  emptyArticles: Array<{ articleId: string; articleNumber: string | null; articleLabel: string }>;
+  emptyArticles: Array<{
+    articleId: string;
+    articleNumber: string | null;
+    articleLabel: string;
+  }>;
 }
 
 // 노드 클릭 → 해당 노드 subtree 의 모든 article 을 조문 순서대로 + 문제까지 가져온다.
@@ -1353,7 +1568,9 @@ export async function getSystematicNodeProblems(
   const nodePath = String(node.path);
   const subtreeIds = (subtreeNodes ?? [])
     .filter(
-      (n) => String(n.path) === nodePath || String(n.path).startsWith(nodePath + "."),
+      (n) =>
+        String(n.path) === nodePath ||
+        String(n.path).startsWith(nodePath + "."),
     )
     .map((n) => n.node_id);
 
@@ -1365,7 +1582,11 @@ export async function getSystematicNodeProblems(
   const articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
   if (articleIds.length === 0) {
     return {
-      node: { nodeId: node.node_id, path: nodePath, displayLabel: node.display_label },
+      node: {
+        nodeId: node.node_id,
+        path: nodePath,
+        displayLabel: node.display_label,
+      },
       articleGroups: [],
       emptyArticles: [],
     };
@@ -1490,17 +1711,26 @@ export async function getSystematicNodeProblems(
         rubricItems: parseRubricItems(p.rubric_items),
         hasTable:
           hasTableMd(p.explanation_md) ||
-          (choicesByProblem.get(p.problem_id) ?? []).some((c) => hasTableMd(c.explanationMd)) ||
-          (boxItemsByProblem.get(p.problem_id) ?? []).some((b) => hasTableMd(b.explanationMd)),
+          (choicesByProblem.get(p.problem_id) ?? []).some((c) =>
+            hasTableMd(c.explanationMd),
+          ) ||
+          (boxItemsByProblem.get(p.problem_id) ?? []).some((b) =>
+            hasTableMd(b.explanationMd),
+          ),
         hasImage:
           hasImageMd(p.explanation_md) ||
-          (choicesByProblem.get(p.problem_id) ?? []).some((c) => hasImageMd(c.explanationMd)) ||
-          (boxItemsByProblem.get(p.problem_id) ?? []).some((b) => hasImageMd(b.explanationMd)),
+          (choicesByProblem.get(p.problem_id) ?? []).some((c) =>
+            hasImageMd(c.explanationMd),
+          ) ||
+          (boxItemsByProblem.get(p.problem_id) ?? []).some((b) =>
+            hasImageMd(b.explanationMd),
+          ),
         choices: choicesByProblem.get(p.problem_id) ?? [],
         boxItems: boxItemsByProblem.get(p.problem_id) ?? [],
       }))
       .sort((x, y) => {
-        if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
+        if ((y.year ?? 0) !== (x.year ?? 0))
+          return (y.year ?? 0) - (x.year ?? 0);
         return (x.problemNumber ?? 0) - (y.problemNumber ?? 0);
       });
     if (probs.length === 0) {
@@ -1520,7 +1750,11 @@ export async function getSystematicNodeProblems(
     }
   }
   return {
-    node: { nodeId: node.node_id, path: nodePath, displayLabel: node.display_label },
+    node: {
+      nodeId: node.node_id,
+      path: nodePath,
+      displayLabel: node.display_label,
+    },
     articleGroups,
     emptyArticles,
   };
@@ -1558,7 +1792,9 @@ export async function getSystematicNodeProblemSequence(
   const nodePath = String(node.path);
   const subtreeIds = (subtreeNodes ?? [])
     .filter(
-      (n) => String(n.path) === nodePath || String(n.path).startsWith(nodePath + "."),
+      (n) =>
+        String(n.path) === nodePath ||
+        String(n.path).startsWith(nodePath + "."),
     )
     .map((n) => n.node_id);
 
@@ -1569,7 +1805,11 @@ export async function getSystematicNodeProblemSequence(
   const articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
   if (articleIds.length === 0) {
     return {
-      node: { nodeId: node.node_id, path: nodePath, displayLabel: node.display_label },
+      node: {
+        nodeId: node.node_id,
+        path: nodePath,
+        displayLabel: node.display_label,
+      },
       problems: [],
     };
   }
@@ -1594,7 +1834,8 @@ export async function getSystematicNodeProblemSequence(
     const inArticle = list
       .filter((p) => p.primary_article_id === a.article_id)
       .sort((x, y) => {
-        if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
+        if ((y.year ?? 0) !== (x.year ?? 0))
+          return (y.year ?? 0) - (x.year ?? 0);
         return (x.problem_number ?? 0) - (y.problem_number ?? 0);
       });
     for (const p of inArticle) {
@@ -1609,7 +1850,11 @@ export async function getSystematicNodeProblemSequence(
   }
 
   return {
-    node: { nodeId: node.node_id, path: nodePath, displayLabel: node.display_label },
+    node: {
+      nodeId: node.node_id,
+      path: nodePath,
+      displayLabel: node.display_label,
+    },
     problems,
   };
 }

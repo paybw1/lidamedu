@@ -5,7 +5,7 @@
 
 ## 기술 스택
 - **Framework**: React Router 7 (SSR, file-based routing) + Vite
-- **DB/Auth**: Supabase (Auth + PostgreSQL + RLS) + Drizzle ORM
+- **DB/Auth**: Supabase (Auth + PostgreSQL + RLS). ORM 미사용 — 스키마는 Supabase 마이그레이션으로 직접 관리, 타입은 생성물 `database.types.ts` 사용
 - **UI**: shadcn/ui (New York style) + Radix UI + Tailwind CSS v4
 - **Schema/Validation**: Zod (폼/서버 액션 경계에서 사용)
 - **Email**: Resend + React Email
@@ -27,7 +27,7 @@
 
 ## Cloudflare 배포 관련 주의
 - React Router 7 SSR은 Cloudflare Workers 어댑터로 배포. Node 전용 API 사용 금지(`fs`, `net`, `crypto.randomBytes` 등) — 필요 시 Web Crypto / Workers 호환 라이브러리로 대체
-- Drizzle은 Supabase pg에 `postgres-js`(Workers `connect()` TCP) 또는 Supabase의 `pg`-over-HTTP 중 **하나로 통일**. 결정 전까지 DB 커넥션 레이어 추상화 (`app/core/db/drizzle-client.server.ts`) 유지
+- DB 접근은 `@supabase/supabase-js` 클라이언트로 통일 (`app/core/lib/supa-client.server.ts` = 요청 컨텍스트·RLS 적용 / `supa-admin-client.server.ts` = service_role). 별도 ORM·커넥션 풀 없음
 - Resend 호출은 전부 서버 action/loader에서만. 환경변수는 Cloudflare Secrets로 관리
 
 ## 작업 시작 전 필수 확인 (Progressive Disclosure)
@@ -52,10 +52,9 @@
 app/
 ├── core/
 │   ├── components/          # 공용 UI (navigation-bar, footer, command-palette, article-tree, tag-chip 등)
-│   ├── db/                  # drizzle-client.server.ts, supa-client.server.ts, supa-admin-client.server.ts
 │   ├── hooks/               # useHighlight, useStudyTimer, useShortcut 등
 │   ├── layouts/             # public.layout, student.layout, staff.layout(강사+원장 공용), admin.layout
-│   ├── lib/                 # 날짜/법령번호 포매터, 진도 계산기, 권한 가드
+│   ├── lib/                 # supa-client / supa-admin-client (Supabase 클라이언트), 날짜·법령번호 포매터, 진도 계산기, 권한 가드
 │   └── screens/             # robots.txt, sitemap.xml, error
 ├── features/
 │   ├── auth/                # 로그인/회원가입/OTP/매직링크/비밀번호
@@ -93,9 +92,10 @@ app/
 ├── routes.ts
 ├── root.tsx
 └── app.css
-sql/migrations/              # Drizzle 마이그레이션
 transactional-emails/        # Resend 템플릿 (가입/리셋/알림)
 ```
+
+> 위 맵의 feature 별 `schema.ts` 표기는 **실파일이 아니라** 그 feature 가 소유한 DB 테이블 목록을 뜻한다. 스키마 정의는 Supabase 에 있고, 사람이 읽는 SSOT 는 `docs/db-schema.md` · 생성 타입은 `database.types.ts`.
 
 ## Non-negotiable (절대 위반 금지)
 
@@ -107,7 +107,7 @@ transactional-emails/        # Resend 템플릿 (가입/리셋/알림)
 4. 매직 넘버 금지 (constants SSOT에서만 정의) — 특히 과목 코드, 조문 레벨(조/항/호/목)은 enum
 5. `console.log` 잔존 금지 (디버깅 후 제거)
 6. 코드 변경 후 `npm run typecheck` 통과 확인 필수
-7. `app/core/db/*.server.ts` 파일을 클라이언트 컴포넌트에서 import 금지
+7. `*.server.ts` 파일(Supabase 클라이언트·서버 쿼리 등)을 클라이언트 컴포넌트에서 import 금지
 8. **법령·판례 원문은 읽기 전용 불변 객체로 취급** — 수정은 반드시 개정(new revision) 흐름으로만. 기존 조문 `content` 필드를 in-place 수정 금지
 9. **사용자 학습 데이터(메모/하이라이트/진도)는 삭제 시 soft delete** — 실수로 한 학기치 메모가 날아가면 복구 불가. `deleted_at` 컬럼 사용
 10. Cloudflare Workers 런타임 비호환 API(`fs`, Node `crypto.randomBytes`, `setImmediate` 등) 사용 금지
@@ -146,7 +146,7 @@ Layer 3. Code — "어떻게 작성하는가?"
 Layer 1을 통과한 기능의 코드 구조·상태 설계.
 
 1. **상태 경계**: persisted(DB 필드) / interaction(UI 상태) / derived(계산값: 진도율, 오답률, 연속 학습 일수)를 혼합하지 않는다. derived는 projection 또는 materialized view
-2. **소유자 우선**: 구현 전에 소유자 결정 (서버 action / 클라이언트 상태 / Supabase RLS / Drizzle 스키마)
+2. **소유자 우선**: 구현 전에 소유자 결정 (서버 action / 클라이언트 상태 / Supabase RLS / DB 스키마)
 3. **작은 코어**: 거대한 컴포넌트/훅 대신 core + feature 분리
 4. **의미적 일관성**: 같은 필드는 서버/클라이언트/DB 어디서든 같은 의미. 특히 조문 식별자(`law_code + article_number + clause_number + item_number + sub_item_number`) 표기 통일
 5. **단일 진입점**: 폼 검증·데이터 정규화는 한 곳(action)에서 한 번만 수행
@@ -160,8 +160,8 @@ Layer 1을 통과한 기능의 코드 구조·상태 설계.
 Layer 2에서 배치가 결정된 코드의 작성 규칙.
 
 #### 파일 구조
-- Feature 모듈: `app/features/{feature}/` 아래 schema, screens, api, components, lib
-- 공통: `app/core/` — components, db, hooks, layouts, lib, screens
+- Feature 모듈: `app/features/{feature}/` 아래 screens, api, components, lib, `queries.server.ts` (스키마 파일 없음 — DB 는 Supabase 관리)
+- 공통: `app/core/` — components, hooks, layouts, lib, screens
 - `.server.ts`는 서버 전용, `.client.ts`는 브라우저 전용
 
 #### 타입 안전성
@@ -205,7 +205,7 @@ return <ItemList items={data.items} />;
 - `admin`은 전부 + 사용자/결제/강사 관리
 
 ### DB 접근
-- Drizzle ORM 우선. RLS가 필요 없는 관리 작업만 `supa-admin-client` 사용
+- `supa-client`(요청 컨텍스트, RLS 적용) 우선. RLS 우회가 꼭 필요한 관리 작업만 `supa-admin-client`(service_role) 사용
 - 폼 처리: Zod 검증 → action 함수 → `data()` 응답 → 토스트/인라인 피드백
 - 인증 가드: `requireAuthentication(client)` — private 라우트의 loader에서 호출
 
@@ -236,7 +236,7 @@ return <ItemList items={data.items} />;
 - 반응형 필수. 조문 뷰어는 모바일에서 사이드바가 시트(Sheet)로 변환
 
 ### 데이터베이스
-- 스키마 변경 시: `schema.ts` 수정 → `npm run db:generate` → `npm run db:migrate`
+- 스키마 변경: Supabase 마이그레이션으로 직접 적용 (Supabase MCP `apply_migration`, 또는 `supabase` CLI) → `npm run db:typegen` 으로 `database.types.ts` 재생성
 - RLS 정책: 사용자는 자기 데이터만. 콘텐츠(조문/판례/문제)는 전체 공개 읽기 + 역할 기반 쓰기
 - JSONB 필드로 유연한 확장 (metadata, tags, legacy_fields 등)
 
@@ -250,13 +250,13 @@ return <ItemList items={data.items} />;
 5. 구현 후 `SPEC.md` 상태 업데이트 (🔲 → 🟡 → ✅) 및 `docs/features/feat-XXX-*.md` 갱신
 
 ### DB 스키마 변경 시
-> **IMPORTANT**: 이 개발 환경은 Supabase 로그인이 완료된 상태이므로, Claude 가 `npm run db:migrate` 와 `npm run db:typegen` 을 **직접 실행**한다. 사용자에게 실행을 요청하지 말 것.
+> **IMPORTANT**: 이 개발 환경은 Supabase 프로젝트에 연결돼 있으므로, Claude 가 마이그레이션 적용과 `npm run db:typegen` 을 **직접 실행**한다. 사용자에게 실행을 요청하지 말 것. 마이그레이션은 연결된 Supabase 프로젝트에 즉시 반영된다(로컬/원격 분리 없음) — 적용 전 현재 스키마를 반드시 확인한다.
 
-1. 해당 feature의 `app/features/{feature}/schema.ts` 수정
-2. `npm run db:generate` → 생성된 마이그레이션(`sql/migrations/`) 검토 (필요 시 수동 편집, 특히 ltree/트리거)
-3. **Claude 가 실행**: `npm run db:migrate` — 실패 시 출력 분석 후 수정·재시도
-4. **Claude 가 실행**: `npm run db:typegen`
-5. `docs/db-schema.md` 업데이트
+1. 적용 전 `list_tables` / `execute_sql`(Supabase MCP)로 현재 테이블·컬럼·제약·RLS 확인
+2. DDL 작성 — 컬럼/테이블 + RLS 정책 + 트리거 + 인덱스를 한 마이그레이션에 포함
+3. **Claude 가 실행**: Supabase MCP `apply_migration`(snake_case 이름)으로 적용. 실패 시 출력 분석 후 수정·재시도
+4. **Claude 가 실행**: `npm run db:typegen` — `database.types.ts` 재생성
+5. `docs/db-schema.md` 업데이트 (스키마의 사람이 읽는 SSOT)
 
 ### 콘텐츠 개정(법 개정) 반영 시
 1. `/staff/laws/{law}/revisions` 에서 개정안 초안 작성
@@ -294,9 +294,7 @@ return <ItemList items={data.items} />;
 npm run dev          # 개발 서버
 npm run build        # 프로덕션 빌드
 npm run typecheck    # 타입 체크
-npm run db:generate  # 마이그레이션 생성
-npm run db:migrate   # 마이그레이션 적용
-npm run db:typegen   # Supabase 타입 재생성
+npm run db:typegen   # Supabase 스키마 → database.types.ts 재생성 (스키마 변경은 Supabase MCP apply_migration 으로)
 npm run test:e2e     # Playwright E2E
 npm run format       # Prettier
 npm run deploy       # Cloudflare 배포 (wrangler deploy)

@@ -1,8 +1,13 @@
 // 학습보조 4개 화면(오답노트·즐겨찾기·메모·하이라이트) 공통 셸.
 // 헤더 + 형제 화면을 잇는 탭 strip + 카운트 요약 strip.
-
-import { BookmarkIcon, HighlighterIcon, NotebookPenIcon, StickyNoteIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
+
+import {
+  BookmarkIcon,
+  HighlighterIcon,
+  NotebookPenIcon,
+  StickyNoteIcon,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -26,9 +31,19 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
-  { id: "wrong", to: "/study/wrong-note", label: "오답노트", Icon: NotebookPenIcon },
-  { id: "bookmarks", to: "/study/bookmarks", label: "즐겨찾기", Icon: BookmarkIcon },
-  { id: "notes", to: "/study/notes", label: "메모", Icon: StickyNoteIcon },
+  {
+    id: "wrong",
+    to: "/study/wrong-note",
+    label: "오답노트",
+    Icon: NotebookPenIcon,
+  },
+  {
+    id: "bookmarks",
+    to: "/study/bookmarks",
+    label: "즐겨찾기",
+    Icon: BookmarkIcon,
+  },
+  { id: "notes", to: "/study/notes", label: "포스트잇", Icon: StickyNoteIcon },
   {
     id: "highlights",
     to: "/study/highlights",

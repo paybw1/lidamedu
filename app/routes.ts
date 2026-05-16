@@ -18,10 +18,7 @@ export default [
   // API Routes (no UI)
   ...prefix("/api", [
     route("/search", "features/search/api/search.tsx"),
-    route(
-      "/search/clear-history",
-      "features/search/api/clear-history.tsx",
-    ),
+    route("/search/clear-history", "features/search/api/clear-history.tsx"),
     route(
       "/api/notifications/mark-read",
       "features/notifications/api/mark-read.tsx",
@@ -51,22 +48,23 @@ export default [
       route("/auto-attempt", "features/blanks/api/auto-attempt.tsx"),
       route("/admin-answer", "features/blanks/api/admin-answer.tsx"),
       route("/admin-add-blank", "features/blanks/api/admin-add-blank.tsx"),
-      route("/admin-remove-blank", "features/blanks/api/admin-remove-blank.tsx"),
-      route("/admin-remove-blanks", "features/blanks/api/admin-remove-blanks.tsx"),
+      route(
+        "/admin-remove-blank",
+        "features/blanks/api/admin-remove-blank.tsx",
+      ),
+      route(
+        "/admin-remove-blanks",
+        "features/blanks/api/admin-remove-blanks.tsx",
+      ),
       route("/admin-create-set", "features/blanks/api/admin-create-set.tsx"),
       route("/fork", "features/blanks/api/fork.tsx"),
     ]),
     ...prefix("/recitation", [
       route("/attempt", "features/recitation/api/attempt.tsx"),
     ]),
-    ...prefix("/qna", [
-      route("/thread", "features/qna/api/thread.tsx"),
-    ]),
+    ...prefix("/qna", [route("/thread", "features/qna/api/thread.tsx")]),
     ...prefix("/laws", [
-      route(
-        "/admin-edit-article",
-        "features/laws/api/admin-edit-article.tsx",
-      ),
+      route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
     ]),
     ...prefix("/admin", [
@@ -96,21 +94,12 @@ export default [
         "features/problems/api/upload-explanation-image.tsx",
       ),
       route("/attempt", "features/problems/api/attempt.tsx"),
-      route(
-        "/ox-review-update",
-        "features/problems/api/ox-review-update.tsx",
-      ),
+      route("/ox-review-update", "features/problems/api/ox-review-update.tsx"),
     ]),
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
-      route(
-        "/subjective-attempt",
-        "features/study/api/subjective-attempt.tsx",
-      ),
-      route(
-        "/subjective-review",
-        "features/study/api/subjective-review.tsx",
-      ),
+      route("/subjective-attempt", "features/study/api/subjective-attempt.tsx"),
+      route("/subjective-review", "features/study/api/subjective-review.tsx"),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
       route(
         "/session-from-bookmarks",
@@ -164,7 +153,10 @@ export default [
 
     // Authenticated app pages
     layout("core/layouts/private.layout.tsx", { id: "private-app" }, [
-      route("/auth/forgot-password/create", "features/auth/screens/new-password.tsx"),
+      route(
+        "/auth/forgot-password/create",
+        "features/auth/screens/new-password.tsx",
+      ),
       route("/auth/email-verified", "features/auth/screens/email-verified.tsx"),
       route("/logout", "features/auth/screens/logout.tsx"),
 
@@ -221,10 +213,6 @@ export default [
           "features/subjects/screens/case-viewer.tsx",
         ),
         route(
-          "/:subject/cases/:caseId/exam/:round/:year",
-          "features/subjects/screens/case-exam-problems.tsx",
-        ),
-        route(
           "/:subject/problems/system",
           "features/subjects/screens/problems-system-index.tsx",
         ),
@@ -236,10 +224,7 @@ export default [
           "/:subject/quiz/setup",
           "features/subjects/screens/quiz-setup.tsx",
         ),
-        route(
-          "/:subject/ox",
-          "features/subjects/screens/subject-ox.tsx",
-        ),
+        route("/:subject/ox", "features/subjects/screens/subject-ox.tsx"),
         route(
           "/:subject/quiz/result/:sessionId",
           "features/subjects/screens/quiz-result.tsx",
@@ -277,10 +262,7 @@ export default [
         "/gs/peer-review/round/:roundId",
         "features/gs/screens/gs-peer-review-round.tsx",
       ),
-      route(
-        "/gs/series/:seriesId",
-        "features/gs/screens/gs-my-series.tsx",
-      ),
+      route("/gs/series/:seriesId", "features/gs/screens/gs-my-series.tsx"),
       route(
         "/gs/:roundId/distinguished",
         "features/gs/screens/gs-distinguished.tsx",
@@ -296,14 +278,8 @@ export default [
         "/admin/subjective-reviews",
         "features/admin/screens/admin-subjective-reviews.tsx",
       ),
-      route(
-        "/admin/audit-logs",
-        "features/admin/screens/admin-audit-logs.tsx",
-      ),
-      route(
-        "/admin/inbox",
-        "features/notifications/screens/staff-inbox.tsx",
-      ),
+      route("/admin/audit-logs", "features/admin/screens/admin-audit-logs.tsx"),
+      route("/admin/inbox", "features/notifications/screens/staff-inbox.tsx"),
       route(
         "/admin/announcements",
         "features/admin/screens/admin-announcements.tsx",
@@ -313,11 +289,9 @@ export default [
         "features/admin/screens/admin-announcement-audiences.tsx",
       ),
       route("/admin/cases", "features/admin/screens/admin-cases.tsx"),
-      route(
-        "/admin/cases/edit",
-        "features/admin/screens/admin-case-edit.tsx",
-        { id: "admin-case-new" },
-      ),
+      route("/admin/cases/edit", "features/admin/screens/admin-case-edit.tsx", {
+        id: "admin-case-new",
+      }),
       route(
         "/admin/cases/edit/:caseId",
         "features/admin/screens/admin-case-edit.tsx",
@@ -359,14 +333,8 @@ export default [
         "/api/cron/curriculum-weekly",
         "features/cron/api/curriculum-weekly.tsx",
       ),
-      route(
-        "/api/cron/weekly-reports",
-        "features/cron/api/weekly-reports.tsx",
-      ),
-      route(
-        "/api/cron/inactive-alert",
-        "features/cron/api/inactive-alert.tsx",
-      ),
+      route("/api/cron/weekly-reports", "features/cron/api/weekly-reports.tsx"),
+      route("/api/cron/inactive-alert", "features/cron/api/inactive-alert.tsx"),
       route(
         "/api/cron/pass-predict-snapshot",
         "features/cron/api/pass-predict-snapshot.tsx",
@@ -383,11 +351,11 @@ export default [
         "/lectures/:itemId",
         "features/lectures/screens/lecture-viewer.tsx",
       ),
+      route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
       route(
-        "/api/admin/student-note",
-        "features/admin/api/student-note.tsx",
+        "/assignments",
+        "features/assignments/screens/student-assignments.tsx",
       ),
-      route("/assignments", "features/assignments/screens/student-assignments.tsx"),
       route(
         "/assignments/:assignmentId",
         "features/assignments/screens/student-assignment-detail.tsx",
@@ -396,14 +364,8 @@ export default [
         "/me/exam-results",
         "features/exam-results/screens/my-exam-results.tsx",
       ),
-      route(
-        "/onboarding/welcome",
-        "features/onboarding/screens/welcome.tsx",
-      ),
-      route(
-        "/pricing",
-        "features/subscriptions/screens/pricing.tsx",
-      ),
+      route("/onboarding/welcome", "features/onboarding/screens/welcome.tsx"),
+      route("/pricing", "features/subscriptions/screens/pricing.tsx"),
       route(
         "/me/subscription",
         "features/subscriptions/screens/my-subscription.tsx",
@@ -416,10 +378,7 @@ export default [
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",
       ),
-      route(
-        "/api/comments/comment",
-        "features/comments/api/comment.tsx",
-      ),
+      route("/api/comments/comment", "features/comments/api/comment.tsx"),
       route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",
@@ -453,6 +412,10 @@ export default [
         "features/admin/screens/admin-relations-bulk.tsx",
       ),
       route(
+        "/admin/relations/exam-cases",
+        "features/admin/screens/admin-exam-case-links.tsx",
+      ),
+      route(
         "/admin/relations/article/:lawCode/:articleNumber",
         "features/admin/screens/admin-article-relations.tsx",
       ),
@@ -471,24 +434,17 @@ export default [
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),
-        route(
-          "/law/:lawCode",
-          "features/blanks/screens/admin-blanks-all.tsx",
-        ),
+        route("/law/:lawCode", "features/blanks/screens/admin-blanks-all.tsx"),
         route("/:setId", "features/blanks/screens/admin-blanks-edit.tsx"),
       ]),
       ...prefix("/admin/gs", [
         index("features/gs/screens/admin-gs-list.tsx"),
-        route(
-          "/series",
-          "features/gs/screens/admin-gs-series-list.tsx",
-          { id: "admin-gs-series-list" },
-        ),
-        route(
-          "/series/new",
-          "features/gs/screens/admin-gs-series-edit.tsx",
-          { id: "admin-gs-series-new" },
-        ),
+        route("/series", "features/gs/screens/admin-gs-series-list.tsx", {
+          id: "admin-gs-series-list",
+        }),
+        route("/series/new", "features/gs/screens/admin-gs-series-edit.tsx", {
+          id: "admin-gs-series-new",
+        }),
         route(
           "/series/:seriesId",
           "features/gs/screens/admin-gs-series-edit.tsx",
@@ -497,16 +453,15 @@ export default [
           "/series/:seriesId/stats",
           "features/gs/screens/admin-gs-series-stats.tsx",
         ),
-        route("/new", "features/gs/screens/admin-gs-edit.tsx", { id: "admin-gs-new" }),
+        route("/new", "features/gs/screens/admin-gs-edit.tsx", {
+          id: "admin-gs-new",
+        }),
         route("/:roundId", "features/gs/screens/admin-gs-edit.tsx"),
         route(
           "/:roundId/stats",
           "features/gs/screens/admin-gs-round-stats.tsx",
         ),
-        route(
-          "/:roundId/grade",
-          "features/gs/screens/admin-gs-grade-list.tsx",
-        ),
+        route("/:roundId/grade", "features/gs/screens/admin-gs-grade-list.tsx"),
         route(
           "/:roundId/grade/:submissionId",
           "features/gs/screens/admin-gs-grade.tsx",
@@ -523,10 +478,7 @@ export default [
           "/:roundId/distinctions",
           "features/gs/screens/admin-gs-distinctions.tsx",
         ),
-        route(
-          "/points",
-          "features/gs/screens/admin-gs-points.tsx",
-        ),
+        route("/points", "features/gs/screens/admin-gs-points.tsx"),
       ]),
       ...prefix("/admin/problems", [
         index("features/problems/screens/admin-problems-list.tsx"),
@@ -537,7 +489,10 @@ export default [
           "/system/:nodeId",
           "features/problems/screens/admin-problems-system-edit.tsx",
         ),
-        route("/:problemId", "features/problems/screens/admin-problem-edit.tsx"),
+        route(
+          "/:problemId",
+          "features/problems/screens/admin-problem-edit.tsx",
+        ),
       ]),
 
       ...prefix("/qna", [

@@ -1,6 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import type {
+  CaseCourt,
+  CaseDetail,
+  CaseListItem,
+  CaseReference,
+  CaseReferenceKind,
+  SummaryItem,
+} from "./labels";
+
+import { getExamYearsByCase } from "~/features/problems/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export type {
@@ -13,18 +23,9 @@ export type {
 } from "./labels";
 export { COURT_LABELS } from "./labels";
 
-import type {
-  CaseCourt,
-  CaseListItem,
-  CaseDetail,
-  CaseReference,
-  CaseReferenceKind,
-  SummaryItem,
-} from "./labels";
-
 // list 쿼리에서 select 하는 컬럼 묶음 — DRY.
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
 
 interface CaseListRow {
   case_id: string;
@@ -38,7 +39,6 @@ interface CaseListRow {
   summary_title: string | null;
   summary_items: unknown;
   subject_laws: string[];
-  exam_1st_years: number[] | null;
   exam_2nd_years: number[] | null;
 }
 
@@ -52,7 +52,10 @@ function extractFirstSummaryTitle(raw: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function rowToListItem(row: CaseListRow): CaseListItem {
+function rowToListItem(
+  row: CaseListRow,
+  examYearsByCase?: Map<string, number[]>,
+): CaseListItem {
   return {
     caseId: row.case_id,
     court: row.court,
@@ -65,7 +68,8 @@ function rowToListItem(row: CaseListRow): CaseListItem {
     summaryTitle: row.summary_title,
     summaryFirstTitle: extractFirstSummaryTitle(row.summary_items),
     subjectLaws: row.subject_laws ?? [],
-    exam1stYears: row.exam_1st_years ?? [],
+    // feat-8-024: 1차 기출 연도는 problem_case_links 기반 파생값.
+    exam1stYears: examYearsByCase?.get(row.case_id) ?? [],
     exam2ndYears: row.exam_2nd_years ?? [],
   };
 }
@@ -95,10 +99,7 @@ export async function listRecentCases(
   limit = 5,
   filters: RecentCasesFilters = {},
 ): Promise<CaseListItem[]> {
-  let q = client
-    .from("cases")
-    .select(LIST_COLUMNS)
-    .is("deleted_at", null);
+  let q = client.from("cases").select(LIST_COLUMNS).is("deleted_at", null);
   if (filters.subject) q = q.contains("subject_laws", [filters.subject]);
   if (filters.minImportance != null)
     q = q.gte("importance", filters.minImportance);
@@ -143,7 +144,19 @@ export async function listCasesBySubject(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  if (options.filterCaseIds && options.filterCaseIds.length === 0) {
+  const examYearsByCase = await getExamYearsByCase(client);
+
+  // case_id 제한 — 트리 필터, 그리고 exam_1st/exam_both 면 기출-연결 판례로 한정.
+  let restrictIds: string[] | null = options.filterCaseIds
+    ? [...options.filterCaseIds]
+    : null;
+  if (options.examFilter === "exam_1st" || options.examFilter === "exam_both") {
+    restrictIds =
+      restrictIds === null
+        ? [...examYearsByCase.keys()]
+        : restrictIds.filter((id) => examYearsByCase.has(id));
+  }
+  if (restrictIds !== null && restrictIds.length === 0) {
     return { items: [], total: 0, page, pageSize };
   }
 
@@ -153,8 +166,8 @@ export async function listCasesBySubject(
     .contains("subject_laws", [lawCode])
     .is("deleted_at", null);
 
-  if (options.filterCaseIds) {
-    q = q.in("case_id", options.filterCaseIds);
+  if (restrictIds !== null) {
+    q = q.in("case_id", restrictIds);
   }
 
   const trimmed = options.query?.trim();
@@ -169,19 +182,10 @@ export async function listCasesBySubject(
   if (options.court && options.court !== "all") {
     q = q.eq("court", options.court);
   }
-  switch (options.examFilter) {
-    case "exam_1st":
-      // exam_1st_years[]  != '{}'  — 1개 이상.
-      q = q.not("exam_1st_years", "eq", "{}");
-      break;
-    case "exam_2nd":
-      q = q.not("exam_2nd_years", "eq", "{}");
-      break;
-    case "exam_both":
-      q = q.not("exam_1st_years", "eq", "{}").not("exam_2nd_years", "eq", "{}");
-      break;
-    default:
-      break;
+  // 1차 기출(exam_1st/exam_both)은 위 restrictIds 로 이미 한정됨.
+  // 2차 기출은 종전대로 exam_2nd_years 컬럼 기반.
+  if (options.examFilter === "exam_2nd" || options.examFilter === "exam_both") {
+    q = q.not("exam_2nd_years", "eq", "{}");
   }
 
   switch (options.sort ?? "decided_desc") {
@@ -198,7 +202,9 @@ export async function listCasesBySubject(
   const { data, error, count } = await q.range(from, to);
   if (error) throw error;
   return {
-    items: (data ?? []).map((r) => rowToListItem(r as CaseListRow)),
+    items: (data ?? []).map((r) =>
+      rowToListItem(r as CaseListRow, examYearsByCase),
+    ),
     total: count ?? 0,
     page,
     pageSize,

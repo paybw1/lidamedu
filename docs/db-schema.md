@@ -576,6 +576,19 @@ create table public.user_highlights (
   deleted_at       timestamptz
 );
 
+-- 메모 (조문/판례/문제 자유 텍스트 — feat-8-021/023). 강사 작성=전체 공개, 수험생 작성=본인 전용.
+create table public.content_comments (
+  comment_id       uuid primary key default gen_random_uuid(),
+  target_type      public.content_comment_target_type not null, -- article|case|problem
+  target_id        uuid not null,
+  body_md          text not null,
+  author_id        uuid references profiles(profile_id) on delete set null,
+  is_pinned        boolean not null default false,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  deleted_at       timestamptz                                  -- feat-8-023 soft delete
+);
+
 -- Q&A 스레드
 create table public.user_qna_threads (
   thread_id        uuid primary key default gen_random_uuid(),
@@ -598,7 +611,9 @@ create table public.user_qna_replies (
 );
 ```
 
-### 10.1 RLS — 본인만
+### 10.1 RLS
+
+`user_bookmarks` / `user_qna_threads` / `user_qna_replies` — 본인만 R/W.
 
 ```sql
 alter table public.user_bookmarks enable row level security;
@@ -606,8 +621,24 @@ create policy "own-bookmarks"
   on public.user_bookmarks for all to authenticated
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
+```
 
--- user_memos / user_highlights / user_qna_threads / user_qna_replies 동일 패턴
+`user_memos`(포스트잇) / `user_highlights`(하이라이트) / `content_comments`(메모)
+— feat-8-023 작성자 역할 기반 가시성. SELECT 는 본인 작성물 + 강사·원장
+작성물(전체 공개), INSERT/UPDATE/DELETE 는 본인(또는 admin)만.
+
+```sql
+-- 헬퍼: 인자 사용자가 강사·원장인지 (SECURITY DEFINER · STABLE)
+-- create function private.is_staff(p_user_id uuid) returns boolean ...
+
+-- SELECT: 본인 OR 작성자가 강사·원장. INSERT/UPDATE/DELETE: 본인만.
+create policy user_memos_select on public.user_memos
+  for select to authenticated
+  using (user_id = auth.uid() or private.is_staff(user_id));
+-- user_highlights 동일 패턴.
+
+-- content_comments: SELECT using (author_id = auth.uid() or private.is_staff(author_id)),
+--   INSERT with check (author_id = auth.uid()), UPDATE/DELETE 는 author 또는 admin.
 ```
 
 ---
@@ -626,10 +657,16 @@ create type public.cc_relation_type as enum
 create type public.pa_relation_type as enum
   ('tested','referenced_in_choice','explanation','comparison');
 create type public.pc_relation_type as enum
-  ('tested','referenced_in_choice','explanation','model_answer_cites');
+  ('cited','illustrates','contrasts','similar');
 
 -- (5개 테이블 정의는 docs/relations.md 참조)
 ```
+
+> **feat-8-024** — `problem_case_links` 중 1차 객관식 기출문제의 링크는
+> `scan_exam_case_links()` 함수가 문제 지문(선택지·박스항목)의
+> `related_case_number` 에서 사건번호를 추출해 자동 생성한다(`note='exam-scan'`).
+> 운영자 수동 매칭은 `/admin/relations/exam-cases` 화면. 상세:
+> `docs/features/feat-8-024-exam-case-linking.md`.
 
 ---
 

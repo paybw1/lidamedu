@@ -1,10 +1,7 @@
 // 클라이언트·서버 공용 타입/라벨.
 import type { Database } from "database.types";
 
-import type {
-  BookmarkRecord,
-  MemoRecord,
-} from "~/features/annotations/labels";
+import type { BookmarkRecord, MemoRecord } from "~/features/annotations/labels";
 
 export type ProblemExamRound =
   Database["public"]["Enums"]["problem_exam_round"];
@@ -71,6 +68,13 @@ export const FORMAT_LABEL: Record<ProblemFormat, string> = {
   blank: "빈칸",
   subjective: "주관식",
 };
+
+// 객관식 형식 — 객관식 1차 기출 판정(feat-8-024) 등에 사용.
+export const MC_FORMATS: readonly ProblemFormat[] = [
+  "mc_short",
+  "mc_box",
+  "mc_case",
+];
 
 export const ORIGIN_LABEL: Record<ProblemOrigin, string> = {
   past_exam: "기출",

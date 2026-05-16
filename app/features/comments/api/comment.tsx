@@ -1,53 +1,30 @@
-// 통합 코멘트 CRUD API — 조문/판례/문제 공용.
-// feat-8-022: create 는 텍스트형(bodyMd) 또는 하이라이트형(앵커) 코멘트를 받는다.
+// 메모 CRUD API — 조문/판례/문제 공용.
+// feat-8-023: 강사·수험생 모두 작성. 가시성은 RLS 가 작성자 역할로 판정한다.
+import type { Route } from "./+types/comment";
 
 import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import { getStaffRole } from "~/features/laws/queries.server";
 import {
   createComment,
   deleteComment,
   updateComment,
 } from "~/features/comments/queries.server";
 
-import type { Route } from "./+types/comment";
-
-const COMMENT_COLORS = ["green", "yellow", "red", "blue"] as const;
-
-const createSchema = z
-  .object({
-    intent: z.literal("create"),
-    targetType: z.enum(["article", "case", "problem"]),
-    targetId: z.string().uuid(),
-    bodyMd: z.string().max(16000).optional(),
-    isPinned: z.coerce.boolean().optional(),
-    // 하이라이트형 코멘트 앵커 — 모두 함께 제공되어야 한다.
-    fieldPath: z.string().max(200).optional(),
-    startOffset: z.coerce.number().int().nonnegative().optional(),
-    endOffset: z.coerce.number().int().nonnegative().optional(),
-    contentHash: z.string().max(128).optional(),
-    color: z.enum(COMMENT_COLORS).optional(),
-    label: z.string().max(4000).optional(),
-  })
-  .refine(
-    (d) =>
-      (d.bodyMd !== undefined && d.bodyMd.trim().length > 0) ||
-      (d.fieldPath !== undefined &&
-        d.startOffset !== undefined &&
-        d.endOffset !== undefined &&
-        d.contentHash !== undefined &&
-        d.color !== undefined),
-    { message: "코멘트 본문 또는 하이라이트 구간이 필요합니다." },
-  );
+const createSchema = z.object({
+  intent: z.literal("create"),
+  targetType: z.enum(["article", "case", "problem"]),
+  targetId: z.string().uuid(),
+  bodyMd: z.string().min(1).max(16000),
+  isPinned: z.coerce.boolean().optional(),
+});
 
 const updateSchema = z.object({
   intent: z.literal("update"),
   commentId: z.string().uuid(),
   bodyMd: z.string().min(1).max(16000).optional(),
   isPinned: z.coerce.boolean().optional(),
-  color: z.enum(COMMENT_COLORS).optional(),
 });
 
 const deleteSchema = z.object({
@@ -69,9 +46,6 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = String(fd.get("intent") ?? "");
 
   if (intent === "create") {
-    const role = await getStaffRole(client, user.id);
-    if (!role)
-      return data({ error: "강사/원장만 코멘트 작성 가능" }, { status: 403 });
     const parsed = createSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
       return data(
@@ -79,31 +53,12 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     const d = parsed.data;
-    const anchor =
-      d.fieldPath !== undefined &&
-      d.startOffset !== undefined &&
-      d.endOffset !== undefined &&
-      d.contentHash !== undefined &&
-      d.color !== undefined
-        ? {
-            fieldPath: d.fieldPath,
-            startOffset: d.startOffset,
-            endOffset: d.endOffset,
-            contentHash: d.contentHash,
-            color: d.color,
-            label: d.label ?? null,
-          }
-        : undefined;
     const res = await createComment(client, {
       targetType: d.targetType,
       targetId: d.targetId,
-      bodyMd:
-        d.bodyMd !== undefined && d.bodyMd.trim().length > 0
-          ? d.bodyMd
-          : null,
+      bodyMd: d.bodyMd,
       authorId: user.id,
       isPinned: d.isPinned,
-      anchor,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true, commentId: res.commentId });
@@ -116,10 +71,10 @@ export async function action({ request }: Route.ActionArgs) {
         { error: parsed.error.issues[0]?.message ?? "입력 오류" },
         { status: 400 },
       );
+    // 권한(본인 또는 admin)은 content_comments RLS 가 강제한다.
     const res = await updateComment(client, parsed.data.commentId, {
       bodyMd: parsed.data.bodyMd,
       isPinned: parsed.data.isPinned,
-      color: parsed.data.color,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });

@@ -1,5 +1,6 @@
 // 클라이언트·서버 공용 타입/라벨/zod 스키마.
 import type { Database } from "database.types";
+
 import { z } from "zod";
 
 export type AnnotationTargetType =
@@ -23,7 +24,9 @@ export const annotationTargetTypeSchema = z.enum([
 
 // step_notes: 키는 "1"~"5" (문자열), 값은 markdown 메모.
 // 사용자가 하트 N 단계를 거치면서 누적되는 단계별 메모.
-export type BookmarkStepNotes = Partial<Record<"1" | "2" | "3" | "4" | "5", string>>;
+export type BookmarkStepNotes = Partial<
+  Record<"1" | "2" | "3" | "4" | "5", string>
+>;
 
 export interface BookmarkRecord {
   bookmarkId: string;
@@ -49,6 +52,8 @@ export interface MemoRecord {
   cumOffset: number | null;
   createdAt: string;
   updatedAt: string;
+  /** 현재 사용자가 작성자인지. false = 강사 작성(전체 공개) 포스트잇. */
+  isMine: boolean;
 }
 
 export const HIGHLIGHT_COLORS = ["green", "yellow", "red", "blue"] as const;
@@ -66,4 +71,6 @@ export interface HighlightRecord {
   label: string | null;
   createdAt: string;
   excerpt: string;
+  /** 현재 사용자가 작성자인지. false = 강사 작성(전체 공개) 하이라이트. */
+  isMine: boolean;
 }

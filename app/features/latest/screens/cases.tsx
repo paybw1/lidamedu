@@ -1,11 +1,16 @@
 // 최신 판례 — 모든 과목 통합. 검색·과목·중요·기출 필터 + 페이지네이션.
 // 키트 lidam-latest/CasesScreen 디자인.
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "database.types";
+
+import type { Route } from "./+types/cases";
 
 import { GavelIcon, SearchXIcon } from "lucide-react";
 import { data } from "react-router";
 
-import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
+import makeServerClient from "~/core/lib/supa-client.server";
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
+import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 import {
   CardCta,
   FeedCardLink,
@@ -22,25 +27,21 @@ import {
   relativeKo,
 } from "~/features/latest/components/latest-list";
 import { LatestShell } from "~/features/latest/components/latest-shell";
-import makeServerClient from "~/core/lib/supa-client.server";
+import { getExamYearsByCase } from "~/features/problems/queries.server";
 import {
   FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
-  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
+  SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
-import type { Database } from "database.types";
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-import type { Route } from "./+types/cases";
 
 export const meta: Route.MetaFunction = () => [
   { title: "최근 판례 | Lidam Patent Attorney Academy" },
 ];
 
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
 
 function extractFirstSummaryTitle(raw: unknown): string | null {
   if (!Array.isArray(raw) || raw.length === 0) return null;
@@ -67,13 +68,16 @@ async function listLatestCases(
   client: SupabaseClient<Database>,
   filters: LatestCasesFilters,
 ): Promise<{ items: CaseListItem[]; total: number }> {
+  const examYearsByCase = await getExamYearsByCase(client);
   let q = client
     .from("cases")
     .select(LIST_COLUMNS, { count: "exact" })
     .is("deleted_at", null);
   if (filters.subject) q = q.contains("subject_laws", [filters.subject]);
   if (filters.importantOnly) q = q.gte("importance", 3);
-  if (filters.exam === "exam_1st") q = q.not("exam_1st_years", "eq", "{}");
+  // feat-8-024: 1차 기출은 problem_case_links 연결 판례로 한정.
+  if (filters.exam === "exam_1st")
+    q = q.in("case_id", [...examYearsByCase.keys()]);
   if (filters.exam === "exam_2nd") q = q.not("exam_2nd_years", "eq", "{}");
   const trimmed = filters.q.trim();
   if (trimmed) {
@@ -85,9 +89,11 @@ async function listLatestCases(
   }
   const from = (filters.page - 1) * filters.pageSize;
   const to = from + filters.pageSize - 1;
-  const { data: rows, error, count } = await q
-    .order("decided_at", { ascending: false })
-    .range(from, to);
+  const {
+    data: rows,
+    error,
+    count,
+  } = await q.order("decided_at", { ascending: false }).range(from, to);
   if (error) throw error;
   const items: CaseListItem[] = (rows ?? []).map((r) => ({
     caseId: r.case_id,
@@ -101,7 +107,7 @@ async function listLatestCases(
     summaryTitle: r.summary_title,
     summaryFirstTitle: extractFirstSummaryTitle(r.summary_items),
     subjectLaws: r.subject_laws ?? [],
-    exam1stYears: r.exam_1st_years ?? [],
+    exam1stYears: examYearsByCase.get(r.case_id) ?? [],
     exam2ndYears: r.exam_2nd_years ?? [],
   }));
   return { items, total: count ?? 0 };
@@ -117,7 +123,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const subjectParam = url.searchParams.get("subject");
   const subject =
-    subjectParam && (LAW_SUBJECT_SLUGS as readonly string[]).includes(subjectParam)
+    subjectParam &&
+    (LAW_SUBJECT_SLUGS as readonly string[]).includes(subjectParam)
       ? (subjectParam as LawSubjectSlug)
       : undefined;
   const importantOnly = url.searchParams.get("important") === "1";
@@ -126,7 +133,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     examRaw === "exam_1st" || examRaw === "exam_2nd" ? examRaw : "any";
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const pageRaw = Number(url.searchParams.get("page") ?? "1");
-  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
+  const page =
+    Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
   const filters: LatestCasesFilters = {
     q,
     subject,
@@ -277,24 +285,12 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
                     {[...c.exam1stYears]
                       .sort((a, b) => a - b)
                       .map((y) => (
-                        <ExamYearChip
-                          key={`1-${y}`}
-                          subjectSlug={firstSubject as LawSubjectSlug}
-                          round="first"
-                          year={y}
-                          caseId={c.caseId}
-                        />
+                        <ExamYearChip key={`1-${y}`} round="first" year={y} />
                       ))}
                     {[...c.exam2ndYears]
                       .sort((a, b) => a - b)
                       .map((y) => (
-                        <ExamYearChip
-                          key={`2-${y}`}
-                          subjectSlug={firstSubject as LawSubjectSlug}
-                          round="second"
-                          year={y}
-                          caseId={c.caseId}
-                        />
+                        <ExamYearChip key={`2-${y}`} round="second" year={y} />
                       ))}
                   </div>
                 ) : null}

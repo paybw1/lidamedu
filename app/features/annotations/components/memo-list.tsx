@@ -1,5 +1,7 @@
-// 메모 — 포스트잇(노란 종이 메모) 스타일 카드. 학생이 본문에서 단어/구문을 복사·paste 하면
-// 그 단어에 대한 메모로 저장된다 (snippet 컬럼). snippet 이 없으면 일반 article 메모.
+// 포스트잇 — 노란 종이 메모 스타일 카드. 본문에서 단어/구문을 선택하면 그 단어에 대한
+// 포스트잇으로 저장된다 (snippet 컬럼). snippet 이 없으면 일반 포스트잇.
+// feat-8-023: 강사 작성 포스트잇은 모든 수험생에게 노출(읽기 전용), 본인 것은 삭제 가능.
+import type { AnnotationTargetType, MemoRecord } from "../labels";
 
 import { QuoteIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +11,6 @@ import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
 
-import type { AnnotationTargetType, MemoRecord } from "../labels";
 import {
   MEMO_SNIPPET_EVENT,
   type MemoSnippetEventDetail,
@@ -29,10 +30,13 @@ export function MemoList({
   targetType,
   targetId,
   initial,
+  viewerIsStaff = false,
 }: {
   targetType: AnnotationTargetType;
   targetId: string;
   initial: MemoRecord[];
+  /** 보는 사람이 강사·원장인지 — 본인 포스트잇도 강사 표식으로 표시. */
+  viewerIsStaff?: boolean;
 }) {
   const createFetcher = useFetcher();
   const deleteFetcher = useFetcher();
@@ -56,7 +60,7 @@ export function MemoList({
     }
   }, [createFetcher.state, createFetcher.data]);
 
-  // 본문 selection → "메모" 버튼 클릭 시 snippet + position 자동 fill + textarea focus.
+  // 본문 selection → "포스트잇" 버튼 클릭 시 snippet + position 자동 fill + textarea focus.
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<MemoSnippetEventDetail>).detail;
@@ -86,7 +90,7 @@ export function MemoList({
 
   const isCreating = createFetcher.state !== "idle";
 
-  // 낙관적 업데이트.
+  // 낙관적 업데이트 — 새로 만든 포스트잇은 본인 것.
   const optimisticNew: MemoRecord | null =
     createFetcher.formData && createFetcher.formData.get("intent") === "create"
       ? {
@@ -109,6 +113,7 @@ export function MemoList({
           })(),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          isMine: true,
         }
       : null;
 
@@ -121,9 +126,6 @@ export function MemoList({
     ...(optimisticNew ? [optimisticNew] : []),
     ...initial.filter((m) => m.memoId !== deletingId),
   ];
-
-  // 사용자가 본문에서 paste 하면 snippet 입력에 자동 focus 되도록 hint.
-  // (실제 paste 동작은 사용자가 input 을 클릭한 후 수행)
 
   return (
     <div className="space-y-3">
@@ -164,7 +166,7 @@ export function MemoList({
               }}
               placeholder="본문에서 복사한 단어/구문을 paste (선택)"
               maxLength={500}
-              className="border-input bg-amber-50/40 dark:bg-amber-950/20 w-full rounded-md border px-3 py-1.5 text-xs italic placeholder:not-italic focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              className="border-input w-full rounded-md border bg-amber-50/40 px-3 py-1.5 text-xs italic placeholder:not-italic focus:ring-2 focus:ring-amber-400/40 focus:outline-none dark:bg-amber-950/20"
             />
             {snippet ? (
               <button
@@ -174,7 +176,7 @@ export function MemoList({
                   setPosition(null);
                 }}
                 aria-label="paste 한 단어 비우기"
-                className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex size-5 items-center justify-center rounded"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded"
               >
                 <XIcon className="size-3.5" />
               </button>
@@ -187,8 +189,8 @@ export function MemoList({
             onChange={(e) => setDraft(e.target.value)}
             placeholder={
               snippet
-                ? `「${truncate(snippet, 30)}」에 대한 메모`
-                : "이 조문에 대한 메모"
+                ? `「${truncate(snippet, 30)}」에 대한 포스트잇`
+                : "이 조문에 대한 포스트잇"
             }
             rows={3}
             className="text-sm"
@@ -200,13 +202,15 @@ export function MemoList({
             size="sm"
             disabled={isCreating || !draft.trim()}
           >
-            메모 추가
+            포스트잇 추가
           </Button>
         </div>
       </createFetcher.Form>
 
       {memos.length === 0 ? (
-        <p className="text-muted-foreground text-xs">아직 메모가 없습니다.</p>
+        <p className="text-muted-foreground text-xs">
+          아직 포스트잇이 없습니다.
+        </p>
       ) : (
         <ul className="space-y-3 pt-1">
           {memos.map((m, i) => (
@@ -214,9 +218,8 @@ export function MemoList({
               key={m.memoId}
               memo={m}
               rotateDeg={postItRotation(i)}
-              onDelete={
-                m.memoId === "pending" ? null : deleteFetcher
-              }
+              viewerIsStaff={viewerIsStaff}
+              deleteFetcher={deleteFetcher}
             />
           ))}
         </ul>
@@ -228,12 +231,18 @@ export function MemoList({
 function PostItMemo({
   memo,
   rotateDeg,
-  onDelete,
+  viewerIsStaff,
+  deleteFetcher,
 }: {
   memo: MemoRecord;
   rotateDeg: number;
-  onDelete: ReturnType<typeof useFetcher> | null;
+  viewerIsStaff: boolean;
+  deleteFetcher: ReturnType<typeof useFetcher>;
 }) {
+  const pending = memo.memoId === "pending";
+  // 강사 작성 포스트잇 = 내 것이 아니거나(전체 공개), 내가 강사.
+  const isStaffNote = !memo.isMine || viewerIsStaff;
+  const canDelete = memo.isMine && !pending;
   return (
     <li
       className={cn(
@@ -247,34 +256,39 @@ function PostItMemo({
           "0 1px 1px rgba(0,0,0,0.12), 0 6px 14px -4px rgba(120,90,0,0.18)",
       }}
     >
+      {isStaffNote ? (
+        <div className="mb-1.5 inline-flex items-center rounded-sm bg-amber-800/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
+          강사
+        </div>
+      ) : null}
       {memo.snippet ? (
         <div className="mb-1.5 flex items-start gap-1 border-b border-amber-300/60 pb-1.5">
           <QuoteIcon className="mt-0.5 size-3 shrink-0 text-amber-700/70" />
-          <span className="text-xs font-medium italic leading-snug">
+          <span className="text-xs leading-snug font-medium italic">
             {memo.snippet}
           </span>
         </div>
       ) : null}
-      <p className="text-sm whitespace-pre-line leading-snug">{memo.bodyMd}</p>
+      <p className="text-sm leading-snug whitespace-pre-line">{memo.bodyMd}</p>
       <div className="mt-1.5 flex items-center justify-between">
-        <span className="text-amber-900/60 text-[11px] tabular-nums dark:text-amber-900/70">
+        <span className="text-[11px] text-amber-900/60 tabular-nums dark:text-amber-900/70">
           {formatDate(memo.createdAt)}
         </span>
-        {onDelete === null ? (
-          <span className="text-amber-900/60 text-[11px]">저장 중…</span>
-        ) : (
-          <onDelete.Form method="post" action="/api/annotations/memo">
+        {pending ? (
+          <span className="text-[11px] text-amber-900/60">저장 중…</span>
+        ) : canDelete ? (
+          <deleteFetcher.Form method="post" action="/api/annotations/memo">
             <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="memoId" value={memo.memoId} />
             <button
               type="submit"
-              aria-label="메모 삭제"
-              className="text-amber-900/60 hover:text-rose-600 opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="포스트잇 삭제"
+              className="text-amber-900/60 opacity-0 transition-opacity group-hover:opacity-100 hover:text-rose-600"
             >
               <Trash2Icon className="size-3.5" />
             </button>
-          </onDelete.Form>
-        )}
+          </deleteFetcher.Form>
+        ) : null}
       </div>
     </li>
   );

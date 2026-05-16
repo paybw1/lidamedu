@@ -1,6 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import type {
+  AnnotationTargetType,
+  BookmarkRecord,
+  BookmarkStepNotes,
+  HighlightColor,
+  HighlightRecord,
+  MemoRecord,
+} from "./labels";
+
+import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
+
 export type {
   AnnotationTargetType,
   BookmarkRecord,
@@ -16,16 +27,6 @@ export {
   HIGHLIGHT_COLORS,
   highlightColorSchema,
 } from "./labels";
-
-import type {
-  AnnotationTargetType,
-  BookmarkRecord,
-  BookmarkStepNotes,
-  MemoRecord,
-  HighlightColor,
-  HighlightRecord,
-} from "./labels";
-import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 
 // JSONB → BookmarkStepNotes 안전 변환. 알 수 없는 키는 무시.
 function parseStepNotes(value: unknown): BookmarkStepNotes {
@@ -111,7 +112,9 @@ export async function getBookmarksByArticleIds(
   if (articleIds.length === 0) return {};
   const { data, error } = await client
     .from("user_bookmarks")
-    .select("bookmark_id, target_id, star_level, note_md, step_notes, updated_at")
+    .select(
+      "bookmark_id, target_id, star_level, note_md, step_notes, updated_at",
+    )
     .eq("user_id", userId)
     .eq("target_type", "article")
     .in("target_id", articleIds)
@@ -136,12 +139,12 @@ export async function listMemosByArticleIds(
   articleIds: string[],
 ): Promise<Record<string, MemoRecord[]>> {
   if (articleIds.length === 0) return {};
+  // 본인 + 강사 작성 포스트잇 모두 반환 (RLS 가 가시성 경계). isMine 으로 구분.
   const { data, error } = await client
     .from("user_memos")
     .select(
-      "memo_id, target_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
+      "memo_id, user_id, target_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
     )
-    .eq("user_id", userId)
     .eq("target_type", "article")
     .in("target_id", articleIds)
     .is("deleted_at", null)
@@ -158,6 +161,7 @@ export async function listMemosByArticleIds(
       cumOffset: row.cum_offset ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      isMine: row.user_id === userId,
     });
     out[row.target_id] = list;
   }
@@ -170,12 +174,12 @@ export async function listHighlightsByArticleIds(
   articleIds: string[],
 ): Promise<Record<string, HighlightRecord[]>> {
   if (articleIds.length === 0) return {};
+  // 본인 + 강사 작성 하이라이트 모두 반환 (RLS 가 가시성 경계). isMine 으로 구분.
   const { data, error } = await client
     .from("user_highlights")
     .select(
-      "highlight_id, target_id, field_path, start_offset, end_offset, content_hash, color, label, created_at",
+      "highlight_id, user_id, target_id, field_path, start_offset, end_offset, content_hash, color, label, created_at",
     )
-    .eq("user_id", userId)
     .eq("target_type", "article")
     .in("target_id", articleIds)
     .is("deleted_at", null)
@@ -194,6 +198,7 @@ export async function listHighlightsByArticleIds(
       label: row.label,
       createdAt: row.created_at,
       excerpt: row.label ?? "",
+      isMine: row.user_id === userId,
     });
     out[row.target_id] = list;
   }
@@ -212,7 +217,9 @@ export async function getBookmarksByTargets(
   if (targetIds.length === 0) return {};
   const { data, error } = await client
     .from("user_bookmarks")
-    .select("bookmark_id, target_id, star_level, note_md, step_notes, updated_at")
+    .select(
+      "bookmark_id, target_id, star_level, note_md, step_notes, updated_at",
+    )
     .eq("user_id", userId)
     .eq("target_type", targetType)
     .in("target_id", targetIds)
@@ -238,12 +245,12 @@ export async function listMemosByTargets(
   targetIds: string[],
 ): Promise<Record<string, MemoRecord[]>> {
   if (targetIds.length === 0) return {};
+  // 본인 + 강사 작성 포스트잇 모두 반환 (RLS 가 가시성 경계). isMine 으로 구분.
   const { data, error } = await client
     .from("user_memos")
     .select(
-      "memo_id, target_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
+      "memo_id, user_id, target_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
     )
-    .eq("user_id", userId)
     .eq("target_type", targetType)
     .in("target_id", targetIds)
     .is("deleted_at", null)
@@ -260,6 +267,7 @@ export async function listMemosByTargets(
       cumOffset: row.cum_offset ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      isMine: row.user_id === userId,
     });
     out[row.target_id] = list;
   }
@@ -313,9 +321,7 @@ export async function listTopBookmarks(
   if (articleIds.length > 0) {
     const { data: rs } = await client
       .from("articles")
-      .select(
-        "article_id, article_number, display_label, laws!inner(law_code)",
-      )
+      .select("article_id, article_number, display_label, laws!inner(law_code)")
       .in("article_id", articleIds);
     for (const r of rs ?? []) {
       if (!r.article_number) continue;
@@ -434,7 +440,9 @@ export async function listAllBookmarks(
 ): Promise<BookmarkListItem[]> {
   const { data: rows, error } = await client
     .from("user_bookmarks")
-    .select("bookmark_id, target_type, target_id, star_level, note_md, step_notes, updated_at")
+    .select(
+      "bookmark_id, target_type, target_id, star_level, note_md, step_notes, updated_at",
+    )
     .eq("user_id", userId)
     .is("deleted_at", null)
     .gt("star_level", 0)
@@ -445,17 +453,32 @@ export async function listAllBookmarks(
   const list = rows ?? [];
   if (list.length === 0) return [];
 
-  const articleIds = list.filter((r) => r.target_type === "article").map((r) => r.target_id);
-  const caseIds = list.filter((r) => r.target_type === "case").map((r) => r.target_id);
-  const problemIds = list.filter((r) => r.target_type === "problem").map((r) => r.target_id);
-  const choiceIds = list.filter((r) => r.target_type === "problem_choice").map((r) => r.target_id);
-  const boxItemIds = list.filter((r) => r.target_type === "problem_box_item").map((r) => r.target_id);
+  const articleIds = list
+    .filter((r) => r.target_type === "article")
+    .map((r) => r.target_id);
+  const caseIds = list
+    .filter((r) => r.target_type === "case")
+    .map((r) => r.target_id);
+  const problemIds = list
+    .filter((r) => r.target_type === "problem")
+    .map((r) => r.target_id);
+  const choiceIds = list
+    .filter((r) => r.target_type === "problem_choice")
+    .map((r) => r.target_id);
+  const boxItemIds = list
+    .filter((r) => r.target_type === "problem_box_item")
+    .map((r) => r.target_id);
 
   const { articleSlug } = await import("~/features/laws/lib/identifier");
   // article
   const articleMap = new Map<
     string,
-    { displayLabel: string; articleNumber: string | null; lawCode: string; pathSlug: string }
+    {
+      displayLabel: string;
+      articleNumber: string | null;
+      lawCode: string;
+      pathSlug: string;
+    }
   >();
   if (articleIds.length > 0) {
     const { data: rs } = await client
@@ -561,12 +584,19 @@ export async function listAllBookmarks(
     }
   }
 
-  function notePreview(noteMd: string | null, stepNotes: unknown): string | null {
+  function notePreview(
+    noteMd: string | null,
+    stepNotes: unknown,
+  ): string | null {
     if (noteMd && noteMd.trim().length > 0) {
       const t = noteMd.trim().replace(/\s+/g, " ");
       return t.length > 80 ? `${t.slice(0, 80)}…` : t;
     }
-    if (stepNotes && typeof stepNotes === "object" && !Array.isArray(stepNotes)) {
+    if (
+      stepNotes &&
+      typeof stepNotes === "object" &&
+      !Array.isArray(stepNotes)
+    ) {
       // 가장 최근 단계 메모.
       for (const key of ["5", "4", "3", "2", "1"] as const) {
         const v = (stepNotes as Record<string, unknown>)[key];
@@ -736,16 +766,31 @@ export async function listAllMemos(
   const list = rows ?? [];
   if (list.length === 0) return [];
 
-  const articleIds = list.filter((r) => r.target_type === "article").map((r) => r.target_id);
-  const caseIds = list.filter((r) => r.target_type === "case").map((r) => r.target_id);
-  const problemIds = list.filter((r) => r.target_type === "problem").map((r) => r.target_id);
-  const choiceIds = list.filter((r) => r.target_type === "problem_choice").map((r) => r.target_id);
-  const boxItemIds = list.filter((r) => r.target_type === "problem_box_item").map((r) => r.target_id);
+  const articleIds = list
+    .filter((r) => r.target_type === "article")
+    .map((r) => r.target_id);
+  const caseIds = list
+    .filter((r) => r.target_type === "case")
+    .map((r) => r.target_id);
+  const problemIds = list
+    .filter((r) => r.target_type === "problem")
+    .map((r) => r.target_id);
+  const choiceIds = list
+    .filter((r) => r.target_type === "problem_choice")
+    .map((r) => r.target_id);
+  const boxItemIds = list
+    .filter((r) => r.target_type === "problem_box_item")
+    .map((r) => r.target_id);
 
   const { articleSlug } = await import("~/features/laws/lib/identifier");
   const articleMap = new Map<
     string,
-    { displayLabel: string; articleNumber: string | null; lawCode: string; pathSlug: string }
+    {
+      displayLabel: string;
+      articleNumber: string | null;
+      lawCode: string;
+      pathSlug: string;
+    }
   >();
   if (articleIds.length > 0) {
     const { data: rs } = await client
@@ -790,7 +835,10 @@ export async function listAllMemos(
       .select("choice_id, problem_id, body_md")
       .in("choice_id", choiceIds);
     for (const c of cs ?? [])
-      choiceParentMap.set(c.choice_id, { problemId: c.problem_id, bodyMd: c.body_md });
+      choiceParentMap.set(c.choice_id, {
+        problemId: c.problem_id,
+        bodyMd: c.body_md,
+      });
   }
   const boxParentMap = new Map<
     string,
@@ -970,16 +1018,31 @@ export async function listAllHighlights(
   const list = rows ?? [];
   if (list.length === 0) return [];
 
-  const articleIds = list.filter((r) => r.target_type === "article").map((r) => r.target_id);
-  const caseIds = list.filter((r) => r.target_type === "case").map((r) => r.target_id);
-  const problemIds = list.filter((r) => r.target_type === "problem").map((r) => r.target_id);
-  const choiceIds = list.filter((r) => r.target_type === "problem_choice").map((r) => r.target_id);
-  const boxItemIds = list.filter((r) => r.target_type === "problem_box_item").map((r) => r.target_id);
+  const articleIds = list
+    .filter((r) => r.target_type === "article")
+    .map((r) => r.target_id);
+  const caseIds = list
+    .filter((r) => r.target_type === "case")
+    .map((r) => r.target_id);
+  const problemIds = list
+    .filter((r) => r.target_type === "problem")
+    .map((r) => r.target_id);
+  const choiceIds = list
+    .filter((r) => r.target_type === "problem_choice")
+    .map((r) => r.target_id);
+  const boxItemIds = list
+    .filter((r) => r.target_type === "problem_box_item")
+    .map((r) => r.target_id);
 
   const { articleSlug } = await import("~/features/laws/lib/identifier");
   const articleMap = new Map<
     string,
-    { displayLabel: string; articleNumber: string | null; lawCode: string; pathSlug: string }
+    {
+      displayLabel: string;
+      articleNumber: string | null;
+      lawCode: string;
+      pathSlug: string;
+    }
   >();
   if (articleIds.length > 0) {
     const { data: rs } = await client
@@ -1339,12 +1402,12 @@ export async function listMemos(
   targetType: AnnotationTargetType,
   targetId: string,
 ): Promise<MemoRecord[]> {
+  // 본인 + 강사 작성 포스트잇 모두 반환 (RLS 가 가시성 경계). isMine 으로 구분.
   const { data, error } = await client
     .from("user_memos")
     .select(
-      "memo_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
+      "memo_id, user_id, body_md, snippet, block_index, cum_offset, created_at, updated_at",
     )
-    .eq("user_id", userId)
     .eq("target_type", targetType)
     .eq("target_id", targetId)
     .is("deleted_at", null)
@@ -1359,6 +1422,7 @@ export async function listMemos(
     cumOffset: row.cum_offset ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    isMine: row.user_id === userId,
   }));
 }
 
@@ -1396,6 +1460,7 @@ export async function createMemo(
     cumOffset: data.cum_offset ?? null,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
+    isMine: true,
   };
 }
 
@@ -1415,12 +1480,12 @@ export async function listHighlights(
   targetType: AnnotationTargetType,
   targetId: string,
 ): Promise<HighlightRecord[]> {
+  // 본인 + 강사 작성 하이라이트 모두 반환 (RLS 가 가시성 경계). isMine 으로 구분.
   const { data, error } = await client
     .from("user_highlights")
     .select(
-      "highlight_id, field_path, start_offset, end_offset, content_hash, color, label, created_at",
+      "highlight_id, user_id, field_path, start_offset, end_offset, content_hash, color, label, created_at",
     )
-    .eq("user_id", userId)
     .eq("target_type", targetType)
     .eq("target_id", targetId)
     .is("deleted_at", null)
@@ -1439,6 +1504,7 @@ export async function listHighlights(
     // excerpt 는 label 에 캐시되거나 별도 컬럼이 없어 클라이언트에서 텍스트 선택 시 저장한 것을 활용.
     // 1차에서는 label 을 발췌 텍스트 보관소로 활용 (아래 createHighlight 참조)
     excerpt: row.label ?? "",
+    isMine: row.user_id === userId,
   }));
 }
 
@@ -1479,6 +1545,7 @@ export async function createHighlight(
     label: data.label,
     createdAt: data.created_at,
     excerpt: data.label ?? "",
+    isMine: true,
   };
 }
 

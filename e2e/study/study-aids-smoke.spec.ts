@@ -61,11 +61,13 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
       page.getByText("즐겨찾기가 없습니다", { exact: false }),
     ).toBeVisible();
 
-    // 메모
+    // 포스트잇
     await page.goto("/study/notes");
-    await expect(page.getByRole("heading", { name: "메모" })).toBeVisible();
     await expect(
-      page.getByText("메모가 없습니다", { exact: false }),
+      page.getByRole("heading", { name: "포스트잇" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("포스트잇이 없습니다", { exact: false }),
     ).toBeVisible();
 
     // 하이라이트
@@ -90,7 +92,7 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
     await expect(tiles).toBeVisible();
     await expect(tiles.getByText("오답노트")).toBeVisible();
     await expect(tiles.getByText("즐겨찾기")).toBeVisible();
-    await expect(tiles.getByText("메모")).toBeVisible();
+    await expect(tiles.getByText("포스트잇")).toBeVisible();
     await expect(tiles.getByText("하이라이트")).toBeVisible();
   });
 

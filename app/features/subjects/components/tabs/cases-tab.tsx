@@ -1,7 +1,13 @@
+import type {
+  CaseFiltersApplied,
+  CaseTreeCounts,
+} from "../../lib/loader.server";
+import type { LawSubjectMeta } from "../../lib/subjects";
+
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronDownIcon,
   GavelIcon,
   SearchIcon,
   StarIcon,
@@ -21,20 +27,15 @@ import {
   TableHeader,
   TableRow,
 } from "~/core/components/ui/table";
-import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
+import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 import type {
   ArticleNode,
   SystematicNode,
 } from "~/features/laws/queries.server";
 
-import type {
-  CaseFiltersApplied,
-  CaseTreeCounts,
-} from "../../lib/loader.server";
-import { SortAxisToggle, useSortAxis } from "../sort-axis";
 import { CasesTree } from "../cases-tree";
-import type { LawSubjectMeta } from "../../lib/subjects";
+import { SortAxisToggle, useSortAxis } from "../sort-axis";
 
 const COURT_OPTIONS = [
   { value: "all", label: "전체 법원" },
@@ -162,8 +163,8 @@ export function CasesTab({
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
       {/* Left: tree panel */}
       <aside>
-        <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-          <div className="flex items-center justify-end border-b border-border px-4 py-3">
+        <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+          <div className="border-border flex items-center justify-end border-b px-4 py-3">
             <SortAxisToggle
               size="sm"
               disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -204,8 +205,8 @@ export function CasesTab({
 
         {/* Tree filter active banner */}
         {treeFilter ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-primary/[0.04] px-4 py-2.5 text-xs">
-            <GavelIcon className="size-3.5 text-primary" />
+          <div className="border-border bg-primary/[0.04] flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-xs">
+            <GavelIcon className="text-primary size-3.5" />
             <span className="text-muted-foreground">트리 필터:</span>
             <Badge variant="secondary" className="max-w-[260px] truncate">
               {treeFilterLabel}
@@ -219,13 +220,13 @@ export function CasesTab({
         ) : null}
 
         {/* Filter row */}
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5">
+        <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5">
           {/* Search input */}
           <Form method="get" className="relative flex-none">
             {hidden.map((h) => (
               <input key={h.name} type="hidden" name={h.name} value={h.value} />
             ))}
-            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
             <Input
               type="search"
               name="q"
@@ -240,7 +241,7 @@ export function CasesTab({
                 type="button"
                 onClick={() => setDraft("")}
                 aria-label="검색어 지우기"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
               >
                 <XIcon className="size-3.5" />
               </button>
@@ -281,23 +282,23 @@ export function CasesTab({
               { name: "case_exam", value: filters.exam },
             ]}
           />
-          <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-            {filters.q ? `"${filters.q}" · ` : ""}
-            총 {casesTotal.toLocaleString("ko-KR")}건
+          <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+            {filters.q ? `"${filters.q}" · ` : ""}총{" "}
+            {casesTotal.toLocaleString("ko-KR")}건
           </span>
         </div>
 
         {/* Table card */}
-        <div className="overflow-hidden rounded-xl border border-border shadow-sm">
+        <div className="border-border overflow-hidden rounded-xl border shadow-sm">
           {cases.length === 0 ? (
             <div className="bg-muted/20 border-b-0 p-12 text-center">
-              <GavelIcon className="mx-auto size-8 text-muted-foreground/40" />
-              <p className="mt-3 text-sm text-muted-foreground">
+              <GavelIcon className="text-muted-foreground/40 mx-auto size-8" />
+              <p className="text-muted-foreground mt-3 text-sm">
                 {casesTotal === 0
                   ? `${subject.name} 판례가 아직 등록되지 않았습니다.`
                   : "필터에 해당하는 판례가 없습니다."}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-1 text-xs">
                 정렬 기준: {axisLabel}
               </p>
             </div>
@@ -305,25 +306,25 @@ export function CasesTab({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-10 text-center font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                  <TableHead className="text-muted-foreground/70 w-10 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     ★
                   </TableHead>
-                  <TableHead className="w-24 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                  <TableHead className="text-muted-foreground/70 w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     법원
                   </TableHead>
-                  <TableHead className="w-28 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                  <TableHead className="text-muted-foreground/70 w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     선고일
                   </TableHead>
-                  <TableHead className="w-32 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                  <TableHead className="text-muted-foreground/70 w-32 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건번호
                   </TableHead>
-                  <TableHead className="w-28 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                  <TableHead className="text-muted-foreground/70 w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건유형
                   </TableHead>
-                  <TableHead className="font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                  <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건명 / 기출
                   </TableHead>
-                  <TableHead className="w-14 text-center font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                  <TableHead className="text-muted-foreground/70 w-14 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     전합
                   </TableHead>
                 </TableRow>
@@ -337,13 +338,23 @@ export function CasesTab({
           )}
           {/* Pagination footer */}
           {totalPages > 1 ? (
-            <div className="flex items-center justify-between border-t border-border px-4 py-3">
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {((filters.page - 1) * filters.pageSize + 1).toLocaleString("ko-KR")} –{" "}
-                {Math.min(filters.page * filters.pageSize, casesTotal).toLocaleString("ko-KR")} /{" "}
-                {casesTotal.toLocaleString("ko-KR")}건
+            <div className="border-border flex items-center justify-between border-t px-4 py-3">
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {((filters.page - 1) * filters.pageSize + 1).toLocaleString(
+                  "ko-KR",
+                )}{" "}
+                –{" "}
+                {Math.min(
+                  filters.page * filters.pageSize,
+                  casesTotal,
+                ).toLocaleString("ko-KR")}{" "}
+                / {casesTotal.toLocaleString("ko-KR")}건
               </span>
-              <Pagination filters={filters} totalPages={totalPages} tab={tabParam} />
+              <Pagination
+                filters={filters}
+                totalPages={totalPages}
+                tab={tabParam}
+              />
             </div>
           ) : null}
         </div>
@@ -362,15 +373,15 @@ function CasesKpiCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
         {label}
       </p>
-      <p className="mt-1.5 text-[26px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+      <p className="text-foreground mt-1.5 text-[26px] leading-none font-extrabold tracking-tight tabular-nums">
         {value}
       </p>
       {sub ? (
-        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
           {sub}
         </p>
       ) : null}
@@ -403,7 +414,7 @@ function FilterGroup<T extends string>({
           name={name}
           value={value}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
-          className="h-8 appearance-none rounded-full border border-border bg-background py-0 pl-3 pr-7 text-xs font-medium text-foreground focus:outline-none"
+          className="border-border bg-background text-foreground h-8 appearance-none rounded-full border py-0 pr-7 pl-3 text-xs font-medium focus:outline-none"
           aria-label={label}
         >
           {options.map((o) => (
@@ -412,7 +423,7 @@ function FilterGroup<T extends string>({
             </option>
           ))}
         </select>
-        <ChevronDownIcon className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+        <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
       </div>
     </Form>
   );
@@ -464,7 +475,7 @@ function Pagination({
           </span>
         )}
       </Button>
-      <span className="min-w-[60px] text-center text-xs tabular-nums text-muted-foreground">
+      <span className="text-muted-foreground min-w-[60px] text-center text-xs tabular-nums">
         {filters.page} / {totalPages}
       </span>
       <Button
@@ -513,26 +524,26 @@ function CaseRow({
   const sorted2nd = [...item.exam2ndYears].sort((a, b) => a - b);
 
   return (
-    <TableRow className="cursor-pointer hover:bg-muted/40">
+    <TableRow className="hover:bg-muted/40 cursor-pointer">
       <TableCell className="text-center">
         {item.importance >= 3 ? (
           <StarIcon className="mx-auto size-3.5 text-amber-500" />
         ) : null}
       </TableCell>
       <TableCell>
-        <span className="text-xs font-semibold text-primary">
+        <span className="text-primary text-xs font-semibold">
           {COURT_LABELS[item.court]}
         </span>
       </TableCell>
-      <TableCell className="text-center text-xs tabular-nums text-muted-foreground">
+      <TableCell className="text-muted-foreground text-center text-xs tabular-nums">
         {item.decidedAt}
       </TableCell>
-      <TableCell className="font-mono text-xs font-semibold text-foreground">
+      <TableCell className="text-foreground font-mono text-xs font-semibold">
         {item.caseNumber}
       </TableCell>
       <TableCell>
         {item.caseType ? (
-          <span className="inline-flex items-center rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <span className="border-border bg-muted/50 text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
             {item.caseType}
           </span>
         ) : null}
@@ -541,39 +552,27 @@ function CaseRow({
         <Link
           to={`/subjects/${subject.slug}/cases/${item.caseId}`}
           viewTransition
-          className="block truncate text-sm font-medium hover:text-primary"
+          className="hover:text-primary block truncate text-sm font-medium"
         >
           {detailLabel}
         </Link>
         {subLabel ? (
-          <p className="truncate text-xs text-muted-foreground">{subLabel}</p>
+          <p className="text-muted-foreground truncate text-xs">{subLabel}</p>
         ) : null}
         {sorted1st.length + sorted2nd.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
             {sorted1st.map((y) => (
-              <ExamYearChip
-                key={`1-${y}`}
-                subjectSlug={subject.slug}
-                round="first"
-                year={y}
-                caseId={item.caseId}
-              />
+              <ExamYearChip key={`1-${y}`} round="first" year={y} />
             ))}
             {sorted2nd.map((y) => (
-              <ExamYearChip
-                key={`2-${y}`}
-                subjectSlug={subject.slug}
-                round="second"
-                year={y}
-                caseId={item.caseId}
-              />
+              <ExamYearChip key={`2-${y}`} round="second" year={y} />
             ))}
           </div>
         ) : null}
       </TableCell>
       <TableCell className="text-center">
         {item.isEnBanc ? (
-          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+          <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
             전합
           </span>
         ) : null}

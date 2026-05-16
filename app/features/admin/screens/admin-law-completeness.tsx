@@ -1,5 +1,6 @@
 // 법령별 콘텐츠 완성도 진단 — 운영자가 어느 차원부터 채울지 결정하는 화면.
 // 5과목 시드 진행률 카드(/admin)에서 deep link.
+import type { Route } from "./+types/admin-law-completeness";
 
 import {
   AlertTriangleIcon,
@@ -16,11 +17,11 @@ import { toast } from "sonner";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import {
-  getLawCompleteness,
   type LawCompletenessSnapshot,
+  getLawCompleteness,
 } from "~/features/admin/queries/law-completeness.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -29,8 +30,6 @@ import {
   LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
-
-import type { Route } from "./+types/admin-law-completeness";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   const name = d && "subject" in d ? d.subject.name : "법령";
@@ -116,8 +115,7 @@ export default function AdminLawCompleteness({
 
   const aaFetcher = useFetcher<typeof action>();
   const acFetcher = useFetcher<typeof action>();
-  const busy =
-    aaFetcher.state !== "idle" || acFetcher.state !== "idle";
+  const busy = aaFetcher.state !== "idle" || acFetcher.state !== "idle";
   useEffect(() => {
     const r = aaFetcher.data;
     if (aaFetcher.state === "idle" && r?.ok && r.kind === "aa") {
@@ -151,12 +149,7 @@ export default function AdminLawCompleteness({
           <div className="flex flex-wrap gap-2">
             <aaFetcher.Form method="post">
               <input type="hidden" name="intent" value="backfill_aa_refs" />
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={busy}
-              >
+              <Button type="submit" size="sm" variant="outline" disabled={busy}>
                 <RefreshCwIcon
                   className={cn(
                     "size-3",
@@ -168,12 +161,7 @@ export default function AdminLawCompleteness({
             </aaFetcher.Form>
             <acFetcher.Form method="post">
               <input type="hidden" name="intent" value="backfill_ac_refs" />
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={busy}
-              >
+              <Button type="submit" size="sm" variant="outline" disabled={busy}>
                 <RefreshCwIcon
                   className={cn(
                     "size-3",
@@ -186,10 +174,13 @@ export default function AdminLawCompleteness({
           </div>
         </div>
         <p className="text-muted-foreground text-sm">
-          실 조문({EXAM_LABEL[subject.exam]} 시험) 기준 콘텐츠 갭 진단. 각 차원에서 미커버 항목을
-          채워 학습 자료를 완성하세요.
-          <strong> 조문 ref 동기화</strong> — 본문 body_json 의 inline <code className="text-[10.5px]">ref_article</code> 노드 → article_article_links 백필.{" "}
-          <strong>판례 ref 동기화</strong> — 판례 본문(요지/이유/평석) 의 "특허법 제N조" 자연어 패턴 → article_case_links 백필.
+          실 조문({EXAM_LABEL[subject.exam]} 시험) 기준 콘텐츠 갭 진단. 각
+          차원에서 미커버 항목을 채워 학습 자료를 완성하세요.
+          <strong> 조문 ref 동기화</strong> — 본문 body_json 의 inline{" "}
+          <code className="text-[10.5px]">ref_article</code> 노드 →
+          article_article_links 백필. <strong>판례 ref 동기화</strong> — 판례
+          본문(요지/이유/평석) 의 "특허법 제N조" 자연어 패턴 →
+          article_case_links 백필.
         </p>
       </header>
 
@@ -226,7 +217,10 @@ function buildArticleGaps(
       covered: total - s.articlesNoRevision,
       total,
       hint: "각 조문에 current revision(시행 중 본문)이 연결되어 있어야 함",
-      cta: { to: `/admin/laws/${slug}/revisions`, label: "법 개정 워크스페이스" },
+      cta: {
+        to: `/admin/laws/${slug}/revisions`,
+        label: "법 개정 워크스페이스",
+      },
     },
     {
       label: "빈칸 자료",
@@ -236,10 +230,10 @@ function buildArticleGaps(
       cta: { to: `/admin/blanks/law/${slug}`, label: "빈칸 자료 관리" },
     },
     {
-      label: "평석 / 코멘트",
+      label: "메모",
       covered: total - s.articlesNoComments,
       total,
-      hint: "조문에 staff 가 작성한 평석·해설 코멘트 1건 이상",
+      hint: "조문에 staff 가 작성한 메모 1건 이상",
       cta: { to: `/subjects/${slug}`, label: "조문 뷰어에서 인라인 작성" },
     },
     {
@@ -408,9 +402,14 @@ function GapItem({
 }
 
 function ToneIcon({ tone }: { tone: Tone }) {
-  if (tone === "ok") return <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />;
-  if (tone === "warn") return <AlertTriangleIcon className="size-4 text-amber-500" />;
-  if (tone === "danger") return <AlertTriangleIcon className="size-4 text-rose-500" />;
+  if (tone === "ok")
+    return (
+      <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
+    );
+  if (tone === "warn")
+    return <AlertTriangleIcon className="size-4 text-amber-500" />;
+  if (tone === "danger")
+    return <AlertTriangleIcon className="size-4 text-rose-500" />;
   return <CircleSlash2Icon className="text-muted-foreground size-4" />;
 }
 
@@ -421,9 +420,12 @@ function ToneBadge({ tone, pct }: { tone: Tone; pct: number }) {
       variant="outline"
       className={cn(
         "text-[10.5px] tabular-nums",
-        tone === "ok" && "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300",
-        tone === "warn" && "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300",
-        tone === "danger" && "border-rose-300 text-rose-700 dark:border-rose-700 dark:text-rose-300",
+        tone === "ok" &&
+          "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300",
+        tone === "warn" &&
+          "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300",
+        tone === "danger" &&
+          "border-rose-300 text-rose-700 dark:border-rose-700 dark:text-rose-300",
       )}
     >
       {pct}%
