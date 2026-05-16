@@ -35,7 +35,7 @@ import {
 import type { Route } from "./+types/my-subscription";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "내 구독 | Lidam Edu" },
+  { title: "내 구독 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

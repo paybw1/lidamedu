@@ -38,7 +38,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-cohorts";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "반 관리 | Lidam Edu" },
+  { title: "반 관리 | Lidam Patent Attorney Academy" },
 ];
 
 interface Filters {

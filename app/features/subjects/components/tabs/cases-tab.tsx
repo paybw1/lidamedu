@@ -1,9 +1,9 @@
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   GavelIcon,
   SearchIcon,
-  SlidersHorizontalIcon,
   StarIcon,
   XIcon,
 } from "lucide-react";
@@ -12,7 +12,6 @@ import { Form, Link, useNavigation, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import {
   Table,
@@ -106,6 +105,7 @@ export function CasesTab({
     const n = systematicNodes.find((x) => x.nodeId === treeFilter.nodeId);
     return n ? n.displayLabel : "체계도 항목";
   }, [treeFilter, articles, systematicNodes]);
+
   // 트리 필터 해제 href — case_* / case_page 만 제거.
   const clearTreeHref = useMemo(() => {
     const sp = new URLSearchParams(searchParams);
@@ -159,18 +159,17 @@ export function CasesTab({
     baseHidden.push({ name: "case_node", value: treeFilter.nodeId });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="space-y-3">
-        <Card className="py-4">
-          <CardHeader className="px-4 pb-3">
-            <div className="flex items-center justify-end gap-2">
-              <SortAxisToggle
-                size="sm"
-                disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="px-2 pb-2">
+    <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      {/* Left: tree panel */}
+      <aside>
+        <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
+          <div className="flex items-center justify-end border-b border-border px-4 py-3">
+            <SortAxisToggle
+              size="sm"
+              disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+            />
+          </div>
+          <div className="p-2">
             <CasesTree
               axis={axis}
               articles={articles}
@@ -178,137 +177,155 @@ export function CasesTab({
               caseTreeCounts={caseTreeCounts}
               active={treeFilter}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </aside>
 
+      {/* Right: KPIs + filter + table */}
       <section className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard label="전체 판례" value={String(casesTotal)} hint="모든 필터 무시" />
-        <KpiCard
-          label="중요 판례"
-          value={String(importantCount)}
-          hint="현재 페이지 ★3 이상"
-        />
-        <KpiCard
-          label="기출 보유"
-          value={String(examCount)}
-          hint="현재 페이지 1·2차 기출 표시"
-        />
-      </div>
-
-      {treeFilter ? (
-        <div className="bg-accent/40 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs">
-          <GavelIcon className="text-primary size-3.5" />
-          <span className="text-muted-foreground">트리 필터:</span>
-          <Badge variant="secondary" className="max-w-[260px] truncate">
-            {treeFilterLabel}
-          </Badge>
-          <Button asChild variant="ghost" size="sm" className="h-6 px-2">
-            <Link to={clearTreeHref} preventScrollReset>
-              <XIcon className="size-3" /> 전체 보기
-            </Link>
-          </Button>
+        {/* KPI cards — 3 columns */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <CasesKpiCard
+            label="전체 판례"
+            value={casesTotal.toLocaleString("ko-KR")}
+            sub="모든 필터 무시"
+          />
+          <CasesKpiCard
+            label="중요 판례"
+            value={importantCount.toLocaleString("ko-KR")}
+            sub="현재 페이지 ★3 이상"
+          />
+          <CasesKpiCard
+            label="기출 보유"
+            value={examCount.toLocaleString("ko-KR")}
+            sub="현재 페이지 1·2차 기출 표시"
+          />
         </div>
-      ) : null}
 
-      <Card>
-        <CardHeader className="space-y-3">
-          <Form method="get" className="flex items-center gap-2">
+        {/* Tree filter active banner */}
+        {treeFilter ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-primary/[0.04] px-4 py-2.5 text-xs">
+            <GavelIcon className="size-3.5 text-primary" />
+            <span className="text-muted-foreground">트리 필터:</span>
+            <Badge variant="secondary" className="max-w-[260px] truncate">
+              {treeFilterLabel}
+            </Badge>
+            <Button asChild variant="ghost" size="sm" className="h-6 px-2">
+              <Link to={clearTreeHref} preventScrollReset>
+                <XIcon className="size-3" /> 전체 보기
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+
+        {/* Filter row */}
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5">
+          {/* Search input */}
+          <Form method="get" className="relative flex-none">
             {hidden.map((h) => (
               <input key={h.name} type="hidden" name={h.name} value={h.value} />
             ))}
-            <div className="relative flex-1">
-              <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              <Input
-                type="search"
-                name="q"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="사건번호·사건명·사건유형·요지·이유 검색"
-                className="pl-9"
-                disabled={isLoading}
-              />
-              {draft ? (
-                <button
-                  type="button"
-                  onClick={() => setDraft("")}
-                  aria-label="검색어 지우기"
-                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-                >
-                  <XIcon className="size-4" />
-                </button>
-              ) : null}
-            </div>
-            <Button type="submit" size="sm" disabled={isLoading}>
-              검색
-            </Button>
+            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              name="q"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="사건번호·사건명 검색"
+              className="h-8 w-52 rounded-lg pl-8 text-xs"
+              disabled={isLoading}
+            />
+            {draft ? (
+              <button
+                type="button"
+                onClick={() => setDraft("")}
+                aria-label="검색어 지우기"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <XIcon className="size-3.5" />
+              </button>
+            ) : null}
           </Form>
-          <div className="flex flex-wrap items-center gap-2">
-            <SlidersHorizontalIcon className="text-muted-foreground size-4" />
-            <FilterGroup
-              label="법원"
-              name="case_court"
-              value={filters.court}
-              options={COURT_OPTIONS}
-              hidden={[
-                ...baseHidden,
-                { name: "case_exam", value: filters.exam },
-                { name: "case_sort", value: filters.sort },
-              ]}
-            />
-            <FilterGroup
-              label="기출"
-              name="case_exam"
-              value={filters.exam}
-              options={EXAM_OPTIONS}
-              hidden={[
-                ...baseHidden,
-                { name: "case_court", value: filters.court },
-                { name: "case_sort", value: filters.sort },
-              ]}
-            />
-            <FilterGroup
-              label="정렬"
-              name="case_sort"
-              value={filters.sort}
-              options={SORT_OPTIONS}
-              hidden={[
-                ...baseHidden,
-                { name: "case_court", value: filters.court },
-                { name: "case_exam", value: filters.exam },
-              ]}
-            />
-            <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-              {filters.q ? `"${filters.q}" · ` : ""}
-              {casesTotal}건 · 페이지 {filters.page}/{totalPages}
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent>
+
+          {/* Filter chips */}
+          <FilterGroup
+            label="법원"
+            name="case_court"
+            value={filters.court}
+            options={COURT_OPTIONS}
+            hidden={[
+              ...baseHidden,
+              { name: "case_exam", value: filters.exam },
+              { name: "case_sort", value: filters.sort },
+            ]}
+          />
+          <FilterGroup
+            label="기출"
+            name="case_exam"
+            value={filters.exam}
+            options={EXAM_OPTIONS}
+            hidden={[
+              ...baseHidden,
+              { name: "case_court", value: filters.court },
+              { name: "case_sort", value: filters.sort },
+            ]}
+          />
+          <FilterGroup
+            label="정렬"
+            name="case_sort"
+            value={filters.sort}
+            options={SORT_OPTIONS}
+            hidden={[
+              ...baseHidden,
+              { name: "case_court", value: filters.court },
+              { name: "case_exam", value: filters.exam },
+            ]}
+          />
+          <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+            {filters.q ? `"${filters.q}" · ` : ""}
+            총 {casesTotal.toLocaleString("ko-KR")}건
+          </span>
+        </div>
+
+        {/* Table card */}
+        <div className="overflow-hidden rounded-xl border border-border shadow-sm">
           {cases.length === 0 ? (
-            <div className="bg-muted/40 rounded-md border border-dashed p-8 text-center">
-              <GavelIcon className="text-muted-foreground mx-auto size-8" />
-              <p className="text-muted-foreground mt-3 text-sm">
+            <div className="bg-muted/20 border-b-0 p-12 text-center">
+              <GavelIcon className="mx-auto size-8 text-muted-foreground/40" />
+              <p className="mt-3 text-sm text-muted-foreground">
                 {casesTotal === 0
                   ? `${subject.name} 판례가 아직 등록되지 않았습니다.`
                   : "필터에 해당하는 판례가 없습니다."}
               </p>
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="mt-1 text-xs text-muted-foreground">
                 정렬 기준: {axisLabel}
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">★</TableHead>
-                  <TableHead className="w-24">법원</TableHead>
-                  <TableHead className="w-28">선고일</TableHead>
-                  <TableHead className="w-32">사건번호</TableHead>
-                  <TableHead className="w-32">사건유형</TableHead>
-                  <TableHead>사건명 / 기출</TableHead>
-                  <TableHead className="w-14 text-center">전합</TableHead>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="w-10 text-center font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                    ★
+                  </TableHead>
+                  <TableHead className="w-24 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                    법원
+                  </TableHead>
+                  <TableHead className="w-28 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                    선고일
+                  </TableHead>
+                  <TableHead className="w-32 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                    사건번호
+                  </TableHead>
+                  <TableHead className="w-28 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                    사건유형
+                  </TableHead>
+                  <TableHead className="font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                    사건명 / 기출
+                  </TableHead>
+                  <TableHead className="w-14 text-center font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
+                    전합
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -318,14 +335,45 @@ export function CasesTab({
               </TableBody>
             </Table>
           )}
-        </CardContent>
-        {totalPages > 1 ? (
-          <CardContent className="border-t pt-3">
-            <Pagination filters={filters} totalPages={totalPages} tab={tabParam} />
-          </CardContent>
-        ) : null}
-      </Card>
+          {/* Pagination footer */}
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-between border-t border-border px-4 py-3">
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {((filters.page - 1) * filters.pageSize + 1).toLocaleString("ko-KR")} –{" "}
+                {Math.min(filters.page * filters.pageSize, casesTotal).toLocaleString("ko-KR")} /{" "}
+                {casesTotal.toLocaleString("ko-KR")}건
+              </span>
+              <Pagination filters={filters} totalPages={totalPages} tab={tabParam} />
+            </div>
+          ) : null}
+        </div>
       </section>
+    </div>
+  );
+}
+
+function CasesKpiCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1.5 text-[26px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+        {value}
+      </p>
+      {sub ? (
+        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+          {sub}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -343,24 +391,29 @@ function FilterGroup<T extends string>({
   options: ReadonlyArray<{ value: T; label: string }>;
   hidden: Array<{ name: string; value: string }>;
 }) {
+  const selected = options.find((o) => o.value === value);
+  const displayLabel = selected ? selected.label : label;
   return (
-    <Form method="get" className="inline-flex items-center gap-1">
+    <Form method="get" className="inline-flex">
       {hidden.map((h) => (
         <input key={h.name} type="hidden" name={h.name} value={h.value} />
       ))}
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <select
-        name={name}
-        value={value}
-        onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className="border-input bg-background h-7 rounded-md border px-2 text-xs"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <div className="relative inline-flex items-center">
+        <select
+          name={name}
+          value={value}
+          onChange={(e) => e.currentTarget.form?.requestSubmit()}
+          className="h-8 appearance-none rounded-full border border-border bg-background py-0 pl-3 pr-7 text-xs font-medium text-foreground focus:outline-none"
+          aria-label={label}
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDownIcon className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+      </div>
     </Form>
   );
 }
@@ -393,13 +446,13 @@ function Pagination({
   const prev = filters.page > 1 ? filters.page - 1 : null;
   const next = filters.page < totalPages ? filters.page + 1 : null;
   return (
-    <div className="flex items-center justify-center gap-2 text-xs">
+    <div className="flex items-center gap-1">
       <Button
         asChild={prev != null}
-        variant="outline"
+        variant="ghost"
         size="sm"
         disabled={prev == null}
-        className="h-7"
+        className="h-7 rounded-full px-3 text-xs"
       >
         {prev != null ? (
           <Link to={make(prev)} preventScrollReset>
@@ -411,15 +464,15 @@ function Pagination({
           </span>
         )}
       </Button>
-      <span className="text-muted-foreground tabular-nums">
+      <span className="min-w-[60px] text-center text-xs tabular-nums text-muted-foreground">
         {filters.page} / {totalPages}
       </span>
       <Button
         asChild={next != null}
-        variant="outline"
+        variant="ghost"
         size="sm"
         disabled={next == null}
-        className="h-7"
+        className="h-7 rounded-full px-3 text-xs"
       >
         {next != null ? (
           <Link to={make(next)} preventScrollReset>
@@ -435,30 +488,6 @@ function Pagination({
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <Card className="py-4">
-      <CardContent className="px-4">
-        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          {label}
-        </p>
-        <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">
-          {value}
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function CaseRow({
   subject,
   item,
@@ -469,8 +498,6 @@ function CaseRow({
   // 사건명 컬럼 표시 우선순위: 요지 [1] 제목 → legacy summary_title → case_title (사건유형).
   const detailLabel =
     item.summaryFirstTitle ?? item.summaryTitle ?? item.caseTitle;
-  // subLabel 은 case_title 보조 노출. detailLabel 과 같거나(=요지가 없어 fallback 된 경우)
-  // 옆 caseType 컬럼과 같으면(=운영자가 같은 텍스트 입력한 흔한 경우) 중복이라 hide.
   const caseTitleTrim = item.caseTitle.trim();
   const detailTrim = detailLabel.trim();
   const caseTypeTrim = (item.caseType ?? "").trim();
@@ -484,31 +511,42 @@ function CaseRow({
   // 기출 chip — 1차/2차 구분. 각 그룹 안에서 연도 오름차순.
   const sorted1st = [...item.exam1stYears].sort((a, b) => a - b);
   const sorted2nd = [...item.exam2ndYears].sort((a, b) => a - b);
+
   return (
-    <TableRow>
+    <TableRow className="cursor-pointer hover:bg-muted/40">
       <TableCell className="text-center">
         {item.importance >= 3 ? (
-          <StarIcon className="mx-auto size-4 text-amber-500" />
+          <StarIcon className="mx-auto size-3.5 text-amber-500" />
         ) : null}
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
-        {COURT_LABELS[item.court]}
+      <TableCell>
+        <span className="text-xs font-semibold text-primary">
+          {COURT_LABELS[item.court]}
+        </span>
       </TableCell>
-      <TableCell className="text-xs tabular-nums">{item.decidedAt}</TableCell>
-      <TableCell className="font-mono text-xs">{item.caseNumber}</TableCell>
-      <TableCell className="text-muted-foreground text-xs">
-        {item.caseType ?? ""}
+      <TableCell className="text-center text-xs tabular-nums text-muted-foreground">
+        {item.decidedAt}
+      </TableCell>
+      <TableCell className="font-mono text-xs font-semibold text-foreground">
+        {item.caseNumber}
+      </TableCell>
+      <TableCell>
+        {item.caseType ? (
+          <span className="inline-flex items-center rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {item.caseType}
+          </span>
+        ) : null}
       </TableCell>
       <TableCell>
         <Link
           to={`/subjects/${subject.slug}/cases/${item.caseId}`}
           viewTransition
-          className="hover:text-primary block truncate text-sm font-medium"
+          className="block truncate text-sm font-medium hover:text-primary"
         >
           {detailLabel}
         </Link>
         {subLabel ? (
-          <p className="text-muted-foreground truncate text-xs">{subLabel}</p>
+          <p className="truncate text-xs text-muted-foreground">{subLabel}</p>
         ) : null}
         {sorted1st.length + sorted2nd.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -533,8 +571,12 @@ function CaseRow({
           </div>
         ) : null}
       </TableCell>
-      <TableCell className="text-center text-xs">
-        {item.isEnBanc ? "○" : ""}
+      <TableCell className="text-center">
+        {item.isEnBanc ? (
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+            전합
+          </span>
+        ) : null}
       </TableCell>
     </TableRow>
   );

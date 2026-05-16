@@ -6,8 +6,6 @@ import { ArrowLeftIcon, PlayIcon, SlidersHorizontalIcon } from "lucide-react";
 import { Form, Link, data, redirect } from "react-router";
 import { z } from "zod";
 
-import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { createQuizSession } from "~/features/study/queries.server";
@@ -26,8 +24,8 @@ const COUNT_OPTS = [10, 20, 30, 50] as const;
 const PER_PROBLEM_LIMIT_SEC = 60;
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "자연과학 맞춤 퀴즈 | Lidam Edu" }];
-  return [{ title: `${ld.subjectMeta.name} 맞춤 퀴즈 | Lidam Edu` }];
+  if (!ld) return [{ title: "자연과학 맞춤 퀴즈 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${ld.subjectMeta.name} 맞춤 퀴즈 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -127,132 +125,175 @@ export default function ScienceQuizSetup({
   const errorMsg =
     actionData && "error" in actionData ? actionData.error : null;
   const totalProblems = sections.reduce((s, x) => s + x.problemCount, 0);
+  const sciencePath =
+    scienceSubject === "earth_science" ? "earth-science" : scienceSubject;
 
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={`/subjects/science/${scienceSubject === "earth_science" ? "earth-science" : scienceSubject}`}
-        viewTransition
-        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
-      >
-        <ArrowLeftIcon className="size-4" /> {subjectMeta.name} 단원
-      </Link>
+    <div className="min-h-[calc(100vh-56px)] bg-background">
+      <div className="mx-auto w-full max-w-screen-md px-5 py-8 md:px-10 md:py-10">
+        <Link
+          to={`/subjects/science/${sciencePath}`}
+          viewTransition
+          className="text-muted-foreground hover:text-foreground mb-5 inline-flex items-center gap-1 text-sm transition-colors"
+        >
+          <ArrowLeftIcon className="size-4" /> {subjectMeta.name} 단원
+        </Link>
 
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <SlidersHorizontalIcon className="size-3.5" /> 자연과학 맞춤 퀴즈
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">
-          <span className="mr-2">{subjectMeta.emoji}</span>
-          {subjectMeta.name}
-        </h1>
-        <p className="text-muted-foreground text-xs">
-          단원·문항 수·모드를 선택해 퀴즈 세션을 생성합니다. 총 등록된 문제:{" "}
-          {totalProblems}.
-        </p>
-      </header>
-
-      <Form method="post" className="space-y-5">
-        <Card>
-          <CardHeader>
-            <h2 className="text-sm font-semibold">단원 (선택 안 하면 전체)</h2>
-          </CardHeader>
-          <CardContent className="space-y-1.5">
-            {sections.map((s) => (
-              <label
-                key={s.sectionId}
-                className={cn(
-                  "flex items-center gap-2 rounded-md border p-2 text-sm",
-                  s.problemCount === 0 && "opacity-50",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  name="sectionIds"
-                  value={s.sectionId}
-                  disabled={s.problemCount === 0}
-                />
-                <span className="flex-1">{s.label}</span>
-                <span className="text-muted-foreground text-[11px] tabular-nums">
-                  {s.problemCount} 문제
-                </span>
-              </label>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h2 className="text-sm font-semibold">문항 수</h2>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {COUNT_OPTS.map((n) => (
-              <label key={n} className="cursor-pointer">
-                <input
-                  type="radio"
-                  name="count"
-                  value={n}
-                  defaultChecked={n === 20}
-                  className="peer sr-only"
-                />
-                <span className="peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:border-primary inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-sm">
-                  {n}문제
-                </span>
-              </label>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h2 className="text-sm font-semibold">모드</h2>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <label className="cursor-pointer">
-              <input
-                type="radio"
-                name="mode"
-                value="study"
-                defaultChecked
-                className="peer sr-only"
-              />
-              <span className="peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:border-primary inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-sm">
-                학습 (즉시 해설)
-              </span>
-            </label>
-            <label className="cursor-pointer">
-              <input
-                type="radio"
-                name="mode"
-                value="exam"
-                className="peer sr-only"
-              />
-              <span className="peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:border-primary inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-sm">
-                시험 (타이머 + 일괄 제출)
-              </span>
-            </label>
-          </CardContent>
-        </Card>
-
-        {errorMsg ? (
-          <p className="text-rose-600 text-sm">{errorMsg}</p>
-        ) : null}
-
-        <Button type="submit" className="w-full" disabled={totalProblems === 0}>
-          <PlayIcon className="size-4" /> 시작
-        </Button>
-        {totalProblems === 0 ? (
-          <p className="text-muted-foreground text-center text-xs">
-            등록된 문제가 없습니다. 운영자가 문제를 추가하면 풀이를 시작할 수
-            있습니다.
+        <header className="mb-8 space-y-2">
+          <p className="text-primary inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-widest">
+            <SlidersHorizontalIcon className="size-3" /> 자연과학 맞춤 퀴즈
           </p>
-        ) : null}
-      </Form>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
+            <span className="mr-2 text-xl">{subjectMeta.emoji}</span>
+            {subjectMeta.name}
+          </h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            단원·문항 수·모드를 선택해 퀴즈 세션을 생성합니다.
+            총 등록된 문제: <span className="tabular-nums font-semibold">{totalProblems}</span>.
+          </p>
+        </header>
 
-      <p className="text-muted-foreground mt-6 text-[11px]">
-        ⓘ 자연과학 풀이 화면(viewer) 은 5.4.A 객관식 자산을 재사용/분기해 별도
-        구현 예정. 현재는 세션 생성까지 동작합니다.
-      </p>
+        <Form method="post" className="space-y-4">
+
+          {/* Section filter card */}
+          <div className="rounded-xl border bg-card shadow-sm">
+            <div className="border-b px-6 py-4">
+              <h2 className="text-sm font-bold">단원</h2>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                선택하지 않으면 전체 단원에서 출제됩니다.
+              </p>
+            </div>
+            <div className="divide-y px-6 py-2">
+              {sections.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  등록된 단원이 없습니다.
+                </p>
+              ) : (
+                sections.map((s) => (
+                  <label
+                    key={s.sectionId}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 py-3 text-sm transition-colors hover:text-foreground",
+                      s.problemCount === 0
+                        ? "cursor-not-allowed opacity-40"
+                        : "text-foreground",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      name="sectionIds"
+                      value={s.sectionId}
+                      disabled={s.problemCount === 0}
+                      className="size-4 accent-primary"
+                    />
+                    <span className="flex-1">{s.label}</span>
+                    <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
+                      {s.problemCount}문제
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Count card */}
+          <div className="rounded-xl border bg-card shadow-sm">
+            <div className="border-b px-6 py-4">
+              <h2 className="text-sm font-bold">문항 수</h2>
+            </div>
+            <div className="flex flex-wrap gap-2 px-6 py-4">
+              {COUNT_OPTS.map((n) => (
+                <label key={n} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="count"
+                    value={n}
+                    defaultChecked={n === 20}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={cn(
+                      "inline-flex h-9 items-center justify-center rounded-full border px-4 text-sm font-semibold transition-all",
+                      "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                      "peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary",
+                    )}
+                  >
+                    {n}문제
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Mode card */}
+          <div className="rounded-xl border bg-card shadow-sm">
+            <div className="border-b px-6 py-4">
+              <h2 className="text-sm font-bold">모드</h2>
+            </div>
+            <div className="flex flex-wrap gap-2 px-6 py-4">
+              {(
+                [
+                  { value: "study", label: "학습 모드 (즉시 해설)", defaultChecked: true },
+                  { value: "exam", label: "시험 모드 (타이머 + 일괄 제출)", defaultChecked: false },
+                ] as const
+              ).map(({ value, label, defaultChecked }) => (
+                <label key={value} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="mode"
+                    value={value}
+                    defaultChecked={defaultChecked}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={cn(
+                      "inline-flex h-9 items-center justify-center rounded-full border px-4 text-sm font-semibold transition-all",
+                      "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                      "peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {errorMsg ? (
+            <p
+              className="text-sm text-rose-600 dark:text-rose-400"
+              role="alert"
+            >
+              {errorMsg}
+            </p>
+          ) : null}
+
+          <div className="pt-1">
+            <button
+              type="submit"
+              disabled={totalProblems === 0}
+              className={cn(
+                "inline-flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-bold transition-all",
+                totalProblems > 0
+                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                  : "cursor-not-allowed bg-muted text-muted-foreground",
+              )}
+            >
+              <PlayIcon className="size-4" /> 퀴즈 시작
+            </button>
+            {totalProblems === 0 ? (
+              <p className="text-muted-foreground mt-2 text-center text-xs">
+                등록된 문제가 없습니다. 운영자가 문제를 추가하면 풀이를 시작할 수 있습니다.
+              </p>
+            ) : null}
+          </div>
+        </Form>
+
+        <p className="text-muted-foreground mt-8 text-[11px]">
+          ⓘ 자연과학 풀이 화면(viewer) 은 5.4.A 객관식 자산을 재사용/분기해 별도
+          구현 예정. 현재는 세션 생성까지 동작합니다.
+        </p>
+      </div>
     </div>
   );
 }

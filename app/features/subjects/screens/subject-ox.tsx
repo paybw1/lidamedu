@@ -4,7 +4,6 @@ import { ArrowLeftIcon, ShuffleIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Link, data } from "react-router";
 
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { OxQuestionsPanel } from "~/features/problems/components/ox-questions-panel";
 import { getOxQuestionsForSubject } from "~/features/problems/queries.server";
@@ -16,8 +15,8 @@ import {
 import type { Route } from "./+types/subject-ox";
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "정오문제 풀이 | Lidam Edu" }];
-  return [{ title: `${ld.subject.name} 정오문제 | Lidam Edu` }];
+  if (!ld) return [{ title: "정오문제 풀이 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${ld.subject.name} 정오문제 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -50,37 +49,68 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
   const shuffled = useMemo(() => shuffle(items), [items]);
 
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={`/subjects/${subject.slug}?tab=problems`}
-        viewTransition
-        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
-      >
-        <ArrowLeftIcon className="size-4" /> {subject.name} 문제 색인
-      </Link>
+    <div className="min-h-[calc(100vh-56px)] bg-background">
+      <div className="mx-auto w-full max-w-[720px] px-6 py-8 pb-20">
+        {/* Back link */}
+        <div className="mb-4">
+          <Link
+            to={`/subjects/${subject.slug}?tab=problems`}
+            viewTransition
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <ArrowLeftIcon className="size-3.5" />
+            {subject.name} 문제 색인
+          </Link>
+        </div>
 
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ShuffleIcon className="size-3.5" /> 정오문제 무작위 풀이
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {subject.name} 정오문제
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          전체 OX 가능 지문{" "}
-          <span className="text-foreground font-bold">{shuffled.length}</span>
-          건 · 무작위 순서
-        </p>
-      </header>
+        {/* Header */}
+        <header className="mb-6">
+          <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
+            <ShuffleIcon className="size-3.5" />
+            OX QUIZ
+          </p>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-foreground leading-tight">
+            정오문제 무작위
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+            {shuffled.length > 0 ? (
+              <>
+                전체 OX 가능 지문{" "}
+                <span className="font-bold tabular-nums text-foreground">
+                  {shuffled.length}
+                </span>
+                건 · 무작위 순서 · 학습 모드 (즉시 피드백)
+              </>
+            ) : (
+              "등록된 OX 지문이 없습니다."
+            )}
+          </p>
+        </header>
 
-      <Card>
-        <CardHeader>
-          <p className="text-sm font-semibold">지문</p>
-        </CardHeader>
-        <CardContent>
-          <OxQuestionsPanel items={shuffled} subject={subject.slug} />
-        </CardContent>
-      </Card>
+        {shuffled.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20 text-center">
+            <ShuffleIcon className="mb-3 size-10 text-muted-foreground/40" />
+            <p className="text-sm font-medium text-muted-foreground">
+              등록된 OX 가능 지문이 없습니다.
+            </p>
+          </div>
+        ) : (
+          /* OX panel — redesigned outer shell, preserve inner panel component */
+          <div className="rounded-xl border bg-card shadow-sm">
+            {/* Card header — eyebrow label */}
+            <div className="border-b border-border/60 px-6 py-4">
+              <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-muted-foreground">
+                지문
+              </p>
+            </div>
+
+            {/* Panel content — OxQuestionsPanel handles all logic/state */}
+            <div className="px-6 py-5">
+              <OxQuestionsPanel items={shuffled} subject={subject.slug} />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

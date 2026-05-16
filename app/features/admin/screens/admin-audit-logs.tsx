@@ -28,7 +28,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-audit-logs";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "감사 로그 | Lidam Edu" },
+  { title: "감사 로그 | Lidam Patent Attorney Academy" },
 ];
 
 const PAGE_SIZE = 50;

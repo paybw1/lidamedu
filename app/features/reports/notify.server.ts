@@ -133,7 +133,7 @@ async function sendStudentReport(userId: string): Promise<{
     const res = await resendClient.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: `[리담에듀] 주간 학습 리포트 · ${weekRangeLabelKst(now)}`,
+      subject: `[리담변리사학원] 주간 학습 리포트 · ${weekRangeLabelKst(now)}`,
       html,
     });
     if (res.error) return { status: "failed", reason: res.error.message };
@@ -217,7 +217,7 @@ async function sendStaffReport(
     const res = await resendClient.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: `[리담에듀] ${cohortName} 주간 운영 리포트 · ${weekRangeLabelKst(now)}`,
+      subject: `[리담변리사학원] ${cohortName} 주간 운영 리포트 · ${weekRangeLabelKst(now)}`,
       html,
     });
     if (res.error) return { status: "failed", reason: res.error.message };

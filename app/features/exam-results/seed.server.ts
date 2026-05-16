@@ -22,7 +22,6 @@ interface SyntheticProfile {
   status: SeedExamStatus;
   score: number;
   studySummary: string;
-  scienceSubject: string | null;
   problemAttempts: number;
   accuracyPct: number;
   studyHours: number;
@@ -35,14 +34,12 @@ const STUDY_SUMMARIES = [
   "마지막 3개월은 모의고사를 일주일에 2~3회 풀고, 오답 노트로만 복습했어요. 새 인풋을 줄이고 익숙한 자료를 반복한 게 컨디션 유지에 좋았습니다.",
   "디자인보호법 출제 비중이 낮다고 무시하지 말고, 짧고 자주 회독하세요. 조문 자체가 적어서 1~2주에 한 번씩 통독하면 안정적입니다.",
   "민법은 판례 위주로, 사례형 문제 풀이를 많이 했어요. 사례 → 쟁점 → 조문 → 판례 → 결론 순서를 머릿속에 굳히고 나서 정답률이 안정됐습니다.",
-  "자연과학 선택은 본인이 강한 과목으로 — 저는 화학이 자신 있어서 화학을 선택했고, 기출 8회독 정도로 마무리했습니다. 새 문제집을 추가로 풀기보다 기출을 깊이 파는 게 효과적이었어요.",
+  "자연과학은 4과목을 모두 응시해야 해서 부담이 컸지만, 과목별로 자주 틀리는 단원만 추려 기출을 깊이 반복했어요. 새 문제집을 늘리기보다 익숙한 기출을 여러 번 보는 게 효과적이었습니다.",
   "암기 도구를 적극 활용했습니다. 조문 단답형은 빈칸 모드로, 판례 키워드는 플래시카드 앱으로. 매일 30분이지만 누적되면 큰 차이를 만들어요.",
   "2차 답안은 형식이 중요해요. 쟁점 도출 → 조문 적시 → 판례 인용 → 사안 적용 → 결론 — 이 순서를 절대 흔들지 않도록 GS 답안을 매주 작성해 강사 첨삭을 받았습니다.",
   "처음 6개월은 인풋(강의·조문 통독), 다음 6개월은 아웃풋(문제·기출·모의)으로 페이스를 나눴어요. 아웃풋 단계로 넘어가니 효율이 확실히 올라갑니다.",
   "건강 관리가 의외로 큰 변수였습니다. 새벽 공부 그만두고 7시간 수면 + 주 3회 운동 시작하니 집중력이 다른 차원으로 올라왔어요. 무리해서 시간 늘리는 것보다 회복이 우선입니다.",
 ];
-
-const SCIENCE_SUBJECTS = ["physics", "chemistry", "biology", "earth_science"];
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min);
@@ -89,8 +86,6 @@ function generateProfileSpec(
     status,
     score,
     studySummary: pick(STUDY_SUMMARIES),
-    scienceSubject:
-      examRound === "first" ? pick(SCIENCE_SUBJECTS) : null,
     problemAttempts: attempts,
     accuracyPct: accuracy,
     studyHours,
@@ -128,7 +123,6 @@ async function markProfile(
       analytics_consent_at: new Date().toISOString(),
       next_exam_year: spec.examYear,
       next_exam_round: spec.examRound,
-      selected_science_subject: spec.scienceSubject,
     })
     .eq("profile_id", userId);
 }
@@ -144,7 +138,6 @@ async function insertExamResult(
     exam_round: spec.examRound,
     status: spec.status,
     self_reported_total_score: spec.score,
-    selected_science_subject: spec.scienceSubject,
     // 합격자는 60%가 인증, 비합격자는 인증 의미가 약하므로 self_reported 비중 높임.
     verification_status:
       spec.status === "passed"

@@ -14,10 +14,7 @@ import { useEffect, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 import { z } from "zod";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Separator } from "~/core/components/ui/separator";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
@@ -34,10 +31,10 @@ import { getScienceProblem } from "~/features/subjects/lib/science.server";
 import type { Route } from "./+types/problem-viewer";
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "자연과학 문제 | Lidam Edu" }];
+  if (!ld) return [{ title: "자연과학 문제 | Lidam Patent Attorney Academy" }];
   return [
     {
-      title: `${ld.subjectMeta.name} 문제${ld.position ? ` ${ld.position.cur}/${ld.position.total}` : ""} | Lidam Edu`,
+      title: `${ld.subjectMeta.name} 문제${ld.position ? ` ${ld.position.cur}/${ld.position.total}` : ""} | Lidam Patent Attorney Academy`,
     },
   ];
 };
@@ -173,135 +170,167 @@ export default function ScienceProblemViewer({
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-4 flex flex-wrap items-center gap-3">
-        <Link
-          to={`/subjects/science/${sciencePath}`}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-        >
-          <ArrowLeftIcon className="size-4" /> {subjectMeta.name}
-        </Link>
-        {position ? (
-          <Badge variant="outline" className="text-[11px]">
-            {position.cur} / {position.total}
-          </Badge>
-        ) : null}
-        <Badge variant="secondary" className="text-[11px]">
-          {sessionMode === "exam" ? "시험 모드" : "학습 모드"}
-        </Badge>
-      </header>
+    <div className="min-h-[calc(100vh-56px)] bg-background">
+      <div className="mx-auto w-full max-w-screen-md px-5 py-8 md:px-10 md:py-10">
 
-      <Card className="mb-4">
-        <CardHeader>
-          <div className="text-base font-semibold leading-snug">
-            <span className="text-muted-foreground mr-2">{subjectMeta.emoji}</span>
-            <MarkdownView text={problem.bodyMd} className="text-base" />
+        {/* Header bar */}
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to={`/subjects/science/${sciencePath}`}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+            >
+              <ArrowLeftIcon className="size-4" /> {subjectMeta.name}
+            </Link>
+            {position ? (
+              <span className="text-muted-foreground rounded-full border bg-muted px-2.5 py-0.5 font-mono text-[11px] tabular-nums">
+                {position.cur} / {position.total}
+              </span>
+            ) : null}
           </div>
-        </CardHeader>
-        <Separator />
-        <CardContent className="space-y-2 pt-4">
-          {problem.choices.map((c) => {
-            const sel = selected === c.choiceId;
-            const revealed = showResult;
-            const isThisCorrect = revealed && c.isCorrect;
-            const isThisWrongSelected = revealed && sel && !c.isCorrect;
-            return (
-              <button
-                key={c.choiceId}
-                type="button"
-                disabled={revealed}
-                onClick={() => setSelected(c.choiceId)}
-                data-testid={`science-choice-${c.choiceIndex}`}
-                className={cn(
-                  "w-full text-left rounded-md border px-3 py-2 text-sm transition",
-                  !revealed && sel
-                    ? "border-primary bg-primary/5"
-                    : "border-input hover:bg-muted/40",
-                  isThisCorrect &&
-                    "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30",
-                  isThisWrongSelected &&
-                    "border-rose-500 bg-rose-50 dark:bg-rose-950/30",
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  <span className="text-muted-foreground tabular-nums w-5">
-                    {c.choiceIndex}
-                  </span>
-                  <div className="flex-1">
-                    <MarkdownView text={c.bodyMd} />
-                  </div>
-                  {isThisCorrect ? (
-                    <CircleCheckIcon className="text-emerald-600 size-4" />
-                  ) : isThisWrongSelected ? (
-                    <CircleXIcon className="text-rose-600 size-4" />
-                  ) : null}
-                </div>
-                {revealed && c.explanationMd ? (
-                  <div className="text-muted-foreground mt-1 leading-snug pl-7">
-                    <MarkdownView text={c.explanationMd} className="text-[11px]" />
-                  </div>
-                ) : null}
-              </button>
-            );
-          })}
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {position?.prevId ? (
-          <Button asChild variant="outline" size="sm">
-            <Link
-              to={`/subjects/science/${sciencePath}/problems/${position.prevId}${sessionParam}`}
-            >
-              <ChevronLeftIcon className="size-4" /> 이전
-            </Link>
-          </Button>
-        ) : null}
-
-        {!showResult ? (
-          <Button
-            type="button"
-            onClick={submit}
-            disabled={!selected || attemptFetcher.state !== "idle"}
-            className="ml-auto"
-            data-testid="science-submit"
-          >
-            {sessionMode === "exam" ? "답안 저장" : "제출"}
-          </Button>
-        ) : (
-          <p
+          <span
             className={cn(
-              "ml-auto inline-flex items-center gap-1 text-sm font-semibold",
-              isCorrect ? "text-emerald-700" : "text-rose-700",
+              "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide",
+              sessionMode === "exam"
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                : "bg-primary/10 text-primary",
             )}
           >
-            {isCorrect ? (
-              <>
-                <CircleCheckIcon className="size-4" /> 정답
-              </>
-            ) : (
-              <>
-                <CircleXIcon className="size-4" /> 오답
-              </>
-            )}
-          </p>
-        )}
+            {sessionMode === "exam" ? "시험 모드" : "학습 모드"}
+          </span>
+        </header>
 
-        {position?.nextId ? (
-          <Button asChild size="sm">
-            <Link
-              to={`/subjects/science/${sciencePath}/problems/${position.nextId}${sessionParam}`}
+        {/* Problem card */}
+        <div className="mb-4 rounded-xl border bg-card shadow-sm">
+          {/* Problem body */}
+          <div className="border-b px-6 py-5">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 text-xl">{subjectMeta.emoji}</span>
+              <div className="flex-1 text-base font-medium leading-relaxed">
+                <MarkdownView text={problem.bodyMd} className="text-base leading-relaxed" />
+              </div>
+            </div>
+          </div>
+
+          {/* Choice list */}
+          <div className="space-y-2 px-6 py-5">
+            {problem.choices.map((c) => {
+              const sel = selected === c.choiceId;
+              const revealed = showResult;
+              const isThisCorrect = revealed && c.isCorrect;
+              const isThisWrongSelected = revealed && sel && !c.isCorrect;
+              return (
+                <button
+                  key={c.choiceId}
+                  type="button"
+                  disabled={revealed}
+                  onClick={() => setSelected(c.choiceId)}
+                  data-testid={`science-choice-${c.choiceIndex}`}
+                  className={cn(
+                    "w-full rounded-xl border px-4 py-3 text-left text-sm transition-all",
+                    !revealed && !sel && "border-border hover:border-primary/40 hover:bg-primary/[0.03]",
+                    !revealed && sel && "border-primary bg-primary/[0.06] shadow-sm",
+                    isThisCorrect &&
+                      "border-emerald-500 bg-emerald-50 shadow-sm dark:bg-emerald-950/30",
+                    isThisWrongSelected &&
+                      "border-rose-500 bg-rose-50 shadow-sm dark:bg-rose-950/30",
+                    revealed && !isThisCorrect && !isThisWrongSelected && "opacity-60",
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={cn(
+                        "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums",
+                        !revealed && sel
+                          ? "bg-primary text-primary-foreground"
+                          : isThisCorrect
+                            ? "bg-emerald-500 text-white"
+                            : isThisWrongSelected
+                              ? "bg-rose-500 text-white"
+                              : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {c.choiceIndex}
+                    </span>
+                    <div className="flex-1">
+                      <MarkdownView text={c.bodyMd} />
+                    </div>
+                    {isThisCorrect ? (
+                      <CircleCheckIcon className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                    ) : isThisWrongSelected ? (
+                      <CircleXIcon className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                    ) : null}
+                  </div>
+                  {revealed && c.explanationMd ? (
+                    <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2 pl-8 text-xs leading-relaxed text-muted-foreground">
+                      <MarkdownView text={c.explanationMd} className="text-xs leading-relaxed" />
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Action row */}
+        <div className="flex flex-wrap items-center gap-2">
+          {position?.prevId ? (
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link
+                to={`/subjects/science/${sciencePath}/problems/${position.prevId}${sessionParam}`}
+              >
+                <ChevronLeftIcon className="size-4" /> 이전
+              </Link>
+            </Button>
+          ) : null}
+
+          {!showResult ? (
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={!selected || attemptFetcher.state !== "idle"}
+              className="ml-auto rounded-full"
+              data-testid="science-submit"
             >
-              다음 <ChevronRightIcon className="size-4" />
-            </Link>
-          </Button>
-        ) : position && !position.nextId ? (
-          <Button asChild size="sm">
-            <Link to={`/subjects/science/${sciencePath}`}>
-              <PlayIcon className="size-4" /> 끝
-            </Link>
-          </Button>
-        ) : null}
+              {sessionMode === "exam" ? "답안 저장" : "제출"}
+            </Button>
+          ) : (
+            <p
+              className={cn(
+                "ml-auto inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold",
+                isCorrect
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
+              )}
+            >
+              {isCorrect ? (
+                <>
+                  <CircleCheckIcon className="size-4" /> 정답
+                </>
+              ) : (
+                <>
+                  <CircleXIcon className="size-4" /> 오답
+                </>
+              )}
+            </p>
+          )}
+
+          {position?.nextId ? (
+            <Button asChild size="sm" className="rounded-full">
+              <Link
+                to={`/subjects/science/${sciencePath}/problems/${position.nextId}${sessionParam}`}
+              >
+                다음 <ChevronRightIcon className="size-4" />
+              </Link>
+            </Button>
+          ) : position && !position.nextId ? (
+            <Button asChild size="sm" className="rounded-full">
+              <Link to={`/subjects/science/${sciencePath}`}>
+                <PlayIcon className="size-4" /> 완료
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

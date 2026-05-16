@@ -1263,7 +1263,6 @@ export type Database = {
           exam_year: number
           rejection_reason: string | null
           result_id: string
-          selected_science_subject: string | null
           self_reported_subject_scores: Json | null
           self_reported_total_score: number | null
           status: Database["public"]["Enums"]["exam_result_status"]
@@ -1282,7 +1281,6 @@ export type Database = {
           exam_year: number
           rejection_reason?: string | null
           result_id?: string
-          selected_science_subject?: string | null
           self_reported_subject_scores?: Json | null
           self_reported_total_score?: number | null
           status: Database["public"]["Enums"]["exam_result_status"]
@@ -1301,7 +1299,6 @@ export type Database = {
           exam_year?: number
           rejection_reason?: string | null
           result_id?: string
-          selected_science_subject?: string | null
           self_reported_subject_scores?: Json | null
           self_reported_total_score?: number | null
           status?: Database["public"]["Enums"]["exam_result_status"]
@@ -2776,7 +2773,6 @@ export type Database = {
           phone_e164: string | null
           profile_id: string
           role: Database["public"]["Enums"]["user_role"]
-          selected_science_subject: string | null
           updated_at: string
         }
         Insert: {
@@ -2793,7 +2789,6 @@ export type Database = {
           phone_e164?: string | null
           profile_id: string
           role?: Database["public"]["Enums"]["user_role"]
-          selected_science_subject?: string | null
           updated_at?: string
         }
         Update: {
@@ -2810,7 +2805,6 @@ export type Database = {
           phone_e164?: string | null
           profile_id?: string
           role?: Database["public"]["Enums"]["user_role"]
-          selected_science_subject?: string | null
           updated_at?: string
         }
         Relationships: []

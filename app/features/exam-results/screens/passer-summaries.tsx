@@ -13,17 +13,12 @@ import { Label } from "~/core/components/ui/label";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listPasserSummaries } from "~/features/exam-results/analytics.server";
-import {
-  EXAM_ROUND_LABEL,
-  SCIENCE_SUBJECT_KEYS,
-  SCIENCE_SUBJECT_LABEL,
-  type ExamRound,
-} from "~/features/exam-results/labels";
+import { EXAM_ROUND_LABEL, type ExamRound } from "~/features/exam-results/labels";
 
 import type { Route } from "./+types/passer-summaries";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격자 학습 후기 | Lidam Edu" },
+  { title: "합격자 학습 후기 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -38,7 +33,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   const filter = {
     year: yearStr ? Number(yearStr) : null,
     round: (url.searchParams.get("round") as ExamRound | null) || null,
-    scienceSubject: url.searchParams.get("science") || null,
     limit: 100,
   };
   const summaries = await listPasserSummaries(filter);
@@ -47,10 +41,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
   const { summaries, filter } = loaderData;
-  const filtersActive =
-    filter.year !== null ||
-    filter.round !== null ||
-    filter.scienceSubject !== null;
+  const filtersActive = filter.year !== null || filter.round !== null;
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -73,7 +64,7 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
 
       <Card className="mb-4">
         <CardContent className="px-4 py-3">
-          <Form method="get" className="grid grid-cols-2 gap-2 md:grid-cols-5">
+          <Form method="get" className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <div>
               <Label className="text-[11px]">연도</Label>
               <Input
@@ -94,21 +85,6 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
                 <option value="">전체</option>
                 <option value="first">1차</option>
                 <option value="second">2차</option>
-              </select>
-            </div>
-            <div>
-              <Label className="text-[11px]">자연과학 선택</Label>
-              <select
-                name="science"
-                defaultValue={filter.scienceSubject ?? ""}
-                className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
-              >
-                <option value="">전체</option>
-                {SCIENCE_SUBJECT_KEYS.map((k) => (
-                  <option key={k} value={k}>
-                    {SCIENCE_SUBJECT_LABEL[k]}
-                  </option>
-                ))}
               </select>
             </div>
             <div className="col-span-2 flex items-end justify-end gap-1">
@@ -160,13 +136,6 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
                     >
                       <ShieldCheckIcon className="mr-1 size-3" />
                       인증
-                    </Badge>
-                  ) : null}
-                  {s.selectedScienceSubject ? (
-                    <Badge variant="outline" className="text-[10px]">
-                      자연과학{" "}
-                      {SCIENCE_SUBJECT_LABEL[s.selectedScienceSubject] ??
-                        s.selectedScienceSubject}
                     </Badge>
                   ) : null}
                 </div>

@@ -30,8 +30,8 @@ import type { Route } from "./+types/admin-gs-disputes";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 분쟁 문항 | Lidam Edu`
-      : "분쟁 문항 | Lidam Edu",
+      ? `${loaderData.round.title} 분쟁 문항 | Lidam Patent Attorney Academy`
+      : "분쟁 문항 | Lidam Patent Attorney Academy",
   },
 ];
 

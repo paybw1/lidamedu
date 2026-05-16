@@ -1,7 +1,6 @@
 import {
   BrainIcon,
   ChevronRightIcon,
-  FileTextIcon,
   HeartIcon,
   HighlighterIcon,
   Loader2Icon,
@@ -544,8 +543,15 @@ function TreeItem({
         </span>
       </span>
     ) : null;
+  // 조문 leaf 앞 작은 dot — 가이드 라인 트리에서 leaf 임을 표시.
   const fileEl = isArticle ? (
-    <FileTextIcon className="text-muted-foreground size-3.5 shrink-0" />
+    <span
+      aria-hidden="true"
+      className={cn(
+        "size-1 shrink-0 rounded-full",
+        isActive ? "bg-[#2D5BA8] dark:bg-[#8FB4E3]" : "bg-foreground/25",
+      )}
+    />
   ) : null;
 
   // 위계별 진하기 그라데이션: 편(가장 진함) → 장 → 절 → 조(가장 옅음).
@@ -553,30 +559,29 @@ function TreeItem({
   const levelClass = (() => {
     switch (node.level) {
       case "part":
-        return "text-foreground font-bold";
+        return "text-foreground font-extrabold";
       case "chapter":
         return "text-foreground font-semibold";
       case "section":
         return "text-foreground/85 font-medium";
       default:
-        return "text-foreground/65"; // article
+        return "text-foreground/65 font-normal"; // article
     }
   })();
   const rowClass = cn(
-    "group flex items-center gap-1 rounded-md py-1.5 pr-2 text-left",
+    "group flex items-center gap-1.5 rounded-lg px-2 py-[5px] text-left text-[13px] transition-colors",
     levelClass,
     isActive
-      ? "bg-accent text-accent-foreground"
-      : "hover:bg-accent",
+      ? "bg-[#2D5BA8]/10 font-semibold text-[#1E4789] shadow-[inset_2px_0_0_#2D5BA8] dark:bg-[#3B6FC4]/15 dark:text-[#8FB4E3]"
+      : "hover:bg-[#2D5BA8]/[0.06] dark:hover:bg-[#3B6FC4]/10",
   );
-  const rowStyle = { paddingLeft: `${depth * 12 + 6}px` };
 
   // chevron — 모든 row 에서 별도 button 으로 토글. button-in-link 도 안전 (preventDefault).
   const chevronIcon = isPending ? (
-    <Loader2Icon className="size-3.5 animate-spin" />
+    <Loader2Icon className="size-3 animate-spin" />
   ) : (
     <ChevronRightIcon
-      className={cn("size-3.5 transition-transform", open && "rotate-90")}
+      className={cn("size-3 transition-transform", open && "rotate-90")}
     />
   );
   const expandToggle = hasChildren ? (
@@ -597,12 +602,12 @@ function TreeItem({
         setOpen((o) => !o);
       }}
       aria-label={open ? "접기" : "펼치기"}
-      className="text-muted-foreground hover:text-foreground inline-flex size-5 items-center justify-center"
+      className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 items-center justify-center"
     >
       {chevronIcon}
     </button>
   ) : (
-    <span className="inline-block size-5" />
+    <span className="inline-block size-4 shrink-0" />
   );
 
   return (
@@ -612,7 +617,6 @@ function TreeItem({
           to={`/subjects/${lawCode}/articles/${node.articleNumber}`}
           viewTransition
           className={rowClass}
-          style={rowStyle}
           aria-current={isActive ? "page" : undefined}
         >
           {expandToggle}
@@ -630,7 +634,6 @@ function TreeItem({
           to={`/subjects/${lawCode}/chapters/${node.articleId}`}
           viewTransition
           className={rowClass}
-          style={rowStyle}
           aria-current={isActive ? "page" : undefined}
         >
           {expandToggle}
@@ -643,7 +646,7 @@ function TreeItem({
           {recitationHintEl}
         </Link>
       ) : (
-        <div className={rowClass} style={rowStyle}>
+        <div className={rowClass}>
           {expandToggle}
           {fileEl}
           {labelEl}
@@ -654,7 +657,7 @@ function TreeItem({
         </div>
       )}
       {knownHasChildren && open ? (
-        <ul className="space-y-0.5">
+        <ul className="ml-[15px] space-y-0.5 border-l-[1.5px] border-border pl-0.5">
           {node.children.map((c) => (
             <TreeItem
               key={c.articleId}

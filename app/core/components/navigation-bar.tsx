@@ -6,6 +6,7 @@ import {
   MenuIcon,
   SearchIcon,
 } from "lucide-react";
+import { Fragment } from "react";
 import { Link } from "react-router";
 
 import { openCommandPalette } from "./command-palette";
@@ -19,6 +20,9 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "~/core/components/ui/navigation-menu";
+
+import { SUBJECT_SECTIONS } from "~/core/lib/subject-groups";
+import { cn } from "~/core/lib/utils";
 
 import LangSwitcher from "./lang-switcher";
 import ThemeSwitcher from "./theme-switcher";
@@ -42,7 +46,10 @@ import {
 } from "./ui/sheet";
 
 type SimpleLink = { label: string; to: string };
-type Section = { label: string; items: SimpleLink[] };
+
+// V5 nav dropdown chip — rest 는 #FAFAFA pill, hover/focus 시 brand blue.
+const CHIP_CLASS =
+  "inline-flex items-center rounded-full border border-black/[0.06] bg-[#FAFAFA] px-[13px] py-[7px] text-[13px] font-semibold leading-none tracking-[-0.01em] text-foreground no-underline outline-none transition-all duration-150 hover:border-transparent hover:bg-[#2D5BA8] hover:text-white focus-visible:border-transparent focus-visible:bg-[#2D5BA8] focus-visible:text-white dark:border-border dark:bg-muted";
 
 // 상단 네비게이션 7개 top-level (좌→우):
 // 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습보조▾ · 학습정보▾ · 커뮤니티▾ · 운영자(flat)
@@ -65,34 +72,6 @@ const latestItems: SimpleLink[] = [
   { label: "주관식 문제", to: "/latest/essay" },
   { label: "논문", to: "/latest/papers" },
   { label: "추록·정오표", to: "/latest/book-updates" },
-];
-
-const subjectSections: Section[] = [
-  {
-    label: "민법",
-    items: [{ label: "민법", to: "/subjects/civil" }],
-  },
-  {
-    label: "산업재산권법",
-    items: [
-      { label: "특허법", to: "/subjects/patent" },
-      { label: "상표법", to: "/subjects/trademark" },
-      { label: "디자인보호법", to: "/subjects/design" },
-    ],
-  },
-  {
-    label: "민사소송법",
-    items: [{ label: "민사소송법", to: "/subjects/civil-procedure" }],
-  },
-  {
-    label: "자연과학",
-    items: [
-      { label: "물리", to: "/subjects/science/physics" },
-      { label: "화학", to: "/subjects/science/chemistry" },
-      { label: "생물", to: "/subjects/science/biology" },
-      { label: "지구과학", to: "/subjects/science/earth-science" },
-    ],
-  },
 ];
 
 const studyAidItems: SimpleLink[] = [
@@ -174,7 +153,11 @@ function AuthButtons() {
           </Link>
         </SheetClose>
       </Button>
-      <Button variant="default" asChild>
+      <Button
+        variant="default"
+        asChild
+        className="bg-[#2D5BA8] text-white shadow-[0_6px_16px_rgba(45,91,168,0.18)] hover:bg-[#1E4789]"
+      >
         <SheetClose asChild>
           <Link to="/join" viewTransition>
             회원가입
@@ -295,21 +278,16 @@ function SimpleDropdown({
   return (
     <NavigationMenuItem>
       <NavigationMenuTrigger>{label}</NavigationMenuTrigger>
-      <NavigationMenuContent>
-        <ul className="grid w-[240px] gap-1 p-2">
+      <NavigationMenuContent className="left-1/2 -translate-x-1/2">
+        <div className="flex w-[340px] flex-wrap gap-1.5 p-3">
           {items.map((item) => (
-            <li key={item.to}>
-              <NavigationMenuLink asChild>
-                <Link
-                  to={item.to}
-                  className="hover:bg-accent focus:bg-accent block rounded-md px-3 py-2 text-sm leading-none no-underline transition-colors outline-none"
-                >
-                  {item.label}
-                </Link>
-              </NavigationMenuLink>
-            </li>
+            <NavigationMenuLink asChild key={item.to}>
+              <Link to={item.to} className={CHIP_CLASS}>
+                {item.label}
+              </Link>
+            </NavigationMenuLink>
           ))}
-        </ul>
+        </div>
       </NavigationMenuContent>
     </NavigationMenuItem>
   );
@@ -333,20 +311,21 @@ export function NavigationBar({
   inboxHref?: string | null;
 }) {
   return (
-    <nav className="bg-background relative z-50 mx-auto flex h-16 w-full items-center justify-between border-b px-5 shadow-xs backdrop-blur-lg transition-opacity md:px-10">
-      <div className="mx-auto flex h-full w-full max-w-screen-2xl items-center justify-between py-3">
+    <nav className="dark:bg-background/85 sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 dark:border-border">
+      <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
         <Link to="/" aria-label="리담변리사학원 홈">
           {/* 로고 PNG 의 텍스트 부분이 검정이라 dark 모드에서 안 보임. invert + hue-rotate(180)
               조합으로 검정→흰색 변환하면서 심볼 브랜드 컬러는 그대로 보존. */}
           <img
             src="/lidam-logo.png"
             alt="리담변리사학원"
-            className="h-10 w-auto shrink-0 dark:[filter:invert(1)_hue-rotate(180deg)]"
+            className="h-7 w-auto shrink-0 dark:[filter:invert(1)_hue-rotate(180deg)]"
           />
         </Link>
 
-        <div className="hidden h-full items-center gap-3 md:flex">
-          <NavigationMenu>
+        {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
+        <div className="hidden h-full items-center md:flex">
+          <NavigationMenu viewport={false}>
             <NavigationMenuList>
               {leadingFlats.map((m) => (
                 <FlatLink key={m.to} {...m} />
@@ -354,30 +333,52 @@ export function NavigationBar({
 
               <SimpleDropdown label="학습관리" items={studyItems} />
 
-              {/* 학습과목 dropdown (2칼럼 sections) */}
+              {/* 학습과목 dropdown — V5 (카테고리 row + chip) */}
               <NavigationMenuItem>
                 <NavigationMenuTrigger>학습과목</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="grid w-[520px] grid-cols-2 gap-x-4 gap-y-3 p-3">
-                    {subjectSections.map((section) => (
-                      <div key={section.label}>
-                        <p className="text-muted-foreground px-2 pb-1 text-xs font-semibold tracking-wide uppercase">
+                <NavigationMenuContent className="left-1/2 -translate-x-1/2">
+                  <div className="flex w-[720px] flex-col gap-3 px-5 py-[18px]">
+                    {SUBJECT_SECTIONS.map((section, si) => (
+                      <div
+                        key={section.exam}
+                        className={cn(
+                          si > 0 &&
+                            "border-t border-black/[0.06] pt-3 dark:border-border",
+                        )}
+                      >
+                        {/* 1차 / 2차 섹션 헤더 */}
+                        <div className="text-primary mb-2 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
                           {section.label}
-                        </p>
-                        <ul className="space-y-1">
-                          {section.items.map((item) => (
-                            <li key={item.to}>
-                              <NavigationMenuLink asChild>
-                                <Link
-                                  to={item.to}
-                                  className="hover:bg-accent focus:bg-accent block rounded-md px-2 py-1.5 text-sm leading-none no-underline transition-colors outline-none"
-                                >
-                                  {item.label}
-                                </Link>
-                              </NavigationMenuLink>
-                            </li>
+                        </div>
+                        <div className="flex flex-col gap-2.5">
+                          {section.groups.map((group) => (
+                            <div
+                              key={group.id}
+                              className="grid grid-cols-[160px_1fr] items-baseline gap-[18px]"
+                            >
+                              <div>
+                                <div className="text-foreground mb-0.5 text-[14px] leading-[1.3] font-bold tracking-[-0.012em]">
+                                  {group.label}
+                                </div>
+                                <div className="dark:text-muted-foreground text-[11px] leading-[1.4] tracking-[-0.005em] text-black/40">
+                                  {group.sub}
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {group.items.map((item) => (
+                                  <NavigationMenuLink
+                                    asChild
+                                    key={`${section.exam}-${item.href}`}
+                                  >
+                                    <Link to={item.href} className={CHIP_CLASS}>
+                                      {item.name}
+                                    </Link>
+                                  </NavigationMenuLink>
+                                ))}
+                              </div>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -393,8 +394,10 @@ export function NavigationBar({
               ))}
             </NavigationMenuList>
           </NavigationMenu>
+        </div>
 
-          <Separator orientation="vertical" />
+        {/* '운영자' 이후 — 오른쪽 정렬 */}
+        <div className="ml-auto hidden h-full items-center gap-3 md:flex">
           <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
           <Separator orientation="vertical" />
 
@@ -410,7 +413,7 @@ export function NavigationBar({
         </div>
 
         {/* Mobile */}
-        <SheetTrigger className="size-6 md:hidden">
+        <SheetTrigger className="ml-auto size-6 md:hidden">
           <MenuIcon />
         </SheetTrigger>
         <SheetContent>
@@ -432,20 +435,27 @@ export function NavigationBar({
               <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
                 학습과목
               </p>
-              {subjectSections.flatMap((section) =>
-                section.items.map((item) => (
-                  <SheetClose key={item.to} asChild>
-                    <Link
-                      to={item.to}
-                      className="hover:bg-accent rounded-md px-3 py-2 pl-5"
-                    >
-                      {section.label === item.label
-                        ? item.label
-                        : `${section.label} · ${item.label}`}
-                    </Link>
-                  </SheetClose>
-                )),
-              )}
+              {SUBJECT_SECTIONS.map((section) => (
+                <Fragment key={section.exam}>
+                  <p className="text-primary px-3 pt-1.5 font-mono text-[11px] font-bold tracking-wide uppercase">
+                    {section.label}
+                  </p>
+                  {section.groups.flatMap((group) =>
+                    group.items.map((item) => (
+                      <SheetClose key={`${section.exam}-${item.href}`} asChild>
+                        <Link
+                          to={item.href}
+                          className="hover:bg-accent rounded-md px-3 py-2 pl-5"
+                        >
+                          {group.label === item.name
+                            ? item.name
+                            : `${group.label} · ${item.name}`}
+                        </Link>
+                      </SheetClose>
+                    )),
+                  )}
+                </Fragment>
+              ))}
 
               <MobileGroup label="학습보조" items={studyAidItems} />
               <MobileGroup label="학습정보" items={latestItems} />

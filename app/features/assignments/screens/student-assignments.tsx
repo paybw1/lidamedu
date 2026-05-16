@@ -21,7 +21,7 @@ import {
 import type { Route } from "./+types/student-assignments";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "과제 | Lidam Edu" },
+  { title: "과제 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

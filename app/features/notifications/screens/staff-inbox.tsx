@@ -25,7 +25,7 @@ import {
 import type { Route } from "./+types/staff-inbox";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "강사 알림 | Lidam Edu" },
+  { title: "강사 알림 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

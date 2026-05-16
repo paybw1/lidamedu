@@ -1,0 +1,362 @@
+import { ArrowRightIcon, CheckIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import {
+  EASE_REVEAL,
+  LandingButton,
+  PALETTE,
+  Reveal,
+  useCountUp,
+  useInView,
+} from "~/features/home/lib/landing";
+
+export function Hero() {
+  const h1 = "변리사 시험,\n한 곳에서 차근차근.";
+  const words = h1.split(/(\s+|\n)/).filter(Boolean);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const reduce =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  return (
+    <section
+      aria-labelledby="hero-h1"
+      style={{
+        maxWidth: 1200,
+        margin: "0 auto",
+        padding: "84px 24px 64px",
+        position: "relative",
+      }}
+    >
+      <div
+        className="hero-grid"
+        style={{
+          display: "grid",
+          gap: 48,
+          gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              background: PALETTE.tint,
+              color: PALETTE.primary,
+              borderRadius: 9999,
+              font: "600 11px/1 Pretendard, sans-serif",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              marginBottom: 20,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: PALETTE.primary,
+              }}
+            />
+            리담 변리사 학원
+          </div>
+          <h1
+            id="hero-h1"
+            style={{
+              font: "800 clamp(34px, 5vw, 56px)/1.15 Pretendard, sans-serif",
+              color: PALETTE.ink,
+              letterSpacing: "-0.025em",
+              margin: "0 0 20px",
+              whiteSpace: "pre-line",
+            }}
+          >
+            {reduce
+              ? h1
+              : words.map((w, i) => {
+                  if (w === "\n") return <br key={i} />;
+                  return (
+                    <span
+                      key={i}
+                      style={{
+                        display: "inline-block",
+                        whiteSpace: "pre",
+                        opacity: mounted ? 1 : 0,
+                        transform: mounted
+                          ? "translateY(0)"
+                          : "translateY(12px)",
+                        transition: `opacity 600ms ${EASE_REVEAL} ${i * 80}ms, transform 600ms ${EASE_REVEAL} ${i * 80}ms`,
+                      }}
+                    >
+                      {w}
+                    </span>
+                  );
+                })}
+          </h1>
+          <Reveal delay={250}>
+            <p
+              style={{
+                font: "400 17px/1.7 Pretendard, sans-serif",
+                color: PALETTE.inkSoft,
+                letterSpacing: "-0.01em",
+                margin: "0 0 28px",
+                maxWidth: 480,
+                whiteSpace: "pre-line",
+              }}
+            >
+              {`조문 · 판례 · 문제 · 논문이 끊김 없이 이어지는 학습 플랫폼.\n매일의 진도를 따뜻하게 받쳐주는, 카공 같은 책상이 되어 드릴게요.`}
+            </p>
+          </Reveal>
+          <Reveal delay={400}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <LandingButton
+                size="lg"
+                variant="primary"
+                to="/join"
+                iconRight={<ArrowRightIcon size={17} strokeWidth={1.8} />}
+              >
+                무료로 시작하기
+              </LandingButton>
+              <LandingButton size="lg" variant="outline" to="/login">
+                로그인
+              </LandingButton>
+            </div>
+          </Reveal>
+          <Reveal delay={550}>
+            <div
+              style={{
+                display: "flex",
+                gap: 24,
+                flexWrap: "wrap",
+                marginTop: 28,
+                paddingTop: 24,
+                borderTop: `1px solid ${PALETTE.line}`,
+                font: "400 13px/1.5 Pretendard, sans-serif",
+                color: PALETTE.inkSoft,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              <span>🔥 평균 23일 연속 학습</span>
+              <span>📚 5 법률 + 4 자연과학</span>
+              <span>🌿 조문·판례·문제 통합</span>
+            </div>
+          </Reveal>
+        </div>
+
+        <Reveal delay={300} className="hero-preview">
+          <HeroPreviewCard />
+        </Reveal>
+      </div>
+
+      <style>{`
+        @media (max-width: 960px) {
+          .hero-grid { grid-template-columns: 1fr !important; }
+          .hero-preview { order: -1; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+function HeroPreviewCard() {
+  const [ref, inView] = useInView<HTMLDivElement>(0.3);
+  const dDay = useCountUp(87, 1400, inView);
+  const stats = [
+    { lbl: "학습", num: "186", unit: "h" },
+    { lbl: "문제", num: "2,431", unit: "" },
+    { lbl: "정답률", num: "74", unit: "%" },
+  ];
+  const todos = [
+    { done: true, text: "특허법 제29조 — 신규성 본문 학습" },
+    { done: true, text: "대법원 2019다204869 판례 정리" },
+    { done: false, text: "객관식 12문제 · 진보성 단원" },
+  ];
+  return (
+    <div
+      ref={ref}
+      style={{
+        background: "#fff",
+        borderRadius: 16,
+        border: `1px solid rgba(0,0,0,0.08)`,
+        boxShadow: "0 16px 48px rgba(0,0,0,0.10)",
+        padding: 24,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          background: PALETTE.tint,
+          color: PALETTE.primary,
+          padding: "4px 10px",
+          borderRadius: 9999,
+          font: "600 10px/1 Pretendard, sans-serif",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}
+      >
+        대시보드 미리보기
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <div
+          style={{
+            font: "600 11px/1 Pretendard, sans-serif",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: PALETTE.inkSoft,
+            marginBottom: 6,
+          }}
+        >
+          변리사 1차 시험
+        </div>
+        <div
+          style={{
+            font: "800 56px/1 Pretendard, sans-serif",
+            letterSpacing: "-0.03em",
+            fontVariantNumeric: "tabular-nums",
+            color: PALETTE.primary,
+          }}
+        >
+          D-{Math.round(dDay)}
+        </div>
+        <div
+          style={{
+            font: "400 13px/1.5 Pretendard, sans-serif",
+            color: PALETTE.inkSoft,
+            marginTop: 4,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          어서오세요, 지원님 ☕
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 8,
+          marginBottom: 20,
+        }}
+      >
+        {stats.map((s) => (
+          <div
+            key={s.lbl}
+            style={{
+              padding: "10px 12px",
+              background: PALETTE.base,
+              borderRadius: 12,
+              border: `1px solid rgba(0,0,0,0.06)`,
+            }}
+          >
+            <div
+              style={{
+                font: "500 11px/1 Pretendard, sans-serif",
+                color: PALETTE.inkSoft,
+                marginBottom: 4,
+              }}
+            >
+              {s.lbl}
+            </div>
+            <div
+              style={{
+                font: "700 20px/1 Pretendard, sans-serif",
+                fontVariantNumeric: "tabular-nums",
+                color: PALETTE.ink,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {s.num}
+              <span
+                style={{
+                  fontSize: 13,
+                  color: PALETTE.inkSoft,
+                  marginLeft: 2,
+                }}
+              >
+                {s.unit}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          font: "600 12px/1 Pretendard, sans-serif",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: PALETTE.inkSoft,
+          marginBottom: 10,
+        }}
+      >
+        오늘의 학습 계획
+      </div>
+      <ul
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        {todos.map((it, i) => (
+          <li
+            key={it.text}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 10px",
+              borderRadius: 10,
+              background: it.done ? PALETTE.tint : "transparent",
+              font: "400 13px/1.4 Pretendard, sans-serif",
+              color: it.done ? PALETTE.ink : PALETTE.inkSoft,
+              letterSpacing: "-0.01em",
+              textDecoration: it.done ? "line-through" : "none",
+              opacity: 0,
+              transform: "translateX(8px)",
+              animation: inView
+                ? `landing-slide-in 400ms ${EASE_REVEAL} ${600 + i * 80}ms forwards`
+                : "none",
+            }}
+          >
+            <span
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: 4,
+                background: it.done ? PALETTE.primary : "transparent",
+                border: it.done ? 0 : `1.5px solid rgba(0,0,0,0.2)`,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              {it.done ? (
+                <CheckIcon size={11} strokeWidth={3} color="#fff" />
+              ) : null}
+            </span>
+            {it.text}
+          </li>
+        ))}
+      </ul>
+      <style>{`@keyframes landing-slide-in { to { opacity: 1; transform: translateX(0); } }`}</style>
+    </div>
+  );
+}

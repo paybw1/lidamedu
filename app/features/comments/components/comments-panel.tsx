@@ -3,12 +3,15 @@
 
 import {
   EditIcon,
+  EyeIcon,
+  HighlighterIcon,
   MessageSquarePlusIcon,
   PinIcon,
   PinOffIcon,
   Trash2Icon,
+  UnderlineIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -19,6 +22,7 @@ import type {
   CommentTargetType,
   ContentComment,
 } from "~/features/comments/queries.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 interface CommentsPanelProps {
   targetType: CommentTargetType;
@@ -200,9 +204,7 @@ function CommentRow({
           onDone={() => setEditing(false)}
         />
       ) : (
-        <div className="text-sm whitespace-pre-line leading-relaxed">
-          {comment.bodyMd}
-        </div>
+        <MarkdownView text={comment.bodyMd} className="text-sm" />
       )}
     </li>
   );
@@ -227,10 +229,36 @@ function CommentForm({
 }: CommentFormProps) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const submitting = fetcher.state !== "idle";
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [body, setBody] = useState(initialBodyMd ?? "");
+  const [previewing, setPreviewing] = useState(false);
 
   // 성공 시 onDone 호출
   if (fetcher.data?.ok && !submitting) {
     setTimeout(() => onDone(), 0);
+  }
+
+  // textarea 의 현재 선택 영역을 open/close 태그로 감싼다.
+  // 선택 영역이 비어 있으면 placeholder("강조") 를 삽입하고 그 부분을 다시 선택해
+  // 사용자가 바로 이어서 타이핑하도록 한다.
+  function wrapSelection(open: string, close: string) {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? body.length;
+    const end = ta.selectionEnd ?? body.length;
+    const before = body.slice(0, start);
+    const selectedRaw = body.slice(start, end);
+    const placeholder = "강조";
+    const selected = selectedRaw.length > 0 ? selectedRaw : placeholder;
+    const after = body.slice(end);
+    const next = `${before}${open}${selected}${close}${after}`;
+    setBody(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const ns = start + open.length;
+      const ne = ns + selected.length;
+      ta.setSelectionRange(ns, ne);
+    });
   }
 
   return (
@@ -248,14 +276,68 @@ function CommentForm({
       ) : (
         <input type="hidden" name="commentId" value={commentId} />
       )}
+
+      <div className="flex flex-wrap items-center gap-1 border-b pb-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-xs"
+          onClick={() => wrapSelection("<mark>", "</mark>")}
+          disabled={previewing || submitting}
+          title="선택한 텍스트에 노란 형광펜 강조"
+        >
+          <HighlighterIcon className="mr-1 size-3" />
+          하이라이트
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-xs"
+          onClick={() => wrapSelection("<u>", "</u>")}
+          disabled={previewing || submitting}
+          title="선택한 텍스트에 밑줄"
+        >
+          <UnderlineIcon className="mr-1 size-3" />
+          밑줄
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-7 px-2 text-xs"
+          onClick={() => setPreviewing((p) => !p)}
+          disabled={submitting}
+          title="입력한 마크다운/강조 결과 미리보기"
+        >
+          <EyeIcon className="mr-1 size-3" />
+          {previewing ? "편집" : "미리보기"}
+        </Button>
+      </div>
+
       <Textarea
+        ref={textareaRef}
         name="bodyMd"
-        rows={4}
+        rows={5}
         required
-        defaultValue={initialBodyMd ?? ""}
-        placeholder="코멘트 / 평석을 입력하세요. (Markdown 가능)"
-        className="text-sm"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="코멘트 / 평석을 입력하세요. 텍스트를 선택한 뒤 [하이라이트] / [밑줄] 버튼을 눌러 강조할 수 있습니다. (Markdown · <mark> · <u> 지원)"
+        className={cn("font-mono text-sm", previewing && "hidden")}
       />
+      {previewing ? (
+        <div className="bg-card min-h-24 rounded-md border p-2">
+          {body.trim() ? (
+            <MarkdownView text={body} className="text-sm" />
+          ) : (
+            <p className="text-muted-foreground text-xs italic">
+              미리보기할 내용이 없습니다
+            </p>
+          )}
+        </div>
+      ) : null}
+
       <div className="flex items-center justify-between">
         {fetcher.data?.error ? (
           <p className="text-xs text-rose-600">{fetcher.data.error}</p>

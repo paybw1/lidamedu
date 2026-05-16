@@ -18,7 +18,7 @@ import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import type { Route } from "./+types/passer-trend";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격자 학습 곡선 비교 | Lidam Edu" },
+  { title: "합격자 학습 곡선 비교 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

@@ -31,9 +31,12 @@ import {
   getDailyStudyStats,
   getOverallProgress,
 } from "~/features/study/queries.server";
+import { Fragment } from "react";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  isFirstExamSubject,
+  isSecondExamSubject,
 } from "~/features/subjects/lib/subjects";
 import {
   getPasserBenchmarks,
@@ -43,7 +46,7 @@ import {
 import type { Route } from "./+types/goals";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "학습목표 | Lidam Edu" },
+  { title: "학습목표 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -311,29 +314,60 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
                 </tr>
               </thead>
               <tbody>
-                {subjects.map((s) => (
-                  <tr key={s.lawCode} className="hover:bg-muted/50 border-t">
-                    <td className="px-3 py-2 font-medium">{s.name}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {s.visitedCount} / {s.totalArticleCount}
-                      <span className="text-muted-foreground ml-1 text-xs">
-                        ({s.pctViewed}%)
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {s.problemsAttempted}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {s.accuracyPct === null ? "—" : `${s.accuracyPct}%`}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <Button asChild size="sm" variant="ghost" className="h-7">
-                        <Link to={`/subjects/${s.lawCode}`} viewTransition>
-                          학습 <ArrowRightIcon className="size-3" />
-                        </Link>
-                      </Button>
-                    </td>
-                  </tr>
+                {[
+                  {
+                    label: "1차 · 객관식",
+                    rows: subjects.filter((s) => isFirstExamSubject(s.lawCode)),
+                  },
+                  {
+                    label: "2차 · 주관식",
+                    rows: subjects.filter((s) =>
+                      isSecondExamSubject(s.lawCode),
+                    ),
+                  },
+                ].map((g) => (
+                  <Fragment key={g.label}>
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="text-primary bg-muted/40 px-3 py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                      >
+                        {g.label}
+                      </td>
+                    </tr>
+                    {g.rows.map((s) => (
+                      <tr
+                        key={s.lawCode}
+                        className="hover:bg-muted/50 border-t"
+                      >
+                        <td className="px-3 py-2 font-medium">{s.name}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {s.visitedCount} / {s.totalArticleCount}
+                          <span className="text-muted-foreground ml-1 text-xs">
+                            ({s.pctViewed}%)
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {s.problemsAttempted}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {s.accuracyPct === null ? "—" : `${s.accuracyPct}%`}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="ghost"
+                            className="h-7"
+                          >
+                            <Link to={`/subjects/${s.lawCode}`} viewTransition>
+                              학습 <ArrowRightIcon className="size-3" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

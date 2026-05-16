@@ -57,8 +57,8 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-assignment-edit";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.assignment) return [{ title: "과제 | Lidam Edu" }];
-  return [{ title: `${d.assignment.title} | Lidam Edu` }];
+  if (!d || !d.assignment) return [{ title: "과제 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.assignment.title} | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

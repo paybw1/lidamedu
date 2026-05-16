@@ -17,15 +17,15 @@ export default function Welcome({ profile }: { profile: string }) {
       <Html>
         <Head />
         <Body className="bg-white font-sans">
-          <Preview>Welcome to Lidam Edu</Preview>
+          <Preview>Welcome to Lidam Patent Attorney Academy</Preview>
           <Container className="mx-auto max-w-[560px] py-5 pb-12">
             <Heading className="pt-4 text-center text-2xl leading-tight font-normal tracking-[-0.5px] text-black">
-              Welcome to Lidam Edu!
+              Welcome to Lidam Patent Attorney Academy!
             </Heading>
             <Section>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
                 This is an automated email sent to all users who have signed up
-                to Lidam Edu.
+                to Lidam Patent Attorney Academy.
               </Text>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
                 To send this email we used Supabase Queues, Supabase CRON Jobs,
@@ -46,7 +46,7 @@ export default function Welcome({ profile }: { profile: string }) {
                 Best regards,
               </Text>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
-                The Lidam Edu Team
+                The Lidam Patent Attorney Academy Team
               </Text>
             </Section>
           </Container>

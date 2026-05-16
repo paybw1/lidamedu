@@ -24,8 +24,8 @@ import {
 import type { Route } from "./+types/lecture-viewer";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d) return [{ title: "강의 | Lidam Edu" }];
-  return [{ title: `${d.item.lectureTitle} | Lidam Edu` }];
+  if (!d) return [{ title: "강의 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.item.lectureTitle} | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

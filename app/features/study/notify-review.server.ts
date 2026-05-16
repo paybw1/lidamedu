@@ -177,7 +177,7 @@ export async function notifyReviewRequested(
       }),
     );
     const emailPayload: EmailPayload = {
-      subject: `[Lidam Edu] 새 주관식 첨삭 요청 — ${payload.problemLabel}`,
+      subject: `[Lidam Patent Attorney Academy] 새 주관식 첨삭 요청 — ${payload.problemLabel}`,
       html,
     };
 
@@ -193,7 +193,7 @@ export async function notifyReviewRequested(
         excerpt: excerptShort,
         link,
       },
-      fallbackText: `[Lidam Edu] 새 주관식 첨삭 요청 — ${payload.problemLabel}\n${studentName} 님\n${excerptShort}\n${link}`,
+      fallbackText: `[Lidam Patent Attorney Academy] 새 주관식 첨삭 요청 — ${payload.problemLabel}\n${studentName} 님\n${excerptShort}\n${link}`,
     };
 
     await Promise.all(
@@ -257,7 +257,7 @@ export async function notifyReviewCompleted(
       }),
     );
     const emailPayload: EmailPayload = {
-      subject: `[Lidam Edu] 주관식 첨삭 완료 — ${payload.problemLabel}`,
+      subject: `[Lidam Patent Attorney Academy] 주관식 첨삭 완료 — ${payload.problemLabel}`,
       html,
     };
 
@@ -277,7 +277,7 @@ export async function notifyReviewCompleted(
         excerpt: commentExcerpt,
         link,
       },
-      fallbackText: `[Lidam Edu] 주관식 첨삭 완료 — ${payload.problemLabel}\n강사: ${reviewerName} · ${scoreText}\n${commentExcerpt}\n${link}`,
+      fallbackText: `[Lidam Patent Attorney Academy] 주관식 첨삭 완료 — ${payload.problemLabel}\n강사: ${reviewerName} · ${scoreText}\n${commentExcerpt}\n${link}`,
     };
 
     await Promise.all(

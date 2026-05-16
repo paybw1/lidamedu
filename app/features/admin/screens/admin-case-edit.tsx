@@ -35,8 +35,8 @@ import {
 import type { Route } from "./+types/admin-case-edit";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d?.kase) return [{ title: "판례 등록 | Lidam Edu" }];
-  return [{ title: `${d.kase.case_number} 편집 | Lidam Edu` }];
+  if (!d?.kase) return [{ title: "판례 등록 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.kase.case_number} 편집 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

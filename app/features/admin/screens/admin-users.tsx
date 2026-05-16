@@ -47,7 +47,7 @@ import {
 import type { Route } from "./+types/admin-users";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "사용자 관리 | Lidam Edu" },
+  { title: "사용자 관리 | Lidam Patent Attorney Academy" },
 ];
 
 const ROLE_OPTIONS: Array<{ value: UserRole | "all"; label: string }> = [

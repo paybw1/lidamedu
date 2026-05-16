@@ -42,7 +42,7 @@ import {
 import type { Route } from "./+types/admin-curricula";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "커리큘럼 관리 | Lidam Edu" },
+  { title: "커리큘럼 관리 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

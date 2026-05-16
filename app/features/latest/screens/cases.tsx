@@ -1,27 +1,33 @@
 // 최신 판례 — 모든 과목 통합. 검색·과목·중요·기출 필터 + 페이지네이션.
+// 키트 lidam-latest/CasesScreen 디자인.
 
-import {
-  ArrowRightIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  FilterXIcon,
-  GavelIcon,
-  NewspaperIcon,
-  SearchIcon,
-  StarIcon,
-} from "lucide-react";
-import { Form, Link, data } from "react-router";
+import { GavelIcon, SearchXIcon } from "lucide-react";
+import { data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Input } from "~/core/components/ui/input";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
+import {
+  CardCta,
+  FeedCardLink,
+  FilterCheckbox,
+  FilterSelect,
+  LatestEmpty,
+  LatestFilterForm,
+  LatestPagination,
+  ListStack,
+  MetaRow,
+  NewBadge,
+  Pill,
+  isRecent,
+  relativeKo,
+} from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
+  FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 import type { Database } from "database.types";
@@ -30,7 +36,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Route } from "./+types/cases";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "최근 판례 | Lidam Edu" },
+  { title: "최근 판례 | Lidam Patent Attorney Academy" },
 ];
 
 const LIST_COLUMNS =
@@ -164,211 +170,146 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
     return s ? `?${s}` : "";
   };
 
-  return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NewspaperIcon className="size-3.5" /> 최신 정보
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">최근 판례</h1>
-        <p className="text-muted-foreground text-sm">
-          {total}건 검색됨
-          {filters.subject ? ` · ${LAW_SUBJECTS[filters.subject].name}` : ""}
-          {filters.importantOnly ? " · 중요판례 (★3+)" : ""}
-          {filters.exam === "exam_1st" ? " · 1차 기출 보유" : ""}
-          {filters.exam === "exam_2nd" ? " · 2차 기출 보유" : ""}
-          {filters.q ? ` · "${filters.q}" 검색` : ""}
-        </p>
-      </header>
+  const descParts = [`${total.toLocaleString("ko-KR")}건`];
+  if (filters.subject) descParts.push(LAW_SUBJECTS[filters.subject].name);
+  if (filters.importantOnly) descParts.push("중요판례 ★3+");
+  if (filters.exam === "exam_1st") descParts.push("1차 기출 보유");
+  if (filters.exam === "exam_2nd") descParts.push("2차 기출 보유");
+  if (filters.q) descParts.push(`"${filters.q}" 검색`);
 
-      <Form method="get" className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            name="q"
-            defaultValue={filters.q}
-            placeholder="사건번호·사건명·요지 검색"
-            className="pl-9"
-          />
-        </div>
-        <select
+  return (
+    <LatestShell
+      category="cases"
+      width="feed"
+      title="최근 판례"
+      desc={`${descParts.join(" · ")} — 선고일 최신순으로 모은 전 과목 신규 판례입니다.`}
+    >
+      <LatestFilterForm
+        search={{
+          name: "q",
+          placeholder: "사건번호·사건명·요지 검색",
+          defaultValue: filters.q,
+        }}
+        hasActive={filterActive}
+        resetTo="/latest/cases"
+      >
+        <FilterSelect
           name="subject"
+          ariaLabel="과목"
           defaultValue={filters.subject ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          <option value="">전체 과목</option>
-          {LAW_SUBJECT_SLUGS.map((s) => (
-            <option key={s} value={s}>
-              {LAW_SUBJECTS[s].name}
-            </option>
-          ))}
-        </select>
-        <select
+          options={[{ value: "", label: "전체 과목" }]}
+          optionGroups={[
+            {
+              label: "1차 · 객관식",
+              options: FIRST_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+            {
+              label: "2차 · 주관식",
+              options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+          ]}
+        />
+        <FilterSelect
           name="exam"
+          ariaLabel="기출"
           defaultValue={filters.exam}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          <option value="any">기출 무관</option>
-          <option value="exam_1st">1차 기출</option>
-          <option value="exam_2nd">2차 기출</option>
-        </select>
-        <label className="border-input flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs">
-          <input
-            type="checkbox"
-            name="important"
-            value="1"
-            defaultChecked={filters.importantOnly}
-            className="size-3.5"
-          />
-          <StarIcon className="size-3" /> 중요만
-        </label>
-        <Button type="submit" size="sm" className="h-9">
-          적용
-        </Button>
-      </Form>
-      {filterActive ? (
-        <div className="mb-4">
-          <Button asChild type="button" size="sm" variant="ghost" className="h-7">
-            <Link to="/latest/cases">
-              <FilterXIcon className="size-3.5" /> 초기화
-            </Link>
-          </Button>
-        </div>
-      ) : null}
+          options={[
+            { value: "any", label: "기출 무관" },
+            { value: "exam_1st", label: "1차 기출" },
+            { value: "exam_2nd", label: "2차 기출" },
+          ]}
+        />
+        <FilterCheckbox name="important" defaultChecked={filters.importantOnly}>
+          중요만 ★3+
+        </FilterCheckbox>
+      </LatestFilterForm>
 
       {cases.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            해당 조건의 판례가 없습니다.
-          </p>
-        </div>
+        <LatestEmpty
+          icon={filterActive ? SearchXIcon : GavelIcon}
+          tone={filterActive ? "subdued" : "neutral"}
+          title={
+            filterActive
+              ? "조건에 맞는 판례가 없습니다"
+              : "아직 등록된 판례가 없습니다"
+          }
+          body={
+            filterActive
+              ? "검색어나 필터를 바꿔 다시 찾아보세요."
+              : "새 판례가 등록되면 이곳에 선고일 최신순으로 모입니다."
+          }
+        />
       ) : (
-        <div className="space-y-2" data-testid="latest-cases-list">
+        <ListStack testid="latest-cases-list">
           {cases.map((c) => {
             const firstSubject = c.subjectLaws[0] ?? "patent";
             const caseHref = `/subjects/${firstSubject}/cases/${c.caseId}`;
             return (
-              <div key={c.caseId} className="group block">
-                <Card className="hover:border-primary transition-colors">
-                  <CardHeader className="px-4 pb-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant="default" className="text-xs">
-                        <GavelIcon className="size-3" /> {COURT_LABELS[c.court]}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs tabular-nums">
-                        {c.caseNumber}
-                      </Badge>
-                      {c.caseType ? (
-                        <Badge variant="secondary" className="text-xs">
-                          {c.caseType}
-                        </Badge>
-                      ) : null}
-                      {c.isEnBanc ? (
-                        <Badge variant="secondary" className="text-xs">
-                          전합
-                        </Badge>
-                      ) : null}
-                      {c.subjectLaws.map((s) => (
-                        <Badge key={s} variant="outline" className="text-xs">
-                          {lawName(s)}
-                        </Badge>
+              <FeedCardLink key={c.caseId} to={caseHref}>
+                <MetaRow right={`선고 ${c.decidedAt}`}>
+                  <Pill tone="violet">
+                    <GavelIcon className="size-3" />
+                    {COURT_LABELS[c.court]}
+                  </Pill>
+                  <Pill tone="outline" className="font-mono">
+                    {c.caseNumber}
+                  </Pill>
+                  {c.caseType ? <Pill>{c.caseType}</Pill> : null}
+                  {c.isEnBanc ? <Pill tone="primary">전합</Pill> : null}
+                  {c.subjectLaws.map((s) => (
+                    <Pill key={s} tone="outline">
+                      {lawName(s)}
+                    </Pill>
+                  ))}
+                  {isRecent(c.decidedAt) ? <NewBadge /> : null}
+                </MetaRow>
+                <div className="text-[15px] leading-snug font-bold tracking-tight">
+                  {c.summaryTitle ?? c.caseTitle}
+                </div>
+                {c.exam1stYears.length + c.exam2ndYears.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {[...c.exam1stYears]
+                      .sort((a, b) => a - b)
+                      .map((y) => (
+                        <ExamYearChip
+                          key={`1-${y}`}
+                          subjectSlug={firstSubject as LawSubjectSlug}
+                          round="first"
+                          year={y}
+                          caseId={c.caseId}
+                        />
                       ))}
-                      <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                        선고 {c.decidedAt}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4 text-sm">
-                    <Link
-                      to={caseHref}
-                      viewTransition
-                      className="hover:text-primary block font-medium leading-snug"
-                    >
-                      {c.summaryTitle ?? c.caseTitle}
-                    </Link>
-                    {c.exam1stYears.length + c.exam2ndYears.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {[...c.exam1stYears]
-                          .sort((a, b) => a - b)
-                          .map((y) => (
-                            <ExamYearChip
-                              key={`1-${y}`}
-                              subjectSlug={firstSubject as LawSubjectSlug}
-                              round="first"
-                              year={y}
-                              caseId={c.caseId}
-                            />
-                          ))}
-                        {[...c.exam2ndYears]
-                          .sort((a, b) => a - b)
-                          .map((y) => (
-                            <ExamYearChip
-                              key={`2-${y}`}
-                              subjectSlug={firstSubject as LawSubjectSlug}
-                              round="second"
-                              year={y}
-                              caseId={c.caseId}
-                            />
-                        ))}
-                      </div>
-                    ) : null}
-                    <Link
-                      to={caseHref}
-                      viewTransition
-                      className="text-primary mt-2 inline-flex items-center gap-1 text-xs hover:underline"
-                    >
-                      판례 본문 보기 <ArrowRightIcon className="size-3" />
-                    </Link>
-                  </CardContent>
-                </Card>
-              </div>
+                    {[...c.exam2ndYears]
+                      .sort((a, b) => a - b)
+                      .map((y) => (
+                        <ExamYearChip
+                          key={`2-${y}`}
+                          subjectSlug={firstSubject as LawSubjectSlug}
+                          round="second"
+                          year={y}
+                          caseId={c.caseId}
+                        />
+                      ))}
+                  </div>
+                ) : null}
+                <CardCta label="판례 본문 보기" />
+              </FeedCardLink>
             );
           })}
-        </div>
+        </ListStack>
       )}
 
-      {totalPages > 1 ? (
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs">
-          <Button
-            asChild={filters.page > 1}
-            variant="outline"
-            size="sm"
-            disabled={filters.page <= 1}
-            className="h-7"
-          >
-            {filters.page > 1 ? (
-              <Link to={makeUrl({ page: String(filters.page - 1) })}>
-                <ChevronLeftIcon className="size-3" /> 이전
-              </Link>
-            ) : (
-              <span>
-                <ChevronLeftIcon className="size-3" /> 이전
-              </span>
-            )}
-          </Button>
-          <span className="text-muted-foreground tabular-nums">
-            {filters.page} / {totalPages}
-          </span>
-          <Button
-            asChild={filters.page < totalPages}
-            variant="outline"
-            size="sm"
-            disabled={filters.page >= totalPages}
-            className="h-7"
-          >
-            {filters.page < totalPages ? (
-              <Link to={makeUrl({ page: String(filters.page + 1) })}>
-                다음 <ChevronRightIcon className="size-3" />
-              </Link>
-            ) : (
-              <span>
-                다음 <ChevronRightIcon className="size-3" />
-              </span>
-            )}
-          </Button>
-        </div>
-      ) : null}
-    </div>
+      <LatestPagination
+        page={filters.page}
+        totalPages={totalPages}
+        makeUrl={makeUrl}
+      />
+    </LatestShell>
   );
 }

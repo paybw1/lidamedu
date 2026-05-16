@@ -40,8 +40,8 @@ const POLARITIES: ProblemPolarity[] = ["positive", "negative"];
 const SCOPES: ProblemScope[] = ["unit", "comprehensive"];
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "체계 편집 | Lidam Edu" }];
-  return [{ title: `${ld.result?.node.displayLabel ?? "체계"} | Lidam Edu` }];
+  if (!ld) return [{ title: "체계 편집 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${ld.result?.node.displayLabel ?? "체계"} | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

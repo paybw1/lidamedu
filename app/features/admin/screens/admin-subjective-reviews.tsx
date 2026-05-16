@@ -24,7 +24,7 @@ import {
 import type { Route } from "./+types/admin-subjective-reviews";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "주관식 첨삭 큐 | Lidam Edu" },
+  { title: "주관식 첨삭 큐 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

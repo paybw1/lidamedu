@@ -3,6 +3,7 @@
 
 import {
   ArrowLeftIcon,
+  ArrowRightIcon,
   PlayIcon,
   ShuffleIcon,
   SlidersHorizontalIcon,
@@ -10,9 +11,6 @@ import {
 import { Form, Link, data, redirect } from "react-router";
 import { z } from "zod";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
@@ -50,8 +48,8 @@ const COUNT_OPTS = [10, 20, 30, 50, 100] as const;
 const PER_PROBLEM_LIMIT_SEC = 90;
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "맞춤 퀴즈 | Lidam Edu" }];
-  return [{ title: `${ld.subject.name} 맞춤 퀴즈 | Lidam Edu` }];
+  if (!ld) return [{ title: "맞춤 퀴즈 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${ld.subject.name} 맞춤 퀴즈 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -153,173 +151,220 @@ export default function QuizSetup({
     actionData && "error" in actionData ? actionData.error : null;
 
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={`/subjects/${subject.slug}?tab=problems`}
-        viewTransition
-        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
-      >
-        <ArrowLeftIcon className="size-4" /> {subject.name} 문제 색인
-      </Link>
-
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <SlidersHorizontalIcon className="size-3.5" /> 맞춤 퀴즈
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {subject.name} 맞춤 퀴즈 설정
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          유형·연도·극성을 골라 N문제 묶음으로 풀어보세요. 시험 모드는 문항당
-          90초 제한 + 일괄 제출입니다.
-        </p>
-      </header>
-
-      <Form method="post" className="space-y-5">
-        <Card>
-          <CardHeader>
-            <p className="text-sm font-semibold">필터</p>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <FieldSelect label="출처" name="origin" placeholder="전체">
-              {ORIGIN_OPTS.map((o) => (
-                <option key={o} value={o}>
-                  {ORIGIN_LABEL[o]}
-                </option>
-              ))}
-            </FieldSelect>
-            <FieldSelect label="연도" name="year" placeholder="전체">
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}년
-                </option>
-              ))}
-            </FieldSelect>
-            <FieldSelect label="유형" name="format" placeholder="전체">
-              {FORMAT_OPTS.map((f) => (
-                <option key={f} value={f}>
-                  {FORMAT_LABEL[f]}
-                </option>
-              ))}
-            </FieldSelect>
-            <FieldSelect label="극성" name="polarity" placeholder="전체">
-              {POLARITY_OPTS.map((p) => (
-                <option key={p} value={p}>
-                  {POLARITY_LABEL[p]}
-                </option>
-              ))}
-            </FieldSelect>
-            <FieldSelect label="범위" name="scope" placeholder="전체">
-              {SCOPE_OPTS.map((s) => (
-                <option key={s} value={s}>
-                  {SCOPE_LABEL[s]}
-                </option>
-              ))}
-            </FieldSelect>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <p className="text-sm font-semibold">세션</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
-                문항수
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {COUNT_OPTS.map((n, i) => (
-                  <RadioPill
-                    key={n}
-                    name="count"
-                    value={String(n)}
-                    label={`${n}문항`}
-                    defaultChecked={i === 1}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-muted-foreground mb-2 text-xs tracking-wide uppercase">
-                모드
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <RadioPill
-                  name="mode"
-                  value="study"
-                  label="학습 모드 (즉시 해설)"
-                  defaultChecked
-                />
-                <RadioPill
-                  name="mode"
-                  value="exam"
-                  label="시험 모드 (타이머 + 일괄 제출)"
-                />
-              </div>
-            </div>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="shuffle"
-                value="on"
-                defaultChecked
-                className="size-4"
-              />
-              <span className="inline-flex items-center gap-1">
-                <ShuffleIcon className="size-3.5" /> 문제 순서 섞기
-              </span>
-            </label>
-          </CardContent>
-        </Card>
-
-        {errorMsg ? (
-          <p
-            className="text-sm text-rose-600 dark:text-rose-400"
-            role="alert"
-            data-testid="setup-error"
+    <div className="min-h-[calc(100vh-56px)] bg-background">
+      <div className="mx-auto w-full max-w-[720px] px-6 py-8 pb-20">
+        {/* Back link */}
+        <div className="mb-4">
+          <Link
+            to={`/subjects/${subject.slug}?tab=problems`}
+            viewTransition
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors"
           >
-            {errorMsg}
-          </p>
-        ) : null}
-
-        <div className="flex justify-end">
-          <Button type="submit" size="lg" data-testid="setup-start">
-            <PlayIcon className="size-4" /> 시작
-          </Button>
+            <ArrowLeftIcon className="size-3.5" />
+            {subject.name} 문제 색인
+          </Link>
         </div>
-      </Form>
+
+        {/* Header */}
+        <header className="mb-6">
+          <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
+            <SlidersHorizontalIcon className="size-3.5" />
+            QUIZ SETUP
+          </p>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-foreground leading-tight">
+            맞춤 퀴즈 만들기
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+            필터로 범위를 좁히고, 풀이 모드를 선택하세요.
+          </p>
+        </header>
+
+        <Form method="post" className="space-y-4">
+          {/* Filter card */}
+          <div className="rounded-xl border bg-card shadow-sm">
+            <div className="px-6 pt-5 pb-1">
+              <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
+                필터
+              </p>
+            </div>
+            <div className="divide-y divide-border/60 px-6 pb-4">
+              <FilterRow label="출처">
+                <FieldSelect name="origin" placeholder="전체">
+                  {ORIGIN_OPTS.map((o) => (
+                    <option key={o} value={o}>
+                      {ORIGIN_LABEL[o]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FilterRow>
+              <FilterRow label="연도">
+                <FieldSelect name="year" placeholder="전체">
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {y}년
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FilterRow>
+              <FilterRow label="유형">
+                <FieldSelect name="format" placeholder="전체">
+                  {FORMAT_OPTS.map((f) => (
+                    <option key={f} value={f}>
+                      {FORMAT_LABEL[f]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FilterRow>
+              <FilterRow label="극성">
+                <FieldSelect name="polarity" placeholder="전체">
+                  {POLARITY_OPTS.map((p) => (
+                    <option key={p} value={p}>
+                      {POLARITY_LABEL[p]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FilterRow>
+              <FilterRow label="범위">
+                <FieldSelect name="scope" placeholder="전체">
+                  {SCOPE_OPTS.map((s) => (
+                    <option key={s} value={s}>
+                      {SCOPE_LABEL[s]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FilterRow>
+            </div>
+          </div>
+
+          {/* Session card */}
+          <div className="rounded-xl border bg-card shadow-sm">
+            <div className="px-6 pt-5 pb-1">
+              <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
+                세션
+              </p>
+            </div>
+            <div className="divide-y divide-border/60 px-6 pb-4">
+              <FilterRow label="문항 수">
+                <div className="flex flex-wrap gap-1.5">
+                  {COUNT_OPTS.map((n, i) => (
+                    <RadioPill
+                      key={n}
+                      name="count"
+                      value={String(n)}
+                      label={`${n}문항`}
+                      defaultChecked={i === 1}
+                    />
+                  ))}
+                </div>
+              </FilterRow>
+              <FilterRow label="모드">
+                <div className="flex flex-wrap gap-1.5">
+                  <RadioPill
+                    name="mode"
+                    value="study"
+                    label="학습 (즉시 해설)"
+                    defaultChecked
+                  />
+                  <RadioPill
+                    name="mode"
+                    value="exam"
+                    label="시험 (타이머)"
+                  />
+                </div>
+              </FilterRow>
+              <FilterRow label="기타">
+                <label className="inline-flex cursor-pointer items-center gap-2 text-[13px]">
+                  <input
+                    type="checkbox"
+                    name="shuffle"
+                    value="on"
+                    defaultChecked
+                    className="size-4 accent-primary"
+                  />
+                  <ShuffleIcon className="size-3.5 text-muted-foreground" />
+                  <span>선지 셔플</span>
+                </label>
+              </FilterRow>
+            </div>
+          </div>
+
+          {/* Error */}
+          {errorMsg ? (
+            <p
+              className="text-sm text-rose-600 dark:text-rose-400"
+              role="alert"
+              data-testid="setup-error"
+            >
+              {errorMsg}
+            </p>
+          ) : null}
+
+          {/* CTA banner */}
+          <div className="flex items-center justify-between gap-4 rounded-xl bg-primary/10 px-6 py-5 dark:bg-primary/15">
+            <div>
+              <p className="text-[14px] font-bold leading-[1.4] tracking-tight text-foreground">
+                필터 설정 완료
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                퀴즈 시작 버튼을 눌러 바로 시작하세요
+              </p>
+            </div>
+            <button
+              type="submit"
+              data-testid="setup-start"
+              className={cn(
+                "inline-flex h-11 shrink-0 items-center gap-2 rounded-full",
+                "bg-primary px-[22px] text-[14px] font-semibold text-primary-foreground",
+                "shadow-[0_0_0_1px_rgba(0,0,0,0.02),0_4px_12px_rgba(45,91,168,0.22)]",
+                "transition-[transform,box-shadow] hover:-translate-y-px active:translate-y-0",
+              )}
+            >
+              <PlayIcon className="size-4 shrink-0" />
+              퀴즈 시작
+              <ArrowRightIcon className="size-3.5 shrink-0" />
+            </button>
+          </div>
+        </Form>
+      </div>
+    </div>
+  );
+}
+
+function FilterRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[90px_1fr] items-center gap-3 py-2.5">
+      <span className="text-[12px] font-semibold text-muted-foreground">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-1.5 items-center">{children}</div>
     </div>
   );
 }
 
 function FieldSelect({
-  label,
   name,
   placeholder,
   children,
 }: {
-  label: string;
   name: string;
   placeholder: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="text-muted-foreground text-xs tracking-wide uppercase">
-        {label}
-      </span>
-      <select
-        name={name}
-        defaultValue=""
-        className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-      >
-        <option value="">{placeholder}</option>
-        {children}
-      </select>
-    </label>
+    <select
+      name={name}
+      defaultValue=""
+      className="border-input bg-background h-8 rounded-full border px-3 text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <option value="">{placeholder}</option>
+      {children}
+    </select>
   );
 }
 
@@ -337,8 +382,11 @@ function RadioPill({
   return (
     <label
       className={cn(
-        "border-input hover:bg-accent inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm",
-        "has-[:checked]:border-primary has-[:checked]:bg-primary/10",
+        "inline-flex h-[26px] cursor-pointer items-center rounded-full border px-2.5",
+        "text-[12px] font-semibold transition-colors whitespace-nowrap",
+        "border-border bg-background text-foreground",
+        "has-[:checked]:border-primary/50 has-[:checked]:bg-primary/10 has-[:checked]:text-primary",
+        "hover:bg-muted",
       )}
     >
       <input
@@ -346,14 +394,8 @@ function RadioPill({
         name={name}
         value={value}
         defaultChecked={defaultChecked}
-        className="peer sr-only"
+        className="sr-only"
       />
-      <Badge
-        variant="outline"
-        className="bg-background hidden h-4 px-1 text-[10px] peer-checked:inline-flex"
-      >
-        선택
-      </Badge>
       {label}
     </label>
   );

@@ -5,7 +5,7 @@ import { loadSubjectHub } from "../lib/loader.server";
 import { LAW_SUBJECTS } from "../lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "민사소송법 | Lidam Edu" },
+  { title: "민사소송법 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

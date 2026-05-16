@@ -26,7 +26,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-failure-patterns";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격 vs 비합격 패턴 | Lidam Edu" },
+  { title: "합격 vs 비합격 패턴 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

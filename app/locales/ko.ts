@@ -2,7 +2,7 @@ import type { Translation } from "./types";
 
 const ko: Translation = {
   home: {
-    title: "Lidam Edu",
+    title: "Lidam Patent Attorney Academy",
     subtitle: "변리사 시험을 위한 통합 학습 플랫폼",
   },
   navigation: {

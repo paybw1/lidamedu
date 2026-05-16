@@ -1,19 +1,9 @@
 // 최신 주관식 문제 — 등록일 최신순. 검색·과목·년도·출처 필터.
+// 키트 lidam-latest/EssayScreen 디자인.
 
-import {
-  ArrowRightIcon,
-  FilterXIcon,
-  NewspaperIcon,
-  PencilIcon,
-  SearchIcon,
-} from "lucide-react";
-import { Form, Link, data } from "react-router";
+import { PenLineIcon, SearchXIcon } from "lucide-react";
+import { data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Input } from "~/core/components/ui/input";
-import makeServerClient from "~/core/lib/supa-client.server";
 import {
   ORIGIN_LABEL,
   SUBJECTIVE_KIND_LABEL,
@@ -22,15 +12,31 @@ import {
 } from "~/features/problems/labels";
 import { listRecentProblems } from "~/features/problems/queries.server";
 import {
+  CardCta,
+  FeedCardLink,
+  FilterSelect,
+  LatestEmpty,
+  LatestFilterForm,
+  ListStack,
+  MetaRow,
+  NewBadge,
+  Pill,
+  isRecent,
+  relativeKo,
+} from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
+import makeServerClient from "~/core/lib/supa-client.server";
+import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/essay";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "주관식 문제 | Lidam Edu" },
+  { title: "주관식 문제 | Lidam Patent Attorney Academy" },
 ];
 
 interface Filters {
@@ -123,161 +129,142 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - i);
 
-  return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NewspaperIcon className="size-3.5" /> 최신 정보
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">주관식 문제</h1>
-        <p className="text-muted-foreground text-sm">
-          {problems.length}건
-          {filters.subject ? ` · ${LAW_SUBJECTS[filters.subject].name}` : ""}
-          {filters.year ? ` · ${filters.year}년` : ""}
-          {filters.origin
-            ? ` · ${ORIGIN_LABEL[filters.origin] ?? filters.origin}`
-            : ""}
-          {filters.q ? ` · "${filters.q}" 검색` : ""}
-        </p>
-      </header>
+  const descParts = [`${problems.length.toLocaleString("ko-KR")}건`];
+  if (filters.subject) descParts.push(LAW_SUBJECTS[filters.subject].name);
+  if (filters.year) descParts.push(`${filters.year}년`);
+  if (filters.origin)
+    descParts.push(ORIGIN_LABEL[filters.origin] ?? filters.origin);
+  if (filters.q) descParts.push(`"${filters.q}" 검색`);
 
-      <Form
-        method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]"
+  return (
+    <LatestShell
+      category="essay"
+      width="feed"
+      title="주관식 문제"
+      desc={`${descParts.join(" · ")} — 등록일 최신순으로 모은 신규 주관식 문제입니다.`}
+    >
+      <LatestFilterForm
+        search={{
+          name: "q",
+          placeholder: "본문 검색",
+          defaultValue: filters.q,
+        }}
+        hasActive={filterActive}
+        resetTo="/latest/essay"
       >
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            name="q"
-            defaultValue={filters.q}
-            placeholder="본문 검색"
-            className="pl-9"
-          />
-        </div>
-        <select
+        <FilterSelect
           name="subject"
+          ariaLabel="과목"
           defaultValue={filters.subject ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          <option value="">전체 과목</option>
-          {LAW_SUBJECT_SLUGS.map((s) => (
-            <option key={s} value={s}>
-              {LAW_SUBJECTS[s].name}
-            </option>
-          ))}
-        </select>
-        <select
+          options={[{ value: "", label: "전체 과목" }]}
+          optionGroups={[
+            {
+              label: "2차 · 주관식",
+              options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+          ]}
+        />
+        <FilterSelect
           name="year"
-          defaultValue={filters.year ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs tabular-nums"
-        >
-          <option value="">전체 년도</option>
-          {yearOptions.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-        <select
+          ariaLabel="년도"
+          defaultValue={filters.year ? String(filters.year) : ""}
+          options={[
+            { value: "", label: "전체 년도" },
+            ...yearOptions.map((y) => ({
+              value: String(y),
+              label: `${y}년`,
+            })),
+          ]}
+        />
+        <FilterSelect
           name="origin"
-          defaultValue={filters.origin ?? "all"}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          {ORIGINS.map((o) => (
-            <option key={o.value} value={o.value === "all" ? "" : o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
+          ariaLabel="출처"
+          defaultValue={filters.origin ?? ""}
+          options={ORIGINS.map((o) => ({
+            value: o.value === "all" ? "" : o.value,
+            label: o.label,
+          }))}
+        />
+        <FilterSelect
           name="kind"
+          ariaLabel="주관식 유형"
           defaultValue={filters.subjectiveKind ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-          aria-label="주관식 유형"
-        >
-          <option value="">전체 유형</option>
-          <option value="case_based">사례형</option>
-          <option value="theory">논점형</option>
-          <option value="mixed">혼합형</option>
-        </select>
-        <Input
+          options={[
+            { value: "", label: "전체 유형" },
+            { value: "case_based", label: "사례형" },
+            { value: "theory", label: "논점형" },
+            { value: "mixed", label: "혼합형" },
+          ]}
+        />
+        <input
           type="search"
           name="keyword"
           defaultValue={filters.subjectiveKeyword ?? ""}
           placeholder="키워드 (정확 일치)"
-          className="h-9 w-32"
+          aria-label="키워드"
+          className="border-input bg-background focus:border-primary h-9 w-36 rounded-full border px-3.5 text-xs outline-none"
         />
-        <Button type="submit" size="sm" className="h-9">
-          적용
-        </Button>
-      </Form>
-      {filterActive ? (
-        <div className="mb-4">
-          <Button asChild type="button" size="sm" variant="ghost" className="h-7">
-            <Link to="/latest/essay">
-              <FilterXIcon className="size-3.5" /> 초기화
-            </Link>
-          </Button>
-        </div>
-      ) : null}
+      </LatestFilterForm>
 
       {problems.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            조건에 맞는 주관식 문제가 없습니다.
-          </p>
-        </div>
+        <LatestEmpty
+          icon={filterActive ? SearchXIcon : PenLineIcon}
+          tone={filterActive ? "subdued" : "neutral"}
+          title={
+            filterActive
+              ? "조건에 맞는 주관식 문제가 없습니다"
+              : "아직 등록된 주관식 문제가 없습니다"
+          }
+          body={
+            filterActive
+              ? "검색어나 필터를 바꿔 다시 찾아보세요."
+              : "새 주관식 문제가 등록되면 이곳에 등록일 최신순으로 모입니다."
+          }
+        />
       ) : (
-        <div className="space-y-2" data-testid="latest-essay-list">
+        <ListStack testid="latest-essay-list">
           {problems.map((p) => (
-            <Link
+            <FeedCardLink
               key={p.problemId}
               to={`/subjects/${p.lawCode}/problems/${p.problemId}`}
-              viewTransition
-              className="group block"
             >
-              <Card className="hover:border-primary transition-colors">
-                <CardHeader className="px-4 pb-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="default" className="text-xs">
-                      <PencilIcon className="size-3" /> {lawName(p.lawCode)}
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      {ORIGIN_LABEL[p.origin as ProblemOrigin] ?? p.origin}
-                    </Badge>
-                    {p.year ? (
-                      <Badge variant="outline" className="text-xs tabular-nums">
-                        {p.year}
-                        {p.problemNumber ? ` · ${p.problemNumber}번` : ""}
-                      </Badge>
-                    ) : null}
-                    {p.subjectiveKind ? (
-                      <Badge variant="default" className="text-xs">
-                        {SUBJECTIVE_KIND_LABEL[p.subjectiveKind]}
-                      </Badge>
-                    ) : null}
-                    <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                      등록 {p.createdAt.slice(0, 10)}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-4 pb-4 text-sm">
-                  {p.subjectiveTopic ? (
-                    <p className="text-muted-foreground mb-1 text-xs">
-                      논점 — {p.subjectiveTopic}
-                    </p>
-                  ) : null}
-                  <p className="line-clamp-2 leading-snug">{p.bodySnippet}</p>
-                  <p className="text-primary mt-2 inline-flex items-center gap-1 text-xs">
-                    지금 풀어보기 <ArrowRightIcon className="size-3" />
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
+              <MetaRow right={relativeKo(p.createdAt)}>
+                <Pill tone="rose">
+                  <PenLineIcon className="size-3" />
+                  {lawName(p.lawCode)}
+                </Pill>
+                <Pill>
+                  {ORIGIN_LABEL[p.origin as ProblemOrigin] ?? p.origin}
+                </Pill>
+                {p.year ? (
+                  <Pill tone="outline" className="font-mono">
+                    {p.year}
+                    {p.problemNumber ? ` · ${p.problemNumber}번` : ""}
+                  </Pill>
+                ) : null}
+                {p.subjectiveKind ? (
+                  <Pill tone="primary">
+                    {SUBJECTIVE_KIND_LABEL[p.subjectiveKind]}
+                  </Pill>
+                ) : null}
+                {isRecent(p.createdAt) ? <NewBadge /> : null}
+              </MetaRow>
+              {p.subjectiveTopic ? (
+                <p className="text-[15px] leading-snug font-bold tracking-tight">
+                  {p.subjectiveTopic}
+                </p>
+              ) : null}
+              <p className="text-foreground/80 mt-1 line-clamp-2 text-[13px] leading-relaxed">
+                {p.bodySnippet}
+              </p>
+              <CardCta label="지금 풀어보기" />
+            </FeedCardLink>
           ))}
-        </div>
+        </ListStack>
       )}
-    </div>
+    </LatestShell>
   );
 }

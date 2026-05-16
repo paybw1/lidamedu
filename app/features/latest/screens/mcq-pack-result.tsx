@@ -1,31 +1,20 @@
 // MCQ 팩 응시 결과 통계 (feat-3-303).
-// 전체 결과 KPI + 문제별 (전체 vs 본인) + 유형별 (단답/박스/사례) + 지문별 (조문/판례/이론).
+// KPI 4 + 동영상 배너 + 유형/지문별 정답률 + 문제별 결과 테이블.
+// 키트 lidam-latest/McqResultScreen 디자인.
 
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  BookOpenCheckIcon,
   CheckCircle2Icon,
   CircleXIcon,
   ClockIcon,
-  FlagIcon,
   MinusCircleIcon,
   VideoIcon,
 } from "lucide-react";
-import { Link, data } from "react-router";
+import { data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
+import { IndexCard, Pill } from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   CHOICE_TYPE_LABEL,
@@ -46,8 +35,8 @@ import {
 import type { Route } from "./+types/mcq-pack-result";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.pack) return [{ title: "응시 결과 | Lidam Edu" }];
-  return [{ title: `${d.pack.title} 응시 결과 | Lidam Edu` }];
+  if (!d || !d.pack) return [{ title: "응시 결과 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.pack.title} 응시 결과 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -125,35 +114,26 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
     attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={`/latest/mcq/${pack.packId}`}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 문제집으로 돌아가기
-      </Link>
-
-      <header className="mb-6 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{MCQ_PACK_KIND_LABELS[pack.kind]}</Badge>
-          <Badge variant="default">응시 완료</Badge>
+    <LatestShell
+      category="mcq"
+      width="index"
+      backLink={{
+        to: `/latest/mcq/${pack.packId}`,
+        label: "문제집으로 돌아가기",
+      }}
+      title={`${pack.title} — 응시 결과`}
+      desc={
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <Pill tone="outline">{MCQ_PACK_KIND_LABELS[pack.kind]}</Pill>
           {result.session.completedAt ? (
-            <Badge variant="outline" className="ml-auto">
-              <FlagIcon className="size-3" /> 제출 완료
-            </Badge>
+            <Pill tone="emerald">제출 완료</Pill>
           ) : (
-            <Badge variant="secondary" className="ml-auto">
-              진행 중 (저장됨)
-            </Badge>
+            <Pill tone="amber">진행 중 (저장됨)</Pill>
           )}
-        </div>
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <BookOpenCheckIcon className="text-primary size-6" />
-          {pack.title} — 응시 결과
-        </h1>
-      </header>
-
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
+        </span>
+      }
+    >
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="본인 정답률"
           value={`${accuracyPct}%`}
@@ -170,192 +150,215 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
           label="소요 시간"
           value={totalTimeMs > 0 ? formatDuration(totalTimeMs) : "—"}
           hint="응답 합계"
-          icon={<ClockIcon className="size-3.5" />}
+          icon={<ClockIcon className="size-3" />}
         />
       </div>
 
       {pack.videoUrl ? (
-        <Card className="mb-4">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <p className="text-sm">강사 풀이 동영상이 등록되어 있습니다.</p>
-            <Button asChild size="sm" variant="outline" className="h-8">
-              <a href={pack.videoUrl} target="_blank" rel="noreferrer">
-                <VideoIcon className="size-3.5" /> 동영상 풀이 보기
-                <ArrowRightIcon className="size-3.5" />
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="border-primary/15 bg-primary/[0.06] mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+          <p className="text-sm font-medium">
+            강사 풀이 동영상이 등록되어 있습니다.
+          </p>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-9 rounded-full"
+          >
+            <a href={pack.videoUrl} target="_blank" rel="noreferrer">
+              <VideoIcon className="size-3.5" /> 동영상 풀이 보기 →
+            </a>
+          </Button>
+        </div>
       ) : null}
 
       <div className="mb-4 grid gap-3 lg:grid-cols-2">
-        {/* 유형별 정답률 — 단답/박스/사례 */}
-        <Card>
-          <CardHeader>
-            <p className="text-sm font-semibold">유형별 정답률</p>
-            <p className="text-muted-foreground text-xs">
-              단답형 / 박스형 / 사례형 — 본인 vs 전체 평균
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-32">유형</TableHead>
-                  <TableHead className="text-right">본인</TableHead>
-                  <TableHead className="text-right">전체</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {FORMAT_ORDER.map((fmt) => {
-                  const u = packStats?.sessionUserStats.byFormat[fmt];
-                  const a = packStats?.sessionAggStats.byFormat[fmt];
-                  if (!u && !a) return null;
-                  return (
-                    <TableRow key={fmt}>
-                      <TableCell className="text-xs">
-                        {FORMAT_LABEL[fmt]}
-                      </TableCell>
-                      <TableCell className="text-right text-xs tabular-nums">
-                        {u ? `${pct(u.correct, u.total)} (${u.correct}/${u.total})` : "—"}
-                      </TableCell>
-                      <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
-                        {a ? `${pct(a.correct, a.total)} (${a.total})` : "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* 지문별 정답률 — 조문/판례/이론 */}
-        <Card>
-          <CardHeader>
-            <p className="text-sm font-semibold">지문별 정답률</p>
-            <p className="text-muted-foreground text-xs">
-              조문 / 판례 / 이론(실무) — 본인이 선택한 지문 기준
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-32">지문 유형</TableHead>
-                  <TableHead className="text-right">본인</TableHead>
-                  <TableHead className="text-right">전체</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {CHOICE_TYPE_ORDER.map((ct) => {
-                  const u = packStats?.sessionUserStats.byChoiceType[ct];
-                  const a = packStats?.sessionAggStats.byChoiceType[ct];
-                  if (!u && !a) return null;
-                  return (
-                    <TableRow key={ct}>
-                      <TableCell className="text-xs">
-                        {CHOICE_TYPE_LABEL[ct]}
-                      </TableCell>
-                      <TableCell className="text-right text-xs tabular-nums">
-                        {u ? `${pct(u.correct, u.total)} (${u.correct}/${u.total})` : "—"}
-                      </TableCell>
-                      <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
-                        {a ? `${pct(a.correct, a.total)} (${a.total})` : "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <AccuracyTable
+          title="유형별 정답률"
+          caption="단답형 / 박스형 / 사례형 — 본인 vs 전체 평균"
+          headLabel="유형"
+          rows={FORMAT_ORDER.map((fmt) => ({
+            key: fmt,
+            label: FORMAT_LABEL[fmt],
+            user: packStats?.sessionUserStats.byFormat[fmt],
+            agg: packStats?.sessionAggStats.byFormat[fmt],
+          }))}
+        />
+        <AccuracyTable
+          title="지문별 정답률"
+          caption="조문 / 판례 / 이론(실무) — 본인이 선택한 지문 기준"
+          headLabel="지문 유형"
+          rows={CHOICE_TYPE_ORDER.map((ct) => ({
+            key: ct,
+            label: CHOICE_TYPE_LABEL[ct],
+            user: packStats?.sessionUserStats.byChoiceType[ct],
+            agg: packStats?.sessionAggStats.byChoiceType[ct],
+          }))}
+        />
       </div>
 
-      {/* 문제별 결과 — 본인 정오 + 전체 정답률 */}
-      <Card>
-        <CardHeader>
-          <p className="text-sm font-semibold">문제별 결과</p>
-          <p className="text-muted-foreground text-xs">
-            클릭하면 문제·정답·해설을 다시 볼 수 있습니다.
-          </p>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12 text-center">No</TableHead>
-                <TableHead className="w-16"></TableHead>
-                <TableHead className="w-32">출처</TableHead>
-                <TableHead>본문</TableHead>
-                <TableHead className="w-24 text-right">본인</TableHead>
-                <TableHead className="w-24 text-right">전체</TableHead>
-                <TableHead className="w-20 text-right">시간</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((it, idx) => {
-                const agg = aggStats[it.problemId];
-                return (
-                  <TableRow key={it.problemId}>
-                    <TableCell className="text-muted-foreground text-center text-xs tabular-nums">
-                      {idx + 1}
-                    </TableCell>
-                    <TableCell>
-                      <ResultIcon isCorrect={it.isCorrect} />
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {it.year ? (
-                        <span className="tabular-nums">
-                          {it.year}
-                          {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <span className="line-clamp-1">{it.bodySnippet}</span>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-right text-xs tabular-nums",
-                        it.isCorrect
-                          ? "text-emerald-600"
-                          : it.isCorrect === false
-                            ? "text-rose-600"
-                            : "text-muted-foreground",
-                      )}
-                    >
-                      {it.selectedChoiceIndex
-                        ? `${it.selectedChoiceIndex}번`
-                        : "미응답"}
-                    </TableCell>
-                    <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
-                      {agg && agg.accuracyPct !== null
-                        ? `${agg.accuracyPct}% (${agg.attempts})`
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-right text-xs tabular-nums">
-                      {it.timeSpentMs ? formatDuration(it.timeSpentMs) : "—"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <p className="mb-2 text-sm font-bold tracking-tight">
+        문제별 결과
+        <span className="text-muted-foreground ml-2 text-xs font-normal">
+          클릭하면 문제·정답·해설을 다시 볼 수 있습니다.
+        </span>
+      </p>
+      <IndexCard>
+        <table className="w-full min-w-[760px] border-collapse">
+          <thead>
+            <tr className="border-border bg-muted/60 border-b">
+              {["No", "정오", "출처", "본문", "본인", "전체", "시간"].map(
+                (h, i) => (
+                  <th
+                    key={h}
+                    className={cn(
+                      "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                      i >= 4 ? "text-right" : i <= 1 ? "text-center" : "text-left",
+                    )}
+                  >
+                    {h}
+                  </th>
+                ),
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((it, idx) => {
+              const agg = aggStats[it.problemId];
+              return (
+                <tr
+                  key={it.problemId}
+                  className="border-border/60 hover:bg-muted/40 border-b transition-colors"
+                >
+                  <td className="text-muted-foreground px-3 py-3 text-center text-[13px] tabular-nums">
+                    {idx + 1}
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <ResultIcon isCorrect={it.isCorrect} />
+                  </td>
+                  <td className="px-3 py-3 text-[13px] tabular-nums">
+                    {it.year
+                      ? `${it.year}${it.problemNumber ? ` · ${it.problemNumber}번` : ""}`
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-3 text-[13px]">
+                    <span className="line-clamp-1">{it.bodySnippet}</span>
+                  </td>
+                  <td
+                    className={cn(
+                      "px-3 py-3 text-right text-[13px] tabular-nums",
+                      it.isCorrect
+                        ? "text-emerald-600"
+                        : it.isCorrect === false
+                          ? "text-rose-600"
+                          : "text-muted-foreground",
+                    )}
+                  >
+                    {it.selectedChoiceIndex
+                      ? `${it.selectedChoiceIndex}번`
+                      : "미응답"}
+                  </td>
+                  <td className="text-muted-foreground px-3 py-3 text-right text-[13px] tabular-nums">
+                    {agg && agg.accuracyPct !== null
+                      ? `${agg.accuracyPct}% (${agg.attempts})`
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-3 text-right text-[13px] tabular-nums">
+                    {it.timeSpentMs ? formatDuration(it.timeSpentMs) : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </IndexCard>
+    </LatestShell>
+  );
+}
+
+interface AccuracyRow {
+  key: string;
+  label: string;
+  user?: { correct: number; total: number };
+  agg?: { correct: number; total: number };
+}
+
+function AccuracyTable({
+  title,
+  caption,
+  headLabel,
+  rows,
+}: {
+  title: string;
+  caption: string;
+  headLabel: string;
+  rows: AccuracyRow[];
+}) {
+  const visible = rows.filter((r) => r.user || r.agg);
+  return (
+    <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border border-b px-4 py-3">
+        <p className="text-sm font-bold tracking-tight">{title}</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">{caption}</p>
+      </div>
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-border bg-muted/60 border-b">
+            <th className="text-muted-foreground px-4 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+              {headLabel}
+            </th>
+            <th className="text-muted-foreground px-4 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+              본인
+            </th>
+            <th className="text-muted-foreground px-4 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+              전체
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.length === 0 ? (
+            <tr>
+              <td
+                colSpan={3}
+                className="text-muted-foreground px-4 py-5 text-center text-xs"
+              >
+                집계된 데이터가 없습니다.
+              </td>
+            </tr>
+          ) : (
+            visible.map((r) => (
+              <tr
+                key={r.key}
+                className="border-border/60 border-b last:border-0"
+              >
+                <td className="px-4 py-2.5 text-[13px]">{r.label}</td>
+                <td className="px-4 py-2.5 text-right text-[13px] tabular-nums">
+                  {r.user
+                    ? `${pct(r.user.correct, r.user.total)} (${r.user.correct}/${r.user.total})`
+                    : "—"}
+                </td>
+                <td className="text-muted-foreground px-4 py-2.5 text-right text-[13px] tabular-nums">
+                  {r.agg ? `${pct(r.agg.correct, r.agg.total)} (${r.agg.total})` : "—"}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function ResultIcon({ isCorrect }: { isCorrect: boolean | null }) {
   if (isCorrect === true)
-    return <CheckCircle2Icon className="size-4 shrink-0 text-emerald-600" />;
+    return (
+      <CheckCircle2Icon className="inline size-4 shrink-0 text-emerald-600" />
+    );
   if (isCorrect === false)
-    return <CircleXIcon className="size-4 shrink-0 text-rose-600" />;
-  return <MinusCircleIcon className="text-muted-foreground size-4 shrink-0" />;
+    return <CircleXIcon className="inline size-4 shrink-0 text-rose-600" />;
+  return (
+    <MinusCircleIcon className="text-muted-foreground inline size-4 shrink-0" />
+  );
 }
 
 function KpiCard({
@@ -372,22 +375,20 @@ function KpiCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <Card className="py-4">
-      <CardContent className="px-4">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-medium tracking-wide uppercase">
-          {icon}
-          {label}
-        </p>
-        <p
-          className={cn(
-            "mt-1 text-2xl font-bold tracking-tight tabular-nums",
-            tone === "primary" && "text-primary",
-          )}
-        >
-          {value}
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
-      </CardContent>
-    </Card>
+    <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+      <p className="text-muted-foreground inline-flex items-center gap-1 font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+        {icon}
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1.5 text-2xl font-extrabold tracking-tight tabular-nums",
+          tone === "primary" && "text-primary",
+        )}
+      >
+        {value}
+      </p>
+      <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
+    </div>
   );
 }

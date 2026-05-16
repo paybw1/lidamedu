@@ -64,10 +64,10 @@ import {
 import type { Route } from "./+types/admin-law-revision-workspace";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.revision) return [{ title: "법 개정 | Lidam Edu" }];
+  if (!d || !d.revision) return [{ title: "법 개정 | Lidam Patent Attorney Academy" }];
   return [
     {
-      title: `${d.subjectName} ${d.revision.revisionNumber} | Lidam Edu`,
+      title: `${d.subjectName} ${d.revision.revisionNumber} | Lidam Patent Attorney Academy`,
     },
   ];
 };

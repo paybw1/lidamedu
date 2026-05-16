@@ -6,8 +6,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
 import type {
@@ -52,18 +50,21 @@ export function ArticlesTab({
   const renderSystematic = axis === "systematic" && !systematicEmpty;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-      <aside className="space-y-3">
-        <Card className="py-4">
-          <CardHeader className="px-4 pb-3">
-            <div className="flex items-center justify-end gap-2">
-              <SortAxisToggle
-                size="sm"
-                disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="px-2 pb-2">
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      {/* Left: chapter outline */}
+      <aside>
+        <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
+          {/* Outline header */}
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
+              장별 목차
+            </p>
+            <SortAxisToggle
+              size="sm"
+              disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+            />
+          </div>
+          <div className="p-2">
             {renderSystematic ? (
               <SystematicTree
                 nodes={systematicNodes}
@@ -88,120 +89,111 @@ export function ArticlesTab({
               />
             )}
             {axis === "systematic" && systematicEmpty ? (
-              <p className="text-muted-foreground mt-2 px-2 text-xs">
+              <p className="mt-2 px-2 text-xs text-muted-foreground">
                 * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
               </p>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </aside>
 
+      {/* Right: cards grid */}
       <section className="space-y-4">
+        {/* Recent / Recommended row */}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Card className="py-4">
-            <CardHeader className="px-4 pb-1">
-              <div className="flex items-center gap-2">
-                <ClockIcon className="text-primary size-4" />
-                <p className="text-sm font-semibold">최근 학습</p>
-              </div>
+          {/* 최근 학습 card */}
+          <Card className="rounded-xl border border-border shadow-sm transition-shadow hover:shadow-md">
+            <CardHeader className="px-4 pb-2 pt-4">
+              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
+                최근 학습
+              </p>
             </CardHeader>
-            <CardContent className="px-4 pb-1">
+            <CardContent className="px-4 pb-4">
               {progress?.lastVisited ? (
-                <Link
-                  to={`/subjects/${subject.slug}/articles/${progress.lastVisited.articleNumber ?? ""}`}
-                  viewTransition
-                  className="hover:text-primary block text-sm font-medium"
-                >
-                  {progress.lastVisited.displayLabel}
-                </Link>
-              ) : (
-                <p className="text-muted-foreground text-sm">
+                <ul className="space-y-0 divide-y divide-border">
+                  <li className="flex items-baseline gap-2 py-2">
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      {progress.lastVisited.displayLabel}
+                    </span>
+                    <ClockIcon className="size-3 shrink-0 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">방금 전</span>
+                  </li>
+                </ul>
+              ) : null}
+              {!progress?.lastVisited ? (
+                <p className="text-sm text-muted-foreground">
                   아직 학습 기록이 없습니다.
                 </p>
-              )}
-              <p className="text-muted-foreground mt-1 text-xs">
+              ) : null}
+              <p className="mt-2 text-xs text-muted-foreground">
                 {progress
                   ? `${progress.visitedArticleIds.size} / ${progress.totalArticleCount} 열람`
-                  : "feat-4-A-104"}
+                  : "학습 진도 연결 예정"}
               </p>
             </CardContent>
           </Card>
-          <Card className="py-4">
-            <CardHeader className="px-4 pb-1">
-              <div className="flex items-center gap-2">
-                <CompassIcon className="text-primary size-4" />
-                <p className="text-sm font-semibold">미열람 권장</p>
-              </div>
+
+          {/* 미열람 권장 card */}
+          <Card className="rounded-xl border border-border shadow-sm transition-shadow hover:shadow-md">
+            <CardHeader className="px-4 pb-2 pt-4">
+              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
+                미열람 권장
+              </p>
             </CardHeader>
             <CardContent
-              className="px-4 pb-1"
+              className="px-4 pb-4"
               data-testid="recommended-articles"
             >
               {recommendedArticles.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   모든 조문을 한 번씩 열어봤습니다 🎉
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-1.5">
+                <ul className="space-y-1.5">
                   {recommendedArticles.map((a) => (
-                    <Link
+                    <li
                       key={a.articleId}
-                      to={`/subjects/${subject.slug}/articles/${a.pathSlug}`}
-                      viewTransition
-                      className="bg-muted hover:bg-accent inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
-                      title={a.displayLabel}
+                      className="rounded-lg bg-amber-500/[0.08] px-3 py-2"
                     >
-                      {a.importance >= 2 ? (
-                        <StarIcon className="size-3 text-amber-500" />
-                      ) : null}
-                      <span className="max-w-[140px] truncate">
-                        {a.displayLabel}
-                      </span>
-                    </Link>
+                      <Link
+                        to={`/subjects/${subject.slug}/articles/${a.pathSlug}`}
+                        viewTransition
+                        className="block"
+                        title={a.displayLabel}
+                      >
+                        <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                          {a.importance >= 2 ? (
+                            <StarIcon className="size-3" />
+                          ) : null}
+                          {a.displayLabel}
+                        </span>
+                      </Link>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="mt-2 text-xs text-muted-foreground">
                 중요도 ★ 높은 순. 클릭 시 조문 viewer 진입.
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookOpenIcon className="text-primary size-5" />
-                <h3 className="text-base font-semibold">조문 본문</h3>
-              </div>
-              <Badge variant="outline">
-                {articleCount > 0 ? `조문 ${articleCount}개` : "미입력"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              좌측 트리에서 조문을 선택하면 본문·하이라이트·메모·정오문제·관련자료·코멘트·Q&amp;A 패널이 함께 열립니다.
+        {/* Empty-state hint card — spans both columns */}
+        <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-8 text-center">
+          <BookOpenIcon className="mx-auto size-5 text-muted-foreground/50" />
+          <p className="mt-2 text-sm font-semibold text-foreground">
+            좌측에서 조문을 선택하세요
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            관련 판례·문제·메모가 우측 패널에 함께 표시됩니다.
+          </p>
+          {articleCount > 0 ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              조문 총 {articleCount}개
             </p>
-            <div className="bg-muted/40 mt-4 rounded-md border border-dashed p-6">
-              <p className="text-muted-foreground text-center text-sm">
-                3분할 뷰어 (트리 / 본문 / 우측 패널) — feat-4-A-105
-              </p>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" disabled>
-                하이라이트·메모·즐겨찾기
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                정오문제 위젯
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                관련자료 / 코멘트 / Q&amp;A
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          ) : null}
+        </div>
       </section>
     </div>
   );

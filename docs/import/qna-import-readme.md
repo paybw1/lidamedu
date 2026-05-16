@@ -1,6 +1,6 @@
 # Q&A 일괄 import 양식
 
-다음 카페 `ezpatent` 에 있는 Q&A 데이터를 리담에듀 시스템(`qna_threads`)으로 이관하기 위한 CSV 양식.
+다음 카페 `ezpatent` 에 있는 Q&A 데이터를 리담변리사학원 시스템(`qna_threads`)으로 이관하기 위한 CSV 양식.
 
 옮길 글을 골라 `qna-import-template.csv` 한 행에 하나씩 채운 뒤, 후속 import 스크립트가 행을 읽어 `qna_threads` 에 INSERT 한다.
 

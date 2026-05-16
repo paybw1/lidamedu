@@ -40,7 +40,7 @@ test.describe.serial("대시보드 실데이터", () => {
     await ensureCleanUser(TEST_EMAIL!);
   });
 
-  test("로그인 → /dashboard → KPI/오늘 날짜/5과목 진도 노출", async ({ page }) => {
+  test("로그인 → /dashboard → KPI/오늘 날짜/과목별 진도 노출", async ({ page }) => {
     await page.goto("/login");
     await page.locator("#email").fill(TEST_EMAIL!);
     await page.locator("#password").fill(TEST_PASSWORD);
@@ -58,12 +58,15 @@ test.describe.serial("대시보드 실데이터", () => {
     await expect(page.getByText("푼 문제 수")).toBeVisible();
     await expect(page.getByText("평균 정답률")).toBeVisible();
 
-    // 과목별 진도 카드 — 5과목 노출 (특허/상표/디자인보호/민/민사소송).
+    // 과목별 진도 카드 — 1차(객관식)/2차(주관식) 그룹으로 분리.
+    // 산업재산권법(특허/상표/디자인)은 양쪽 그룹에 노출되므로 .first() 사용.
     const subjectCard = page.getByTestId("subjects-progress");
     await expect(subjectCard).toBeVisible();
-    await expect(subjectCard.getByText("특허법")).toBeVisible();
-    await expect(subjectCard.getByText("상표법")).toBeVisible();
-    await expect(subjectCard.getByText("디자인보호법")).toBeVisible();
+    await expect(subjectCard.getByText("1차 · 객관식")).toBeVisible();
+    await expect(subjectCard.getByText("2차 · 주관식")).toBeVisible();
+    await expect(subjectCard.getByText("특허법").first()).toBeVisible();
+    await expect(subjectCard.getByText("상표법").first()).toBeVisible();
+    await expect(subjectCard.getByText("디자인보호법").first()).toBeVisible();
     await expect(subjectCard.getByText("민법", { exact: true })).toBeVisible();
     await expect(subjectCard.getByText("민사소송법")).toBeVisible();
 

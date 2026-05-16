@@ -34,15 +34,17 @@ import {
 } from "~/features/admin/queries/case-mapper.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-cases";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "판례 매핑 관리 | Lidam Edu" },
+  { title: "판례 매핑 관리 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -161,11 +163,20 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
           className="border-input bg-background h-9 rounded-md border px-2 text-xs"
           title="과목"
         >
-          {LAW_SUBJECT_SLUGS.map((s) => (
-            <option key={s} value={s}>
-              {LAW_SUBJECTS[s].name}
-            </option>
-          ))}
+          <optgroup label="1차 · 객관식">
+            {FIRST_EXAM_LAW_SLUGS.map((s) => (
+              <option key={s} value={s}>
+                {LAW_SUBJECTS[s].name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="2차 · 주관식">
+            {SECOND_EXAM_LAW_SLUGS.map((s) => (
+              <option key={s} value={s}>
+                {LAW_SUBJECTS[s].name}
+              </option>
+            ))}
+          </optgroup>
         </select>
         <select
           name="sort"

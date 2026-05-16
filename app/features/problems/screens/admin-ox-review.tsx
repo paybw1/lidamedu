@@ -36,15 +36,17 @@ import {
   type OxReviewStatus,
 } from "~/features/problems/queries.server";
 import {
+  FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-ox-review";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "정오문제 관리 | Lidam Edu" },
+  { title: "정오문제 관리 | Lidam Patent Attorney Academy" },
 ];
 
 const STATUS_OPTIONS: { value: OxReviewStatus; label: string; hint: string }[] = [
@@ -167,11 +169,20 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
                 defaultValue={subject}
                 className="border-input bg-background h-8 rounded-md border px-2 text-xs"
               >
-                {LAW_SUBJECT_SLUGS.map((s) => (
-                  <option key={s} value={s}>
-                    {LAW_SUBJECTS[s].name}
-                  </option>
-                ))}
+                <optgroup label="1차 · 객관식">
+                  {FIRST_EXAM_LAW_SLUGS.map((s) => (
+                    <option key={s} value={s}>
+                      {LAW_SUBJECTS[s].name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="2차 · 주관식">
+                  {SECOND_EXAM_LAW_SLUGS.map((s) => (
+                    <option key={s} value={s}>
+                      {LAW_SUBJECTS[s].name}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
               <select
                 name="year"

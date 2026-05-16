@@ -30,12 +30,17 @@ import {
   listProblemsBySubject,
   listSystematicTopNodes,
 } from "~/features/problems/queries.server";
-import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
+import {
+  FIRST_EXAM_LAW_SLUGS,
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
+} from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-problems-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "객관식 문제 관리 | Lidam Edu" },
+  { title: "객관식 문제 관리 | Lidam Patent Attorney Academy" },
 ];
 
 const ORIGINS: ProblemOrigin[] = [
@@ -172,10 +177,23 @@ export default function AdminProblemsList({
               name="subject"
               label="과목"
               value={subject}
-              options={LAW_SUBJECT_SLUGS.map((s) => ({
-                value: s,
-                label: LAW_SUBJECTS[s].name,
-              }))}
+              options={[]}
+              optionGroups={[
+                {
+                  label: "1차 · 객관식",
+                  options: FIRST_EXAM_LAW_SLUGS.map((s) => ({
+                    value: s,
+                    label: LAW_SUBJECTS[s].name,
+                  })),
+                },
+                {
+                  label: "2차 · 주관식",
+                  options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
+                    value: s,
+                    label: LAW_SUBJECTS[s].name,
+                  })),
+                },
+              ]}
             />
             <FilterSelect
               name="origin"
@@ -406,11 +424,17 @@ function FilterSelect({
   label,
   value,
   options,
+  optionGroups,
 }: {
   name: string;
   label: string;
   value: string;
   options: { value: string; label: string }[];
+  // 제공 시 flat options 뒤에 native <optgroup> 으로 묶어 렌더 (예: 1차/2차 과목).
+  optionGroups?: {
+    label: string;
+    options: { value: string; label: string }[];
+  }[];
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -426,6 +450,15 @@ function FilterSelect({
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
+        ))}
+        {optionGroups?.map((g) => (
+          <optgroup key={g.label} label={g.label}>
+            {g.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </label>

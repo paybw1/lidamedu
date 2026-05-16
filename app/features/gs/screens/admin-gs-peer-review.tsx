@@ -35,8 +35,8 @@ import type { Route } from "./+types/admin-gs-peer-review";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 동료 채점 | Lidam Edu`
-      : "동료 채점 | Lidam Edu",
+      ? `${loaderData.round.title} 동료 채점 | Lidam Patent Attorney Academy`
+      : "동료 채점 | Lidam Patent Attorney Academy",
   },
 ];
 

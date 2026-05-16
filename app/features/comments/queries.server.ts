@@ -18,6 +18,42 @@ export interface ContentComment {
   updatedAt: string;
 }
 
+// 여러 target 일괄 fetch — chapter/systematic 뷰어처럼 N개 조문이 한 화면에 노출될 때.
+export async function listCommentsBulk(
+  client: SupabaseClient<Database>,
+  targetType: CommentTargetType,
+  targetIds: string[],
+): Promise<Record<string, ContentComment[]>> {
+  if (targetIds.length === 0) return {};
+  const { data, error } = await client
+    .from("content_comments")
+    .select(
+      "comment_id, target_type, target_id, body_md, author_id, is_pinned, created_at, updated_at, profiles!content_comments_author_id_fkey(name)",
+    )
+    .eq("target_type", targetType)
+    .in("target_id", targetIds)
+    .order("is_pinned", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const out: Record<string, ContentComment[]> = {};
+  for (const r of data ?? []) {
+    const item: ContentComment = {
+      commentId: r.comment_id,
+      targetType: r.target_type as CommentTargetType,
+      targetId: r.target_id,
+      bodyMd: r.body_md,
+      authorId: r.author_id,
+      authorName: r.profiles?.name ?? null,
+      isPinned: r.is_pinned,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    };
+    if (!out[r.target_id]) out[r.target_id] = [];
+    out[r.target_id].push(item);
+  }
+  return out;
+}
+
 export async function listComments(
   client: SupabaseClient<Database>,
   targetType: CommentTargetType,

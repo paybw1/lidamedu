@@ -23,7 +23,7 @@ import {
 import type { Route } from "./+types/student-inbox";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "알림 | Lidam Edu" },
+  { title: "알림 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

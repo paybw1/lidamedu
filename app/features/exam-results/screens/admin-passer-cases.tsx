@@ -39,14 +39,13 @@ import {
 import {
   EXAM_ROUND_LABEL,
   EXAM_VERIFICATION_STATUS_LABEL,
-  SCIENCE_SUBJECT_LABEL,
   type ExamRound,
 } from "~/features/exam-results/labels";
 
 import type { Route } from "./+types/admin-passer-cases";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격자 분석 | Lidam Edu" },
+  { title: "합격자 분석 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -509,15 +508,6 @@ function PasserCard({ item }: { item: PasserCase }) {
               <span className="text-muted-foreground">자가 점수: </span>
               <span className="font-semibold tabular-nums">
                 {item.selfReportedTotalScore}
-              </span>
-            </div>
-          ) : null}
-          {item.selectedScienceSubject ? (
-            <div>
-              <span className="text-muted-foreground">자연과학: </span>
-              <span className="font-semibold">
-                {SCIENCE_SUBJECT_LABEL[item.selectedScienceSubject] ??
-                  item.selectedScienceSubject}
               </span>
             </div>
           ) : null}

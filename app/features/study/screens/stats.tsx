@@ -84,7 +84,7 @@ function isTabValue(v: string | null): v is TabValue {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "학습 통계 | Lidam Edu" },
+  { title: "학습 통계 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -392,7 +392,7 @@ function OverviewTab({
         <CardHeader>
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              1차 통계 — 자연과학 4과목 (선택)
+              1차 통계 — 자연과학 4과목
             </p>
             <Badge variant="outline" className="text-[10px]">
               객관식 · 풀이 + 정답률
@@ -767,7 +767,7 @@ function FirstExamTab({
       <Card>
         <CardHeader>
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            자연과학 객관식 — 선택 1과목
+            자연과학 객관식 — 4과목
           </p>
         </CardHeader>
         <CardContent className="px-0">

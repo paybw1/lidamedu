@@ -16,8 +16,9 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { getRelationGaps } from "~/features/admin/queries/relation-gaps.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
-  LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   lawSubjectSlugSchema,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
@@ -25,7 +26,7 @@ import {
 import type { Route } from "./+types/admin-relation-gaps";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "미배정 자료 | Lidam Edu" },
+  { title: "미배정 자료 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -73,21 +74,17 @@ export default function AdminRelationGaps({
         </p>
       </header>
 
-      <nav className="mb-6 flex flex-wrap gap-1.5">
-        {LAW_SUBJECT_SLUGS.map((slug) => (
-          <Link
-            key={slug}
-            to={`/admin/relations/gaps?law=${slug}`}
-            viewTransition
-            className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
-              slug === lawCode
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background hover:bg-accent border-input text-muted-foreground"
-            }`}
-          >
-            {LAW_SUBJECTS[slug].name}
-          </Link>
-        ))}
+      <nav className="mb-6 space-y-2">
+        <SubjectGroup
+          label="1차 · 객관식"
+          slugs={FIRST_EXAM_LAW_SLUGS}
+          current={lawCode}
+        />
+        <SubjectGroup
+          label="2차 · 주관식"
+          slugs={SECOND_EXAM_LAW_SLUGS}
+          current={lawCode}
+        />
       </nav>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -179,6 +176,39 @@ export default function AdminRelationGaps({
           ))}
         </Section>
       </div>
+    </div>
+  );
+}
+
+// 과목 선택 chip 행 — 1차/2차 차수별로 묶어 작은 라벨 아래 노출.
+function SubjectGroup({
+  label,
+  slugs,
+  current,
+}: {
+  label: string;
+  slugs: readonly LawSubjectSlug[];
+  current: LawSubjectSlug;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-muted-foreground w-[88px] shrink-0 text-[11px] font-semibold tracking-wide">
+        {label}
+      </span>
+      {slugs.map((slug) => (
+        <Link
+          key={slug}
+          to={`/admin/relations/gaps?law=${slug}`}
+          viewTransition
+          className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+            slug === current
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-background hover:bg-accent border-input text-muted-foreground"
+          }`}
+        >
+          {LAW_SUBJECTS[slug].name}
+        </Link>
+      ))}
     </div>
   );
 }

@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>왼쪽 패널 (체계도·조문) 디자인 옵션 비교 — 리담변리사학원</title>
+  <style>
+    :root {
+      --blue: #2D5BA8;
+      --blue-strong: #1E4789;
+      --blue-deep: #3B6FC4;
+      --blue-soft: rgba(45, 91, 168, 0.12);
+      --blue-tint: rgba(45, 91, 168, 0.06);
+      --fg-1: rgba(0, 0, 0, 0.84);
+      --fg-2: rgba(0, 0, 0, 0.66);
+      --fg-3: rgba(0, 0, 0, 0.56);
+      --fg-4: rgba(0, 0, 0, 0.40);
+      --fg-5: rgba(0, 0, 0, 0.24);
+      --line: rgba(0, 0, 0, 0.12);
+      --line-soft: rgba(0, 0, 0, 0.06);
+      --bg: #ffffff;
+      --bg-subtle: #FAFAFA;
+      --bg-muted: #EEEEEE;
+      --amber: #F7B500;
+      --memo: #10A37F;
+      --hl: #CA8A04;
+      --bm: #F65948;
+      --recite: #7B61FF;
+      --elev-4: 0 0 0 1px rgba(0,0,0,0.02), 0 2px 6px 0 rgba(0,0,0,0.10);
+      --elev-8: 0 0 0 1px rgba(0,0,0,0.02), 0 4px 12px 0 rgba(0,0,0,0.10);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-subtle);
+      color: var(--fg-1);
+      font-family: Pretendard, "Pretendard Variable", -apple-system, system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 1180px; margin: 0 auto; padding: 28px 24px 80px; }
+    .page-header {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .page-header h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+    .page-header p { margin: 4px 0 0; font-size: 13px; color: var(--fg-3); }
+
+    .switch {
+      display: inline-flex; gap: 4px; padding: 4px;
+      background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    }
+    .switch button {
+      appearance: none; border: 0; background: transparent;
+      padding: 8px 14px; border-radius: 8px;
+      font: inherit; font-weight: 600; font-size: 13px;
+      color: var(--fg-3); cursor: pointer;
+      transition: background 160ms, color 160ms;
+    }
+    .switch button:hover { background: var(--blue-tint); color: var(--fg-1); }
+    .switch button.on { background: var(--blue); color: #fff; }
+
+    .meta {
+      margin: 0 0 18px; padding: 13px 16px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 12px; font-size: 13px;
+    }
+    .meta .tag {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; margin-right: 6px;
+    }
+    .meta .pro { margin-right: 18px; }
+    .meta .pro .tag { color: var(--memo); }
+    .meta .con .tag { color: var(--bm); }
+
+    .stage {
+      display: grid; grid-template-columns: 300px minmax(0, 1fr);
+      gap: 18px; align-items: start;
+    }
+    @media (max-width: 880px) { .stage { grid-template-columns: 1fr; } }
+
+    /* ===== 좌측 패널 공통 ===== */
+    .panel {
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 14px; overflow: hidden;
+      box-shadow: var(--elev-4);
+    }
+    .panel-head { padding: 14px 14px 10px; }
+    .axis-toggle {
+      display: inline-flex; width: 100%;
+      background: var(--bg-muted); border-radius: 10px; padding: 3px;
+    }
+    .axis-toggle button {
+      flex: 1; appearance: none; border: 0; background: transparent;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 30px; border-radius: 7px;
+      font: inherit; font-size: 12px; font-weight: 600;
+      color: var(--fg-3); cursor: pointer;
+      transition: background 160ms, color 160ms, box-shadow 160ms;
+    }
+    .axis-toggle button.on {
+      background: var(--bg); color: var(--blue);
+      box-shadow: var(--elev-4);
+    }
+    .axis-toggle svg { width: 14px; height: 14px; }
+
+    .filters {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 10px 14px 12px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .filter-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .filter-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--fg-4);
+      display: inline-flex; align-items: center; gap: 3px; margin-right: 2px;
+    }
+    .filter-chip {
+      appearance: none; cursor: pointer;
+      border: 1px solid var(--line); background: var(--bg);
+      color: var(--fg-3); border-radius: 999px;
+      padding: 2px 9px; font: inherit; font-size: 11px; font-weight: 600;
+      transition: all 140ms;
+    }
+    .filter-chip:hover { border-color: var(--fg-5); }
+    .filter-chip.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .filter-chip.on-bm { background: var(--bm); border-color: var(--bm); color: #fff; }
+
+    .tree { padding: 8px 8px 14px; max-height: 560px; overflow-y: auto; }
+
+    /* 노드 공통 row */
+    .node { user-select: none; }
+    .row {
+      display: flex; align-items: center; gap: 6px;
+      border-radius: 8px; cursor: pointer;
+      transition: background 140ms;
+    }
+    .twist {
+      flex-shrink: 0; width: 16px; height: 16px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--fg-4);
+    }
+    .twist svg { width: 12px; height: 12px; transition: transform 200ms var(--ease); }
+    .node.collapsed > .row .twist svg { transform: rotate(-90deg); }
+    .node.collapsed > .children { display: none; }
+    .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .indicators { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .ind {
+      display: inline-flex; align-items: center; gap: 1px;
+      font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums;
+    }
+    .ind svg { width: 11px; height: 11px; }
+    .ind.star { color: var(--amber); }
+    .ind.memo { color: var(--memo); }
+    .ind.hl { color: var(--hl); }
+    .ind.bm { color: var(--bm); }
+    .ind.recite { color: var(--recite); }
+    .count {
+      flex-shrink: 0; font-size: 10px; font-weight: 600;
+      color: var(--fg-4); font-variant-numeric: tabular-nums;
+      display: inline-flex; align-items: center; gap: 2px;
+    }
+    .count svg { width: 11px; height: 11px; }
+
+    /* ===================================================================
+       옵션 A — 가이드 라인 트리
+       =================================================================== */
+    .tree-a .node { position: relative; }
+    .tree-a .row { padding: 5px 8px; font-size: 13px; }
+    .tree-a .row:hover { background: var(--blue-tint); }
+    .tree-a .g0 > .row { font-weight: 800; font-size: 13.5px; color: var(--fg-1); }
+    .tree-a .g1 > .row { font-weight: 600; color: var(--fg-1); }
+    .tree-a .shelf > .row { font-weight: 600; color: var(--fg-2); }
+    .tree-a .leaf > .row { font-weight: 400; color: var(--fg-2); }
+    .tree-a .children {
+      margin-left: 15px;
+      border-left: 1.5px solid var(--line);
+      padding-left: 2px;
+    }
+    .tree-a .g0 > .children { border-left-color: var(--line); }
+    .tree-a .leaf.active > .row {
+      background: var(--blue-soft);
+      color: var(--blue-strong); font-weight: 600;
+      box-shadow: inset 2.5px 0 0 var(--blue);
+    }
+    .tree-a .leaf .twist { visibility: hidden; }
+    .tree-a .dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--fg-5); flex-shrink: 0; margin-left: 3px;
+    }
+    .tree-a .leaf.active .dot { background: var(--blue); }
+
+    /* ===================================================================
+       옵션 B — 섹션 헤더형
+       =================================================================== */
+    .tree-b .g0 > .row {
+      padding: 12px 8px 5px; cursor: default;
+      font-size: 10.5px; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--fg-4);
+    }
+    .tree-b .g0 > .row .twist { display: none; }
+    .tree-b .g0 > .row .count {
+      background: var(--bg-muted); border-radius: 999px;
+      padding: 1px 7px; color: var(--fg-3);
+    }
+    .tree-b .row { padding: 6px 8px; font-size: 13px; }
+    .tree-b .g1 > .row, .tree-b .shelf > .row, .tree-b .leaf > .row { border-radius: 8px; }
+    .tree-b .g1 > .row:hover, .tree-b .shelf > .row:hover,
+    .tree-b .leaf > .row:hover { background: var(--bg-subtle); }
+    .tree-b .g1 > .row { font-weight: 700; color: var(--fg-1); }
+    .tree-b .shelf > .row { font-weight: 600; color: var(--fg-2); }
+    .tree-b .leaf > .row { font-weight: 400; color: var(--fg-2); }
+    .tree-b .g1 .children, .tree-b .shelf .children { margin-left: 14px; }
+    .tree-b .leaf .twist { visibility: hidden; }
+    .tree-b .leaf.active > .row {
+      background: var(--bg); color: var(--blue-strong);
+      font-weight: 600; box-shadow: var(--elev-4), inset 3px 0 0 var(--blue);
+    }
+    .tree-b .indicators { opacity: 0.45; transition: opacity 140ms; }
+    .tree-b .row:hover .indicators,
+    .tree-b .leaf.active .indicators { opacity: 1; }
+    .tree-b .ind:not(.star) { color: var(--fg-4); }
+    .tree-b .row:hover .ind.memo, .tree-b .leaf.active .ind.memo { color: var(--memo); }
+    .tree-b .row:hover .ind.hl, .tree-b .leaf.active .ind.hl { color: var(--hl); }
+    .tree-b .row:hover .ind.bm, .tree-b .leaf.active .ind.bm { color: var(--bm); }
+    .tree-b .row:hover .ind.recite, .tree-b .leaf.active .ind.recite { color: var(--recite); }
+
+    /* ===================================================================
+       옵션 C — 진도 fill + 미니멀
+       =================================================================== */
+    .tree-c .node { margin-bottom: 1px; }
+    .tree-c .row { padding: 6px 9px; font-size: 13px; position: relative; overflow: hidden; }
+    .tree-c .g0 > .row, .tree-c .g1 > .row, .tree-c .shelf > .row {
+      background: var(--bg-subtle); border-radius: 8px;
+    }
+    .tree-c .g0 > .row::before, .tree-c .g1 > .row::before,
+    .tree-c .shelf > .row::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+      width: var(--progress, 0%);
+      background: var(--blue-soft);
+      transition: width 600ms var(--ease);
+    }
+    .tree-c .row > * { position: relative; }
+    .tree-c .g0 > .row { font-weight: 800; font-size: 13px; color: var(--fg-1); }
+    .tree-c .g1 > .row { font-weight: 700; color: var(--fg-1); }
+    .tree-c .shelf > .row { font-weight: 600; color: var(--fg-2); }
+    .tree-c .leaf > .row { font-weight: 400; color: var(--fg-2); padding-left: 9px; }
+    .tree-c .leaf > .row:hover { background: var(--blue-tint); border-radius: 8px; }
+    .tree-c .children { margin-left: 12px; margin-top: 1px; }
+    .tree-c .leaf .twist { visibility: hidden; }
+    .tree-c .leaf.active > .row {
+      background: var(--blue); border-radius: 8px;
+      color: #fff; font-weight: 600;
+    }
+    .tree-c .leaf.active .count, .tree-c .leaf.active .ind:not(.star) { color: rgba(255,255,255,0.8); }
+    .tree-c .leaf.active .ind.star { color: #FFD666; }
+    .tree-c .pct {
+      flex-shrink: 0; font-size: 10px; font-weight: 700;
+      color: var(--blue); font-variant-numeric: tabular-nums;
+    }
+    .tree-c .leaf .indicators .ind:not(.star) { display: none; }
+    .tree-c .leaf .agg {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--memo); flex-shrink: 0;
+    }
+
+    .fake-content {
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 14px; padding: 28px; min-height: 560px;
+    }
+    .fake-content h2 { margin: 0 0 4px; font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+    .fake-content .sub { font-size: 12px; color: var(--fg-3); margin-bottom: 18px; }
+    .fake-line { height: 11px; border-radius: 4px; background: var(--bg-muted); margin-bottom: 9px; }
+    .fake-line.w90 { width: 90%; } .fake-line.w70 { width: 70%; }
+    .fake-line.w80 { width: 80%; } .fake-line.w60 { width: 60%; }
+    .note {
+      margin-top: 26px; padding: 12px 16px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 10px; font-size: 12.5px; color: var(--fg-3);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h1>왼쪽 패널 — 체계도·조문 트리 디자인 옵션</h1>
+        <p>리담변리사학원 · SystematicTree + ArticleTree + SortAxisToggle · 조문 뷰어 좌측 사이드바</p>
+      </div>
+      <div class="switch">
+        <button id="opt-a" class="on" onclick="setOption('a')">옵션 A · 가이드 라인</button>
+        <button id="opt-b" onclick="setOption('b')">옵션 B · 섹션 헤더</button>
+        <button id="opt-c" onclick="setOption('c')">옵션 C · 진도 미니멀</button>
+      </div>
+    </header>
+
+    <div id="meta-a" class="meta">
+      <span class="pro"><span class="tag">장점</span>depth별 가이드 라인으로 깊은 트리 구조가 한눈에. 인디케이터는 우측에 묶어 정돈. active 조문은 blue 좌측 막대.</span>
+      <span class="con"><span class="tag">단점</span>인디케이터가 항상 보여 정보 밀도는 현재와 비슷.</span>
+    </div>
+    <div id="meta-b" class="meta hidden">
+      <span class="pro"><span class="tag">장점</span>최상위 그룹을 섹션 헤더(eyebrow)로 — 트리가 아니라 정돈된 목차처럼. 인디케이터는 hover·active 시에만 또렷.</span>
+      <span class="con"><span class="tag">단점</span>최상위 그룹은 클릭 토글이 빠짐(항상 펼침). 매우 깊은 트리엔 덜 적합.</span>
+    </div>
+    <div id="meta-c" class="meta hidden">
+      <span class="pro"><span class="tag">장점</span>그룹 배경에 진도 fill — 어디까지 학습했는지 즉시 파악. 인디케이터를 dot 1개로 압축해 가장 미니멀.</span>
+      <span class="con"><span class="tag">단점</span>메모·하이라이트·즐겨찾기 개수는 숨겨짐(통합 dot). 세부 카운트는 조문 진입 후 확인.</span>
+    </div>
+
+    <div class="stage">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="axis-toggle">
+            <button id="axis-systematic" class="on" onclick="setAxis('systematic')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v3M12 11H5v5M12 11h7v5"/></svg>
+              체계도
+            </button>
+            <button id="axis-statutory" onclick="setAxis('statutory')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+              조문
+            </button>
+          </div>
+        </div>
+        <div class="filters">
+          <div class="filter-row">
+            <span class="filter-label"><span style="color:var(--amber)">★</span> 중요도</span>
+            <button class="filter-chip on" onclick="pickChip(this)">전체</button>
+            <button class="filter-chip" onclick="pickChip(this)">1+</button>
+            <button class="filter-chip" onclick="pickChip(this)">2+</button>
+            <button class="filter-chip" onclick="pickChip(this)">3</button>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label"><span style="color:var(--bm)">♥</span> 즐겨찾기</span>
+            <button class="filter-chip on-bm" onclick="pickChipBm(this)">전체</button>
+            <button class="filter-chip" onclick="pickChipBm(this)">1+</button>
+            <button class="filter-chip" onclick="pickChipBm(this)">3+</button>
+            <button class="filter-chip" onclick="pickChipBm(this)">5</button>
+          </div>
+        </div>
+        <div id="tree" class="tree tree-a"></div>
+      </div>
+
+      <div class="fake-content">
+        <h2>특허법 제29조 (특허요건)</h2>
+        <div class="sub">시행 2026.01.15 · 산업재산권법 / 신규성</div>
+        <div class="fake-line w90"></div>
+        <div class="fake-line w80"></div>
+        <div class="fake-line w60"></div>
+        <div class="fake-line w70"></div>
+        <div class="fake-line w90"></div>
+        <div class="fake-line w80"></div>
+        <div class="fake-line w60"></div>
+        <div class="note">
+          좌측 패널은 같은 mock 데이터(체계도 / 조문 두 축)로 옵션 A·B·C를 비교합니다.
+          축 토글·필터 chip·그룹 펼침/접힘이 실제처럼 작동합니다. 결정하시면
+          SystematicTree·ArticleTree·SortAxisToggle 세 컴포넌트에 일괄 적용합니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== mock 트리 데이터 =====
+    // kind: g0(최상위 그룹) · g1(중간 그룹) · shelf(자식그룹 없는 leaf 묶음) · leaf(조문)
+    const SYSTEMATIC = [
+      { kind: 'g0', label: '01 특허제도 총론', count: 6, progress: 62, children: [
+        { kind: 'shelf', label: '목적과 정의', count: 2, progress: 100, children: [
+          { kind: 'leaf', label: '제1조 (목적)' },
+          { kind: 'leaf', label: '제2조 (정의)', memo: 1 },
+        ]},
+        { kind: 'g1', label: '[01] 발명과 특허', count: 4, progress: 48, children: [
+          { kind: 'leaf', label: '제29조 (특허요건)', active: true, star: 3, memo: 2, hl: 5, bm: 3 },
+          { kind: 'leaf', label: '제33조 (특허를 받을 수 있는 자)', star: 1 },
+        ]},
+      ]},
+      { kind: 'g0', label: '02 특허출원 절차', count: 5, progress: 28, children: [
+        { kind: 'g1', label: '출원 일반', count: 3, progress: 22, children: [
+          { kind: 'leaf', label: '제42조 (특허출원)', star: 2, recite: true, bm: 1 },
+          { kind: 'leaf', label: '제47조 (절차의 보정)' },
+        ]},
+        { kind: 'shelf', label: '우선권', count: 2, progress: 35, children: [
+          { kind: 'leaf', label: '제54조 (조약에 의한 우선권)', star: 1, hl: 2 },
+          { kind: 'leaf', label: '제55조 (특허출원 등을 기초로 한 우선권)' },
+        ]},
+      ]},
+    ];
+    const STATUTORY = [
+      { kind: 'g0', label: '제1편 총칙', count: 4, progress: 70, children: [
+        { kind: 'g1', label: '제1장 통칙', count: 2, progress: 100, children: [
+          { kind: 'leaf', label: '제1조 (목적)' },
+          { kind: 'leaf', label: '제2조 (정의)', memo: 1 },
+        ]},
+        { kind: 'shelf', label: '제2장 통칙 외', count: 2, progress: 40, children: [
+          { kind: 'leaf', label: '제3조 (미성년자 등의 행위능력)' },
+          { kind: 'leaf', label: '제6조 (대리권의 범위)', star: 1 },
+        ]},
+      ]},
+      { kind: 'g0', label: '제2편 특허요건 및 특허출원', count: 7, progress: 41, children: [
+        { kind: 'g1', label: '제1장 특허요건', count: 4, progress: 52, children: [
+          { kind: 'leaf', label: '제29조 (특허요건)', active: true, star: 3, memo: 2, hl: 5, bm: 3 },
+          { kind: 'leaf', label: '제30조 (공지 등이 되지 아니한 발명)', star: 1 },
+        ]},
+        { kind: 'g1', label: '제2장 특허출원', count: 3, progress: 30, children: [
+          { kind: 'leaf', label: '제42조 (특허출원)', star: 2, recite: true, bm: 1 },
+          { kind: 'leaf', label: '제47조 (절차의 보정)' },
+        ]},
+      ]},
+    ];
+
+    let currentOption = 'a';
+    let currentAxis = 'systematic';
+
+    // ===== SVG 헬퍼 =====
+    const SVG = {
+      chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+      star: '★',
+      memo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v6h6"/></svg>',
+      hl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h3l6-6M16 5l3 3M14 7l3 3-8 8"/></svg>',
+      bm: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.5-9.5-9C1 9 2.5 4.5 7 4.5c2.5 0 4 1.8 5 3 1-1.2 2.5-3 5-3 4.5 0 6 4.5 4.5 7.5C19 16.5 12 21 12 21z"/></svg>',
+      recite: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.9.7A3 3 0 0 0 4 9.5 3 3 0 0 0 6 14a3 3 0 0 0 6 .5 3 3 0 0 0 6-.5 3 3 0 0 0 2-4.5 3 3 0 0 0-2.1-3.8A3 3 0 0 0 12 5z"/></svg>',
+      net: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4M12 11.5H5V16M12 11.5h7V16"/></svg>',
+    };
+
+    function indicatorsHtml(n) {
+      let h = '';
+      if (n.star) h += `<span class="ind star" title="중요도 ${n.star}">★<span>${n.star}</span></span>`;
+      if (n.recite) h += `<span class="ind recite" title="암기 추천">${SVG.recite}</span>`;
+      if (n.memo) h += `<span class="ind memo" title="메모 ${n.memo}">${SVG.memo}<span>${n.memo}</span></span>`;
+      if (n.hl) h += `<span class="ind hl" title="하이라이트 ${n.hl}">${SVG.hl}<span>${n.hl}</span></span>`;
+      if (n.bm) h += `<span class="ind bm" title="즐겨찾기 ${n.bm}">${SVG.bm}<span>${n.bm}</span></span>`;
+      return h ? `<span class="indicators">${h}</span>` : '';
+    }
+
+    // 옵션 C 전용 — leaf 인디케이터를 dot 1개로 압축
+    function aggDotHtml(n) {
+      if (currentOption !== 'c') return indicatorsHtml(n);
+      let h = '';
+      if (n.star) h += `<span class="ind star" title="중요도 ${n.star}">★<span>${n.star}</span></span>`;
+      if (n.memo || n.hl || n.bm || n.recite) h += `<span class="agg" title="메모·하이라이트·즐겨찾기 있음"></span>`;
+      return h ? `<span class="indicators">${h}</span>` : '';
+    }
+
+    function countHtml(n) {
+      if (n.kind === 'leaf' || !n.count) return '';
+      if (currentOption === 'c') {
+        return `<span class="pct">${n.progress ?? 0}%</span>`;
+      }
+      return `<span class="count">${SVG.net}${n.count}</span>`;
+    }
+
+    function renderNode(n, depth) {
+      const node = document.createElement('div');
+      node.className = 'node ' + n.kind + (n.active ? ' active' : '');
+      const hasChildren = n.children && n.children.length;
+      // 옵션 C — 그룹 배경 progress fill
+      const rowStyle = (currentOption === 'c' && n.kind !== 'leaf' && n.progress != null)
+        ? ` style="--progress:${n.progress}%"` : '';
+
+      const row = `
+        <div class="row"${rowStyle}>
+          <span class="twist">${hasChildren ? SVG.chevron : ''}</span>
+          ${currentOption === 'a' && n.kind === 'leaf' ? '<span class="dot"></span>' : ''}
+          <span class="label">${n.label}</span>
+          ${n.kind === 'leaf' ? aggDotHtml(n) : ''}
+          ${countHtml(n)}
+        </div>`;
+      node.innerHTML = row;
+
+      if (hasChildren) {
+        const kids = document.createElement('div');
+        kids.className = 'children';
+        n.children.forEach((c) => kids.appendChild(renderNode(c, depth + 1)));
+        node.appendChild(kids);
+        // 그룹 row 클릭 → 토글 (옵션 B의 g0 제외 — 항상 펼침)
+        const rowEl = node.querySelector('.row');
+        const isLockedHeader = currentOption === 'b' && n.kind === 'g0';
+        if (!isLockedHeader) {
+          rowEl.addEventListener('click', () => node.classList.toggle('collapsed'));
+        }
+      }
+      return node;
+    }
+
+    function render() {
+      const tree = document.getElementById('tree');
+      tree.className = 'tree tree-' + currentOption;
+      tree.innerHTML = '';
+      const data = currentAxis === 'systematic' ? SYSTEMATIC : STATUTORY;
+      data.forEach((n) => tree.appendChild(renderNode(n, 0)));
+    }
+
+    function setOption(opt) {
+      currentOption = opt;
+      ['a', 'b', 'c'].forEach((o) => {
+        document.getElementById('opt-' + o).classList.toggle('on', o === opt);
+        document.getElementById('meta-' + o).classList.toggle('hidden', o !== opt);
+      });
+      render();
+    }
+    function setAxis(axis) {
+      currentAxis = axis;
+      ['systematic', 'statutory'].forEach((a) => {
+        document.getElementById('axis-' + a).classList.toggle('on', a === axis);
+      });
+      render();
+    }
+    function pickChip(btn) {
+      btn.parentElement.querySelectorAll('.filter-chip').forEach((c) => c.classList.remove('on'));
+      btn.classList.add('on');
+    }
+    function pickChipBm(btn) {
+      btn.parentElement.querySelectorAll('.filter-chip').forEach((c) => c.classList.remove('on-bm'));
+      btn.classList.add('on-bm');
+    }
+
+    render();
+  </script>
+</body>
+</html>

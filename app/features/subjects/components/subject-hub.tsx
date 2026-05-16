@@ -6,7 +6,6 @@ import {
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import {
   Tabs,
   TabsContent,
@@ -125,45 +124,62 @@ function SubjectHubInner({
     [setSearchParams],
   );
 
+  const articleCount = (articles ?? []).filter((a) => a.level === "article").length;
+  const caseCount = (cases ?? []).length;
+  const problemCount = (problems ?? []).length;
+  const problemAttempts = problemStats?.totalAttempts ?? 0;
+  const problemAccuracyPct =
+    problemStats && problemStats.attemptedCount > 0
+      ? Math.round(
+          (problemStats.correctCount / problemStats.attemptedCount) * 100,
+        )
+      : null;
+
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
       <SubjectHeader
         subject={subject}
         progressPct={progress?.pctViewed}
         recentRevisionDate={recentRevisionDate}
-        articleCount={
-          (articles ?? []).filter((a) => a.level === "article").length
-        }
-        caseCount={(cases ?? []).length}
-        problemCount={(problems ?? []).length}
-        problemAttempts={problemStats?.totalAttempts ?? 0}
-        problemAccuracyPct={
-          problemStats && problemStats.attemptedCount > 0
-            ? Math.round(
-                (problemStats.correctCount / problemStats.attemptedCount) * 100,
-              )
-            : null
-        }
+        articleCount={articleCount}
+        caseCount={caseCount}
+        problemCount={problemCount}
+        problemAttempts={problemAttempts}
+        problemAccuracyPct={problemAccuracyPct}
       />
 
+      {/* Underline-style tabs matching the kit's Tabs primitive */}
       <Tabs
         value={activeTab}
         onValueChange={onTabChange}
-        className="mt-6 gap-4"
+        className="mt-6 gap-0"
       >
-        <TabsList className="h-10">
-          <TabsTrigger value="articles" className="px-4">
-            <BookmarkIcon /> 조문
-          </TabsTrigger>
-          <TabsTrigger value="cases" className="px-4">
-            <GavelIcon /> 판례
-          </TabsTrigger>
-          <TabsTrigger value="problems" className="px-4">
-            <ListChecksIcon /> 문제
-          </TabsTrigger>
+        {/* Tab list: underline variant — transparent bg, bottom-border active indicator */}
+        <TabsList className="h-11 w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+          <HubTabTrigger
+            value="articles"
+            icon={<BookmarkIcon className="size-3.5" />}
+            label="조문"
+            count={articleCount}
+            active={activeTab === "articles"}
+          />
+          <HubTabTrigger
+            value="cases"
+            icon={<GavelIcon className="size-3.5" />}
+            label="판례"
+            count={caseCount}
+            active={activeTab === "cases"}
+          />
+          <HubTabTrigger
+            value="problems"
+            icon={<ListChecksIcon className="size-3.5" />}
+            label="문제"
+            count={problemCount}
+            active={activeTab === "problems"}
+          />
         </TabsList>
 
-        <TabsContent value="articles">
+        <TabsContent value="articles" className="mt-6">
           <ArticlesTab
             subject={subject}
             lawId={lawId}
@@ -176,7 +192,7 @@ function SubjectHubInner({
             progressByArticle={progressByArticle}
           />
         </TabsContent>
-        <TabsContent value="cases">
+        <TabsContent value="cases" className="mt-6">
           <CasesTab
             subject={subject}
             cases={cases ?? []}
@@ -190,7 +206,7 @@ function SubjectHubInner({
             }
           />
         </TabsContent>
-        <TabsContent value="problems">
+        <TabsContent value="problems" className="mt-6">
           <ProblemsTab
             subject={subject}
             problems={problems ?? []}
@@ -202,6 +218,51 @@ function SubjectHubInner({
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+/** Underline-style tab trigger with count badge. */
+function HubTabTrigger({
+  value,
+  icon,
+  label,
+  count,
+  active,
+}: {
+  value: string;
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+  active: boolean;
+}) {
+  return (
+    <TabsTrigger
+      value={value}
+      className={[
+        // reset shadcn pill look
+        "relative h-11 shrink-0 gap-1.5 rounded-none border-0 bg-transparent px-4 py-0 text-sm font-medium shadow-none",
+        "focus-visible:ring-0 focus-visible:outline-none",
+        // bottom-border active indicator
+        "after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-t-full",
+        active
+          ? "text-primary after:bg-primary"
+          : "text-muted-foreground after:bg-transparent hover:text-foreground",
+      ].join(" ")}
+    >
+      {icon}
+      {label}
+      {/* Count badge */}
+      <span
+        className={[
+          "inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-px font-mono text-[10px] font-bold leading-none tabular-nums",
+          active
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground",
+        ].join(" ")}
+      >
+        {count.toLocaleString("ko-KR")}
+      </span>
+    </TabsTrigger>
   );
 }
 
@@ -225,66 +286,102 @@ function SubjectHeader({
   problemAccuracyPct: number | null;
 }) {
   return (
-    <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          과목별 학습 · {subject.categoryLabel}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">{subject.name}</h1>
+    <header className="space-y-5">
+      {/* Eyebrow */}
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.10em] text-primary">
+        과목별 학습 · {subject.categoryLabel}
+      </p>
+
+      {/* Title row + action buttons */}
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="space-y-1.5">
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
+            {subject.name}
+          </h1>
+          {subject.description ? (
+            <p className="max-w-xl text-[15px] leading-relaxed text-muted-foreground">
+              {subject.description}
+            </p>
+          ) : null}
         </div>
-        {subject.description ? (
-          <p className="text-muted-foreground text-sm">{subject.description}</p>
-        ) : null}
-        <div
-          className="flex flex-wrap items-center gap-1.5 text-xs"
-          data-testid="subject-kpi"
-        >
-          <Badge variant="outline" className="gap-1 tabular-nums">
-            <BookmarkIcon className="size-3" /> 조문 {articleCount.toLocaleString("ko-KR")}
-          </Badge>
-          <Badge variant="outline" className="gap-1 tabular-nums">
-            <GavelIcon className="size-3" /> 판례 {caseCount.toLocaleString("ko-KR")}
-          </Badge>
-          <Badge variant="outline" className="gap-1 tabular-nums">
-            <ListChecksIcon className="size-3" /> 문제 {problemCount.toLocaleString("ko-KR")}
-            {problemAttempts > 0 ? (
-              <span className="text-muted-foreground">
-                · 풀이 {problemAttempts.toLocaleString("ko-KR")}
-                {problemAccuracyPct !== null
-                  ? ` · 정답률 ${problemAccuracyPct}%`
-                  : ""}
-              </span>
-            ) : null}
-          </Badge>
-        </div>
-        <ProgressLine pct={progressPct} />
+        <SortAxisToggle />
       </div>
-      <SortAxisToggle />
+
+      {/* KPI strip card */}
+      <div
+        className="grid gap-3 rounded-xl border border-border bg-muted/50 p-5"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+        }}
+        data-testid="subject-kpi"
+      >
+        <KpiItem
+          label="조문"
+          value={articleCount.toLocaleString("ko-KR")}
+        />
+        <KpiItem
+          label="판례"
+          value={caseCount.toLocaleString("ko-KR")}
+        />
+        <KpiItem
+          label="문제"
+          value={problemCount.toLocaleString("ko-KR")}
+          sub={problemAttempts > 0 ? `내 풀이 ${problemAttempts.toLocaleString("ko-KR")}` : undefined}
+        />
+        <KpiItem
+          label="정답률"
+          value={problemAccuracyPct !== null ? `${problemAccuracyPct}%` : "—"}
+          sub="최근 풀이 기준"
+        />
+        <KpiProgressItem pct={progressPct} />
+      </div>
     </header>
   );
 }
 
-function ProgressLine({ pct }: { pct?: number }) {
-  if (pct === undefined) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        학습 진도는 추후 연결됩니다.
-      </p>
-    );
-  }
-  const clamped = Math.max(0, Math.min(100, pct));
+function KpiItem({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="bg-muted h-1.5 w-40 overflow-hidden rounded-full">
+    <div className="min-w-0">
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1.5 text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+        {value}
+      </p>
+      {sub ? (
+        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+          {sub}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function KpiProgressItem({ pct }: { pct?: number }) {
+  const clamped =
+    pct !== undefined ? Math.max(0, Math.min(100, pct)) : undefined;
+  return (
+    <div className="min-w-0">
+      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        진도
+      </p>
+      <p className="mt-1.5 text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-primary">
+        {clamped !== undefined ? `${clamped}%` : "—"}
+      </p>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
         <div
-          className="bg-primary h-full rounded-full"
-          style={{ width: `${clamped}%` }}
+          className="h-full rounded-full bg-primary transition-all"
+          style={{ width: clamped !== undefined ? `${clamped}%` : "0%" }}
         />
       </div>
-      <span className="text-muted-foreground text-xs tabular-nums">
-        {clamped}% 학습
-      </span>
     </div>
   );
 }

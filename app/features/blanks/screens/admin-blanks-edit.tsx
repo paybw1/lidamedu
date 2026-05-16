@@ -102,10 +102,10 @@ function captureRangeContext(
 }
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "빈칸 자료 편집 | Lidam Edu" }];
+  if (!loaderData) return [{ title: "빈칸 자료 편집 | Lidam Patent Attorney Academy" }];
   return [
     {
-      title: `${loaderData.articleLabel} 빈칸 편집 | Lidam Edu`,
+      title: `${loaderData.articleLabel} 빈칸 편집 | Lidam Patent Attorney Academy`,
     },
   ];
 };

@@ -16,7 +16,7 @@ import { resolveTargetDisplay } from "../lib/target-display.server";
 import type { Route } from "./+types/qna-new";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "새 Q&A 질문 | Lidam Edu" },
+  { title: "새 Q&A 질문 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

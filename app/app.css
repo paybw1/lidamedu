@@ -12,9 +12,11 @@
     "Pretendard Variable", "Pretendard", "Geist", -apple-system,
     "BlinkMacSystemFont", ui-sans-serif, system-ui, "Noto Sans KR", sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  /* 명조 (serif) 가 필요한 영역(예: 인용/판례 본문) 에서 사용. */
+  /* font-serif 도 Pretendard 로 통일 — 사용자 요청에 따라 단일 family.
+     기존 시리프 의도된 곳(인용/판례 본문) 도 Pretendard 로 표시된다. */
   --font-serif:
-    "Noto Serif KR", "Apple SD Gothic Neo", ui-serif, Georgia, serif;
+    "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", system-ui,
+    "Noto Sans KR", sans-serif;
 }
 
 html,
@@ -34,38 +36,38 @@ body {
   --popover: #ffffff;
   --popover-foreground: #252525;
 
-  --primary: #2563eb; /* blue-600 */
+  --primary: #2d5ba8; /* 디자인 시스템 딥 로열블루 */
   --primary-foreground: #ffffff;
 
-  --secondary: #dbeafe; /* blue-100 */
-  --secondary-foreground: #1e3a8a; /* blue-900 */
+  --secondary: #e7edf6; /* 블루 tint */
+  --secondary-foreground: #1e4789; /* 블루 strong */
 
   --muted: #eef2f7; /* slate-tinted */
   --muted-foreground: #64748b; /* slate-500 */
 
-  --accent: #bfdbfe; /* blue-200 */
-  --accent-foreground: #1e3a8a;
+  --accent: #e7edf6; /* 블루 tint — hover 표면 */
+  --accent-foreground: #1e4789;
 
   --destructive: #be2e2e;
 
   --border: #e5e9ef;
   --input: #e5e9ef;
-  --ring: #93c5fd; /* blue-300 */
+  --ring: #2d5ba8;
 
   --chart-1: #d08829;
   --chart-2: #4084d6;
-  --chart-3: #2563eb; /* blue-600 */
+  --chart-3: #2d5ba8; /* 디자인 시스템 블루 */
   --chart-4: #e6983d;
   --chart-5: #d47e3a;
 
   --sidebar: #f8fafc; /* slate-50 */
   --sidebar-foreground: #1e293b;
-  --sidebar-primary: #2563eb;
+  --sidebar-primary: #2d5ba8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #dbeafe;
-  --sidebar-accent-foreground: #1e3a8a;
+  --sidebar-accent: #e7edf6;
+  --sidebar-accent-foreground: #1e4789;
   --sidebar-border: #e5e9ef;
-  --sidebar-ring: #93c5fd;
+  --sidebar-ring: #2d5ba8;
 }
 
 .dark {
@@ -78,7 +80,7 @@ body {
   --popover: #333333;
   --popover-foreground: #ffffff;
 
-  --primary: #3b82f6; /* blue-500 */
+  --primary: #3b6fc4; /* 디자인 시스템 blue-deep — 다크 표면 */
   --primary-foreground: #ffffff;
 
   --secondary: #444444;
@@ -94,22 +96,22 @@ body {
 
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.15);
-  --ring: #60a5fa; /* blue-400 */
+  --ring: #3b6fc4;
 
   --chart-1: #60a5fa;
   --chart-2: #5ea699;
   --chart-3: #d47e3a;
-  --chart-4: #3b82f6;
+  --chart-4: #3b6fc4;
   --chart-5: #cb7442;
 
   --sidebar: #1f2937; /* slate-800 */
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #3b82f6;
+  --sidebar-primary: #3b6fc4;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e40af; /* blue-800 */
+  --sidebar-accent: #1e4789; /* 블루 strong */
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #60a5fa;
+  --sidebar-ring: #3b6fc4;
 }
 
 @theme inline {

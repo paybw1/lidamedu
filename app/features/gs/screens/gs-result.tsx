@@ -39,8 +39,8 @@ import type { Route } from "./+types/gs-result";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 결과 | Lidam Edu`
-      : "GS 결과 | Lidam Edu",
+      ? `${loaderData.round.title} 결과 | Lidam Patent Attorney Academy`
+      : "GS 결과 | Lidam Patent Attorney Academy",
   },
 ];
 

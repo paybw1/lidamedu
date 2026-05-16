@@ -1,26 +1,21 @@
 // 논문 피드 (feat-3-503). 모든 사용자 read-only. staff 일 때 추가/수정/삭제 + 링크 관리.
 // /latest/papers — 검색·과목·중요 필터 + 페이지네이션. 각 카드에 관련 조문/판례 chip.
+// 키트 lidam-latest/PapersScreen 디자인.
 
 import {
   ArrowRightIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   ExternalLinkIcon,
   FileTextIcon,
-  FilterXIcon,
   GavelIcon,
   NetworkIcon,
-  NewspaperIcon,
   PencilIcon,
   PlusIcon,
-  SearchIcon,
-  StarIcon,
+  SearchXIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
-  Form,
   Link,
   data,
   useFetcher,
@@ -28,11 +23,24 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
+import {
+  FeedCard,
+  FilterCheckbox,
+  FilterSelect,
+  LatestEmpty,
+  LatestFilterForm,
+  LatestPagination,
+  ListStack,
+  MetaRow,
+  NewBadge,
+  Pill,
+  isRecent,
+  relativeKo,
+} from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import type {
@@ -42,16 +50,16 @@ import type {
 } from "~/features/papers/labels";
 import { listPapersWithLinks } from "~/features/papers/queries.server";
 import {
+  FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/papers";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "논문 | Lidam Edu" },
-];
+export const meta: Route.MetaFunction = () => [{ title: "논문 | Lidam Patent Attorney Academy" }];
 
 interface PaperFilters {
   q: string;
@@ -144,155 +152,115 @@ export default function LatestPapers({ loaderData }: Route.ComponentProps) {
     return s ? `?${s}` : "";
   };
 
-  return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NewspaperIcon className="size-3.5" /> 최신 정보
-        </p>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">논문 · 학술 자료</h1>
-          {canEdit && !showAdd ? (
-            <Button size="sm" onClick={() => setShowAdd(true)}>
-              <PlusIcon className="size-3.5" /> 논문 추가
-            </Button>
-          ) : null}
-        </div>
-        <p className="text-muted-foreground text-sm">
-          {total}건
-          {filters.subject ? ` · ${lawName(filters.subject)}` : ""}
-          {filters.year ? ` · ${filters.year}년` : ""}
-          {filters.importantOnly ? " · 중요 (★3+)" : ""}
-          {filters.q ? ` · "${filters.q}" 검색` : ""}
-        </p>
-      </header>
+  const descParts = [`${total.toLocaleString("ko-KR")}건`];
+  if (filters.subject) descParts.push(lawName(filters.subject));
+  if (filters.year) descParts.push(`${filters.year}년`);
+  if (filters.importantOnly) descParts.push("중요 ★3+");
+  if (filters.q) descParts.push(`"${filters.q}" 검색`);
 
+  return (
+    <LatestShell
+      category="papers"
+      width="feed"
+      title="논문 · 학술 자료"
+      desc={`${descParts.join(" · ")} — 발행일 최신순으로 모은 논문·학술 자료입니다.`}
+      headerRight={
+        canEdit && !showAdd ? (
+          <Button
+            size="sm"
+            className="h-9 rounded-full"
+            onClick={() => setShowAdd(true)}
+          >
+            <PlusIcon className="size-3.5" /> 논문 추가
+          </Button>
+        ) : undefined
+      }
+    >
       {canEdit && showAdd ? (
-        <div className="mb-4">
+        <div className="mb-3.5">
           <PaperForm mode="create" onClose={() => setShowAdd(false)} />
         </div>
       ) : null}
 
-      <Form
-        method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]"
+      <LatestFilterForm
+        search={{
+          name: "q",
+          placeholder: "제목·저자·출처·초록 검색",
+          defaultValue: filters.q,
+        }}
+        hasActive={filterActive}
+        resetTo="/latest/papers"
       >
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            name="q"
-            defaultValue={filters.q}
-            placeholder="제목·저자·출처·초록 검색"
-            className="pl-9"
-          />
-        </div>
-        <select
+        <FilterSelect
           name="subject"
+          ariaLabel="과목"
           defaultValue={filters.subject ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          <option value="">전체 과목</option>
-          {LAW_SUBJECT_SLUGS.map((s) => (
-            <option key={s} value={s}>
-              {LAW_SUBJECTS[s].name}
-            </option>
-          ))}
-        </select>
-        <select
+          options={[{ value: "", label: "전체 과목" }]}
+          optionGroups={[
+            {
+              label: "1차 · 객관식",
+              options: FIRST_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+            {
+              label: "2차 · 주관식",
+              options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+          ]}
+        />
+        <FilterSelect
           name="year"
-          defaultValue={filters.year ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs tabular-nums"
-        >
-          <option value="">전체 년도</option>
-          {yearOptions.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-        <label className="border-input flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs">
-          <input
-            type="checkbox"
-            name="important"
-            value="1"
-            defaultChecked={filters.importantOnly}
-            className="size-3.5"
-          />
-          <StarIcon className="size-3" /> 중요만
-        </label>
-        <Button type="submit" size="sm" className="h-9">
-          적용
-        </Button>
-      </Form>
-      {filterActive ? (
-        <div className="mb-4">
-          <Button asChild type="button" size="sm" variant="ghost" className="h-7">
-            <Link to="/latest/papers">
-              <FilterXIcon className="size-3.5" /> 초기화
-            </Link>
-          </Button>
-        </div>
-      ) : null}
+          ariaLabel="년도"
+          defaultValue={filters.year ? String(filters.year) : ""}
+          options={[
+            { value: "", label: "전체 년도" },
+            ...yearOptions.map((y) => ({
+              value: String(y),
+              label: `${y}년`,
+            })),
+          ]}
+        />
+        <FilterCheckbox name="important" defaultChecked={filters.importantOnly}>
+          중요만 ★3+
+        </FilterCheckbox>
+      </LatestFilterForm>
 
       {papers.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            {canEdit
-              ? "등록된 논문이 없습니다. 상단 '논문 추가' 버튼으로 시작하세요."
-              : "등록된 논문이 없습니다."}
-          </p>
-        </div>
+        <LatestEmpty
+          icon={filterActive ? SearchXIcon : FileTextIcon}
+          tone={filterActive ? "subdued" : "neutral"}
+          title={
+            filterActive
+              ? "조건에 맞는 논문이 없습니다"
+              : "아직 등록된 논문이 없습니다"
+          }
+          body={
+            filterActive
+              ? "검색어나 필터를 바꿔 다시 찾아보세요."
+              : canEdit
+                ? "상단 '논문 추가' 버튼으로 첫 자료를 등록하세요."
+                : "새 논문·학술 자료가 등록되면 이곳에 모입니다."
+          }
+        />
       ) : (
-        <div className="space-y-3" data-testid="latest-papers-list">
+        <ListStack testid="latest-papers-list">
           {papers.map((p) => (
             <PaperCard key={p.paperId} paper={p} canEdit={canEdit} />
           ))}
-        </div>
+        </ListStack>
       )}
 
-      {totalPages > 1 ? (
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs">
-          <Button
-            asChild={filters.page > 1}
-            variant="outline"
-            size="sm"
-            disabled={filters.page <= 1}
-            className="h-7"
-          >
-            {filters.page > 1 ? (
-              <Link to={makeUrl({ page: String(filters.page - 1) })}>
-                <ChevronLeftIcon className="size-3" /> 이전
-              </Link>
-            ) : (
-              <span>
-                <ChevronLeftIcon className="size-3" /> 이전
-              </span>
-            )}
-          </Button>
-          <span className="text-muted-foreground tabular-nums">
-            {filters.page} / {totalPages}
-          </span>
-          <Button
-            asChild={filters.page < totalPages}
-            variant="outline"
-            size="sm"
-            disabled={filters.page >= totalPages}
-            className="h-7"
-          >
-            {filters.page < totalPages ? (
-              <Link to={makeUrl({ page: String(filters.page + 1) })}>
-                다음 <ChevronRightIcon className="size-3" />
-              </Link>
-            ) : (
-              <span>
-                <ChevronRightIcon className="size-3" /> 다음
-              </span>
-            )}
-          </Button>
-        </div>
-      ) : null}
-    </div>
+      <LatestPagination
+        page={filters.page}
+        totalPages={totalPages}
+        makeUrl={makeUrl}
+      />
+    </LatestShell>
   );
 }
 
@@ -324,156 +292,157 @@ function PaperCard({
 
   if (editing) {
     return (
-      <PaperForm
-        mode="update"
-        paper={paper}
-        onClose={() => setEditing(false)}
-      />
+      <PaperForm mode="update" paper={paper} onClose={() => setEditing(false)} />
     );
   }
 
-  const meta: string[] = [];
-  if (paper.authors) meta.push(paper.authors);
-  if (paper.source) meta.push(paper.source);
-  if (paper.publishedAt) meta.push(paper.publishedAt);
+  const metaParts: string[] = [];
+  if (paper.authors) metaParts.push(paper.authors);
+  if (paper.source) metaParts.push(paper.source);
+  if (paper.publishedAt) metaParts.push(paper.publishedAt);
 
   return (
-    <Card className="hover:border-primary transition-colors">
-      <CardHeader className="px-4 pb-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="default" className="text-xs">
-            <NewspaperIcon className="size-3" /> 논문
-          </Badge>
-          {paper.importance >= 3 ? (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <StarIcon className="size-3" /> ★{paper.importance}
-            </Badge>
-          ) : null}
-          {paper.subjectLaws.map((s) => (
-            <Badge key={s} variant="outline" className="text-xs">
-              {lawName(s)}
-            </Badge>
-          ))}
-          {paper.publishedAt ? (
-            <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-              {paper.publishedAt}
-            </span>
-          ) : null}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-4 text-sm">
-        <div className="flex items-start gap-2">
-          <FileTextIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-          <p className="flex-1 font-medium leading-snug">{paper.title}</p>
-          {canEdit ? (
-            <div className="flex shrink-0 gap-1">
+    <FeedCard>
+      <MetaRow
+        right={paper.publishedAt ? relativeKo(paper.publishedAt) : undefined}
+      >
+        <Pill tone="sky">
+          <FileTextIcon className="size-3" /> 논문
+        </Pill>
+        {paper.importance >= 3 ? (
+          <Pill tone="amber">★ {paper.importance}</Pill>
+        ) : null}
+        {paper.subjectLaws.map((s) => (
+          <Pill key={s} tone="outline">
+            {lawName(s)}
+          </Pill>
+        ))}
+        {isRecent(paper.publishedAt) ? <NewBadge /> : null}
+      </MetaRow>
+
+      <div className="flex items-start gap-2">
+        <p className="flex-1 text-[15px] leading-snug font-bold tracking-tight">
+          {paper.title}
+        </p>
+        {canEdit ? (
+          <div className="flex shrink-0 gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setEditing(true)}
+              aria-label="수정"
+              className="size-8 rounded-full"
+            >
+              <PencilIcon className="size-3.5" />
+            </Button>
+            <delFetcher.Form method="post" action="/api/admin/paper">
+              <input type="hidden" name="intent" value="delete" />
+              <input type="hidden" name="paperId" value={paper.paperId} />
               <Button
+                type="submit"
                 size="icon"
                 variant="ghost"
-                onClick={() => setEditing(true)}
-                aria-label="수정"
-                className="size-7"
+                aria-label="삭제"
+                className="size-8 rounded-full text-rose-600 hover:text-rose-700"
+                disabled={delFetcher.state !== "idle"}
+                onClick={(e) => {
+                  if (!confirm(`"${paper.title}" 논문을 삭제하시겠습니까?`)) {
+                    e.preventDefault();
+                  }
+                }}
               >
-                <PencilIcon className="size-3.5" />
+                <Trash2Icon className="size-3.5" />
               </Button>
-              <delFetcher.Form method="post" action="/api/admin/paper">
-                <input type="hidden" name="intent" value="delete" />
-                <input type="hidden" name="paperId" value={paper.paperId} />
-                <Button
-                  type="submit"
-                  size="icon"
-                  variant="ghost"
-                  aria-label="삭제"
-                  className="size-7 text-rose-600 hover:text-rose-700"
-                  disabled={delFetcher.state !== "idle"}
-                  onClick={(e) => {
-                    if (!confirm(`"${paper.title}" 논문을 삭제하시겠습니까?`)) {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  <Trash2Icon className="size-3.5" />
-                </Button>
-              </delFetcher.Form>
+            </delFetcher.Form>
+          </div>
+        ) : null}
+      </div>
+
+      {metaParts.length > 0 ? (
+        <p className="text-muted-foreground mt-1 text-xs">
+          {metaParts.join(" · ")}
+        </p>
+      ) : null}
+      {paper.abstract ? (
+        <p className="text-foreground/80 mt-1.5 line-clamp-3 text-[13px] leading-relaxed">
+          {paper.abstract}
+        </p>
+      ) : null}
+      {paper.tags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {paper.tags.map((t) => (
+            <Pill key={t} tone="neutral">
+              #{t}
+            </Pill>
+          ))}
+        </div>
+      ) : null}
+
+      {paper.articles.length + paper.cases.length > 0 ? (
+        <div className="bg-muted/50 mt-2.5 space-y-1.5 rounded-xl p-2.5">
+          {paper.articles.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                <NetworkIcon className="size-3" /> 관련 조문
+              </span>
+              {paper.articles.map((a) => (
+                <ArticleChip key={a.articleId} chip={a} />
+              ))}
+            </div>
+          ) : null}
+          {paper.cases.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                <GavelIcon className="size-3" /> 관련 판례
+              </span>
+              {paper.cases.map((c) => (
+                <CaseChip key={c.caseId} chip={c} />
+              ))}
             </div>
           ) : null}
         </div>
-        {meta.length > 0 ? (
-          <p className="text-muted-foreground text-xs">{meta.join(" · ")}</p>
-        ) : null}
-        {paper.abstract ? (
-          <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed">
-            {paper.abstract}
-          </p>
-        ) : null}
-        {paper.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {paper.tags.map((t) => (
-              <Badge key={t} variant="secondary" className="text-[10px]">
-                #{t}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
+      ) : null}
 
-        {paper.articles.length + paper.cases.length > 0 ? (
-          <div className="bg-muted/40 space-y-1.5 rounded-md border p-2">
-            {paper.articles.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-muted-foreground inline-flex items-center gap-0.5 text-[10px] font-semibold tracking-wide uppercase">
-                  <NetworkIcon className="size-3" /> 관련 조문
-                </span>
-                {paper.articles.map((a) => (
-                  <ArticleChip key={a.articleId} chip={a} />
-                ))}
-              </div>
-            ) : null}
-            {paper.cases.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-muted-foreground inline-flex items-center gap-0.5 text-[10px] font-semibold tracking-wide uppercase">
-                  <GavelIcon className="size-3" /> 관련 판례
-                </span>
-                {paper.cases.map((c) => (
-                  <CaseChip key={c.caseId} chip={c} />
-                ))}
-              </div>
-            ) : null}
-          </div>
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {paper.url ? (
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-full"
+          >
+            <a href={paper.url} target="_blank" rel="noreferrer">
+              <ExternalLinkIcon className="size-3" /> 외부 링크
+            </a>
+          </Button>
         ) : null}
-
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {paper.url ? (
-            <Button asChild size="sm" variant="outline" className="h-7">
-              <a href={paper.url} target="_blank" rel="noreferrer">
-                <ExternalLinkIcon className="size-3" /> 외부 링크
-              </a>
-            </Button>
-          ) : null}
-          {paper.pdfUrl ? (
-            <Button asChild size="sm" variant="outline" className="h-7">
-              <a href={paper.pdfUrl} target="_blank" rel="noreferrer">
-                <FileTextIcon className="size-3" /> PDF 열기
-              </a>
-            </Button>
-          ) : null}
-          {canEdit ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7"
-              onClick={() => setManagingLinks((v) => !v)}
-            >
-              <NetworkIcon className="size-3" />
-              {managingLinks ? "링크 관리 닫기" : "링크 관리"}
-            </Button>
-          ) : null}
-        </div>
-
-        {canEdit && managingLinks ? (
-          <PaperLinksEditor paper={paper} />
+        {paper.pdfUrl ? (
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-full"
+          >
+            <a href={paper.pdfUrl} target="_blank" rel="noreferrer">
+              <FileTextIcon className="size-3" /> PDF 열기
+            </a>
+          </Button>
         ) : null}
-      </CardContent>
-    </Card>
+        {canEdit ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 rounded-full"
+            onClick={() => setManagingLinks((v) => !v)}
+          >
+            <NetworkIcon className="size-3" />
+            {managingLinks ? "링크 관리 닫기" : "링크 관리"}
+          </Button>
+        ) : null}
+      </div>
+
+      {canEdit && managingLinks ? <PaperLinksEditor paper={paper} /> : null}
+    </FeedCard>
   );
 }
 
@@ -485,7 +454,7 @@ function ArticleChip({ chip }: { chip: PaperRelatedArticleChip }) {
     <Link
       to={href}
       viewTransition
-      className="hover:bg-accent inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px]"
+      className="border-border bg-background hover:border-primary/40 hover:text-primary inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors"
     >
       {chip.displayLabel}
     </Link>
@@ -499,10 +468,10 @@ function CaseChip({ chip }: { chip: PaperRelatedCaseChip }) {
     <Link
       to={`/subjects/${subj}/cases/${chip.caseId}`}
       viewTransition
-      className="hover:bg-accent inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
+      className="border-border bg-background hover:border-primary/40 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition-colors"
       title={label}
     >
-      <span className="font-mono">{chip.caseNumber}</span>
+      <span className="font-mono font-medium">{chip.caseNumber}</span>
       <span className="text-muted-foreground max-w-[200px] truncate">
         {label}
       </span>
@@ -563,9 +532,9 @@ function PaperLinksEditor({ paper }: { paper: PaperWithLinks }) {
       : null;
 
   return (
-    <div className="bg-muted/30 space-y-3 rounded-md border p-3">
+    <div className="bg-muted/50 mt-2.5 space-y-3 rounded-xl p-3">
       <div className="space-y-1.5">
-        <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+        <p className="text-muted-foreground font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
           관련 조문
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -608,17 +577,17 @@ function PaperLinksEditor({ paper }: { paper: PaperWithLinks }) {
           <Button
             type="submit"
             size="sm"
-            className="h-7"
+            className="h-7 rounded-full"
             disabled={addArticleFetcher.state !== "idle" || !articleDraft.trim()}
           >
             <PlusIcon className="size-3" /> 조문 추가
           </Button>
-          {aErr ? <span className="text-rose-600 text-xs">{aErr}</span> : null}
+          {aErr ? <span className="text-xs text-rose-600">{aErr}</span> : null}
         </addArticleFetcher.Form>
       </div>
 
       <div className="space-y-1.5">
-        <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+        <p className="text-muted-foreground font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
           관련 판례
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -649,12 +618,12 @@ function PaperLinksEditor({ paper }: { paper: PaperWithLinks }) {
           <Button
             type="submit"
             size="sm"
-            className="h-7"
+            className="h-7 rounded-full"
             disabled={addCaseFetcher.state !== "idle" || !caseDraft.trim()}
           >
             <PlusIcon className="size-3" /> 판례 추가
           </Button>
-          {cErr ? <span className="text-rose-600 text-xs">{cErr}</span> : null}
+          {cErr ? <span className="text-xs text-rose-600">{cErr}</span> : null}
         </addCaseFetcher.Form>
       </div>
     </div>
@@ -699,7 +668,7 @@ function RemoveChip({
       <input type="hidden" name="intent" value={intent} />
       <input type="hidden" name="paperId" value={paperId} />
       <input type="hidden" name={idField} value={targetId} />
-      <span className="inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5 text-[11px]">
+      <span className="border-border bg-background inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]">
         <span className="max-w-[280px] truncate">{label}</span>
         <button
           type="submit"
@@ -714,7 +683,7 @@ function RemoveChip({
   );
 }
 
-// 추가/수정 폼.
+// 추가/수정 폼 — 카드 위에 펼침 (brief §5.8).
 function PaperForm({
   mode,
   paper,
@@ -749,7 +718,7 @@ function PaperForm({
     <fetcher.Form
       method="post"
       action="/api/admin/paper"
-      className="bg-card space-y-3 rounded-md border p-4"
+      className="border-border bg-card space-y-3 rounded-2xl border p-4 shadow-sm"
     >
       <input type="hidden" name="intent" value={mode} />
       {mode === "update" ? (
@@ -806,7 +775,7 @@ function PaperForm({
           <Input
             name="subjectLaws"
             defaultValue={paper?.subjectLaws.join(",") ?? ""}
-            className="h-8 text-xs font-mono"
+            className="h-8 font-mono text-xs"
             placeholder="예: patent,trademark — 콤마 구분"
           />
         </Field>
@@ -850,7 +819,7 @@ function PaperForm({
         </Field>
       </div>
       {hasError ? (
-        <p className="text-rose-600 text-xs">
+        <p className="text-xs text-rose-600">
           {(fetcher.data as { error: string }).error}
         </p>
       ) : null}
@@ -859,12 +828,18 @@ function PaperForm({
           type="button"
           variant="ghost"
           size="sm"
+          className="rounded-full"
           onClick={onClose}
           disabled={isSaving}
         >
           <XIcon className="size-3.5" /> 취소
         </Button>
-        <Button type="submit" size="sm" disabled={isSaving}>
+        <Button
+          type="submit"
+          size="sm"
+          className="rounded-full"
+          disabled={isSaving}
+        >
           {mode === "create" ? (
             <>
               <PlusIcon className="size-3.5" /> 추가

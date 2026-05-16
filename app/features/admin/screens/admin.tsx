@@ -38,11 +38,15 @@ import {
   type SubjectCoverageRow,
 } from "~/features/admin/queries/subject-coverage.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import {
+  LAW_SUBJECTS,
+  isFirstExamSubject,
+  isSecondExamSubject,
+} from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin";
 
-export const meta: Route.MetaFunction = () => [{ title: "운영자 | Lidam Edu" }];
+export const meta: Route.MetaFunction = () => [{ title: "운영자 | Lidam Patent Attorney Academy" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -373,113 +377,147 @@ function ContentStatsCard({
   );
 }
 
+type CoverageMetricKey = keyof Pick<
+  SubjectCoverageRow,
+  "articles" | "cases" | "problemsMc" | "problemsSubjective"
+>;
+
+const COVERAGE_METRIC_LABEL: Record<CoverageMetricKey, string> = {
+  articles: "조문",
+  cases: "판례",
+  problemsMc: "객관식",
+  problemsSubjective: "주관식",
+};
+
+// 시드 진행률 — 1차(객관식)/2차(주관식)로 분리. 민법은 1차 표에만, 민사소송법은
+// 2차 표에만, 산업재산권법(특허·상표·디자인)은 양쪽 표에 노출된다.
 function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
-  const metrics: Array<{
-    key: keyof Pick<
-      SubjectCoverageRow,
-      "articles" | "cases" | "problemsMc" | "problemsSubjective"
-    >;
-    label: string;
-  }> = [
-    { key: "articles", label: "조문" },
-    { key: "cases", label: "판례" },
-    { key: "problemsMc", label: "객관식" },
-    { key: "problemsSubjective", label: "주관식" },
+  const allKeys: CoverageMetricKey[] = [
+    "articles",
+    "cases",
+    "problemsMc",
+    "problemsSubjective",
   ];
-  const baseline: Record<typeof metrics[number]["key"], number> = metrics.reduce(
-    (acc, m) => {
-      acc[m.key] = Math.max(1, ...rows.map((r) => r[m.key]));
+  // 막대 기준 = 전 과목 통틀어 각 지표의 최댓값.
+  const baseline = allKeys.reduce(
+    (acc, k) => {
+      acc[k] = Math.max(1, ...rows.map((r) => r[k]));
       return acc;
     },
-    {} as Record<typeof metrics[number]["key"], number>,
+    {} as Record<CoverageMetricKey, number>,
   );
+  const firstRows = rows.filter((r) => isFirstExamSubject(r.lawCode));
+  const secondRows = rows.filter((r) => isSecondExamSubject(r.lawCode));
   return (
     <Card className="mb-6">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-semibold">5과목 시드 진행률</p>
-            <p className="text-muted-foreground text-xs">
-              과목별 콘텐츠 수 — 최댓값(보통 특허법) 대비 막대로 격차 가시화. 비어있는 셀은 시드 우선순위.
-            </p>
-          </div>
-        </div>
+        <p className="text-sm font-semibold">과목 시드 진행률</p>
+        <p className="text-muted-foreground text-xs">
+          과목별 콘텐츠 수 — 최댓값(보통 특허법) 대비 막대로 격차 가시화. 비어있는 셀은 시드 우선순위.
+        </p>
       </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-muted-foreground border-b text-[11px] font-semibold tracking-wide uppercase">
-                <th className="py-2 pr-3 text-left">과목</th>
-                {metrics.map((m) => (
-                  <th key={m.key} className="py-2 pr-3 text-right">
-                    {m.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const meta = LAW_SUBJECTS[r.lawCode];
-                return (
-                  <tr key={r.lawCode} className="border-b last:border-b-0">
-                    <td className="py-2 pr-3">
-                      <Link
-                        to={`/subjects/${r.lawCode}`}
-                        className="font-medium hover:underline"
-                        viewTransition
-                      >
-                        {meta?.name ?? r.displayLabel}
-                      </Link>
-                      <span className="text-muted-foreground ml-2 text-[10.5px]">
-                        {meta?.categoryLabel}
-                      </span>
-                      <Link
-                        to={`/admin/laws/${r.lawCode}/completeness`}
-                        className="text-primary ml-2 text-[10.5px] hover:underline"
-                        viewTransition
-                      >
-                        완성도 진단 →
-                      </Link>
-                    </td>
-                    {metrics.map((m) => {
-                      const value = r[m.key];
-                      const ratio = baseline[m.key]
-                        ? value / baseline[m.key]
-                        : 0;
-                      const widthPct = Math.round(ratio * 100);
-                      const tone =
-                        value === 0
-                          ? "bg-rose-200 dark:bg-rose-900/50"
-                          : ratio < 0.1
-                            ? "bg-amber-300 dark:bg-amber-800/60"
-                            : ratio < 0.5
-                              ? "bg-sky-300 dark:bg-sky-800/60"
-                              : "bg-emerald-400 dark:bg-emerald-700/70";
-                      return (
-                        <td key={m.key} className="py-2 pr-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="bg-muted/60 hidden h-1.5 w-16 overflow-hidden rounded-full sm:block">
-                              <div
-                                className={`h-full ${tone}`}
-                                style={{ width: `${widthPct}%` }}
-                              />
-                            </div>
-                            <span className="text-foreground min-w-[3ch] text-right text-xs font-semibold tabular-nums">
-                              {value.toLocaleString("ko-KR")}
-                            </span>
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <CardContent className="space-y-5">
+        <CoverageTable
+          sectionLabel="1차 · 객관식"
+          metricKeys={["articles", "cases", "problemsMc"]}
+          rows={firstRows}
+          baseline={baseline}
+        />
+        <CoverageTable
+          sectionLabel="2차 · 주관식"
+          metricKeys={["articles", "cases", "problemsSubjective"]}
+          rows={secondRows}
+          baseline={baseline}
+        />
       </CardContent>
     </Card>
+  );
+}
+
+function CoverageTable({
+  sectionLabel,
+  metricKeys,
+  rows,
+  baseline,
+}: {
+  sectionLabel: string;
+  metricKeys: CoverageMetricKey[];
+  rows: SubjectCoverageRow[];
+  baseline: Record<CoverageMetricKey, number>;
+}) {
+  return (
+    <div>
+      <p className="text-primary mb-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
+        {sectionLabel}
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-muted-foreground border-b text-[11px] font-semibold tracking-wide uppercase">
+              <th className="py-2 pr-3 text-left">과목</th>
+              {metricKeys.map((k) => (
+                <th key={k} className="py-2 pr-3 text-right">
+                  {COVERAGE_METRIC_LABEL[k]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const meta = LAW_SUBJECTS[r.lawCode];
+              return (
+                <tr key={r.lawCode} className="border-b last:border-b-0">
+                  <td className="py-2 pr-3">
+                    <Link
+                      to={`/subjects/${r.lawCode}`}
+                      className="font-medium hover:underline"
+                      viewTransition
+                    >
+                      {meta?.name ?? r.displayLabel}
+                    </Link>
+                    <Link
+                      to={`/admin/laws/${r.lawCode}/completeness`}
+                      className="text-primary ml-2 text-[10.5px] hover:underline"
+                      viewTransition
+                    >
+                      완성도 진단 →
+                    </Link>
+                  </td>
+                  {metricKeys.map((k) => {
+                    const value = r[k];
+                    const ratio = baseline[k] ? value / baseline[k] : 0;
+                    const widthPct = Math.round(ratio * 100);
+                    const tone =
+                      value === 0
+                        ? "bg-rose-200 dark:bg-rose-900/50"
+                        : ratio < 0.1
+                          ? "bg-amber-300 dark:bg-amber-800/60"
+                          : ratio < 0.5
+                            ? "bg-sky-300 dark:bg-sky-800/60"
+                            : "bg-emerald-400 dark:bg-emerald-700/70";
+                    return (
+                      <td key={k} className="py-2 pr-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="bg-muted/60 hidden h-1.5 w-16 overflow-hidden rounded-full sm:block">
+                            <div
+                              className={`h-full ${tone}`}
+                              style={{ width: `${widthPct}%` }}
+                            />
+                          </div>
+                          <span className="text-foreground min-w-[3ch] text-right text-xs font-semibold tabular-nums">
+                            {value.toLocaleString("ko-KR")}
+                          </span>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

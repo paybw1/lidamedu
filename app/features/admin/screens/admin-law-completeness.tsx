@@ -24,6 +24,7 @@ import {
 } from "~/features/admin/queries/law-completeness.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  EXAM_LABEL,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
@@ -33,7 +34,7 @@ import type { Route } from "./+types/admin-law-completeness";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   const name = d && "subject" in d ? d.subject.name : "법령";
-  return [{ title: `${name} 완성도 | Lidam Edu` }];
+  return [{ title: `${name} 완성도 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -185,7 +186,7 @@ export default function AdminLawCompleteness({
           </div>
         </div>
         <p className="text-muted-foreground text-sm">
-          실 조문({subject.exam} 시험) 기준 콘텐츠 갭 진단. 각 차원에서 미커버 항목을
+          실 조문({EXAM_LABEL[subject.exam]} 시험) 기준 콘텐츠 갭 진단. 각 차원에서 미커버 항목을
           채워 학습 자료를 완성하세요.
           <strong> 조문 ref 동기화</strong> — 본문 body_json 의 inline <code className="text-[10.5px]">ref_article</code> 노드 → article_article_links 백필.{" "}
           <strong>판례 ref 동기화</strong> — 판례 본문(요지/이유/평석) 의 "특허법 제N조" 자연어 패턴 → article_case_links 백필.

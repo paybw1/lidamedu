@@ -31,7 +31,7 @@ import { upsertStudyGoals } from "~/features/goals/queries.server";
 import type { Route } from "./+types/welcome";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "환영합니다 | Lidam Edu" },
+  { title: "환영합니다 | Lidam Patent Attorney Academy" },
 ];
 
 const TOTAL_STEPS = 3;
@@ -116,7 +116,6 @@ export async function action({ request }: Route.ActionArgs) {
     const res = await setNextExamPlan(client, user.id, {
       nextExamYear: parsed.data.nextExamYear,
       nextExamRound: parsed.data.nextExamRound as ExamRound,
-      selectedScienceSubject: null,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     throw redirect("/onboarding/welcome?step=2");

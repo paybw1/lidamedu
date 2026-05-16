@@ -128,9 +128,9 @@ function captureRangeContext(
 }
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "빈칸 자료 (전체) | Lidam Edu" }];
+  if (!loaderData) return [{ title: "빈칸 자료 (전체) | Lidam Patent Attorney Academy" }];
   return [
-    { title: `${loaderData.lawCode} 빈칸 자료 (전체) | Lidam Edu` },
+    { title: `${loaderData.lawCode} 빈칸 자료 (전체) | Lidam Patent Attorney Academy` },
   ];
 };
 

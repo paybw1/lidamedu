@@ -34,8 +34,8 @@ import type { Route } from "./+types/gs-my-series";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.series
-      ? `${loaderData.series.title} 내 추이 | Lidam Edu`
-      : "내 시리즈 추이 | Lidam Edu",
+      ? `${loaderData.series.title} 내 추이 | Lidam Patent Attorney Academy`
+      : "내 시리즈 추이 | Lidam Patent Attorney Academy",
   },
 ];
 

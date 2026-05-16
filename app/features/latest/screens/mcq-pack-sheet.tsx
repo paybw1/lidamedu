@@ -2,25 +2,22 @@
 // /api/mcq-pack/start 가 session 을 만든 뒤 여기로 redirect.
 // 학습 모드: 답안 선택 → "채점하기" 로 전체 정오/해설 인라인 노출 → 결과 페이지 이동.
 // 시험 모드: 답안 선택만 가능, 채점 결과 비공개. 타이머 만료 / "제출" 클릭 시 결과 페이지 이동.
+// 키트 lidam-latest/McqSheetScreen 디자인.
 
 import {
-  ArrowLeftIcon,
   BookOpenCheckIcon,
   CheckCircle2Icon,
   CircleXIcon,
-  ClockIcon,
   FlagIcon,
-  ListChecksIcon,
   TimerIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Form, Link, data, useFetcher } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Separator } from "~/core/components/ui/separator";
 import { cn } from "~/core/lib/utils";
+import { Pill } from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   FORMAT_LABEL,
@@ -49,8 +46,8 @@ import {
 import type { Route } from "./+types/mcq-pack-sheet";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.pack) return [{ title: "응시 | Lidam Edu" }];
-  return [{ title: `${d.pack.title} 응시 | Lidam Edu` }];
+  if (!d || !d.pack) return [{ title: "응시 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.pack.title} 응시 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -161,9 +158,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
   // problemId:choiceIndex 형태로 중복 기록 방지 — 새로고침 시에도 기존 응답으로 채워둠.
   const recordedRef = useRef<Set<string>>(
     new Set(
-      Object.entries(initialSelected).map(
-        ([pid, ci]) => `${pid}:${ci}`,
-      ),
+      Object.entries(initialSelected).map(([pid, ci]) => `${pid}:${ci}`),
     ),
   );
 
@@ -219,7 +214,6 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
 
   const onGrade = () => {
     setGraded(true);
-    // 다음 페인트 후 결과 영역으로 스크롤하려면 setTimeout. 첫 오답 위치로 점프하는 방안도 가능.
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -243,54 +237,49 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
       }, 0)
     : 0;
 
-  return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-8 md:py-8">
-      <Link
-        to={`/latest/mcq/${pack.packId}`}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 문제집으로 돌아가기
-      </Link>
+  const metaParts: string[] = [`문항 ${totalProblems}`];
+  if (pack.durationMin) metaParts.push(`제한 ${pack.durationMin}분`);
+  if (pack.publishedAt) metaParts.push(`출제일 ${pack.publishedAt}`);
 
-      <header className="mb-4 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">
-            {MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}
-          </Badge>
-          <Badge variant="secondary">{MCQ_PACK_KIND_LABELS[pack.kind]}</Badge>
-          <Badge variant={isExam ? "destructive" : "default"}>
-            {isExam ? "시험 모드" : "학습 모드"}
-          </Badge>
-          {graded && !isExam ? (
-            <Badge variant="default" className="ml-auto">
-              채점 완료 · {correctCount}/{totalProblems}
-            </Badge>
-          ) : null}
-        </div>
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <ListChecksIcon className="text-primary size-6" />
-          {pack.title}
-        </h1>
-        <p className="text-muted-foreground text-xs tabular-nums">
-          문항 {totalProblems}
-          {pack.durationMin ? ` · 제한 ${pack.durationMin}분` : ""}
-          {pack.publishedAt ? ` · 출제일 ${pack.publishedAt}` : ""}
-        </p>
-      </header>
+  return (
+    <LatestShell
+      category="mcq"
+      width="narrow"
+      backLink={{
+        to: `/latest/mcq/${pack.packId}`,
+        label: "문제집으로 돌아가기",
+      }}
+      title={pack.title}
+      desc={metaParts.join(" · ")}
+    >
+      <div className="mb-3.5 flex flex-wrap items-center gap-1.5">
+        <Pill tone="outline">
+          {MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}
+        </Pill>
+        <Pill>{MCQ_PACK_KIND_LABELS[pack.kind]}</Pill>
+        <Pill tone={isExam ? "rose" : "primary"}>
+          {isExam ? "시험 모드" : "학습 모드"}
+        </Pill>
+      </div>
 
       {/* 응시 progress + 타이머 + 끝내기 — 스크롤 시 sticky 로 항상 노출. */}
-      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-2 z-10 mb-4 rounded-md border px-3 py-2 backdrop-blur">
+      <div className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-2 z-10 mb-4 rounded-2xl border px-3.5 py-2.5 shadow-sm backdrop-blur">
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className="inline-flex items-center gap-1 text-xs tabular-nums"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold tabular-nums"
             data-testid="sheet-progress"
           >
-            <CheckCircle2Icon className="size-3.5 text-emerald-600" />
+            <CheckCircle2Icon className="size-4 text-emerald-600" />
             응답 {totalAnswered} / {totalProblems}
           </span>
+          {graded && !isExam ? (
+            <Pill tone="emerald">
+              채점 완료 · {correctCount}/{totalProblems}
+            </Pill>
+          ) : null}
           {timerText ? (
             <span
-              className="inline-flex items-center gap-1 rounded border px-2 py-0.5 font-mono text-xs tabular-nums"
+              className="border-border inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-xs font-semibold tabular-nums"
               data-testid="exam-timer"
             >
               <TimerIcon className="size-3" />
@@ -301,7 +290,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
             {!isExam && !graded ? (
               <Button
                 size="sm"
-                className="h-8"
+                className="h-9 rounded-full"
                 onClick={onGrade}
                 disabled={totalAnswered === 0}
                 data-testid="sheet-grade"
@@ -310,7 +299,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
               </Button>
             ) : null}
             {session.completedAt ? (
-              <Button asChild size="sm" className="h-8">
+              <Button asChild size="sm" className="h-9 rounded-full">
                 <Link
                   to={`/latest/mcq/${pack.packId}/result/${session.sessionId}`}
                 >
@@ -321,7 +310,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
               <Button
                 size="sm"
                 variant={graded || isExam ? "default" : "outline"}
-                className="h-8"
+                className="h-9 rounded-full"
                 onClick={() => {
                   const ok = confirm(
                     isExam
@@ -357,16 +346,15 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
       </ol>
 
       {/* 하단 끝내기 — sticky 헤더와 별개로 한 번 더 노출. */}
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
-        <p className="text-muted-foreground text-xs">
+      <div className="border-border mt-8 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+        <p className="text-muted-foreground text-xs tabular-nums">
           응답 {totalAnswered} / {totalProblems}
-          {!isExam && graded
-            ? ` · 정답 ${correctCount}/${totalProblems}`
-            : ""}
+          {!isExam && graded ? ` · 정답 ${correctCount}/${totalProblems}` : ""}
         </p>
         <div className="inline-flex gap-2">
           {!isExam && !graded ? (
             <Button
+              className="rounded-full"
               onClick={onGrade}
               disabled={totalAnswered === 0}
               data-testid="sheet-grade-bottom"
@@ -392,6 +380,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
             <Button
               type="submit"
               variant={graded || isExam ? "default" : "outline"}
+              className="rounded-full"
               data-testid="sheet-finish-bottom"
             >
               <FlagIcon className="size-4" /> 결과 페이지로 이동
@@ -399,7 +388,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
           </Form>
         </div>
       </div>
-    </div>
+    </LatestShell>
   );
 }
 
@@ -420,57 +409,48 @@ function ProblemBlock({
 }) {
   const showAnswers = graded && !isExam;
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="bg-muted/30 pb-3">
-        <div className="flex flex-wrap items-start gap-2">
-          <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border bg-background text-xs font-bold tabular-nums">
-            {index}
-          </span>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 text-[11px]">
-            <Badge variant="default" className="h-5">
-              {ORIGIN_LABEL[problem.origin]}
-            </Badge>
-            <Badge variant="outline" className="h-5">
-              {FORMAT_LABEL[problem.format]}
-            </Badge>
-            {problem.polarity ? (
-              <Badge variant="outline" className="h-5">
-                {POLARITY_LABEL[problem.polarity]}
-              </Badge>
-            ) : null}
-            {problem.scope ? (
-              <Badge variant="outline" className="h-5">
-                {SCOPE_LABEL[problem.scope]}
-              </Badge>
-            ) : null}
-            {problem.year ? (
-              <span className="text-muted-foreground ml-auto tabular-nums">
-                {problem.year}년
-                {problem.examRoundNo ? ` ${problem.examRoundNo}회` : ""}
-                {problem.problemNumber ? ` · ${problem.problemNumber}번` : ""}
-              </span>
-            ) : null}
-          </div>
+    <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border bg-muted/40 flex flex-wrap items-start gap-2 border-b px-4 py-3">
+        <span className="bg-background border-border inline-flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold tabular-nums">
+          {index}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <Pill tone="primary">{ORIGIN_LABEL[problem.origin]}</Pill>
+          <Pill tone="outline">{FORMAT_LABEL[problem.format]}</Pill>
+          {problem.polarity ? (
+            <Pill tone="outline">{POLARITY_LABEL[problem.polarity]}</Pill>
+          ) : null}
+          {problem.scope ? (
+            <Pill tone="outline">{SCOPE_LABEL[problem.scope]}</Pill>
+          ) : null}
+          {problem.year ? (
+            <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+              {problem.year}년
+              {problem.examRoundNo ? ` ${problem.examRoundNo}회` : ""}
+              {problem.problemNumber ? ` · ${problem.problemNumber}번` : ""}
+            </span>
+          ) : null}
         </div>
-      </CardHeader>
-      <Separator />
-      <CardContent className="space-y-4 pt-4">
-        <p className="font-serif text-[15px] leading-relaxed font-medium whitespace-pre-line">
+      </div>
+      <div className="space-y-4 px-4 py-4">
+        <p className="text-[15px] leading-relaxed font-medium whitespace-pre-line">
           {problem.bodyMd}
         </p>
 
         {problem.boxItems.length > 0 ? (
-          <div className="border-foreground/40 bg-muted/30 rounded-md border-2 px-4 py-3">
+          <div className="border-foreground/30 bg-muted/40 rounded-xl border-2 px-4 py-3">
             <ul className="space-y-1.5">
               {problem.boxItems.map((bi) => (
                 <li
                   key={bi.boxItemId}
-                  className="font-serif flex gap-2 text-sm leading-relaxed"
+                  className="flex gap-2 text-sm leading-relaxed"
                 >
-                  <span className="text-foreground/80 shrink-0 font-medium">
+                  <span className="text-foreground/80 shrink-0 font-semibold">
                     {bi.marker}
                   </span>
-                  <span className="flex-1 whitespace-pre-line">{bi.bodyMd}</span>
+                  <span className="flex-1 whitespace-pre-line">
+                    {bi.bodyMd}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -492,21 +472,29 @@ function ProblemBlock({
                   disabled={locked}
                   aria-pressed={isSelected}
                   className={cn(
-                    "flex w-full items-start gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                    "flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
                     locked
                       ? "cursor-default"
                       : "hover:bg-accent cursor-pointer",
-                    isSelected && !locked && "border-primary bg-accent",
+                    isSelected && !locked && "border-primary bg-primary/[0.06]",
+                    !isSelected && !showCorrect && !showWrong && "border-border",
                     showCorrect &&
                       "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30",
                     showWrong &&
                       "border-rose-500 bg-rose-50 dark:bg-rose-950/30",
                   )}
                 >
-                  <span className="text-muted-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums">
+                  <span
+                    className={cn(
+                      "inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums",
+                      isSelected && !locked
+                        ? "border-primary text-primary"
+                        : "border-border text-muted-foreground",
+                    )}
+                  >
                     {c.choiceIndex}
                   </span>
-                  <span className="font-serif flex-1 whitespace-pre-line">
+                  <span className="flex-1 whitespace-pre-line">
                     {c.bodyMd}
                   </span>
                   {showCorrect ? (
@@ -521,11 +509,9 @@ function ProblemBlock({
           })}
         </ul>
 
-        {showAnswers ? (
-          <ExplanationBlock problem={problem} />
-        ) : null}
-      </CardContent>
-    </Card>
+        {showAnswers ? <ExplanationBlock problem={problem} /> : null}
+      </div>
+    </div>
   );
 }
 
@@ -533,108 +519,103 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
   const correctChoiceBody =
     problem.choices.find((c) => c.isCorrect)?.bodyMd ?? null;
   return (
-    <Card className="border-dashed">
-      <CardHeader className="pb-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ClockIcon className="size-3" /> 해설
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {problem.boxItems.length > 0
-          ? problem.boxItems.map((bi) => {
-              const truth: "O" | "X" | null = bi.oxIneligible
-                ? null
-                : (bi.oxTruth ??
-                  deriveBoxItemOxTruth({
-                    polarity: problem.polarity,
-                    format: problem.format,
-                    marker: bi.marker,
-                    correctChoiceBody,
-                    oxIneligible: bi.oxIneligible,
-                  }));
-              return (
-                <div
-                  key={bi.boxItemId}
-                  className="flex items-start gap-2 text-sm"
-                >
-                  <span
-                    className={cn(
-                      "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                      truth === "O"
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-                        : truth === "X"
-                          ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200"
-                          : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {bi.marker}
-                  </span>
-                  <p className="flex-1">
-                    <span className="font-semibold">{truth ?? "—"}</span>
-                    {bi.explanationMd ? (
-                      <span className="text-muted-foreground ml-2">
-                        {bi.explanationMd}
-                      </span>
-                    ) : null}
-                  </p>
-                </div>
-              );
-            })
-          : null}
-        {problem.boxItems.length > 0 ? <Separator /> : null}
-        {problem.choices.map((c) => {
-          const derivedOx =
-            problem.format === "mc_short"
-              ? (c.oxTruth ??
-                deriveChoiceOxTruth({
+    <div className="border-border space-y-2 rounded-xl border border-dashed p-4">
+      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+        해설
+      </p>
+      {problem.boxItems.length > 0
+        ? problem.boxItems.map((bi) => {
+            const truth: "O" | "X" | null = bi.oxIneligible
+              ? null
+              : (bi.oxTruth ??
+                deriveBoxItemOxTruth({
                   polarity: problem.polarity,
                   format: problem.format,
-                  isCorrect: c.isCorrect,
-                  oxIneligible: c.oxIneligible,
-                }))
-              : null;
-          const label =
-            problem.format === "mc_box"
-              ? c.isCorrect
-                ? "정답"
-                : ""
-              : (derivedOx ?? (c.isCorrect ? "정답" : ""));
-          const tone = c.isCorrect
-            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-            : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200";
-          return (
-            <div
-              key={c.choiceId}
-              className="flex items-start gap-2 text-sm"
-            >
-              <span
-                className={cn(
-                  "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
-                  tone,
-                )}
+                  marker: bi.marker,
+                  correctChoiceBody,
+                  oxIneligible: bi.oxIneligible,
+                }));
+            return (
+              <div
+                key={bi.boxItemId}
+                className="flex items-start gap-2 text-sm"
               >
-                {c.choiceIndex}
-              </span>
-              <p className="flex-1">
-                <span className="font-semibold">{label || "—"}</span>
-                {c.explanationMd ? (
-                  <span className="text-muted-foreground ml-2">
-                    {c.explanationMd}
-                  </span>
-                ) : null}
-              </p>
-            </div>
-          );
-        })}
-        {problem.explanationMd ? (
-          <div className="border-t pt-2 text-xs">
-            <p className="text-muted-foreground mb-1 font-semibold tracking-wide uppercase">
-              종합 해설
+                <span
+                  className={cn(
+                    "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    truth === "O"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                      : truth === "X"
+                        ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200"
+                        : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {bi.marker}
+                </span>
+                <p className="flex-1">
+                  <span className="font-semibold">{truth ?? "—"}</span>
+                  {bi.explanationMd ? (
+                    <span className="text-muted-foreground ml-2">
+                      {bi.explanationMd}
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+            );
+          })
+        : null}
+      {problem.boxItems.length > 0 ? (
+        <div className="border-border border-t" />
+      ) : null}
+      {problem.choices.map((c) => {
+        const derivedOx =
+          problem.format === "mc_short"
+            ? (c.oxTruth ??
+              deriveChoiceOxTruth({
+                polarity: problem.polarity,
+                format: problem.format,
+                isCorrect: c.isCorrect,
+                oxIneligible: c.oxIneligible,
+              }))
+            : null;
+        const label =
+          problem.format === "mc_box"
+            ? c.isCorrect
+              ? "정답"
+              : ""
+            : (derivedOx ?? (c.isCorrect ? "정답" : ""));
+        const tone = c.isCorrect
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+          : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200";
+        return (
+          <div key={c.choiceId} className="flex items-start gap-2 text-sm">
+            <span
+              className={cn(
+                "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                tone,
+              )}
+            >
+              {c.choiceIndex}
+            </span>
+            <p className="flex-1">
+              <span className="font-semibold">{label || "—"}</span>
+              {c.explanationMd ? (
+                <span className="text-muted-foreground ml-2">
+                  {c.explanationMd}
+                </span>
+              ) : null}
             </p>
-            <p className="whitespace-pre-line">{problem.explanationMd}</p>
           </div>
-        ) : null}
-      </CardContent>
-    </Card>
+        );
+      })}
+      {problem.explanationMd ? (
+        <div className="border-border border-t pt-2 text-xs">
+          <p className="text-muted-foreground mb-1 font-mono font-semibold tracking-[0.06em] uppercase">
+            종합 해설
+          </p>
+          <p className="whitespace-pre-line">{problem.explanationMd}</p>
+        </div>
+      ) : null}
+    </div>
   );
 }

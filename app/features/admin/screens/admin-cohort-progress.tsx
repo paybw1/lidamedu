@@ -36,8 +36,8 @@ import {
 import type { Route } from "./+types/admin-cohort-progress";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.cohort) return [{ title: "반 진도 | Lidam Edu" }];
-  return [{ title: `${d.cohort.name} 진도 | Lidam Edu` }];
+  if (!d || !d.cohort) return [{ title: "반 진도 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.cohort.name} 진도 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

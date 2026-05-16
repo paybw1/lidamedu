@@ -48,10 +48,10 @@ import { getProblemById } from "~/features/problems/queries.server";
 import type { Route } from "./+types/admin-problem-edit";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "문제 편집 | Lidam Edu" }];
+  if (!loaderData) return [{ title: "문제 편집 | Lidam Patent Attorney Academy" }];
   return [
     {
-      title: `문제 #${loaderData.problem.problemNumber ?? "?"} 편집 | Lidam Edu`,
+      title: `문제 #${loaderData.problem.problemNumber ?? "?"} 편집 | Lidam Patent Attorney Academy`,
     },
   ];
 };

@@ -23,8 +23,9 @@ import {
   SCOPE_LABEL,
 } from "~/features/problems/labels";
 import {
+  FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
-  LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-problem-new";
@@ -35,7 +36,7 @@ function lawCodeToPackScope(slug: string): string {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "문제 신규 출제 | Lidam Edu" },
+  { title: "문제 신규 출제 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -155,11 +156,20 @@ export default function AdminProblemNew({
                 required
                 className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
               >
-                {LAW_SUBJECT_SLUGS.map((s) => (
-                  <option key={s} value={s}>
-                    {LAW_SUBJECTS[s].name}
-                  </option>
-                ))}
+                <optgroup label="1차 · 객관식">
+                  {FIRST_EXAM_LAW_SLUGS.map((s) => (
+                    <option key={s} value={s}>
+                      {LAW_SUBJECTS[s].name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="2차 · 주관식">
+                  {SECOND_EXAM_LAW_SLUGS.map((s) => (
+                    <option key={s} value={s}>
+                      {LAW_SUBJECTS[s].name}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </Field>
             <Field label="시험 차수" required>

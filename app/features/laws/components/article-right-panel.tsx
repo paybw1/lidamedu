@@ -28,6 +28,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "~/core/components/ui/tabs";
+import { cn } from "~/core/lib/utils";
 import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
 import { HighlightList } from "~/features/annotations/components/highlight-list";
 import { MemoList } from "~/features/annotations/components/memo-list";
@@ -57,44 +58,110 @@ import type {
 import type { RelatedCase } from "~/features/relations/labels";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
-interface PanelTab {
-  value: string;
+type TabKey =
+  | "bookmark"
+  | "memo"
+  | "highlight"
+  | "cases"
+  | "related-problems"
+  | "qna"
+  | "revisions"
+  | "ox"
+  | "comment"
+  | "materials";
+
+interface PanelTabMeta {
   label: string;
-  icon: ComponentType<{ className?: string }>;
+  Icon: ComponentType<{ className?: string }>;
+}
+
+const TAB_META: Record<TabKey, PanelTabMeta> = {
+  bookmark: { label: "즐겨찾기", Icon: HeartIcon },
+  memo: { label: "메모", Icon: NotebookPenIcon },
+  highlight: { label: "하이라이트", Icon: HighlighterIcon },
+  cases: { label: "판례", Icon: GavelIcon },
+  "related-problems": { label: "유사 문제", Icon: ListChecksIcon },
+  qna: { label: "Q&A", Icon: MessageCircleQuestionIcon },
+  revisions: { label: "개정이력", Icon: HistoryIcon },
+  ox: { label: "정오문제", Icon: CheckSquareIcon },
+  comment: { label: "코멘트", Icon: ScrollTextIcon },
+  materials: { label: "관련자료", Icon: PaperclipIcon },
+};
+
+interface PlaceholderTab {
+  value: TabKey;
   featId: string;
   hint: string;
 }
 
-const PLACEHOLDER_TABS: PanelTab[] = [
+const PLACEHOLDER_TABS: PlaceholderTab[] = [
   {
     value: "ox",
-    label: "정오문제",
-    icon: CheckSquareIcon,
     featId: "feat-4-A-114",
     hint: "이 조문이 출제된 객관식 지문(O/X) 자동 연동 + 별도 업로드 정오문제. 답 체크 시 정답·해설 즉시 공개.",
   },
   {
     value: "materials",
-    label: "관련자료",
-    icon: PaperclipIcon,
     featId: "feat-4-A-107",
     hint: "강의노트(PDF/MD) · 강의영상(외부 임베드).",
   },
   {
     value: "comment",
-    label: "코멘트",
-    icon: ScrollTextIcon,
     featId: "feat-4-A-115",
     hint: "강사·운영자가 작성한 평석/학습자료. 마크다운 + 하이라이트.",
   },
 ];
 
-// annotation_target_type → qna_target_type 매핑. problem_choice 는 부모 problem 으로.
+// annotation_target_type → qna_target_type 매핑.
 function toQnaTargetType(t: AnnotationTargetType): QnaTargetType | null {
   if (t === "article") return "article";
   if (t === "case") return "case";
   if (t === "problem") return "problem";
-  return null; // problem_choice 등은 Q&A 미지원
+  return null;
+}
+
+// 좌측 레일 버튼 — 아이콘 only + 카운트 dot + native title tooltip.
+function RailButton({
+  value,
+  count,
+  dim,
+}: {
+  value: TabKey;
+  /** 0 또는 undefined = dot 표시 안 함, >0 = 노란 dot. bookmark 같이 카운트 의미가 없는 탭은 0/1 로 표현. */
+  count?: number;
+  /** 빈 상태일 때 옅게. */
+  dim?: boolean;
+}) {
+  const meta = TAB_META[value];
+  const Icon = meta.Icon;
+  const hasContent = count !== undefined && count > 0;
+  const tooltip =
+    count !== undefined && count > 0
+      ? `${meta.label} (${count})`
+      : meta.label;
+  return (
+    <TabsTrigger
+      value={value}
+      title={tooltip}
+      aria-label={tooltip}
+      className={cn(
+        "relative h-9 w-9 flex-none rounded-md p-0 text-muted-foreground",
+        "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
+        "data-[state=active]:shadow-[0_4px_12px_rgba(45,91,168,0.24)]",
+        "transition-colors hover:bg-muted hover:text-foreground",
+        dim && "opacity-40",
+      )}
+    >
+      <Icon className="size-4" />
+      {hasContent ? (
+        <span
+          aria-hidden
+          className="absolute top-1 right-1 size-1.5 rounded-full bg-amber-500 ring-1 ring-white"
+        />
+      ) : null}
+      <span className="sr-only">{tooltip}</span>
+    </TabsTrigger>
+  );
 }
 
 export function ArticleRightPanel({
@@ -124,7 +191,6 @@ export function ArticleRightPanel({
   relatedProblems?: RelatedProblemItem[];
   // article-viewer 에서 이 조문에 연결된 OX 가능 지문 풀이용. undefined 면 placeholder 유지.
   oxQuestions?: OxQuestionItem[];
-  // 각 OX refId 별 메모/즐겨찾기 — 정답 확인 후 패널 안에서 저장 가능.
   oxAnnotationsByRef?: Record<string, OxRefAnnotations>;
   // 통합 코멘트(feat-8-021) — 다중 코멘트. undefined = 탭 자체 비활성 (placeholder 유지).
   comments?: ContentComment[];
@@ -140,13 +206,16 @@ export function ArticleRightPanel({
   const showRelatedProblems = relatedProblems !== undefined;
   const showOxLive = oxQuestions !== undefined && subjectSlug !== undefined;
   const commentTargetType: "article" | "case" | "problem" | null =
-    target.type === "article" || target.type === "case" || target.type === "problem"
+    target.type === "article" ||
+    target.type === "case" ||
+    target.type === "problem"
       ? target.type
       : null;
   const showCommentLive = comments !== undefined && commentTargetType !== null;
   const showRevisions = revisions !== undefined;
-  // 본문 selection → "메모" 버튼 클릭 시 자동으로 memo 탭 활성화. (snippet 자동 fill 은 MemoList 가 처리)
-  const [activeTab, setActiveTab] = useState("bookmark");
+
+  const [activeTab, setActiveTab] = useState<TabKey>("bookmark");
+  // 본문 selection → "메모" 버튼 클릭 시 자동으로 memo 탭 활성화.
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<MemoSnippetEventDetail>).detail;
@@ -170,213 +239,215 @@ export function ArticleRightPanel({
     document.addEventListener(OPEN_COMMENT_TAB_EVENT, handler);
     return () => document.removeEventListener(OPEN_COMMENT_TAB_EVENT, handler);
   }, [target.type, target.id]);
+
+  const placeholderTabs = PLACEHOLDER_TABS.filter(
+    (t) =>
+      !(t.value === "ox" && showOxLive) &&
+      !(t.value === "comment" && showCommentLive),
+  );
+
+  // 활성 탭의 우측 헤더 카운트 라벨.
+  const countLabel: string = (() => {
+    switch (activeTab) {
+      case "bookmark":
+        return bookmark ? "저장됨" : "";
+      case "memo":
+        return memos.length > 0 ? `${memos.length} 건` : "";
+      case "highlight":
+        return highlights.length > 0 ? `${highlights.length} 건` : "";
+      case "cases":
+        return relatedCases && relatedCases.length > 0
+          ? `${relatedCases.length} 건`
+          : "";
+      case "related-problems":
+        return relatedProblems && relatedProblems.length > 0
+          ? `${relatedProblems.length} 건`
+          : "";
+      case "qna":
+        return qnaThreads.length > 0 ? `${qnaThreads.length} 건` : "";
+      case "revisions":
+        return revisions && revisions.length > 0
+          ? `${revisions.length} 건`
+          : "";
+      case "ox":
+        return oxQuestions && oxQuestions.length > 0
+          ? `${oxQuestions.length} 건`
+          : "";
+      case "comment":
+        return comments && comments.length > 0 ? `${comments.length} 건` : "";
+      default:
+        return "";
+    }
+  })();
+
+  const activeMeta = TAB_META[activeTab];
+  const ActiveIcon = activeMeta.Icon;
+
   return (
-    <div className="flex h-full flex-col">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full gap-3">
-        <TabsList className="h-auto flex-wrap gap-1">
-          <TabsTrigger value="bookmark" className="h-7 flex-none px-2.5 text-xs">
-            <HeartIcon /> 즐겨찾기
-          </TabsTrigger>
-          <TabsTrigger value="memo" className="h-7 flex-none px-2.5 text-xs">
-            <NotebookPenIcon /> 메모
-            {memos.length > 0 ? (
-              <span className="text-muted-foreground ml-1 tabular-nums">
-                {memos.length}
-              </span>
-            ) : null}
-          </TabsTrigger>
-          <TabsTrigger
-            value="highlight"
-            className="h-7 flex-none px-2.5 text-xs"
-          >
-            <HighlighterIcon /> 하이라이트
-            {highlights.length > 0 ? (
-              <span className="text-muted-foreground ml-1 tabular-nums">
-                {highlights.length}
-              </span>
-            ) : null}
-          </TabsTrigger>
+    <div className="flex h-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as TabKey)}
+        orientation="vertical"
+        className="flex h-full w-full flex-row gap-0"
+      >
+        <TabsList
+          className={cn(
+            "flex h-auto w-11 flex-none flex-col items-stretch gap-1 rounded-md rounded-r-none p-1.5",
+            "border-r bg-muted/40",
+          )}
+        >
+          <RailButton value="bookmark" count={bookmark ? 1 : 0} />
+          <RailButton value="memo" count={memos.length} />
+          <RailButton value="highlight" count={highlights.length} />
           {showCases ? (
-            <TabsTrigger value="cases" className="h-7 flex-none px-2.5 text-xs">
-              <GavelIcon /> 판례
-              {relatedCases.length > 0 ? (
-                <span className="text-muted-foreground ml-1 tabular-nums">
-                  {relatedCases.length}
-                </span>
-              ) : null}
-            </TabsTrigger>
+            <RailButton value="cases" count={relatedCases.length} />
           ) : null}
           {showRelatedProblems ? (
-            <TabsTrigger
+            <RailButton
               value="related-problems"
-              className="h-7 flex-none px-2.5 text-xs"
-            >
-              <ListChecksIcon /> 유사 문제
-              {relatedProblems.length > 0 ? (
-                <span className="text-muted-foreground ml-1 tabular-nums">
-                  {relatedProblems.length}
-                </span>
-              ) : null}
-            </TabsTrigger>
+              count={relatedProblems.length}
+            />
           ) : null}
           {qnaTargetType ? (
-            <TabsTrigger value="qna" className="h-7 flex-none px-2.5 text-xs">
-              <MessageCircleQuestionIcon /> Q&A
-              {qnaThreads.length > 0 ? (
-                <span className="text-muted-foreground ml-1 tabular-nums">
-                  {qnaThreads.length}
-                </span>
-              ) : null}
-            </TabsTrigger>
+            <RailButton
+              value="qna"
+              count={qnaThreads.length}
+              dim={qnaThreads.length === 0}
+            />
           ) : null}
           {showRevisions ? (
-            <TabsTrigger
-              value="revisions"
-              className="h-7 flex-none px-2.5 text-xs"
-            >
-              <HistoryIcon /> 개정이력
-              {revisions.length > 0 ? (
-                <span className="text-muted-foreground ml-1 tabular-nums">
-                  {revisions.length}
-                </span>
-              ) : null}
-            </TabsTrigger>
+            <RailButton value="revisions" count={revisions.length} />
           ) : null}
           {showOxLive ? (
-            <TabsTrigger value="ox" className="h-7 flex-none px-2.5 text-xs">
-              <CheckSquareIcon /> 정오문제
-              {oxQuestions.length > 0 ? (
-                <span className="text-muted-foreground ml-1 tabular-nums">
-                  {oxQuestions.length}
-                </span>
-              ) : null}
-            </TabsTrigger>
+            <RailButton
+              value="ox"
+              count={oxQuestions.length}
+              dim={oxQuestions.length === 0}
+            />
           ) : null}
           {showCommentLive ? (
-            <TabsTrigger
+            <RailButton
               value="comment"
-              className="h-7 flex-none px-2.5 text-xs"
-            >
-              <ScrollTextIcon /> 코멘트
-              {comments && comments.length > 0 ? (
-                <span className="text-muted-foreground ml-1 tabular-nums">
-                  {comments.length}
-                </span>
-              ) : null}
-            </TabsTrigger>
+              count={comments?.length ?? 0}
+              dim={(comments?.length ?? 0) === 0}
+            />
           ) : null}
-          {PLACEHOLDER_TABS.filter(
-            (t) =>
-              !(t.value === "ox" && showOxLive) &&
-              !(t.value === "comment" && showCommentLive),
-          ).map((t) => {
-            const Icon = t.icon;
-            return (
-              <TabsTrigger
-                key={t.value}
-                value={t.value}
-                className="h-7 flex-none px-2.5 text-xs"
-              >
-                <Icon /> {t.label}
-              </TabsTrigger>
-            );
-          })}
+          {placeholderTabs.map((t) => (
+            <RailButton key={t.value} value={t.value} dim />
+          ))}
         </TabsList>
 
-        <TabsContent value="bookmark">
-          <BookmarkStars
-            targetType={target.type}
-            targetId={target.id}
-            initial={bookmark}
-          />
-        </TabsContent>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-2 border-b px-3 py-2">
+            <ActiveIcon className="size-4 text-primary" />
+            <h3 className="text-sm font-bold tracking-tight">
+              {activeMeta.label}
+            </h3>
+            {countLabel ? (
+              <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                {countLabel}
+              </span>
+            ) : null}
+          </div>
 
-        <TabsContent value="memo">
-          <MemoList
-            targetType={target.type}
-            targetId={target.id}
-            initial={memos}
-          />
-        </TabsContent>
+          <div className="flex-1 overflow-y-auto p-3">
+            <TabsContent value="bookmark" className="mt-0">
+              <BookmarkStars
+                targetType={target.type}
+                targetId={target.id}
+                initial={bookmark}
+              />
+            </TabsContent>
 
-        <TabsContent value="highlight">
-          <HighlightList
-            targetType={target.type}
-            targetId={target.id}
-            initial={highlights}
-          />
-        </TabsContent>
+            <TabsContent value="memo" className="mt-0">
+              <MemoList
+                targetType={target.type}
+                targetId={target.id}
+                initial={memos}
+              />
+            </TabsContent>
 
-        {showCases ? (
-          <TabsContent value="cases">
-            <RelatedCasesList cases={relatedCases} subject={subjectSlug} />
-          </TabsContent>
-        ) : null}
+            <TabsContent value="highlight" className="mt-0">
+              <HighlightList
+                targetType={target.type}
+                targetId={target.id}
+                initial={highlights}
+              />
+            </TabsContent>
 
-        {showRelatedProblems ? (
-          <TabsContent value="related-problems">
-            <RelatedProblemsList items={relatedProblems} />
-          </TabsContent>
-        ) : null}
+            {showCases ? (
+              <TabsContent value="cases" className="mt-0">
+                <RelatedCasesList cases={relatedCases} subject={subjectSlug} />
+              </TabsContent>
+            ) : null}
 
-        {qnaTargetType ? (
-          <TabsContent value="qna">
-            <QnaPanel
-              threads={qnaThreads}
-              targetType={qnaTargetType}
-              targetId={target.id}
-            />
-          </TabsContent>
-        ) : null}
+            {showRelatedProblems ? (
+              <TabsContent value="related-problems" className="mt-0">
+                <RelatedProblemsList items={relatedProblems} />
+              </TabsContent>
+            ) : null}
 
-        {showRevisions ? (
-          <TabsContent value="revisions">
-            <RevisionHistory revisions={revisions} />
-          </TabsContent>
-        ) : null}
+            {qnaTargetType ? (
+              <TabsContent value="qna" className="mt-0">
+                <QnaPanel
+                  threads={qnaThreads}
+                  targetType={qnaTargetType}
+                  targetId={target.id}
+                />
+              </TabsContent>
+            ) : null}
 
-        {showOxLive ? (
-          <TabsContent value="ox">
-            <OxQuestionsPanel
-              items={oxQuestions}
-              subject={subjectSlug}
-              annotationsByRef={oxAnnotationsByRef}
-            />
-          </TabsContent>
-        ) : null}
+            {showRevisions ? (
+              <TabsContent value="revisions" className="mt-0">
+                <RevisionHistory revisions={revisions} />
+              </TabsContent>
+            ) : null}
 
-        {showCommentLive && commentTargetType ? (
-          <TabsContent value="comment">
-            <CommentsPanel
-              targetType={commentTargetType}
-              targetId={target.id}
-              comments={comments ?? []}
-              isStaff={canEditComment}
-              currentUserId={currentUserId}
-              isAdmin={isAdmin}
-            />
-          </TabsContent>
-        ) : null}
+            {showOxLive ? (
+              <TabsContent value="ox" className="mt-0">
+                <OxQuestionsPanel
+                  items={oxQuestions}
+                  subject={subjectSlug}
+                  annotationsByRef={oxAnnotationsByRef}
+                />
+              </TabsContent>
+            ) : null}
 
-        {PLACEHOLDER_TABS.filter(
-          (t) =>
-            !(t.value === "ox" && showOxLive) &&
-            !(t.value === "comment" && showCommentLive),
-        ).map((t) => (
-          <TabsContent key={t.value} value={t.value} className="space-y-2">
-            <Badge variant="outline" className="font-normal">
-              {t.featId}
-            </Badge>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {t.hint}
-            </p>
-            <div className="bg-muted/40 rounded-md border border-dashed p-4">
-              <p className="text-muted-foreground text-center text-xs">
-                구현 대기
-              </p>
-            </div>
-          </TabsContent>
-        ))}
+            {showCommentLive && commentTargetType ? (
+              <TabsContent value="comment" className="mt-0">
+                <CommentsPanel
+                  targetType={commentTargetType}
+                  targetId={target.id}
+                  comments={comments ?? []}
+                  isStaff={canEditComment}
+                  currentUserId={currentUserId}
+                  isAdmin={isAdmin}
+                />
+              </TabsContent>
+            ) : null}
+
+            {placeholderTabs.map((t) => (
+              <TabsContent
+                key={t.value}
+                value={t.value}
+                className="mt-0 space-y-2"
+              >
+                <Badge variant="outline" className="font-normal">
+                  {t.featId}
+                </Badge>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {t.hint}
+                </p>
+                <div className="bg-muted/40 rounded-md border border-dashed p-4">
+                  <p className="text-muted-foreground text-center text-xs">
+                    구현 대기
+                  </p>
+                </div>
+              </TabsContent>
+            ))}
+          </div>
+        </div>
       </Tabs>
     </div>
   );

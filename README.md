@@ -1,8 +1,8 @@
-# Lidam Edu
+# Lidam Patent Attorney Academy
 
 ## Overview
 
-Lidam Edu is a production-ready, full-stack web application template built with React Router, Supabase, and Drizzle ORM. It provides a solid foundation for building modern web applications with authentication, payments, internationalization, and more.
+Lidam Patent Attorney Academy is a production-ready, full-stack web application template built with React Router, Supabase, and Drizzle ORM. It provides a solid foundation for building modern web applications with authentication, payments, internationalization, and more.
 
 ## Getting Started
 

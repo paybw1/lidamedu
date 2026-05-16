@@ -24,7 +24,7 @@ import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import type { Route } from "./+types/admin-blanks-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "빈칸 자료 관리 | Lidam Edu" },
+  { title: "빈칸 자료 관리 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

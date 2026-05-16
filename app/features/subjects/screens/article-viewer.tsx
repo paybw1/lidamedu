@@ -1,11 +1,12 @@
 import {
-  ArrowLeftIcon,
   BrainIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockIcon,
   EyeIcon,
   EyeOffIcon,
   FileEditIcon,
+  HistoryIcon,
   ListTreeIcon,
   PanelRightIcon,
   PencilIcon,
@@ -91,10 +92,10 @@ import {
 import type { Route } from "./+types/article-viewer";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "조문 | Lidam Edu" }];
+  if (!loaderData) return [{ title: "조문 | Lidam Patent Attorney Academy" }];
   return [
     {
-      title: `${loaderData.subject.name} ${loaderData.article.displayLabel} | Lidam Edu`,
+      title: `${loaderData.subject.name} ${loaderData.article.displayLabel} | Lidam Patent Attorney Academy`,
     },
   ];
 };
@@ -371,8 +372,23 @@ function ArticleViewerInner({
   const blankSetFetcher = useFetcher();
   const blankSetSubmitting = blankSetFetcher.state !== "idle";
 
+  // Derive current active mode label for toolbar
+  const activeMode = editMode
+    ? "edit"
+    : blankMode
+    ? "cloze"
+    : subjectBlankMode
+    ? "subject"
+    : periodBlankMode
+    ? "period"
+    : recitationMode
+    ? "memorize"
+    : subtitlesOnly
+    ? "outline"
+    : "normal";
+
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+    <div className="flex min-h-[calc(100vh-56px)] flex-col bg-background">
       {article.articleNumber ? (
         <FlowNav
           subjectSlug={subject.slug}
@@ -385,349 +401,387 @@ function ArticleViewerInner({
         targetId={article.articleId}
       />
 
+      {/* 시점/비교 배너 — amber tone */}
       {atDate || compareDate ? (
-        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50/40 dark:border-amber-700/40 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center gap-2">
-          <span>
-            {compareDate ? <strong>시점 비교 모드</strong> : <strong>시점 조회 모드</strong>}
-            {atDate ? ` · 기준 ${atDate}` : null}
-            {compareDate ? ` · 비교 ${compareDate}` : null}
-          </span>
-          <a
-            href={
-              typeof window !== "undefined"
-                ? window.location.pathname
-                : "."
-            }
-            className="text-primary ml-auto hover:underline"
-          >
-            현재 시점으로 돌아가기 →
-          </a>
+        <div className="border-b border-amber-200 bg-amber-50/60 px-4 py-2 dark:border-amber-700/40 dark:bg-amber-950/20">
+          <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-2 text-xs text-amber-900 dark:text-amber-200">
+            <span>
+              {compareDate ? <strong>시점 비교 모드</strong> : <strong>시점 조회 모드</strong>}
+              {atDate ? ` · 기준 ${atDate}` : null}
+              {compareDate ? ` · 비교 ${compareDate}` : null}
+            </span>
+            <a
+              href={
+                typeof window !== "undefined"
+                  ? window.location.pathname
+                  : "."
+              }
+              className="ml-auto text-primary hover:underline"
+            >
+              현재 시점으로 돌아가기 →
+            </a>
+          </div>
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-          <Card className="py-4">
-            <CardHeader className="px-4 pb-3">
-              <div className="flex items-center justify-end gap-2">
+      {/* 3-pane shell: left tree | body | right panel */}
+      <div className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-5 md:px-8 md:py-7">
+        <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
+
+          {/* ── LEFT TREE (desktop sticky) ─────────────────────────────── */}
+          <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <div className="rounded-xl border border-border bg-card shadow-sm">
+              <div className="flex items-center justify-end gap-2 border-b border-border px-3 py-2.5">
                 <SortAxisToggle
                   size="sm"
                   disabledAxes={systematicEmpty ? ["systematic"] : undefined}
                 />
               </div>
-            </CardHeader>
-            <CardContent className="px-2 pb-2">
-              {renderSystematic ? (
-                <SystematicTree
-                  nodes={systematicNodes}
-                  activeArticleId={article.articleId}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                />
-              ) : (
-                <ArticleTree
-                  nodes={articles}
-                  activeArticleId={article.articleId}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                  lazyExpand={
-                    subject.slug === "civil" ? { lawId } : undefined
-                  }
-                />
-              )}
-              {axis === "systematic" && systematicEmpty ? (
-                <p className="text-muted-foreground mt-2 px-2 text-xs">
-                  * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
-        </aside>
-
-        <main className="space-y-4">
-          {/* 모바일 드로어 트리거 — 본문이 첫 화면. */}
-          <div className="flex flex-wrap gap-2 lg:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  data-testid="open-tree-drawer"
-                >
-                  <ListTreeIcon className="size-3.5" /> 조문 트리
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
-                <SheetHeader>
-                  <SheetTitle>조문 트리</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-3 px-3 pb-4">
-                  <div className="flex justify-end">
-                    <SortAxisToggle
-                      size="sm"
-                      disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-                    />
-                  </div>
-                  {renderSystematic ? (
-                    <SystematicTree
-                      nodes={systematicNodes}
-                      activeArticleId={article.articleId}
-                      lawCode={subject.slug}
-                      bookmarkLevels={bookmarkLevels}
-                      annotationCounts={annotationCounts}
-                    />
-                  ) : (
-                    <ArticleTree
-                      nodes={articles}
-                      activeArticleId={article.articleId}
-                      lawCode={subject.slug}
-                      bookmarkLevels={bookmarkLevels}
-                      annotationCounts={annotationCounts}
-                      lazyExpand={
-                        subject.slug === "civil" ? { lawId } : undefined
-                      }
-                    />
-                  )}
-                  {axis === "systematic" && systematicEmpty ? (
-                    <p className="text-muted-foreground mt-2 px-2 text-xs">
-                      * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
-                    </p>
-                  ) : null}
-                </div>
-              </SheetContent>
-            </Sheet>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  data-testid="open-right-drawer"
-                >
-                  <PanelRightIcon className="size-3.5" /> 우측 패널
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
-                <SheetHeader>
-                  <SheetTitle>학습 보조</SheetTitle>
-                </SheetHeader>
-                <div className="px-3 pb-4">
-                  <ArticleRightPanel
-                    target={{ type: "article", id: article.articleId }}
-                    bookmark={bookmark}
-                    memos={memos}
-                    highlights={highlights}
-                    qnaThreads={qnaThreads}
-                    relatedCases={relatedCases}
-                    oxQuestions={oxQuestions}
-                    oxAnnotationsByRef={oxAnnotationsByRef}
-                    comments={articleComments}
-                    canEditComment={staffRole !== null}
-                    subjectSlug={subject.slug}
-                    revisions={revisions ?? undefined}
+              <div className="px-1.5 py-2">
+                {renderSystematic ? (
+                  <SystematicTree
+                    nodes={systematicNodes}
+                    activeArticleId={article.articleId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
                   />
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h1 className="text-2xl font-bold tracking-tight">
-                  {article.displayLabel}
-                </h1>
-                <div className="flex items-center gap-1">
-                  <PrevNextButton
-                    direction="prev"
-                    target={prev}
-                    subjectSlug={subject.slug}
+                ) : (
+                  <ArticleTree
+                    nodes={articles}
+                    activeArticleId={article.articleId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                    lazyExpand={
+                      subject.slug === "civil" ? { lawId } : undefined
+                    }
                   />
-                  <PrevNextButton
-                    direction="next"
-                    target={next}
-                    subjectSlug={subject.slug}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{EXAM_LABEL[subject.exam]}</Badge>
-                {article.importance >= 1 ? (
-                  <Badge
-                    variant={article.importance >= 3 ? "default" : "outline"}
-                    className="gap-1 text-amber-600 dark:text-amber-400"
-                  >
-                    <span className="tracking-tight">
-                      {"★".repeat(Math.min(3, article.importance))}
-                    </span>
-                  </Badge>
+                )}
+                {axis === "systematic" && systematicEmpty ? (
+                  <p className="mt-2 px-2 text-xs text-muted-foreground">
+                    * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
+                  </p>
                 ) : null}
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-muted-foreground text-xs">
-                  {subject.name} ·{" "}
+            </div>
+          </aside>
+
+          {/* ── MAIN BODY ───────────────────────────────────────────────── */}
+          <main className="min-w-0 space-y-4">
+            {/* Mobile drawer triggers */}
+            <div className="flex flex-wrap gap-2 lg:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 rounded-full text-xs"
+                    data-testid="open-tree-drawer"
+                  >
+                    <ListTreeIcon className="size-3.5" /> 조문 트리
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
+                  <SheetHeader>
+                    <SheetTitle>조문 트리</SheetTitle>
+                  </SheetHeader>
+                  <div className="space-y-3 px-3 pb-4">
+                    <div className="flex justify-end">
+                      <SortAxisToggle
+                        size="sm"
+                        disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                      />
+                    </div>
+                    {renderSystematic ? (
+                      <SystematicTree
+                        nodes={systematicNodes}
+                        activeArticleId={article.articleId}
+                        lawCode={subject.slug}
+                        bookmarkLevels={bookmarkLevels}
+                        annotationCounts={annotationCounts}
+                      />
+                    ) : (
+                      <ArticleTree
+                        nodes={articles}
+                        activeArticleId={article.articleId}
+                        lawCode={subject.slug}
+                        bookmarkLevels={bookmarkLevels}
+                        annotationCounts={annotationCounts}
+                        lazyExpand={
+                          subject.slug === "civil" ? { lawId } : undefined
+                        }
+                      />
+                    )}
+                    {axis === "systematic" && systematicEmpty ? (
+                      <p className="mt-2 px-2 text-xs text-muted-foreground">
+                        * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
+                      </p>
+                    ) : null}
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 rounded-full text-xs"
+                    data-testid="open-right-drawer"
+                  >
+                    <PanelRightIcon className="size-3.5" /> 우측 패널
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
+                  <SheetHeader>
+                    <SheetTitle>학습 보조</SheetTitle>
+                  </SheetHeader>
+                  <div className="px-3 pb-4">
+                    <ArticleRightPanel
+                      target={{ type: "article", id: article.articleId }}
+                      bookmark={bookmark}
+                      memos={memos}
+                      highlights={highlights}
+                      qnaThreads={qnaThreads}
+                      relatedCases={relatedCases}
+                      oxQuestions={oxQuestions}
+                      oxAnnotationsByRef={oxAnnotationsByRef}
+                      comments={articleComments}
+                      canEditComment={staffRole !== null}
+                      subjectSlug={subject.slug}
+                      revisions={revisions ?? undefined}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* ── Article header card ───────────────────────────────────── */}
+            <div className="rounded-xl border border-border bg-card shadow-sm">
+              <div className="px-6 pt-5 pb-4">
+
+                {/* Breadcrumb eyebrow */}
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {subject.name}
                   {article.articleNumber
-                    ? articleDisplayPrefix(article.articleNumber)
+                    ? ` · ${articleDisplayPrefix(article.articleNumber)}`
                     : ""}
                 </p>
-                <div className="flex flex-wrap items-center gap-1">
-                  {canEdit ? (
-                    <Button
-                      variant={editMode ? "default" : "outline"}
-                      size="sm"
+
+                {/* Title row: big article number + prev/next */}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    {/* Law name chip + exam badge + importance stars */}
+                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                        {subject.name}
+                      </span>
+                      <Badge variant="secondary" className="rounded-full text-[11px]">
+                        {EXAM_LABEL[subject.exam]}
+                      </Badge>
+                      {article.importance >= 1 ? (
+                        <span className="inline-flex items-center gap-0.5">
+                          {Array.from({ length: Math.min(3, article.importance) }).map((_, i) => (
+                            <svg
+                              key={i}
+                              width="13"
+                              height="13"
+                              viewBox="0 0 24 24"
+                              fill="#F7B500"
+                              stroke="#F7B500"
+                              strokeWidth={1.6}
+                              aria-hidden="true"
+                            >
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+                            </svg>
+                          ))}
+                          {Array.from({ length: Math.max(0, 3 - article.importance) }).map((_, i) => (
+                            <svg
+                              key={`e-${i}`}
+                              width="13"
+                              height="13"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="#F7B500"
+                              strokeWidth={1.6}
+                              aria-hidden="true"
+                            >
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+                            </svg>
+                          ))}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Article headline */}
+                    <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-foreground md:text-[30px]">
+                      <span className="text-primary">{article.displayLabel.split(/\s+/)[0]}</span>
+                      {" "}
+                      <span>{article.displayLabel.split(/\s+/).slice(1).join(" ")}</span>
+                    </h1>
+
+                    {/* Sub-line: effective date + snapshot */}
+                    {article.effectiveDate ? (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                        <ClockIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                        시행 {article.effectiveDate}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {/* Prev / Next buttons */}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <PrevNextButton
+                      direction="prev"
+                      target={prev}
+                      subjectSlug={subject.slug}
+                    />
+                    <PrevNextButton
+                      direction="next"
+                      target={next}
+                      subjectSlug={subject.slug}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Snapshot / revision banner ─────────────────────────── */}
+              {article.effectiveDate && !atDate && !compareDate ? (
+                <div className="mx-6 mb-4 flex items-center gap-2.5 rounded-lg border border-primary/15 bg-primary/10 px-3.5 py-2.5 text-xs text-primary">
+                  <HistoryIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>
+                    <strong>최신 시행 ({article.effectiveDate})</strong>
+                    {" · "}현재 시행 중인 개정 스냅샷입니다.
+                  </span>
+                  <Link
+                    to="?at=prev"
+                    className="ml-auto shrink-0 font-semibold underline underline-offset-2"
+                  >
+                    이전 시점 보기 →
+                  </Link>
+                </div>
+              ) : null}
+
+              {/* ── Mode toolbar ───────────────────────────────────────── */}
+              <div className="mx-6 mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5">
+                {/* Pill-group segmented control */}
+                <div className="inline-flex items-center gap-0.5 rounded-full border border-border bg-background p-1">
+                  <ModeButton
+                    active={activeMode === "normal"}
+                    onClick={() => {
+                      setBlankMode(false);
+                      setSubjectBlankMode(false);
+                      setPeriodBlankMode(false);
+                      setRecitationMode(false);
+                      setSubtitlesOnly(false);
+                      setEditMode(false);
+                    }}
+                    disabled={false}
+                  >
+                    본문
+                  </ModeButton>
+                  {blankAvailable ? (
+                    <ModeButton
+                      active={activeMode === "cloze"}
                       onClick={() => {
-                        setEditMode((v) => !v);
-                        if (!editMode) {
-                          setBlankMode(false);
+                        setBlankMode((v) => !v);
+                        if (!blankMode) {
+                          setSubjectBlankMode(false);
+                          setPeriodBlankMode(false);
+                          setRecitationMode(false);
                           setSubtitlesOnly(false);
+                          setEditMode(false);
                         }
                       }}
-                      className="h-7 gap-1 text-xs"
-                      title={`${staffRole === "admin" ? "원장" : "강사"} 권한 — 새 개정으로 저장`}
+                      disabled={editMode}
                     >
-                      {editMode ? (
-                        <XIcon className="size-3.5" />
-                      ) : (
-                        <PencilIcon className="size-3.5" />
-                      )}
-                      {editMode ? "편집 종료" : "편집"}
-                    </Button>
-                  ) : null}
-                  {canEdit ? (
-                    <blankSetFetcher.Form
-                      method="post"
-                      action="/api/blanks/admin-create-set"
-                    >
-                      <input
-                        type="hidden"
-                        name="articleId"
-                        value={article.articleId}
-                      />
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        size="sm"
-                        disabled={blankSetSubmitting}
-                        className="h-7 gap-1 text-xs"
-                        title={
-                          blankSets.some((s) => s.ownerName !== null)
-                            ? "내 빈칸 자료 편집 (없으면 자동 생성)"
-                            : "빈칸 자료 만들기 / 편집"
-                        }
-                      >
-                        <FileEditIcon className="size-3.5" />
-                        빈칸 자료
-                      </Button>
-                    </blankSetFetcher.Form>
-                  ) : null}
-                  {blankAvailable ? (
-                    <>
-                      <Button
-                        variant={blankMode ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setBlankMode((v) => !v);
-                          if (!blankMode) {
-                            setSubjectBlankMode(false);
-                            setPeriodBlankMode(false);
-                            setRecitationMode(false);
-                          }
-                        }}
-                        disabled={editMode}
-                        className="h-7 gap-1 text-xs"
-                      >
-                        <PencilLineIcon className="size-3.5" />
-                        내용 빈칸 모드
-                        <span className="text-muted-foreground ml-0.5 tabular-nums">
-                          {blankSet!.blanks.length}
-                        </span>
-                      </Button>
-                      {blankMode && blankSets.length > 1 ? (
-                        <BlankOwnerSelector
-                          options={blankSets}
-                          currentSetId={blankSet!.setId}
-                        />
-                      ) : null}
-                    </>
+                      <PencilLineIcon className="size-3" aria-hidden="true" />
+                      내용 빈칸
+                      <span className="tabular-nums text-[10px] opacity-70">
+                        {blankSet!.blanks.length}
+                      </span>
+                    </ModeButton>
                   ) : null}
                   {subjectBlankAvailable ? (
-                    <Button
-                      variant={subjectBlankMode ? "default" : "outline"}
-                      size="sm"
+                    <ModeButton
+                      active={activeMode === "subject"}
                       onClick={() => {
                         setSubjectBlankMode((v) => !v);
                         if (!subjectBlankMode) {
                           setBlankMode(false);
                           setPeriodBlankMode(false);
                           setRecitationMode(false);
+                          setSubtitlesOnly(false);
+                          setEditMode(false);
                         }
                       }}
                       disabled={editMode}
-                      className="h-7 gap-1 text-xs"
                     >
-                      <PencilLineIcon className="size-3.5" />
-                      주체 빈칸 모드
-                      <span className="text-muted-foreground ml-0.5 tabular-nums">
+                      <PencilLineIcon className="size-3" aria-hidden="true" />
+                      주체 빈칸
+                      <span className="tabular-nums text-[10px] opacity-70">
                         {subjectBlanks.length}
                       </span>
-                    </Button>
+                    </ModeButton>
                   ) : null}
                   {periodBlankAvailable ? (
-                    <Button
-                      variant={periodBlankMode ? "default" : "outline"}
-                      size="sm"
+                    <ModeButton
+                      active={activeMode === "period"}
                       onClick={() => {
                         setPeriodBlankMode((v) => !v);
                         if (!periodBlankMode) {
                           setBlankMode(false);
                           setSubjectBlankMode(false);
                           setRecitationMode(false);
+                          setSubtitlesOnly(false);
+                          setEditMode(false);
                         }
                       }}
                       disabled={editMode}
-                      className="h-7 gap-1 text-xs"
                     >
-                      <PencilLineIcon className="size-3.5" />
-                      기간 빈칸 모드
-                      <span className="text-muted-foreground ml-0.5 tabular-nums">
+                      <PencilLineIcon className="size-3" aria-hidden="true" />
+                      기간 빈칸
+                      <span className="tabular-nums text-[10px] opacity-70">
                         {periodResult.blanks.length}
                         {periodResult.ambiguous.length > 0
                           ? `+${periodResult.ambiguous.length}?`
                           : ""}
                       </span>
-                    </Button>
+                    </ModeButton>
                   ) : null}
-                  <Button
-                    variant={recitationMode ? "default" : "outline"}
-                    size="sm"
+                  <ModeButton
+                    active={activeMode === "memorize"}
                     onClick={() => {
                       setRecitationMode((v) => !v);
                       if (!recitationMode) {
                         setBlankMode(false);
                         setSubjectBlankMode(false);
                         setPeriodBlankMode(false);
+                        setSubtitlesOnly(false);
+                        setEditMode(false);
                       }
                     }}
                     disabled={editMode}
-                    className="h-7 gap-1 text-xs"
                     title={
                       article.importance >= 2
                         ? "암기 추천 — 별 2개 이상 중요 조문"
                         : "조/항/호/목 골격만 두고 본문을 직접 입력해 암기"
                     }
                   >
-                    <BrainIcon className="size-3.5" />
-                    암기 모드
+                    <BrainIcon className="size-3" aria-hidden="true" />
+                    암기
                     {article.importance >= 2 ? (
-                      <span className="ml-0.5 text-amber-500">★</span>
+                      <span className="text-amber-500">★</span>
                     ) : null}
-                  </Button>
-                  <Button
-                    variant={subtitlesOnly ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSubtitlesOnly((v) => !v)}
+                  </ModeButton>
+                  <ModeButton
+                    active={activeMode === "outline"}
+                    onClick={() => {
+                      setSubtitlesOnly((v) => !v);
+                      if (!subtitlesOnly) {
+                        setEditMode(false);
+                      }
+                    }}
                     disabled={
                       blankMode ||
                       subjectBlankMode ||
@@ -735,39 +789,35 @@ function ArticleViewerInner({
                       recitationMode ||
                       editMode
                     }
-                    className="h-7 gap-1 text-xs"
                   >
                     {subtitlesOnly ? (
-                      <EyeIcon className="size-3.5" />
+                      <EyeIcon className="size-3" aria-hidden="true" />
                     ) : (
-                      <EyeOffIcon className="size-3.5" />
+                      <EyeOffIcon className="size-3" aria-hidden="true" />
                     )}
-                    소제목만 보기
-                  </Button>
+                    소제목만
+                  </ModeButton>
                   {articleComments.length > 0 ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      className="h-7 gap-1 text-xs"
+                    <ModeButton
+                      active={false}
                       onClick={() =>
                         dispatchOpenCommentTab({
                           targetType: "article",
                           targetId: article.articleId,
                         })
                       }
-                      title="강사 평석/해설 — 우측 코멘트 탭 활성"
+                      disabled={false}
                       data-testid="open-article-comment"
                     >
-                      <ScrollTextIcon className="size-3.5" />
-                      해설 보기 ({articleComments.length})
-                    </Button>
+                      <ScrollTextIcon className="size-3" aria-hidden="true" />
+                      해설
+                      <span className="tabular-nums text-[10px] opacity-70">
+                        {articleComments.length}
+                      </span>
+                    </ModeButton>
                   ) : null}
                   {relatedCases.length > 0 && article.articleNumber ? (
-                    <form
-                      method="post"
-                      action="/api/study/start-flow"
-                    >
+                    <form method="post" action="/api/study/start-flow">
                       <input type="hidden" name="subject" value={subject.slug} />
                       <input
                         type="hidden"
@@ -779,89 +829,185 @@ function ArticleViewerInner({
                         name="articleNumber"
                         value={article.articleNumber}
                       />
-                      <Button
-                        type="submit"
-                        variant="default"
-                        size="sm"
-                        className="h-7 gap-1 text-xs"
+                      <ModeButton
+                        active={false}
+                        asSubmit
+                        disabled={false}
                         title="조문 → 관련 판례 → 그 판례를 다룬 문제 순회"
                       >
-                        <WorkflowIcon className="size-3.5" />
+                        <WorkflowIcon className="size-3" aria-hidden="true" />
                         흐름 학습
-                      </Button>
+                      </ModeButton>
                     </form>
                   ) : null}
                 </div>
-              </div>
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-6">
-              {editMode ? (
-                <ArticleEditor
-                  articleId={article.articleId}
-                  initialBodyJson={article.bodyJson}
-                  initialDisplayLabel={article.displayLabel}
-                  initialImportance={article.importance}
-                  lawCode={subject.slug}
-                  titleMap={titleMap}
-                  onCancel={() => setEditMode(false)}
-                />
-              ) : blankMode && blankSet && body ? (
-                <BlankFillView
-                  setId={blankSet.setId}
-                  body={body}
-                  blanks={blankSet.blanks}
-                  titleMap={titleMap}
-                  lawCode={subject.slug}
-                />
-              ) : subjectBlankMode && body ? (
-                <BlankFillView
-                  setId={null}
-                  autoMeta={{
-                    articleId: article.articleId,
-                    blankType: "subject",
-                  }}
-                  body={body}
-                  blanks={subjectBlanks}
-                  titleMap={titleMap}
-                  lawCode={subject.slug}
-                />
-              ) : periodBlankMode && body ? (
-                <div className="space-y-3">
-                  <BlankFillView
-                    setId={null}
-                    autoMeta={{
-                      articleId: article.articleId,
-                      blankType: "period",
-                    }}
-                    body={body}
-                    blanks={periodResult.blanks}
-                    titleMap={titleMap}
-                    lawCode={subject.slug}
-                  />
-                  <PeriodAmbiguousPanel cases={periodResult.ambiguous} />
+
+                {/* Ghost action buttons on the right */}
+                <div className="ml-auto flex items-center gap-1.5">
+                  {canEdit ? (
+                    <>
+                      <Button
+                        variant={editMode ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => {
+                          setEditMode((v) => !v);
+                          if (!editMode) {
+                            setBlankMode(false);
+                            setSubtitlesOnly(false);
+                          }
+                        }}
+                        className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                        title={`${staffRole === "admin" ? "원장" : "강사"} 권한 — 새 개정으로 저장`}
+                      >
+                        {editMode ? (
+                          <XIcon className="size-3.5" />
+                        ) : (
+                          <PencilIcon className="size-3.5" />
+                        )}
+                        {editMode ? "편집 종료" : "편집"}
+                      </Button>
+                      <blankSetFetcher.Form
+                        method="post"
+                        action="/api/blanks/admin-create-set"
+                      >
+                        <input
+                          type="hidden"
+                          name="articleId"
+                          value={article.articleId}
+                        />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          disabled={blankSetSubmitting}
+                          className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                          title={
+                            blankSets.some((s) => s.ownerName !== null)
+                              ? "내 빈칸 자료 편집 (없으면 자동 생성)"
+                              : "빈칸 자료 만들기 / 편집"
+                          }
+                        >
+                          <FileEditIcon className="size-3.5" />
+                          빈칸 자료
+                        </Button>
+                      </blankSetFetcher.Form>
+                    </>
+                  ) : null}
+                  {blankMode && blankSets.length > 1 && blankSet ? (
+                    <BlankOwnerSelector
+                      options={blankSets}
+                      currentSetId={blankSet.setId}
+                    />
+                  ) : null}
                 </div>
-              ) : recitationMode && body ? (
-                <RecitationView
-                  articleId={article.articleId}
-                  articleLabel={article.displayLabel}
-                  body={body}
-                />
-              ) : (
-                <HighlightOverlay
-                  fieldPath="article.body"
-                  highlights={highlights}
-                >
-                  {compareBody ? (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div>
-                        <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
-                          {atDate ? `시점 ${atDate}` : "현재"}
-                          {article.effectiveDate
-                            ? ` (시행 ${article.effectiveDate})`
-                            : ""}
-                        </p>
-                        {body ? (
+              </div>
+
+              <Separator />
+
+              {/* ── Article body ───────────────────────────────────────── */}
+              <div className="px-6 py-7">
+                <div className="mx-auto max-w-[800px]">
+                  {editMode ? (
+                    <ArticleEditor
+                      articleId={article.articleId}
+                      initialBodyJson={article.bodyJson}
+                      initialDisplayLabel={article.displayLabel}
+                      initialImportance={article.importance}
+                      lawCode={subject.slug}
+                      titleMap={titleMap}
+                      onCancel={() => setEditMode(false)}
+                    />
+                  ) : blankMode && blankSet && body ? (
+                    <BlankFillView
+                      setId={blankSet.setId}
+                      body={body}
+                      blanks={blankSet.blanks}
+                      titleMap={titleMap}
+                      lawCode={subject.slug}
+                    />
+                  ) : subjectBlankMode && body ? (
+                    <BlankFillView
+                      setId={null}
+                      autoMeta={{
+                        articleId: article.articleId,
+                        blankType: "subject",
+                      }}
+                      body={body}
+                      blanks={subjectBlanks}
+                      titleMap={titleMap}
+                      lawCode={subject.slug}
+                    />
+                  ) : periodBlankMode && body ? (
+                    <div className="space-y-3">
+                      <BlankFillView
+                        setId={null}
+                        autoMeta={{
+                          articleId: article.articleId,
+                          blankType: "period",
+                        }}
+                        body={body}
+                        blanks={periodResult.blanks}
+                        titleMap={titleMap}
+                        lawCode={subject.slug}
+                      />
+                      <PeriodAmbiguousPanel cases={periodResult.ambiguous} />
+                    </div>
+                  ) : recitationMode && body ? (
+                    <RecitationView
+                      articleId={article.articleId}
+                      articleLabel={article.displayLabel}
+                      body={body}
+                    />
+                  ) : (
+                    <HighlightOverlay
+                      fieldPath="article.body"
+                      highlights={highlights}
+                    >
+                      {compareBody ? (
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div>
+                            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {atDate ? `시점 ${atDate}` : "현재"}
+                              {article.effectiveDate
+                                ? ` (시행 ${article.effectiveDate})`
+                                : ""}
+                            </p>
+                            {body ? (
+                              <div className="text-[17px] leading-[1.85] text-foreground">
+                                <ArticleBodyView
+                                  body={body}
+                                  titleMap={titleMap}
+                                  subtitlesOnly={subtitlesOnly}
+                                  lawCode={subject.slug}
+                                  memos={memos}
+                                />
+                              </div>
+                            ) : (
+                              <p className="text-sm italic text-muted-foreground">
+                                본문 없음
+                              </p>
+                            )}
+                          </div>
+                          <div className="border-l border-border md:pl-5">
+                            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              비교 시점 {compareDate}
+                              {compareEffectiveDate
+                                ? ` (시행 ${compareEffectiveDate})`
+                                : ""}
+                            </p>
+                            <div className="text-[17px] leading-[1.85] text-foreground">
+                              <ArticleBodyView
+                                body={compareBody}
+                                titleMap={titleMap}
+                                subtitlesOnly={subtitlesOnly}
+                                lawCode={subject.slug}
+                                memos={[]}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : body ? (
+                        <div className="text-[17px] leading-[1.85] text-foreground">
                           <ArticleBodyView
                             body={body}
                             titleMap={titleMap}
@@ -869,56 +1015,22 @@ function ArticleViewerInner({
                             lawCode={subject.slug}
                             memos={memos}
                           />
-                        ) : (
-                          <p className="text-muted-foreground text-sm italic">
-                            본문 없음
-                          </p>
-                        )}
-                      </div>
-                      <div className="border-l md:pl-3">
-                        <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
-                          비교 시점 {compareDate}
-                          {compareEffectiveDate
-                            ? ` (시행 ${compareEffectiveDate})`
-                            : ""}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          본문이 등록되지 않았거나 파싱할 수 없는 형식입니다.
                         </p>
-                        <ArticleBodyView
-                          body={compareBody}
-                          titleMap={titleMap}
-                          subtitlesOnly={subtitlesOnly}
-                          lawCode={subject.slug}
-                          memos={[]}
-                        />
-                      </div>
-                    </div>
-                  ) : body ? (
-                    <ArticleBodyView
-                      body={body}
-                      titleMap={titleMap}
-                      subtitlesOnly={subtitlesOnly}
-                      lawCode={subject.slug}
-                      memos={memos}
-                    />
-                  ) : (
-                    <p className="text-muted-foreground text-sm">
-                      본문이 등록되지 않았거나 파싱할 수 없는 형식입니다.
-                    </p>
+                      )}
+                    </HighlightOverlay>
                   )}
-                </HighlightOverlay>
-              )}
-            </CardContent>
-          </Card>
+                </div>
+              </div>
+            </div>
+          </main>
 
-        </main>
-
-        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-          <Card className="h-full">
-            <CardHeader>
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                우측 패널
-              </p>
-            </CardHeader>
-            <CardContent>
+          {/* ── RIGHT PANEL (desktop sticky) ────────────────────────────── */}
+          <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <div className="rounded-xl border border-border bg-card shadow-sm">
               <ArticleRightPanel
                 target={{ type: "article", id: article.articleId }}
                 bookmark={bookmark}
@@ -933,14 +1045,53 @@ function ArticleViewerInner({
                 subjectSlug={subject.slug}
                 revisions={revisions ?? undefined}
               />
-            </CardContent>
-          </Card>
-        </aside>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );
 }
 
+// ── ModeButton — pill segment inside the mode toolbar ───────────────────────
+function ModeButton({
+  children,
+  active,
+  onClick,
+  disabled,
+  title,
+  asSubmit,
+  "data-testid": dataTestId,
+}: {
+  children: React.ReactNode;
+  active: boolean;
+  onClick?: () => void;
+  disabled: boolean;
+  title?: string;
+  asSubmit?: boolean;
+  "data-testid"?: string;
+}) {
+  return (
+    <button
+      type={asSubmit ? "submit" : "button"}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      data-testid={dataTestId}
+      className={[
+        "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-colors duration-150",
+        "disabled:pointer-events-none disabled:opacity-40",
+        active
+          ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+          : "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── PrevNextButton ───────────────────────────────────────────────────────────
 function PrevNextButton({
   direction,
   target,
@@ -962,44 +1113,29 @@ function PrevNextButton({
 
   if (!target || !target.articleNumber) {
     return (
-      <Button
+      <button
         type="button"
-        variant="ghost"
-        size="sm"
         disabled
-        className="h-8 gap-1 px-2 text-xs"
         aria-label={ariaLabel}
+        className="inline-flex h-9 cursor-not-allowed items-center gap-1 rounded-full border border-border bg-background px-3 text-xs text-muted-foreground opacity-40"
       >
-        {direction === "prev" ? <Icon /> : null}
-        <span className="text-muted-foreground">
-          {direction === "prev" ? "처음" : "마지막"}
-        </span>
-        {direction === "next" ? <Icon /> : null}
-      </Button>
+        {direction === "prev" ? <Icon className="size-3.5" /> : null}
+        <span>{direction === "prev" ? "처음" : "마지막"}</span>
+        {direction === "next" ? <Icon className="size-3.5" /> : null}
+      </button>
     );
   }
 
-  // displayLabel 에서 "제29조 특허요건" 형태 → 그대로 표시 (조문번호+제목)
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      asChild
-      className="h-8 gap-1 px-2 text-xs"
+    <Link
+      to={`/subjects/${subjectSlug}/articles/${target.articleNumber}`}
+      viewTransition
+      aria-label={`${ariaLabel}: ${target.displayLabel}`}
+      className="inline-flex h-9 items-center gap-1 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
     >
-      <Link
-        to={`/subjects/${subjectSlug}/articles/${target.articleNumber}`}
-        viewTransition
-        aria-label={`${ariaLabel}: ${target.displayLabel}`}
-      >
-        {direction === "prev" ? <Icon /> : null}
-        <span className="max-w-[160px] truncate font-medium">
-          {target.displayLabel}
-        </span>
-        {direction === "next" ? <Icon /> : null}
-      </Link>
-    </Button>
+      {direction === "prev" ? <Icon className="size-3.5 shrink-0" /> : null}
+      <span className="max-w-[140px] truncate">{target.displayLabel}</span>
+      {direction === "next" ? <Icon className="size-3.5 shrink-0" /> : null}
+    </Link>
   );
 }
-

@@ -48,7 +48,7 @@ import {
 import type { Route } from "./+types/admin-exam-results";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격 결과 운영 | Lidam Edu" },
+  { title: "합격 결과 운영 | Lidam Patent Attorney Academy" },
 ];
 
 const verifySchema = z.object({

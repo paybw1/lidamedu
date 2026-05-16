@@ -27,6 +27,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
@@ -35,8 +36,8 @@ import type { Route } from "./+types/admin-gs-series-edit";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.series
-      ? `${loaderData.series.title} | Lidam Edu`
-      : "새 시리즈 | Lidam Edu",
+      ? `${loaderData.series.title} | Lidam Patent Attorney Academy`
+      : "새 시리즈 | Lidam Patent Attorney Academy",
   },
 ];
 
@@ -191,11 +192,13 @@ export default function AdminGsSeriesEdit({
                 defaultValue={series?.subject ?? "patent"}
                 className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
               >
-                {LAW_SUBJECT_SLUGS.map((s) => (
-                  <option key={s} value={s}>
-                    {LAW_SUBJECTS[s].name}
-                  </option>
-                ))}
+                <optgroup label="2차 · 주관식">
+                  {SECOND_EXAM_LAW_SLUGS.map((s) => (
+                    <option key={s} value={s}>
+                      {LAW_SUBJECTS[s].name}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </label>
             <label className="space-y-1">

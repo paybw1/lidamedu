@@ -30,7 +30,6 @@ function rowToResult(r: {
   status: string;
   self_reported_total_score: number | string | null;
   self_reported_subject_scores: unknown;
-  selected_science_subject: string | null;
   verification_status: string;
   certificate_url: string | null;
   certificate_path: string | null;
@@ -62,7 +61,6 @@ function rowToResult(r: {
         ? null
         : Number(r.self_reported_total_score),
     selfReportedSubjectScores: subjectScores,
-    selectedScienceSubject: r.selected_science_subject,
     verificationStatus: r.verification_status as ExamVerificationStatus,
     certificateUrl: r.certificate_url,
     certificatePath: r.certificate_path,
@@ -76,7 +74,7 @@ function rowToResult(r: {
 }
 
 const ROW_SELECT =
-  "result_id, user_id, exam_year, exam_round, status, self_reported_total_score, self_reported_subject_scores, selected_science_subject, verification_status, certificate_url, certificate_path, verified_by, verified_at, rejection_reason, study_summary_md, created_at, updated_at";
+  "result_id, user_id, exam_year, exam_round, status, self_reported_total_score, self_reported_subject_scores, verification_status, certificate_url, certificate_path, verified_by, verified_at, rejection_reason, study_summary_md, created_at, updated_at";
 
 // ─── 학생 본인 ───
 
@@ -100,9 +98,7 @@ export async function getMyExamProfileFields(
 ): Promise<ExamProfileFields | null> {
   const { data, error } = await client
     .from("profiles")
-    .select(
-      "analytics_consent_at, next_exam_year, next_exam_round, selected_science_subject",
-    )
+    .select("analytics_consent_at, next_exam_year, next_exam_round")
     .eq("profile_id", userId)
     .maybeSingle();
   if (error) throw error;
@@ -111,7 +107,6 @@ export async function getMyExamProfileFields(
     analyticsConsentAt: data.analytics_consent_at,
     nextExamYear: data.next_exam_year,
     nextExamRound: (data.next_exam_round as ExamRound | null) ?? null,
-    selectedScienceSubject: data.selected_science_subject,
   };
 }
 
@@ -122,7 +117,6 @@ export interface UpsertExamResultInput {
   status: ExamResultStatus;
   selfReportedTotalScore?: number | null;
   selfReportedSubjectScores?: Record<string, number> | null;
-  selectedScienceSubject?: string | null;
   studySummaryMd?: string | null;
 }
 
@@ -139,7 +133,6 @@ export async function upsertMyExamResult(
     status: input.status,
     self_reported_total_score: input.selfReportedTotalScore ?? null,
     self_reported_subject_scores: input.selfReportedSubjectScores ?? null,
-    selected_science_subject: input.selectedScienceSubject ?? null,
     study_summary_md: input.studySummaryMd ?? null,
   };
   const { data, error } = await client
@@ -186,7 +179,6 @@ export async function setNextExamPlan(
   patch: {
     nextExamYear: number | null;
     nextExamRound: ExamRound | null;
-    selectedScienceSubject: string | null;
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { error } = await client
@@ -194,7 +186,6 @@ export async function setNextExamPlan(
     .update({
       next_exam_year: patch.nextExamYear,
       next_exam_round: patch.nextExamRound,
-      selected_science_subject: patch.selectedScienceSubject,
     })
     .eq("profile_id", userId);
   if (error) return { ok: false, error: error.message };

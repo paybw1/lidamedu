@@ -68,11 +68,11 @@ interface ProblemRow {
 }
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "판례 기출 문제 | Lidam Edu" }];
+  if (!ld) return [{ title: "판례 기출 문제 | Lidam Patent Attorney Academy" }];
   const roundKr = ld.round === "first" ? "1차" : "2차";
   return [
     {
-      title: `${ld.kase.caseNumber} · ${ld.year} ${roundKr} | Lidam Edu`,
+      title: `${ld.kase.caseNumber} · ${ld.year} ${roundKr} | Lidam Patent Attorney Academy`,
     },
   ];
 };

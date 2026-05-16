@@ -22,7 +22,7 @@ import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 import type { Route } from "./+types/admin-gs-series-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "GS 시리즈 관리 | Lidam Edu" },
+  { title: "GS 시리즈 관리 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

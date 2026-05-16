@@ -19,7 +19,7 @@ import { FEATURE_LABEL } from "~/features/subscriptions/labels";
 import type { Route } from "./+types/pricing";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "요금제 | Lidam Edu" },
+  { title: "요금제 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

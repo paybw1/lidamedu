@@ -27,8 +27,8 @@ import { resolveTargetDisplay } from "../lib/target-display.server";
 import type { Route } from "./+types/qna-detail";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "Q&A | Lidam Edu" }];
-  return [{ title: `${loaderData.thread.title} | Q&A | Lidam Edu` }];
+  if (!loaderData) return [{ title: "Q&A | Lidam Patent Attorney Academy" }];
+  return [{ title: `${loaderData.thread.title} | Q&A | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

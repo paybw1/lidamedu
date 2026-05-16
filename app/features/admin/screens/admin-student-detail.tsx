@@ -23,7 +23,7 @@ import {
   UsersIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link, data, useFetcher, useLocation, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -42,6 +42,10 @@ import {
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  isFirstExamSubject,
+  isSecondExamSubject,
+} from "~/features/subjects/lib/subjects";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
   getUserPassPredictionTrend,
@@ -60,8 +64,8 @@ import {
 import type { Route } from "./+types/admin-student-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.student) return [{ title: "학생 상세 | Lidam Edu" }];
-  return [{ title: `${d.student.name} 학생 진도 | Lidam Edu` }];
+  if (!d || !d.student) return [{ title: "학생 상세 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.student.name} 학생 진도 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -240,28 +244,55 @@ export default function AdminStudentDetail({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {student.bySubject.map((s) => (
-                      <TableRow key={s.lawCode}>
-                        <TableCell className="text-sm font-medium">
-                          {s.lawName}
-                        </TableCell>
-                        <TableCell className="text-right text-xs tabular-nums">
-                          {s.articlesViewed}
-                        </TableCell>
-                        <TableCell className="text-right text-xs tabular-nums">
-                          {s.problemsAttempted > 0
-                            ? `${s.problemsCorrect}/${s.problemsAttempted}`
-                            : "—"}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            "text-right text-xs font-semibold tabular-nums",
-                            accuracyTone(s.accuracyPct),
-                          )}
-                        >
-                          {s.accuracyPct !== null ? `${s.accuracyPct}%` : "—"}
-                        </TableCell>
-                      </TableRow>
+                    {[
+                      {
+                        label: "1차 · 객관식",
+                        rows: student.bySubject.filter((s) =>
+                          isFirstExamSubject(s.lawCode),
+                        ),
+                      },
+                      {
+                        label: "2차 · 주관식",
+                        rows: student.bySubject.filter((s) =>
+                          isSecondExamSubject(s.lawCode),
+                        ),
+                      },
+                    ].map((g) => (
+                      <Fragment key={g.label}>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell
+                            colSpan={4}
+                            className="text-primary py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                          >
+                            {g.label}
+                          </TableCell>
+                        </TableRow>
+                        {g.rows.map((s) => (
+                          <TableRow key={s.lawCode}>
+                            <TableCell className="text-sm font-medium">
+                              {s.lawName}
+                            </TableCell>
+                            <TableCell className="text-right text-xs tabular-nums">
+                              {s.articlesViewed}
+                            </TableCell>
+                            <TableCell className="text-right text-xs tabular-nums">
+                              {s.problemsAttempted > 0
+                                ? `${s.problemsCorrect}/${s.problemsAttempted}`
+                                : "—"}
+                            </TableCell>
+                            <TableCell
+                              className={cn(
+                                "text-right text-xs font-semibold tabular-nums",
+                                accuracyTone(s.accuracyPct),
+                              )}
+                            >
+                              {s.accuracyPct !== null
+                                ? `${s.accuracyPct}%`
+                                : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
@@ -274,7 +305,7 @@ export default function AdminStudentDetail({
               <CardHeader>
                 <p className="text-sm font-semibold">자연과학 진도</p>
                 <p className="text-muted-foreground text-xs">
-                  선택 과목 풀이/정답률
+                  과목별 풀이/정답률
                 </p>
               </CardHeader>
               <Separator />

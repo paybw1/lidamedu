@@ -38,7 +38,7 @@ import {
 import type { Route } from "./+types/admin-blanks-stats";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "빈칸 학습 통계 (운영) | Lidam Edu" },
+  { title: "빈칸 학습 통계 (운영) | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

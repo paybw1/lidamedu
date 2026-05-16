@@ -29,7 +29,7 @@ const SCOPE_LABELS: Record<Scope, string> = {
 
 const SCOPE_VALUES: Scope[] = ["all", "asked-by-me", "answered-by-me", "open"];
 
-export const meta: Route.MetaFunction = () => [{ title: "Q&A | Lidam Edu" }];
+export const meta: Route.MetaFunction = () => [{ title: "Q&A | Lidam Patent Attorney Academy" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);

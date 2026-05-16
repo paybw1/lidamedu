@@ -40,20 +40,6 @@ export const EXAM_VERIFICATION_STATUS_LABEL: Record<
   rejected: "반려",
 };
 
-export const SCIENCE_SUBJECT_LABEL: Record<string, string> = {
-  physics: "물리",
-  chemistry: "화학",
-  biology: "생물",
-  earth_science: "지구과학",
-};
-
-export const SCIENCE_SUBJECT_KEYS = [
-  "physics",
-  "chemistry",
-  "biology",
-  "earth_science",
-] as const;
-
 export interface ExamResultRow {
   resultId: string;
   userId: string;
@@ -62,7 +48,6 @@ export interface ExamResultRow {
   status: ExamResultStatus;
   selfReportedTotalScore: number | null;
   selfReportedSubjectScores: Record<string, number> | null;
-  selectedScienceSubject: string | null;
   verificationStatus: ExamVerificationStatus;
   certificateUrl: string | null;
   certificatePath: string | null;
@@ -78,5 +63,4 @@ export interface ExamProfileFields {
   analyticsConsentAt: string | null;
   nextExamYear: number | null;
   nextExamRound: ExamRound | null;
-  selectedScienceSubject: string | null;
 }

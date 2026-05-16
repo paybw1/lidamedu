@@ -5,16 +5,17 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   CheckCircle2Icon,
+  ChevronRightIcon,
   CircleXIcon,
   ClockIcon,
   FlagIcon,
   MinusCircleIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getQuizSessionResult } from "~/features/study/queries.server";
@@ -26,8 +27,8 @@ import {
 import type { Route } from "./+types/quiz-result";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "퀴즈 결과 | Lidam Edu" }];
-  return [{ title: `${loaderData.subject.name} 퀴즈 결과 | Lidam Edu` }];
+  if (!loaderData) return [{ title: "퀴즈 결과 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${loaderData.subject.name} 퀴즈 결과 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -79,155 +80,179 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
       : null;
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <div className="mb-6 flex items-center gap-2">
-        <Link
-          to={`/subjects/${subject.slug}/problems/system`}
-          viewTransition
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-        >
-          <ArrowLeftIcon className="size-4" /> 체계도 복귀
-        </Link>
-      </div>
-
-      <header className="mb-6 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{subject.name}</Badge>
-          <Badge variant={session.mode === "exam" ? "destructive" : "default"}>
-            {session.mode === "exam" ? "시험 모드" : "학습 모드"}
-          </Badge>
-          {nodeId && typeof session.scopePayload.nodeLabel === "string" ? (
-            <Badge variant="outline">{session.scopePayload.nodeLabel}</Badge>
-          ) : null}
-          {session.completedAt ? (
-            <Badge variant="outline" className="ml-auto">
-              <FlagIcon className="size-3" />
-              완료
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="ml-auto">
-              진행 중 (저장됨)
-            </Badge>
-          )}
+    <div className="min-h-[calc(100vh-56px)] bg-background">
+      <div className="mx-auto w-full max-w-[720px] px-6 py-8 pb-20">
+        {/* Back link */}
+        <div className="mb-4">
+          <Link
+            to={`/subjects/${subject.slug}/problems/system`}
+            viewTransition
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <ArrowLeftIcon className="size-3.5" />
+            체계도 복귀
+          </Link>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">퀴즈 결과</h1>
-      </header>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
-        <KpiCard
-          label="정답률"
-          value={`${accuracyPct}%`}
-          hint={`정답 ${correctCount} / 응답 ${attemptedCount}`}
-          tone="primary"
-        />
-        <KpiCard
-          label="총 문항"
-          value={`${total}`}
-          hint={skipped > 0 ? `미응답 ${skipped}` : "전부 응답"}
-        />
-        <KpiCard label="오답" value={`${wrongCount}`} hint="틀린 문항" />
-        <KpiCard
-          label="소요 시간"
-          value={totalTimeMs > 0 ? formatDuration(totalTimeMs) : "—"}
-          hint="응답 합계"
-          icon={<ClockIcon className="size-3.5" />}
-        />
-      </div>
+        {/* Header */}
+        <header className="mb-6">
+          <p className="mb-2 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
+            QUIZ RESULT
+          </p>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{subject.name}</Badge>
+            <Badge variant={session.mode === "exam" ? "destructive" : "default"}>
+              {session.mode === "exam" ? "시험 모드" : "학습 모드"}
+            </Badge>
+            {nodeId && typeof session.scopePayload.nodeLabel === "string" ? (
+              <Badge variant="outline">{session.scopePayload.nodeLabel}</Badge>
+            ) : null}
+            {session.completedAt ? (
+              <Badge variant="outline" className="ml-auto">
+                <FlagIcon className="size-3" />
+                완료
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="ml-auto">
+                진행 중 (저장됨)
+              </Badge>
+            )}
+          </div>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-foreground leading-tight">
+            퀴즈 결과
+          </h1>
+        </header>
 
-      {wrongFirstHref ? (
-        <Card className="mb-4 border-amber-300/60 bg-amber-50/50 dark:border-amber-700/40 dark:bg-amber-950/20">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <p className="text-sm">
-              오답 <span className="font-semibold">{wrongCount}건</span> ·
-              오답노트에 자동 등록되었습니다.
+        {/* KPI 4 cards */}
+        <div className="mb-4 grid grid-cols-4 gap-3 sm:gap-3">
+          <KpiCard
+            label="정답률"
+            value={`${accuracyPct}%`}
+            hint={`정답 ${correctCount} / 응답 ${attemptedCount}`}
+            highlight
+          />
+          <KpiCard
+            label="정답"
+            value={`${correctCount}`}
+            hint={skipped > 0 ? `미응답 ${skipped}` : "전부 응답"}
+          />
+          <KpiCard
+            label="오답"
+            value={`${wrongCount}`}
+            hint="틀린 문항"
+            tone="coral"
+          />
+          <KpiCard
+            label="소요"
+            value={totalTimeMs > 0 ? formatDuration(totalTimeMs) : "—"}
+            hint="응답 합계"
+            icon={<ClockIcon className="size-3 shrink-0" />}
+          />
+        </div>
+
+        {/* Wrong-note banner */}
+        {wrongFirstHref ? (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-amber-50/80 px-[18px] py-3.5 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40">
+            <TriangleAlertIcon className="size-[18px] shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="flex-1 text-[14px] font-medium leading-[1.4] text-foreground">
+              오답 <span className="font-semibold">{wrongCount}건</span>이 오답노트에 저장됐어요
             </p>
-            <div className="flex gap-2">
-              <Button asChild size="sm" variant="outline" className="h-8">
-                <Link
-                  to={`/study/wrong-note?subject=${subject.slug}`}
-                  viewTransition
-                >
-                  오답노트 열기 <ArrowRightIcon className="size-3.5" />
+            <div className="flex shrink-0 gap-2">
+              <Button asChild size="sm" variant="outline" className="h-8 rounded-full px-3.5 text-[12px] font-semibold">
+                <Link to={`/study/wrong-note?subject=${subject.slug}`} viewTransition>
+                  오답노트로
+                  <ArrowRightIcon className="size-3 shrink-0" />
                 </Link>
               </Button>
-              <Button asChild size="sm" className="h-8">
+              <Button asChild size="sm" className="h-8 rounded-full px-3.5 text-[12px] font-semibold">
                 <Link to={wrongFirstHref} viewTransition>
-                  첫 오답부터 다시 <ArrowRightIcon className="size-3.5" />
+                  첫 오답부터
+                  <ArrowRightIcon className="size-3 shrink-0" />
                 </Link>
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      ) : null}
+          </div>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <p className="text-sm font-semibold">지문별 결과</p>
-        </CardHeader>
-        <CardContent className="space-y-1">
-          {items.map((it, idx) => (
-            <Link
-              key={it.problemId}
-              to={`/subjects/${subject.slug}/problems/${it.problemId}`}
-              viewTransition
-              data-testid="result-row"
-              className="hover:bg-accent flex items-start gap-3 rounded-md px-2 py-2 text-sm"
-            >
-              <span className="text-muted-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums">
-                {idx + 1}
-              </span>
-              <ResultIcon isCorrect={it.isCorrect} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
+        {/* Per-question result list */}
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="border-b border-border px-[18px] py-3.5">
+            <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-muted-foreground">
+              문항별 결과
+            </p>
+          </div>
+          <ul className="divide-y divide-border/60">
+            {items.map((it, idx) => (
+              <li key={it.problemId}>
+                <Link
+                  to={`/subjects/${subject.slug}/problems/${it.problemId}`}
+                  viewTransition
+                  data-testid="result-row"
+                  className="flex items-center gap-3 px-[18px] py-3 text-sm transition-colors hover:bg-muted/40"
+                >
+                  {/* Result icon */}
+                  <ResultIcon isCorrect={it.isCorrect} />
+
+                  {/* Year / number chip */}
                   {it.year ? (
-                    <Badge variant="outline" className="text-xs">
-                      {it.year}년
+                    <span className="shrink-0 inline-flex h-[22px] items-center rounded-full bg-primary/10 px-2 font-mono text-[11px] font-semibold text-primary tabular-nums">
+                      {it.year}
                       {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
-                    </Badge>
-                  ) : null}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 inline-flex h-[22px] items-center rounded-full bg-muted px-2 font-mono text-[11px] text-muted-foreground tabular-nums">
+                      {idx + 1}
+                    </span>
+                  )}
+
+                  {/* Body snippet */}
+                  <p className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+                    {it.bodySnippet}
+                  </p>
+
+                  {/* Article label */}
                   {it.primaryArticleLabel ? (
-                    <Badge variant="outline" className="text-xs">
+                    <span className="hidden shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">
                       {it.primaryArticleLabel}
-                    </Badge>
+                    </span>
                   ) : null}
+
+                  {/* Time spent */}
                   {it.timeSpentMs ? (
-                    <span className="text-muted-foreground text-xs tabular-nums">
+                    <span className="shrink-0 font-mono text-[12px] text-muted-foreground tabular-nums">
                       {formatDuration(it.timeSpentMs)}
                     </span>
                   ) : null}
-                  {it.selectedChoiceIndex ? (
-                    <span
-                      className={cn(
-                        "text-xs tabular-nums",
-                        it.isCorrect
-                          ? "text-emerald-600"
-                          : it.isCorrect === false
-                            ? "text-rose-600"
-                            : "text-muted-foreground",
-                      )}
-                    >
-                      선택 {it.selectedChoiceIndex}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="text-muted-foreground mt-0.5 truncate">
-                  {it.bodySnippet}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </CardContent>
-      </Card>
+
+                  <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground/40" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
 
 function ResultIcon({ isCorrect }: { isCorrect: boolean | null }) {
   if (isCorrect === true)
-    return <CheckCircle2Icon className="size-5 shrink-0 text-emerald-600" />;
+    return (
+      <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
+        <CheckCircle2Icon className="size-3.5" />
+      </span>
+    );
   if (isCorrect === false)
-    return <CircleXIcon className="size-5 shrink-0 text-rose-600" />;
-  return <MinusCircleIcon className="text-muted-foreground size-5 shrink-0" />;
+    return (
+      <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400">
+        <CircleXIcon className="size-3.5" />
+      </span>
+    );
+  return (
+    <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <MinusCircleIcon className="size-3.5" />
+    </span>
+  );
 }
 
 function KpiCard({
@@ -235,31 +260,42 @@ function KpiCard({
   value,
   hint,
   tone,
+  highlight,
   icon,
 }: {
   label: string;
   value: string;
   hint: string;
-  tone?: "primary";
+  tone?: "coral";
+  highlight?: boolean;
   icon?: React.ReactNode;
 }) {
   return (
-    <Card className="py-4">
-      <CardContent className="px-4">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-medium tracking-wide uppercase">
-          {icon}
-          {label}
-        </p>
-        <p
-          className={cn(
-            "mt-1 text-2xl font-bold tracking-tight tabular-nums",
-            tone === "primary" && "text-primary",
-          )}
-        >
-          {value}
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
-      </CardContent>
-    </Card>
+    <div
+      className={cn(
+        "rounded-xl border p-4",
+        highlight
+          ? "bg-primary/10 border-primary/20 dark:bg-primary/15 dark:border-primary/30"
+          : "bg-muted/40 border-border/60",
+      )}
+    >
+      <p className="mb-1.5 flex items-center gap-1 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {icon}
+        {label}
+      </p>
+      <p
+        className={cn(
+          "text-[26px] font-extrabold leading-none tracking-tight tabular-nums",
+          tone === "coral"
+            ? "text-rose-600 dark:text-rose-400"
+            : highlight
+              ? "text-primary"
+              : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+    </div>
   );
 }

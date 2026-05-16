@@ -87,3 +87,37 @@ export const EXAM_LABEL: Record<ExamLevel, string> = {
   second: "2차",
   both: "1·2차",
 };
+
+// =========================================================================
+// 시험 차수별 법 과목 그룹 — 1차(객관식) / 2차(주관식).
+// 1차/2차는 과목을 묶어 보여주는 기준 축이다. 민법은 1차 전용, 민사소송법은
+// 2차 전용, 산업재산권법(특허·상표·디자인)은 1·2차 공통이라 양쪽에 포함된다.
+// =========================================================================
+
+/** 1차(객관식) 법 과목 — 산업재산권법 3법 + 민법. */
+export const FIRST_EXAM_LAW_SLUGS = [
+  "patent",
+  "trademark",
+  "design",
+  "civil",
+] as const satisfies readonly LawSubjectSlug[];
+
+/** 2차(주관식) 법 과목 — 산업재산권법 3법 + 민사소송법. */
+export const SECOND_EXAM_LAW_SLUGS = [
+  "patent",
+  "trademark",
+  "design",
+  "civil-procedure",
+] as const satisfies readonly LawSubjectSlug[];
+
+/** 1차 시험 과목인가 — 민법·산업재산권법. (exam 이 "second" 가 아님) */
+export function isFirstExamSubject(slug: string): boolean {
+  const meta = LAW_SUBJECTS[slug as LawSubjectSlug];
+  return meta !== undefined && meta.exam !== "second";
+}
+
+/** 2차 시험 과목인가 — 민사소송법·산업재산권법. (exam 이 "first" 가 아님) */
+export function isSecondExamSubject(slug: string): boolean {
+  const meta = LAW_SUBJECTS[slug as LawSubjectSlug];
+  return meta !== undefined && meta.exam !== "first";
+}

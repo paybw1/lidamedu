@@ -7,7 +7,7 @@ import {
   listSectionsWithStats,
 } from "~/features/subjects/lib/science.server";
 
-export const meta: Route.MetaFunction = () => [{ title: "생물 | Lidam Edu" }];
+export const meta: Route.MetaFunction = () => [{ title: "생물 | Lidam Patent Attorney Academy" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

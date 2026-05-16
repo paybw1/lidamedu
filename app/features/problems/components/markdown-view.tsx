@@ -110,6 +110,15 @@ const components: Components = {
   ),
   strong: (props) => <strong className="font-semibold" {...props} />,
   em: (props) => <em className="italic" {...props} />,
+  mark: (props) => (
+    <mark
+      className="rounded-sm bg-amber-200/70 px-0.5 text-foreground"
+      {...props}
+    />
+  ),
+  u: (props) => (
+    <u className="decoration-sky-500 decoration-2 underline-offset-2" {...props} />
+  ),
 };
 
 export function MarkdownView({

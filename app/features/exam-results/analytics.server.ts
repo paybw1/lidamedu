@@ -23,7 +23,6 @@ export interface PasserCase {
   status: ExamResultStatus;
   verificationStatus: ExamVerificationStatus;
   selfReportedTotalScore: number | null;
-  selectedScienceSubject: string | null;
   studySummaryMd: string | null;
   analyticsConsentAt: string | null;
   // 학습 집계 — 동의 없으면 null
@@ -77,7 +76,7 @@ async function listExamCasesByStatus(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, selected_science_subject, study_summary_md, profiles!exam_results_user_id_fkey(name, analytics_consent_at)",
+      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, profiles!exam_results_user_id_fkey(name, analytics_consent_at)",
     )
     .eq("status", status)
     .order("exam_year", { ascending: false })
@@ -101,7 +100,6 @@ async function listExamCasesByStatus(
       r.self_reported_total_score === null
         ? null
         : Number(r.self_reported_total_score),
-    selectedScienceSubject: r.selected_science_subject,
     studySummaryMd: r.study_summary_md,
     analyticsConsentAt: r.profiles?.analytics_consent_at ?? null,
   }));
@@ -144,7 +142,6 @@ async function listExamCasesByStatus(
     status: r.status,
     verificationStatus: r.verificationStatus,
     selfReportedTotalScore: r.selfReportedTotalScore,
-    selectedScienceSubject: r.selectedScienceSubject,
     studySummaryMd: r.studySummaryMd,
     analyticsConsentAt: r.analyticsConsentAt,
     aggregates: aggByResult.get(r.resultId) ?? null,
@@ -1049,7 +1046,6 @@ export interface PasserSummary {
   examYear: number;
   examRound: ExamRound;
   scoreBucket: string | null; // "85점대", "70-79점" 등 익명 버킷
-  selectedScienceSubject: string | null;
   verified: boolean;
   summaryMd: string;
   createdAt: string;
@@ -1070,7 +1066,6 @@ function bucketScore(score: number | null): string | null {
 export interface ListPasserSummariesFilter {
   year?: number | null;
   round?: ExamRound | null;
-  scienceSubject?: string | null;
   limit?: number;
 }
 
@@ -1081,7 +1076,7 @@ export async function listPasserSummaries(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, selected_science_subject, study_summary_md, created_at, profiles!exam_results_user_id_fkey(analytics_consent_at)",
+      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, created_at, profiles!exam_results_user_id_fkey(analytics_consent_at)",
     )
     .eq("status", "passed")
     .not("study_summary_md", "is", null)
@@ -1090,8 +1085,6 @@ export async function listPasserSummaries(
     .limit(Math.min(200, filter.limit ?? 50));
   if (filter.year) q = q.eq("exam_year", filter.year);
   if (filter.round) q = q.eq("exam_round", filter.round);
-  if (filter.scienceSubject)
-    q = q.eq("selected_science_subject", filter.scienceSubject);
   const { data, error } = await q;
   if (error) throw error;
   const list = (data ?? []).filter(
@@ -1108,7 +1101,6 @@ export async function listPasserSummaries(
         ? null
         : Number(r.self_reported_total_score),
     ),
-    selectedScienceSubject: r.selected_science_subject,
     verified: r.verification_status === "verified",
     summaryMd: r.study_summary_md ?? "",
     createdAt: r.created_at,

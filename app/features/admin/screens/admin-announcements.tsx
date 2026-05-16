@@ -48,7 +48,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-announcements";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "공지사항 | Lidam Edu" },
+  { title: "공지사항 | Lidam Patent Attorney Academy" },
 ];
 
 interface Filters {

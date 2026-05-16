@@ -1,21 +1,18 @@
-// 최신 객관식 문제 색인 (feat-3-301) — PPT 운영계획 반영.
-// 컬럼: No · 과목 · 구분(기출/모의) · 명칭 · 출제일.
-// 기출 클릭 → pack 상세 (문제 목록 + 동영상 + 결과자료 + 학습 시작).
-// 모의 클릭 → pack 상세 (모의고사 시작 버튼).
+// 최신 객관식 문제 색인 (feat-3-301) — 관보식 색인표.
+// 컬럼: No · 과목 · 구분(기출/모의) · 명칭 · 출제일 · 문항.
+// 명칭 클릭 → 응시 즉시 시작 (기출=학습, 모의=시험). 상세 링크 → pack 상세.
+// 키트 lidam-latest/McqIndexScreen 디자인.
 
 import {
   BookOpenCheckIcon,
-  ChevronRightIcon,
   ClockIcon,
-  FilterXIcon,
   InfoIcon,
   ListChecksIcon,
-  NewspaperIcon,
   PencilIcon,
   PlayIcon,
   PlusIcon,
   RefreshCwIcon,
-  SearchIcon,
+  SearchXIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -29,19 +26,18 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
+import { cn } from "~/core/lib/utils";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
+  FilterSelect,
+  IndexCard,
+  LatestEmpty,
+  LatestFilterForm,
+  Pill,
+} from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -57,7 +53,7 @@ import { listPacks } from "~/features/mcq-packs/queries.server";
 import type { Route } from "./+types/mcq";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "객관식 문제 색인 | Lidam Edu" },
+  { title: "객관식 문제 색인 | Lidam Patent Attorney Academy" },
 ];
 
 const KINDS: Array<{ value: McqPackKind | "all"; label: string }> = [
@@ -129,6 +125,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { packs, filters, canEdit: role !== null };
 }
 
+const COLUMNS = ["No", "과목", "구분", "명칭", "출제일", "문항"];
+
 export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   const { packs, filters, canEdit } = loaderData;
   const [showAdd, setShowAdd] = useState(false);
@@ -141,144 +139,132 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 13 }, (_, i) => currentYear - i);
 
-  return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NewspaperIcon className="size-3.5" /> 최신 정보
-        </p>
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <ListChecksIcon className="text-primary size-6" />
-            1차 객관식 문제 색인
-          </h1>
-          {canEdit && !showAdd ? (
-            <div className="flex gap-2">
-              <RegenPastExamButton />
-              <Button size="sm" onClick={() => setShowAdd(true)}>
-                <PlusIcon className="size-3.5" /> 문제집 추가
-              </Button>
-            </div>
-          ) : null}
-        </div>
-        <p className="text-muted-foreground text-sm">
-          {packs.length}건
-          {filters.subjectScope
-            ? ` · ${MCQ_PACK_SUBJECT_LABELS[filters.subjectScope]}`
-            : ""}
-          {filters.kind ? ` · ${filters.kind === "past_exam" ? "기출" : "모의"}` : ""}
-          {filters.year ? ` · ${filters.year}년` : ""}
-          {filters.q ? ` · "${filters.q}" 검색` : ""}
-          {" "}— 기출/모의 클릭 시 문제·해설·동영상·결과 통계로 진입.
-        </p>
-      </header>
+  const descParts = [`${packs.length.toLocaleString("ko-KR")}건`];
+  if (filters.subjectScope)
+    descParts.push(MCQ_PACK_SUBJECT_LABELS[filters.subjectScope]);
+  if (filters.kind)
+    descParts.push(filters.kind === "past_exam" ? "기출" : "모의");
+  if (filters.year) descParts.push(`${filters.year}년`);
+  if (filters.q) descParts.push(`"${filters.q}" 검색`);
 
+  return (
+    <LatestShell
+      category="mcq"
+      width="index"
+      title="1차 객관식 문제 색인"
+      desc={`${descParts.join(" · ")} — 기출/모의 클릭 시 문제·해설·동영상·결과 통계로 진입합니다.`}
+      headerRight={
+        canEdit && !showAdd ? (
+          <div className="flex gap-2">
+            <RegenPastExamButton />
+            <Button
+              size="sm"
+              className="h-9 rounded-full"
+              onClick={() => setShowAdd(true)}
+            >
+              <PlusIcon className="size-3.5" /> 문제집 추가
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
       {canEdit && showAdd ? (
-        <div className="mb-4">
+        <div className="mb-3.5">
           <PackForm mode="create" onClose={() => setShowAdd(false)} />
         </div>
       ) : null}
 
-      <Form
-        method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]"
+      <LatestFilterForm
+        search={{
+          name: "q",
+          placeholder: "명칭 / 설명 검색",
+          defaultValue: filters.q,
+        }}
+        hasActive={filterActive}
+        resetTo="/latest/mcq"
       >
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            name="q"
-            defaultValue={filters.q}
-            placeholder="명칭 / 설명 검색"
-            className="pl-9"
-          />
-        </div>
-        <select
+        <FilterSelect
           name="subject"
-          defaultValue={filters.subjectScope ?? "all"}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          {SCOPES.map((o) => (
-            <option key={o.value} value={o.value === "all" ? "" : o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
+          ariaLabel="과목"
+          defaultValue={filters.subjectScope ?? ""}
+          options={SCOPES.map((o) => ({
+            value: o.value === "all" ? "" : o.value,
+            label: o.label,
+          }))}
+        />
+        <FilterSelect
           name="kind"
-          defaultValue={filters.kind ?? "all"}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          {KINDS.map((o) => (
-            <option key={o.value} value={o.value === "all" ? "" : o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
+          ariaLabel="구분"
+          defaultValue={filters.kind ?? ""}
+          options={KINDS.map((o) => ({
+            value: o.value === "all" ? "" : o.value,
+            label: o.label,
+          }))}
+        />
+        <FilterSelect
           name="year"
-          defaultValue={filters.year ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs tabular-nums"
-        >
-          <option value="">전체 년도</option>
-          {yearOptions.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" size="sm" className="h-9">
-          적용
-        </Button>
-      </Form>
-      {filterActive ? (
-        <div className="mb-4">
-          <Button asChild type="button" size="sm" variant="ghost" className="h-7">
-            <Link to="/latest/mcq">
-              <FilterXIcon className="size-3.5" /> 초기화
-            </Link>
-          </Button>
-        </div>
-      ) : null}
+          ariaLabel="년도"
+          defaultValue={filters.year ? String(filters.year) : ""}
+          options={[
+            { value: "", label: "전체 년도" },
+            ...yearOptions.map((y) => ({
+              value: String(y),
+              label: `${y}년`,
+            })),
+          ]}
+        />
+      </LatestFilterForm>
 
       {packs.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            {canEdit
-              ? "등록된 문제집이 없습니다. 상단 '문제집 추가' 버튼으로 시작하세요."
-              : "등록된 문제집이 없습니다."}
-          </p>
-        </div>
+        <LatestEmpty
+          icon={filterActive ? SearchXIcon : ListChecksIcon}
+          tone={filterActive ? "subdued" : "neutral"}
+          title={
+            filterActive
+              ? "조건에 맞는 문제집이 없습니다"
+              : "아직 등록된 문제집이 없습니다"
+          }
+          body={
+            filterActive
+              ? "검색어나 필터를 바꿔 다시 찾아보세요."
+              : canEdit
+                ? "상단 '문제집 추가' 버튼으로 첫 문제집을 등록하세요."
+                : "기출·모의 문제집이 등록되면 이곳에 모입니다."
+          }
+        />
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">No</TableHead>
-                  <TableHead className="w-32">과목</TableHead>
-                  <TableHead className="w-24">구분</TableHead>
-                  <TableHead>명칭</TableHead>
-                  <TableHead className="w-28">출제일</TableHead>
-                  <TableHead className="w-20 text-center">문항</TableHead>
-                  {canEdit ? <TableHead className="w-20"></TableHead> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {packs.map((p, i) => (
-                  <PackRow
-                    key={p.packId}
-                    pack={p}
-                    index={i + 1}
-                    canEdit={canEdit}
-                  />
+        <IndexCard>
+          <table className="w-full min-w-[760px] border-collapse">
+            <thead>
+              <tr className="border-border bg-muted/60 border-b">
+                {COLUMNS.map((label, i) => (
+                  <th
+                    key={label}
+                    className={cn(
+                      "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
+                      i === 0 || i === 5 ? "text-center" : "text-left",
+                    )}
+                  >
+                    {label}
+                  </th>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                {canEdit ? <th className="w-20" /> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {packs.map((p, i) => (
+                <PackRow
+                  key={p.packId}
+                  pack={p}
+                  index={i + 1}
+                  canEdit={canEdit}
+                />
+              ))}
+            </tbody>
+          </table>
+        </IndexCard>
       )}
-    </div>
+    </LatestShell>
   );
 }
 
@@ -331,31 +317,32 @@ function RegenPastExamButton() {
           type="submit"
           size="sm"
           variant="outline"
+          className="h-9 rounded-full"
           disabled={isLoading}
         >
           <RefreshCwIcon
-            className={"size-3.5 " + (isLoading ? "animate-spin" : "")}
+            className={cn("size-3.5", isLoading && "animate-spin")}
           />
           기출 자동 재생성
         </Button>
       </fetcher.Form>
       {result ? (
-        <span className="text-emerald-600 text-xs tabular-nums">
+        <span className="text-xs text-emerald-600 tabular-nums">
           {result.packsUpserted}개 팩 · {result.problemsTotal}문항
         </span>
       ) : null}
-      {err ? <span className="text-rose-600 text-xs">{err}</span> : null}
+      {err ? <span className="text-xs text-rose-600">{err}</span> : null}
     </div>
   );
 }
 
-const KIND_BADGE_VARIANT: Record<
+const KIND_TONE: Record<
   McqPackKind,
-  "default" | "secondary" | "outline"
+  "primary" | "amber" | "outline"
 > = {
-  past_exam: "default",
-  mock_full: "secondary",
-  mock_progressive: "secondary",
+  past_exam: "primary",
+  mock_full: "amber",
+  mock_progressive: "amber",
   other: "outline",
 };
 
@@ -377,25 +364,21 @@ function PackRow({
   const mode = defaultStartMode(pack.kind);
   const isMock = mode === "exam";
   return (
-    <TableRow>
-      <TableCell className="text-muted-foreground text-center text-xs tabular-nums">
+    <tr className="border-border/60 hover:bg-muted/40 border-b transition-colors">
+      <td className="text-muted-foreground px-3 py-3 text-center text-[13px] tabular-nums">
         {index}
-      </TableCell>
-      <TableCell className="text-xs">
+      </td>
+      <td className="px-3 py-3 text-[13px]">
         {MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}
-      </TableCell>
-      <TableCell>
-        <Badge
-          variant={KIND_BADGE_VARIANT[pack.kind]}
-          className="text-xs"
-        >
+      </td>
+      <td className="px-3 py-3">
+        <Pill tone={KIND_TONE[pack.kind]}>
           {MCQ_PACK_KIND_SHORT[pack.kind]}
           {!pack.isPublished ? " · 비공개" : ""}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        {/* 팩 제목 = 응시 즉시 시작 폼 버튼.
-            mode 는 팩 종류에 따라 자동 선택 (기출=학습 모드, 모의=시험 모드). */}
+        </Pill>
+      </td>
+      <td className="px-3 py-3">
+        {/* 팩 제목 = 응시 즉시 시작 폼 버튼. mode 는 팩 종류에 따라 자동 선택. */}
         <Form
           method="post"
           action="/api/mcq-pack/start"
@@ -406,7 +389,7 @@ function PackRow({
           <button
             type="submit"
             disabled={pack.problemCount === 0}
-            className="hover:text-primary inline-flex items-center gap-1 text-left text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+            className="hover:text-primary inline-flex items-center gap-1 text-left text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             title={
               isMock
                 ? "모의고사 응시 — 타이머 기반"
@@ -414,9 +397,9 @@ function PackRow({
             }
           >
             {isMock ? (
-              <ClockIcon className="text-primary size-3" />
+              <ClockIcon className="text-primary size-3.5 shrink-0" />
             ) : (
-              <PlayIcon className="text-primary size-3" />
+              <PlayIcon className="text-primary size-3.5 shrink-0" />
             )}
             {pack.title}
           </button>
@@ -434,21 +417,21 @@ function PackRow({
             {pack.description}
           </p>
         ) : null}
-      </TableCell>
-      <TableCell className="text-muted-foreground text-xs tabular-nums">
+      </td>
+      <td className="text-muted-foreground px-3 py-3 text-[13px] tabular-nums">
         {pack.publishedAt
           ? pack.publishedAt.slice(0, 7).replace("-", "/")
           : "—"}
-      </TableCell>
-      <TableCell className="text-center text-xs tabular-nums">
+      </td>
+      <td className="px-3 py-3 text-center text-[13px] tabular-nums">
         {pack.problemCount}
-      </TableCell>
+      </td>
       {canEdit ? (
-        <TableCell className="text-right">
+        <td className="px-3 py-3 text-right">
           <PackRowActions pack={pack} />
-        </TableCell>
+        </td>
       ) : null}
-    </TableRow>
+    </tr>
   );
 }
 
@@ -483,7 +466,7 @@ function PackRowActions({ pack }: { pack: McqPackItem }) {
         variant="ghost"
         onClick={() => setEditing(true)}
         aria-label="수정"
-        className="size-7"
+        className="size-8 rounded-full"
       >
         <PencilIcon className="size-3.5" />
       </Button>
@@ -495,7 +478,7 @@ function PackRowActions({ pack }: { pack: McqPackItem }) {
           size="icon"
           variant="ghost"
           aria-label="삭제"
-          className="size-7 text-rose-600 hover:text-rose-700"
+          className="size-8 rounded-full text-rose-600 hover:text-rose-700"
           disabled={delFetcher.state !== "idle"}
           onClick={(e) => {
             if (!confirm(`"${pack.title}" 문제집을 삭제하시겠습니까?`)) {
@@ -510,7 +493,7 @@ function PackRowActions({ pack }: { pack: McqPackItem }) {
   );
 }
 
-// 폼은 row 위에 카드 형태로 펼침 — 좁은 행 inline 보다 가독성 우선.
+// 폼은 row 위에 카드 형태로 펼침 — 좁은 행 inline 보다 가독성 우선 (brief §5.8).
 function PackForm({
   mode,
   pack,
@@ -544,7 +527,7 @@ function PackForm({
     <fetcher.Form
       method="post"
       action="/api/admin/mcq-pack"
-      className="bg-card space-y-3 rounded-md border p-4"
+      className="border-border bg-card space-y-3 rounded-2xl border p-4 shadow-sm"
     >
       <input type="hidden" name="intent" value={mode} />
       {mode === "update" ? (
@@ -664,14 +647,14 @@ function PackForm({
               name="isPublished"
               defaultChecked={pack?.isPublished ?? true}
               value="1"
-              className="size-3.5"
+              className="accent-primary size-3.5"
             />
             학생에게 공개
           </label>
         </Field>
       </div>
       {hasError ? (
-        <p className="text-rose-600 text-xs">
+        <p className="text-xs text-rose-600">
           {(fetcher.data as { error: string }).error}
         </p>
       ) : null}
@@ -680,12 +663,18 @@ function PackForm({
           type="button"
           variant="ghost"
           size="sm"
+          className="rounded-full"
           onClick={onClose}
           disabled={isSaving}
         >
           <XIcon className="size-3.5" /> 취소
         </Button>
-        <Button type="submit" size="sm" disabled={isSaving}>
+        <Button
+          type="submit"
+          size="sm"
+          className="rounded-full"
+          disabled={isSaving}
+        >
           {mode === "create" ? (
             <>
               <PlusIcon className="size-3.5" /> 추가

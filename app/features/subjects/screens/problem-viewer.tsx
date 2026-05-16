@@ -19,9 +19,7 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import {
   Sheet,
@@ -86,10 +84,10 @@ import {
 import type { Route } from "./+types/problem-viewer";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "문제 | Lidam Edu" }];
+  if (!loaderData) return [{ title: "문제 | Lidam Patent Attorney Academy" }];
   return [
     {
-      title: `${loaderData.subject.name} 객관식 #${loaderData.problem.problemNumber ?? "?"} | Lidam Edu`,
+      title: `${loaderData.subject.name} 객관식 #${loaderData.problem.problemNumber ?? "?"} | Lidam Patent Attorney Academy`,
     },
   ];
 };
@@ -496,7 +494,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
   const isLast = runnerNav ? runnerNav.nextId === null : false;
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-background font-sans">
       <FlowNav
         subjectSlug={subject.slug}
         currentType="problem"
@@ -504,36 +502,50 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
       />
       <HighlightToolbar targetType="problem" targetId={problem.problemId} />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Link
-          to={
-            runnerNav
-              ? runnerNav.backHref
-              : `/subjects/${subject.slug}?tab=problems`
-          }
-          viewTransition
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-        >
-          <ArrowLeftIcon className="size-4" />
-          {runnerNav ? runnerNav.label : `${subject.name} 문제 색인`}
-        </Link>
-        {runnerNav ? (
-          <div className="flex items-center gap-2">
-            <Badge variant={isExam ? "destructive" : "secondary"} className="h-6">
+      {/* Session top-bar — shown only when inside a session/runner nav */}
+      {runnerNav ? (
+        <div className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-14 z-20">
+          <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-2 px-4 py-2 md:px-6">
+            <Link
+              to={runnerNav.backHref}
+              viewTransition
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium"
+            >
+              <ArrowLeftIcon className="size-3.5" />
+              {runnerNav.label}
+            </Link>
+            <span className="text-border mx-1 select-none">·</span>
+            {/* Mode pill */}
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                isExam
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                  : "bg-primary/10 text-primary",
+              )}
+            >
               {isExam ? "시험 모드" : "학습 모드"}
-            </Badge>
+            </span>
+            {/* Exam timer */}
             {timerText ? (
               <span
-                className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-xs tabular-nums"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums",
+                  parseInt(timerText.replace(":", "")) <= 100
+                    ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                    : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200",
+                )}
                 data-testid="exam-timer"
               >
                 <TimerIcon className="size-3" />
                 {timerText}
               </span>
             ) : null}
-            <span className="text-muted-foreground text-xs tabular-nums">
+            {/* Progress count */}
+            <span className="text-muted-foreground ml-auto text-xs tabular-nums">
               {runnerNav.index + 1} / {runnerNav.total}
             </span>
+            {/* Prev/Next — only in study mode */}
             {!isExam ? (
               <>
                 <Button
@@ -541,13 +553,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   variant="outline"
                   size="sm"
                   disabled={!runnerNav.prevId}
-                  className="h-7"
+                  className="h-7 rounded-full text-xs"
                 >
                   {runnerNav.prevId ? (
-                    <Link
-                      to={buildRunnerHref(runnerNav.prevId)}
-                      viewTransition
-                    >
+                    <Link to={buildRunnerHref(runnerNav.prevId)} viewTransition>
                       <ChevronLeftIcon className="size-3.5" /> 이전
                     </Link>
                   ) : (
@@ -561,13 +570,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   variant="outline"
                   size="sm"
                   disabled={!runnerNav.nextId}
-                  className="h-7"
+                  className="h-7 rounded-full text-xs"
                 >
                   {runnerNav.nextId ? (
-                    <Link
-                      to={buildRunnerHref(runnerNav.nextId)}
-                      viewTransition
-                    >
+                    <Link to={buildRunnerHref(runnerNav.nextId)} viewTransition>
                       다음 <ChevronRightIcon className="size-3.5" />
                     </Link>
                   ) : (
@@ -582,7 +588,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
               <Button
                 size="sm"
                 variant={isLast || isExam ? "default" : "ghost"}
-                className="h-7"
+                className="h-7 rounded-full text-xs"
                 onClick={completeSession}
                 disabled={completeFetcher.state !== "idle"}
                 data-testid="finish-session"
@@ -591,16 +597,28 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
               </Button>
             ) : null}
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        /* No session: simple back link row */
+        <div className="mx-auto flex max-w-screen-2xl items-center px-4 py-3 md:px-6">
+          <Link
+            to={`/subjects/${subject.slug}?tab=problems`}
+            viewTransition
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium"
+          >
+            <ArrowLeftIcon className="size-3.5" />
+            {subject.name} 문제 색인
+          </Link>
+        </div>
+      )}
 
-      {/* 좌·우 패널은 데스크탑 grid, 모바일은 Sheet 드로어로 분기. */}
-      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-          <Card className="py-4">
-            <CardContent className="px-2 pb-2">
+      {/* 3-pane shell: left tree 260 / body / right panel 320 */}
+      <div className="mx-auto grid max-w-screen-2xl gap-0 px-0 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
+        {/* Left tree — desktop sticky */}
+        <aside className="hidden lg:block lg:sticky lg:top-[calc(3.5rem+41px)] lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r lg:border-border">
+          <div className="py-3">
               {systematicEmpty ? (
-                <p className="text-muted-foreground px-2 py-4 text-xs">
+                <p className="text-muted-foreground px-4 py-6 text-xs">
                   체계도 데이터 미입력
                 </p>
               ) : (
@@ -612,27 +630,27 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   annotationCounts={annotationCounts}
                 />
               )}
-            </CardContent>
-          </Card>
+          </div>
         </aside>
 
-        <main className="space-y-4">
-          {/* 모바일 드로어 트리거 — 본문이 첫 화면. */}
-          <div className="flex flex-wrap gap-2 lg:hidden">
+        {/* Center body */}
+        <main className="min-w-0 border-r border-border">
+          {/* Mobile drawer triggers */}
+          <div className="flex flex-wrap gap-2 border-b border-border px-4 py-2 lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8"
+                  className="h-8 rounded-full text-xs"
                   data-testid="open-tree-drawer"
                 >
                   <ListTreeIcon className="size-3.5" /> 체계도 트리
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]">
-                <SheetHeader>
-                  <SheetTitle>체계도 트리</SheetTitle>
+                <SheetHeader className="px-4 py-3 border-b border-border">
+                  <SheetTitle className="text-sm font-semibold">체계도 트리</SheetTitle>
                 </SheetHeader>
                 <div className="px-3 pb-4">
                   {systematicEmpty ? (
@@ -656,15 +674,15 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8"
+                  className="h-8 rounded-full text-xs"
                   data-testid="open-right-drawer"
                 >
                   <PanelRightIcon className="size-3.5" /> 학습 보조
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]">
-                <SheetHeader>
-                  <SheetTitle>학습 보조</SheetTitle>
+                <SheetHeader className="px-4 py-3 border-b border-border">
+                  <SheetTitle className="text-sm font-semibold">학습 보조</SheetTitle>
                 </SheetHeader>
                 <div className="px-3 pb-4">
                   <ArticleRightPanel
@@ -694,65 +712,90 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
               </SheetContent>
             </Sheet>
           </div>
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge variant="secondary">{EXAM_LABEL[subject.exam]}</Badge>
-                <Badge variant="default">{ORIGIN_LABEL[problem.origin]}</Badge>
-                <Badge variant="outline">{FORMAT_LABEL[problem.format]}</Badge>
+
+          {/* Problem article — generous reading measure */}
+          <article className="mx-auto max-w-[760px] px-6 py-8 pb-16 md:px-10">
+            {/* Exam mode timer banner */}
+            {isExam && timerText ? (
+              <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-2.5 dark:border-amber-700/40 dark:bg-amber-950/30">
+                <TimerIcon className="size-4 text-amber-600 dark:text-amber-400" />
+                <span className="font-mono text-sm font-bold tabular-nums text-amber-700 dark:text-amber-300" data-testid="exam-timer-banner">
+                  남은 시간 {timerText}
+                </span>
+              </div>
+            ) : null}
+
+            {/* Problem header */}
+            <div className="mb-6">
+              {/* Chips row */}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                  {EXAM_LABEL[subject.exam]}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+                  {ORIGIN_LABEL[problem.origin]}
+                </span>
+                <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                  {FORMAT_LABEL[problem.format]}
+                </span>
                 {problem.polarity ? (
-                  <Badge variant="outline">{POLARITY_LABEL[problem.polarity]}</Badge>
+                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                    {POLARITY_LABEL[problem.polarity]}
+                  </span>
                 ) : null}
                 {problem.scope ? (
-                  <Badge variant="outline">{SCOPE_LABEL[problem.scope]}</Badge>
+                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                    {SCOPE_LABEL[problem.scope]}
+                  </span>
                 ) : null}
                 {problem.subjectiveKind ? (
-                  <Badge variant="secondary">
+                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
                     {SUBJECTIVE_KIND_LABEL[problem.subjectiveKind]}
-                  </Badge>
+                  </span>
                 ) : null}
                 {problem.year ? (
-                  <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                  <span className="ml-auto text-xs tabular-nums text-muted-foreground">
                     {problem.year}년
                     {problem.examRoundNo ? ` ${problem.examRoundNo}회` : ""}
-                    {problem.problemNumber ? ` · 문제 ${problem.problemNumber}` : ""}
+                    {problem.problemNumber ? ` · 문제 ${problem.problemNumber}번` : ""}
                   </span>
                 ) : null}
               </div>
+
+              {/* Stats row */}
               <div
-                className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs"
+                className="flex flex-wrap items-center gap-2 text-xs"
                 data-testid="problem-stats"
               >
                 {problemStats.bucket && problemStats.accuracyPct !== null ? (
                   <>
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold",
+                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
                         DIFFICULTY_TONE[problemStats.bucket],
                       )}
                     >
                       {DIFFICULTY_LABEL[problemStats.bucket]}
                     </span>
-                    <span className="tabular-nums">
-                      전체 정답률 {problemStats.accuracyPct}% · 시도{" "}
-                      {problemStats.attempts.toLocaleString("ko-KR")}회 ·
-                      응시자 {problemStats.distinctUsers}명
+                    <span className="text-muted-foreground tabular-nums">
+                      정답률 {problemStats.accuracyPct}% · 시도{" "}
+                      {problemStats.attempts.toLocaleString("ko-KR")}회 · 응시자{" "}
+                      {problemStats.distinctUsers}명
                     </span>
                   </>
                 ) : problemStats.attempts > 0 ? (
-                  <span>
-                    시도 {problemStats.attempts}회 (난이도 표본 부족 · 5회
-                    이상부터)
+                  <span className="text-muted-foreground">
+                    시도 {problemStats.attempts}회 (난이도 표본 부족 · 5회 이상부터)
                   </span>
                 ) : (
-                  <span>아직 풀이 데이터가 없습니다</span>
+                  <span className="text-muted-foreground">아직 풀이 데이터가 없습니다</span>
                 )}
                 {problem.videoUrl ? (
                   <a
                     href={problem.videoUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-primary hover:bg-accent ml-auto inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs"
+                    className="ml-auto inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs text-primary hover:bg-muted"
                     data-testid="problem-video-link"
                     title="강사 풀이 동영상 (외부 링크)"
                   >
@@ -760,22 +803,24 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   </a>
                 ) : null}
               </div>
-            </CardHeader>
-            <Separator />
-            <CardContent className="space-y-5 pt-6">
-              <p className="font-serif text-base leading-relaxed font-medium">
-                {problem.bodyMd}
-              </p>
+            </div>
+
+            <Separator className="mb-7" />
+
+            {/* Question stem */}
+            <p className="mb-7 text-[17px] font-medium leading-[1.8] tracking-[-0.01em] text-foreground">
+              {problem.bodyMd}
+            </p>
 
               {problem.boxItems.length > 0 ? (
-                <div className="border-foreground/40 bg-muted/30 rounded-md border-2 px-4 py-3">
-                  <ul className="space-y-1.5">
+                <div className="mb-6 rounded-xl border-2 border-border/70 bg-muted/30 px-5 py-4 dark:bg-muted/10">
+                  <ul className="space-y-2">
                     {problem.boxItems.map((bi) => (
                       <li
                         key={bi.boxItemId}
-                        className="font-serif flex gap-2 text-sm leading-relaxed"
+                        className="flex gap-3 text-[15px] leading-[1.7] tracking-[-0.005em] text-foreground"
                       >
-                        <span className="text-foreground/80 shrink-0 font-medium">
+                        <span className="shrink-0 font-semibold text-foreground/70">
                           {bi.marker}
                         </span>
                         <span className="flex-1">{bi.bodyMd}</span>
@@ -796,7 +841,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 />
               ) : (
               <>
-              <ul className="space-y-2">
+              {/* Choices */}
+              <ul className="mb-5 flex flex-col gap-2.5">
                 {problem.choices.map((c) => {
                   const isSelected = selected === c.choiceIndex;
                   // 시험 모드에서는 채점 결과 노출 X.
@@ -813,26 +859,40 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                         disabled={locked}
                         aria-pressed={isSelected}
                         className={cn(
-                          "flex w-full items-start gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors",
+                          "flex w-full items-start gap-3 rounded-[10px] border px-4 py-3.5 text-left transition-all duration-150",
                           locked
                             ? "cursor-default"
-                            : "hover:bg-accent cursor-pointer",
-                          isSelected && !locked && "border-primary bg-accent",
+                            : "cursor-pointer hover:border-primary/40 hover:bg-primary/5",
+                          isSelected && !locked && "border-primary bg-primary/10 ring-1 ring-primary/30",
                           showCorrect &&
-                            "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30",
+                            "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400/40 dark:bg-emerald-950/30",
                           showWrong &&
-                            "border-rose-500 bg-rose-50 dark:bg-rose-950/30",
+                            "border-rose-500 bg-rose-50 ring-1 ring-rose-400/40 dark:bg-rose-950/30",
                         )}
                       >
-                        <span className="text-muted-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums">
+                        {/* Number badge */}
+                        <span
+                          className={cn(
+                            "inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold tabular-nums transition-colors",
+                            isSelected && !locked
+                              ? "bg-primary text-primary-foreground"
+                              : showCorrect
+                                ? "bg-emerald-500 text-white"
+                                : showWrong
+                                  ? "bg-rose-500 text-white"
+                                  : "bg-muted text-foreground/70",
+                          )}
+                        >
                           {c.choiceIndex}
                         </span>
-                        <span className="font-serif flex-1">{c.bodyMd}</span>
+                        <span className="flex-1 text-[15px] leading-[1.65] tracking-[-0.005em] text-foreground">
+                          {c.bodyMd}
+                        </span>
                         {showCorrect ? (
-                          <CircleCheckIcon className="size-5 shrink-0 text-emerald-600" />
+                          <CircleCheckIcon className="mt-0.5 size-5 shrink-0 text-emerald-500" />
                         ) : null}
                         {showWrong ? (
-                          <CircleXIcon className="size-5 shrink-0 text-rose-600" />
+                          <CircleXIcon className="mt-0.5 size-5 shrink-0 text-rose-500" />
                         ) : null}
                       </button>
                     </li>
@@ -840,6 +900,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 })}
               </ul>
 
+              {/* Action buttons */}
               <div className="flex flex-wrap gap-2">
                 {isExam ? (
                   isLast ? (
@@ -848,6 +909,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       disabled={
                         selected === null || completeFetcher.state !== "idle"
                       }
+                      className="rounded-full"
                       data-testid="exam-finish"
                     >
                       <FlagIcon className="size-4" /> 시험 끝내기 · 결과 보기
@@ -856,26 +918,28 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                     <Button
                       onClick={goNext}
                       disabled={selected === null}
+                      className="rounded-full"
                       data-testid="exam-next"
                     >
                       다음 문제 <ChevronRightIcon className="size-4" />
                     </Button>
                   )
                 ) : !revealed ? (
-                  <Button onClick={submitStudy} disabled={selected === null}>
+                  <Button
+                    onClick={submitStudy}
+                    disabled={selected === null}
+                    className="rounded-full"
+                  >
                     정답 확인 (학습 모드)
                   </Button>
                 ) : (
                   <>
-                    <Button variant="outline" onClick={reset}>
+                    <Button variant="outline" onClick={reset} className="rounded-full">
                       다시 풀기
                     </Button>
                     {runnerNav?.nextId ? (
-                      <Button asChild>
-                        <Link
-                          to={buildRunnerHref(runnerNav.nextId)}
-                          viewTransition
-                        >
+                      <Button asChild className="rounded-full">
+                        <Link to={buildRunnerHref(runnerNav.nextId)} viewTransition>
                           다음 문제 <ChevronRightIcon className="size-4" />
                         </Link>
                       </Button>
@@ -884,14 +948,47 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 )}
               </div>
 
+              {/* Explanation + O/X panel — after submit in study mode */}
               {revealed && !isExam ? (
-                <Card className="border-dashed">
-                  <CardHeader>
-                    <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                      해설 — {problem.format === "mc_box" ? "박스 항목" : "지문"}별 O/X
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
+                <div className="mt-7 space-y-4">
+                  {/* Verdict pill */}
+                  {(() => {
+                    const isCorrectAns = problem.choices.find(
+                      (c) => c.choiceIndex === selected,
+                    )?.isCorrect ?? false;
+                    const correctChoice = problem.choices.find((c) => c.isCorrect);
+                    return (
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold",
+                            isCorrectAns
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200",
+                          )}
+                        >
+                          {isCorrectAns ? (
+                            <CircleCheckIcon className="size-4" />
+                          ) : (
+                            <CircleXIcon className="size-4" />
+                          )}
+                          {isCorrectAns ? "정답입니다" : "오답입니다"}
+                          {correctChoice
+                            ? ` · 정답 ${correctChoice.choiceIndex}번`
+                            : null}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Per-choice explanation cards */}
+                  <div className="rounded-xl border border-border bg-card shadow-sm">
+                    <div className="border-b border-border px-5 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                        해설 — {problem.format === "mc_box" ? "박스 항목" : "지문"}별 O/X
+                      </p>
+                    </div>
+                    <div className="divide-y divide-border">
                     {problem.boxItems.length > 0
                       ? (() => {
                           const correctChoiceBody =
@@ -911,11 +1008,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                             return (
                               <div
                                 key={bi.boxItemId}
-                                className="flex items-start gap-2 text-sm"
+                                className="flex items-start gap-3 px-5 py-3 text-sm"
                               >
                                 <span
                                   className={cn(
-                                    "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                                    "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
                                     truth === "O"
                                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
                                       : truth === "X"
@@ -925,13 +1022,13 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                 >
                                   {bi.marker}
                                 </span>
-                                <div className="flex-1 space-y-0.5">
+                                <div className="flex-1 space-y-0.5 leading-relaxed">
                                   <p>
                                     <span className="font-semibold">
                                       {truth ?? "—"}
                                     </span>
                                     {bi.explanationMd ? (
-                                      <span className="text-muted-foreground ml-2">
+                                      <span className="ml-2 text-muted-foreground">
                                         {bi.explanationMd}
                                       </span>
                                     ) : null}
@@ -943,8 +1040,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                         })()
                       : null}
                     {problem.boxItems.length > 0 && problem.choices.length > 0 ? (
-                      <div className="border-t pt-2">
-                        <p className="text-muted-foreground mb-1 text-xs">
+                      <div className="px-5 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                           정답 보기
                         </p>
                       </div>
@@ -975,21 +1072,21 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       return (
                       <div
                         key={c.choiceId}
-                        className="flex items-start gap-2 text-sm"
+                        className="flex items-start gap-3 px-5 py-3 text-sm"
                       >
                         <span
                           className={cn(
-                            "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                            "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
                             tone,
                           )}
                         >
                           {c.choiceIndex}
                         </span>
-                        <div className="flex-1 space-y-0.5">
+                        <div className="flex-1 space-y-1 leading-relaxed">
                           <p>
                             <span className="font-semibold">{label || "—"}</span>
                             {c.explanationMd ? (
-                              <span className="text-muted-foreground ml-2">
+                              <span className="ml-2 text-muted-foreground">
                                 {c.explanationMd}
                               </span>
                             ) : null}
@@ -1005,7 +1102,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                     to={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
                                     viewTransition
                                     data-testid="choice-related-article"
-                                    className="hover:bg-accent inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                                    className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs text-primary hover:bg-primary/20"
                                   >
                                     조문 {articleRef.displayLabel}
                                   </Link>
@@ -1013,9 +1110,9 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                               }
                               if (c.relatedArticleId) {
                                 return (
-                                  <Badge variant="outline" className="text-xs">
+                                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
                                     조문 {c.relatedArticleNumber ?? "—"}
-                                  </Badge>
+                                  </span>
                                 );
                               }
                               return null;
@@ -1030,7 +1127,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                     to={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
                                     viewTransition
                                     data-testid="choice-related-case"
-                                    className="hover:bg-accent inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                                    className="inline-flex items-center gap-1 rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
                                   >
                                     판례 {caseRef.caseNumber}
                                   </Link>
@@ -1038,9 +1135,9 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                               }
                               if (c.relatedCaseId) {
                                 return (
-                                  <Badge variant="outline" className="text-xs">
+                                  <span className="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
                                     판례 {c.relatedCaseNumber ?? "—"}
-                                  </Badge>
+                                  </span>
                                 );
                               }
                               return null;
@@ -1050,43 +1147,40 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       </div>
                       );
                     })}
-                  </CardContent>
-                </Card>
+                    </div>
+                  </div>
+                </div>
               ) : null}
               </>
               )}
-            </CardContent>
-          </Card>
+          </article>
         </main>
 
-        <aside className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-          <Card className="py-4">
-            <CardContent className="px-3">
-              <ArticleRightPanel
-                target={{ type: "problem", id: problem.problemId }}
-                bookmark={bookmark}
-                memos={memos}
-                highlights={highlights}
-                qnaThreads={qnaThreads}
-                relatedProblems={relatedProblems}
-                subjectSlug={subject.slug}
-                relatedCases={citedCases.map((c) => ({
-                  caseId: c.caseId,
-                  caseNumber: c.caseNumber,
-                  caseTitle: c.caseTitle,
-                  summaryTitle: c.summaryTitle,
-                  decidedAt: c.decidedAt,
-                  importance: c.importance,
-                  relationType: PC_TO_AC[c.relationType] ?? "cites",
-                  note: null,
-                }))}
-                comments={problemComments}
-                canEditComment={canEditComment}
-                currentUserId={currentUserId}
-                isAdmin={isAdmin}
-              />
-            </CardContent>
-          </Card>
+        {/* Right panel — desktop sticky */}
+        <aside className="hidden lg:block lg:sticky lg:top-[calc(3.5rem+41px)] lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
+          <ArticleRightPanel
+            target={{ type: "problem", id: problem.problemId }}
+            bookmark={bookmark}
+            memos={memos}
+            highlights={highlights}
+            qnaThreads={qnaThreads}
+            relatedProblems={relatedProblems}
+            subjectSlug={subject.slug}
+            relatedCases={citedCases.map((c) => ({
+              caseId: c.caseId,
+              caseNumber: c.caseNumber,
+              caseTitle: c.caseTitle,
+              summaryTitle: c.summaryTitle,
+              decidedAt: c.decidedAt,
+              importance: c.importance,
+              relationType: PC_TO_AC[c.relationType] ?? "cites",
+              note: null,
+            }))}
+            comments={problemComments}
+            canEditComment={canEditComment}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+          />
         </aside>
       </div>
     </div>
@@ -1281,7 +1375,7 @@ function SubjectivePanel({
   const timedActive = timedStartedAt !== null && !timedExpired;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <SubjectiveTimedBar
         timedStartedAt={timedStartedAt}
         timedLimitMin={timedLimitMin}
@@ -1300,9 +1394,10 @@ function SubjectivePanel({
         }}
       />
 
-      <div>
-        <div className="mb-1 flex items-center justify-between text-xs">
-          <p className="text-muted-foreground font-semibold tracking-wide uppercase">
+      {/* Answer textarea */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
             답안 작성 (자동 저장)
           </p>
           <SavingStatus
@@ -1311,17 +1406,19 @@ function SubjectivePanel({
             updatedAt={lastSaved?.updatedAt ?? null}
           />
         </div>
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={14}
-          placeholder="목차를 잡고 본문을 작성해보세요. 작성 중 1.5초 정지 시 자동 저장됩니다."
-          className="border-input bg-background w-full rounded-md border px-3 py-2 font-serif text-sm leading-relaxed"
-          data-testid="subjective-answer-draft"
-        />
-        <p className="text-muted-foreground mt-1 text-[11px] tabular-nums">
-          {draft.length}자
-        </p>
+        <div className="p-4">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={14}
+            placeholder="목차를 잡고 본문을 작성해보세요. 작성 중 1.5초 정지 시 자동 저장됩니다."
+            className="border-input bg-background w-full rounded-lg border px-4 py-3 text-sm leading-[1.8] tracking-[-0.005em] focus:outline-none focus:ring-2 focus:ring-primary/30"
+            data-testid="subjective-answer-draft"
+          />
+          <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+            {draft.length}자
+          </p>
+        </div>
       </div>
 
       {rubricItems && rubricItems.length > 0 && !timedActive ? (
@@ -1339,6 +1436,7 @@ function SubjectivePanel({
           onClick={() => setRevealedModel((v) => !v)}
           disabled={!hasModel || timedActive}
           title={timedActive ? "시험 모드 중에는 모범답안 잠금" : undefined}
+          className="rounded-full"
           data-testid="subjective-reveal-model"
         >
           {revealedModel ? "모범답안 숨기기" : "모범답안 보기"}
@@ -1350,6 +1448,7 @@ function SubjectivePanel({
           onClick={() => setRevealedRubric((v) => !v)}
           disabled={!hasRubric || timedActive}
           title={timedActive ? "시험 모드 중에는 채점기준 잠금" : undefined}
+          className="rounded-full"
           data-testid="subjective-reveal-rubric"
         >
           {revealedRubric ? "채점기준 숨기기" : "채점기준 보기"}
@@ -1360,6 +1459,7 @@ function SubjectivePanel({
           size="sm"
           onClick={() => setShowScoreForm((v) => !v)}
           disabled={isSaving}
+          className="rounded-full"
           data-testid="subjective-grade-toggle"
         >
           {showScoreForm ? "자기채점 닫기" : "자기채점 완료"}
@@ -1367,16 +1467,16 @@ function SubjectivePanel({
       </div>
 
       {lastSaved?.submittedAt ? (
-        <div className="border-foreground/10 text-muted-foreground rounded-md border-l-2 bg-emerald-50/40 px-3 py-2 text-xs dark:bg-emerald-950/20">
-          <p>
+        <div className="rounded-xl border border-emerald-300/50 bg-emerald-50/60 px-4 py-3 text-xs dark:border-emerald-700/40 dark:bg-emerald-950/20">
+          <p className="text-muted-foreground">
             마지막 자기채점:{" "}
-            <span className="text-foreground font-bold tabular-nums">
+            <span className="font-bold tabular-nums text-foreground">
               {lastSaved.selfScore !== null ? `${lastSaved.selfScore}점` : "—"}
             </span>{" "}
             · {lastSaved.submittedAt.slice(0, 10)}
           </p>
           {lastSaved.selfScoreNote ? (
-            <p className="mt-1 whitespace-pre-line">{lastSaved.selfScoreNote}</p>
+            <p className="mt-1 whitespace-pre-line text-muted-foreground">{lastSaved.selfScoreNote}</p>
           ) : null}
         </div>
       ) : null}
@@ -1387,17 +1487,16 @@ function SubjectivePanel({
         onUpdated={(att) => setLastSaved(att)}
       />
 
-
       {showScoreForm ? (
-        <Card className="border-primary/40">
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        <div className="rounded-xl border border-primary/30 bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               자기채점
             </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <label className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground w-16 shrink-0">
+          </div>
+          <div className="space-y-3 p-5">
+            <label className="flex items-center gap-3 text-xs">
+              <span className="w-20 shrink-0 text-muted-foreground">
                 점수 (0~100)
               </span>
               <input
@@ -1407,12 +1506,12 @@ function SubjectivePanel({
                 value={scoreDraft}
                 onChange={(e) => setScoreDraft(e.target.value)}
                 placeholder="예: 75"
-                className="border-input bg-background h-8 w-24 rounded-md border px-2 text-xs tabular-nums"
+                className="border-input bg-background h-8 w-24 rounded-lg border px-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
                 data-testid="subjective-score-input"
               />
             </label>
-            <label className="flex items-start gap-2 text-xs">
-              <span className="text-muted-foreground mt-1 w-16 shrink-0">
+            <label className="flex items-start gap-3 text-xs">
+              <span className="mt-1 w-20 shrink-0 text-muted-foreground">
                 자기 평가
               </span>
               <textarea
@@ -1420,7 +1519,7 @@ function SubjectivePanel({
                 onChange={(e) => setScoreNote(e.target.value)}
                 rows={3}
                 placeholder="놓친 논점, 보완할 내용 등"
-                className="border-input bg-background flex-1 rounded-md border px-2 py-1 text-xs"
+                className="border-input bg-background flex-1 rounded-lg border px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
                 data-testid="subjective-score-note"
               />
             </label>
@@ -1428,12 +1527,14 @@ function SubjectivePanel({
               <Button
                 variant="ghost"
                 size="sm"
+                className="rounded-full"
                 onClick={() => setShowScoreForm(false)}
               >
                 취소
               </Button>
               <Button
                 size="sm"
+                className="rounded-full"
                 onClick={onSubmitScore}
                 disabled={isSaving}
                 data-testid="subjective-score-submit"
@@ -1442,57 +1543,57 @@ function SubjectivePanel({
               </Button>
             </div>
             {submitFetcher.data && "error" in submitFetcher.data ? (
-              <p className="text-rose-600 text-xs">
+              <p className="text-xs text-rose-600">
                 {submitFetcher.data.error}
               </p>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : null}
 
       {revealedRubric && hasRubric ? (
-        <Card className="border-dashed">
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               채점 기준
             </p>
-          </CardHeader>
-          <CardContent>
-            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+          </div>
+          <div className="px-5 py-4">
+            <p className="text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line text-foreground">
               {gradingRubricMd}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : null}
 
       {revealedModel && hasModel ? (
-        <Card className="border-dashed">
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               모범답안
             </p>
-          </CardHeader>
-          <CardContent>
-            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+          </div>
+          <div className="px-5 py-4">
+            <p className="text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line text-foreground">
               {modelAnswerMd}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : null}
 
       {explanationMd ? (
-        <Card className="border-dashed">
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               해설
             </p>
-          </CardHeader>
-          <CardContent>
-            <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
+          </div>
+          <div className="px-5 py-4">
+            <p className="text-sm leading-[1.8] tracking-[-0.005em] whitespace-pre-line text-foreground">
               {explanationMd}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -1515,44 +1616,42 @@ function RubricChecklist({
   );
   const pct = total > 0 ? Math.round((got / total) * 100) : 0;
   return (
-    <Card className="border-primary/30">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between text-xs">
-          <p className="text-muted-foreground font-semibold tracking-wide uppercase">
-            채점 체크리스트
-          </p>
-          <span className="tabular-nums">
-            <span className="text-primary font-bold">{got}</span>
-            <span className="text-muted-foreground"> / {total} 점</span>
-            <span className="text-muted-foreground ml-2">({pct}%)</span>
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-1.5" data-testid="rubric-checklist">
+    <div className="rounded-xl border border-primary/30 bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          채점 체크리스트
+        </p>
+        <span className="text-xs tabular-nums">
+          <span className="font-bold text-primary">{got}</span>
+          <span className="text-muted-foreground"> / {total} 점</span>
+          <span className="ml-2 text-muted-foreground">({pct}%)</span>
+        </span>
+      </div>
+      <div className="p-4">
+        <ul className="space-y-2" data-testid="rubric-checklist">
           {items.map((it, i) => {
             const isChecked = checked.has(i);
             return (
               <li key={i}>
                 <label
                   className={cn(
-                    "flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors",
+                    "flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-xs transition-colors",
                     isChecked
-                      ? "border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-950/30"
-                      : "hover:bg-accent",
+                      ? "border-emerald-400/40 bg-emerald-50/60 dark:bg-emerald-950/30"
+                      : "hover:bg-muted/60",
                   )}
                 >
                   <input
                     type="checkbox"
-                    className="mt-0.5 size-3.5"
+                    className="mt-0.5 size-3.5 accent-primary"
                     checked={isChecked}
                     onChange={() => onToggle(i)}
                     data-testid={`rubric-item-${i}`}
                   />
                   <span className="flex-1">
-                    <span className={cn(isChecked && "line-through")}>{it.label}</span>
+                    <span className={cn(isChecked && "line-through opacity-60")}>{it.label}</span>
                   </span>
-                  <span className="text-muted-foreground shrink-0 tabular-nums">
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
                     {it.points}점
                   </span>
                 </label>
@@ -1560,8 +1659,8 @@ function RubricChecklist({
             );
           })}
         </ul>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -1607,23 +1706,23 @@ function ReviewSection({
     fetcher.submit(fd, { method: "post", action: "/api/study/subjective-review" });
   };
   return (
-    <Card className="border-dashed">
-      <CardHeader className="pb-2">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-5 py-3">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
           강사 첨삭
         </p>
-      </CardHeader>
-      <CardContent className="space-y-2 text-xs">
+      </div>
+      <div className="space-y-3 p-5 text-xs">
         {!submitted ? (
           <p className="text-muted-foreground">
             자기채점 완료 후에 첨삭 요청이 가능합니다.
           </p>
         ) : completed ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                 첨삭 완료
-              </Badge>
+              </span>
               <span className="text-muted-foreground">
                 {attempt.reviewCompletedAt?.slice(0, 10)}
               </span>
@@ -1634,7 +1733,7 @@ function ReviewSection({
               ) : null}
             </div>
             {attempt.reviewerCommentMd ? (
-              <p className="bg-muted/40 rounded p-2 whitespace-pre-line leading-relaxed">
+              <p className="rounded-lg bg-muted/50 p-3 leading-relaxed whitespace-pre-line">
                 {attempt.reviewerCommentMd}
               </p>
             ) : (
@@ -1645,7 +1744,7 @@ function ReviewSection({
             <Button
               size="sm"
               variant="outline"
-              className="h-7"
+              className="h-7 rounded-full"
               onClick={onRequest}
               disabled={inFlight}
             >
@@ -1653,8 +1752,10 @@ function ReviewSection({
             </Button>
           </div>
         ) : requested ? (
-          <div className="flex items-center gap-1.5">
-            <Badge variant="secondary">검토 대기</Badge>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
+              검토 대기
+            </span>
             <span className="text-muted-foreground">
               요청 시각 {attempt.reviewRequestedAt?.slice(0, 10)}
             </span>
@@ -1666,7 +1767,7 @@ function ReviewSection({
             </p>
             <Button
               size="sm"
-              className="ml-auto h-7"
+              className="ml-auto h-7 rounded-full"
               onClick={onRequest}
               disabled={inFlight}
               data-testid="subjective-request-review"
@@ -1676,8 +1777,8 @@ function ReviewSection({
           </div>
         )}
         {error ? <p className="text-rose-600">{error}</p> : null}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -1699,20 +1800,21 @@ function SubjectiveTimedBar({
   const [minInput, setMinInput] = useState<string>("30");
   if (timedExpired) {
     return (
-      <div className="rounded-md border border-rose-500/40 bg-rose-50 px-3 py-2 text-xs dark:bg-rose-950/30">
-        <p className="text-rose-700 dark:text-rose-300">
-          ⏱ 시간 만료 — 답안이 자동 제출되었습니다 ({timedLimitMin}분 응시).
+      <div className="flex items-center gap-2 rounded-xl border border-rose-400/50 bg-rose-50 px-4 py-2.5 text-xs dark:border-rose-700/40 dark:bg-rose-950/30">
+        <TimerIcon className="size-4 text-rose-500" />
+        <p className="font-semibold text-rose-700 dark:text-rose-300">
+          시간 만료 — 답안이 자동 제출되었습니다 ({timedLimitMin}분 응시).
         </p>
       </div>
     );
   }
   if (timedStartedAt === null) {
     return (
-      <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs">
-        <span className="text-muted-foreground inline-flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3 text-xs">
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
           <TimerIcon className="size-3.5" /> 시험 모드
         </span>
-        <label className="text-muted-foreground inline-flex items-center gap-1">
+        <label className="inline-flex items-center gap-1.5 text-muted-foreground">
           제한 시간
           <input
             type="number"
@@ -1720,14 +1822,14 @@ function SubjectiveTimedBar({
             max={180}
             value={minInput}
             onChange={(e) => setMinInput(e.target.value)}
-            className="border-input bg-background h-6 w-14 rounded-md border px-1 text-xs tabular-nums"
+            className="border-input bg-background h-7 w-14 rounded-lg border px-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
           분
         </label>
         <Button
           size="sm"
           variant="default"
-          className="h-7"
+          className="h-7 rounded-full"
           onClick={() => {
             const m = Number(minInput);
             if (Number.isNaN(m) || m < 1 || m > 180) {
@@ -1740,7 +1842,7 @@ function SubjectiveTimedBar({
         >
           시험 모드 시작
         </Button>
-        <span className="text-muted-foreground ml-auto text-[11px]">
+        <span className="ml-auto text-[11px] text-muted-foreground">
           시작하면 모범답안·채점기준이 잠깁니다.
         </span>
       </div>
@@ -1752,24 +1854,24 @@ function SubjectiveTimedBar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs",
+        "flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 text-xs",
         lowTime
-          ? "border-rose-500/60 bg-rose-50 dark:bg-rose-950/30"
-          : "border-amber-500/40 bg-amber-50 dark:bg-amber-950/30",
+          ? "border-rose-400/60 bg-rose-50 dark:border-rose-700/40 dark:bg-rose-950/30"
+          : "border-amber-400/40 bg-amber-50 dark:border-amber-700/40 dark:bg-amber-950/30",
       )}
       data-testid="subjective-timed-bar"
     >
-      <span className="inline-flex items-center gap-1 font-semibold">
+      <span className="inline-flex items-center gap-1.5 font-semibold">
         <TimerIcon className="size-3.5" /> 시험 모드 응시 중
       </span>
-      <span className="font-mono text-base tabular-nums">
+      <span className="font-mono text-base font-bold tabular-nums">
         {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
       </span>
       <span className="text-muted-foreground">/ {timedLimitMin}분</span>
       <Button
         size="sm"
         variant="ghost"
-        className="ml-auto h-7"
+        className="ml-auto h-7 rounded-full"
         onClick={onCancel}
         data-testid="subjective-timed-cancel"
       >
@@ -1789,14 +1891,14 @@ function SavingStatus({
   updatedAt: string | null;
 }) {
   if (isSaving) {
-    return <span className="text-muted-foreground">저장 중…</span>;
+    return <span className="text-muted-foreground tabular-nums">저장 중…</span>;
   }
   if (isDirty) {
-    return <span className="text-amber-600">미저장</span>;
+    return <span className="font-semibold text-amber-600 dark:text-amber-400">미저장</span>;
   }
   if (updatedAt) {
     return (
-      <span className="text-emerald-600">
+      <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
         저장됨 · {updatedAt.slice(11, 16)}
       </span>
     );

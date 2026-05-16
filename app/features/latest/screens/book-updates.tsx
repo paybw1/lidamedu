@@ -1,37 +1,44 @@
 // 도서 추록/정오표 피드 (feat-3-603). 모든 사용자 read-only, staff CRUD inline.
 // /latest/book-updates — 검색·과목·kind·중요 필터 + 페이지네이션.
+// 키트 lidam-latest/BooksScreen 디자인.
 
 import {
   ArrowRightIcon,
-  BookOpenIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  BookIcon,
   ExternalLinkIcon,
   FileTextIcon,
-  FilterXIcon,
-  NewspaperIcon,
   PencilIcon,
   PlusIcon,
-  SearchIcon,
-  StarIcon,
+  SearchXIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
-  Form,
-  Link,
   data,
   useFetcher,
   useLocation,
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
+import {
+  FeedCard,
+  FilterCheckbox,
+  FilterSelect,
+  LatestEmpty,
+  LatestFilterForm,
+  LatestPagination,
+  ListStack,
+  MetaRow,
+  NewBadge,
+  Pill,
+  isRecent,
+  relativeKo,
+} from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   BOOK_UPDATE_KIND_LABELS,
@@ -41,15 +48,17 @@ import {
 import { listBookUpdates } from "~/features/book-updates/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/book-updates";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "추록·정오표 | Lidam Edu" },
+  { title: "추록·정오표 | Lidam Patent Attorney Academy" },
 ];
 
 const KIND_OPTIONS: Array<{ value: BookUpdateKind | "all"; label: string }> = [
@@ -122,9 +131,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { items, total, filters, canEdit: role !== null };
 }
 
-const KIND_BADGE_VARIANT: Record<BookUpdateKind, "default" | "secondary" | "outline"> = {
-  supplement: "default",
-  errata: "secondary",
+const KIND_TONE: Record<BookUpdateKind, "primary" | "amber" | "outline"> = {
+  supplement: "primary",
+  errata: "amber",
   other: "outline",
 };
 
@@ -160,170 +169,125 @@ export default function LatestBookUpdates({
     return s ? `?${s}` : "";
   };
 
-  return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NewspaperIcon className="size-3.5" /> 최신 정보
-        </p>
-        <div className="flex items-center justify-between">
-          <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <BookOpenIcon className="text-primary size-6" />
-            추록 · 정오표
-          </h1>
-          {canEdit && !showAdd ? (
-            <Button size="sm" onClick={() => setShowAdd(true)}>
-              <PlusIcon className="size-3.5" /> 자료 추가
-            </Button>
-          ) : null}
-        </div>
-        <p className="text-muted-foreground text-sm">
-          {total}건
-          {filters.kind ? ` · ${BOOK_UPDATE_KIND_LABELS[filters.kind]}` : ""}
-          {filters.subject ? ` · ${LAW_SUBJECTS[filters.subject].name}` : ""}
-          {filters.year ? ` · ${filters.year}년` : ""}
-          {filters.importantOnly ? " · 중요 (★3+)" : ""}
-          {filters.q ? ` · "${filters.q}" 검색` : ""}
-        </p>
-      </header>
+  const descParts = [`${total.toLocaleString("ko-KR")}건`];
+  if (filters.kind) descParts.push(BOOK_UPDATE_KIND_LABELS[filters.kind]);
+  if (filters.subject) descParts.push(LAW_SUBJECTS[filters.subject].name);
+  if (filters.year) descParts.push(`${filters.year}년`);
+  if (filters.importantOnly) descParts.push("중요 ★3+");
+  if (filters.q) descParts.push(`"${filters.q}" 검색`);
 
+  return (
+    <LatestShell
+      category="books"
+      width="feed"
+      title="추록 · 정오표"
+      desc={`${descParts.join(" · ")} — 발행일 최신순으로 모은 도서 추록·정오표입니다.`}
+      headerRight={
+        canEdit && !showAdd ? (
+          <Button
+            size="sm"
+            className="h-9 rounded-full"
+            onClick={() => setShowAdd(true)}
+          >
+            <PlusIcon className="size-3.5" /> 자료 추가
+          </Button>
+        ) : undefined
+      }
+    >
       {canEdit && showAdd ? (
-        <div className="mb-4">
+        <div className="mb-3.5">
           <BookUpdateForm mode="create" onClose={() => setShowAdd(false)} />
         </div>
       ) : null}
 
-      <Form
-        method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto_auto]"
+      <LatestFilterForm
+        search={{
+          name: "q",
+          placeholder: "책 제목·자료 제목·출판사·내용 검색",
+          defaultValue: filters.q,
+        }}
+        hasActive={filterActive}
+        resetTo="/latest/book-updates"
       >
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            name="q"
-            defaultValue={filters.q}
-            placeholder="책 제목·자료 제목·출판사·내용 검색"
-            className="pl-9"
-          />
-        </div>
-        <select
+        <FilterSelect
           name="kind"
-          defaultValue={filters.kind ?? "all"}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          {KIND_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value === "all" ? "" : o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
+          ariaLabel="유형"
+          defaultValue={filters.kind ?? ""}
+          options={KIND_OPTIONS.map((o) => ({
+            value: o.value === "all" ? "" : o.value,
+            label: o.label,
+          }))}
+        />
+        <FilterSelect
           name="subject"
+          ariaLabel="과목"
           defaultValue={filters.subject ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          <option value="">전체 과목</option>
-          {LAW_SUBJECT_SLUGS.map((s) => (
-            <option key={s} value={s}>
-              {LAW_SUBJECTS[s].name}
-            </option>
-          ))}
-        </select>
-        <select
+          options={[{ value: "", label: "전체 과목" }]}
+          optionGroups={[
+            {
+              label: "1차 · 객관식",
+              options: FIRST_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+            {
+              label: "2차 · 주관식",
+              options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+          ]}
+        />
+        <FilterSelect
           name="year"
-          defaultValue={filters.year ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs tabular-nums"
-        >
-          <option value="">전체 년도</option>
-          {yearOptions.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-        <label className="border-input flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs">
-          <input
-            type="checkbox"
-            name="important"
-            value="1"
-            defaultChecked={filters.importantOnly}
-            className="size-3.5"
-          />
-          <StarIcon className="size-3" /> 중요만
-        </label>
-        <Button type="submit" size="sm" className="h-9">
-          적용
-        </Button>
-      </Form>
-      {filterActive ? (
-        <div className="mb-4">
-          <Button asChild type="button" size="sm" variant="ghost" className="h-7">
-            <Link to="/latest/book-updates">
-              <FilterXIcon className="size-3.5" /> 초기화
-            </Link>
-          </Button>
-        </div>
-      ) : null}
+          ariaLabel="년도"
+          defaultValue={filters.year ? String(filters.year) : ""}
+          options={[
+            { value: "", label: "전체 년도" },
+            ...yearOptions.map((y) => ({
+              value: String(y),
+              label: `${y}년`,
+            })),
+          ]}
+        />
+        <FilterCheckbox name="important" defaultChecked={filters.importantOnly}>
+          중요만 ★3+
+        </FilterCheckbox>
+      </LatestFilterForm>
 
       {items.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            {canEdit
-              ? "등록된 자료가 없습니다. 상단 '자료 추가' 버튼으로 시작하세요."
-              : "등록된 자료가 없습니다."}
-          </p>
-        </div>
+        <LatestEmpty
+          icon={filterActive ? SearchXIcon : BookIcon}
+          tone={filterActive ? "subdued" : "neutral"}
+          title={
+            filterActive
+              ? "조건에 맞는 자료가 없습니다"
+              : "아직 등록된 자료가 없습니다"
+          }
+          body={
+            filterActive
+              ? "검색어나 필터를 바꿔 다시 찾아보세요."
+              : canEdit
+                ? "상단 '자료 추가' 버튼으로 첫 추록·정오표를 등록하세요."
+                : "도서 추록·정오표가 등록되면 이곳에 모입니다."
+          }
+        />
       ) : (
-        <div className="space-y-3" data-testid="latest-book-updates-list">
+        <ListStack testid="latest-book-updates-list">
           {items.map((it) => (
             <BookUpdateCard key={it.updateId} item={it} canEdit={canEdit} />
           ))}
-        </div>
+        </ListStack>
       )}
 
-      {totalPages > 1 ? (
-        <div className="mt-6 flex items-center justify-center gap-2 text-xs">
-          <Button
-            asChild={filters.page > 1}
-            variant="outline"
-            size="sm"
-            disabled={filters.page <= 1}
-            className="h-7"
-          >
-            {filters.page > 1 ? (
-              <Link to={makeUrl({ page: String(filters.page - 1) })}>
-                <ChevronLeftIcon className="size-3" /> 이전
-              </Link>
-            ) : (
-              <span>
-                <ChevronLeftIcon className="size-3" /> 이전
-              </span>
-            )}
-          </Button>
-          <span className="text-muted-foreground tabular-nums">
-            {filters.page} / {totalPages}
-          </span>
-          <Button
-            asChild={filters.page < totalPages}
-            variant="outline"
-            size="sm"
-            disabled={filters.page >= totalPages}
-            className="h-7"
-          >
-            {filters.page < totalPages ? (
-              <Link to={makeUrl({ page: String(filters.page + 1) })}>
-                다음 <ChevronRightIcon className="size-3" />
-              </Link>
-            ) : (
-              <span>
-                <ChevronRightIcon className="size-3" /> 다음
-              </span>
-            )}
-          </Button>
-        </div>
-      ) : null}
-    </div>
+      <LatestPagination
+        page={filters.page}
+        totalPages={totalPages}
+        makeUrl={makeUrl}
+      />
+    </LatestShell>
   );
 }
 
@@ -354,113 +318,128 @@ function BookUpdateCard({
 
   if (editing) {
     return (
-      <BookUpdateForm mode="update" item={item} onClose={() => setEditing(false)} />
+      <BookUpdateForm
+        mode="update"
+        item={item}
+        onClose={() => setEditing(false)}
+      />
     );
   }
 
   return (
-    <Card className="hover:border-primary transition-colors">
-      <CardHeader className="px-4 pb-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant={KIND_BADGE_VARIANT[item.kind]} className="text-xs">
-            <BookOpenIcon className="size-3" />
-            {BOOK_UPDATE_KIND_LABELS[item.kind]}
-          </Badge>
-          {item.importance >= 3 ? (
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <StarIcon className="size-3" /> ★{item.importance}
-            </Badge>
-          ) : null}
-          {item.subjectLaws.map((s) => (
-            <Badge key={s} variant="outline" className="text-xs">
-              {LAW_SUBJECTS[s].name}
-            </Badge>
-          ))}
-          {item.publishedAt ? (
-            <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-              {item.publishedAt}
+    <FeedCard>
+      <MetaRow
+        right={item.publishedAt ? relativeKo(item.publishedAt) : undefined}
+      >
+        <Pill tone={KIND_TONE[item.kind]}>
+          <BookIcon className="size-3" />
+          {BOOK_UPDATE_KIND_LABELS[item.kind]}
+        </Pill>
+        {item.importance >= 3 ? (
+          <Pill tone="amber">★ {item.importance}</Pill>
+        ) : null}
+        {item.subjectLaws.map((s) => (
+          <Pill key={s} tone="outline">
+            {LAW_SUBJECTS[s].name}
+          </Pill>
+        ))}
+        {isRecent(item.publishedAt) ? <NewBadge /> : null}
+      </MetaRow>
+
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] leading-snug font-bold tracking-tight">
+            {item.title}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            <span className="text-foreground/80 font-semibold">
+              {item.bookTitle}
             </span>
-          ) : null}
+            {item.edition ? ` · ${item.edition}` : ""}
+            {item.publisher ? ` · ${item.publisher}` : ""}
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-4 text-sm">
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <p className="font-medium leading-snug">{item.title}</p>
-            <p className="text-muted-foreground text-xs">
-              <span className="font-medium">{item.bookTitle}</span>
-              {item.edition ? ` · ${item.edition}` : ""}
-              {item.publisher ? ` · ${item.publisher}` : ""}
-            </p>
-          </div>
-          {canEdit ? (
-            <div className="flex shrink-0 gap-1">
+        {canEdit ? (
+          <div className="flex shrink-0 gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setEditing(true)}
+              aria-label="수정"
+              className="size-8 rounded-full"
+            >
+              <PencilIcon className="size-3.5" />
+            </Button>
+            <delFetcher.Form method="post" action="/api/admin/book-update">
+              <input type="hidden" name="intent" value="delete" />
+              <input type="hidden" name="updateId" value={item.updateId} />
               <Button
+                type="submit"
                 size="icon"
                 variant="ghost"
-                onClick={() => setEditing(true)}
-                aria-label="수정"
-                className="size-7"
+                aria-label="삭제"
+                className="size-8 rounded-full text-rose-600 hover:text-rose-700"
+                disabled={delFetcher.state !== "idle"}
+                onClick={(e) => {
+                  if (!confirm(`"${item.title}" 자료를 삭제하시겠습니까?`)) {
+                    e.preventDefault();
+                  }
+                }}
               >
-                <PencilIcon className="size-3.5" />
+                <Trash2Icon className="size-3.5" />
               </Button>
-              <delFetcher.Form method="post" action="/api/admin/book-update">
-                <input type="hidden" name="intent" value="delete" />
-                <input type="hidden" name="updateId" value={item.updateId} />
-                <Button
-                  type="submit"
-                  size="icon"
-                  variant="ghost"
-                  aria-label="삭제"
-                  className="size-7 text-rose-600 hover:text-rose-700"
-                  disabled={delFetcher.state !== "idle"}
-                  onClick={(e) => {
-                    if (!confirm(`"${item.title}" 자료를 삭제하시겠습니까?`)) {
-                      e.preventDefault();
-                    }
-                  }}
-                >
-                  <Trash2Icon className="size-3.5" />
-                </Button>
-              </delFetcher.Form>
-            </div>
-          ) : null}
-        </div>
-        {item.description ? (
-          <p className="text-muted-foreground line-clamp-3 whitespace-pre-line text-xs leading-relaxed">
-            {item.description}
-          </p>
-        ) : null}
-        {item.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {item.tags.map((t) => (
-              <Badge key={t} variant="secondary" className="text-[10px]">
-                #{t}
-              </Badge>
-            ))}
+            </delFetcher.Form>
           </div>
         ) : null}
-        <div className="flex flex-wrap gap-1.5 pt-1">
+      </div>
+
+      {item.description ? (
+        <p className="text-foreground/80 mt-1.5 line-clamp-3 text-[13px] leading-relaxed whitespace-pre-line">
+          {item.description}
+        </p>
+      ) : null}
+      {item.tags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {item.tags.map((t) => (
+            <Pill key={t} tone="neutral">
+              #{t}
+            </Pill>
+          ))}
+        </div>
+      ) : null}
+      {item.url || item.pdfUrl ? (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {item.url ? (
-            <Button asChild size="sm" variant="outline" className="h-7">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-full"
+            >
               <a href={item.url} target="_blank" rel="noreferrer">
                 <ExternalLinkIcon className="size-3" /> 외부 링크
               </a>
             </Button>
           ) : null}
           {item.pdfUrl ? (
-            <Button asChild size="sm" variant="outline" className="h-7">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-full"
+            >
               <a href={item.pdfUrl} target="_blank" rel="noreferrer">
                 <FileTextIcon className="size-3" /> PDF 열기
               </a>
             </Button>
           ) : null}
         </div>
-      </CardContent>
-    </Card>
+      ) : null}
+    </FeedCard>
   );
 }
 
+// 추가/수정 폼 — 카드 위에 펼침 (brief §5.8).
 function BookUpdateForm({
   mode,
   item,
@@ -494,7 +473,7 @@ function BookUpdateForm({
     <fetcher.Form
       method="post"
       action="/api/admin/book-update"
-      className="bg-card space-y-3 rounded-md border p-4"
+      className="border-border bg-card space-y-3 rounded-2xl border p-4 shadow-sm"
     >
       <input type="hidden" name="intent" value={mode} />
       {mode === "update" ? (
@@ -572,7 +551,7 @@ function BookUpdateForm({
           <Input
             name="subjectLaws"
             defaultValue={item?.subjectLaws.join(",") ?? ""}
-            className="h-8 text-xs font-mono"
+            className="h-8 font-mono text-xs"
             placeholder="예: patent,trademark — 콤마 구분"
           />
         </Field>
@@ -616,7 +595,7 @@ function BookUpdateForm({
         </Field>
       </div>
       {hasError ? (
-        <p className="text-rose-600 text-xs">
+        <p className="text-xs text-rose-600">
           {(fetcher.data as { error: string }).error}
         </p>
       ) : null}
@@ -625,12 +604,18 @@ function BookUpdateForm({
           type="button"
           variant="ghost"
           size="sm"
+          className="rounded-full"
           onClick={onClose}
           disabled={isSaving}
         >
           <XIcon className="size-3.5" /> 취소
         </Button>
-        <Button type="submit" size="sm" disabled={isSaving}>
+        <Button
+          type="submit"
+          size="sm"
+          className="rounded-full"
+          disabled={isSaving}
+        >
           {mode === "create" ? (
             <>
               <PlusIcon className="size-3.5" /> 추가

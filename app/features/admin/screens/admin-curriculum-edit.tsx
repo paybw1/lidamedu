@@ -47,8 +47,8 @@ import {
 import type { Route } from "./+types/admin-curriculum-edit";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.curriculum) return [{ title: "커리큘럼 | Lidam Edu" }];
-  return [{ title: `${d.curriculum.name} | Lidam Edu` }];
+  if (!d || !d.curriculum) return [{ title: "커리큘럼 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.curriculum.name} | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

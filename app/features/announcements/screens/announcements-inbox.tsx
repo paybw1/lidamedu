@@ -28,7 +28,7 @@ import { MarkdownView } from "~/features/problems/components/markdown-view";
 import type { Route } from "./+types/announcements-inbox";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "공지사항 | Lidam Edu" },
+  { title: "공지사항 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

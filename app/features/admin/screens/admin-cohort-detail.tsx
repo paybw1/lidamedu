@@ -56,8 +56,8 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-cohort-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.cohort) return [{ title: "반 상세 | Lidam Edu" }];
-  return [{ title: `${d.cohort.name} | Lidam Edu` }];
+  if (!d || !d.cohort) return [{ title: "반 상세 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.cohort.name} | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

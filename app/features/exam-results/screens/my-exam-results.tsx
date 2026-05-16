@@ -33,8 +33,6 @@ import {
   EXAM_RESULT_STATUSES,
   EXAM_ROUND_LABEL,
   EXAM_VERIFICATION_STATUS_LABEL,
-  SCIENCE_SUBJECT_KEYS,
-  SCIENCE_SUBJECT_LABEL,
   type ExamResultStatus,
   type ExamRound,
 } from "~/features/exam-results/labels";
@@ -42,7 +40,7 @@ import {
 import type { Route } from "./+types/my-exam-results";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격 결과 | Lidam Edu" },
+  { title: "합격 결과 | Lidam Patent Attorney Academy" },
 ];
 
 const upsertSchema = z.object({
@@ -53,7 +51,6 @@ const upsertSchema = z.object({
   selfReportedTotalScore: z
     .union([z.coerce.number().min(0).max(200), z.literal("")])
     .optional(),
-  selectedScienceSubject: z.string().optional().nullable(),
   studySummaryMd: z.string().max(8000).optional().nullable(),
 });
 
@@ -120,7 +117,6 @@ export async function action({ request }: Route.ActionArgs) {
       examRound: parsed.data.examRound,
       status: parsed.data.status,
       selfReportedTotalScore: totalScore,
-      selectedScienceSubject: parsed.data.selectedScienceSubject || null,
       studySummaryMd: parsed.data.studySummaryMd || null,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
@@ -135,7 +131,6 @@ export async function action({ request }: Route.ActionArgs) {
       nextExamYear: parsed.data.nextExamYear === "" ? null : Number(parsed.data.nextExamYear),
       nextExamRound:
         parsed.data.nextExamRound === "" ? null : (parsed.data.nextExamRound as ExamRound),
-      selectedScienceSubject: null,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });

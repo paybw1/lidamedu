@@ -39,8 +39,8 @@ import {
 import type { Route } from "./+types/admin-law-revisions";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.law) return [{ title: "법 개정 | Lidam Edu" }];
-  return [{ title: `${d.law.shortLabel ?? d.law.displayLabel} 개정 | Lidam Edu` }];
+  if (!d || !d.law) return [{ title: "법 개정 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.law.shortLabel ?? d.law.displayLabel} 개정 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

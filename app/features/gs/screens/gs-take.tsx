@@ -40,8 +40,8 @@ import type { Route } from "./+types/gs-take";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} | Lidam Edu`
-      : "GS 응시 | Lidam Edu",
+      ? `${loaderData.round.title} | Lidam Patent Attorney Academy`
+      : "GS 응시 | Lidam Patent Attorney Academy",
   },
 ];
 

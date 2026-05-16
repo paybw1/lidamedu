@@ -13,6 +13,7 @@ import {
   TrophyIcon,
   UsersIcon,
 } from "lucide-react";
+import { Fragment } from "react";
 import { Link, data } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -31,6 +32,10 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  isFirstExamSubject,
+  isSecondExamSubject,
+} from "~/features/subjects/lib/subjects";
+import {
   getCohortAccuracyTrend,
   getCohortAggregateStats,
   type AccuracyBucket,
@@ -40,8 +45,8 @@ import {
 import type { Route } from "./+types/admin-cohort-stats";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.cohort) return [{ title: "반 통계 | Lidam Edu" }];
-  return [{ title: `${d.cohort.name} 통계 | Lidam Edu` }];
+  if (!d || !d.cohort) return [{ title: "반 통계 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.cohort.name} 통계 | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -238,11 +243,11 @@ export default function AdminCohortStats({
             </CardContent>
           </Card>
 
-          {/* 5과목 평균 */}
+          {/* 과목별 평균 — 1차(객관식)/2차(주관식) 분리 */}
           <Card>
             <CardHeader className="pb-2">
               <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                과목별 평균 (5과목)
+                과목별 평균
               </p>
             </CardHeader>
             <CardContent className="overflow-x-auto p-0">
@@ -256,28 +261,53 @@ export default function AdminCohortStats({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stats.bySubject.map((s) => (
-                    <TableRow key={s.lawCode}>
-                      <TableCell className="text-sm font-medium">
-                        {s.name}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {s.avgProblemsAttempted}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-right text-sm tabular-nums",
-                          accuracyTone(s.avgAccuracyPct),
-                        )}
-                      >
-                        {s.avgAccuracyPct === null
-                          ? "—"
-                          : `${s.avgAccuracyPct}%`}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {s.avgArticlesViewed}
-                      </TableCell>
-                    </TableRow>
+                  {[
+                    {
+                      label: "1차 · 객관식",
+                      rows: stats.bySubject.filter((s) =>
+                        isFirstExamSubject(s.lawCode),
+                      ),
+                    },
+                    {
+                      label: "2차 · 주관식",
+                      rows: stats.bySubject.filter((s) =>
+                        isSecondExamSubject(s.lawCode),
+                      ),
+                    },
+                  ].map((g) => (
+                    <Fragment key={g.label}>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableCell
+                          colSpan={4}
+                          className="text-primary py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                        >
+                          {g.label}
+                        </TableCell>
+                      </TableRow>
+                      {g.rows.map((s) => (
+                        <TableRow key={s.lawCode}>
+                          <TableCell className="text-sm font-medium">
+                            {s.name}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">
+                            {s.avgProblemsAttempted}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              "text-right text-sm tabular-nums",
+                              accuracyTone(s.avgAccuracyPct),
+                            )}
+                          >
+                            {s.avgAccuracyPct === null
+                              ? "—"
+                              : `${s.avgAccuracyPct}%`}
+                          </TableCell>
+                          <TableCell className="text-right text-sm tabular-nums">
+                            {s.avgArticlesViewed}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>

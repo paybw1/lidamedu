@@ -49,7 +49,7 @@ export default function ResetPassword() {
                 Best regards,
               </Text>
               <Text className="mb-4 text-[15px] leading-relaxed text-black">
-                The Lidam Edu Team
+                The Lidam Patent Attorney Academy Team
               </Text>
             </Section>
           </Container>

@@ -186,7 +186,7 @@ export async function notifyNewQuestion(
       }),
     );
     const emailPayload: EmailPayload = {
-      subject: `[Lidam Edu] 새 ${targetLabel} 질문: ${payload.title}`,
+      subject: `[Lidam Patent Attorney Academy] 새 ${targetLabel} 질문: ${payload.title}`,
       html: emailHtml,
     };
 
@@ -203,7 +203,7 @@ export async function notifyNewQuestion(
         excerpt,
         link,
       },
-      fallbackText: `[Lidam Edu] 새 ${targetLabel} 질문 — ${payload.title}\n${excerpt}\n${link}`,
+      fallbackText: `[Lidam Patent Attorney Academy] 새 ${targetLabel} 질문 — ${payload.title}\n${excerpt}\n${link}`,
     };
 
     await Promise.all(
@@ -260,7 +260,7 @@ export async function notifyNewAnswer(payload: NewAnswerPayload): Promise<void> 
       }),
     );
     const emailPayload: EmailPayload = {
-      subject: `[Lidam Edu] ${targetLabel} 질문에 답변이 도착했습니다: ${payload.title}`,
+      subject: `[Lidam Patent Attorney Academy] ${targetLabel} 질문에 답변이 도착했습니다: ${payload.title}`,
       html: emailHtml,
     };
 
@@ -278,7 +278,7 @@ export async function notifyNewAnswer(payload: NewAnswerPayload): Promise<void> 
         excerpt,
         link,
       },
-      fallbackText: `[Lidam Edu] ${targetLabel} 답변 도착 — ${payload.title}\n수준: ${gradeLabel}\n${excerpt}\n${link}`,
+      fallbackText: `[Lidam Patent Attorney Academy] ${targetLabel} 답변 도착 — ${payload.title}\n수준: ${gradeLabel}\n${excerpt}\n${link}`,
     };
 
     await Promise.all(

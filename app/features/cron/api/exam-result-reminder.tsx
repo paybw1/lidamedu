@@ -78,7 +78,7 @@ async function sendReminderEmail(input: {
     const res = await resendClient.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: `[리담에듀] ${input.examYear}년 ${roundLabel} 시험 결과를 입력해 주세요`,
+      subject: `[리담변리사학원] ${input.examYear}년 ${roundLabel} 시험 결과를 입력해 주세요`,
       html,
     });
     if (res.error) return { status: "failed", reason: res.error.message };

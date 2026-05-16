@@ -1,24 +1,17 @@
 // MCQ 팩 상세 (feat-3-302). 기출/모의 공통 페이지.
-// - 헤더: 과목·구분·명칭·출제일·문항수
-// - 동영상 풀이 + 기출년도 결과 자료 링크
-// - 문제 목록 (각 문제 클릭 → problem-viewer)
-// - 액션: 학습 시작 (study) / 모의고사 시작 (exam, mock pack 에서만)
-// - staff: 문제 추가/삭제 (problem_id UUID 입력)
+// 헤더 + 응시 시작 / 참고 자료 2카드 + 문제 목록.
+// 키트 lidam-latest/McqPackDetailScreen 디자인.
 
 import {
-  ArrowLeftIcon,
   ChevronRightIcon,
   ClockIcon,
-  ExternalLinkIcon,
   FileTextIcon,
-  ListChecksIcon,
-  NewspaperIcon,
   PlayIcon,
   PlusIcon,
   Trash2Icon,
   VideoIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Form,
   Link,
@@ -27,13 +20,11 @@ import {
   useLocation,
   useNavigate,
 } from "react-router";
-import { useEffect } from "react";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
-import { Separator } from "~/core/components/ui/separator";
+import { Pill } from "~/features/latest/components/latest-list";
+import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -50,8 +41,8 @@ import {
 import type { Route } from "./+types/mcq-pack-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.pack) return [{ title: "문제집 | Lidam Edu" }];
-  return [{ title: `${d.pack.title} | Lidam Edu` }];
+  if (!d || !d.pack) return [{ title: "문제집 | Lidam Patent Attorney Academy" }];
+  return [{ title: `${d.pack.title} | Lidam Patent Attorney Academy` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -77,168 +68,146 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
   const { pack, problems, canEdit } = loaderData;
   const mockPack = isMockKind(pack.kind);
 
+  const metaParts: string[] = [];
+  metaParts.push(pack.publishedAt ? `출제일 ${pack.publishedAt}` : "출제일 미지정");
+  if (pack.year) metaParts.push(`${pack.year}년`);
+  if (pack.examRoundNo) metaParts.push(`${pack.examRoundNo}회`);
+  metaParts.push(`문항 ${pack.problemCount}`);
+  if (pack.durationMin) metaParts.push(`제한 ${pack.durationMin}분`);
+
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/latest/mcq"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 객관식 문제 색인
-      </Link>
+    <LatestShell
+      category="mcq"
+      width="feed"
+      backLink={{ to: "/latest/mcq", label: "객관식 문제 색인으로" }}
+      title={pack.title}
+      desc={metaParts.join(" · ")}
+    >
+      <div className="mb-3.5 flex flex-wrap items-center gap-1.5">
+        <Pill tone="outline">
+          {MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}
+        </Pill>
+        <Pill tone={mockPack ? "amber" : "primary"}>
+          {MCQ_PACK_KIND_LABELS[pack.kind]}
+        </Pill>
+        {!pack.isPublished ? <Pill tone="rose">비공개</Pill> : null}
+      </div>
 
-      <header className="mb-5 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NewspaperIcon className="size-3.5" /> 최신 정보
+      {pack.description ? (
+        <p className="text-muted-foreground mb-4 text-sm leading-relaxed whitespace-pre-line">
+          {pack.description}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">
-            {MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}
-          </Badge>
-          <Badge variant={mockPack ? "secondary" : "default"}>
-            {MCQ_PACK_KIND_LABELS[pack.kind]}
-          </Badge>
-          {!pack.isPublished ? (
-            <Badge variant="destructive">비공개</Badge>
-          ) : null}
-        </div>
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <ListChecksIcon className="text-primary size-6" />
-          {pack.title}
-        </h1>
-        {pack.description ? (
-          <p className="text-muted-foreground text-sm whitespace-pre-line">
-            {pack.description}
+      ) : null}
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+          <p className="inline-flex items-center gap-1.5 text-sm font-bold tracking-tight">
+            <PlayIcon className="text-primary size-4" /> 응시 시작
           </p>
-        ) : null}
-        <p className="text-muted-foreground text-xs">
-          {pack.publishedAt ? `출제일 ${pack.publishedAt}` : "출제일 미지정"}
-          {pack.year ? ` · ${pack.year}년` : ""}
-          {pack.examRoundNo ? ` · ${pack.examRoundNo}회` : ""}
-          {` · 문항 ${pack.problemCount}`}
-          {pack.durationMin ? ` · 제한 ${pack.durationMin}분` : ""}
-        </p>
-      </header>
-
-      <div className="mb-5 grid gap-3 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="px-4 pb-2">
-            <p className="inline-flex items-center gap-1 text-sm font-semibold">
-              <PlayIcon className="text-primary size-4" /> 응시 시작
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2 px-4 pb-4 text-xs">
-            <p className="text-muted-foreground">
-              {mockPack
-                ? "모의고사 모드는 타이머 기반 응시 후 결과 통계를 제공합니다."
-                : "기출/학습 모드는 즉시 해설을 확인하며 푸는 방식입니다."}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Form
-                method="post"
-                action="/api/mcq-pack/start"
-                className="inline-flex"
+          <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
+            {mockPack
+              ? "모의고사 모드는 타이머 기반 응시 후 결과 통계를 제공합니다."
+              : "기출/학습 모드는 즉시 해설을 확인하며 푸는 방식입니다."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Form method="post" action="/api/mcq-pack/start">
+              <input type="hidden" name="packId" value={pack.packId} />
+              <input type="hidden" name="mode" value="study" />
+              <Button
+                type="submit"
+                size="sm"
+                variant={mockPack ? "outline" : "default"}
+                className="h-9 rounded-full"
+                disabled={problems.length === 0}
               >
+                <PlayIcon className="size-3.5" /> 학습 시작
+              </Button>
+            </Form>
+            {mockPack ? (
+              <Form method="post" action="/api/mcq-pack/start">
                 <input type="hidden" name="packId" value={pack.packId} />
-                <input type="hidden" name="mode" value="study" />
+                <input type="hidden" name="mode" value="exam" />
                 <Button
                   type="submit"
                   size="sm"
-                  variant="outline"
-                  className="h-8"
+                  className="h-9 rounded-full"
                   disabled={problems.length === 0}
                 >
-                  <PlayIcon className="size-3" /> 학습 시작
+                  <ClockIcon className="size-3.5" /> 모의고사 시작
+                  {pack.durationMin ? ` (${pack.durationMin}분)` : ""}
                 </Button>
               </Form>
-              {mockPack ? (
-                <Form
-                  method="post"
-                  action="/api/mcq-pack/start"
-                  className="inline-flex"
-                >
-                  <input type="hidden" name="packId" value={pack.packId} />
-                  <input type="hidden" name="mode" value="exam" />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="h-8"
-                    disabled={problems.length === 0}
-                  >
-                    <ClockIcon className="size-3" /> 모의고사 시작
-                    {pack.durationMin ? ` (${pack.durationMin}분)` : ""}
-                  </Button>
-                </Form>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="px-4 pb-2">
-            <p className="text-sm font-semibold">참고 자료</p>
-          </CardHeader>
-          <CardContent className="space-y-2 px-4 pb-4 text-xs">
-            <div className="flex flex-wrap gap-2">
-              {pack.videoUrl ? (
-                <Button asChild size="sm" variant="outline" className="h-8">
-                  <a href={pack.videoUrl} target="_blank" rel="noreferrer">
-                    <VideoIcon className="size-3" /> 풀이 동영상
-                  </a>
-                </Button>
-              ) : null}
-              {pack.resultDocUrl ? (
-                <Button asChild size="sm" variant="outline" className="h-8">
-                  <a
-                    href={pack.resultDocUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <FileTextIcon className="size-3" /> 시험 결과 자료
-                  </a>
-                </Button>
-              ) : null}
-            </div>
-            {!pack.videoUrl && !pack.resultDocUrl ? (
-              <p className="text-muted-foreground">등록된 참고 자료가 없습니다.</p>
-            ) : null}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="px-4 pb-2">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">문제 목록 ({problems.length})</p>
-            {canEdit ? (
-              <AddProblemForm packId={pack.packId} />
             ) : null}
           </div>
-        </CardHeader>
-        <Separator />
-        <CardContent className="p-0">
-          {problems.length === 0 ? (
-            <div className="p-6 text-center">
-              <p className="text-muted-foreground text-sm">
-                {canEdit
-                  ? "문제가 비어 있습니다. 우측 입력란에 problem_id 를 붙여넣어 추가하세요."
-                  : "문제가 비어 있습니다."}
+        </div>
+
+        <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+          <p className="text-sm font-bold tracking-tight">참고 자료</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {pack.videoUrl ? (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-9 rounded-full"
+              >
+                <a href={pack.videoUrl} target="_blank" rel="noreferrer">
+                  <VideoIcon className="size-3.5" /> 풀이 동영상
+                </a>
+              </Button>
+            ) : null}
+            {pack.resultDocUrl ? (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-9 rounded-full"
+              >
+                <a href={pack.resultDocUrl} target="_blank" rel="noreferrer">
+                  <FileTextIcon className="size-3.5" /> 시험 결과 자료
+                </a>
+              </Button>
+            ) : null}
+            {!pack.videoUrl && !pack.resultDocUrl ? (
+              <p className="text-muted-foreground text-xs">
+                등록된 참고 자료가 없습니다.
               </p>
-            </div>
-          ) : (
-            <ol className="divide-y">
-              {problems.map((p, i) => (
-                <ProblemRow
-                  key={p.problemId}
-                  pack={pack.packId}
-                  problem={p}
-                  index={i + 1}
-                  canEdit={canEdit}
-                />
-              ))}
-            </ol>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+        <div className="border-border flex items-center justify-between gap-2 border-b px-4 py-3">
+          <p className="text-sm font-bold tracking-tight">
+            문제 목록{" "}
+            <span className="text-muted-foreground tabular-nums">
+              {problems.length}
+            </span>
+          </p>
+          {canEdit ? <AddProblemForm packId={pack.packId} /> : null}
+        </div>
+        {problems.length === 0 ? (
+          <p className="text-muted-foreground p-6 text-center text-sm">
+            {canEdit
+              ? "문제가 비어 있습니다. 우측 입력란에 problem_id 를 붙여넣어 추가하세요."
+              : "문제가 비어 있습니다."}
+          </p>
+        ) : (
+          <ol className="divide-border divide-y">
+            {problems.map((p, i) => (
+              <ProblemRow
+                key={p.problemId}
+                pack={pack.packId}
+                problem={p}
+                index={i + 1}
+                canEdit={canEdit}
+              />
+            ))}
+          </ol>
+        )}
+      </div>
+    </LatestShell>
   );
 }
 
@@ -271,36 +240,32 @@ function ProblemRow({
   }, [delFetcher.state, delFetcher.data, navigate, location.pathname, location.search]);
 
   return (
-    <li className="flex items-start gap-3 px-4 py-3 text-sm">
+    <li className="hover:bg-muted/40 flex items-start gap-3 px-4 py-3 transition-colors">
       <span className="text-muted-foreground w-6 shrink-0 text-right text-xs tabular-nums">
         {index}
       </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {problem.problemNumber ? (
-            <Badge variant="outline" className="tabular-nums">
+            <Pill tone="outline" className="font-mono">
               {problem.year ? `${problem.year}년 ` : ""}
               {problem.problemNumber}번
-            </Badge>
+            </Pill>
           ) : null}
-          <Badge variant="secondary">{problem.format}</Badge>
-          <Badge variant="outline">{problem.origin}</Badge>
+          <Pill>{problem.format}</Pill>
+          <Pill tone="outline">{problem.origin}</Pill>
         </div>
-        {/* 문제 클릭 = 학습 모드 세션 시작 + 이 문제부터. 팩 끝까지 풀이 + 결과 확인 흐름. */}
-        <Form
-          method="post"
-          action="/api/mcq-pack/start"
-          className="w-full"
-        >
+        {/* 문제 클릭 = 학습 모드 세션 시작 + 이 문제부터. */}
+        <Form method="post" action="/api/mcq-pack/start" className="w-full">
           <input type="hidden" name="packId" value={pack} />
           <input type="hidden" name="mode" value="study" />
           <input type="hidden" name="startAt" value={problem.problemId} />
           <button
             type="submit"
-            className="hover:text-primary inline-flex w-full items-center gap-1 text-left text-sm leading-snug"
+            className="hover:text-primary inline-flex w-full items-start gap-1 text-left text-[13px] leading-snug"
           >
             <span className="line-clamp-2">{problem.bodySnippet}</span>
-            <ChevronRightIcon className="text-muted-foreground size-3 shrink-0" />
+            <ChevronRightIcon className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />
           </button>
         </Form>
       </div>
@@ -318,7 +283,7 @@ function ProblemRow({
             size="icon"
             variant="ghost"
             aria-label="삭제"
-            className="size-7 text-rose-600 hover:text-rose-700"
+            className="size-8 rounded-full text-rose-600 hover:text-rose-700"
             disabled={delFetcher.state !== "idle"}
             onClick={(e) => {
               if (!confirm("이 문제를 팩에서 제거하시겠습니까?")) {
@@ -368,17 +333,17 @@ function AddProblemForm({ packId }: { packId: string }) {
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="problem_id (UUID)"
-        className="h-7 w-72 font-mono text-[11px]"
+        className="h-8 w-64 font-mono text-[11px]"
       />
       <Button
         type="submit"
         size="sm"
-        className="h-7"
+        className="h-8 rounded-full"
         disabled={fetcher.state !== "idle" || !draft.trim()}
       >
-        <PlusIcon className="size-3" /> 문제 추가
+        <PlusIcon className="size-3" /> 추가
       </Button>
-      {err ? <span className="text-rose-600 text-xs">{err}</span> : null}
+      {err ? <span className="text-xs text-rose-600">{err}</span> : null}
     </fetcher.Form>
   );
 }

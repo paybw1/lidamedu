@@ -1,0 +1,1290 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>우측 패널 디자인 옵션 비교 — 리담변리사학원</title>
+  <style>
+    :root {
+      --base: #FDFAF6;
+      --surface: #FFFFFF;
+      --ink: #2B1F14;
+      --ink-soft: #6B5A48;
+      --line: rgba(107, 66, 38, 0.12);
+      --line-strong: rgba(107, 66, 38, 0.22);
+      --sage-primary: #3F5A4A;
+      --sage-accent: #7FA08E;
+      --sage-soft: #CFDDD2;
+      --sage-tint: #E6EDE6;
+      --amber: #B45309;
+      --amber-soft: #FEF3C7;
+      --rose: #BE185D;
+      --violet: #6D28D9;
+      --emerald: #047857;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--base);
+      color: var(--ink);
+      font-family: Pretendard, "Noto Sans KR", -apple-system, system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 28px 24px 80px;
+    }
+    .page-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .page-header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .page-header p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+    .option-switch {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .option-switch button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--ink-soft);
+      cursor: pointer;
+      transition: background 160ms, color 160ms;
+    }
+    .option-switch button:hover { background: var(--sage-tint); color: var(--ink); }
+    .option-switch button.is-active {
+      background: var(--sage-primary);
+      color: #FFF;
+    }
+    .option-meta {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 13px;
+    }
+    .option-meta .pros, .option-meta .cons {
+      display: inline-block;
+      margin-right: 16px;
+    }
+    .option-meta .label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-right: 6px;
+    }
+    .option-meta .pros .label { color: var(--emerald); }
+    .option-meta .cons .label { color: var(--rose); }
+
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .stage { grid-template-columns: 1fr; }
+    }
+    .article-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+    .article-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .article-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .article-meta {
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+    .imp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .article-body {
+      color: var(--ink);
+      font-size: 13.5px;
+      line-height: 1.7;
+    }
+    .article-body p { margin: 0 0 10px; }
+    .article-body .clause-num {
+      display: inline-block;
+      min-width: 20px;
+      font-weight: 700;
+      color: var(--sage-primary);
+    }
+    .article-body mark {
+      background: #FEF3C7;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+
+    .panel-shell {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      min-height: 520px;
+      box-shadow: 0 2px 12px rgba(63, 90, 74, 0.06);
+    }
+
+    /* ========== 공통 위젯 콘텐츠 ========== */
+    .widget {
+      padding: 14px 16px;
+    }
+    .widget + .widget { border-top: 1px solid var(--line); }
+    .widget-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+    }
+    .widget-row + .widget-row { border-top: 1px dashed var(--line); }
+    .widget-row .row-icon {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+    .widget-row .row-body { flex: 1; min-width: 0; }
+    .widget-row .row-body strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .widget-row .row-body small {
+      color: var(--ink-soft);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .add-line {
+      margin-top: 8px;
+      padding: 8px 0 0;
+      border-top: 1px dashed var(--line);
+      text-align: right;
+    }
+    .add-line button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--sage-primary);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .add-line button:hover { text-decoration: underline; }
+
+    .stars { display: inline-flex; gap: 2px; }
+    .stars span {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      color: #D6CDC1;
+      cursor: pointer;
+      transition: color 120ms;
+    }
+    .stars span.on { color: #F59E0B; }
+    .stars:hover span { color: #FBBF24; }
+
+    .empty {
+      padding: 12px 0;
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-style: italic;
+      text-align: center;
+    }
+
+    /* ========== 옵션 A — 그룹 탭 + 별점 헤더 ========== */
+    .a-header {
+      padding: 14px 16px;
+      background: linear-gradient(180deg, var(--sage-tint) 0%, transparent 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .a-header .article-ref {
+      font-size: 12px;
+      color: var(--ink-soft);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .a-header h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .a-quick-fav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .a-quick-fav .fav-label {
+      font-size: 12px;
+      color: var(--ink-soft);
+      font-weight: 600;
+      flex: 1;
+    }
+    .a-quick-fav .fav-saved {
+      font-size: 10px;
+      color: var(--sage-primary);
+      font-weight: 700;
+    }
+    .a-segment {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .a-segment button {
+      flex: 1;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 8px 6px;
+      border-radius: 8px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .a-segment button:hover { background: var(--sage-tint); }
+    .a-segment button.is-active {
+      background: var(--sage-primary);
+      color: #FFF;
+    }
+    .a-segment .seg-count {
+      display: inline-block;
+      min-width: 18px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      background: rgba(0,0,0,0.08);
+    }
+    .a-segment button.is-active .seg-count {
+      background: rgba(255,255,255,0.22);
+      color: #FFF;
+    }
+    .a-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 16px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .a-tabs button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      padding: 5px 10px;
+      border-radius: 999px;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .a-tabs button .a-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--sage-primary);
+    }
+    .a-tabs button.is-empty { color: var(--ink-soft); opacity: 0.55; }
+    .a-tabs button.is-empty .a-dot { background: transparent; }
+    .a-tabs button.is-active {
+      background: var(--sage-primary);
+      color: #FFF;
+      border-color: var(--sage-primary);
+    }
+    .a-tabs button.is-active .a-dot { background: #FFF; }
+    .a-content {
+      padding: 14px 16px;
+    }
+    .a-content .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .a-content .panel-header h4 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .a-content .panel-header .count-pill {
+      font-size: 11px;
+      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ========== 옵션 B — 사이드 아이콘 레일 ========== */
+    .b-shell {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      min-height: 520px;
+    }
+    .b-rail {
+      background: linear-gradient(180deg, var(--sage-tint) 0%, var(--surface) 100%);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 0;
+    }
+    .b-rail button {
+      position: relative;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: var(--ink-soft);
+      font-size: 16px;
+      transition: background 160ms, color 160ms, transform 160ms;
+    }
+    .b-rail button:hover {
+      background: rgba(63, 90, 74, 0.08);
+      color: var(--sage-primary);
+    }
+    .b-rail button.is-active {
+      background: var(--sage-primary);
+      color: #FFF;
+      box-shadow: 0 4px 12px rgba(63, 90, 74, 0.24);
+    }
+    .b-rail button.is-active:hover { transform: none; }
+    .b-rail button.is-empty { opacity: 0.4; }
+    .b-rail .b-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--amber);
+      border: 1.5px solid var(--surface);
+    }
+    .b-rail button.is-active .b-dot { background: #FBBF24; border-color: var(--sage-primary); }
+    .b-rail .rail-divider {
+      width: 24px;
+      height: 1px;
+      background: var(--line);
+      margin: 6px 0;
+    }
+    .b-tooltip {
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%) translateX(8px);
+      background: var(--ink);
+      color: #FFF;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 120ms;
+      z-index: 10;
+    }
+    .b-rail button:hover .b-tooltip { opacity: 1; }
+    .b-content {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .b-content-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .b-content-header h4 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .b-content-header .count-pill {
+      font-size: 11px;
+      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+    }
+    .b-content-header .add-btn {
+      appearance: none;
+      border: 1px solid var(--sage-primary);
+      background: var(--sage-primary);
+      color: #FFF;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .b-content-body {
+      padding: 12px 14px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    /* ========== 옵션 C — 스크롤 위젯 stack ========== */
+    .c-toolbar {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, var(--sage-tint) 0%, transparent 100%);
+    }
+    .c-toolbar .label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .c-toolbar .config-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--sage-primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .c-widget {
+      border-bottom: 1px solid var(--line);
+    }
+    .c-widget:last-child { border-bottom: 0; }
+    .c-widget-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 120ms;
+    }
+    .c-widget-head:hover { background: rgba(63, 90, 74, 0.05); }
+    .c-widget-head .stripe {
+      width: 3px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--sage-primary);
+      flex-shrink: 0;
+    }
+    .c-widget-head .icon {
+      font-size: 14px;
+      color: var(--ink-soft);
+    }
+    .c-widget-head .title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .c-widget-head .title .count {
+      margin-left: 4px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+    }
+    .c-widget-head .pin {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--ink-soft);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .c-widget-head .pin.is-pinned { color: var(--amber); }
+    .c-widget-head .pin:hover { background: rgba(0,0,0,0.05); }
+    .c-widget-head .chevron {
+      color: var(--ink-soft);
+      font-size: 10px;
+      transition: transform 200ms;
+    }
+    .c-widget.is-open .c-widget-head .chevron { transform: rotate(90deg); }
+    .c-widget-body {
+      padding: 0 14px 12px 28px;
+      display: none;
+    }
+    .c-widget.is-open .c-widget-body { display: block; }
+    .c-widget.is-empty .c-widget-head .stripe { background: var(--line-strong); }
+    .c-widget.is-empty .c-widget-head { opacity: 0.7; }
+    .c-stripe-rose { background: var(--rose) !important; }
+    .c-stripe-violet { background: var(--violet) !important; }
+    .c-stripe-amber { background: var(--amber) !important; }
+    .c-stripe-emerald { background: var(--emerald) !important; }
+    .c-stripe-sage { background: var(--sage-primary) !important; }
+    .c-stripe-blue { background: #2563EB !important; }
+
+    /* ===== 패널 구분선 / 잔여 공통 ===== */
+    .case-row .row-icon { color: var(--violet); }
+    .problem-row .row-icon { color: var(--amber); }
+    .qna-row .row-icon { color: #2563EB; }
+    .comment-row .row-icon { color: var(--sage-primary); }
+
+    /* hidden helper */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h1>우측 패널 디자인 옵션 비교</h1>
+        <p>리담변리사학원 · ArticleRightPanel · /subjects/patent/systematic/&lt;node-id&gt; 화면 기준</p>
+      </div>
+      <div class="option-switch" role="tablist">
+        <button id="btn-a" class="is-active" onclick="switchOption('a')">옵션 A · 그룹 탭</button>
+        <button id="btn-b" onclick="switchOption('b')">옵션 B · 사이드 레일</button>
+        <button id="btn-c" onclick="switchOption('c')">옵션 C · 위젯 stack</button>
+      </div>
+    </header>
+
+    <div id="meta-a" class="option-meta">
+      <span class="pros"><span class="label">장점</span> 변화 최소·도입 빠름. 의미 그룹화로 인지 부담 ↓. 카운트 dot으로 "내용 있음" 한눈에.</span>
+      <span class="cons"><span class="label">단점</span> 탭 전환 클릭이 한 번 더 필요 (segment → tab → content).</span>
+    </div>
+    <div id="meta-b" class="option-meta hidden">
+      <span class="pros"><span class="label">장점</span> 11개 탭이 wrap 없이 한 화면에. IDE/Notion 모던. 활성 탭이 시각적으로 강함.</span>
+      <span class="cons"><span class="label">단점</span> 아이콘 인식 학습 곡선 약간 (hover 툴팁으로 보완).</span>
+    </div>
+    <div id="meta-c" class="option-meta hidden">
+      <span class="pros"><span class="label">장점</span> 탭 전환 클릭 0. 모든 정보 한눈에 스캔. 핀 / 접기 사용자 맞춤.</span>
+      <span class="cons"><span class="label">단점</span> 패널 세로 길이 큼. 본문과 시각적 균형 흔들릴 수 있음.</span>
+    </div>
+
+    <div class="stage">
+      <!-- 좌측: 가짜 조문 카드 -->
+      <div class="article-card">
+        <div class="article-header">
+          <h2 class="article-title">특허법 제29조 (특허요건)</h2>
+          <span class="imp-badge">★★★</span>
+        </div>
+        <p class="article-meta">시행 2026.01.15 · 산업재산권법 / 신규성</p>
+        <hr style="border: none; border-top: 1px solid var(--line); margin: 14px 0;" />
+        <div class="article-body">
+          <p>
+            <span class="clause-num">①</span> 산업상 이용할 수 있는 발명으로서 다음 각 호의 어느 하나에 해당하는 것을 제외하고는 그 발명에 대하여 <mark>특허를 받을 수 있다</mark>.
+          </p>
+          <p style="padding-left: 18px;">
+            1. 특허출원 전에 국내 또는 국외에서 공지되었거나 공연히 실시된 발명<br />
+            2. 특허출원 전에 국내 또는 국외에서 반포된 간행물에 게재된 발명<br />
+            3. 전기통신회선을 통하여 공중이 이용할 수 있는 발명
+          </p>
+          <p>
+            <span class="clause-num">②</span> 특허출원 전에 그 발명이 속하는 기술분야에서 통상의 지식을 가진 사람이 제1항 각 호의 어느 하나에 해당하는 발명에 의하여 용이하게 발명할 수 있는 것은 제1항에도 불구하고 특허를 받을 수 없다.
+          </p>
+          <p style="color: var(--ink-soft); font-size: 12px; margin-top: 16px;">
+            (이하 본문 미리보기 — 실제 화면에는 항·호·목 전체가 노출됩니다.)
+          </p>
+        </div>
+      </div>
+
+      <!-- 우측: 패널 (옵션별 swap) -->
+      <div>
+        <!-- ========== 옵션 A ========== -->
+        <div id="panel-a" class="panel-shell">
+          <div class="a-header">
+            <div class="article-ref">특허법 · 신규성</div>
+            <h3>제29조 — 특허요건</h3>
+            <div class="a-quick-fav">
+              <span class="fav-label">⭐ 즐겨찾기</span>
+              <span class="stars" id="stars-a">
+                <span class="on" onclick="setStars('a', 1)">★</span>
+                <span class="on" onclick="setStars('a', 2)">★</span>
+                <span class="on" onclick="setStars('a', 3)">★</span>
+                <span onclick="setStars('a', 4)">★</span>
+                <span onclick="setStars('a', 5)">★</span>
+              </span>
+              <span class="fav-saved">저장됨</span>
+            </div>
+          </div>
+          <div class="a-segment">
+            <button id="seg-a-mine" class="is-active" onclick="setSegA('mine')">
+              내 학습 <span class="seg-count">3</span>
+            </button>
+            <button id="seg-a-related" onclick="setSegA('related')">
+              연관 자료 <span class="seg-count">5</span>
+            </button>
+          </div>
+          <!-- 내 학습 탭 -->
+          <div id="tabs-a-mine" class="a-tabs">
+            <button class="is-active" onclick="setTabA(this, 'memo')">
+              <span class="a-dot"></span> 메모 2
+            </button>
+            <button onclick="setTabA(this, 'highlight')">
+              <span class="a-dot"></span> 하이라이트 5
+            </button>
+          </div>
+          <div id="tabs-a-related" class="a-tabs hidden">
+            <button class="is-active" onclick="setTabA(this, 'cases')">
+              <span class="a-dot"></span> 판례 12
+            </button>
+            <button onclick="setTabA(this, 'related-problems')">
+              <span class="a-dot"></span> 유사문제 47
+            </button>
+            <button onclick="setTabA(this, 'comment')">
+              <span class="a-dot"></span> 코멘트 3
+            </button>
+            <button class="is-empty" onclick="setTabA(this, 'qna')">
+              <span class="a-dot"></span> Q&amp;A
+            </button>
+            <button onclick="setTabA(this, 'revisions')">
+              <span class="a-dot"></span> 개정 1
+            </button>
+            <button onclick="setTabA(this, 'ox')">
+              <span class="a-dot"></span> 정오 8
+            </button>
+            <button class="is-empty" onclick="setTabA(this, 'materials')">
+              <span class="a-dot"></span> 자료
+            </button>
+          </div>
+
+          <div class="a-content">
+            <div class="panel-header">
+              <h4 id="a-content-title">📝 메모</h4>
+              <span class="count-pill" id="a-content-count">2 건</span>
+            </div>
+            <div id="a-content-body">
+              <div class="widget-row">
+                <div class="row-icon">📝</div>
+                <div class="row-body">
+                  <strong>"제29조 1항 — 신규성 핵심 정리"</strong>
+                  <small>2026-04-12 · 본인</small>
+                </div>
+              </div>
+              <div class="widget-row">
+                <div class="row-icon">📝</div>
+                <div class="row-body">
+                  <strong>"판례 2019다204869 비교 메모"</strong>
+                  <small>2026-04-10 · 본인</small>
+                </div>
+              </div>
+              <div class="add-line"><button>+ 새 메모</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 옵션 B ========== -->
+        <div id="panel-b" class="panel-shell hidden">
+          <div class="b-shell">
+            <div class="b-rail">
+              <button id="b-rail-bookmark" onclick="setTabB('bookmark')" title="즐겨찾기">
+                ❤
+                <span class="b-dot"></span>
+                <span class="b-tooltip">즐겨찾기</span>
+              </button>
+              <button id="b-rail-memo" class="is-active" onclick="setTabB('memo')" title="메모">
+                📝
+                <span class="b-dot"></span>
+                <span class="b-tooltip">메모 (2)</span>
+              </button>
+              <button id="b-rail-highlight" onclick="setTabB('highlight')" title="하이라이트">
+                ✏
+                <span class="b-dot"></span>
+                <span class="b-tooltip">하이라이트 (5)</span>
+              </button>
+              <div class="rail-divider"></div>
+              <button id="b-rail-cases" onclick="setTabB('cases')" title="판례">
+                ⚖
+                <span class="b-dot"></span>
+                <span class="b-tooltip">판례 (12)</span>
+              </button>
+              <button id="b-rail-problems" onclick="setTabB('problems')" title="유사 문제">
+                ☑
+                <span class="b-dot"></span>
+                <span class="b-tooltip">유사 문제 (47)</span>
+              </button>
+              <button id="b-rail-comment" onclick="setTabB('comment')" title="코멘트">
+                💬
+                <span class="b-dot"></span>
+                <span class="b-tooltip">코멘트 (3)</span>
+              </button>
+              <button id="b-rail-qna" class="is-empty" onclick="setTabB('qna')" title="Q&A">
+                ❓
+                <span class="b-tooltip">Q&amp;A · 비어 있음</span>
+              </button>
+              <div class="rail-divider"></div>
+              <button id="b-rail-revisions" onclick="setTabB('revisions')" title="개정이력">
+                📜
+                <span class="b-dot"></span>
+                <span class="b-tooltip">개정이력 (1)</span>
+              </button>
+              <button id="b-rail-ox" onclick="setTabB('ox')" title="정오문제">
+                🔖
+                <span class="b-dot"></span>
+                <span class="b-tooltip">정오문제 (8)</span>
+              </button>
+              <button id="b-rail-materials" class="is-empty" onclick="setTabB('materials')" title="관련자료">
+                📎
+                <span class="b-tooltip">관련자료 · 구현 예정</span>
+              </button>
+            </div>
+            <div class="b-content">
+              <div class="b-content-header">
+                <h4 id="b-title">📝 메모 <span class="count-pill" id="b-count">2 건</span></h4>
+                <button class="add-btn" id="b-add-btn">+ 새 메모</button>
+              </div>
+              <div class="b-content-body" id="b-body">
+                <div class="widget-row">
+                  <div class="row-icon">📝</div>
+                  <div class="row-body">
+                    <strong>"제29조 1항 — 신규성 핵심 정리"</strong>
+                    <small>2026-04-12 · 본인</small>
+                  </div>
+                </div>
+                <div class="widget-row">
+                  <div class="row-icon">📝</div>
+                  <div class="row-body">
+                    <strong>"판례 2019다204869 비교 메모"</strong>
+                    <small>2026-04-10 · 본인</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 옵션 C ========== -->
+        <div id="panel-c" class="panel-shell hidden">
+          <div class="c-toolbar">
+            <span class="label">우측 패널</span>
+            <button class="config-btn">📌 표시 설정 ▾</button>
+          </div>
+
+          <div class="c-widget is-open">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-rose"></span>
+              <span class="icon">❤</span>
+              <span class="title">즐겨찾기</span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <span class="stars">
+                <span class="on">★</span>
+                <span class="on">★</span>
+                <span class="on">★</span>
+                <span>★</span>
+                <span>★</span>
+              </span>
+              <span style="margin-left: 10px; font-size: 11px; color: var(--ink-soft);">마지막 저장 04-12</span>
+            </div>
+          </div>
+
+          <div class="c-widget is-open">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-sage"></span>
+              <span class="icon">📝</span>
+              <span class="title">메모 <span class="count">(2)</span></span>
+              <button class="pin is-pinned" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="widget-row">
+                <div class="row-body">
+                  <strong>"신규성 핵심 정리"</strong>
+                  <small>2026-04-12 · 본인</small>
+                </div>
+              </div>
+              <div class="widget-row">
+                <div class="row-body">
+                  <strong>"판례 2019다204869 비교"</strong>
+                  <small>2026-04-10 · 본인</small>
+                </div>
+              </div>
+              <div class="add-line"><button>+ 새 메모</button></div>
+            </div>
+          </div>
+
+          <div class="c-widget">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-amber"></span>
+              <span class="icon">✏</span>
+              <span class="title">하이라이트 <span class="count">(5)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="empty">하이라이트 5건 — 펼쳐서 확인</div>
+            </div>
+          </div>
+
+          <div class="c-widget is-open">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-violet"></span>
+              <span class="icon">⚖</span>
+              <span class="title">판례 <span class="count">(12)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="widget-row case-row">
+                <div class="row-icon">⚖</div>
+                <div class="row-body">
+                  <strong>대법원 2019다204869 (균등론)</strong>
+                  <small>2019.07.25. 선고</small>
+                </div>
+              </div>
+              <div class="widget-row case-row">
+                <div class="row-icon">⚖</div>
+                <div class="row-body">
+                  <strong>대법원 2018후1234 (신규성 판단)</strong>
+                  <small>2018.12.10. 선고</small>
+                </div>
+              </div>
+              <div class="add-line"><button>전체 12건 더보기 →</button></div>
+            </div>
+          </div>
+
+          <div class="c-widget">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-amber"></span>
+              <span class="icon">☑</span>
+              <span class="title">유사 문제 <span class="count">(47)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="empty">유사 문제 47건 — 펼쳐서 확인</div>
+            </div>
+          </div>
+
+          <div class="c-widget is-open">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-sage"></span>
+              <span class="icon">💬</span>
+              <span class="title">코멘트 <span class="count">(3)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="widget-row comment-row">
+                <div class="row-icon">💬</div>
+                <div class="row-body">
+                  <strong>강사 평석 — 신규성 판단 시 …</strong>
+                  <small>김변리 강사 · 2026-04-08</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="c-widget is-empty">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe"></span>
+              <span class="icon">❓</span>
+              <span class="title">Q&amp;A <span class="count">(0)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="empty">아직 등록된 질문이 없습니다 · 첫 질문 남기기 →</div>
+            </div>
+          </div>
+
+          <div class="c-widget">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-blue"></span>
+              <span class="icon">📜</span>
+              <span class="title">개정이력 <span class="count">(1)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="empty">2026-01-15 시행 — 펼쳐서 diff 확인</div>
+            </div>
+          </div>
+
+          <div class="c-widget">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe c-stripe-emerald"></span>
+              <span class="icon">🔖</span>
+              <span class="title">정오문제 <span class="count">(8)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="empty">8개 OX 지문 — 펼쳐서 풀이 시작</div>
+            </div>
+          </div>
+
+          <div class="c-widget is-empty">
+            <div class="c-widget-head" onclick="toggleC(this)">
+              <span class="stripe"></span>
+              <span class="icon">📎</span>
+              <span class="title">관련자료 <span class="count">(구현 예정)</span></span>
+              <button class="pin" onclick="togglePinC(event, this)">📌</button>
+              <span class="chevron">▶</span>
+            </div>
+            <div class="c-widget-body">
+              <div class="empty">강의노트·강의영상 — 곧 추가 예정</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 28px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 12.5px; color: var(--ink-soft);">
+      💡 세 옵션 모두 같은 mock 데이터(메모 2 · 하이라이트 5 · 판례 12 · 유사문제 47 · 코멘트 3 · 정오 8 · 개정 1) 기반.
+      클릭/탭/펼침 인터랙션이 실제처럼 작동합니다. 옵션을 결정하시면 systematic-node-viewer / chapter-viewer / article-viewer 우측 패널에 일괄 적용합니다.
+    </p>
+  </div>
+
+  <script>
+    // ========== 옵션 전환 ==========
+    function switchOption(opt) {
+      ['a', 'b', 'c'].forEach(o => {
+        document.getElementById('btn-' + o).classList.toggle('is-active', o === opt);
+        document.getElementById('panel-' + o).classList.toggle('hidden', o !== opt);
+        document.getElementById('meta-' + o).classList.toggle('hidden', o !== opt);
+      });
+    }
+
+    // ========== 옵션 A: 별점 ==========
+    function setStars(scope, n) {
+      const stars = document.querySelectorAll('#stars-' + scope + ' span');
+      stars.forEach((s, i) => s.classList.toggle('on', i < n));
+    }
+
+    // ========== 옵션 A: segment + tab ==========
+    function setSegA(seg) {
+      document.getElementById('seg-a-mine').classList.toggle('is-active', seg === 'mine');
+      document.getElementById('seg-a-related').classList.toggle('is-active', seg === 'related');
+      document.getElementById('tabs-a-mine').classList.toggle('hidden', seg !== 'mine');
+      document.getElementById('tabs-a-related').classList.toggle('hidden', seg !== 'related');
+      // 자동으로 첫 번째 탭 콘텐츠로
+      if (seg === 'mine') {
+        const first = document.querySelector('#tabs-a-mine button');
+        document.querySelectorAll('#tabs-a-mine button').forEach(b => b.classList.remove('is-active'));
+        first.classList.add('is-active');
+        renderAContent('memo');
+      } else {
+        const first = document.querySelector('#tabs-a-related button');
+        document.querySelectorAll('#tabs-a-related button').forEach(b => b.classList.remove('is-active'));
+        first.classList.add('is-active');
+        renderAContent('cases');
+      }
+    }
+
+    function setTabA(btn, key) {
+      const wrap = btn.closest('.a-tabs');
+      wrap.querySelectorAll('button').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      renderAContent(key);
+    }
+
+    function renderAContent(key) {
+      const title = document.getElementById('a-content-title');
+      const count = document.getElementById('a-content-count');
+      const body = document.getElementById('a-content-body');
+      const data = CONTENT[key];
+      title.textContent = data.title;
+      count.textContent = data.count;
+      body.innerHTML = data.html;
+    }
+
+    // ========== 옵션 B ==========
+    function setTabB(key) {
+      document.querySelectorAll('.b-rail button').forEach(b => b.classList.remove('is-active'));
+      document.getElementById('b-rail-' + key).classList.add('is-active');
+      const data = CONTENT[key === 'problems' ? 'related-problems' : key];
+      document.getElementById('b-title').innerHTML = data.title + ' <span class="count-pill">' + data.count + '</span>';
+      document.getElementById('b-body').innerHTML = data.html;
+      const addBtn = document.getElementById('b-add-btn');
+      const addable = ['memo', 'highlight', 'qna'].includes(key);
+      addBtn.style.display = addable ? '' : 'none';
+      addBtn.textContent = key === 'memo' ? '+ 새 메모'
+        : key === 'highlight' ? '+ 새 하이라이트'
+        : key === 'qna' ? '+ 새 질문'
+        : '';
+    }
+
+    // ========== 옵션 C ==========
+    function toggleC(headEl) {
+      const widget = headEl.closest('.c-widget');
+      widget.classList.toggle('is-open');
+    }
+    function togglePinC(e, btn) {
+      e.stopPropagation();
+      btn.classList.toggle('is-pinned');
+    }
+
+    // ========== 콘텐츠 사전 ==========
+    const CONTENT = {
+      memo: {
+        title: '📝 메모',
+        count: '2 건',
+        html: `
+          <div class="widget-row">
+            <div class="row-icon">📝</div>
+            <div class="row-body">
+              <strong>"제29조 1항 — 신규성 핵심 정리"</strong>
+              <small>2026-04-12 · 본인</small>
+            </div>
+          </div>
+          <div class="widget-row">
+            <div class="row-icon">📝</div>
+            <div class="row-body">
+              <strong>"판례 2019다204869 비교 메모"</strong>
+              <small>2026-04-10 · 본인</small>
+            </div>
+          </div>
+          <div class="add-line"><button>+ 새 메모</button></div>
+        `,
+      },
+      highlight: {
+        title: '✏ 하이라이트',
+        count: '5 건',
+        html: `
+          <div class="widget-row">
+            <div class="row-icon">✏</div>
+            <div class="row-body">
+              <strong>"특허를 받을 수 있다"</strong>
+              <small>제1항 · 노란색 · 2026-04-09</small>
+            </div>
+          </div>
+          <div class="widget-row">
+            <div class="row-icon">✏</div>
+            <div class="row-body">
+              <strong>"공지되었거나 공연히 실시된"</strong>
+              <small>제1항 1호 · 분홍색 · 2026-04-09</small>
+            </div>
+          </div>
+          <div class="widget-row">
+            <div class="row-icon">✏</div>
+            <div class="row-body">
+              <strong>"통상의 지식을 가진 사람"</strong>
+              <small>제2항 · 파랑색 · 2026-04-08</small>
+            </div>
+          </div>
+          <div class="add-line"><button>전체 5건 보기 →</button></div>
+        `,
+      },
+      cases: {
+        title: '⚖ 판례',
+        count: '12 건',
+        html: `
+          <div class="widget-row case-row">
+            <div class="row-icon">⚖</div>
+            <div class="row-body">
+              <strong>대법원 2019다204869 (균등론)</strong>
+              <small>2019.07.25. 선고 · 전합</small>
+            </div>
+          </div>
+          <div class="widget-row case-row">
+            <div class="row-icon">⚖</div>
+            <div class="row-body">
+              <strong>대법원 2018후1234 (신규성 판단)</strong>
+              <small>2018.12.10. 선고</small>
+            </div>
+          </div>
+          <div class="widget-row case-row">
+            <div class="row-icon">⚖</div>
+            <div class="row-body">
+              <strong>대법원 2017다291586 (공지의 의미)</strong>
+              <small>2017.05.22. 선고</small>
+            </div>
+          </div>
+          <div class="add-line"><button>전체 12건 보기 →</button></div>
+        `,
+      },
+      'related-problems': {
+        title: '☑ 유사 문제',
+        count: '47 건',
+        html: `
+          <div class="widget-row problem-row">
+            <div class="row-icon">☑</div>
+            <div class="row-body">
+              <strong>객관식 #2024-1차-12 (긍정)</strong>
+              <small>특허법 / 신규성 · 정답률 68%</small>
+            </div>
+          </div>
+          <div class="widget-row problem-row">
+            <div class="row-icon">☑</div>
+            <div class="row-body">
+              <strong>객관식 #2023-1차-08 (부정)</strong>
+              <small>특허법 / 신규성 · 정답률 52%</small>
+            </div>
+          </div>
+          <div class="widget-row problem-row">
+            <div class="row-icon">☑</div>
+            <div class="row-body">
+              <strong>주관식 #2022-2차-3-(2)</strong>
+              <small>특허법 사례형 · 추천</small>
+            </div>
+          </div>
+          <div class="add-line"><button>전체 47건 보기 →</button></div>
+        `,
+      },
+      comment: {
+        title: '💬 코멘트 · 평석',
+        count: '3 건',
+        html: `
+          <div class="widget-row comment-row">
+            <div class="row-icon">💬</div>
+            <div class="row-body">
+              <strong>강사 평석 — 신규성 판단 시 공지 시점 기준</strong>
+              <small>김변리 강사 · 2026-04-08 · 📌 고정</small>
+            </div>
+          </div>
+          <div class="widget-row comment-row">
+            <div class="row-icon">💬</div>
+            <div class="row-body">
+              <strong>2024년 개정 영향에 관한 짧은 코멘트</strong>
+              <small>이변리 강사 · 2026-03-12</small>
+            </div>
+          </div>
+        `,
+      },
+      qna: {
+        title: '❓ Q&A',
+        count: '0 건',
+        html: `<div class="empty">아직 등록된 질문이 없습니다.<br />첫 질문을 남겨 강사에게 답을 받아보세요.</div>`,
+      },
+      revisions: {
+        title: '📜 개정이력',
+        count: '1 건',
+        html: `
+          <div class="widget-row">
+            <div class="row-icon">📜</div>
+            <div class="row-body">
+              <strong>2026-01-15 시행 (현재)</strong>
+              <small>제2항 신설 · diff 보기 →</small>
+            </div>
+          </div>
+        `,
+      },
+      ox: {
+        title: '🔖 정오문제',
+        count: '8 건',
+        html: `
+          <div class="widget-row">
+            <div class="row-icon">○</div>
+            <div class="row-body">
+              <strong>"공지된 발명도 신규성이 인정된다"</strong>
+              <small>X · 정답률 84%</small>
+            </div>
+          </div>
+          <div class="widget-row">
+            <div class="row-icon">○</div>
+            <div class="row-body">
+              <strong>"전기통신회선 게재도 공지에 해당한다"</strong>
+              <small>O · 정답률 76%</small>
+            </div>
+          </div>
+          <div class="add-line"><button>풀이 시작 →</button></div>
+        `,
+      },
+      bookmark: {
+        title: '❤ 즐겨찾기',
+        count: '★★★',
+        html: `
+          <div style="padding: 8px 0;">
+            <span class="stars">
+              <span class="on">★</span>
+              <span class="on">★</span>
+              <span class="on">★</span>
+              <span>★</span>
+              <span>★</span>
+            </span>
+            <p style="margin: 12px 0 0; font-size: 12px; color: var(--ink-soft);">
+              마지막 저장 2026-04-12 · 별점 3 / 5
+            </p>
+            <p style="margin: 4px 0 0; font-size: 11px; color: var(--ink-soft);">
+              별점은 학습 우선순위로 활용됩니다. (최근 학습 카드, 권장 진도 가중치)
+            </p>
+          </div>
+        `,
+      },
+      materials: {
+        title: '📎 관련자료',
+        count: '구현 예정',
+        html: `<div class="empty">강의노트·강의영상 — 곧 추가 예정</div>`,
+      },
+    };
+  </script>
+</body>
+</html>
