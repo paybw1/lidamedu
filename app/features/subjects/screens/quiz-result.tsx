@@ -85,12 +85,12 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
         {/* Back link */}
         <div className="mb-4">
           <Link
-            to={`/subjects/${subject.slug}/problems/system`}
+            to={`/subjects/${subject.slug}?tab=problems`}
             viewTransition
             className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors"
           >
             <ArrowLeftIcon className="size-3.5" />
-            체계도 복귀
+            문제 탭으로
           </Link>
         </div>
 

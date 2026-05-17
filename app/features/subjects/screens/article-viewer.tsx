@@ -569,6 +569,8 @@ function ArticleViewerInner({
                       isAdmin={isAdmin}
                       subjectSlug={subject.slug}
                       revisions={revisions ?? undefined}
+                      viewerIsStaff={staffRole !== null}
+                      importance={article.importance}
                     />
                   </div>
                 </SheetContent>
@@ -1087,6 +1089,8 @@ function ArticleViewerInner({
                 isAdmin={isAdmin}
                 subjectSlug={subject.slug}
                 revisions={revisions ?? undefined}
+                viewerIsStaff={staffRole !== null}
+                importance={article.importance}
               />
             </div>
           </aside>

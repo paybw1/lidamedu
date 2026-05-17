@@ -8,6 +8,7 @@ import {
   MessageCircleQuestionIcon,
   PaperclipIcon,
   ScrollTextIcon,
+  StarIcon,
   StickyNoteIcon,
 } from "lucide-react";
 import { type ComponentType, useEffect, useState } from "react";
@@ -20,6 +21,7 @@ import {
   TabsTrigger,
 } from "~/core/components/ui/tabs";
 import { cn } from "~/core/lib/utils";
+import { ImportanceRating } from "~/features/admin/components/importance-rating";
 import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
 import { HighlightList } from "~/features/annotations/components/highlight-list";
 import { MemoList } from "~/features/annotations/components/memo-list";
@@ -121,14 +123,17 @@ function RailButton({
   value,
   count,
   dim,
+  meta: metaOverride,
 }: {
   value: TabKey;
   /** 0 또는 undefined = dot 표시 안 함, >0 = 노란 dot. bookmark 같이 카운트 의미가 없는 탭은 0/1 로 표현. */
   count?: number;
   /** 빈 상태일 때 옅게. */
   dim?: boolean;
+  /** 탭 메타 오버라이드 — staff 중요도 모드의 bookmark 탭처럼 라벨/아이콘이 바뀔 때. */
+  meta?: PanelTabMeta;
 }) {
-  const meta = TAB_META[value];
+  const meta = metaOverride ?? TAB_META[value];
   const Icon = meta.Icon;
   const hasContent = count !== undefined && count > 0;
   const tooltip =
@@ -174,6 +179,8 @@ export function ArticleRightPanel({
   isAdmin = false,
   subjectSlug,
   revisions,
+  viewerIsStaff = false,
+  importance,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
@@ -194,6 +201,10 @@ export function ArticleRightPanel({
   subjectSlug?: LawSubjectSlug;
   // staff(instructor/admin) 일 때만 전달. 비어있거나 undefined 이면 탭 자체가 표시되지 않음.
   revisions?: RevisionHistoryEntry[];
+  // feat-8-025 — staff 면 "즐겨찾기" 탭이 중요도 별점 에디터로 바뀐다.
+  viewerIsStaff?: boolean;
+  // 콘텐츠 importance — staff 중요도 모드에서 사용. case/article 뷰어만 전달.
+  importance?: number;
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
@@ -207,6 +218,18 @@ export function ArticleRightPanel({
       : null;
   const showCommentLive = comments !== undefined && commentTargetType !== null;
   const showRevisions = revisions !== undefined;
+
+  // feat-8-025 — staff 가 case/article 을 볼 때 "즐겨찾기" 탭을 중요도 에디터로.
+  const staffImportanceMode =
+    viewerIsStaff &&
+    importance !== undefined &&
+    (target.type === "article" || target.type === "case");
+  const bookmarkMeta: PanelTabMeta = staffImportanceMode
+    ? { label: "중요도", Icon: StarIcon }
+    : TAB_META.bookmark;
+  const bookmarkHasContent = staffImportanceMode
+    ? (importance ?? 0) > 0
+    : bookmark != null;
 
   const [activeTab, setActiveTab] = useState<TabKey>("bookmark");
   // 본문 selection → "메모" 버튼 클릭 시 자동으로 memo 탭 활성화.
@@ -244,7 +267,11 @@ export function ArticleRightPanel({
   const countLabel: string = (() => {
     switch (activeTab) {
       case "bookmark":
-        return bookmark ? "저장됨" : "";
+        return staffImportanceMode
+          ? `★ ${importance ?? 0}`
+          : bookmark
+            ? "저장됨"
+            : "";
       case "memo":
         return memos.length > 0 ? `${memos.length} 건` : "";
       case "highlight":
@@ -274,7 +301,8 @@ export function ArticleRightPanel({
     }
   })();
 
-  const activeMeta = TAB_META[activeTab];
+  const activeMeta =
+    activeTab === "bookmark" ? bookmarkMeta : TAB_META[activeTab];
   const ActiveIcon = activeMeta.Icon;
 
   return (
@@ -291,7 +319,11 @@ export function ArticleRightPanel({
             "bg-muted/40 border-r",
           )}
         >
-          <RailButton value="bookmark" count={bookmark ? 1 : 0} />
+          <RailButton
+            value="bookmark"
+            count={bookmarkHasContent ? 1 : 0}
+            meta={bookmarkMeta}
+          />
           <RailButton value="memo" count={memos.length} />
           <RailButton value="highlight" count={highlights.length} />
           {showCases ? (
@@ -347,11 +379,19 @@ export function ArticleRightPanel({
 
           <div className="flex-1 overflow-y-auto p-3">
             <TabsContent value="bookmark" className="mt-0">
-              <BookmarkStars
-                targetType={target.type}
-                targetId={target.id}
-                initial={bookmark}
-              />
+              {staffImportanceMode ? (
+                <ImportanceRating
+                  targetType={target.type === "case" ? "case" : "article"}
+                  targetId={target.id}
+                  importance={importance ?? 0}
+                />
+              ) : (
+                <BookmarkStars
+                  targetType={target.type}
+                  targetId={target.id}
+                  initial={bookmark}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="memo" className="mt-0">

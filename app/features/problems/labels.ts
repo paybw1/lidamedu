@@ -185,3 +185,49 @@ export interface ProblemDetail extends ProblemListItem {
   choices: ProblemChoice[];
   boxItems: ProblemBoxItem[];
 }
+
+// ── 운영자 기출문제 판례 매칭 (feat-8-024) ──────────────────────────────
+// /admin/relations/exam-cases 화면 타입. 클라이언트 컴포넌트
+// (exam-case-row.tsx) 가 import 하므로 .server.ts 가 아닌 여기에 둔다.
+
+// 기출문제 지문 한 조각 — 선택지 또는 박스 항목.
+export interface ExamCaseSegment {
+  /** problem_choices.choice_id 또는 problem_box_items.box_item_id. */
+  segmentId: string;
+  /** 'choice' = 선택지, 'box' = 박스 항목. 해설 편집 시 대상 테이블 분기. */
+  segmentKind: "choice" | "box";
+  /** 표시 라벨 — 선택지는 번호("1"…), 박스 항목은 marker("ㄱ"…). */
+  label: string;
+  bodyMd: string;
+  /** 해설 (markdown). 인라인 해설 편집기의 초기값. */
+  explanationMd: string | null;
+  choiceType: ProblemChoiceType | null;
+  /** 지문에 입력된 판례 인용문 (자동 스캔이 읽는 필드). 없으면 null. */
+  relatedCaseNumber: string | null;
+}
+
+// 한 기출문제에 연결된 판례 1건.
+export interface ExamCaseLink {
+  linkId: string;
+  caseId: string;
+  caseNumber: string;
+  caseTitle: string;
+  /** 자동 스캔으로 생성된 링크인지 (note='exam-scan'). false = 수동 매칭. */
+  isAuto: boolean;
+}
+
+// 매칭 화면의 한 행 — 1차 객관식 기출문제 1개 + 전체 지문 + 연결 판례.
+export interface ExamCaseLinkRow {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  lawCode: string;
+  format: ProblemFormat;
+  /** 문제 발문 (markdown). 빈 문자열일 수 있음. */
+  bodyMd: string;
+  /** 박스형 지문 항목 (mc_box). 없으면 빈 배열. */
+  boxItems: ExamCaseSegment[];
+  /** 선택지. */
+  choices: ExamCaseSegment[];
+  links: ExamCaseLink[];
+}

@@ -213,10 +213,6 @@ export default [
           "features/subjects/screens/case-viewer.tsx",
         ),
         route(
-          "/:subject/problems/system",
-          "features/subjects/screens/problems-system-index.tsx",
-        ),
-        route(
           "/:subject/problems/:problemId",
           "features/subjects/screens/problem-viewer.tsx",
         ),
@@ -352,6 +348,7 @@ export default [
         "features/lectures/screens/lecture-viewer.tsx",
       ),
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
+      route("/api/admin/importance", "features/admin/api/importance.tsx"),
       route(
         "/assignments",
         "features/assignments/screens/student-assignments.tsx",

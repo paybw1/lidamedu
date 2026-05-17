@@ -6,8 +6,6 @@ import type { LawSubjectMeta } from "../../lib/subjects";
 
 import {
   ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   GavelIcon,
   SearchIcon,
   StarIcon,
@@ -63,8 +61,6 @@ const DEFAULT_FILTERS: CaseFiltersApplied = {
   court: "all",
   exam: "any",
   sort: "decided_desc",
-  page: 1,
-  pageSize: 50,
 };
 
 export function CasesTab({
@@ -107,13 +103,12 @@ export function CasesTab({
     return n ? n.displayLabel : "체계도 항목";
   }, [treeFilter, articles, systematicNodes]);
 
-  // 트리 필터 해제 href — case_* / case_page 만 제거.
+  // 트리 필터 해제 href — case_* 트리 키만 제거.
   const clearTreeHref = useMemo(() => {
     const sp = new URLSearchParams(searchParams);
     sp.delete("case_article");
     sp.delete("case_chapter");
     sp.delete("case_node");
-    sp.delete("case_page");
     return `?${sp.toString()}`;
   }, [searchParams]);
 
@@ -128,8 +123,6 @@ export function CasesTab({
   const examCount = cases.filter(
     (c) => c.exam1stYears.length + c.exam2ndYears.length > 0,
   ).length;
-
-  const totalPages = Math.max(1, Math.ceil(casesTotal / filters.pageSize));
 
   // hidden inputs — 검색폼 submit 시 다른 필터 보존 (트리 필터 포함).
   const hidden: Array<{ name: string; value: string }> = [];
@@ -194,12 +187,12 @@ export function CasesTab({
           <CasesKpiCard
             label="중요 판례"
             value={importantCount.toLocaleString("ko-KR")}
-            sub="현재 페이지 ★3 이상"
+            sub="★3 이상"
           />
           <CasesKpiCard
             label="기출 보유"
             value={examCount.toLocaleString("ko-KR")}
-            sub="현재 페이지 1·2차 기출 표시"
+            sub="1·2차 기출 보유"
           />
         </div>
 
@@ -336,27 +329,6 @@ export function CasesTab({
               </TableBody>
             </Table>
           )}
-          {/* Pagination footer */}
-          {totalPages > 1 ? (
-            <div className="border-border flex items-center justify-between border-t px-4 py-3">
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {((filters.page - 1) * filters.pageSize + 1).toLocaleString(
-                  "ko-KR",
-                )}{" "}
-                –{" "}
-                {Math.min(
-                  filters.page * filters.pageSize,
-                  casesTotal,
-                ).toLocaleString("ko-KR")}{" "}
-                / {casesTotal.toLocaleString("ko-KR")}건
-              </span>
-              <Pagination
-                filters={filters}
-                totalPages={totalPages}
-                tab={tabParam}
-              />
-            </div>
-          ) : null}
         </div>
       </section>
     </div>
@@ -426,76 +398,6 @@ function FilterGroup<T extends string>({
         <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
       </div>
     </Form>
-  );
-}
-
-function Pagination({
-  filters,
-  totalPages,
-  tab,
-}: {
-  filters: CaseFiltersApplied;
-  totalPages: number;
-  tab: string;
-}) {
-  const make = (page: number) => {
-    const sp = new URLSearchParams();
-    if (tab) sp.set("tab", tab);
-    if (filters.q) sp.set("q", filters.q);
-    if (filters.court !== "all") sp.set("case_court", filters.court);
-    if (filters.exam !== "any") sp.set("case_exam", filters.exam);
-    if (filters.sort !== "decided_desc") sp.set("case_sort", filters.sort);
-    if (filters.tree?.kind === "article")
-      sp.set("case_article", filters.tree.articleId);
-    else if (filters.tree?.kind === "chapter")
-      sp.set("case_chapter", filters.tree.chapterId);
-    else if (filters.tree?.kind === "node")
-      sp.set("case_node", filters.tree.nodeId);
-    if (page !== 1) sp.set("case_page", String(page));
-    return `?${sp.toString()}`;
-  };
-  const prev = filters.page > 1 ? filters.page - 1 : null;
-  const next = filters.page < totalPages ? filters.page + 1 : null;
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        asChild={prev != null}
-        variant="ghost"
-        size="sm"
-        disabled={prev == null}
-        className="h-7 rounded-full px-3 text-xs"
-      >
-        {prev != null ? (
-          <Link to={make(prev)} preventScrollReset>
-            <ChevronLeftIcon className="size-3" /> 이전
-          </Link>
-        ) : (
-          <span>
-            <ChevronLeftIcon className="size-3" /> 이전
-          </span>
-        )}
-      </Button>
-      <span className="text-muted-foreground min-w-[60px] text-center text-xs tabular-nums">
-        {filters.page} / {totalPages}
-      </span>
-      <Button
-        asChild={next != null}
-        variant="ghost"
-        size="sm"
-        disabled={next == null}
-        className="h-7 rounded-full px-3 text-xs"
-      >
-        {next != null ? (
-          <Link to={make(next)} preventScrollReset>
-            다음 <ChevronRightIcon className="size-3" />
-          </Link>
-        ) : (
-          <span>
-            다음 <ChevronRightIcon className="size-3" />
-          </span>
-        )}
-      </Button>
-    </div>
   );
 }
 

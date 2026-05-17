@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>체계도 라벨 디자인 미리보기</title>
+<style>
+  :root {
+    --bg: #eef0f3;
+    --card: #ffffff;
+    --ink: #1f2430;
+    --muted: #6b7280;
+    --line: #e3e6ea;
+    --primary: #2d5ba8;
+    --primary-soft: #e9f0fa;
+    --dot: #c2c7cf;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic",
+      -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 32px 20px 72px;
+  }
+  header { max-width: 1180px; margin: 0 auto 22px; }
+  h1 { font-size: 22px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .lead { color: var(--muted); font-size: 13.5px; line-height: 1.7; margin: 0; }
+  .lead code {
+    background: #fff; border: 1px solid var(--line); border-radius: 4px;
+    padding: 1px 5px; font-size: 12px;
+  }
+  .panels {
+    max-width: 1180px; margin: 0 auto;
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  }
+  .panel {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px 14px 22px;
+  }
+  .panel.current { background: #fbf9f9; border-color: #ead9d9; }
+  h2 {
+    font-size: 14px; margin: 0 0 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tag {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.05em;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--primary-soft); color: var(--primary);
+  }
+  .panel.current .tag { background: #f2e1e1; color: #a5565a; }
+  .rule {
+    color: var(--muted); font-size: 11.5px; line-height: 1.55;
+    margin: 4px 0 16px; min-height: 34px;
+  }
+  /* ── 트리 공통 ───────────────────────────── */
+  .tree { font-size: 13px; }
+  ul.branch { list-style: none; margin: 0; padding: 0; }
+  ul.branch > li + li > .row.d1 { margin-top: 9px; }
+  ul.branch ul.branch {
+    margin-left: 13px; padding-left: 10px;
+    border-left: 1.5px solid var(--line);
+  }
+  .row {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 7px; border-radius: 8px;
+  }
+  .row:hover { background: #f5f6f8; }
+  .num { flex: none; }
+  .title {
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .d1 .title { font-weight: 700; font-size: 14px; }
+  .d2 .title { font-weight: 600; color: #39414f; }
+  .d3 .title { font-weight: 400; color: #525a68; }
+
+  /* ── 현재 (개선 전) — 번호가 텍스트에 박힘 ── */
+  .opt-cur .num { display: none; }
+
+  /* ── 안 A — 번호 배지 ───────────────────── */
+  .opt-a .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .opt-a .d1 .num {
+    width: 21px; height: 21px; border-radius: 6px;
+    background: var(--primary); color: #fff;
+    font-size: 11px; font-weight: 800;
+  }
+  .opt-a .d2 .num {
+    min-width: 19px; height: 19px; padding: 0 5px; border-radius: 5px;
+    background: var(--primary-soft); color: var(--primary);
+    font-size: 11px; font-weight: 700;
+  }
+  .opt-a .d3 .num { width: 13px; height: 19px; }
+  .opt-a .d3 .num::before {
+    content: ""; width: 3px; height: 3px; border-radius: 50%;
+    background: var(--dot);
+  }
+
+  /* ── 안 B — 계층 번호 ───────────────────── */
+  .opt-b .num {
+    min-width: 32px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px; font-weight: 600; color: #99a0aa;
+    font-variant-numeric: tabular-nums;
+  }
+  .opt-b .d1 .num { color: var(--primary); font-weight: 700; }
+  .opt-b .d3 .num::before { content: "·"; color: var(--dot); }
+
+  /* ── 안 C — 번호 없음 ───────────────────── */
+  .opt-c .num { display: none; }
+  .opt-c .d1 .title { color: var(--primary); }
+  .opt-c .d3 .title::before {
+    content: ""; display: inline-block;
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--dot); margin-right: 8px; vertical-align: middle;
+  }
+
+  footer {
+    max-width: 1180px; margin: 26px auto 0;
+    color: var(--muted); font-size: 12px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>체계도 노드 라벨 디자인 미리보기</h1>
+  <p class="lead">
+    현재 체계도 노드는 번호가 <code>display_label</code> 텍스트에 박혀 있어,
+    대분류는 <code>"02 특허요건"</code>, 중분류는 <code>"[01] 특허를 받을 수 있는 발명"</code>
+    처럼 표기가 섞여 들쭉날쭉합니다. 아래 <strong>안 A·B·C</strong> 중 하나를 고르시면
+    그 규칙대로 코드(<code>cases-tree</code> 등)에 반영합니다. 번호는 노드의
+    <code>ord</code>·계층에서 자동 도출되고, 제목 텍스트는 깔끔하게 분리됩니다.
+  </p>
+</header>
+<main class="panels" id="panels"></main>
+<footer>
+  특허법 체계도 일부를 표본으로 렌더링했습니다. 데스크톱·모바일 좌측 트리(판례·조문 뷰어)에 동일 규칙이 적용됩니다.
+</footer>
+
+<script>
+  const TREE = [
+    { title: "특허요건", ord: 2, kids: [
+      { title: "특허를 받을 수 있는 발명", ord: 1, kids: [
+        { title: "산업상 이용가능성", ord: 1 },
+        { title: "신규성", ord: 2 },
+        { title: "진보성", ord: 3 },
+      ]},
+      { title: "특허를 받을 수 없는 발명", ord: 2, kids: [
+        { title: "불특허발명", ord: 1 },
+        { title: "국방상 필요한 발명", ord: 2 },
+      ]},
+    ]},
+    { title: "특허권", ord: 5, kids: [
+      { title: "발생", ord: 1, kids: [
+        { title: "특허료의 납부", ord: 1 },
+        { title: "설정등록 및 등록공고", ord: 2 },
+      ]},
+      { title: "효력", ord: 2, kids: [
+        { title: "특허발명의 보호범위", ord: 1 },
+        { title: "침해의 종류", ord: 2 },
+      ]},
+    ]},
+  ];
+
+  const pad2 = (n) => String(n).padStart(2, "0");
+
+  const OPTIONS = [
+    {
+      id: "cur", tag: "현재", name: "개선 전",
+      rule: '대분류 "02 …", 중분류 "[01] …" — 번호가 라벨에 박혀 표기가 섞임.',
+      label: (node, depth) =>
+        depth === 1 ? pad2(node.ord) + " " + node.title
+        : depth === 2 ? "[" + pad2(node.ord) + "] " + node.title
+        : node.title,
+      num: () => "",
+    },
+    {
+      id: "a", tag: "안 A", name: "번호 배지",
+      rule: "대분류·중분류 번호를 배지로, 소분류는 점만. 제목은 번호 없이 깔끔.",
+      label: (node) => node.title,
+      num: (node, depth) => (depth === 3 ? "" : String(node.ord)),
+    },
+    {
+      id: "b", tag: "안 B", name: "계층 번호",
+      rule: '1 · 1.1 식 계층 번호를 옅은 고정폭으로. "5장 2절" 위치 참조가 쉬움.',
+      label: (node) => node.title,
+      num: (node, depth, path) => (depth === 3 ? "" : path.join(".")),
+    },
+    {
+      id: "c", tag: "안 C", name: "번호 없음",
+      rule: "번호를 빼고 들여쓰기·굵기·색으로만 위계 표현. 가장 단순.",
+      label: (node) => node.title,
+      num: () => "",
+    },
+  ];
+
+  function renderNodes(nodes, opt, depth, numPath) {
+    let h = '<ul class="branch">';
+    for (const node of nodes) {
+      const myPath = numPath.concat(node.ord);
+      h +=
+        '<li><div class="row d' + depth + '">' +
+        '<span class="num">' + opt.num(node, depth, myPath) + "</span>" +
+        '<span class="title">' + opt.label(node, depth, myPath) + "</span>" +
+        "</div>";
+      if (node.kids) h += renderNodes(node.kids, opt, depth + 1, myPath);
+      h += "</li>";
+    }
+    return h + "</ul>";
+  }
+
+  const panels = document.getElementById("panels");
+  for (const opt of OPTIONS) {
+    const el = document.createElement("section");
+    el.className =
+      "panel opt-" + opt.id + (opt.id === "cur" ? " current" : "");
+    el.innerHTML =
+      '<h2><span class="tag">' + opt.tag + "</span>" + opt.name + "</h2>" +
+      '<p class="rule">' + opt.rule + "</p>" +
+      '<div class="tree">' + renderNodes(TREE, opt, 1, []) + "</div>";
+    panels.appendChild(el);
+  }
+</script>
+</body>
+</html>

@@ -22,9 +22,11 @@ import {
   type CaseSubjectSort,
 } from "~/features/cases/queries.server";
 import {
+  getSystematicNodeProblemStats,
   listProblemsBySubject,
   listProblemYears,
   type ProblemListItem,
+  type SystematicNodeProblemStat,
 } from "~/features/problems/queries.server";
 import type {
   ProblemExamRound,
@@ -78,8 +80,6 @@ export interface CaseFiltersApplied {
   court: CaseCourtFilter;
   exam: CaseExamFilter;
   sort: CaseSubjectSort;
-  page: number;
-  pageSize: number;
   tree?: CaseTreeFilter;
 }
 
@@ -111,6 +111,8 @@ export interface SubjectHubData {
   problemAggStats: Record<string, ProblemAggregateStats>;
   recommendedArticles: RecommendedArticleItem[];
   progressByArticle: NodeProgressByArticle;
+  // 체계도 노드별 {문제 수, 첫 문제 ID} — 문제 탭 좌측 트리용.
+  systematicNodeProblemStats: Record<string, SystematicNodeProblemStat>;
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
@@ -146,8 +148,6 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
   const exam = (CASE_EXAM_FILTERS as readonly string[]).includes(examRaw)
     ? (examRaw as CaseExamFilter)
     : "any";
-  const pageRaw = Number(url.searchParams.get("case_page") ?? "1");
-  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
   // 트리 필터 — 우선순위 article > chapter > node (한 번에 하나만 활성).
   const articleId = url.searchParams.get("case_article")?.trim();
   const chapterId = url.searchParams.get("case_chapter")?.trim();
@@ -156,7 +156,7 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
   if (articleId) tree = { kind: "article", articleId };
   else if (chapterId) tree = { kind: "chapter", chapterId };
   else if (nodeId) tree = { kind: "node", nodeId };
-  return { q, court, exam, sort, page, pageSize: 50, tree };
+  return { q, court, exam, sort, tree };
 }
 
 // articles 트리에서 한 노드 + 모든 자손 article 의 articleId 목록.
@@ -255,6 +255,22 @@ function aggregateSystematicNodeCounts(
   return out;
 }
 
+// case 트리(조문·장·체계도) 노드별 판례 수 — subjects 허브와 case-viewer 가 공유.
+export function buildCaseTreeCounts(
+  articles: ArticleNode[],
+  systematicNodes: SystematicNode[],
+  caseCountsByArticle: Record<string, number>,
+): CaseTreeCounts {
+  return {
+    byArticleId: caseCountsByArticle,
+    byChapterId: aggregateChapterCounts(articles, caseCountsByArticle),
+    byNodeId: aggregateSystematicNodeCounts(
+      systematicNodes,
+      caseCountsByArticle,
+    ),
+  };
+}
+
 const PROBLEM_ORIGINS: readonly ProblemOrigin[] = [
   "past_exam",
   "past_exam_variant",
@@ -347,6 +363,7 @@ export async function loadSubjectHub(
       law: null,
       articles: [],
       systematicNodes: [],
+      systematicNodeProblemStats: {},
       cases: [],
       casesTotal: 0,
       caseFilters,
@@ -396,32 +413,33 @@ export async function loadSubjectHub(
   }
 
   // 2단계 — case 목록, 문제, 최신 개정.
-  const [casesPage, problems, recentRevisionDate, problemYears] =
-    await Promise.all([
+  const [
+    casesPage,
+    problems,
+    recentRevisionDate,
+    problemYears,
+    systematicNodeProblemStats,
+  ] = await Promise.all([
       listCasesBySubject(client, lawCode, {
         query: caseFilters.q || undefined,
         sort: caseFilters.sort,
         court: caseFilters.court,
         examFilter: caseFilters.exam,
-        page: caseFilters.page,
-        pageSize: caseFilters.pageSize,
         filterCaseIds,
       }),
       listProblemsBySubject(client, lawCode, problemFilters),
       getLatestPublishedRevisionDate(client, law.lawId),
       listProblemYears(client, lawCode),
+      getSystematicNodeProblemStats(client, lawCode),
     ]);
   const cases = casesPage.items;
   const casesTotal = casesPage.total;
 
-  const caseTreeCounts: CaseTreeCounts = {
-    byArticleId: caseCountsByArticle,
-    byChapterId: aggregateChapterCounts(articles, caseCountsByArticle),
-    byNodeId: aggregateSystematicNodeCounts(
-      systematicNodes,
-      caseCountsByArticle,
-    ),
-  };
+  const caseTreeCounts = buildCaseTreeCounts(
+    articles,
+    systematicNodes,
+    caseCountsByArticle,
+  );
 
   const totalArticleCount = articles.filter((a) => a.level === "article").length;
 
@@ -491,6 +509,7 @@ export async function loadSubjectHub(
     law,
     articles,
     systematicNodes,
+    systematicNodeProblemStats,
     cases,
     casesTotal,
     caseFilters,

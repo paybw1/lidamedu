@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import type { CaseCourt } from "~/features/cases/labels";
 import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -43,6 +44,9 @@ export type CaseMapperSort =
 export interface ListCasesForMapperOptions {
   lawCode: LawSubjectSlug;
   query?: string;
+  court?: CaseCourt;
+  yearFrom?: number;
+  yearTo?: number;
   onlyUnmapped?: boolean;
   sort?: CaseMapperSort;
   page?: number;
@@ -72,6 +76,16 @@ export async function listCasesForMapper(
     q = q.or(
       `case_number.ilike.${pattern},case_title.ilike.${pattern},summary_title.ilike.${pattern}`,
     );
+  }
+  if (options.court) {
+    q = q.eq("court", options.court);
+  }
+  // 선고연도 범위 — decided_at(date) 를 연 경계로 변환해 필터.
+  if (options.yearFrom != null) {
+    q = q.gte("decided_at", `${options.yearFrom}-01-01`);
+  }
+  if (options.yearTo != null) {
+    q = q.lte("decided_at", `${options.yearTo}-12-31`);
   }
   const { data: caseRows, error: caseErr, count: caseTotalCount } = await q
     .order("decided_at", { ascending: false })

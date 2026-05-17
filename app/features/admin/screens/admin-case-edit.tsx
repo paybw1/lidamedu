@@ -7,11 +7,12 @@ import {
   FileTextIcon,
   GavelIcon,
   NetworkIcon,
+  PlusIcon,
   SaveIcon,
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
 
@@ -39,6 +40,13 @@ export const meta: Route.MetaFunction = ({ data: d }) => {
   return [{ title: `${d.kase.case_number} 편집 | Lidam Patent Attorney Academy` }];
 };
 
+// returnTo 는 /admin/cases 목록 경로만 허용 — open-redirect 방지.
+function safeReturnTo(raw: unknown): string {
+  return typeof raw === "string" && /^\/admin\/cases(\?|$)/.test(raw)
+    ? raw
+    : "/admin/cases?law=patent";
+}
+
 export async function loader({ params, request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -48,8 +56,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw data("Forbidden", { status: 403 });
 
+  // 수정 후 돌아갈 목록 페이지(페이지·필터 보존). 진입 시 ?returnTo= 로 전달.
+  const returnTo = safeReturnTo(
+    new URL(request.url).searchParams.get("returnTo"),
+  );
   const caseId = params.caseId ?? null;
-  if (!caseId) return { kase: null };
+  if (!caseId) return { kase: null, returnTo };
   const { data: row, error } = await client
     .from("cases")
     .select("*")
@@ -57,7 +69,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     .maybeSingle();
   if (error) throw data(error.message, { status: 500 });
   if (!row) throw data("Case not found", { status: 404 });
-  return { kase: row };
+  return { kase: row, returnTo };
 }
 
 const COURTS: Array<keyof typeof COURT_LABELS> = [
@@ -68,7 +80,7 @@ const COURTS: Array<keyof typeof COURT_LABELS> = [
 ];
 
 export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
-  const { kase } = loaderData;
+  const { kase, returnTo } = loaderData;
   const isNew = kase === null;
 
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
@@ -77,7 +89,7 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
       <Link
-        to="/admin/cases?law=patent"
+        to={returnTo}
         className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
       >
         <ArrowLeftIcon className="size-3" /> 판례 매핑 관리
@@ -102,6 +114,8 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         {!isNew ? (
           <input type="hidden" name="caseId" value={kase.case_id} />
         ) : null}
+        {/* 저장·삭제 후 운영자가 보던 목록 페이지로 복귀 */}
+        <input type="hidden" name="returnTo" value={returnTo} />
 
         <Card>
           <CardHeader>
@@ -166,15 +180,6 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
                 maxLength={100}
               />
             </Field>
-            <Field label="중요도 (0~5)">
-              <Input
-                type="number"
-                name="importance"
-                defaultValue={kase?.importance ?? ""}
-                min={0}
-                max={5}
-              />
-            </Field>
             <Field label="전합">
               <label className="border-input flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm">
                 <input
@@ -210,19 +215,9 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             <h2 className="text-sm font-semibold">요지 · 이유</h2>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Field label="요지 제목" full>
-              <Input
-                name="summaryTitle"
-                defaultValue={kase?.summary_title ?? ""}
-                maxLength={500}
-              />
-            </Field>
-            <Field label="요지 본문 (Markdown)" full>
-              <ReflowableTextarea
-                name="summaryBodyMd"
-                defaultValue={kase?.summary_body_md ?? ""}
-                rows={5}
-                fieldLabel="요지 본문"
+            <Field label="판결요지 (여러 항목 가능)" full>
+              <SummaryItemsEditor
+                defaultItems={parseSummaryItems(kase?.summary_items)}
               />
             </Field>
             <Field label="판시이유 (Markdown)" full>
@@ -261,7 +256,11 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           {!isNew ? (
-            <DeleteForm caseId={kase.case_id} caseNumber={kase.case_number} />
+            <DeleteForm
+              caseId={kase.case_id}
+              caseNumber={kase.case_number}
+              returnTo={returnTo}
+            />
           ) : (
             <span />
           )}
@@ -277,7 +276,7 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         <p className="text-muted-foreground mt-4 text-xs">
           관련 조문 매핑은{" "}
           <Link
-            to="/admin/cases?law=patent"
+            to={returnTo}
             className="text-primary hover:underline"
           >
             판례 매핑 관리
@@ -320,22 +319,26 @@ function Field({
 
 // 운영자 입력 보조: textarea 우상단 "넘버링 자동 정렬" 버튼.
 // 정규식이 날짜·사건번호 안의 구두점까지 분리할 수 있으므로 운영자가 결과 확인 후 적용.
+// uncontrolled(name+defaultValue) / controlled(value+onChange) 양쪽 지원.
 function ReflowableTextarea({
   name,
   defaultValue,
+  value,
+  onChange,
   rows,
   fieldLabel,
 }: {
-  name: string;
-  defaultValue: string;
+  name?: string;
+  defaultValue?: string;
+  value?: string;
+  onChange?: (next: string) => void;
   rows: number;
   fieldLabel: string;
 }) {
+  const isControlled = value !== undefined;
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const onReflow = () => {
-    const el = ref.current;
-    if (!el) return;
-    const before = el.value;
+    const before = isControlled ? (value ?? "") : (ref.current?.value ?? "");
     if (!before.trim()) {
       toast.info(`${fieldLabel} 본문이 비어 있습니다.`);
       return;
@@ -352,8 +355,12 @@ function ReflowableTextarea({
     ) {
       return;
     }
-    el.value = after;
-    el.focus();
+    if (isControlled) {
+      onChange?.(after);
+    } else if (ref.current) {
+      ref.current.value = after;
+      ref.current.focus();
+    }
     toast.success(`${fieldLabel} 넘버링 자동 정렬 적용 — 결과를 확인하고 저장하세요.`);
   };
   return (
@@ -370,22 +377,108 @@ function ReflowableTextarea({
           넘버링 자동 정렬
         </Button>
       </div>
-      <Textarea
-        ref={ref}
-        name={name}
-        defaultValue={defaultValue}
-        rows={rows}
-      />
+      {isControlled ? (
+        <Textarea
+          value={value ?? ""}
+          onChange={(e) => onChange?.(e.target.value)}
+          rows={rows}
+        />
+      ) : (
+        <Textarea
+          ref={ref}
+          name={name}
+          defaultValue={defaultValue}
+          rows={rows}
+        />
+      )}
     </>
+  );
+}
+
+// 판결요지 다항목 — {title, body}[] 를 jsonb(summary_items) 로 저장.
+// 폼은 hidden input 에 JSON 직렬화해 제출, /api/admin/case 가 기록한다.
+type SummaryItem = { title: string; body: string };
+
+function parseSummaryItems(raw: unknown): SummaryItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SummaryItem[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    out.push({
+      title: typeof o.title === "string" ? o.title : "",
+      body: typeof o.body === "string" ? o.body : "",
+    });
+  }
+  return out;
+}
+
+function SummaryItemsEditor({ defaultItems }: { defaultItems: SummaryItem[] }) {
+  const [items, setItems] = useState<SummaryItem[]>(
+    defaultItems.length > 0 ? defaultItems : [{ title: "", body: "" }],
+  );
+  const patch = (i: number, p: Partial<SummaryItem>) =>
+    setItems((prev) => prev.map((it, j) => (j === i ? { ...it, ...p } : it)));
+
+  return (
+    <div className="space-y-3">
+      {/* action 은 이 hidden 값을 JSON.parse 해 summary_items 로 저장 */}
+      <input type="hidden" name="summaryItems" value={JSON.stringify(items)} />
+      {items.map((it, i) => (
+        <div
+          key={i}
+          className="border-input bg-muted/20 space-y-2 rounded-md border p-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold">요지 [{i + 1}]</span>
+            {items.length > 1 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-6 gap-1 px-2 text-[11px] text-rose-600 hover:text-rose-700"
+                onClick={() =>
+                  setItems((prev) => prev.filter((_, j) => j !== i))
+                }
+              >
+                <Trash2Icon className="size-3" /> 항목 삭제
+              </Button>
+            ) : null}
+          </div>
+          <Input
+            value={it.title}
+            onChange={(e) => patch(i, { title: e.target.value })}
+            placeholder="요지 제목"
+            maxLength={500}
+          />
+          <ReflowableTextarea
+            value={it.body}
+            onChange={(next) => patch(i, { body: next })}
+            rows={5}
+            fieldLabel={`요지 [${i + 1}] 본문`}
+          />
+        </div>
+      ))}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => setItems((prev) => [...prev, { title: "", body: "" }])}
+      >
+        <PlusIcon className="size-3.5" /> 요지 항목 추가
+      </Button>
+    </div>
   );
 }
 
 function DeleteForm({
   caseId,
   caseNumber,
+  returnTo,
 }: {
   caseId: string;
   caseNumber: string;
+  returnTo: string;
 }) {
   return (
     <Form
@@ -399,6 +492,7 @@ function DeleteForm({
     >
       <input type="hidden" name="intent" value="delete" />
       <input type="hidden" name="caseId" value={caseId} />
+      <input type="hidden" name="returnTo" value={returnTo} />
       <Button type="submit" size="sm" variant="ghost" className="text-rose-600">
         <Trash2Icon className="size-3.5" /> 삭제
       </Button>

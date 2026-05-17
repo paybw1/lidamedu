@@ -1,10 +1,11 @@
+import type { ProblemFiltersApplied } from "../../lib/loader.server";
+
 import {
   ArrowRightIcon,
   CheckSquareIcon,
   ChevronDownIcon,
   CircleCheckIcon,
   FilterXIcon,
-  FolderTreeIcon,
   ListChecksIcon,
   NotebookPenIcon,
   PencilIcon,
@@ -24,19 +25,21 @@ import {
   TableHeader,
   TableRow,
 } from "~/core/components/ui/table";
+import { cn } from "~/core/lib/utils";
+import type { SystematicNode } from "~/features/laws/queries.server";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
   POLARITY_LABEL,
-  SCOPE_LABEL,
-  SUBJECTIVE_KIND_LABEL,
   type ProblemFormat,
   type ProblemListItem,
   type ProblemOrigin,
   type ProblemPolarity,
   type ProblemScope,
+  SCOPE_LABEL,
+  SUBJECTIVE_KIND_LABEL,
 } from "~/features/problems/labels";
-import type { ProblemFiltersApplied } from "../../lib/loader.server";
+import type { SystematicNodeProblemStat } from "~/features/problems/queries.server";
 import {
   DIFFICULTY_LABEL,
   DIFFICULTY_TONE,
@@ -44,9 +47,9 @@ import {
   type ProblemAggregateStats,
 } from "~/features/study/lib/difficulty";
 import type { UserProblemStats } from "~/features/study/queries.server";
-import { cn } from "~/core/lib/utils";
 
 import { EXAM_LABEL, type LawSubjectMeta } from "../../lib/subjects";
+import { ProblemSystematicTree } from "../problem-systematic-tree";
 
 const ORIGIN_OPTS: ProblemOrigin[] = [
   "past_exam",
@@ -82,6 +85,8 @@ export function ProblemsTab({
   appliedFilters,
   stats,
   aggStats,
+  systematicNodes,
+  nodeStats,
 }: {
   subject: LawSubjectMeta;
   problems: ProblemListItem[];
@@ -89,6 +94,8 @@ export function ProblemsTab({
   appliedFilters: ProblemFiltersApplied;
   stats: UserProblemStats | null;
   aggStats: Record<string, ProblemAggregateStats>;
+  systematicNodes: SystematicNode[];
+  nodeStats: Record<string, SystematicNodeProblemStat>;
 }) {
   const firstRound = problems.filter((p) => p.examRound === "first");
   const secondRound = problems.filter((p) => p.examRound === "second");
@@ -106,289 +113,323 @@ export function ProblemsTab({
   const correctCount = stats?.correctCount ?? 0;
   const wrongCount = stats?.wrongCount ?? 0;
   const accuracyPct =
-    attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : null;
+    attemptedCount > 0
+      ? Math.round((correctCount / attemptedCount) * 100)
+      : null;
 
   return (
-    <div className="space-y-4">
-      {/* KPI cards — 3 columns */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <ProblemsKpiCard
-          label="출제 문항"
-          value={problems.length.toLocaleString("ko-KR")}
-          sub="현재 등록된 전체"
-        />
-        <ProblemsKpiCard
-          label="내 풀이"
-          value={attemptedCount.toLocaleString("ko-KR")}
-          sub={`전체 시도 ${(stats?.totalAttempts ?? 0).toLocaleString("ko-KR")}회`}
-        />
-        <ProblemsKpiCard
-          label="정답률"
-          value={accuracyPct === null ? "—" : `${accuracyPct}%`}
-          sub={
-            attemptedCount > 0
-              ? `정답 ${correctCount} · 오답 ${wrongCount}`
-              : "한 문제도 풀지 않았습니다"
-          }
-          accent={accuracyPct !== null}
-        />
-      </div>
-
-      {/* Wrong-note amber banner */}
-      {wrongCount > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-amber-500/[0.10] px-4 py-3.5 dark:bg-amber-500/[0.08]">
-          <TriangleAlertIcon className="size-[18px] shrink-0 text-amber-600 dark:text-amber-400" />
-          <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">
-              오답 {wrongCount}개 · 우선 복습 추천
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              마지막 시도가 오답인 문제가 있습니다. 오답노트에서 재풀이를 권장합니다.
+    <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside>
+        <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+          <div className="border-border border-b px-4 py-3">
+            <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
+              체계별 풀이
             </p>
           </div>
-          <Button asChild size="sm" className="h-8 shrink-0 rounded-full">
-            <Link
-              to={`/study/wrong-note?subject=${subject.slug}`}
-              viewTransition
-            >
-              오답노트 <ArrowRightIcon className="size-3.5" />
-            </Link>
-          </Button>
-        </div>
-      ) : null}
-
-      {/* Learning mode cards — 3 columns */}
-      {firstRound.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-3">
-          <ModeCard
-            icon={<FolderTreeIcon className="size-[18px]" />}
-            title="체계별 풀이"
-            desc="단원별로 묶어 순차 풀이 + 진도 기록"
-            href={`/subjects/${subject.slug}/problems/system`}
-            cta="시작"
-            ctaVariant="default"
-          />
-          <ModeCard
-            icon={<SlidersHorizontalIcon className="size-[18px]" />}
-            title="맞춤 퀴즈"
-            desc="유형/연도/극성으로 N문제 묶음 · 시험 모드 가능"
-            href={`/subjects/${subject.slug}/quiz/setup`}
-            cta="설정"
-            ctaVariant="outline"
-          />
-          <ModeCard
-            icon={<CheckSquareIcon className="size-[18px]" />}
-            title="정오문제 OX"
-            desc="OX 지문 무작위 빠른 풀이"
-            href={`/subjects/${subject.slug}/ox`}
-            cta="시작"
-            ctaVariant="outline"
-          />
-        </div>
-      ) : null}
-
-      {/* Filter row */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5">
-        <Form method="get" className="contents">
-          <input type="hidden" name="tab" value="problems" />
-          {/* Search chip-style input */}
-          <div className="flex flex-col gap-0.5">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-              본문 검색
-            </span>
-            <input
-              type="text"
-              name="p_search"
-              defaultValue={appliedFilters.search ?? ""}
-              placeholder="키워드"
-              maxLength={100}
-              data-testid="problem-search"
-              className="h-8 w-36 rounded-lg border border-border bg-background px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+          <div className="p-2">
+            <ProblemSystematicTree
+              nodes={systematicNodes}
+              nodeStats={nodeStats}
+              lawCode={subject.slug}
             />
           </div>
-          <FilterSelectChip
-            label="출처"
-            name="p_origin"
-            value={appliedFilters.origin ?? ""}
-            options={ORIGIN_OPTS.map((o) => ({ value: o, label: ORIGIN_LABEL[o] }))}
+        </div>
+      </aside>
+      <section className="space-y-4">
+        {/* KPI cards — 3 columns */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <ProblemsKpiCard
+            label="출제 문항"
+            value={problems.length.toLocaleString("ko-KR")}
+            sub="현재 등록된 전체"
           />
-          <FilterSelectChip
-            label="연도"
-            name="p_year"
-            value={appliedFilters.year != null ? String(appliedFilters.year) : ""}
-            options={availableYears.map((y) => ({
-              value: String(y),
-              label: `${y}년`,
-            }))}
+          <ProblemsKpiCard
+            label="내 풀이"
+            value={attemptedCount.toLocaleString("ko-KR")}
+            sub={`전체 시도 ${(stats?.totalAttempts ?? 0).toLocaleString("ko-KR")}회`}
           />
-          <FilterSelectChip
-            label="시험"
-            name="p_round"
-            value={appliedFilters.examRound ?? ""}
-            options={[
-              { value: "first", label: "1차" },
-              { value: "second", label: "2차" },
-            ]}
+          <ProblemsKpiCard
+            label="정답률"
+            value={accuracyPct === null ? "—" : `${accuracyPct}%`}
+            sub={
+              attemptedCount > 0
+                ? `정답 ${correctCount} · 오답 ${wrongCount}`
+                : "한 문제도 풀지 않았습니다"
+            }
+            accent={accuracyPct !== null}
           />
-          <FilterSelectChip
-            label="유형"
-            name="p_format"
-            value={appliedFilters.format ?? ""}
-            options={FORMAT_OPTS.map((f) => ({ value: f, label: FORMAT_LABEL[f] }))}
-          />
-          <FilterSelectChip
-            label="극성"
-            name="p_polarity"
-            value={appliedFilters.polarity ?? ""}
-            options={POLARITY_OPTS.map((p) => ({
-              value: p,
-              label: POLARITY_LABEL[p],
-            }))}
-          />
-          <FilterSelectChip
-            label="난이도"
-            name="p_difficulty"
-            value={appliedFilters.difficulty ?? ""}
-            options={DIFFICULTY_OPTS.map((d) => ({
-              value: d.value,
-              label: d.label,
-            }))}
-          />
-          <FilterSelectChip
-            label="정렬"
-            name="p_sort"
-            value={appliedFilters.sort ?? ""}
-            options={SORT_OPTS.filter((s) => s.value !== "number").map((s) => ({
-              value: s.value,
-              label: s.label,
-            }))}
-          />
-          <Button type="submit" size="sm" className="h-8 rounded-full">
-            적용
-          </Button>
-        </Form>
-        {filterActive ? (
-          <Button asChild type="button" size="sm" variant="ghost" className="h-8 rounded-full">
-            <Link to={`/subjects/${subject.slug}?tab=problems`}>
-              <FilterXIcon className="size-3.5" /> 초기화
-            </Link>
-          </Button>
-        ) : null}
-        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-          총 {problems.length.toLocaleString("ko-KR")}건
-        </span>
-      </div>
+        </div>
 
-      {/* 1차 객관식 table */}
-      <div className="overflow-hidden rounded-xl border border-border shadow-sm">
-        {/* Section header */}
-        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <CircleCheckIcon className="size-4 text-primary" />
-            <h3 className="text-sm font-semibold">
-              1차 객관식 ({EXAM_LABEL[subject.exam]})
-            </h3>
+        {/* Wrong-note amber banner */}
+        {wrongCount > 0 ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-amber-500/[0.10] px-4 py-3.5 dark:bg-amber-500/[0.08]">
+            <TriangleAlertIcon className="size-[18px] shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1">
+              <p className="text-foreground text-sm font-bold">
+                오답 {wrongCount}개 · 우선 복습 추천
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                마지막 시도가 오답인 문제가 있습니다. 오답노트에서 재풀이를
+                권장합니다.
+              </p>
+            </div>
+            <Button asChild size="sm" className="h-8 shrink-0 rounded-full">
+              <Link
+                to={`/study/wrong-note?subject=${subject.slug}`}
+                viewTransition
+              >
+                오답노트 <ArrowRightIcon className="size-3.5" />
+              </Link>
+            </Button>
           </div>
-          <span className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
-            {firstRound.length}건
+        ) : null}
+
+        {/* Learning mode cards — 3 columns */}
+        {firstRound.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            <ModeCard
+              icon={<SlidersHorizontalIcon className="size-[18px]" />}
+              title="맞춤 퀴즈"
+              desc="유형/연도/극성으로 N문제 묶음 · 시험 모드 가능"
+              href={`/subjects/${subject.slug}/quiz/setup`}
+              cta="설정"
+              ctaVariant="outline"
+            />
+            <ModeCard
+              icon={<CheckSquareIcon className="size-[18px]" />}
+              title="정오문제 OX"
+              desc="OX 지문 무작위 빠른 풀이"
+              href={`/subjects/${subject.slug}/ox`}
+              cta="시작"
+              ctaVariant="outline"
+            />
+          </div>
+        ) : null}
+
+        {/* Filter row */}
+        <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5">
+          <Form method="get" className="contents">
+            <input type="hidden" name="tab" value="problems" />
+            {/* Search chip-style input */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
+                본문 검색
+              </span>
+              <input
+                type="text"
+                name="p_search"
+                defaultValue={appliedFilters.search ?? ""}
+                placeholder="키워드"
+                maxLength={100}
+                data-testid="problem-search"
+                className="border-border bg-background focus:ring-primary h-8 w-36 rounded-lg border px-2.5 text-xs focus:ring-1 focus:outline-none"
+              />
+            </div>
+            <FilterSelectChip
+              label="출처"
+              name="p_origin"
+              value={appliedFilters.origin ?? ""}
+              options={ORIGIN_OPTS.map((o) => ({
+                value: o,
+                label: ORIGIN_LABEL[o],
+              }))}
+            />
+            <FilterSelectChip
+              label="연도"
+              name="p_year"
+              value={
+                appliedFilters.year != null ? String(appliedFilters.year) : ""
+              }
+              options={availableYears.map((y) => ({
+                value: String(y),
+                label: `${y}년`,
+              }))}
+            />
+            <FilterSelectChip
+              label="시험"
+              name="p_round"
+              value={appliedFilters.examRound ?? ""}
+              options={[
+                { value: "first", label: "1차" },
+                { value: "second", label: "2차" },
+              ]}
+            />
+            <FilterSelectChip
+              label="유형"
+              name="p_format"
+              value={appliedFilters.format ?? ""}
+              options={FORMAT_OPTS.map((f) => ({
+                value: f,
+                label: FORMAT_LABEL[f],
+              }))}
+            />
+            <FilterSelectChip
+              label="극성"
+              name="p_polarity"
+              value={appliedFilters.polarity ?? ""}
+              options={POLARITY_OPTS.map((p) => ({
+                value: p,
+                label: POLARITY_LABEL[p],
+              }))}
+            />
+            <FilterSelectChip
+              label="난이도"
+              name="p_difficulty"
+              value={appliedFilters.difficulty ?? ""}
+              options={DIFFICULTY_OPTS.map((d) => ({
+                value: d.value,
+                label: d.label,
+              }))}
+            />
+            <FilterSelectChip
+              label="정렬"
+              name="p_sort"
+              value={appliedFilters.sort ?? ""}
+              options={SORT_OPTS.filter((s) => s.value !== "number").map(
+                (s) => ({
+                  value: s.value,
+                  label: s.label,
+                }),
+              )}
+            />
+            <Button type="submit" size="sm" className="h-8 rounded-full">
+              적용
+            </Button>
+          </Form>
+          {filterActive ? (
+            <Button
+              asChild
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 rounded-full"
+            >
+              <Link to={`/subjects/${subject.slug}?tab=problems`}>
+                <FilterXIcon className="size-3.5" /> 초기화
+              </Link>
+            </Button>
+          ) : null}
+          <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+            총 {problems.length.toLocaleString("ko-KR")}건
           </span>
         </div>
-        {firstRound.length === 0 ? (
-          <div className="p-12 text-center">
-            <ListChecksIcon className="mx-auto size-8 text-muted-foreground/40" />
-            <p className="mt-3 text-sm text-muted-foreground">
-              {filterActive
-                ? "필터 조건에 해당하는 문제가 없습니다."
-                : `${subject.name} 1차 객관식 문제가 아직 등록되지 않았습니다.`}
-            </p>
-            {filterActive ? (
-              <Button asChild size="sm" variant="outline" className="mt-3 h-8 rounded-full">
-                <Link to={`/subjects/${subject.slug}?tab=problems`}>
-                  <FilterXIcon className="size-3.5" /> 필터 초기화
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-16 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  No.
-                </TableHead>
-                <TableHead className="w-20 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  출처
-                </TableHead>
-                <TableHead className="w-20 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  유형
-                </TableHead>
-                <TableHead className="w-20 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  극성
-                </TableHead>
-                <TableHead className="w-20 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  단원/종합
-                </TableHead>
-                <TableHead className="w-24 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  연도/회차
-                </TableHead>
-                <TableHead className="w-28 font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  난이도
-                </TableHead>
-                <TableHead className="font-mono text-[11px] font-bold uppercase tracking-[0.04em] text-muted-foreground/70">
-                  본문
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {firstRound.map((p) => (
-                <ProblemRow
-                  key={p.problemId}
-                  subject={subject}
-                  item={p}
-                  agg={aggStats[p.problemId]}
-                  searchQuery={appliedFilters.search ?? null}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
 
-      {/* 2차 주관식 section */}
-      {subject.exam !== "first" ? (
-        <div className="overflow-hidden rounded-xl border border-border shadow-sm">
-          <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+        {/* 1차 객관식 table */}
+        <div className="border-border overflow-hidden rounded-xl border shadow-sm">
+          {/* Section header */}
+          <div className="border-border bg-muted/30 flex items-center justify-between border-b px-4 py-3">
             <div className="flex items-center gap-2">
-              <PencilIcon className="size-4 text-primary" />
-              <h3 className="text-sm font-semibold">2차 주관식</h3>
+              <CircleCheckIcon className="text-primary size-4" />
+              <h3 className="text-sm font-semibold">
+                1차 객관식 ({EXAM_LABEL[subject.exam]})
+              </h3>
             </div>
-            <span className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
-              {secondRound.length}건
+            <span className="border-border bg-background text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
+              {firstRound.length}건
             </span>
           </div>
-          <div className="p-4">
-            {secondRound.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {filterActive
-                    ? "조건에 맞는 주관식 문제가 없습니다."
-                    : "등록된 주관식 문제가 아직 없습니다."}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {secondRound.map((p) => (
-                  <SubjectiveCard
+          {firstRound.length === 0 ? (
+            <div className="p-12 text-center">
+              <ListChecksIcon className="text-muted-foreground/40 mx-auto size-8" />
+              <p className="text-muted-foreground mt-3 text-sm">
+                {filterActive
+                  ? "필터 조건에 해당하는 문제가 없습니다."
+                  : `${subject.name} 1차 객관식 문제가 아직 등록되지 않았습니다.`}
+              </p>
+              {filterActive ? (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="mt-3 h-8 rounded-full"
+                >
+                  <Link to={`/subjects/${subject.slug}?tab=problems`}>
+                    <FilterXIcon className="size-3.5" /> 필터 초기화
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="text-muted-foreground/70 w-16 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    No.
+                  </TableHead>
+                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    출처
+                  </TableHead>
+                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    유형
+                  </TableHead>
+                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    극성
+                  </TableHead>
+                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    단원/종합
+                  </TableHead>
+                  <TableHead className="text-muted-foreground/70 w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    연도/회차
+                  </TableHead>
+                  <TableHead className="text-muted-foreground/70 w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    난이도
+                  </TableHead>
+                  <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    본문
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {firstRound.map((p) => (
+                  <ProblemRow
                     key={p.problemId}
-                    subjectSlug={subject.slug}
+                    subject={subject}
                     item={p}
+                    agg={aggStats[p.problemId]}
+                    searchQuery={appliedFilters.search ?? null}
                   />
                 ))}
-              </div>
-            )}
-          </div>
+              </TableBody>
+            </Table>
+          )}
         </div>
-      ) : null}
+
+        {/* 2차 주관식 section */}
+        {subject.exam !== "first" ? (
+          <div className="border-border overflow-hidden rounded-xl border shadow-sm">
+            <div className="border-border bg-muted/30 flex items-center justify-between border-b px-4 py-3">
+              <div className="flex items-center gap-2">
+                <PencilIcon className="text-primary size-4" />
+                <h3 className="text-sm font-semibold">2차 주관식</h3>
+              </div>
+              <span className="border-border bg-background text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
+                {secondRound.length}건
+              </span>
+            </div>
+            <div className="p-4">
+              {secondRound.length === 0 ? (
+                <div className="border-border rounded-lg border border-dashed p-8 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    {filterActive
+                      ? "조건에 맞는 주관식 문제가 없습니다."
+                      : "등록된 주관식 문제가 아직 없습니다."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {secondRound.map((p) => (
+                    <SubjectiveCard
+                      key={p.problemId}
+                      subjectSlug={subject.slug}
+                      item={p}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }
@@ -405,20 +446,20 @@ function ProblemsKpiCard({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-      <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1.5 text-[26px] font-extrabold leading-none tracking-tight tabular-nums",
+          "mt-1.5 text-[26px] leading-none font-extrabold tracking-tight tabular-nums",
           accent ? "text-primary" : "text-foreground",
         )}
       >
         {value}
       </p>
       {sub ? (
-        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
           {sub}
         </p>
       ) : null}
@@ -442,15 +483,24 @@ function ModeCard({
   ctaVariant: "default" | "outline";
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
-      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary/10 text-primary">
+    <div className="border-border bg-card flex items-start gap-3 rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md">
+      <span className="bg-primary/10 text-primary inline-flex size-9 shrink-0 items-center justify-center rounded-[10px]">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold leading-snug text-foreground">{title}</p>
-        <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{desc}</p>
+        <p className="text-foreground text-sm leading-snug font-bold">
+          {title}
+        </p>
+        <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
+          {desc}
+        </p>
       </div>
-      <Button asChild size="sm" variant={ctaVariant} className="h-7 shrink-0 rounded-full text-xs">
+      <Button
+        asChild
+        size="sm"
+        variant={ctaVariant}
+        className="h-7 shrink-0 rounded-full text-xs"
+      >
         <Link to={href} viewTransition>
           {cta} <ArrowRightIcon className="size-3" />
         </Link>
@@ -472,14 +522,14 @@ function FilterSelectChip({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-mono text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+      <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
         {label}
       </span>
       <div className="relative">
         <select
           name={name}
           defaultValue={value}
-          className="h-8 appearance-none rounded-full border border-border bg-background py-0 pl-3 pr-7 text-xs font-medium text-foreground focus:outline-none"
+          className="border-border bg-background text-foreground h-8 appearance-none rounded-full border py-0 pr-7 pl-3 text-xs font-medium focus:outline-none"
         >
           <option value="">전체</option>
           {options.map((o) => (
@@ -488,7 +538,7 @@ function FilterSelectChip({
             </option>
           ))}
         </select>
-        <ChevronDownIcon className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+        <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
       </div>
     </div>
   );
@@ -509,7 +559,7 @@ function SubjectiveCard({
       viewTransition
       className="group block"
     >
-      <div className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary">
+      <div className="border-border bg-card hover:border-primary rounded-xl border p-4 transition-colors">
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
           <Badge variant="default" className="text-xs">
             <PencilIcon className="size-3" /> 주관식
@@ -535,12 +585,12 @@ function SubjectiveCard({
           ) : null}
         </div>
         {item.subjectiveTopic ? (
-          <p className="mb-1 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mb-1 text-xs">
             논점 — {item.subjectiveTopic}
           </p>
         ) : null}
         <p className="line-clamp-2 text-sm leading-snug">{snippet}</p>
-        <p className="mt-2 inline-flex items-center gap-1 text-xs text-primary">
+        <p className="text-primary mt-2 inline-flex items-center gap-1 text-xs">
           지금 풀어보기 <ArrowRightIcon className="size-3" />
         </p>
       </div>
@@ -567,19 +617,19 @@ function ProblemRow({
         : "—";
 
   return (
-    <TableRow className="cursor-pointer hover:bg-muted/40">
+    <TableRow className="hover:bg-muted/40 cursor-pointer">
       <TableCell className="text-xs tabular-nums">
         {item.problemNumber ?? "—"}
       </TableCell>
       <TableCell>
         {/* origin chip */}
-        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium">
           {ORIGIN_LABEL[item.origin]}
         </span>
       </TableCell>
       <TableCell>
         {/* format chip */}
-        <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-foreground">
+        <span className="border-border text-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
           {FORMAT_LABEL[item.format]}
         </span>
       </TableCell>
@@ -597,7 +647,7 @@ function ProblemRow({
         <Link
           to={`/subjects/${subject.slug}/problems/${item.problemId}`}
           viewTransition
-          className="block truncate text-sm hover:text-primary"
+          className="hover:text-primary block truncate text-sm"
         >
           {renderBodySnippet(item.bodyMd, searchQuery)}
         </Link>
@@ -623,7 +673,8 @@ function renderBodySnippet(
   const end = Math.min(body.length, idx + q.length + 40);
   const before = (start > 0 ? "…" : "") + body.slice(start, idx);
   const match = body.slice(idx, idx + q.length);
-  const after = body.slice(idx + q.length, end) + (end < body.length ? "…" : "");
+  const after =
+    body.slice(idx + q.length, end) + (end < body.length ? "…" : "");
   return (
     <>
       {before}
@@ -637,11 +688,11 @@ function renderBodySnippet(
 
 function DifficultyCell({ agg }: { agg: ProblemAggregateStats | undefined }) {
   if (!agg || agg.attempts === 0) {
-    return <span className="text-xs text-muted-foreground">—</span>;
+    return <span className="text-muted-foreground text-xs">—</span>;
   }
   if (!agg.bucket || agg.accuracyPct === null) {
     return (
-      <span className="text-xs tabular-nums text-muted-foreground">
+      <span className="text-muted-foreground text-xs tabular-nums">
         시도 {agg.attempts}
       </span>
     );
@@ -655,7 +706,7 @@ function DifficultyCell({ agg }: { agg: ProblemAggregateStats | undefined }) {
       title={`전체 정답률 ${agg.accuracyPct}% · 시도 ${agg.attempts}회`}
     >
       {DIFFICULTY_LABEL[agg.bucket]}
-      <span className="tabular-nums text-muted-foreground/80">
+      <span className="text-muted-foreground/80 tabular-nums">
         {agg.accuracyPct}%
       </span>
     </span>

@@ -7,6 +7,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   GavelIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon,
   XIcon,
@@ -47,6 +48,18 @@ export const meta: Route.MetaFunction = () => [
   { title: "판례 매핑 관리 | Lidam Patent Attorney Academy" },
 ];
 
+// 선고연도 필터 입력 경계 — loader 검증과 number input min/max 가 공유.
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2200;
+
+// 선고연도 쿼리 파라미터 → 정수·합리 범위만 통과, 그 외엔 null(미적용).
+function parseYearParam(raw: string | null): number | null {
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < MIN_YEAR || n > MAX_YEAR) return null;
+  return n;
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -64,6 +77,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   // default: 전체 case 노출. 미매핑만 보고 싶을 때 ?only_unmapped=1 명시.
   const onlyUnmapped = url.searchParams.get("only_unmapped") === "1";
+  const courtRaw = url.searchParams.get("court") ?? "";
+  const court: CaseCourt | null = (
+    ["supreme", "patent_court", "high_court", "district_court"] as const
+  ).includes(courtRaw as CaseCourt)
+    ? (courtRaw as CaseCourt)
+    : null;
+  const yearFrom = parseYearParam(url.searchParams.get("year_from"));
+  const yearTo = parseYearParam(url.searchParams.get("year_to"));
   const sortRaw = url.searchParams.get("sort") ?? "unmapped_first";
   const sort: CaseMapperSort = (
     ["unmapped_first", "many_first", "decided_desc", "case_no"] as const
@@ -76,12 +97,25 @@ export async function loader({ request }: Route.LoaderArgs) {
   const result = await listCasesForMapper(client, {
     lawCode,
     query: q || undefined,
+    court: court ?? undefined,
+    yearFrom: yearFrom ?? undefined,
+    yearTo: yearTo ?? undefined,
     onlyUnmapped,
     sort,
     page,
     pageSize: 30,
   });
-  return { ...result, lawCode, q, onlyUnmapped, sort, role };
+  return {
+    ...result,
+    lawCode,
+    q,
+    court,
+    yearFrom,
+    yearTo,
+    onlyUnmapped,
+    sort,
+    role,
+  };
 }
 
 export default function AdminCases({ loaderData }: Route.ComponentProps) {
@@ -93,6 +127,9 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
     pageSize,
     lawCode,
     q,
+    court,
+    yearFrom,
+    yearTo,
     onlyUnmapped,
     sort,
   } = loaderData;
@@ -102,6 +139,9 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
   const baseSp = new URLSearchParams();
   baseSp.set("law", lawCode);
   if (q) baseSp.set("q", q);
+  if (court) baseSp.set("court", court);
+  if (yearFrom != null) baseSp.set("year_from", String(yearFrom));
+  if (yearTo != null) baseSp.set("year_to", String(yearTo));
   if (onlyUnmapped) baseSp.set("only_unmapped", "1");
   if (sort !== "unmapped_first") baseSp.set("sort", sort);
   const makePage = (n: number) => {
@@ -146,8 +186,8 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
         <KpiCard label="정렬" value={SORT_LABEL[sort]} />
       </div>
 
-      <Form method="get" className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
-        <div className="relative">
+      <Form method="get" className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
             type="search"
@@ -178,6 +218,48 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
             ))}
           </optgroup>
         </select>
+        <select
+          name="court"
+          defaultValue={court ?? ""}
+          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
+          title="법원"
+        >
+          <option value="">전체 법원</option>
+          {Object.entries(COURT_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <div
+          className="border-input bg-background flex h-9 items-center gap-1 rounded-md border px-2.5 text-xs"
+          title="선고연도 범위 (시작·종료, 비워두면 제한 없음)"
+        >
+          <span className="text-muted-foreground whitespace-nowrap">
+            선고연도
+          </span>
+          <input
+            type="number"
+            name="year_from"
+            defaultValue={yearFrom ?? ""}
+            placeholder="시작"
+            min={MIN_YEAR}
+            max={MAX_YEAR}
+            aria-label="선고 시작연도"
+            className="w-16 bg-transparent text-center text-xs tabular-nums outline-none"
+          />
+          <span className="text-muted-foreground">~</span>
+          <input
+            type="number"
+            name="year_to"
+            defaultValue={yearTo ?? ""}
+            placeholder="종료"
+            min={MIN_YEAR}
+            max={MAX_YEAR}
+            aria-label="선고 종료연도"
+            className="w-16 bg-transparent text-center text-xs tabular-nums outline-none"
+          />
+        </div>
         <select
           name="sort"
           defaultValue={sort}
@@ -368,7 +450,15 @@ function CaseMapperCard({
               <CheckCircle2Icon className="size-3" /> {item.linkCount}건
             </Badge>
           )}
-          <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+          <Link
+            to={`/admin/cases/edit/${item.caseId}?returnTo=${encodeURIComponent(
+              location.pathname + location.search,
+            )}`}
+            className="text-primary hover:text-primary/80 ml-auto inline-flex items-center gap-1 text-xs font-semibold"
+          >
+            <PencilIcon className="size-3" /> 수정
+          </Link>
+          <span className="text-muted-foreground text-xs tabular-nums">
             {item.decidedAt}
           </span>
         </div>

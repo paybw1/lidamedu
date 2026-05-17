@@ -108,7 +108,7 @@ transactional-emails/        # Resend 템플릿 (가입/리셋/알림)
 5. `console.log` 잔존 금지 (디버깅 후 제거)
 6. 코드 변경 후 `npm run typecheck` 통과 확인 필수
 7. `*.server.ts` 파일(Supabase 클라이언트·서버 쿼리 등)을 클라이언트 컴포넌트에서 import 금지
-8. **법령·판례 원문은 읽기 전용 불변 객체로 취급** — 수정은 반드시 개정(new revision) 흐름으로만. 기존 조문 `content` 필드를 in-place 수정 금지
+8. **법령 원문(조문)은 읽기 전용 불변** — 조문(`articles`) 수정은 개정 흐름(`law_revision`/`article_revision`)으로만, 기존 `content` 필드 in-place 수정 금지. **판례(`cases`)는 편집 가능 콘텐츠** — 요지·이유·평석은 교재 기반 편집물이고 개정 인프라가 없으므로 staff 전용 `admin-case-edit` 화면에서 in-place 수정한다. 단 식별 필드(`case_number`·`court`·`decided_at`)는 보존하고, 다건 일괄 수정(시드 재import·정정 스크립트)은 dry-run 검증 + 사용자 승인 후 수행
 9. **사용자 학습 데이터(메모/하이라이트/진도)는 삭제 시 soft delete** — 실수로 한 학기치 메모가 날아가면 복구 불가. `deleted_at` 컬럼 사용
 10. Cloudflare Workers 런타임 비호환 API(`fs`, Node `crypto.randomBytes`, `setImmediate` 등) 사용 금지
 

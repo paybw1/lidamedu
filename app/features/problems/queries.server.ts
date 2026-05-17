@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import type {
+  ExamCaseLink,
+  ExamCaseLinkRow,
+  ExamCaseSegment,
   ProblemDetail,
   ProblemExamRound,
   ProblemFormat,
@@ -1113,32 +1116,18 @@ export async function getExamYearsByCase(
   return out;
 }
 
-// 수동 매칭 화면(feat-8-024) — 한 과목의 1차 객관식 기출문제 + 연결된 판례 목록.
-export interface ExamCaseLink {
-  linkId: string;
-  caseId: string;
-  caseNumber: string;
-  caseTitle: string;
-  /** 자동 스캔으로 생성된 링크인지 (note='exam-scan'). false = 수동 매칭. */
-  isAuto: boolean;
-}
-
-export interface ExamCaseLinkRow {
-  problemId: string;
-  year: number | null;
-  problemNumber: number | null;
-  lawCode: string;
-  bodySnippet: string;
-  links: ExamCaseLink[];
-}
-
+// 수동 매칭 화면(feat-8-024) — 한 과목의 1차 객관식 기출문제 목록.
+// 발문·선택지·박스 항목 전체 지문을 함께 반환해 운영자가 지문을 읽고 판례를
+// 매칭할 수 있게 한다. ExamCaseLink* 타입은 labels.ts 소유.
 export async function listExamCaseLinkRows(
   client: SupabaseClient<Database>,
   lawCode: string,
 ): Promise<ExamCaseLinkRow[]> {
   const { data: probs, error } = await client
     .from("problems")
-    .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+    .select(
+      "problem_id, year, problem_number, body_md, format, laws!inner(law_code)",
+    )
     .eq("origin", "past_exam")
     .eq("exam_round", "first")
     .in("format", [...MC_FORMATS])
@@ -1149,16 +1138,33 @@ export async function listExamCaseLinkRows(
   if (error) throw error;
   const problems = probs ?? [];
   if (problems.length === 0) return [];
+  const problemIds = problems.map((p) => p.problem_id);
 
-  const { data: linkRows } = await client
-    .from("problem_case_links")
-    .select(
-      "link_id, problem_id, case_id, note, cases!inner(case_number, case_title, deleted_at)",
-    )
-    .in(
-      "problem_id",
-      problems.map((p) => p.problem_id),
-    );
+  // 연결 판례 · 선택지 · 박스 항목을 병렬 조회.
+  const [{ data: linkRows }, { data: choiceRows }, { data: boxRows }] =
+    await Promise.all([
+      client
+        .from("problem_case_links")
+        .select(
+          "link_id, problem_id, case_id, note, cases!inner(case_number, case_title, deleted_at)",
+        )
+        .in("problem_id", problemIds),
+      client
+        .from("problem_choices")
+        .select(
+          "problem_id, choice_id, choice_index, body_md, explanation_md, choice_type, related_case_number",
+        )
+        .in("problem_id", problemIds)
+        .order("choice_index"),
+      client
+        .from("problem_box_items")
+        .select(
+          "problem_id, box_item_id, position_index, marker, body_md, explanation_md, choice_type, related_case_number",
+        )
+        .in("problem_id", problemIds)
+        .order("position_index"),
+    ]);
+
   const linksByProblem = new Map<string, ExamCaseLink[]>();
   for (const lr of linkRows ?? []) {
     const c = lr.cases;
@@ -1174,17 +1180,58 @@ export async function listExamCaseLinkRows(
     linksByProblem.set(lr.problem_id, list);
   }
 
-  return problems.map((p) => {
-    const body = p.body_md ?? "";
-    return {
-      problemId: p.problem_id,
-      year: p.year,
-      problemNumber: p.problem_number,
-      lawCode: p.laws.law_code,
-      bodySnippet: body.length > 140 ? `${body.slice(0, 140)}…` : body,
-      links: linksByProblem.get(p.problem_id) ?? [],
-    };
-  });
+  const choicesByProblem = new Map<string, ExamCaseSegment[]>();
+  for (const cr of choiceRows ?? []) {
+    const list = choicesByProblem.get(cr.problem_id) ?? [];
+    list.push({
+      segmentId: cr.choice_id,
+      segmentKind: "choice",
+      label: String(cr.choice_index),
+      bodyMd: cr.body_md,
+      explanationMd: cr.explanation_md,
+      choiceType: cr.choice_type,
+      relatedCaseNumber: cr.related_case_number,
+    });
+    choicesByProblem.set(cr.problem_id, list);
+  }
+
+  const boxByProblem = new Map<string, ExamCaseSegment[]>();
+  for (const br of boxRows ?? []) {
+    const list = boxByProblem.get(br.problem_id) ?? [];
+    list.push({
+      segmentId: br.box_item_id,
+      segmentKind: "box",
+      label: br.marker,
+      bodyMd: br.body_md,
+      explanationMd: br.explanation_md,
+      choiceType: br.choice_type,
+      relatedCaseNumber: br.related_case_number,
+    });
+    boxByProblem.set(br.problem_id, list);
+  }
+
+  const rows: ExamCaseLinkRow[] = problems.map((p) => ({
+    problemId: p.problem_id,
+    year: p.year,
+    problemNumber: p.problem_number,
+    lawCode: p.laws.law_code,
+    format: p.format,
+    bodyMd: p.body_md ?? "",
+    boxItems: boxByProblem.get(p.problem_id) ?? [],
+    choices: choicesByProblem.get(p.problem_id) ?? [],
+    links: linksByProblem.get(p.problem_id) ?? [],
+  }));
+
+  // 판례형 지문(choice_type='precedent')인 선택지·박스 항목이 하나라도 있는
+  // 문제만 매칭 대상. 판례 출제 지문이 없으면 연결할 판례가 없으므로 목록에서
+  // 제외한다 (feat-8-024). 단, 이미 판례 링크가 걸린 문제는 해제·검토가
+  // 가능하도록 유지한다.
+  return rows.filter(
+    (r) =>
+      r.links.length > 0 ||
+      r.choices.some((s) => s.choiceType === "precedent") ||
+      r.boxItems.some((s) => s.choiceType === "precedent"),
+  );
 }
 
 // problem-viewer 우측 패널 — 이 문제가 인용한 판례.
@@ -1857,6 +1904,98 @@ export async function getSystematicNodeProblemSequence(
     },
     problems,
   };
+}
+
+export interface SystematicNodeProblemStat {
+  problemCount: number;
+  firstProblemId: string | null;
+}
+
+// 체계도 전체 노드별 {문제 수, 첫 문제 ID} — 문제 탭 좌측 트리용.
+// listSystematicTopNodes 의 최상위 한정 로직을 전체 노드로 확장한 묶음 버전.
+// 노드 클릭 → 첫 문제 + ?node= 로 체계별 풀이 진입.
+export async function getSystematicNodeProblemStats(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+): Promise<Record<string, SystematicNodeProblemStat>> {
+  const { data: nodes } = await client
+    .from("systematic_nodes")
+    .select("node_id, path")
+    .eq("law_code", lawCode);
+  if (!nodes || nodes.length === 0) return {};
+
+  // 1) 노드 ↔ 조문 링크 (node_id IN — 필요 시 150개 chunk).
+  const nodeIds = nodes.map((n) => n.node_id);
+  const links: { node_id: string; article_id: string }[] = [];
+  for (let i = 0; i < nodeIds.length; i += 150) {
+    const { data } = await client
+      .from("article_systematic_links")
+      .select("node_id, article_id")
+      .in("node_id", nodeIds.slice(i, i + 150));
+    for (const r of data ?? []) links.push(r);
+  }
+
+  // 2) 링크된 조문의 문제 (primary_article_id 기준).
+  const articleIds = [...new Set(links.map((l) => l.article_id))];
+  const probRows: {
+    problem_id: string;
+    primary_article_id: string | null;
+    year: number | null;
+    problem_number: number | null;
+  }[] = [];
+  for (let i = 0; i < articleIds.length; i += 150) {
+    const { data } = await client
+      .from("problems")
+      .select("problem_id, primary_article_id, year, problem_number")
+      .in("primary_article_id", articleIds.slice(i, i + 150))
+      .is("deleted_at", null);
+    for (const r of data ?? []) probRows.push(r);
+  }
+
+  // 조문별 문제 — year DESC, problem_number ASC (getSystematicNodeProblemSequence 와 동일).
+  const sorted = [...probRows].sort((x, y) => {
+    if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
+    return (x.problem_number ?? 0) - (y.problem_number ?? 0);
+  });
+  const problemsByArticle = new Map<string, string[]>();
+  for (const p of sorted) {
+    if (!p.primary_article_id) continue;
+    const arr = problemsByArticle.get(p.primary_article_id) ?? [];
+    arr.push(p.problem_id);
+    problemsByArticle.set(p.primary_article_id, arr);
+  }
+  const articlesByNode = new Map<string, string[]>();
+  for (const l of links) {
+    const arr = articlesByNode.get(l.node_id) ?? [];
+    arr.push(l.article_id);
+    articlesByNode.set(l.node_id, arr);
+  }
+
+  // 3) 노드별 subtree(path prefix) 집계.
+  const out: Record<string, SystematicNodeProblemStat> = {};
+  for (const node of nodes) {
+    const nodePath = String(node.path);
+    const subtreeArticleIds = new Set<string>();
+    for (const n of nodes) {
+      const p = String(n.path);
+      if (p === nodePath || p.startsWith(nodePath + ".")) {
+        for (const aid of articlesByNode.get(n.node_id) ?? []) {
+          subtreeArticleIds.add(aid);
+        }
+      }
+    }
+    let count = 0;
+    let firstProblemId: string | null = null;
+    for (const aid of subtreeArticleIds) {
+      const probs = problemsByArticle.get(aid) ?? [];
+      count += probs.length;
+      if (firstProblemId === null && probs.length > 0) {
+        firstProblemId = probs[0];
+      }
+    }
+    out[node.node_id] = { problemCount: count, firstProblemId };
+  }
+  return out;
 }
 
 // 출제된 연도 distinct (필터 dropdown 용).

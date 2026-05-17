@@ -19,6 +19,10 @@ import {
   NodeProgressGauge,
   sumNodeProgress,
 } from "~/features/subjects/components/node-progress-gauge";
+import {
+  stripSystematicNumber,
+  SystematicNumberBadge,
+} from "~/features/subjects/components/systematic-node-label";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 type ImportanceFilter = 0 | 1 | 2 | 3;
@@ -320,7 +324,14 @@ function SystematicItem({
     <span className="inline-block size-3" />
   );
 
-  const labelEl = <span className="flex-1 truncate">{node.displayLabel}</span>;
+  const labelEl = (
+    <>
+      <SystematicNumberBadge depth={depth} ord={node.ord} />
+      <span className="flex-1 truncate">
+        {stripSystematicNumber(node.displayLabel)}
+      </span>
+    </>
+  );
   const countEl =
     node.subtreeArticleCount > 0 ? (
       <span className="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums">

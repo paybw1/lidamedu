@@ -119,31 +119,26 @@ export interface ListCasesBySubjectOptions {
   sort?: CaseSubjectSort;
   court?: CaseCourtFilter;
   examFilter?: CaseExamFilter; // 기출 유형
-  // 페이지네이션 (1-based)
-  page?: number;
-  pageSize?: number;
   // 판례 트리 필터 — 활성 시 이 case_id 들로만 제한. 빈 배열은 결과 0건.
   // undefined 또는 null = 트리 필터 비활성.
   filterCaseIds?: readonly string[] | null;
 }
 
+// 과목 판례 목록 — 페이지네이션 없이 전체 반환. total 은 KPI 표시용 카운트.
 export interface CaseListPage {
   items: CaseListItem[];
   total: number;
-  page: number;
-  pageSize: number;
 }
+
+// 과목 판례를 한 번에 가져오는 안전 상한 행수 (페이지네이션 제거 — feat-4-A-208).
+// 초과 시 list 는 상한까지만, total(count)은 실제 건수라 누락이 드러난다.
+const CASE_LIST_MAX = 2000;
 
 export async function listCasesBySubject(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
   options: ListCasesBySubjectOptions = {},
 ): Promise<CaseListPage> {
-  const page = Math.max(1, options.page ?? 1);
-  const pageSize = Math.max(1, Math.min(200, options.pageSize ?? 50));
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
   const examYearsByCase = await getExamYearsByCase(client);
 
   // case_id 제한 — 트리 필터, 그리고 exam_1st/exam_both 면 기출-연결 판례로 한정.
@@ -157,7 +152,7 @@ export async function listCasesBySubject(
         : restrictIds.filter((id) => examYearsByCase.has(id));
   }
   if (restrictIds !== null && restrictIds.length === 0) {
-    return { items: [], total: 0, page, pageSize };
+    return { items: [], total: 0 };
   }
 
   let q = client
@@ -199,15 +194,13 @@ export async function listCasesBySubject(
       q = q.order("decided_at", { ascending: false });
   }
 
-  const { data, error, count } = await q.range(from, to);
+  const { data, error, count } = await q.range(0, CASE_LIST_MAX - 1);
   if (error) throw error;
   return {
     items: (data ?? []).map((r) =>
       rowToListItem(r as CaseListRow, examYearsByCase),
     ),
     total: count ?? 0,
-    page,
-    pageSize,
   };
 }
 

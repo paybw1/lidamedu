@@ -19,7 +19,10 @@ import type {
 } from "~/features/laws/queries.server";
 import type { ArticleAnnotationCounts } from "~/features/annotations/queries.server";
 import type { CaseListItem } from "~/features/cases/queries.server";
-import type { ProblemListItem } from "~/features/problems/queries.server";
+import type {
+  ProblemListItem,
+  SystematicNodeProblemStat,
+} from "~/features/problems/queries.server";
 import type {
   CaseFiltersApplied,
   CaseTreeCounts,
@@ -64,6 +67,7 @@ interface SubjectHubProps {
   problemStats?: UserProblemStats | null;
   problemAggStats?: Record<string, ProblemAggregateStats>;
   recommendedArticles?: RecommendedArticleItem[];
+  systematicNodeProblemStats?: Record<string, SystematicNodeProblemStat>;
 }
 
 export function SubjectHub(props: SubjectHubProps) {
@@ -95,6 +99,7 @@ function SubjectHubInner({
   problemAggStats,
   recommendedArticles,
   progressByArticle,
+  systematicNodeProblemStats,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -214,6 +219,8 @@ function SubjectHubInner({
             appliedFilters={problemFilters ?? {}}
             stats={problemStats ?? null}
             aggStats={problemAggStats ?? {}}
+            systematicNodes={systematicNodes ?? []}
+            nodeStats={systematicNodeProblemStats ?? {}}
           />
         </TabsContent>
       </Tabs>

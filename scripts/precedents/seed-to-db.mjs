@@ -29,6 +29,8 @@ const COURT_MAP = {
   대전고등법원: "high_court",
   서울중앙지방법원: "district_court",
   서울행정법원: "district_court",
+  서울민사지방법원: "district_court",
+  대전지법: "district_court",
 };
 
 function buildCaseTitle(p) {
@@ -61,14 +63,23 @@ async function main() {
 
   let inserted = 0;
   let skipped = 0;
+  let dupInInput = 0;
   let courtUnknown = 0;
   const rows = [];
+  const seen = new Set();
 
   for (const p of data) {
     if (existing.has(p.caseNumber)) {
       skipped++;
       continue;
     }
+    // precedents.json 은 같은 사건번호를 2회 이상 담을 수 있다(교재 중복 수록).
+    // cases 에 case_number UNIQUE 제약이 없으므로 입력 단계에서 1회만 insert.
+    if (seen.has(p.caseNumber)) {
+      dupInInput++;
+      continue;
+    }
+    seen.add(p.caseNumber);
     const court = COURT_MAP[p.court];
     if (!court) {
       courtUnknown++;
@@ -84,7 +95,7 @@ async function main() {
       case_number: p.caseNumber,
       case_title: buildCaseTitle(p),
       case_type: p.caseType ?? null,
-      is_en_banc: false,
+      is_en_banc: p.isEnBanc === true,
       importance: 1,
       summary_title: summary?.title?.slice(0, 500) ?? null,
       summary_body_md: summary?.body ?? null,
@@ -98,7 +109,8 @@ async function main() {
   }
 
   console.log(
-    `insert candidates: ${rows.length} (skip=${skipped}, court_unknown=${courtUnknown})`,
+    `insert candidates: ${rows.length} ` +
+      `(skip=${skipped}, dup_in_input=${dupInInput}, court_unknown=${courtUnknown})`,
   );
 
   // batch insert (100건씩).

@@ -5,7 +5,8 @@
 // 규칙 (사용자 정의):
 //   - 사건번호 줄 위에 등장한 "기출 YYYY" = 1차 시험 기출
 //   - 사건번호 줄 아래에 등장한 "기출 YYYY" = 2차 시험 기출
-//   - 사건번호 줄: "{seq} {법원} {YYYY. M. D.} 선고 {사건번호} 판결|결정 【사건유형】"
+//   - 사건번호 줄: "{seq} {법원} {YYYY. M. D.} 선고 {사건번호} {tail}"
+//     tail 형식이 일정치 않음(전원합의체 / 【유형】 / [유형] / 무괄호 / 결정 등)
 //   - 요지: 사건번호 다음 본문. "제목: 내용" 또는 [N] 마커.
 //   - 비고: "비고" 라인 이후의 ▪(&#9642;) 단락들.
 //   - 판시이유: "판시이유" 라인 이후의 ▪ 단락들.
@@ -21,16 +22,32 @@ const RE_EXAM = /^기출\s+(\d{4})\s*$/;
 //   "제1절  발 명"    (목차 또는 본문)
 //   "제2절 신규성\t43" (목차, 페이지 번호 trailing)
 const RE_SECTION = /^(제\d+(?:절|장|편)(?:\s+[^\d][^\t]*?)?)\s*\d*\s*$/;
+// 사건번호 줄. court = "…법원/재판소/심판원" 또는 약칭 "…지법" / "헌재".
+// 사건번호 뒤 tail("전원합의체 판결 【유형】" / "판결[유형]" / "유형" / "결정" 등)
+// 은 형식이 일정치 않아 통째로 캡처 후 caseTypeFromTail 로 파싱한다.
+// (병합)·축약 병합번호(,2880)는 caseNumber 에 포함하지 않고 tail 로 흘린다.
 const RE_CASE_HEAD = new RegExp(
   String.raw`^(?<seq>\d+)\s+` +
-  String.raw`(?<court>대법원|특허법원|헌법재판소|서울고등법원|서울중앙지방법원|` +
-  String.raw`서울행정법원|광주고등법원|부산고등법원|대구고등법원|대전고등법원)\s+` +
+  String.raw`(?<court>[가-힣]+(?:법원|재판소|심판원|법)|헌재)\s+` +
   String.raw`(?<y>\d{4})\.\s*(?<m>\d{1,2})\.\s*(?<d>\d{1,2})\.\s*` +
   String.raw`(?:선고|자)?\s*` +
-  String.raw`(?<caseNo>\d{2,4}[가-힣]+\d+(?:,\s*\d{2,4}[가-힣]+\d+)*)\s*` +
-  String.raw`(?:판결|결정|심결|선고)?` +
-  String.raw`\s*【(?<caseType>[^】]+)】`,
+  String.raw`(?<caseNo>\d{2,4}[가-힣]+\d+)` +
+  String.raw`(?<tail>.*)$`,
 );
+
+// tail 에서 사건유형 추출 — 【유형】 우선, 다음 [유형], 없으면 무괄호 best-effort.
+function caseTypeFromTail(tail) {
+  let m = tail.match(/【([^】]+)】/);
+  if (m) return m[1].trim();
+  m = tail.match(/\[([^\]]+)\]/);
+  if (m) return m[1].trim();
+  const t = tail
+    .replace(/,\s*\d+/g, "")
+    .replace(/전원합의체|판결|결정|심결|선고|자|파기환송|파기자판/g, "")
+    .replace(/\(병합\)/g, "")
+    .trim();
+  return t || null;
+}
 const RE_BLOCK_ITEM = /^\[\s*(\d+)\s*\]\s*(.*)$/;
 const LOZENGE_ENTITY = "&#9642;";
 const LOZENGE_GLYPH = "▪";
@@ -176,13 +193,14 @@ export function parse(lines) {
     const mCase = s.match(RE_CASE_HEAD);
     if (mCase) {
       closeCurrent();
-      const { seq, court, y, m, d, caseNo, caseType } = mCase.groups;
+      const { seq, court, y, m, d, caseNo, tail } = mCase.groups;
       cur = {
         seqInSection: Number(seq),
         court,
         decisionDate: `${y}-${String(Number(m)).padStart(2, "0")}-${String(Number(d)).padStart(2, "0")}`,
-        caseNumber: caseNo.split(",")[0].trim(),
-        caseType: caseType.trim(),
+        caseNumber: caseNo.trim(),
+        caseType: caseTypeFromTail(tail),
+        isEnBanc: /전원합의체/.test(tail),
         sectionPath: [currentPart, currentChapter, currentSection].filter(Boolean),
         bookPart: currentPart,
         chapter: currentChapter,

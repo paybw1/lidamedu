@@ -4,14 +4,15 @@
 // 미연결된 문제를 사건번호 입력으로 직접 매칭한다.
 import type { Route } from "./+types/admin-exam-case-links";
 
-import { ArrowLeftIcon, NetworkIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, NetworkIcon, RefreshCwIcon } from "lucide-react";
 import { Form, Link, data, useSearchParams } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { ExamCaseRow } from "~/features/admin/components/exam-case-row";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { extractCaseNumber } from "~/features/problems/extract";
 import { listExamCaseLinkRows } from "~/features/problems/queries.server";
 import {
   FIRST_EXAM_LAW_SLUGS,
@@ -115,6 +116,95 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, message: `판례 ${token} 를 연결했습니다` });
   }
 
+  // 미연결 문제의 해설 인라인 수정 (feat-8-024).
+  // 해설(explanation_md)을 저장하고, 해설에서 사건번호를 추출해
+  // related_case_number 를 갱신한 뒤 그 번호로 판례를 자동 재연결한다.
+  if (intent === "edit-explanation") {
+    const problemId = String(fd.get("problemId") ?? "");
+    const segmentKind = String(fd.get("segmentKind") ?? "");
+    const segmentId = String(fd.get("segmentId") ?? "");
+    const explanationMd = String(fd.get("explanationMd") ?? "").trim();
+    if (!problemId || !segmentId) {
+      return data({ error: "필수 값이 누락되었습니다" }, { status: 400 });
+    }
+    if (segmentKind !== "choice" && segmentKind !== "box") {
+      return data({ error: "잘못된 지문 종류입니다" }, { status: 400 });
+    }
+
+    // 해설에서 사건번호(판례 인용) 추출 — 인식되면 related_case_number 도 갱신.
+    const citation = extractCaseNumber(explanationMd);
+    const patch: {
+      explanation_md: string | null;
+      related_case_number?: string;
+    } = { explanation_md: explanationMd || null };
+    if (citation) patch.related_case_number = citation;
+
+    let updateError: string | null = null;
+    if (segmentKind === "choice") {
+      const { error } = await client
+        .from("problem_choices")
+        .update(patch)
+        .eq("choice_id", segmentId)
+        .eq("problem_id", problemId);
+      updateError = error?.message ?? null;
+    } else {
+      const { error } = await client
+        .from("problem_box_items")
+        .update(patch)
+        .eq("box_item_id", segmentId)
+        .eq("problem_id", problemId);
+      updateError = error?.message ?? null;
+    }
+    if (updateError) return data({ error: updateError }, { status: 400 });
+
+    if (!citation) {
+      return data({
+        ok: true,
+        message:
+          "해설을 저장했습니다. 사건번호를 인식하지 못했습니다 — 해설에 판례 인용을 보강하거나 아래에서 사건번호를 직접 입력하세요.",
+      });
+    }
+
+    const token = citation.match(CASE_NUMBER_RE)?.[0];
+    if (!token) {
+      return data({
+        ok: true,
+        message: `해설을 저장했습니다. "${citation}" 에서 사건번호를 추출하지 못했습니다.`,
+      });
+    }
+    const { data: caseRow } = await client
+      .from("cases")
+      .select("case_id")
+      .eq("case_number", token)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!caseRow) {
+      return data({
+        ok: true,
+        message: `해설을 저장했습니다. 사건번호 ${token} 는 판례 DB 에서 찾을 수 없어 연결되지 않았습니다.`,
+      });
+    }
+    const { error: linkError } = await client
+      .from("problem_case_links")
+      .upsert(
+        {
+          problem_id: problemId,
+          case_id: caseRow.case_id,
+          relation_type: "cited",
+          created_by: user.id,
+        },
+        {
+          onConflict: "problem_id,case_id,relation_type",
+          ignoreDuplicates: true,
+        },
+      );
+    if (linkError) return data({ error: linkError.message }, { status: 400 });
+    return data({
+      ok: true,
+      message: `해설을 저장하고 판례 ${token} 를 연결했습니다`,
+    });
+  }
+
   return data({ error: `알 수 없는 intent: ${intent}` }, { status: 400 });
 }
 
@@ -159,8 +249,9 @@ export default function AdminExamCaseLinks({
           기출문제 판례 매칭
         </h1>
         <p className="text-muted-foreground text-sm">
-          1차 객관식 기출문제 지문에 입력된 판례를 자동 스캔으로 연결합니다.
-          자동 연결되지 않은 문제는 사건번호를 직접 입력해 매칭하세요.
+          판례형 지문(선택지·박스 항목)이 있는 1차 객관식 기출문제만 표시합니다.
+          지문에 입력된 판례는 자동 스캔으로 연결되며, 자동 연결되지 않은 문제는
+          사건번호를 직접 입력해 매칭하세요.
         </p>
       </header>
 
@@ -209,75 +300,14 @@ export default function AdminExamCaseLinks({
             <p className="text-muted-foreground text-sm">
               {unlinkedOnly
                 ? "미연결 기출문제가 없습니다."
-                : "기출문제가 없습니다."}
+                : "판례형 지문이 있는 기출문제가 없습니다."}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {visible.map((r) => (
-            <li
-              key={r.problemId}
-              className="bg-card rounded-lg border px-4 py-3"
-            >
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-sm font-semibold tabular-nums">
-                  {r.year ? `${r.year}년 ` : ""}1차
-                  {r.problemNumber ? ` ${r.problemNumber}번` : ""}
-                </span>
-                {r.links.length === 0 ? (
-                  <Badge
-                    variant="outline"
-                    className="border-amber-300 text-[10px] text-amber-700"
-                  >
-                    미연결
-                  </Badge>
-                ) : null}
-              </div>
-              <p className="text-muted-foreground mb-2 text-xs leading-relaxed">
-                {r.bodySnippet}
-              </p>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {r.links.map((l) => (
-                  <span
-                    key={l.linkId}
-                    className="bg-muted inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]"
-                  >
-                    <span className="font-mono">{l.caseNumber}</span>
-                    <span className="text-muted-foreground">
-                      {l.isAuto ? "자동" : "수동"}
-                    </span>
-                    <Form method="post" className="inline">
-                      <input type="hidden" name="intent" value="unlink" />
-                      <input type="hidden" name="linkId" value={l.linkId} />
-                      <button
-                        type="submit"
-                        aria-label={`${l.caseNumber} 연결 해제`}
-                        className="text-muted-foreground hover:text-rose-600"
-                      >
-                        <XIcon className="size-3" />
-                      </button>
-                    </Form>
-                  </span>
-                ))}
-
-                <Form method="post" className="flex items-center gap-1">
-                  <input type="hidden" name="intent" value="link" />
-                  <input type="hidden" name="problemId" value={r.problemId} />
-                  <input
-                    type="text"
-                    name="caseNumber"
-                    required
-                    placeholder="사건번호 (예: 2019후11541)"
-                    className="border-input bg-background h-7 w-52 rounded-md border px-2 text-[11px]"
-                  />
-                  <Button type="submit" size="sm" variant="outline">
-                    추가
-                  </Button>
-                </Form>
-              </div>
-            </li>
+            <ExamCaseRow key={r.problemId} row={r} />
           ))}
         </ul>
       )}

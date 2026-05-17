@@ -275,7 +275,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const navBackHref = packIdFromPayload
     ? `/latest/mcq/${packIdFromPayload}`
     : navScopeType === "node"
-      ? `/subjects/${lawCode}/problems/system`
+      ? `/subjects/${lawCode}?tab=problems`
       : navScopeType === "filter"
         ? `/subjects/${lawCode}/quiz/setup`
         : navScopeType === "wrong-note"

@@ -17,6 +17,10 @@ import type {
 
 import type { CaseTreeFilter } from "../lib/loader.server";
 import type { SortAxis } from "./sort-axis";
+import {
+  stripSystematicNumber,
+  SystematicNumberBadge,
+} from "./systematic-node-label";
 
 interface ArticleTreeNode extends ArticleNode {
   children: ArticleTreeNode[];
@@ -200,9 +204,10 @@ function activeSystematicAncestors(
 }
 
 // 활성 필터 → URL searchParams 빌더.
-// 다른 case_* 키와 case_page 는 제거하고 tab=cases 만 유지.
+// 다른 case_* 트리 키는 제거하고 tab=cases 만 유지.
 // q / case_court / case_exam / case_sort 같은 비 트리 필터는 보존.
 function buildTreeHref(
+  linkBase: string,
   current: URLSearchParams,
   target: CaseTreeFilter | null,
 ): string {
@@ -211,14 +216,13 @@ function buildTreeHref(
   next.delete("case_article");
   next.delete("case_chapter");
   next.delete("case_node");
-  next.delete("case_page");
   if (target) {
     if (target.kind === "article") next.set("case_article", target.articleId);
     else if (target.kind === "chapter")
       next.set("case_chapter", target.chapterId);
     else next.set("case_node", target.nodeId);
   }
-  return `?${next.toString()}`;
+  return `${linkBase}?${next.toString()}`;
 }
 
 export function CasesTree({
@@ -228,6 +232,7 @@ export function CasesTree({
   caseTreeCounts,
   active,
   emptyHint,
+  linkBase = "",
 }: {
   axis: SortAxis;
   articles: ArticleNode[];
@@ -239,6 +244,9 @@ export function CasesTree({
   };
   active: CaseTreeFilter | null;
   emptyHint?: string;
+  // 트리 링크 경로 prefix. "" = 현재 페이지 상대(?query) — cases 탭 기본.
+  // case-viewer 등 다른 라우트에서는 "/subjects/{slug}" 절대 경로를 넘긴다.
+  linkBase?: string;
 }) {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
@@ -347,7 +355,10 @@ export function CasesTree({
             트리 필터 활성
           </span>
           <Button asChild variant="ghost" size="sm" className="h-6 px-1.5">
-            <Link to={buildTreeHref(searchParams, null)} preventScrollReset>
+            <Link
+              to={buildTreeHref(linkBase, searchParams, null)}
+              preventScrollReset
+            >
               <XIcon className="size-3" /> 해제
             </Link>
           </Button>
@@ -374,6 +385,7 @@ export function CasesTree({
               activeNodeId={activeNodeId}
               byNodeId={caseTreeCounts.byNodeId}
               searchParams={searchParams}
+              linkBase={linkBase}
             />
           ))}
         </ul>
@@ -390,6 +402,7 @@ export function CasesTree({
               byArticleId={caseTreeCounts.byArticleId}
               byChapterId={caseTreeCounts.byChapterId}
               searchParams={searchParams}
+              linkBase={linkBase}
             />
           ))}
         </ul>
@@ -423,6 +436,7 @@ function ArticleItem({
   byArticleId,
   byChapterId,
   searchParams,
+  linkBase,
 }: {
   node: ArticleTreeNode;
   depth: number;
@@ -432,6 +446,7 @@ function ArticleItem({
   byArticleId: Record<string, number>;
   byChapterId: Record<string, number>;
   searchParams: URLSearchParams;
+  linkBase: string;
 }) {
   const isArticle = node.level === "article";
   const initialOpen = forceOpen.has(node.articleId) || depth === 0;
@@ -488,6 +503,7 @@ function ArticleItem({
   );
 
   const href = buildTreeHref(
+    linkBase,
     searchParams,
     isArticle
       ? { kind: "article", articleId: node.articleId }
@@ -520,6 +536,7 @@ function ArticleItem({
               byArticleId={byArticleId}
               byChapterId={byChapterId}
               searchParams={searchParams}
+              linkBase={linkBase}
             />
           ))}
         </ul>
@@ -535,6 +552,7 @@ function SystematicItem({
   activeNodeId,
   byNodeId,
   searchParams,
+  linkBase,
 }: {
   node: SystematicTreeNode;
   depth: number;
@@ -542,6 +560,7 @@ function SystematicItem({
   activeNodeId: string | undefined;
   byNodeId: Record<string, number>;
   searchParams: URLSearchParams;
+  linkBase: string;
 }) {
   const initialOpen = forceOpen.has(node.nodeId) || depth === 0;
   const [open, setOpen] = useState(initialOpen);
@@ -586,7 +605,7 @@ function SystematicItem({
     <span className="inline-block size-5" />
   );
 
-  const href = buildTreeHref(searchParams, {
+  const href = buildTreeHref(linkBase, searchParams, {
     kind: "node",
     nodeId: node.nodeId,
   });
@@ -601,7 +620,10 @@ function SystematicItem({
         aria-current={isActive ? "page" : undefined}
       >
         {expandToggle}
-        <span className="flex-1 truncate">{node.displayLabel}</span>
+        <SystematicNumberBadge depth={depth} ord={node.ord} />
+        <span className="flex-1 truncate">
+          {stripSystematicNumber(node.displayLabel)}
+        </span>
         <CountChip value={count} />
       </Link>
       {hasChildren && open ? (
@@ -615,6 +637,7 @@ function SystematicItem({
               activeNodeId={activeNodeId}
               byNodeId={byNodeId}
               searchParams={searchParams}
+              linkBase={linkBase}
             />
           ))}
         </ul>

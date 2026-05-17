@@ -6,6 +6,7 @@ import {
   ListTreeIcon,
   NetworkIcon,
   PanelRightIcon,
+  PencilIcon,
   StarIcon,
 } from "lucide-react";
 import { Link, data, redirect, useSearchParams } from "react-router";
@@ -41,6 +42,7 @@ import { reflowNumberingSafe } from "~/features/cases/lib/reflow-numbering";
 import {
   findActiveCaseByDeletedId,
   getCaseById,
+  getCaseCountsByArticle,
   listCaseReferences,
 } from "~/features/cases/queries.server";
 import { listComments } from "~/features/comments/queries.server";
@@ -53,6 +55,9 @@ import {
   getArticleSkeleton,
   getLawByCode,
   getStaffRole,
+  getSystematicSkeleton,
+  type ArticleNode,
+  type SystematicNode,
 } from "~/features/laws/queries.server";
 import {
   getExamProblemsForCase,
@@ -62,7 +67,16 @@ import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
-import { ArticleTree } from "~/features/subjects/components/article-tree";
+import { CasesTree } from "~/features/subjects/components/cases-tree";
+import {
+  SortAxisProvider,
+  SortAxisToggle,
+  useSortAxis,
+} from "~/features/subjects/components/sort-axis";
+import {
+  buildCaseTreeCounts,
+  type CaseTreeCounts,
+} from "~/features/subjects/lib/loader.server";
 import {
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
@@ -95,10 +109,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Law not seeded", { status: 404 });
   }
 
-  const [kase, articles] = await Promise.all([
-    getCaseById(client, params.caseId),
-    getArticleSkeleton(client, law.lawId),
-  ]);
+  const [kase, articles, systematicNodes, caseCountsByArticle] =
+    await Promise.all([
+      getCaseById(client, params.caseId),
+      getArticleSkeleton(client, law.lawId),
+      getSystematicSkeleton(client, lawCode),
+      getCaseCountsByArticle(client, law.lawId),
+    ]);
 
   if (!kase) {
     // soft-deleted case 진입 — 같은 사건번호의 활성 row 가 있으면 그쪽으로 redirect.
@@ -162,11 +179,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     tab: "cases",
   }).catch(() => {});
 
+  const caseTreeCounts = buildCaseTreeCounts(
+    articles,
+    systematicNodes,
+    caseCountsByArticle,
+  );
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     lawId: law.lawId,
     kase,
     articles,
+    systematicNodes,
+    caseTreeCounts,
     relatedArticles,
     relatedProblems,
     examProblems,
@@ -178,6 +203,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     canEditReferences: staffRole !== null,
     caseComments,
     canEditComment: staffRole !== null,
+    canEditCase: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
   };
@@ -186,9 +212,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const {
     subject,
-    lawId,
     kase,
     articles,
+    systematicNodes,
+    caseTreeCounts,
     relatedArticles,
     relatedProblems,
     examProblems,
@@ -200,6 +227,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     canEditReferences,
     caseComments,
     canEditComment,
+    canEditCase,
     isAdmin,
     currentUserId,
   } = loaderData;
@@ -252,14 +280,15 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             <Card className="border-border rounded-xl border py-3 shadow-sm">
               <CardHeader className="px-4 pb-2">
                 <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
-                  {subject.name} 조문 트리
+                  {subject.name} 판례 트리
                 </p>
               </CardHeader>
               <CardContent className="px-2 pb-2">
-                <ArticleTree
-                  nodes={articles}
-                  lawCode={subject.slug}
-                  lazyExpand={subject.slug === "civil" ? { lawId } : undefined}
+                <CaseTreeSidebar
+                  subjectSlug={subject.slug}
+                  articles={articles}
+                  systematicNodes={systematicNodes}
+                  caseTreeCounts={caseTreeCounts}
                 />
               </CardContent>
             </Card>
@@ -277,7 +306,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     className="h-8 rounded-full text-xs"
                     data-testid="open-tree-drawer"
                   >
-                    <ListTreeIcon className="size-3.5" /> 조문 트리
+                    <ListTreeIcon className="size-3.5" /> 판례 트리
                   </Button>
                 </SheetTrigger>
                 <SheetContent
@@ -285,15 +314,14 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
                 >
                   <SheetHeader>
-                    <SheetTitle>{subject.name} 조문 트리</SheetTitle>
+                    <SheetTitle>{subject.name} 판례 트리</SheetTitle>
                   </SheetHeader>
                   <div className="px-3 pb-4">
-                    <ArticleTree
-                      nodes={articles}
-                      lawCode={subject.slug}
-                      lazyExpand={
-                        subject.slug === "civil" ? { lawId } : undefined
-                      }
+                    <CaseTreeSidebar
+                      subjectSlug={subject.slug}
+                      articles={articles}
+                      systematicNodes={systematicNodes}
+                      caseTreeCounts={caseTreeCounts}
                     />
                   </div>
                 </SheetContent>
@@ -328,6 +356,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                       canEditComment={canEditComment}
                       currentUserId={currentUserId}
                       isAdmin={isAdmin}
+                      viewerIsStaff={canEditCase}
+                      importance={kase.importance}
                     />
                   </div>
                 </SheetContent>
@@ -403,6 +433,20 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     caseType={kase.caseType}
                     isEnBanc={kase.isEnBanc}
                   />
+
+                  {/* 운영자 — 판례 수정 (staff 전용, feat-7-005) */}
+                  {canEditCase ? (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                    >
+                      <Link to={`/admin/cases/edit/${kase.caseId}`}>
+                        <PencilIcon className="size-3" /> 수정
+                      </Link>
+                    </Button>
+                  ) : null}
                 </div>
 
                 {/* 기출 표시 — 1차는 출제 기출문제 칩(feat-8-024), 2차는 연도 배지 */}
@@ -554,6 +598,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   canEditComment={canEditComment}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
+                  viewerIsStaff={canEditCase}
+                  importance={kase.importance}
                 />
               </CardContent>
             </Card>
@@ -676,6 +722,55 @@ function Prose({ text }: { text: string }) {
           {p}
         </p>
       ))}
+    </div>
+  );
+}
+
+// ── 좌측 판례 트리 (조문 / 체계도 축) ─────────────────────────
+// 노드 클릭 → /subjects/{slug}?tab=cases 로 이동해 그 노드의 판례 목록을 연다.
+// SortAxisProvider 를 자체 보유 — 데스크톱·모바일 인스턴스가 따로 떠도 localStorage 로 축 동기화.
+function CaseTreeSidebar(props: {
+  subjectSlug: string;
+  articles: ArticleNode[];
+  systematicNodes: SystematicNode[];
+  caseTreeCounts: CaseTreeCounts;
+}) {
+  return (
+    <SortAxisProvider>
+      <CaseTreeSidebarInner {...props} />
+    </SortAxisProvider>
+  );
+}
+
+function CaseTreeSidebarInner({
+  subjectSlug,
+  articles,
+  systematicNodes,
+  caseTreeCounts,
+}: {
+  subjectSlug: string;
+  articles: ArticleNode[];
+  systematicNodes: SystematicNode[];
+  caseTreeCounts: CaseTreeCounts;
+}) {
+  const { axis } = useSortAxis();
+  const systematicEmpty = systematicNodes.length === 0;
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <SortAxisToggle
+          size="sm"
+          disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+        />
+      </div>
+      <CasesTree
+        axis={axis}
+        articles={articles}
+        systematicNodes={systematicNodes}
+        caseTreeCounts={caseTreeCounts}
+        active={null}
+        linkBase={`/subjects/${subjectSlug}`}
+      />
     </div>
   );
 }

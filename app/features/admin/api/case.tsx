@@ -42,10 +42,15 @@ const upsertSchema = z.object({
   caseNumber: z.string().trim().min(1).max(100),
   caseTitle: z.string().trim().min(1).max(500),
   isEnBanc: z.boolean(),
-  importance: z.number().int().min(0).max(5).nullable(),
   caseType: z.string().trim().max(100).nullable(),
-  summaryTitle: z.string().trim().max(500).nullable(),
-  summaryBodyMd: z.string().max(20_000).nullable(),
+  summaryItems: z
+    .array(
+      z.object({
+        title: z.string().max(500),
+        body: z.string().max(20_000),
+      }),
+    )
+    .max(30),
   reasoningMd: z.string().max(50_000).nullable(),
   commentSource: z.string().trim().max(500).nullable(),
   commentBodyMd: z.string().max(50_000).nullable(),
@@ -64,6 +69,13 @@ function emptyToNull(raw: FormDataEntryValue | null): string | null {
   if (raw === null) return null;
   const s = String(raw).trim();
   return s === "" ? null : s;
+}
+
+// returnTo 는 /admin/cases 목록 경로만 허용 — open-redirect 방지.
+function safeReturnTo(raw: unknown): string {
+  return typeof raw === "string" && /^\/admin\/cases(\?|$)/.test(raw)
+    ? raw
+    : "/admin/cases?law=patent";
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -98,7 +110,7 @@ export async function action({ request }: Route.ActionArgs) {
       entityType: "case",
       entityId: caseId,
     });
-    return redirect("/admin/cases?law=patent");
+    return redirect(safeReturnTo(fd.get("returnTo")));
   }
 
   if (intent === "upload_full_text_pdf" || intent === "remove_full_text_pdf") {
@@ -197,6 +209,15 @@ export async function action({ request }: Route.ActionArgs) {
   const subjectLaws = parseStringArray(fd.get("subjectLaws")).filter((s) =>
     (LAW_SUBJECT_SLUGS as readonly string[]).includes(s),
   );
+  let summaryItemsRaw: unknown;
+  try {
+    summaryItemsRaw = JSON.parse(String(fd.get("summaryItems") ?? "[]"));
+  } catch {
+    return data(
+      { error: "요지 항목 형식이 올바르지 않습니다." },
+      { status: 400 },
+    );
+  }
   const parsed = upsertSchema.safeParse({
     subjectLaws,
     court: fd.get("court"),
@@ -204,12 +225,8 @@ export async function action({ request }: Route.ActionArgs) {
     caseNumber: fd.get("caseNumber"),
     caseTitle: fd.get("caseTitle"),
     isEnBanc: fd.get("isEnBanc") === "1",
-    importance: fd.get("importance")
-      ? Number(fd.get("importance"))
-      : null,
     caseType: emptyToNull(fd.get("caseType")),
-    summaryTitle: emptyToNull(fd.get("summaryTitle")),
-    summaryBodyMd: emptyToNull(fd.get("summaryBodyMd")),
+    summaryItems: summaryItemsRaw,
     reasoningMd: emptyToNull(fd.get("reasoningMd")),
     commentSource: emptyToNull(fd.get("commentSource")),
     commentBodyMd: emptyToNull(fd.get("commentBodyMd")),
@@ -224,16 +241,11 @@ export async function action({ request }: Route.ActionArgs) {
   }
   const input = parsed.data;
 
-  // summary_items 단순화 — title+body 단일 항목으로 합산. 후속 multi-item UI 는 별도.
-  const summaryItems =
-    input.summaryBodyMd || input.summaryTitle
-      ? [
-          {
-            title: input.summaryTitle ?? "",
-            body: input.summaryBodyMd ?? "",
-          },
-        ]
-      : [];
+  // 다항목 요지 — 제목·본문 모두 공백인 항목은 제거.
+  // summary_title / summary_body_md (목록·검색 컬럼) 는 첫 항목에서 파생.
+  const summaryItems = input.summaryItems
+    .map((it) => ({ title: it.title.trim(), body: it.body }))
+    .filter((it) => it.title !== "" || it.body.trim() !== "");
 
   // full_text_pdf 컬럼은 별도 intent(upload/remove)로만 변경 — 메타 폼은 건드리지 않는다.
   const payload = {
@@ -243,10 +255,9 @@ export async function action({ request }: Route.ActionArgs) {
     case_number: input.caseNumber,
     case_title: input.caseTitle,
     is_en_banc: input.isEnBanc,
-    importance: input.importance,
     case_type: input.caseType,
-    summary_title: input.summaryTitle,
-    summary_body_md: input.summaryBodyMd,
+    summary_title: summaryItems[0]?.title || null,
+    summary_body_md: summaryItems[0]?.body || null,
     reasoning_md: input.reasoningMd,
     comment_source: input.commentSource,
     comment_body_md: input.commentBodyMd,
@@ -298,5 +309,8 @@ export async function action({ request }: Route.ActionArgs) {
       caseTitle: input.caseTitle,
     },
   });
-  return data({ ok: true });
+  // 저장 후 운영자가 보던 목록 페이지로 (returnTo — 페이지·필터 보존).
+  // resource route(/api/admin/case)는 컴포넌트가 없어, plain <Form> 제출에
+  // data() 를 돌려주면 렌더할 화면이 없어 네비게이션이 멈추므로 redirect 필수.
+  return redirect(safeReturnTo(fd.get("returnTo")));
 }

@@ -67,6 +67,7 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
+import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 import {
@@ -83,7 +84,7 @@ export const meta: Route.MetaFunction = ({ data: loaderData }) => {
     return [{ title: "체계도 그룹 | Lidam Patent Attorney Academy" }];
   return [
     {
-      title: `${loaderData.subject.name} ${loaderData.node.displayLabel} | Lidam Patent Attorney Academy`,
+      title: `${loaderData.subject.name} ${stripSystematicNumber(loaderData.node.displayLabel)} | Lidam Patent Attorney Academy`,
     },
   ];
 };
@@ -457,7 +458,7 @@ function Inner({
               </p>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <h1 className="text-foreground text-[28px] leading-tight font-extrabold tracking-tight">
-                  {node.displayLabel}
+                  {stripSystematicNumber(node.displayLabel)}
                 </h1>
                 <Badge
                   variant="secondary"
