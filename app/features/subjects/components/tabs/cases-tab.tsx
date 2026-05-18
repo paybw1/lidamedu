@@ -154,8 +154,8 @@ export function CasesTab({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-      {/* Left: tree panel */}
-      <aside>
+      {/* Left: tree panel — sticky 사이드바 + 트리 내부 스크롤 (긴 판례 표와 무관하게 항상 접근) */}
+      <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
         <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
           <div className="border-border flex items-center justify-end border-b px-4 py-3">
             <SortAxisToggle

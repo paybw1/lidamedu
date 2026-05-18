@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>책갈피 탭 — 세로 크기 5개 안 · 리담변리사학원</title>
+  <style>
+    :root {
+      --blue: #2D5BA8;
+      --blue-strong: #1E4789;
+      --blue-soft: rgba(45, 91, 168, 0.12);
+      --blue-tint: rgba(45, 91, 168, 0.06);
+      --fg-1: rgba(0, 0, 0, 0.84);
+      --fg-2: rgba(0, 0, 0, 0.66);
+      --fg-3: rgba(0, 0, 0, 0.56);
+      --fg-4: rgba(0, 0, 0, 0.40);
+      --fg-5: rgba(0, 0, 0, 0.24);
+      --line: rgba(0, 0, 0, 0.12);
+      --line-soft: rgba(0, 0, 0, 0.06);
+      --bg: #ffffff;
+      --bg-subtle: #FAFAFA;
+      --bg-muted: #EEEEEE;
+      --amber: #F7B500;
+      --gold: #FFD666;
+      --elev-4: 0 0 0 1px rgba(0,0,0,0.02), 0 2px 6px 0 rgba(0,0,0,0.10);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg-subtle); color: var(--fg-1);
+      font-family: Pretendard, "Pretendard Variable", -apple-system, system-ui, "Malgun Gothic", sans-serif;
+      font-size: 14px; line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 1200px; margin: 0 auto; padding: 28px 24px 80px; }
+    .page-header {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      align-items: center; justify-content: space-between; margin-bottom: 16px;
+    }
+    .page-header h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+    .page-header p { margin: 4px 0 0; font-size: 13px; color: var(--fg-3); }
+
+    .switch {
+      display: inline-flex; gap: 4px; padding: 4px;
+      background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    }
+    .switch button {
+      appearance: none; border: 0; background: transparent;
+      padding: 8px 12px; border-radius: 8px;
+      font: inherit; font-weight: 600; font-size: 12.5px;
+      color: var(--fg-3); cursor: pointer;
+      transition: background 160ms, color 160ms;
+    }
+    .switch button:hover { background: var(--blue-tint); color: var(--fg-1); }
+    .switch button.on { background: var(--blue); color: #fff; }
+
+    .meta {
+      margin: 0 0 20px; padding: 13px 16px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 12px; font-size: 13px; color: var(--fg-2); line-height: 1.6;
+    }
+    .meta b { color: var(--fg-1); font-weight: 700; }
+    .meta .tag {
+      display: inline-block; margin-right: 8px; padding: 1px 8px;
+      font-size: 11px; font-weight: 700;
+      background: var(--blue-soft); color: var(--blue-strong); border-radius: 999px;
+    }
+
+    /* ===== 무대 ===== */
+    .stage { display: flex; align-items: flex-start; }
+
+    /* ----- 책갈피 레일 (5개 변형) ----- */
+    .rail {
+      display: flex; flex-direction: column; gap: 10px;
+      align-self: flex-start; flex-shrink: 0;
+    }
+    .bm {
+      appearance: none; font: inherit; cursor: pointer;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border: 1px solid var(--line); border-right: 0;
+      border-radius: 16px 0 0 16px;
+      background: var(--bg); color: var(--fg-3);
+      transition: background 200ms var(--ease), color 200ms var(--ease),
+                  transform 200ms var(--ease);
+    }
+    .bm-ico { display: flex; }
+    .bm-ico svg { display: block; }
+    .bm-nm { writing-mode: vertical-rl; font-weight: 800; }
+    .bm-div { display: none; width: 14px; height: 1px; background: currentColor; opacity: 0.35; }
+    .bm-ct {
+      display: none; font-weight: 700; font-size: 11px;
+      font-variant-numeric: tabular-nums; color: var(--fg-4);
+    }
+    .bm:hover:not(.on) { background: var(--blue-tint); color: var(--blue-strong); transform: translateX(-5px); }
+    /* 선택된 책갈피 — 바탕 배색 + 글 역상 */
+    .bm.on {
+      background: var(--blue); border-color: var(--blue); color: #fff;
+      position: relative; z-index: 2; transform: translateX(1px);
+      box-shadow: -4px 6px 18px rgba(45, 91, 168, 0.26);
+    }
+    .bm.on .bm-ct { color: rgba(255, 255, 255, 0.8); }
+
+    /* 옵션 1 — 비례 확대 */
+    .rail-1 .bm { width: 54px; height: 130px; gap: 12px; }
+    .rail-1 .bm-ico svg { width: 26px; height: 26px; }
+    .rail-1 .bm-nm { font-size: 16px; letter-spacing: 0.12em; }
+
+    /* 옵션 2 — 와이드 */
+    .rail-2 .bm { width: 72px; height: 124px; gap: 11px; }
+    .rail-2 .bm-ico svg { width: 24px; height: 24px; }
+    .rail-2 .bm-nm { font-size: 15px; letter-spacing: 0.14em; }
+
+    /* 옵션 3 — 풀 높이 3분할 */
+    .rail-3 { align-self: stretch; gap: 8px; }
+    .rail-3 .bm { width: 64px; flex: 1; gap: 14px; }
+    .rail-3 .bm-ico svg { width: 28px; height: 28px; }
+    .rail-3 .bm-nm { font-size: 17px; letter-spacing: 0.16em; }
+
+    /* 옵션 4 — 정보형 (아이콘 + 라벨 + 카운트) */
+    .rail-4 .bm { width: 58px; height: 148px; gap: 8px; }
+    .rail-4 .bm-ico svg { width: 22px; height: 22px; }
+    .rail-4 .bm-nm { font-size: 14px; letter-spacing: 0.1em; }
+    .rail-4 .bm-div { display: block; }
+    .rail-4 .bm-ct { display: block; }
+
+    /* 옵션 5 — 라벨 히어로 */
+    .rail-5 .bm { width: 52px; height: 132px; gap: 9px; }
+    .rail-5 .bm-ico svg { width: 17px; height: 17px; }
+    .rail-5 .bm-nm { font-size: 23px; letter-spacing: 0.16em; font-weight: 900; }
+
+    /* ----- 좌측 패널 ----- */
+    .panel {
+      width: 262px; flex-shrink: 0; align-self: stretch;
+      min-height: 470px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 0 14px 14px 0;
+      box-shadow: var(--elev-4); overflow: hidden;
+    }
+    .p-head {
+      padding: 14px 16px 12px; border-bottom: 1px solid var(--line-soft);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--fg-4);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .p-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+    .tree { padding: 8px; }
+    .t-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 8px; border-radius: 8px; font-size: 13px; cursor: pointer;
+      transition: background 140ms;
+    }
+    .t-row:hover { background: var(--blue-tint); }
+    .t-row.g0 { font-weight: 800; color: var(--fg-1); }
+    .t-row.g1 { font-weight: 600; color: var(--fg-1); }
+    .t-row.leaf { font-weight: 400; color: var(--fg-2); }
+    .t-row .tw { width: 13px; height: 13px; flex-shrink: 0; color: var(--fg-4); }
+    .t-row .tw svg { width: 100%; height: 100%; }
+    .t-row .tw.leaf { visibility: hidden; }
+    .t-row .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .t-row .dot4 { width: 4px; height: 4px; border-radius: 50%; background: var(--fg-5); flex-shrink: 0; }
+    .t-row .star { font-size: 10px; font-weight: 700; color: var(--amber); flex-shrink: 0; }
+    .indent-1 { padding-left: 22px; }
+    .indent-2 { padding-left: 38px; }
+    /* 선택된 트리 항목 — 바탕 배색 + 글 역상 */
+    .t-row.sel { background: var(--blue); color: #fff; font-weight: 600; }
+    .t-row.sel:hover { background: var(--blue); }
+    .t-row.sel .dot4 { background: #fff; }
+    .t-row.sel .star { color: var(--gold); }
+
+    /* ----- 본문 ----- */
+    .main {
+      flex: 1; min-width: 0; margin-left: 18px; align-self: stretch;
+      min-height: 470px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 14px; box-shadow: var(--elev-4); padding: 24px 26px;
+    }
+    .main h3 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+    .main .stars { color: var(--amber); letter-spacing: 1px; }
+    .main .sub { margin: 5px 0 18px; font-size: 12.5px; color: var(--fg-3); }
+    .fake-line { height: 11px; border-radius: 4px; background: var(--bg-muted); margin: 9px 0; }
+    .w95 { width: 95%; } .w88 { width: 88%; } .w72 { width: 72%; } .w60 { width: 60%; }
+
+    .foot-note {
+      margin-top: 20px; padding: 12px 16px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 10px; font-size: 12.5px; color: var(--fg-3); line-height: 1.6;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div>
+        <h1>책갈피 탭 — 세로 크기 5개 안</h1>
+        <p>리담변리사학원 · SubjectHub 세로 책갈피 비례 비교 — 선택 상태는 역상(네이비 바탕 + 흰 글자) 적용</p>
+      </div>
+      <div class="switch">
+        <button id="opt-1" class="on" onclick="setOpt(1)">1 · 비례 확대</button>
+        <button id="opt-2" onclick="setOpt(2)">2 · 와이드</button>
+        <button id="opt-3" onclick="setOpt(3)">3 · 풀 높이</button>
+        <button id="opt-4" onclick="setOpt(4)">4 · 정보형</button>
+        <button id="opt-5" onclick="setOpt(5)">5 · 라벨 히어로</button>
+      </div>
+    </header>
+
+    <div id="meta-1" class="meta">
+      <span class="tag">옵션 1 · 비례 확대</span>
+      탭 높이를 키운 만큼 <b>아이콘·세로 글자도 함께 확대</b>해 빈 공간 없이 꽉 찬
+      비례(54×130). 가장 무난한 기본안.
+    </div>
+    <div id="meta-2" class="meta hidden">
+      <span class="tag">옵션 2 · 와이드</span>
+      탭을 <b>옆으로 넓혀(72px)</b> 세로 글자가 좁은 칸에 갇히지 않고 시원하게.
+      묵직한 존재감 — 답답함의 원인이 '좁음'이라면 이 안.
+    </div>
+    <div id="meta-3" class="meta hidden">
+      <span class="tag">옵션 3 · 풀 높이</span>
+      레일이 <b>좌측 패널 전체 높이를 채워 3등분</b>. 빈 레일 공간이 사라져
+      제본된 책등처럼 보임 — 가장 안정적이고 묵직.
+    </div>
+    <div id="meta-4" class="meta hidden">
+      <span class="tag">옵션 4 · 정보형</span>
+      아이콘 + 세로 라벨 + <b>구분선 + 콘텐츠 수</b>까지. 늘어난 높이를 정보로
+      채워, 키워도 비어 보이지 않음.
+    </div>
+    <div id="meta-5" class="meta hidden">
+      <span class="tag">옵션 5 · 라벨 히어로</span>
+      <b>세로 글자를 크게(23px)</b> 키워 주역으로. 아이콘은 작은 악센트 —
+      타이포 중심의 또렷한 인상.
+    </div>
+
+    <div class="stage">
+      <nav class="rail rail-1" id="rail" aria-label="과목 학습 영역">
+        <button class="bm on">
+          <span class="bm-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span>
+          <span class="bm-nm">조문</span>
+          <span class="bm-div"></span>
+          <span class="bm-ct">380</span>
+        </button>
+        <button class="bm">
+          <span class="bm-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span>
+          <span class="bm-nm">판례</span>
+          <span class="bm-div"></span>
+          <span class="bm-ct">412</span>
+        </button>
+        <button class="bm">
+          <span class="bm-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>
+          <span class="bm-nm">문제</span>
+          <span class="bm-div"></span>
+          <span class="bm-ct">380</span>
+        </button>
+      </nav>
+
+      <aside class="panel">
+        <div class="p-head"><span class="dot"></span>장별 목차 · 체계도</div>
+        <div class="tree">
+          <div class="t-row g0"><span class="tw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="lb">01 특허제도 총론</span></div>
+          <div class="t-row g1 indent-1"><span class="tw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="lb">발명과 특허</span></div>
+          <div class="t-row leaf sel indent-2"><span class="tw leaf"></span><span class="dot4"></span><span class="lb">제29조 (특허요건)</span><span class="star">★3</span></div>
+          <div class="t-row leaf indent-2"><span class="tw leaf"></span><span class="dot4"></span><span class="lb">제33조 (특허를 받을 수 있는 자)</span><span class="star">★1</span></div>
+          <div class="t-row g0"><span class="tw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="lb">02 특허출원 절차</span></div>
+          <div class="t-row leaf indent-1"><span class="tw leaf"></span><span class="dot4"></span><span class="lb">제42조 (특허출원)</span><span class="star">★2</span></div>
+          <div class="t-row leaf indent-1"><span class="tw leaf"></span><span class="dot4"></span><span class="lb">제47조 (절차의 보정)</span></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <h3>특허법 제29조 <span class="stars">★★★</span></h3>
+        <p class="sub">특허요건 · 시행 2026.01.15 · 01 특허제도 총론 › 발명과 특허</p>
+        <div class="fake-line w95"></div>
+        <div class="fake-line w88"></div>
+        <div class="fake-line w72"></div>
+        <div class="fake-line w95"></div>
+        <div class="fake-line w60"></div>
+        <div class="fake-line w88"></div>
+        <div class="fake-line w72"></div>
+      </main>
+    </div>
+
+    <p class="foot-note">
+      위 스위치로 5개 안을 전환하며 비교하세요. 모든 안에서 <b>선택된 책갈피
+      탭</b>과 <b>좌측 트리의 선택 항목</b>(제29조)은 네이비 바탕 + 흰 글자
+      역상으로 통일했습니다. 마음에 드는 안을 알려주시면 SubjectHub 에
+      적용하겠습니다.
+    </p>
+  </div>
+
+  <script>
+    function setOpt(n) {
+      document.getElementById("rail").className = "rail rail-" + n;
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById("opt-" + i).classList.toggle("on", i === n);
+        document.getElementById("meta-" + i).classList.toggle("hidden", i !== n);
+      }
+    }
+  </script>
+</body>
+</html>

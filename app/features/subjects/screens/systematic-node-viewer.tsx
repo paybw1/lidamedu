@@ -67,8 +67,10 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
+import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 import {
   EXAM_LABEL,
@@ -222,8 +224,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     allArticleIds,
   );
 
+  // 책갈피 조문 수는 전체가 아니라 이 체계도 노드의 조문 수 — 헤더 "매핑된 조문 N개" 와 일치.
+  // 판례·문제 탭은 전체 색인으로 가는 링크라 과목 전체 수를 그대로 둔다.
+  const axisCounts = {
+    ...(await getSubjectAxisCounts(client, lawCode, law.lawId)),
+    articles: node.articles.length,
+  };
+
   return {
     subject: LAW_SUBJECTS[lawCode],
+    axisCounts,
     lawId: law.lawId,
     node,
     articles,
@@ -353,11 +363,17 @@ function Inner({
   const firstArticleId = node.articles[0]?.articleId;
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+    <div className="mx-auto flex w-full max-w-screen-2xl flex-row items-start gap-0 px-5 py-6 md:px-10 md:py-8">
       {/* multi-article 환경: HighlightToolbar 1개를 root 에 mount, prop 없이 selection 컨테이너의 dataset 으로 article 결정 */}
       <HighlightToolbar />
 
-      <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <SubjectBookmarkRail
+        subjectSlug={subject.slug}
+        active="articles"
+        counts={loaderData.axisCounts}
+        className="lg:sticky lg:top-20"
+      />
+      <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* ── 좌측 트리 (데스크톱) ── */}
         <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
           <Card className="rounded-xl border py-4 shadow-sm">
@@ -735,6 +751,8 @@ function Inner({
                         canEditComment={canEditComment}
                         currentUserId={currentUserId}
                         isAdmin={isAdmin}
+                        viewerIsStaff={canEditComment}
+                        importance={a.importance}
                       />
                     </div>
                   </div>

@@ -1,4 +1,7 @@
-import type { ProblemFiltersApplied } from "../../lib/loader.server";
+import type {
+  ProblemFiltersApplied,
+  ProblemNodeFilter,
+} from "../../lib/loader.server";
 
 import {
   ArrowRightIcon,
@@ -9,10 +12,13 @@ import {
   ListChecksIcon,
   NotebookPenIcon,
   PencilIcon,
+  PlayIcon,
   SlidersHorizontalIcon,
+  StarIcon,
   TriangleAlertIcon,
+  XIcon,
 } from "lucide-react";
-import { Form, Link } from "react-router";
+import { Form, Link, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -50,6 +56,7 @@ import type { UserProblemStats } from "~/features/study/queries.server";
 
 import { EXAM_LABEL, type LawSubjectMeta } from "../../lib/subjects";
 import { ProblemSystematicTree } from "../problem-systematic-tree";
+import { stripSystematicNumber } from "../systematic-node-label";
 
 const ORIGIN_OPTS: ProblemOrigin[] = [
   "past_exam",
@@ -87,6 +94,7 @@ export function ProblemsTab({
   aggStats,
   systematicNodes,
   nodeStats,
+  nodeFilter,
 }: {
   subject: LawSubjectMeta;
   problems: ProblemListItem[];
@@ -96,6 +104,7 @@ export function ProblemsTab({
   aggStats: Record<string, ProblemAggregateStats>;
   systematicNodes: SystematicNode[];
   nodeStats: Record<string, SystematicNodeProblemStat>;
+  nodeFilter: ProblemNodeFilter | null;
 }) {
   const firstRound = problems.filter((p) => p.examRound === "first");
   const secondRound = problems.filter((p) => p.examRound === "second");
@@ -107,7 +116,17 @@ export function ProblemsTab({
     appliedFilters.scope != null ||
     appliedFilters.difficulty != null ||
     (appliedFilters.sort != null && appliedFilters.sort !== "number") ||
-    (appliedFilters.search != null && appliedFilters.search.length > 0);
+    (appliedFilters.search != null && appliedFilters.search.length > 0) ||
+    nodeFilter != null;
+
+  const [searchParams] = useSearchParams();
+  // 체계도 필터만 해제 — 나머지 검색/필터는 보존.
+  const clearNodeHref = (() => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("node");
+    sp.set("tab", "problems");
+    return `?${sp.toString()}`;
+  })();
 
   const attemptedCount = stats?.attemptedCount ?? 0;
   const correctCount = stats?.correctCount ?? 0;
@@ -119,7 +138,8 @@ export function ProblemsTab({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside>
+      {/* Left: tree panel — sticky 사이드바 + 트리 내부 스크롤 (긴 문제 표와 무관하게 항상 접근) */}
+      <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
         <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
           <div className="border-border border-b px-4 py-3">
             <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
@@ -130,7 +150,7 @@ export function ProblemsTab({
             <ProblemSystematicTree
               nodes={systematicNodes}
               nodeStats={nodeStats}
-              lawCode={subject.slug}
+              activeNodeId={nodeFilter?.nodeId}
             />
           </div>
         </div>
@@ -159,6 +179,37 @@ export function ProblemsTab({
             accent={accuracyPct !== null}
           />
         </div>
+
+        {/* 체계도 노드 필터 배너 */}
+        {nodeFilter ? (
+          <div className="border-border bg-primary/[0.04] flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-xs">
+            <ListChecksIcon className="text-primary size-3.5 shrink-0" />
+            <span className="text-muted-foreground">체계도 필터</span>
+            <Badge variant="secondary" className="max-w-[260px] truncate">
+              {stripSystematicNumber(nodeFilter.label)}
+            </Badge>
+            {nodeFilter.firstProblemId ? (
+              <Button asChild size="sm" className="h-7 rounded-full px-3">
+                <Link
+                  to={`/subjects/${subject.slug}/problems/${nodeFilter.firstProblemId}?node=${nodeFilter.nodeId}`}
+                  viewTransition
+                >
+                  <PlayIcon className="size-3" /> 이 체계 풀기
+                </Link>
+              </Button>
+            ) : null}
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 px-2"
+            >
+              <Link to={clearNodeHref} preventScrollReset>
+                <XIcon className="size-3" /> 전체 보기
+              </Link>
+            </Button>
+          </div>
+        ) : null}
 
         {/* Wrong-note amber banner */}
         {wrongCount > 0 ? (
@@ -210,6 +261,9 @@ export function ProblemsTab({
         <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5">
           <Form method="get" className="contents">
             <input type="hidden" name="tab" value="problems" />
+            {nodeFilter ? (
+              <input type="hidden" name="node" value={nodeFilter.nodeId} />
+            ) : null}
             {/* Search chip-style input */}
             <div className="flex flex-col gap-0.5">
               <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
@@ -353,6 +407,9 @@ export function ProblemsTab({
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="text-muted-foreground/70 w-12 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    ★
+                  </TableHead>
                   <TableHead className="text-muted-foreground/70 w-16 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     No.
                   </TableHead>
@@ -564,6 +621,14 @@ function SubjectiveCard({
           <Badge variant="default" className="text-xs">
             <PencilIcon className="size-3" /> 주관식
           </Badge>
+          {item.importance >= 1 ? (
+            <Badge
+              variant="outline"
+              className="border-amber-300 text-xs text-amber-600 dark:border-amber-700 dark:text-amber-400"
+            >
+              <StarIcon className="size-3 fill-current" /> {item.importance}
+            </Badge>
+          ) : null}
           <Badge variant="secondary" className="text-xs">
             {ORIGIN_LABEL[item.origin] ?? item.origin}
           </Badge>
@@ -618,6 +683,19 @@ function ProblemRow({
 
   return (
     <TableRow className="hover:bg-muted/40 cursor-pointer">
+      <TableCell className="text-center">
+        {item.importance >= 1 ? (
+          <span
+            className="inline-flex items-center justify-center gap-0.5 text-amber-500"
+            title={`중요도 ${item.importance}`}
+          >
+            <StarIcon className="size-3 fill-current" />
+            <span className="text-[11px] font-semibold tabular-nums">
+              {item.importance}
+            </span>
+          </span>
+        ) : null}
+      </TableCell>
       <TableCell className="text-xs tabular-nums">
         {item.problemNumber ?? "—"}
       </TableCell>

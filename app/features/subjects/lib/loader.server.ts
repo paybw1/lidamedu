@@ -1,33 +1,32 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "database.types";
+
+import type { LawSubjectSlug, SubjectTab } from "./subjects";
+
+import makeServerClient from "~/core/lib/supa-client.server";
 import {
-  getArticleSkeleton,
-  getLatestPublishedRevisionDate,
-  getLawByCode,
-  getSystematicSkeleton,
-  type ArticleNode,
-  type LawHeader,
-  type SystematicNode,
-} from "~/features/laws/queries.server";
-import {
+  type ArticleAnnotationCounts,
   getUserArticleAnnotationCounts,
   getUserArticleBookmarkLevels,
-  type ArticleAnnotationCounts,
 } from "~/features/annotations/queries.server";
 import {
-  getCaseCountsByArticle,
-  getCaseIdsByArticleIds,
-  listCasesBySubject,
   type CaseCourtFilter,
   type CaseExamFilter,
   type CaseListItem,
   type CaseSubjectSort,
+  getCaseCountsByArticle,
+  getCaseIdsByArticleIds,
+  listCasesBySubject,
 } from "~/features/cases/queries.server";
 import {
-  getSystematicNodeProblemStats,
-  listProblemsBySubject,
-  listProblemYears,
-  type ProblemListItem,
-  type SystematicNodeProblemStat,
-} from "~/features/problems/queries.server";
+  type ArticleNode,
+  type LawHeader,
+  type SystematicNode,
+  getArticleSkeleton,
+  getLatestPublishedRevisionDate,
+  getLawByCode,
+  getSystematicSkeleton,
+} from "~/features/laws/queries.server";
 import type {
   ProblemExamRound,
   ProblemFormat,
@@ -36,23 +35,28 @@ import type {
   ProblemScope,
 } from "~/features/problems/labels";
 import {
-  getProblemStatsBulk,
-  getRecommendedArticles,
-  getSubjectProgress,
-  getUserProblemStats,
-  type RecommendedArticleItem,
-  type SubjectProgress,
-  type UserProblemStats,
-} from "~/features/study/queries.server";
-import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
-import type { NodeProgressByArticle } from "~/features/subjects/components/node-progress-gauge";
+  type ProblemListItem,
+  type SystematicNodeProblemStat,
+  getSystematicNodeProblemSequence,
+  getSystematicNodeProblemStats,
+  listProblemYears,
+  listProblemsBySubject,
+} from "~/features/problems/queries.server";
 import type {
   DifficultyBucket,
   ProblemAggregateStats,
 } from "~/features/study/lib/difficulty";
-import makeServerClient from "~/core/lib/supa-client.server";
-
-import type { LawSubjectSlug } from "./subjects";
+import {
+  type RecommendedArticleItem,
+  type SubjectProgress,
+  type UserProblemStats,
+  getProblemStatsBulk,
+  getRecommendedArticles,
+  getSubjectProgress,
+  getUserProblemStats,
+} from "~/features/study/queries.server";
+import type { NodeProgressByArticle } from "~/features/subjects/components/node-progress-gauge";
+import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 
 export type ProblemSort = "number" | "hardest" | "easiest" | "newest";
 
@@ -66,6 +70,14 @@ export interface ProblemFiltersApplied {
   difficulty?: DifficultyBucket | "no_data";
   sort?: ProblemSort;
   search?: string;
+}
+
+// 문제 탭 체계도 트리 필터 — 노드 클릭 시 그 노드 subtree 의 문제만 표시.
+export interface ProblemNodeFilter {
+  nodeId: string;
+  label: string;
+  // 노드 subtree 의 첫 문제 — "이 체계 풀기" 러너 진입점. 0건이면 null.
+  firstProblemId: string | null;
 }
 
 // 판례 트리 진입 (feat-4-A-210) — 세 종류 활성 필터 중 하나만.
@@ -113,6 +125,8 @@ export interface SubjectHubData {
   progressByArticle: NodeProgressByArticle;
   // 체계도 노드별 {문제 수, 첫 문제 ID} — 문제 탭 좌측 트리용.
   systematicNodeProblemStats: Record<string, SystematicNodeProblemStat>;
+  // 문제 탭 체계도 노드 필터 (?node=) — 미적용/무효 노드면 null.
+  problemNodeFilter: ProblemNodeFilter | null;
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
@@ -208,7 +222,7 @@ function aggregateChapterCounts(
     const cached = cache.get(node.articleId);
     if (cached !== undefined) return cached;
     let total =
-      node.level === "article" ? byArticleId[node.articleId] ?? 0 : 0;
+      node.level === "article" ? (byArticleId[node.articleId] ?? 0) : 0;
     for (const c of childrenByParent.get(node.articleId) ?? []) {
       total += sum(c);
     }
@@ -268,6 +282,40 @@ export function buildCaseTreeCounts(
       systematicNodes,
       caseCountsByArticle,
     ),
+  };
+}
+
+/**
+ * 책갈피 레일 3축 카운트 — 조문·판례·문제 총개수. 상세 뷰어 레일이 허브처럼
+ * 라벨 밑에 콘텐츠 수를 보이도록 각 뷰어 loader 가 호출한다. `head: true`
+ * count 쿼리라 행은 가져오지 않는다(가벼움).
+ */
+export async function getSubjectAxisCounts(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  lawId: string,
+): Promise<Record<SubjectTab, number>> {
+  const [articles, cases, problems] = await Promise.all([
+    client
+      .from("articles")
+      .select("*", { count: "exact", head: true })
+      .eq("law_id", lawId)
+      .eq("level", "article"),
+    client
+      .from("cases")
+      .select("*", { count: "exact", head: true })
+      .contains("subject_laws", [lawCode])
+      .is("deleted_at", null),
+    client
+      .from("problems")
+      .select("*", { count: "exact", head: true })
+      .eq("law_id", lawId)
+      .is("deleted_at", null),
+  ]);
+  return {
+    articles: articles.count ?? 0,
+    cases: cases.count ?? 0,
+    problems: problems.count ?? 0,
   };
 }
 
@@ -355,6 +403,7 @@ export async function loadSubjectHub(
   const caseFilters = parseCaseFilters(url);
   const caseQuery = caseFilters.q;
   const problemFilters = parseProblemFilters(url);
+  const problemNodeId = url.searchParams.get("node")?.trim() || null;
 
   const [client] = makeServerClient(request);
   const law = await getLawByCode(client, lawCode);
@@ -364,6 +413,7 @@ export async function loadSubjectHub(
       articles: [],
       systematicNodes: [],
       systematicNodeProblemStats: {},
+      problemNodeFilter: null,
       cases: [],
       casesTotal: 0,
       caseFilters,
@@ -419,19 +469,23 @@ export async function loadSubjectHub(
     recentRevisionDate,
     problemYears,
     systematicNodeProblemStats,
+    problemNodeSeq,
   ] = await Promise.all([
-      listCasesBySubject(client, lawCode, {
-        query: caseFilters.q || undefined,
-        sort: caseFilters.sort,
-        court: caseFilters.court,
-        examFilter: caseFilters.exam,
-        filterCaseIds,
-      }),
-      listProblemsBySubject(client, lawCode, problemFilters),
-      getLatestPublishedRevisionDate(client, law.lawId),
-      listProblemYears(client, lawCode),
-      getSystematicNodeProblemStats(client, lawCode),
-    ]);
+    listCasesBySubject(client, lawCode, {
+      query: caseFilters.q || undefined,
+      sort: caseFilters.sort,
+      court: caseFilters.court,
+      examFilter: caseFilters.exam,
+      filterCaseIds,
+    }),
+    listProblemsBySubject(client, lawCode, problemFilters),
+    getLatestPublishedRevisionDate(client, law.lawId),
+    listProblemYears(client, lawCode),
+    getSystematicNodeProblemStats(client, lawCode),
+    problemNodeId
+      ? getSystematicNodeProblemSequence(client, problemNodeId)
+      : Promise.resolve(null),
+  ]);
   const cases = casesPage.items;
   const casesTotal = casesPage.total;
 
@@ -441,7 +495,9 @@ export async function loadSubjectHub(
     caseCountsByArticle,
   );
 
-  const totalArticleCount = articles.filter((a) => a.level === "article").length;
+  const totalArticleCount = articles.filter(
+    (a) => a.level === "article",
+  ).length;
 
   const {
     data: { user },
@@ -505,11 +561,28 @@ export async function loadSubjectHub(
     });
   }
 
+  // 체계도 노드 필터 — 노드 subtree 의 문제만. (?node= 무효 시 problemNodeSeq=null → 무시)
+  let problemNodeFilter: ProblemNodeFilter | null = null;
+  if (problemNodeSeq) {
+    const nodeProblemIds = new Set(
+      problemNodeSeq.problems.map((p) => p.problemId),
+    );
+    displayedProblems = displayedProblems.filter((p) =>
+      nodeProblemIds.has(p.problemId),
+    );
+    problemNodeFilter = {
+      nodeId: problemNodeSeq.node.nodeId,
+      label: problemNodeSeq.node.displayLabel,
+      firstProblemId: problemNodeSeq.problems[0]?.problemId ?? null,
+    };
+  }
+
   return {
     law,
     articles,
     systematicNodes,
     systematicNodeProblemStats,
+    problemNodeFilter,
     cases,
     casesTotal,
     caseFilters,

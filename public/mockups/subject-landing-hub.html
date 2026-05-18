@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>과목 첫 화면 — 학습 허브 미리보기 · 리담변리사학원</title>
+  <style>
+    :root {
+      --blue: #2D5BA8;
+      --blue-strong: #1E4789;
+      --blue-soft: rgba(45, 91, 168, 0.12);
+      --blue-tint: rgba(45, 91, 168, 0.06);
+      --fg-1: rgba(0, 0, 0, 0.84);
+      --fg-2: rgba(0, 0, 0, 0.66);
+      --fg-3: rgba(0, 0, 0, 0.56);
+      --fg-4: rgba(0, 0, 0, 0.40);
+      --fg-5: rgba(0, 0, 0, 0.24);
+      --line: rgba(0, 0, 0, 0.12);
+      --line-soft: rgba(0, 0, 0, 0.06);
+      --bg: #ffffff;
+      --bg-subtle: #FAFAFA;
+      --bg-muted: #EEEEEE;
+      --amber: #F7B500;
+      --amber-bg: rgba(247, 181, 0, 0.12);
+      --gavel: #7A5AF8;
+      --prob: #10A37F;
+      --elev-4: 0 0 0 1px rgba(0,0,0,0.02), 0 2px 6px 0 rgba(0,0,0,0.10);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg-subtle); color: var(--fg-1);
+      font-family: Pretendard, "Pretendard Variable", -apple-system, system-ui, "Malgun Gothic", sans-serif;
+      font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 1240px; margin: 0 auto; padding: 28px 24px 80px; }
+    .page-header { margin-bottom: 16px; }
+    .page-header h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+    .page-header p { margin: 4px 0 0; font-size: 13px; color: var(--fg-3); }
+    .meta {
+      margin: 0 0 22px; padding: 13px 16px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 12px; font-size: 13px; color: var(--fg-2); line-height: 1.6;
+    }
+    .meta b { color: var(--fg-1); font-weight: 700; }
+    .meta .tag {
+      display: inline-block; margin-right: 8px; padding: 1px 8px;
+      font-size: 11px; font-weight: 700;
+      background: var(--blue-soft); color: var(--blue-strong); border-radius: 999px;
+    }
+
+    /* 과목 헤더 */
+    .subj-head { padding: 2px 2px 18px; }
+    .subj-head .eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.10em;
+      text-transform: uppercase; color: var(--blue);
+    }
+    .subj-head h2 { margin: 6px 0 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+
+    /* 무대 */
+    .stage { display: flex; align-items: flex-start; }
+
+    /* 책갈피 레일 (옵션 4 — 현재 구현) */
+    .rail { display: flex; flex-direction: column; gap: 10px; padding-top: 20px; flex-shrink: 0; }
+    .bm {
+      width: 58px; height: 148px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      border: 1px solid var(--line); border-right: 0; border-radius: 16px 0 0 16px;
+      background: var(--bg); color: var(--fg-3); cursor: pointer;
+    }
+    .bm svg { width: 22px; height: 22px; }
+    .bm .nm { writing-mode: vertical-rl; font-size: 14px; font-weight: 800; letter-spacing: 0.1em; }
+    .bm .dv { width: 14px; height: 1px; background: currentColor; opacity: 0.3; }
+    .bm .ct { font-size: 11px; font-weight: 700; color: var(--fg-4); }
+    .bm.on {
+      background: var(--blue); border-color: var(--blue); color: #fff;
+      position: relative; z-index: 2; transform: translateX(1px);
+      box-shadow: -4px 6px 18px rgba(45,91,168,0.26);
+    }
+    .bm.on .ct { color: rgba(255,255,255,0.8); }
+
+    /* 좌측 트리 패널 */
+    .panel {
+      width: 252px; flex-shrink: 0; align-self: stretch;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 0 14px 14px 0; box-shadow: var(--elev-4); overflow: hidden;
+    }
+    .p-head {
+      padding: 13px 16px; border-bottom: 1px solid var(--line-soft);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--fg-4);
+    }
+    .tree { padding: 8px; }
+    .t-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; font-size: 13px; }
+    .t-row.g0 { font-weight: 800; }
+    .t-row.g1 { font-weight: 600; padding-left: 22px; }
+    .t-row.leaf { font-weight: 400; color: var(--fg-2); padding-left: 38px; }
+    .t-row.leaf .dt { width: 4px; height: 4px; border-radius: 50%; background: var(--fg-5); }
+
+    /* ===== 학습 허브 (오른쪽 본문) ===== */
+    .hub { flex: 1; min-width: 0; margin-left: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* 블록 1 — 3축 현황 */
+    .axis-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .axis-card {
+      display: block; text-decoration: none; color: inherit;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 14px; padding: 16px 16px 15px; box-shadow: var(--elev-4);
+      transition: border-color 140ms, transform 140ms;
+    }
+    a.axis-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+    .axis-top { display: flex; align-items: center; justify-content: space-between; }
+    .axis-id { display: flex; align-items: center; gap: 8px; }
+    .axis-ico {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .axis-ico svg { width: 17px; height: 17px; }
+    .axis-ico.a { background: var(--blue-soft); color: var(--blue); }
+    .axis-ico.c { background: rgba(122,90,248,0.12); color: var(--gavel); }
+    .axis-ico.p { background: rgba(16,163,127,0.12); color: var(--prob); }
+    .axis-name { font-size: 14px; font-weight: 800; }
+    .axis-go { font-size: 11px; font-weight: 700; color: var(--blue); display: inline-flex; align-items: center; gap: 2px; }
+    .axis-go svg { width: 13px; height: 13px; }
+    .axis-val { margin-top: 12px; font-size: 25px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .axis-val small { font-size: 14px; font-weight: 700; color: var(--fg-3); }
+    .axis-sub { margin-top: 2px; font-size: 12px; color: var(--fg-3); }
+    .bar { margin-top: 9px; height: 6px; background: var(--bg-muted); border-radius: 999px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--blue); border-radius: 999px; }
+
+    /* 공통 카드 */
+    .card {
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 14px; box-shadow: var(--elev-4); padding: 16px 18px;
+    }
+    .card-h {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--fg-4); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .card-h svg { width: 13px; height: 13px; color: var(--blue); }
+
+    /* 블록 2 — 이어서 학습 */
+    .continue { display: flex; align-items: center; gap: 14px; }
+    .continue .big {
+      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+      background: var(--blue-soft); color: var(--blue);
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .continue .big svg { width: 22px; height: 22px; }
+    .continue .txt { flex: 1; min-width: 0; }
+    .continue .txt .lbl { font-size: 12px; color: var(--fg-3); }
+    .continue .txt .ttl { font-size: 16px; font-weight: 800; margin-top: 1px; }
+    .btn {
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+      padding: 9px 15px; border-radius: 999px; cursor: pointer;
+      background: var(--blue); color: #fff; border: 0;
+      font: inherit; font-size: 13px; font-weight: 700; text-decoration: none;
+    }
+    .btn svg { width: 14px; height: 14px; }
+
+    /* 블록 3 — 학습 추천 */
+    .rec-row { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; }
+    .rec-row + .rec-row { border-top: 1px solid var(--line-soft); }
+    .rec-ico {
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .rec-ico svg { width: 15px; height: 15px; }
+    .rec-ico.a { background: var(--blue-soft); color: var(--blue); }
+    .rec-ico.c { background: rgba(122,90,248,0.12); color: var(--gavel); }
+    .rec-ico.w { background: var(--amber-bg); color: #B07A00; }
+    .rec-main { flex: 1; min-width: 0; }
+    .rec-k { font-size: 12px; font-weight: 700; color: var(--fg-3); }
+    .rec-chips { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 9px; border-radius: 999px; text-decoration: none;
+      font-size: 12px; font-weight: 600;
+      background: var(--blue-tint); color: var(--blue-strong);
+      border: 1px solid var(--line);
+    }
+    .chip:hover { border-color: var(--blue); }
+    .chip .st { color: var(--amber); font-size: 10px; }
+    .chip.c { background: rgba(122,90,248,0.07); color: #4B3B9E; }
+    .wrong-cta {
+      display: flex; align-items: center; gap: 5px; margin-top: 4px;
+      font-size: 13px; font-weight: 700; color: #B07A00; text-decoration: none;
+    }
+    .wrong-cta svg { width: 14px; height: 14px; }
+
+    .foot-note {
+      margin-top: 22px; font-size: 12.5px; color: var(--fg-3); line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <h1>과목 첫 화면 — 학습 허브 미리보기</h1>
+      <p>리담변리사학원 · 특허법 진입 시 첫 화면 — 조문·판례·문제를 아우르는 학습 유도 콘텐츠 제안</p>
+    </header>
+
+    <div class="meta">
+      <span class="tag">제안</span>
+      특허법을 클릭하면 첫 화면(조문 책갈피)에 지금은 <b>조문 관련 카드만</b>
+      보입니다. 이를 <b>① 3축 현황</b>(조문·판례·문제 진척을 한눈에) ·
+      <b>② 이어서 학습</b>(최근 본 조문에서 계속) · <b>③ 학습 추천</b>(미열람 조문 ·
+      중요 판례 · 오답 복습)으로 채워 세 영역으로 자연스럽게 유도합니다.
+      판례·문제 카드를 누르면 해당 책갈피로 이동합니다.
+    </div>
+
+    <div class="subj-head">
+      <div class="eyebrow">과목별 학습 · 산업재산권법</div>
+      <h2>특허법</h2>
+    </div>
+
+    <div class="stage">
+      <!-- 책갈피 레일 (옵션 4 — 현재 구현) -->
+      <nav class="rail">
+        <div class="bm on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+          <span class="nm">조문</span><span class="dv"></span><span class="ct">380</span>
+        </div>
+        <div class="bm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg>
+          <span class="nm">판례</span><span class="dv"></span><span class="ct">412</span>
+        </div>
+        <div class="bm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+          <span class="nm">문제</span><span class="dv"></span><span class="ct">380</span>
+        </div>
+      </nav>
+
+      <!-- 좌측 트리 패널 -->
+      <aside class="panel">
+        <div class="p-head">장별 목차 · 체계도</div>
+        <div class="tree">
+          <div class="t-row g0">01 특허제도 총론</div>
+          <div class="t-row g1">발명과 특허</div>
+          <div class="t-row leaf"><span class="dt"></span>제29조 (특허요건)</div>
+          <div class="t-row leaf"><span class="dt"></span>제33조 (특허를 받을 수 있는 자)</div>
+          <div class="t-row g0">02 특허출원 절차</div>
+          <div class="t-row leaf" style="padding-left:22px"><span class="dt"></span>제42조 (특허출원)</div>
+          <div class="t-row leaf" style="padding-left:22px"><span class="dt"></span>제47조 (절차의 보정)</div>
+        </div>
+      </aside>
+
+      <!-- 학습 허브 -->
+      <div class="hub">
+        <!-- 블록 1 — 3축 현황 -->
+        <div class="axis-grid">
+          <div class="axis-card">
+            <div class="axis-top">
+              <div class="axis-id">
+                <span class="axis-ico a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span>
+                <span class="axis-name">조문</span>
+              </div>
+            </div>
+            <p class="axis-val">41<small>%</small></p>
+            <p class="axis-sub">156 / 380 조문 열람</p>
+            <div class="bar"><i style="width:41%"></i></div>
+          </div>
+          <a class="axis-card" href="#cases">
+            <div class="axis-top">
+              <div class="axis-id">
+                <span class="axis-ico c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span>
+                <span class="axis-name">판례</span>
+              </div>
+              <span class="axis-go">판례 보기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </div>
+            <p class="axis-val">412<small>건</small></p>
+            <p class="axis-sub">중요 ★3 판례 46건 · 기출 보유 88건</p>
+          </a>
+          <a class="axis-card" href="#problems">
+            <div class="axis-top">
+              <div class="axis-id">
+                <span class="axis-ico p"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>
+                <span class="axis-name">문제</span>
+              </div>
+              <span class="axis-go">문제 풀기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </div>
+            <p class="axis-val">68<small>%</small></p>
+            <p class="axis-sub">120 / 380 문제 풀이 · 정답률</p>
+          </a>
+        </div>
+
+        <!-- 블록 2 — 이어서 학습 -->
+        <div class="card">
+          <div class="card-h">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            이어서 학습
+          </div>
+          <div class="continue">
+            <span class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+            <div class="txt">
+              <div class="lbl">최근 학습한 조문 · 어제</div>
+              <div class="ttl">특허법 제29조 (특허요건)</div>
+            </div>
+            <a class="btn" href="#article">이어서 보기
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- 블록 3 — 학습 추천 -->
+        <div class="card">
+          <div class="card-h">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            오늘의 학습 추천
+          </div>
+          <div class="rec-row">
+            <span class="rec-ico a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span>
+            <div class="rec-main">
+              <div class="rec-k">아직 안 본 중요 조문</div>
+              <div class="rec-chips">
+                <a class="chip" href="#"><span class="st">★</span>제42조 (특허출원)</a>
+                <a class="chip" href="#"><span class="st">★</span>제47조 (절차의 보정)</a>
+                <a class="chip" href="#"><span class="st">★</span>제54조 (조약 우선권)</a>
+              </div>
+            </div>
+          </div>
+          <div class="rec-row">
+            <span class="rec-ico c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg></span>
+            <div class="rec-main">
+              <div class="rec-k">꼭 봐야 할 중요 판례</div>
+              <div class="rec-chips">
+                <a class="chip c" href="#">2019후10609 · 진보성 판단</a>
+                <a class="chip c" href="#">2013후2873 · 발명의 효과</a>
+              </div>
+            </div>
+          </div>
+          <div class="rec-row">
+            <span class="rec-ico w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-9-15a2 2 0 0 0-3.4 0l-9 15a2 2 0 0 0 1.7 3h18a2 2 0 0 0 1.7-3z"/><path d="M12 9v4M12 17h.01"/></svg></span>
+            <div class="rec-main">
+              <div class="rec-k">복습이 필요한 문제</div>
+              <a class="wrong-cta" href="#">오답 12문제 다시 풀기
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot-note">
+      이 파일은 첫 화면 콘텐츠 제안 미리보기입니다. 책갈피 레일 · 좌측 트리는
+      현재 구현 그대로이고, <b>오른쪽 학습 허브</b>가 새로 채우는 부분입니다.
+      모든 수치(41% · 412건 · 오답 12 등)는 예시이며 실제 로더 데이터로
+      연결됩니다. 구성·항목을 알려주시면 그대로 SubjectHub 조문 탭 첫 화면에
+      구현합니다.
+    </p>
+  </div>
+</body>
+</html>

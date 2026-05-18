@@ -84,7 +84,9 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
+import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
   EXAM_LABEL,
   LAW_SUBJECTS,
@@ -224,8 +226,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     tab: "articles",
   }).catch(() => {});
 
+  const axisCounts = await getSubjectAxisCounts(client, lawCode, law.lawId);
+
   return {
     subject: LAW_SUBJECTS[lawCode],
+    axisCounts,
     lawId: law.lawId,
     article,
     body: parseArticleBody(article.bodyJson),
@@ -434,8 +439,14 @@ function ArticleViewerInner({
       ) : null}
 
       {/* 3-pane shell: left tree | body | right panel */}
-      <div className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-5 md:px-8 md:py-7">
-        <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
+      <div className="mx-auto flex w-full max-w-screen-2xl flex-1 flex-row items-start gap-0 px-4 py-5 md:px-8 md:py-7">
+        <SubjectBookmarkRail
+          subjectSlug={subject.slug}
+          active="articles"
+          counts={loaderData.axisCounts}
+          className="lg:sticky lg:top-20"
+        />
+        <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
           {/* ── LEFT TREE (desktop sticky) ─────────────────────────────── */}
           <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
             <div className="border-border bg-card rounded-xl border shadow-sm">

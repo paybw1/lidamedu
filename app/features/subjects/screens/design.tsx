@@ -35,6 +35,8 @@ export default function SubjectDesign({ loaderData }: Route.ComponentProps) {
       problemAggStats={loaderData.problemAggStats}
       recommendedArticles={loaderData.recommendedArticles}
       progressByArticle={loaderData.progressByArticle}
+      systematicNodeProblemStats={loaderData.systematicNodeProblemStats}
+      problemNodeFilter={loaderData.problemNodeFilter}
     />
   );
 }

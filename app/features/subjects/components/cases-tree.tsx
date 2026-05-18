@@ -1,6 +1,8 @@
 // 판례 트리 진입 (feat-4-A-210) — cases 탭 좌측 사이드바.
 // 조문 트리(statutory) / 체계도(systematic) 두 모드를 한 컴포넌트에서 분기.
-// 각 노드 옆에 leaf 카운트(판례 수) chip 표시. 0건 노드는 trim.
+// 각 노드 옆에 leaf 카운트(판례 수) chip 표시.
+// 조문 트리는 판례 0건 노드를 trim한다. 체계도(systematic)는 데이터 유무와
+// 무관하게 조문·판례·문제 탭이 같은 목차를 보여야 하므로 trim하지 않는다.
 // 노드 클릭 → 현재 URL search 에 case_article / case_chapter / case_node 셋업 → 셔플.
 
 import { ChevronRightIcon, GavelIcon, SearchIcon, XIcon } from "lucide-react";
@@ -95,23 +97,6 @@ function buildSystematicTree(nodes: SystematicNode[]): SystematicTreeNode[] {
   };
   walk(roots);
   return roots;
-}
-
-function pruneSystematicTree(
-  nodes: SystematicTreeNode[],
-  byNodeId: Record<string, number>,
-): SystematicTreeNode[] {
-  const recur = (xs: SystematicTreeNode[]): SystematicTreeNode[] => {
-    const out: SystematicTreeNode[] = [];
-    for (const n of xs) {
-      const count = byNodeId[n.nodeId] ?? 0;
-      const kids = recur(n.children);
-      if (count === 0 && kids.length === 0) continue;
-      out.push({ ...n, children: kids });
-    }
-    return out;
-  };
-  return recur(nodes);
 }
 
 // 검색 — 노드 라벨 substring 매칭. 매칭 노드 자신 + 조상 라인 유지.
@@ -262,13 +247,10 @@ export function CasesTree({
       ),
     [articles, caseTreeCounts.byArticleId, caseTreeCounts.byChapterId],
   );
+  // 체계도는 trim 없이 전체 노드 표시 — 조문 탭 체계도와 목차 일치.
   const systematicTreeBase = useMemo(
-    () =>
-      pruneSystematicTree(
-        buildSystematicTree(systematicNodes),
-        caseTreeCounts.byNodeId,
-      ),
-    [systematicNodes, caseTreeCounts.byNodeId],
+    () => buildSystematicTree(systematicNodes),
+    [systematicNodes],
   );
 
   const articleTree = useMemo(

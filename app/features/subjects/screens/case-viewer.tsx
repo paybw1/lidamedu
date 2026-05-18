@@ -52,12 +52,12 @@ import {
   RelatedSection,
 } from "~/features/laws/components/related-chips";
 import {
+  type ArticleNode,
+  type SystematicNode,
   getArticleSkeleton,
   getLawByCode,
   getStaffRole,
   getSystematicSkeleton,
-  type ArticleNode,
-  type SystematicNode,
 } from "~/features/laws/queries.server";
 import {
   getExamProblemsForCase,
@@ -73,9 +73,11 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import {
-  buildCaseTreeCounts,
   type CaseTreeCounts,
+  buildCaseTreeCounts,
+  getSubjectAxisCounts,
 } from "~/features/subjects/lib/loader.server";
 import {
   LAW_SUBJECTS,
@@ -185,8 +187,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     caseCountsByArticle,
   );
 
+  const axisCounts = await getSubjectAxisCounts(client, lawCode, law.lawId);
+
   return {
     subject: LAW_SUBJECTS[lawCode],
+    axisCounts,
     lawId: law.lawId,
     kase,
     articles,
@@ -273,337 +278,349 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           </Link>
         </div>
 
-        {/* 3분할 그리드 — §5.1 */}
-        <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-          {/* ── 좌측 조문 트리 (데스크톱 sticky) ── */}
-          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <Card className="border-border rounded-xl border py-3 shadow-sm">
-              <CardHeader className="px-4 pb-2">
-                <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
-                  {subject.name} 판례 트리
-                </p>
-              </CardHeader>
-              <CardContent className="px-2 pb-2">
-                <CaseTreeSidebar
-                  subjectSlug={subject.slug}
-                  articles={articles}
-                  systematicNodes={systematicNodes}
-                  caseTreeCounts={caseTreeCounts}
-                />
-              </CardContent>
-            </Card>
-          </aside>
-
-          {/* ── 중앙 본문 ── */}
-          <main className="min-w-0 space-y-4">
-            {/* 모바일 드로어 트리거 */}
-            <div className="flex flex-wrap gap-2 lg:hidden">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-full text-xs"
-                    data-testid="open-tree-drawer"
-                  >
-                    <ListTreeIcon className="size-3.5" /> 판례 트리
-                  </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="left"
-                  className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
-                >
-                  <SheetHeader>
-                    <SheetTitle>{subject.name} 판례 트리</SheetTitle>
-                  </SheetHeader>
-                  <div className="px-3 pb-4">
-                    <CaseTreeSidebar
-                      subjectSlug={subject.slug}
-                      articles={articles}
-                      systematicNodes={systematicNodes}
-                      caseTreeCounts={caseTreeCounts}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-full text-xs"
-                    data-testid="open-right-drawer"
-                  >
-                    <PanelRightIcon className="size-3.5" /> 학습 보조
-                  </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="right"
-                  className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
-                >
-                  <SheetHeader>
-                    <SheetTitle>학습 보조</SheetTitle>
-                  </SheetHeader>
-                  <div className="px-3 pb-4">
-                    <ArticleRightPanel
-                      target={{ type: "case", id: kase.caseId }}
-                      bookmark={bookmark}
-                      memos={memos}
-                      highlights={highlights}
-                      qnaThreads={qnaThreads}
-                      relatedProblems={relatedProblems}
-                      comments={caseComments}
-                      canEditComment={canEditComment}
-                      currentUserId={currentUserId}
-                      isAdmin={isAdmin}
-                      viewerIsStaff={canEditCase}
-                      importance={kase.importance}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-
-            {/* 관련 조문 chip 행 */}
-            <Card className="border-border rounded-xl border shadow-sm">
-              <CardHeader className="px-5 py-3">
-                <RelatedSection
-                  title="관련 조문"
-                  icon={NetworkIcon}
-                  count={relatedArticles.length}
-                >
-                  <RelatedArticlesChips
-                    articles={relatedArticles}
-                    subject={subject.slug}
-                    emptyHint="이 판례에 연결된 조문이 아직 없습니다."
+        {/* 책갈피 레일 + 3분할 그리드 — §5.1 */}
+        <div className="flex flex-row items-start gap-0">
+          <SubjectBookmarkRail
+            subjectSlug={subject.slug}
+            active="cases"
+            counts={loaderData.axisCounts}
+            className="lg:sticky lg:top-20"
+          />
+          <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
+            {/* ── 좌측 조문 트리 (데스크톱 sticky) ── */}
+            <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+              <Card className="border-border rounded-xl border py-3 shadow-sm">
+                <CardHeader className="px-4 pb-2">
+                  <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
+                    {subject.name} 판례 트리
+                  </p>
+                </CardHeader>
+                <CardContent className="px-2 pb-2">
+                  <CaseTreeSidebar
+                    subjectSlug={subject.slug}
+                    articles={articles}
+                    systematicNodes={systematicNodes}
+                    caseTreeCounts={caseTreeCounts}
                   />
-                </RelatedSection>
-              </CardHeader>
-            </Card>
+                </CardContent>
+              </Card>
+            </aside>
 
-            {/* ── 판례 헤더 카드 (§6.4) ── */}
-            <Card className="border-border rounded-xl border shadow-sm">
-              <CardHeader className="px-6 pt-6 pb-4">
-                {/* 메타 행: 법원 · 사건번호 · 유형 · 전합 · 중요도 · 선고일 · 복사 버튼 */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* 법원 — violet 톤 */}
-                  <span className="text-[13px] font-bold tracking-tight text-violet-600 dark:text-violet-400">
-                    {COURT_LABELS[kase.court]}
-                  </span>
-
-                  {/* 사건번호 — mono, 강조 */}
-                  <span className="text-foreground font-mono text-[14px] font-bold tracking-tight tabular-nums">
-                    {kase.caseNumber}
-                  </span>
-
-                  {/* 사건유형 */}
-                  {kase.caseType ? (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    >
-                      {kase.caseType}
-                    </Badge>
-                  ) : null}
-
-                  {/* 전원합의체 — brand blue */}
-                  {kase.isEnBanc ? (
-                    <Badge
-                      variant="default"
-                      className="bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-                    >
-                      전합
-                    </Badge>
-                  ) : null}
-
-                  {/* 중요도 별 */}
-                  {kase.importance > 0 ? (
-                    <ImportanceStars level={kase.importance} />
-                  ) : null}
-
-                  {/* 선고일 */}
-                  <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-                    선고일 {kase.decidedAt}
-                  </span>
-
-                  <CiteCopyButton
-                    court={kase.court}
-                    decidedAt={kase.decidedAt}
-                    caseNumber={kase.caseNumber}
-                    caseType={kase.caseType}
-                    isEnBanc={kase.isEnBanc}
-                  />
-
-                  {/* 운영자 — 판례 수정 (staff 전용, feat-7-005) */}
-                  {canEditCase ? (
+            {/* ── 중앙 본문 ── */}
+            <main className="min-w-0 space-y-4">
+              {/* 모바일 드로어 트리거 */}
+              <div className="flex flex-wrap gap-2 lg:hidden">
+                <Sheet>
+                  <SheetTrigger asChild>
                     <Button
-                      asChild
                       variant="outline"
                       size="sm"
-                      className="h-7 gap-1 text-xs"
+                      className="h-8 rounded-full text-xs"
+                      data-testid="open-tree-drawer"
                     >
-                      <Link to={`/admin/cases/edit/${kase.caseId}`}>
-                        <PencilIcon className="size-3" /> 수정
-                      </Link>
+                      <ListTreeIcon className="size-3.5" /> 판례 트리
                     </Button>
-                  ) : null}
-                </div>
-
-                {/* 기출 표시 — 1차는 출제 기출문제 칩(feat-8-024), 2차는 연도 배지 */}
-                {examProblems.length + kase.exam2ndYears.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {examProblems.map((ep) => (
-                      <ExamProblemChip
-                        key={ep.problemId}
-                        lawCode={ep.lawCode}
-                        problemId={ep.problemId}
-                        year={ep.year}
-                        problemNumber={ep.problemNumber}
-                      />
-                    ))}
-                    {[...kase.exam2ndYears]
-                      .sort((a, b) => a - b)
-                      .map((y) => (
-                        <ExamYearChip key={`2-${y}`} round="second" year={y} />
-                      ))}
-                  </div>
-                ) : null}
-              </CardHeader>
-
-              <Separator />
-
-              {/* 본문 섹션들 */}
-              <CardContent className="space-y-8 px-6 py-7">
-                {summaryItems.length > 0 ? (
-                  <BodySection title="판결요지">
-                    <HighlightOverlay
-                      fieldPath="case.summary"
-                      targetType="case"
-                      targetId={kase.caseId}
-                      highlights={highlights}
-                      viewerIsStaff={canEditComment}
-                    >
-                      <div className="space-y-5">
-                        {summaryItems.map((it, i) => (
-                          <SummaryBlock
-                            key={i}
-                            title={it.title}
-                            body={it.body}
-                            showLabel={summaryItems.length > 1}
-                            index={i}
-                            caseTitle={kase.caseTitle}
-                          />
-                        ))}
-                      </div>
-                    </HighlightOverlay>
-                  </BodySection>
-                ) : null}
-
-                {kase.reasoningMd ? (
-                  <BodySection title="판시이유">
-                    <HighlightOverlay
-                      fieldPath="case.reasoning"
-                      targetType="case"
-                      targetId={kase.caseId}
-                      highlights={highlights}
-                      viewerIsStaff={canEditComment}
-                    >
-                      <Prose text={kase.reasoningMd} />
-                    </HighlightOverlay>
-                  </BodySection>
-                ) : null}
-
-                {kase.fullTextPdf ? (
-                  <BodySection title="판결전문 PDF">
-                    <div className="space-y-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full"
-                        asChild
-                      >
-                        <a
-                          href={kase.fullTextPdf}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <FileTextIcon className="size-3.5" /> 새 탭에서 열기
-                        </a>
-                      </Button>
-                      {/* PDF placeholder 영역 — 점선 박스 */}
-                      <div className="border-border bg-muted/40 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-10 text-center">
-                        <FileTextIcon className="text-muted-foreground/50 size-6" />
-                        <p className="text-muted-foreground text-sm">
-                          판결전문 PDF
-                        </p>
-                      </div>
-                      <iframe
-                        title="판결전문 PDF"
-                        src={kase.fullTextPdf}
-                        className="border-border h-[80vh] w-full rounded-xl border"
-                        loading="lazy"
+                  </SheetTrigger>
+                  <SheetContent
+                    side="left"
+                    className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+                  >
+                    <SheetHeader>
+                      <SheetTitle>{subject.name} 판례 트리</SheetTitle>
+                    </SheetHeader>
+                    <div className="px-3 pb-4">
+                      <CaseTreeSidebar
+                        subjectSlug={subject.slug}
+                        articles={articles}
+                        systematicNodes={systematicNodes}
+                        caseTreeCounts={caseTreeCounts}
                       />
                     </div>
-                  </BodySection>
-                ) : null}
-
-                {references.length > 0 || canEditReferences ? (
-                  <CaseReferencesPanel
-                    caseId={kase.caseId}
-                    references={references}
-                    canEdit={canEditReferences}
-                  />
-                ) : null}
-
-                {kase.commentBodyMd ? (
-                  <BodySection title="비고">
-                    {/* 출처 박스 */}
-                    {kase.commentSource ? (
-                      <div className="border-border bg-muted/60 mb-3 rounded-lg border px-4 py-3">
-                        <p className="text-muted-foreground mb-0.5 font-mono text-[10px] font-bold tracking-widest uppercase">
-                          출처
-                        </p>
-                        <p className="text-muted-foreground text-sm">
-                          {kase.commentSource}
-                        </p>
-                      </div>
-                    ) : null}
-                    <HighlightOverlay
-                      fieldPath="case.comment"
-                      targetType="case"
-                      targetId={kase.caseId}
-                      highlights={highlights}
-                      viewerIsStaff={canEditComment}
+                  </SheetContent>
+                </Sheet>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-full text-xs"
+                      data-testid="open-right-drawer"
                     >
-                      <Prose text={kase.commentBodyMd} />
-                    </HighlightOverlay>
-                  </BodySection>
-                ) : null}
-              </CardContent>
-            </Card>
-          </main>
+                      <PanelRightIcon className="size-3.5" /> 학습 보조
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent
+                    side="right"
+                    className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
+                  >
+                    <SheetHeader>
+                      <SheetTitle>학습 보조</SheetTitle>
+                    </SheetHeader>
+                    <div className="px-3 pb-4">
+                      <ArticleRightPanel
+                        target={{ type: "case", id: kase.caseId }}
+                        bookmark={bookmark}
+                        memos={memos}
+                        highlights={highlights}
+                        qnaThreads={qnaThreads}
+                        relatedProblems={relatedProblems}
+                        comments={caseComments}
+                        canEditComment={canEditComment}
+                        currentUserId={currentUserId}
+                        isAdmin={isAdmin}
+                        viewerIsStaff={canEditCase}
+                        importance={kase.importance}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
 
-          {/* ── 우측 학습 패널 (데스크톱 sticky) ── */}
-          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <Card className="border-border h-full rounded-xl border shadow-sm">
-              <CardContent className="p-0">
-                <ArticleRightPanel
-                  target={{ type: "case", id: kase.caseId }}
-                  bookmark={bookmark}
-                  memos={memos}
-                  highlights={highlights}
-                  qnaThreads={qnaThreads}
-                  relatedProblems={relatedProblems}
-                  comments={caseComments}
-                  canEditComment={canEditComment}
-                  currentUserId={currentUserId}
-                  isAdmin={isAdmin}
-                  viewerIsStaff={canEditCase}
-                  importance={kase.importance}
-                />
-              </CardContent>
-            </Card>
-          </aside>
+              {/* 관련 조문 chip 행 */}
+              <Card className="border-border rounded-xl border shadow-sm">
+                <CardHeader className="px-5 py-3">
+                  <RelatedSection
+                    title="관련 조문"
+                    icon={NetworkIcon}
+                    count={relatedArticles.length}
+                  >
+                    <RelatedArticlesChips
+                      articles={relatedArticles}
+                      subject={subject.slug}
+                      emptyHint="이 판례에 연결된 조문이 아직 없습니다."
+                    />
+                  </RelatedSection>
+                </CardHeader>
+              </Card>
+
+              {/* ── 판례 헤더 카드 (§6.4) ── */}
+              <Card className="border-border rounded-xl border shadow-sm">
+                <CardHeader className="px-6 pt-6 pb-4">
+                  {/* 메타 행: 법원 · 사건번호 · 유형 · 전합 · 중요도 · 선고일 · 복사 버튼 */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* 법원 — violet 톤 */}
+                    <span className="text-[13px] font-bold tracking-tight text-violet-600 dark:text-violet-400">
+                      {COURT_LABELS[kase.court]}
+                    </span>
+
+                    {/* 사건번호 — mono, 강조 */}
+                    <span className="text-foreground font-mono text-[14px] font-bold tracking-tight tabular-nums">
+                      {kase.caseNumber}
+                    </span>
+
+                    {/* 사건유형 */}
+                    {kase.caseType ? (
+                      <Badge
+                        variant="secondary"
+                        className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                      >
+                        {kase.caseType}
+                      </Badge>
+                    ) : null}
+
+                    {/* 전원합의체 — brand blue */}
+                    {kase.isEnBanc ? (
+                      <Badge
+                        variant="default"
+                        className="bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                      >
+                        전합
+                      </Badge>
+                    ) : null}
+
+                    {/* 중요도 별 */}
+                    {kase.importance > 0 ? (
+                      <ImportanceStars level={kase.importance} />
+                    ) : null}
+
+                    {/* 선고일 */}
+                    <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                      선고일 {kase.decidedAt}
+                    </span>
+
+                    <CiteCopyButton
+                      court={kase.court}
+                      decidedAt={kase.decidedAt}
+                      caseNumber={kase.caseNumber}
+                      caseType={kase.caseType}
+                      isEnBanc={kase.isEnBanc}
+                    />
+
+                    {/* 운영자 — 판례 수정 (staff 전용, feat-7-005) */}
+                    {canEditCase ? (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                      >
+                        <Link to={`/admin/cases/edit/${kase.caseId}`}>
+                          <PencilIcon className="size-3" /> 수정
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  {/* 기출 표시 — 1차는 출제 기출문제 칩(feat-8-024), 2차는 연도 배지 */}
+                  {examProblems.length + kase.exam2ndYears.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {examProblems.map((ep) => (
+                        <ExamProblemChip
+                          key={ep.problemId}
+                          lawCode={ep.lawCode}
+                          problemId={ep.problemId}
+                          year={ep.year}
+                          problemNumber={ep.problemNumber}
+                        />
+                      ))}
+                      {[...kase.exam2ndYears]
+                        .sort((a, b) => a - b)
+                        .map((y) => (
+                          <ExamYearChip
+                            key={`2-${y}`}
+                            round="second"
+                            year={y}
+                          />
+                        ))}
+                    </div>
+                  ) : null}
+                </CardHeader>
+
+                <Separator />
+
+                {/* 본문 섹션들 */}
+                <CardContent className="space-y-8 px-6 py-7">
+                  {summaryItems.length > 0 ? (
+                    <BodySection title="판결요지">
+                      <HighlightOverlay
+                        fieldPath="case.summary"
+                        targetType="case"
+                        targetId={kase.caseId}
+                        highlights={highlights}
+                        viewerIsStaff={canEditComment}
+                      >
+                        <div className="space-y-5">
+                          {summaryItems.map((it, i) => (
+                            <SummaryBlock
+                              key={i}
+                              title={it.title}
+                              body={it.body}
+                              showLabel={summaryItems.length > 1}
+                              index={i}
+                              caseTitle={kase.caseTitle}
+                            />
+                          ))}
+                        </div>
+                      </HighlightOverlay>
+                    </BodySection>
+                  ) : null}
+
+                  {kase.reasoningMd ? (
+                    <BodySection title="판시이유">
+                      <HighlightOverlay
+                        fieldPath="case.reasoning"
+                        targetType="case"
+                        targetId={kase.caseId}
+                        highlights={highlights}
+                        viewerIsStaff={canEditComment}
+                      >
+                        <Prose text={kase.reasoningMd} />
+                      </HighlightOverlay>
+                    </BodySection>
+                  ) : null}
+
+                  {kase.fullTextPdf ? (
+                    <BodySection title="판결전문 PDF">
+                      <div className="space-y-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full"
+                          asChild
+                        >
+                          <a
+                            href={kase.fullTextPdf}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <FileTextIcon className="size-3.5" /> 새 탭에서 열기
+                          </a>
+                        </Button>
+                        {/* PDF placeholder 영역 — 점선 박스 */}
+                        <div className="border-border bg-muted/40 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-10 text-center">
+                          <FileTextIcon className="text-muted-foreground/50 size-6" />
+                          <p className="text-muted-foreground text-sm">
+                            판결전문 PDF
+                          </p>
+                        </div>
+                        <iframe
+                          title="판결전문 PDF"
+                          src={kase.fullTextPdf}
+                          className="border-border h-[80vh] w-full rounded-xl border"
+                          loading="lazy"
+                        />
+                      </div>
+                    </BodySection>
+                  ) : null}
+
+                  {references.length > 0 || canEditReferences ? (
+                    <CaseReferencesPanel
+                      caseId={kase.caseId}
+                      references={references}
+                      canEdit={canEditReferences}
+                    />
+                  ) : null}
+
+                  {kase.commentBodyMd ? (
+                    <BodySection title="비고">
+                      {/* 출처 박스 */}
+                      {kase.commentSource ? (
+                        <div className="border-border bg-muted/60 mb-3 rounded-lg border px-4 py-3">
+                          <p className="text-muted-foreground mb-0.5 font-mono text-[10px] font-bold tracking-widest uppercase">
+                            출처
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            {kase.commentSource}
+                          </p>
+                        </div>
+                      ) : null}
+                      <HighlightOverlay
+                        fieldPath="case.comment"
+                        targetType="case"
+                        targetId={kase.caseId}
+                        highlights={highlights}
+                        viewerIsStaff={canEditComment}
+                      >
+                        <Prose text={kase.commentBodyMd} />
+                      </HighlightOverlay>
+                    </BodySection>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </main>
+
+            {/* ── 우측 학습 패널 (데스크톱 sticky) ── */}
+            <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+              <Card className="border-border h-full rounded-xl border shadow-sm">
+                <CardContent className="p-0">
+                  <ArticleRightPanel
+                    target={{ type: "case", id: kase.caseId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedProblems={relatedProblems}
+                    comments={caseComments}
+                    canEditComment={canEditComment}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    viewerIsStaff={canEditCase}
+                    importance={kase.importance}
+                  />
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
         </div>
       </div>
     </div>
