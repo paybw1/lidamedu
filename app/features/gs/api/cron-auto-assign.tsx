@@ -1,5 +1,5 @@
 // 동료 채점 자동 배정 cron — 응시 종료된 회차에 대해 자동 배정.
-// 호출: 외부 cron (Cloudflare Cron Triggers / GitHub Actions / 운영자 수동) → GET 또는 POST.
+// 호출: 외부 cron (Vercel Cron / GitHub Actions / 운영자 수동) → GET 또는 POST.
 // 보호: ?secret=<CRON_SECRET> 또는 Authorization: Bearer <CRON_SECRET>.
 //
 // 정책:

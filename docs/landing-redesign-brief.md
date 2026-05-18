@@ -501,7 +501,7 @@ export function useCountUp(target: number, durationMs = 1200, start = false) {
 ### 8.1 스택 (위반 시 즉시 작업 중단)
 
 - **React Router 7** (SSR, file-based routing). loader 가 `getPublicPlatformStats()` 를 best-effort 로 부르고 있고 그대로 유지. 추가 데이터 fetch 가 필요하면 같은 loader 안에서 병렬로 try/catch 로 묶을 것 — 실패해도 랜딩은 정상 노출.
-- **Cloudflare Workers** SSR. **Node 전용 API 절대 금지** (`fs`, `net`, Node `crypto.randomBytes`, `setImmediate`, `process` 깊은 접근 등). Web Crypto / Workers 호환 라이브러리만 사용.
+- **Vercel** 서버리스 SSR (Node 런타임, `@vercel/react-router` preset).
 - **Tailwind CSS v4** 사용 가능. 단, 현 home.tsx 는 inline style 위주 — 일관성 위해 **inline style + Tailwind 혼용 모두 OK**. 새 컴포넌트는 어느 쪽이든 가독성 우선으로 선택.
 - **shadcn/ui** (New York style) + **Radix UI** + **lucide-react** 만. 외부 UI 라이브러리·아이콘 라이브러리 추가 금지.
 - **TypeScript strict**. `any` / `@ts-ignore` / `@ts-expect-error` 절대 금지. 타입 명확.
@@ -565,7 +565,7 @@ export const meta: Route.MetaFunction = ({ data }) => [
 
 ### 8.6 성능
 
-- LCP 타깃: 2.5s 이하 (Cloudflare Workers SSR + 정적 SVG/CSS 만 → 자연 도달).
+- LCP 타깃: 2.5s 이하 (Vercel SSR + 정적 SVG/CSS 만 → 자연 도달).
 - CLS 0 — Hero Preview·이미지 자리 미리 확보. 카운트업은 placeholder 0 이 아니라 최종값 폭 미리 잡기 위해 `min-width` 또는 `tabular-nums`.
 - IntersectionObserver 는 한 섹션당 1개로 묶어 batch (개별 카드마다 observer 안 만들기).
 
@@ -630,7 +630,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 6. **Hero refresh**: 단어별 fade-up + Hero Preview 슬라이드.
 7. **반응형 점검**: Chrome devtools 에서 360 / 768 / 1024 / 1440 폭으로 모두 확인. break 포인트 ≤960px / ≤720px / ≤560px 일관성.
 8. **타입체크**: `npm run typecheck` 통과 (필수).
-9. **빌드 점검**: `npm run build` 성공 확인. Cloudflare Workers 호환 에러 없는지.
+9. **빌드 점검**: `npm run build` 성공 확인.
 10. **접근성 빠른 점검**: 키보드 Tab 순서가 자연스러운지, 색 대비 문제 없는지, FAQ aria 속성 정상인지.
 11. **성능 빠른 점검**: 첫 화면에 폰트/이미지 새 요청이 안 발생하는지, IntersectionObserver 가 disconnect 되는지.
 

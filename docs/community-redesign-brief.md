@@ -268,9 +268,9 @@
 
 ## 10. 기술 제약 (코딩 단계 참고)
 
-실제 구현은 React Router 7 (SSR) + TypeScript strict + Tailwind v4 + shadcn(New York) + lucide-react + Cloudflare Workers.
+실제 구현은 React Router 7 (SSR) + TypeScript strict + Tailwind v4 + shadcn(New York) + lucide-react + Vercel (Node SSR).
 
-- 신규 npm 패키지·이미지/폰트 자산 도입 금지. 외부 스크립트 금지. Cloudflare Workers 비호환 API 금지. 차트는 div 기반 인라인 시각화 유지(차트 라이브러리 도입 금지).
+- 신규 npm 패키지·이미지/폰트 자산 도입 금지. 외부 스크립트 금지. 차트는 div 기반 인라인 시각화 유지(차트 라이브러리 도입 금지).
 - 학습정보·학습보조와 같은 구현 방식 — **Tailwind 유틸리티 클래스** 기반, 블루는 디자인 시스템 토큰(`bg-primary` 등). 상태색(emerald/amber/rose)은 의미색 컨벤션으로 통일.
 - **다크 모드 지원** — `dark:` 변형. 디자인 시 두 모드 모두 제공.
 - 모바일 반응형 필수 — GS 응시 슬롯 그리드 1열, 채점 매트릭스 가로 스크롤, 탭 strip 가로 스크롤.

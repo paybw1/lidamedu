@@ -1,5 +1,5 @@
 // 자동 주간 cron — 활성 cohort_curricula 별로 "현재 주차"에 해당하는 과제를 자동 생성.
-// 호출: 외부 cron (Cloudflare Cron Triggers / GitHub Actions / pg_cron / 수동) → GET 또는 POST.
+// 호출: 외부 cron (Vercel Cron / GitHub Actions / pg_cron / 수동) → GET 또는 POST.
 // 보호: ?secret=<CRON_SECRET> 또는 Authorization: Bearer <CRON_SECRET>.
 //
 // 정책:

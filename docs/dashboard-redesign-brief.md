@@ -204,7 +204,7 @@
 
 ## 10. 기술 제약 (코딩 단계 참고)
 
-실제 구현은 React Router 7 + TypeScript strict + Tailwind v4 + shadcn + Cloudflare Workers 환경. 디자인 mockup 단계에서는 신경 쓸 필요 없지만, 디자인이 아래와 호환돼야 한다:
+실제 구현은 React Router 7 + TypeScript strict + Tailwind v4 + shadcn + Vercel (Node SSR) 환경. 디자인 mockup 단계에서는 신경 쓸 필요 없지만, 디자인이 아래와 호환돼야 한다:
 
 - 신규 npm 패키지·이미지/폰트 자산 도입 금지 (Pretendard·lucide 는 이미 있음).
 - 차트는 외부 라이브러리 없이 SVG/CSS 로 구현 가능한 수준 (현재 도넛·막대·히트맵 모두 자체 SVG).

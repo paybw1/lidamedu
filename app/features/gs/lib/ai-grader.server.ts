@@ -1,7 +1,7 @@
 // Claude API 기반 GS 답안 채점 초안 생성기.
 // 입력: 문제 + 모범답안 + 학생 답안(OCR 텍스트). 출력: 점수(0~maxScore) + 마크다운 피드백.
 //
-// 환경변수: ANTHROPIC_API_KEY (Cloudflare Workers Secrets / .env)
+// 환경변수: ANTHROPIC_API_KEY (Vercel 환경변수 / .env)
 
 import Anthropic from "@anthropic-ai/sdk";
 

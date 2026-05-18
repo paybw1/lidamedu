@@ -245,7 +245,7 @@
 
 ## 10. 기술 제약 (코딩 단계 참고)
 
-실제 구현은 React Router 7 (SSR) + TypeScript strict + Tailwind v4 + shadcn(New York) + lucide-react + Cloudflare Workers.
+실제 구현은 React Router 7 (SSR) + TypeScript strict + Tailwind v4 + shadcn(New York) + lucide-react + Vercel (Node SSR).
 
 - 신규 npm 패키지·이미지/폰트 자산 도입 금지. 차트 라이브러리 도입 금지 — 통계는 div 기반 인라인 시각화.
 - **A. 운영자 셸은 공통 컴포넌트** — `app/features/admin/components/admin-shell.tsx`(가칭) 등으로 추출, 각 `/admin/*` 화면이 래핑. 라우트 레이아웃 추가 여부는 구현 재량이나 라우트 *경로*는 불변.

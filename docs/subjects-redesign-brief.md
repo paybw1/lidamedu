@@ -198,7 +198,7 @@
 
 ## 9. 기술 제약 (코딩 단계 참고)
 
-- 실제 구현: React Router 7 + TypeScript strict + Tailwind v4 + shadcn + Cloudflare Workers.
+- 실제 구현: React Router 7 + TypeScript strict + Tailwind v4 + shadcn + Vercel (Node SSR).
 - 신규 npm 패키지·이미지/폰트 자산 도입 금지.
 - 차트·트리·하이라이트 오버레이는 SVG/CSS 로 구현 가능한 수준 (현재도 그렇게 되어 있음).
 - 모바일 반응형 필수 — 좌측 트리·우측 패널의 `Sheet` 드로어 전환.

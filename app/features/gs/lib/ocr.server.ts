@@ -2,7 +2,7 @@
 // DOCUMENT_TEXT_DETECTION + languageHints=['ko','en'] 가 변리사 시험 답안지(한글+한자+영문 혼합)에 가장 적합.
 // API 키 미설정 시 null 반환 → 호출 측에서 "검사 불가" 로 graceful degrade.
 //
-// 환경변수: GOOGLE_CLOUD_VISION_API_KEY (Cloudflare Workers Secrets / .env)
+// 환경변수: GOOGLE_CLOUD_VISION_API_KEY (Vercel 환경변수 / .env)
 
 export interface OcrResult {
   text: string; // 인식된 텍스트 전체 (5000자까지 저장 — 채점 AI 컨텍스트로 재사용 가능).
@@ -26,7 +26,7 @@ function gradeLevel(
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  // Cloudflare Workers + Node 양쪽 호환. btoa 는 latin1 입력만 받으므로 byte → char 변환.
+  // btoa 는 latin1 입력만 받으므로 byte → char 변환 (런타임 무관).
   const bytes = new Uint8Array(buffer);
   let binary = "";
   const chunk = 0x8000;

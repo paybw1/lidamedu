@@ -700,7 +700,7 @@ create table public.daily_study_stats (
 );
 ```
 
-대시보드 카드들의 데이터 소스. 일별 집계는 Cloudflare Workers Cron 으로 채움 (`feat-000-015`).
+대시보드 카드들의 데이터 소스. 일별 집계는 일일 cron 으로 채움 (`feat-000-015`).
 
 ---
 
