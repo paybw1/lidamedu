@@ -1,16 +1,14 @@
 // 사용자 관리 (feat-7-012, 7-013). admin 전용.
 // 목록: 이름·이메일·역할·가입일·마지막 로그인 + 검색·역할 필터 + 페이지네이션.
-// 역할 변경: 인라인 select 로 즉시 적용. 본인 강등 차단.
+// 역할 변경: 인라인 select → 위험 동작(코랄) + confirm.
 
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  FilterXIcon,
   MailIcon,
+  RefreshCwIcon,
   SearchIcon,
-  ShieldCheckIcon,
   UserIcon,
   UsersIcon,
 } from "lucide-react";
@@ -24,19 +22,16 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Input } from "~/core/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Chip,
+  AdminSelect,
+  IndexTable,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   listAdminUsers,
@@ -92,11 +87,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     pageSize: filters.pageSize,
   });
 
-  return { ...usersPage, filters, currentUserId: user.id };
+  return { ...usersPage, filters, currentUserId: user.id, role };
 }
 
 export default function AdminUsers({ loaderData }: Route.ComponentProps) {
-  const { items, total, filters, currentUserId } = loaderData;
+  const { items, total, filters, currentUserId, role } = loaderData;
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
   const filterActive = !!filters.role || filters.q !== "";
 
@@ -113,117 +108,114 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
     return s ? `?${s}` : "";
   };
 
-  const counts = {
-    student: items.filter((i) => i.role === "student").length,
-    instructor: items.filter((i) => i.role === "instructor").length,
-    admin: items.filter((i) => i.role === "admin").length,
-  };
-
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ShieldCheckIcon className="size-3.5" /> 원장 전용
-        </p>
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <UsersIcon className="text-primary size-6" />
-          사용자 관리
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          가입한 사용자 {total}명 · 현재 페이지 수험생 {counts.student} ·
-          강사 {counts.instructor} · 원장 {counts.admin}
-        </p>
-      </header>
-
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      title="사용자 관리"
+      desc={`가입한 사용자 ${total}명을 검색·필터하고 역할을 변경합니다. (원장 전용)`}
+      headerRight={
+        <div className="flex items-center gap-2">
+          <Chip tone="solid">
+            <UsersIcon className="size-3" />
+            {total}명
+          </Chip>
+        </div>
+      }
+    >
+      {/* 필터 바 — admin-problems-list 패턴 (uncontrolled GET Form) */}
       <Form
         method="get"
-        className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]"
+        className="border-border bg-card mb-3 flex flex-wrap items-end gap-2.5 rounded-xl border p-3 shadow-sm"
       >
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            name="q"
-            defaultValue={filters.q}
-            placeholder="이름·이메일 검색"
-            className="pl-9"
-          />
-        </div>
-        <select
-          name="role"
-          defaultValue={filters.role ?? "all"}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-        >
-          {ROLE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value === "all" ? "" : o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" size="sm" className="h-9">
+        <label className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+          <span className="text-muted-foreground text-[11px] font-semibold">검색</span>
+          <div className="relative">
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={filters.q}
+              placeholder="이름·이메일 검색"
+              aria-label="이름·이메일 검색"
+              className="border-input bg-background focus:border-primary h-9 w-full rounded-md border pr-3 pl-9 text-[13px] outline-none"
+            />
+          </div>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-muted-foreground text-[11px] font-semibold">역할</span>
+          <AdminSelect name="role" defaultValue={filters.role ?? ""}>
+            {ROLE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value === "all" ? "" : o.value}>
+                {o.label}
+              </option>
+            ))}
+          </AdminSelect>
+        </label>
+        <Button type="submit" size="sm" variant="outline" className="self-end h-9">
           적용
         </Button>
+        {filterActive ? (
+          <Link
+            to="/admin/users"
+            className="text-primary self-end inline-flex items-center gap-1 px-2 py-2 text-xs font-semibold"
+          >
+            <RefreshCwIcon className="size-3" />
+            초기화
+          </Link>
+        ) : null}
       </Form>
-      {filterActive ? (
-        <div className="mb-4">
-          <Button asChild type="button" size="sm" variant="ghost" className="h-7">
-            <Link to="/admin/users">
-              <FilterXIcon className="size-3.5" /> 초기화
-            </Link>
-          </Button>
-        </div>
-      ) : null}
 
       {items.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            조건에 맞는 사용자가 없습니다.
-          </p>
+        <div className="border-border bg-card text-muted-foreground flex flex-col items-center gap-2 rounded-xl border py-16 text-center text-sm shadow-sm">
+          <UsersIcon className="size-8 opacity-30" />
+          <p>조건에 맞는 사용자가 없습니다.</p>
+          {filterActive ? (
+            <Link
+              to="/admin/users"
+              className="text-primary text-xs font-semibold hover:underline"
+            >
+              필터 초기화
+            </Link>
+          ) : null}
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">No</TableHead>
-                  <TableHead className="w-40">이름</TableHead>
-                  <TableHead>이메일</TableHead>
-                  <TableHead className="w-32">역할</TableHead>
-                  <TableHead className="w-28">가입일</TableHead>
-                  <TableHead className="w-32">마지막 로그인</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((u, i) => (
-                  <UserRow
-                    key={u.profileId}
-                    user={u}
-                    index={(filters.page - 1) * filters.pageSize + i + 1}
-                    isCurrentUser={u.profileId === currentUserId}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-          {totalPages > 1 ? (
-            <CardContent className="border-t pt-3">
-              <Pagination
-                page={filters.page}
-                totalPages={totalPages}
-                makeUrl={makeUrl}
-              />
-            </CardContent>
-          ) : null}
-        </Card>
+        <IndexTable
+          minWidth={720}
+          headers={[
+            { label: "No", align: "center", width: "3rem" },
+            { label: "이름", width: "10rem" },
+            { label: "이메일" },
+            { label: "역할", width: "9rem" },
+            { label: "가입일", align: "right", width: "7rem" },
+            { label: "마지막 로그인", align: "right", width: "8rem" },
+          ]}
+          footer={
+            <div className="border-border/60 flex items-center justify-between border-t px-3 py-2">
+              <span className="text-muted-foreground text-[11px] font-medium tabular-nums">
+                총 {total}명
+              </span>
+              {totalPages > 1 ? (
+                <Pagination
+                  page={filters.page}
+                  totalPages={totalPages}
+                  makeUrl={makeUrl}
+                />
+              ) : null}
+            </div>
+          }
+        >
+          {items.map((u, i) => (
+            <UserRow
+              key={u.profileId}
+              user={u}
+              index={(filters.page - 1) * filters.pageSize + i + 1}
+              isCurrentUser={u.profileId === currentUserId}
+            />
+          ))}
+        </IndexTable>
       )}
-    </div>
+    </AdminShell>
   );
 }
 
@@ -257,20 +249,20 @@ function UserRow({
     fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
 
   return (
-    <TableRow>
-      <TableCell className="text-muted-foreground text-center text-xs tabular-nums">
+    <TR>
+      <TD align="center" soft mono>
         {index}
-      </TableCell>
-      <TableCell>
+      </TD>
+      <TD>
         <div className="inline-flex items-center gap-1.5">
-          <UserIcon className="text-muted-foreground size-3.5" />
-          <span className="text-sm font-medium">{user.name || "—"}</span>
+          <UserIcon className="text-muted-foreground size-3.5 shrink-0" />
+          <span className="font-medium">{user.name || "—"}</span>
           {isCurrentUser ? (
-            <Badge variant="outline" className="text-[10px]">본인</Badge>
+            <Chip tone="outline">본인</Chip>
           ) : null}
         </div>
-      </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
+      </TD>
+      <TD soft>
         <span className="inline-flex items-center gap-1">
           <MailIcon className="size-3" />
           {user.email ?? "(이메일 없음)"}
@@ -281,32 +273,48 @@ function UserRow({
             aria-label="이메일 인증 완료"
           />
         ) : null}
-      </TableCell>
-      <TableCell>
+      </TD>
+      <TD>
         <fetcher.Form method="post" action="/api/admin/user-role">
           <input type="hidden" name="profileId" value={user.profileId} />
+          {/* 역할 변경은 위험 동작 — 코랄 계열 select + confirm */}
           <select
             name="role"
             defaultValue={user.role}
             disabled={isCurrentUser || fetcher.state !== "idle"}
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-            className="border-input bg-background h-7 rounded-md border px-2 text-xs disabled:opacity-50"
-            title={isCurrentUser ? "본인 역할은 변경 불가" : "역할 변경"}
+            onChange={(e) => {
+              const next = e.currentTarget.value;
+              if (
+                confirm(
+                  `역할을 "${next === "admin" ? "원장" : next === "instructor" ? "강사" : "수험생"}"으로 변경합니까? (되돌리기 가능)`,
+                )
+              ) {
+                e.currentTarget.form?.requestSubmit();
+              } else {
+                // 원복
+                e.currentTarget.value = user.role;
+              }
+            }}
+            className={`border-input bg-background h-7 rounded-md border px-2 text-xs disabled:opacity-50 ${isCurrentUser ? "" : "focus:border-rose-400"}`}
+            title={isCurrentUser ? "본인 역할은 변경 불가" : "역할 변경 (위험 동작)"}
+            aria-label={`${user.name || "사용자"} 역할`}
           >
             <option value="student">수험생</option>
             <option value="instructor">강사</option>
             <option value="admin">원장</option>
           </select>
-          {err ? <p className="text-rose-600 text-[10px] mt-0.5">{err}</p> : null}
+          {err ? (
+            <p className="text-rose-600 mt-0.5 text-[10px]">{err}</p>
+          ) : null}
         </fetcher.Form>
-      </TableCell>
-      <TableCell className="text-muted-foreground text-xs tabular-nums">
+      </TD>
+      <TD align="right" mono soft>
         {user.createdAt.slice(0, 10)}
-      </TableCell>
-      <TableCell className="text-muted-foreground text-xs tabular-nums">
+      </TD>
+      <TD align="right" mono soft>
         {user.lastSignInAt ? user.lastSignInAt.slice(0, 10) : "—"}
-      </TableCell>
-    </TableRow>
+      </TD>
+    </TR>
   );
 }
 
@@ -322,7 +330,7 @@ function Pagination({
   const prev = page > 1 ? page - 1 : null;
   const next = page < totalPages ? page + 1 : null;
   return (
-    <div className="flex items-center justify-center gap-2 text-xs">
+    <div className="flex items-center gap-2 text-xs">
       <Button
         asChild={prev != null}
         variant="outline"

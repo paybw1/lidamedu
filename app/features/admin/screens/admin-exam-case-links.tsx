@@ -1,16 +1,17 @@
-// 운영자 — 기출문제 ↔ 판례 수동 매칭 (feat-8-024).
+// 운영자 — 기출문제 ↔ 판례 수동 매칭 (feat-8-024). P5/P6 패턴.
 // /admin/relations/exam-cases
 // 1차 객관식 기출문제 목록 + 연결된 판례. 자동 스캔(scan_exam_case_links)으로
 // 미연결된 문제를 사건번호 입력으로 직접 매칭한다.
 import type { Route } from "./+types/admin-exam-case-links";
 
-import { ArrowLeftIcon, NetworkIcon, RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 import { Form, Link, data, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { ExamCaseRow } from "~/features/admin/components/exam-case-row";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { extractCaseNumber } from "~/features/problems/extract";
 import { listExamCaseLinkRows } from "~/features/problems/queries.server";
@@ -47,7 +48,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const lawCode = resolveLawCode(url.searchParams.get("subject"));
   const rows = await listExamCaseLinkRows(client, lawCode);
-  return { lawCode, rows };
+  return { lawCode, rows, role };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -212,14 +213,13 @@ export default function AdminExamCaseLinks({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { lawCode, rows } = loaderData;
+  const { lawCode, rows, role } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const unlinkedOnly = searchParams.get("unlinked") === "1";
 
-  const visible = unlinkedOnly
-    ? rows.filter((r) => r.links.length === 0)
-    : rows;
+  const visible = unlinkedOnly ? rows.filter((r) => r.links.length === 0) : rows;
   const linkedCount = rows.filter((r) => r.links.length > 0).length;
+  const unlinkedCount = rows.length - linkedCount;
 
   const actionError =
     actionData && "error" in actionData ? actionData.error : null;
@@ -234,59 +234,63 @@ export default function AdminExamCaseLinks({
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NetworkIcon className="size-3.5" /> 운영자
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">
-          기출문제 판례 매칭
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          판례형 지문(선택지·박스 항목)이 있는 1차 객관식 기출문제만 표시합니다.
-          지문에 입력된 판례는 자동 스캔으로 연결되며, 자동 연결되지 않은 문제는
-          사건번호를 직접 입력해 매칭하세요.
-        </p>
-      </header>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <select
-          value={lawCode}
-          onChange={(e) => patchParam("subject", e.target.value)}
-          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-          aria-label="과목"
-        >
-          {FIRST_EXAM_LAW_SLUGS.map((s) => (
-            <option key={s} value={s}>
-              {LAW_SUBJECTS[s].name}
-            </option>
-          ))}
-        </select>
-        <Button
-          type="button"
-          size="sm"
-          variant={unlinkedOnly ? "default" : "outline"}
-          onClick={() => patchParam("unlinked", unlinkedOnly ? null : "1")}
-        >
-          미연결만
-        </Button>
-        <span className="text-muted-foreground text-xs">
-          {linkedCount} / {rows.length} 문제 연결됨
-        </span>
-        <Form method="post" className="ml-auto">
+    <AdminShell
+      cluster="relations"
+      role={role}
+      title="기출문제 판례 매칭"
+      desc="판례형 지문(선택지·박스 항목)이 있는 1차 객관식 기출문제만 표시합니다. 지문에 입력된 판례는 자동 스캔으로 연결되며, 자동 연결되지 않은 문제는 사건번호를 직접 입력해 매칭하세요."
+      headerRight={
+        <Form method="post">
           <input type="hidden" name="intent" value="rescan" />
           <Button type="submit" size="sm" variant="outline">
             <RefreshCwIcon className="size-3.5" /> 전체 재스캔
           </Button>
         </Form>
+      }
+    >
+      {/* 필터 바 */}
+      <div className="border-border bg-card mb-4 flex flex-wrap items-center gap-2 rounded-xl border p-3 shadow-sm">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-muted-foreground text-[11px] font-semibold">
+            과목
+          </span>
+          <select
+            value={lawCode}
+            onChange={(e) => patchParam("subject", e.target.value)}
+            aria-label="과목"
+            className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-[13px] outline-none"
+          >
+            {FIRST_EXAM_LAW_SLUGS.map((s) => (
+              <option key={s} value={s}>
+                {LAW_SUBJECTS[s].name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="flex items-end gap-2 self-end">
+          <Button
+            type="button"
+            size="sm"
+            variant={unlinkedOnly ? "default" : "outline"}
+            onClick={() => patchParam("unlinked", unlinkedOnly ? null : "1")}
+          >
+            미연결만
+          </Button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <Chip tone="emerald">연결 {linkedCount}</Chip>
+          {unlinkedCount > 0 ? (
+            <Chip tone="amber">미연결 {unlinkedCount}</Chip>
+          ) : null}
+          <span className="text-muted-foreground tabular-nums text-xs">
+            / {rows.length}건
+          </span>
+        </div>
       </div>
 
+      {/* 액션 피드백 */}
       {actionError ? (
         <p className="mb-3 text-xs text-rose-600">{actionError}</p>
       ) : null}
@@ -294,16 +298,24 @@ export default function AdminExamCaseLinks({
         <p className="mb-3 text-xs text-emerald-600">{actionMessage}</p>
       ) : null}
 
+      {/* 목록 */}
       {visible.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-muted-foreground text-sm">
-              {unlinkedOnly
-                ? "미연결 기출문제가 없습니다."
-                : "판례형 지문이 있는 기출문제가 없습니다."}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="border-border bg-card rounded-xl border py-16 text-center shadow-sm">
+          <p className="text-muted-foreground text-sm">
+            {unlinkedOnly
+              ? "미연결 기출문제가 없습니다."
+              : "판례형 지문이 있는 기출문제가 없습니다."}
+          </p>
+          {unlinkedOnly ? (
+            <button
+              type="button"
+              onClick={() => patchParam("unlinked", null)}
+              className="text-primary mt-2 text-xs underline-offset-2 hover:underline"
+            >
+              전체 보기
+            </button>
+          ) : null}
+        </div>
       ) : (
         <ul className="space-y-3">
           {visible.map((r) => (
@@ -311,6 +323,6 @@ export default function AdminExamCaseLinks({
           ))}
         </ul>
       )}
-    </div>
+    </AdminShell>
   );
 }

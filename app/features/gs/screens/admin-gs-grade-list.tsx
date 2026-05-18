@@ -1,20 +1,25 @@
 // 운영자 채점 — 회차의 제출 목록. 채점 안 된 학생부터.
+// P6 REVIEW QUEUE 디자인. cluster="gs".
 
-import { ArrowLeftIcon, ArrowRightIcon, ClipboardCheckIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  CheckCircle2Icon,
+  ClipboardCheckIcon,
+  ClockIcon,
+  InboxIcon,
+} from "lucide-react";
 import { Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Bar,
+  Chip,
+  IndexTable,
+  StatusChip,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import {
   getGsRound,
   listGradingTargets,
@@ -61,181 +66,173 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     return 0;
   });
 
-  return { round, targets };
+  return { round, targets, role };
 }
 
 export default function AdminGsGradeList({ loaderData }: Route.ComponentProps) {
-  const { round, targets } = loaderData;
+  const { round, targets, role } = loaderData;
   const submitted = targets.filter((t) => t.submission.submittedAt != null);
   const inProgress = targets.filter((t) => t.submission.submittedAt == null);
+  const gradedCount = submitted.filter((t) => t.submission.gradedAt != null).length;
+  const ungraded = submitted.length - gradedCount;
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1">
-        <Link
-          to={`/admin/gs/${round.roundId}`}
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 회차 편집으로 돌아가기
-        </Link>
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ClipboardCheckIcon className="size-3.5" /> 운영자 채점
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">{round.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 제출{" "}
-          {submitted.length}건 · 진행 중 {inProgress.length}건
-        </p>
-      </header>
-
+    <AdminShell
+      cluster="gs"
+      role={role}
+      title={round.title}
+      desc={`${LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 제출 ${submitted.length}건 · 채점 대기 ${ungraded}건`}
+      headerRight={
+        ungraded > 0 ? (
+          <Chip tone="coral">
+            <ClockIcon className="size-3" /> 미채점 {ungraded}
+          </Chip>
+        ) : submitted.length > 0 ? (
+          <Chip tone="emerald">
+            <CheckCircle2Icon className="size-3" /> 전원 채점 완료
+          </Chip>
+        ) : undefined
+      }
+      width={1280}
+    >
       {submitted.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            아직 제출된 답안이 없습니다.
+        <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border p-12 text-center shadow-sm">
+          <InboxIcon className="text-muted-foreground/60 size-8" />
+          <p className="text-sm font-semibold">아직 제출된 답안이 없습니다</p>
+          <p className="text-muted-foreground text-xs">
+            학생이 답안을 제출하면 이곳에 모입니다.
           </p>
         </div>
       ) : (
-        <Card>
-          <CardHeader>
-            <h2 className="text-sm font-semibold tracking-tight">제출 목록</h2>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px]">학생</TableHead>
-                  <TableHead className="w-[160px]">제출</TableHead>
-                  <TableHead className="w-[140px]">진행도</TableHead>
-                  <TableHead className="w-[100px]">총점</TableHead>
-                  <TableHead className="w-[110px]">상태</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {submitted.map((t) => (
-                  <TableRow
-                    key={t.submission.submissionId}
-                    data-testid={`grade-row-${t.submission.submissionId}`}
+        <IndexTable
+          headers={[
+            { label: "학생" },
+            { label: "제출", width: "160px" },
+            { label: "채점 진행", width: "160px" },
+            { label: "총점", align: "right", width: "100px" },
+            { label: "상태", width: "120px" },
+            { label: "", width: "80px" },
+          ]}
+          minWidth={640}
+        >
+          {submitted.map((t) => {
+            const pct =
+              t.answersTotal > 0
+                ? Math.round((t.answersGraded / t.answersTotal) * 100)
+                : 0;
+            const gradeStatus =
+              t.submission.gradedAt != null
+                ? "done"
+                : t.answersGraded > 0
+                  ? "partial"
+                  : "pending";
+            return (
+              <TR
+                key={t.submission.submissionId}
+                testid={`grade-row-${t.submission.submissionId}`}
+              >
+                <TD>
+                  <span className="font-semibold">
+                    {t.studentName ?? (
+                      <span className="text-muted-foreground font-normal italic">
+                        이름 미설정
+                      </span>
+                    )}
+                  </span>
+                  <p className="text-muted-foreground mt-0.5 font-mono text-[10px] tabular-nums">
+                    {t.submission.userId.slice(0, 8)}
+                  </p>
+                </TD>
+                <TD soft mono>
+                  {formatDateTime(t.submission.submittedAt)}
+                </TD>
+                <TD>
+                  <div className="flex items-center gap-2">
+                    <Bar
+                      value={t.answersGraded}
+                      max={t.answersTotal}
+                      tone={
+                        pct === 100
+                          ? "emerald"
+                          : pct > 0
+                            ? "amber"
+                            : "coral"
+                      }
+                      className="w-16"
+                    />
+                    <span className="text-muted-foreground tabular-nums text-[11px]">
+                      {t.answersGraded}/{t.answersTotal}
+                    </span>
+                  </div>
+                </TD>
+                <TD align="right" mono>
+                  {t.submission.totalScore != null
+                    ? `${t.submission.totalScore}점`
+                    : "—"}
+                </TD>
+                <TD>
+                  {gradeStatus === "done" ? (
+                    <Chip tone="emerald">
+                      <CheckCircle2Icon className="size-3" /> 채점 완료
+                    </Chip>
+                  ) : gradeStatus === "partial" ? (
+                    <Chip tone="amber">
+                      <ClipboardCheckIcon className="size-3" /> 채점 중
+                    </Chip>
+                  ) : (
+                    <StatusChip status="pending" label="채점 대기" />
+                  )}
+                </TD>
+                <TD>
+                  <Link
+                    to={`/admin/gs/${round.roundId}/grade/${t.submission.submissionId}`}
+                    data-testid={`grade-link-${t.submission.submissionId}`}
+                    className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                   >
-                    <TableCell className="font-medium">
-                      {t.studentName ?? (
-                        <span className="text-muted-foreground italic">
-                          이름 미설정
-                        </span>
-                      )}
-                      <p className="text-muted-foreground text-[10px] tabular-nums">
-                        {t.submission.userId.slice(0, 8)}
-                      </p>
-                    </TableCell>
-                    <TableCell className="text-xs tabular-nums">
-                      {formatDateTime(t.submission.submittedAt)}
-                    </TableCell>
-                    <TableCell>
-                      <Progress
-                        graded={t.answersGraded}
-                        total={t.answersTotal}
-                      />
-                    </TableCell>
-                    <TableCell className="font-semibold tabular-nums">
-                      {t.submission.totalScore != null
-                        ? `${t.submission.totalScore}점`
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge target={t} />
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/admin/gs/${round.roundId}/grade/${t.submission.submissionId}`}
-                        data-testid={`grade-link-${t.submission.submissionId}`}
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        채점 <ArrowRightIcon className="size-3" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                    채점 <ArrowRightIcon className="size-3" />
+                  </Link>
+                </TD>
+              </TR>
+            );
+          })}
+        </IndexTable>
       )}
 
+      {/* 진행 중 (미제출) */}
       {inProgress.length > 0 ? (
-        <Card className="mt-6">
-          <CardHeader>
-            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              진행 중 (미제출)
-            </h2>
-          </CardHeader>
-          <CardContent className="text-muted-foreground space-y-1 text-xs">
+        <div className="mt-6">
+          <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            진행 중 (미제출) · {inProgress.length}
+          </p>
+          <IndexTable
+            headers={[
+              { label: "학생" },
+              { label: "시작", width: "160px" },
+              { label: "상태", width: "120px" },
+            ]}
+            minWidth={400}
+          >
             {inProgress.map((t) => (
-              <div
-                key={t.submission.submissionId}
-                className="flex items-center justify-between"
-              >
-                <span>
-                  {t.studentName ?? t.submission.userId.slice(0, 8)}
-                </span>
-                <span className="tabular-nums">
-                  시작 {formatDateTime(t.submission.startedAt)}
-                </span>
-              </div>
+              <TR key={t.submission.submissionId}>
+                <TD>
+                  {t.studentName ?? (
+                    <span className="text-muted-foreground italic">
+                      {t.submission.userId.slice(0, 8)}
+                    </span>
+                  )}
+                </TD>
+                <TD soft mono>
+                  {formatDateTime(t.submission.startedAt)}
+                </TD>
+                <TD>
+                  <StatusChip status="pending" label="답안 작성 중" />
+                </TD>
+              </TR>
             ))}
-          </CardContent>
-        </Card>
+          </IndexTable>
+        </div>
       ) : null}
-    </div>
-  );
-}
-
-function StatusBadge({
-  target,
-}: {
-  target: { submission: { gradedAt: string | null }; answersGraded: number; answersTotal: number };
-}) {
-  if (target.submission.gradedAt) {
-    return (
-      <Badge className="bg-emerald-600 text-white text-[10px] hover:bg-emerald-600">
-        채점 완료
-      </Badge>
-    );
-  }
-  if (target.answersGraded > 0 && target.answersGraded < target.answersTotal) {
-    return (
-      <Badge className="bg-amber-500 text-white text-[10px] hover:bg-amber-500">
-        채점 중
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="outline" className="text-[10px]">
-      채점 대기
-    </Badge>
-  );
-}
-
-function Progress({ graded, total }: { graded: number; total: number }) {
-  const pct = total > 0 ? Math.round((graded / total) * 100) : 0;
-  return (
-    <div className="flex items-center gap-1.5 text-[11px]">
-      <div className="bg-muted h-1.5 w-16 overflow-hidden rounded-full">
-        <div
-          className={cn(
-            "h-full transition-all",
-            pct === 100
-              ? "bg-emerald-500"
-              : pct > 0
-                ? "bg-amber-500"
-                : "bg-muted-foreground/30",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="tabular-nums">
-        {graded}/{total}
-      </span>
-    </div>
+    </AdminShell>
   );
 }
 

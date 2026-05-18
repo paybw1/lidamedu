@@ -1,26 +1,19 @@
 // 운영자 GS 회차 목록 — 모든 status (draft 포함). + 새 회차 생성 진입점.
+// 패턴 P2 LIST/TABLE. AdminShell cluster="gs".
 
-import {
-  ArrowLeftIcon,
-  CalendarPlusIcon,
-  ClipboardListIcon,
-  PlusIcon,
-} from "lucide-react";
+import { PlusIcon, RefreshCwIcon } from "lucide-react";
 import { Form, Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Chip,
+  IndexTable,
+  TD,
+  TR,
+  type TableHeaderDef,
+} from "~/features/admin/components/admin-ui";
 import {
   listAllGsRounds,
   type GsRoundStatus,
@@ -45,11 +38,14 @@ const STATUS_LABEL: Record<GsRoundStatus, string> = {
   published: "공개",
   closed: "종료",
 };
-const STATUS_TONE: Record<GsRoundStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
-  published: "bg-emerald-600 text-white",
-  closed: "bg-slate-500 text-white",
-};
+
+function statusTone(
+  s: GsRoundStatus,
+): "neutral" | "emerald" | "amber" | "coral" {
+  if (s === "published") return "emerald";
+  if (s === "draft") return "amber";
+  return "neutral";
+}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -75,157 +71,191 @@ export async function loader({ request }: Route.LoaderArgs) {
       : undefined;
 
   const rounds = await listAllGsRounds(client, { subject, status });
-  return { rounds, subject: subject ?? null, status: status ?? null };
+  return {
+    rounds,
+    subject: subject ?? null,
+    status: status ?? null,
+    role,
+  };
 }
 
+const TABLE_HEADERS: TableHeaderDef[] = [
+  { label: "상태", width: "5rem" },
+  { label: "제목" },
+  { label: "과목", width: "7rem" },
+  { label: "기간", width: "14rem" },
+  { label: "제한", width: "5rem", align: "right" },
+  { label: "", width: "4rem", align: "right" },
+];
+
 export default function AdminGsList({ loaderData }: Route.ComponentProps) {
-  const { rounds, subject, status } = loaderData;
+  const { rounds, subject, status, role } = loaderData;
+  const filterActive = !!(subject || status);
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-            <ClipboardListIcon className="size-3.5" /> 운영자 모드 · 온라인 GS
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight">GS 회차 관리</h1>
-          <p className="text-muted-foreground text-sm">
-            정기 모의고사 회차를 만들고 문제를 등록합니다. 공개(published) 상태에서만
-            학생에게 노출됩니다.
-          </p>
-        </div>
-        <Button asChild>
+    <AdminShell
+      cluster="gs"
+      role={role}
+      title="GS 회차 관리"
+      desc="정기 모의고사 회차를 만들고 문제를 등록합니다. 공개(published) 상태에서만 학생에게 노출됩니다."
+      headerRight={
+        <Button asChild size="sm">
           <Link to="/admin/gs/new" viewTransition>
-            <PlusIcon className="size-4" /> 새 회차
+            <PlusIcon className="size-3.5" /> 새 회차
           </Link>
         </Button>
-      </header>
+      }
+    >
+      {/* 필터 */}
+      <Form
+        method="get"
+        className="border-border bg-card mb-3 flex flex-wrap items-end gap-2.5 rounded-xl border p-3 shadow-sm"
+      >
+        <FilterSelect
+          name="subject"
+          label="과목"
+          value={subject ?? ""}
+          options={[{ value: "", label: "전체 과목" }]}
+          optionGroups={[
+            {
+              label: "1차 · 객관식",
+              options: FIRST_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+            {
+              label: "2차 · 주관식",
+              options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
+                value: s,
+                label: LAW_SUBJECTS[s].name,
+              })),
+            },
+          ]}
+        />
+        <FilterSelect
+          name="status"
+          label="상태"
+          value={status ?? ""}
+          options={[
+            { value: "", label: "전체" },
+            { value: "draft", label: "초안" },
+            { value: "published", label: "공개" },
+            { value: "closed", label: "종료" },
+          ]}
+        />
+        <Button type="submit" size="sm" variant="outline">
+          적용
+        </Button>
+        {filterActive ? (
+          <Link
+            to="/admin/gs"
+            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
+          >
+            <RefreshCwIcon className="size-3" /> 초기화
+          </Link>
+        ) : null}
+      </Form>
 
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <Form method="get" className="flex flex-wrap items-center gap-2">
-            <select
-              name="subject"
-              defaultValue={subject ?? ""}
-              className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-            >
-              <option value="">전체 과목</option>
-              <optgroup label="1차 · 객관식">
-                {FIRST_EXAM_LAW_SLUGS.map((s) => (
-                  <option key={s} value={s}>
-                    {LAW_SUBJECTS[s].name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="2차 · 주관식">
-                {SECOND_EXAM_LAW_SLUGS.map((s) => (
-                  <option key={s} value={s}>
-                    {LAW_SUBJECTS[s].name}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-            <select
-              name="status"
-              defaultValue={status ?? ""}
-              className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-            >
-              <option value="">전체 상태</option>
-              <option value="draft">초안</option>
-              <option value="published">공개</option>
-              <option value="closed">종료</option>
-            </select>
-            <Button type="submit" size="sm" variant="outline" className="h-8">
-              적용
-            </Button>
-          </Form>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-xs">
-          전체 {rounds.length}건
-        </CardContent>
-      </Card>
-
+      {/* 목록 */}
       {rounds.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            등록된 GS 회차가 없습니다.
-          </p>
+        <div className="border-border bg-card text-muted-foreground rounded-xl border py-16 text-center text-sm shadow-sm">
+          {filterActive
+            ? "조건에 맞는 회차가 없습니다."
+            : "등록된 GS 회차가 없습니다. 새 회차를 만들어 보세요."}
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">상태</TableHead>
-                  <TableHead className="min-w-[260px]">제목</TableHead>
-                  <TableHead className="w-[100px]">과목</TableHead>
-                  <TableHead className="w-[200px]">기간</TableHead>
-                  <TableHead className="w-[80px]">제한 시간</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rounds.map((r) => (
-                  <TableRow key={r.roundId}>
-                    <TableCell>
-                      <Badge className={cn("text-[10px]", STATUS_TONE[r.status])}>
-                        {STATUS_LABEL[r.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/admin/gs/${r.roundId}`}
-                        viewTransition
-                        className="hover:text-primary font-medium"
-                      >
-                        {r.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {LAW_SUBJECTS[r.subject]?.name ?? r.subject}
-                    </TableCell>
-                    <TableCell className="text-xs tabular-nums">
-                      {formatRange(r.startAt, r.endAt)}
-                    </TableCell>
-                    <TableCell className="tabular-nums">{r.durationMin}분</TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/admin/gs/${r.roundId}`}
-                        className="text-primary text-xs hover:underline"
-                      >
-                        편집 →
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <IndexTable
+          minWidth={760}
+          headers={TABLE_HEADERS}
+          footer={
+            <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
+              총 {rounds.length}건
+            </div>
+          }
+        >
+          {rounds.map((r) => (
+            <TR key={r.roundId}>
+              <TD>
+                <Chip tone={statusTone(r.status)}>
+                  {STATUS_LABEL[r.status]}
+                </Chip>
+              </TD>
+              <TD>
+                <Link
+                  to={`/admin/gs/${r.roundId}`}
+                  viewTransition
+                  className="text-primary hover:underline font-medium"
+                >
+                  {r.title}
+                </Link>
+              </TD>
+              <TD soft>
+                {LAW_SUBJECTS[r.subject]?.name ?? r.subject}
+              </TD>
+              <TD mono soft>
+                {formatRange(r.startAt, r.endAt)}
+              </TD>
+              <TD align="right" mono soft>
+                {r.durationMin}분
+              </TD>
+              <TD align="right">
+                <Link
+                  to={`/admin/gs/${r.roundId}`}
+                  className="text-primary text-xs font-semibold hover:underline"
+                >
+                  편집
+                </Link>
+              </TD>
+            </TR>
+          ))}
+        </IndexTable>
       )}
+    </AdminShell>
+  );
+}
 
-      <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-              <CalendarPlusIcon className="size-3.5" /> 다음 단계
-            </p>
-          </CardHeader>
-          <CardContent className="text-muted-foreground space-y-1 text-xs">
-            <p>• 학생 응시·답안 작성 (Phase 2)</p>
-            <p>• 운영자 채점 / 점수 + 피드백 입력 (Phase 3)</p>
-            <p>• 학생 결과 화면 (모범답안 + 피드백 공개)</p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+/* ── 로컬 헬퍼 ──────────────────────────────────────────────────────────── */
+
+function FilterSelect({
+  name,
+  label,
+  value,
+  options,
+  optionGroups,
+}: {
+  name: string;
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  optionGroups?: { label: string; options: { value: string; label: string }[] }[];
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-muted-foreground text-[11px] font-semibold">
+        {label}
+      </span>
+      <select
+        name={name}
+        defaultValue={value}
+        className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-[13px] outline-none"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+        {optionGroups?.map((g) => (
+          <optgroup key={g.label} label={g.label}>
+            {g.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </label>
   );
 }
 

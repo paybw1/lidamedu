@@ -1,9 +1,7 @@
 // feat-7-021 — 과제 편집 + 학생 진척 (운영자).
 
 import {
-  ArrowLeftIcon,
   CalendarIcon,
-  CheckCircle2Icon,
   ClipboardListIcon,
   PencilIcon,
   PlusIcon,
@@ -20,23 +18,20 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { Separator } from "~/core/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { ContentPicker } from "~/features/admin/components/content-picker";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Chip,
+  IndexTable,
+  StatusChip,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import {
   getAssignmentWithItems,
   listAssignmentProgress,
@@ -85,14 +80,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const progress = await listAssignmentProgress(params.assignmentId);
-  return { cohort, assignment, progress };
+  return { cohort, assignment, progress, role };
 }
-
-const STATUS_TONE: Record<AssignmentStatus, string> = {
-  pending: "text-muted-foreground",
-  partial: "text-amber-600 dark:text-amber-400",
-  completed: "text-emerald-600 dark:text-emerald-400",
-};
 
 function useReload() {
   const navigate = useNavigate();
@@ -107,84 +96,97 @@ function useReload() {
 export default function AdminAssignmentEdit({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, assignment, progress } = loaderData;
+  const { cohort, assignment, progress, role } = loaderData;
   const navigate = useNavigate();
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   useEffect(() => {
-    // delete 응답이 ok 면 목록으로. 그 외 intent (예: update) 는 reload 가 알아서.
     if (
       fetcher.state === "idle" &&
       fetcher.data &&
       "ok" in fetcher.data &&
       fetcher.data.ok
     ) {
-      // 단순히 새로 fetch — delete 의 경우 row 가 없어져 404 처리는 라우터가
       navigate(`/admin/cohorts/${cohort.cohortId}/assignments`);
     }
   }, [fetcher.state, fetcher.data, navigate, cohort.cohortId]);
 
+  const completePct =
+    (assignment.totalMembers ?? 0) > 0
+      ? Math.round(
+          ((assignment.completedMembers ?? 0) / (assignment.totalMembers as number)) * 100,
+        )
+      : 0;
+
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      width={960}
+      title={assignment.title}
+      desc={`마감 ${assignment.dueAt.slice(0, 16).replace("T", " ")} · ${assignment.completedMembers}/${assignment.totalMembers} 완수`}
+      headerRight={
+        <fetcher.Form method="post" action="/api/admin/assignment">
+          <input type="hidden" name="intent" value="delete" />
+          <input type="hidden" name="assignmentId" value={assignment.assignmentId} />
+          <Button
+            type="submit"
+            size="sm"
+            variant="outline"
+            className="border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950/20"
+            onClick={(e) => {
+              if (!confirm(`"${assignment.title}" 을(를) 삭제(soft)합니까?`)) {
+                e.preventDefault();
+              }
+            }}
+            disabled={fetcher.state !== "idle"}
+          >
+            <Trash2Icon className="size-3.5" /> 삭제
+          </Button>
+        </fetcher.Form>
+      }
+    >
       <Link
         to={`/admin/cohorts/${cohort.cohortId}/assignments`}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-xs"
       >
-        <ArrowLeftIcon className="size-3" /> 과제 목록
+        ← 과제 목록
       </Link>
 
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <ClipboardListIcon className="text-primary size-6" />
-            {assignment.title}
-          </h1>
-          <p className="text-muted-foreground inline-flex items-center gap-2 text-xs">
-            <CalendarIcon className="size-3" />
-            마감 {assignment.dueAt.slice(0, 16).replace("T", " ")}
-            <span>·</span>
-            <UsersIcon className="size-3" />
-            {assignment.completedMembers}/{assignment.totalMembers} 완수
+      {/* 진척 요약 칩 */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Chip tone="neutral">
+          <CalendarIcon className="size-3" />
+          마감 {assignment.dueAt.slice(0, 10)}
+        </Chip>
+        <Chip tone="neutral">
+          <UsersIcon className="size-3" />
+          {assignment.completedMembers}/{assignment.totalMembers} 완수 ({completePct}%)
+        </Chip>
+        {assignment.descriptionMd ? (
+          <p className="text-muted-foreground w-full text-xs whitespace-pre-line">
+            {assignment.descriptionMd}
           </p>
-          {assignment.descriptionMd ? (
-            <p className="text-muted-foreground mt-1 text-sm whitespace-pre-line">
-              {assignment.descriptionMd}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex gap-2">
-          <fetcher.Form method="post" action="/api/admin/assignment">
-            <input type="hidden" name="intent" value="delete" />
-            <input type="hidden" name="assignmentId" value={assignment.assignmentId} />
-            <Button
-              type="submit"
-              size="sm"
-              variant="ghost"
-              className="text-rose-600 hover:text-rose-700"
-              onClick={(e) => {
-                if (!confirm(`"${assignment.title}" 을(를) 삭제(soft)합니까?`)) {
-                  e.preventDefault();
-                }
-              }}
-              disabled={fetcher.state !== "idle"}
-            >
-              <Trash2Icon className="size-3.5" /> 삭제
-            </Button>
-          </fetcher.Form>
-        </div>
-      </header>
+        ) : null}
+      </div>
 
       <AssignmentMetaForm assignment={assignment} />
 
       <Separator className="my-6" />
 
+      {/* 학습 항목 */}
       <section className="mb-6 space-y-3">
-        <h2 className="text-lg font-semibold">학습 항목 ({assignment.items.length})</h2>
+        <h2 className="text-base font-semibold">
+          학습 항목 ({assignment.items.length})
+        </h2>
         {assignment.items.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
-            항목이 없습니다. 아래에서 추가하세요.
-          </p>
+          <div className="border-border bg-card rounded-xl border py-10 text-center">
+            <ClipboardListIcon className="text-muted-foreground mx-auto mb-2 size-6 opacity-40" />
+            <p className="text-muted-foreground text-xs">
+              항목이 없습니다. 아래에서 추가하세요.
+            </p>
+          </div>
         ) : (
-          <ul className="divide-y rounded-md border">
+          <ul className="border-border bg-card divide-border divide-y rounded-xl border shadow-sm">
             {assignment.items.map((item) => (
               <ItemRow key={item.itemId} item={item} />
             ))}
@@ -198,71 +200,62 @@ export default function AdminAssignmentEdit({
 
       <Separator className="my-6" />
 
+      {/* 학생별 진척 */}
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">학생별 진척 ({progress.length}명)</h2>
-        <Card>
-          <CardContent className="overflow-x-auto p-0">
-            <Table className="min-w-[600px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>학생</TableHead>
-                  <TableHead className="w-20 text-xs">상태</TableHead>
-                  <TableHead className="w-24 text-right">진척</TableHead>
-                  <TableHead className="w-32 text-right">완수 시각</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {progress.map((m) => (
-                  <TableRow key={m.profileId}>
-                    <TableCell>
-                      <Link
-                        to={`/admin/students/${m.profileId}`}
-                        viewTransition
-                        className="hover:text-primary text-sm font-medium"
-                      >
-                        {m.name}
-                      </Link>
-                      {m.email ? (
-                        <p className="text-muted-foreground text-[10px]">
-                          {m.email}
-                        </p>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          m.status === "completed"
-                            ? "default"
-                            : m.status === "partial"
-                              ? "secondary"
-                              : "outline"
-                        }
-                        className={cn("text-[10px]", STATUS_TONE[m.status])}
-                      >
-                        {m.status === "completed" ? (
-                          <CheckCircle2Icon className="size-3" />
-                        ) : null}
-                        {ASSIGNMENT_STATUS_LABEL[m.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {m.completedItems}/{m.totalItems}
-                    </TableCell>
-                    <TableCell className="text-right text-xs tabular-nums">
-                      {m.completedAt
-                        ? m.completedAt.slice(0, 16).replace("T", " ")
-                        : "—"}
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <h2 className="text-base font-semibold">
+          학생별 진척 ({progress.length}명)
+        </h2>
+        <IndexTable
+          minWidth={600}
+          headers={[
+            { label: "학생" },
+            { label: "상태", width: "6rem" },
+            { label: "진척", align: "right", width: "6rem" },
+            { label: "완수 시각", align: "right", width: "9rem" },
+          ]}
+        >
+          {progress.map((m) => (
+            <ProgressRow key={m.profileId} m={m} />
+          ))}
+        </IndexTable>
       </section>
-    </div>
+    </AdminShell>
+  );
+}
+
+function ProgressRow({ m }: { m: MemberAssignmentProgress }) {
+  const statusMap: Record<AssignmentStatus, Parameters<typeof StatusChip>[0]["status"]> = {
+    pending: "pending",
+    partial: "warn",
+    completed: "completed",
+  };
+  return (
+    <TR>
+      <TD>
+        <Link
+          to={`/admin/students/${m.profileId}`}
+          viewTransition
+          className="hover:text-primary text-[13px] font-medium"
+        >
+          {m.name}
+        </Link>
+        {m.email ? (
+          <p className="text-muted-foreground text-[10px]">{m.email}</p>
+        ) : null}
+      </TD>
+      <TD>
+        <StatusChip
+          status={statusMap[m.status]}
+          label={ASSIGNMENT_STATUS_LABEL[m.status]}
+        />
+      </TD>
+      <TD align="right" mono>
+        {m.completedItems}/{m.totalItems}
+      </TD>
+      <TD align="right" soft mono>
+        {m.completedAt ? m.completedAt.slice(0, 16).replace("T", " ") : "—"}
+      </TD>
+    </TR>
   );
 }
 
@@ -294,7 +287,7 @@ function AssignmentMetaForm({ assignment }: { assignment: AssignmentDetail }) {
     <fetcher.Form
       method="post"
       action="/api/admin/assignment"
-      className="bg-card mt-2 space-y-2 rounded-md border p-4"
+      className="bg-card mt-2 space-y-3 rounded-xl border p-4 shadow-sm"
     >
       <input type="hidden" name="intent" value="update" />
       <input type="hidden" name="assignmentId" value={assignment.assignmentId} />
@@ -333,12 +326,7 @@ function AssignmentMetaForm({ assignment }: { assignment: AssignmentDetail }) {
         <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setEditing(false)}
-        >
+        <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
           <XIcon className="size-3.5" /> 취소
         </Button>
         <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
@@ -375,14 +363,10 @@ function ItemRow({ item }: { item: AssignmentItem }) {
       <span className="text-muted-foreground w-6 text-center text-xs tabular-nums">
         {item.ord + 1}
       </span>
-      <Badge variant="outline" className="w-20 justify-center text-[10px]">
-        {ASSIGNMENT_ITEM_KIND_LABEL[item.kind]}
-      </Badge>
+      <Chip tone="outline">{ASSIGNMENT_ITEM_KIND_LABEL[item.kind]}</Chip>
       <div className="min-w-0 flex-1 truncate text-xs">{refLabel}</div>
       {item.targetQuantity ? (
-        <Badge variant="secondary" className="text-[10px]">
-          x{item.targetQuantity}
-        </Badge>
+        <Chip tone="neutral">x{item.targetQuantity}</Chip>
       ) : null}
       {item.note ? (
         <span className="text-muted-foreground truncate text-[10px] italic">
@@ -435,12 +419,7 @@ function NewItemForm({
   }, [fetcher.state, fetcher.data, reload]);
   if (!open) {
     return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full"
-        onClick={() => setOpen(true)}
-      >
+      <Button size="sm" variant="outline" className="w-full" onClick={() => setOpen(true)}>
         <PlusIcon className="size-3.5" /> 항목 추가
       </Button>
     );
@@ -449,7 +428,7 @@ function NewItemForm({
     <fetcher.Form
       method="post"
       action="/api/admin/assignment"
-      className="bg-muted/30 space-y-2 rounded-md border p-3"
+      className="bg-muted/30 space-y-2 rounded-xl border p-3"
     >
       <input type="hidden" name="intent" value="upsert_item" />
       <input type="hidden" name="assignmentId" value={assignmentId} />
@@ -459,7 +438,7 @@ function NewItemForm({
           name="kind"
           value={kind}
           onChange={(e) => setKind(e.target.value as AssignmentItemKind)}
-          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+          className="border-input bg-background focus:border-primary h-8 rounded-md border px-2 text-xs outline-none"
         >
           {ASSIGNMENT_ITEM_KINDS.map((k) => (
             <option key={k} value={k}>
@@ -496,12 +475,7 @@ function NewItemForm({
         <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setOpen(false)}
-        >
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
           취소
         </Button>
         <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>

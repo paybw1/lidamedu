@@ -2,19 +2,18 @@
 // staff (instructor/admin) 만 접근. 미읽음 우선, 클릭 시 navigate + read 처리.
 
 import {
-  ArrowLeftIcon,
   BellIcon,
   CheckCheckIcon,
   ClipboardCheckIcon,
   MessageCircleQuestionIcon,
 } from "lucide-react";
-import { Form, Link, data } from "react-router";
+import { Form, Link, data, useFetcher } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   listStaffNotifications,
@@ -44,7 +43,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     user.id,
     { onlyUnread, limit: 100 },
   );
-  return { items, unreadCount, onlyUnread };
+  return { items, unreadCount, onlyUnread, role };
 }
 
 const KIND_LABEL: Partial<Record<StaffNotificationKind, string>> = {
@@ -72,129 +71,149 @@ function formatRelative(iso: string): string {
 }
 
 export default function StaffInbox({ loaderData }: Route.ComponentProps) {
-  const { items, unreadCount, onlyUnread } = loaderData;
+  const { items, unreadCount, onlyUnread, role } = loaderData;
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <BellIcon className="size-3.5" /> 강사
-        </p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">알림 인박스</h1>
+    <AdminShell
+      cluster="comms"
+      role={role}
+      title="알림 인박스"
+      desc="운영진 수신 알림. 미읽음 항목을 우선으로 표시합니다."
+      headerRight={
+        unreadCount > 0 ? (
+          <Form method="post" action="/api/notifications/mark-read">
+            <input type="hidden" name="all" value="1" />
+            <Button type="submit" size="sm" variant="outline" className="h-8">
+              <CheckCheckIcon className="size-3.5" /> 모두 읽음 처리
+            </Button>
+          </Form>
+        ) : undefined
+      }
+    >
+      {/* 읽음 필터 탭 */}
+      <div className="mb-3 flex items-center gap-1.5">
+        <Link
+          to="/admin/inbox"
+          className={cn(
+            "inline-flex h-8 items-center rounded-full border px-3 text-[13px] font-semibold transition-colors",
+            !onlyUnread
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border hover:bg-muted/40",
+          )}
+        >
+          전체
+        </Link>
+        <Link
+          to="/admin/inbox?filter=unread"
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors",
+            onlyUnread
+              ? "bg-primary text-primary-foreground border-primary"
+              : "border-border hover:bg-muted/40",
+          )}
+        >
+          미읽음
           {unreadCount > 0 ? (
-            <Form method="post" action="/api/notifications/mark-read">
-              <input type="hidden" name="all" value="1" />
-              <Button type="submit" size="sm" variant="outline" className="h-8">
-                <CheckCheckIcon className="size-3.5" /> 모두 읽음 처리
-              </Button>
-            </Form>
+            <span
+              className={cn(
+                "inline-flex size-5 items-center justify-center rounded-full text-[11px] tabular-nums",
+                onlyUnread ? "bg-white/20" : "bg-rose-500 text-white",
+              )}
+            >
+              {unreadCount}
+            </span>
           ) : null}
-        </div>
-        <div className="flex gap-2 text-xs">
-          <Link
-            to="/admin/inbox"
-            className={cn(
-              "rounded-full border px-3 py-1",
-              !onlyUnread
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-accent",
-            )}
-          >
-            전체
-          </Link>
-          <Link
-            to="/admin/inbox?filter=unread"
-            className={cn(
-              "rounded-full border px-3 py-1",
-              onlyUnread
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-accent",
-            )}
-          >
-            미읽음 {unreadCount > 0 ? `(${unreadCount})` : ""}
-          </Link>
-        </div>
-      </header>
+        </Link>
+      </div>
 
+      {/* 빈 상태 */}
       {items.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
+        <div className="border-border bg-card text-muted-foreground flex flex-col items-center gap-2 rounded-xl border py-16 text-center shadow-sm">
+          <BellIcon className="size-8 opacity-30" />
+          <p className="text-sm font-medium">
             {onlyUnread ? "미읽음 알림이 없습니다." : "알림이 없습니다."}
           </p>
         </div>
       ) : (
-        <ul className="space-y-2" data-testid="staff-inbox-list">
+        <IndexTable
+          minWidth={560}
+          testid="staff-inbox-list"
+          headers={[
+            { label: "종류", width: "9rem" },
+            { label: "내용" },
+            { label: "시각", align: "right", width: "7rem" },
+            { label: "", width: "3rem" },
+          ]}
+          footer={
+            <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
+              총 {items.length}건
+              {unreadCount > 0 ? ` · 미읽음 ${unreadCount}건` : ""}
+            </div>
+          }
+        >
           {items.map((it) => (
-            <li key={it.notificationId}>
-              <NotificationCard item={it} />
-            </li>
+            <InboxRow key={it.notificationId} item={it} />
           ))}
-        </ul>
+        </IndexTable>
       )}
-    </div>
+    </AdminShell>
   );
 }
 
-function NotificationCard({ item }: { item: StaffNotificationItem }) {
+/* ── 알림 행 ─────────────────────────────────────────────────────────── */
+
+function InboxRow({ item }: { item: StaffNotificationItem }) {
   const Icon = KIND_ICON[item.kind] ?? ClipboardCheckIcon;
   const isUnread = item.readAt === null;
+  const kindLabel = KIND_LABEL[item.kind] ?? item.kind;
+  const fetcher = useFetcher();
+
+  const handleClick = () => {
+    const fd = new FormData();
+    fd.set("notificationId", item.notificationId);
+    fetcher.submit(fd, { method: "post", action: "/api/notifications/mark-read" });
+    window.location.href = item.href;
+  };
+
   return (
-    <Form
-      method="post"
-      action="/api/notifications/mark-read"
-      // 클릭 시 read 처리 후 href 로 이동.
-      onSubmit={(e) => {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget);
-        fetch("/api/notifications/mark-read", { method: "POST", body: fd });
-        window.location.href = item.href;
-      }}
-    >
-      <input type="hidden" name="notificationId" value={item.notificationId} />
-      <button
-        type="submit"
-        className="w-full text-left"
-        data-testid="inbox-item"
-      >
-        <Card
+    <TR active={isUnread} onClick={handleClick} testid="inbox-item">
+      <TD>
+        <div className="flex items-center gap-1.5">
+          <Icon
+            className={cn(
+              "size-3.5 shrink-0",
+              isUnread ? "text-primary" : "text-muted-foreground",
+            )}
+          />
+          <Chip tone={isUnread ? "blue" : "neutral"}>{kindLabel}</Chip>
+        </div>
+      </TD>
+      <TD>
+        <p
           className={cn(
-            "hover:border-primary transition-colors",
-            isUnread && "border-primary/40 bg-primary/5",
+            "line-clamp-1 text-[13px]",
+            isUnread ? "font-semibold" : "font-medium",
           )}
         >
-          <CardHeader className="px-4 pb-2">
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <Icon className="text-primary size-4 shrink-0" />
-              <Badge variant={isUnread ? "default" : "outline"}>
-                {KIND_LABEL[item.kind] ?? item.kind}
-              </Badge>
-              {isUnread ? (
-                <Badge variant="destructive" className="text-[10px]">
-                  NEW
-                </Badge>
-              ) : null}
-              <span className="text-muted-foreground ml-auto tabular-nums">
-                {formatRelative(item.createdAt)}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <p className="text-sm font-medium leading-snug">{item.title}</p>
-            {item.body ? (
-              <p className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed">
-                {item.body}
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-      </button>
-    </Form>
+          {item.title}
+        </p>
+        {item.body ? (
+          <p className="text-muted-foreground line-clamp-1 text-[11px]">
+            {item.body}
+          </p>
+        ) : null}
+      </TD>
+      <TD align="right" mono soft>
+        <span title={item.createdAt}>{formatRelative(item.createdAt)}</span>
+      </TD>
+      <TD align="center">
+        {isUnread ? (
+          <span
+            aria-label="미읽음"
+            className="inline-block size-2 rounded-full bg-rose-500"
+          />
+        ) : null}
+      </TD>
+    </TR>
   );
 }

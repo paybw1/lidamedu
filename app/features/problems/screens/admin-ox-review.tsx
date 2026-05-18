@@ -1,12 +1,8 @@
 // 운영자 정오문제(OX) 검토 — 과목별 OX 후보 지문(choice/box-item) 일괄 검토 및 인라인 수정.
 // 학생 노출 조건(active) 외에도 `ineligible`, `untruthed` 항목을 함께 보고 토글 가능.
+// P6 REVIEW QUEUE 패턴 — AdminShell + IndexTable + 인라인 필터 + Chip.
 
-import {
-  ArrowLeftIcon,
-  CheckCircle2Icon,
-  EditIcon,
-  FilterIcon,
-} from "lucide-react";
+import { CheckCircle2Icon, EditIcon } from "lucide-react";
 import {
   Form,
   Link,
@@ -15,19 +11,18 @@ import {
   useSearchParams,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  AdminSelect,
+  Chip,
+  FilterGroup,
+  IndexTable,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   listOxItemsForReview,
@@ -121,11 +116,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     ).length,
   }));
 
-  return { subject, status, year: Number.isFinite(year) ? year : null, items, years, counts };
+  return { subject, status, year: Number.isFinite(year) ? year : null, items, years, counts, role };
 }
 
 export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
-  const { subject, status, year, items, years, counts } = loaderData;
+  const { subject, status, year, items, years, counts, role } = loaderData;
   const [searchParams] = useSearchParams();
   const querySuffix = (next: Record<string, string>) => {
     const sp = new URLSearchParams(searchParams);
@@ -137,38 +132,28 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <CheckCircle2Icon className="size-3.5" /> 운영자 모드 · 정오문제
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">정오문제 관리</h1>
-        <p className="text-muted-foreground text-sm">
+    <AdminShell
+      cluster="problems"
+      role={role}
+      width={1280}
+      title="정오문제 관리"
+      desc={
+        <>
           객관식 보기와 박스형 사례 지문 중 OX(정오) 후보를 한 화면에서 검토합니다.
-          학생에게 노출되는 조건은 <span className="font-semibold">노출 중</span> —
-          {" "}
-          <code className="rounded bg-muted px-1 text-[11px]">
+          학생에게 노출되는 조건은{" "}
+          <span className="font-semibold">노출 중</span> —{" "}
+          <code className="bg-muted rounded px-1 text-[11px]">
             ox_truth NOT NULL · ox_ineligible=false · related_article 매핑됨
           </code>
-        </p>
-      </header>
-
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterIcon className="text-muted-foreground size-4" />
-            <Form method="get" className="flex flex-wrap items-center gap-2">
-              <select
-                name="subject"
-                defaultValue={subject}
-                className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-              >
+        </>
+      }
+    >
+      {/* 필터 바 */}
+      <div className="border-border bg-card mb-3 rounded-xl border p-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <Form method="get" className="flex flex-wrap items-center gap-3">
+            <FilterGroup label="과목">
+              <AdminSelect name="subject" defaultValue={subject}>
                 <optgroup label="1차 · 객관식">
                   {FIRST_EXAM_LAW_SLUGS.map((s) => (
                     <option key={s} value={s}>
@@ -183,92 +168,89 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
                     </option>
                   ))}
                 </optgroup>
-              </select>
-              <select
-                name="year"
-                defaultValue={year ?? ""}
-                className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-              >
+              </AdminSelect>
+            </FilterGroup>
+            <FilterGroup label="연도">
+              <AdminSelect name="year" defaultValue={year ?? ""}>
                 <option value="">전체 연도</option>
                 {years.map((y) => (
                   <option key={y} value={y}>
                     {y}
                   </option>
                 ))}
-              </select>
-              <input type="hidden" name="status" value={status} />
-              <Button type="submit" size="sm" variant="outline" className="h-8">
-                적용
-              </Button>
-            </Form>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-1">
-            {STATUS_OPTIONS.map((opt) => {
-              const active = status === opt.value;
-              return (
-                <Link
-                  key={opt.value}
-                  to={querySuffix({ status: opt.value })}
-                  className={cn(
-                    "rounded-md border px-2 py-1 text-xs transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background hover:bg-accent border-input text-muted-foreground",
-                  )}
-                  title={opt.hint}
-                >
-                  {opt.label}
-                  <span className="ml-1 tabular-nums">
-                    {counts[opt.value]}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-xs">
+              </AdminSelect>
+            </FilterGroup>
+            <input type="hidden" name="status" value={status} />
+            <Button type="submit" size="sm" variant="outline">
+              적용
+            </Button>
+          </Form>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {STATUS_OPTIONS.map((opt) => {
+            const isActive = status === opt.value;
+            return (
+              <Link
+                key={opt.value}
+                to={querySuffix({ status: opt.value })}
+                title={opt.hint}
+                className={cn(
+                  "inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors whitespace-nowrap",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:bg-muted/60",
+                )}
+              >
+                {opt.label}
+                <span className="tabular-nums">{counts[opt.value]}</span>
+              </Link>
+            );
+          })}
+          <span className="text-muted-foreground ml-auto text-xs">
             {LAW_SUBJECTS[subject].name} · 결과{" "}
             <span className="text-foreground font-bold tabular-nums">
               {items.length}
             </span>
             건
             {items.length >= 800 ? " (상한 800)" : ""}
-          </p>
-        </CardContent>
-      </Card>
+          </span>
+        </div>
+      </div>
 
       {items.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">조건에 맞는 OX 후보가 없습니다.</p>
+        <div className="border-border bg-card rounded-xl border py-16 text-center shadow-sm">
+          <CheckCircle2Icon className="text-muted-foreground mx-auto mb-3 size-8" />
+          <p className="text-muted-foreground text-sm">
+            조건에 맞는 OX 후보가 없습니다.
+          </p>
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[88px]">출처/연도</TableHead>
-                  <TableHead className="w-[70px]">유형</TableHead>
-                  <TableHead className="min-w-[300px]">지문</TableHead>
-                  <TableHead className="w-[160px]">조문</TableHead>
-                  <TableHead className="w-[150px]">정답 OX</TableHead>
-                  <TableHead className="w-[110px]">OX 불가</TableHead>
-                  <TableHead className="w-[80px]">편집</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((it) => (
-                  <OxReviewRow key={`${it.refType}:${it.refId}`} item={it} subject={subject} />
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <IndexTable
+          minWidth={780}
+          headers={[
+            { label: "출처/연도", width: "7rem" },
+            { label: "유형", width: "6rem" },
+            { label: "지문" },
+            { label: "조문", width: "11rem" },
+            { label: "정답 OX", width: "9rem" },
+            { label: "OX 불가", width: "7rem" },
+            { label: "편집", width: "4rem", align: "center" },
+          ]}
+        >
+          {items.map((it) => (
+            <OxReviewRow
+              key={`${it.refType}:${it.refId}`}
+              item={it}
+              subject={subject}
+            />
+          ))}
+        </IndexTable>
       )}
-    </div>
+    </AdminShell>
   );
 }
+
+/* ── OX 행 — 낙관적 인라인 수정 ──────────────────────────────────────── */
 
 function OxReviewRow({
   item,
@@ -315,14 +297,14 @@ function OxReviewRow({
         disabled={isSubmitting || ineligible}
         aria-pressed={isActive}
         className={cn(
-          "h-7 min-w-[28px] rounded border px-1.5 text-xs transition-colors disabled:opacity-50",
+          "h-7 min-w-[28px] rounded border px-1.5 text-xs font-bold transition-colors disabled:opacity-50",
           isActive
             ? val === "O"
               ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
               : val === "X"
                 ? "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
-                : "border-input bg-muted text-muted-foreground"
-            : "border-input bg-background hover:bg-accent text-muted-foreground",
+                : "border-border bg-muted text-muted-foreground"
+            : "border-border bg-background hover:bg-muted text-muted-foreground",
         )}
       >
         {label}
@@ -333,30 +315,29 @@ function OxReviewRow({
   const isActiveStatus = !ineligible && truth != null && item.relatedArticleId != null;
 
   return (
-    <TableRow className={cn(ineligible && "opacity-60")}>
-      <TableCell className="text-xs">
-        <div className="font-medium tabular-nums">
+    <TR>
+      <TD soft className={cn(ineligible && "opacity-60")}>
+        <p className="font-mono text-[13px] font-semibold tabular-nums">
           {item.year ?? "—"}
           {item.problemNumber ? ` · ${item.problemNumber}번` : ""}
-        </div>
-        <div className="text-muted-foreground text-[10px] uppercase tracking-wide">
+        </p>
+        <p className="text-muted-foreground text-[10px] uppercase tracking-wide">
           {item.origin}
+        </p>
+      </TD>
+      <TD className={cn(ineligible && "opacity-60")}>
+        <div className="flex flex-wrap gap-1">
+          <Chip tone="neutral">
+            {item.refType === "choice"
+              ? "보기"
+              : `박스${item.marker ? ` ${item.marker}` : ""}`}
+          </Chip>
+          {isActiveStatus ? (
+            <Chip tone="emerald">노출</Chip>
+          ) : null}
         </div>
-      </TableCell>
-      <TableCell>
-        <Badge variant="secondary" className="text-[10px]">
-          {item.refType === "choice" ? "보기" : `박스${item.marker ? ` ${item.marker}` : ""}`}
-        </Badge>
-        {isActiveStatus ? (
-          <Badge
-            variant="default"
-            className="ml-1 bg-emerald-600 text-[10px] hover:bg-emerald-600"
-          >
-            노출
-          </Badge>
-        ) : null}
-      </TableCell>
-      <TableCell>
+      </TD>
+      <TD className={cn(ineligible && "opacity-60")}>
         <p className="font-serif text-sm leading-snug whitespace-pre-line">
           {item.bodyMd}
         </p>
@@ -365,28 +346,28 @@ function OxReviewRow({
             (원본 객관식: {item.isCorrect ? "정답 보기" : "오답 보기"})
           </p>
         ) : null}
-      </TableCell>
-      <TableCell className="text-xs">
+      </TD>
+      <TD className={cn(ineligible && "opacity-60")}>
         {item.relatedArticleId && item.relatedArticleNumber ? (
           <Link
             to={`/subjects/${subject}/articles/${item.relatedArticleNumber}`}
             viewTransition
-            className="text-primary hover:underline"
+            className="text-primary text-xs hover:underline"
           >
             {item.relatedArticleLabel ?? item.relatedArticleNumber}
           </Link>
         ) : (
-          <span className="text-muted-foreground italic">미매핑</span>
+          <span className="text-muted-foreground text-xs italic">미매핑</span>
         )}
-      </TableCell>
-      <TableCell>
+      </TD>
+      <TD>
         <div className="inline-flex items-center gap-1">
           {truthBtn("O")}
           {truthBtn("X")}
           {truthBtn("")}
         </div>
-      </TableCell>
-      <TableCell>
+      </TD>
+      <TD>
         <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs">
           <input
             type="checkbox"
@@ -399,19 +380,14 @@ function OxReviewRow({
           />
           불가 처리
         </label>
-      </TableCell>
-      <TableCell>
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs"
-        >
+      </TD>
+      <TD align="center">
+        <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
           <Link to={`/admin/problems/${item.problemId}`} viewTransition>
             <EditIcon className="size-3" />
           </Link>
         </Button>
-      </TableCell>
-    </TableRow>
+      </TD>
+    </TR>
   );
 }

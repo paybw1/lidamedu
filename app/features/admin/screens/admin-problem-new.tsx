@@ -1,17 +1,18 @@
 // 객관식 문제 신규 출제 (feat-7-006).
 // 최소 메타 + 본문 입력 → INSERT 후 상세 편집(/admin/problems/:problemId) 로 redirect.
+// P3 EDIT FORM 패턴 — AdminShell + Field + AdminSelect 통일.
 
-import { ArrowLeftIcon, ListChecksIcon, SaveIcon } from "lucide-react";
+import { SaveIcon } from "lucide-react";
 import { useState } from "react";
 import { Form, Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
-import { Label } from "~/core/components/ui/label";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
 import { listAllGsRounds } from "~/features/gs/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MCQ_PACK_KIND_SHORT } from "~/features/mcq-packs/labels";
@@ -88,13 +89,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       roundNumber: r.roundNumber,
     }));
 
-  return { defaultFormat, defaultExamRound, packs, gsRounds };
+  return { defaultFormat, defaultExamRound, packs, gsRounds, role };
 }
 
 export default function AdminProblemNew({
   loaderData,
 }: Route.ComponentProps) {
-  const { defaultFormat, defaultExamRound, packs, gsRounds } = loaderData;
+  const { defaultFormat, defaultExamRound, packs, gsRounds, role } = loaderData;
   // lawCode 와 format 을 React state 로 추적 → 그에 맞는 mcq pack / GS round 옵션을 클라이언트에서 필터.
   const [lawCode, setLawCode] = useState<string>("patent");
   const [format, setFormat] = useState<string>(defaultFormat);
@@ -117,44 +118,44 @@ export default function AdminProblemNew({
   });
   // GS 회차는 lawCode 와 정확히 일치하는 subject 만 (industrial 통합 GS 는 없음).
   const availableGsRounds = gsRounds.filter((r) => r.subject === lawCode);
-  return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={defaultFormat === "subjective" ? "/admin" : "/admin/problems"}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" />{" "}
-        {defaultFormat === "subjective" ? "운영자" : "객관식 문제 관리"}
-      </Link>
-      <header className="mb-6">
-        <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <ListChecksIcon className="text-primary size-6" />{" "}
-          {defaultFormat === "subjective"
-            ? "주관식 신규 출제"
-            : "객관식 신규 출제"}
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          저장하면 상세 편집 화면(지문·해설·연관 조문/판례)으로 이동합니다.
-        </p>
-      </header>
 
+  const pageTitle =
+    defaultFormat === "subjective" ? "주관식 신규 출제" : "객관식 신규 출제";
+
+  return (
+    <AdminShell
+      cluster="problems"
+      role={role}
+      width={960}
+      title={pageTitle}
+      desc="최소 메타 + 본문을 입력하고 저장하면 상세 편집 화면(지문·해설·연관 조문/판례)으로 이동합니다."
+      headerRight={
+        <Button type="submit" form="admin-problem-new-form" size="sm">
+          <SaveIcon className="size-3.5" /> 저장 후 상세 편집으로 이동
+        </Button>
+      }
+    >
       <Form
+        id="admin-problem-new-form"
         method="post"
         action="/api/admin/problem-create"
         className="space-y-4"
       >
         <Card>
           <CardHeader>
-            <h2 className="text-sm font-semibold">분류</h2>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              분류
+            </p>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <Field label="과목" required>
-              <select
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="과목" required htmlFor="lawCode">
+              <AdminSelect
+                id="lawCode"
                 name="lawCode"
                 value={lawCode}
                 onChange={(e) => setLawCode(e.target.value)}
                 required
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="w-full"
               >
                 <optgroup label="1차 · 객관식">
                   {FIRST_EXAM_LAW_SLUGS.map((s) => (
@@ -170,24 +171,28 @@ export default function AdminProblemNew({
                     </option>
                   ))}
                 </optgroup>
-              </select>
+              </AdminSelect>
             </Field>
-            <Field label="시험 차수" required>
-              <select
+
+            <Field label="시험 차수" required htmlFor="examRound">
+              <AdminSelect
+                id="examRound"
                 name="examRound"
                 defaultValue={defaultExamRound}
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="w-full"
               >
                 <option value="first">1차</option>
                 <option value="second">2차</option>
-              </select>
+              </AdminSelect>
             </Field>
-            <Field label="출처" required>
-              <select
+
+            <Field label="출처" required htmlFor="origin">
+              <AdminSelect
+                id="origin"
                 name="origin"
                 defaultValue="past_exam"
                 required
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="w-full"
               >
                 {(
                   [
@@ -201,15 +206,17 @@ export default function AdminProblemNew({
                     {ORIGIN_LABEL[o]}
                   </option>
                 ))}
-              </select>
+              </AdminSelect>
             </Field>
-            <Field label="유형" required>
-              <select
+
+            <Field label="유형" required htmlFor="format">
+              <AdminSelect
+                id="format"
                 name="format"
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
                 required
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="w-full"
               >
                 {(
                   [
@@ -225,41 +232,68 @@ export default function AdminProblemNew({
                     {FORMAT_LABEL[f]}
                   </option>
                 ))}
-              </select>
+              </AdminSelect>
             </Field>
-            <Field label="극성">
-              <select
+
+            <Field label="극성" htmlFor="polarity">
+              <AdminSelect
+                id="polarity"
                 name="polarity"
                 defaultValue=""
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="w-full"
               >
                 <option value="">선택 안 함</option>
                 <option value="positive">{POLARITY_LABEL.positive}</option>
                 <option value="negative">{POLARITY_LABEL.negative}</option>
-              </select>
+              </AdminSelect>
             </Field>
-            <Field label="단원/종합">
-              <select
+
+            <Field label="단원/종합" htmlFor="scope">
+              <AdminSelect
+                id="scope"
                 name="scope"
                 defaultValue=""
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="w-full"
               >
                 <option value="">선택 안 함</option>
                 <option value="unit">{SCOPE_LABEL.unit}</option>
                 <option value="comprehensive">{SCOPE_LABEL.comprehensive}</option>
-              </select>
+              </AdminSelect>
             </Field>
-            <Field label="연도">
-              <Input type="number" name="year" min={1990} max={2099} />
-            </Field>
-            <Field label="회차">
-              <Input type="number" name="examRoundNo" min={1} max={99} />
-            </Field>
-            <Field label="문제 번호">
-              <Input type="number" name="problemNumber" min={1} max={9999} />
-            </Field>
-            <Field label="지문 수 (mc 계열만)">
+
+            <Field label="연도" htmlFor="year">
               <Input
+                id="year"
+                type="number"
+                name="year"
+                min={1990}
+                max={2099}
+              />
+            </Field>
+
+            <Field label="회차" htmlFor="examRoundNo">
+              <Input
+                id="examRoundNo"
+                type="number"
+                name="examRoundNo"
+                min={1}
+                max={99}
+              />
+            </Field>
+
+            <Field label="문제 번호" htmlFor="problemNumber">
+              <Input
+                id="problemNumber"
+                type="number"
+                name="problemNumber"
+                min={1}
+                max={9999}
+              />
+            </Field>
+
+            <Field label="지문 수 (mc 계열만)" htmlFor="choiceCount">
+              <Input
+                id="choiceCount"
                 type="number"
                 name="choiceCount"
                 defaultValue={5}
@@ -273,19 +307,35 @@ export default function AdminProblemNew({
         {isSubjective ? (
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold">
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                 온라인 GS 회차 등록{" "}
-                <span className="text-muted-foreground text-xs font-normal">
-                  (선택)
-                </span>
-              </h2>
+                <span className="font-normal normal-case">(선택)</span>
+              </p>
             </CardHeader>
             <CardContent>
-              <Field label="이 문제를 등록할 GS 회차">
-                <select
+              <Field
+                label="이 문제를 등록할 GS 회차"
+                htmlFor="gsRoundId"
+                hint={
+                  <>
+                    선택하면 그 GS 회차의 문제로도 자동 등록되어 학생이 채점·통계
+                    흐름을 탈 수 있습니다. 새 회차는{" "}
+                    <Link
+                      to="/admin/gs/new"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
+                      /admin/gs/new
+                    </Link>{" "}
+                    에서 만들고 돌아오세요.
+                  </>
+                }
+              >
+                <AdminSelect
+                  id="gsRoundId"
                   name="gsRoundId"
                   defaultValue=""
-                  className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                  className="w-full"
                 >
                   <option value="">없음 (나중에 GS 회차에서 추가)</option>
                   {availableGsRounds.length === 0 ? (
@@ -301,19 +351,8 @@ export default function AdminProblemNew({
                       </option>
                     ))
                   )}
-                </select>
+                </AdminSelect>
               </Field>
-              <p className="text-muted-foreground mt-2 text-[11px]">
-                선택하면 그 GS 회차의 문제로도 자동 등록되어, 학생이 답안지 페이지를 업로드하고 채점·통계 흐름을 탈 수 있습니다. 새 회차는{" "}
-                <Link
-                  to="/admin/gs/new"
-                  className="text-primary hover:underline"
-                  target="_blank"
-                >
-                  /admin/gs/new
-                </Link>{" "}
-                에서 만들고 돌아오세요.
-              </p>
             </CardContent>
           </Card>
         ) : null}
@@ -321,19 +360,38 @@ export default function AdminProblemNew({
         {isMcqFormat ? (
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold">
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                 객관식 pack 매핑{" "}
-                <span className="text-muted-foreground text-xs font-normal">
-                  (선택)
-                </span>
-              </h2>
+                <span className="font-normal normal-case">(선택)</span>
+              </p>
             </CardHeader>
             <CardContent>
-              <Field label="이 문제를 추가할 pack">
-                <select
+              <Field
+                label="이 문제를 추가할 pack"
+                htmlFor="mcqPackId"
+                hint={
+                  <>
+                    pack에 추가하면{" "}
+                    <span className="font-semibold">
+                      최신 정보 → 객관식 문제
+                    </span>
+                    에서 학생이 풀이를 시작할 수 있습니다. 새 pack은{" "}
+                    <Link
+                      to="/latest/mcq"
+                      className="text-primary hover:underline"
+                      target="_blank"
+                    >
+                      /latest/mcq
+                    </Link>{" "}
+                    에서 먼저 만들고 돌아오세요.
+                  </>
+                }
+              >
+                <AdminSelect
+                  id="mcqPackId"
                   name="mcqPackId"
                   defaultValue=""
-                  className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                  className="w-full"
                 >
                   <option value="">없음 (나중에 매핑)</option>
                   {availablePacks.length === 0 ? (
@@ -352,35 +410,28 @@ export default function AdminProblemNew({
                       </option>
                     ))
                   )}
-                </select>
+                </AdminSelect>
               </Field>
-              <p className="text-muted-foreground mt-2 text-[11px]">
-                pack 에 추가하면 <span className="font-semibold">최신 정보 → 객관식 문제</span> 에서 학생이 풀이를 시작할 수 있습니다. 새 pack 은{" "}
-                <Link
-                  to="/latest/mcq"
-                  className="text-primary hover:underline"
-                  target="_blank"
-                >
-                  /latest/mcq
-                </Link>{" "}
-                에서 먼저 만들고 돌아오세요.
-              </p>
             </CardContent>
           </Card>
         ) : null}
 
         <Card>
           <CardHeader>
-            <h2 className="text-sm font-semibold">본문</h2>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              본문
+            </p>
           </CardHeader>
           <CardContent>
-            <Textarea
-              name="bodyMd"
-              required
-              rows={8}
-              placeholder="문제 본문(Markdown). 저장 후 상세 편집에서 지문·해설을 채웁니다."
-              className="text-sm"
-            />
+            <Field hint="저장 후 상세 편집에서 지문·해설을 채웁니다.">
+              <Textarea
+                name="bodyMd"
+                required
+                rows={8}
+                placeholder="문제 본문(Markdown). 저장 후 상세 편집에서 지문·해설을 채웁니다."
+                className="font-mono text-sm"
+              />
+            </Field>
           </CardContent>
         </Card>
 
@@ -390,30 +441,6 @@ export default function AdminProblemNew({
           </Button>
         </div>
       </Form>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label className="text-muted-foreground mb-1 block text-[11px]">
-        {label}
-        {required ? (
-          <Badge variant="outline" className="ml-1 text-[9px]">
-            필수
-          </Badge>
-        ) : null}
-      </Label>
-      {children}
-    </div>
+    </AdminShell>
   );
 }

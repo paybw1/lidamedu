@@ -1,44 +1,36 @@
 // feat-7-021 — cohort 단위 과제 목록 + 신규 + 커리큘럼 주차 자동 변환.
 
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
   CalendarIcon,
   ClipboardListIcon,
-  PencilIcon,
   PlusIcon,
   WandSparklesIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
-  Form,
   Link,
   data,
   useFetcher,
-  useLocation,
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Bar,
+  Chip,
+  IndexTable,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import { listAssignmentsByCohort } from "~/features/assignments/queries.server";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import {
-  listCohortCurricula,
   getCurriculumWithWeeks,
+  listCohortCurricula,
 } from "~/features/curricula/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
@@ -87,41 +79,33 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       })),
     );
 
-  return { cohort, assignments, availableWeeks };
+  return { cohort, assignments, availableWeeks, role };
 }
 
 export default function AdminCohortAssignments({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, assignments, availableWeeks } = loaderData;
+  const { cohort, assignments, availableWeeks, role } = loaderData;
   const [tab, setTab] = useState<"new" | "convert" | null>(null);
 
-  return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={`/admin/cohorts/${cohort.cohortId}`}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> {cohort.name}
-      </Link>
+  const completePctAll = assignments.map((a) =>
+    (a.totalMembers ?? 0) > 0
+      ? Math.round(((a.completedMembers ?? 0) / (a.totalMembers as number)) * 100)
+      : 0,
+  );
 
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <ClipboardListIcon className="text-primary size-6" />
-            {cohort.name} — 과제
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            총 {assignments.length}건 · 자동(커리큘럼 주차) + 수동 병행
-          </p>
-        </div>
-        <div className="flex gap-2">
+  return (
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      title={`${cohort.name} — 과제`}
+      desc={`총 ${assignments.length}건 · 자동(커리큘럼 주차) + 수동 병행`}
+      headerRight={
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant={tab === "convert" ? "default" : "outline"}
-            onClick={() =>
-              setTab((v) => (v === "convert" ? null : "convert"))
-            }
+            onClick={() => setTab((v) => (v === "convert" ? null : "convert"))}
             disabled={availableWeeks.length === 0}
           >
             <WandSparklesIcon className="size-3.5" /> 커리큘럼 주차로 자동 생성
@@ -134,14 +118,18 @@ export default function AdminCohortAssignments({
             <PlusIcon className="size-3.5" /> 수동 신규
           </Button>
         </div>
-      </header>
+      }
+    >
+      <Link
+        to={`/admin/cohorts/${cohort.cohortId}`}
+        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-xs"
+      >
+        ← {cohort.name}
+      </Link>
 
       {tab === "new" ? (
         <div className="mb-4">
-          <NewAssignmentForm
-            cohortId={cohort.cohortId}
-            onClose={() => setTab(null)}
-          />
+          <NewAssignmentForm cohortId={cohort.cohortId} onClose={() => setTab(null)} />
         </div>
       ) : null}
       {tab === "convert" ? (
@@ -155,99 +143,92 @@ export default function AdminCohortAssignments({
       ) : null}
 
       {assignments.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            아직 과제가 없습니다.
+        <div className="border-border bg-card text-muted-foreground rounded-xl border py-16 text-center shadow-sm">
+          <ClipboardListIcon className="mx-auto mb-2 size-8 opacity-30" />
+          <p className="text-sm font-medium">아직 과제가 없습니다.</p>
+          <p className="mt-1 text-xs">
             {availableWeeks.length > 0
-              ? " 위에서 커리큘럼 주차를 자동 변환하거나 수동으로 추가하세요."
-              : " 먼저 커리큘럼을 cohort 에 적용하면 주차별로 한 번에 과제를 만들 수 있습니다."}
+              ? "위에서 커리큘럼 주차를 자동 변환하거나 수동으로 추가하세요."
+              : "먼저 커리큘럼을 cohort에 적용하면 주차별로 한 번에 과제를 만들 수 있습니다."}
           </p>
         </div>
       ) : (
-        <Card>
-          <CardContent className="overflow-x-auto p-0">
-            <Table className="min-w-[720px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>제목</TableHead>
-                  <TableHead className="w-24">마감</TableHead>
-                  <TableHead className="w-16 text-right">항목</TableHead>
-                  <TableHead className="w-32 text-right">완수율</TableHead>
-                  <TableHead className="w-20 text-xs">출처</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assignments.map((a) => {
-                  const completePct =
-                    (a.totalMembers ?? 0) > 0
-                      ? Math.round(
-                          ((a.completedMembers ?? 0) /
-                            (a.totalMembers as number)) *
-                            100,
-                        )
-                      : 0;
-                  const overdue =
-                    new Date(a.dueAt).getTime() < Date.now() && completePct < 100;
-                  return (
-                    <TableRow key={a.assignmentId}>
-                      <TableCell>
-                        <Link
-                          to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
-                          viewTransition
-                          className="hover:text-primary text-sm font-medium"
-                        >
-                          {a.title}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 text-xs tabular-nums",
-                            overdue
-                              ? "text-rose-600 dark:text-rose-400"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          <CalendarIcon className="size-3" />
-                          {a.dueAt.slice(0, 10)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {a.itemCount}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {a.completedMembers}/{a.totalMembers} ({completePct}%)
-                      </TableCell>
-                      <TableCell className="text-[10px]">
-                        {a.sourceWeekId ? (
-                          <Badge variant="secondary" className="text-[10px]">
-                            <WandSparklesIcon className="size-3" /> 자동
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">
-                            수동
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
-                          viewTransition
-                          className="text-primary inline-flex items-center text-xs hover:underline"
-                        >
-                          <PencilIcon className="size-3" />
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <IndexTable
+          minWidth={720}
+          headers={[
+            { label: "제목" },
+            { label: "마감", width: "8rem" },
+            { label: "항목", align: "right", width: "5rem" },
+            { label: "완수율", align: "right", width: "10rem" },
+            { label: "출처", width: "5rem" },
+            { label: "", width: "3rem" },
+          ]}
+          footer={
+            <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
+              총 {assignments.length}건
+            </div>
+          }
+        >
+          {assignments.map((a, idx) => {
+            const completePct = completePctAll[idx];
+            const overdue =
+              new Date(a.dueAt).getTime() < Date.now() && completePct < 100;
+            return (
+              <TR key={a.assignmentId}>
+                <TD>
+                  <Link
+                    to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
+                    viewTransition
+                    className="hover:text-primary text-[13px] font-medium"
+                  >
+                    {a.title}
+                  </Link>
+                </TD>
+                <TD mono soft>
+                  <span className={overdue ? "text-rose-600 dark:text-rose-400" : ""}>
+                    <CalendarIcon className="mr-0.5 inline size-3 align-middle" />
+                    {a.dueAt.slice(0, 10)}
+                  </span>
+                </TD>
+                <TD align="right" mono>
+                  {a.itemCount}
+                </TD>
+                <TD align="right">
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[11px] tabular-nums text-foreground">
+                      {a.completedMembers}/{a.totalMembers} ({completePct}%)
+                    </span>
+                    <Bar
+                      value={completePct}
+                      tone="auto"
+                      className="w-20"
+                    />
+                  </div>
+                </TD>
+                <TD>
+                  {a.sourceWeekId ? (
+                    <Chip tone="blue">
+                      <WandSparklesIcon className="size-2.5" /> 자동
+                    </Chip>
+                  ) : (
+                    <Chip tone="neutral">수동</Chip>
+                  )}
+                </TD>
+                <TD align="right">
+                  <Link
+                    to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
+                    viewTransition
+                    className="text-primary text-xs font-semibold hover:underline"
+                  >
+                    편집
+                  </Link>
+                </TD>
+              </TR>
+            );
+          })}
+        </IndexTable>
       )}
-    </div>
+    </AdminShell>
   );
 }
 
@@ -270,12 +251,9 @@ function NewAssignmentForm({
       fetcher.data.ok &&
       fetcher.data.assignmentId
     ) {
-      navigate(
-        `/admin/cohorts/${cohortId}/assignments/${fetcher.data.assignmentId}`,
-      );
+      navigate(`/admin/cohorts/${cohortId}/assignments/${fetcher.data.assignmentId}`);
     }
   }, [fetcher.state, fetcher.data, navigate, cohortId]);
-  // 기본 마감일: 7일 후
   const defaultDue = new Date(Date.now() + 7 * 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 16);
@@ -283,8 +261,9 @@ function NewAssignmentForm({
     <fetcher.Form
       method="post"
       action="/api/admin/assignment"
-      className="bg-card space-y-2 rounded-md border p-4"
+      className="bg-card space-y-3 rounded-xl border p-4 shadow-sm"
     >
+      <p className="text-xs font-semibold">수동 신규 과제</p>
       <input type="hidden" name="intent" value="create" />
       <input type="hidden" name="cohortId" value={cohortId} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_200px]">
@@ -362,9 +341,7 @@ function ConvertWeekForm({
       fetcher.data.ok &&
       fetcher.data.assignmentId
     ) {
-      navigate(
-        `/admin/cohorts/${cohortId}/assignments/${fetcher.data.assignmentId}`,
-      );
+      navigate(`/admin/cohorts/${cohortId}/assignments/${fetcher.data.assignmentId}`);
     }
   }, [fetcher.state, fetcher.data, navigate, cohortId]);
   const defaultDue = new Date(Date.now() + 7 * 24 * 3600 * 1000)
@@ -374,20 +351,20 @@ function ConvertWeekForm({
     <fetcher.Form
       method="post"
       action="/api/admin/assignment"
-      className="bg-card space-y-2 rounded-md border p-4"
+      className="bg-card space-y-3 rounded-xl border p-4 shadow-sm"
     >
-      <input type="hidden" name="intent" value="convert_week" />
-      <input type="hidden" name="cohortId" value={cohortId} />
       <p className="text-muted-foreground text-xs">
         커리큘럼 주차의 학습 항목들을 한 번에 과제로 변환합니다 (강의 항목은 자동 제외).
       </p>
+      <input type="hidden" name="intent" value="convert_week" />
+      <input type="hidden" name="cohortId" value={cohortId} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_200px]">
         <div>
           <Label className="text-muted-foreground text-[11px]">주차 *</Label>
           <select
             name="weekId"
             required
-            className="border-input bg-background mt-1 h-8 w-full rounded-md border px-2 text-xs"
+            className="border-input bg-background focus:border-primary mt-1 h-8 w-full rounded-md border px-2 text-xs outline-none"
           >
             {availableWeeks.map((w) => (
               <option key={w.weekId} value={w.weekId}>

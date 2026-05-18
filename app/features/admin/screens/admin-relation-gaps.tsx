@@ -1,19 +1,17 @@
-// 운영자 — 미배정 자료 패널 (D-10).
+// 운영자 — 미배정 자료 패널 (D-10). P2 LIST 패턴.
 // /admin/relations/gaps?law=patent → 미매핑 조문/판례/문제 일람 + 즉시 매핑 진입점.
 
 import {
-  AlertTriangleIcon,
-  ArrowLeftIcon,
   GavelIcon,
   ListChecksIcon,
   NetworkIcon,
 } from "lucide-react";
 import { Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getRelationGaps } from "~/features/admin/queries/relation-gaps.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   FIRST_EXAM_LAW_SLUGS,
@@ -43,13 +41,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   const parsed = lawSubjectSlugSchema.safeParse(lawParam);
   const lawCode: LawSubjectSlug = parsed.success ? parsed.data : "patent";
   const gaps = await getRelationGaps(client, lawCode, 100);
-  return { gaps, lawCode };
+  return { gaps, lawCode, role };
 }
 
 export default function AdminRelationGaps({
   loaderData,
 }: Route.ComponentProps) {
-  const { gaps, lawCode } = loaderData;
+  const { gaps, lawCode, role } = loaderData;
   const subject = LAW_SUBJECTS[lawCode];
   const totals =
     gaps.unmappedArticles.length +
@@ -57,40 +55,39 @@ export default function AdminRelationGaps({
     gaps.unmappedProblems.length;
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <AlertTriangleIcon className="size-3" /> 콘텐츠 매핑 점검
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">미배정 자료</h1>
-        <p className="text-muted-foreground text-sm">
-          {subject.name} · 총 {totals.toLocaleString("ko-KR")}건
-        </p>
-      </header>
+    <AdminShell
+      cluster="relations"
+      role={role}
+      title="미배정 자료 점검"
+      desc="체계도에 매핑되지 않은 조문, 조문 없는 판례·문제를 과목별로 점검합니다."
+    >
+      {/* 과목 필터 */}
+      <div className="mb-4 space-y-2">
+        <SubjectGroup label="1차 · 객관식" slugs={FIRST_EXAM_LAW_SLUGS} current={lawCode} />
+        <SubjectGroup label="2차 · 주관식" slugs={SECOND_EXAM_LAW_SLUGS} current={lawCode} />
+      </div>
 
-      <nav className="mb-6 space-y-2">
-        <SubjectGroup
-          label="1차 · 객관식"
-          slugs={FIRST_EXAM_LAW_SLUGS}
-          current={lawCode}
-        />
-        <SubjectGroup
-          label="2차 · 주관식"
-          slugs={SECOND_EXAM_LAW_SLUGS}
-          current={lawCode}
-        />
-      </nav>
+      {/* 요약 */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-sm">
+          {subject.name} · 총{" "}
+          <span className="text-foreground tabular-nums font-semibold">
+            {totals.toLocaleString("ko-KR")}
+          </span>
+          건 미배정
+        </span>
+        {totals === 0 ? (
+          <Chip tone="emerald">전체 배정 완료</Chip>
+        ) : (
+          <Chip tone="coral">{totals}건 미배정</Chip>
+        )}
+      </div>
 
+      {/* 3열 패널 */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Section
+        <GapSection
           title="체계도 미매핑 조문"
-          subtitle={`${gaps.unmappedArticles.length}건`}
+          count={gaps.unmappedArticles.length}
           icon={NetworkIcon}
           empty="모든 조문이 체계도에 매핑되어 있습니다."
         >
@@ -103,16 +100,16 @@ export default function AdminRelationGaps({
                   : `/admin/laws/${lawCode}/revisions`
               }
               viewTransition
-              className="hover:bg-accent block rounded-md border px-2 py-1.5 text-xs"
+              className="hover:bg-muted block rounded-lg border px-2.5 py-2 text-xs transition-colors"
             >
               <span className="font-medium">{a.displayLabel}</span>
             </Link>
           ))}
-        </Section>
+        </GapSection>
 
-        <Section
+        <GapSection
           title="조문 매핑 없는 판례"
-          subtitle={`${gaps.unmappedCases.length}건`}
+          count={gaps.unmappedCases.length}
           icon={GavelIcon}
           empty="모든 판례가 최소 1개 조문과 매핑되어 있습니다."
         >
@@ -121,42 +118,36 @@ export default function AdminRelationGaps({
               key={c.caseId}
               to={`/subjects/${lawCode}/cases/${c.caseId}`}
               viewTransition
-              className="hover:bg-accent block rounded-md border px-2 py-1.5 text-xs"
+              className="hover:bg-muted block rounded-lg border px-2.5 py-2 text-xs transition-colors"
             >
               <div className="flex items-center gap-1.5">
                 <span className="font-medium tabular-nums">{c.caseNumber}</span>
                 {c.importance >= 3 ? (
-                  <Badge variant="default" className="text-[10px]">
-                    중요
-                  </Badge>
+                  <Chip tone="blue">중요</Chip>
                 ) : null}
               </div>
               {c.caseTitle ? (
-                <p className="text-muted-foreground line-clamp-1">
-                  {c.caseTitle}
-                </p>
+                <p className="text-muted-foreground mt-0.5 line-clamp-1">{c.caseTitle}</p>
               ) : null}
               {c.decidedAt ? (
-                <p className="text-muted-foreground text-[10px] tabular-nums">
-                  {c.decidedAt}
-                </p>
+                <p className="text-muted-foreground mt-0.5 text-[10px] tabular-nums">{c.decidedAt}</p>
               ) : null}
             </Link>
           ))}
-        </Section>
+        </GapSection>
 
-        <Section
+        <GapSection
           title="조문 매핑 없는 문제"
-          subtitle={`${gaps.unmappedProblems.length}건`}
+          count={gaps.unmappedProblems.length}
           icon={ListChecksIcon}
-          empty="모든 문제가 primary_article 을 가집니다."
+          empty="모든 문제가 primary_article을 가집니다."
         >
           {gaps.unmappedProblems.map((p) => (
             <Link
               key={p.problemId}
               to={`/admin/problems/${p.problemId}`}
               viewTransition
-              className="hover:bg-accent block rounded-md border px-2 py-1.5 text-xs"
+              className="hover:bg-muted block rounded-lg border px-2.5 py-2 text-xs transition-colors"
             >
               <div className="flex items-center gap-1.5">
                 {p.year ? (
@@ -165,22 +156,19 @@ export default function AdminRelationGaps({
                     {p.problemNumber ? `·${p.problemNumber}` : ""}
                   </span>
                 ) : null}
-                <Badge variant="outline" className="text-[10px]">
-                  {p.format}
-                </Badge>
+                <Chip tone="neutral">{p.format}</Chip>
               </div>
-              <p className="text-muted-foreground line-clamp-2">
-                {p.bodySnippet}
-              </p>
+              <p className="text-muted-foreground mt-0.5 line-clamp-2">{p.bodySnippet}</p>
             </Link>
           ))}
-        </Section>
+        </GapSection>
       </div>
-    </div>
+    </AdminShell>
   );
 }
 
-// 과목 선택 chip 행 — 1차/2차 차수별로 묶어 작은 라벨 아래 노출.
+/* ── 과목 선택 칩 행 ─────────────────────────────────────────────────── */
+
 function SubjectGroup({
   label,
   slugs,
@@ -192,7 +180,7 @@ function SubjectGroup({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-muted-foreground w-[88px] shrink-0 text-[11px] font-semibold tracking-wide">
+      <span className="text-muted-foreground w-[88px] shrink-0 text-[11px] font-semibold">
         {label}
       </span>
       {slugs.map((slug) => (
@@ -200,11 +188,11 @@ function SubjectGroup({
           key={slug}
           to={`/admin/relations/gaps?law=${slug}`}
           viewTransition
-          className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+          className={
             slug === current
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background hover:bg-accent border-input text-muted-foreground"
-          }`}
+              ? "bg-primary text-primary-foreground border-primary rounded-md border px-2.5 py-1 text-xs transition-colors"
+              : "bg-background hover:bg-muted border-input text-muted-foreground rounded-md border px-2.5 py-1 text-xs transition-colors"
+          }
         >
           {LAW_SUBJECTS[slug].name}
         </Link>
@@ -213,43 +201,52 @@ function SubjectGroup({
   );
 }
 
-function Section({
+/* ── 갭 섹션 카드 ────────────────────────────────────────────────────── */
+
+function GapSection({
   title,
-  subtitle,
+  count,
   icon: Icon,
   empty,
   children,
 }: {
   title: string;
-  subtitle: string;
+  count: number;
   icon: typeof NetworkIcon;
   empty: string;
   children: React.ReactNode;
 }) {
-  const childrenArr = Array.isArray(children) ? children : [children];
-  const isEmpty = childrenArr.filter(Boolean).length === 0;
+  const items = Array.isArray(children)
+    ? children.filter(Boolean)
+    : children
+      ? [children]
+      : [];
+  const isEmpty = items.length === 0;
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
-            <Icon className="text-primary size-4" />
-            {title}
-          </h2>
-          <span className="text-muted-foreground text-[11px] tabular-nums">
-            {subtitle}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-1">
+    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+      <div className="border-border bg-muted/60 flex items-center justify-between border-b px-4 py-3">
+        <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <Icon className="text-primary size-4" />
+          {title}
+        </h2>
+        <span
+          className={
+            count === 0
+              ? "text-emerald-700 dark:text-emerald-300 tabular-nums text-[11px] font-semibold"
+              : "text-rose-600 dark:text-rose-400 tabular-nums text-[11px] font-semibold"
+          }
+        >
+          {count}건
+        </span>
+      </div>
+      <div className="max-h-96 overflow-y-auto p-3">
         {isEmpty ? (
-          <p className="text-muted-foreground py-6 text-center text-xs">
-            {empty}
-          </p>
+          <p className="text-muted-foreground py-6 text-center text-xs">{empty}</p>
         ) : (
-          children
+          <div className="space-y-1">{children}</div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

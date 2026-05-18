@@ -1,14 +1,14 @@
 // 운영자 case ↔ article 매핑 도구.
-// 매핑 0건 우선 + 검색 + 페이지네이션. 각 case 카드에 article_number 추가/삭제 폼.
+// 리스킨: AdminShell(cluster=cases, P2), FilterBar + Form, IndexTable 대신 카드 목록 유지(매핑 인터랙션 필요).
 
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
   GavelIcon,
   PencilIcon,
   PlusIcon,
+  ScaleIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react";
@@ -22,9 +22,7 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { COURT_LABELS, type CaseCourt } from "~/features/cases/labels";
@@ -33,6 +31,8 @@ import {
   type CaseMapperRow,
   type CaseMapperSort,
 } from "~/features/admin/queries/case-mapper.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { AdminSelect, Chip } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   FIRST_EXAM_LAW_SLUGS,
@@ -48,11 +48,9 @@ export const meta: Route.MetaFunction = () => [
   { title: "판례 매핑 관리 | Lidam Patent Attorney Academy" },
 ];
 
-// 선고연도 필터 입력 경계 — loader 검증과 number input min/max 가 공유.
 const MIN_YEAR = 1900;
 const MAX_YEAR = 2200;
 
-// 선고연도 쿼리 파라미터 → 정수·합리 범위만 통과, 그 외엔 null(미적용).
 function parseYearParam(raw: string | null): number | null {
   if (!raw) return null;
   const n = Number(raw);
@@ -75,7 +73,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     ? (lawCodeRaw as LawSubjectSlug)
     : "patent";
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-  // default: 전체 case 노출. 미매핑만 보고 싶을 때 ?only_unmapped=1 명시.
   const onlyUnmapped = url.searchParams.get("only_unmapped") === "1";
   const courtRaw = url.searchParams.get("court") ?? "";
   const court: CaseCourt | null = (
@@ -92,7 +89,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     ? (sortRaw as CaseMapperSort)
     : "unmapped_first";
   const pageRaw = Number(url.searchParams.get("page") ?? "1");
-  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
+  const page =
+    Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
 
   const result = await listCasesForMapper(client, {
     lawCode,
@@ -118,6 +116,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
+/* ── 페이지 ──────────────────────────────────────────────────────────── */
+
 export default function AdminCases({ loaderData }: Route.ComponentProps) {
   const {
     items,
@@ -132,6 +132,7 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
     yearTo,
     onlyUnmapped,
     sort,
+    role,
   } = loaderData;
   const subjectName = LAW_SUBJECTS[lawCode].name;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -150,147 +151,156 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
     return `?${sp.toString()}`;
   };
 
-  return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자 메뉴
-      </Link>
-      <header className="mb-5 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <GavelIcon className="size-3.5" /> 판례 매핑 관리
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {subjectName} 판례 ↔ 조문 매핑
-        </h1>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          모든 판례의 조문 매핑을 한 화면에서 관리합니다.
-          {" · "}
-          chip <span className="text-emerald-700 dark:text-emerald-300">초록</span>=
-          수동, <span className="text-sky-700 dark:text-sky-300">파랑</span>=자동 추출
-          (본문 인용 / 책 절 / 객관식 지문). chip 의 × 로 삭제, 아래 입력으로 새 조문
-          추가 — 둘을 조합해 매핑을 수정할 수 있습니다.
-        </p>
-      </header>
+  const filterActive = !!(
+    q ||
+    court ||
+    yearFrom != null ||
+    yearTo != null ||
+    onlyUnmapped ||
+    sort !== "unmapped_first"
+  );
 
+  return (
+    <AdminShell
+      cluster="cases"
+      role={role}
+      title={`${subjectName} 판례 매핑`}
+      desc="판례↔조문 매핑을 한 화면에서 관리합니다. 초록 chip = 수동, 파랑 chip = 자동 추출."
+      headerRight={
+        <Button asChild size="sm">
+          <Link to="/admin/cases/edit">
+            <PlusIcon className="size-3.5" /> 판례 신규 등록
+          </Link>
+        </Button>
+      }
+    >
+      {/* KPI */}
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
         <KpiCard label="현재 결과" value={String(total)} />
         <KpiCard
-          label="매핑 0건"
+          label="미매핑"
           value={String(unmappedTotal)}
           warn={unmappedTotal > 0}
         />
-        <KpiCard label="페이지" value={`${page}/${totalPages}`} />
+        <KpiCard label="페이지" value={`${page} / ${totalPages}`} />
         <KpiCard label="정렬" value={SORT_LABEL[sort]} />
       </div>
 
-      <Form method="get" className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
+      {/* 필터 */}
+      <Form
+        method="get"
+        className="border-border bg-card mb-4 flex flex-wrap items-end gap-2.5 rounded-xl border p-3 shadow-sm"
+      >
+        <div className="relative min-w-[200px] flex-1 basis-[240px] sm:max-w-[280px]">
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+          <input
             type="search"
             name="q"
             defaultValue={q}
             placeholder="사건번호·사건명·요지 검색"
-            className="pl-9"
+            aria-label="판례 검색"
+            className="bg-muted/60 focus:bg-background focus:border-primary h-9 w-full rounded-full border border-transparent pr-3 pl-9 text-[13px] outline-none"
           />
         </div>
-        <select
-          name="law"
-          defaultValue={lawCode}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-          title="과목"
-        >
-          <optgroup label="1차 · 객관식">
-            {FIRST_EXAM_LAW_SLUGS.map((s) => (
-              <option key={s} value={s}>
-                {LAW_SUBJECTS[s].name}
+
+        <FilterLabel label="과목">
+          <AdminSelect
+            name="law"
+            defaultValue={lawCode}
+            title="과목"
+          >
+            <optgroup label="1차 · 객관식">
+              {FIRST_EXAM_LAW_SLUGS.map((s) => (
+                <option key={s} value={s}>
+                  {LAW_SUBJECTS[s].name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="2차 · 주관식">
+              {SECOND_EXAM_LAW_SLUGS.map((s) => (
+                <option key={s} value={s}>
+                  {LAW_SUBJECTS[s].name}
+                </option>
+              ))}
+            </optgroup>
+          </AdminSelect>
+        </FilterLabel>
+
+        <FilterLabel label="법원">
+          <AdminSelect name="court" defaultValue={court ?? ""}>
+            <option value="">전체 법원</option>
+            {Object.entries(COURT_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
               </option>
             ))}
-          </optgroup>
-          <optgroup label="2차 · 주관식">
-            {SECOND_EXAM_LAW_SLUGS.map((s) => (
-              <option key={s} value={s}>
-                {LAW_SUBJECTS[s].name}
-              </option>
-            ))}
-          </optgroup>
-        </select>
-        <select
-          name="court"
-          defaultValue={court ?? ""}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-          title="법원"
-        >
-          <option value="">전체 법원</option>
-          {Object.entries(COURT_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <div
-          className="border-input bg-background flex h-9 items-center gap-1 rounded-md border px-2.5 text-xs"
-          title="선고연도 범위 (시작·종료, 비워두면 제한 없음)"
-        >
-          <span className="text-muted-foreground whitespace-nowrap">
-            선고연도
-          </span>
-          <input
-            type="number"
-            name="year_from"
-            defaultValue={yearFrom ?? ""}
-            placeholder="시작"
-            min={MIN_YEAR}
-            max={MAX_YEAR}
-            aria-label="선고 시작연도"
-            className="w-16 bg-transparent text-center text-xs tabular-nums outline-none"
-          />
-          <span className="text-muted-foreground">~</span>
-          <input
-            type="number"
-            name="year_to"
-            defaultValue={yearTo ?? ""}
-            placeholder="종료"
-            min={MIN_YEAR}
-            max={MAX_YEAR}
-            aria-label="선고 종료연도"
-            className="w-16 bg-transparent text-center text-xs tabular-nums outline-none"
-          />
-        </div>
-        <select
-          name="sort"
-          defaultValue={sort}
-          className="border-input bg-background h-9 rounded-md border px-2 text-xs"
-          title="정렬"
-        >
-          <option value="unmapped_first">미매핑 우선</option>
-          <option value="many_first">매핑 많은 순</option>
-          <option value="decided_desc">선고일 ↓</option>
-          <option value="case_no">사건번호</option>
-        </select>
-        <label className="border-input flex h-9 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs">
+          </AdminSelect>
+        </FilterLabel>
+
+        <FilterLabel label="선고연도">
+          <div className="border-input bg-background flex h-9 items-center gap-1 rounded-md border px-2.5 text-[13px]">
+            <input
+              type="number"
+              name="year_from"
+              defaultValue={yearFrom ?? ""}
+              placeholder="시작"
+              min={MIN_YEAR}
+              max={MAX_YEAR}
+              aria-label="선고 시작연도"
+              className="w-16 bg-transparent text-center text-[13px] tabular-nums outline-none"
+            />
+            <span className="text-muted-foreground">~</span>
+            <input
+              type="number"
+              name="year_to"
+              defaultValue={yearTo ?? ""}
+              placeholder="종료"
+              min={MIN_YEAR}
+              max={MAX_YEAR}
+              aria-label="선고 종료연도"
+              className="w-16 bg-transparent text-center text-[13px] tabular-nums outline-none"
+            />
+          </div>
+        </FilterLabel>
+
+        <FilterLabel label="정렬">
+          <AdminSelect name="sort" defaultValue={sort}>
+            <option value="unmapped_first">미매핑 우선</option>
+            <option value="many_first">매핑 많은 순</option>
+            <option value="decided_desc">선고일 ↓</option>
+            <option value="case_no">사건번호</option>
+          </AdminSelect>
+        </FilterLabel>
+
+        <label className="text-muted-foreground inline-flex h-9 items-center gap-1.5 text-[13px]">
           <input
             type="checkbox"
             name="only_unmapped"
             value="1"
             defaultChecked={onlyUnmapped}
-            className="size-3.5"
+            className="accent-primary size-3.5"
           />
           미매핑만
         </label>
-        <Button type="submit" size="sm" className="h-9">
+
+        <Button type="submit" size="sm" variant="outline">
           적용
         </Button>
+        {filterActive ? (
+          <Link
+            to={`/admin/cases?law=${lawCode}`}
+            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
+          >
+            초기화
+          </Link>
+        ) : null}
       </Form>
 
+      {/* 목록 */}
       {items.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            조건에 해당하는 판례가 없습니다.
-          </p>
+        <div className="border-border bg-card text-muted-foreground rounded-xl border py-16 text-center text-sm shadow-sm">
+          <ScaleIcon className="text-muted-foreground/40 mx-auto mb-2 size-8" />
+          조건에 해당하는 판례가 없습니다.
         </div>
       ) : (
         <div className="space-y-3">
@@ -300,6 +310,7 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
+      {/* 페이지네이션 */}
       {totalPages > 1 ? (
         <div className="mt-6 flex items-center justify-center gap-2 text-xs">
           <Button
@@ -341,9 +352,11 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
           </Button>
         </div>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }
+
+/* ── 로컬 상수 ──────────────────────────────────────────────────────── */
 
 const SORT_LABEL: Record<CaseMapperSort, string> = {
   unmapped_first: "미매핑 우선",
@@ -351,6 +364,8 @@ const SORT_LABEL: Record<CaseMapperSort, string> = {
   decided_desc: "선고일 ↓",
   case_no: "사건번호",
 };
+
+/* ── KpiCard ────────────────────────────────────────────────────────── */
 
 function KpiCard({
   label,
@@ -362,25 +377,45 @@ function KpiCard({
   warn?: boolean;
 }) {
   return (
-    <Card className="py-4">
-      <CardContent className="px-4">
-        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          {label}
-        </p>
-        <p
-          className={
-            "mt-1 text-2xl font-bold tabular-nums " +
-            (warn ? "text-amber-600 dark:text-amber-400" : "")
-          }
-        >
-          {value}
-        </p>
-      </CardContent>
-    </Card>
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+        {label}
+      </p>
+      <p
+        className={[
+          "mt-2 text-2xl font-extrabold tracking-tight tabular-nums",
+          warn
+            ? "text-amber-700 dark:text-amber-400"
+            : "text-foreground",
+        ].join(" ")}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 
-// "제29조", "29조", "29" → "29". "제29조의2" → "29의2".
+/* ── FilterLabel ────────────────────────────────────────────────────── */
+
+function FilterLabel({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-muted-foreground text-[11px] font-semibold">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+/* ── helper ─────────────────────────────────────────────────────────── */
+
 function normalizeArticleNumber(raw: string): string {
   let s = raw.trim();
   s = s.replace(/^제\s*/, "");
@@ -388,6 +423,8 @@ function normalizeArticleNumber(raw: string): string {
   s = s.replace(/\s+/g, "");
   return s;
 }
+
+/* ── CaseMapperCard ─────────────────────────────────────────────────── */
 
 function CaseMapperCard({
   item,
@@ -406,8 +443,6 @@ function CaseMapperCard({
   const isSaving = addFetcher.state !== "idle";
   const hasError = addFetcher.data && "error" in addFetcher.data;
 
-  // 성공 시 입력 비우고 명시적으로 같은 URL 로 navigate → loader 강제 재실행.
-  // useRevalidator 보다 견고 (fetcher submission 과 page loader 가 같은 endpoint 라도 정확히 갱신).
   useEffect(() => {
     if (
       addFetcher.state === "idle" &&
@@ -421,49 +456,54 @@ function CaseMapperCard({
         preventScrollReset: true,
       });
     }
-  }, [addFetcher.state, addFetcher.data, navigate, location.pathname, location.search]);
+  }, [
+    addFetcher.state,
+    addFetcher.data,
+    navigate,
+    location.pathname,
+    location.search,
+  ]);
 
   return (
-    <Card>
-      <CardHeader className="px-4 pb-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="outline" className="text-xs">
-            {COURT_LABELS[item.court as CaseCourt] ?? item.court}
-          </Badge>
-          <Badge variant="outline" className="text-xs tabular-nums font-mono">
-            {item.caseNumber}
-          </Badge>
-          {item.caseType ? (
-            <Badge variant="secondary" className="text-xs">
-              {item.caseType}
-            </Badge>
-          ) : null}
-          {item.importance >= 3 ? (
-            <Badge className="bg-amber-500 text-white text-xs">★3</Badge>
-          ) : null}
-          {item.linkCount === 0 ? (
-            <Badge variant="destructive" className="text-xs">
-              미매핑
-            </Badge>
-          ) : (
-            <Badge className="bg-emerald-600 text-white text-xs">
-              <CheckCircle2Icon className="size-3" /> {item.linkCount}건
-            </Badge>
-          )}
-          <Link
-            to={`/admin/cases/edit/${item.caseId}?returnTo=${encodeURIComponent(
-              location.pathname + location.search,
-            )}`}
-            className="text-primary hover:text-primary/80 ml-auto inline-flex items-center gap-1 text-xs font-semibold"
-          >
-            <PencilIcon className="size-3" /> 수정
-          </Link>
-          <span className="text-muted-foreground text-xs tabular-nums">
-            {item.decidedAt}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3 px-4 pb-4">
+    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+      {/* 헤더 */}
+      <div className="border-border/60 flex flex-wrap items-center gap-1.5 border-b px-4 py-3">
+        <Chip tone="neutral">
+          {COURT_LABELS[item.court as CaseCourt] ?? item.court}
+        </Chip>
+        <Chip tone="neutral" className="font-mono">
+          {item.caseNumber}
+        </Chip>
+        {item.caseType ? (
+          <Chip tone="neutral">{item.caseType}</Chip>
+        ) : null}
+        {item.importance >= 3 ? (
+          <Chip tone="amber">★{item.importance}</Chip>
+        ) : null}
+        {item.linkCount === 0 ? (
+          <Chip tone="coral">
+            <GavelIcon className="size-3" /> 미매핑
+          </Chip>
+        ) : (
+          <Chip tone="emerald">
+            <CheckCircle2Icon className="size-3" /> {item.linkCount}건
+          </Chip>
+        )}
+        <Link
+          to={`/admin/cases/edit/${item.caseId}?returnTo=${encodeURIComponent(
+            location.pathname + location.search,
+          )}`}
+          className="text-primary hover:text-primary/80 ml-auto inline-flex items-center gap-1 text-xs font-semibold"
+        >
+          <PencilIcon className="size-3" /> 수정
+        </Link>
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {item.decidedAt}
+        </span>
+      </div>
+
+      {/* 본문 */}
+      <div className="space-y-3 px-4 py-3">
         <Link
           to={`/subjects/${lawCode}/cases/${item.caseId}`}
           viewTransition
@@ -498,7 +538,6 @@ function CaseMapperCard({
           onSubmit={(e) => {
             if (!normalized || alreadyMapped) {
               e.preventDefault();
-              return;
             }
           }}
         >
@@ -507,11 +546,11 @@ function CaseMapperCard({
           <input type="hidden" name="lawCode" value={lawCode} />
           <Input
             name="articleNumber"
-            placeholder='조문 번호 — 예: 29 / 29의2 / 제29조'
+            placeholder="조문 번호 — 예: 29 / 29의2 / 제29조"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             className={
-              "h-8 w-44 text-xs " +
+              "h-8 w-48 text-xs " +
               (alreadyMapped
                 ? "border-amber-400 focus-visible:ring-amber-400"
                 : "")
@@ -527,21 +566,23 @@ function CaseMapperCard({
             <PlusIcon className="size-3.5" /> 매핑 추가
           </Button>
           {alreadyMapped ? (
-            <span className="text-amber-700 dark:text-amber-300 text-xs">
+            <span className="text-xs text-amber-700 dark:text-amber-300">
               제{normalized}조는 이미 매핑되어 있습니다 (위 chip)
             </span>
           ) : hasError ? (
-            <span className="text-rose-600 text-xs">
+            <span className="text-xs text-rose-600">
               {(addFetcher.data as { error: string }).error}
             </span>
           ) : addFetcher.data && "ok" in addFetcher.data ? (
-            <span className="text-emerald-600 text-xs">저장됨</span>
+            <span className="text-xs text-emerald-600">저장됨</span>
           ) : null}
         </addFetcher.Form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
+
+/* ── ArticleChip ────────────────────────────────────────────────────── */
 
 function ArticleChip({
   articleNumber,
@@ -558,6 +599,7 @@ function ArticleChip({
   const navigate = useNavigate();
   const location = useLocation();
   const removed = fetcher.data && "ok" in fetcher.data && fetcher.data.ok;
+
   useEffect(() => {
     if (
       fetcher.state === "idle" &&
@@ -570,20 +612,27 @@ function ArticleChip({
         preventScrollReset: true,
       });
     }
-  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
-  // 출처 별 색상 — 자동 vs 수동 구분.
+  }, [
+    fetcher.state,
+    fetcher.data,
+    navigate,
+    location.pathname,
+    location.search,
+  ]);
+
   const isManual = !note || note.includes("수동");
   const isAuto = !!note && !isManual;
+
   return (
     <span
       title={note ?? "수동 매핑"}
-      className={
-        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs " +
-        (removed ? "opacity-50 line-through " : "") +
-        (isAuto
-          ? "border-sky-300 dark:border-sky-700 bg-sky-50/50 dark:bg-sky-950/20"
-          : "border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20")
-      }
+      className={[
+        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs",
+        removed ? "opacity-50 line-through" : "",
+        isAuto
+          ? "border-sky-300 bg-sky-50/50 dark:border-sky-700 dark:bg-sky-950/20"
+          : "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/20",
+      ].join(" ")}
     >
       <Link
         to={`/subjects/${lawCode}/articles/${articleNumber}`}

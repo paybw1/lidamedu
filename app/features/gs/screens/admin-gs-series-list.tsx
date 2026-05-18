@@ -1,20 +1,19 @@
 // 시리즈 목록 — 운영자.
+// 패턴 P2 LIST/TABLE. AdminShell cluster="gs".
 
-import { ArrowRightIcon, ChartLineIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Chip,
+  IndexTable,
+  TD,
+  TR,
+  type TableHeaderDef,
+} from "~/features/admin/components/admin-ui";
 import { listAllGsSeries } from "~/features/gs/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
@@ -50,92 +49,100 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  return { series, counts };
+  return { series, counts, role };
 }
+
+const TABLE_HEADERS: TableHeaderDef[] = [
+  { label: "제목" },
+  { label: "과목", width: "8rem" },
+  { label: "예정 회차", width: "7rem", align: "right" },
+  { label: "등록 회차", width: "7rem", align: "right" },
+  { label: "", width: "4rem", align: "right" },
+];
 
 export default function AdminGsSeriesList({
   loaderData,
 }: Route.ComponentProps) {
-  const { series, counts } = loaderData;
+  const { series, counts, role } = loaderData;
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-            <ChartLineIcon className="size-3.5" /> 운영자 · GS 시리즈
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight">시리즈 관리</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            여러 회차(보통 8회)를 묶어 학생별 추이와 누적 z-score 를 분석합니다.
-          </p>
-        </div>
-        <Button asChild>
+    <AdminShell
+      cluster="gs"
+      role={role}
+      title="시리즈 관리"
+      desc="여러 회차(보통 8회)를 묶어 학생별 추이와 누적 z-score 를 분석합니다."
+      headerRight={
+        <Button asChild size="sm">
           <Link to="/admin/gs/series/new" viewTransition>
-            <PlusIcon className="size-4" /> 새 시리즈
+            <PlusIcon className="size-3.5" /> 새 시리즈
           </Link>
         </Button>
-      </header>
-
+      }
+    >
       {series.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">등록된 시리즈가 없습니다.</p>
+        <div className="border-border bg-card text-muted-foreground rounded-xl border py-16 text-center text-sm shadow-sm">
+          등록된 시리즈가 없습니다. 새 시리즈를 만들어 보세요.
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[260px]">제목</TableHead>
-                  <TableHead className="w-[100px]">과목</TableHead>
-                  <TableHead className="w-[110px]">예정 회차</TableHead>
-                  <TableHead className="w-[110px]">등록 회차</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {series.map((s) => (
-                  <TableRow key={s.seriesId}>
-                    <TableCell>
-                      <Link
-                        to={`/admin/gs/series/${s.seriesId}`}
-                        className="hover:text-primary font-medium"
-                      >
-                        {s.title}
-                      </Link>
-                      {s.descriptionMd ? (
-                        <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
-                          {s.descriptionMd}
-                        </p>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <Badge variant="secondary" className="text-[10px]">
-                        {LAW_SUBJECTS[s.subject]?.name ?? s.subject}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {s.expectedRounds}회
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {counts[s.seriesId] ?? 0}회
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/admin/gs/series/${s.seriesId}/stats`}
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        통계 <ArrowRightIcon className="size-3" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <IndexTable
+          minWidth={640}
+          headers={TABLE_HEADERS}
+          footer={
+            <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
+              총 {series.length}개
+            </div>
+          }
+        >
+          {series.map((s) => {
+            const registered = counts[s.seriesId] ?? 0;
+            const complete = registered >= s.expectedRounds;
+            return (
+              <TR key={s.seriesId}>
+                <TD>
+                  <Link
+                    to={`/admin/gs/series/${s.seriesId}`}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {s.title}
+                  </Link>
+                  {s.descriptionMd ? (
+                    <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                      {s.descriptionMd}
+                    </p>
+                  ) : null}
+                </TD>
+                <TD>
+                  <Chip tone="blue">
+                    {LAW_SUBJECTS[s.subject]?.name ?? s.subject}
+                  </Chip>
+                </TD>
+                <TD align="right" mono soft>
+                  {s.expectedRounds}회
+                </TD>
+                <TD align="right" mono>
+                  <span
+                    className={
+                      complete
+                        ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                        : undefined
+                    }
+                  >
+                    {registered}회
+                  </span>
+                </TD>
+                <TD align="right">
+                  <Link
+                    to={`/admin/gs/series/${s.seriesId}/stats`}
+                    className="text-primary text-xs font-semibold hover:underline"
+                  >
+                    통계
+                  </Link>
+                </TD>
+              </TR>
+            );
+          })}
+        </IndexTable>
       )}
-    </div>
+    </AdminShell>
   );
 }

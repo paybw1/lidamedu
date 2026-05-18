@@ -1,6 +1,6 @@
 // feat-8-006 합격자 케이스 카드 (Phase B 첫 단계).
 // /admin/analytics/passers — admin 전용.
-// 한 명 한 명의 합격자: 결과·자가 학습 요약 + (분석 동의자에 한해) 학습 로그 집계.
+// P4 STATS/ANALYTICS 패턴 — AdminShell cluster="analytics" 래핑.
 
 import {
   CheckCircle2Icon,
@@ -10,24 +10,28 @@ import {
   ShieldCheckIcon,
   Trash2Icon,
   TrophyIcon,
+  UsersIcon,
 } from "lucide-react";
 import { Form, Link, data, redirect, useFetcher } from "react-router";
 import { z } from "zod";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Input } from "~/core/components/ui/input";
-import { Label } from "~/core/components/ui/label";
 import { Button } from "~/core/components/ui/button";
+import { Input } from "~/core/components/ui/input";
 import { Separator } from "~/core/components/ui/separator";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  AdminSelect,
+  Chip,
+  FilterBar,
+  FilterGroup,
+} from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   computePasserAggregateStats,
   getPasserPoolStats,
   listPasserCases,
-  type Histogram,
   type PasserAggregateStats,
   type PasserCase,
 } from "~/features/exam-results/analytics.server";
@@ -41,6 +45,11 @@ import {
   EXAM_VERIFICATION_STATUS_LABEL,
   type ExamRound,
 } from "~/features/exam-results/labels";
+import {
+  EmptyConsentBanner,
+  PasserAggView,
+  StatsSection,
+} from "./passer-cases-components";
 
 import type { Route } from "./+types/admin-passer-cases";
 
@@ -72,7 +81,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getSeedCount(),
   ]);
   const stats = computePasserAggregateStats(cases);
-  return { cases, pool, stats, seedCount, filter };
+  return { cases, pool, stats, seedCount, filter, role };
 }
 
 const seedSchema = z.object({
@@ -103,9 +112,13 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "seed") {
     const parsed = seedSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
-      return data({ error: parsed.error.issues[0]?.message ?? "입력 오류" }, { status: 400 });
+      return data(
+        { error: parsed.error.issues[0]?.message ?? "입력 오류" },
+        { status: 400 },
+      );
     const res = await seedPasserData(parsed.data.count, parsed.data.status);
-    const groupLabel = parsed.data.status === "passed" ? "합격자" : "비합격자";
+    const groupLabel =
+      parsed.data.status === "passed" ? "합격자" : "비합격자";
     return data({
       ok: true,
       message: `${groupLabel} ${res.created}건 시드 완료${res.errors.length > 0 ? ` (오류 ${res.errors.length})` : ""}`,
@@ -114,8 +127,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
   if (intent === "cleanup-seed") {
     const parsed = cleanupSchema.safeParse(Object.fromEntries(fd));
-    if (!parsed.success)
-      return data({ error: "입력 오류" }, { status: 400 });
+    if (!parsed.success) return data({ error: "입력 오류" }, { status: 400 });
     const res = await cleanupSeedPassers();
     return data({
       ok: true,
@@ -123,171 +135,225 @@ export async function action({ request }: Route.ActionArgs) {
       errors: res.errors,
     });
   }
-  return data({ error: `알 수 없는 intent: ${intent}` }, { status: 400 });
+  return data(
+    { error: `알 수 없는 intent: ${intent}` },
+    { status: 400 },
+  );
 }
 
-function formatHours(ms: number): string {
-  if (ms <= 0) return "0";
-  const h = ms / 3_600_000;
-  return h >= 10 ? Math.round(h).toString() : h.toFixed(1);
+/* ── KPI 카드 ───────────────────────────────────────────────────────────── */
+
+function SummaryCard({
+  label,
+  value,
+  subtle,
+  tone,
+}: {
+  label: string;
+  value: string;
+  subtle?: string;
+  tone?: "emerald" | "blue" | "violet" | "amber";
+}) {
+  const toneMap: Record<NonNullable<typeof tone>, string> = {
+    emerald: "text-emerald-600 dark:text-emerald-400",
+    blue: "text-primary",
+    violet: "text-violet-700 dark:text-violet-300",
+    amber: "text-amber-700 dark:text-amber-400",
+  };
+  return (
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 text-2xl font-extrabold tracking-tight tabular-nums",
+          tone ? toneMap[tone] : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+      {subtle ? (
+        <p className="text-muted-foreground mt-0.5 text-[11px]">{subtle}</p>
+      ) : null}
+    </div>
+  );
 }
 
-export default function AdminPasserCases({ loaderData }: Route.ComponentProps) {
-  const { cases, pool, stats, seedCount, filter } = loaderData;
+/* ── 메인 컴포넌트 ────────────────────────────────────────────────────────── */
+
+export default function AdminPasserCases({
+  loaderData,
+}: Route.ComponentProps) {
+  const { cases, pool, stats, seedCount, filter, role } = loaderData;
   const totalCount = cases.length;
   const withAggCount = cases.filter((c) => c.aggregates !== null).length;
+  const hasFilter =
+    !!filter.year ||
+    !!filter.round ||
+    filter.onlyVerified ||
+    filter.onlyConsented;
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <TrophyIcon className="size-3.5" /> 운영자 · 합격자 분석
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">합격자 케이스</h1>
-        <p className="text-muted-foreground text-sm">
-          한 명 한 명의 합격자가 어떻게 공부했는지 살펴봅니다. 분석 동의를 받은
-          학생만 학습 로그 집계를 표시합니다. 표본이 충분히 모이면 통계 대시보드로
-          확장합니다.
-        </p>
-      </header>
-
-      <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <PoolStat label="합격 총수" value={pool.passerCount} tone="emerald" />
-        <PoolStat label="인증 합격" value={pool.verifiedPasserCount} tone="sky" />
-        <PoolStat
+    <AdminShell
+      cluster="analytics"
+      role={role}
+      title="합격자 케이스"
+      desc="한 명 한 명의 합격자가 어떻게 공부했는지 살펴봅니다. 분석 동의를 받은 학생만 학습 로그 집계를 표시합니다."
+      headerRight={
+        <Chip tone="emerald">
+          <TrophyIcon className="size-3" /> 합격 {pool.passerCount}
+        </Chip>
+      }
+    >
+      {/* KPI 타일 */}
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <SummaryCard
+          label="합격 총수"
+          value={String(pool.passerCount)}
+          tone="emerald"
+        />
+        <SummaryCard
+          label="인증 합격"
+          value={String(pool.verifiedPasserCount)}
+          tone="blue"
+        />
+        <SummaryCard
           label="분석 동의 합격"
-          value={pool.consentedPasserCount}
+          value={String(pool.consentedPasserCount)}
           tone="violet"
         />
-        <PoolStat label="현재 표시" value={totalCount} tone="amber" />
+        <SummaryCard
+          label="현재 표시"
+          value={String(totalCount)}
+          tone="amber"
+          subtle={
+            withAggCount > 0
+              ? `집계 ${withAggCount}/${totalCount}명`
+              : undefined
+          }
+        />
       </div>
 
+      {/* 시드 도구 */}
       <SeedToolBox seedCount={seedCount} />
 
+      {/* 연도·차수별 분포 */}
       {pool.byYearRound.length > 0 ? (
-        <Card className="mb-4">
-          <CardHeader className="px-4 pb-2">
-            <p className="text-sm font-semibold">연도·차수별 분포</p>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <div className="flex flex-wrap gap-2">
-              {pool.byYearRound.map((g) => (
-                <div
-                  key={`${g.examYear}-${g.examRound}`}
-                  className="rounded-md border bg-muted/30 px-2 py-1 text-[11px] tabular-nums"
-                >
-                  <span className="font-semibold">
-                    {g.examYear} {EXAM_ROUND_LABEL[g.examRound]}
-                  </span>
-                  <span className="text-muted-foreground ml-1">
-                    {g.count}명 · 인증 {g.verified}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="border-border bg-card mb-4 rounded-xl border p-4 shadow-sm">
+          <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            연도·차수별 분포
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {pool.byYearRound.map((g) => (
+              <div
+                key={`${g.examYear}-${g.examRound}`}
+                className="border-border bg-muted/30 rounded-lg border px-2.5 py-1.5 text-[11px] tabular-nums"
+              >
+                <span className="font-semibold">
+                  {g.examYear} {EXAM_ROUND_LABEL[g.examRound]}
+                </span>
+                <span className="text-muted-foreground ml-1">
+                  {g.count}명 · 인증 {g.verified}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : null}
 
+      {/* 분포 통계 */}
       {stats.sampleSize > 0 ? (
         <StatsSection stats={stats} />
       ) : (
-        <Card className="mb-4 border-amber-200 bg-amber-50/40">
-          <CardContent className="px-4 py-4 text-xs">
-            <p className="text-amber-900">
-              분석 동의 합격자가 아직 없어 통계 시각화를 표시할 수 없습니다.
-              합격자가 <Link to="/me/exam-results" className="underline">분석 동의</Link>를
-              체크해야 학습 로그 분포가 집계됩니다.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyConsentBanner />
       )}
 
-      <Card className="mb-4">
-        <CardContent className="px-4 py-3">
-          <Form method="get" className="grid grid-cols-2 gap-2 md:grid-cols-5">
-            <div>
-              <Label className="text-[11px]">연도</Label>
-              <Input
-                type="number"
-                name="year"
-                defaultValue={filter.year ?? ""}
-                placeholder="2026"
-                className="h-8 text-xs"
+      {/* 필터 바 */}
+      <Form method="get">
+        <FilterBar
+          hasActive={hasFilter}
+          onReset={() => {
+            window.location.href = "/admin/analytics/passers";
+          }}
+        >
+          <FilterGroup label="연도">
+            <input
+              type="number"
+              name="year"
+              defaultValue={filter.year ?? ""}
+              placeholder="2026"
+              aria-label="연도"
+              className="border-input bg-background focus:border-primary h-9 w-24 rounded-md border px-3 text-[13px] tabular-nums outline-none"
+            />
+          </FilterGroup>
+          <FilterGroup label="차수">
+            <AdminSelect name="round" defaultValue={filter.round ?? ""}>
+              <option value="">전체</option>
+              <option value="first">1차</option>
+              <option value="second">2차</option>
+            </AdminSelect>
+          </FilterGroup>
+          <FilterGroup label="옵션">
+            <label className="inline-flex items-center gap-1 text-[13px]">
+              <input
+                type="checkbox"
+                name="verified"
+                value="1"
+                defaultChecked={filter.onlyVerified}
+                className="accent-primary"
               />
-            </div>
-            <div>
-              <Label className="text-[11px]">차수</Label>
-              <select
-                name="round"
-                defaultValue={filter.round ?? ""}
-                className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
-              >
-                <option value="">전체</option>
-                <option value="first">1차</option>
-                <option value="second">2차</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <Label className="text-[11px] inline-flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  name="verified"
-                  value="1"
-                  defaultChecked={filter.onlyVerified}
-                />
-                인증만
-              </Label>
-            </div>
-            <div className="flex items-end">
-              <Label className="text-[11px] inline-flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  name="consented"
-                  value="1"
-                  defaultChecked={filter.onlyConsented}
-                />
-                분석 동의자만
-              </Label>
-            </div>
-            <div className="flex items-end justify-end gap-1">
-              <Button size="sm" type="submit">
-                필터
-              </Button>
-              <Link
-                to="/admin/analytics/passers"
-                className="text-muted-foreground text-xs underline"
-              >
-                초기화
-              </Link>
-            </div>
-          </Form>
-          <p className="text-muted-foreground mt-2 text-[11px]">
-            학습 로그 집계는 응시 전년도 1월 1일 ~ 응시 연도 12월 31일 구간을 봅니다.
-            {totalCount > 0 ? (
-              <span className="ml-1">
-                현재 {withAggCount}/{totalCount} 명에 대해 집계 표시.
-              </span>
-            ) : null}
-          </p>
-        </CardContent>
-      </Card>
+              <span className="text-foreground/80">인증만</span>
+            </label>
+            <label className="inline-flex items-center gap-1 text-[13px]">
+              <input
+                type="checkbox"
+                name="consented"
+                value="1"
+                defaultChecked={filter.onlyConsented}
+                className="accent-primary"
+              />
+              <span className="text-foreground/80">분석 동의자만</span>
+            </label>
+          </FilterGroup>
+          <Button type="submit" size="sm" className="rounded-full">
+            필터
+          </Button>
+        </FilterBar>
+      </Form>
 
+      {totalCount > 0 ? (
+        <p className="text-muted-foreground mb-3 text-[11px]">
+          학습 로그 집계는 응시 전년도 1월 1일 ~ 응시 연도 12월 31일 구간.
+          {withAggCount > 0 ? (
+            <span className="ml-1">
+              현재 {withAggCount}/{totalCount}명에 대해 집계 표시.
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+
+      {/* 카드 목록 */}
       {cases.length === 0 ? (
-        <Card>
-          <CardContent className="px-4 py-8 text-center">
-            <p className="text-muted-foreground text-sm">
-              조건에 맞는 합격자가 없습니다. 결과 인증/입력이 더 모이면 여기에
-              표시됩니다.
-            </p>
-            <Link
-              to="/admin/exam-results"
-              className="text-primary mt-2 inline-block text-xs underline"
-            >
-              합격 결과 운영 화면 →
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border p-14 text-center shadow-sm">
+          <UsersIcon className="text-muted-foreground/60 size-8" />
+          <p className="text-sm font-semibold">
+            {hasFilter
+              ? "조건에 맞는 합격자가 없습니다"
+              : "합격자 케이스가 아직 없습니다"}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            {hasFilter
+              ? "필터를 초기화하거나 조건을 바꿔보세요."
+              : "결과 인증·입력이 모이면 여기에 표시됩니다."}
+          </p>
+          <Link
+            to="/admin/exam-results"
+            className="text-primary mt-1 text-xs underline"
+          >
+            합격 결과 운영 화면 →
+          </Link>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {cases.map((c) => (
@@ -295,9 +361,11 @@ export default function AdminPasserCases({ loaderData }: Route.ComponentProps) {
           ))}
         </div>
       )}
-    </div>
+    </AdminShell>
   );
 }
+
+/* ── 시드 도구 ──────────────────────────────────────────────────────────── */
 
 function SeedToolBox({ seedCount }: { seedCount: number }) {
   const seedFetcher = useFetcher<{
@@ -312,145 +380,125 @@ function SeedToolBox({ seedCount }: { seedCount: number }) {
     errors?: string[];
     error?: string;
   }>();
-  const busy = seedFetcher.state !== "idle" || cleanupFetcher.state !== "idle";
+  const busy =
+    seedFetcher.state !== "idle" || cleanupFetcher.state !== "idle";
   return (
-    <Card className="mb-4 border-dashed border-violet-300 bg-violet-50/30">
-      <CardContent className="px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <FlaskConicalIcon className="size-4 text-violet-700" />
-            <div>
-              <p className="text-sm font-semibold text-violet-900">
-                시연·QA 시드 데이터
-              </p>
-              <p className="text-violet-700/70 text-[11px]">
-                실제 합격자가 모이기 전 데모용. 모든 데이터는 `profiles.is_synthetic=true` 로 표식.
-                현재 시드 프로필 {seedCount.toLocaleString("ko-KR")}건.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <seedFetcher.Form method="post" className="flex items-center gap-1">
-              <input type="hidden" name="intent" value="seed" />
-              <input type="hidden" name="status" value="passed" />
-              <Input
-                type="number"
-                name="count"
-                defaultValue={5}
-                min={1}
-                max={20}
-                className="h-7 w-16 text-xs tabular-nums"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                variant="default"
-                disabled={busy}
-                className="h-7 px-2 text-xs"
-              >
-                합격자 시드
-              </Button>
-            </seedFetcher.Form>
-            <seedFetcher.Form method="post" className="flex items-center gap-1">
-              <input type="hidden" name="intent" value="seed" />
-              <input type="hidden" name="status" value="failed" />
-              <Input
-                type="number"
-                name="count"
-                defaultValue={5}
-                min={1}
-                max={20}
-                className="h-7 w-16 text-xs tabular-nums"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                className="h-7 px-2 text-xs"
-              >
-                비합격자 시드
-              </Button>
-            </seedFetcher.Form>
-            <cleanupFetcher.Form method="post">
-              <input type="hidden" name="intent" value="cleanup-seed" />
-              <Button
-                type="submit"
-                size="sm"
-                variant="outline"
-                disabled={busy || seedCount === 0}
-                className="h-7 px-2 text-xs text-rose-700 hover:text-rose-800"
-                onClick={(e) => {
-                  if (!confirm(`시드 프로필 ${seedCount}명을 모두 삭제하시겠습니까?`)) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                <Trash2Icon className="mr-1 size-3" />
-                전체 삭제
-              </Button>
-            </cleanupFetcher.Form>
+    <div className="mb-4 rounded-xl border border-dashed border-violet-300 bg-violet-50/30 p-4 dark:border-violet-700 dark:bg-violet-950/20">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <FlaskConicalIcon className="size-4 text-violet-700 dark:text-violet-300" />
+          <div>
+            <p className="text-sm font-semibold text-violet-900 dark:text-violet-200">
+              시연·QA 시드 데이터
+            </p>
+            <p className="text-[11px] text-violet-700/70 dark:text-violet-400/70">
+              실제 합격자가 모이기 전 데모용. 현재 시드 프로필{" "}
+              {seedCount.toLocaleString("ko-KR")}건.
+            </p>
           </div>
         </div>
-        {seedFetcher.data?.message ? (
-          <p className="mt-2 text-[11px] text-violet-900">
-            ✓ {seedFetcher.data.message}
-          </p>
-        ) : null}
-        {seedFetcher.data?.error ? (
-          <p className="mt-2 text-[11px] text-rose-700">
-            ✗ {seedFetcher.data.error}
-          </p>
-        ) : null}
-        {cleanupFetcher.data?.message ? (
-          <p className="mt-2 text-[11px] text-violet-900">
-            ✓ {cleanupFetcher.data.message}
-          </p>
-        ) : null}
-        {cleanupFetcher.data?.error ? (
-          <p className="mt-2 text-[11px] text-rose-700">
-            ✗ {cleanupFetcher.data.error}
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function PoolStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "emerald" | "sky" | "violet" | "amber";
-}) {
-  const toneClass = {
-    emerald: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    sky: "bg-sky-50 text-sky-800 border-sky-200",
-    violet: "bg-violet-50 text-violet-800 border-violet-200",
-    amber: "bg-amber-50 text-amber-800 border-amber-200",
-  }[tone];
-  return (
-    <div className={cn("rounded-md border px-3 py-2", toneClass)}>
-      <div className="text-[10px] font-semibold tracking-wide uppercase opacity-80">
-        {label}
+        <div className="flex flex-wrap items-center gap-2">
+          <seedFetcher.Form method="post" className="flex items-center gap-1">
+            <input type="hidden" name="intent" value="seed" />
+            <input type="hidden" name="status" value="passed" />
+            <Input
+              type="number"
+              name="count"
+              defaultValue={5}
+              min={1}
+              max={20}
+              className="h-7 w-16 text-xs tabular-nums"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              disabled={busy}
+              className="h-7 rounded-full px-2 text-xs"
+            >
+              합격자 시드
+            </Button>
+          </seedFetcher.Form>
+          <seedFetcher.Form method="post" className="flex items-center gap-1">
+            <input type="hidden" name="intent" value="seed" />
+            <input type="hidden" name="status" value="failed" />
+            <Input
+              type="number"
+              name="count"
+              defaultValue={5}
+              min={1}
+              max={20}
+              className="h-7 w-16 text-xs tabular-nums"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              className="h-7 rounded-full px-2 text-xs"
+            >
+              비합격자 시드
+            </Button>
+          </seedFetcher.Form>
+          <cleanupFetcher.Form method="post">
+            <input type="hidden" name="intent" value="cleanup-seed" />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={busy || seedCount === 0}
+              className="h-7 rounded-full px-2 text-xs text-rose-600 hover:text-rose-700"
+              onClick={(e) => {
+                if (
+                  !confirm(
+                    `시드 프로필 ${seedCount}명을 모두 삭제하시겠습니까?`,
+                  )
+                ) {
+                  e.preventDefault();
+                }
+              }}
+            >
+              <Trash2Icon className="mr-1 size-3" />
+              전체 삭제
+            </Button>
+          </cleanupFetcher.Form>
+        </div>
       </div>
-      <div className="text-xl font-bold tabular-nums">
-        {value.toLocaleString("ko-KR")}
-      </div>
+      {seedFetcher.data?.message ? (
+        <p className="mt-2 text-[11px] text-violet-900 dark:text-violet-200">
+          ✓ {seedFetcher.data.message}
+        </p>
+      ) : null}
+      {seedFetcher.data?.error ? (
+        <p className="mt-2 text-[11px] text-rose-700">
+          ✗ {seedFetcher.data.error}
+        </p>
+      ) : null}
+      {cleanupFetcher.data?.message ? (
+        <p className="mt-2 text-[11px] text-violet-900 dark:text-violet-200">
+          ✓ {cleanupFetcher.data.message}
+        </p>
+      ) : null}
+      {cleanupFetcher.data?.error ? (
+        <p className="mt-2 text-[11px] text-rose-700">
+          ✗ {cleanupFetcher.data.error}
+        </p>
+      ) : null}
     </div>
   );
 }
+
+/* ── PasserCard ─────────────────────────────────────────────────────────── */
 
 function PasserCard({ item }: { item: PasserCase }) {
   const verified = item.verificationStatus === "verified";
   const consented = item.analyticsConsentAt !== null;
   const agg = item.aggregates;
   return (
-    <Card data-testid={`passer-card-${item.resultId}`}>
-      <CardHeader className="px-4 pb-2">
+    <div
+      data-testid={`passer-card-${item.resultId}`}
+      className="border-border bg-card overflow-hidden rounded-xl border shadow-sm"
+    >
+      <div className="border-border/60 border-b px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold">
@@ -465,57 +513,47 @@ function PasserCard({ item }: { item: PasserCase }) {
               </span>
             </p>
             {item.userEmail ? (
-              <p className="text-muted-foreground text-[10px]">
+              <p className="text-muted-foreground text-[11px]">
                 {item.userEmail}
               </p>
             ) : null}
           </div>
           <div className="flex items-center gap-1">
             {verified ? (
-              <Badge
-                variant="default"
-                className="bg-emerald-100 text-emerald-800 text-[10px] hover:bg-emerald-100"
-              >
-                <ShieldCheckIcon className="mr-1 size-3" />
-                인증
-              </Badge>
+              <Chip tone="emerald">
+                <ShieldCheckIcon className="size-3" /> 인증
+              </Chip>
             ) : (
-              <Badge variant="outline" className="text-[10px]">
+              <Chip tone="neutral">
                 {EXAM_VERIFICATION_STATUS_LABEL[item.verificationStatus]}
-              </Badge>
+              </Chip>
             )}
             {consented ? (
-              <Badge
-                variant="default"
-                className="bg-violet-100 text-violet-800 text-[10px] hover:bg-violet-100"
-              >
-                <CheckCircle2Icon className="mr-1 size-3" />
-                동의
-              </Badge>
+              <Chip tone="violet">
+                <CheckCircle2Icon className="size-3" /> 동의
+              </Chip>
             ) : (
-              <Badge variant="outline" className="text-muted-foreground text-[10px]">
-                <EyeOffIcon className="mr-1 size-3" />
-                미동의
-              </Badge>
+              <Chip tone="neutral">
+                <EyeOffIcon className="size-3" /> 미동의
+              </Chip>
             )}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3 px-4 pb-3">
-        <div className="flex flex-wrap gap-3 text-xs">
-          {item.selfReportedTotalScore !== null ? (
-            <div>
-              <span className="text-muted-foreground">자가 점수: </span>
-              <span className="font-semibold tabular-nums">
-                {item.selfReportedTotalScore}
-              </span>
-            </div>
-          ) : null}
-        </div>
+      </div>
+
+      <div className="space-y-3 p-4">
+        {item.selfReportedTotalScore !== null ? (
+          <div className="text-xs">
+            <span className="text-muted-foreground">자가 점수: </span>
+            <span className="font-semibold tabular-nums">
+              {item.selfReportedTotalScore}
+            </span>
+          </div>
+        ) : null}
 
         {item.studySummaryMd ? (
-          <div className="rounded border-l-2 border-emerald-300 bg-emerald-50/40 p-2">
-            <p className="text-[10px] font-semibold tracking-wide uppercase text-emerald-800">
+          <div className="rounded-lg border-l-2 border-emerald-300 bg-emerald-50/40 p-3 dark:bg-emerald-950/20">
+            <p className="mb-1 font-mono text-[10px] font-bold tracking-[0.1em] uppercase text-emerald-800 dark:text-emerald-300">
               <ClipboardCheckIcon className="mr-1 inline size-3" />
               본인 학습 요약
             </p>
@@ -539,274 +577,7 @@ function PasserCard({ item }: { item: PasserCase }) {
         ) : (
           <PasserAggView agg={agg} />
         )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function PasserAggView({
-  agg,
-}: {
-  agg: NonNullable<PasserCase["aggregates"]>;
-}) {
-  const acc = agg.accuracyPct;
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Stat label="문제 풀이" value={`${agg.totalProblemAttempts.toLocaleString("ko-KR")}회`} sub={`${agg.distinctProblems}문제`} />
-        <Stat
-          label="정답률"
-          value={acc !== null ? `${acc}%` : "—"}
-          sub={agg.totalProblemAttempts > 0 ? `${agg.totalProblemAttempts}회 기준` : ""}
-        />
-        <Stat
-          label="학습 시간"
-          value={`${formatHours(agg.totalStudyTimeMs)}h`}
-          sub={`${agg.activeDays}일 활동`}
-        />
-        <Stat
-          label="최장 연속"
-          value={`${agg.longestStreakDays}일`}
-          sub="응시 기간 내"
-        />
       </div>
-
-      <div className="grid grid-cols-3 gap-2 text-[11px]">
-        <Stat
-          label="빈칸"
-          value={`${agg.blanksCorrect}/${agg.blanksTotal}`}
-          sub={agg.blanksTotal > 0 ? `${Math.round((agg.blanksCorrect / agg.blanksTotal) * 100)}%` : ""}
-        />
-        <Stat
-          label="조문 암기 완수"
-          value={`${agg.recitationComplete}건`}
-          sub=""
-        />
-        <Stat
-          label="활동 기간"
-          value={
-            agg.firstActivityAt && agg.lastActivityAt
-              ? `${agg.firstActivityAt.slice(0, 10)} ~ ${agg.lastActivityAt.slice(0, 10)}`
-              : "—"
-          }
-          sub=""
-        />
-      </div>
-
-      {agg.subjectTopAttempts.length > 0 ? (
-        <div>
-          <p className="text-[10px] font-semibold tracking-wide uppercase text-muted-foreground mb-1">
-            과목별 풀이 (상위 5)
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {agg.subjectTopAttempts.map((s) => (
-              <span
-                key={s.lawCode ?? "(미지정)"}
-                className="rounded-md border bg-background px-2 py-0.5 text-[10px] tabular-nums"
-              >
-                {s.lawCode ?? "(미지정)"}: {s.attempts}회
-                {s.correctRatio !== null
-                  ? ` · ${Math.round(s.correctRatio * 100)}%`
-                  : ""}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <div className="rounded-md border bg-background px-2 py-1.5">
-      <div className="text-[9px] font-semibold tracking-wide uppercase text-muted-foreground">
-        {label}
-      </div>
-      <div className="text-sm font-bold tabular-nums">{value}</div>
-      {sub ? (
-        <div className="text-[10px] text-muted-foreground tabular-nums">
-          {sub}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function StatsSection({ stats }: { stats: PasserAggregateStats }) {
-  return (
-    <Card className="mb-5 border-violet-200">
-      <CardHeader className="px-4 pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">합격자 분포 통계 (Phase B)</p>
-          <span className="text-muted-foreground text-[11px] tabular-nums">
-            분석 동의 표본 N={stats.sampleSize} · 전체 합격 {stats.totalPasserCount}
-          </span>
-        </div>
-        <p className="text-muted-foreground text-[11px]">
-          분석 동의 합격자만 표본에 포함. 표본이 적을 땐 통계량보다 추세를 참고
-          하세요.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3 px-4 pb-3">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <HistCard
-            title="자가 신고 점수 분포"
-            hint="합격자가 입력한 자가 점수"
-            hist={stats.scoreHist}
-            unit="점"
-          />
-          <HistCard
-            title="학습 시간 분포 (응시 전년+해당년)"
-            hint="study_sessions 누적 시간"
-            hist={stats.studyTimeHist}
-            unit="h"
-          />
-          <HistCard
-            title="문제 풀이 정답률 분포"
-            hint="user_problem_attempts 기준"
-            hist={stats.accuracyHist}
-            unit="%"
-          />
-          <HistCard
-            title="총 풀이 회수 분포"
-            hint="user_problem_attempts 누적"
-            hist={stats.problemAttemptsHist}
-            unit="회"
-          />
-          <HistCard
-            title="활동 일수 분포"
-            hint="study_sessions 활동 일자"
-            hist={stats.activeDaysHist}
-            unit="일"
-          />
-          <HistCard
-            title="최장 연속 학습 분포"
-            hint="응시 기간 내 streak"
-            hist={stats.longestStreakHist}
-            unit="일"
-          />
-        </div>
-        {stats.subjectAverages.length > 0 ? (
-          <div>
-            <p className="text-[11px] font-semibold tracking-wide uppercase text-muted-foreground mt-2 mb-1">
-              과목별 평균 풀이 (1+회 푼 합격자 기준)
-            </p>
-            <SubjectAveragesBars items={stats.subjectAverages} />
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function HistCard({
-  title,
-  hint,
-  hist,
-  unit,
-}: {
-  title: string;
-  hint?: string;
-  hist: Histogram;
-  unit: string;
-}) {
-  const maxCount = Math.max(1, ...hist.buckets.map((b) => b.count));
-  const fmt = (v: number | null) =>
-    v === null ? "—" : v >= 100 ? Math.round(v).toString() : v.toFixed(1);
-  return (
-    <div className="rounded border bg-background p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="text-xs font-semibold">{title}</div>
-        <div className="text-[10px] text-muted-foreground tabular-nums">
-          N={hist.n}
-        </div>
-      </div>
-      {hint ? (
-        <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>
-      ) : null}
-      <div className="mt-2 space-y-1">
-        {hist.buckets.map((b) => {
-          const pct = (b.count / maxCount) * 100;
-          return (
-            <div key={b.label} className="flex items-center gap-1.5">
-              <div className="w-16 text-[10px] tabular-nums text-muted-foreground">
-                {b.label}
-              </div>
-              <div className="bg-muted/40 relative h-3 flex-1 overflow-hidden rounded">
-                <div
-                  className="absolute inset-y-0 left-0 bg-violet-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <div className="w-6 text-right text-[10px] font-semibold tabular-nums">
-                {b.count}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] tabular-nums">
-        <div className="rounded bg-muted/30 px-1.5 py-0.5">
-          <span className="text-muted-foreground">중간값 </span>
-          <span className="font-semibold">
-            {fmt(hist.median)}
-            {unit}
-          </span>
-        </div>
-        <div className="rounded bg-muted/30 px-1.5 py-0.5">
-          <span className="text-muted-foreground">평균 </span>
-          <span className="font-semibold">
-            {fmt(hist.mean)}
-            {unit}
-          </span>
-        </div>
-        <div className="rounded bg-muted/30 px-1.5 py-0.5">
-          <span className="text-muted-foreground">25~75% </span>
-          <span className="font-semibold">
-            {fmt(hist.p25)}~{fmt(hist.p75)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SubjectAveragesBars({
-  items,
-}: {
-  items: PasserAggregateStats["subjectAverages"];
-}) {
-  const maxAttempts = Math.max(1, ...items.map((s) => s.avgAttempts));
-  return (
-    <div className="space-y-1">
-      {items.map((s) => {
-        const pct = (s.avgAttempts / maxAttempts) * 100;
-        return (
-          <div key={s.lawCode} className="flex items-center gap-2">
-            <div className="w-20 text-[11px] font-semibold">{s.lawCode}</div>
-            <div className="bg-muted/40 relative h-4 flex-1 overflow-hidden rounded">
-              <div
-                className="absolute inset-y-0 left-0 bg-emerald-500"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <div className="w-32 text-right text-[10px] tabular-nums">
-              평균 {s.avgAttempts}회 ·{" "}
-              {s.avgAccuracyPct !== null ? `${s.avgAccuracyPct}%` : "—"} ·{" "}
-              <span className="text-muted-foreground">{s.learners}명</span>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

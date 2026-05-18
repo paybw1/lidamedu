@@ -2,10 +2,7 @@
 // 1차 release: kind 별 reference 는 UUID 직접 입력. 검색 UI 는 후속.
 
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
   BookCheckIcon,
-  CheckCircle2Icon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
@@ -20,16 +17,15 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { Separator } from "~/core/components/ui/separator";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { getStaffRole } from "~/features/laws/queries.server";
 import { ContentPicker } from "~/features/admin/components/content-picker";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip, Field, StatusChip } from "~/features/admin/components/admin-ui";
 import { getCurriculumWithWeeks } from "~/features/curricula/queries.server";
 import {
   CURRICULUM_ITEM_KINDS,
@@ -39,6 +35,7 @@ import {
   type CurriculumItemKind,
   type CurriculumWeek,
 } from "~/features/curricula/labels";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
@@ -47,7 +44,8 @@ import {
 import type { Route } from "./+types/admin-curriculum-edit";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.curriculum) return [{ title: "커리큘럼 | Lidam Patent Attorney Academy" }];
+  if (!d || !d.curriculum)
+    return [{ title: "커리큘럼 | Lidam Patent Attorney Academy" }];
   return [{ title: `${d.curriculum.name} | Lidam Patent Attorney Academy` }];
 };
 
@@ -63,7 +61,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const curriculum = await getCurriculumWithWeeks(params.curriculumId);
   if (!curriculum) throw data("Not found", { status: 404 });
-  return { curriculum };
+  return { curriculum, role };
 }
 
 function useReload() {
@@ -76,26 +74,97 @@ function useReload() {
     });
 }
 
-export default function AdminCurriculumEdit({
-  loaderData,
-}: Route.ComponentProps) {
-  const { curriculum } = loaderData;
+export default function AdminCurriculumEdit({ loaderData }: Route.ComponentProps) {
+  const { curriculum, role } = loaderData;
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const reload = useReload();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      reload();
+    }
+  }, [fetcher.state, fetcher.data, reload]);
+
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      width={960}
+      title={curriculum.name}
+      desc={`${curriculum.durationWeeks}주 · 주차 ${curriculum.weekCount} · 항목 ${curriculum.itemCount}`}
+      headerRight={
+        <div className="flex gap-2">
+          <fetcher.Form method="post" action="/api/admin/curriculum">
+            <input type="hidden" name="intent" value="update" />
+            <input type="hidden" name="curriculumId" value={curriculum.curriculumId} />
+            <input type="hidden" name="isPublished" value={curriculum.isPublished ? "0" : "1"} />
+            <Button
+              type="submit"
+              size="sm"
+              variant={curriculum.isPublished ? "outline" : "default"}
+              disabled={fetcher.state !== "idle"}
+            >
+              {curriculum.isPublished ? "발행 취소" : "발행"}
+            </Button>
+          </fetcher.Form>
+          <fetcher.Form method="post" action="/api/admin/curriculum">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="curriculumId" value={curriculum.curriculumId} />
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              className="border-rose-300 text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950/20"
+              disabled={fetcher.state !== "idle"}
+              onClick={(e) => {
+                if (!confirm(`"${curriculum.name}" 을(를) 삭제(soft)합니까?`)) {
+                  e.preventDefault();
+                  return;
+                }
+                setTimeout(() => navigate("/admin/curricula"), 300);
+              }}
+            >
+              <Trash2Icon className="size-3.5" /> 삭제
+            </Button>
+          </fetcher.Form>
+        </div>
+      }
+    >
       <Link
         to="/admin/curricula"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
+        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-xs"
       >
-        <ArrowLeftIcon className="size-3" /> 커리큘럼 목록
+        ← 커리큘럼 목록
       </Link>
 
-      <CurriculumHeader curriculum={curriculum} />
+      {/* 상태 칩 + 적용 반 */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <StatusChip
+          status={curriculum.isPublished ? "published" : "draft"}
+          label={curriculum.isPublished ? "발행" : "초안"}
+        />
+        {curriculum.cohortCount > 0 ? (
+          <Chip tone="neutral">적용 반 {curriculum.cohortCount}</Chip>
+        ) : null}
+        {curriculum.description ? (
+          <p className="text-muted-foreground w-full text-xs whitespace-pre-line">
+            {curriculum.description}
+          </p>
+        ) : null}
+      </div>
+
       <CurriculumMetaForm curriculum={curriculum} />
 
       <Separator className="my-6" />
 
       <section className="space-y-4">
-        <h2 className="inline-flex items-center gap-2 text-lg font-semibold">
+        <h2 className="inline-flex items-center gap-2 text-base font-semibold">
           <BookCheckIcon className="size-4" />
           주차 ({curriculum.weeks.length} / {curriculum.durationWeeks})
         </h2>
@@ -115,105 +184,7 @@ export default function AdminCurriculumEdit({
           }
         />
       </section>
-    </div>
-  );
-}
-
-// ─── 헤더 (발행 토글 · 삭제) ───
-
-function CurriculumHeader({ curriculum }: { curriculum: CurriculumDetail }) {
-  const fetcher = useFetcher<{ ok?: true; error?: string }>();
-  const reload = useReload();
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (
-      fetcher.state === "idle" &&
-      fetcher.data &&
-      "ok" in fetcher.data &&
-      fetcher.data.ok
-    ) {
-      reload();
-    }
-  }, [fetcher.state, fetcher.data, reload]);
-
-  return (
-    <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <div className="mb-1 flex items-center gap-2">
-          {curriculum.isPublished ? (
-            <Badge variant="default" className="text-[10px]">
-              <CheckCircle2Icon className="size-3" /> 발행
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[10px]">
-              초안
-            </Badge>
-          )}
-          <Badge variant="secondary" className="text-[10px]">
-            {curriculum.durationWeeks}주 · 주차 {curriculum.weekCount} · 항목{" "}
-            {curriculum.itemCount}
-          </Badge>
-          {curriculum.cohortCount > 0 ? (
-            <Badge variant="outline" className="text-[10px]">
-              적용 반 {curriculum.cohortCount}
-            </Badge>
-          ) : null}
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">{curriculum.name}</h1>
-        {curriculum.description ? (
-          <p className="text-muted-foreground text-sm whitespace-pre-line">
-            {curriculum.description}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex gap-2">
-        <fetcher.Form method="post" action="/api/admin/curriculum">
-          <input type="hidden" name="intent" value="update" />
-          <input
-            type="hidden"
-            name="curriculumId"
-            value={curriculum.curriculumId}
-          />
-          <input
-            type="hidden"
-            name="isPublished"
-            value={curriculum.isPublished ? "0" : "1"}
-          />
-          <Button
-            type="submit"
-            size="sm"
-            variant={curriculum.isPublished ? "outline" : "default"}
-            disabled={fetcher.state !== "idle"}
-          >
-            {curriculum.isPublished ? "발행 취소" : "발행"}
-          </Button>
-        </fetcher.Form>
-        <fetcher.Form method="post" action="/api/admin/curriculum">
-          <input type="hidden" name="intent" value="delete" />
-          <input
-            type="hidden"
-            name="curriculumId"
-            value={curriculum.curriculumId}
-          />
-          <Button
-            type="submit"
-            size="sm"
-            variant="ghost"
-            className="text-rose-600 hover:text-rose-700"
-            disabled={fetcher.state !== "idle"}
-            onClick={(e) => {
-              if (!confirm(`"${curriculum.name}" 을(를) 삭제(soft)합니까?`)) {
-                e.preventDefault();
-                return;
-              }
-              setTimeout(() => navigate("/admin/curricula"), 300);
-            }}
-          >
-            <Trash2Icon className="size-3.5" /> 삭제
-          </Button>
-        </fetcher.Form>
-      </div>
-    </header>
+    </AdminShell>
   );
 }
 
@@ -239,11 +210,7 @@ function CurriculumMetaForm({ curriculum }: { curriculum: CurriculumDetail }) {
   if (!editing) {
     return (
       <div className="mb-4">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setEditing(true)}
-        >
+        <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
           <PencilIcon className="size-3.5" /> 메타 편집
         </Button>
       </div>
@@ -254,47 +221,43 @@ function CurriculumMetaForm({ curriculum }: { curriculum: CurriculumDetail }) {
     <fetcher.Form
       method="post"
       action="/api/admin/curriculum"
-      className="bg-card mb-4 space-y-3 rounded-md border p-4"
+      className="bg-card mb-4 space-y-3 rounded-xl border p-4 shadow-sm"
     >
       <input type="hidden" name="intent" value="update" />
-      <input
-        type="hidden"
-        name="curriculumId"
-        value={curriculum.curriculumId}
-      />
+      <input type="hidden" name="curriculumId" value={curriculum.curriculumId} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <Label className="text-muted-foreground text-[11px]">이름</Label>
+        <Field label="이름" htmlFor="meta-name">
           <Input
+            id="meta-name"
             name="name"
             defaultValue={curriculum.name}
             required
             maxLength={200}
-            className="mt-1 h-8 text-xs"
+            className="h-8 text-xs"
           />
-        </div>
-        <div>
-          <Label className="text-muted-foreground text-[11px]">
-            기간 (주)
-          </Label>
+        </Field>
+        <Field label="기간 (주)" htmlFor="meta-dur">
           <Input
+            id="meta-dur"
             name="durationWeeks"
             type="number"
             min={1}
             max={52}
             defaultValue={curriculum.durationWeeks}
-            className="mt-1 h-8 text-xs tabular-nums"
+            className="h-8 text-xs tabular-nums"
           />
-        </div>
+        </Field>
         <div className="sm:col-span-2">
-          <Label className="text-muted-foreground text-[11px]">설명</Label>
-          <textarea
-            name="description"
-            defaultValue={curriculum.description ?? ""}
-            maxLength={2000}
-            rows={2}
-            className="border-input bg-background mt-1 w-full rounded-md border px-2 py-1 text-xs"
-          />
+          <Field label="설명" htmlFor="meta-desc">
+            <textarea
+              id="meta-desc"
+              name="description"
+              defaultValue={curriculum.description ?? ""}
+              maxLength={2000}
+              rows={2}
+              className="border-input bg-background w-full rounded-md border px-2 py-1 text-xs"
+            />
+          </Field>
         </div>
         <div className="sm:col-span-2">
           <Label className="text-muted-foreground text-[11px]">과목</Label>
@@ -320,12 +283,7 @@ function CurriculumMetaForm({ curriculum }: { curriculum: CurriculumDetail }) {
         <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setEditing(false)}
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
           <XIcon className="size-3.5" /> 취소
         </Button>
         <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
@@ -366,10 +324,8 @@ function WeekCard({
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <Badge variant="secondary" className="text-[10px]">
-              Week {week.weekNumber}
-            </Badge>
-            <h3 className="mt-1 text-base font-semibold">{week.title}</h3>
+            <Chip tone="neutral">Week {week.weekNumber}</Chip>
+            <h3 className="mt-1.5 text-sm font-semibold">{week.title}</h3>
             {week.goalMd ? (
               <p className="text-muted-foreground mt-1 text-xs whitespace-pre-line">
                 {week.goalMd}
@@ -377,11 +333,7 @@ function WeekCard({
             ) : null}
           </div>
           <div className="flex gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setEditing((v) => !v)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
               <PencilIcon className="size-3" />
             </Button>
             <fetcher.Form method="post" action="/api/admin/curriculum">
@@ -393,9 +345,7 @@ function WeekCard({
                 variant="ghost"
                 className="text-rose-600 hover:text-rose-700"
                 onClick={(e) => {
-                  if (
-                    !confirm(`Week ${week.weekNumber} 을(를) 삭제합니까? (항목도 함께 삭제)`)
-                  ) {
+                  if (!confirm(`Week ${week.weekNumber} 을(를) 삭제합니까? (항목도 함께 삭제)`)) {
                     e.preventDefault();
                   }
                 }}
@@ -422,7 +372,7 @@ function WeekCard({
             아직 학습 항목이 없습니다.
           </p>
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-border divide-y">
             {week.items.map((item) => (
               <ItemRow key={item.itemId} item={item} />
             ))}
@@ -461,7 +411,7 @@ function WeekEditForm({
     <fetcher.Form
       method="post"
       action="/api/admin/curriculum"
-      className="bg-muted/30 space-y-2 rounded-md border p-3"
+      className="bg-muted/30 space-y-2 rounded-xl border p-3"
     >
       <input type="hidden" name="intent" value="upsert_week" />
       <input type="hidden" name="curriculumId" value={curriculumId} />
@@ -538,7 +488,7 @@ function NewWeekForm({
     <fetcher.Form
       method="post"
       action="/api/admin/curriculum"
-      className="bg-card space-y-2 rounded-md border p-3"
+      className="bg-card space-y-2 rounded-xl border p-3 shadow-sm"
     >
       <input type="hidden" name="intent" value="upsert_week" />
       <input type="hidden" name="curriculumId" value={curriculumId} />
@@ -569,12 +519,7 @@ function NewWeekForm({
         <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setOpen(false)}
-        >
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
           취소
         </Button>
         <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
@@ -617,14 +562,10 @@ function ItemRow({ item }: { item: CurriculumItem }) {
       <span className="text-muted-foreground w-6 text-center text-xs tabular-nums">
         {item.ord + 1}
       </span>
-      <Badge variant="outline" className="w-20 justify-center text-[10px]">
-        {CURRICULUM_ITEM_KIND_LABEL[item.kind]}
-      </Badge>
+      <Chip tone="outline">{CURRICULUM_ITEM_KIND_LABEL[item.kind]}</Chip>
       <div className="min-w-0 flex-1 truncate text-xs">{refLabel}</div>
       {item.targetQuantity ? (
-        <Badge variant="secondary" className="text-[10px]">
-          x{item.targetQuantity}
-        </Badge>
+        <Chip tone="neutral">x{item.targetQuantity}</Chip>
       ) : null}
       {item.note ? (
         <span className="text-muted-foreground truncate text-[10px] italic">
@@ -653,13 +594,7 @@ function ItemRow({ item }: { item: CurriculumItem }) {
   );
 }
 
-function NewItemForm({
-  weekId,
-  nextOrd,
-}: {
-  weekId: string;
-  nextOrd: number;
-}) {
+function NewItemForm({ weekId, nextOrd }: { weekId: string; nextOrd: number }) {
   const [kind, setKind] = useState<CurriculumItemKind>("article");
   const [open, setOpen] = useState(false);
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -678,22 +613,16 @@ function NewItemForm({
 
   if (!open) {
     return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="w-full"
-        onClick={() => setOpen(true)}
-      >
+      <Button size="sm" variant="outline" className="w-full" onClick={() => setOpen(true)}>
         <PlusIcon className="size-3.5" /> 항목 추가
       </Button>
     );
   }
-
   return (
     <fetcher.Form
       method="post"
       action="/api/admin/curriculum"
-      className="bg-muted/30 space-y-2 rounded-md border p-3"
+      className="bg-muted/30 space-y-2 rounded-xl border p-3"
     >
       <input type="hidden" name="intent" value="upsert_item" />
       <input type="hidden" name="weekId" value={weekId} />
@@ -703,7 +632,7 @@ function NewItemForm({
           name="kind"
           value={kind}
           onChange={(e) => setKind(e.target.value as CurriculumItemKind)}
-          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+          className="border-input bg-background focus:border-primary h-8 rounded-md border px-2 text-xs outline-none"
         >
           {CURRICULUM_ITEM_KINDS.map((k) => (
             <option key={k} value={k}>
@@ -767,12 +696,7 @@ function NewItemForm({
         <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
       ) : null}
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setOpen(false)}
-        >
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
           취소
         </Button>
         <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>

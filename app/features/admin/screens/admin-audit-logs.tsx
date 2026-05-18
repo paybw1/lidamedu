@@ -2,27 +2,18 @@
 // /admin/audit-logs?action=...&entity_type=...&q=...&offset=...
 
 import {
-  ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  RefreshCwIcon,
   ShieldCheckIcon,
 } from "lucide-react";
 import { Form, Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Input } from "~/core/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listAuditLogs } from "~/features/admin/queries/audit-log.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-audit-logs";
@@ -65,6 +56,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     total,
     filters: { action, entityType, q },
     offset,
+    // role 은 항상 "admin" (가드 통과 전제). AdminShell 에 전달.
+    role: role as "admin",
   };
 }
 
@@ -80,206 +73,218 @@ function formatRelative(iso: string): string {
   return iso.slice(0, 10);
 }
 
-const ACTION_TONE: Record<string, string> = {
-  create: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-  update: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-  delete: "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300",
-};
-
-function actionTone(action: string): string {
+function actionChipTone(action: string): "emerald" | "amber" | "coral" | "neutral" {
   const verb = action.split(".").pop() ?? "";
-  return ACTION_TONE[verb] ?? "bg-muted text-foreground";
+  if (verb === "create") return "emerald";
+  if (verb === "update") return "amber";
+  if (verb === "delete") return "coral";
+  return "neutral";
 }
 
 export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
-  const { items, total, filters, offset } = loaderData;
+  const { items, total, filters, offset, role } = loaderData;
   const nextOffset = offset + PAGE_SIZE;
   const prevOffset = Math.max(0, offset - PAGE_SIZE);
   const hasNext = nextOffset < total;
   const hasPrev = offset > 0;
+  const filterActive = !!(filters.q || filters.action || filters.entityType);
+
+  function paginationParams(extra: Record<string, string>) {
+    const p: Record<string, string> = {};
+    if (filters.q) p.q = filters.q;
+    if (filters.action) p.action = filters.action;
+    if (filters.entityType) p.entity_type = filters.entityType;
+    return new URLSearchParams({ ...p, ...extra }).toString();
+  }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ShieldCheckIcon className="size-3.5" /> 원장 전용
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">감사 로그</h1>
-        <p className="text-muted-foreground text-sm">
-          누가 · 언제 · 어떤 entity 에 · 무엇을 했는지. 전체 {total.toLocaleString("ko-KR")}건.
-        </p>
-      </header>
+    <AdminShell
+      cluster="comms"
+      role={role}
+      title="감사 로그"
+      desc={`누가 · 언제 · 어떤 entity 에 · 무엇을 했는지. 전체 ${total.toLocaleString("ko-KR")}건.`}
+    >
+      {/* 원장 전용 배지 */}
+      <div className="mb-4 flex items-center gap-1.5">
+        <ShieldCheckIcon className="text-primary size-4" aria-hidden />
+        <Chip tone="blue">원장 전용</Chip>
+      </div>
 
+      {/* 필터 바 */}
       <Form
         method="get"
-        className="mb-4 flex flex-wrap items-end gap-2"
+        className="border-border bg-card mb-3 flex flex-wrap items-end gap-2.5 rounded-xl border p-3 shadow-sm"
       >
-        <Input
-          type="search"
+        <FilterInput
           name="q"
+          label="통합 검색"
           defaultValue={filters.q}
-          placeholder="action / entity_type / entity_id 검색"
-          className="h-9 max-w-sm"
+          placeholder="action / entity_type / entity_id"
+          className="min-w-[200px] flex-1 basis-[240px] sm:max-w-[300px]"
         />
-        <Input
+        <FilterInput
           name="action"
+          label="action"
           defaultValue={filters.action}
-          placeholder="action (예: case.delete)"
-          className="h-9 w-48"
+          placeholder="예: case.delete"
+          className="w-48"
         />
-        <Input
+        <FilterInput
           name="entity_type"
+          label="entity_type"
           defaultValue={filters.entityType}
-          placeholder="entity_type (예: case)"
-          className="h-9 w-40"
+          placeholder="예: case"
+          className="w-36"
         />
-        <Button type="submit" size="sm" className="h-9">
+        <Button type="submit" size="sm" variant="outline">
           적용
         </Button>
-        {filters.q || filters.action || filters.entityType ? (
+        {filterActive ? (
           <Link
             to="/admin/audit-logs"
-            className="text-muted-foreground hover:text-foreground inline-flex h-9 items-center px-2 text-xs"
+            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
           >
-            초기화
+            <RefreshCwIcon className="size-3" /> 초기화
           </Link>
         ) : null}
       </Form>
 
+      {/* 빈 상태 */}
       {items.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            기록된 감사 로그가 없습니다.
+        <div className="border-border bg-card text-muted-foreground flex flex-col items-center gap-2 rounded-xl border py-16 text-center shadow-sm">
+          <ShieldCheckIcon className="size-8 opacity-30" />
+          <p className="text-sm font-medium">
+            {filterActive
+              ? "조건에 맞는 로그가 없습니다."
+              : "기록된 감사 로그가 없습니다."}
           </p>
         </div>
       ) : (
-        <Card>
-          <CardContent className="overflow-x-auto p-0">
-            <Table className="min-w-[920px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-32">시각</TableHead>
-                  <TableHead className="w-36">작성자</TableHead>
-                  <TableHead className="w-40">action</TableHead>
-                  <TableHead className="w-28">entity_type</TableHead>
-                  <TableHead className="w-60">entity_id</TableHead>
-                  <TableHead>metadata</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((it) => (
-                  <TableRow key={it.logId}>
-                    <TableCell
-                      className="text-muted-foreground text-xs tabular-nums"
-                      title={it.createdAt}
-                    >
-                      {formatRelative(it.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <span className="font-medium">
-                        {it.actorName ?? "(이름 없음)"}
-                      </span>
-                      {it.actorRole ? (
-                        <Badge variant="outline" className="ml-1.5 text-[10px]">
-                          {it.actorRole}
-                        </Badge>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px] ${actionTone(it.action)}`}
-                      >
-                        {it.action}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {it.entityType}
-                    </TableCell>
-                    <TableCell className="font-mono text-[11px] break-all">
-                      {it.entityId}
-                    </TableCell>
-                    <TableCell className="text-[11px]">
-                      {it.metadata ? (
-                        <code className="bg-muted/40 block max-w-md truncate rounded px-2 py-0.5">
-                          {JSON.stringify(it.metadata)}
-                        </code>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+        <>
+          <IndexTable
+            minWidth={920}
+            headers={[
+              { label: "시각", width: "7rem" },
+              { label: "작성자", width: "9rem" },
+              { label: "action", width: "11rem" },
+              { label: "entity_type", width: "8rem" },
+              { label: "entity_id", width: "14rem" },
+              { label: "metadata" },
+            ]}
+            footer={
+              <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
+                {offset + 1} – {Math.min(total, offset + items.length)} / {total.toLocaleString("ko-KR")}건
+              </div>
+            }
+          >
+            {items.map((it) => (
+              <TR key={it.logId}>
+                <TD mono soft>
+                  <span title={it.createdAt}>{formatRelative(it.createdAt)}</span>
+                </TD>
+                <TD>
+                  <span className="font-medium">{it.actorName ?? "(이름 없음)"}</span>
+                  {it.actorRole ? (
+                    <span className="text-muted-foreground ml-1 font-mono text-[10px]">
+                      {it.actorRole}
+                    </span>
+                  ) : null}
+                </TD>
+                <TD>
+                  <Chip tone={actionChipTone(it.action)} className="font-mono">
+                    {it.action}
+                  </Chip>
+                </TD>
+                <TD mono soft>
+                  {it.entityType}
+                </TD>
+                <TD mono soft className="break-all text-[11px]">
+                  {it.entityId}
+                </TD>
+                <TD>
+                  {it.metadata ? (
+                    <code className="bg-muted/40 block max-w-xs truncate rounded px-2 py-0.5 font-mono text-[11px]">
+                      {JSON.stringify(it.metadata)}
+                    </code>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TD>
+              </TR>
+            ))}
+          </IndexTable>
 
-      <div className="mt-4 flex items-center justify-between text-xs">
-        <span className="text-muted-foreground tabular-nums">
-          {offset + 1} – {Math.min(total, offset + items.length)} / {total}
-        </span>
-        <div className="flex gap-2">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            disabled={!hasPrev}
-            className="h-8"
-          >
-            {hasPrev ? (
-              <Link
-                to={`?${new URLSearchParams({
-                  ...(filters.q ? { q: filters.q } : {}),
-                  ...(filters.action ? { action: filters.action } : {}),
-                  ...(filters.entityType
-                    ? { entity_type: filters.entityType }
-                    : {}),
-                  offset: String(prevOffset),
-                }).toString()}`}
-              >
-                <ChevronLeftIcon className="size-3.5" /> 이전
-              </Link>
-            ) : (
-              <span>
-                <ChevronLeftIcon className="size-3.5" /> 이전
-              </span>
-            )}
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            disabled={!hasNext}
-            className="h-8"
-          >
-            {hasNext ? (
-              <Link
-                to={`?${new URLSearchParams({
-                  ...(filters.q ? { q: filters.q } : {}),
-                  ...(filters.action ? { action: filters.action } : {}),
-                  ...(filters.entityType
-                    ? { entity_type: filters.entityType }
-                    : {}),
-                  offset: String(nextOffset),
-                }).toString()}`}
-              >
-                다음 <ChevronRightIcon className="size-3.5" />
-              </Link>
-            ) : (
-              <span>
-                다음 <ChevronRightIcon className="size-3.5" />
-              </span>
-            )}
-          </Button>
-        </div>
-      </div>
-    </div>
+          {/* 페이지네이션 */}
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <Button
+              asChild={hasPrev}
+              variant="outline"
+              size="sm"
+              disabled={!hasPrev}
+              className="h-8"
+            >
+              {hasPrev ? (
+                <Link to={`?${paginationParams({ offset: String(prevOffset) })}`}>
+                  <ChevronLeftIcon className="size-3.5" /> 이전
+                </Link>
+              ) : (
+                <span>
+                  <ChevronLeftIcon className="size-3.5" /> 이전
+                </span>
+              )}
+            </Button>
+            <Button
+              asChild={hasNext}
+              variant="outline"
+              size="sm"
+              disabled={!hasNext}
+              className="h-8"
+            >
+              {hasNext ? (
+                <Link to={`?${paginationParams({ offset: String(nextOffset) })}`}>
+                  다음 <ChevronRightIcon className="size-3.5" />
+                </Link>
+              ) : (
+                <span>
+                  다음 <ChevronRightIcon className="size-3.5" />
+                </span>
+              )}
+            </Button>
+          </div>
+        </>
+      )}
+    </AdminShell>
+  );
+}
+
+/* ── 로컬 서브컴포넌트 ────────────────────────────────────────────────── */
+
+function FilterInput({
+  name,
+  label,
+  defaultValue,
+  placeholder,
+  className,
+}: {
+  name: string;
+  label: string;
+  defaultValue: string;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <label className={`flex flex-col gap-1.5 ${className ?? ""}`}>
+      <span className="text-muted-foreground text-[11px] font-semibold">
+        {label}
+      </span>
+      <input
+        type="search"
+        name={name}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        aria-label={label}
+        className="border-input bg-background focus:border-primary h-9 w-full rounded-md border px-3 text-[13px] outline-none"
+      />
+    </label>
   );
 }

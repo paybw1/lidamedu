@@ -1,4 +1,5 @@
-// 한 법(예: 특허법) 의 모든 조문 빈칸 자료를 한 화면에서 편집.
+// 한 법(예: 특허법) 의 모든 조문 빈칸 자료를 한 화면에서 편집 — P5 WORKSPACE 패턴.
+// AdminShell cluster="blanks". 원본 동작/로직 보존. 시각만 변경.
 //
 // 각 조문 카드 (ArticleEditCard):
 //   좌: 빈칸 자료 본문 (AdminBlanksRenderProvider 로 빈칸을 placeholder 버튼으로 시각화)
@@ -8,7 +9,6 @@
 // selection 을 추적해 어느 카드 영역에서 발생했는지 식별 후 적절한 set 에 빈칸 추가.
 
 import {
-  ArrowLeftIcon,
   FileQuestionIcon,
   PlusCircleIcon,
   Trash2Icon,
@@ -29,11 +29,12 @@ import {
   useSearchParams,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Bar, Chip } from "~/features/admin/components/admin-ui";
 import { AdminBlanksRenderProvider } from "~/features/blanks/components/admin-blanks-render-provider";
 import {
   BlankRowEditor,
@@ -52,6 +53,7 @@ import {
   type ArticleBody,
 } from "~/features/laws/lib/article-body";
 import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
@@ -143,7 +145,6 @@ interface ArticleData {
   setId: string | null;
   blanks: BlankRow[];
   isOwner: boolean;
-  // 가장 가까운 chapter (없으면 null — "기타" 그룹).
   chapterId: string | null;
 }
 
@@ -158,45 +159,33 @@ const UNGROUPED_CHAPTER_ID = "__ungrouped__";
 export async function loader({ params, request }: Route.LoaderArgs) {
   const rawLawCode = params.lawCode ?? "";
   if (!isBlankLawSlug(rawLawCode)) {
-    // 빈칸 자료 대상 4과목 외이면 목록으로 redirect (운영 결정: 민사소송법은 빈칸 미대상).
     throw redirect("/admin/blanks?law=patent");
   }
   const lawCode: BlankLawSlug = rawLawCode;
 
   const [client] = makeServerClient(request);
-  // private.layout 이 이미 auth.getUser 로 세션을 검증해서 redirect 가드를 통과한 상태.
-  // 여기서는 cookie 에 저장된 session 만 읽어 user.id 만 확보 (network 라운드 트립 없음).
-  // 로더가 무거워서 HMR 재실행시마다 getUser 까지 다시 호출하면 Supabase auth 429 에 쉽게 걸린다.
   const {
     data: { session },
   } = await client.auth.getSession();
   const user = session?.user;
   if (!user) throw data("Unauthorized", { status: 401 });
-  const { data: profile } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  const role = profile?.role ?? "student";
-  if (role !== "instructor" && role !== "admin") {
-    throw data("Forbidden", { status: 403 });
-  }
+  const role = await getStaffRole(client, user.id);
+  if (!role) throw data("Forbidden", { status: 403 });
 
   const { data: law } = await client
     .from("laws")
     .select("law_id, law_code")
     .eq("law_code", lawCode)
     .maybeSingle();
-  // 조문 미업로드 법령(law row 아예 없음) — 안내 화면을 위해 articles=[], chapters=[] 로 반환.
   if (!law) {
     return {
       lawCode,
       articles: [] as ArticleData[],
       chapters: [] as ChapterInfo[],
+      role,
     };
   }
 
-  // article + chapter 노드 모두 fetch — chapter 그룹화에 사용.
   const { data: allNodes } = await client
     .from("articles")
     .select(
@@ -207,7 +196,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const nodeRows = allNodes ?? [];
 
-  // chapter 노드 → { chapterId, label, path }, path 기준 정렬.
   const chapterRows = nodeRows
     .filter((n) => n.level === "chapter")
     .map((n) => ({
@@ -218,7 +206,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     .sort((a, b) => a.path.localeCompare(b.path));
 
   function findChapterForPath(path: string): string | null {
-    // 가장 긴 prefix 매칭 (chapter 가 중첩될 일은 없지만 path 비교는 prefix + '.' 기준).
     let best: { chapterId: string; pathLen: number } | null = null;
     for (const c of chapterRows) {
       if (path === c.path || path.startsWith(`${c.path}.`)) {
@@ -230,7 +217,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     return best ? best.chapterId : null;
   }
 
-  // article_number "29의2" 같은 형식을 [major, minor] 로 파싱해 정렬.
   function articleSortKey(num: string | null): [number, number] {
     if (!num) return [0, 0];
     const m = num.match(/^(\d+)(?:의(\d+))?/);
@@ -258,7 +244,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     for (const r of revs ?? []) revById.set(r.revision_id, r.body_json);
   }
 
-  // 현재 사용자의 set 만 fetch (소유한 자료에 대해서만 편집).
   const articleIds = articleRows.map((a) => a.article_id);
   const setByArticleId = new Map<
     string,
@@ -292,7 +277,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     };
   });
 
-  // chapter 목록 (실제로 article 이 매핑된 chapter 만 + 미분류).
   const chapterIdsWithArticles = new Set(
     articlesData.map((a) => a.chapterId).filter((v): v is string => v !== null),
   );
@@ -307,19 +291,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     chapters.push({
       chapterId: UNGROUPED_CHAPTER_ID,
       displayLabel: "미분류",
-      path: "~", // 정렬 시 항상 맨 뒤.
+      path: "~",
     });
   }
 
-  return { lawCode, articles: articlesData, chapters };
+  return { lawCode, articles: articlesData, chapters, role };
 }
 
 export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
-  const { lawCode, articles, chapters } = loaderData;
+  const { lawCode, articles, chapters, role } = loaderData;
 
-  // chapter 미지정 = 장 인덱스 화면.
-  // chapter=__all__ = 모든 조문 한 화면 편집 (chapter 그룹 헤더는 유지).
-  // chapter=<chapterId> = 그 장의 조문만 편집.
   const ALL_SENTINEL = "__all__";
   const [searchParams, setSearchParams] = useSearchParams();
   const chapterParam = searchParams.get("chapter");
@@ -353,24 +334,19 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     [searchParams, setSearchParams],
   );
 
-  // selection 의 식별자는 articleId. setId 가 없는 카드 (자료 미생성) 에서도 selection 가능 —
-  // server action 이 setId 없으면 자동으로 set 을 만들고 빈칸 추가.
   const [selection, setSelection] = useState<{
     articleId: string;
     setId: string | null;
     text: string;
     beforeHint: string;
     afterHint: string;
-    // 선택 영역의 가장 가까운 clause/item/sub DOM id (예: "clause-5"). fallback hint.
     blockHint: string | null;
-    // 정확 위치 — DOM data attribute 캡처 (blockIndex + cumulative offset within block).
     blockIndex: number | null;
     cumOffset: number | null;
     top: number;
     left: number;
   } | null>(null);
 
-  // 카드별 ref 등록 — key 는 articleId.
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const registerRef = useCallback(
     (articleId: string, ref: HTMLDivElement | null) => {
@@ -380,7 +356,6 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     [],
   );
 
-  // articleId → setId 룩업 (selection 시점에 setId 있으면 같이 전달, 없으면 server 가 자동 생성).
   const setIdByArticle = useMemo(() => {
     const m = new Map<string, string>();
     for (const a of articles) {
@@ -509,28 +484,24 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     setSelection(null);
   }, [selection, addBlankFetcher]);
 
-  // setId 가 새로 만들어진 응답이 오면 (자료 없던 카드에 빈칸 추가 시) loader 재실행으로 새 set 반영.
   const lastNewSetIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (addBlankFetcher.state !== "idle" || !addBlankFetcher.data) return;
     if (!addBlankFetcher.data.ok || !addBlankFetcher.data.setId) return;
     const newSetId = addBlankFetcher.data.setId;
     const knownSet = articles.some((a) => a.setId === newSetId);
-    // 아직 loader 데이터에 그 setId 가 없으면 — 자동 생성된 새 set. revalidate.
     if (!knownSet && lastNewSetIdRef.current !== newSetId) {
       lastNewSetIdRef.current = newSetId;
       revalidator.revalidate();
     }
   }, [addBlankFetcher.state, addBlankFetcher.data, articles, revalidator]);
 
-  // 표시 중인 조문에 대해서만 미매칭 빈칸 사전 계산. 일괄 삭제도 표시 범위 기준.
   const unplacedByArticle = useMemo(() => {
     const out = new Map<string, BlankRow[]>();
     for (const a of visibleArticles) {
       if (!a.setId || a.blanks.length === 0) continue;
       const body = parseArticleBody(a.bodyJson);
       if (!body) {
-        // body 가 없는데 blanks 만 있으면 모두 미매칭으로 취급.
         out.set(a.articleId, a.blanks);
         continue;
       }
@@ -592,11 +563,9 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
       `삭제 완료: ${removedTotal}개 제거됨` +
         (failedSets > 0 ? ` (실패한 set ${failedSets}개)` : ""),
     );
-    // 페이지 reload 로 loader 재실행 → 최신 데이터 반영.
     window.location.reload();
-  }, [visibleArticles, unplacedByArticle, totalUnplaced]);
+  }, [articles, unplacedByArticle, totalUnplaced]);
 
-  // 통계 — 표시 중인 범위 기준.
   const totalArticles = visibleArticles.length;
   const articlesWithSet = visibleArticles.filter((a) => a.setId).length;
   const totalBlanks = visibleArticles.reduce((s, a) => s + a.blanks.length, 0);
@@ -605,9 +574,8 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     0,
   );
 
-  // chapter 단위 그룹화 (표시 순). chapterId 가 null 인 article 은 UNGROUPED 그룹.
   const groupedArticles = useMemo(() => {
-    const groups: Array<{ chapter: typeof chapters[number]; items: typeof visibleArticles }> = [];
+    const groups: Array<{ chapter: (typeof chapters)[number]; items: typeof visibleArticles }> = [];
     const byChapterId = new Map<string, typeof visibleArticles>();
     for (const a of visibleArticles) {
       const key = a.chapterId ?? UNGROUPED_CHAPTER_ID;
@@ -622,7 +590,6 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     return groups;
   }, [visibleArticles, chapters]);
 
-  // chapter 별 카운트 (필터 chip 표시용).
   const chapterCounts = useMemo(() => {
     const m = new Map<string, number>();
     for (const a of articles) {
@@ -632,7 +599,6 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     return m;
   }, [articles]);
 
-  // chapter 별 통계 (인덱스 카드 표시용) — 조문 수 / 자료 보유 / 빈칸 합계 / 입력 완료 합계.
   interface ChapterStats {
     articleCount: number;
     setCount: number;
@@ -652,24 +618,45 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
       cur.articleCount += 1;
       if (a.setId) cur.setCount += 1;
       cur.totalBlanks += a.blanks.length;
-      cur.filledBlanks += a.blanks.filter((b) => b.answer.trim().length > 0)
-        .length;
+      cur.filledBlanks += a.blanks.filter((b) => b.answer.trim().length > 0).length;
       m.set(key, cur);
     }
     return m;
   }, [articles]);
 
-  // 인덱스 모드 = chapter 가 존재하고 chapter param 미지정 + __all__ 도 아닌 상태.
-  // chapter=__all__ 이면 모든 조문을 한 화면에 펼쳐 편집.
   const indexMode =
     chapters.length > 0 && !isAllMode && activeChapterId === null;
-  // 조문 자체가 업로드되지 않은 법령 — 안내 화면.
   const articlesEmpty = articles.length === 0;
   const lawName =
     BLANK_LAW_TABS.find((t) => t.slug === lawCode)?.name ?? lawCode;
 
+  // 제목: 현재 모드에 따라 동적 생성
+  const pageTitle = articlesEmpty
+    ? `${lawName} — 조문 업로드 대기`
+    : indexMode
+      ? `${lawName} — 장별 빈칸 자료`
+      : isAllMode
+        ? `${lawName} — 전체 조문 빈칸`
+        : activeChapterId !== null
+          ? `${chapters.find((c) => c.chapterId === activeChapterId)?.displayLabel ?? ""}`
+          : `${lawName} — 전체 빈칸 자료`;
+
+  const pageDesc =
+    articlesEmpty
+      ? undefined
+      : indexMode
+        ? `장 ${chapters.length}개 · 조문 ${articles.length}개`
+        : `조문 ${totalArticles}개 · 자료 보유 ${articlesWithSet}개 · 빈칸 ${filledBlanks}/${totalBlanks}${totalUnplaced > 0 ? ` · 미매칭 ${totalUnplaced}개` : ""}`;
+
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+    <AdminShell
+      cluster="blanks"
+      role={role}
+      title={pageTitle}
+      desc={pageDesc}
+      width={1400}
+    >
+      {/* floating 새 빈칸 버튼 — 텍스트 선택 시 */}
       {selection && !articlesEmpty ? (
         <button
           type="button"
@@ -685,8 +672,9 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
         </button>
       ) : null}
 
+      {/* 법령 탭 */}
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground mr-1 text-xs">법령:</span>
+        <span className="text-muted-foreground mr-1 text-[11px] font-semibold">법령</span>
         {BLANK_LAW_TABS.map((t) => {
           const active = t.slug === lawCode;
           return (
@@ -694,10 +682,10 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
               key={t.slug}
               to={`/admin/blanks/law/${t.slug}`}
               className={cn(
-                "rounded-md border px-2.5 py-1 text-xs font-semibold",
+                "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 active
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-input hover:bg-accent",
+                  : "bg-background text-muted-foreground border-border hover:bg-muted",
               )}
             >
               {t.name}
@@ -706,77 +694,18 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
         })}
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        {indexMode ? (
-          <Link
-            to={`/admin/blanks?law=${lawCode}`}
-            viewTransition
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-          >
-            <ArrowLeftIcon className="size-4" /> 빈칸 자료 목록
-          </Link>
-        ) : chapters.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setChapterFilter(null)}
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-          >
-            <ArrowLeftIcon className="size-4" /> 모든 장
-          </button>
-        ) : (
-          <Link
-            to={`/admin/blanks?law=${lawCode}`}
-            viewTransition
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-          >
-            <ArrowLeftIcon className="size-4" /> 빈칸 자료 목록
-          </Link>
-        )}
-        <div className="flex flex-col items-end gap-0.5">
-          <h1 className="text-xl font-bold tracking-tight">
-            {lawName}
-            {articlesEmpty
-              ? " — 조문 업로드 대기"
-              : indexMode
-                ? " — 장별 빈칸 자료"
-                : isAllMode
-                  ? " — 전체 조문 빈칸 자료"
-                  : activeChapterId !== null
-                    ? ` — ${
-                        chapters.find((c) => c.chapterId === activeChapterId)
-                          ?.displayLabel ?? ""
-                      }`
-                    : " — 모든 조문 빈칸 자료"}
-          </h1>
-          {!articlesEmpty ? (
-            <p className="text-muted-foreground text-xs">
-              {indexMode
-                ? `장 ${chapters.length}개 · 조문 ${articles.length}개 · 빈칸 ${filledBlanks}/${totalBlanks}`
-                : `조문 ${totalArticles}개 · 자료 보유 ${articlesWithSet}개 · 빈칸 ${filledBlanks}/${totalBlanks}`}
-              {totalUnplaced > 0 ? (
-                <span className="ml-2 text-amber-700 dark:text-amber-400">
-                  · 미매칭 {totalUnplaced}개
-                </span>
-              ) : null}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {/* 편집 모드에서만 다른 그룹으로 빠르게 이동할 수 있도록 chip 행 노출. */}
+      {/* 편집 그룹 chip — 편집 모드에서만 표시 */}
       {!articlesEmpty && !indexMode && chapters.length > 0 ? (
-        <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          <span className="text-muted-foreground mr-1 text-xs font-semibold">
-            편집 그룹:
-          </span>
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground mr-1 text-[11px] font-semibold">편집 그룹</span>
           <button
             type="button"
             onClick={() => setChapterFilter(ALL_SENTINEL)}
             className={cn(
-              "rounded-md border px-2 py-0.5 text-xs",
+              "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
               isAllMode
                 ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-input hover:bg-accent",
+                : "bg-background text-muted-foreground border-border hover:bg-muted",
             )}
           >
             전체 ({articles.length})
@@ -790,10 +719,10 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
                 type="button"
                 onClick={() => setChapterFilter(c.chapterId)}
                 className={cn(
-                  "rounded-md border px-2 py-0.5 text-xs",
+                  "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
                   active
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-muted-foreground border-input hover:bg-accent",
+                    : "bg-background text-muted-foreground border-border hover:bg-muted",
                 )}
                 title={c.displayLabel}
               >
@@ -804,35 +733,19 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
-      {articlesEmpty ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="bg-muted text-muted-foreground rounded-full p-3">
-              <FileQuestionIcon className="size-6" />
-            </div>
-            <h2 className="text-base font-bold">
-              {lawName} 조문이 아직 업로드되지 않았습니다
-            </h2>
-            <p className="text-muted-foreground max-w-md text-sm">
-              조문이 업로드되면 자동으로 이 페이지에서 빈칸 자료를 만들 수
-              있습니다. 다른 법령을 보려면 위 법령 탭을 선택하세요.
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
-
+      {/* 미매칭 경고 배너 */}
       {!indexMode && (totalUnplaced > 0 || bulkResult) ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300/60 bg-amber-50/60 px-3 py-2 text-xs dark:border-amber-700/60 dark:bg-amber-950/30">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/60 bg-amber-50/60 px-4 py-3 dark:border-amber-700/60 dark:bg-amber-950/30">
           <div>
-            <p className="font-semibold text-amber-900 dark:text-amber-200">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
               본문에 표시되지 않은 빈칸 — 전체 {totalUnplaced}개
             </p>
             {bulkResult ? (
-              <p className="text-emerald-700 dark:text-emerald-400">
+              <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
                 {bulkResult}
               </p>
             ) : (
-              <p className="text-amber-800/80 dark:text-amber-300/80">
+              <p className="mt-0.5 text-xs text-amber-800/80 dark:text-amber-300/80">
                 컨텍스트 불일치 등의 이유로 본문 위치를 잡지 못한 빈칸입니다.
               </p>
             )}
@@ -851,7 +764,22 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
-      {articlesEmpty ? null : indexMode ? (
+      {/* 빈 상태 — 조문 없음 */}
+      {articlesEmpty ? (
+        <div className="border-border bg-card flex flex-col items-center gap-3 rounded-xl border py-16 text-center shadow-sm">
+          <div className="bg-muted text-muted-foreground rounded-full p-3">
+            <FileQuestionIcon className="size-6" />
+          </div>
+          <h2 className="text-base font-bold">
+            {lawName} 조문이 아직 업로드되지 않았습니다
+          </h2>
+          <p className="text-muted-foreground max-w-md text-sm">
+            조문이 업로드되면 자동으로 이 페이지에서 빈칸 자료를 만들 수
+            있습니다. 다른 법령을 보려면 위 법령 탭을 선택하세요.
+          </p>
+        </div>
+      ) : indexMode ? (
+        /* 인덱스 모드 — 장별 카드 그리드 */
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {chapters.map((c) => {
             const stats = chapterStats.get(c.chapterId);
@@ -866,41 +794,44 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
                 key={c.chapterId}
                 type="button"
                 onClick={() => setChapterFilter(c.chapterId)}
-                className="group bg-card text-card-foreground hover:border-primary/60 hover:bg-accent/50 flex flex-col items-start gap-2 rounded-lg border p-4 text-left shadow-sm transition"
+                className="group border-border bg-card hover:border-primary/60 hover:bg-accent/40 flex flex-col items-start gap-3 rounded-xl border p-5 text-left shadow-sm transition"
               >
-                <p className="text-base font-bold tracking-tight">
+                <p className="text-base font-extrabold tracking-tight">
                   {c.displayLabel}
                 </p>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-muted-foreground text-xs tabular-nums">
                   조문 {articleCount}개 · 자료 보유 {setCount}개
                 </p>
-                <div className="bg-muted w-full overflow-hidden rounded-full">
-                  <div
-                    className="bg-primary h-1.5"
-                    style={{ width: `${fillPct}%` }}
-                  />
+                <div className="w-full space-y-1">
+                  <Bar value={filled} max={totalB} tone="auto" />
+                  <p className="text-muted-foreground text-[11px] tabular-nums">
+                    빈칸 {filled}/{totalB} ({fillPct}%)
+                  </p>
                 </div>
-                <p className="text-muted-foreground text-[11px] tabular-nums">
-                  빈칸 {filled}/{totalB} ({fillPct}%)
-                </p>
               </button>
             );
           })}
         </div>
       ) : (
+        /* 편집 모드 — 조문 카드 스택 */
         <div className="space-y-8">
           {groupedArticles.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              해당 장에 조문이 없습니다.
-            </p>
+            <div className="border-border bg-card flex flex-col items-center gap-3 rounded-xl border py-12 text-center shadow-sm">
+              <div className="bg-muted text-muted-foreground rounded-full p-3">
+                <FileQuestionIcon className="size-6" />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                해당 장에 조문이 없습니다.
+              </p>
+            </div>
           ) : (
             groupedArticles.map(({ chapter, items }) => (
               <section key={chapter.chapterId} className="space-y-3">
                 <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 -mx-2 flex items-center justify-between gap-2 border-b px-2 py-2 backdrop-blur">
-                  <h2 className="text-base font-bold tracking-tight">
+                  <h2 className="text-base font-extrabold tracking-tight">
                     {chapter.displayLabel}
                   </h2>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     조문 {items.length}개
                   </span>
                 </div>
@@ -913,8 +844,7 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
                       registerRef={registerRef}
                       recentlyAddedNewIdx={
                         addBlankFetcher.state === "idle" &&
-                        (addBlankFetcher.data as { ok?: boolean; newIdx?: number })?.ok &&
-                        (addBlankFetcher.data as { ok?: boolean; newIdx?: number; setId?: string })
+                        (addBlankFetcher.data as { ok?: boolean; newIdx?: number })?.ok
                           ? (addBlankFetcher.data as { newIdx?: number }).newIdx ?? null
                           : null
                       }
@@ -926,9 +856,11 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
           )}
         </div>
       )}
-    </div>
+    </AdminShell>
   );
 }
+
+/* ── ArticleEditCard ──────────────────────────────────────────────────── */
 
 function ArticleEditCard({
   article,
@@ -971,7 +903,6 @@ function ArticleEditCard({
     blanks.find((b) => !b.answer.trim())?.idx ?? null,
   );
 
-  // computeBlockBlankHits 결과로 placed/unplaced 분류.
   const placedIdxSet = useMemo(() => {
     if (!originalBody) return new Set<number>();
     const map = computeBlockBlankHits(originalBody, blanks);
@@ -998,22 +929,24 @@ function ArticleEditCard({
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
               {articleDisplayPrefix(articleNumber)}
             </p>
             <h2 className="text-base font-bold tracking-tight">
               {displayLabel || articleDisplayPrefix(articleNumber)}
             </h2>
             {importance > 0 ? (
-              <span className="text-amber-600 text-xs">{"★".repeat(importance)}</span>
+              <span className="text-amber-500 text-xs">
+                {"★".repeat(importance)}
+              </span>
             ) : null}
           </div>
           {setId ? (
-            <Badge variant="outline" className="font-mono text-[11px]">
+            <Chip tone={filledCount === blanks.length && blanks.length > 0 ? "emerald" : "amber"}>
               {filledCount}/{blanks.length} 채움
-            </Badge>
+            </Chip>
           ) : (
-            <Badge variant="secondary" className="text-[11px]">자료 없음</Badge>
+            <Chip tone="neutral">자료 없음</Chip>
           )}
         </div>
       </CardHeader>
@@ -1041,7 +974,6 @@ function ArticleEditCard({
                   />
                 </AdminBlanksRenderProvider>
               ) : (
-                // set 이 없어도 본문 표시 — 사용자가 드래그하면 selection 캡처돼 새 빈칸 추가 가능.
                 <ArticleBodyView
                   body={originalBody}
                   titleMap={new Map()}

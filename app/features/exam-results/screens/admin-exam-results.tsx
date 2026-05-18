@@ -1,10 +1,12 @@
 // feat-8-003 운영자 합격 결과 일람·인증 화면.
 // admin 만 verify/reject 가능, instructor 는 read-only.
+// P6 REVIEW QUEUE 패턴 — AdminShell cluster="analytics" 래핑.
 
 import {
   CheckCircle2Icon,
   ExternalLinkIcon,
-  ShieldAlertIcon,
+  InboxIcon,
+  ShieldCheckIcon,
   TrophyIcon,
   XCircleIcon,
 } from "lucide-react";
@@ -12,21 +14,22 @@ import { useState } from "react";
 import { Form, Link, data, redirect, useFetcher } from "react-router";
 import { z } from "zod";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
-import { Label } from "~/core/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  AdminSelect,
+  Chip,
+  Field,
+  FilterBar,
+  FilterGroup,
+  IndexTable,
+  StatusChip,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   createCertificateSignedUrl,
@@ -130,186 +133,223 @@ export async function action({ request }: Route.ActionArgs) {
   return data({ error: `알 수 없는 intent: ${intent}` }, { status: 400 });
 }
 
-const STATUS_TONE: Record<ExamResultStatus, string> = {
-  passed: "text-emerald-700 bg-emerald-50",
-  failed: "text-rose-700 bg-rose-50",
-  pending: "text-amber-700 bg-amber-50",
-  absent: "text-muted-foreground bg-muted/40",
-};
-const VERIFY_TONE: Record<ExamVerificationStatus, string> = {
-  verified: "text-emerald-700 bg-emerald-50",
-  document_submitted: "text-sky-700 bg-sky-50",
-  rejected: "text-rose-700 bg-rose-50",
-  self_reported: "text-muted-foreground bg-muted/40",
-};
+/* ── 의미색 매핑 (디자인 토큰 기반) ──────────────────────────────────────── */
 
-export default function AdminExamResults({ loaderData }: Route.ComponentProps) {
-  const { rows, pool, role, filter } = loaderData;
-
-  return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <TrophyIcon className="size-3.5" /> 운영자 · 합격 결과
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">시험 결과 운영</h1>
-        <p className="text-muted-foreground text-sm">
-          {role === "admin"
-            ? "학생이 입력한 시험 결과를 검토하고 합격증을 인증합니다."
-            : "본인 cohort 학생의 결과를 조회할 수 있습니다 (인증 처리는 admin)."}
-        </p>
-      </header>
-
-      {/* 풀 사이즈 카드 */}
-      <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-5">
-        <PoolStat label="합격 (인증)" value={pool.passedVerified} tone="emerald" />
-        <PoolStat
-          label="합격 (자가)"
-          value={pool.passedTotal - pool.passedVerified}
-          tone="amber"
-        />
-        <PoolStat label="불합격" value={pool.failedTotal} tone="rose" />
-        <PoolStat label="인증 대기" value={pool.pending} tone="sky" />
-        <PoolStat label="분석 동의" value={pool.consented} tone="violet" />
-      </div>
-
-      {/* 필터 */}
-      <Card className="mb-4">
-        <CardContent className="px-4 py-3">
-          <Form method="get" className="grid grid-cols-2 gap-2 md:grid-cols-6">
-            <div>
-              <Label className="text-[11px]">연도</Label>
-              <Input
-                type="number"
-                name="year"
-                defaultValue={filter.year ?? ""}
-                placeholder="2026"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div>
-              <Label className="text-[11px]">차수</Label>
-              <select
-                name="round"
-                defaultValue={filter.round ?? ""}
-                className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
-              >
-                <option value="">전체</option>
-                <option value="first">1차</option>
-                <option value="second">2차</option>
-              </select>
-            </div>
-            <div>
-              <Label className="text-[11px]">상태</Label>
-              <select
-                name="status"
-                defaultValue={filter.status ?? ""}
-                className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
-              >
-                <option value="">전체</option>
-                {EXAM_RESULT_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {EXAM_RESULT_STATUS_LABEL[s]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label className="text-[11px]">인증 상태</Label>
-              <select
-                name="v"
-                defaultValue={filter.verificationStatus ?? ""}
-                className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
-              >
-                <option value="">전체</option>
-                <option value="self_reported">자가 신고</option>
-                <option value="document_submitted">증빙 제출</option>
-                <option value="verified">인증됨</option>
-                <option value="rejected">반려</option>
-              </select>
-            </div>
-            <div className="col-span-2">
-              <Label className="text-[11px]">학생 검색</Label>
-              <Input
-                type="search"
-                name="q"
-                defaultValue={filter.search ?? ""}
-                placeholder="이름 / 이메일"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="col-span-2 flex items-end justify-end gap-1 md:col-span-6">
-              <Button size="sm" type="submit">
-                필터 적용
-              </Button>
-              <Link to="/admin/exam-results" className="text-muted-foreground text-xs underline">
-                초기화
-              </Link>
-            </div>
-          </Form>
-        </CardContent>
-      </Card>
-
-      {/* 결과 표 */}
-      <Card>
-        <CardHeader className="px-4 pb-2">
-          <p className="text-sm font-semibold">결과 ({rows.length})</p>
-        </CardHeader>
-        <CardContent className="px-0 pb-3">
-          {rows.length === 0 ? (
-            <p className="text-muted-foreground px-4 text-xs">조건에 맞는 결과가 없습니다.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px]">학생</TableHead>
-                  <TableHead className="w-[60px]">연도</TableHead>
-                  <TableHead className="w-[60px]">차수</TableHead>
-                  <TableHead className="w-[80px]">상태</TableHead>
-                  <TableHead className="w-[80px]">자가점수</TableHead>
-                  <TableHead className="w-[100px]">증빙</TableHead>
-                  <TableHead className="w-[120px]">인증 상태</TableHead>
-                  <TableHead>처리</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <ResultRow key={r.resultId} row={r} canVerify={role === "admin"} />
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+function statusChipTone(
+  status: ExamResultStatus,
+): "emerald" | "amber" | "coral" | "neutral" {
+  if (status === "passed") return "emerald";
+  if (status === "failed") return "coral";
+  if (status === "pending") return "amber";
+  return "neutral";
 }
 
-function PoolStat({
+function verifyChipTone(
+  v: ExamVerificationStatus,
+): "emerald" | "amber" | "coral" | "blue" | "neutral" {
+  if (v === "verified") return "emerald";
+  if (v === "document_submitted") return "blue";
+  if (v === "rejected") return "coral";
+  return "neutral";
+}
+
+/* ── 풀 사이즈 KPI 카드 ───────────────────────────────────────────────────── */
+
+function PoolCard({
   label,
   value,
   tone,
 }: {
   label: string;
   value: number;
-  tone: "emerald" | "amber" | "rose" | "sky" | "violet";
+  tone: "emerald" | "amber" | "coral" | "blue" | "violet" | "neutral";
 }) {
-  const toneClass = {
-    emerald: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    amber: "bg-amber-50 text-amber-800 border-amber-200",
-    rose: "bg-rose-50 text-rose-800 border-rose-200",
-    sky: "bg-sky-50 text-sky-800 border-sky-200",
-    violet: "bg-violet-50 text-violet-800 border-violet-200",
-  }[tone];
+  const toneMap: Record<typeof tone, string> = {
+    emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    amber: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    coral: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+    blue: "bg-primary/10 text-primary",
+    violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    neutral: "bg-muted text-foreground/80",
+  };
   return (
-    <div className={cn("rounded-md border px-3 py-2", toneClass)}>
-      <div className="text-[10px] font-semibold tracking-wide uppercase opacity-80">
+    <div
+      className={cn(
+        "rounded-xl border border-transparent px-4 py-3 shadow-sm",
+        toneMap[tone],
+      )}
+    >
+      <p className="font-mono text-[10px] font-semibold tracking-[0.08em] uppercase opacity-80">
         {label}
-      </div>
-      <div className="text-xl font-bold tabular-nums">{value.toLocaleString("ko-KR")}</div>
+      </p>
+      <p className="mt-1.5 text-2xl font-extrabold tabular-nums">
+        {value.toLocaleString("ko-KR")}
+      </p>
     </div>
   );
 }
+
+/* ── 메인 컴포넌트 ────────────────────────────────────────────────────────── */
+
+export default function AdminExamResults({ loaderData }: Route.ComponentProps) {
+  const { rows, pool, role, filter } = loaderData;
+  const hasFilter =
+    !!filter.year ||
+    !!filter.round ||
+    !!filter.status ||
+    !!filter.verificationStatus ||
+    !!filter.search;
+
+  const pendingCount = rows.filter(
+    (r) =>
+      r.verificationStatus === "document_submitted" ||
+      r.verificationStatus === "self_reported",
+  ).length;
+
+  return (
+    <AdminShell
+      cluster="analytics"
+      role={role}
+      title="합격 결과 운영"
+      desc={
+        role === "admin"
+          ? "학생이 입력한 시험 결과를 검토하고 합격증을 인증합니다."
+          : "본인 cohort 학생의 결과를 조회할 수 있습니다 (인증 처리는 admin)."
+      }
+      headerRight={
+        pendingCount > 0 ? (
+          <Chip tone="amber">
+            <TrophyIcon className="size-3" /> 검증 대기 {pendingCount}
+          </Chip>
+        ) : (
+          <Chip tone="emerald">
+            <ShieldCheckIcon className="size-3" /> 전체 인증 완료
+          </Chip>
+        )
+      }
+    >
+      {/* KPI 타일 */}
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <PoolCard label="합격 (인증)" value={pool.passedVerified} tone="emerald" />
+        <PoolCard
+          label="합격 (자가)"
+          value={pool.passedTotal - pool.passedVerified}
+          tone="amber"
+        />
+        <PoolCard label="불합격" value={pool.failedTotal} tone="coral" />
+        <PoolCard label="인증 대기" value={pool.pending} tone="blue" />
+        <PoolCard label="분석 동의" value={pool.consented} tone="violet" />
+      </div>
+
+      {/* 필터 바 */}
+      <Form method="get">
+        <FilterBar
+          hasActive={hasFilter}
+          onReset={() => {
+            window.location.href = "/admin/exam-results";
+          }}
+        >
+          <FilterGroup label="연도">
+            <input
+              type="number"
+              name="year"
+              defaultValue={filter.year ?? ""}
+              placeholder="2026"
+              aria-label="연도"
+              className="border-input bg-background focus:border-primary h-9 w-24 rounded-md border px-3 text-[13px] tabular-nums outline-none"
+            />
+          </FilterGroup>
+          <FilterGroup label="차수">
+            <AdminSelect name="round" defaultValue={filter.round ?? ""}>
+              <option value="">전체</option>
+              <option value="first">1차</option>
+              <option value="second">2차</option>
+            </AdminSelect>
+          </FilterGroup>
+          <FilterGroup label="상태">
+            <AdminSelect name="status" defaultValue={filter.status ?? ""}>
+              <option value="">전체</option>
+              {EXAM_RESULT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {EXAM_RESULT_STATUS_LABEL[s]}
+                </option>
+              ))}
+            </AdminSelect>
+          </FilterGroup>
+          <FilterGroup label="인증">
+            <AdminSelect name="v" defaultValue={filter.verificationStatus ?? ""}>
+              <option value="">전체</option>
+              <option value="self_reported">자가 신고</option>
+              <option value="document_submitted">증빙 제출</option>
+              <option value="verified">인증됨</option>
+              <option value="rejected">반려</option>
+            </AdminSelect>
+          </FilterGroup>
+          <FilterGroup label="학생">
+            <div className="relative min-w-[160px]">
+              <input
+                type="search"
+                name="q"
+                defaultValue={filter.search ?? ""}
+                placeholder="이름 / 이메일"
+                aria-label="학생 검색"
+                className="border-input bg-background focus:border-primary h-9 w-full rounded-md border px-3 text-[13px] outline-none"
+              />
+            </div>
+          </FilterGroup>
+          <Button type="submit" size="sm" className="rounded-full">
+            필터 적용
+          </Button>
+        </FilterBar>
+      </Form>
+
+      {/* 결과 표 */}
+      {rows.length === 0 ? (
+        <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border p-14 text-center shadow-sm">
+          <InboxIcon className="text-muted-foreground/60 size-8" />
+          <p className="text-sm font-semibold">
+            {hasFilter ? "조건에 맞는 결과가 없습니다" : "등록된 결과가 없습니다"}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            {hasFilter
+              ? "필터를 초기화하거나 조건을 바꿔보세요."
+              : "학생이 시험 결과를 입력하면 이곳에 표시됩니다."}
+          </p>
+          {hasFilter ? (
+            <Link to="/admin/exam-results" className="text-primary text-xs underline">
+              필터 초기화
+            </Link>
+          ) : null}
+        </div>
+      ) : (
+        <IndexTable
+          minWidth={860}
+          headers={[
+            { label: "학생", width: "140px" },
+            { label: "연도", align: "center", width: "60px" },
+            { label: "차수", align: "center", width: "60px" },
+            { label: "상태", width: "80px" },
+            { label: "자가점수", align: "right", width: "80px" },
+            { label: "증빙", width: "100px" },
+            { label: "인증 상태", width: "120px" },
+            { label: "처리", width: "220px" },
+          ]}
+          footer={
+            <div className="border-border/60 text-muted-foreground border-t px-4 py-2.5 text-[11px]">
+              총 {rows.length}건
+            </div>
+          }
+        >
+          {rows.map((r) => (
+            <ResultRow key={r.resultId} row={r} canVerify={role === "admin"} />
+          ))}
+        </IndexTable>
+      )}
+    </AdminShell>
+  );
+}
+
+/* ── ResultRow ────────────────────────────────────────────────────────────── */
 
 function ResultRow({
   row,
@@ -332,67 +372,68 @@ function ResultRow({
   }
 
   return (
-    <TableRow data-testid={`exam-result-row-${row.resultId}`}>
-      <TableCell className="text-xs">
-        <div className="font-semibold">{row.userName}</div>
+    <TR testid={`exam-result-row-${row.resultId}`}>
+      <TD>
+        <p className="text-[13px] font-semibold">{row.userName}</p>
         {row.userEmail ? (
-          <div className="text-muted-foreground text-[10px]">{row.userEmail}</div>
+          <p className="text-muted-foreground text-[11px]">{row.userEmail}</p>
         ) : null}
-      </TableCell>
-      <TableCell className="tabular-nums text-xs">{row.examYear}</TableCell>
-      <TableCell className="text-xs">{EXAM_ROUND_LABEL[row.examRound]}</TableCell>
-      <TableCell>
-        <Badge
-          variant="outline"
-          className={cn("text-[10px]", STATUS_TONE[row.status])}
-        >
+      </TD>
+      <TD align="center" mono>
+        {row.examYear}
+      </TD>
+      <TD align="center">{EXAM_ROUND_LABEL[row.examRound]}</TD>
+      <TD>
+        <Chip tone={statusChipTone(row.status)}>
           {EXAM_RESULT_STATUS_LABEL[row.status]}
-        </Badge>
-      </TableCell>
-      <TableCell className="tabular-nums text-xs">
+        </Chip>
+      </TD>
+      <TD align="right" mono soft>
         {row.selfReportedTotalScore ?? "—"}
-      </TableCell>
-      <TableCell>
+      </TD>
+      <TD>
         {row.certificatePath ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={openCertificate}
-            disabled={fetcher.state !== "idle"}
-            className="h-6 px-2 text-[10px]"
-          >
-            <ExternalLinkIcon className="mr-1 size-3" />
-            증빙 열기
-          </Button>
+          <div className="space-y-0.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={openCertificate}
+              disabled={fetcher.state !== "idle"}
+              className="text-primary h-7 px-2 text-[11px]"
+            >
+              <ExternalLinkIcon className="mr-1 size-3" />
+              증빙 열기
+            </Button>
+            {certUrl ? (
+              <a
+                href={certUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary block text-[11px] underline"
+              >
+                서명 URL (5분)
+              </a>
+            ) : null}
+          </div>
         ) : (
-          <span className="text-muted-foreground text-[10px]">없음</span>
+          <span className="text-muted-foreground text-[11px]">없음</span>
         )}
-        {certUrl ? (
-          <a
-            href={certUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary block text-[10px] underline"
-          >
-            서명 URL (5분)
-          </a>
-        ) : null}
-      </TableCell>
-      <TableCell>
-        <Badge
-          variant="outline"
-          className={cn("text-[10px]", VERIFY_TONE[row.verificationStatus])}
-        >
-          {EXAM_VERIFICATION_STATUS_LABEL[row.verificationStatus]}
-        </Badge>
-        {row.rejectionReason ? (
-          <div className="text-[10px] text-rose-600">{row.rejectionReason}</div>
-        ) : null}
-      </TableCell>
-      <TableCell>
+      </TD>
+      <TD>
+        <div className="space-y-0.5">
+          <Chip tone={verifyChipTone(row.verificationStatus)}>
+            {EXAM_VERIFICATION_STATUS_LABEL[row.verificationStatus]}
+          </Chip>
+          {row.rejectionReason ? (
+            <p className="text-[11px] text-rose-600">{row.rejectionReason}</p>
+          ) : null}
+        </div>
+      </TD>
+      <TD>
         {canVerify && row.verificationStatus !== "verified" ? (
           <div className="flex flex-wrap items-center gap-1">
+            {/* 인증 버튼 */}
             <verifyFetcher.Form method="post" className="inline-flex">
               <input type="hidden" name="intent" value="verify" />
               <input type="hidden" name="resultId" value={row.resultId} />
@@ -401,54 +442,65 @@ function ResultRow({
                 type="submit"
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-[10px] text-emerald-700"
                 disabled={verifyFetcher.state !== "idle"}
+                className="h-7 px-2 text-[11px] text-emerald-700 hover:text-emerald-800"
               >
                 <CheckCircle2Icon className="mr-1 size-3" />
                 인증
               </Button>
             </verifyFetcher.Form>
+            {/* 반려 토글 */}
             <Button
               type="button"
               size="sm"
               variant="ghost"
-              className="h-6 px-2 text-[10px] text-rose-700"
               onClick={() => setShowReject((s) => !s)}
+              className="h-7 px-2 text-[11px] text-rose-600 hover:text-rose-700"
             >
               <XCircleIcon className="mr-1 size-3" />
               반려
             </Button>
             {showReject ? (
-              <verifyFetcher.Form method="post" className="flex items-center gap-1">
+              <verifyFetcher.Form
+                method="post"
+                className="mt-1 flex w-full items-center gap-1"
+              >
                 <input type="hidden" name="intent" value="verify" />
                 <input type="hidden" name="resultId" value={row.resultId} />
                 <input type="hidden" name="decision" value="rejected" />
-                <Input
-                  type="text"
-                  name="rejectionReason"
-                  placeholder="반려 사유"
-                  className="h-6 w-32 text-[10px]"
-                />
+                <Field htmlFor={`reject-reason-${row.resultId}`} className="flex-1">
+                  <Input
+                    id={`reject-reason-${row.resultId}`}
+                    type="text"
+                    name="rejectionReason"
+                    placeholder="반려 사유"
+                    className="h-7 text-xs"
+                  />
+                </Field>
                 <Button
                   type="submit"
                   size="sm"
-                  className="h-6 px-2 text-[10px]"
+                  className="h-7 rounded-full bg-rose-600 px-2 text-[11px] text-white hover:bg-rose-700"
                   disabled={verifyFetcher.state !== "idle"}
                 >
                   확정
                 </Button>
               </verifyFetcher.Form>
             ) : null}
+            {verifyFetcher.data?.error ? (
+              <p className="mt-1 w-full text-[11px] text-rose-600">
+                {verifyFetcher.data.error}
+              </p>
+            ) : null}
           </div>
         ) : row.verificationStatus === "verified" ? (
-          <Badge variant="default" className="text-[10px]">
-            <ShieldAlertIcon className="mr-1 size-3" />
-            완료
-          </Badge>
+          <Chip tone="emerald">
+            <ShieldCheckIcon className="size-3" /> 인증 완료
+          </Chip>
         ) : (
-          <span className="text-muted-foreground text-[10px]">권한 없음</span>
+          <StatusChip status="pending" label="권한 없음" />
         )}
-      </TableCell>
-    </TableRow>
+      </TD>
+    </TR>
   );
 }

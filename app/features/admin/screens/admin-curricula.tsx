@@ -2,38 +2,32 @@
 
 import {
   BookCheckIcon,
-  CheckCircle2Icon,
-  ListChecksIcon,
-  PencilIcon,
   PlusIcon,
   UsersIcon,
 } from "lucide-react";
 import { useState } from "react";
 import {
-  Form,
   Link,
   data,
   useFetcher,
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { getStaffRole } from "~/features/laws/queries.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Chip,
+  Field,
+  IndexTable,
+  StatusChip,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import { listCurricula } from "~/features/curricula/queries.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
@@ -54,131 +48,120 @@ export async function loader({ request }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw data("Forbidden", { status: 403 });
   const curricula = await listCurricula();
-  return { curricula };
+  return { curricula, role };
 }
 
 export default function AdminCurricula({ loaderData }: Route.ComponentProps) {
-  const { curricula } = loaderData;
+  const { curricula, role } = loaderData;
   const [showNew, setShowNew] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <BookCheckIcon className="text-primary size-6" />
-            커리큘럼 관리
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            학습 트랙 템플릿 — cohort 에 적용하면 학생 대시보드에 자동 노출
-          </p>
-        </div>
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      title="커리큘럼 관리"
+      desc="학습 트랙 템플릿 — cohort에 적용하면 학생 대시보드에 자동 노출"
+      headerRight={
         <Button size="sm" onClick={() => setShowNew((v) => !v)}>
           <PlusIcon className="size-3.5" /> 신규 커리큘럼
         </Button>
-      </header>
-
+      }
+    >
       {showNew ? (
-        <div className="mb-6">
+        <div className="mb-4">
           <NewCurriculumForm onClose={() => setShowNew(false)} />
         </div>
       ) : null}
 
       {curricula.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            아직 커리큘럼이 없습니다. 우측 상단에서 신규 생성하세요.
-          </p>
+        <div className="border-border bg-card text-muted-foreground rounded-xl border py-16 text-center shadow-sm">
+          <BookCheckIcon className="mx-auto mb-2 size-8 opacity-30" />
+          <p className="text-sm font-medium">아직 커리큘럼이 없습니다.</p>
+          <p className="mt-1 text-xs">우측 상단에서 신규 생성하세요.</p>
         </div>
       ) : (
-        <Card>
-          <CardContent className="overflow-x-auto p-0">
-            <Table className="min-w-[720px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>이름</TableHead>
-                  <TableHead className="w-24 text-xs">과목</TableHead>
-                  <TableHead className="w-16 text-right">주수</TableHead>
-                  <TableHead className="w-16 text-right">주차</TableHead>
-                  <TableHead className="w-16 text-right">항목</TableHead>
-                  <TableHead className="w-20 text-right">적용 반</TableHead>
-                  <TableHead className="w-20 text-xs">상태</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {curricula.map((c) => (
-                  <TableRow key={c.curriculumId}>
-                    <TableCell>
-                      <Link
-                        to={`/admin/curricula/${c.curriculumId}`}
-                        viewTransition
-                        className="hover:text-primary text-sm font-medium"
-                      >
-                        {c.name}
-                      </Link>
-                      {c.description ? (
-                        <p className="text-muted-foreground line-clamp-1 text-xs">
-                          {c.description}
-                        </p>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-[10px]">
-                      {c.subjectLaws.length > 0
-                        ? c.subjectLaws
-                            .map((s) =>
-                              s in LAW_SUBJECTS
-                                ? LAW_SUBJECTS[
-                                    s as keyof typeof LAW_SUBJECTS
-                                  ].shortName
-                                : s,
-                            )
-                            .join("·")
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {c.durationWeeks}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {c.weekCount}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {c.itemCount}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      <span className="inline-flex items-center gap-1">
-                        <UsersIcon className="text-muted-foreground size-3" />
-                        {c.cohortCount}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {c.isPublished ? (
-                        <Badge variant="default" className="text-[10px]">
-                          <CheckCircle2Icon className="size-3" /> 발행
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px]">
-                          초안
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/admin/curricula/${c.curriculumId}`}
-                        viewTransition
-                        className="text-primary inline-flex items-center text-xs hover:underline"
-                      >
-                        <PencilIcon className="size-3" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <IndexTable
+          minWidth={720}
+          headers={[
+            { label: "이름" },
+            { label: "과목", width: "8rem" },
+            { label: "기간(주)", align: "right", width: "5rem" },
+            { label: "주차", align: "right", width: "4rem" },
+            { label: "항목", align: "right", width: "4rem" },
+            { label: "적용 반", align: "right", width: "5rem" },
+            { label: "상태", width: "5rem" },
+            { label: "", width: "3rem" },
+          ]}
+          footer={
+            <div className="border-border/60 text-muted-foreground border-t px-3 py-2 text-[11px] font-medium tabular-nums">
+              총 {curricula.length}건
+            </div>
+          }
+        >
+          {curricula.map((c) => (
+            <TR key={c.curriculumId}>
+              <TD>
+                <Link
+                  to={`/admin/curricula/${c.curriculumId}`}
+                  viewTransition
+                  className="hover:text-primary text-[13px] font-medium"
+                >
+                  {c.name}
+                </Link>
+                {c.description ? (
+                  <p className="text-muted-foreground line-clamp-1 text-[11px]">
+                    {c.description}
+                  </p>
+                ) : null}
+              </TD>
+              <TD soft>
+                <span className="text-[11px]">
+                  {c.subjectLaws.length > 0
+                    ? c.subjectLaws
+                        .map((s) =>
+                          s in LAW_SUBJECTS
+                            ? LAW_SUBJECTS[s as keyof typeof LAW_SUBJECTS].shortName
+                            : s,
+                        )
+                        .join("·")
+                    : "—"}
+                </span>
+              </TD>
+              <TD align="right" mono>
+                {c.durationWeeks}
+              </TD>
+              <TD align="right" mono>
+                {c.weekCount}
+              </TD>
+              <TD align="right" mono>
+                {c.itemCount}
+              </TD>
+              <TD align="right" mono soft>
+                <span className="inline-flex items-center gap-1">
+                  <UsersIcon className="text-muted-foreground size-3" />
+                  {c.cohortCount}
+                </span>
+              </TD>
+              <TD>
+                <StatusChip
+                  status={c.isPublished ? "published" : "draft"}
+                  label={c.isPublished ? "발행" : "초안"}
+                />
+              </TD>
+              <TD align="right">
+                <Link
+                  to={`/admin/curricula/${c.curriculumId}`}
+                  viewTransition
+                  className="text-primary text-xs font-semibold hover:underline"
+                >
+                  편집
+                </Link>
+              </TD>
+            </TR>
+          ))}
+        </IndexTable>
       )}
-    </div>
+    </AdminShell>
   );
 }
 
@@ -202,15 +185,23 @@ function NewCurriculumForm({ onClose }: { onClose: () => void }) {
     <fetcher.Form
       method="post"
       action="/api/admin/curriculum"
-      className="bg-card space-y-3 rounded-md border p-4"
+      className="bg-card space-y-3 rounded-xl border p-4 shadow-sm"
     >
+      <p className="text-xs font-semibold">신규 커리큘럼</p>
       <input type="hidden" name="intent" value="create" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="이름 *">
-          <Input name="name" required maxLength={200} className="h-8 text-xs" />
-        </Field>
-        <Field label="기간 (주) *">
+        <Field label="이름 *" htmlFor="new-name" required>
           <Input
+            id="new-name"
+            name="name"
+            required
+            maxLength={200}
+            className="h-8 text-xs"
+          />
+        </Field>
+        <Field label="기간 (주) *" htmlFor="new-dur" required>
+          <Input
+            id="new-dur"
             name="durationWeeks"
             type="number"
             required
@@ -221,8 +212,9 @@ function NewCurriculumForm({ onClose }: { onClose: () => void }) {
           />
         </Field>
         <div className="sm:col-span-2">
-          <Field label="설명">
+          <Field label="설명" htmlFor="new-desc">
             <textarea
+              id="new-desc"
               name="description"
               maxLength={2000}
               rows={2}
@@ -231,9 +223,7 @@ function NewCurriculumForm({ onClose }: { onClose: () => void }) {
           </Field>
         </div>
         <div className="sm:col-span-2">
-          <Label className="text-muted-foreground text-[11px]">
-            과목 (선택 가능, 복수)
-          </Label>
+          <Label className="text-muted-foreground text-[11px]">과목 (선택 가능, 복수)</Label>
           <div className="mt-1 flex flex-wrap gap-2">
             {LAW_SUBJECT_SLUGS.map((s) => (
               <label
@@ -249,13 +239,7 @@ function NewCurriculumForm({ onClose }: { onClose: () => void }) {
       </div>
       {err ? <p className="text-rose-600 text-xs">{err}</p> : null}
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          disabled={isSaving}
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isSaving}>
           취소
         </Button>
         <Button type="submit" size="sm" disabled={isSaving}>
@@ -263,20 +247,5 @@ function NewCurriculumForm({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
     </fetcher.Form>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label className="text-muted-foreground text-[11px]">{label}</Label>
-      <div className="mt-1">{children}</div>
-    </div>
   );
 }

@@ -1,6 +1,8 @@
+// 빈칸 세트 편집 — P3 EDIT FORM 패턴. AdminShell cluster="blanks".
+// 원본 동작(loader/action/쿼리/권한 체크/선택 캡처 로직) 보존. 시각만 변경.
+
 import {
   AlertTriangleIcon,
-  ArrowLeftIcon,
   MousePointerClickIcon,
   PlusCircleIcon,
 } from "lucide-react";
@@ -13,17 +15,19 @@ import {
 } from "react";
 import { Link, data, useFetcher } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip } from "~/features/admin/components/admin-ui";
 import { AdminBlanksRenderProvider } from "~/features/blanks/components/admin-blanks-render-provider";
 import { BlankRowEditor } from "~/features/blanks/components/blank-row-editor";
 import { UnplacedBlanksSection } from "~/features/blanks/components/unplaced-blanks-section";
 import { computeBlockBlankHits } from "~/features/blanks/lib/blank-layout";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
+import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-blanks-edit";
 
@@ -64,7 +68,6 @@ function parseBlankRows(value: unknown): BlankRow[] {
 
 // rangeRoot 안의 모든 text node 를 document order 로 walk 해 cumulative text 를 구성.
 // range 의 시작/끝 offset 을 cumulative text 좌표로 변환한 뒤 그 주변 ±contextLen 글자를 잘라 반환.
-// 동일 정답이 본문에 여러 번 등장할 때 사용자가 선택한 위치를 disambiguate 하는 데 쓰인다.
 function captureRangeContext(
   rangeRoot: Node,
   range: Range,
@@ -122,15 +125,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   } = await client.auth.getSession();
   const user = session?.user;
   if (!user) throw data("Unauthorized", { status: 401 });
-  const { data: profile } = await client
-    .from("profiles")
-    .select("role")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  const role = profile?.role ?? "student";
-  if (role !== "instructor" && role !== "admin") {
-    throw data("Forbidden", { status: 403 });
-  }
+  const role = await getStaffRole(client, user.id);
+  if (!role) throw data("Forbidden", { status: 403 });
 
   const { data: row, error } = await client
     .from("article_blank_sets")
@@ -181,6 +177,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     version: row.version,
     displayName: row.display_name,
     initialFocusIdx,
+    role,
   };
 }
 
@@ -198,6 +195,7 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     version,
     displayName,
     initialFocusIdx,
+    role,
   } = loaderData;
   const [drafts, setDrafts] = useState<Record<number, string>>(() => {
     const init: Record<number, string> = {};
@@ -205,7 +203,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     return init;
   });
   // revalidation 으로 새 blank 가 들어오면 drafts 에 그 answer 를 채워 sidebar 입력칸에 즉시 표시.
-  // 이미 사용자가 편집 중인 idx 는 건드리지 않는다 (drafts[idx] 가 undefined 일 때만 채움).
   useEffect(() => {
     setDrafts((prev) => {
       let changed = false;
@@ -229,8 +226,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     [drafts],
   );
 
-  // 본문에 표시되지 않는 빈칸 — computeBlockBlankHits 가 위치를 잡지 못한 빈칸 모두.
-  // (정답 미입력) + (정답 입력됐으나 컨텍스트가 잘못돼 매칭 실패) 두 그룹.
   const placedIdxSet = useMemo(() => {
     if (!originalBody) return new Set<number>();
     const map = computeBlockBlankHits(originalBody, blanks);
@@ -253,16 +248,11 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
   const lastSavedAtRef = useRef<Map<number, string>>(new Map());
   const inlineSavedFetcher = useFetcher();
 
-  // 원본 본문 selection — floating button 표시 + 서버에 disambiguation hint 전달
   const [selection, setSelection] = useState<{
     text: string;
-    // 선택 영역 주변 본문 텍스트 (DOM 기준 ±~30 글자) — fallback context.
     beforeHint: string;
     afterHint: string;
-    // 선택 영역의 가장 가까운 clause/item/sub DOM id (예: "clause-5"). 서버 occurrence 한정용.
     blockHint: string | null;
-    // 정확 위치 — DOM data attribute 에서 캡처. blockIndex (walkBlocks 인덱스) +
-    // cumOffset (block 내 cumulative 좌표). 두 값 다 있으면 컨텍스트 매칭 우회하고 결정적 배치.
     blockIndex: number | null;
     cumOffset: number | null;
     top: number;
@@ -282,9 +272,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
       setSelection(null);
       return;
     }
-    // selection 이 originalRef 안에서 발생했는지 확인.
-    // 동시에: 가장 가까운 data-cumoffset span (정확 위치 base) + data-block-index (블록 인덱스)
-    // + clause/item/sub id (fallback hint) 를 walk-up 으로 추출.
     const range = sel.getRangeAt(0);
     let n: Node | null = range.startContainer;
     let inside = false;
@@ -316,7 +303,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
       setSelection(null);
       return;
     }
-    // 정확 cumOffset 계산 — cumOffsetSpan 안에서 selection start 까지의 char count.
     let cumOffset: number | null = null;
     if (cumOffsetSpan) {
       const base = Number(cumOffsetSpan.dataset.cumoffset);
@@ -338,7 +324,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
         }
       }
     }
-    // 80자 윈도우 — 정확 위치 못 잡힌 경우 fallback 으로 사용.
     const { beforeHint, afterHint } = captureRangeContext(
       originalRef.current,
       range,
@@ -366,8 +351,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
   const applySelectionToActive = useCallback(() => {
     if (!selection || activeIdx == null) return;
     setDrafts((prev) => ({ ...prev, [activeIdx]: selection.text }));
-    // 즉시 자동 저장 — 드래그 위치를 정확 좌표 + fallback hint 형태로 같이 보내서 슬롯 위치를
-    // 그 드래그 자리로 결정적으로 이동시킨다. 같은 단어가 같은 항에 여러 번 있어도 안전.
     const fd = new FormData();
     fd.set("setId", setId);
     fd.set("blankIdx", String(activeIdx));
@@ -384,7 +367,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
       action: "/api/blanks/admin-answer",
     });
     lastSavedAtRef.current.set(activeIdx, selection.text);
-    // selection 해제 + 다음 빈 슬롯으로 active 이동
     window.getSelection()?.removeAllRanges();
     setSelection(null);
     const nextEmpty = blanks.find(
@@ -414,8 +396,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     setSelection(null);
   }, [selection, setId, addBlankFetcher]);
 
-  // 새 빈칸 추가 응답이 오면 그 빈칸을 active 로 만들고 sidebar 가 그 위치로 자동 스크롤되도록 한다.
-  // BlankRowEditor 의 initialFocus 로직이 active idx 변화에 반응하도록 newlyAddedIdx state 로 트리거.
   const [newlyAddedIdx, setNewlyAddedIdx] = useState<number | null>(null);
   const lastNewIdxRef = useRef<number | null>(null);
   useEffect(() => {
@@ -428,9 +408,6 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     }
   }, [addBlankFetcher.state, addBlankFetcher.data]);
 
-  // activeIdx 가 바뀌거나 새 빈칸이 추가되면 본문에서 그 placeholder 위치로 자동 스크롤.
-  // admin-blanks-render-provider 가 placeholder button 에 data-blank-idx 를 심어주므로
-  // querySelector 로 element 를 찾아 viewport 중앙으로 이동시킨다.
   useEffect(() => {
     if (activeIdx == null || !originalRef.current) return;
     const el = originalRef.current.querySelector<HTMLElement>(
@@ -441,8 +418,25 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
     }
   }, [activeIdx]);
 
+  const fillChip =
+    blanks.length === 0
+      ? null
+      : filledCount === blanks.length
+        ? { tone: "emerald" as const, label: `완료 ${filledCount}/${blanks.length}` }
+        : filledCount > 0
+          ? { tone: "amber" as const, label: `${filledCount}/${blanks.length} 채움` }
+          : { tone: "neutral" as const, label: `0/${blanks.length} 채움` };
+
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
+    <AdminShell
+      cluster="blanks"
+      role={role}
+      title={`${articleLabel || `제${articleNumber}조`} 빈칸`}
+      desc={`${isOwner ? "내 자료" : `${ownerName}의 자료`} · ${displayName ?? version}`}
+      width={960}
+      headerRight={!isOwner ? <ForkButton setId={setId} /> : undefined}
+    >
+      {/* floating 버튼 — 텍스트 선택 시 */}
       {selection ? (
         <div
           className="fixed z-50 flex items-center gap-1"
@@ -476,118 +470,110 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Link
-          to={`/admin/blanks?law=${lawCode}`}
-          viewTransition
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
-        >
-          <ArrowLeftIcon className="size-4" /> 빈칸 자료 목록
-        </Link>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground">강사</span>
-          <Badge variant={isOwner ? "default" : "outline"}>
-            {ownerName} · {displayName ?? version}
-          </Badge>
-          {!isOwner ? <ForkButton setId={setId} /> : null}
+      {/* 소유자 정보 배너 (다른 강사 자료일 때) */}
+      {!isOwner ? (
+        <div className="mb-4 rounded-xl border border-amber-300/60 bg-amber-50/60 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <span className="font-semibold">{ownerName}</span>의 자료입니다.
+          수정하려면 우상단의 "내 자료로 복사"를 사용하세요.
         </div>
-      </div>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        {/* 좌: 본문 + 빈칸 표시 */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              <div className="min-w-0">
+                <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
                   본문 (제{articleNumber}조)
                 </p>
-                <h1 className="text-xl font-bold tracking-tight">
+                <h2 className="text-base font-extrabold tracking-tight">
                   {articleLabel}
-                </h1>
+                </h2>
               </div>
-              <Badge variant="outline">
-                완료 {filledCount} / {blanks.length}
-              </Badge>
+              {fillChip ? (
+                <Chip tone={fillChip.tone}>{fillChip.label}</Chip>
+              ) : null}
             </div>
           </CardHeader>
           <CardContent>
-            <section className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
-                  <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                    빈칸 자료
-                  </p>
-                  {originalBody ? (
-                    <p className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
-                      <MousePointerClickIcon className="size-3" />
-                      드래그 →{" "}
-                      <span className="text-primary font-mono">
-                        #{activeIdx ?? "?"}
-                      </span>{" "}
-                      에 채우기 또는 새 빈칸 추가
-                    </p>
-                  ) : null}
-                </div>
-                {unlocatableBlanks.length > 0 ? (
-                  <p
-                    className="inline-flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400"
-                    title="정답이 비어있어 본문에 위치를 표시할 수 없는 빈칸"
-                  >
-                    <AlertTriangleIcon className="size-3" />
-                    위치 미확인 {unlocatableBlanks.length}개
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.04em]">
+                  빈칸 자료
+                </p>
+                {originalBody ? (
+                  <p className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
+                    <MousePointerClickIcon className="size-3" />
+                    드래그 →{" "}
+                    <span className="text-primary font-mono font-semibold">
+                      #{activeIdx ?? "?"}
+                    </span>{" "}
+                    에 채우기 또는 새 빈칸 추가
                   </p>
                 ) : null}
               </div>
-              {originalBody ? (
-                <div
-                  ref={originalRef}
-                  className="bg-muted/30 rounded-md border p-3"
+              {unlocatableBlanks.length > 0 ? (
+                <p
+                  className="inline-flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400"
+                  title="정답이 비어있어 본문에 위치를 표시할 수 없는 빈칸"
                 >
-                  <AdminBlanksRenderProvider
-                    setId={setId}
-                    blanks={blanks}
-                    drafts={drafts}
-                    activeIdx={activeIdx}
-                    onActivate={setActiveIdx}
+                  <AlertTriangleIcon className="size-3" />
+                  위치 미확인 {unlocatableBlanks.length}개
+                </p>
+              ) : null}
+            </div>
+
+            {originalBody ? (
+              <div
+                ref={originalRef}
+                className="bg-muted/30 rounded-md border p-3"
+              >
+                <AdminBlanksRenderProvider
+                  setId={setId}
+                  blanks={blanks}
+                  drafts={drafts}
+                  activeIdx={activeIdx}
+                  onActivate={setActiveIdx}
+                  body={originalBody}
+                >
+                  <ArticleBodyView
                     body={originalBody}
-                  >
-                    <ArticleBodyView
-                      body={originalBody}
-                      titleMap={new Map()}
-                      subtitlesOnly={false}
-                      lawCode={lawCode as never}
-                    />
-                  </AdminBlanksRenderProvider>
-                  <UnplacedBlanksSection
-                    setId={setId}
-                    unplaced={unlocatableBlanks}
-                    activeIdx={activeIdx}
-                    onActivate={setActiveIdx}
-                    disabled={!isOwner}
+                    titleMap={new Map()}
+                    subtitlesOnly={false}
+                    lawCode={lawCode as never}
                   />
-                </div>
-              ) : (
-                <div className="rounded-md border p-3">
-                  <BodyPreview
-                    bodyText={bodyText}
-                    drafts={drafts}
-                    blanks={blanks}
-                  />
-                </div>
-              )}
-            </section>
+                </AdminBlanksRenderProvider>
+                <UnplacedBlanksSection
+                  setId={setId}
+                  unplaced={unlocatableBlanks}
+                  activeIdx={activeIdx}
+                  onActivate={setActiveIdx}
+                  disabled={!isOwner}
+                />
+              </div>
+            ) : (
+              <div className="bg-muted/30 rounded-md border p-3">
+                <BodyPreview
+                  bodyText={bodyText}
+                  drafts={drafts}
+                  blanks={blanks}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* 우: 빈칸 정답 입력 패널 */}
         <Card className="self-start">
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          <CardHeader className="pb-3">
+            <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
               빈칸 정답 입력
             </p>
           </CardHeader>
           <CardContent className="space-y-2">
             {!isOwner ? (
-              <p className="text-muted-foreground rounded-md border border-dashed bg-amber-50/40 px-3 py-2 text-xs dark:bg-amber-950/20">
+              <p className="text-muted-foreground rounded-md border border-dashed bg-amber-50/40 px-3 py-2 text-[11px] dark:bg-amber-950/20">
                 다른 강사({ownerName})의 자료입니다. 수정하려면 우상단의
                 "내 자료로 복사" 를 사용하세요.
               </p>
@@ -618,9 +604,11 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AdminShell>
   );
 }
+
+/* ── 서브컴포넌트 ──────────────────────────────────────────────────────── */
 
 function BodyPreview({
   bodyText,
@@ -644,9 +632,7 @@ function BodyPreview({
   let key = 0;
   while ((m = re.exec(bodyText)) !== null) {
     if (m.index > last) {
-      out.push(
-        <span key={key++}>{bodyText.slice(last, m.index)}</span>,
-      );
+      out.push(<span key={key++}>{bodyText.slice(last, m.index)}</span>);
     }
     const idx = Number(m[1]);
     const draft = drafts[idx] ?? "";
@@ -657,8 +643,8 @@ function BodyPreview({
         className={cn(
           "mx-0.5 inline-block rounded border-b-2 px-1 align-baseline text-xs font-medium",
           filled
-            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
-            : "border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300",
+            ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+            : "border-amber-400 bg-amber-50/50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-300",
         )}
         title={`빈칸 #${idx} (${blankByIdx.get(idx)?.length ?? 0}글자)`}
       >
@@ -685,11 +671,10 @@ function ForkButton({ setId }: { setId: string }) {
         type="submit"
         size="sm"
         disabled={submitting}
-        className="h-7 gap-1 text-xs"
+        className="h-8 gap-1 text-xs"
       >
         {submitting ? "복사 중…" : "내 자료로 복사"}
       </Button>
     </fetcher.Form>
   );
 }
-

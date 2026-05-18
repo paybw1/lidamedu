@@ -1,21 +1,23 @@
 // 운영자 — 동료 채점 표준편차가 큰 (제출, 문항) 쌍 모아 보기.
 // 채점자 간 의견 차이가 큰 문항(분쟁 가능성) 우선 검토용.
+// P6 REVIEW QUEUE 디자인. cluster="gs".
 
-import { AlertTriangleIcon, ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
-import { Form, Link, data, useSearchParams } from "react-router";
+import { AlertTriangleIcon, ArrowRightIcon, SlidersHorizontalIcon } from "lucide-react";
+import { Form, Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  AdminSelect,
+  Chip,
+  Field,
+  FilterBar,
+  FilterGroup,
+  IndexTable,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import {
   getGsRound,
   listGsQuestions,
@@ -63,7 +65,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listGsQuestions(client, roundId),
   ]);
 
-  // 문항 메타 + 제출 학생 이름.
   const questionMap = new Map(questions.map((q) => [q.questionId, q]));
   const userIds = Array.from(new Set(submissions.map((s) => s.userId)));
   const { data: profiles } = await client
@@ -76,7 +77,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     submissions.map((s) => [s.submissionId, s.userId] as const),
   );
 
-  // 임계 적용: stdev / maxScore >= threshold AND count >= minReviewers.
   const filtered = stdevRows
     .map((r) => {
       const q = questionMap.get(r.questionId);
@@ -95,10 +95,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       return {
         submissionId: r.submissionId,
         questionId: r.questionId,
-        questionTitle:
-          questionMap.get(r.questionId)?.title ?? null,
-        questionOrder:
-          questionMap.get(r.questionId)?.orderIndex ?? 0,
+        questionTitle: questionMap.get(r.questionId)?.title ?? null,
+        questionOrder: questionMap.get(r.questionId)?.orderIndex ?? 0,
         maxScore: r.maxScore,
         scores: r.scores,
         count: r.count,
@@ -112,178 +110,164 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       };
     }),
     totalConsidered: stdevRows.length,
+    role,
   };
 }
 
 export default function AdminGsDisputes({ loaderData }: Route.ComponentProps) {
-  const { round, threshold, minReviewers, rows, totalConsidered } = loaderData;
-  const [searchParams] = useSearchParams();
+  const { round, threshold, minReviewers, rows, totalConsidered, role } = loaderData;
   const tPct = Math.round(threshold * 100);
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1">
-        <Link
-          to={`/admin/gs/${round.roundId}`}
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 회차 편집으로 돌아가기
-        </Link>
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <AlertTriangleIcon className="size-3.5" /> 운영자 · 분쟁 문항 검토
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">{round.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 동료 채점이{" "}
-          {minReviewers}명 이상 도착했고, 표준편차가 만점 대비{" "}
-          <span className="text-foreground font-bold">{tPct}%</span> 이상인 문항만
-          노출합니다. 채점자 간 의견 차이가 큰 문항이라 운영자 직접 검토를 권합니다.
-        </p>
-      </header>
-
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <Form method="get" className="flex flex-wrap items-center gap-2">
-            <label className="text-xs">
-              <span className="text-muted-foreground mr-1">임계 (만점 대비)</span>
-              <select
-                name="t"
-                defaultValue={String(threshold)}
-                className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-              >
-                <option value="0.05">5%</option>
-                <option value="0.10">10%</option>
-                <option value="0.15">15% (기본)</option>
-                <option value="0.20">20%</option>
-                <option value="0.25">25%</option>
-                <option value="0.30">30%</option>
-              </select>
-            </label>
-            <label className="text-xs">
-              <span className="text-muted-foreground mr-1">최소 채점자</span>
-              <input
-                type="number"
-                name="min"
-                min={2}
-                max={10}
-                defaultValue={minReviewers}
-                className="border-input bg-background h-8 w-14 rounded-md border px-2 text-xs tabular-nums"
-              />
-            </label>
-            <button
-              type="submit"
-              className="border-input bg-background hover:bg-accent h-8 rounded-md border px-3 text-xs"
+    <AdminShell
+      cluster="gs"
+      role={role}
+      title={`${round.title} — 분쟁 문항`}
+      desc={`${LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 동료 채점이 ${minReviewers}명 이상 도착, 표준편차 만점 대비 ${tPct}% 이상인 문항. 채점자 간 의견 차이가 큰 문항이라 직접 검토를 권합니다.`}
+      headerRight={
+        rows.length > 0 ? (
+          <Chip tone="coral">
+            <AlertTriangleIcon className="size-3" /> 분쟁 {rows.length}건
+          </Chip>
+        ) : undefined
+      }
+      width={1280}
+    >
+      {/* 필터 바 (GET Form) */}
+      <Form method="get">
+        <div className="border-border bg-card mb-4 flex flex-wrap items-end gap-3 rounded-xl border p-4 shadow-sm">
+          <FilterGroup label="임계 (만점 대비)">
+            <AdminSelect
+              name="t"
+              defaultValue={String(threshold)}
             >
-              적용
-            </button>
-            <span className="text-muted-foreground ml-auto text-xs">
-              집계 대상 (제출, 문항) 쌍 {totalConsidered}건 중 임계 통과{" "}
-              {rows.length}건
-            </span>
-          </Form>
-        </CardHeader>
-      </Card>
+              <option value="0.05">5%</option>
+              <option value="0.10">10%</option>
+              <option value="0.15">15% (기본)</option>
+              <option value="0.20">20%</option>
+              <option value="0.25">25%</option>
+              <option value="0.30">30%</option>
+            </AdminSelect>
+          </FilterGroup>
+          <Field label="최소 채점자" htmlFor="min-reviewers-input">
+            <input
+              id="min-reviewers-input"
+              type="number"
+              name="min"
+              min={2}
+              max={10}
+              defaultValue={minReviewers}
+              className="border-input bg-background focus:border-primary h-9 w-20 rounded-md border px-3 text-[13px] tabular-nums outline-none"
+            />
+          </Field>
+          <button
+            type="submit"
+            className="bg-primary text-primary-foreground inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold"
+          >
+            <SlidersHorizontalIcon className="size-3.5" /> 적용
+          </button>
+          <span className="text-muted-foreground ml-auto self-center text-xs tabular-nums">
+            집계 대상 {totalConsidered}건 중 임계 통과{" "}
+            <span className="text-foreground font-semibold">{rows.length}건</span>
+          </span>
+        </div>
+      </Form>
 
       {rows.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            현재 임계를 넘는 분쟁 문항이 없습니다.
+        <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border p-12 text-center shadow-sm">
+          <AlertTriangleIcon className="text-muted-foreground/60 size-8" />
+          <p className="text-sm font-semibold">
+            현재 임계를 넘는 분쟁 문항이 없습니다
+          </p>
+          <p className="text-muted-foreground text-xs">
             {totalConsidered === 0
-              ? " 아직 동료 채점이 도착하지 않았을 수 있습니다."
-              : " 임계를 낮춰 보거나 다른 회차를 확인해 보세요."}
+              ? "아직 동료 채점이 도착하지 않았을 수 있습니다."
+              : "임계를 낮춰 보거나 다른 회차를 확인해 보세요."}
           </p>
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[180px]">답안 작성자</TableHead>
-                  <TableHead className="w-[80px]">문항</TableHead>
-                  <TableHead className="w-[140px]">평균</TableHead>
-                  <TableHead className="w-[120px]">범위</TableHead>
-                  <TableHead className="w-[120px]">표준편차</TableHead>
-                  <TableHead className="min-w-[180px]">개별 점수</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={`${r.submissionId}:${r.questionId}`}>
-                    <TableCell>
-                      <p className="text-sm font-medium">
-                        {r.authorName ?? (
-                          <span className="text-muted-foreground italic">
-                            미설정
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-muted-foreground text-[10px] tabular-nums">
-                        {r.authorIdShort}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[10px]">
-                        #{r.questionOrder + 1}
-                      </Badge>
-                      {r.questionTitle ? (
-                        <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
-                          {r.questionTitle}
-                        </p>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="font-semibold tabular-nums">
-                      {r.avg} / {r.maxScore}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {r.min} ~ {r.max}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "font-semibold tabular-nums",
-                          r.ratio >= 0.25
-                            ? "text-rose-700 dark:text-rose-400"
-                            : r.ratio >= 0.15
-                              ? "text-amber-700 dark:text-amber-400"
-                              : "text-foreground",
-                        )}
-                      >
-                        ±{r.stdev}
-                      </span>
-                      <span className="text-muted-foreground ml-1 text-[10px] tabular-nums">
-                        ({Math.round(r.ratio * 100)}%)
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {r.scores.map((s, i) => (
-                          <Badge
-                            key={i}
-                            variant="outline"
-                            className="h-5 text-[10px] tabular-nums"
-                          >
-                            {s}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/admin/gs/${round.roundId}/grade/${r.submissionId}#question-${r.questionId}`}
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        검토 <ArrowRightIcon className="size-3" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <IndexTable
+          headers={[
+            { label: "답안 작성자", width: "180px" },
+            { label: "문항", width: "100px" },
+            { label: "평균", align: "right", width: "140px" },
+            { label: "범위", align: "right", width: "120px" },
+            { label: "표준편차", align: "right", width: "130px" },
+            { label: "개별 점수" },
+            { label: "", width: "100px" },
+          ]}
+          minWidth={700}
+        >
+          {rows.map((r) => (
+            <TR key={`${r.submissionId}:${r.questionId}`}>
+              <TD>
+                <span className="font-semibold">
+                  {r.authorName ?? (
+                    <span className="text-muted-foreground font-normal italic">미설정</span>
+                  )}
+                </span>
+                <p className="text-muted-foreground mt-0.5 font-mono text-[10px] tabular-nums">
+                  {r.authorIdShort}
+                </p>
+              </TD>
+              <TD>
+                <span className="border-border bg-muted inline-flex h-[22px] items-center rounded-full border px-2 text-[11px] font-semibold tabular-nums">
+                  #{r.questionOrder + 1}
+                </span>
+                {r.questionTitle ? (
+                  <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                    {r.questionTitle}
+                  </p>
+                ) : null}
+              </TD>
+              <TD align="right" mono>
+                {r.avg} / {r.maxScore}
+              </TD>
+              <TD align="right" mono>
+                {r.min} ~ {r.max}
+              </TD>
+              <TD align="right">
+                <span
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    r.ratio >= 0.25
+                      ? "text-rose-700 dark:text-rose-400"
+                      : r.ratio >= 0.15
+                        ? "text-amber-700 dark:text-amber-400"
+                        : "text-foreground",
+                  )}
+                >
+                  ±{r.stdev}
+                </span>
+                <span className="text-muted-foreground ml-1 text-[10px] tabular-nums">
+                  ({Math.round(r.ratio * 100)}%)
+                </span>
+              </TD>
+              <TD>
+                <div className="flex flex-wrap gap-1">
+                  {r.scores.map((s, i) => (
+                    <span
+                      key={i}
+                      className="border-border inline-flex h-[20px] items-center rounded-full border px-2 text-[10px] tabular-nums"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </TD>
+              <TD>
+                <Link
+                  to={`/admin/gs/${round.roundId}/grade/${r.submissionId}#question-${r.questionId}`}
+                  className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                >
+                  검토 <ArrowRightIcon className="size-3" />
+                </Link>
+              </TD>
+            </TR>
+          ))}
+        </IndexTable>
       )}
-    </div>
+    </AdminShell>
   );
 }
+

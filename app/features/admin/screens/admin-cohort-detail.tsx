@@ -2,7 +2,6 @@
 
 import {
   ArchiveIcon,
-  ArrowLeftIcon,
   ArrowRightIcon,
   BarChart3Icon,
   BookCheckIcon,
@@ -26,7 +25,6 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
@@ -52,6 +50,8 @@ import {
   type AtRiskSummary,
 } from "~/features/exam-results/at-risk.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip } from "~/features/admin/components/admin-ui";
 
 import type { Route } from "./+types/admin-cohort-detail";
 
@@ -78,13 +78,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const members = await listCohortMembers(client, params.cohortId);
 
-  // 검색 쿼리 (멤버 추가용).
   const url = new URL(request.url);
   const searchQuery = (url.searchParams.get("add_q") ?? "").trim().slice(0, 100);
   const searchResults: SearchStudentResult[] =
     searchQuery.length >= 2 ? await searchStudents(searchQuery) : [];
 
-  // 적용된 커리큘럼 + 적용 가능한 전체 목록
   const [cohortCurricula, allCurricula, atRisk] = await Promise.all([
     listCohortCurricula(params.cohortId),
     listCurricula(),
@@ -106,74 +104,84 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function AdminCohortDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, members, searchQuery, searchResults, cohortCurricula, allCurricula, atRisk } =
+  const { cohort, members, searchQuery, searchResults, role, cohortCurricula, allCurricula, atRisk } =
     loaderData;
   const [editing, setEditing] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin/cohorts"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 반 목록
-      </Link>
-
-      <header className="mb-6 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={cohort.isArchived ? "outline" : "default"}>
-            {cohort.isArchived ? "아카이브" : "활성"}
-          </Badge>
-          {cohort.ownerName ? (
-            <Badge variant="secondary">담당 {cohort.ownerName}</Badge>
-          ) : null}
-          <Badge variant="outline" className="ml-auto gap-1">
-            <UsersIcon className="size-3" />
-            {members.length}명
-          </Badge>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <UsersIcon className="text-primary size-6" />
-            {cohort.name}
-          </h1>
-          {!editing ? (
-            <div className="flex flex-wrap gap-2">
-              <Button asChild size="sm">
-                <Link to={`/admin/cohorts/${cohort.cohortId}/progress`}>
-                  <TrendingUpIcon className="size-3.5" /> 진도
-                </Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link to={`/admin/cohorts/${cohort.cohortId}/stats`}>
-                  <BarChart3Icon className="size-3.5" /> 통계
-                </Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link to={`/admin/cohorts/${cohort.cohortId}/assignments`}>
-                  <BookCheckIcon className="size-3.5" /> 과제
-                </Link>
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEditing(true)}
-              >
-                <PencilIcon className="size-3.5" /> 반 정보 수정
-              </Button>
-            </div>
-          ) : null}
-        </div>
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      title={cohort.name}
+      desc={
+        [
+          cohort.ownerName ? `담당 ${cohort.ownerName}` : null,
+          cohort.isArchived ? "아카이브" : "활성",
+          `멤버 ${members.length}명`,
+          cohort.startsOn && cohort.endsOn
+            ? `${cohort.startsOn} ~ ${cohort.endsOn}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      }
+      headerRight={
+        !editing ? (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <Link to={`/admin/cohorts/${cohort.cohortId}/progress`}>
+                <TrendingUpIcon className="size-3.5" /> 진도
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/admin/cohorts/${cohort.cohortId}/stats`}>
+                <BarChart3Icon className="size-3.5" /> 통계
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/admin/cohorts/${cohort.cohortId}/assignments`}>
+                <BookCheckIcon className="size-3.5" /> 과제
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
+              <PencilIcon className="size-3.5" /> 반 정보 수정
+            </Button>
+          </div>
+        ) : null
+      }
+      width={960}
+    >
+      {/* 요약 Chip 행 */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {cohort.isArchived ? (
+          <Chip tone="neutral">
+            <ArchiveIcon className="size-3" /> 아카이브
+          </Chip>
+        ) : (
+          <Chip tone="emerald">활성</Chip>
+        )}
+        {cohort.ownerName ? (
+          <Chip tone="blue">담당 {cohort.ownerName}</Chip>
+        ) : null}
+        <Chip tone="outline">
+          <UsersIcon className="size-3" /> {members.length}명
+        </Chip>
+        {cohort.startsOn ? (
+          <Chip tone="neutral">
+            <CalendarRangeIcon className="size-3" />
+            {cohort.startsOn} ~ {cohort.endsOn ?? "—"}
+          </Chip>
+        ) : null}
         {cohort.description ? (
-          <p className="text-muted-foreground text-sm whitespace-pre-line">
+          <p className="text-muted-foreground mt-1 w-full text-xs whitespace-pre-line">
             {cohort.description}
           </p>
         ) : null}
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs tabular-nums">
-          <CalendarRangeIcon className="size-3" />
-          {cohort.startsOn ?? "—"} ~ {cohort.endsOn ?? "—"}
-        </p>
-      </header>
+      </div>
 
       {editing ? (
         <div className="mb-6">
@@ -269,15 +277,9 @@ export default function AdminCohortDetail({
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AdminShell>
   );
 }
-
-const ROLE_BADGE: Record<CohortMember["role"], "default" | "secondary" | "outline"> = {
-  student: "outline",
-  instructor: "secondary",
-  admin: "default",
-};
 
 const ROLE_LABEL: Record<CohortMember["role"], string> = {
   student: "수험생",
@@ -309,6 +311,13 @@ function MemberRow({
     }
   }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
 
+  const roleChipTone =
+    member.role === "admin"
+      ? "solid" as const
+      : member.role === "instructor"
+        ? "blue" as const
+        : "outline" as const;
+
   return (
     <li className="flex items-center gap-3 px-4 py-2.5">
       <UserIcon className="text-muted-foreground size-4 shrink-0" />
@@ -321,9 +330,7 @@ function MemberRow({
           >
             {member.name}
           </Link>
-          <Badge variant={ROLE_BADGE[member.role]} className="text-[10px]">
-            {ROLE_LABEL[member.role]}
-          </Badge>
+          <Chip tone={roleChipTone}>{ROLE_LABEL[member.role]}</Chip>
         </div>
         {member.email ? (
           <p className="text-muted-foreground inline-flex items-center gap-1 text-xs">
@@ -404,9 +411,7 @@ function SearchResultRow({
         ) : null}
       </div>
       {alreadyMember ? (
-        <Badge variant="outline" className="text-[10px]">
-          이미 멤버
-        </Badge>
+        <Chip tone="neutral">이미 멤버</Chip>
       ) : (
         <fetcher.Form method="post" action="/api/admin/cohort">
           <input type="hidden" name="intent" value="add_member" />
@@ -438,7 +443,6 @@ function CurriculumSection({
 }) {
   const [showApply, setShowApply] = useState(false);
   const appliedIds = new Set(applied.map((a) => a.curriculumId));
-  // 미적용 + 발행된 커리큘럼만 후보
   const candidates = available.filter(
     (c) => !appliedIds.has(c.curriculumId) && c.isPublished,
   );
@@ -525,13 +529,9 @@ function CurriculumAppliedRow({ row }: { row: CohortCurriculumRow }) {
         시작 {row.startDate}
       </span>
       {row.isActive ? (
-        <Badge variant="default" className="text-[10px]">
-          활성
-        </Badge>
+        <Chip tone="emerald">활성</Chip>
       ) : (
-        <Badge variant="outline" className="text-[10px]">
-          비활성
-        </Badge>
+        <Chip tone="neutral">비활성</Chip>
       )}
       <fetcher.Form method="post" action="/api/admin/curriculum">
         <input type="hidden" name="intent" value="remove_from_cohort" />
@@ -656,12 +656,15 @@ function CohortEditForm({
     <fetcher.Form
       method="post"
       action="/api/admin/cohort"
-      className="bg-card space-y-3 rounded-md border p-4"
+      className="bg-card border-border space-y-3 rounded-xl border p-4 shadow-sm"
     >
+      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+        반 정보 수정
+      </p>
       <input type="hidden" name="intent" value="update" />
       <input type="hidden" name="cohortId" value={cohort.cohortId} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[120px_1fr_120px_1fr]">
-        <Field label="이름 *" full>
+        <FormField label="이름 *" full>
           <Input
             name="name"
             required
@@ -669,24 +672,24 @@ function CohortEditForm({
             defaultValue={cohort.name}
             className="h-8 text-xs"
           />
-        </Field>
-        <Field label="시작일">
+        </FormField>
+        <FormField label="시작일">
           <Input
             name="startsOn"
             type="date"
             defaultValue={cohort.startsOn ?? ""}
             className="h-8 text-xs"
           />
-        </Field>
-        <Field label="종료일">
+        </FormField>
+        <FormField label="종료일">
           <Input
             name="endsOn"
             type="date"
             defaultValue={cohort.endsOn ?? ""}
             className="h-8 text-xs"
           />
-        </Field>
-        <Field label="설명" full>
+        </FormField>
+        <FormField label="설명" full>
           <textarea
             name="description"
             maxLength={2000}
@@ -694,8 +697,8 @@ function CohortEditForm({
             rows={3}
             className="border-input bg-background w-full rounded-md border px-2 py-1 text-xs"
           />
-        </Field>
-        <Field label="아카이브">
+        </FormField>
+        <FormField label="아카이브">
           <label className="border-input flex h-8 cursor-pointer items-center gap-1.5 rounded-md border px-3 text-xs">
             <input
               type="checkbox"
@@ -706,7 +709,7 @@ function CohortEditForm({
             />
             <ArchiveIcon className="size-3" /> 아카이브로 표시
           </label>
-        </Field>
+        </FormField>
       </div>
       {hasError ? (
         <p className="text-rose-600 text-xs">
@@ -731,7 +734,7 @@ function CohortEditForm({
   );
 }
 
-function Field({
+function FormField({
   label,
   full,
   children,
@@ -756,12 +759,12 @@ function AtRiskCard({ summary }: { summary: AtRiskSummary }) {
   const topRisk = summary.students.slice(0, 5);
   const showBaseline = summary.baseline !== null && summary.baseline.sampleSize > 0;
   return (
-    <Card className="border-rose-200">
+    <Card className="border-rose-200 dark:border-rose-800">
       <CardHeader className="px-4 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-rose-900">
-              🚨 1:1 상담 권장 학생
+            <p className="text-sm font-semibold text-rose-700 dark:text-rose-400">
+              1:1 상담 권장 학생
             </p>
             <p className="text-muted-foreground text-[11px]">
               합격자 평균 대비 격차 + 비활성을 weighted 합산해 위험 분류.
@@ -778,15 +781,9 @@ function AtRiskCard({ summary }: { summary: AtRiskSummary }) {
             </p>
           </div>
           <div className="flex items-center gap-2 text-[11px]">
-            <Badge variant="outline" className="bg-rose-50 text-rose-800 border-rose-200">
-              위험 {summary.highRiskCount}
-            </Badge>
-            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
-              주의 {summary.mediumRiskCount}
-            </Badge>
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200">
-              안정 {summary.lowRiskCount}
-            </Badge>
+            <Chip tone="coral">위험 {summary.highRiskCount}</Chip>
+            <Chip tone="amber">주의 {summary.mediumRiskCount}</Chip>
+            <Chip tone="emerald">안정 {summary.lowRiskCount}</Chip>
           </div>
         </div>
       </CardHeader>
@@ -809,18 +806,12 @@ function AtRiskCard({ summary }: { summary: AtRiskSummary }) {
 }
 
 function AtRiskRow({ student }: { student: AtRiskStudent }) {
-  const toneClass =
+  const riskChipTone =
     student.riskLevel === "high"
-      ? "bg-rose-50/40"
+      ? "coral" as const
       : student.riskLevel === "medium"
-        ? "bg-amber-50/30"
-        : "";
-  const badgeClass =
-    student.riskLevel === "high"
-      ? "bg-rose-100 text-rose-800 border-rose-200"
-      : student.riskLevel === "medium"
-        ? "bg-amber-100 text-amber-800 border-amber-200"
-        : "bg-emerald-100 text-emerald-800 border-emerald-200";
+        ? "amber" as const
+        : "emerald" as const;
   const label =
     student.riskLevel === "high"
       ? "위험"
@@ -828,7 +819,7 @@ function AtRiskRow({ student }: { student: AtRiskStudent }) {
         ? "주의"
         : "안정";
   return (
-    <li className={`flex flex-wrap items-center gap-2 px-4 py-3 ${toneClass}`}>
+    <li className="flex flex-wrap items-center gap-2 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -837,9 +828,9 @@ function AtRiskRow({ student }: { student: AtRiskStudent }) {
           >
             {student.name}
           </Link>
-          <Badge variant="outline" className={`text-[10px] ${badgeClass}`}>
+          <Chip tone={riskChipTone}>
             {label} {Math.round(student.riskScore * 100)}점
-          </Badge>
+          </Chip>
           {student.email ? (
             <span className="text-muted-foreground text-[10px]">{student.email}</span>
           ) : null}
@@ -866,7 +857,7 @@ function AtRiskRow({ student }: { student: AtRiskStudent }) {
             {student.reasons.map((r, i) => (
               <span
                 key={i}
-                className="rounded bg-white/60 px-1.5 py-0.5 text-[10px] text-rose-800"
+                className="bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:text-rose-300 rounded px-1.5 py-0.5 text-[10px]"
               >
                 {r}
               </span>
@@ -882,3 +873,4 @@ function AtRiskRow({ student }: { student: AtRiskStudent }) {
     </li>
   );
 }
+

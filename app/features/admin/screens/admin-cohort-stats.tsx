@@ -1,8 +1,7 @@
-// feat-7-019 — 반/기수 통계 모니터링.
-// 평균 KPI + 정답률 분포 + 5과목 평균 + 상/하위 5명.
+// feat-7-019 — 반/기수 통계 모니터링. 패턴 P4.
+// 평균 KPI + 정답률 분포 + 과목별 평균 + 상/하위 5명.
 
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   BarChart3Icon,
   BookOpenIcon,
@@ -16,17 +15,8 @@ import {
 import { Fragment } from "react";
 import { Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getCohortById } from "~/features/cohorts/queries.server";
@@ -41,6 +31,8 @@ import {
   type AccuracyBucket,
   type CohortWeeklyTrendItem,
 } from "~/features/admin/queries/student-progress.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 
 import type { Route } from "./+types/admin-cohort-stats";
 
@@ -69,7 +61,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getCohortAggregateStats(params.cohortId),
     getCohortAccuracyTrend(params.cohortId, 4),
   ]);
-  return { cohort, stats, trend };
+  return { cohort, stats, trend, role };
 }
 
 function accuracyTone(pct: number | null): string {
@@ -78,6 +70,15 @@ function accuracyTone(pct: number | null): string {
   if (pct >= 60) return "text-lime-600 dark:text-lime-400";
   if (pct >= 40) return "text-amber-600 dark:text-amber-400";
   return "text-rose-600 dark:text-rose-400";
+}
+
+function accuracyBgTone(pct: number | null): string {
+  if (pct === null) return "bg-muted-foreground/40";
+  if (pct >= 80) return "bg-emerald-500/80";
+  if (pct >= 60) return "bg-lime-500/80";
+  if (pct >= 40) return "bg-amber-500/80";
+  if (pct >= 20) return "bg-orange-500/80";
+  return "bg-rose-500/80";
 }
 
 const BUCKET_TONE: Record<AccuracyBucket, string> = {
@@ -101,54 +102,33 @@ const BUCKET_LABEL: Record<AccuracyBucket, string> = {
 export default function AdminCohortStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, stats, trend } = loaderData;
+  const { cohort, stats, trend, role } = loaderData;
   const maxBucketCount = Math.max(
     1,
     ...stats.accuracyDistribution.map((d) => d.count),
   );
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to={`/admin/cohorts/${cohort.cohortId}`}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 반 상세
-      </Link>
-
-      <header className="mb-6 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="gap-1">
-            <BarChart3Icon className="size-3" /> 통계 모니터링
-          </Badge>
-          <Badge variant="outline" className="ml-auto gap-1">
-            <UsersIcon className="size-3" /> {stats.memberCount}명
-          </Badge>
-        </div>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-              <BarChart3Icon className="text-primary size-6" />
-              {cohort.name}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              반 평균·분포·과목별 통계
-            </p>
-          </div>
-          <Button asChild size="sm" variant="outline">
-            <Link to={`/admin/cohorts/${cohort.cohortId}/progress`}>
-              <TrendingUpIcon className="size-3.5" /> 학생별 진도 →
-            </Link>
-          </Button>
-        </div>
-      </header>
-
+    <AdminShell
+      cluster="cohorts"
+      role={role}
+      title={`${cohort.name} — 반 통계`}
+      desc={`반 평균·분포·과목별 통계. 멤버 ${stats.memberCount}명.`}
+      headerRight={
+        <Button asChild size="sm" variant="outline">
+          <Link to={`/admin/cohorts/${cohort.cohortId}/progress`}>
+            <TrendingUpIcon className="size-3.5" /> 학생별 진도
+          </Link>
+        </Button>
+      }
+    >
       {stats.memberCount === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
+        <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border py-16 text-center shadow-sm">
+          <UsersIcon className="text-muted-foreground/40 size-10" />
           <p className="text-muted-foreground text-sm">
             반에 멤버가 없습니다. 학생을 먼저 추가하세요.
           </p>
-          <Button asChild size="sm" variant="outline" className="mt-3">
+          <Button asChild size="sm" variant="outline" className="mt-2">
             <Link to={`/admin/cohorts/${cohort.cohortId}`}>
               <UsersIcon className="size-3.5" /> 멤버 관리
             </Link>
@@ -161,13 +141,9 @@ export default function AdminCohortStats({
             <KpiCard
               icon={TargetIcon}
               label="평균 정답률"
-              value={
-                stats.avgAccuracyPct === null
-                  ? "—"
-                  : `${stats.avgAccuracyPct}%`
-              }
+              value={stats.avgAccuracyPct === null ? "—" : `${stats.avgAccuracyPct}%`}
               tone={accuracyTone(stats.avgAccuracyPct)}
-              hint={`시도 ≥ 5 학생 기준`}
+              hint="시도 ≥ 5 학생 기준"
             />
             <KpiCard
               icon={ListChecksIcon}
@@ -198,13 +174,13 @@ export default function AdminCohortStats({
           {/* 정답률 분포 */}
           <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
                   정답률 분포
                 </p>
-                <Badge variant="outline" className="text-[10px]">
+                <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
                   시도 ≥ 5 학생만 분류, 나머지는 "데이터 부족"
-                </Badge>
+                </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -213,14 +189,9 @@ export default function AdminCohortStats({
                   stats.memberCount > 0
                     ? Math.round((d.count / stats.memberCount) * 100)
                     : 0;
-                const widthPct = Math.round(
-                  (d.count / maxBucketCount) * 100,
-                );
+                const widthPct = Math.round((d.count / maxBucketCount) * 100);
                 return (
-                  <div
-                    key={d.bucket}
-                    className="flex items-center gap-3"
-                  >
+                  <div key={d.bucket} className="flex items-center gap-3">
                     <div className="w-24 text-xs font-medium">
                       {BUCKET_LABEL[d.bucket]}
                     </div>
@@ -244,75 +215,66 @@ export default function AdminCohortStats({
           </Card>
 
           {/* 과목별 평균 — 1차(객관식)/2차(주관식) 분리 */}
-          <Card>
-            <CardHeader className="pb-2">
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                과목별 평균
-              </p>
-            </CardHeader>
-            <CardContent className="overflow-x-auto p-0">
-              <Table className="min-w-[560px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="text-right">평균 시도</TableHead>
-                    <TableHead className="text-right">평균 정답률</TableHead>
-                    <TableHead className="text-right">평균 조문 열람</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[
-                    {
-                      label: "1차 · 객관식",
-                      rows: stats.bySubject.filter((s) =>
-                        isFirstExamSubject(s.lawCode),
-                      ),
-                    },
-                    {
-                      label: "2차 · 주관식",
-                      rows: stats.bySubject.filter((s) =>
-                        isSecondExamSubject(s.lawCode),
-                      ),
-                    },
-                  ].map((g) => (
-                    <Fragment key={g.label}>
-                      <TableRow className="bg-muted/40 hover:bg-muted/40">
-                        <TableCell
-                          colSpan={4}
-                          className="text-primary py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
-                        >
-                          {g.label}
-                        </TableCell>
-                      </TableRow>
-                      {g.rows.map((s) => (
-                        <TableRow key={s.lawCode}>
-                          <TableCell className="text-sm font-medium">
-                            {s.name}
-                          </TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">
-                            {s.avgProblemsAttempted}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              "text-right text-sm tabular-nums",
-                              accuracyTone(s.avgAccuracyPct),
-                            )}
-                          >
-                            {s.avgAccuracyPct === null
-                              ? "—"
-                              : `${s.avgAccuracyPct}%`}
-                          </TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">
-                            {s.avgArticlesViewed}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </Fragment>
+          <div>
+            <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+              과목별 평균
+            </p>
+            <IndexTable
+              minWidth={560}
+              headers={[
+                { label: "과목" },
+                { label: "평균 시도", align: "right", width: "7rem" },
+                { label: "평균 정답률", align: "right", width: "10rem" },
+                { label: "평균 조문 열람", align: "right", width: "8rem" },
+              ]}
+            >
+              {[
+                {
+                  label: "1차 · 객관식",
+                  rows: stats.bySubject.filter((s) => isFirstExamSubject(s.lawCode)),
+                },
+                {
+                  label: "2차 · 주관식",
+                  rows: stats.bySubject.filter((s) => isSecondExamSubject(s.lawCode)),
+                },
+              ].map((g) => (
+                <Fragment key={g.label}>
+                  {/* 그룹 헤더 행 */}
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="bg-muted/60 text-primary border-border/60 border-b px-3 py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                    >
+                      {g.label}
+                    </td>
+                  </tr>
+                  {g.rows.map((s) => (
+                    <TR key={s.lawCode}>
+                      <TD>{s.name}</TD>
+                      <TD align="right" mono soft>
+                        {s.avgProblemsAttempted}
+                      </TD>
+                      <TD align="right">
+                        {s.avgAccuracyPct !== null ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <Bar value={s.avgAccuracyPct} tone="auto" className="w-16" />
+                            <span className={cn("font-mono text-[12px] font-bold tabular-nums", accuracyTone(s.avgAccuracyPct))}>
+                              {s.avgAccuracyPct}%
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TD>
+                      <TD align="right" mono soft>
+                        {s.avgArticlesViewed}
+                      </TD>
+                    </TR>
                   ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                </Fragment>
+              ))}
+            </IndexTable>
+          </div>
 
           {/* 상/하위 학생 */}
           <div className="grid gap-3 md:grid-cols-2">
@@ -324,7 +286,7 @@ export default function AdminCohortStats({
               emptyText="시도 ≥ 5인 학생이 부족합니다."
             />
             <RankCard
-              icon={TrendingUpIcon}
+              icon={BarChart3Icon}
               label="하위 5명 — 정답률"
               tone="text-rose-600 dark:text-rose-400"
               items={stats.bottomByAccuracy}
@@ -333,17 +295,8 @@ export default function AdminCohortStats({
           </div>
         </div>
       )}
-    </div>
+    </AdminShell>
   );
-}
-
-function accuracyBgTone(pct: number | null): string {
-  if (pct === null) return "bg-muted-foreground/40";
-  if (pct >= 80) return "bg-emerald-500/80";
-  if (pct >= 60) return "bg-lime-500/80";
-  if (pct >= 40) return "bg-amber-500/80";
-  if (pct >= 20) return "bg-orange-500/80";
-  return "bg-rose-500/80";
 }
 
 function WeeklyTrendCard({ weeks }: { weeks: CohortWeeklyTrendItem[] }) {
@@ -351,13 +304,13 @@ function WeeklyTrendCard({ weeks }: { weeks: CohortWeeklyTrendItem[] }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
             최근 {weeks.length}주 추이
           </p>
-          <Badge variant="outline" className="text-[10px]">
+          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
             주별 정답률 · 시도 · 활동 학생수
-          </Badge>
+          </span>
         </div>
       </CardHeader>
       <CardContent>
@@ -383,12 +336,7 @@ function WeeklyBar({ item }: { item: CohortWeeklyTrendItem }) {
         />
       </div>
       <p className="text-center text-xs font-medium">{item.label}</p>
-      <p
-        className={cn(
-          "text-center text-sm font-bold tabular-nums",
-          accuracyTone(item.accuracyPct),
-        )}
-      >
+      <p className={cn("text-center text-sm font-bold tabular-nums", accuracyTone(item.accuracyPct))}>
         {item.accuracyPct === null ? "—" : `${item.accuracyPct}%`}
       </p>
       <p className="text-muted-foreground text-center text-[10px] tabular-nums">
@@ -412,25 +360,18 @@ function KpiCard({
   hint?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="space-y-1 py-4">
-        <div className="flex items-center gap-2">
-          <Icon className="text-primary size-4" />
-          <p className="text-muted-foreground text-xs">{label}</p>
-        </div>
-        <p
-          className={cn(
-            "text-2xl font-bold tabular-nums",
-            tone ?? "text-foreground",
-          )}
-        >
-          {value}
-        </p>
-        {hint ? (
-          <p className="text-muted-foreground text-xs">{hint}</p>
-        ) : null}
-      </CardContent>
-    </Card>
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+        <Icon className="size-3" />
+        {label}
+      </p>
+      <p className={cn("mt-2 text-2xl font-extrabold tracking-tight tabular-nums", tone ?? "text-foreground")}>
+        {value}
+      </p>
+      {hint ? (
+        <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -455,7 +396,7 @@ function RankCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <p className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+        <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
           <Icon className={cn("size-3.5", tone)} />
           {label}
         </p>
@@ -482,12 +423,7 @@ function RankCard({
                 >
                   {item.name}
                 </Link>
-                <span
-                  className={cn(
-                    "w-14 text-right text-sm font-semibold tabular-nums",
-                    tone,
-                  )}
-                >
+                <span className={cn("w-14 text-right text-sm font-semibold tabular-nums", tone)}>
                   {item.accuracyPct}%
                 </span>
                 <span className="text-muted-foreground w-16 text-right text-xs tabular-nums">

@@ -1,7 +1,7 @@
 // 법 개정 목록 (feat-7-004). 한 법령의 모든 개정(draft/review/published).
+// 리스킨: AdminShell(cluster=laws, P2), IndexTable → 섹션별 표, StatusChip(Chip)
 
 import {
-  ArrowLeftIcon,
   ChevronRightIcon,
   FileEditIcon,
   PlusIcon,
@@ -17,19 +17,24 @@ import {
   useNavigate,
 } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { getLawByCode, getStaffRole } from "~/features/laws/queries.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  Chip,
+  IndexTable,
+  TD,
+  TR,
+} from "~/features/admin/components/admin-ui";
 import {
   LAW_REVISION_STATUS_LABELS,
   type LawRevisionListItem,
   type LawRevisionStatus,
 } from "~/features/law-revisions/labels";
 import { listLawRevisionsForAdmin } from "~/features/law-revisions/queries.server";
+import { getLawByCode, getStaffRole } from "~/features/laws/queries.server";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
@@ -39,8 +44,13 @@ import {
 import type { Route } from "./+types/admin-law-revisions";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.law) return [{ title: "법 개정 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.law.shortLabel ?? d.law.displayLabel} 개정 | Lidam Patent Attorney Academy` }];
+  if (!d || !d.law)
+    return [{ title: "법 개정 | Lidam Patent Attorney Academy" }];
+  return [
+    {
+      title: `${d.law.shortLabel ?? d.law.displayLabel} 개정 | Lidam Patent Attorney Academy`,
+    },
+  ];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -60,22 +70,26 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const law = await getLawByCode(client, lawCode);
   if (!law) throw data("Law not seeded", { status: 404 });
   const revisions = await listLawRevisionsForAdmin(client, { lawCode });
-  return { law, lawCode, revisions };
+  return { law, lawCode, revisions, role };
 }
 
-const STATUS_VARIANT: Record<
+/* ── 상태 → Chip 톤 ────────────────────────────────────────────────────── */
+
+const STATUS_CHIP_TONE: Record<
   LawRevisionStatus,
-  "default" | "secondary" | "outline"
+  "emerald" | "amber" | "neutral"
 > = {
-  draft: "outline",
-  review: "secondary",
-  published: "default",
+  draft: "neutral",
+  review: "amber",
+  published: "emerald",
 };
+
+/* ── 컴포넌트 ─────────────────────────────────────────────────────────── */
 
 export default function AdminLawRevisions({
   loaderData,
 }: Route.ComponentProps) {
-  const { law, lawCode, revisions } = loaderData;
+  const { law, lawCode, revisions, role } = loaderData;
   const [showAdd, setShowAdd] = useState(false);
   const subject = LAW_SUBJECTS[lawCode];
   const drafts = revisions.filter((r) => r.status === "draft");
@@ -83,33 +97,19 @@ export default function AdminLawRevisions({
   const published = revisions.filter((r) => r.status === "published");
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          콘텐츠 관리 · 법 개정
-        </p>
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="inline-flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <FileEditIcon className="text-primary size-6" />
-            {subject.name} 개정 워크스페이스
-          </h1>
-          {!showAdd ? (
-            <Button size="sm" onClick={() => setShowAdd(true)}>
-              <PlusIcon className="size-3.5" /> 새 개정 (Draft)
-            </Button>
-          ) : null}
-        </div>
-        <p className="text-muted-foreground text-sm">
-          초안 {drafts.length} · 검토 {reviews.length} · 발행 {published.length}
-        </p>
-      </header>
-
+    <AdminShell
+      cluster="laws"
+      role={role}
+      title={`${subject.name} 개정 목록`}
+      desc={`초안 ${drafts.length} · 검토 ${reviews.length} · 발행 ${published.length}`}
+      headerRight={
+        !showAdd ? (
+          <Button size="sm" onClick={() => setShowAdd(true)}>
+            <PlusIcon className="size-3.5" /> 새 개정 (Draft)
+          </Button>
+        ) : undefined
+      }
+    >
       {showAdd ? (
         <div className="mb-4">
           <CreateRevisionForm
@@ -119,60 +119,85 @@ export default function AdminLawRevisions({
         </div>
       ) : null}
 
-      <Section title="초안 (Draft)" revisions={drafts} lawCode={lawCode} />
-      <Section title="검토 (Review)" revisions={reviews} lawCode={lawCode} />
-      <Section
+      <RevisionSection
+        title="초안 (Draft)"
+        revisions={drafts}
+        lawCode={lawCode}
+        emptyText="초안이 없습니다."
+      />
+      <RevisionSection
+        title="검토 (Review)"
+        revisions={reviews}
+        lawCode={lawCode}
+        emptyText="검토 중인 개정이 없습니다."
+      />
+      <RevisionSection
         title="발행 (Published)"
         revisions={published}
         lawCode={lawCode}
         readonly
+        emptyText="발행된 개정이 없습니다."
       />
-    </div>
+    </AdminShell>
   );
 }
 
-function Section({
+/* ── RevisionSection ─────────────────────────────────────────────────── */
+
+function RevisionSection({
   title,
   revisions,
   lawCode,
   readonly,
+  emptyText,
 }: {
   title: string;
   revisions: LawRevisionListItem[];
   lawCode: LawSubjectSlug;
   readonly?: boolean;
+  emptyText: string;
 }) {
-  if (revisions.length === 0) {
-    return (
-      <section className="mb-6">
-        <h2 className="mb-2 text-sm font-semibold">{title}</h2>
-        <p className="text-muted-foreground text-xs">
-          {readonly ? "발행된 개정이 없습니다." : "초안이 없습니다."}
-        </p>
-      </section>
-    );
-  }
   return (
     <section className="mb-6 space-y-2">
-      <h2 className="text-sm font-semibold">
+      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
         {title}{" "}
-        <span className="text-muted-foreground text-xs">
+        <span className="text-muted-foreground/60 tabular-nums">
           ({revisions.length})
         </span>
-      </h2>
-      <div className="grid gap-2">
-        {revisions.map((r) => (
-          <RevisionRow
-            key={r.lawRevisionId}
-            revision={r}
-            lawCode={lawCode}
-            readonly={readonly}
-          />
-        ))}
-      </div>
+      </p>
+      {revisions.length === 0 ? (
+        <div className="border-border bg-card text-muted-foreground rounded-xl border py-10 text-center text-sm shadow-sm">
+          <FileEditIcon className="text-muted-foreground/40 mx-auto mb-2 size-8" />
+          {emptyText}
+        </div>
+      ) : (
+        <IndexTable
+          minWidth={640}
+          headers={[
+            { label: "상태", width: "6rem" },
+            { label: "개정 번호" },
+            { label: "조문", align: "right", width: "6rem" },
+            { label: "시행일", align: "right", width: "8rem" },
+            { label: "공포일", align: "right", width: "8rem" },
+            { label: "발행", align: "right", width: "8rem" },
+            { label: "", align: "right", width: "5rem" },
+          ]}
+        >
+          {revisions.map((r) => (
+            <RevisionRow
+              key={r.lawRevisionId}
+              revision={r}
+              lawCode={lawCode}
+              readonly={readonly}
+            />
+          ))}
+        </IndexTable>
+      )}
     </section>
   );
 }
+
+/* ── RevisionRow ─────────────────────────────────────────────────────── */
 
 function RevisionRow({
   revision,
@@ -186,6 +211,7 @@ function RevisionRow({
   const delFetcher = useFetcher<{ ok?: true; error?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+
   useEffect(() => {
     if (
       delFetcher.state === "idle" &&
@@ -198,46 +224,51 @@ function RevisionRow({
         preventScrollReset: true,
       });
     }
-  }, [delFetcher.state, delFetcher.data, navigate, location.pathname, location.search]);
+  }, [
+    delFetcher.state,
+    delFetcher.data,
+    navigate,
+    location.pathname,
+    location.search,
+  ]);
 
   return (
-    <Card>
-      <CardContent className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-        <Badge variant={STATUS_VARIANT[revision.status]} className="text-xs">
+    <TR>
+      <TD>
+        <Chip tone={STATUS_CHIP_TONE[revision.status]}>
           {LAW_REVISION_STATUS_LABELS[revision.status]}
-        </Badge>
+        </Chip>
+      </TD>
+      <TD>
         <Link
           to={`/admin/laws/${lawCode}/revisions/${revision.lawRevisionId}`}
           viewTransition
-          className="hover:text-primary inline-flex items-center gap-1 font-medium"
+          className="text-primary inline-flex items-center gap-1 font-semibold hover:underline"
         >
           {revision.revisionNumber}
           <ChevronRightIcon className="text-muted-foreground size-3" />
         </Link>
-        <span className="text-muted-foreground text-xs tabular-nums">
-          영향 조문 {revision.articleCount}
-        </span>
-        {revision.effectiveDate ? (
-          <span className="text-muted-foreground text-xs tabular-nums">
-            시행 {revision.effectiveDate}
-          </span>
+        {revision.reasonMd ? (
+          <p className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]">
+            {revision.reasonMd}
+          </p>
         ) : null}
-        {revision.promulgatedAt ? (
-          <span className="text-muted-foreground text-xs tabular-nums">
-            공포 {revision.promulgatedAt}
-          </span>
-        ) : null}
-        {revision.publishedAt ? (
-          <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-            발행 {revision.publishedAt.slice(0, 10)}
-          </span>
-        ) : null}
+      </TD>
+      <TD align="right" mono soft>
+        {revision.articleCount}건
+      </TD>
+      <TD align="right" mono soft>
+        {revision.effectiveDate ?? "—"}
+      </TD>
+      <TD align="right" mono soft>
+        {revision.promulgatedAt ?? "—"}
+      </TD>
+      <TD align="right" mono soft>
+        {revision.publishedAt ? revision.publishedAt.slice(0, 10) : "—"}
+      </TD>
+      <TD align="right">
         {!readonly ? (
-          <delFetcher.Form
-            method="post"
-            action="/api/admin/law-revision"
-            className="ml-auto"
-          >
+          <delFetcher.Form method="post" action="/api/admin/law-revision">
             <input type="hidden" name="intent" value="delete" />
             <input
               type="hidden"
@@ -249,7 +280,7 @@ function RevisionRow({
               size="icon"
               variant="ghost"
               aria-label="삭제"
-              className="size-7 text-rose-600 hover:text-rose-700"
+              className="size-7 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
               disabled={delFetcher.state !== "idle"}
               onClick={(e) => {
                 if (
@@ -265,17 +296,12 @@ function RevisionRow({
             </Button>
           </delFetcher.Form>
         ) : null}
-      </CardContent>
-      {revision.reasonMd ? (
-        <CardContent className="border-t px-4 py-3">
-          <p className="text-muted-foreground line-clamp-2 whitespace-pre-line text-xs">
-            {revision.reasonMd}
-          </p>
-        </CardContent>
-      ) : null}
-    </Card>
+      </TD>
+    </TR>
   );
 }
+
+/* ── CreateRevisionForm ───────────────────────────────────────────────── */
 
 function CreateRevisionForm({
   lawId,
@@ -292,7 +318,9 @@ function CreateRevisionForm({
   const navigate = useNavigate();
   const location = useLocation();
   const isSaving = fetcher.state !== "idle";
-  const hasError = fetcher.data && "error" in fetcher.data && fetcher.data.error;
+  const hasError =
+    fetcher.data && "error" in fetcher.data && fetcher.data.error;
+
   useEffect(() => {
     if (
       fetcher.state === "idle" &&
@@ -312,32 +340,33 @@ function CreateRevisionForm({
     <fetcher.Form
       method="post"
       action="/api/admin/law-revision"
-      className="bg-card space-y-3 rounded-md border p-4"
+      className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm"
     >
       <input type="hidden" name="intent" value="create" />
       <input type="hidden" name="lawId" value={lawId} />
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[120px_1fr]">
-        <Field label="개정 번호 *">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[160px_1fr]">
+        <Field label="개정 번호" required htmlFor="revisionNumber">
           <Input
+            id="revisionNumber"
             name="revisionNumber"
             required
             maxLength={100}
-            className="h-8 text-xs"
             placeholder="예: 법률 제20300호"
           />
         </Field>
-        <Field label="개정 이유">
+        <Field label="개정 이유" htmlFor="reasonMd">
           <textarea
+            id="reasonMd"
             name="reasonMd"
             maxLength={5000}
             rows={4}
-            className="border-input bg-background w-full rounded-md border px-2 py-1 text-xs"
+            className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-primary"
             placeholder="개정 이유·배경"
           />
         </Field>
       </div>
       {hasError ? (
-        <p className="text-rose-600 text-xs">
+        <p className="text-xs text-rose-600">
           {(fetcher.data as { error: string }).error}
         </p>
       ) : null}
@@ -359,19 +388,25 @@ function CreateRevisionForm({
   );
 }
 
+// LocalField — Label+자식 정렬용. admin-ui Field 와 시그니처 다름.
 function Field({
   label,
+  required,
+  htmlFor,
   children,
 }: {
   label: string;
+  required?: boolean;
+  htmlFor?: string;
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <Label className="text-muted-foreground text-[11px] sm:self-center">
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={htmlFor} className="text-xs font-semibold">
         {label}
+        {required ? <span className="ml-0.5 text-rose-500">*</span> : null}
       </Label>
-      <div>{children}</div>
-    </>
+      {children}
+    </div>
   );
 }

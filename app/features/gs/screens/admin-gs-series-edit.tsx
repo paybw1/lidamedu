@@ -1,21 +1,22 @@
 // 시리즈 생성/편집 + 시리즈 안 회차 목록.
+// 패턴 P3 EDIT FORM. AdminShell cluster="gs" width=960.
 
 import {
-  ArrowLeftIcon,
   BarChart3Icon,
   PlusIcon,
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
-import { Form, Link, data, redirect, useFetcher } from "react-router";
+import { Link, data, redirect, useFetcher } from "react-router";
 import { z } from "zod";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { AdminSelect, Chip, Field } from "~/features/admin/components/admin-ui";
 import {
   createGsSeries,
   deleteGsSeries,
@@ -59,12 +60,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const seriesId = params.seriesId;
   if (!seriesId || seriesId === "new") {
-    return { series: null, rounds: [] };
+    return { series: null, rounds: [], role };
   }
   const series = await getGsSeries(client, seriesId);
   if (!series) throw data("Series not found", { status: 404 });
   const rounds = await listRoundsForSeries(client, seriesId);
-  return { series, rounds };
+  return { series, rounds, role };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -115,29 +116,33 @@ export async function action({ params, request }: Route.ActionArgs) {
   return { ok: false, error: "Unknown intent" } as const;
 }
 
+const ROUND_STATUS_LABEL: Record<string, string> = {
+  draft: "초안",
+  published: "공개",
+  closed: "종료",
+};
+
 export default function AdminGsSeriesEdit({
   loaderData,
 }: Route.ComponentProps) {
-  const { series, rounds } = loaderData;
+  const { series, rounds, role } = loaderData;
   const isNew = series === null;
   const saveFetcher = useFetcher<typeof action>();
   const deleteFetcher = useFetcher<typeof action>();
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link
-            to="/admin/gs/series"
-            className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-          >
-            <ArrowLeftIcon className="size-3" /> 시리즈 목록
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isNew ? "새 시리즈" : series?.title}
-          </h1>
-        </div>
-        {!isNew && series ? (
+    <AdminShell
+      cluster="gs"
+      role={role}
+      width={960}
+      title={isNew ? "새 시리즈" : (series?.title ?? "시리즈 편집")}
+      desc={
+        isNew
+          ? "시리즈 기본 정보를 입력하세요. 저장 후 회차를 연결할 수 있습니다."
+          : "시리즈 정보와 포함된 회차를 관리합니다."
+      }
+      headerRight={
+        !isNew && series ? (
           <div className="flex items-center gap-2">
             <Button asChild size="sm" variant="outline">
               <Link to={`/admin/gs/series/${series.seriesId}/stats`}>
@@ -150,7 +155,7 @@ export default function AdminGsSeriesEdit({
                 type="submit"
                 variant="ghost"
                 size="sm"
-                className="text-destructive"
+                className="text-rose-600 dark:text-rose-400"
                 onClick={(e) => {
                   if (
                     !confirm(
@@ -164,33 +169,34 @@ export default function AdminGsSeriesEdit({
               </Button>
             </deleteFetcher.Form>
           </div>
-        ) : null}
-      </header>
-
+        ) : null
+      }
+    >
+      {/* 시리즈 정보 폼 */}
       <Card className="mb-6">
         <CardHeader>
           <h2 className="text-sm font-semibold tracking-tight">시리즈 정보</h2>
         </CardHeader>
         <CardContent>
-          <saveFetcher.Form method="post" className="grid gap-3 sm:grid-cols-2">
+          <saveFetcher.Form method="post" className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="intent" value="save" />
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-muted-foreground text-xs font-medium">제목</span>
+
+            <Field label="제목" required className="sm:col-span-2">
               <input
                 type="text"
                 name="title"
                 required
                 defaultValue={series?.title ?? ""}
                 placeholder="예: 2026 봄 GS 시리즈 (특허법)"
-                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                className="border-input bg-background focus:border-primary h-9 w-full rounded-md border px-3 text-[13px] outline-none"
               />
-            </label>
-            <label className="space-y-1">
-              <span className="text-muted-foreground text-xs font-medium">과목</span>
-              <select
+            </Field>
+
+            <Field label="과목" required>
+              <AdminSelect
                 name="subject"
                 defaultValue={series?.subject ?? "patent"}
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                className="w-full"
               >
                 <optgroup label="2차 · 주관식">
                   {SECOND_EXAM_LAW_SLUGS.map((s) => (
@@ -199,38 +205,45 @@ export default function AdminGsSeriesEdit({
                     </option>
                   ))}
                 </optgroup>
-              </select>
-            </label>
-            <label className="space-y-1">
-              <span className="text-muted-foreground text-xs font-medium">
-                예정 회차 수
-              </span>
+              </AdminSelect>
+            </Field>
+
+            <Field label="예정 회차 수" required>
               <input
                 type="number"
                 name="expectedRounds"
                 min={1}
                 max={50}
                 defaultValue={series?.expectedRounds ?? 8}
-                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm tabular-nums"
+                className="border-input bg-background focus:border-primary h-9 w-full rounded-md border px-3 text-[13px] tabular-nums outline-none"
               />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-muted-foreground text-xs font-medium">설명</span>
+            </Field>
+
+            <Field label="설명" className="sm:col-span-2">
               <Textarea
                 name="descriptionMd"
                 rows={3}
                 defaultValue={series?.descriptionMd ?? ""}
                 placeholder="시리즈 안내·일정 등."
               />
-            </label>
+            </Field>
+
             <div className="sm:col-span-2 flex items-center justify-end gap-2">
-              {saveFetcher.data && "ok" in saveFetcher.data && saveFetcher.data.ok ? (
+              {saveFetcher.data &&
+              "ok" in saveFetcher.data &&
+              saveFetcher.data.ok ? (
                 <span className="text-muted-foreground text-xs">저장됨</span>
+              ) : null}
+              {saveFetcher.data &&
+              "error" in saveFetcher.data &&
+              saveFetcher.data.error ? (
+                <span className="text-rose-600 text-xs">
+                  {saveFetcher.data.error}
+                </span>
               ) : null}
               <Button
                 type="submit"
                 disabled={saveFetcher.state !== "idle"}
-                className="h-9"
               >
                 <SaveIcon className="size-4" />
                 {isNew ? "시리즈 생성" : "시리즈 저장"}
@@ -240,12 +253,16 @@ export default function AdminGsSeriesEdit({
         </CardContent>
       </Card>
 
+      {/* 포함된 회차 */}
       {!isNew && series ? (
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold tracking-tight">
-                포함된 회차 ({rounds.length} / {series.expectedRounds}회)
+                포함된 회차{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({rounds.length} / {series.expectedRounds}회)
+                </span>
               </h2>
               <Button asChild size="sm" variant="outline">
                 <Link to="/admin/gs/new" viewTransition>
@@ -269,22 +286,23 @@ export default function AdminGsSeriesEdit({
                   <li key={r.roundId}>
                     <Link
                       to={`/admin/gs/${r.roundId}`}
-                      className="hover:bg-accent flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"
+                      className="hover:bg-muted/40 flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"
                     >
-                      <Badge variant="outline" className="text-[11px]">
+                      <Chip tone="outline">
                         {r.roundNumber ? `${r.roundNumber}회` : "—"}
-                      </Badge>
-                      <span className="font-medium">{r.title}</span>
-                      <Badge
-                        variant="secondary"
-                        className="ml-auto text-[10px]"
+                      </Chip>
+                      <span className="flex-1 font-medium">{r.title}</span>
+                      <Chip
+                        tone={
+                          r.status === "published"
+                            ? "emerald"
+                            : r.status === "draft"
+                              ? "amber"
+                              : "neutral"
+                        }
                       >
-                        {r.status === "draft"
-                          ? "초안"
-                          : r.status === "published"
-                            ? "공개"
-                            : "종료"}
-                      </Badge>
+                        {ROUND_STATUS_LABEL[r.status] ?? r.status}
+                      </Chip>
                       <span className="text-muted-foreground text-[11px] tabular-nums">
                         {new Date(r.startAt).toLocaleDateString("ko-KR")}
                       </span>
@@ -296,6 +314,6 @@ export default function AdminGsSeriesEdit({
           </CardContent>
         </Card>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }

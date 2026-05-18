@@ -1,7 +1,7 @@
 // 회차 통계 — 학생별 총점·z-score·순위 + 4문제(또는 N문제) 각 분포(평균/표편/사분위).
+// 패턴 P4 STATS. AdminShell cluster="gs".
 
 import {
-  ArrowLeftIcon,
   BarChart3Icon,
   CrownIcon,
   TrendingDownIcon,
@@ -9,18 +9,10 @@ import {
 } from "lucide-react";
 import { Link, data } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Bar, Chip, IndexTable, TD, TR, type TableHeaderDef } from "~/features/admin/components/admin-ui";
 import {
   getGsRound,
   getRoundQuestionStats,
@@ -56,13 +48,33 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getRoundQuestionStats(client, roundId),
   ]);
   if (!round) throw data("Round not found", { status: 404 });
-  return { round, students, questions };
+  return { round, students, questions, role };
 }
+
+const QUESTION_HEADERS: TableHeaderDef[] = [
+  { label: "#", width: "3rem" },
+  { label: "문제" },
+  { label: "만점", width: "4.5rem", align: "right" },
+  { label: "N", width: "3.5rem", align: "right" },
+  { label: "평균", width: "5rem", align: "right" },
+  { label: "중앙값", width: "5rem", align: "right" },
+  { label: "표준편차", width: "6rem", align: "right" },
+  { label: "분포", width: "12rem" },
+];
+
+const STUDENT_HEADERS: TableHeaderDef[] = [
+  { label: "순위", width: "4.5rem" },
+  { label: "학생" },
+  { label: "총점", width: "7rem", align: "right" },
+  { label: "백분위", width: "6rem", align: "right" },
+  { label: "z-score", width: "8rem", align: "right" },
+  { label: "편차", width: "10rem" },
+];
 
 export default function AdminGsRoundStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { round, students, questions } = loaderData;
+  const { round, students, questions, role } = loaderData;
   const totalMax = questions.reduce((s, q) => s + q.maxScore, 0);
   const cohortAvg =
     students.length > 0
@@ -81,25 +93,25 @@ export default function AdminGsRoundStats({
   const cohortMin =
     students.length > 0 ? students[students.length - 1].totalScore : 0;
 
+  const stdTone =
+    cohortStdev / Math.max(totalMax, 1) >= 0.15 ? "coral" : "emerald";
+
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1">
+    <AdminShell
+      cluster="gs"
+      role={role}
+      title={round.title}
+      desc={`${LAW_SUBJECTS[round.subject]?.name ?? round.subject}${round.roundNumber ? ` · ${round.roundNumber}회` : ""} — 회차별 통계`}
+      headerRight={
         <Link
           to={`/admin/gs/${round.roundId}`}
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
+          className="text-muted-foreground hover:text-foreground text-xs font-semibold"
         >
-          <ArrowLeftIcon className="size-3" /> 회차 편집
+          ← 회차 편집
         </Link>
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <BarChart3Icon className="size-3.5" /> 회차 통계
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">{round.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {LAW_SUBJECTS[round.subject]?.name ?? round.subject}
-          {round.roundNumber ? ` · ${round.roundNumber}회` : ""}
-        </p>
-      </header>
-
+      }
+    >
+      {/* KPI 카드 */}
       <div className="mb-6 grid gap-3 sm:grid-cols-4">
         <SummaryCard label="응시·채점 완료" value={`${students.length}명`} />
         <SummaryCard
@@ -110,6 +122,7 @@ export default function AdminGsRoundStats({
           label="표준편차"
           value={`±${cohortStdev.toFixed(1)}`}
           hint={cohortStdev / Math.max(totalMax, 1) >= 0.15 ? "편차 큼" : "안정"}
+          tone={stdTone}
         />
         <SummaryCard
           label="범위"
@@ -118,220 +131,200 @@ export default function AdminGsRoundStats({
       </div>
 
       {/* 문항별 분포 */}
-      <Card className="mb-6">
-        <CardHeader>
-          <h2 className="text-sm font-semibold tracking-tight">문항별 분포</h2>
-          <p className="text-muted-foreground text-xs">
-            각 문항의 평균·중앙값·표준편차·사분위(Q1~Q3). 분포 막대는 점수의 25~75
-            백분위 범위입니다.
-          </p>
-        </CardHeader>
-        <CardContent className="p-0">
-          {questions.length === 0 ? (
-            <p className="text-muted-foreground p-6 text-center text-sm">
-              아직 채점된 답안이 없습니다.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60px]">#</TableHead>
-                  <TableHead className="min-w-[160px]">문제</TableHead>
-                  <TableHead className="w-[80px]">만점</TableHead>
-                  <TableHead className="w-[80px]">N</TableHead>
-                  <TableHead className="w-[100px]">평균</TableHead>
-                  <TableHead className="w-[100px]">중앙값</TableHead>
-                  <TableHead className="w-[100px]">표준편차</TableHead>
-                  <TableHead className="min-w-[200px]">분포</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {questions.map((q) => (
-                  <TableRow key={q.questionId}>
-                    <TableCell className="font-medium">
-                      {q.orderIndex + 1}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {q.title ?? <span className="text-muted-foreground italic">제목 없음</span>}
-                    </TableCell>
-                    <TableCell className="tabular-nums">{q.maxScore}</TableCell>
-                    <TableCell className="tabular-nums">{q.n}</TableCell>
-                    <TableCell className="font-semibold tabular-nums">
-                      {q.avg}
-                    </TableCell>
-                    <TableCell className="tabular-nums">{q.median}</TableCell>
-                    <TableCell
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        q.maxScore > 0 && q.stdev / q.maxScore >= 0.2
-                          ? "text-amber-700 dark:text-amber-400"
-                          : "",
-                      )}
-                    >
-                      ±{q.stdev}
-                    </TableCell>
-                    <TableCell>
-                      <DistributionBar
-                        min={q.min}
-                        max={q.max}
-                        q1={q.q1}
-                        q3={q.q3}
-                        median={q.median}
-                        maxScore={q.maxScore}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="mb-6">
+        <SectionTitle title="문항별 분포" />
+        <p className="text-muted-foreground mb-2 text-[11px]">
+          각 문항의 평균·중앙값·표준편차·사분위(Q1~Q3). 분포 막대는 25~75 백분위 범위입니다.
+        </p>
+        {questions.length === 0 ? (
+          <EmptyMsg text="아직 채점된 답안이 없습니다." />
+        ) : (
+          <IndexTable minWidth={760} headers={QUESTION_HEADERS}>
+            {questions.map((q) => (
+              <TR key={q.questionId}>
+                <TD mono soft>
+                  {q.orderIndex + 1}
+                </TD>
+                <TD>
+                  {q.title ?? (
+                    <span className="text-muted-foreground italic">제목 없음</span>
+                  )}
+                </TD>
+                <TD align="right" mono soft>
+                  {q.maxScore}
+                </TD>
+                <TD align="right" mono soft>
+                  {q.n}
+                </TD>
+                <TD align="right" mono>
+                  {q.avg}
+                </TD>
+                <TD align="right" mono soft>
+                  {q.median}
+                </TD>
+                <TD align="right" mono>
+                  <span
+                    className={
+                      q.maxScore > 0 && q.stdev / q.maxScore >= 0.2
+                        ? "text-amber-700 dark:text-amber-400"
+                        : undefined
+                    }
+                  >
+                    ±{q.stdev}
+                  </span>
+                </TD>
+                <TD>
+                  <DistributionBar
+                    min={q.min}
+                    max={q.max}
+                    q1={q.q1}
+                    q3={q.q3}
+                    median={q.median}
+                    maxScore={q.maxScore}
+                  />
+                </TD>
+              </TR>
+            ))}
+          </IndexTable>
+        )}
+      </div>
 
-      {/* 학생별 총점 + z-score + 순위 */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-sm font-semibold tracking-tight">학생별 결과</h2>
-          <p className="text-muted-foreground text-xs">
-            총점, 백분위, z-score(편차 보정), 순위. 회차마다 난이도가 달라도 z-score 로
-            객관적 수준 비교가 가능합니다.
-          </p>
-        </CardHeader>
-        <CardContent className="p-0">
-          {students.length === 0 ? (
-            <p className="text-muted-foreground p-6 text-center text-sm">
-              아직 채점된 답안이 없습니다.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">순위</TableHead>
-                  <TableHead className="min-w-[200px]">학생</TableHead>
-                  <TableHead className="w-[110px]">총점 / {totalMax}</TableHead>
-                  <TableHead className="w-[100px]">백분위</TableHead>
-                  <TableHead className="w-[120px]">z-score</TableHead>
-                  <TableHead>편차</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.map((s) => (
-                  <TableRow key={s.userId}>
-                    <TableCell>
-                      <RankBadge rank={s.rank} />
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">
-                        {s.userName ?? (
-                          <span className="text-muted-foreground italic">
-                            미설정
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-muted-foreground text-[10px] tabular-nums">
-                        {s.userId.slice(0, 8)}
-                      </p>
-                    </TableCell>
-                    <TableCell className="font-semibold tabular-nums">
-                      {s.totalScore}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      상위 {(100 - s.percentile).toFixed(0)}%
-                    </TableCell>
-                    <TableCell>
-                      <ZScoreBadge z={s.zScore} />
-                    </TableCell>
-                    <TableCell>
-                      <ZScoreBar z={s.zScore} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+      {/* 학생별 결과 */}
+      <div>
+        <SectionTitle title="학생별 결과" />
+        <p className="text-muted-foreground mb-2 text-[11px]">
+          총점, 백분위, z-score(편차 보정), 순위. 회차마다 난이도가 달라도 z-score 로 객관적 수준 비교가 가능합니다.
+        </p>
+        {students.length === 0 ? (
+          <EmptyMsg text="아직 채점된 답안이 없습니다." />
+        ) : (
+          <IndexTable minWidth={680} headers={STUDENT_HEADERS}>
+            {students.map((s) => (
+              <TR key={s.userId}>
+                <TD>
+                  <RankChip rank={s.rank} />
+                </TD>
+                <TD>
+                  <p className="font-medium">
+                    {s.userName ?? (
+                      <span className="text-muted-foreground italic">미설정</span>
+                    )}
+                  </p>
+                  <p className="text-muted-foreground text-[10px] tabular-nums">
+                    {s.userId.slice(0, 8)}
+                  </p>
+                </TD>
+                <TD align="right" mono>
+                  {s.totalScore}
+                </TD>
+                <TD align="right" mono soft>
+                  상위 {(100 - s.percentile).toFixed(0)}%
+                </TD>
+                <TD align="right">
+                  <ZScoreChip z={s.zScore} />
+                </TD>
+                <TD>
+                  <ZScoreBar z={s.zScore} />
+                </TD>
+              </TR>
+            ))}
+          </IndexTable>
+        )}
+      </div>
+    </AdminShell>
   );
 }
+
+/* ── 로컬 서브컴포넌트 ──────────────────────────────────────────────────── */
 
 function SummaryCard({
   label,
   value,
   hint,
+  tone,
 }: {
   label: string;
   value: string;
   hint?: string;
+  tone?: "emerald" | "coral";
 }) {
   return (
-    <Card>
-      <CardContent className="pt-4">
-        <p className="text-muted-foreground text-[11px] tracking-wide uppercase">
-          {label}
-        </p>
-        <p className="text-foreground mt-1 text-xl font-bold tabular-nums">
-          {value}
-        </p>
-        {hint ? (
-          <p className="text-muted-foreground mt-1 text-[10px]">{hint}</p>
-        ) : null}
-      </CardContent>
-    </Card>
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 text-2xl font-extrabold tracking-tight tabular-nums",
+          tone === "emerald"
+            ? "text-emerald-600 dark:text-emerald-400"
+            : tone === "coral"
+              ? "text-rose-600 dark:text-rose-400"
+              : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+      {hint ? (
+        <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p>
+      ) : null}
+    </div>
   );
 }
 
-function RankBadge({ rank }: { rank: number }) {
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+      {title}
+    </p>
+  );
+}
+
+function EmptyMsg({ text }: { text: string }) {
+  return (
+    <div className="border-border bg-card text-muted-foreground rounded-xl border py-12 text-center text-sm shadow-sm">
+      {text}
+    </div>
+  );
+}
+
+function RankChip({ rank }: { rank: number }) {
   if (rank === 1) {
     return (
-      <Badge className="bg-amber-500 text-white text-[11px] hover:bg-amber-500">
-        <CrownIcon className="size-3" /> {rank}
-      </Badge>
+      <Chip tone="amber">
+        <CrownIcon className="size-3" /> {rank}위
+      </Chip>
     );
   }
   if (rank <= 3) {
-    return (
-      <Badge variant="default" className="text-[11px] tabular-nums">
-        {rank}위
-      </Badge>
-    );
+    return <Chip tone="blue">{rank}위</Chip>;
   }
-  return (
-    <Badge variant="outline" className="text-[11px] tabular-nums">
-      {rank}위
-    </Badge>
-  );
+  return <Chip tone="neutral">{rank}위</Chip>;
 }
 
-function ZScoreBadge({ z }: { z: number }) {
+function ZScoreChip({ z }: { z: number }) {
   const sign = z > 0 ? "+" : "";
   if (z >= 1) {
     return (
-      <Badge className="bg-emerald-600 text-white text-[11px] tabular-nums hover:bg-emerald-600">
-        <TrendingUpIcon className="size-3" /> {sign}
-        {z.toFixed(2)}σ
-      </Badge>
+      <Chip tone="emerald">
+        <TrendingUpIcon className="size-3" /> {sign}{z.toFixed(2)}σ
+      </Chip>
     );
   }
   if (z <= -1) {
     return (
-      <Badge className="bg-rose-600 text-white text-[11px] tabular-nums hover:bg-rose-600">
+      <Chip tone="coral">
         <TrendingDownIcon className="size-3" /> {z.toFixed(2)}σ
-      </Badge>
+      </Chip>
     );
   }
-  return (
-    <Badge variant="outline" className="text-[11px] tabular-nums">
-      {sign}
-      {z.toFixed(2)}σ
-    </Badge>
-  );
+  return <Chip tone="neutral">{sign}{z.toFixed(2)}σ</Chip>;
 }
 
 // z-score 시각화 — 평균(0)을 가운데 두고 -2σ~+2σ 범위에 막대.
 function ZScoreBar({ z }: { z: number }) {
   const clamped = Math.max(-2, Math.min(2, z));
-  const widthPct = (Math.abs(clamped) / 2) * 50; // 한쪽 50%
+  const widthPct = (Math.abs(clamped) / 2) * 50;
   const tone =
     z >= 1
       ? "bg-emerald-500"
@@ -373,7 +366,8 @@ function DistributionBar({
   maxScore: number;
 }) {
   if (maxScore <= 0) return null;
-  const pct = (v: number) => (Math.max(0, Math.min(maxScore, v)) / maxScore) * 100;
+  const pct = (v: number) =>
+    (Math.max(0, Math.min(maxScore, v)) / maxScore) * 100;
   return (
     <div className="relative h-3 w-full rounded-full bg-muted">
       {/* min~max 범위 */}

@@ -1,25 +1,24 @@
-// 운영자 — 조문 ↔ 판례 연관관계 일괄 편집 (feat-7-008).
+// 운영자 — 조문 ↔ 판례 연관관계 일괄 편집 (feat-7-008). P5 WORKSPACE 패턴.
 // /admin/relations/bulk
-// TSV/CSV 형태 paste → 검증(존재 여부) → apply.
+// TSV/CSV paste → 검증(존재 여부) → apply.
 // 문제 ↔ 판례 매칭은 feat-8-024 로 분리됨 — /admin/relations/exam-cases 사용.
 import type { Route } from "./+types/admin-relations-bulk";
 
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   CircleSlashIcon,
+  Link2Icon,
   ListChecksIcon,
-  NetworkIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, data, redirect, useFetcher } from "react-router";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip, Field } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   FIRST_EXAM_LAW_SLUGS,
@@ -209,7 +208,10 @@ export async function action({ request }: Route.ActionArgs) {
   return data({ results });
 }
 
-export default function AdminRelationsBulk() {
+export default function AdminRelationsBulk({
+  loaderData,
+}: Route.ComponentProps) {
+  const { role } = loaderData;
   const [lawCode, setLawCode] = useState<LawSubjectSlug>("patent");
   const [text, setText] = useState("");
   const fetcher = useFetcher<{ results?: RowResult[]; error?: string }>();
@@ -230,44 +232,36 @@ export default function AdminRelationsBulk() {
   const errCount = results?.filter((r) => r.status === "error").length ?? 0;
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <Link
-        to="/admin"
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        <ArrowLeftIcon className="size-3" /> 운영자
-      </Link>
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <NetworkIcon className="size-3.5" /> 운영자
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">
-          조문·판례 일괄 편집
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          조문 ↔ 판례 매핑을 TSV/CSV 로 붙여넣어 한번에 등록. 먼저 "검증" 으로
-          결과를 확인한 뒤 "적용" 하세요. 문제 ↔ 판례 매칭은{" "}
-          <Link
-            to="/admin/relations/exam-cases"
-            className="text-primary underline"
-          >
+    <AdminShell
+      cluster="relations"
+      role={role}
+      title="조문·판례 일괄 편집"
+      desc={
+        <>
+          조문 ↔ 판례 매핑을 TSV/CSV 로 붙여넣어 한번에 등록합니다. 먼저 검증으로 결과를
+          확인한 뒤 적용하세요. 문제 ↔ 판례 매칭은{" "}
+          <Link to="/admin/relations/exam-cases" className="text-primary underline">
             기출문제 판례 매칭
           </Link>{" "}
-          화면을 사용하세요.
-        </p>
-      </header>
-
-      <Card className="mb-4">
-        <CardHeader className="space-y-2">
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-0.5 text-xs">
-              <span className="text-muted-foreground tracking-wide">
-                조문이 속한 법
-              </span>
+          화면을 이용하세요.
+        </>
+      }
+      width={960}
+    >
+      {/* 입력 패널 */}
+      <div className="border-border bg-card mb-4 overflow-hidden rounded-xl border shadow-sm">
+        <div className="border-border bg-muted/60 flex items-center gap-2 border-b px-4 py-3">
+          <Link2Icon className="text-primary size-4" />
+          <span className="text-sm font-semibold">매핑 데이터 입력</span>
+        </div>
+        <div className="p-4">
+          <form onSubmit={preview} className="space-y-4">
+            <Field label="조문이 속한 법" htmlFor="bulk-law-select">
               <select
+                id="bulk-law-select"
                 value={lawCode}
                 onChange={(e) => setLawCode(e.target.value as LawSubjectSlug)}
-                className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+                className="border-input bg-background focus:border-primary h-9 rounded-md border px-3 text-[13px] outline-none"
               >
                 <optgroup label="1차 · 객관식">
                   {FIRST_EXAM_LAW_SLUGS.map((s) => (
@@ -284,24 +278,27 @@ export default function AdminRelationsBulk() {
                   ))}
                 </optgroup>
               </select>
-            </label>
-          </div>
-          <p className="text-muted-foreground text-[11px]">
-            한 줄에 한 매핑 — 사건번호와 조문번호를 탭 또는 쉼표로 구분. 예:
-            2014후1234, 29
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={preview} className="space-y-3">
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={10}
-              placeholder={"2014후1234\t29\n2015도567\t30\n# 주석 줄"}
-              data-testid="bulk-text"
-            />
+            </Field>
+
+            <Field
+              label="매핑 데이터"
+              htmlFor="bulk-textarea"
+              hint="한 줄에 한 매핑 — 사건번호와 조문번호를 탭 또는 쉼표로 구분. 예: 2014후1234, 29"
+            >
+              <Textarea
+                id="bulk-textarea"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={10}
+                placeholder={"2014후1234\t29\n2015도567\t30\n# 주석 줄"}
+                data-testid="bulk-text"
+                className="font-mono text-[13px]"
+              />
+            </Field>
+
             {err ? <p className="text-xs text-rose-600">{err}</p> : null}
-            <div className="flex justify-end gap-2">
+
+            <div className="flex items-center justify-end gap-2">
               <Button
                 type="submit"
                 size="sm"
@@ -335,49 +332,47 @@ export default function AdminRelationsBulk() {
               ) : null}
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
+      {/* 검증 결과 */}
       {results ? (
-        <Card>
-          <CardHeader className="pb-2">
-            <p className="text-sm font-semibold">
-              검증 결과 · 추가 {okCount} · 중복 {skipCount} · 오류 {errCount}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-1 text-xs" data-testid="bulk-results">
-              {results.map((r, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-2 border-b py-1 last:border-0"
+        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+          <div className="border-border bg-muted/60 flex items-center gap-3 border-b px-4 py-3">
+            <span className="text-sm font-semibold">검증 결과</span>
+            <Chip tone="emerald">추가 {okCount}</Chip>
+            {skipCount > 0 ? <Chip tone="neutral">중복 {skipCount}</Chip> : null}
+            {errCount > 0 ? <Chip tone="coral">오류 {errCount}</Chip> : null}
+          </div>
+          <ul className="divide-border divide-y" data-testid="bulk-results">
+            {results.map((r, i) => (
+              <li key={i} className="flex items-center gap-2.5 px-4 py-2.5">
+                {r.status === "ok" ? (
+                  <CheckCircle2Icon className="size-3.5 shrink-0 text-emerald-600" />
+                ) : r.status === "skipped" ? (
+                  <ListChecksIcon className="text-muted-foreground size-3.5 shrink-0" />
+                ) : (
+                  <CircleSlashIcon className="size-3.5 shrink-0 text-rose-600" />
+                )}
+                <span className="flex-1 font-mono text-[13px] tabular-nums">
+                  {r.raw}
+                </span>
+                <Chip
+                  tone={
+                    r.status === "ok"
+                      ? "emerald"
+                      : r.status === "error"
+                        ? "coral"
+                        : "neutral"
+                  }
                 >
-                  {r.status === "ok" ? (
-                    <CheckCircle2Icon className="size-3 shrink-0 text-emerald-600" />
-                  ) : r.status === "skipped" ? (
-                    <ListChecksIcon className="text-muted-foreground size-3 shrink-0" />
-                  ) : (
-                    <CircleSlashIcon className="size-3 shrink-0 text-rose-600" />
-                  )}
-                  <span className="font-mono">{r.raw}</span>
-                  <Badge
-                    variant="outline"
-                    className={
-                      r.status === "ok"
-                        ? "border-emerald-500/50 text-emerald-700"
-                        : r.status === "error"
-                          ? "border-rose-500/50 text-rose-700"
-                          : ""
-                    }
-                  >
-                    {r.message}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+                  {r.message}
+                </Chip>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
-    </div>
+    </AdminShell>
   );
 }

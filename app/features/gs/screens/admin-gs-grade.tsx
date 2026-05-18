@@ -4,7 +4,6 @@
 // 보조 패널: 전체 답안지 페이지 인덱스 (페이지 번호 클릭 시 anchor 스크롤).
 
 import {
-  ArrowLeftIcon,
   CheckCircle2Icon,
   EyeIcon,
   FileTextIcon,
@@ -13,16 +12,16 @@ import {
   SparklesIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, data, useFetcher } from "react-router";
+import { data, useFetcher } from "react-router";
 import { z } from "zod";
 
-import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { AdminShell } from "~/features/admin/components/admin-shell";
+import { Chip, Field } from "~/features/admin/components/admin-ui";
 import {
   type GsAnswerRecord,
   type GsPage,
@@ -132,6 +131,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     attUrls,
     peerByQ,
     peerStats,
+    role,
   };
 }
 
@@ -231,7 +231,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 }
 
 export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
-  const { round, detail, attUrls, peerByQ, peerStats } = loaderData;
+  const { round, detail, attUrls, peerByQ, peerStats, role } = loaderData;
   const { submission, studentName, questions, answersByQ, pagesByQ, pages } =
     detail;
   const finalizeFetcher = useFetcher<typeof action>();
@@ -244,71 +244,58 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
     (q) => answersByQ[q.questionId]?.score != null,
   );
   const isFinalized = submission.gradedAt != null;
+  const maxTotal = questions.reduce((s, q) => s + q.maxScore, 0);
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <Link
-          to={`/admin/gs/${round.roundId}/grade`}
-          className="text-muted-foreground inline-flex items-center gap-1 text-xs hover:underline"
-        >
-          <ArrowLeftIcon className="size-3" /> 제출 목록으로
-        </Link>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight md:text-2xl">
-              {studentName ?? "이름 미설정"}{" "}
-              <span className="text-muted-foreground text-sm font-normal">
-                · {submission.userId.slice(0, 8)}
-              </span>
-            </h1>
-            <p className="text-muted-foreground text-xs mt-1">
-              {round.title} ·{" "}
-              {LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 제출{" "}
-              {formatDateTime(submission.submittedAt)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isFinalized ? (
-              <Badge className="bg-emerald-600 text-white">
-                <CheckCircle2Icon className="size-3" /> 채점 완료 ·{" "}
-                {submission.totalScore}점
-              </Badge>
-            ) : (
-              <Badge variant="outline">미완료 · 누적 {totalGraded}점</Badge>
-            )}
+    <AdminShell
+      cluster="gs"
+      role={role}
+      title={
+        <>
+          {studentName ?? "이름 미설정"}{" "}
+          <span className="text-muted-foreground text-base font-normal">
+            · {submission.userId.slice(0, 8)}
+          </span>
+        </>
+      }
+      desc={`${round.title} · ${LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 제출 ${formatDateTime(submission.submittedAt)}`}
+      headerRight={
+        isFinalized ? (
+          <Chip tone="emerald">
+            <CheckCircle2Icon className="size-3" /> 채점 완료 · {submission.totalScore}점
+          </Chip>
+        ) : (
+          <Chip tone="amber">미완료 · 누적 {totalGraded}점</Chip>
+        )
+      }
+      width={960}
+    >
+      {/* 답안지 페이지 인덱스 */}
+      {pages.length > 0 ? (
+        <div className="bg-card border-border mb-5 rounded-xl border p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+              답안지 페이지 ({pages.length} / {round.expectedPages})
+            </span>
+            {pages.map((p) => (
+              <a
+                key={p.pageId}
+                href={`#page-${p.pageNumber}`}
+                className="border-input hover:bg-muted inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px]"
+                title={
+                  p.questionIds.length === 0
+                    ? "매핑 없음 (메모/여백)"
+                    : `매핑: ${p.questionIds.length}개 문항`
+                }
+              >
+                {p.pageNumber}
+                {p.questionIds.length === 0 ? (
+                  <span className="text-muted-foreground">·</span>
+                ) : null}
+              </a>
+            ))}
           </div>
         </div>
-      </header>
-
-      {/* 답안지 인덱스 — 전체 페이지를 페이지 번호 별 anchor 칩으로. */}
-      {pages.length > 0 ? (
-        <Card className="mb-6">
-          <CardContent className="py-3">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-muted-foreground font-semibold tracking-wide uppercase text-[10px]">
-                답안지 페이지 ({pages.length} / {round.expectedPages})
-              </span>
-              {pages.map((p) => (
-                <a
-                  key={p.pageId}
-                  href={`#page-${p.pageNumber}`}
-                  className="border-input hover:bg-muted inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px]"
-                  title={
-                    p.questionIds.length === 0
-                      ? "매핑 없음 (메모/여백)"
-                      : `매핑: ${p.questionIds.length}개 문항`
-                  }
-                >
-                  {p.pageNumber}
-                  {p.questionIds.length === 0 ? (
-                    <span className="text-muted-foreground">·</span>
-                  ) : null}
-                </a>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       ) : null}
 
       {peerStats.submissions > 0 ? (
@@ -318,7 +305,8 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
         </p>
       ) : null}
 
-      <div className="space-y-6">
+      {/* 문항별 채점 카드 */}
+      <div className="space-y-5">
         {questions.map((q) => (
           <QuestionGradeCard
             key={q.questionId}
@@ -333,15 +321,13 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
         ))}
       </div>
 
-      {/* 매핑 안된 페이지 (메모/여백) — 채점 보조용 보기. */}
+      {/* 매핑 안된 페이지 (메모/여백) */}
       {pages.filter((p) => p.questionIds.length === 0).length > 0 ? (
-        <Card className="mt-6 bg-muted/30">
-          <CardHeader>
-            <h2 className="text-sm font-semibold tracking-tight">
-              매핑되지 않은 페이지 (메모/여백)
-            </h2>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="bg-muted/30 border-border mt-6 rounded-xl border p-4 shadow-sm">
+          <p className="text-muted-foreground mb-3 font-mono text-[11px] font-bold tracking-[0.06em] uppercase">
+            매핑되지 않은 페이지 (메모/여백)
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {pages
               .filter((p) => p.questionIds.length === 0)
               .map((p) => (
@@ -351,81 +337,82 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
                   url={attUrls[p.attachment.path]}
                 />
               ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : null}
 
       <Separator className="my-6" />
 
-      <Card>
-        <CardContent className="pt-6 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-muted-foreground text-xs">현재 누적 점수</p>
-              <p className="text-2xl font-bold tabular-nums">
-                {totalGraded}
-                <span className="text-muted-foreground ml-1 text-sm font-normal">
-                  점 / {questions.reduce((s, q) => s + q.maxScore, 0)}점
-                </span>
-              </p>
-            </div>
-            {!isFinalized ? (
-              <finalizeFetcher.Form method="post">
-                <input type="hidden" name="intent" value="finalize" />
-                <input
-                  type="hidden"
-                  name="submissionId"
-                  value={submission.submissionId}
-                />
-                <Button
-                  type="submit"
-                  data-testid="grade-finalize"
-                  disabled={!allGraded || finalizeFetcher.state !== "idle"}
-                  onClick={(e) => {
-                    if (
-                      !confirm(
-                        "채점을 마무리하면 학생에게 결과가 공개됩니다. 진행할까요?",
-                      )
-                    )
-                      e.preventDefault();
-                  }}
-                >
-                  <CheckCircle2Icon className="size-4" /> 채점 마무리
-                </Button>
-              </finalizeFetcher.Form>
-            ) : (
-              <finalizeFetcher.Form method="post">
-                <input type="hidden" name="intent" value="reopen" />
-                <input
-                  type="hidden"
-                  name="submissionId"
-                  value={submission.submissionId}
-                />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  onClick={(e) => {
-                    if (
-                      !confirm(
-                        "채점 완료를 해제하고 다시 편집 가능 상태로 되돌립니다. 학생에게 노출된 결과도 다시 가려집니다.",
-                      )
-                    )
-                      e.preventDefault();
-                  }}
-                >
-                  <RotateCcwIcon className="size-4" /> 채점 다시 열기
-                </Button>
-              </finalizeFetcher.Form>
-            )}
-          </div>
-          {!allGraded && !isFinalized ? (
-            <p className="text-muted-foreground text-xs">
-              모든 문항에 점수를 입력해야 채점을 마무리할 수 있습니다.
+      {/* 채점 마무리 카드 */}
+      <div className="bg-card border-border rounded-xl border p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-muted-foreground text-xs">현재 누적 점수</p>
+            <p className="mt-0.5 text-2xl font-bold tabular-nums">
+              {totalGraded}
+              <span className="text-muted-foreground ml-1 text-sm font-normal">
+                점 / {maxTotal}점
+              </span>
             </p>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+          {!isFinalized ? (
+            <finalizeFetcher.Form method="post">
+              <input type="hidden" name="intent" value="finalize" />
+              <input
+                type="hidden"
+                name="submissionId"
+                value={submission.submissionId}
+              />
+              <Button
+                type="submit"
+                data-testid="grade-finalize"
+                disabled={!allGraded || finalizeFetcher.state !== "idle"}
+                className="rounded-full bg-rose-600 text-white hover:bg-rose-700"
+                onClick={(e) => {
+                  if (
+                    !confirm(
+                      "채점을 마무리하면 학생에게 결과가 공개됩니다. 진행할까요?",
+                    )
+                  )
+                    e.preventDefault();
+                }}
+              >
+                <CheckCircle2Icon className="size-4" /> 채점 마무리
+              </Button>
+            </finalizeFetcher.Form>
+          ) : (
+            <finalizeFetcher.Form method="post">
+              <input type="hidden" name="intent" value="reopen" />
+              <input
+                type="hidden"
+                name="submissionId"
+                value={submission.submissionId}
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                className="rounded-full"
+                onClick={(e) => {
+                  if (
+                    !confirm(
+                      "채점 완료를 해제하고 다시 편집 가능 상태로 되돌립니다. 학생에게 노출된 결과도 다시 가려집니다.",
+                    )
+                  )
+                    e.preventDefault();
+                }}
+              >
+                <RotateCcwIcon className="size-4" /> 채점 다시 열기
+              </Button>
+            </finalizeFetcher.Form>
+          )}
+        </div>
+        {!allGraded && !isFinalized ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            모든 문항에 점수를 입력해야 채점을 마무리할 수 있습니다.
+          </p>
+        ) : null}
+      </div>
+    </AdminShell>
   );
 }
 
@@ -439,6 +426,8 @@ interface AiDraftResponse {
     rubricScores?: Record<string, number>;
   };
 }
+
+/* ── 문항별 채점 카드 ──────────────────────────────────────────────────── */
 
 function QuestionGradeCard({
   question,
@@ -521,7 +510,6 @@ function QuestionGradeCard({
       setFeedback(d.draft.feedback);
       setAiReasoning(d.draft.reasoning ?? null);
       setAiError(null);
-      // rubric 모드 + AI 가 항목별 점수를 제안하면 자동 채움.
       if (useRubric && d.draft.rubricScores) {
         setRubricScores(d.draft.rubricScores);
       }
@@ -568,7 +556,6 @@ function QuestionGradeCard({
         )
       : null;
 
-  // isDirty — score/feedback/rubricScores 어느 하나라도 다르면 변경.
   const rubricDirty = useRubric
     ? question.rubric.some(
         (c) =>
@@ -598,66 +585,68 @@ function QuestionGradeCard({
     fetcher.submit(fd, { method: "post" });
   };
 
+  const savedStatus = savedAt && !isDirty
+    ? "저장됨"
+    : isDirty
+      ? "수정 중"
+      : answer?.score == null
+        ? "미채점"
+        : "저장됨";
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
-            #{question.orderIndex + 1}
-          </Badge>
-          {question.title ? (
-            <h2 className="font-semibold">{question.title}</h2>
-          ) : null}
-          <span className="text-muted-foreground text-[11px]">
-            매핑 페이지{" "}
-            {mappedPages.length === 0
-              ? "없음"
-              : mappedPages.map((p) => p.pageNumber).join(", ")}
-          </span>
-          <Badge variant="secondary" className="ml-auto text-[10px]">
-            {question.maxScore}점 만점
-          </Badge>
-        </div>
-      </CardHeader>
-      <Separator />
-      <CardContent className="pt-4">
-        <div className="grid gap-4 lg:grid-cols-2">
+    <div className="bg-card border-border overflow-hidden rounded-xl border shadow-sm">
+      {/* 카드 헤더 */}
+      <div className="border-border/60 flex flex-wrap items-center gap-2 border-b px-5 py-3">
+        <span className="border-border bg-muted inline-flex h-[22px] items-center rounded-full border px-2 text-[11px] font-semibold tabular-nums">
+          #{question.orderIndex + 1}
+        </span>
+        {question.title ? (
+          <h2 className="font-semibold">{question.title}</h2>
+        ) : null}
+        <span className="text-muted-foreground text-[11px]">
+          매핑 페이지{" "}
+          {mappedPages.length === 0
+            ? "없음"
+            : mappedPages.map((p) => p.pageNumber).join(", ")}
+        </span>
+        <span className="bg-muted ml-auto inline-flex h-[22px] items-center rounded-full px-2 text-[11px] font-semibold">
+          {question.maxScore}점 만점
+        </span>
+      </div>
+
+      <div className="p-5">
+        <div className="grid gap-5 lg:grid-cols-2">
           {/* 좌: 문제 + 모범답안 */}
           <div className="space-y-3">
-            <section>
-              <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+            <div>
+              <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
                 문제
               </p>
-              <div className="bg-muted/30 rounded-md border p-3">
+              <div className="bg-muted/30 rounded-lg border p-3">
                 <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
                   {question.bodyMd}
                 </p>
               </div>
-            </section>
+            </div>
             {question.modelAnswerMd ? (
-              <section>
-                <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+              <div>
+                <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
                   모범답안 / 채점 기준
                 </p>
-                <div
-                  className={cn(
-                    "bg-emerald-50/60 dark:bg-emerald-950/20",
-                    "border-emerald-200/60 dark:border-emerald-700/40",
-                    "rounded-md border p-3",
-                  )}
-                >
+                <div className="bg-emerald-50/60 border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-700/40 rounded-lg border p-3">
                   <p className="font-serif text-sm leading-relaxed whitespace-pre-line">
                     {question.modelAnswerMd}
                   </p>
                 </div>
-              </section>
+              </div>
             ) : null}
           </div>
 
-          {/* 우: 학생 답안(매핑 페이지 합본) + 점수/피드백 */}
+          {/* 우: 학생 답안(매핑 페이지) + 점수/피드백 */}
           <div className="space-y-3">
-            <section>
-              <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+            {/* 학생 답안 페이지 */}
+            <div>
+              <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
                 학생 답안 — 매핑된 페이지
               </p>
               {mappedPages.length === 0 ? (
@@ -675,20 +664,18 @@ function QuestionGradeCard({
                   ))}
                 </div>
               )}
-            </section>
+            </div>
 
+            {/* OCR 텍스트 */}
             {hasOcrText ? (
-              <section>
-                <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+              <div>
+                <p className="text-muted-foreground mb-1.5 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
                   OCR 인식 텍스트 (참고)
                 </p>
-                <div className="bg-background max-h-60 overflow-auto rounded-md border p-3">
+                <div className="bg-background max-h-60 overflow-auto rounded-lg border p-3">
                   {mappedPages.map((p, i) =>
                     p.attachment.ocrText ? (
-                      <div
-                        key={p.pageId}
-                        className="space-y-1 text-xs"
-                      >
+                      <div key={p.pageId} className="space-y-1 text-xs">
                         {i > 0 ? <Separator className="my-2" /> : null}
                         <p className="text-muted-foreground text-[10px]">
                           페이지 {p.pageNumber} · {p.attachment.fileName}
@@ -700,13 +687,14 @@ function QuestionGradeCard({
                     ) : null,
                   )}
                 </div>
-              </section>
+              </div>
             ) : null}
 
+            {/* 동료 채점 */}
             {peerReviews.length > 0 ? (
-              <section>
-                <div className="mb-1 flex flex-wrap items-center gap-2">
-                  <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+              <div>
+                <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                  <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
                     동료 채점 · {peerReviews.length}건
                   </p>
                   {peerAvg != null ? (
@@ -717,11 +705,7 @@ function QuestionGradeCard({
                           ? "text-amber-700 dark:text-amber-400"
                           : "text-foreground",
                       )}
-                      title={
-                        peerStdev != null
-                          ? `표준편차 ${peerStdev.toFixed(1)}`
-                          : undefined
-                      }
+                      title={peerStdev != null ? `표준편차 ${peerStdev.toFixed(1)}` : undefined}
                     >
                       평균 {peerAvg.toFixed(1)} / {question.maxScore}점
                       {peerMin != null && peerMax != null
@@ -748,28 +732,18 @@ function QuestionGradeCard({
                     평균 적용
                   </Button>
                 </div>
-                <div
-                  className={cn(
-                    "bg-amber-50/40 dark:bg-amber-950/15",
-                    "border-amber-200/60 dark:border-amber-700/30",
-                    "max-h-72 overflow-auto rounded-md border p-2",
-                  )}
-                >
+                <div className="bg-amber-50/40 border-amber-200/60 dark:bg-amber-950/15 dark:border-amber-700/30 max-h-72 overflow-auto rounded-lg border p-2">
                   <ul className="space-y-2">
                     {peerReviews.map((p, i) => (
-                      <li key={i} className="bg-background rounded border p-2">
+                      <li key={i} className="bg-background rounded-lg border p-2">
                         <div className="mb-1 flex items-center gap-1.5 text-[11px]">
-                          <span className="text-muted-foreground">
-                            동료 {i + 1}
-                          </span>
+                          <span className="text-muted-foreground">동료 {i + 1}</span>
                           {p.score != null ? (
                             <span className="font-semibold tabular-nums">
                               {p.score} / {question.maxScore}점
                             </span>
                           ) : (
-                            <span className="text-muted-foreground italic">
-                              점수 미입력
-                            </span>
+                            <span className="text-muted-foreground italic">점수 미입력</span>
                           )}
                         </div>
                         {p.feedbackMd ? (
@@ -777,86 +751,88 @@ function QuestionGradeCard({
                             {p.feedbackMd}
                           </p>
                         ) : (
-                          <p className="text-muted-foreground text-[11px] italic">
-                            피드백 없음
-                          </p>
+                          <p className="text-muted-foreground text-[11px] italic">피드백 없음</p>
                         )}
                       </li>
                     ))}
                   </ul>
                 </div>
-              </section>
+              </div>
             ) : null}
 
-            <section className="rounded-md border p-3">
+            {/* 점수 + rubric + 피드백 입력 */}
+            <div className="border-border rounded-lg border p-4">
+              {/* rubric 항목 */}
               {useRubric ? (
-                <div className="mb-3 space-y-1.5 rounded-md bg-muted/30 p-2">
-                  <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                <div className="bg-muted/30 mb-3 rounded-lg p-3">
+                  <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
                     채점 항목
                   </p>
-                  {question.rubric.map((c, idx) => (
-                    <div
-                      key={c.criterionId}
-                      className="flex items-center gap-2 text-xs"
-                    >
-                      <span className="text-muted-foreground w-5 tabular-nums">
-                        {idx + 1}
-                      </span>
-                      <span className="flex-1">{c.label}</span>
-                      <input
-                        type="number"
-                        data-testid={`grade-rubric-${question.orderIndex + 1}-${idx + 1}`}
-                        min={0}
-                        max={c.maxPoints}
-                        step="0.5"
-                        value={rubricScores[c.criterionId] ?? ""}
-                        disabled={disabled}
-                        onChange={(e) =>
-                          setRubricScores((m) => ({
-                            ...m,
-                            [c.criterionId]: Number(e.target.value) || 0,
-                          }))
-                        }
-                        className="border-input bg-background h-7 w-16 rounded-md border px-2 text-xs tabular-nums"
-                      />
-                      <span className="text-muted-foreground tabular-nums w-12 text-right">
-                        / {c.maxPoints}
-                      </span>
-                    </div>
-                  ))}
+                  <div className="space-y-2">
+                    {question.rubric.map((c, idx) => (
+                      <div key={c.criterionId} className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground w-5 tabular-nums">
+                          {idx + 1}
+                        </span>
+                        <span className="flex-1">{c.label}</span>
+                        <input
+                          type="number"
+                          data-testid={`grade-rubric-${question.orderIndex + 1}-${idx + 1}`}
+                          min={0}
+                          max={c.maxPoints}
+                          step="0.5"
+                          value={rubricScores[c.criterionId] ?? ""}
+                          disabled={disabled}
+                          onChange={(e) =>
+                            setRubricScores((m) => ({
+                              ...m,
+                              [c.criterionId]: Number(e.target.value) || 0,
+                            }))
+                          }
+                          className="border-input bg-background h-7 w-16 rounded-md border px-2 text-xs tabular-nums"
+                        />
+                        <span className="text-muted-foreground w-12 text-right tabular-nums">
+                          / {c.maxPoints}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <label className="text-xs">
-                  <span className="text-muted-foreground mr-1">
-                    {useRubric ? "총점 (자동)" : "점수"}
-                  </span>
-                  <input
-                    type="number"
-                    data-testid={`grade-score-${question.orderIndex + 1}`}
-                    min={0}
-                    max={question.maxScore}
-                    step="0.5"
-                    value={score}
-                    disabled={disabled || useRubric}
-                    readOnly={useRubric}
-                    onChange={(e) => setScore(e.target.value)}
-                    className={cn(
-                      "border-input bg-background h-8 w-20 rounded-md border px-2 text-sm tabular-nums",
-                      useRubric && "bg-muted/40",
-                    )}
-                  />
-                  <span className="text-muted-foreground ml-1 text-xs">
-                    / {question.maxScore}
-                  </span>
-                </label>
+
+              {/* 점수 행 */}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Field
+                  label={useRubric ? "총점 (자동)" : "점수"}
+                  htmlFor={`score-${question.questionId}`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      id={`score-${question.questionId}`}
+                      type="number"
+                      data-testid={`grade-score-${question.orderIndex + 1}`}
+                      min={0}
+                      max={question.maxScore}
+                      step="0.5"
+                      value={score}
+                      disabled={disabled || useRubric}
+                      readOnly={useRubric}
+                      onChange={(e) => setScore(e.target.value)}
+                      className={cn(
+                        "border-input bg-background h-8 w-20 rounded-md border px-2 text-sm tabular-nums",
+                        useRubric && "bg-muted/40",
+                      )}
+                    />
+                    <span className="text-muted-foreground text-xs">/ {question.maxScore}</span>
+                  </div>
+                </Field>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={requestAiDraft}
                   disabled={disabled || aiBusy || !hasOcrText}
-                  className="ml-auto h-8"
+                  className="ml-auto h-8 rounded-full"
                   title={
                     !hasOcrText
                       ? "AI 초안 생성에는 OCR 추출 텍스트가 필요합니다."
@@ -867,20 +843,15 @@ function QuestionGradeCard({
                   {aiBusy ? "생성 중…" : "AI 초안"}
                 </Button>
                 <span className="text-muted-foreground text-[11px]">
-                  {savedAt && !isDirty
-                    ? "저장됨"
-                    : isDirty
-                      ? "수정 중"
-                      : answer?.score == null
-                        ? "미채점"
-                        : "저장됨"}
+                  {savedStatus}
                 </span>
               </div>
+
               {aiError ? (
                 <p className="text-rose-600 mb-2 text-[11px]">{aiError}</p>
               ) : null}
               {aiReasoning ? (
-                <div className="bg-muted/30 mb-2 rounded border p-2 text-[11px]">
+                <div className="bg-muted/30 mb-2 rounded-lg border p-2 text-[11px]">
                   <p className="text-muted-foreground mb-0.5 font-semibold">
                     AI 채점 근거 (참고)
                   </p>
@@ -889,33 +860,40 @@ function QuestionGradeCard({
                   </p>
                 </div>
               ) : null}
-              <Textarea
-                value={feedback}
-                disabled={disabled}
-                onChange={(e) => setFeedback(e.target.value)}
-                rows={4}
-                placeholder="피드백 (마크다운). 학생에게 채점 완료 후 노출됩니다."
-              />
-              <div className="mt-2 flex items-center justify-end">
+
+              <Field label="피드백" htmlFor={`feedback-${question.questionId}`}>
+                <Textarea
+                  id={`feedback-${question.questionId}`}
+                  value={feedback}
+                  disabled={disabled}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  rows={4}
+                  placeholder="피드백 (마크다운). 학생에게 채점 완료 후 노출됩니다."
+                  className="text-sm"
+                />
+              </Field>
+
+              <div className="mt-3 flex items-center justify-end">
                 <Button
                   type="button"
                   data-testid={`grade-save-${question.orderIndex + 1}`}
                   size="sm"
                   onClick={submit}
-                  disabled={
-                    disabled || !isDirty || fetcher.state !== "idle"
-                  }
+                  disabled={disabled || !isDirty || fetcher.state !== "idle"}
+                  className="rounded-full"
                 >
                   <SaveIcon className="size-3.5" /> 저장
                 </Button>
               </div>
-            </section>
+            </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
+
+/* ── PageView ──────────────────────────────────────────────────────────── */
 
 function PageView({
   page,
@@ -926,24 +904,24 @@ function PageView({
 }) {
   const isImage = page.attachment.mime.startsWith("image/");
   return (
-    <div id={`page-${page.pageNumber}`} className="rounded-md border bg-muted/20 p-2">
+    <div id={`page-${page.pageNumber}`} className="bg-muted/20 rounded-lg border p-2">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Badge variant="outline" className="text-[10px]">
+        <span className="border-border inline-flex h-[20px] items-center rounded-full border px-2 text-[11px] tabular-nums">
           페이지 {page.pageNumber}
-        </Badge>
+        </span>
         <FileTextIcon className="text-muted-foreground size-3.5" />
         <span className="flex-1 truncate font-medium">
           {page.attachment.fileName}
         </span>
         {page.attachment.ocrLevel ? (
-          <Badge
+          <span
             className={cn(
-              "text-[10px]",
+              "inline-flex h-[20px] items-center rounded-full px-2 text-[11px] font-semibold",
               page.attachment.ocrLevel === "good"
-                ? "bg-emerald-600 text-white hover:bg-emerald-600"
+                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                 : page.attachment.ocrLevel === "warn"
-                  ? "bg-amber-500 text-white hover:bg-amber-500"
-                  : "bg-rose-600 text-white hover:bg-rose-600",
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400",
             )}
           >
             판독{" "}
@@ -952,7 +930,7 @@ function PageView({
               : page.attachment.ocrLevel === "warn"
                 ? "주의"
                 : "부족"}
-          </Badge>
+          </span>
         ) : null}
         {url ? (
           <a
@@ -986,6 +964,8 @@ function PageView({
   );
 }
 
+/* ── util ──────────────────────────────────────────────────────────────── */
+
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("ko-KR", {
@@ -995,3 +975,4 @@ function formatDateTime(iso: string | null): string {
     minute: "2-digit",
   });
 }
+
