@@ -53,7 +53,7 @@ import { listPacks } from "~/features/mcq-packs/queries.server";
 import type { Route } from "./+types/mcq";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "객관식 문제 색인 | Lidam Patent Attorney Academy" },
+  { title: "객관식 문제 | Lidam Patent Attorney Academy" },
 ];
 
 const KINDS: Array<{ value: McqPackKind | "all"; label: string }> = [
@@ -151,7 +151,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
     <LatestShell
       category="mcq"
       width="index"
-      title="1차 객관식 문제 색인"
+      title="객관식 문제"
       desc={`${descParts.join(" · ")} — 기출/모의 클릭 시 문제·해설·동영상·결과 통계로 진입합니다.`}
       headerRight={
         canEdit && !showAdd ? (

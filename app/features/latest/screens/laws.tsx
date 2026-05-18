@@ -120,7 +120,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
     <LatestShell
       category="laws"
       width="index"
-      title="법 개정 색인"
+      title="법 개정"
       desc={
         <>
           {descParts.join(" · ")} — 공시일 내림차순. 첨부 항목(
