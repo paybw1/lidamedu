@@ -17,6 +17,7 @@ import {
 } from "~/core/components/ui/table";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 import {
   getGsRound,
   listGsSubmissionsForRound,
@@ -118,14 +119,15 @@ export async function action({ params, request }: Route.ActionArgs) {
         .eq("round_id", roundId)
         .maybeSingle();
       if (round.data) {
-        notifyPeerAssignments(result.newAssignments, [
+        const notifyTask = notifyPeerAssignments(result.newAssignments, [
           {
             roundId: round.data.round_id,
             title: round.data.title,
             subject: round.data.subject,
             endAt: round.data.end_at,
           },
-        ]).catch(() => {});
+        ]);
+        runAfterResponse(notifyTask);
       }
     }
     return { ok: true, created: result.created, skipped: result.skipped } as const;

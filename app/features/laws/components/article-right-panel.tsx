@@ -203,7 +203,7 @@ export function ArticleRightPanel({
   revisions?: RevisionHistoryEntry[];
   // feat-8-025 — staff 면 "즐겨찾기" 탭이 중요도 별점 에디터로 바뀐다.
   viewerIsStaff?: boolean;
-  // 콘텐츠 importance — staff 중요도 모드에서 사용. case/article 뷰어만 전달.
+  // 콘텐츠 importance — staff 중요도 모드에서 사용. case/article/problem 뷰어가 전달.
   importance?: number;
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
@@ -219,11 +219,13 @@ export function ArticleRightPanel({
   const showCommentLive = comments !== undefined && commentTargetType !== null;
   const showRevisions = revisions !== undefined;
 
-  // feat-8-025 — staff 가 case/article 을 볼 때 "즐겨찾기" 탭을 중요도 에디터로.
+  // feat-8-025 — staff 가 case/article/problem 을 볼 때 "즐겨찾기" 탭을 중요도 에디터로.
   const staffImportanceMode =
     viewerIsStaff &&
     importance !== undefined &&
-    (target.type === "article" || target.type === "case");
+    (target.type === "article" ||
+      target.type === "case" ||
+      target.type === "problem");
   const bookmarkMeta: PanelTabMeta = staffImportanceMode
     ? { label: "중요도", Icon: StarIcon }
     : TAB_META.bookmark;
@@ -381,7 +383,13 @@ export function ArticleRightPanel({
             <TabsContent value="bookmark" className="mt-0">
               {staffImportanceMode ? (
                 <ImportanceRating
-                  targetType={target.type === "case" ? "case" : "article"}
+                  targetType={
+                    target.type === "case"
+                      ? "case"
+                      : target.type === "problem"
+                        ? "problem"
+                        : "article"
+                  }
                   targetId={target.id}
                   importance={importance ?? 0}
                 />

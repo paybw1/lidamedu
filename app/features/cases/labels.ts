@@ -1,6 +1,8 @@
 // 클라이언트·서버 공용 라벨/타입. queries.server.ts 와 분리해 클라이언트 번들에 import 가능.
 import type { Database } from "database.types";
 
+import type { ExamProblemRef } from "~/features/problems/labels";
+
 export type CaseCourt = Database["public"]["Enums"]["case_court"];
 
 export const COURT_LABELS: Record<CaseCourt, string> = {
@@ -16,6 +18,8 @@ export interface CaseListItem {
   decidedAt: string;
   caseNumber: string;
   caseTitle: string;
+  // 판례 닉네임 — 중요 판례의 통칭(예: 수지상 세포 사건). 선택. 사건명 앞에 표시.
+  nickname: string | null;
   caseType: string | null;
   isEnBanc: boolean;
   importance: number;
@@ -24,7 +28,8 @@ export interface CaseListItem {
   // summary_items 가 비었으면 null. legacy summary_title 보다 우선.
   summaryFirstTitle: string | null;
   subjectLaws: string[];
-  exam1stYears: number[];
+  // feat-8-024: 이 판례가 출제된 1차 객관식 기출문제 — 목록에서 ExamProblemChip 으로 표시.
+  exam1stProblems: ExamProblemRef[];
   exam2ndYears: number[];
 }
 

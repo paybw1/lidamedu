@@ -5,6 +5,7 @@ import type {
   ExamCaseLink,
   ExamCaseLinkRow,
   ExamCaseSegment,
+  ExamProblemRef,
   ProblemDetail,
   ProblemExamRound,
   ProblemFormat,
@@ -39,6 +40,7 @@ export type {
   ProblemListItem,
   ProblemChoice,
   ProblemDetail,
+  ExamProblemRef,
   OxTruth,
   OxQuestionItem,
   OxRefAnnotations,
@@ -90,7 +92,7 @@ export async function listProblemsBySubject(
   let query = client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
     )
     .eq("law_id", law.law_id)
     .is("deleted_at", null);
@@ -206,6 +208,7 @@ export async function listProblemsBySubject(
       examRoundNo: row.exam_round_no,
       problemNumber: row.problem_number,
       bodyMd: row.body_md,
+      importance: row.importance ?? 0,
       primaryArticleId: row.primary_article_id,
       primaryArticleNumber: row.articles?.article_number ?? null,
       primaryArticleLabel: row.articles?.display_label ?? null,
@@ -1040,14 +1043,7 @@ export async function getRelatedProblemsByCase(
 }
 
 // 이 판례가 출제된 1차 객관식 기출문제 — problem_case_links 기반 (feat-8-024).
-// case-viewer 헤더의 기출문제 칩.
-export interface ExamProblemRef {
-  problemId: string;
-  year: number | null;
-  problemNumber: number | null;
-  lawCode: string;
-}
-
+// case-viewer 헤더의 기출문제 칩. ExamProblemRef 타입은 ./labels 소유.
 export async function getExamProblemsForCase(
   client: SupabaseClient<Database>,
   caseId: string,
@@ -1084,36 +1080,46 @@ export async function getExamProblemsForCase(
   return out;
 }
 
-// problem_case_links 로 각 판례가 출제된 1차 객관식 기출 연도 (feat-8-024).
-// 판례 목록의 기출 칩·"1차 기출" 필터에 사용 — case_id → 정렬된 연도 배열.
-export async function getExamYearsByCase(
+// problem_case_links 로 각 판례가 출제된 1차 객관식 기출문제 (feat-8-024).
+// 판례 목록의 1차 기출 칩·"1차 기출" 필터에 사용 — case_id → 기출문제 참조 배열
+// (연도·문항번호 포함, ExamProblemChip 으로 해당 문제 뷰어 이동).
+export async function getExamProblemsByCase(
   client: SupabaseClient<Database>,
-): Promise<Map<string, number[]>> {
+): Promise<Map<string, ExamProblemRef[]>> {
   const { data, error } = await client
     .from("problem_case_links")
     .select(
-      "case_id, problems!inner(year, origin, exam_round, format, deleted_at)",
+      "case_id, problems!inner(problem_id, year, problem_number, origin, exam_round, format, deleted_at, laws!inner(law_code))",
     );
   if (error) throw error;
-  const byCase = new Map<string, Set<number>>();
+  const byCase = new Map<string, ExamProblemRef[]>();
+  const seen = new Set<string>(); // `${caseId}::${problemId}` — 중복 링크 제거.
   for (const r of data ?? []) {
     const p = r.problems;
     if (!p || p.deleted_at) continue;
+    // 객관식 1차 기출문제만.
     if (p.origin !== "past_exam" || p.exam_round !== "first") continue;
     if (!MC_FORMATS.includes(p.format)) continue;
-    if (p.year == null) continue;
-    const set = byCase.get(r.case_id) ?? new Set<number>();
-    set.add(p.year);
-    byCase.set(r.case_id, set);
+    const key = `${r.case_id}::${p.problem_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const list = byCase.get(r.case_id) ?? [];
+    list.push({
+      problemId: p.problem_id,
+      year: p.year,
+      problemNumber: p.problem_number,
+      lawCode: p.laws.law_code,
+    });
+    byCase.set(r.case_id, list);
   }
-  const out = new Map<string, number[]>();
-  for (const [caseId, years] of byCase) {
-    out.set(
-      caseId,
-      [...years].sort((a, b) => a - b),
-    );
+  // 칩 표시 순서 — 연도 오름차순, 같은 연도면 문항번호 오름차순.
+  for (const list of byCase.values()) {
+    list.sort((a, b) => {
+      if ((a.year ?? 0) !== (b.year ?? 0)) return (a.year ?? 0) - (b.year ?? 0);
+      return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+    });
   }
-  return out;
+  return byCase;
 }
 
 // 수동 매칭 화면(feat-8-024) — 한 과목의 1차 객관식 기출문제 목록.
@@ -1283,7 +1289,7 @@ export async function getProblemById(
   const { data: problem, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .eq("problem_id", problemId)
     .is("deleted_at", null)
@@ -1322,6 +1328,7 @@ export async function getProblemById(
     examRoundNo: problem.exam_round_no,
     problemNumber: problem.problem_number,
     bodyMd: problem.body_md,
+    importance: problem.importance ?? 0,
     primaryArticleId: problem.primary_article_id,
     primaryArticleNumber: problem.articles?.article_number ?? null,
     primaryArticleLabel: problem.articles?.display_label ?? null,
@@ -1388,7 +1395,7 @@ export async function getProblemDetailsByIds(
   const { data: problemRows, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .in("problem_id", problemIds)
     .is("deleted_at", null);
@@ -1465,6 +1472,7 @@ export async function getProblemDetailsByIds(
       examRoundNo: p.exam_round_no,
       problemNumber: p.problem_number,
       bodyMd: p.body_md,
+      importance: p.importance ?? 0,
       primaryArticleId: p.primary_article_id,
       primaryArticleNumber: p.articles?.article_number ?? null,
       primaryArticleLabel: p.articles?.display_label ?? null,
@@ -1652,7 +1660,7 @@ export async function getSystematicNodeProblems(
   const { data: problemRows } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .in("primary_article_id", articleIds)
     .is("deleted_at", null);
@@ -1737,6 +1745,7 @@ export async function getSystematicNodeProblems(
         examRoundNo: p.exam_round_no,
         problemNumber: p.problem_number,
         bodyMd: p.body_md,
+        importance: p.importance ?? 0,
         primaryArticleId: p.primary_article_id,
         primaryArticleNumber: p.articles?.article_number ?? null,
         primaryArticleLabel: p.articles?.display_label ?? null,
@@ -1909,6 +1918,8 @@ export async function getSystematicNodeProblemSequence(
 export interface SystematicNodeProblemStat {
   problemCount: number;
   firstProblemId: string | null;
+  // 부분트리 내 별점(importance≥1) 문제 수.
+  starredCount: number;
 }
 
 // 체계도 전체 노드별 {문제 수, 첫 문제 ID} — 문제 탭 좌측 트리용.
@@ -1942,11 +1953,14 @@ export async function getSystematicNodeProblemStats(
     primary_article_id: string | null;
     year: number | null;
     problem_number: number | null;
+    importance: number | null;
   }[] = [];
   for (let i = 0; i < articleIds.length; i += 150) {
     const { data } = await client
       .from("problems")
-      .select("problem_id, primary_article_id, year, problem_number")
+      .select(
+        "problem_id, primary_article_id, year, problem_number, importance",
+      )
       .in("primary_article_id", articleIds.slice(i, i + 150))
       .is("deleted_at", null);
     for (const r of data ?? []) probRows.push(r);
@@ -1958,11 +1972,18 @@ export async function getSystematicNodeProblemStats(
     return (x.problem_number ?? 0) - (y.problem_number ?? 0);
   });
   const problemsByArticle = new Map<string, string[]>();
+  const starredByArticle = new Map<string, number>();
   for (const p of sorted) {
     if (!p.primary_article_id) continue;
     const arr = problemsByArticle.get(p.primary_article_id) ?? [];
     arr.push(p.problem_id);
     problemsByArticle.set(p.primary_article_id, arr);
+    if ((p.importance ?? 0) >= 1) {
+      starredByArticle.set(
+        p.primary_article_id,
+        (starredByArticle.get(p.primary_article_id) ?? 0) + 1,
+      );
+    }
   }
   const articlesByNode = new Map<string, string[]>();
   for (const l of links) {
@@ -1985,15 +2006,17 @@ export async function getSystematicNodeProblemStats(
       }
     }
     let count = 0;
+    let starredCount = 0;
     let firstProblemId: string | null = null;
     for (const aid of subtreeArticleIds) {
       const probs = problemsByArticle.get(aid) ?? [];
       count += probs.length;
+      starredCount += starredByArticle.get(aid) ?? 0;
       if (firstProblemId === null && probs.length > 0) {
         firstProblemId = probs[0];
       }
     }
-    out[node.node_id] = { problemCount: count, firstProblemId };
+    out[node.node_id] = { problemCount: count, firstProblemId, starredCount };
   }
   return out;
 }

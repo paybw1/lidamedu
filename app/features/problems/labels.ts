@@ -149,6 +149,8 @@ export interface ProblemListItem {
   hasTable: boolean;
   // 종합/지문/박스 해설 어딘가에 이미지가 있는지.
   hasImage: boolean;
+  // 강사·운영자 중요도 0~3 (feat-8-025). 0=미평가.
+  importance: number;
 }
 
 export interface ProblemChoice {
@@ -230,4 +232,13 @@ export interface ExamCaseLinkRow {
   /** 선택지. */
   choices: ExamCaseSegment[];
   links: ExamCaseLink[];
+}
+
+// 한 판례가 출제된 1차 객관식 기출문제 참조 (feat-8-024).
+// case-viewer 헤더 칩 + 판례 목록 1차 칩 → ExamProblemChip 으로 해당 문제 뷰어 이동.
+export interface ExamProblemRef {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  lawCode: string;
 }

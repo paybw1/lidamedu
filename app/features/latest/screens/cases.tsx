@@ -27,7 +27,7 @@ import {
   relativeKo,
 } from "~/features/latest/components/latest-list";
 import { LatestShell } from "~/features/latest/components/latest-shell";
-import { getExamYearsByCase } from "~/features/problems/queries.server";
+import { getExamProblemsByCase } from "~/features/problems/queries.server";
 import {
   FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
@@ -41,7 +41,7 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
 
 function extractFirstSummaryTitle(raw: unknown): string | null {
   if (!Array.isArray(raw) || raw.length === 0) return null;
@@ -68,7 +68,7 @@ async function listLatestCases(
   client: SupabaseClient<Database>,
   filters: LatestCasesFilters,
 ): Promise<{ items: CaseListItem[]; total: number }> {
-  const examYearsByCase = await getExamYearsByCase(client);
+  const examProblemsByCase = await getExamProblemsByCase(client);
   let q = client
     .from("cases")
     .select(LIST_COLUMNS, { count: "exact" })
@@ -77,7 +77,7 @@ async function listLatestCases(
   if (filters.importantOnly) q = q.gte("importance", 3);
   // feat-8-024: 1차 기출은 problem_case_links 연결 판례로 한정.
   if (filters.exam === "exam_1st")
-    q = q.in("case_id", [...examYearsByCase.keys()]);
+    q = q.in("case_id", [...examProblemsByCase.keys()]);
   if (filters.exam === "exam_2nd") q = q.not("exam_2nd_years", "eq", "{}");
   const trimmed = filters.q.trim();
   if (trimmed) {
@@ -101,13 +101,14 @@ async function listLatestCases(
     decidedAt: r.decided_at,
     caseNumber: r.case_number,
     caseTitle: r.case_title,
+    nickname: r.nickname,
     caseType: r.case_type,
     isEnBanc: r.is_en_banc,
     importance: r.importance ?? 1,
     summaryTitle: r.summary_title,
     summaryFirstTitle: extractFirstSummaryTitle(r.summary_items),
     subjectLaws: r.subject_laws ?? [],
-    exam1stYears: examYearsByCase.get(r.case_id) ?? [],
+    exam1stProblems: examProblemsByCase.get(r.case_id) ?? [],
     exam2ndYears: r.exam_2nd_years ?? [],
   }));
   return { items, total: count ?? 0 };
@@ -258,6 +259,14 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
           {cases.map((c) => {
             const firstSubject = c.subjectLaws[0] ?? "patent";
             const caseHref = `/subjects/${firstSubject}/cases/${c.caseId}`;
+            // exam1stProblems → 중복 제거 연도 (카드 전체가 링크라 비-링크 칩 사용).
+            const exam1stYears = [
+              ...new Set(
+                c.exam1stProblems
+                  .map((p) => p.year)
+                  .filter((y): y is number => y != null),
+              ),
+            ].sort((a, b) => a - b);
             return (
               <FeedCardLink key={c.caseId} to={caseHref}>
                 <MetaRow right={`선고 ${c.decidedAt}`}>
@@ -280,13 +289,11 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
                 <div className="text-[15px] leading-snug font-bold tracking-tight">
                   {c.summaryTitle ?? c.caseTitle}
                 </div>
-                {c.exam1stYears.length + c.exam2ndYears.length > 0 ? (
+                {exam1stYears.length + c.exam2ndYears.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {[...c.exam1stYears]
-                      .sort((a, b) => a - b)
-                      .map((y) => (
-                        <ExamYearChip key={`1-${y}`} round="first" year={y} />
-                      ))}
+                    {exam1stYears.map((y) => (
+                      <ExamYearChip key={`1-${y}`} round="first" year={y} />
+                    ))}
                     {[...c.exam2ndYears]
                       .sort((a, b) => a - b)
                       .map((y) => (

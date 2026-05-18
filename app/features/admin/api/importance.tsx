@@ -1,5 +1,5 @@
 // 콘텐츠 중요도 설정 API (feat-8-025). staff(instructor/admin) 전용.
-// 운영자·강사가 판례·조문 뷰어 오른쪽 패널의 별점으로 importance 를 직접 조정한다.
+// 운영자·강사가 판례·조문·문제 뷰어 오른쪽 패널의 별점으로 importance 를 직접 조정한다.
 
 import { data } from "react-router";
 import { z } from "zod";
@@ -10,9 +10,9 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/importance";
 
 const schema = z.object({
-  targetType: z.enum(["case", "article"]),
+  targetType: z.enum(["case", "article", "problem"]),
   targetId: z.string().uuid(),
-  // 판례 1~3, 조문 0~3. 공통 상한으로 0~3 받고 case 는 아래에서 1 미만 거부.
+  // 판례 1~3, 조문·문제 0~3. 공통 상한으로 0~3 받고 case 는 아래에서 1 미만 거부.
   importance: z.coerce.number().int().min(0).max(3),
 });
 
@@ -47,7 +47,7 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
-  // cases/articles 쓰기는 RLS instructor-admin-write 정책으로 staff 에게 허용.
+  // cases/articles/problems 쓰기는 RLS instructor-admin-write 정책으로 staff 에게 허용.
   // .select() 로 영향 행을 확인 — 잘못된 id·삭제된 행은 0건이라 명시적으로 거른다.
   let affected = 0;
   let dbError: string | null = null;
@@ -60,13 +60,22 @@ export async function action({ request }: Route.ActionArgs) {
       .select("case_id");
     affected = rows?.length ?? 0;
     dbError = error?.message ?? null;
-  } else {
+  } else if (targetType === "article") {
     const { data: rows, error } = await client
       .from("articles")
       .update({ importance })
       .eq("article_id", targetId)
       .is("deleted_at", null)
       .select("article_id");
+    affected = rows?.length ?? 0;
+    dbError = error?.message ?? null;
+  } else {
+    const { data: rows, error } = await client
+      .from("problems")
+      .update({ importance })
+      .eq("problem_id", targetId)
+      .is("deleted_at", null)
+      .select("problem_id");
     affected = rows?.length ?? 0;
     dbError = error?.message ?? null;
   }

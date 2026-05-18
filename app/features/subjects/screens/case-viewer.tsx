@@ -396,6 +396,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               {/* ── 판례 헤더 카드 (§6.4) ── */}
               <Card className="border-border rounded-xl border shadow-sm">
                 <CardHeader className="px-6 pt-6 pb-4">
+                  {/* 판례 닉네임 — 중요 판례의 통칭(예: 수지상 세포 사건). 선택. */}
+                  {kase.nickname ? (
+                    <p className="mb-1.5 text-[13px] font-bold tracking-tight text-amber-700 dark:text-amber-400">
+                      {kase.nickname}
+                    </p>
+                  ) : null}
                   {/* 메타 행: 법원 · 사건번호 · 유형 · 전합 · 중요도 · 선고일 · 복사 버튼 */}
                   <div className="flex flex-wrap items-center gap-2">
                     {/* 법원 — violet 톤 */}

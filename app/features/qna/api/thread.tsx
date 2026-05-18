@@ -2,6 +2,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 
 import {
   qnaQualityGradeSchema,
@@ -80,7 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
       questionMd: parsed.data.questionMd,
     });
 
-    notifyNewQuestion(
+    const notifyTask = notifyNewQuestion(
       {
         threadId: thread.threadId,
         targetType: thread.targetType,
@@ -89,7 +90,8 @@ export async function action({ request }: Route.ActionArgs) {
         askerName: thread.askerName,
       },
       user.id,
-    ).catch(() => {});
+    );
+    runAfterResponse(notifyTask);
 
     return data({ ok: true, thread }, { headers });
   }
@@ -100,7 +102,7 @@ export async function action({ request }: Route.ActionArgs) {
       qualityGrade: parsed.data.qualityGrade,
     });
 
-    notifyNewAnswer({
+    const notifyTask = notifyNewAnswer({
       threadId: thread.threadId,
       targetType: thread.targetType,
       title: thread.title,
@@ -108,7 +110,8 @@ export async function action({ request }: Route.ActionArgs) {
       qualityGrade: parsed.data.qualityGrade,
       askerProfileId: thread.askerId,
       answererName: thread.answererName,
-    }).catch(() => {});
+    });
+    runAfterResponse(notifyTask);
 
     return data({ ok: true, thread }, { headers });
   }

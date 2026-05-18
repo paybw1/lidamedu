@@ -290,6 +290,7 @@ create table public.cases (
   decided_at         date not null,
   case_number        text not null,              -- '2013도10265'
   case_title         text not null,              -- '【특허법 위반】'
+  nickname           text check (char_length(nickname) <= 100),  -- 판례 통칭 (예: 수지상 세포 사건). 선택
   is_en_banc         boolean not null default false,
   importance         smallint default 1 check (importance between 1 and 3),
   summary_title      text,                       -- 판결요지 제목
@@ -362,6 +363,7 @@ create table public.problems (
   primary_article_id  uuid references articles(article_id),
   body_md             text not null,               -- 문제 본문
   total_points        smallint,                    -- 2차: 30점 등
+  importance          integer check (importance is null or importance between 0 and 3), -- 강사·운영자 중요도 0~3 (feat-8-025). null=미평가
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
   deleted_at          timestamptz,

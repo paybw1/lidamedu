@@ -172,6 +172,14 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
                 maxLength={500}
               />
             </Field>
+            <Field label="닉네임 (선택)">
+              <Input
+                name="nickname"
+                defaultValue={kase?.nickname ?? ""}
+                placeholder="예: 수지상 세포 사건"
+                maxLength={100}
+              />
+            </Field>
             <Field label="사건유형">
               <Input
                 name="caseType"

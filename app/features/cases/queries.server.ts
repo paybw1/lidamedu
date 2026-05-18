@@ -10,7 +10,8 @@ import type {
   SummaryItem,
 } from "./labels";
 
-import { getExamYearsByCase } from "~/features/problems/queries.server";
+import type { ExamProblemRef } from "~/features/problems/labels";
+import { getExamProblemsByCase } from "~/features/problems/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export type {
@@ -25,7 +26,7 @@ export { COURT_LABELS } from "./labels";
 
 // list 쿼리에서 select 하는 컬럼 묶음 — DRY.
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
 
 interface CaseListRow {
   case_id: string;
@@ -33,6 +34,7 @@ interface CaseListRow {
   decided_at: string;
   case_number: string;
   case_title: string;
+  nickname: string | null;
   case_type: string | null;
   is_en_banc: boolean;
   importance: number | null;
@@ -54,7 +56,7 @@ function extractFirstSummaryTitle(raw: unknown): string | null {
 
 function rowToListItem(
   row: CaseListRow,
-  examYearsByCase?: Map<string, number[]>,
+  examProblemsByCase?: Map<string, ExamProblemRef[]>,
 ): CaseListItem {
   return {
     caseId: row.case_id,
@@ -62,14 +64,15 @@ function rowToListItem(
     decidedAt: row.decided_at,
     caseNumber: row.case_number,
     caseTitle: row.case_title,
+    nickname: row.nickname,
     caseType: row.case_type,
     isEnBanc: row.is_en_banc,
     importance: row.importance ?? 1,
     summaryTitle: row.summary_title,
     summaryFirstTitle: extractFirstSummaryTitle(row.summary_items),
     subjectLaws: row.subject_laws ?? [],
-    // feat-8-024: 1차 기출 연도는 problem_case_links 기반 파생값.
-    exam1stYears: examYearsByCase?.get(row.case_id) ?? [],
+    // feat-8-024: 1차 기출문제는 problem_case_links 기반 파생값.
+    exam1stProblems: examProblemsByCase?.get(row.case_id) ?? [],
     exam2ndYears: row.exam_2nd_years ?? [],
   };
 }
@@ -139,7 +142,7 @@ export async function listCasesBySubject(
   lawCode: LawSubjectSlug,
   options: ListCasesBySubjectOptions = {},
 ): Promise<CaseListPage> {
-  const examYearsByCase = await getExamYearsByCase(client);
+  const examProblemsByCase = await getExamProblemsByCase(client);
 
   // case_id 제한 — 트리 필터, 그리고 exam_1st/exam_both 면 기출-연결 판례로 한정.
   let restrictIds: string[] | null = options.filterCaseIds
@@ -148,8 +151,8 @@ export async function listCasesBySubject(
   if (options.examFilter === "exam_1st" || options.examFilter === "exam_both") {
     restrictIds =
       restrictIds === null
-        ? [...examYearsByCase.keys()]
-        : restrictIds.filter((id) => examYearsByCase.has(id));
+        ? [...examProblemsByCase.keys()]
+        : restrictIds.filter((id) => examProblemsByCase.has(id));
   }
   if (restrictIds !== null && restrictIds.length === 0) {
     return { items: [], total: 0 };
@@ -167,11 +170,12 @@ export async function listCasesBySubject(
 
   const trimmed = options.query?.trim();
   if (trimmed) {
-    // pg_trgm + ilike 다중 컬럼. tsvector FTS 는 고도화 시점에 도입 (feat-4-A-208 P1+)
+    // pg_trgm + ilike 다중 컬럼 — 사건번호·사건명·닉네임·유형·요지·판시이유·코멘트 본문.
+    // tsvector FTS 는 고도화 시점에 도입 (feat-4-A-208 P1+).
     const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
     const pattern = `%${escaped}%`;
     q = q.or(
-      `case_number.ilike.${pattern},case_title.ilike.${pattern},case_type.ilike.${pattern},summary_title.ilike.${pattern},summary_body_md.ilike.${pattern},reasoning_md.ilike.${pattern}`,
+      `case_number.ilike.${pattern},case_title.ilike.${pattern},nickname.ilike.${pattern},case_type.ilike.${pattern},summary_title.ilike.${pattern},summary_body_md.ilike.${pattern},reasoning_md.ilike.${pattern},comment_body_md.ilike.${pattern}`,
     );
   }
   if (options.court && options.court !== "all") {
@@ -198,7 +202,7 @@ export async function listCasesBySubject(
   if (error) throw error;
   return {
     items: (data ?? []).map((r) =>
-      rowToListItem(r as CaseListRow, examYearsByCase),
+      rowToListItem(r as CaseListRow, examProblemsByCase),
     ),
     total: count ?? 0,
   };
@@ -384,7 +388,7 @@ export async function getCaseById(
   const { data, error } = await client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_title, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md",
+      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md",
     )
     .eq("case_id", caseId)
     .is("deleted_at", null)

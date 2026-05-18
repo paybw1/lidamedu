@@ -10,7 +10,7 @@
 - **Schema/Validation**: Zod (폼/서버 액션 경계에서 사용)
 - **Email**: Resend + React Email
 - **Monitoring**: Sentry
-- **Deploy**: Cloudflare (Workers SSR + Pages 정적 자산)
+- **Deploy**: Vercel (React Router SSR — Node 런타임 서버리스 함수)
 - **Testing**: Playwright (E2E), Vitest (unit, 필요 시)
 - **언어**: 한국어 단일 (i18n 미사용 — 모든 사용자 facing 문자열은 기본 한국어, 하드코딩 허용)
 
@@ -25,10 +25,11 @@
 - **개정 추적**: `law_revision` + `article_revision` 스냅샷으로 조문별 시점 추적
 - **사용자 학습 데이터**: 메모 / 즐겨찾기 / 하이라이트 / 진도 / 문제풀이 시도 이력
 
-## Cloudflare 배포 관련 주의
-- React Router 7 SSR은 Cloudflare Workers 어댑터로 배포. Node 전용 API 사용 금지(`fs`, `net`, `crypto.randomBytes` 등) — 필요 시 Web Crypto / Workers 호환 라이브러리로 대체
+## Vercel 배포 관련 주의
+- React Router 7 SSR은 **Node 런타임**으로 동작하며 Vercel 서버리스 함수로 배포(`@vercel/react-router` preset). 로컬·자체호스팅은 `react-router-serve`(상시 Node 서버). Node API 사용 가능하나 아래 서버리스 제약을 따른다
+- **서버리스 제약**: 함수는 응답 반환 후 freeze/종료된다 — 응답 후에도 끝나야 하는 백그라운드 작업(알림·로깅 등)은 `app/core/lib/wait-until.server.ts` 의 `runAfterResponse()` 로 감싼다. 파일시스템은 `/tmp` 외 읽기 전용, 인스턴스는 임시(전역 상태·메모리 캐시에 의존 금지)
 - DB 접근은 `@supabase/supabase-js` 클라이언트로 통일 (`app/core/lib/supa-client.server.ts` = 요청 컨텍스트·RLS 적용 / `supa-admin-client.server.ts` = service_role). 별도 ORM·커넥션 풀 없음
-- Resend 호출은 전부 서버 action/loader에서만. 환경변수는 Cloudflare Secrets로 관리
+- Resend·외부 API 호출은 전부 서버 action/loader에서만. 환경변수는 Vercel 환경변수(대시보드 또는 `vercel env`)로 관리, 로컬 개발은 `.env`
 
 ## 작업 시작 전 필수 확인 (Progressive Disclosure)
 
@@ -110,7 +111,7 @@ transactional-emails/        # Resend 템플릿 (가입/리셋/알림)
 7. `*.server.ts` 파일(Supabase 클라이언트·서버 쿼리 등)을 클라이언트 컴포넌트에서 import 금지
 8. **법령 원문(조문)은 읽기 전용 불변** — 조문(`articles`) 수정은 개정 흐름(`law_revision`/`article_revision`)으로만, 기존 `content` 필드 in-place 수정 금지. **판례(`cases`)는 편집 가능 콘텐츠** — 요지·이유·평석은 교재 기반 편집물이고 개정 인프라가 없으므로 staff 전용 `admin-case-edit` 화면에서 in-place 수정한다. 단 식별 필드(`case_number`·`court`·`decided_at`)는 보존하고, 다건 일괄 수정(시드 재import·정정 스크립트)은 dry-run 검증 + 사용자 승인 후 수행
 9. **사용자 학습 데이터(메모/하이라이트/진도)는 삭제 시 soft delete** — 실수로 한 학기치 메모가 날아가면 복구 불가. `deleted_at` 컬럼 사용
-10. Cloudflare Workers 런타임 비호환 API(`fs`, Node `crypto.randomBytes`, `setImmediate` 등) 사용 금지
+10. 응답 후에도 완료돼야 하는 백그라운드 작업(알림·로깅 등)은 `runAfterResponse()` (`app/core/lib/wait-until.server.ts`) 로 감쌀 것 — Vercel 서버리스는 응답 반환 후 함수가 종료되어 `await` 없는 fire-and-forget 작업이 잘린다
 
 ## 개발 원칙 (3 Layer)
 
@@ -297,7 +298,7 @@ npm run typecheck    # 타입 체크
 npm run db:typegen   # Supabase 스키마 → database.types.ts 재생성 (스키마 변경은 Supabase MCP apply_migration 으로)
 npm run test:e2e     # Playwright E2E
 npm run format       # Prettier
-npm run deploy       # Cloudflare 배포 (wrangler deploy)
+npm run start        # 프로덕션 빌드 로컬 구동 (배포는 Vercel git 연동 자동)
 ```
 
 ## 컨텍스트 압축 시 보존 규칙

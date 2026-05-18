@@ -66,7 +66,7 @@ test.describe.serial("ProblemsTab 난이도 필터", () => {
     // 필터 미적용: 369문항 노출 (수가 많아 toBeVisible 만 확인).
     await page.goto("/subjects/patent?tab=problems");
     await expect(
-      page.getByRole("heading", { name: /1차 객관식/ }),
+      page.getByRole("heading", { name: "객관식", exact: true }),
     ).toBeVisible();
 
     // 필터 적용 — very_hard 만.

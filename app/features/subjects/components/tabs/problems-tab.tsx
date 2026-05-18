@@ -54,7 +54,7 @@ import {
 } from "~/features/study/lib/difficulty";
 import type { UserProblemStats } from "~/features/study/queries.server";
 
-import { EXAM_LABEL, type LawSubjectMeta } from "../../lib/subjects";
+import type { LawSubjectMeta } from "../../lib/subjects";
 import { ProblemSystematicTree } from "../problem-systematic-tree";
 import { stripSystematicNumber } from "../systematic-node-label";
 
@@ -368,15 +368,13 @@ export function ProblemsTab({
           </span>
         </div>
 
-        {/* 1차 객관식 table */}
+        {/* 객관식 table */}
         <div className="border-border overflow-hidden rounded-xl border shadow-sm">
           {/* Section header */}
           <div className="border-border bg-muted/30 flex items-center justify-between border-b px-4 py-3">
             <div className="flex items-center gap-2">
               <CircleCheckIcon className="text-primary size-4" />
-              <h3 className="text-sm font-semibold">
-                1차 객관식 ({EXAM_LABEL[subject.exam]})
-              </h3>
+              <h3 className="text-sm font-semibold">객관식</h3>
             </div>
             <span className="border-border bg-background text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
               {firstRound.length}건
@@ -388,7 +386,7 @@ export function ProblemsTab({
               <p className="text-muted-foreground mt-3 text-sm">
                 {filterActive
                   ? "필터 조건에 해당하는 문제가 없습니다."
-                  : `${subject.name} 1차 객관식 문제가 아직 등록되지 않았습니다.`}
+                  : `${subject.name} 객관식 문제가 아직 등록되지 않았습니다.`}
               </p>
               {filterActive ? (
                 <Button

@@ -847,6 +847,7 @@ export type Database = {
           full_text_pdf: string | null
           importance: number | null
           is_en_banc: boolean
+          nickname: string | null
           reasoning_md: string | null
           search_tsv: unknown
           subject_laws: string[]
@@ -871,6 +872,7 @@ export type Database = {
           full_text_pdf?: string | null
           importance?: number | null
           is_en_banc?: boolean
+          nickname?: string | null
           reasoning_md?: string | null
           search_tsv?: unknown
           subject_laws: string[]
@@ -895,6 +897,7 @@ export type Database = {
           full_text_pdf?: string | null
           importance?: number | null
           is_en_banc?: boolean
+          nickname?: string | null
           reasoning_md?: string | null
           search_tsv?: unknown
           subject_laws?: string[]
@@ -2604,6 +2607,7 @@ export type Database = {
           explanation_md: string | null
           format: Database["public"]["Enums"]["problem_format"]
           grading_rubric_md: string | null
+          importance: number | null
           law_id: string | null
           mismatch_flagged_at: string | null
           mismatch_flagged_by: string | null
@@ -2640,6 +2644,7 @@ export type Database = {
           explanation_md?: string | null
           format: Database["public"]["Enums"]["problem_format"]
           grading_rubric_md?: string | null
+          importance?: number | null
           law_id?: string | null
           mismatch_flagged_at?: string | null
           mismatch_flagged_by?: string | null
@@ -2680,6 +2685,7 @@ export type Database = {
           explanation_md?: string | null
           format?: Database["public"]["Enums"]["problem_format"]
           grading_rubric_md?: string | null
+          importance?: number | null
           law_id?: string | null
           mismatch_flagged_at?: string | null
           mismatch_flagged_by?: string | null

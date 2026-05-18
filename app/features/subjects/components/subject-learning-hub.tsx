@@ -60,7 +60,7 @@ export function SubjectLearningHub({
 
   const importantCases = cases.filter((c) => c.importance >= 3);
   const examCases = cases.filter(
-    (c) => c.exam1stYears.length + c.exam2ndYears.length > 0,
+    (c) => c.exam1stProblems.length + c.exam2ndYears.length > 0,
   );
 
   const attempted = problemStats?.attemptedCount ?? 0;

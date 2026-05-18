@@ -25,7 +25,10 @@ import {
   TableHeader,
   TableRow,
 } from "~/core/components/ui/table";
-import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
+import {
+  ExamProblemChip,
+  ExamYearChip,
+} from "~/features/cases/components/exam-year-chip";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 import type {
   ArticleNode,
@@ -121,7 +124,7 @@ export function CasesTab({
   const tabParam = searchParams.get("tab") ?? "";
   const importantCount = cases.filter((c) => c.importance >= 3).length;
   const examCount = cases.filter(
-    (c) => c.exam1stYears.length + c.exam2ndYears.length > 0,
+    (c) => c.exam1stProblems.length + c.exam2ndYears.length > 0,
   ).length;
 
   // hidden inputs — 검색폼 submit 시 다른 필터 보존 (트리 필터 포함).
@@ -225,7 +228,7 @@ export function CasesTab({
               name="q"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="사건번호·사건명 검색"
+              placeholder="사건번호·사건명·본문 검색"
               className="h-8 w-52 rounded-lg pl-8 text-xs"
               disabled={isLoading}
             />
@@ -421,8 +424,8 @@ function CaseRow({
     caseTitleTrim !== caseTypeTrim
       ? item.caseTitle
       : null;
-  // 기출 chip — 1차/2차 구분. 각 그룹 안에서 연도 오름차순.
-  const sorted1st = [...item.exam1stYears].sort((a, b) => a - b);
+  // 기출 chip — 1차는 출제 문제(클릭 시 문제 뷰어로 이동), 2차는 연도 배지.
+  // exam1stProblems 는 쿼리에서 연도·문항번호 오름차순 정렬됨.
   const sorted2nd = [...item.exam2ndYears].sort((a, b) => a - b);
 
   return (
@@ -451,6 +454,11 @@ function CaseRow({
         ) : null}
       </TableCell>
       <TableCell>
+        {item.nickname ? (
+          <span className="mb-0.5 inline-flex max-w-full items-center truncate rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            {item.nickname}
+          </span>
+        ) : null}
         <Link
           to={`/subjects/${subject.slug}/cases/${item.caseId}`}
           viewTransition
@@ -461,10 +469,16 @@ function CaseRow({
         {subLabel ? (
           <p className="text-muted-foreground truncate text-xs">{subLabel}</p>
         ) : null}
-        {sorted1st.length + sorted2nd.length > 0 ? (
+        {item.exam1stProblems.length + sorted2nd.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
-            {sorted1st.map((y) => (
-              <ExamYearChip key={`1-${y}`} round="first" year={y} />
+            {item.exam1stProblems.map((p) => (
+              <ExamProblemChip
+                key={p.problemId}
+                lawCode={p.lawCode}
+                problemId={p.problemId}
+                year={p.year}
+                problemNumber={p.problemNumber}
+              />
             ))}
             {sorted2nd.map((y) => (
               <ExamYearChip key={`2-${y}`} round="second" year={y} />

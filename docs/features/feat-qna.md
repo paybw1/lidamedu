@@ -77,26 +77,29 @@ deleted_at       timestamptz NULL        -- soft delete
 
 발송 위치: action 함수 내부 (서버), Resend 호출 실패 시 `console.error` + 사용자에게는 등록 성공 응답 (알림은 부가 기능).
 
-### 5.2 카카오 알림톡 — 스캐폴딩 완료, provider 활성화 대기
-ALIM_TALK 은 비즈니스 채널 + 템플릿 사전 승인이 필요해서 코드만으로는 발송이 불가능합니다. 현재 상태:
+### 5.2 카카오 알림톡 — Solapi provider 구현 완료, 운영 활성화 대기
+알림톡은 카카오 비즈니스 채널 + 템플릿 사전 승인이 필요해 운영 설정 없이는 실제 발송이 안 됩니다. 현재 상태:
 
-**구현된 부분**:
-- `profiles.phone_e164` (E.164, nullable) + `profiles.notify_channels` (text[], 기본 `{email}`) 컬럼 — 마이그레이션 적용됨
-- `/account/edit` 폼에서 휴대폰 번호 입력 + 알림 채널 선택 (이메일 / 카카오)
-- `app/features/qna/notify.server.ts` — 수신자별 `notify_channels` 에 따라 이메일·카카오로 fanout
-- `app/features/qna/notify-kakao.server.ts` — Solapi 형태의 sender 시그니처 (`sendKakaoAlimtalk`). 환경변수 누락 시 `KakaoNotConfigured` throw, 디스패처가 silent catch.
+**구현 완료**:
+- `profiles.phone_e164` (E.164, nullable) + `profiles.notify_channels` (text[], 기본 `{email}`) 컬럼.
+- `/account/edit` 폼에서 휴대폰 번호 입력 + 알림 채널 선택 (이메일 / 카카오).
+- `app/features/qna/notify.server.ts` — 수신자별 `notify_channels` 에 따라 이메일·카카오 fanout.
+- `app/features/qna/notify-kakao.server.ts` — **Solapi(api.solapi.com) 발송 코드 구현 완료.** HMAC-SHA256 인증 + `/messages/v4/send` 단건 발송 + `kakaoOptions.variables` 템플릿 변수 치환. Web Crypto 사용(전역 표준 — Node·서버리스 호환). 환경변수 누락 시 `KakaoNotConfigured` throw → 디스패처가 silent catch.
 
-**활성화 절차** (운영자가 직접 진행):
-1. provider 결정 — Solapi(추천) / Aligo / Bizppurio / NHN Toast / Naver Cloud SENS 중 택1.
-2. 카카오 비즈니스 채널 등록 — 사업자등록증 제출, 채널 승인.
-3. 알림톡 템플릿 2종 사전 승인 — `new-question`, `new-answer` 용. 본문은 `notify.server.ts` 의 `kakaoPayload.variables` 키를 `#{변수명}` 형태로 사용.
-4. Cloudflare Workers Secrets 에 환경변수 등록:
-   - `KAKAO_PROVIDER` (기본 `solapi`)
-   - `KAKAO_API_KEY`, `KAKAO_API_SECRET`
-   - `KAKAO_PFID` — 발신 프로필 ID
-   - `KAKAO_TEMPLATE_NEW_QUESTION`, `KAKAO_TEMPLATE_NEW_ANSWER` — 승인된 템플릿 ID
-5. `notify-kakao.server.ts` 의 `TODO(provider-impl)` 블록에 실제 provider API 호출 코드 작성.
-6. 사용자 측에서는 `/account/edit` 에서 휴대폰 번호 등록 → 카카오 채널 활성화.
+**운영 활성화 절차** (운영자 작업 — 코드 변경 불필요):
+1. Solapi(solapi.com) 가입 → API Key + API Secret 발급.
+2. 카카오 비즈니스 채널을 Solapi 콘솔에 연동 → 발신 프로필 ID(pfId) 발급.
+3. (선택) SMS 발신번호 등록 — 알림톡 실패 시 문자 폴백용.
+4. 알림톡 템플릿 4종 카카오 사전 승인. 본문에 `#{변수명}` 으로 변수 삽입:
+   - `new-question`: `#{targetLabel}` `#{title}` `#{askerName}` `#{excerpt}` `#{link}`
+   - `new-answer`: `#{targetLabel}` `#{title}` `#{answererName}` `#{gradeLabel}` `#{excerpt}` `#{link}`
+   - `review-requested` · `review-completed`: 변수는 `study/notify-review.server.ts` 의 `kakaoPayload` 참고.
+5. Vercel 환경변수 등록 (대시보드 또는 `vercel env add <NAME>`):
+   - `KAKAO_API_KEY`, `KAKAO_API_SECRET`, `KAKAO_PFID`
+   - `KAKAO_SENDER_PHONE` — (선택) SMS 폴백용 발신번호
+   - `KAKAO_TEMPLATE_NEW_QUESTION`, `KAKAO_TEMPLATE_NEW_ANSWER`, `KAKAO_TEMPLATE_REVIEW_REQUESTED`, `KAKAO_TEMPLATE_REVIEW_COMPLETED` — 승인된 템플릿 ID
+   - `KAKAO_PROVIDER` 는 기본값 `solapi` — 미설정 가능.
+6. 사용자는 `/account/edit` 에서 휴대폰 번호 등록 + 카카오 채널 활성화.
 
 ## 6. 답변자 결정 — **결정 필요 ❓**
 
@@ -137,7 +140,7 @@ ALIM_TALK 은 비즈니스 채널 + 템플릿 사전 승인이 필요해서 코�
 ## 10. 결정 사항 (확정)
 
 1. 답변자 모델 — **A. 풀** (모든 instructor + admin 알림, 먼저 답변하는 사람이 답변자).
-2. 카카오 — v1 스캐폴딩만 완료, provider 활성화는 운영자 작업 (§5.2).
+2. 카카오 — Solapi provider 구현 완료. 운영 설정(채널 연동·템플릿 승인·env 등록)은 운영자 작업 (§5.2).
 3. Q&A 공개 범위 — **비공개** (asker + answerer + instructor/admin staff 만 열람).
 4. instructor 부재 시 — admin(운영자)도 staff 로 동시 알림 수신.
 

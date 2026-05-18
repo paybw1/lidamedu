@@ -18,14 +18,18 @@
 
 ## 범위
 
-- 대상 = **판례(case)·조문(article)**. 문제(problem)는 범위 밖.
+- 대상 = **판례(case)·조문(article)·문제(problem)**. 문제는 후속 확장으로 포함.
+- 뷰어 적용 범위 = `case-viewer` · `article-viewer` · `problem-viewer` +
+  다중 조문 뷰(`chapter-viewer` · `systematic-node-viewer`)의 우측 패널.
 - 즐겨찾기(`user_bookmarks.star_level`)는 학생용 개인 평점으로 그대로 둔다 —
   importance 와 연동하지 않는다(별개 기능).
 
 ## 데이터 모델
 
-스키마 변경 없음. 기존 컬럼 그대로 — `cases.importance`(NOT NULL,
-`CHECK 1~3`, default 1) · `articles.importance`(nullable, `CHECK 0~3`).
+- `cases.importance`(NOT NULL, `CHECK 1~3`, default 1) · `articles.importance`
+  (nullable, `CHECK 0~3`) — 기존 컬럼 그대로.
+- `problems.importance` 신규 — `integer` nullable, `CHECK 0~3`, null=미평가.
+  마이그레이션 `add_problems_importance`.
 
 ## 동작
 
@@ -34,21 +38,34 @@
 - "즐겨찾기" 탭 콘텐츠: 뷰어가 **운영자/강사면** `ImportanceRating`(중요도 ★
   에디터), **학생이면** 기존 `BookmarkStars`(개인 즐겨찾기). staff 에게는 탭
   라벨·아이콘도 "중요도 / ★" 로 표시.
-- `case-viewer`·`article-viewer` 의 데스크톱·모바일(Sheet) 패널 양쪽에 적용.
-- problem 타깃은 `importance` prop 미전달 → staff 여도 항상 `BookmarkStars`.
+- `case-viewer`·`article-viewer`·`problem-viewer` 의 데스크톱·모바일(Sheet)
+  패널 + `chapter-viewer`·`systematic-node-viewer` 의 조문 카드 패널에 적용.
+- `ArticleRightPanel` 의 `staffImportanceMode` 는 case/article/problem 3종
+  타깃 지원 — `importance` prop 을 받은 staff 뷰어에서 활성.
 
 ### `ImportanceRating` 컴포넌트
 
 - ★ 3칸. 클릭 시 해당 단계로 설정, 현재 최고 별을 다시 클릭하면 한 단계 내림
-  (case 는 최소 1, article 은 0 까지).
+  (case 는 최소 1, article·problem 은 0 까지).
 - `/api/admin/importance` 로 `useFetcher` 제출, 낙관적 갱신 후 revalidate.
 
 ### `/api/admin/importance` (신규)
 
 - POST. 로그인 + `getStaffRole` 확인 — staff 아니면 403.
-- body: `targetType`(`case`|`article`), `targetId`(uuid), `importance`(int).
-- 범위 검증: case `1~3`, article `0~3`. `cases`/`articles` importance UPDATE.
+- body: `targetType`(`case`|`article`|`problem`), `targetId`(uuid),
+  `importance`(int).
+- 범위 검증: case `1~3`, article·problem `0~3`.
+  `cases`/`articles`/`problems` importance UPDATE.
 - `logAuditEvent` 로 변경 기록.
+
+### 학생 화면 ★ 표시
+
+importance 는 staff·학생 공통으로 목록·트리에 ★ 로 노출된다.
+
+- 판례: 판례 목록 ★(≥3).
+- 조문: 체계도 트리 조문 leaf ★N(≥1).
+- 문제: 문제 목록(1차 표 ★ 열·주관식 카드 배지) ★N(≥1) + 체계도 트리
+  노드에 별점 문제 수(`starredCount`, importance≥1) 칩.
 
 ## 판례 중요도 초기화 (1회성 backfill)
 
@@ -72,7 +89,6 @@
 
 ## 범위 밖
 
-- 문제(problem) 중요도.
 - 기출횟수의 실시간 자동 연동(트리거) — 1회성 backfill 만.
 - 즐겨찾기 `star_level` ↔ importance 연동.
 
@@ -81,8 +97,12 @@
 - 신규: `app/features/admin/api/importance.tsx`,
   `app/features/admin/components/importance-rating.tsx`
 - `app/features/laws/components/article-right-panel.tsx` — 탭 분기
-- `app/features/subjects/screens/case-viewer.tsx` ·
-  `app/features/subjects/screens/article-viewer.tsx` — prop 전달
+- `app/features/subjects/screens/{case,article,problem}-viewer.tsx` ·
+  `chapter-viewer.tsx` · `systematic-node-viewer.tsx` — prop 전달
+- `app/features/problems/labels.ts` · `queries.server.ts` —
+  `ProblemListItem.importance` · 노드 `starredCount`
+- `app/features/subjects/components/tabs/problems-tab.tsx` ·
+  `problem-systematic-tree.tsx` — 목록·트리 ★ 표시
 - `app/features/admin/screens/admin-case-edit.tsx` ·
   `app/features/admin/api/case.tsx` — 중요도 입력 제거
 - `app/routes.ts` — `/api/admin/importance`

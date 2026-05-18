@@ -41,6 +41,7 @@ const upsertSchema = z.object({
   decidedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
   caseNumber: z.string().trim().min(1).max(100),
   caseTitle: z.string().trim().min(1).max(500),
+  nickname: z.string().trim().max(100).nullable(),
   isEnBanc: z.boolean(),
   caseType: z.string().trim().max(100).nullable(),
   summaryItems: z
@@ -224,6 +225,7 @@ export async function action({ request }: Route.ActionArgs) {
     decidedAt: fd.get("decidedAt"),
     caseNumber: fd.get("caseNumber"),
     caseTitle: fd.get("caseTitle"),
+    nickname: emptyToNull(fd.get("nickname")),
     isEnBanc: fd.get("isEnBanc") === "1",
     caseType: emptyToNull(fd.get("caseType")),
     summaryItems: summaryItemsRaw,
@@ -254,6 +256,7 @@ export async function action({ request }: Route.ActionArgs) {
     decided_at: input.decidedAt,
     case_number: input.caseNumber,
     case_title: input.caseTitle,
+    nickname: input.nickname,
     is_en_banc: input.isEnBanc,
     case_type: input.caseType,
     summary_title: summaryItems[0]?.title || null,

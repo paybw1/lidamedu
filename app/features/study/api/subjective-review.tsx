@@ -6,6 +6,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -51,8 +52,8 @@ export async function action({ request }: Route.ActionArgs) {
       parsed.data.problemId,
     );
     if (!result.ok) return data({ error: result.error }, { status: 400 });
-    // 알림 — 모든 staff 에게. best-effort, 응답 전 await 하지 않음.
-    void (async () => {
+    // 알림 — 모든 staff 에게. best-effort, 응답 후 waitUntil 로 완료 보장.
+    const notifyTask = (async () => {
       const { data: prob } = await client
         .from("problems")
         .select("year, problem_number, body_md, laws(law_code)")
@@ -72,6 +73,7 @@ export async function action({ request }: Route.ActionArgs) {
         excerpt,
       });
     })();
+    runAfterResponse(notifyTask);
     return data({ ok: true, attempt: result.attempt });
   }
 
@@ -101,7 +103,7 @@ export async function action({ request }: Route.ActionArgs) {
       },
     });
     // 학생에게 알림 — attempt 의 user_id + problem 정보 lookup.
-    void (async () => {
+    const notifyTask = (async () => {
       const { data: row } = await client
         .from("user_subjective_attempts")
         .select(
@@ -124,6 +126,7 @@ export async function action({ request }: Route.ActionArgs) {
         commentMd: result.attempt.reviewerCommentMd,
       });
     })();
+    runAfterResponse(notifyTask);
     return data({ ok: true, attempt: result.attempt });
   }
 
