@@ -211,7 +211,7 @@
 |----|------|:-------:|:---:|
 | feat-3-000 | 최신 정보 공통 레이아웃 — 각 탭(/latest/laws, /cases, /mcq, /essay, /papers, /book-updates)이 독립 페이지로 구현. 상단 네비게이션이 탭 라우팅 담당. 공통 레이아웃 컴포넌트는 미적용(YAGNI — 각 탭의 필터/색인 형태가 상이) | P0 | ⛔ |
 | **5.3.1 법 개정** | | | |
-| feat-3-101 | 법 개정 색인 (`/latest/laws`) — PPT 색인 양식 10컬럼 표(No/구분/명칭/법률번호/개정일/시행일/개정이유 O/신구조문대비표 O/개정해설 O/동영상 O). `law_revisions.revision_kind` ENUM(act/decree/rule) — 명칭에 '법령'/'시행령'/'시행규칙' 분기. published 시간순. | P0 | ✅ |
+| feat-3-101 | 법 개정 (`/latest/laws`) — PPT 색인 양식 10컬럼 표(No/구분/명칭/법률번호/개정일/시행일/개정이유 O/신구조문대비표 O/개정해설 O/동영상 O). `law_revisions.revision_kind` ENUM(act/decree/rule) — 명칭에 '법령'/'시행령'/'시행규칙' 분기. published 시간순. | P0 | ✅ |
 | feat-3-102 | 영향 조문 수 + 내 즐겨찾기 포함 여부 chip | P0 | ✅ |
 | feat-3-103 | 첨부 O 클릭 시 행 아래 인라인 panel — 개정이유/개정해설 MarkdownView · 신구조문대비표/개정해설 PDF iframe(70vh) · 동영상 YouTube/Vimeo embed (그 외 URL은 외부 링크). | P0 | ✅ |
 | **5.3.2 최근 판례** | | | |
@@ -219,7 +219,7 @@
 | feat-3-202 | 과목별 필터 + 중요판례 필터 (importance ≥ 3) | P0 | ✅ |
 | feat-3-203 | 판례 카드에서 판례 상세로 이동 | P0 | ✅ |
 | **5.3.3 객관식 문제** | | | |
-| feat-3-301 | 객관식 문제 색인 (PPT 운영계획 반영) — `mcq_packs` 테이블(kind: past_exam/mock_full/mock_progressive/other, subject_scope: industrial/civil/civil_procedure/science, year/exam_round_no/duration_min/video_url/result_doc_url/published_at) + `mcq_pack_problems` (pack↔problem 매핑). `quiz_sessions.pack_id` 추가. RLS: 학생은 published만 read, staff CRUD. `/latest/mcq` 표 색인(No·과목·구분·명칭·출제일·문항), staff inline CRUD. | P1 | ✅ |
+| feat-3-301 | 객관식 문제 (PPT 운영계획 반영) — `mcq_packs` 테이블(kind: past_exam/mock_full/mock_progressive/other, subject_scope: industrial/civil/civil_procedure/science, year/exam_round_no/duration_min/video_url/result_doc_url/published_at) + `mcq_pack_problems` (pack↔problem 매핑). `quiz_sessions.pack_id` 추가. RLS: 학생은 published만 read, staff CRUD. `/latest/mcq` 표 색인(No·과목·구분·명칭·출제일·문항), staff inline CRUD. | P1 | ✅ |
 | feat-3-302 | 팩 상세 페이지 — `/latest/mcq/:packId` 헤더(과목·구분·명칭·출제일·문항·제한시간) + 동영상/결과자료 카드 + 학습/모의고사 시작 액션 + 문제 목록 (staff: problem_id로 추가/제거). 학습 시작은 quiz_session(mode=study), 모의는 mode=exam + time_limit. | P1 | ✅ |
 | feat-3-303 | 팩 응시 결과 통계 — `/latest/mcq/:packId/result/:sessionId`. KPI(본인 정답률/총문항/오답/소요시간). 유형별(단답/박스/사례) + 지문별(조문/판례/이론) 정답률 — 본인 vs 전체 평균. 문제별 본인 정답 + 전체 정답률(get_problem_stats RPC). mock 완료 시 자동 리디렉트. | P1 | ✅ |
 | **5.3.4 주관식 문제** | | | |

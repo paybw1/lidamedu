@@ -79,7 +79,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
     <LatestShell
       category="mcq"
       width="feed"
-      backLink={{ to: "/latest/mcq", label: "객관식 문제 색인으로" }}
+      backLink={{ to: "/latest/mcq", label: "객관식 문제로" }}
       title={pack.title}
       desc={metaParts.join(" · ")}
     >
