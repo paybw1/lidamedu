@@ -24,6 +24,15 @@ import type {
 } from "~/features/problems/labels";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
+// OX 지문 앞 항목 번호 — (가) (ㄱ) [ㄱ] ㄱ. ① 등 — 제거 (정오문제는 지문 하나 단위라 번호가 불필요).
+function stripLeadingMarker(text: string): string {
+  let s = text.trimStart();
+  const marker =
+    /^(?:[([（［][가-힣ㄱ-ㅎ\d]+[)\]）］]|[가-힣ㄱ-ㅎ]\.|[①-⑳]|\d+[.)])\s*/;
+  while (marker.test(s)) s = s.replace(marker, "").trimStart();
+  return s;
+}
+
 export function OxQuestionsPanel({
   items,
   subject,
@@ -135,7 +144,9 @@ export function OxQuestionsPanel({
         </span>
       </div>
 
-      <p className="font-serif text-sm leading-relaxed">{cur.bodyMd}</p>
+      <p className="font-serif text-sm leading-relaxed">
+        {stripLeadingMarker(cur.bodyMd)}
+      </p>
 
       <div className="flex gap-2">
         <Button

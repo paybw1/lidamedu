@@ -12,16 +12,12 @@ export function ExamProblemChip({
   lawCode,
   problemId,
   year,
-  problemNumber,
 }: {
   lawCode: string;
   problemId: string;
   year: number | null;
-  problemNumber: number | null;
 }) {
-  const label = `${year ? `${year} ` : ""}1차${
-    problemNumber ? ` ${problemNumber}번` : ""
-  }`;
+  const label = `${year ? `${year}년 ` : ""}1차`;
   return (
     <Link
       to={`/subjects/${lawCode}/problems/${problemId}`}

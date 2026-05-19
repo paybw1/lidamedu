@@ -471,15 +471,20 @@ function CaseRow({
         ) : null}
         {item.exam1stProblems.length + sorted2nd.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
-            {item.exam1stProblems.map((p) => (
-              <ExamProblemChip
-                key={p.problemId}
-                lawCode={p.lawCode}
-                problemId={p.problemId}
-                year={p.year}
-                problemNumber={p.problemNumber}
-              />
-            ))}
+            {Array.from(
+              new Map(
+                item.exam1stProblems.map((p) => [p.year, p]),
+              ).values(),
+            )
+              .sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
+              .map((p) => (
+                <ExamProblemChip
+                  key={p.problemId}
+                  lawCode={p.lawCode}
+                  problemId={p.problemId}
+                  year={p.year}
+                />
+              ))}
             {sorted2nd.map((y) => (
               <ExamYearChip key={`2-${y}`} round="second" year={y} />
             ))}

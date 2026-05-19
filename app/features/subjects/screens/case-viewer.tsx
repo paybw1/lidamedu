@@ -470,15 +470,20 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   {/* 기출 표시 — 1차는 출제 기출문제 칩(feat-8-024), 2차는 연도 배지 */}
                   {examProblems.length + kase.exam2ndYears.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                      {examProblems.map((ep) => (
-                        <ExamProblemChip
-                          key={ep.problemId}
-                          lawCode={ep.lawCode}
-                          problemId={ep.problemId}
-                          year={ep.year}
-                          problemNumber={ep.problemNumber}
-                        />
-                      ))}
+                      {Array.from(
+                        new Map(
+                          examProblems.map((ep) => [ep.year, ep]),
+                        ).values(),
+                      )
+                        .sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
+                        .map((ep) => (
+                          <ExamProblemChip
+                            key={ep.problemId}
+                            lawCode={ep.lawCode}
+                            problemId={ep.problemId}
+                            year={ep.year}
+                          />
+                        ))}
                       {[...kase.exam2ndYears]
                         .sort((a, b) => a - b)
                         .map((y) => (

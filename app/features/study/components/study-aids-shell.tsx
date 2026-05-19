@@ -1,9 +1,10 @@
 // 학습보조 4개 화면(오답노트·즐겨찾기·메모·하이라이트) 공통 셸.
 // 헤더 + 형제 화면을 잇는 탭 strip + 카운트 요약 strip.
-import type { ComponentType, ReactNode } from "react";
+import { useRef, useState, type ComponentType, type ReactNode } from "react";
 
 import {
   BookmarkIcon,
+  DownloadIcon,
   HighlighterIcon,
   NotebookPenIcon,
   StickyNoteIcon,
@@ -145,23 +146,55 @@ export function StudyAidsShell({
   children: ReactNode;
 }) {
   const ActiveIcon = (TABS.find((t) => t.id === active) ?? TABS[0]).Icon;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (!contentRef.current || exporting) return;
+    setExporting(true);
+    try {
+      const { downloadElementAsPdf } = await import(
+        "~/core/lib/pdf-export.client"
+      );
+      await downloadElementAsPdf(contentRef.current, `학습보조-${title}.pdf`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-7 md:px-8 md:py-9">
-      <header className="mb-[18px] space-y-1.5">
-        <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-          <ActiveIcon className="size-3" />
-          STUDY AIDS · 학습보조
-        </p>
-        <h1 className="text-[28px] font-extrabold tracking-tight">{title}</h1>
-        <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-          {desc}
-        </p>
-      </header>
-      <div className="mb-[18px]">
-        <StudyAidsTabs active={active} counts={tabCounts} />
+      <div ref={contentRef}>
+        <header className="mb-[18px] flex items-start justify-between gap-3">
+          <div className="space-y-1.5">
+            <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <ActiveIcon className="size-3" />
+              STUDY AIDS · 학습보조
+            </p>
+            <h1 className="text-[28px] font-extrabold tracking-tight">
+              {title}
+            </h1>
+            <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+              {desc}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exporting}
+            data-pdf-exclude="true"
+            className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors disabled:opacity-60"
+          >
+            <DownloadIcon className="size-3.5" />
+            {exporting ? "PDF 생성 중…" : "PDF 저장"}
+          </button>
+        </header>
+        <div className="mb-[18px]" data-pdf-exclude="true">
+          <StudyAidsTabs active={active} counts={tabCounts} />
+        </div>
+        {summaryStats ? <CountStrip stats={summaryStats} /> : null}
+        {children}
       </div>
-      {summaryStats ? <CountStrip stats={summaryStats} /> : null}
-      {children}
     </div>
   );
 }
