@@ -537,7 +537,7 @@
 |----|------|:-------:|:---:|
 | feat-10-001 | **Phase A — GS 문항 → 학습과목 주관식 문제은행 승격.** 종료된 GS 회차의 `gs_questions` 를 `problems`(format=subjective, origin=mock)로 일괄 승격. `problems.source_gs_question_id` 역참조(멱등성 키, 부분 유니크). 운영자 GS 회차 편집 화면의 "주관식 문제은행 등록" 패널. 2차 모의고사 흐름 ⑥ 완성 + 빈 주관식 문제은행 충전. 상세: `docs/features/feat-10-001-gs-question-promotion.md`. | P1 | ✅ |
 | feat-10-002 | **Phase B1 — 1차 모의고사 출제·운영.** `mcq_packs` 모의고사 팩 문제 picker(검색·다중선택) + `problems.released_at` mock 가시성 게이트(미공개 mock 문제는 학습과목 비노출) + 팩 단위 "학습과목 공개"(흐름 ⑥). 상세: `docs/features/feat-10-002-mock-exam-authoring.md`. | P1 | ✅ |
-| feat-10-003 | **Phase C — IA 통합.** "모의고사"(1차·2차) · "기출문제" 영역 정리. | P2 | 🔲 |
+| feat-10-003 | **Phase C — 모의고사 IA 정리.** 상단 네비 "모의고사" 메뉴 신설(1차 종합·진도별 + 2차 온라인 GS), GS 를 커뮤니티→모의고사 이동, 학습정보 객관식·주관식 → "기출문제" 개명. 라우트·DB 변경 없음. 상세: `docs/features/feat-10-003-mock-exam-ia.md`. | P2 | ✅ |
 | feat-10-004 | **Phase B2 — 1차 모의고사 채점·합격선·등수.** `mcq_packs.pass_score`(합격선) + `mcq_pack_attempt_stats` 등수 RPC. 팩 응시 결과에 점수·합격 판정·등수(백분위·z-score). 종합·진도별 모의고사 공통(둘 다 팩 단위). 상세: `docs/features/feat-10-004-mock-exam-scoring.md`. | P1 | ✅ |
 | feat-10-005 | **다과목 통합 1차 모의고사.** `mcq_exams`(시험=팩 묶음) + 다중 세션 응시 + 과목별 과락 + 전 과목 평균 합격 판정. 산업재산권법+민법+자연과학 3교시 통합. | P2 | 🔲 |
 

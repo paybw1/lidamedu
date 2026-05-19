@@ -51,8 +51,8 @@ type SimpleLink = { label: string; to: string };
 const CHIP_CLASS =
   "inline-flex items-center rounded-full border border-black/[0.06] bg-[#FAFAFA] px-[13px] py-[7px] text-[13px] font-semibold leading-none tracking-[-0.01em] text-foreground no-underline outline-none transition-all duration-150 hover:border-transparent hover:bg-[#2D5BA8] hover:text-white focus-visible:border-transparent focus-visible:bg-[#2D5BA8] focus-visible:text-white dark:border-border dark:bg-muted";
 
-// 상단 네비게이션 7개 top-level (좌→우):
-// 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습보조▾ · 학습정보▾ · 커뮤니티▾ · 운영자(flat)
+// 상단 네비게이션 8개 top-level (좌→우):
+// 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습보조▾ · 학습정보▾ · 모의고사▾ · 커뮤니티▾ · 운영자(flat)
 
 const leadingFlats: SimpleLink[] = [
   { label: "대시보드", to: "/dashboard" },
@@ -68,8 +68,8 @@ const studyItems: SimpleLink[] = [
 const latestItems: SimpleLink[] = [
   { label: "법 개정", to: "/latest/laws" },
   { label: "최근 판례", to: "/latest/cases" },
-  { label: "객관식 문제", to: "/latest/mcq" },
-  { label: "주관식 문제", to: "/latest/essay" },
+  { label: "객관식 기출문제", to: "/latest/mcq?kind=past_exam" },
+  { label: "주관식 기출문제", to: "/latest/essay" },
   { label: "논문", to: "/latest/papers" },
   { label: "추록·정오표", to: "/latest/book-updates" },
 ];
@@ -81,11 +81,17 @@ const studyAidItems: SimpleLink[] = [
   { label: "하이라이트", to: "/study/highlights" },
 ];
 
+// 1차는 종합/진도별로 분리 — mcq_packs.kind 가 이미 구분, 색인 loader 의 ?kind= 활용.
+const mockExamItems: SimpleLink[] = [
+  { label: "1차 종합 모의고사", to: "/latest/mcq?kind=mock_full" },
+  { label: "1차 진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
+  { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
+];
+
 const communityItems: SimpleLink[] = [
   { label: "공지사항", to: "/announcements" },
   { label: "자유게시판", to: "/community/free" },
   { label: "스터디 모집", to: "/community/study" },
-  { label: "온라인 GS", to: "/gs" },
   { label: "Q&A", to: "/qna" },
   { label: "합격 후기", to: "/community/review" },
 ];
@@ -389,6 +395,7 @@ export function NavigationBar({
 
               <SimpleDropdown label="학습보조" items={studyAidItems} />
               <SimpleDropdown label="학습정보" items={latestItems} />
+              <SimpleDropdown label="모의고사" items={mockExamItems} />
               <SimpleDropdown label="커뮤니티" items={communityItems} />
 
               {trailingFlats.map((m) => (
@@ -461,6 +468,7 @@ export function NavigationBar({
 
               <MobileGroup label="학습보조" items={studyAidItems} />
               <MobileGroup label="학습정보" items={latestItems} />
+              <MobileGroup label="모의고사" items={mockExamItems} />
               <MobileGroup label="커뮤니티" items={communityItems} />
 
               {trailingFlats.map((m) => (
