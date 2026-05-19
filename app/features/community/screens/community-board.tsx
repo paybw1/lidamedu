@@ -1,0 +1,149 @@
+// 커뮤니티 게시판 목록 — `/community/:board`. feat-6-002.
+import {
+  MessageSquarePlusIcon,
+  PinIcon,
+  SearchIcon,
+  SearchXIcon,
+} from "lucide-react";
+import { Form, Link, data, redirect } from "react-router";
+
+import { Button } from "~/core/components/ui/button";
+import { cn } from "~/core/lib/utils";
+import makeServerClient from "~/core/lib/supa-client.server";
+import { CommunityShell } from "~/features/community/components/community-shell";
+import {
+  Chip,
+  EmptyState,
+  relativeKo,
+} from "~/features/community/components/community-ui";
+
+import { BoardTabs, BOARD_ICON } from "../components/board-tabs";
+import { BOARD_DESC, BOARD_LABEL, communityBoardSchema } from "../labels";
+import { listPosts } from "../queries.server";
+
+import type { Route } from "./+types/community-board";
+
+export const meta: Route.MetaFunction = ({ data: loaderData }) => [
+  {
+    title: `${loaderData ? BOARD_LABEL[loaderData.board] : "커뮤니티"} | Lidam Patent Attorney Academy`,
+  },
+];
+
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const boardParse = communityBoardSchema.safeParse(params.board);
+  if (!boardParse.success) {
+    throw data("게시판을 찾을 수 없습니다", { status: 404 });
+  }
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) {
+    throw redirect("/login");
+  }
+  const query = new URL(request.url).searchParams.get("q") ?? "";
+  const posts = await listPosts(client, { board: boardParse.data, query });
+  return { board: boardParse.data, posts, query, currentUserId: user.id };
+}
+
+export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
+  const { board, posts, query, currentUserId } = loaderData;
+  const Icon = BOARD_ICON[board];
+  const filterActive = query.trim().length > 0;
+
+  return (
+    <CommunityShell
+      category="community"
+      title={BOARD_LABEL[board]}
+      desc={BOARD_DESC[board]}
+      headerRight={
+        <Button asChild size="sm" className="h-9 rounded-full">
+          <Link to={`/community/${board}/new`} viewTransition>
+            <MessageSquarePlusIcon className="size-4" /> 글쓰기
+          </Link>
+        </Button>
+      }
+    >
+      <BoardTabs active={board} />
+
+      <Form
+        method="get"
+        className="border-border bg-card mb-3.5 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-sm"
+      >
+        <div className="relative min-w-[200px] flex-1 basis-[240px] sm:max-w-[320px]">
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-3.5 -translate-y-1/2" />
+          <input
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder={`${BOARD_LABEL[board]} 검색`}
+            aria-label="게시글 검색"
+            className="bg-muted/60 focus:bg-background focus:border-primary h-9 w-full rounded-full border border-transparent pr-3 pl-9 text-[13px] outline-none"
+          />
+        </div>
+        <Button type="submit" size="sm" className="h-9 rounded-full">
+          검색
+        </Button>
+      </Form>
+
+      {posts.length === 0 ? (
+        <EmptyState
+          icon={filterActive ? SearchXIcon : Icon}
+          tone={filterActive ? "subdued" : "neutral"}
+          title={
+            filterActive ? "조건에 맞는 글이 없습니다" : "아직 글이 없습니다"
+          }
+          body={
+            filterActive
+              ? "검색어를 바꿔 다시 찾아보세요."
+              : "첫 글을 남겨 게시판을 열어보세요."
+          }
+        />
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {posts.map((post) => {
+            const isMine = post.author?.id === currentUserId;
+            return (
+              <li key={post.postId}>
+                <Link
+                  to={`/community/${board}/${post.postId}`}
+                  viewTransition
+                  className={cn(
+                    "block rounded-2xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md",
+                    post.isPinned
+                      ? "border-primary/30 bg-primary/[0.04]"
+                      : "border-border bg-card hover:border-primary/30",
+                  )}
+                >
+                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                    {post.isPinned ? (
+                      <Chip tone="primary">
+                        <PinIcon className="size-2.5" /> 고정
+                      </Chip>
+                    ) : null}
+                    {board === "study" ? (
+                      <Chip tone={post.closedAt ? "neutral" : "emerald"}>
+                        {post.closedAt ? "모집 마감" : "모집 중"}
+                      </Chip>
+                    ) : null}
+                    {isMine ? <Chip tone="outline">내 글</Chip> : null}
+                    <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">
+                      {relativeKo(post.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-[15px] leading-snug font-bold tracking-tight">
+                    {post.title}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-[13px]">
+                    {post.author?.name ?? "알 수 없음"}
+                    {post.commentCount > 0 ? ` · 댓글 ${post.commentCount}` : ""}
+                  </p>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </CommunityShell>
+  );
+}

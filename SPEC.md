@@ -429,7 +429,8 @@
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
 | feat-6-001 | 커뮤니티 메뉴 라벨 + Placeholder 화면 — `/community` ComingSoon 컴포넌트 사용. | P0 | ✅ |
-| feat-6-XXX | 게시판/Q&A/합격수기 | P1+ | 🔲 |
+| feat-6-002 | 커뮤니티 게시판 3종 (자유게시판·스터디 모집·합격 후기) — 단일 `community_posts`+`community_post_comments`+`board` enum. `/community` 허브 + `/community/:board` 목록·검색 + 작성/수정 + 상세·댓글. RLS 하이브리드(인증 전체 읽기 + 본인 쓰기 + manager 모더레이션·고정), soft delete, `public_profiles` 뷰로 작성자 표시. 상세: `docs/features/feat-6-002-community-boards.md`. | P1 | ✅ |
+| feat-6-XXX | (잔여) 좋아요·첨부·알림·페이지네이션 등 게시판 v2 | P2 | 🔲 |
 
 ---
 
@@ -616,7 +617,8 @@
 | 판례 상세 | `/subjects/:subject/cases/:caseId` | feat-4-A-205 |
 | 문제 풀이 Runner | `/subjects/:subject/quiz/runner` | feat-4-A-304~306 |
 | 온라인 GS | `/gs` | feat-5-001 |
-| 커뮤니티 | `/community` | feat-6-001 |
+| 커뮤니티 허브 | `/community` | feat-6-002 |
+| 커뮤니티 게시판 | `/community/:board` · `/:board/new` · `/:board/:postId` | feat-6-002 |
 | 운영자 진입 | `/admin` | feat-7-001 |
 | 콘텐츠 관리 허브 | `/admin/content` | feat-7-002 |
 | 법 개정 워크스페이스 | `/admin/content/laws/:lawCode/revisions/:id` | feat-7-004 |

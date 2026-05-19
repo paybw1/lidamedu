@@ -1,11 +1,15 @@
-// 커뮤니티 허브 — 게시판 준비 중 상태. loader 없음 (보드 데이터 모델 미정).
-// 디자인 키트 lidam-community/CommunityPlaceholderScreen.
+// 커뮤니티 허브 — 게시판 3종 카드 + 각 최신글. feat-6-002.
+import { MessageSquarePlusIcon, PinIcon } from "lucide-react";
+import { Link, redirect } from "react-router";
 
-import { GraduationCapIcon, MessageSquareTextIcon, UsersIcon } from "lucide-react";
-import type { ComponentType } from "react";
-
+import { Button } from "~/core/components/ui/button";
+import makeServerClient from "~/core/lib/supa-client.server";
 import { CommunityShell } from "~/features/community/components/community-shell";
-import { Chip, EmptyState } from "~/features/community/components/community-ui";
+import { relativeKo } from "~/features/community/components/community-ui";
+
+import { BOARD_ICON } from "../components/board-tabs";
+import { BOARD_DESC, BOARD_LABEL, COMMUNITY_BOARDS } from "../labels";
+import { listPosts } from "../queries.server";
 
 import type { Route } from "./+types/community";
 
@@ -13,63 +17,111 @@ export const meta: Route.MetaFunction = () => [
   { title: "커뮤니티 | Lidam Patent Attorney Academy" },
 ];
 
-interface AreaPreview {
-  label: string;
-  desc: string;
-  Icon: ComponentType<{ className?: string }>;
+export async function loader({ request }: Route.LoaderArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) {
+    throw redirect("/login");
+  }
+  const [free, study, review] = await Promise.all([
+    listPosts(client, { board: "free", limit: 5 }),
+    listPosts(client, { board: "study", limit: 5 }),
+    listPosts(client, { board: "review", limit: 5 }),
+  ]);
+  return { postsByBoard: { free, study, review } };
 }
 
-// 곧 열릴 3개 영역 — 자유게시판 / 스터디 모집 / 합격 후기.
-const UPCOMING_AREAS: AreaPreview[] = [
-  {
-    label: "자유게시판",
-    desc: "수험 정보와 일상을 나누는 공간",
-    Icon: MessageSquareTextIcon,
-  },
-  {
-    label: "스터디 모집",
-    desc: "함께 공부할 스터디원을 찾는 공간",
-    Icon: UsersIcon,
-  },
-  {
-    label: "합격 후기",
-    desc: "합격자의 학습 전략과 경험담",
-    Icon: GraduationCapIcon,
-  },
-];
+export default function Community({ loaderData }: Route.ComponentProps) {
+  const { postsByBoard } = loaderData;
 
-export default function Community() {
   return (
     <CommunityShell
       category="community"
       title="커뮤니티"
-      desc="수험생끼리 학습 자료와 후기를 나눌 수 있는 게시판은 준비 중입니다. 곧 만나요."
+      desc="수험생끼리 학습 자료와 후기를 나누는 게시판입니다 — 자유게시판 · 스터디 모집 · 합격 후기."
     >
-      <EmptyState
-        icon={UsersIcon}
-        title="커뮤니티는 준비 중입니다"
-        body="수험생끼리 학습 자료와 후기를 나눌 수 있는 게시판을 준비하고 있습니다. 곧 자유게시판 · 스터디 모집 · 합격 후기 세 영역으로 열립니다."
-      />
+      <div className="grid gap-4 md:grid-cols-3">
+        {COMMUNITY_BOARDS.map((board) => {
+          const Icon = BOARD_ICON[board];
+          const posts = postsByBoard[board];
+          return (
+            <section
+              key={board}
+              className="border-border bg-card flex flex-col rounded-2xl border p-4 shadow-sm"
+            >
+              <div className="flex items-center gap-2">
+                <span className="bg-violet-500/15 text-violet-700 dark:text-violet-300 inline-flex size-9 shrink-0 items-center justify-center rounded-xl">
+                  <Icon className="size-4.5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-[15px] font-bold tracking-tight">
+                    {BOARD_LABEL[board]}
+                  </h2>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {BOARD_DESC[board]}
+                  </p>
+                </div>
+              </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {UPCOMING_AREAS.map((area) => (
-          <div
-            key={area.label}
-            aria-disabled
-            className="border-border bg-card pointer-events-none flex flex-col gap-2 rounded-2xl border p-4 opacity-70 select-none"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="bg-violet-500/15 text-violet-700 dark:text-violet-300 inline-flex size-9 items-center justify-center rounded-xl">
-                <area.Icon className="size-4.5" />
-              </span>
-              <Chip tone="violet">준비 중</Chip>
-            </div>
-            <p className="text-[15px] font-bold tracking-tight">{area.label}</p>
-            <p className="text-muted-foreground text-[13px] leading-relaxed">
-              {area.desc}
-            </p>
-          </div>
-        ))}
+              <ul className="mt-3 flex flex-1 flex-col gap-0.5">
+                {posts.length === 0 ? (
+                  <li className="text-muted-foreground py-6 text-center text-[13px]">
+                    아직 글이 없습니다
+                  </li>
+                ) : (
+                  posts.map((post) => (
+                    <li key={post.postId}>
+                      <Link
+                        to={`/community/${board}/${post.postId}`}
+                        viewTransition
+                        className="hover:bg-muted/60 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] transition-colors"
+                      >
+                        {post.isPinned ? (
+                          <PinIcon className="text-primary size-3 shrink-0" />
+                        ) : null}
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {post.title}
+                        </span>
+                        {post.commentCount > 0 ? (
+                          <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
+                            [{post.commentCount}]
+                          </span>
+                        ) : null}
+                        <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
+                          {relativeKo(post.createdAt)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))
+                )}
+              </ul>
+
+              <div className="border-border mt-3 flex items-center justify-between border-t pt-3">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 rounded-full text-xs"
+                >
+                  <Link to={`/community/${board}`} viewTransition>
+                    전체 보기
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="h-8 rounded-full text-xs"
+                >
+                  <Link to={`/community/${board}/new`} viewTransition>
+                    <MessageSquarePlusIcon className="size-3.5" /> 글쓰기
+                  </Link>
+                </Button>
+              </div>
+            </section>
+          );
+        })}
       </div>
     </CommunityShell>
   );

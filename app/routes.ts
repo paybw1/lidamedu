@@ -63,6 +63,10 @@ export default [
       route("/attempt", "features/recitation/api/attempt.tsx"),
     ]),
     ...prefix("/qna", [route("/thread", "features/qna/api/thread.tsx")]),
+    ...prefix("/community", [
+      route("/post", "features/community/api/post.tsx"),
+      route("/comment", "features/community/api/comment.tsx"),
+    ]),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
@@ -265,6 +269,23 @@ export default [
       ),
       route("/gs/points", "features/gs/screens/gs-points.tsx"),
       route("/community", "features/community/screens/community.tsx"),
+      route(
+        "/community/:board",
+        "features/community/screens/community-board.tsx",
+      ),
+      route(
+        "/community/:board/new",
+        "features/community/screens/community-post-new.tsx",
+      ),
+      route(
+        "/community/:board/:postId",
+        "features/community/screens/community-post-detail.tsx",
+      ),
+      route(
+        "/community/:board/:postId/edit",
+        "features/community/screens/community-post-new.tsx",
+        { id: "community-post-edit" },
+      ),
       route(
         "/announcements",
         "features/announcements/screens/announcements-inbox.tsx",

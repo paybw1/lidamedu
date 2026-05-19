@@ -82,10 +82,12 @@ const studyAidItems: SimpleLink[] = [
 ];
 
 const communityItems: SimpleLink[] = [
-  { label: "온라인 GS", to: "/gs" },
-  { label: "커뮤니티", to: "/community" },
-  { label: "Q&A", to: "/qna" },
   { label: "공지사항", to: "/announcements" },
+  { label: "자유게시판", to: "/community/free" },
+  { label: "스터디 모집", to: "/community/study" },
+  { label: "온라인 GS", to: "/gs" },
+  { label: "Q&A", to: "/qna" },
+  { label: "합격 후기", to: "/community/review" },
 ];
 
 const trailingFlats: SimpleLink[] = [

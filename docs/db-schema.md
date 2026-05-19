@@ -77,6 +77,7 @@ notification_queue                    (이메일·알림)
 
 - **콘텐츠 (조문/판례/문제/논문/연관관계)**: 인증 사용자 전체 읽기, 강사·운영자 쓰기
 - **사용자 학습 데이터 (메모/하이라이트/즐겨찾기/Q&A/시도)**: 본인만 R/W. 강사는 자기 반 학생 데이터 옵션 (학생 동의 시)
+- **커뮤니티 게시판 (글/댓글)**: 인증 사용자 전체 읽기 + 본인만 작성 + 본인·운영자(manager↑) 수정·삭제 (하이브리드). §21
 - **관리 데이터 (cohort/notification)**: 운영자만
 
 ### 1.4 Drizzle 미사용 — Supabase 클라이언트 직접
@@ -872,3 +873,55 @@ create index lr_target on lecture_resources(target_type, target_id);
 4. **RLS 미적용** — 신규 테이블 만들 때 `enable row level security` + 정책을 같이 작성. 누락 시 service_role 만 접근 가능 → 에러로 빨리 발견.
 5. **ENUM 변경의 어려움** — PostgreSQL ENUM 은 값 추가는 쉽지만 **삭제·이름 변경이 어렵다**. 보수적으로 시작.
 6. **양방향 link 중복 저장** — 무방향 정규화 (`article_a < article_b`) 트리거로 강제. `docs/relations.md` 참조.
+
+---
+
+## 21. community_posts / community_post_comments (커뮤니티 게시판)
+
+`feat-6-002` — 자유게시판 · 스터디 모집 · 합격 후기 3종을 단일 테이블 + `board` enum 으로 통합.
+
+```sql
+create type public.community_board as enum ('free', 'study', 'review');
+
+create table public.community_posts (
+  post_id    uuid primary key default gen_random_uuid(),
+  board      public.community_board not null,
+  author_id  uuid references profiles(profile_id) on delete set null,
+  title      text not null check (char_length(title) between 1 and 200),
+  body_md    text not null check (char_length(body_md) between 1 and 20000),
+  is_pinned  boolean not null default false,   -- 운영자 전용 (트리거 강제)
+  closed_at  timestamptz,                      -- study 게시판 모집 마감 (null = 모집 중)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz                       -- soft delete
+);
+
+create table public.community_post_comments (
+  comment_id uuid primary key default gen_random_uuid(),
+  post_id    uuid not null references community_posts(post_id) on delete cascade,
+  author_id  uuid references profiles(profile_id) on delete set null,
+  body_md    text not null check (char_length(body_md) between 1 and 5000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+```
+
+**RLS** (§1.3 커뮤니티 패턴): 두 테이블 모두 — `select` 인증 사용자 전체(`deleted_at is null`) / `insert` 본인(`author_id = auth.uid()`) / `update` 본인 또는 `private.is_manager`. `delete` 정책 없음 — soft delete 만.
+
+**트리거**: `set_updated_at` (공용) + `community_posts_guard_pin` — `is_pinned` 변경은 `private.is_manager` 만 허용 (RLS 는 컬럼 단위 제어 불가하므로 트리거로 강제).
+
+### 21.1 public_profiles 뷰
+
+`profiles` RLS 가 "본인 행만 조회" 라 게시판에서 타인 작성자명이 보이지 않는다. 안전 컬럼만 노출하는 뷰로 해결.
+
+```sql
+create view public.public_profiles
+  with (security_invoker = false) as
+  select profile_id, name, avatar_url, role from public.profiles;
+grant select on public.public_profiles to authenticated;  -- anon 제외
+```
+
+`security_invoker = false` → 뷰 소유자 권한으로 실행돼 `profiles` RLS 를 우회하되, 노출 컬럼은 4종뿐(전화·동의 등 비공개 컬럼 미노출). 게시판 쿼리는 글·댓글의 `author_id` 를 모아 이 뷰를 batch 조회한다. Supabase Security Advisor 가 "security definer view" 로 표시하지만 의도된 설계.
+
+상세: `docs/features/feat-6-002-community-boards.md`.
