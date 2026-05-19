@@ -61,6 +61,11 @@ export interface PaymentRow {
 }
 
 export const FEATURE_LABEL: Record<string, string> = {
+  // feat-8-008 영역 플래그 — 3-tier 게이팅 단위.
+  area_subjects: "학습과목 — 조문·판례·문제 학습",
+  area_study_aids: "학습보조 — 오답노트·하이라이트·암기",
+  area_study_mgmt: "학습관리 — 대시보드·진도·합격 진단·과제",
+  area_mock_exams: "모의고사 — 1·2차 모의고사",
   base_learning: "기본 학습 (조문·판례·문제)",
   passer_benchmarks: "합격자 평균 대비 비교",
   recommended_actions: "자동 추천 액션",

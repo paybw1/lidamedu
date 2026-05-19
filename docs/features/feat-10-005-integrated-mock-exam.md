@@ -159,18 +159,23 @@ returns table(
 
 ## 7. 화면 / 라우트
 
+> **IA 보정** — 출제 도구(시험 CRUD + 교시 구성)는 처음엔 학생 화면(색인·러너)에 `canEdit` 조건부로 얹혀 있었으나, 운영자 전용 화면(`/admin/mcq-exams`)으로 분리했다. 학생 화면 둘은 순수 응시 전용이 됐다. API(`/api/admin/mcq-exam`)·쿼리·`ExamPapersPanel` 은 그대로 재사용.
+
 ```
-/latest/mcq/exams                            통합 모의고사 색인        mcq-exam-index.tsx
-/latest/mcq/exam/:examId                     시험 러너 / 허브          mcq-exam-runner.tsx
-/latest/mcq/exam/:examId/result/:attemptId   시험 결과                 mcq-exam-result.tsx
+/latest/mcq/exams                            통합 모의고사 색인(학생)   latest/screens/mcq-exam-index.tsx
+/latest/mcq/exam/:examId                     시험 러너 / 허브(학생)     latest/screens/mcq-exam-runner.tsx
+/latest/mcq/exam/:examId/result/:attemptId   시험 결과(학생)            latest/screens/mcq-exam-result.tsx
+/admin/mcq-exams                             출제 — 시험 목록(운영자)   admin/screens/admin-mcq-exams.tsx
+/admin/mcq-exams/:examId                     출제 — 시험 편집 + 교시    admin/screens/admin-mcq-exam-edit.tsx
 /api/mcq-exam/start                          응시 시작 (attempt insert) mcq-exams/api/start.tsx
 /api/admin/mcq-exam                          시험 CRUD + 교시 매핑      admin/api/mcq-exam.tsx
 ```
 
-- **색인** `mcq-exam-index.tsx` — 통합 모의고사 목록(관보식 표, `/latest/mcq` 와 동일 톤). staff 는 시험 추가/수정 + 교시(팩) picker.
-- **러너** `mcq-exam-runner.tsx` — 시험 소개(교시 목록·합격 규칙·총 문항) + 진행 중 응시의 교시별 상태·다음 교시 버튼.
-- **결과** `mcq-exam-result.tsx` — 평균 점수 · 합격/불합격 badge(과락 시 사유 명시) · 등수/백분위/z · 교시별 점수 표. 각 교시 행에서 기존 팩 결과(`/latest/mcq/:packId/result/:sessionId`)로 drill-in — 유형·지문별 분석 재사용.
-- **운영자 폼** — 시험 CRUD(제목·연도·회차·`pass_average`·공개) + 교시 매핑: mock 종류 팩을 골라 ord·`fail_floor` 지정. 교시 팩은 exam 모드 응시가 가능해야 하므로 `isMockKind` 만 허용.
+- **색인(학생)** `mcq-exam-index.tsx` — 통합 모의고사 목록(관보식 표, `/latest/mcq` 와 동일 톤). 명칭 클릭 → 러너. 읽기 전용 — 출제·편집 UI 없음.
+- **러너(학생)** `mcq-exam-runner.tsx` — 시험 소개(교시 목록·합격 규칙·총 문항) + 진행 중 응시의 교시별 상태·다음 교시 버튼.
+- **결과(학생)** `mcq-exam-result.tsx` — 평균 점수 · 합격/불합격 badge(과락 시 사유 명시) · 등수/백분위/z · 교시별 점수 표. 각 교시 행에서 기존 팩 결과(`/latest/mcq/:packId/result/:sessionId`)로 drill-in — 유형·지문별 분석 재사용.
+- **출제 — 시험 목록(운영자)** `admin-mcq-exams.tsx` — `AdminShell`(객관식 문제 클러스터). 전체 시험(공개·비공개) 목록 + 인라인 "시험 추가". 추가 성공 시 편집 화면으로 이동.
+- **출제 — 시험 편집(운영자)** `admin-mcq-exam-edit.tsx` — 시험 CRUD(제목·연도·회차·`pass_average`·공개, 공용 `ExamForm`) + 교시 매핑(`ExamPapersPanel`): mock 종류 팩을 골라 ord·`fail_floor` 지정. 교시 팩은 exam 모드 응시가 가능해야 하므로 `isMockKind` 만 허용. 삭제 시 목록으로 redirect.
 - **라우트 순서**: `/latest/mcq/exams`(1세그먼트 "exams")가 `/latest/mcq/:packId` 와 충돌 → exam 라우트 블록을 `:packId` 라우트보다 **먼저** 선언.
 
 ## 8. 결정 필요 사항 (검토 시 확인)
@@ -186,7 +191,7 @@ returns table(
 2. **쿼리** — `mcq-exams/queries.server.ts`: 시험 CRUD, 교시 매핑, `createExamAttempt`, `getExamAttemptBreakdown`(§6.2), RPC 래퍼, `finalizeExamAttemptIfComplete`
 3. **세션 묶기** — `createQuizSession` 에 `examAttemptId` opt, `/api/mcq-pack/start` 에 `examAttemptId` 검증·게이트(§5)
 4. **시트 복귀** — `mcq-pack-sheet` 제출 경로: exam-attempt 세션이면 attempt finalize + 러너 redirect
-5. **운영자** — `/api/admin/mcq-exam` 액션 + 색인 화면의 시험 CRUD·교시 picker
+5. **운영자** — `/api/admin/mcq-exam` 액션 + `/admin/mcq-exams` 출제 화면(목록 + 시험별 편집·교시 picker)
 6. **학생 화면** — `mcq-exam-index` · `mcq-exam-runner` · `mcq-exam-result`
 7. **라우트·네비** — `routes.ts`(순서 주의) + `navigation-bar.tsx` `mockExamItems`
 8. **typecheck + 문서** — `SPEC.md` feat-10-005 ✅, `docs/db-schema.md`

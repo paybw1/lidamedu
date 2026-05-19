@@ -22,6 +22,7 @@ import {
   getStaffRole,
   listRecentLawRevisions,
 } from "~/features/laws/queries.server";
+import { getActiveSubscription } from "~/features/subscriptions/queries.server";
 import { listTopBookmarks } from "~/features/annotations/queries.server";
 import {
   LAW_SUBJECT_SLUGS,
@@ -88,6 +89,7 @@ import {
   RecentCasesCard,
   RecentRevisionsCard,
 } from "~/features/dashboard/components/dash-feed";
+import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
 
 export const meta: Route.MetaFunction = () => [{ title: "대시보드 | Lidam Patent Attorney Academy" }];
 
@@ -258,8 +260,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   // 운영관리 메뉴는 staff(강사·관리자·원장)에게만 — 대시보드 사이드바 게이트.
   const isStaff = (await getStaffRole(client, user.id)) !== null;
 
+  // feat-8-008 — 회원3(area_study_mgmt) 만 전체 분석 노출. staff 면제.
+  const sub = await getActiveSubscription(client, user.id);
+  const hasMgmt = isStaff || sub.features.includes("area_study_mgmt");
+  const planCode = sub.planCode;
+
   return {
     isStaff,
+    hasMgmt,
+    planCode,
     weekTrack,
     passerBenchmark,
     passerSummaries,
@@ -337,6 +346,15 @@ function lawName(code: string): string {
 }
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
+  // feat-8-008 — 회원3 미만(학습관리 권한 없음)은 축소판으로.
+  if (!loaderData.hasMgmt) {
+    return (
+      <ReducedDashboard
+        name={loaderData.user.name}
+        planCode={loaderData.planCode}
+      />
+    );
+  }
   const {
     user,
     kpis,

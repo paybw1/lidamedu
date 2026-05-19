@@ -37,6 +37,7 @@ import {
   isMockKind,
 } from "~/features/mcq-packs/labels";
 import { getPackById } from "~/features/mcq-packs/queries.server";
+import { requireFeature } from "~/features/subscriptions/queries.server";
 import {
   getQuizSession,
   getSessionAttemptsMap,
@@ -63,6 +64,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const pack = await getPackById(client, params.packId);
   if (!pack) throw data("Pack not found", { status: 404 });
+  // feat-8-008: 모의고사 종류 팩은 area_mock_exams 게이트 (회원3 / staff 면제).
+  if (isMockKind(pack.kind)) {
+    await requireFeature(client, user.id, "area_mock_exams");
+  }
 
   const session = await getQuizSession(client, user.id, params.sessionId);
   if (!session) throw data("Session not found", { status: 404 });

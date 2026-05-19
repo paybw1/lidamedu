@@ -8,6 +8,7 @@ import { NavigationBar } from "../components/navigation-bar";
 import makeServerClient from "../lib/supa-client.server";
 import { getUnreadCount } from "~/features/notifications/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { getActiveSubscription } from "~/features/subscriptions/queries.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -17,11 +18,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     const {
       data: { user },
     } = await client.auth.getUser();
-    if (!user) return { isStaff: false, unread: 0 };
+    if (!user)
+      return { isStaff: false, unread: 0, features: [] as string[] };
     const role = await getStaffRole(client, user.id);
     const audience: "staff" | "student" = role ? "staff" : "student";
-    const unread = await getUnreadCount(client, user.id, audience);
-    return { isStaff: role !== null, unread };
+    // feat-8-008 — 영역 플래그를 함께 surface (네비 잠금 표시용).
+    const [unread, sub] = await Promise.all([
+      getUnreadCount(client, user.id, audience),
+      getActiveSubscription(client, user.id),
+    ]);
+    return { isStaff: role !== null, unread, features: sub.features };
   })();
   return { userPromise, inboxPromise };
 }
@@ -56,6 +62,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       inboxUnread={inbox.unread}
                       inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
                       isStaff={inbox.isStaff}
+                      features={inbox.features}
                     />
                   )}
                 </Await>

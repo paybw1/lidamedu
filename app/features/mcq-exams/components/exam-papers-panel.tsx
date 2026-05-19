@@ -1,6 +1,7 @@
 // 통합 모의고사 교시 구성 패널 — staff 전용 (feat-10-005).
-// 시험 러너 하단에 노출. 교시(공개 모의 팩) 추가 · 순서/과락선 수정 · 삭제.
-// 모든 뮤테이션은 /api/admin/mcq-exam (fetcher) — 성공 시 loader 재검증.
+// /admin/mcq-exams/:examId 편집 화면에 노출. 교시(공개 모의 팩) 추가 ·
+// 순서/과락선 수정 · 삭제. 모든 뮤테이션은 /api/admin/mcq-exam (fetcher) —
+// 성공 시 loader 재검증.
 
 import { PlusIcon, SaveIcon, Trash2Icon } from "lucide-react";
 import { useEffect } from "react";
@@ -8,7 +9,7 @@ import { useFetcher, useLocation, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
-import type { ExamRunnerPaper } from "~/features/mcq-exams/labels";
+import type { McqExamPaper } from "~/features/mcq-exams/labels";
 import { MCQ_PACK_SUBJECT_LABELS } from "~/features/mcq-packs/labels";
 
 interface AvailablePack {
@@ -47,7 +48,7 @@ export function ExamPapersPanel({
   availablePacks,
 }: {
   examId: string;
-  papers: ExamRunnerPaper[];
+  papers: McqExamPaper[];
   availablePacks: AvailablePack[];
 }) {
   return (
@@ -66,11 +67,11 @@ export function ExamPapersPanel({
         {papers.length === 0 ? (
           <p className="text-muted-foreground text-xs">아직 교시가 없습니다.</p>
         ) : (
-          papers.map((rp, idx) => (
+          papers.map((paper, idx) => (
             <PaperAdminRow
-              key={rp.paper.packId}
+              key={paper.packId}
               examId={examId}
-              runnerPaper={rp}
+              paper={paper}
               index={idx + 1}
             />
           ))
@@ -83,14 +84,13 @@ export function ExamPapersPanel({
 
 function PaperAdminRow({
   examId,
-  runnerPaper,
+  paper,
   index,
 }: {
   examId: string;
-  runnerPaper: ExamRunnerPaper;
+  paper: McqExamPaper;
   index: number;
 }) {
-  const { paper } = runnerPaper;
   const saveFetcher = useFetcher<{ ok?: true; error?: string }>();
   const delFetcher = useFetcher<{ ok?: true; error?: string }>();
   useRevalidateOnOk(saveFetcher.state, saveFetcher.data);

@@ -3,7 +3,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { redirect } from "react-router";
+
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 
 import type {
   PaymentRow,
@@ -77,7 +80,9 @@ export async function getPlanByCode(
 export interface ActiveSubscriptionInfo {
   hasActive: boolean;
   subscription: UserSubscription | null;
-  features: string[]; // 활성 구독 + 무료 플랜 기능 합집합
+  /** 유효 플랜 코드 — 'free' | 'pro_monthly' | 'cohort'. cohort 멤버십(구독 row 없음)도 반영. feat-8-008. */
+  planCode: string;
+  features: string[]; // 활성 구독/cohort/무료 플랜 기능
 }
 
 // 사용자의 활성 구독 + 기능 set. 무료 사용자는 free 플랜 features.
@@ -112,11 +117,36 @@ export async function getActiveSubscription(
         status: sub.status as SubscriptionStatus,
         paymentId: sub.payment_id,
       },
+      planCode: sub.subscription_plans.code,
       features: Array.isArray(sub.subscription_plans.features)
         ? (sub.subscription_plans.features as string[])
         : [],
     };
   }
+
+  // feat-8-008: 활성 cohort 멤버 = 종합반(회원3) — 구독 row 없이 cohort 플랜 기능 부여.
+  const { data: cohortMember } = await client
+    .from("cohort_members")
+    .select("cohort_id")
+    .eq("profile_id", userId)
+    .limit(1)
+    .maybeSingle();
+  if (cohortMember) {
+    const { data: cohortPlan } = await client
+      .from("subscription_plans")
+      .select("features")
+      .eq("code", "cohort")
+      .maybeSingle();
+    return {
+      hasActive: true,
+      subscription: null,
+      planCode: "cohort",
+      features: Array.isArray(cohortPlan?.features)
+        ? (cohortPlan.features as string[])
+        : [],
+    };
+  }
+
   // free plan features
   const { data: freePlan } = await client
     .from("subscription_plans")
@@ -126,7 +156,12 @@ export async function getActiveSubscription(
   const freeFeatures = Array.isArray(freePlan?.features)
     ? (freePlan.features as string[])
     : [];
-  return { hasActive: false, subscription: null, features: freeFeatures };
+  return {
+    hasActive: false,
+    subscription: null,
+    planCode: "free",
+    features: freeFeatures,
+  };
 }
 
 export async function hasFeature(
@@ -136,6 +171,21 @@ export async function hasFeature(
 ): Promise<boolean> {
   const sub = await getActiveSubscription(client, userId);
   return sub.features.includes(feature);
+}
+
+// feat-8-008: 영역 게이트 — 라우트 그룹 loader 에서 호출. 해당 영역 기능이 없으면
+// /pricing?locked= 으로 redirect. staff(강사/관리자/원장)는 구독 게이팅 면제.
+export async function requireFeature(
+  client: SupabaseClient<Database>,
+  userId: string,
+  feature: string,
+): Promise<void> {
+  const role = await getStaffRole(client, userId);
+  if (role) return;
+  const sub = await getActiveSubscription(client, userId);
+  if (!sub.features.includes(feature)) {
+    throw redirect(`/pricing?locked=${encodeURIComponent(feature)}`);
+  }
 }
 
 // ─── 결제 ───

@@ -983,3 +983,23 @@ alter table public.quiz_sessions
 **등수 RPC** `mcq_exam_attempt_stats(p_exam_id uuid)` — `SECURITY DEFINER` + `search_path` 고정. 사용자별 최신 완료 응시의 전 교시 평균으로 `rank`/`percentile`/`z_score` 산출, 호출자(`auth.uid()`) 한 행 반환. `mcq_pack_attempt_stats`(feat-10-004) 본뜸. 과락·합격 판정은 RPC 밖(`getExamAttemptBreakdown`, 본인 데이터)에서 단일 산출.
 
 상세: `docs/features/feat-10-005-integrated-mock-exam.md`.
+
+## 23. app_settings (운영자 전역 설정)
+
+`feat-3-204` — 운영자가 설정하는 전역 플랫폼 설정을 담는 범용 key-value 테이블. 첫 용도는 `/latest/cases`(최근 판례)의 수험생 노출 기간.
+
+```sql
+create table public.app_settings (
+  key        text primary key,
+  value      jsonb not null,                       -- 스칼라/객체
+  updated_at timestamptz not null default now(),
+  updated_by uuid references profiles(profile_id)
+);
+```
+
+**RLS**: 읽기 전체 공개(`using (true)`) — 비민감 설정이고 학생 loader 가 노출 기간을 읽어 cutoff 를 계산해야 한다. 쓰기는 staff(`private.is_staff(auth.uid())`).
+
+**키**:
+- `latest_cases_recency_months` — `/latest/cases` 노출 기간(롤링 개월). 시드값 `0`(제한 없음). N>0 이면 `decided_at ≥ 오늘−N개월` 판례만 노출(수험생·운영자 공통, `/latest/cases` 전용 — 학습과목 판례 탭·뷰어는 미적용). 접근 헬퍼 `app/core/lib/app-settings.server.ts`.
+
+상세: `docs/features/feat-3-204-latest-cases-recency.md`.

@@ -37,6 +37,7 @@ import {
   getPackById,
   listPackProblems,
 } from "~/features/mcq-packs/queries.server";
+import { requireFeature } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/mcq-pack-detail";
 
@@ -59,6 +60,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 비공개 pack 은 staff 만 접근.
   if (!pack.isPublished && !role) {
     throw data("Forbidden", { status: 403 });
+  }
+  // feat-8-008: 모의고사 종류 팩은 area_mock_exams 게이트 (회원3 / staff 면제).
+  if (isMockKind(pack.kind)) {
+    await requireFeature(client, user.id, "area_mock_exams");
   }
   const problems = await listPackProblems(client, params.packId);
   return { pack, problems, canEdit: role !== null };

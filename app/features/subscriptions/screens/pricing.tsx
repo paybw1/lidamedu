@@ -30,17 +30,25 @@ export async function loader({ request }: Route.LoaderArgs) {
   const plans = await listSubscriptionPlans(client);
   const active = user
     ? await getActiveSubscription(client, user.id)
-    : { hasActive: false, subscription: null, features: [] };
+    : {
+        hasActive: false,
+        subscription: null,
+        planCode: "free",
+        features: [],
+      };
+  // feat-8-008: 영역 게이트 redirect — ?locked={feature} 로 안내 배너 표시.
+  const locked = new URL(request.url).searchParams.get("locked");
   return {
     plans,
     active,
     isAuthed: !!user,
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
+    locked,
   };
 }
 
 export default function Pricing({ loaderData }: Route.ComponentProps) {
-  const { plans, active, isAuthed, tossClientKey } = loaderData;
+  const { plans, active, isAuthed, tossClientKey, locked } = loaderData;
   return (
     <div className="bg-muted/30 min-h-screen px-4 py-10 md:py-14">
       <div className="mx-auto w-full max-w-screen-lg">
@@ -57,6 +65,15 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
             자기주도 구독에서 풀로 이용 가능합니다.
           </p>
         </header>
+
+        {locked ? (
+          <Card className="mb-4 border-amber-300 bg-amber-50/70 dark:border-amber-700/50 dark:bg-amber-950/30">
+            <CardContent className="px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+              🔒 <strong>{FEATURE_LABEL[locked] ?? "이 기능"}</strong> 영역은
+              상위 요금제에서 이용할 수 있습니다. 아래에서 요금제를 확인하세요.
+            </CardContent>
+          </Card>
+        ) : null}
 
         {active.hasActive && active.subscription ? (
           <Card className="mb-6 border-emerald-300 bg-emerald-50/60">
@@ -76,7 +93,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
               key={p.planId}
               plan={p}
               isAuthed={isAuthed}
-              activeCode={active.subscription?.planCode ?? "free"}
+              activeCode={active.planCode}
               tossClientKey={tossClientKey}
             />
           ))}
@@ -106,7 +123,7 @@ function PlanCard({
   tossClientKey: string | null;
 }) {
   const isActive = activeCode === plan.code;
-  const isFree = plan.priceKrw === 0;
+  const isFree = plan.priceKrw === 0 && plan.code !== "cohort";
   const isCohort = plan.code === "cohort";
   const isHighlight = plan.code === "pro_monthly";
 

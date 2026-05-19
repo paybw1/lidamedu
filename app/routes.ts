@@ -168,30 +168,48 @@ export default [
       route("/auth/email-verified", "features/auth/screens/email-verified.tsx"),
       route("/logout", "features/auth/screens/logout.tsx"),
 
-      route("/goals", "features/goals/screens/goals.tsx"),
-      route("/study/stats", "features/study/screens/stats.tsx"),
-      route("/study/blanks", "features/blanks/screens/blanks-stats.tsx"),
-      route("/study/wrong-note", "features/study/screens/wrong-note.tsx"),
-      route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
-      route("/study/notes", "features/study/screens/notes.tsx"),
-      route("/study/highlights", "features/study/screens/highlights.tsx"),
-      route("/study/comments", "features/study/screens/comments.tsx"),
+      // feat-8-008 학습관리 영역 게이트 — area_study_mgmt 미보유 시 /pricing redirect.
+      layout(
+        "features/study/layouts/study-management.layout.tsx",
+        { id: "study-mgmt-core" },
+        [
+          route("/goals", "features/goals/screens/goals.tsx"),
+          route("/study/stats", "features/study/screens/stats.tsx"),
+        ],
+      ),
+      // feat-8-008 학습보조 영역 게이트 — area_study_aids 미보유 시 /pricing redirect.
+      layout("features/study/layouts/study-aids.layout.tsx", [
+        route("/study/blanks", "features/blanks/screens/blanks-stats.tsx"),
+        route("/study/wrong-note", "features/study/screens/wrong-note.tsx"),
+        route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
+        route("/study/notes", "features/study/screens/notes.tsx"),
+        route("/study/highlights", "features/study/screens/highlights.tsx"),
+        route("/study/comments", "features/study/screens/comments.tsx"),
+      ]),
       route("/inbox", "features/notifications/screens/student-inbox.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),
         route("/cases", "features/latest/screens/cases.tsx"),
+        // feat-3-205 학습정보 판례 뷰어 — :caseId 는 /cases 색인과 별개 경로.
+        route(
+          "/cases/:caseId",
+          "features/latest/screens/latest-case-viewer.tsx",
+        ),
         route("/mcq", "features/latest/screens/mcq.tsx"),
+        // feat-8-008 모의고사(통합) 영역 게이트 — area_mock_exams 미보유 시 redirect.
         // feat-10-005 통합 모의고사 — :packId 보다 먼저 선언 (정적 세그먼트 우선).
-        route("/mcq/exams", "features/latest/screens/mcq-exam-index.tsx"),
-        route(
-          "/mcq/exam/:examId",
-          "features/latest/screens/mcq-exam-runner.tsx",
-        ),
-        route(
-          "/mcq/exam/:examId/result/:attemptId",
-          "features/latest/screens/mcq-exam-result.tsx",
-        ),
+        layout("features/latest/layouts/mcq-exam.layout.tsx", [
+          route("/mcq/exams", "features/latest/screens/mcq-exam-index.tsx"),
+          route(
+            "/mcq/exam/:examId",
+            "features/latest/screens/mcq-exam-runner.tsx",
+          ),
+          route(
+            "/mcq/exam/:examId/result/:attemptId",
+            "features/latest/screens/mcq-exam-result.tsx",
+          ),
+        ]),
         route("/mcq/:packId", "features/latest/screens/mcq-pack-detail.tsx"),
         route(
           "/mcq/:packId/sheet/:sessionId",
@@ -202,11 +220,18 @@ export default [
           "features/latest/screens/mcq-pack-result.tsx",
         ),
         route("/essay", "features/latest/screens/essay.tsx"),
+        // feat-3-205 학습정보 2차문제 뷰어.
+        route(
+          "/essay/:problemId",
+          "features/latest/screens/latest-essay-viewer.tsx",
+        ),
         route("/papers", "features/latest/screens/papers.tsx"),
         route("/book-updates", "features/latest/screens/book-updates.tsx"),
       ]),
 
-      ...prefix("/subjects", [
+      // feat-8-008 학습과목 영역 게이트 — area_subjects 미보유 시 /pricing redirect.
+      layout("features/subjects/layouts/subjects.layout.tsx", [
+        ...prefix("/subjects", [
         route("/civil", "features/subjects/screens/civil.tsx"),
         route("/patent", "features/subjects/screens/patent.tsx"),
         route("/trademark", "features/subjects/screens/trademark.tsx"),
@@ -265,24 +290,28 @@ export default [
           ),
         ]),
       ]),
+      ]),
 
-      route("/gs", "features/gs/screens/gs.tsx"),
-      route("/gs/:roundId/take", "features/gs/screens/gs-take.tsx"),
-      route("/gs/:roundId/result", "features/gs/screens/gs-result.tsx"),
-      route(
-        "/gs/peer-review/:assignmentId",
-        "features/gs/screens/gs-peer-review.tsx",
-      ),
-      route(
-        "/gs/peer-review/round/:roundId",
-        "features/gs/screens/gs-peer-review-round.tsx",
-      ),
-      route("/gs/series/:seriesId", "features/gs/screens/gs-my-series.tsx"),
-      route(
-        "/gs/:roundId/distinguished",
-        "features/gs/screens/gs-distinguished.tsx",
-      ),
-      route("/gs/points", "features/gs/screens/gs-points.tsx"),
+      // feat-8-008 2차 모의(온라인 GS) 영역 게이트 — area_mock_exams.
+      layout("features/gs/layouts/gs.layout.tsx", [
+        route("/gs", "features/gs/screens/gs.tsx"),
+        route("/gs/:roundId/take", "features/gs/screens/gs-take.tsx"),
+        route("/gs/:roundId/result", "features/gs/screens/gs-result.tsx"),
+        route(
+          "/gs/peer-review/:assignmentId",
+          "features/gs/screens/gs-peer-review.tsx",
+        ),
+        route(
+          "/gs/peer-review/round/:roundId",
+          "features/gs/screens/gs-peer-review-round.tsx",
+        ),
+        route("/gs/series/:seriesId", "features/gs/screens/gs-my-series.tsx"),
+        route(
+          "/gs/:roundId/distinguished",
+          "features/gs/screens/gs-distinguished.tsx",
+        ),
+        route("/gs/points", "features/gs/screens/gs-points.tsx"),
+      ]),
       route("/community", "features/community/screens/community.tsx"),
       route(
         "/community/:board",
@@ -385,13 +414,20 @@ export default [
       ),
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
       route("/api/admin/importance", "features/admin/api/importance.tsx"),
-      route(
-        "/assignments",
-        "features/assignments/screens/student-assignments.tsx",
-      ),
-      route(
-        "/assignments/:assignmentId",
-        "features/assignments/screens/student-assignment-detail.tsx",
+      // feat-8-008 학습관리 영역 게이트 (과제).
+      layout(
+        "features/study/layouts/study-management.layout.tsx",
+        { id: "study-mgmt-assignments" },
+        [
+          route(
+            "/assignments",
+            "features/assignments/screens/student-assignments.tsx",
+          ),
+          route(
+            "/assignments/:assignmentId",
+            "features/assignments/screens/student-assignment-detail.tsx",
+          ),
+        ],
       ),
       route(
         "/me/exam-results",
@@ -527,6 +563,13 @@ export default [
           "features/problems/screens/admin-problem-edit.tsx",
         ),
       ]),
+
+      // feat-10-005 통합 모의고사 출제 — 목록 + 시험별 편집(교시 구성).
+      route("/admin/mcq-exams", "features/admin/screens/admin-mcq-exams.tsx"),
+      route(
+        "/admin/mcq-exams/:examId",
+        "features/admin/screens/admin-mcq-exam-edit.tsx",
+      ),
 
       ...prefix("/qna", [
         index("features/qna/screens/qna-list.tsx"),

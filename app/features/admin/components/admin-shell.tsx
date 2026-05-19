@@ -83,7 +83,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "신규 출제", to: "/admin/problems/new" },
       { label: "OX 검수", to: "/admin/problems/ox" },
       { label: "문제 통계", to: "/admin/problems/stats" },
-      { label: "통합 모의고사", to: "/latest/mcq/exams" },
+      { label: "통합 모의고사", to: "/admin/mcq-exams" },
     ],
   },
   {

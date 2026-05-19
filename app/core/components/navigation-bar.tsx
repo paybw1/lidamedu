@@ -2,6 +2,7 @@ import {
   BellIcon,
   CogIcon,
   HomeIcon,
+  LockIcon,
   LogOutIcon,
   MenuIcon,
   SearchIcon,
@@ -278,13 +279,21 @@ function FlatLink({ to, label }: SimpleLink) {
 function SimpleDropdown({
   label,
   items,
+  locked = false,
 }: {
   label: string;
   items: SimpleLink[];
+  /** feat-8-008 — true 면 트리거 라벨에 🔒 표시 (서버 게이트가 권위, 시각 힌트). */
+  locked?: boolean;
 }) {
   return (
     <NavigationMenuItem>
-      <NavigationMenuTrigger>{label}</NavigationMenuTrigger>
+      <NavigationMenuTrigger>
+        {locked ? (
+          <LockIcon className="mr-1 size-3 opacity-60" aria-label="잠김" />
+        ) : null}
+        {label}
+      </NavigationMenuTrigger>
       <NavigationMenuContent className="left-1/2 -translate-x-1/2">
         <div className="flex w-[340px] flex-wrap gap-1.5 p-3">
           {items.map((item) => (
@@ -308,6 +317,7 @@ export function NavigationBar({
   inboxUnread = null,
   inboxHref = null,
   isStaff = false,
+  features,
 }: {
   name?: string;
   email?: string;
@@ -319,7 +329,16 @@ export function NavigationBar({
   inboxHref?: string | null;
   // staff(강사·관리자·원장) 여부 — 운영관리 메뉴는 staff 에게만 노출.
   isStaff?: boolean;
+  // feat-8-008 — 사용자의 구독/cohort 기반 영역 플래그. undefined = 미산정(로딩) → 잠금 미표시.
+  features?: string[];
 }) {
+  // feat-8-008 — 영역 잠금. staff 면제. 미산정 상태에선 잠금 미표시(로딩 깜빡임 방지).
+  const isLocked = (area: string) =>
+    !isStaff && features !== undefined && !features.includes(area);
+  const lockSubjects = isLocked("area_subjects");
+  const lockStudyAids = isLocked("area_study_aids");
+  const lockStudyMgmt = isLocked("area_study_mgmt");
+  const lockMockExams = isLocked("area_mock_exams");
   return (
     <nav className="dark:bg-background/85 sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 dark:border-border">
       <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
@@ -343,11 +362,23 @@ export function NavigationBar({
                 <FlatLink key={m.to} {...m} />
               ))}
 
-              <SimpleDropdown label="학습관리" items={studyItems} />
+              <SimpleDropdown
+                label="학습관리"
+                items={studyItems}
+                locked={lockStudyMgmt}
+              />
 
               {/* 학습과목 dropdown — V5 (카테고리 row + chip) */}
               <NavigationMenuItem>
-                <NavigationMenuTrigger>학습과목</NavigationMenuTrigger>
+                <NavigationMenuTrigger>
+                  {lockSubjects ? (
+                    <LockIcon
+                      className="mr-1 size-3 opacity-60"
+                      aria-label="잠김"
+                    />
+                  ) : null}
+                  학습과목
+                </NavigationMenuTrigger>
                 <NavigationMenuContent className="left-1/2 -translate-x-1/2">
                   <div className="flex w-[720px] flex-col gap-3 px-5 py-[18px]">
                     {SUBJECT_SECTIONS.map((section, si) => (
@@ -397,9 +428,17 @@ export function NavigationBar({
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              <SimpleDropdown label="학습보조" items={studyAidItems} />
+              <SimpleDropdown
+                label="학습보조"
+                items={studyAidItems}
+                locked={lockStudyAids}
+              />
               <SimpleDropdown label="학습정보" items={latestItems} />
-              <SimpleDropdown label="모의고사" items={mockExamItems} />
+              <SimpleDropdown
+                label="모의고사"
+                items={mockExamItems}
+                locked={lockMockExams}
+              />
               <SimpleDropdown label="커뮤니티" items={communityItems} />
 
               {isStaff

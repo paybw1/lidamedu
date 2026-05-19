@@ -221,6 +221,8 @@
 | feat-3-201 | 신규 판례 피드 (선고일 최신순) | P0 | ✅ |
 | feat-3-202 | 과목별 필터 + 중요판례 필터 (importance ≥ 3) | P0 | ✅ |
 | feat-3-203 | 판례 카드에서 판례 상세로 이동 | P0 | ✅ |
+| feat-3-204 | **운영자 노출 기간 설정** — `app_settings` key-value 테이블 + `latest_cases_recency_months`. `/latest/cases` 가 운영자 설정 롤링 N개월 창(`decided_at ≥ 오늘−N개월`)으로 수험생·운영자에게 노출. 0 = 제한 없음. staff 전용 인라인 패널(페이지 자체 action). 학습과목 판례 탭·뷰어는 미적용 — 노출 창은 `/latest/cases` 전용. 상세: `docs/features/feat-3-204-latest-cases-recency.md`. | P2 | ✅ |
+| feat-3-205 | **학습정보 자체 콘텐츠 뷰어** — 학습정보 피드(최근 판례·2차 기출)의 상세를 학습과목(`/subjects/*`)이 아닌 자체 경량 read-only 뷰어(`/latest/cases/:id`·`/latest/essay/:id`)로 연결. 본문 렌더 컴포넌트를 학습과목 뷰어와 공용화(`CaseBody` 등 추출). feat-8-008 영역 게이팅의 선행 조건. 상세: `docs/features/feat-3-205-latest-content-viewers.md`. | P2 | ✅ |
 | **5.3.3 객관식 문제** | | | |
 | feat-3-301 | 객관식 문제 (PPT 운영계획 반영) — `mcq_packs` 테이블(kind: past_exam/mock_full/mock_progressive/other, subject_scope: industrial/civil/civil_procedure/science, year/exam_round_no/duration_min/video_url/result_doc_url/published_at) + `mcq_pack_problems` (pack↔problem 매핑). `quiz_sessions.pack_id` 추가. RLS: 학생은 published만 read, staff CRUD. `/latest/mcq` 표 색인(No·과목·구분·명칭·출제일·문항), staff inline CRUD. | P1 | ✅ |
 | feat-3-302 | 팩 상세 페이지 — `/latest/mcq/:packId` 헤더(과목·구분·명칭·출제일·문항·제한시간) + 동영상/결과자료 카드 + 학습/모의고사 시작 액션 + 문제 목록 (staff: problem_id로 추가/제거). 학습 시작은 quiz_session(mode=study), 모의는 mode=exam + time_limit. | P1 | ✅ |
@@ -506,7 +508,7 @@
 | feat-8-023 | **주석 3종 통합 · 작성자 역할 기반 가시성** — 하이라이트 / 포스트잇(기존 메모) / 메모(기존 코멘트) 3종으로 정리. 가시성을 작성자 역할로 통일 — 강사 작성 주석은 전체 수험생 공개, 수험생 작성 주석은 본인 전용 (RLS `private.is_staff`). feat-8-022 앵커형 코멘트 제거 — `content_comments` 앵커 컬럼 6종 DROP + `deleted_at` 추가 + 학생 작성 허용. `user_highlights`/`user_memos` SELECT RLS 를 본인 OR 강사작성 으로 확장. 강사 하이라이트는 배경+밑줄(`lidam-hl-staff-*`)로 시각 구분. 용어 변경(화면 표시만): 코멘트→메모, 메모→포스트잇. 상세: `docs/features/feat-8-023-annotation-visibility.md` | P1 | ✅ |
 | feat-8-024 | **기출문제 지문 기반 판례 연동** — 객관식 1차 기출문제(origin=past_exam·exam_round=first·format mc_*)의 지문(body_md+choices+box_items)에서 사건번호 토큰을 추출, `cases.case_number` 정확일치로 `problem_case_links` 자동 생성(`scan_exam_case_links()` plpgsql 함수). 판례 뷰어는 1차 기출을 문제별 칩으로 표시(클릭→문제). 미탐지 문제용 수동 매칭 staff 화면. 기존 1차 데이터 정리 — `cases.exam_1st_years` 비우기 + 1차 객관식 기존 링크 삭제 후 재스캔. 역방향 매칭(`case-exam-problems` 화면, bulk 문제↔판례 탭) 제거. 상세: `docs/features/feat-8-024-exam-case-linking.md` | P1 | ✅ |
 | feat-8-025 | **운영자·강사 중요도 별점** — 판례·조문 뷰어 오른쪽 패널의 "즐겨찾기" 탭을 staff(instructor/admin)에게는 중요도 ★ 별점 에디터로 분기(`ImportanceRating` + `/api/admin/importance`). 학생은 기존 개인 즐겨찾기 유지. `cases.importance`/`articles.importance` 직접 수정 — 별도 편집 화면 불필요. 판례 importance 는 기출횟수(1차 `problem_case_links` + 2차 `exam_2nd_years`) 기반 1회성 backfill(0~2회→★1·3회→★2·4회+→★3). `admin-case-edit` 중요도 입력란 제거. 상세: `docs/features/feat-8-025-staff-importance-rating.md` | P1 | ✅ |
-| feat-8-008 | (Phase D) 구독·결제 3-tier — 무료/자기주도 구독(컨설팅)/종합반(+커리큘럼·과제·강사 첨삭). 토스페이먼츠/포트원 등 외부 PG 정기결제 + 학습권. `feat-7-014` 흡수. | P2 | 🔲 |
+| feat-8-008 | **3-tier 가격 정책 + 영역 게이팅** — 무료(회원1)/정회원 ₩99,000·월(회원2)/종합반 상담(회원3). 메뉴 영역 단위 접근 제어 — `subscription_plans.features` 영역 플래그(`area_subjects`·`area_study_aids`·`area_study_mgmt`·`area_mock_exams`) + `requireFeature` 서버 가드 + 네비 잠금 UI. feat-8-018 결제 인프라 위에 게이팅. 회원3 = 활성 cohort 멤버. 선행: feat-3-205. 상세: `docs/features/feat-8-008-pricing-tiers.md`. | P2 | ✅ |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).
 

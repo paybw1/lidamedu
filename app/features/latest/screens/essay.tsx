@@ -229,7 +229,7 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
           {problems.map((p) => (
             <FeedCardLink
               key={p.problemId}
-              to={`/subjects/${p.lawCode}/problems/${p.problemId}`}
+              to={`/latest/essay/${p.problemId}`}
             >
               <MetaRow right={relativeKo(p.createdAt)}>
                 <Pill tone="rose">

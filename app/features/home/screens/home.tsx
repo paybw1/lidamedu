@@ -19,7 +19,7 @@ import { SubjectsSection } from "~/features/home/components/subjects-section";
 import type { Route } from "./+types/home";
 
 export const meta: Route.MetaFunction = ({ data }) => [
-  { title: data?.title ?? "리담변리사학원 — 변리사 시험, 이 곳에서 합격까지" },
+  { title: data?.title ?? "리담변리사학원 — 변리사 시험, 이 곳에서 합격까지 함께 해요" },
   {
     name: "description",
     content:

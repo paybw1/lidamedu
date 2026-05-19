@@ -1,5 +1,6 @@
 // 통합 1차 모의고사 시험 러너 (feat-10-005) — /latest/mcq/exam/:examId.
-// 응시 시작 + 교시별 진행 상태·다음 교시 응시 허브. staff 는 교시 구성 패널.
+// 응시 시작 + 교시별 진행 상태·다음 교시 응시 허브. 학생 전용 —
+// 교시 구성(출제)은 운영자 화면(/admin/mcq-exams/:examId) 으로 분리됨.
 
 import {
   CheckCircle2Icon,
@@ -17,8 +18,6 @@ import { cn } from "~/core/lib/utils";
 import { LatestEmpty, Pill } from "~/features/latest/components/latest-list";
 import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { getStaffRole } from "~/features/laws/queries.server";
-import { ExamPapersPanel } from "~/features/mcq-exams/components/exam-papers-panel";
 import type {
   ExamAttemptInfo,
   ExamPaperStatus,
@@ -26,11 +25,7 @@ import type {
   McqExamItem,
 } from "~/features/mcq-exams/labels";
 import { getExamRunnerData } from "~/features/mcq-exams/queries.server";
-import {
-  MCQ_PACK_SUBJECT_LABELS,
-  isMockKind,
-} from "~/features/mcq-packs/labels";
-import { listPacks } from "~/features/mcq-packs/queries.server";
+import { MCQ_PACK_SUBJECT_LABELS } from "~/features/mcq-packs/labels";
 
 import type { Route } from "./+types/mcq-exam-runner";
 
@@ -54,34 +49,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const runner = await getExamRunnerData(client, params.examId, user.id);
   if (!runner) throw data("Exam not found", { status: 404 });
 
-  const role = await getStaffRole(client, user.id);
-  const canEdit = role !== null;
-
-  // staff 교시 구성 패널 — 교시로 추가 가능한 공개 모의 팩 목록.
-  let availablePacks: Array<{
-    packId: string;
-    title: string;
-    subjectLabel: string;
-  }> = [];
-  if (canEdit) {
-    const packs = await listPacks(client, {});
-    const used = new Set(runner.papers.map((rp) => rp.paper.packId));
-    availablePacks = packs
-      .filter(
-        (p) => isMockKind(p.kind) && p.isPublished && !used.has(p.packId),
-      )
-      .map((p) => ({
-        packId: p.packId,
-        title: p.title,
-        subjectLabel: MCQ_PACK_SUBJECT_LABELS[p.subjectScope],
-      }));
-  }
-
-  return { runner, canEdit, availablePacks };
+  return { runner };
 }
 
 export default function McqExamRunner({ loaderData }: Route.ComponentProps) {
-  const { runner, canEdit, availablePacks } = loaderData;
+  const { runner } = loaderData;
   const { exam, papers, attempt } = runner;
   const noPapers = papers.length === 0;
 
@@ -104,11 +76,7 @@ export default function McqExamRunner({ loaderData }: Route.ComponentProps) {
           icon={LayersIcon}
           tone="subdued"
           title="교시가 아직 구성되지 않았습니다"
-          body={
-            canEdit
-              ? "아래 '교시 구성' 에서 과목별 모의 팩을 교시로 추가하세요."
-              : "교시가 구성되면 응시할 수 있습니다."
-          }
+          body="교시가 구성되면 응시할 수 있습니다."
         />
       ) : (
         <>
@@ -125,16 +93,6 @@ export default function McqExamRunner({ loaderData }: Route.ComponentProps) {
           </ol>
         </>
       )}
-
-      {canEdit ? (
-        <div className="mt-6">
-          <ExamPapersPanel
-            examId={exam.examId}
-            papers={papers}
-            availablePacks={availablePacks}
-          />
-        </div>
-      ) : null}
     </MockExamShell>
   );
 }

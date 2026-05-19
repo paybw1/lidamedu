@@ -5,12 +5,20 @@ import type { Database } from "database.types";
 
 import type { Route } from "./+types/cases";
 
-import { GavelIcon, SearchXIcon } from "lucide-react";
-import { data } from "react-router";
+import { CalendarClockIcon, GavelIcon, SearchXIcon } from "lucide-react";
+import { Link, data, useFetcher } from "react-router";
 
+import { Button } from "~/core/components/ui/button";
+import { Input } from "~/core/components/ui/input";
+import {
+  LATEST_CASES_RECENCY_MONTHS_KEY,
+  getLatestCasesRecencyMonths,
+  setAppSetting,
+} from "~/core/lib/app-settings.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { ExamYearChip } from "~/features/cases/components/exam-year-chip";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   CardCta,
   FeedCardLink,
@@ -53,6 +61,13 @@ function extractFirstSummaryTitle(raw: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+// feat-3-204: 오늘로부터 N개월 전 날짜 (YYYY-MM-DD) — 노출 기간 cutoff.
+function monthsAgoDate(months: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
+
 type ExamMode = "any" | "exam_1st" | "exam_2nd";
 
 interface LatestCasesFilters {
@@ -60,6 +75,8 @@ interface LatestCasesFilters {
   subject?: LawSubjectSlug;
   importantOnly: boolean;
   exam: ExamMode;
+  /** feat-3-204: 운영자 설정 노출 기간 cutoff (YYYY-MM-DD). null = 제한 없음. */
+  recencyCutoff: string | null;
   page: number;
   pageSize: number;
 }
@@ -75,6 +92,8 @@ async function listLatestCases(
     .is("deleted_at", null);
   if (filters.subject) q = q.contains("subject_laws", [filters.subject]);
   if (filters.importantOnly) q = q.gte("importance", 3);
+  // feat-3-204: 운영자 설정 노출 기간 — 선고일이 cutoff 이후인 판례만.
+  if (filters.recencyCutoff) q = q.gte("decided_at", filters.recencyCutoff);
   // feat-8-024: 1차 기출은 problem_case_links 연결 판례로 한정.
   if (filters.exam === "exam_1st")
     q = q.in("case_id", [...examProblemsByCase.keys()]);
@@ -121,6 +140,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
+  const role = await getStaffRole(client, user.id);
+  const recencyMonths = await getLatestCasesRecencyMonths(client);
+
   const url = new URL(request.url);
   const subjectParam = url.searchParams.get("subject");
   const subject =
@@ -141,11 +163,46 @@ export async function loader({ request }: Route.LoaderArgs) {
     subject,
     importantOnly,
     exam,
+    recencyCutoff: recencyMonths > 0 ? monthsAgoDate(recencyMonths) : null,
     page,
     pageSize: 50,
   };
   const { items, total } = await listLatestCases(client, filters);
-  return { cases: items, total, filters };
+  return {
+    cases: items,
+    total,
+    filters,
+    isStaff: role !== null,
+    recencyMonths,
+  };
+}
+
+// feat-3-204: 운영자가 수험생 노출 기간(개월)을 저장. staff 전용.
+export async function action({ request }: Route.ActionArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return data({ error: "Unauthorized" }, { status: 401 });
+  const role = await getStaffRole(client, user.id);
+  if (!role) return data({ error: "권한이 없습니다." }, { status: 403 });
+
+  const fd = await request.formData();
+  const months = Number(fd.get("recencyMonths"));
+  if (!Number.isInteger(months) || months < 0 || months > 120) {
+    return data(
+      { error: "0–120 사이의 정수 개월 수를 입력하세요." },
+      { status: 400 },
+    );
+  }
+  const res = await setAppSetting(
+    client,
+    LATEST_CASES_RECENCY_MONTHS_KEY,
+    months,
+    user.id,
+  );
+  if (!res.ok) return data({ error: res.error }, { status: 500 });
+  return data({ ok: true as const, recencyMonths: months });
 }
 
 function lawName(slug: string): string {
@@ -156,7 +213,7 @@ function lawName(slug: string): string {
 }
 
 export default function LatestCases({ loaderData }: Route.ComponentProps) {
-  const { cases, total, filters } = loaderData;
+  const { cases, total, filters, isStaff, recencyMonths } = loaderData;
   const filterActive =
     !!filters.subject ||
     filters.importantOnly ||
@@ -180,6 +237,7 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
   };
 
   const descParts = [`${total.toLocaleString("ko-KR")}건`];
+  if (recencyMonths > 0) descParts.push(`최근 ${recencyMonths}개월`);
   if (filters.subject) descParts.push(LAW_SUBJECTS[filters.subject].name);
   if (filters.importantOnly) descParts.push("중요판례 ★3+");
   if (filters.exam === "exam_1st") descParts.push("1차 기출 보유");
@@ -193,6 +251,7 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
       title="최근 판례"
       desc={`${descParts.join(" · ")} — 선고일 최신순으로 모은 전 과목 신규 판례입니다.`}
     >
+      {isStaff ? <RecencyPanel recencyMonths={recencyMonths} /> : null}
       <LatestFilterForm
         search={{
           name: "q",
@@ -257,8 +316,8 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
       ) : (
         <ListStack testid="latest-cases-list">
           {cases.map((c) => {
-            const firstSubject = c.subjectLaws[0] ?? "patent";
-            const caseHref = `/subjects/${firstSubject}/cases/${c.caseId}`;
+            // feat-3-205: 학습정보 자체 뷰어로 — 학습과목(/subjects)으로 보내지 않음.
+            const caseHref = `/latest/cases/${c.caseId}`;
             // exam1stProblems → 중복 제거 연도 (카드 전체가 링크라 비-링크 칩 사용).
             const exam1stYears = [
               ...new Set(
@@ -314,5 +373,75 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
         makeUrl={makeUrl}
       />
     </LatestShell>
+  );
+}
+
+// feat-3-204: 운영자 전용 — 수험생 노출 기간(롤링 개월) 설정 패널.
+function RecencyPanel({ recencyMonths }: { recencyMonths: number }) {
+  const fetcher = useFetcher<{
+    ok?: true;
+    recencyMonths?: number;
+    error?: string;
+  }>();
+  const result = fetcher.state === "idle" ? (fetcher.data ?? null) : null;
+  const saved = result != null && "ok" in result && result.ok === true;
+  const error = result && "error" in result ? result.error : null;
+  const windowActive = recencyMonths > 0;
+
+  return (
+    <div className="border-border bg-muted/30 mb-3 rounded-xl border border-dashed p-3.5">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <CalendarClockIcon className="text-primary size-4 shrink-0" />
+        <span className="text-sm font-bold tracking-tight">
+          수험생 노출 기간
+          <span className="text-muted-foreground ml-1.5 text-xs font-normal">
+            · 운영자 설정
+          </span>
+        </span>
+        <fetcher.Form
+          method="post"
+          className="ml-auto flex items-center gap-1.5"
+        >
+          <span className="text-muted-foreground text-[11px]">최근</span>
+          <Input
+            name="recencyMonths"
+            type="number"
+            min={0}
+            max={120}
+            required
+            defaultValue={recencyMonths}
+            className="h-8 w-20 text-xs"
+            aria-label="수험생 노출 기간 (개월)"
+          />
+          <span className="text-muted-foreground text-[11px]">개월</span>
+          <Button
+            type="submit"
+            size="sm"
+            className="h-8 rounded-full"
+            disabled={fetcher.state !== "idle"}
+          >
+            저장
+          </Button>
+        </fetcher.Form>
+      </div>
+      <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+        {windowActive
+          ? `이 페이지에서는 수험생·운영자 모두 선고일이 최근 ${recencyMonths}개월 이내인 판례만 봅니다. 0 으로 저장하면 제한이 풀립니다.`
+          : "현재 기간 제한이 없어 전체 판례가 노출됩니다. 1 이상으로 저장하면 최근 판례만 노출됩니다."}{" "}
+        전체 판례 관리는{" "}
+        <Link to="/admin/cases" className="text-primary font-semibold">
+          운영자 판례 관리
+        </Link>
+        에서 합니다.
+      </p>
+      {saved ? (
+        <p className="mt-1 text-[11px] font-semibold text-emerald-600">
+          저장되었습니다.
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-1 text-[11px] text-rose-600">{error}</p>
+      ) : null}
+    </div>
   );
 }

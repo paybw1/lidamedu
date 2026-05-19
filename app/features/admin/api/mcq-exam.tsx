@@ -1,6 +1,6 @@
 // 통합 모의고사(mcq_exams) CRUD + 교시 매핑 API. staff 전용. feat-10-005.
 
-import { data } from "react-router";
+import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -146,7 +146,9 @@ export async function action({ request }: Route.ActionArgs) {
       entityType: "mcq_exam",
       entityId: examId,
     });
-    return data({ ok: true });
+    // 편집 화면에서 삭제 시 그 화면이 사라지므로 목록으로 redirect — 목록
+    // 화면의 삭제도 같은 곳으로 돌아와 자동 갱신된다.
+    return redirect("/admin/mcq-exams");
   }
 
   if (intent === "add_paper") {
