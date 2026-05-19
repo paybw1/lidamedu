@@ -37,19 +37,25 @@ export async function loader() {
   // Get the site domain from environment variables
   const DOMAIN = process.env.SITE_URL;
 
-  // Scan the blog directory for MDX files and convert to URLs
-  const blogUrls = (
-    await readdir(path.join(process.cwd(), "app", "features", "blog", "docs"))
-  )
-    .filter((file) => file.endsWith(".mdx")) // Only include MDX files
-    .map((file) => `/blog/${file.replace(".mdx", "")}`);
+  // 누락될 수 있는 콘텐츠 디렉토리를 안전하게 스캔 — 없으면 빈 목록.
+  // (blog 디렉토리 미존재 시 readdir 가 throw → prerender 500 이 되던 문제 방지)
+  const scanMdxSlugs = async (...segments: string[]): Promise<string[]> => {
+    try {
+      return (await readdir(path.join(process.cwd(), ...segments)))
+        .filter((file) => file.endsWith(".mdx")) // Only include MDX files
+        .map((file) => file.replace(".mdx", ""));
+    } catch {
+      return [];
+    }
+  };
 
-  // Scan the legal directory for MDX files and convert to URLs
+  // Scan the blog / legal directories for MDX files and convert to URLs
+  const blogUrls = (await scanMdxSlugs("app", "features", "blog", "docs")).map(
+    (slug) => `/blog/${slug}`,
+  );
   const legalUrls = (
-    await readdir(path.join(process.cwd(), "app", "features", "legal", "docs"))
-  )
-    .filter((file) => file.endsWith(".mdx")) // Only include MDX files
-    .map((file) => `/legal/${file.replace(".mdx", "")}`);
+    await scanMdxSlugs("app", "features", "legal", "docs")
+  ).map((slug) => `/legal/${slug}`);
 
   // Define static routes that should be included in the sitemap
   const customUrls = ["/", "/login", "/join"];

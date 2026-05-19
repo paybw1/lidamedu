@@ -15,10 +15,10 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { TrackedLectureFrame } from "~/features/lectures/components/tracked-lecture-frame";
+import { toEmbedUrl } from "~/features/lectures/lib/embed";
 import {
   getLectureItemForUser,
   getMyLectureView,
-  toEmbedUrl,
 } from "~/features/lectures/queries.server";
 
 import type { Route } from "./+types/lecture-viewer";
