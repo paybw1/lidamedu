@@ -21,7 +21,7 @@ import { data, redirect, useFetcher, useRevalidator } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import { Chip } from "~/features/community/components/community-ui";
 import {
   type GsPage,
@@ -184,7 +184,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
   const submitting = submitFetcher.state !== "idle";
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       width="wide"
       title={round.title}
@@ -388,7 +388,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
           </Button>
         </div>
       </submitFetcher.Form>
-    </CommunityShell>
+    </MockExamShell>
   );
 }
 

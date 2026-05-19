@@ -9,7 +9,7 @@ import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import {
   Chip,
   EmptyState,
@@ -189,7 +189,7 @@ export default function GsDistinguished({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       backLink={{ to: `/gs/${round.roundId}/result`, label: "내 결과" }}
       title={`우수 답안 · ${round.title}`}
@@ -269,7 +269,7 @@ export default function GsDistinguished({ loaderData }: Route.ComponentProps) {
           </Section>
         );
       })}
-    </CommunityShell>
+    </MockExamShell>
   );
 }
 

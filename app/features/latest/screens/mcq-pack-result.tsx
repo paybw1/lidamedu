@@ -14,7 +14,7 @@ import { data } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import { IndexCard, Pill } from "~/features/latest/components/latest-list";
-import { LatestShell } from "~/features/latest/components/latest-shell";
+import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   CHOICE_TYPE_LABEL,
@@ -28,7 +28,7 @@ import {
   getPackResultStats,
   type PackAttemptRanking,
 } from "~/features/mcq-packs/queries.server";
-import { MCQ_PACK_KIND_LABELS } from "~/features/mcq-packs/labels";
+import { isMockKind, MCQ_PACK_KIND_LABELS } from "~/features/mcq-packs/labels";
 import {
   getQuizSessionResult,
   getProblemStatsBulk,
@@ -118,8 +118,8 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
     attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
 
   return (
-    <LatestShell
-      category="mcq"
+    <McqAreaShell
+      isMock={isMockKind(pack.kind)}
       width="index"
       backLink={{
         to: `/latest/mcq/${pack.packId}`,
@@ -280,7 +280,7 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
           </tbody>
         </table>
       </IndexCard>
-    </LatestShell>
+    </McqAreaShell>
   );
 }
 

@@ -16,7 +16,7 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import { Chip, Section } from "~/features/community/components/community-ui";
 import type { GsPage, GsQuestion } from "~/features/gs/queries.server";
 import { getGsRound } from "~/features/gs/queries.server";
@@ -64,7 +64,7 @@ export default function GsPeerReviewRound({
 
   if (columns.length === 0) {
     return (
-      <CommunityShell
+      <MockExamShell
         category="gs"
         width="wide"
         backLink={{ to: "/gs", label: "온라인 GS" }}
@@ -76,12 +76,12 @@ export default function GsPeerReviewRound({
             이 회차에 배정된 동료 채점이 없습니다.
           </CardContent>
         </Card>
-      </CommunityShell>
+      </MockExamShell>
     );
   }
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       width="wide"
       backLink={{ to: "/gs", label: "온라인 GS" }}
@@ -109,7 +109,7 @@ export default function GsPeerReviewRound({
       <div className="mt-5">
         <PeerMatrix questions={questions} columns={columns} />
       </div>
-    </CommunityShell>
+    </MockExamShell>
   );
 }
 

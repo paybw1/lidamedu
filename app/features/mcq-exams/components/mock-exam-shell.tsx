@@ -1,28 +1,21 @@
-// 커뮤니티 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 5 카테고리 탭 strip.
-// 공지사항 · 자유게시판 · 스터디 모집 · Q&A · 합격 후기 화면이 공유한다.
+// 모의고사 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 3 카테고리 탭 strip.
+// 1차 통합 모의고사 · 1차 진도별 모의고사 · 2차 모의고사(온라인 GS) 화면이 공유.
+// LatestShell(학습정보)·CommunityShell(커뮤니티)과 같은 패턴.
 
 import {
-  GraduationCapIcon,
-  MegaphoneIcon,
-  MessageCircleQuestionIcon,
-  MessageSquareTextIcon,
-  UsersIcon,
+  ClipboardListIcon,
+  LayersIcon,
+  PencilLineIcon,
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 
-// 공지사항·Q&A + 게시판 3종(자유·스터디·합격후기) 평탄 구조 — 별도 서브탭 없음.
-export type CommunityCategory =
-  | "announce"
-  | "free"
-  | "study"
-  | "qna"
-  | "review";
+export type MockExamCategory = "full" | "progressive" | "gs";
 
 interface CategoryDef {
-  id: CommunityCategory;
+  id: MockExamCategory;
   to: string;
   label: string;
   /** 카테고리 색 dot — Tailwind 배경 클래스. */
@@ -30,50 +23,36 @@ interface CategoryDef {
   Icon: ComponentType<{ className?: string }>;
 }
 
-// 5 카테고리 — 커뮤니티 상단 메뉴와 동일 구성.
+// 3 카테고리 — 모의고사 상단 메뉴와 동일 구성.
 const CATEGORIES: CategoryDef[] = [
   {
-    id: "announce",
-    to: "/announcements",
-    label: "공지사항",
-    dotClass: "bg-emerald-500",
-    Icon: MegaphoneIcon,
+    id: "full",
+    to: "/latest/mcq/exams",
+    label: "1차 통합 모의고사",
+    dotClass: "bg-primary",
+    Icon: LayersIcon,
   },
   {
-    id: "free",
-    to: "/community/free",
-    label: "자유게시판",
-    dotClass: "bg-violet-500",
-    Icon: MessageSquareTextIcon,
-  },
-  {
-    id: "study",
-    to: "/community/study",
-    label: "스터디 모집",
-    dotClass: "bg-sky-500",
-    Icon: UsersIcon,
-  },
-  {
-    id: "qna",
-    to: "/qna",
-    label: "Q&A",
+    id: "progressive",
+    to: "/latest/mcq?kind=mock_progressive",
+    label: "1차 진도별 모의고사",
     dotClass: "bg-amber-500",
-    Icon: MessageCircleQuestionIcon,
+    Icon: ClipboardListIcon,
   },
   {
-    id: "review",
-    to: "/community/review",
-    label: "합격 후기",
-    dotClass: "bg-rose-500",
-    Icon: GraduationCapIcon,
+    id: "gs",
+    to: "/gs",
+    label: "2차 모의고사",
+    dotClass: "bg-violet-500",
+    Icon: PencilLineIcon,
   },
 ];
 
-// 5 카테고리 탭 strip — 형제 영역 단절 해소.
-function CommunityTabs({ active }: { active: CommunityCategory }) {
+// 3 카테고리 탭 strip.
+function MockExamTabs({ active }: { active: MockExamCategory }) {
   return (
     <nav
-      aria-label="커뮤니티"
+      aria-label="모의고사"
       className="border-border bg-muted/50 flex w-max max-w-full gap-1 overflow-x-auto rounded-full border p-1"
     >
       {CATEGORIES.map((c) => {
@@ -100,15 +79,16 @@ function CommunityTabs({ active }: { active: CommunityCategory }) {
   );
 }
 
-// 페이지 폭 — 허브·피드(중간) / 시험지(독서 폭) / 매트릭스(넓게).
-const WIDTH_CLASS: Record<"feed" | "narrow" | "wide", string> = {
+// 페이지 폭 — 색인(넓게) / 피드(중간) / 시험지(독서 폭) / 매트릭스(최대).
+const WIDTH_CLASS: Record<"index" | "feed" | "narrow" | "wide", string> = {
+  index: "max-w-screen-xl",
   feed: "max-w-5xl",
   narrow: "max-w-3xl",
   wide: "max-w-screen-2xl",
 };
 
-// 커뮤니티 영역 공통 셸.
-export function CommunityShell({
+// 모의고사 영역 공통 셸.
+export function MockExamShell({
   category,
   title,
   desc,
@@ -117,14 +97,14 @@ export function CommunityShell({
   width = "feed",
   children,
 }: {
-  category: CommunityCategory;
+  category: MockExamCategory;
   title: ReactNode;
   desc?: ReactNode;
   /** 헤더 우측 슬롯 (액션 버튼 등). */
   headerRight?: ReactNode;
-  /** 하위 화면의 부모 복귀 링크. */
+  /** 하위 화면(상세·시험지·결과)의 부모 복귀 링크. */
   backLink?: { to: string; label: string };
-  width?: "feed" | "narrow" | "wide";
+  width?: "index" | "feed" | "narrow" | "wide";
   children: ReactNode;
 }) {
   const Icon = (CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0])
@@ -149,7 +129,7 @@ export function CommunityShell({
         <div className="min-w-0 space-y-1.5">
           <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
             <Icon className="size-3" />
-            COMMUNITY · 커뮤니티
+            MOCK EXAM · 모의고사
           </p>
           <h1 className="text-[28px] font-extrabold tracking-tight">
             {title}
@@ -163,7 +143,7 @@ export function CommunityShell({
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </header>
       <div className="mb-[18px]">
-        <CommunityTabs active={category} />
+        <MockExamTabs active={category} />
       </div>
       {children}
     </div>

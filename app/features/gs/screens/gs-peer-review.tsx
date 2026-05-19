@@ -17,7 +17,7 @@ import { Card, CardContent } from "~/core/components/ui/card";
 import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import { Chip, Section } from "~/features/community/components/community-ui";
 import {
   type GsPage,
@@ -101,7 +101,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
   );
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       width="narrow"
       backLink={{ to: "/gs", label: "온라인 GS" }}
@@ -202,7 +202,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
       </Section>
-    </CommunityShell>
+    </MockExamShell>
   );
 }
 

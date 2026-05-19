@@ -18,7 +18,10 @@ import {
 } from "~/features/study/queries.server";
 import { getStudyGoals } from "~/features/goals/queries.server";
 import { listRecentCases } from "~/features/cases/queries.server";
-import { listRecentLawRevisions } from "~/features/laws/queries.server";
+import {
+  getStaffRole,
+  listRecentLawRevisions,
+} from "~/features/laws/queries.server";
 import { listTopBookmarks } from "~/features/annotations/queries.server";
 import {
   LAW_SUBJECT_SLUGS,
@@ -252,7 +255,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     hasExamPlan: !!passerBenchmark?.hasPlan,
   });
 
+  // 운영관리 메뉴는 staff(강사·관리자·원장)에게만 — 대시보드 사이드바 게이트.
+  const isStaff = (await getStaffRole(client, user.id)) !== null;
+
   return {
+    isStaff,
     weekTrack,
     passerBenchmark,
     passerSummaries,
@@ -455,7 +462,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         color: T.ink,
       }}
     >
-      <DashSidebar />
+      <DashSidebar isStaff={loaderData.isStaff} />
       <div
         style={{
           flex: 1,

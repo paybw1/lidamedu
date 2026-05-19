@@ -17,7 +17,7 @@ import {
   relativeKo,
 } from "~/features/community/components/community-ui";
 
-import { BoardTabs, BOARD_ICON } from "../components/board-tabs";
+import { BOARD_ICON } from "../components/board-icon";
 import { BOARD_DESC, BOARD_LABEL, communityBoardSchema } from "../labels";
 import { listPosts } from "../queries.server";
 
@@ -53,7 +53,7 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
 
   return (
     <CommunityShell
-      category="community"
+      category={board}
       title={BOARD_LABEL[board]}
       desc={BOARD_DESC[board]}
       headerRight={
@@ -64,8 +64,6 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
-      <BoardTabs active={board} />
-
       <Form
         method="get"
         className="border-border bg-card mb-3.5 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-sm"

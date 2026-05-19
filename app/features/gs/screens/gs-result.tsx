@@ -19,7 +19,7 @@ import { Link, data } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import { Bar, Chip, Section } from "~/features/community/components/community-ui";
 import {
   type GsAnswerRecord,
@@ -99,7 +99,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function GsResult({ loaderData }: Route.ComponentProps) {
   if (loaderData.state === "in-progress") {
     return (
-      <CommunityShell
+      <MockExamShell
         category="gs"
         title="GS 결과"
         desc="응시 단계에 따라 점수·피드백·모범답안이 차례로 공개됩니다."
@@ -118,7 +118,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
             </Button>
           }
         />
-      </CommunityShell>
+      </MockExamShell>
     );
   }
 
@@ -148,7 +148,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
   for (const arr of pagesByQuestion.values()) arr.sort((a, b) => a - b);
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       title={`${round.title} 결과`}
       desc={
@@ -254,7 +254,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
           })}
         </div>
       </Section>
-    </CommunityShell>
+    </MockExamShell>
   );
 }
 

@@ -1,10 +1,15 @@
 // 퀴즈 세션 종료 — 시험 모드 끝내기 / 학습 모드 노드 완주 시 호출.
+// feat-10-005: 통합 시험 교시 세션이면 응시(mcq_exam_attempts)를 마무리하고 러너로 복귀.
 
 import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
-import { completeQuizSession, getQuizSession } from "~/features/study/queries.server";
+import { finalizeExamAttemptIfComplete } from "~/features/mcq-exams/queries.server";
+import {
+  completeQuizSession,
+  getQuizSession,
+} from "~/features/study/queries.server";
 
 import type { Route } from "./+types/session-complete";
 
@@ -37,6 +42,18 @@ export async function action({ request }: Route.ActionArgs) {
   if (!session) return data({ error: "Session not found" }, { status: 404 });
 
   await completeQuizSession(client, user.id, parsed.data.sessionId);
+
+  // 통합 시험 교시 세션이면 — 응시 마무리(전 교시 완료 시 completed_at 설정) 후
+  // 팩 결과 화면 대신 시험 러너로 복귀한다.
+  if (session.examAttemptId) {
+    const fin = await finalizeExamAttemptIfComplete(
+      client,
+      session.examAttemptId,
+    );
+    if (fin) {
+      return redirect(`/latest/mcq/exam/${fin.examId}`);
+    }
+  }
 
   if (parsed.data.redirectTo) {
     return redirect(parsed.data.redirectTo);

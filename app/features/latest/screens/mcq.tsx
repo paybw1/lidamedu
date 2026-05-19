@@ -37,7 +37,7 @@ import {
   LatestFilterForm,
   Pill,
 } from "~/features/latest/components/latest-list";
-import { LatestShell } from "~/features/latest/components/latest-shell";
+import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -53,7 +53,7 @@ import { listPacks } from "~/features/mcq-packs/queries.server";
 import type { Route } from "./+types/mcq";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "객관식 문제 | Lidam Patent Attorney Academy" },
+  { title: "1차 기출문제 | Lidam Patent Attorney Academy" },
 ];
 
 const KINDS: Array<{ value: McqPackKind | "all"; label: string }> = [
@@ -146,12 +146,14 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
     descParts.push(filters.kind === "past_exam" ? "기출" : "모의");
   if (filters.year) descParts.push(`${filters.year}년`);
   if (filters.q) descParts.push(`"${filters.q}" 검색`);
+  const isMock =
+    filters.kind === "mock_full" || filters.kind === "mock_progressive";
 
   return (
-    <LatestShell
-      category="mcq"
+    <McqAreaShell
+      isMock={isMock}
       width="index"
-      title="객관식 문제"
+      title={isMock ? "1차 진도별 모의고사" : "1차 기출문제"}
       desc={`${descParts.join(" · ")} — 기출/모의 클릭 시 문제·해설·동영상·결과 통계로 진입합니다.`}
       headerRight={
         canEdit && !showAdd ? (
@@ -264,7 +266,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
           </table>
         </IndexCard>
       )}
-    </LatestShell>
+    </McqAreaShell>
   );
 }
 

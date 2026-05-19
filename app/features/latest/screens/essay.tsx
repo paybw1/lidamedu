@@ -1,4 +1,4 @@
-// 최신 주관식 문제 — 등록일 최신순. 검색·과목·년도·출처 필터.
+// 최신 2차 기출문제 — 등록일 최신순. 검색·과목·년도·출처 필터.
 // 키트 lidam-latest/EssayScreen 디자인.
 
 import { PenLineIcon, SearchXIcon } from "lucide-react";
@@ -36,7 +36,7 @@ import {
 import type { Route } from "./+types/essay";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "주관식 문제 | Lidam Patent Attorney Academy" },
+  { title: "2차 기출문제 | Lidam Patent Attorney Academy" },
 ];
 
 interface Filters {
@@ -140,8 +140,8 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
     <LatestShell
       category="essay"
       width="feed"
-      title="주관식 문제"
-      desc={`${descParts.join(" · ")} — 등록일 최신순으로 모은 신규 주관식 문제입니다.`}
+      title="2차 기출문제"
+      desc={`${descParts.join(" · ")} — 등록일 최신순으로 모은 신규 2차 기출문제입니다.`}
     >
       <LatestFilterForm
         search={{
@@ -215,13 +215,13 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
           tone={filterActive ? "subdued" : "neutral"}
           title={
             filterActive
-              ? "조건에 맞는 주관식 문제가 없습니다"
-              : "아직 등록된 주관식 문제가 없습니다"
+              ? "조건에 맞는 2차 기출문제가 없습니다"
+              : "아직 등록된 2차 기출문제가 없습니다"
           }
           body={
             filterActive
               ? "검색어나 필터를 바꿔 다시 찾아보세요."
-              : "새 주관식 문제가 등록되면 이곳에 등록일 최신순으로 모입니다."
+              : "새 2차 기출문제가 등록되면 이곳에 등록일 최신순으로 모입니다."
           }
         />
       ) : (

@@ -11,7 +11,7 @@ import { Link, data } from "react-router";
 import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import {
   Bar,
   Chip,
@@ -60,7 +60,7 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
   const subjectLabel = LAW_SUBJECTS[series.subject]?.name ?? series.subject;
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       backLink={{ to: "/gs", label: "온라인 GS" }}
       title={`시리즈 추이 · ${series.title}`}
@@ -210,7 +210,7 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
           </Card>
         </Section>
       ) : null}
-    </CommunityShell>
+    </MockExamShell>
   );
 }
 

@@ -19,13 +19,13 @@ const ITEMS = [
     to: "/latest/cases",
   },
   {
-    cat: "객관식 문제",
+    cat: "1차 기출문제",
     dot: "#A77B3F",
     body: "2026년 모의고사 — 상표법 240제 추가",
-    to: "/latest/mcq",
+    to: "/latest/mcq?kind=past_exam",
   },
   {
-    cat: "주관식 문제",
+    cat: "2차 기출문제",
     dot: "#C97D5B",
     body: "2026 GS 2회 — 디자인보호법 사례형",
     to: "/latest/essay",

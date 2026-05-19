@@ -50,15 +50,15 @@ const CATEGORIES: CategoryDef[] = [
   },
   {
     id: "mcq",
-    to: "/latest/mcq",
-    label: "객관식 문제",
+    to: "/latest/mcq?kind=past_exam",
+    label: "1차 기출문제",
     dotClass: "bg-amber-500",
     Icon: ListChecksIcon,
   },
   {
     id: "essay",
     to: "/latest/essay",
-    label: "주관식 문제",
+    label: "2차 기출문제",
     dotClass: "bg-rose-500",
     Icon: PenLineIcon,
   },

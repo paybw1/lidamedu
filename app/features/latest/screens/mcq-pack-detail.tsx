@@ -22,7 +22,7 @@ import {
 
 import { Button } from "~/core/components/ui/button";
 import { Pill } from "~/features/latest/components/latest-list";
-import { LatestShell } from "~/features/latest/components/latest-shell";
+import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MockPackProblemPicker } from "~/features/mcq-packs/components/mock-pack-problem-picker";
@@ -76,10 +76,10 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
   if (pack.durationMin) metaParts.push(`제한 ${pack.durationMin}분`);
 
   return (
-    <LatestShell
-      category="mcq"
+    <McqAreaShell
+      isMock={isMockKind(pack.kind)}
       width="feed"
-      backLink={{ to: "/latest/mcq", label: "객관식 문제로" }}
+      backLink={{ to: "/latest/mcq?kind=past_exam", label: "1차 기출문제로" }}
       title={pack.title}
       desc={metaParts.join(" · ")}
     >
@@ -218,7 +218,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
       {canEdit && mockPack ? (
         <ReleasePanel packId={pack.packId} problems={problems} />
       ) : null}
-    </LatestShell>
+    </McqAreaShell>
   );
 }
 

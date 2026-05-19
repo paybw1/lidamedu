@@ -934,3 +934,52 @@ grant select on public.public_profiles to authenticated;  -- anon 제외
 `security_invoker = false` → 뷰 소유자 권한으로 실행돼 `profiles` RLS 를 우회하되, 노출 컬럼은 4종뿐(전화·동의 등 비공개 컬럼 미노출). 게시판 쿼리는 글·댓글의 `author_id` 를 모아 이 뷰를 batch 조회한다. Supabase Security Advisor 가 "security definer view" 로 표시하지만 의도된 설계.
 
 상세: `docs/features/feat-6-002-community-boards.md`.
+
+## 22. mcq_exams (다과목 통합 1차 모의고사)
+
+`feat-10-005` — 여러 모의고사 팩(`mcq_packs`)을 한 "시험"으로 묶어 **과목별 과락 + 전 과목 평균**으로 합격을 판정한다. 한 교시 = `mcq_pack` 한 개, 한 응시 = 교시별 `quiz_sessions` 묶음.
+
+```sql
+create table public.mcq_exams (
+  exam_id       uuid primary key default gen_random_uuid(),
+  title         text not null,
+  description   text,
+  year          integer,
+  exam_round_no integer,
+  pass_average  smallint not null default 60 check (pass_average between 0 and 100),  -- 전 과목 평균 합격선 (%)
+  is_published  boolean not null default false,   -- 교시 구성 후 운영자가 공개
+  published_at  date,
+  created_by    uuid references profiles(profile_id),
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),   -- set_updated_at 트리거
+  deleted_at    timestamptz                            -- soft delete
+);
+
+create table public.mcq_exam_papers (              -- 시험 ↔ 교시(팩) 매핑
+  exam_id    uuid not null references mcq_exams(exam_id) on delete cascade,
+  pack_id    uuid not null references mcq_packs(pack_id),
+  ord        smallint not null default 0,          -- 교시 순서 (0 = 1교시)
+  fail_floor smallint not null default 40 check (fail_floor between 0 and 100),  -- 과락선 (%)
+  primary key (exam_id, pack_id)
+);
+
+create table public.mcq_exam_attempts (            -- 한 응시 = 전 교시 묶음
+  attempt_id   uuid primary key default gen_random_uuid(),
+  exam_id      uuid not null references mcq_exams(exam_id),
+  user_id      uuid not null references profiles(profile_id),
+  started_at   timestamptz not null default now(),
+  completed_at timestamptz,                         -- 전 교시 완료 시각 (finalizeExamAttemptIfComplete)
+  created_at   timestamptz not null default now()
+);
+
+alter table public.quiz_sessions
+  add column exam_attempt_id uuid references mcq_exam_attempts(attempt_id);  -- 교시 세션 → 응시 묶음 (null = 단독 팩 응시)
+```
+
+**RLS**: `mcq_exams` 는 콘텐츠 패턴 — 공개분(`is_published`) 전체 읽기 + staff 전체 읽기·쓰기(`private.is_staff`). `mcq_exam_papers` 는 읽기 전체 공개(`true`) + 쓰기 staff. `mcq_exam_attempts` 는 학습 데이터 — 본인(`user_id = auth.uid()`)만 R/W.
+
+**교시 순차 응시**: 교시별 `quiz_sessions`(`mode='exam'`, `pack_id`+`exam_attempt_id`)는 `/api/mcq-pack/start` 단일 경로로 생성된다. 이전 교시(작은 `ord`)가 완료돼야 다음 교시가 열린다(서버 게이트). 마지막 교시 완료 시 `mcq_exam_attempts.completed_at` 설정.
+
+**등수 RPC** `mcq_exam_attempt_stats(p_exam_id uuid)` — `SECURITY DEFINER` + `search_path` 고정. 사용자별 최신 완료 응시의 전 교시 평균으로 `rank`/`percentile`/`z_score` 산출, 호출자(`auth.uid()`) 한 행 반환. `mcq_pack_attempt_stats`(feat-10-004) 본뜸. 과락·합격 판정은 RPC 밖(`getExamAttemptBreakdown`, 본인 데이터)에서 단일 산출.
+
+상세: `docs/features/feat-10-005-integrated-mock-exam.md`.

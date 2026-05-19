@@ -1,5 +1,5 @@
 // 커뮤니티 게시판 공용 타입 · 라벨 · zod 스키마 — feat-6-002.
-// 아이콘 등 표시 자원은 board-tabs.tsx 가 소유한다 (이 파일은 서버에서도 value import 안전).
+// 아이콘 등 표시 자원은 board-icon.tsx 가 소유한다 (이 파일은 서버에서도 value import 안전).
 import type { Database } from "database.types";
 import { z } from "zod";
 

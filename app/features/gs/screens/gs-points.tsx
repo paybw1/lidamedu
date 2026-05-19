@@ -6,7 +6,7 @@ import { data } from "react-router";
 import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import {
   Chip,
   EmptyState,
@@ -50,7 +50,7 @@ export default function GsPoints({ loaderData }: Route.ComponentProps) {
   const { balance, ledger } = loaderData;
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       width="narrow"
       backLink={{ to: "/gs", label: "온라인 GS" }}
@@ -159,6 +159,6 @@ export default function GsPoints({ loaderData }: Route.ComponentProps) {
           </div>
         )}
       </Section>
-    </CommunityShell>
+    </MockExamShell>
   );
 }

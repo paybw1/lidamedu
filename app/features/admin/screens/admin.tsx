@@ -29,7 +29,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "운영자 | Lidam Patent Attorney Academy" },
+  { title: "운영관리 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -63,7 +63,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
   return (
     <AdminShell
       cluster="hub"
-      title="운영자 허브"
+      title="운영관리 허브"
       desc="콘텐츠 제작·수강생 운영·시험 운영·데이터 분석을 한 곳에서."
       role={role}
     >
@@ -347,7 +347,7 @@ function StudentGuidance() {
           <div className="flex items-center gap-2">
             <LockIcon className="size-5 text-amber-600 dark:text-amber-400" />
             <h1 className="text-xl font-bold tracking-tight">
-              운영자 전용 메뉴
+              운영관리 전용 메뉴
             </h1>
           </div>
         </CardHeader>

@@ -16,7 +16,7 @@ import { Link, data } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CommunityShell } from "~/features/community/components/community-shell";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import {
   Chip,
   EmptyState,
@@ -95,7 +95,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
   const peerDone = peerAssignments.filter((a) => a.submittedAt != null);
 
   return (
-    <CommunityShell
+    <MockExamShell
       category="gs"
       title="정기 모의고사"
       desc={
@@ -199,7 +199,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
           ) : null}
         </>
       )}
-    </CommunityShell>
+    </MockExamShell>
   );
 }
 

@@ -17,7 +17,7 @@ import { Form, Link, data, useFetcher } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import { Pill } from "~/features/latest/components/latest-list";
-import { LatestShell } from "~/features/latest/components/latest-shell";
+import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   FORMAT_LABEL,
@@ -34,6 +34,7 @@ import { getProblemDetailsByIds } from "~/features/problems/queries.server";
 import {
   MCQ_PACK_KIND_LABELS,
   MCQ_PACK_SUBJECT_LABELS,
+  isMockKind,
 } from "~/features/mcq-packs/labels";
 import { getPackById } from "~/features/mcq-packs/queries.server";
 import {
@@ -242,8 +243,8 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
   if (pack.publishedAt) metaParts.push(`출제일 ${pack.publishedAt}`);
 
   return (
-    <LatestShell
-      category="mcq"
+    <McqAreaShell
+      isMock={isMockKind(pack.kind)}
       width="narrow"
       backLink={{
         to: `/latest/mcq/${pack.packId}`,
@@ -388,7 +389,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
           </Form>
         </div>
       </div>
-    </LatestShell>
+    </McqAreaShell>
   );
 }
 

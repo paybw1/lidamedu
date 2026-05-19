@@ -6,6 +6,7 @@ import {
   BookmarkIcon,
   DownloadIcon,
   HighlighterIcon,
+  MessageSquareTextIcon,
   NotebookPenIcon,
   StickyNoteIcon,
 } from "lucide-react";
@@ -14,7 +15,12 @@ import { Link } from "react-router";
 import { cn } from "~/core/lib/utils";
 import type { StudyAidCounts } from "~/features/study/queries.server";
 
-export type StudyAidTab = "wrong" | "bookmarks" | "notes" | "highlights";
+export type StudyAidTab =
+  | "wrong"
+  | "bookmarks"
+  | "notes"
+  | "highlights"
+  | "comments";
 
 // 탭 strip 의 형제 화면 건수 — 각 화면 loader 가 getStudyAidCounts 로 채운다.
 export interface StudyAidTabCounts {
@@ -22,6 +28,7 @@ export interface StudyAidTabCounts {
   bookmarks: number;
   notes: number;
   highlights: number;
+  comments: number;
 }
 
 interface TabDef {
@@ -39,6 +46,12 @@ const TABS: TabDef[] = [
     Icon: NotebookPenIcon,
   },
   {
+    id: "highlights",
+    to: "/study/highlights",
+    label: "하이라이트",
+    Icon: HighlighterIcon,
+  },
+  {
     id: "bookmarks",
     to: "/study/bookmarks",
     label: "즐겨찾기",
@@ -46,10 +59,10 @@ const TABS: TabDef[] = [
   },
   { id: "notes", to: "/study/notes", label: "포스트잇", Icon: StickyNoteIcon },
   {
-    id: "highlights",
-    to: "/study/highlights",
-    label: "하이라이트",
-    Icon: HighlighterIcon,
+    id: "comments",
+    to: "/study/comments",
+    label: "메모",
+    Icon: MessageSquareTextIcon,
   },
 ];
 
@@ -206,5 +219,6 @@ export function toTabCounts(c: StudyAidCounts): StudyAidTabCounts {
     bookmarks: c.bookmarks,
     notes: c.memos,
     highlights: c.highlights,
+    comments: c.comments,
   };
 }

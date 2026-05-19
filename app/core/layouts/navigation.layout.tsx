@@ -55,6 +55,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       loading={false}
                       inboxUnread={inbox.unread}
                       inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
+                      isStaff={inbox.isStaff}
                     />
                   )}
                 </Await>

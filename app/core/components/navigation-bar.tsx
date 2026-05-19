@@ -24,7 +24,6 @@ import {
 import { SUBJECT_SECTIONS } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 
-import LangSwitcher from "./lang-switcher";
 import ThemeSwitcher from "./theme-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -68,22 +67,23 @@ const studyItems: SimpleLink[] = [
 const latestItems: SimpleLink[] = [
   { label: "법 개정", to: "/latest/laws" },
   { label: "최근 판례", to: "/latest/cases" },
-  { label: "객관식 기출문제", to: "/latest/mcq?kind=past_exam" },
-  { label: "주관식 기출문제", to: "/latest/essay" },
+  { label: "1차 기출문제", to: "/latest/mcq?kind=past_exam" },
+  { label: "2차 기출문제", to: "/latest/essay" },
   { label: "논문", to: "/latest/papers" },
   { label: "추록·정오표", to: "/latest/book-updates" },
 ];
 
 const studyAidItems: SimpleLink[] = [
   { label: "오답노트", to: "/study/wrong-note" },
-  { label: "즐겨찾기", to: "/study/bookmarks" },
-  { label: "메모", to: "/study/notes" },
   { label: "하이라이트", to: "/study/highlights" },
+  { label: "즐겨찾기", to: "/study/bookmarks" },
+  { label: "포스트잇", to: "/study/notes" },
+  { label: "메모", to: "/study/comments" },
 ];
 
-// 1차는 종합/진도별로 분리 — mcq_packs.kind 가 이미 구분, 색인 loader 의 ?kind= 활용.
+// 1차는 통합 시험(다과목)·진도별로 분리. 진도별은 색인 loader 의 ?kind= 활용.
 const mockExamItems: SimpleLink[] = [
-  { label: "1차 종합 모의고사", to: "/latest/mcq?kind=mock_full" },
+  { label: "1차 통합 모의고사", to: "/latest/mcq/exams" },
   { label: "1차 진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
   { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
 ];
@@ -97,7 +97,7 @@ const communityItems: SimpleLink[] = [
 ];
 
 const trailingFlats: SimpleLink[] = [
-  { label: "운영자", to: "/admin" },
+  { label: "운영관리", to: "/admin" },
 ];
 
 function UserMenu({
@@ -242,7 +242,6 @@ function Actions({
         </DropdownMenuContent>
       </DropdownMenu>
       <ThemeSwitcher />
-      <LangSwitcher />
     </>
   );
 }
@@ -308,6 +307,7 @@ export function NavigationBar({
   loading,
   inboxUnread = null,
   inboxHref = null,
+  isStaff = false,
 }: {
   name?: string;
   email?: string;
@@ -317,17 +317,21 @@ export function NavigationBar({
   inboxUnread?: number | null;
   // 클릭 시 진입할 인박스 경로 — staff 는 /admin/inbox, 학생은 /inbox.
   inboxHref?: string | null;
+  // staff(강사·관리자·원장) 여부 — 운영관리 메뉴는 staff 에게만 노출.
+  isStaff?: boolean;
 }) {
   return (
     <nav className="dark:bg-background/85 sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 dark:border-border">
       <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
-        <Link to="/" aria-label="리담변리사학원 홈">
+        <Link to="/" aria-label="리담변리사학원 홈" className="shrink-0">
           {/* 로고 PNG 의 텍스트 부분이 검정이라 dark 모드에서 안 보임. invert + hue-rotate(180)
               조합으로 검정→흰색 변환하면서 심볼 브랜드 컬러는 그대로 보존. */}
+          {/* shrink-0(Link) + max-w-none(img): 네비가 좁아져도 Tailwind preflight 의
+              max-width:100% 가 로고를 가로로 압축하지 못하게 막는다. */}
           <img
             src="/lidam-logo.png"
             alt="리담변리사학원"
-            className="h-7 w-auto shrink-0 dark:[filter:invert(1)_hue-rotate(180deg)]"
+            className="h-7 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
           />
         </Link>
 
@@ -398,9 +402,11 @@ export function NavigationBar({
               <SimpleDropdown label="모의고사" items={mockExamItems} />
               <SimpleDropdown label="커뮤니티" items={communityItems} />
 
-              {trailingFlats.map((m) => (
-                <FlatLink key={m.to} {...m} />
-              ))}
+              {isStaff
+                ? trailingFlats.map((m) => (
+                    <FlatLink key={m.to} {...m} />
+                  ))
+                : null}
             </NavigationMenuList>
           </NavigationMenu>
         </div>
@@ -471,16 +477,18 @@ export function NavigationBar({
               <MobileGroup label="모의고사" items={mockExamItems} />
               <MobileGroup label="커뮤니티" items={communityItems} />
 
-              {trailingFlats.map((m) => (
-                <SheetClose key={m.to} asChild>
-                  <Link
-                    to={m.to}
-                    className="hover:bg-accent mt-1 rounded-md px-3 py-2"
-                  >
-                    {m.label}
-                  </Link>
-                </SheetClose>
-              ))}
+              {isStaff
+                ? trailingFlats.map((m) => (
+                    <SheetClose key={m.to} asChild>
+                      <Link
+                        to={m.to}
+                        className="hover:bg-accent mt-1 rounded-md px-3 py-2"
+                      >
+                        {m.label}
+                      </Link>
+                    </SheetClose>
+                  ))
+                : null}
             </nav>
           </SheetHeader>
           {loading ? (

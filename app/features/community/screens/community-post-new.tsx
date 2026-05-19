@@ -68,7 +68,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
 
   return (
     <CommunityShell
-      category="community"
+      category={board}
       title={isEdit ? "글 수정" : "새 글 작성"}
       desc={BOARD_LABEL[board]}
       backLink={{ to: cancelHref, label: BOARD_LABEL[board] }}

@@ -1,11 +1,13 @@
 // MCQ 팩 응시 시작 — quiz_session 을 생성하고 시험지(sheet) 페이지로 redirect.
 // study 모드: 학습 (전 문항 한 페이지 + 채점/해설), 시간제한 없음.
 // exam 모드: 모의고사 (타이머 기반, 시간 초과 시 일괄 제출).
+// examAttemptId 가 붙으면 통합 시험(feat-10-005) 교시 응시 — exam 모드 강제 + 교시 게이트 검증.
 
 import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getExamPaperStartDecision } from "~/features/mcq-exams/queries.server";
 import {
   getPackById,
   getPackProblemIds,
@@ -33,7 +35,14 @@ export async function action({ request }: Route.ActionArgs) {
   if (!z.string().uuid().safeParse(packId).success) {
     return data({ error: "Invalid packId" }, { status: 400 });
   }
-  const modeRaw = String(fd.get("mode") ?? "study");
+
+  // 통합 시험 교시 응시 — examAttemptId 가 붙으면 exam 모드 강제.
+  const examAttemptIdRaw = String(fd.get("examAttemptId") ?? "").trim();
+  const examAttemptId = z.string().uuid().safeParse(examAttemptIdRaw).success
+    ? examAttemptIdRaw
+    : null;
+
+  const modeRaw = examAttemptId ? "exam" : String(fd.get("mode") ?? "study");
   if (!(MODE_VALUES as readonly string[]).includes(modeRaw)) {
     return data({ error: "Invalid mode" }, { status: 400 });
   }
@@ -45,9 +54,26 @@ export async function action({ request }: Route.ActionArgs) {
   // 모의 pack 인데 study 모드 요청 시 학습 진입 허용 (사용자 선택).
   // 단, exam 모드는 모의 pack 만.
   if (mode === "exam" && !isMockKind(pack.kind)) {
-    return data({ error: "이 팩은 모의고사 모드를 지원하지 않습니다." }, {
-      status: 400,
-    });
+    return data(
+      { error: "이 팩은 모의고사 모드를 지원하지 않습니다." },
+      { status: 400 },
+    );
+  }
+
+  // 교시 응시 — 응시 소유·교시 게이트 검증. 진행 중 세션이 있으면 그 시트로 복귀.
+  if (examAttemptId) {
+    const decision = await getExamPaperStartDecision(
+      client,
+      user.id,
+      examAttemptId,
+      packId,
+    );
+    if (decision.kind === "error") {
+      return data({ error: decision.message }, { status: 400 });
+    }
+    if (decision.kind === "resume") {
+      return redirect(`/latest/mcq/${packId}/sheet/${decision.sessionId}`);
+    }
   }
 
   const problemIds = await getPackProblemIds(client, packId);
@@ -88,6 +114,7 @@ export async function action({ request }: Route.ActionArgs) {
     problemIds,
     timeLimitSec,
     packId,
+    examAttemptId,
   });
 
   // ?startAt=<problemId> 가 포함된 경우 시험지 안에서 해당 문항으로 스크롤 anchor.

@@ -74,7 +74,7 @@ export default function CommunityPostDetail({
 
   return (
     <CommunityShell
-      category="community"
+      category={post.board}
       title={BOARD_LABEL[post.board]}
       backLink={{ to: `/community/${post.board}`, label: BOARD_LABEL[post.board] }}
       width="narrow"

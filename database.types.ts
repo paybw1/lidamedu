@@ -2243,6 +2243,151 @@ export type Database = {
           },
         ]
       }
+      mcq_exam_attempts: {
+        Row: {
+          attempt_id: string
+          completed_at: string | null
+          created_at: string
+          exam_id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          attempt_id?: string
+          completed_at?: string | null
+          created_at?: string
+          exam_id: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          attempt_id?: string
+          completed_at?: string | null
+          created_at?: string
+          exam_id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcq_exam_attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "mcq_exams"
+            referencedColumns: ["exam_id"]
+          },
+          {
+            foreignKeyName: "mcq_exam_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "mcq_exam_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      mcq_exam_papers: {
+        Row: {
+          exam_id: string
+          fail_floor: number
+          ord: number
+          pack_id: string
+        }
+        Insert: {
+          exam_id: string
+          fail_floor?: number
+          ord?: number
+          pack_id: string
+        }
+        Update: {
+          exam_id?: string
+          fail_floor?: number
+          ord?: number
+          pack_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcq_exam_papers_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "mcq_exams"
+            referencedColumns: ["exam_id"]
+          },
+          {
+            foreignKeyName: "mcq_exam_papers_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "mcq_packs"
+            referencedColumns: ["pack_id"]
+          },
+        ]
+      }
+      mcq_exams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          exam_id: string
+          exam_round_no: number | null
+          is_published: boolean
+          pass_average: number
+          published_at: string | null
+          title: string
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          exam_id?: string
+          exam_round_no?: number | null
+          is_published?: boolean
+          pass_average?: number
+          published_at?: string | null
+          title: string
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          exam_id?: string
+          exam_round_no?: number | null
+          is_published?: boolean
+          pass_average?: number
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcq_exams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "mcq_exams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       mcq_pack_problems: {
         Row: {
           created_at: string
@@ -3252,6 +3397,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          exam_attempt_id: string | null
           law_code: string | null
           mode: string
           pack_id: string | null
@@ -3267,6 +3413,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          exam_attempt_id?: string | null
           law_code?: string | null
           mode?: string
           pack_id?: string | null
@@ -3284,6 +3431,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          exam_attempt_id?: string | null
           law_code?: string | null
           mode?: string
           pack_id?: string | null
@@ -3299,6 +3447,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_exam_attempt_id_fkey"
+            columns: ["exam_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "mcq_exam_attempts"
+            referencedColumns: ["attempt_id"]
+          },
           {
             foreignKeyName: "quiz_sessions_pack_id_fkey"
             columns: ["pack_id"]
@@ -4519,6 +4674,17 @@ export type Database = {
       is_announcement_author: {
         Args: { p_announcement_id: string; p_user_id: string }
         Returns: boolean
+      }
+      mcq_exam_attempt_stats: {
+        Args: { p_exam_id: string }
+        Returns: {
+          attempt_id: string
+          average: number
+          percentile: number
+          rank: number
+          total_takers: number
+          z_score: number
+        }[]
       }
       mcq_pack_attempt_stats: {
         Args: { p_pack_id: string }

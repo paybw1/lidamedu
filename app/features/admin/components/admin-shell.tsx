@@ -52,7 +52,7 @@ interface NavCluster {
 export const ADMIN_NAV: NavCluster[] = [
   {
     id: "hub",
-    label: "운영자 허브",
+    label: "운영관리 허브",
     Icon: LayoutDashboardIcon,
     screens: [{ label: "허브", to: "/admin" }],
   },
@@ -76,13 +76,14 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "problems",
-    label: "문제·OX",
+    label: "객관식 문제, OX 운영",
     Icon: ListChecksIcon,
     screens: [
       { label: "문제 목록", to: "/admin/problems" },
       { label: "신규 출제", to: "/admin/problems/new" },
       { label: "OX 검수", to: "/admin/problems/ox" },
       { label: "문제 통계", to: "/admin/problems/stats" },
+      { label: "통합 모의고사", to: "/latest/mcq/exams" },
     ],
   },
   {
@@ -116,7 +117,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "gs",
-    label: "온라인 GS 운영",
+    label: "주관식 문제 운영",
     Icon: AwardIcon,
     screens: [
       { label: "회차 목록", to: "/admin/gs" },
@@ -280,7 +281,7 @@ function AdminSidebar({
         {!collapsed ? (
           <>
             <span className="text-sidebar-foreground flex-1 text-sm font-extrabold tracking-tight">
-              운영자
+              운영관리
             </span>
             <button
               type="button"
@@ -347,7 +348,7 @@ function AdminBreadcrumb({
   return (
     <div className="border-border bg-background/90 sticky top-14 z-10 flex items-center gap-1.5 border-b px-5 py-2.5 text-xs backdrop-blur md:px-8">
       <Link to="/admin" className="text-muted-foreground hover:text-foreground">
-        운영자
+        운영관리
       </Link>
       <ChevronRightSep />
       {cluster.id === "hub" ? (

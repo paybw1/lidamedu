@@ -31,10 +31,18 @@ const NAV_ITEMS: NavItem[] = [
   { label: "학습보조", to: "/study/wrong-note", icon: BookmarkIcon },
   { label: "학습정보", to: "/latest/laws", icon: NewspaperIcon },
   { label: "커뮤니티", to: "/community", icon: MessagesSquareIcon },
-  { label: "운영자", to: "/admin", icon: ShieldIcon },
+  { label: "운영관리", to: "/admin", icon: ShieldIcon },
 ];
 
-export function DashSidebar() {
+export function DashSidebar({
+  isStaff = false,
+}: {
+  isStaff?: boolean;
+}) {
+  // 수험생에게는 운영관리 항목을 감춘다.
+  const navItems = NAV_ITEMS.filter(
+    (it) => it.to !== "/admin" || isStaff,
+  );
   return (
     <aside
       className="dash-sidebar"
@@ -68,12 +76,12 @@ export function DashSidebar() {
         <img
           src="/lidam-logo.png"
           alt="리담변리사학원"
-          style={{ height: 28, width: "auto" }}
+          style={{ height: 28, width: "auto", maxWidth: "none" }}
         />
       </Link>
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV_ITEMS.map((it) => {
+        {navItems.map((it) => {
           const Icon = it.icon;
           return (
             <Link

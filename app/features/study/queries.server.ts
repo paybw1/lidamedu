@@ -157,6 +157,8 @@ export interface QuizSession {
   timeLimitSec: number | null;
   startedAt: string;
   completedAt: string | null;
+  /** feat-10-005 — 통합 시험 교시 세션이면 그 응시(mcq_exam_attempts) id. */
+  examAttemptId: string | null;
 }
 
 export async function createQuizSession(
@@ -173,6 +175,8 @@ export async function createQuizSession(
     timeLimitSec?: number | null;
     // MCQ 팩 응시 시 — 응시 결과를 pack 단위 통계와 묶기 위함.
     packId?: string | null;
+    // feat-10-005 — 통합 시험 교시 세션이면 그 응시(mcq_exam_attempts).
+    examAttemptId?: string | null;
   },
 ): Promise<string> {
   if (!!input.lawCode === !!input.scienceSubject) {
@@ -190,6 +194,7 @@ export async function createQuizSession(
       problem_ids: input.problemIds,
       time_limit_sec: input.timeLimitSec ?? null,
       pack_id: input.packId ?? null,
+      exam_attempt_id: input.examAttemptId ?? null,
     })
     .select("session_id")
     .single();
@@ -219,7 +224,7 @@ export async function getQuizSession(
   const { data, error } = await client
     .from("quiz_sessions")
     .select(
-      "session_id, mode, law_code, science_subject, scope_type, scope_payload, problem_ids, time_limit_sec, started_at, completed_at",
+      "session_id, mode, law_code, science_subject, scope_type, scope_payload, problem_ids, time_limit_sec, started_at, completed_at, exam_attempt_id",
     )
     .eq("session_id", sessionId)
     .eq("user_id", userId)
@@ -238,6 +243,7 @@ export async function getQuizSession(
     timeLimitSec: data.time_limit_sec,
     startedAt: data.started_at,
     completedAt: data.completed_at,
+    examAttemptId: data.exam_attempt_id,
   };
 }
 
@@ -249,13 +255,15 @@ export interface StudyAidCounts {
   bookmarks: number;
   memos: number;
   highlights: number;
+  comments: number;
 }
 
 export async function getStudyAidCounts(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<StudyAidCounts> {
-  const [wrongs, oxWrongs, bookmarkRes, memoRes, highlightRes] = await Promise.all([
+  const [wrongs, oxWrongs, bookmarkRes, memoRes, highlightRes, commentRes] =
+    await Promise.all([
     // 객관식 오답 카운트 — 최근 시도 기준 정확 카운트는 expensive 라서
     // 정확한 listWrongAttempts 를 한 번 돌려 길이를 본다 (실제 위젯 표시용).
     listWrongAttempts(client, userId),
@@ -276,6 +284,11 @@ export async function getStudyAidCounts(
       .select("highlight_id", { count: "exact", head: true })
       .eq("user_id", userId)
       .is("deleted_at", null),
+    client
+      .from("content_comments")
+      .select("comment_id", { count: "exact", head: true })
+      .eq("author_id", userId)
+      .is("deleted_at", null),
   ]);
   return {
     wrongMcq: wrongs.length,
@@ -283,6 +296,7 @@ export async function getStudyAidCounts(
     bookmarks: bookmarkRes.count ?? 0,
     memos: memoRes.count ?? 0,
     highlights: highlightRes.count ?? 0,
+    comments: commentRes.count ?? 0,
   };
 }
 

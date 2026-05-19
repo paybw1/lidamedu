@@ -80,6 +80,7 @@ export default [
       route("/paper-link", "features/admin/api/paper-link.tsx"),
       route("/book-update", "features/admin/api/book-update.tsx"),
       route("/mcq-pack", "features/admin/api/mcq-pack.tsx"),
+      route("/mcq-exam", "features/admin/api/mcq-exam.tsx"),
       route("/user-role", "features/admin/api/user-role.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
       route("/law-revision", "features/admin/api/law-revision.tsx"),
@@ -113,6 +114,9 @@ export default [
     ]),
     ...prefix("/mcq-pack", [
       route("/start", "features/mcq-packs/api/start.tsx"),
+    ]),
+    ...prefix("/mcq-exam", [
+      route("/start", "features/mcq-exams/api/start.tsx"),
     ]),
     ...prefix("/gs", [
       route("/take", "features/gs/api/take.tsx"),
@@ -171,12 +175,23 @@ export default [
       route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
       route("/study/notes", "features/study/screens/notes.tsx"),
       route("/study/highlights", "features/study/screens/highlights.tsx"),
+      route("/study/comments", "features/study/screens/comments.tsx"),
       route("/inbox", "features/notifications/screens/student-inbox.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),
         route("/cases", "features/latest/screens/cases.tsx"),
         route("/mcq", "features/latest/screens/mcq.tsx"),
+        // feat-10-005 통합 모의고사 — :packId 보다 먼저 선언 (정적 세그먼트 우선).
+        route("/mcq/exams", "features/latest/screens/mcq-exam-index.tsx"),
+        route(
+          "/mcq/exam/:examId",
+          "features/latest/screens/mcq-exam-runner.tsx",
+        ),
+        route(
+          "/mcq/exam/:examId/result/:attemptId",
+          "features/latest/screens/mcq-exam-result.tsx",
+        ),
         route("/mcq/:packId", "features/latest/screens/mcq-pack-detail.tsx"),
         route(
           "/mcq/:packId/sheet/:sessionId",

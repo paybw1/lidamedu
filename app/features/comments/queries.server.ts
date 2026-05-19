@@ -150,3 +150,172 @@ export async function deleteComment(
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+// ── 메모 모아보기 (/study/comments 학습보조 화면) ─────────────────────────
+
+export interface CommentListItem {
+  commentId: string;
+  targetType: CommentTargetType;
+  lawCode: string;
+  /** 대상 콘텐츠 제목 (조문 라벨 / 판례명 / 문제 연도·번호). */
+  primaryLabel: string;
+  secondaryLabel: string | null;
+  /** 문제 메모일 때 발문 일부. */
+  bodySnippet: string | null;
+  bodyMd: string;
+  href: string;
+  updatedAt: string;
+}
+
+// 한 사용자가 작성한 메모(content_comments) 전체 — 최근 수정 순. 대상 콘텐츠로
+// 진입할 수 있도록 조문/판례/문제 라벨·링크를 함께 해소한다. listAllMemos 본뜸.
+export async function listAllComments(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<CommentListItem[]> {
+  const { data: rows, error } = await client
+    .from("content_comments")
+    .select("comment_id, target_type, target_id, body_md, updated_at")
+    .eq("author_id", userId)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(2000);
+  if (error) throw error;
+  const list = (rows ?? []) as Array<{
+    comment_id: string;
+    target_type: string;
+    target_id: string;
+    body_md: string;
+    updated_at: string;
+  }>;
+  if (list.length === 0) return [];
+
+  const articleIds = list
+    .filter((r) => r.target_type === "article")
+    .map((r) => r.target_id);
+  const caseIds = list
+    .filter((r) => r.target_type === "case")
+    .map((r) => r.target_id);
+  const problemIds = list
+    .filter((r) => r.target_type === "problem")
+    .map((r) => r.target_id);
+
+  const { articleSlug } = await import("~/features/laws/lib/identifier");
+
+  const articleMap = new Map<
+    string,
+    { displayLabel: string; lawCode: string; pathSlug: string }
+  >();
+  if (articleIds.length > 0) {
+    const { data: rs } = await client
+      .from("articles")
+      .select("article_id, article_number, display_label, laws!inner(law_code)")
+      .in("article_id", articleIds);
+    for (const r of rs ?? []) {
+      if (!r.article_number) continue;
+      articleMap.set(r.article_id, {
+        displayLabel: r.display_label,
+        lawCode: r.laws.law_code,
+        pathSlug: articleSlug(r.article_number),
+      });
+    }
+  }
+
+  const caseMap = new Map<
+    string,
+    { caseNumber: string; caseTitle: string | null; lawCode: string }
+  >();
+  if (caseIds.length > 0) {
+    const { data: rs } = await client
+      .from("cases")
+      .select("case_id, case_number, case_title, subject_laws")
+      .in("case_id", caseIds);
+    for (const r of rs ?? []) {
+      caseMap.set(r.case_id, {
+        caseNumber: r.case_number,
+        caseTitle: r.case_title,
+        lawCode: (r.subject_laws as string[] | null)?.[0] ?? "patent",
+      });
+    }
+  }
+
+  const problemMap = new Map<
+    string,
+    {
+      year: number | null;
+      problemNumber: number | null;
+      bodySnippet: string;
+      lawCode: string;
+    }
+  >();
+  if (problemIds.length > 0) {
+    const { data: ps } = await client
+      .from("problems")
+      .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+      .in("problem_id", problemIds);
+    for (const p of ps ?? []) {
+      const body = p.body_md ?? "";
+      problemMap.set(p.problem_id, {
+        year: p.year,
+        problemNumber: p.problem_number,
+        bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
+        lawCode: p.laws.law_code,
+      });
+    }
+  }
+
+  return list.flatMap((r): CommentListItem[] => {
+    const base = {
+      commentId: r.comment_id,
+      targetType: r.target_type as CommentTargetType,
+      bodyMd: r.body_md,
+      updatedAt: r.updated_at,
+    };
+    if (r.target_type === "article") {
+      const a = articleMap.get(r.target_id);
+      if (!a) return [];
+      return [
+        {
+          ...base,
+          lawCode: a.lawCode,
+          primaryLabel: a.displayLabel,
+          secondaryLabel: null,
+          bodySnippet: null,
+          href: `/subjects/${a.lawCode}/articles/${a.pathSlug}`,
+        },
+      ];
+    }
+    if (r.target_type === "case") {
+      const c = caseMap.get(r.target_id);
+      if (!c) return [];
+      return [
+        {
+          ...base,
+          lawCode: c.lawCode,
+          primaryLabel: c.caseTitle ?? c.caseNumber,
+          secondaryLabel: c.caseTitle ? c.caseNumber : null,
+          bodySnippet: null,
+          href: `/subjects/${c.lawCode}/cases/${r.target_id}`,
+        },
+      ];
+    }
+    if (r.target_type === "problem") {
+      const p = problemMap.get(r.target_id);
+      if (!p) return [];
+      const yearLabel = p.year
+        ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+        : "문제";
+      return [
+        {
+          ...base,
+          lawCode: p.lawCode,
+          primaryLabel: yearLabel,
+          secondaryLabel: null,
+          bodySnippet: p.bodySnippet,
+          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+        },
+      ];
+    }
+    return [];
+  });
+}
