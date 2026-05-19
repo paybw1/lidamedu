@@ -44,7 +44,9 @@ function mapComment(r: CommentRow): ContentComment {
     authorId: r.author_id,
     authorName: r.profiles?.name ?? null,
     authorIsStaff:
-      r.profiles?.role === "instructor" || r.profiles?.role === "admin",
+      r.profiles?.role === "instructor" ||
+      r.profiles?.role === "manager" ||
+      r.profiles?.role === "admin",
     isPinned: r.is_pinned,
     createdAt: r.created_at,
     updatedAt: r.updated_at,

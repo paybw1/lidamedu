@@ -62,7 +62,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     .eq("profile_id", user.id)
     .maybeSingle();
   const role = profile?.role ?? "student";
-  const isStaff = role === "instructor" || role === "admin";
+  const isStaff =
+    role === "instructor" || role === "manager" || role === "admin";
 
   const target = await resolveTargetDisplay(
     client,

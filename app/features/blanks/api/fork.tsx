@@ -30,7 +30,7 @@ export async function action({ request }: Route.ActionArgs) {
     .eq("profile_id", user.id)
     .maybeSingle();
   const role = profile?.role ?? "student";
-  if (role !== "instructor" && role !== "admin") {
+  if (role !== "instructor" && role !== "manager" && role !== "admin") {
     return { ok: false, error: "Forbidden" } as const;
   }
 

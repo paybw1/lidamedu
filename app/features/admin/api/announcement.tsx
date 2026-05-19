@@ -12,6 +12,7 @@ import {
   updateAnnouncement,
 } from "~/features/announcements/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 
 import type { Route } from "./+types/announcement";
 
@@ -100,7 +101,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const ann = await getAnnouncementById(client, announcementId);
     if (!ann) return data({ error: "Not found" }, { status: 404 });
-    if (role !== "admin" && ann.authorId !== user.id) {
+    if (!roleAtLeast(role, "manager") && ann.authorId !== user.id) {
       return data({ error: "본인 작성분만 수정 가능" }, { status: 403 });
     }
     const parsed = createSchema.safeParse({
@@ -136,7 +137,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const ann = await getAnnouncementById(client, announcementId);
     if (!ann) return data({ error: "Not found" }, { status: 404 });
-    if (role !== "admin" && ann.authorId !== user.id) {
+    if (!roleAtLeast(role, "manager") && ann.authorId !== user.id) {
       return data({ error: "본인 작성분만 변경 가능" }, { status: 403 });
     }
     const res = await updateAnnouncement(client, announcementId, {
@@ -153,7 +154,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const ann = await getAnnouncementById(client, announcementId);
     if (!ann) return data({ error: "Not found" }, { status: 404 });
-    if (role !== "admin" && ann.authorId !== user.id) {
+    if (!roleAtLeast(role, "manager") && ann.authorId !== user.id) {
       return data({ error: "본인 작성분만 삭제 가능" }, { status: 403 });
     }
     const res = await deleteAnnouncement(client, announcementId);

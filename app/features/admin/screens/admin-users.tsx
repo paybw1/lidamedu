@@ -73,7 +73,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const roleRaw = url.searchParams.get("role");
   const roleFilter: UserRole | undefined =
-    roleRaw === "student" || roleRaw === "instructor" || roleRaw === "admin"
+    roleRaw === "student" || roleRaw === "instructor" || roleRaw === "manager" || roleRaw === "admin"
       ? roleRaw
       : undefined;
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);

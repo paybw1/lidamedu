@@ -31,6 +31,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import type { CohortListItem } from "~/features/cohorts/labels";
 import { listCohorts } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import {
   Chip,
@@ -65,8 +66,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const filters: Filters = { q, includeArchived };
 
   const cohorts = await listCohorts(client, {
-    // instructor 는 본인 소유만, admin 은 전부.
-    ownerId: role === "admin" ? undefined : user.id,
+    // manager 이상은 전부, instructor 는 본인 소유만.
+    ownerId: roleAtLeast(role, "manager") ? undefined : user.id,
     query: filters.q || undefined,
     includeArchived,
   });
@@ -85,7 +86,7 @@ export default function AdminCohorts({ loaderData }: Route.ComponentProps) {
       role={role}
       title="반 / 기수 관리"
       desc={
-        role === "admin"
+        roleAtLeast(role, "manager")
           ? "모든 강사의 반을 관리합니다."
           : "본인 소유 반만 표시됩니다."
       }

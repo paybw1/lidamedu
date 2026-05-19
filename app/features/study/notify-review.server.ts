@@ -65,7 +65,7 @@ async function fetchStaffProfileIds(): Promise<string[]> {
   const { data, error } = await adminClient
     .from("profiles")
     .select("profile_id")
-    .in("role", ["instructor", "admin"]);
+    .in("role", ["instructor", "manager", "admin"]);
   if (error || !data) return [];
   return data.map((r) => r.profile_id);
 }

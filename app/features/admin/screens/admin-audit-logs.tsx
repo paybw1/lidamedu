@@ -15,6 +15,7 @@ import { listAuditLogs } from "~/features/admin/queries/audit-log.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 
 import type { Route } from "./+types/admin-audit-logs";
 
@@ -31,7 +32,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
   const role = await getStaffRole(client, user.id);
-  if (role !== "admin") throw data("Forbidden — admin only", { status: 403 });
+  if (!roleAtLeast(role, "manager")) throw data("Forbidden — 관리자 이상만 접근 가능", { status: 403 });
 
   const url = new URL(request.url);
   const action = (url.searchParams.get("action") ?? "").trim().slice(0, 100);
@@ -56,8 +57,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     total,
     filters: { action, entityType, q },
     offset,
-    // role 은 항상 "admin" (가드 통과 전제). AdminShell 에 전달.
-    role: role as "admin",
+    role,
   };
 }
 

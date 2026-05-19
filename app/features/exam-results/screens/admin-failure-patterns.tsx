@@ -23,6 +23,7 @@ import {
   type MetricDelta,
 } from "~/features/exam-results/analytics.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 
 import type { Route } from "./+types/admin-failure-patterns";
 
@@ -37,8 +38,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
   const role = await getStaffRole(client, user.id);
-  if (role !== "admin")
-    throw data("admin 권한이 필요합니다", { status: 403 });
+  if (!roleAtLeast(role, "manager"))
+    throw data("관리자 이상 권한이 필요합니다", { status: 403 });
 
   const [passers, failers] = await Promise.all([
     listPasserCases({ onlyConsented: true }),

@@ -14,6 +14,7 @@ import {
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { IndexTable } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 
 import { AnnouncementForm, AnnouncementRow } from "./announcement-form";
 import type { Route } from "./+types/admin-announcements";
@@ -42,14 +43,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const filters: Filters = { q, includeDrafts };
 
   const items = await listStaffAnnouncements(client, {
-    authorId: role === "admin" ? undefined : user.id,
+    authorId: roleAtLeast(role, "manager") ? undefined : user.id,
     query: filters.q || undefined,
     includeDrafts,
   });
 
   const cohorts = await listAvailableCohorts(
     client,
-    role === "admin" ? undefined : user.id,
+    roleAtLeast(role, "manager") ? undefined : user.id,
   );
 
   return { items, filters, role, currentUserId: user.id, cohorts };
@@ -69,7 +70,7 @@ export default function AdminAnnouncements({
       role={role}
       title="공지사항"
       desc={
-        role === "admin"
+        roleAtLeast(role, "manager")
           ? "모든 작성자의 공지를 관리합니다."
           : "본인이 작성한 공지를 관리합니다."
       }
@@ -175,7 +176,10 @@ export default function AdminAnnouncements({
               <AnnouncementRow
                 key={a.announcementId}
                 item={a}
-                canEdit={role === "admin" || a.authorId === currentUserId}
+                canEdit={
+                  roleAtLeast(role, "manager") ||
+                  a.authorId === currentUserId
+                }
                 onEdit={() => setEditingId(a.announcementId)}
               />
             ),

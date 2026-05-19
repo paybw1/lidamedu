@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 import {
   createNote,
   deleteNote,
@@ -85,7 +86,7 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    const res = await updateNote(noteId, user.id, role === "admin", parsed.data);
+    const res = await updateNote(noteId, user.id, roleAtLeast(role, "manager"), parsed.data);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
   }
@@ -93,7 +94,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "delete") {
     const noteId = String(fd.get("noteId") ?? "");
     if (!noteId) return data({ error: "noteId 누락" }, { status: 400 });
-    const res = await deleteNote(noteId, user.id, role === "admin");
+    const res = await deleteNote(noteId, user.id, roleAtLeast(role, "manager"));
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
   }

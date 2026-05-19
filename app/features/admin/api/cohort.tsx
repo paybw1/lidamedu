@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 import {
   addCohortMember,
   createCohort,
@@ -68,9 +69,9 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    // admin 이면 ownerId 선택 가능, instructor 는 본인.
+    // manager 이상이면 ownerId 선택 가능, instructor 는 본인.
     let ownerId = user.id;
-    if (role === "admin") {
+    if (roleAtLeast(role, "manager")) {
       const requestedOwner = String(fd.get("ownerId") ?? "");
       if (z.string().uuid().safeParse(requestedOwner).success) {
         ownerId = requestedOwner;
@@ -96,7 +97,7 @@ export async function action({ request }: Route.ActionArgs) {
     // 권한 확인 — RLS 가 막아주지만 명시적으로 한 번 더.
     const cohort = await getCohortById(client, cohortId);
     if (!cohort) return data({ error: "Cohort not found" }, { status: 404 });
-    if (role !== "admin" && cohort.ownerId !== user.id) {
+    if (!roleAtLeast(role, "manager") && cohort.ownerId !== user.id) {
       return data({ error: "본인 소유 반만 수정 가능" }, { status: 403 });
     }
     const parsed = upsertSchema.safeParse({
@@ -130,7 +131,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const cohort = await getCohortById(client, cohortId);
     if (!cohort) return data({ error: "Cohort not found" }, { status: 404 });
-    if (role !== "admin" && cohort.ownerId !== user.id) {
+    if (!roleAtLeast(role, "manager") && cohort.ownerId !== user.id) {
       return data({ error: "본인 소유 반만 삭제 가능" }, { status: 403 });
     }
     const res = await deleteCohort(client, cohortId);
@@ -149,7 +150,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const cohort = await getCohortById(client, cohortId);
     if (!cohort) return data({ error: "Cohort not found" }, { status: 404 });
-    if (role !== "admin" && cohort.ownerId !== user.id) {
+    if (!roleAtLeast(role, "manager") && cohort.ownerId !== user.id) {
       return data({ error: "본인 소유 반만 멤버 추가" }, { status: 403 });
     }
     const res = await addCohortMember(client, cohortId, profileId, user.id);
@@ -168,7 +169,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const cohort = await getCohortById(client, cohortId);
     if (!cohort) return data({ error: "Cohort not found" }, { status: 404 });
-    if (role !== "admin" && cohort.ownerId !== user.id) {
+    if (!roleAtLeast(role, "manager") && cohort.ownerId !== user.id) {
       return data({ error: "본인 소유 반만 멤버 제거" }, { status: 403 });
     }
     const res = await removeCohortMember(client, cohortId, profileId);

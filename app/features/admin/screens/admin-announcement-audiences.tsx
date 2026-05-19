@@ -6,6 +6,7 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getAnnouncementById } from "~/features/announcements/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 
 import type { Route } from "./+types/admin-announcement-audiences";
 
@@ -25,7 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   const ann = await getAnnouncementById(client, id);
   if (!ann) return { audiences: [] };
-  if (role !== "admin" && ann.authorId !== user.id) {
+  if (!roleAtLeast(role, "manager") && ann.authorId !== user.id) {
     throw data("Forbidden", { status: 403 });
   }
   return { audiences: ann.audiences };

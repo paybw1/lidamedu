@@ -31,6 +31,7 @@ import {
   TR,
 } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 import {
   createCertificateSignedUrl,
   getAdminExamResultPoolSize,
@@ -107,8 +108,8 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = String(fd.get("intent") ?? "");
 
   if (intent === "verify") {
-    if (role !== "admin")
-      return data({ error: "관리자만 인증 처리할 수 있습니다" }, { status: 403 });
+    if (!roleAtLeast(role, "manager"))
+      return data({ error: "관리자 이상만 인증 처리할 수 있습니다" }, { status: 403 });
     const parsed = verifySchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
       return data({ error: parsed.error.issues[0]?.message ?? "입력 오류" }, { status: 400 });
@@ -212,9 +213,9 @@ export default function AdminExamResults({ loaderData }: Route.ComponentProps) {
       role={role}
       title="합격 결과 운영"
       desc={
-        role === "admin"
+        roleAtLeast(role, "manager")
           ? "학생이 입력한 시험 결과를 검토하고 합격증을 인증합니다."
-          : "본인 cohort 학생의 결과를 조회할 수 있습니다 (인증 처리는 admin)."
+          : "본인 cohort 학생의 결과를 조회할 수 있습니다 (인증 처리는 관리자 이상)."
       }
       headerRight={
         pendingCount > 0 ? (
@@ -341,7 +342,7 @@ export default function AdminExamResults({ loaderData }: Route.ComponentProps) {
           }
         >
           {rows.map((r) => (
-            <ResultRow key={r.resultId} row={r} canVerify={role === "admin"} />
+            <ResultRow key={r.resultId} row={r} canVerify={roleAtLeast(role, "manager")} />
           ))}
         </IndexTable>
       )}

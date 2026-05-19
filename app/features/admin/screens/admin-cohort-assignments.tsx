@@ -33,6 +33,7 @@ import {
   listCohortCurricula,
 } from "~/features/curricula/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 
 import type { Route } from "./+types/admin-cohort-assignments";
 
@@ -53,7 +54,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const cohort = await getCohortById(client, params.cohortId);
   if (!cohort) throw data("Cohort not found", { status: 404 });
-  if (role !== "admin" && cohort.ownerId !== user.id) {
+  if (!roleAtLeast(role, "manager") && cohort.ownerId !== user.id) {
     throw data("본인 소유 반만 접근 가능", { status: 403 });
   }
 

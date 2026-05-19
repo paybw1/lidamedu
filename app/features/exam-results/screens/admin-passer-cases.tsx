@@ -28,6 +28,7 @@ import {
   FilterGroup,
 } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 import {
   computePasserAggregateStats,
   getPasserPoolStats,
@@ -64,8 +65,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
   const role = await getStaffRole(client, user.id);
-  if (role !== "admin")
-    throw data("admin 권한이 필요합니다", { status: 403 });
+  if (!roleAtLeast(role, "manager"))
+    throw data("관리자 이상 권한이 필요합니다", { status: 403 });
 
   const url = new URL(request.url);
   const yearStr = url.searchParams.get("year");
@@ -103,8 +104,8 @@ export async function action({ request }: Route.ActionArgs) {
   } = await client.auth.getUser();
   if (!user) return data({ error: "Unauthorized" }, { status: 401 });
   const role = await getStaffRole(client, user.id);
-  if (role !== "admin")
-    return data({ error: "admin 권한이 필요합니다" }, { status: 403 });
+  if (!roleAtLeast(role, "manager"))
+    return data({ error: "관리자 이상 권한이 필요합니다" }, { status: 403 });
 
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");

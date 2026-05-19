@@ -43,6 +43,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { roleAtLeast } from "~/core/lib/roles";
 import {
   isFirstExamSubject,
   isSecondExamSubject,
@@ -79,8 +80,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw data("Forbidden", { status: 403 });
 
-  // instructor 면 본인 소속 cohort 의 멤버인지 확인.
-  if (role !== "admin") {
+  // manager 미만(instructor)이면 본인 소속 cohort 의 멤버인지 확인.
+  if (!roleAtLeast(role, "manager")) {
     const { data: rows } = await adminClient
       .from("cohort_members")
       .select("cohort_id, cohorts!inner(owner_id)")
@@ -106,7 +107,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     notes,
     passTrend,
     currentUserId: user.id,
-    isAdmin: role === "admin",
+    isAdmin: roleAtLeast(role, "manager"),
     role,
   };
 }
