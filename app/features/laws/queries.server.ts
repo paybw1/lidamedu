@@ -638,7 +638,7 @@ export async function getChapterWithArticles(
   };
 }
 
-export type StaffRole = "instructor" | "admin";
+export type StaffRole = "instructor" | "manager" | "admin";
 
 export async function getStaffRole(
   client: SupabaseClient<Database>,
@@ -651,7 +651,12 @@ export async function getStaffRole(
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  if (data.role === "instructor" || data.role === "admin") return data.role;
+  if (
+    data.role === "instructor" ||
+    data.role === "manager" ||
+    data.role === "admin"
+  )
+    return data.role;
   return null;
 }
 

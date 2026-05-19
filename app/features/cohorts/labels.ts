@@ -1,5 +1,7 @@
 // 클라이언트·서버 공용 타입.
 
+import type { UserRole } from "~/core/lib/roles";
+
 export interface CohortListItem {
   cohortId: string;
   name: string;
@@ -17,7 +19,7 @@ export interface CohortListItem {
 export interface CohortMember {
   profileId: string;
   name: string;
-  role: "student" | "instructor" | "admin";
+  role: UserRole;
   email: string | null;
   joinedAt: string;
 }

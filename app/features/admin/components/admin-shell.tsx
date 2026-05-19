@@ -21,6 +21,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
 import { cn } from "~/core/lib/utils";
+import { ROLE_LABEL, type UserRole } from "~/core/lib/roles";
 
 export type AdminClusterId =
   | "hub"
@@ -262,7 +263,7 @@ function AdminSidebar({
 }: {
   activeCluster: AdminClusterId;
   pathname: string;
-  role?: "admin" | "instructor" | null;
+  role?: UserRole | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
@@ -321,10 +322,12 @@ function AdminSidebar({
               "inline-flex h-[22px] items-center rounded-full px-2 text-[11px] font-semibold",
               role === "admin"
                 ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                : "border-sidebar-primary/40 text-sidebar-primary border",
+                : role === "manager"
+                  ? "bg-sidebar-primary/15 text-sidebar-primary"
+                  : "border-sidebar-primary/40 text-sidebar-primary border",
             )}
           >
-            {role === "admin" ? "원장" : "강사"}
+            {ROLE_LABEL[role]}
           </span>
         </div>
       ) : null}
@@ -419,7 +422,7 @@ export function AdminShell({
   headerRight?: ReactNode;
   /** 본문 최대 폭(px). 워크스페이스류는 1400 등. */
   width?: number;
-  role?: "admin" | "instructor" | null;
+  role?: UserRole | null;
   children: ReactNode;
 }) {
   const { pathname } = useLocation();

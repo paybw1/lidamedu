@@ -26,6 +26,7 @@ import {
 } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { ROLE_LABEL } from "~/core/lib/roles";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
@@ -280,12 +281,6 @@ export default function AdminCohortDetail({
     </AdminShell>
   );
 }
-
-const ROLE_LABEL: Record<CohortMember["role"], string> = {
-  student: "수험생",
-  instructor: "강사",
-  admin: "원장",
-};
 
 function MemberRow({
   member,

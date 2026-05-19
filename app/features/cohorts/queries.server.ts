@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import type { UserRole } from "~/core/lib/roles";
 
 import type { CohortListItem, CohortMember } from "./labels";
 
@@ -275,7 +276,7 @@ export interface SearchStudentResult {
   profileId: string;
   name: string;
   email: string | null;
-  role: "student" | "instructor" | "admin";
+  role: UserRole;
 }
 
 export async function searchStudents(

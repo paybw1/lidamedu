@@ -104,20 +104,23 @@
 
 ## 4. 역할별 권한 매트릭스
 
-| 기능 | student | instructor | admin |
-|------|:-------:|:----------:|:-----:|
-| 콘텐츠(조문/판례/문제/논문) 읽기 | ✅ | ✅ | ✅ |
-| 본인 메모/즐겨찾기/하이라이트/진도 | ✅ | ✅ | ✅ |
-| 조문 개정 반영 | ❌ | ✅ | ✅ |
-| 판례 등록/수정 | ❌ | ✅ | ✅ |
-| 문제 출제/수정 | ❌ | ✅ | ✅ |
-| 논문 등록/수정 | ❌ | ✅ | ✅ |
-| 연관관계 지정 | ❌ | ✅ | ✅ |
-| 자기 반 학생 진도 열람 | ❌ | ✅ | ✅ |
-| 온라인 GS 운영 | ❌ | ✅ | ✅ |
-| 커뮤니티 모더레이션 | ❌ | (반 한정) | ✅ |
-| 사용자/강사/결제 관리 | ❌ | ❌ | ✅ |
-| 운영자 메뉴 진입 | (안내) | (자기 권한 영역) | ✅ |
+4단계 등급 — **원장 > 관리자 > 강사 > 수험생** (`user_role` enum `admin/manager/instructor/student`). 상세: `docs/features/feat-7-031-roles.md`.
+
+| 기능 | 수험생 | 강사 | 관리자 | 원장 |
+|------|:-----:|:---:|:-----:|:---:|
+| 콘텐츠(조문/판례/문제/논문) 읽기 | ✅ | ✅ | ✅ | ✅ |
+| 본인 메모/즐겨찾기/하이라이트/진도 | ✅ | ✅ | ✅ | ✅ |
+| 콘텐츠 CRUD (조문 개정·판례·문제·논문·연관관계·빈칸) | ❌ | ✅ | ✅ | ✅ |
+| 온라인 GS 운영·채점 | ❌ | ✅ | ✅ | ✅ |
+| 반·커리큘럼·과제·학생 진도 | ❌ | 자기 반 | 전체 | 전체 |
+| 커뮤니티 모더레이션 | ❌ | (반 한정) | ✅ | ✅ |
+| 사용자 목록·공지·감사 로그·합격데이터 운영·인증 | ❌ | ❌ | ✅ | ✅ |
+| 결제·수강 내역 조회 / 수강권 부여·환불 | ❌ | ❌ | ✅ | ✅ |
+| 요금제·가격·PG 설정 | ❌ | ❌ | ❌ | ✅ |
+| 역할 변경·강사 임명 | ❌ | ❌ | ❌ | ✅ |
+| 운영자 메뉴 진입 | (안내) | ✅ | ✅ | ✅ |
+
+> 역할 변경은 원장 전용(`updateUserRole` API) + `profiles` 트리거로 self-escalation 차단. RLS 는 `private.is_staff`(강사+)·`private.is_manager`(관리자+) 함수로 등급 판정.
 
 ---
 
@@ -466,6 +469,7 @@
 | feat-7-028 | **상담 코멘트 학생 알림 fanout** — `staff_notification_kind` enum 에 `student_note_shared` 추가. `createNote` 시 visibility=share_with_student 면 학생 inbox 알림(best-effort). `updateNote` 시 staff_only → share 로 전환되는 경우만 알림. body preview(120자) + `/inbox` deep link. | P1 | ✅ |
 | feat-7-029 | **lecture 시청 추적** — `lecture_views`(user_id/item_id/viewed_at/completed_at/last_position_sec, UNIQUE(user,item)) + `/api/student/lecture-progress`(view/complete/position) + `/lectures/:itemId` 학생 viewer. YouTube/Vimeo URL 자동 embed(toEmbedUrl). 페이지 진입 시 자동 view 기록 + "수강 완료" 버튼. RLS: 본인 R/W + cohort owner/admin read. **YouTube/Vimeo postMessage 자동 진행률 추적**(`TrackedLectureFrame` 컴포넌트) — YouTube 는 `enablejsapi=1` + `event:"listening"` 핸드셰이크 + `getCurrentTime`/`getDuration` 5초 폴링 + `infoDelivery` 수신. Vimeo 는 `method:"addEventListener", value:"timeupdate"` 구독 + `timeupdate` 이벤트 수신. 위치 저장 15초 임계 + 시청 비율 ≥85% 시 자동 완료 마킹. `pagehide` 시 `navigator.sendBeacon` 으로 최종 위치 flush. 재진입 시 마지막 위치(`?start=N`)부터 재생. | P1 | ✅ |
 | feat-7-030 | **이번 주 트랙 학생 카드** — 대시보드 상단. 학생이 멤버인 cohort 의 활성 cohort_curricula 에서 KST 기준 weekNumber(`floor((today - start_date)/7)+1`) 계산 → `curriculum_weeks` + `curriculum_items` 노출. 항목별 진입 URL(`/subjects/.../articles/:n`, `/subjects/.../cases/:id`, `/subjects/.../problems/:id`, `/subjects/.../articles/:n?blank=...`, `/subjects/.../articles/:n?recitation=1`, `/lectures/:itemId`). 항목별 완수 표시 — lecture_views(completed_at) / study_sessions(article·case) / user_problem_attempts(is_correct) / user_blank_attempts(전 칸 정답) / user_recitation_attempts(is_complete). 자동 생성된 assignment 가 있으면 "과제로 보기" deep link. `getCurrentWeekTrack(userId)` (curricula/queries.server.ts). 카드 컴포넌트는 dashboard.tsx 내부(`WeekTrackCard`). | P0 | ✅ |
+| feat-7-031 | **4단계 회원 권한 (원장·관리자·강사·수험생)** — `user_role` enum 에 `manager` 추가(등급 student<instructor<manager<admin). 역할 SSOT `app/core/lib/roles.ts`(rank·label) + `requireMinRole` 가드. RLS 약 92개 정책 4단계 재분류(`private.is_staff`=강사+ / `private.is_manager`=관리자+, `subscription_plans` write 만 원장 전용). **`profiles` self-escalation 취약점 차단 트리거** — role 변경은 service_role(운영자 API)만. 관리자=강사+전체 운영, 원장=관리자+역할변경·요금제. 상세: `docs/features/feat-7-031-roles.md`. | P1 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 

@@ -3,10 +3,11 @@
 // 실패해도 본 action 흐름은 진행 — best-effort.
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import type { UserRole } from "~/core/lib/roles";
 
 export interface AuditEventInput {
   actorId: string | null;
-  actorRole?: "instructor" | "admin" | null;
+  actorRole?: UserRole | null;
   action: string; // 예: 'case.delete'
   entityType: string; // 예: 'case'
   entityId: string;

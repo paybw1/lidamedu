@@ -33,6 +33,7 @@ import {
   TR,
 } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { ROLE_LABEL } from "~/core/lib/roles";
 import {
   listAdminUsers,
   type AdminUserRow,
@@ -49,6 +50,7 @@ const ROLE_OPTIONS: Array<{ value: UserRole | "all"; label: string }> = [
   { value: "all", label: "전체 역할" },
   { value: "student", label: "수험생" },
   { value: "instructor", label: "강사" },
+  { value: "manager", label: "관리자" },
   { value: "admin", label: "원장" },
 ];
 
@@ -286,7 +288,7 @@ function UserRow({
               const next = e.currentTarget.value;
               if (
                 confirm(
-                  `역할을 "${next === "admin" ? "원장" : next === "instructor" ? "강사" : "수험생"}"으로 변경합니까? (되돌리기 가능)`,
+                  `역할을 "${ROLE_LABEL[next as UserRole]}"으로 변경합니까? (되돌리기 가능)`,
                 )
               ) {
                 e.currentTarget.form?.requestSubmit();
@@ -301,6 +303,7 @@ function UserRow({
           >
             <option value="student">수험생</option>
             <option value="instructor">강사</option>
+            <option value="manager">관리자</option>
             <option value="admin">원장</option>
           </select>
           {err ? (

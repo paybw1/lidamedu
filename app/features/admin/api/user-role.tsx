@@ -12,7 +12,7 @@ import type { Route } from "./+types/user-role";
 
 const schema = z.object({
   profileId: z.string().uuid(),
-  role: z.enum(["student", "instructor", "admin"]),
+  role: z.enum(["student", "instructor", "manager", "admin"]),
 });
 
 export async function action({ request }: Route.ActionArgs) {

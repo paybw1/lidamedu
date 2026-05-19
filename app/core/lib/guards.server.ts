@@ -11,8 +11,11 @@
  * - HTTP method guard to ensure requests use the correct HTTP method
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "database.types";
 
 import { data } from "react-router";
+
+import { ROLE_RANK, type UserRole } from "~/core/lib/roles";
 
 /**
  * Require user authentication for a route or action
@@ -69,4 +72,38 @@ export function requireMethod(method: string) {
       throw data(null, { status: 405 });
     }
   };
+}
+
+/**
+ * Require the current user to hold at least the given role rank.
+ *
+ * 4단계 등급(student < instructor < manager < admin) 기준으로, 현재 사용자의
+ * 역할이 `minRole` 미만이면 403을 던진다. 콘텐츠/운영 화면의 loader·action 에서
+ * `requireMinRole(client, "manager")` 처럼 사용한다.
+ *
+ * @param client - 요청 컨텍스트 Supabase 클라이언트 (RLS 적용)
+ * @param minRole - 허용 최소 역할
+ * @returns 검증된 사용자의 실제 역할
+ * @throws {Response} 401 미인증 / 403 등급 미달
+ */
+export async function requireMinRole(
+  client: SupabaseClient<Database>,
+  minRole: UserRole,
+): Promise<UserRole> {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) {
+    throw data(null, { status: 401 });
+  }
+  const { data: profile } = await client
+    .from("profiles")
+    .select("role")
+    .eq("profile_id", user.id)
+    .single();
+  const role: UserRole = profile?.role ?? "student";
+  if (ROLE_RANK[role] < ROLE_RANK[minRole]) {
+    throw data(null, { status: 403 });
+  }
+  return role;
 }

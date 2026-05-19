@@ -4162,7 +4162,7 @@ export type Database = {
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
-      user_role: "student" | "instructor" | "admin"
+      user_role: "student" | "instructor" | "manager" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4378,7 +4378,7 @@ export const Constants = {
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
       subscription_status: ["pending", "active", "expired", "cancelled"],
-      user_role: ["student", "instructor", "admin"],
+      user_role: ["student", "instructor", "manager", "admin"],
     },
   },
 } as const
