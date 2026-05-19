@@ -55,7 +55,7 @@ export function DashSidebar() {
     >
       {/* 로고 — 다른 페이지(navigation-bar)와 동일한 리담변리사학원 PNG. */}
       <Link
-        to="/dashboard"
+        to="/"
         aria-label="리담변리사학원 홈"
         style={{
           display: "inline-flex",

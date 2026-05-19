@@ -109,7 +109,7 @@ export function Hero() {
                 whiteSpace: "pre-line",
               }}
             >
-              {`조문 · 판례 · 문제 · 논문이 끊김 없이 이어지는 학습 플랫폼.\n매일의 진도를 따뜻하게 받쳐주는, 카공 같은 책상이 되어 드릴게요.`}
+              {`조문 · 판례 · 문제의 통합적인 학습플랫폼.\n매일의 진도를 따뜻하게 받쳐주는, 카공 같은 책상이 되어 드릴게요.`}
             </p>
           </Reveal>
           <Reveal delay={400}>
@@ -142,7 +142,6 @@ export function Hero() {
               }}
             >
               <span>🔥 평균 23일 연속 학습</span>
-              <span>📚 5 법률 + 4 자연과학</span>
               <span>🌿 조문·판례·문제 통합</span>
             </div>
           </Reveal>
