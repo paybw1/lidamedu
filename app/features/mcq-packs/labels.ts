@@ -58,6 +58,8 @@ export interface McqPackItem {
   resultDocUrl: string | null;
   publishedAt: string | null;
   isPublished: boolean;
+  /** feat-10-004 — 모의고사 합격선(정답률 %). null = 합격선 없음. */
+  passScore: number | null;
   createdAt: string;
   updatedAt: string;
   problemCount: number;

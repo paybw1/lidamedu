@@ -652,6 +652,17 @@ function PackForm({
             학생에게 공개
           </label>
         </Field>
+        <Field label="합격선 (%)">
+          <Input
+            name="passScore"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={pack?.passScore ?? ""}
+            className="h-8 text-xs"
+            placeholder="모의고사 합격선 (예: 60)"
+          />
+        </Field>
       </div>
       {hasError ? (
         <p className="text-xs text-rose-600">

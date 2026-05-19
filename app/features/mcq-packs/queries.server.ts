@@ -25,7 +25,7 @@ export {
 } from "./labels";
 
 const LIST_COLUMNS =
-  "pack_id, kind, subject_scope, title, description, year, exam_round_no, duration_min, video_url, result_doc_url, published_at, is_published, created_at, updated_at";
+  "pack_id, kind, subject_scope, title, description, year, exam_round_no, duration_min, video_url, result_doc_url, published_at, is_published, pass_score, created_at, updated_at";
 
 interface PackRow {
   pack_id: string;
@@ -40,6 +40,7 @@ interface PackRow {
   result_doc_url: string | null;
   published_at: string | null;
   is_published: boolean;
+  pass_score: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +82,7 @@ function rowToItem(row: PackRow, problemCount: number): McqPackItem {
     resultDocUrl: row.result_doc_url,
     publishedAt: row.published_at,
     isPublished: row.is_published,
+    passScore: row.pass_score,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     problemCount,
@@ -205,6 +207,7 @@ export interface UpsertPackInput {
   resultDocUrl?: string | null;
   publishedAt?: string | null;
   isPublished?: boolean;
+  passScore?: number | null;
 }
 
 export async function createPack(
@@ -226,6 +229,7 @@ export async function createPack(
       result_doc_url: input.resultDocUrl ?? null,
       published_at: input.publishedAt ?? null,
       is_published: input.isPublished ?? true,
+      pass_score: input.passScore ?? null,
       created_by: authorId,
     })
     .select("pack_id")
@@ -253,6 +257,7 @@ export async function updatePack(
     update.result_doc_url = patch.resultDocUrl;
   if (patch.publishedAt !== undefined) update.published_at = patch.publishedAt;
   if (patch.isPublished !== undefined) update.is_published = patch.isPublished;
+  if (patch.passScore !== undefined) update.pass_score = patch.passScore;
   if (Object.keys(update).length === 0) return { ok: true };
   const { error } = await client
     .from("mcq_packs")
@@ -679,5 +684,38 @@ export async function getPackResultStats(
     packTitle: pack.title,
     sessionUserStats,
     sessionAggStats,
+  };
+}
+
+// feat-10-004 — 팩 exam 응시 등수. RPC 가 호출자(auth.uid()) 본인 통계만 반환.
+export interface PackAttemptRanking {
+  correct: number;
+  total: number;
+  /** 정답률 % */
+  score: number;
+  rank: number;
+  totalTakers: number;
+  percentile: number;
+  zScore: number;
+}
+
+export async function getPackAttemptRanking(
+  client: SupabaseClient<Database>,
+  packId: string,
+): Promise<PackAttemptRanking | null> {
+  const { data, error } = await client.rpc("mcq_pack_attempt_stats", {
+    p_pack_id: packId,
+  });
+  if (error) throw error;
+  const row = (data ?? [])[0];
+  if (!row) return null;
+  return {
+    correct: row.correct,
+    total: row.total,
+    score: row.score,
+    rank: row.rank,
+    totalTakers: row.total_takers,
+    percentile: row.percentile,
+    zScore: row.z_score,
   };
 }

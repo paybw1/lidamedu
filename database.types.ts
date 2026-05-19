@@ -2290,6 +2290,7 @@ export type Database = {
           is_published: boolean
           kind: string
           pack_id: string
+          pass_score: number | null
           published_at: string | null
           result_doc_url: string | null
           subject_scope: string
@@ -2308,6 +2309,7 @@ export type Database = {
           is_published?: boolean
           kind: string
           pack_id?: string
+          pass_score?: number | null
           published_at?: string | null
           result_doc_url?: string | null
           subject_scope: string
@@ -2326,6 +2328,7 @@ export type Database = {
           is_published?: boolean
           kind?: string
           pack_id?: string
+          pass_score?: number | null
           published_at?: string | null
           result_doc_url?: string | null
           subject_scope?: string
@@ -4516,6 +4519,18 @@ export type Database = {
       is_announcement_author: {
         Args: { p_announcement_id: string; p_user_id: string }
         Returns: boolean
+      }
+      mcq_pack_attempt_stats: {
+        Args: { p_pack_id: string }
+        Returns: {
+          correct: number
+          percentile: number
+          rank: number
+          score: number
+          total: number
+          total_takers: number
+          z_score: number
+        }[]
       }
       publish_law_revision: {
         Args: {

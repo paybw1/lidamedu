@@ -89,6 +89,7 @@ function parseUpsert(fd: FormData) {
       resultDocUrl: parsed.data.resultDocUrl ?? null,
       publishedAt: parsed.data.publishedAt ?? null,
       isPublished: fd.get("isPublished") !== "0",
+      passScore: nullableInt(fd.get("passScore")),
     },
   };
 }

@@ -23,8 +23,10 @@ import {
   type ProblemFormat,
 } from "~/features/problems/labels";
 import {
+  getPackAttemptRanking,
   getPackById,
   getPackResultStats,
+  type PackAttemptRanking,
 } from "~/features/mcq-packs/queries.server";
 import { MCQ_PACK_KIND_LABELS } from "~/features/mcq-packs/labels";
 import {
@@ -76,8 +78,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     params.sessionId,
     user.id,
   );
+  // feat-10-004 — 본인 점수·합격·등수 (exam 모드 응시 시에만 row 존재)
+  const ranking = await getPackAttemptRanking(client, params.packId);
 
-  return { pack, result, aggStats, packStats };
+  return { pack, result, aggStats, packStats, ranking };
 }
 
 function formatDuration(ms: number): string {
@@ -105,7 +109,7 @@ const FORMAT_ORDER: ProblemFormat[] = [
 const CHOICE_TYPE_ORDER: ProblemChoiceType[] = ["statute", "precedent", "theory"];
 
 export default function McqPackResult({ loaderData }: Route.ComponentProps) {
-  const { pack, result, aggStats, packStats } = loaderData;
+  const { pack, result, aggStats, packStats, ranking } = loaderData;
   const { items, attemptedCount, correctCount, totalTimeMs } = result;
   const total = items.length;
   const wrongCount = attemptedCount - correctCount;
@@ -133,6 +137,10 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
         </span>
       }
     >
+      {ranking ? (
+        <ScoreSummary ranking={ranking} passScore={pack.passScore} />
+      ) : null}
+
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="본인 정답률"
@@ -273,6 +281,48 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
         </table>
       </IndexCard>
     </LatestShell>
+  );
+}
+
+// feat-10-004 — 모의고사 점수·합격 판정·등수 요약.
+function ScoreSummary({
+  ranking,
+  passScore,
+}: {
+  ranking: PackAttemptRanking;
+  passScore: number | null;
+}) {
+  const passed = passScore !== null ? ranking.score >= passScore : null;
+  return (
+    <div className="border-border bg-card mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 shadow-sm">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+        <span className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+          점수
+        </span>
+        <span className="text-primary text-4xl font-extrabold tabular-nums">
+          {ranking.score}
+        </span>
+        <span className="text-muted-foreground text-sm">/ 100점</span>
+        {passed === true ? (
+          <Pill tone="emerald">합격</Pill>
+        ) : passed === false ? (
+          <Pill tone="rose">불합격</Pill>
+        ) : null}
+        <span className="text-muted-foreground text-xs tabular-nums">
+          정답 {ranking.correct} / {ranking.total}
+          {passScore !== null ? ` · 합격선 ${passScore}점` : ""}
+        </span>
+      </div>
+      <div className="text-right">
+        <p className="text-lg font-bold tabular-nums">
+          전체 {ranking.totalTakers}명 중{" "}
+          <span className="text-primary">{ranking.rank}등</span>
+        </p>
+        <p className="text-muted-foreground text-xs tabular-nums">
+          백분위 {ranking.percentile} · 표준점수 z {ranking.zScore}
+        </p>
+      </div>
+    </div>
   );
 }
 
