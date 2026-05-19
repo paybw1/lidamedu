@@ -7,11 +7,10 @@ import {
   ClockIcon,
   FileTextIcon,
   PlayIcon,
-  PlusIcon,
   Trash2Icon,
   VideoIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Form,
   Link,
@@ -22,16 +21,17 @@ import {
 } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
-import { Input } from "~/core/components/ui/input";
 import { Pill } from "~/features/latest/components/latest-list";
 import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { MockPackProblemPicker } from "~/features/mcq-packs/components/mock-pack-problem-picker";
 import {
   MCQ_PACK_KIND_LABELS,
   MCQ_PACK_SUBJECT_LABELS,
   isMockKind,
   type McqPackProblemItem,
+  type McqPackSubjectScope,
 } from "~/features/mcq-packs/labels";
 import {
   getPackById,
@@ -185,12 +185,19 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
               {problems.length}
             </span>
           </p>
-          {canEdit ? <AddProblemForm packId={pack.packId} /> : null}
         </div>
+        {canEdit ? (
+          <div className="border-border border-b p-3">
+            <MockPackProblemPicker
+              packId={pack.packId}
+              lawCode={SCOPE_LAW_CODE[pack.subjectScope] ?? null}
+            />
+          </div>
+        ) : null}
         {problems.length === 0 ? (
           <p className="text-muted-foreground p-6 text-center text-sm">
             {canEdit
-              ? "문제가 비어 있습니다. 우측 입력란에 problem_id 를 붙여넣어 추가하세요."
+              ? "문제가 비어 있습니다. 위 검색으로 문제를 추가하세요."
               : "문제가 비어 있습니다."}
           </p>
         ) : (
@@ -207,6 +214,10 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
           </ol>
         )}
       </div>
+
+      {canEdit && mockPack ? (
+        <ReleasePanel packId={pack.packId} problems={problems} />
+      ) : null}
     </LatestShell>
   );
 }
@@ -299,51 +310,88 @@ function ProblemRow({
   );
 }
 
-function AddProblemForm({ packId }: { packId: string }) {
-  const fetcher = useFetcher<{ ok?: true; error?: string }>();
-  const [draft, setDraft] = useState("");
+// 팩 subject_scope → law_code (단일 법 과목만; 합본/자연과학은 검색 시 전체 과목).
+const SCOPE_LAW_CODE: Partial<Record<McqPackSubjectScope, string>> = {
+  patent: "patent",
+  trademark: "trademark",
+  design: "design",
+  civil: "civil",
+  civil_procedure: "civil-procedure",
+};
+
+// feat-10-002 — 모의고사 종료 후 mock 문제를 학습과목 문제은행에 공개.
+function ReleasePanel({
+  packId,
+  problems,
+}: {
+  packId: string;
+  problems: McqPackProblemItem[];
+}) {
+  const fetcher = useFetcher<{
+    ok?: true;
+    released?: number;
+    error?: string;
+  }>();
   const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
-    if (
-      fetcher.state === "idle" &&
-      fetcher.data &&
-      "ok" in fetcher.data &&
-      fetcher.data.ok
-    ) {
-      setDraft("");
+    const d = fetcher.data;
+    if (fetcher.state === "idle" && d && "ok" in d && d.ok) {
       navigate(location.pathname + location.search, {
         replace: true,
         preventScrollReset: true,
       });
     }
   }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
+
+  const mockProblems = problems.filter((p) => p.origin === "mock");
+  const releasedCount = mockProblems.filter((p) => p.releasedAt).length;
+  const pending = mockProblems.length - releasedCount;
   const err =
     fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+
   return (
-    <fetcher.Form
-      method="post"
-      action="/api/admin/mcq-pack"
-      className="inline-flex items-center gap-1.5"
-    >
-      <input type="hidden" name="intent" value="add_problem" />
-      <input type="hidden" name="packId" value={packId} />
-      <Input
-        name="problemId"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="problem_id (UUID)"
-        className="h-8 w-64 font-mono text-[11px]"
-      />
-      <Button
-        type="submit"
-        size="sm"
-        className="h-8 rounded-full"
-        disabled={fetcher.state !== "idle" || !draft.trim()}
-      >
-        <PlusIcon className="size-3" /> 추가
-      </Button>
-      {err ? <span className="text-xs text-rose-600">{err}</span> : null}
-    </fetcher.Form>
+    <div className="border-border bg-card mt-4 rounded-2xl border p-4 shadow-sm">
+      <p className="text-sm font-bold tracking-tight">학습과목 공개</p>
+      <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+        모의고사가 끝나면 이 팩의 문제를 학습과목 문제은행에 공개합니다. 공개
+        전까지 mock 문제는 학습과목 색인·맞춤 퀴즈에 노출되지 않습니다.
+      </p>
+      {mockProblems.length === 0 ? (
+        <p className="text-muted-foreground mt-3 text-xs">
+          이 팩에 모의고사(origin=mock) 문제가 없습니다.
+        </p>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Pill tone="outline">mock 문항 {mockProblems.length}</Pill>
+          <Pill tone={releasedCount > 0 ? "primary" : "outline"}>
+            공개됨 {releasedCount}
+          </Pill>
+          {pending > 0 ? (
+            <fetcher.Form method="post" action="/api/admin/mcq-pack">
+              <input
+                type="hidden"
+                name="intent"
+                value="release_to_subjects"
+              />
+              <input type="hidden" name="packId" value={packId} />
+              <Button
+                type="submit"
+                size="sm"
+                className="h-8 rounded-full"
+                disabled={fetcher.state !== "idle"}
+              >
+                미공개 {pending}개 학습과목에 공개
+              </Button>
+            </fetcher.Form>
+          ) : (
+            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              모두 공개됨
+            </span>
+          )}
+          {err ? <span className="text-xs text-rose-600">{err}</span> : null}
+        </div>
+      )}
+    </div>
   );
 }

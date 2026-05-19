@@ -96,7 +96,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 
   const [problems, years, systematicNodes] = await Promise.all([
-    listProblemsBySubject(client, subject, filters),
+    // feat-10-002: 운영자 문제 관리 화면 — 미공개 mock 문제도 표시.
+    listProblemsBySubject(client, subject, filters, { includeHiddenMock: true }),
     listProblemYears(client, subject),
     listSystematicTopNodes(client, subject),
   ]);

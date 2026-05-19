@@ -2926,6 +2926,7 @@ export type Database = {
           primary_article_id: string | null
           problem_id: string
           problem_number: number | null
+          released_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           rubric_items: Json | null
@@ -2964,6 +2965,7 @@ export type Database = {
           primary_article_id?: string | null
           problem_id?: string
           problem_number?: number | null
+          released_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           rubric_items?: Json | null
@@ -3006,6 +3008,7 @@ export type Database = {
           primary_article_id?: string | null
           problem_id?: string
           problem_number?: number | null
+          released_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           rubric_items?: Json | null

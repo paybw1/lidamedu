@@ -69,6 +69,8 @@ export interface McqPackProblemItem {
   problemNumber: number | null;
   format: string;
   origin: string;
+  /** feat-10-002 — origin=mock 문제의 학습과목 공개 시각. null = 미공개. */
+  releasedAt: string | null;
   year: number | null;
   bodySnippet: string;
   // 첫 문제의 viewer URL prefix 계산용 (industrial pack 도 문제별 law slug 다를 수 있음).

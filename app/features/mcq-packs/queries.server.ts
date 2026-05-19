@@ -165,7 +165,7 @@ export async function listPackProblems(
   const { data, error } = await client
     .from("mcq_pack_problems")
     .select(
-      "ord, problem_id, problems!inner(problem_id, problem_number, format, origin, year, body_md, law_id, science_subject, laws(law_code))",
+      "ord, problem_id, problems!inner(problem_id, problem_number, format, origin, released_at, year, body_md, law_id, science_subject, laws(law_code))",
     )
     .eq("pack_id", packId)
     .order("ord", { ascending: true });
@@ -183,6 +183,7 @@ export async function listPackProblems(
         problemNumber: p.problem_number,
         format: p.format,
         origin: p.origin,
+        releasedAt: p.released_at ?? null,
         year: p.year,
         bodySnippet: snippet,
         lawCode: p.laws?.law_code ?? null,
@@ -325,6 +326,68 @@ export async function getPackProblemIds(
     .order("ord", { ascending: true });
   if (error) throw error;
   return (data ?? []).map((r) => r.problem_id);
+}
+
+// 여러 problem_id 일괄 추가 — 이미 들어있는 문제는 건너뛴다 (멱등). feat-10-002.
+export async function addPackProblems(
+  client: SupabaseClient<Database>,
+  packId: string,
+  problemIds: string[],
+): Promise<
+  { ok: true; added: number; skipped: number } | { ok: false; error: string }
+> {
+  if (problemIds.length === 0) return { ok: true, added: 0, skipped: 0 };
+  const { data: existing, error: exErr } = await client
+    .from("mcq_pack_problems")
+    .select("problem_id")
+    .eq("pack_id", packId)
+    .in("problem_id", problemIds);
+  if (exErr) return { ok: false, error: exErr.message };
+  const existingSet = new Set((existing ?? []).map((r) => r.problem_id));
+  const fresh = problemIds.filter((id) => !existingSet.has(id));
+  if (fresh.length === 0) {
+    return { ok: true, added: 0, skipped: problemIds.length };
+  }
+  const { data: maxRow } = await client
+    .from("mcq_pack_problems")
+    .select("ord")
+    .eq("pack_id", packId)
+    .order("ord", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const baseOrd = (maxRow?.ord ?? -1) + 1;
+  const rows = fresh.map((problemId, i) => ({
+    pack_id: packId,
+    problem_id: problemId,
+    ord: baseOrd + i,
+  }));
+  const { error } = await client.from("mcq_pack_problems").insert(rows);
+  if (error) return { ok: false, error: error.message };
+  return {
+    ok: true,
+    added: fresh.length,
+    skipped: problemIds.length - fresh.length,
+  };
+}
+
+// feat-10-002 — 팩의 mock 문제를 학습과목에 공개 (released_at 설정).
+// origin=mock + 미공개 인 것만 갱신. 멱등 — 이미 공개분은 건너뜀.
+export async function releasePackProblems(
+  client: SupabaseClient<Database>,
+  packId: string,
+): Promise<{ ok: true; released: number } | { ok: false; error: string }> {
+  const problemIds = await getPackProblemIds(client, packId);
+  if (problemIds.length === 0) return { ok: true, released: 0 };
+  const { data, error } = await client
+    .from("problems")
+    .update({ released_at: new Date().toISOString() })
+    .in("problem_id", problemIds)
+    .eq("origin", "mock")
+    .is("released_at", null)
+    .is("deleted_at", null)
+    .select("problem_id");
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, released: data?.length ?? 0 };
 }
 
 // 기출 팩 자동 재생성 — problems 의 (subject_scope, year) 별로 past_exam 1차 문제 묶음.

@@ -81,6 +81,7 @@ export async function listProblemsBySubject(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
   filters: ListProblemsFilters = {},
+  opts: { includeHiddenMock?: boolean } = {},
 ): Promise<ProblemListItem[]> {
   const { data: law } = await client
     .from("laws")
@@ -96,6 +97,12 @@ export async function listProblemsBySubject(
     )
     .eq("law_id", law.law_id)
     .is("deleted_at", null);
+
+  // feat-10-002: 미공개 mock 문제(origin=mock·released_at null)는 학습과목 비노출.
+  // staff 문제 관리 화면(admin-problems-list)만 includeHiddenMock 으로 우회한다.
+  if (!opts.includeHiddenMock) {
+    query = query.or("origin.neq.mock,released_at.not.is.null");
+  }
 
   if (filters.origin) query = query.eq("origin", filters.origin);
   if (filters.format) query = query.eq("format", filters.format);

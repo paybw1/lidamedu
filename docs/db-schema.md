@@ -369,7 +369,8 @@ create table public.problems (
   updated_at          timestamptz not null default now(),
   deleted_at          timestamptz,
   created_by          uuid references profiles(profile_id),
-  source_gs_question_id uuid references gs_questions(question_id) on delete set null  -- feat-10-001: GS 문항에서 승격된 경우 원본 문항
+  source_gs_question_id uuid references gs_questions(question_id) on delete set null,  -- feat-10-001: GS 문항에서 승격된 경우 원본 문항
+  released_at         timestamptz   -- feat-10-002: origin=mock 문제의 학습과목 공개 시각 (null=비노출)
 );
 
 create index problems_law on problems(law_id);
@@ -383,6 +384,8 @@ create unique index uq_problems_source_gs_question on problems(source_gs_questio
 ```
 
 > **feat-10-001 — GS 문항 승격**: 종료된 GS 회차의 `gs_questions` 를 `problems`(format=subjective, origin=mock)로 승격할 때 `source_gs_question_id` 로 원본을 역참조한다. 단방향 스냅샷 — 승격 후 동기화 없음. 상세: `docs/features/feat-10-001-gs-question-promotion.md`.
+
+> **feat-10-002 — 1차 모의고사 mock 가시성**: `origin='mock'` 문제는 `released_at IS NULL` 동안 학습과목 색인·맞춤 퀴즈에 비노출(`listProblemsBySubject` 게이트). 운영자가 mcq 팩 단위로 "학습과목 공개" 하면 `released_at` 설정. staff 문제 관리 화면(`admin-problems-list`)은 게이트 우회. 상세: `docs/features/feat-10-002-mock-exam-authoring.md`.
 
 ### 7.1 problem_choices (1차 객관식 보기)
 

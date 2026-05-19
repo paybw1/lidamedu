@@ -69,20 +69,34 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   if (kind === "problem") {
-    const { data: rows } = await adminClient
+    // feat-10-002: 모의고사 팩 picker — 과목·차수 필터 지원.
+    const lawCode = url.searchParams.get("lawCode")?.trim() || null;
+    const examRound = url.searchParams.get("examRound")?.trim() || null;
+    let pq = adminClient
       .from("problems")
       .select(
-        "problem_id, body_md, year, problem_number, exam_round, laws(law_code)",
+        "problem_id, body_md, year, problem_number, exam_round, origin, laws(law_code)",
       )
       .ilike("body_md", `%${safe}%`)
-      .is("deleted_at", null)
-      .limit(LIMIT);
+      .is("deleted_at", null);
+    if (lawCode) {
+      const { data: law } = await adminClient
+        .from("laws")
+        .select("law_id")
+        .eq("law_code", lawCode)
+        .maybeSingle();
+      if (law) pq = pq.eq("law_id", law.law_id);
+    }
+    if (examRound === "first" || examRound === "second") {
+      pq = pq.eq("exam_round", examRound);
+    }
+    const { data: rows } = await pq.limit(LIMIT);
     const items: SearchResult[] = (rows ?? []).map((r) => {
       const body = (r.body_md ?? "").slice(0, 80);
       return {
         id: r.problem_id,
         label: `${r.year ?? "?"}${r.problem_number ? ` ${r.problem_number}번` : ""} — ${body}${(r.body_md ?? "").length > 80 ? "…" : ""}`,
-        secondary: [r.laws?.law_code, r.exam_round]
+        secondary: [r.laws?.law_code, r.exam_round, r.origin]
           .filter(Boolean)
           .join(" · "),
       };

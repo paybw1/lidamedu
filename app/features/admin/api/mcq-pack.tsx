@@ -8,9 +8,11 @@ import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   addPackProblem,
+  addPackProblems,
   createPack,
   deletePack,
   regeneratePastExamPacks,
+  releasePackProblems,
   removePackProblem,
   updatePack,
 } from "~/features/mcq-packs/queries.server";
@@ -211,6 +213,45 @@ export async function action({ request }: Route.ActionArgs) {
     const res = await removePackProblem(client, packId, problemId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
+  }
+
+  if (intent === "add_problems") {
+    const packId = String(fd.get("packId") ?? "");
+    if (!z.string().uuid().safeParse(packId).success) {
+      return data({ error: "Invalid packId" }, { status: 400 });
+    }
+    let problemIds: string[];
+    try {
+      const raw: unknown = JSON.parse(String(fd.get("problemIds") ?? "[]"));
+      const parsed = z.array(z.string().uuid()).max(200).safeParse(raw);
+      if (!parsed.success) {
+        return data({ error: "Invalid problemIds" }, { status: 400 });
+      }
+      problemIds = parsed.data;
+    } catch {
+      return data({ error: "Invalid problemIds" }, { status: 400 });
+    }
+    const res = await addPackProblems(client, packId, problemIds);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: true, added: res.added, skipped: res.skipped });
+  }
+
+  if (intent === "release_to_subjects") {
+    const packId = String(fd.get("packId") ?? "");
+    if (!z.string().uuid().safeParse(packId).success) {
+      return data({ error: "Invalid packId" }, { status: 400 });
+    }
+    const res = await releasePackProblems(client, packId);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "mcq_pack.release_to_subjects",
+      entityType: "mcq_pack",
+      entityId: packId,
+      metadata: { released: res.released },
+    });
+    return data({ ok: true, released: res.released });
   }
 
   return data({ error: "Unknown intent" }, { status: 400 });
