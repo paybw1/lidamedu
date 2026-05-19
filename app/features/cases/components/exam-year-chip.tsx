@@ -17,7 +17,7 @@ export function ExamProblemChip({
   problemId: string;
   year: number | null;
 }) {
-  const label = `${year ? `${year}년 ` : ""}1차`;
+  const label = year ? `1차 ${year}` : "1차";
   return (
     <Link
       to={`/subjects/${lawCode}/problems/${problemId}`}
