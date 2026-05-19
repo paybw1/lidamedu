@@ -37,7 +37,7 @@ const TIERS: Tier[] = [
   },
   {
     label: "PRO · 자기주도 구독",
-    price: "₩99,900",
+    price: "₩99,000",
     priceUnit: "/ 월",
     includes: [
       "무료 전체",
