@@ -44,6 +44,10 @@ import {
   updateGsRound,
   upsertGsQuestion,
 } from "~/features/gs/queries.server";
+import {
+  getPromotedLinks,
+  promoteRoundToProblemBank,
+} from "~/features/gs/queries-promotion.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LAW_SUBJECTS,
@@ -104,7 +108,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const roundId = params.roundId;
   const allSeries = await listAllGsSeries(client);
   if (!roundId || roundId === "new") {
-    return { round: null, questions: [], allSeries, paperUrl: null, answerKeyUrl: null, role };
+    return {
+      round: null,
+      questions: [],
+      allSeries,
+      paperUrl: null,
+      answerKeyUrl: null,
+      role,
+      promotedLinks: {} as Record<string, string>,
+    };
   }
   const [round, questions] = await Promise.all([
     getGsRound(client, roundId),
@@ -118,7 +130,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? getGsPaperSignedUrl(client, round.answerKeyPdfPath)
       : null,
   ]);
-  return { round, questions, allSeries, paperUrl, answerKeyUrl, role };
+  const promoted = await getPromotedLinks(
+    client,
+    questions.map((q) => q.questionId),
+  );
+  return {
+    round,
+    questions,
+    allSeries,
+    paperUrl,
+    answerKeyUrl,
+    role,
+    promotedLinks: Object.fromEntries(promoted),
+  };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -300,6 +324,20 @@ export async function action({ params, request }: Route.ActionArgs) {
     return redirect("/admin/gs");
   }
 
+  if (intent === "promote-to-problems") {
+    if (!roundId)
+      return { ok: false, error: "회차를 먼저 저장하세요." } as const;
+    const result = await promoteRoundToProblemBank(client, roundId, user.id);
+    if (!result.ok) {
+      return { ok: false, error: result.error ?? "승격 실패" } as const;
+    }
+    return {
+      ok: true,
+      promoted: result.promoted,
+      skipped: result.skipped,
+    } as const;
+  }
+
   return { ok: false, error: "Unknown intent" } as const;
 }
 
@@ -311,7 +349,8 @@ function toLocalInput(iso: string | undefined): string {
 }
 
 export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
-  const { round, questions, allSeries, paperUrl, answerKeyUrl, role } = loaderData;
+  const { round, questions, allSeries, paperUrl, answerKeyUrl, role, promotedLinks } =
+    loaderData;
   const isNew = round === null;
   const roundFetcher = useFetcher<typeof action>();
   const deleteFetcher = useFetcher<typeof action>();
@@ -646,6 +685,14 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
           회차를 먼저 저장하면 문제를 추가할 수 있습니다.
         </p>
       )}
+
+      {!isNew && round ? (
+        <PromotionPanel
+          round={{ roundId: round.roundId, status: round.status }}
+          questions={questions}
+          promotedLinks={promotedLinks}
+        />
+      ) : null}
     </AdminShell>
   );
 }
@@ -1071,5 +1118,128 @@ function PaperPageHint({
         답안지 페이지 수를 {paperPages}로 맞추기
       </Button>
     </div>
+  );
+}
+
+/* ── 주관식 문제은행 승격 패널 (feat-10-001) ───────────────────────────── */
+
+function PromotionPanel({
+  round,
+  questions,
+  promotedLinks,
+}: {
+  round: { roundId: string; status: GsRoundStatus };
+  questions: { questionId: string; orderIndex: number; title: string | null }[];
+  promotedLinks: Record<string, string>;
+}) {
+  const fetcher = useFetcher<typeof action>();
+  const isClosed = round.status === "closed";
+  const promotedCount = questions.filter(
+    (q) => promotedLinks[q.questionId],
+  ).length;
+  const pendingCount = questions.length - promotedCount;
+  const result = fetcher.data;
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <h2 className="text-sm font-semibold tracking-tight">
+          주관식 문제은행 등록
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          이 회차 문항을 학습과목 주관식 문제(출처: 모의고사)로 등록합니다. 등록된
+          문제는 학습정보 · 학습과목 주관식 풀이에 노출됩니다.
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="space-y-3 pt-4">
+        {!isClosed ? (
+          <p className="text-muted-foreground text-sm">
+            회차를 <strong>종료</strong> 상태로 바꾸면 등록할 수 있습니다 — 시험
+            종료 전 문항이 문제은행에 노출되지 않도록.
+          </p>
+        ) : questions.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            등록할 문항이 없습니다.
+          </p>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Chip tone="neutral">{questions.length}문항</Chip>
+              <Chip tone={promotedCount > 0 ? "emerald" : "neutral"}>
+                등록됨 {promotedCount}
+              </Chip>
+              {pendingCount > 0 ? (
+                <Chip tone="amber">미등록 {pendingCount}</Chip>
+              ) : null}
+            </div>
+
+            <ul className="space-y-1">
+              {questions
+                .slice()
+                .sort((a, b) => a.orderIndex - b.orderIndex)
+                .map((q) => {
+                  const problemId = promotedLinks[q.questionId];
+                  return (
+                    <li
+                      key={q.questionId}
+                      className="flex items-center gap-2 text-[13px]"
+                    >
+                      <span className="text-muted-foreground tabular-nums">
+                        #{q.orderIndex + 1}
+                      </span>
+                      <span className="flex-1 truncate">
+                        {q.title || "(제목 없음)"}
+                      </span>
+                      {problemId ? (
+                        <Link
+                          to={`/admin/problems/${problemId}`}
+                          viewTransition
+                          className="text-primary text-xs font-semibold hover:underline"
+                        >
+                          등록됨 — 문제 편집 ↗
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">
+                          미등록
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+            </ul>
+
+            {pendingCount > 0 ? (
+              <fetcher.Form method="post">
+                <input type="hidden" name="intent" value="promote-to-problems" />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={fetcher.state !== "idle"}
+                >
+                  <ClipboardCheckIcon className="size-3.5" />
+                  미등록 {pendingCount}개 문제은행에 등록
+                </Button>
+              </fetcher.Form>
+            ) : (
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                모든 문항이 문제은행에 등록되었습니다.
+              </p>
+            )}
+
+            {result && "ok" in result && result.ok && result.promoted !== undefined ? (
+              <p className="text-muted-foreground text-xs">
+                {result.promoted > 0
+                  ? `${result.promoted}개 문항을 등록했습니다.`
+                  : "새로 등록할 문항이 없습니다."}
+              </p>
+            ) : null}
+            {result && "error" in result && result.error ? (
+              <p className="text-xs text-rose-600">{result.error}</p>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -529,6 +529,18 @@
 
 ---
 
+## 5.10 모의고사 체계 정비 (1차·2차 + 문제은행 연결)
+
+1차(객관식)·2차(주관식) 모의고사와 학습과목 문제은행을 잇는 정비. 2차 모의고사 = 온라인 GS(5.5), 1차 모의고사 = `mcq_packs` exam 모드(5.3). 3단계(Phase A/B/C)로 진행.
+
+| ID | 기능 | 우선순위 | 상태 |
+|----|------|:-------:|:---:|
+| feat-10-001 | **Phase A — GS 문항 → 학습과목 주관식 문제은행 승격.** 종료된 GS 회차의 `gs_questions` 를 `problems`(format=subjective, origin=mock)로 일괄 승격. `problems.source_gs_question_id` 역참조(멱등성 키, 부분 유니크). 운영자 GS 회차 편집 화면의 "주관식 문제은행 등록" 패널. 2차 모의고사 흐름 ⑥ 완성 + 빈 주관식 문제은행 충전. 상세: `docs/features/feat-10-001-gs-question-promotion.md`. | P1 | ✅ |
+| feat-10-002 | **Phase B — 1차 모의고사 본격화.** `mcq_packs` mock 팩 출제 도구(문제 picker) · 과락/등수 · 종료 후 학습과목 공개 게이트. | P1 | 🔲 |
+| feat-10-003 | **Phase C — IA 통합.** "모의고사"(1차·2차) · "기출문제" 영역 정리. | P2 | 🔲 |
+
+---
+
 ## 6. 마일스톤
 
 ### M1 — Foundation ✅

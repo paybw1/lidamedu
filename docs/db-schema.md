@@ -368,7 +368,8 @@ create table public.problems (
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
   deleted_at          timestamptz,
-  created_by          uuid references profiles(profile_id)
+  created_by          uuid references profiles(profile_id),
+  source_gs_question_id uuid references gs_questions(question_id) on delete set null  -- feat-10-001: GS 문항에서 승격된 경우 원본 문항
 );
 
 create index problems_law on problems(law_id);
@@ -376,7 +377,12 @@ create index problems_systematic_gist on problems using gist (systematic_path);
 create index problems_year on problems(year desc);
 create index problems_format on problems(format);
 create index problems_subject_type on problems(subject_type);
+-- feat-10-001: GS 문항 → 주관식 문제 승격 멱등성 키 (soft delete 분 제외 → 재승격 허용)
+create unique index uq_problems_source_gs_question on problems(source_gs_question_id)
+  where source_gs_question_id is not null and deleted_at is null;
 ```
+
+> **feat-10-001 — GS 문항 승격**: 종료된 GS 회차의 `gs_questions` 를 `problems`(format=subjective, origin=mock)로 승격할 때 `source_gs_question_id` 로 원본을 역참조한다. 단방향 스냅샷 — 승격 후 동기화 없음. 상세: `docs/features/feat-10-001-gs-question-promotion.md`.
 
 ### 7.1 problem_choices (1차 객관식 보기)
 

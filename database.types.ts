@@ -2933,6 +2933,7 @@ export type Database = {
           science_subject: Database["public"]["Enums"]["science_subject"] | null
           scope: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id: string | null
+          source_gs_question_id: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
           subjective_keywords: string[] | null
           subjective_kind: Database["public"]["Enums"]["subjective_kind"] | null
@@ -2972,6 +2973,7 @@ export type Database = {
             | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
+          source_gs_question_id?: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
           subjective_keywords?: string[] | null
           subjective_kind?:
@@ -3013,6 +3015,7 @@ export type Database = {
             | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
           source_doc_id?: string | null
+          source_gs_question_id?: string | null
           subject_type?: Database["public"]["Enums"]["problem_subject_type"]
           subjective_keywords?: string[] | null
           subjective_kind?:
@@ -3094,6 +3097,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "problem_source_docs"
             referencedColumns: ["source_doc_id"]
+          },
+          {
+            foreignKeyName: "problems_source_gs_question_id_fkey"
+            columns: ["source_gs_question_id"]
+            isOneToOne: false
+            referencedRelation: "gs_questions"
+            referencedColumns: ["question_id"]
           },
         ]
       }
