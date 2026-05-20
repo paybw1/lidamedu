@@ -222,7 +222,7 @@ async function main() {
     process.exit(1);
   }
 
-  // UTF-8 BOM 제거 (Excel 등에서 저장 시 추가됨)
+  // UTF-8 BOM 제거 (Excel/PowerShell Set-Content -Encoding UTF8 등에서 저장 시 추가됨)
   const csvText = readFileSync(CSV_PATH, "utf-8").replace(/^﻿/, "");
   const rows = parseCsv(csvText);
   console.log(`[info] CSV rows: ${rows.length}`);
