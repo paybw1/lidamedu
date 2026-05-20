@@ -11,10 +11,12 @@ import {
   CircleIcon,
   Loader2Icon,
   RotateCcwIcon,
+  SaveIcon,
   XCircleIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Link, data } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, data, useFetcher } from "react-router";
+import { z } from "zod";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -31,6 +33,190 @@ import { getOxQuestionsForPack } from "~/features/problems/queries.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/mcq-pack-ox-exam";
+
+const submitItemSchema = z.object({
+  refType: z.enum(["choice", "box"]),
+  refId: z.string().uuid(),
+  problemId: z.string().uuid(),
+  userAnswer: z.enum(["O", "X"]).nullable(),
+  oxTruth: z.enum(["O", "X"]),
+  isCorrect: z.boolean(),
+});
+const submitSchema = z.object({
+  intent: z.literal("submit"),
+  durationMs: z.coerce.number().int().nonnegative(),
+  itemsJson: z.string().min(2),
+});
+
+type SubmitResponse =
+  | {
+      ok: true;
+      sessionId: string;
+      correct: number;
+      wrong: number;
+      blank: number;
+      total: number;
+    }
+  | { ok: false; error: string };
+
+const SCOPE_TO_LAW_CODE: Record<string, string | null> = {
+  industrial: "patent", // 산업재산권법 — 1차 모의고사 기본 과목
+  civil: "civil",
+  civil_procedure: "civil-procedure",
+  science: null,
+};
+
+export async function action({ params, request }: Route.ActionArgs) {
+  if (!params.packId)
+    return data({ ok: false as const, error: "Missing packId" }, { status: 400 });
+  if (request.method !== "POST")
+    return data({ ok: false as const, error: "Method not allowed" }, { status: 405 });
+
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user)
+    return data({ ok: false as const, error: "Unauthorized" }, { status: 401 });
+
+  const fd = await request.formData();
+  const parsed = submitSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) {
+    return data(
+      { ok: false as const, error: parsed.error.issues[0]?.message ?? "입력 오류" },
+      { status: 400 },
+    );
+  }
+  let items: z.infer<typeof submitItemSchema>[];
+  try {
+    const raw = JSON.parse(parsed.data.itemsJson);
+    if (!Array.isArray(raw)) throw new Error("items 배열 아님");
+    items = raw.map((r) => submitItemSchema.parse(r));
+  } catch (e) {
+    return data(
+      { ok: false as const, error: e instanceof Error ? e.message : "items 파싱 실패" },
+      { status: 400 },
+    );
+  }
+  if (items.length === 0) {
+    return data({ ok: false as const, error: "응시 항목 없음" }, { status: 400 });
+  }
+
+  // pack 조회 — law_code 결정
+  const pack = await getPackById(client, params.packId);
+  if (!pack)
+    return data({ ok: false as const, error: "Pack not found" }, { status: 404 });
+  if (pack.kind !== "mock_progressive") {
+    return data(
+      { ok: false as const, error: "OX 시험은 진도별 모의고사 팩만 지원" },
+      { status: 400 },
+    );
+  }
+  // quiz_sessions.subject_xor: law_code OR science_subject 중 하나 NOT NULL.
+  // 자연과학 팩은 첫 문제의 science_subject 를 채워서 만족시킨다.
+  const lawCode = SCOPE_TO_LAW_CODE[pack.subjectScope] ?? null;
+  const distinctProblemIds = [...new Set(items.map((i) => i.problemId))];
+  let scienceSubject:
+    | "physics"
+    | "chemistry"
+    | "biology"
+    | "earth_science"
+    | null = null;
+  if (pack.subjectScope === "science") {
+    const { data: firstSci } = await client
+      .from("problems")
+      .select("science_subject")
+      .in("problem_id", distinctProblemIds)
+      .not("science_subject", "is", null)
+      .limit(1)
+      .maybeSingle();
+    scienceSubject =
+      (firstSci?.science_subject as typeof scienceSubject) ?? null;
+  }
+  if (!lawCode && !scienceSubject) {
+    return data(
+      { ok: false as const, error: "과목 식별 실패 (law_code/science_subject 모두 null)" },
+      { status: 400 },
+    );
+  }
+
+  // quiz_sessions.scope_type check: 'node|filter|wrong-note|free|pack' 만 허용
+  // → 'pack' 재사용 + scope_payload.exam_kind='ox' 로 OX 구분
+  const startedAt = new Date(Date.now() - parsed.data.durationMs).toISOString();
+  const completedAt = new Date().toISOString();
+  const { data: sess, error: sErr } = await client
+    .from("quiz_sessions")
+    .insert({
+      user_id: user.id,
+      mode: "exam",
+      law_code: lawCode,
+      science_subject: scienceSubject,
+      scope_type: "pack",
+      scope_payload: {
+        pack_id: params.packId,
+        ref_count: items.length,
+        exam_kind: "ox", // OX 시험 구분자 (객관식 'pack' 응시와 분리)
+      },
+      problem_ids: distinctProblemIds,
+      pack_id: params.packId,
+      started_at: startedAt,
+      completed_at: completedAt,
+    })
+    .select("session_id")
+    .single();
+  if (sErr || !sess) {
+    return data(
+      { ok: false as const, error: sErr?.message ?? "session insert 실패" },
+      { status: 400 },
+    );
+  }
+
+  // 2) user_problem_attempts bulk
+  const perItemMs = Math.floor(
+    parsed.data.durationMs / Math.max(items.length, 1),
+  );
+  const attempts = items
+    .filter((i) => i.userAnswer !== null) // 미응답은 attempt 저장 안 함
+    .map((i) => ({
+      user_id: user.id,
+      problem_id: i.problemId,
+      selected_choice_id: i.refType === "choice" ? i.refId : null,
+      selected_box_item_id: i.refType === "box" ? i.refId : null,
+      ox_answer: i.userAnswer as OxTruth,
+      is_correct: i.isCorrect,
+      mode: "exam",
+      session_id: sess.session_id,
+      time_spent_ms: perItemMs,
+    }));
+  if (attempts.length > 0) {
+    const { error: aErr } = await client
+      .from("user_problem_attempts")
+      .insert(attempts);
+    if (aErr) {
+      // session row 정리
+      await client
+        .from("quiz_sessions")
+        .delete()
+        .eq("session_id", sess.session_id);
+      return data(
+        { ok: false as const, error: aErr.message ?? "attempts insert 실패" },
+        { status: 400 },
+      );
+    }
+  }
+
+  const correct = items.filter((i) => i.userAnswer !== null && i.isCorrect).length;
+  const wrong = items.filter((i) => i.userAnswer !== null && !i.isCorrect).length;
+  const blank = items.filter((i) => i.userAnswer === null).length;
+  return data({
+    ok: true as const,
+    sessionId: sess.session_id,
+    correct,
+    wrong,
+    blank,
+    total: items.length,
+  });
+}
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack)
@@ -120,7 +306,13 @@ function ExamRunner({
 }) {
   const [answers, setAnswers] = useState<Answer[]>(() => items.map(() => null));
   const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [startedAtMs] = useState(() => Date.now());
+  const fetcher = useFetcher<SubmitResponse>();
+  const submitting = fetcher.state !== "idle";
+  const persisted =
+    fetcher.data && fetcher.data.ok ? fetcher.data : null;
+  const persistError =
+    fetcher.data && !fetcher.data.ok ? fetcher.data.error : null;
 
   const answered = useMemo(
     () => answers.filter((a) => a !== null).length,
@@ -151,19 +343,29 @@ function ExamRunner({
   }
 
   function handleSubmit() {
-    if (submitting) return;
+    if (submitting || submitted) return;
     if (answered < items.length) {
       const ok = window.confirm(
         `${items.length - answered}개 미응답 지문이 있습니다. 그대로 제출할까요?`,
       );
       if (!ok) return;
     }
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitted(true);
-      setSubmitting(false);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 200);
+    setSubmitted(true);
+    // 응시 이력 DB 저장 — quiz_sessions(scope_type=mcq_pack_ox) + user_problem_attempts bulk
+    const payload = items.map((it, i) => ({
+      refType: it.refType,
+      refId: it.refId,
+      problemId: it.problemId,
+      userAnswer: answers[i],
+      oxTruth: it.oxTruth,
+      isCorrect: answers[i] === it.oxTruth,
+    }));
+    const fd = new FormData();
+    fd.set("intent", "submit");
+    fd.set("durationMs", String(Date.now() - startedAtMs));
+    fd.set("itemsJson", JSON.stringify(payload));
+    fetcher.submit(fd, { method: "post" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function handleRetry() {
@@ -230,11 +432,30 @@ function ExamRunner({
                 : 0}
               %
             </Badge>
+            {submitting ? (
+              <Badge variant="outline" className="gap-1">
+                <Loader2Icon className="size-3 animate-spin" />
+                응시 이력 저장 중
+              </Badge>
+            ) : persisted ? (
+              <Badge
+                variant="outline"
+                className="gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+              >
+                <SaveIcon className="size-3" />
+                이력 저장됨
+              </Badge>
+            ) : persistError ? (
+              <Badge variant="destructive" className="gap-1">
+                저장 실패: {persistError}
+              </Badge>
+            ) : null}
             <div className="ml-auto flex gap-2">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleRetry}
+                disabled={submitting}
                 className="rounded-full"
               >
                 <RotateCcwIcon className="size-3.5" /> 다시 풀기
