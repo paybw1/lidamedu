@@ -25,6 +25,8 @@ import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { reindexProblems } from "~/features/ai-qna/lib/source-chunker.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import {
   AdminSelect,
@@ -405,6 +407,8 @@ export async function action({ params, request }: Route.ActionArgs) {
     }
   }
 
+  // feat-9-001 RAG dirty hook — 문제 본문/보기/박스 변경 청크 재생성.
+  runAfterResponse(reindexProblems([problemId]));
   return { ok: true, kind: andReview ? "save_and_review" : "save" } as const;
 }
 

@@ -530,7 +530,7 @@
 | feat-9-005 | 피드백 · eval · 품질 튜닝 — 👍/👎 + eval셋 + 지표 측정 | P2 | 🔲 |
 | feat-9-006 | 구독 게이팅 · 레이트 리밋 — feat-8-018 결제 연계 + 일 한도 | P2 | 🔲 |
 
-**feat-9-001 진행 상황 (🟡)**: 마이그레이션 적용 완료(`content_chunks` 테이블 + 4종 인덱스 + RLS), `database.types.ts` 재생성, 청킹 로직(`app/features/ai-qna/lib/chunker.ts`) + 큐 API(`queries.server.ts`) + cron 라우트(`/api/cron/embed-chunks`, dry-run + Voyage live) 골격 완료. **잔여**: dirty 마킹 hooks(조문 publish / 판례 저장 / 문제 저장 후) + 전체 백필 스크립트 + Vercel cron 등록 + `VOYAGE_API_KEY` 환경변수 설정.
+**feat-9-001 진행 상황 (🟡)**: 마이그레이션 적용 완료(`content_chunks` 테이블 + 4종 인덱스 + RLS), `database.types.ts` 재생성, 청킹 로직(`app/features/ai-qna/lib/chunker.ts`) + reindex 헬퍼(`source-chunker.server.ts`) + 큐 API(`queries.server.ts`) + cron 라우트(`/api/cron/embed-chunks`, dry-run + Voyage live) + dirty hooks(법 개정 publish / 판례 저장·생성 / 문제 저장·생성) + 백필 스크립트(`scripts/backfill-content-chunks.mjs`) + Vercel cron 등록(`*/15 * * * *`) 완료. **잔여**: ① Vercel 환경변수 `VOYAGE_API_KEY` 설정 ② `node scripts/backfill-content-chunks.mjs --apply` 백필 실행 ③ 임베딩 cron 자동 호출 모니터링.
 
 ---
 

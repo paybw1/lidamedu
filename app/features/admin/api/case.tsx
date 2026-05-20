@@ -4,6 +4,8 @@ import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { reindexCases } from "~/features/ai-qna/lib/source-chunker.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
@@ -288,6 +290,8 @@ export async function action({ request }: Route.ActionArgs) {
         court: input.court,
       },
     });
+    // feat-9-001 RAG dirty hook — 신규 판례 청크 생성.
+    runAfterResponse(reindexCases([row.case_id]));
     throw redirect(`/admin/cases/edit/${row.case_id}`);
   }
 
@@ -312,6 +316,8 @@ export async function action({ request }: Route.ActionArgs) {
       caseTitle: input.caseTitle,
     },
   });
+  // feat-9-001 RAG dirty hook — 판례 본문 변경 청크 재생성.
+  runAfterResponse(reindexCases([caseId]));
   // 저장 후 운영자가 보던 목록 페이지로 (returnTo — 페이지·필터 보존).
   // resource route(/api/admin/case)는 컴포넌트가 없어, plain <Form> 제출에
   // data() 를 돌려주면 렌더할 화면이 없어 네비게이션이 멈추므로 redirect 필수.

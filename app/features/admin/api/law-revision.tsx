@@ -4,6 +4,8 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { reindexArticles } from "~/features/ai-qna/lib/source-chunker.server";
 import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -357,6 +359,21 @@ export async function action({ request }: Route.ActionArgs) {
       user.id,
     );
     if (!res.ok) return data({ error: res.error }, { status: 400 });
+
+    // feat-9-001 RAG dirty hook — 발효된 개정의 영향 조문 청크 재생성.
+    // publish 후 article_revisions.law_revision_id 로 영향 article_id 추출.
+    runAfterResponse(
+      (async () => {
+        const { data: affected } = await client
+          .from("article_revisions")
+          .select("article_id")
+          .eq("law_revision_id", parsed.data.lawRevisionId);
+        const ids = [
+          ...new Set((affected ?? []).map((r) => r.article_id)),
+        ].filter((x): x is string => x !== null);
+        if (ids.length > 0) await reindexArticles(ids);
+      })(),
+    );
     return data({ ok: true });
   }
 

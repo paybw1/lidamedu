@@ -1,3 +1,9 @@
 {
-  "regions": ["icn1"]
+  "regions": ["icn1"],
+  "crons": [
+    {
+      "path": "/api/cron/embed-chunks",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

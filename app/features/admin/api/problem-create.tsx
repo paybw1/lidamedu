@@ -4,6 +4,8 @@ import { data, redirect } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { reindexProblems } from "~/features/ai-qna/lib/source-chunker.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { addPackProblem } from "~/features/mcq-packs/queries.server";
 import {
@@ -166,5 +168,7 @@ export async function action({ request }: Route.ActionArgs) {
     });
   }
 
+  // feat-9-001 RAG dirty hook — 신규 문제 청크 생성. 본문은 최소이지만 hash 안정.
+  runAfterResponse(reindexProblems([prob.problem_id]));
   throw redirect(`/admin/problems/${prob.problem_id}`);
 }
