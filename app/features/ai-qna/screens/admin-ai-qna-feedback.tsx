@@ -26,7 +26,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw redirect("/login");
   const role = await getStaffRole(client, user.id);
   if (!role) throw redirect("/admin");
-  const items = await listNegativeFeedback(client, 100);
+  // staff 권한은 위에서 검증. admin client 사용 — RLS 우회.
+  const items = await listNegativeFeedback(100);
   return { items };
 }
 

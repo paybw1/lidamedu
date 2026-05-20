@@ -1,9 +1,10 @@
 // feat-9-005 — 운영자(staff) 전용 AI Q&A 조회 쿼리.
-// RLS 가 staff 에게 'feedback IS NOT NULL' 메시지 + 그 부모 대화만 노출하도록 정책 추가됨
-// (feat_9_005_ai_messages_feedback_note 마이그레이션). 여기는 서버 측 형 정리 + 직전 user 메시지 매칭.
+//
+// RLS staff 정책은 무한 재귀 문제로 제거됨 (ai_msg_owner_read 가 ai_conversations 를 참조해
+// ai_conv_staff_review 의 ai_messages 참조와 사이클). 대신 service_role admin client 로 직접 조회.
+// 호출부는 반드시 staff 권한을 미리 확인하고 호출할 것 (queries.staff.server.ts 라는 이름이 표시).
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "database.types";
+import adminClient from "~/core/lib/supa-admin-client.server";
 
 import type { Citation } from "./lib/citations";
 
@@ -24,14 +25,12 @@ export interface NegativeFeedbackItem {
 
 /**
  * 👎 메시지 list — 최근순. limit 100 default.
- *
- * RLS 가 staff & feedback IS NOT NULL 인 메시지/대화만 노출. user_id 는 ai_conversations join 으로.
+ * 호출부에서 staff 권한 검증 후 호출.
  */
 export async function listNegativeFeedback(
-  client: SupabaseClient<Database>,
   limit = 100,
 ): Promise<NegativeFeedbackItem[]> {
-  const { data: msgs, error } = await client
+  const { data: msgs, error } = await adminClient
     .from("ai_messages")
     .select(
       "message_id, conversation_id, body_md, citations, feedback, feedback_note, feedback_at, created_at, ai_conversations!inner(user_id)",
@@ -44,7 +43,7 @@ export async function listNegativeFeedback(
 
   // 직전 user 메시지 — 같은 conversation 의 created_at < assistant.created_at 중 최신.
   const conversationIds = [...new Set(msgs.map((m) => m.conversation_id))];
-  const { data: userMsgs } = await client
+  const { data: userMsgs } = await adminClient
     .from("ai_messages")
     .select("conversation_id, role, body_md, created_at")
     .in("conversation_id", conversationIds)
