@@ -150,7 +150,8 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
                 </Button>
               </Form>
             ) : null}
-            {/* 객관식 팩(mock_*, past_exam) 모두에서 OX 시험 가능 — 보기·박스 항목의 OX 지문 활용 */}
+            {/* 객관식 팩(mock_*, past_exam) 모두에서 OX 시험 가능 — 보기·박스 항목의 OX 지문 활용.
+                시험 모드는 이력 저장, 학습 모드는 즉시 정답 표시 + 이력 미저장. */}
             <Button
               asChild
               size="sm"
@@ -160,6 +161,17 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
             >
               <Link to={`/latest/mcq/${pack.packId}/ox-exam`}>
                 <CheckCircle2Icon className="size-3.5" /> 정오문제 시험
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="h-9 rounded-full"
+              disabled={problems.length === 0}
+            >
+              <Link to={`/latest/mcq/${pack.packId}/ox-exam?mode=study`}>
+                <PlayIcon className="size-3.5" /> 정오문제 학습
               </Link>
             </Button>
           </div>

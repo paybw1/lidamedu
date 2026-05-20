@@ -89,7 +89,10 @@ import {
   RecentCasesCard,
   RecentRevisionsCard,
 } from "~/features/dashboard/components/dash-feed";
+import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
 import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
+import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
+import { countMyOxWrongNoteItems } from "~/features/problems/queries.server";
 
 export const meta: Route.MetaFunction = () => [{ title: "대시보드 | Lidam Patent Attorney Academy" }];
 
@@ -177,6 +180,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     passerSummaries,
     passerLawAverages,
     failerBaseline,
+    oxRecentSessions,
+    oxWrongCount,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -193,6 +198,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     listPasserSummaries({ limit: 3 }),
     getPasserLawAverages(),
     getFailerBaseline(),
+    // feat-10-006 — 대시보드 OX 카드용. 최신 10건 + 누적 응시 수 계산.
+    listMyOxSessions(client, user.id, { limit: 50 }),
+    countMyOxWrongNoteItems(client, user.id),
   ]);
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
@@ -305,6 +313,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     weakNodes,
     studyAidCounts,
     todayLabel,
+    oxRecent: {
+      sessions: oxRecentSessions.slice(0, 10).map((s) => ({
+        sessionId: s.sessionId,
+        packId: s.packId,
+        packTitle: s.packTitle,
+        completedAt: s.completedAt,
+        startedAt: s.startedAt,
+        total: s.total,
+        correct: s.correct,
+        wrong: s.wrong,
+      })),
+      totalSessions: oxRecentSessions.length,
+      wrongCount: oxWrongCount,
+    },
   };
 }
 
@@ -625,6 +647,9 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             </SpanCol>
             <SpanCol span={4}>
               <BookmarksQuickCard bookmarks={bookmarkRows} />
+            </SpanCol>
+            <SpanCol span={6}>
+              <OxRecentCard data={loaderData.oxRecent} />
             </SpanCol>
           </DashGrid>
 

@@ -87,6 +87,10 @@ const mockExamItems: SimpleLink[] = [
   { label: "1차 통합 모의고사", to: "/latest/mcq/exams" },
   { label: "1차 진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
   { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
+  // feat-10-006 — 정오문제(OX) 응시 결과 진입. ox-sessions 화면 헤더에서 오답노트로 다시 진입.
+  { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
+  // feat-10-005 — 1차 통합 모의고사 응시 결과(별도 화면).
+  { label: "모의고사 응시 결과", to: "/me/exam-results" },
 ];
 
 const communityItems: SimpleLink[] = [

@@ -747,6 +747,31 @@ export async function listMyOxWrongNoteItems(
   return out;
 }
 
+// 본인의 OX 오답 노트 카운트 — listMyOxWrongNoteItems 와 동일 distinct 규칙이지만 본문 fetch 없이 숫자만.
+// 대시보드 카드 등 가벼운 표시용. 윈도우 2000 응시 안에서 distinct 한 오답 refId 개수.
+export async function countMyOxWrongNoteItems(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<number> {
+  const { data: attempts } = await client
+    .from("user_problem_attempts")
+    .select("selected_choice_id, selected_box_item_id, is_correct")
+    .eq("user_id", userId)
+    .not("ox_answer", "is", null)
+    .order("attempted_at", { ascending: false })
+    .limit(2000);
+  const seen = new Set<string>();
+  let n = 0;
+  for (const a of attempts ?? []) {
+    const refId = a.selected_choice_id ?? a.selected_box_item_id;
+    if (!refId) continue;
+    if (seen.has(refId)) continue;
+    seen.add(refId);
+    if (!a.is_correct) n++;
+  }
+  return n;
+}
+
 // 진도별 모의고사 팩(mcq_packs.kind=mock_progressive)의 OX 시험 모드 풀이용.
 // 팩의 문제(mcq_pack_problems)들의 problem_choices · problem_box_items 중
 // ox_truth IS NOT NULL AND ox_ineligible=false 인 지문 모두 반환.

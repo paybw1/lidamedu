@@ -2,19 +2,23 @@
 // 같은 팩(mcq_packs.kind=mock_progressive)을 객관식이 아니라 OX 지문 시험으로 풀이.
 // 데이터 소스: 팩 문제들의 problem_choices · problem_box_items 중 OX 가능 지문.
 //
-// MVP — 한 페이지에 모든 지문 list + 제출 → 채점 결과(정답률 + 지문별 정답·해설 펼침).
-// 응시 이력 저장은 추후 (현재는 클라이언트 state 만).
+// 모드 — ?mode=exam (기본, 이력 저장 + 일괄 제출 채점 + 타이머) vs ?mode=study (즉시 정답 표시 + 이력 미저장).
+// 셔플 — 화면 내 토글. 셔플 ON 이면 지문 무작위 순. 다시 풀기 시 같은 순서 유지.
+// 타이머 — exam 모드에서 pack.durationMin 이 있을 때 카운트다운. 0 도달 시 자동 제출.
 
 import {
   ArrowLeftIcon,
+  BookOpenIcon,
   CheckCircle2Icon,
   CircleIcon,
+  ClockIcon,
   Loader2Icon,
   RotateCcwIcon,
   SaveIcon,
+  ShuffleIcon,
   XCircleIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 import { z } from "zod";
 
@@ -240,12 +244,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     await requireFeature(client, user.id, "area_mock_exams");
   }
 
+  const url = new URL(request.url);
+  const modeParam = url.searchParams.get("mode");
+  const mode: "exam" | "study" = modeParam === "study" ? "study" : "exam";
+
   const items = await getOxQuestionsForPack(client, params.packId);
-  return { pack, items };
+  return { pack, items, mode };
 }
 
 export default function McqPackOxExam({ loaderData }: Route.ComponentProps) {
-  const { pack, items } = loaderData;
+  const { pack, items, mode } = loaderData;
+  const modeLabel = mode === "study" ? "학습" : "시험";
+  const desc =
+    mode === "study"
+      ? `팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 OX 지문. 답을 누르면 즉시 정답·해설이 표시됩니다. 응시 이력은 저장되지 않습니다.`
+      : `팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 OX 지문. 모두 풀고 제출하면 채점 결과를 표시하고 응시 이력에 저장합니다.`;
   return (
     <McqAreaShell
       isMock
@@ -254,13 +267,18 @@ export default function McqPackOxExam({ loaderData }: Route.ComponentProps) {
         to: `/latest/mcq/${pack.packId}`,
         label: "팩 상세로",
       }}
-      title={`${pack.title} — 정오문제 시험`}
-      desc={`팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 OX 지문. 모두 풀고 제출하면 채점 결과를 표시합니다.`}
+      title={`${pack.title} — 정오문제 ${modeLabel}`}
+      desc={desc}
     >
       {items.length === 0 ? (
         <EmptyState packId={pack.packId} />
       ) : (
-        <ExamRunner packId={pack.packId} items={items} />
+        <ExamRunner
+          packId={pack.packId}
+          items={items}
+          mode={mode}
+          durationMin={pack.durationMin}
+        />
       )}
     </McqAreaShell>
   );
@@ -287,20 +305,63 @@ function EmptyState({ packId }: { packId: string }) {
 
 type Answer = OxTruth | null;
 
+// Fisher-Yates 셔플 — 의도적으로 시드 미고정(누를 때마다 다른 순서).
+function shuffleIndices(n: number): number[] {
+  const arr = Array.from({ length: n }, (_, i) => i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function fmtMmSs(sec: number): string {
+  if (sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 function ExamRunner({
   packId,
   items,
+  mode,
+  durationMin,
 }: {
   packId: string;
   items: OxQuestionItem[];
+  mode: "exam" | "study";
+  durationMin: number | null;
 }) {
+  const isStudy = mode === "study";
+
+  // 카드별 인덱스 기준 상태(셔플과 무관, items 의 자연 인덱스)
   const [answers, setAnswers] = useState<Answer[]>(() => items.map(() => null));
+  // study 모드 — 카드별로 답 누르면 그 카드만 즉시 노출
+  const [revealed, setRevealed] = useState<boolean[]>(() =>
+    items.map(() => false),
+  );
+  // exam 모드 — 일괄 제출 후 전체 채점
   const [submitted, setSubmitted] = useState(false);
-  const [startedAtMs] = useState(() => Date.now());
+  const [startedAtMs, setStartedAtMs] = useState(() => Date.now());
+
+  // 셔플
+  const [shuffleOn, setShuffleOn] = useState(false);
+  const [order, setOrder] = useState<number[]>(() =>
+    items.map((_, i) => i),
+  );
+
+  // exam 타이머
+  const timeLimitSec =
+    !isStudy && durationMin && durationMin > 0 ? durationMin * 60 : null;
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const remainingSec =
+    timeLimitSec !== null ? Math.max(0, timeLimitSec - elapsedSec) : null;
+  const timeUp = timeLimitSec !== null && elapsedSec >= timeLimitSec;
+
   const fetcher = useFetcher<SubmitResponse>();
   const submitting = fetcher.state !== "idle";
-  const persisted =
-    fetcher.data && fetcher.data.ok ? fetcher.data : null;
+  const persisted = fetcher.data && fetcher.data.ok ? fetcher.data : null;
   const persistError =
     fetcher.data && !fetcher.data.ok ? fetcher.data.error : null;
 
@@ -308,6 +369,18 @@ function ExamRunner({
     () => answers.filter((a) => a !== null).length,
     [answers],
   );
+  const revealedCount = useMemo(
+    () => revealed.filter(Boolean).length,
+    [revealed],
+  );
+  const studyCorrect = useMemo(() => {
+    if (!isStudy) return 0;
+    let c = 0;
+    items.forEach((it, i) => {
+      if (revealed[i] && answers[i] === it.oxTruth) c++;
+    });
+    return c;
+  }, [isStudy, items, revealed, answers]);
 
   const result = useMemo(() => {
     if (!submitted) return null;
@@ -323,16 +396,7 @@ function ExamRunner({
     return { correct, wrong, blank, total: items.length };
   }, [submitted, items, answers]);
 
-  function setAt(i: number, v: OxTruth) {
-    if (submitted) return;
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[i] = v;
-      return next;
-    });
-  }
-
-  function handleSubmit() {
+  const handleSubmit = useCallback(() => {
     if (submitting || submitted) return;
     if (answered < items.length) {
       const ok = window.confirm(
@@ -341,7 +405,6 @@ function ExamRunner({
       if (!ok) return;
     }
     setSubmitted(true);
-    // 응시 이력 DB 저장 — quiz_sessions(scope_type=mcq_pack_ox) + user_problem_attempts bulk
     const payload = items.map((it, i) => ({
       refType: it.refType,
       refId: it.refId,
@@ -356,23 +419,164 @@ function ExamRunner({
     fd.set("itemsJson", JSON.stringify(payload));
     fetcher.submit(fd, { method: "post" });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [submitting, submitted, answered, items, answers, fetcher, startedAtMs]);
+
+  // 타이머 tick — exam 모드 + 시간 제한 + 미제출.
+  useEffect(() => {
+    if (timeLimitSec === null) return;
+    if (submitted) return;
+    const id = window.setInterval(() => {
+      setElapsedSec((s) => s + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [timeLimitSec, submitted]);
+
+  // 시간 종료 시 자동 제출.
+  useEffect(() => {
+    if (timeUp && !submitted && !submitting) {
+      handleSubmit();
+    }
+  }, [timeUp, submitted, submitting, handleSubmit]);
+
+  function setAt(i: number, v: OxTruth) {
+    if (isStudy) {
+      if (revealed[i]) return; // study 모드: 한 번 답한 카드는 잠금
+      setAnswers((prev) => {
+        const next = [...prev];
+        next[i] = v;
+        return next;
+      });
+      setRevealed((prev) => {
+        const next = [...prev];
+        next[i] = true;
+        return next;
+      });
+      return;
+    }
+    if (submitted) return;
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[i] = v;
+      return next;
+    });
   }
 
   function handleRetry() {
     setAnswers(items.map(() => null));
+    setRevealed(items.map(() => false));
     setSubmitted(false);
+    setElapsedSec(0);
+    setStartedAtMs(Date.now());
+    // 셔플 ON 이면 새로 섞고, OFF 면 자연 순서로 리셋.
+    setOrder(shuffleOn ? shuffleIndices(items.length) : items.map((_, i) => i));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function toggleShuffle() {
+    setShuffleOn((on) => {
+      const next = !on;
+      // 셔플 토글 시 즉시 순서 갱신. 진행 중 답은 인덱스에 묶여 있어 그대로 유지.
+      setOrder(next ? shuffleIndices(items.length) : items.map((_, i) => i));
+      return next;
+    });
+  }
+
+  // exam 모드의 timer 색상.
+  const timerWarn =
+    timeLimitSec !== null && remainingSec !== null && remainingSec <= 60;
+  const timerCrit =
+    timeLimitSec !== null && remainingSec !== null && remainingSec <= 10;
+
   return (
     <div className="space-y-3">
+      {/* 모드·옵션 행 — 모드 토글 + 셔플 + (필요 시) 타이머 */}
+      <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-xs">
+        <Badge variant="outline" className="gap-1">
+          {isStudy ? (
+            <>
+              <BookOpenIcon className="size-3" />
+              학습 모드
+            </>
+          ) : (
+            <>
+              <CheckCircle2Icon className="size-3" />
+              시험 모드
+            </>
+          )}
+        </Badge>
+        <Link
+          to={`/latest/mcq/${packId}/ox-exam${isStudy ? "" : "?mode=study"}`}
+          className="text-primary hover:underline"
+        >
+          → {isStudy ? "시험 모드로 전환" : "학습 모드로 전환"}
+        </Link>
+        <span className="text-muted-foreground/60">·</span>
+        <Button
+          type="button"
+          size="sm"
+          variant={shuffleOn ? "default" : "outline"}
+          onClick={toggleShuffle}
+          disabled={submitted}
+          className="h-7 rounded-full px-2.5"
+        >
+          <ShuffleIcon className="size-3" />
+          {shuffleOn ? "셔플 ON" : "셔플 OFF"}
+        </Button>
+        {timeLimitSec !== null && !submitted ? (
+          <span
+            className={cn(
+              "ml-auto inline-flex items-center gap-1 tabular-nums font-mono font-bold",
+              timerCrit
+                ? "text-rose-600"
+                : timerWarn
+                  ? "text-amber-600"
+                  : "text-foreground",
+            )}
+          >
+            <ClockIcon className="size-3.5" />
+            {fmtMmSs(remainingSec ?? 0)}
+          </span>
+        ) : null}
+      </div>
+
       {/* 진행 상태 / 결과 카드 */}
       <header
         className={cn(
           "border-border sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-2xl border bg-card/95 px-4 py-3 shadow-sm backdrop-blur",
         )}
       >
-        {!submitted ? (
+        {isStudy ? (
+          // study 모드 — 일괄 제출 없음, 진행률만 표시.
+          <>
+            <p className="text-foreground text-sm font-semibold">
+              학습 진행{" "}
+              <span className="tabular-nums">
+                {revealedCount}/{items.length}
+              </span>
+            </p>
+            <div className="bg-muted relative h-1.5 flex-1 overflow-hidden rounded-full">
+              <div
+                className="bg-primary h-full transition-[width]"
+                style={{
+                  width: `${(revealedCount / Math.max(items.length, 1)) * 100}%`,
+                }}
+              />
+            </div>
+            {revealedCount > 0 ? (
+              <Badge variant="outline" className="tabular-nums">
+                정답 {studyCorrect}/{revealedCount}
+              </Badge>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRetry}
+              className="rounded-full"
+            >
+              <RotateCcwIcon className="size-3.5" /> 처음부터
+            </Button>
+          </>
+        ) : !submitted ? (
           <>
             <p className="text-foreground text-sm font-semibold">
               진행{" "}
@@ -422,6 +626,12 @@ function ExamRunner({
                 : 0}
               %
             </Badge>
+            {timeUp ? (
+              <Badge variant="destructive" className="gap-1">
+                <ClockIcon className="size-3" />
+                시간 종료 자동 제출
+              </Badge>
+            ) : null}
             {submitting ? (
               <Badge variant="outline" className="gap-1">
                 <Loader2Icon className="size-3 animate-spin" />
@@ -455,22 +665,27 @@ function ExamRunner({
         ) : null}
       </header>
 
-      {/* 지문 list */}
+      {/* 지문 list — order 순서로 표시. answer/revealed 는 자연 인덱스 i 기준 */}
       <ol className="space-y-2.5">
-        {items.map((it, i) => (
-          <li key={`${it.refType}:${it.refId}`}>
-            <QuestionCard
-              item={it}
-              index={i + 1}
-              answer={answers[i]}
-              submitted={submitted}
-              onAnswer={(v) => setAt(i, v)}
-            />
-          </li>
-        ))}
+        {order.map((i, displayIdx) => {
+          const it = items[i];
+          if (!it) return null;
+          const cardSubmitted = isStudy ? revealed[i] : submitted;
+          return (
+            <li key={`${it.refType}:${it.refId}`}>
+              <QuestionCard
+                item={it}
+                index={displayIdx + 1}
+                answer={answers[i]}
+                submitted={cardSubmitted}
+                onAnswer={(v) => setAt(i, v)}
+              />
+            </li>
+          );
+        })}
       </ol>
 
-      {!submitted && (
+      {!isStudy && !submitted && (
         <div className="pt-2">
           <Button
             size="lg"

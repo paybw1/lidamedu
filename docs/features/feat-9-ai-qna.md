@@ -250,12 +250,55 @@ create table public.ai_messages (
 
 ## 14. 미해결 질문 — 결정 필요 ❓
 
-1. **임베딩 모델** — 한국어 법률 텍스트 대상. 후보: Voyage AI `voyage-3`(다국어, Anthropic 생태계 권장; 법률 특화 `voyage-law-2` 도 검토) / OpenAI `text-embedding-3-large` / 자체호스팅 `bge-m3`(인프라 부담 → 비권장). **API 형이 인프라 0 — Voyage 우선 후보, 소규모 eval 로 확정.** ⚠️ 모델이 벡터 **차원**을 정하고 차원은 테이블 생성 시 고정 → feat-9-001 착수 전 확정 필요.
-2. **LLM 모델 정책** — `claude-sonnet` 고정 vs 복잡 질의 `claude-opus` 분기.
-3. **구독 게이팅** — 무료 일 한도(예: 5회/일), 유료 한도. feat-8-018 tier 와 매핑.
-4. **진입점 우선순위** — 전용 `/ai` 화면 먼저 vs 뷰어 패널 먼저.
-5. **멀티턴 범위** — v1 에서 대화 맥락 유지 깊이(직전 1턴 vs 전체 대화).
-6. **자연과학 포함** — v1 제외 제안(§2). 동의 여부.
+> **착수 전 사용자 확인 필요.** 각 항목에 **권장안**을 1개씩 제시한다. 사용자가 다른 안을 원하면 그 자리에서 교체, 권장안 채택 시 §13 feat-9-001 부터 착수.
+
+### 14.1 임베딩 모델 → **권장: Voyage AI `voyage-3-large` (다국어, 1024 차원)** ⚠️ 차원 결정 필요
+
+- 후보 비교
+  - **Voyage `voyage-3-large`** — 다국어 SOTA 급, Anthropic 생태계 공식 권장. 차원 1024(또는 256/512/2048 선택 가능, 1024 default). 한국어 법률 텍스트에서 가장 안정적 기대치.
+  - Voyage `voyage-law-2` — 영문 법률 특화, 한국어 미보장 → 후순위.
+  - OpenAI `text-embedding-3-large` — 3072 차원(고차원 → 인덱스 비용↑). 다국어 강하지만 한국 법률 도메인 eval 안 됨.
+  - 자체호스팅 `bge-m3` — 인프라 부담 → 비채택.
+- **결정 영향**: `content_chunks.embedding vector(N)` 의 N 이 모델에 따라 고정. 한 번 만들면 차원 변경 = 전체 재임베딩. 따라서 v1 default 로 **1024** 확정 후 후속 eval 에서 모델만 교체 여지(차원 동일하면 가능).
+- 환경변수: `VOYAGE_API_KEY` (server-only).
+
+### 14.2 LLM 모델 → **권장: 단일 모델 `claude-sonnet-4-6` 고정**
+
+- 권장 이유: v1 의 질의는 대부분 정의·요건·판례 인용 — sonnet 으로 충분. opus 분기는 (a) 비용·지연 동시 상승 (b) 분기 기준 결정 어려움 (c) 시스템 프롬프트 캐싱(§9) 단일 모델일 때 효과 최대. 복잡 질의 분기는 v2 에서 eval 데이터 보고 재결정.
+- 환경변수: `ANTHROPIC_API_KEY` (server-only). 모델 ID 는 `app/core/lib/constants.ts` 에 `AI_QNA_MODEL` 로 둔다.
+
+### 14.3 구독 게이팅 → **권장: 무료 일 5회 / 회원3(area_study_mgmt) 일 50회**
+
+- 무료 사용자 = 일 **5회** AI 응답. 한도 초과 시 모달 → "강사 Q&A 또는 유료 업그레이드" 안내.
+- 회원3(`area_study_mgmt` 보유) = 일 **50회**. 일반 학습자의 평균 사용량을 충분히 커버하며 비용도 제어 가능.
+- 측정 단위: 사용자당 KST 자정 ~ 다음 자정 사이 `ai_messages.role='assistant'` row 수. RPC `ai_qna_today_count(user_id)` 로 단일 query.
+- 한도 정책은 `app/features/ai-qna/lib/rate-limit.ts` 의 상수로 단일 소유. feat-8-018 결제 tier 변경 시 같이 갱신.
+
+### 14.4 진입점 우선순위 → **권장: 뷰어 패널 먼저 (조문·판례·문제)**
+
+- 권장 이유: (a) 학습 흐름 안에서 가장 자연 — 학생이 보고 있는 조문이 곧 컨텍스트 앵커. (b) 전용 `/ai` 화면은 "무엇을 물어야 하나" 의 cold start 가 있음. (c) 뷰어 패널이 베타 단계의 사용자 신호 수집에 효율적(어느 조문에서 질문이 많은가).
+- 구현 순서: feat-9-004 안에서 뷰어 패널 → 대화 이력 누적 → `/ai` 전용 화면(이력 색인) 순.
+
+### 14.5 멀티턴 범위 → **권장: 직전 4턴 (앵커 + user 2 + assistant 2)**
+
+- 권장 이유: 1턴(직전 user 질문만) 은 follow-up 질문(“그럼 진보성은요?”) 처리 불가. 전체 대화는 토큰 비용·지연 누적. **마지막 4턴(2 라운드)** 이 follow-up 두 단계까지 안전하게 잡으면서 비용은 통제됨. 5턴 이상은 v2 에서 사용자 데이터 보고 확장.
+- 컨텍스트 우선순위: ① 앵커(현재 뷰어 엔티티) > ② 직전 2 라운드 > ③ 검색 결과 top-K.
+
+### 14.6 자연과학 포함 → **권장: v1 제외 (동의)**
+
+- 자연과학(물리·화학·생물·지구과학) 4과목은 조문·판례가 없는 문제 풀이 기반 — RAG 적합도 낮음. v1 코퍼스에서 제외하고 시스템 프롬프트에서 "자연과학 질문은 답변하지 않습니다" 명시.
+- v2 에서 자연과학 문제+해설을 별도 코퍼스로 추가 검토.
+
+---
+
+### 14.7 권장안 채택 시 다음 단계
+
+위 6건 권장안을 그대로 채택하면 feat-9-001 착수 가능. 우선 작업:
+1. Supabase MCP `apply_migration` — `create extension vector` + `content_chunks` 테이블(`embedding vector(1024)`) + RLS + 인덱스(`hnsw vector_cosine_ops`, `gin gin_trgm_ops`, partial `embedded_at is null`)
+2. `npm run db:typegen` — `database.types.ts` 재생성
+3. `app/core/lib/constants.ts` 에 `AI_QNA_MODEL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMS=1024`, `AI_QNA_FREE_DAILY=5`, `AI_QNA_TIER1_DAILY=50` 추가
+4. 청킹 로직 + dirty-mark 훅 (조문/판례/문제 변경 시) + `/api/cron/embed-chunks` cron handler 골격
+5. `docs/db-schema.md` 갱신 (테이블 등재)
 
 ---
 
