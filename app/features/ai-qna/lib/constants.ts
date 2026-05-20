@@ -13,6 +13,12 @@ export const EMBEDDING_DIMS = 1024 as const;
 /** 답변 생성 LLM — Claude Sonnet 4.6 단일 모델 (분기 없음). */
 export const AI_QNA_MODEL = "claude-sonnet-4-6" as const;
 
+/**
+ * 대화 제목 요약 LLM — Claude Haiku 4.5 (Sonnet 보다 약 1/12 가격).
+ * 32 토큰 출력 짧음. 신규 대화 첫 답변 후 background 1회 호출.
+ */
+export const AI_TITLE_MODEL = "claude-haiku-4-5-20251001" as const;
+
 /** 무료 사용자 일 한도 (KST 자정 기준). */
 export const AI_QNA_FREE_DAILY = 5 as const;
 

@@ -37,6 +37,7 @@ import type { Citation } from "~/features/ai-qna/lib/citations";
 import { AI_QNA_MODEL } from "~/features/ai-qna/lib/constants";
 import { answerQuestion } from "~/features/ai-qna/lib/answer.server";
 import { hybridSearch } from "~/features/ai-qna/lib/hybrid-search.server";
+import { summarizeConversationTitle } from "~/features/ai-qna/lib/title.server";
 import { getQuotaState } from "~/features/ai-qna/settings.server";
 
 import type { Route } from "./+types/ask";
@@ -125,6 +126,10 @@ export async function action({ request }: Route.ActionArgs) {
         );
       };
 
+      // finally 의 LLM 제목 요약이 접근할 outer scope 변수.
+      let savedFullText = "";
+      let savedErrored = false;
+
       try {
         send({
           type: "conversation",
@@ -175,6 +180,9 @@ export async function action({ request }: Route.ActionArgs) {
             break;
           }
         }
+        // finally 의 LLM 제목 요약을 위해 outer scope 에 복사.
+        savedFullText = fullText;
+        savedErrored = errored;
 
         if (!errored) {
           // 3) assistant 메시지 저장 — runAfterResponse 가 아니라 응답 안에 보장
@@ -205,14 +213,27 @@ export async function action({ request }: Route.ActionArgs) {
         const message = e instanceof Error ? e.message : String(e);
         send({ type: "error", message });
       } finally {
-        // 대화 제목이 신규 + 기본 truncate 라 그대로 유지. (LLM 요약 제목은 v1.1)
-        if (isNew) {
+        // feat-9-004 잔여 ④ — 신규 대화의 제목을 Claude Haiku 로 요약.
+        // 정상 답변이 있을 때만 시도. 실패 시 createConversation 의 truncate 제목 그대로 유지.
+        if (isNew && !savedErrored && savedFullText.length > 0) {
           runAfterResponse(
-            setConversationTitle(
-              client,
-              conversationId,
-              autoTitleFromQuestion(question),
-            ),
+            (async () => {
+              try {
+                const summarized = await summarizeConversationTitle(
+                  question,
+                  savedFullText,
+                );
+                if (summarized && summarized.length > 0) {
+                  await setConversationTitle(client, conversationId, summarized);
+                }
+              } catch (e) {
+                // Haiku 실패는 silent — truncate 제목 fallback.
+                console.warn(
+                  "[ai-qna/ask] title 요약 실패:",
+                  e instanceof Error ? e.message : e,
+                );
+              }
+            })(),
           );
         }
         controller.close();

@@ -89,8 +89,10 @@ import {
   RecentCasesCard,
   RecentRevisionsCard,
 } from "~/features/dashboard/components/dash-feed";
+import { AiQnaRecentCard } from "~/features/dashboard/components/dash-ai-qna";
 import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
 import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
+import { listMyConversations } from "~/features/ai-qna/conversations.server";
 import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import { countMyOxWrongNoteItems } from "~/features/problems/queries.server";
 
@@ -182,6 +184,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     failerBaseline,
     oxRecentSessions,
     oxWrongCount,
+    aiConversations,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -201,6 +204,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     // feat-10-006 — 대시보드 OX 카드용. 최신 10건 + 누적 응시 수 계산.
     listMyOxSessions(client, user.id, { limit: 50 }),
     countMyOxWrongNoteItems(client, user.id),
+    // feat-9-004 — 대시보드 AI Q&A 카드용. last 3 대화.
+    listMyConversations(client, user.id, 3),
   ]);
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
@@ -327,6 +332,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       totalSessions: oxRecentSessions.length,
       wrongCount: oxWrongCount,
     },
+    aiConversations: aiConversations.map((c) => ({
+      conversationId: c.conversationId,
+      title: c.title,
+      lastSnippet: c.lastSnippet,
+      updatedAt: c.updatedAt,
+      messageCount: c.messageCount,
+    })),
   };
 }
 
@@ -648,8 +660,11 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             <SpanCol span={4}>
               <BookmarksQuickCard bookmarks={bookmarkRows} />
             </SpanCol>
-            <SpanCol span={6}>
+            <SpanCol span={3}>
               <OxRecentCard data={loaderData.oxRecent} />
+            </SpanCol>
+            <SpanCol span={3}>
+              <AiQnaRecentCard conversations={loaderData.aiConversations} />
             </SpanCol>
           </DashGrid>
 
