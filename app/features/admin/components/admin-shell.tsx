@@ -63,6 +63,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "개정 워크스페이스", to: "/admin/laws/patent/revisions" },
       { label: "법령 완성도", to: "/admin/laws/patent/completeness" },
+      { label: "체계도 트리", to: "/admin/systematic-tree" },
     ],
   },
   {
@@ -72,6 +73,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "판례 매핑", to: "/admin/cases" },
       { label: "판례 신규 등록", to: "/admin/cases/edit" },
+      { label: "강의노트 case-study 검토", to: "/admin/case-study-review" },
     ],
   },
   {

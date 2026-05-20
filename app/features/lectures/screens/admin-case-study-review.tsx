@@ -20,6 +20,7 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LECTURE_NOTES_BUCKET,
@@ -90,26 +91,25 @@ export async function loader({ request }: Route.LoaderArgs) {
     showResolved,
     totalCount: totalCount ?? 0,
     unresolvedCount: unresolvedCount ?? 0,
+    role,
   };
 }
 
 export default function AdminCaseStudyReview({
   loaderData,
 }: Route.ComponentProps) {
-  const { candidates, showResolved, totalCount, unresolvedCount } = loaderData;
+  const { candidates, showResolved, totalCount, unresolvedCount, role } =
+    loaderData;
   const resolvedCount = totalCount - unresolvedCount;
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">
-          강의노트 case study 검토
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          PPT 강의노트의 CASE STUDY 슬라이드 중 자동으로 판례 매칭이 안 된 장표를
-          PDF 로 보고, 검색해서 판례에 연결합니다.
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+    <AdminShell
+      cluster="cases"
+      role={role}
+      title="강의노트 case study 검토"
+      desc="PPT 강의노트의 CASE STUDY 슬라이드 중 자동 매칭이 안 된 장표를 PDF 로 보고 사건번호 검색해서 판례에 연결합니다."
+      headerRight={
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="tabular-nums">
             전체 {totalCount}
           </Badge>
@@ -121,13 +121,13 @@ export default function AdminCaseStudyReview({
           </Badge>
           <a
             href={showResolved ? "?" : "?resolved=1"}
-            className="text-primary ml-auto text-xs underline-offset-4 hover:underline"
+            className="text-primary text-xs underline-offset-4 hover:underline"
           >
-            {showResolved ? "← 미해결만 보기" : "처리됨 포함 보기 →"}
+            {showResolved ? "← 미해결만" : "처리됨 포함 →"}
           </a>
         </div>
-      </header>
-
+      }
+    >
       {candidates.length === 0 ? (
         <div className="rounded-xl border border-dashed py-12 text-center">
           <CheckCircle2Icon className="text-emerald-500 mx-auto size-10" />
@@ -146,7 +146,7 @@ export default function AdminCaseStudyReview({
           ))}
         </ul>
       )}
-    </div>
+    </AdminShell>
   );
 }
 

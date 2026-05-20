@@ -21,6 +21,7 @@ import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   exportSystematicTree,
@@ -80,7 +81,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       .eq("law_code", l.code);
     stats.push({ ...l, nodeCount: count ?? 0 });
   }
-  return { stats };
+  return { stats, role };
 }
 
 const importSchema = z.object({
@@ -148,16 +149,20 @@ type ImportResponse =
 
 export default function AdminSystematicTree({ loaderData }: Route.ComponentProps) {
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">체계도 트리 export/import</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          한 과목의 체계도(systematic_nodes) 트리를 JSON 으로 다운로드 → 텍스트
-          에디터에서 수정 → 다른 과목으로 import 합니다. linked_article_numbers
-          는 대상 과목의 <code>articles.article_number</code>로 자동 매칭됩니다.
-        </p>
-      </header>
-
+    <AdminShell
+      cluster="laws"
+      role={loaderData.role}
+      title="체계도 트리 export/import"
+      desc={
+        <>
+          한 과목의 체계도(<code>systematic_nodes</code>) 트리를 JSON 으로 다운로드
+          → 텍스트 에디터에서 수정 → 다른 과목으로 import 합니다.{" "}
+          <code>linkedArticleNumbers</code> 는 대상 과목의{" "}
+          <code>articles.article_number</code>로 자동 매칭됩니다.
+        </>
+      }
+      width={900}
+    >
       {/* 과목별 export 카드 */}
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-semibold">과목별 다운로드</h2>
@@ -228,7 +233,7 @@ export default function AdminSystematicTree({ loaderData }: Route.ComponentProps
           <li><code>linkedArticleNumbers</code> 는 대상 과목 articles 에 같은 번호가 있어야 매칭 (없으면 skip 으로 보고)</li>
         </ul>
       </section>
-    </div>
+    </AdminShell>
   );
 }
 
