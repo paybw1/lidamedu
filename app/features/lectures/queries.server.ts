@@ -319,3 +319,202 @@ export async function getLectureResourceSignedUrl(
   if (error) throw error;
   return data.signedUrl;
 }
+
+// ──────────────────────────────────────────────────────────
+// case-study 미매칭 슬라이드 검토 (운영자) — /admin/case-study-review
+// ──────────────────────────────────────────────────────────
+
+// book_slug 와 PPT 책 이름의 매핑 — title 생성·source_pdf_id 계산에 사용.
+// import-pptx-lecture.mjs / import-pptx-case-study.mjs 와 동일한 BOOK_NAME 사용해야
+// source_pdf_id 도 동일해진다.
+const BOOK_NAMES: Record<string, string> = {
+  "patent-lecture-ch1": "리담특허법 강의노트 — 제1편 총칙·보칙 (PPT)",
+  "patent-lecture-ch2": "리담특허법 강의노트 — 제2편 특허요건 (PPT)",
+  "patent-lecture-ch3": "리담특허법 강의노트 — 제3편 이익제도 (PPT)",
+  "patent-lecture-ch4": "리담특허법 강의노트 — 제4편 심사·제도 (PPT)",
+  "patent-lecture-ch5": "리담특허법 강의노트 — 제5편 특허권 (PPT)",
+  "patent-lecture-ch6": "리담특허법 강의노트 — 제6편 심판·소송 (PPT)",
+  "patent-lecture-ch7": "리담특허법 강의노트 — 제7편 PCT (PPT)",
+};
+
+export function getBookNameBySlug(slug: string): string {
+  return BOOK_NAMES[slug] ?? slug;
+}
+
+// import 스크립트의 deterministicUuid 와 동일 알고리즘 (책 이름 sha1 → UUID v5-like).
+async function deterministicSourcePdfId(bookSlug: string): Promise<string> {
+  const { createHash } = await import("node:crypto");
+  const h = createHash("sha1").update(getBookNameBySlug(bookSlug)).digest("hex");
+  return [
+    h.slice(0, 8),
+    h.slice(8, 12),
+    "5" + h.slice(13, 16),
+    ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16) + h.slice(17, 20),
+    h.slice(20, 32),
+  ].join("-");
+}
+
+export interface SlideCandidateLinkedCase {
+  caseId: string;
+  caseNumber: string;
+  court: string | null;
+}
+
+export interface SlideCandidateRow {
+  candidateId: string;
+  bookSlug: string;
+  slideIdx: number;
+  pdfUrl: string;
+  bodyPreview: string | null;
+  autoCandidates: string[];
+  resolvedAt: string | null;
+  linkedCases: SlideCandidateLinkedCase[];
+}
+
+export async function listSlideCandidates(
+  client: SupabaseClient<Database>,
+  opts: { includeResolved?: boolean } = {},
+): Promise<SlideCandidateRow[]> {
+  let q = client
+    .from("lecture_slide_candidates")
+    .select(
+      "candidate_id, book_slug, slide_idx, pdf_url, body_preview, auto_candidates, resolved_at",
+    )
+    .order("book_slug", { ascending: true })
+    .order("slide_idx", { ascending: true });
+  if (!opts.includeResolved) q = q.is("resolved_at", null);
+  const { data: cands, error } = await q;
+  if (error) throw error;
+  if (!cands || cands.length === 0) return [];
+
+  const pdfUrls = cands.map((c) => c.pdf_url);
+  const { data: links, error: linkErr } = await client
+    .from("lecture_resources")
+    .select("pdf_url, target_id, cases:target_id(case_id, case_number, court)")
+    .eq("target_type", "case")
+    .is("deleted_at", null)
+    .in("pdf_url", pdfUrls);
+  if (linkErr) throw linkErr;
+
+  const linkedByUrl = new Map<string, SlideCandidateLinkedCase[]>();
+  for (const l of links ?? []) {
+    if (!l.cases || !l.pdf_url) continue;
+    const arr = linkedByUrl.get(l.pdf_url) ?? [];
+    const k = l.cases as unknown as {
+      case_id: string;
+      case_number: string;
+      court: string | null;
+    };
+    arr.push({ caseId: k.case_id, caseNumber: k.case_number, court: k.court });
+    linkedByUrl.set(l.pdf_url, arr);
+  }
+
+  return cands.map((c) => ({
+    candidateId: c.candidate_id,
+    bookSlug: c.book_slug,
+    slideIdx: c.slide_idx,
+    pdfUrl: c.pdf_url,
+    bodyPreview: c.body_preview,
+    autoCandidates: c.auto_candidates ?? [],
+    resolvedAt: c.resolved_at,
+    linkedCases: linkedByUrl.get(c.pdf_url) ?? [],
+  }));
+}
+
+export interface CaseSearchResult {
+  caseId: string;
+  caseNumber: string;
+  court: string | null;
+  decidedAt: string | null;
+}
+
+export async function searchCasesByNumber(
+  client: SupabaseClient<Database>,
+  query: string,
+  limit = 20,
+): Promise<CaseSearchResult[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+  const { data, error } = await client
+    .from("cases")
+    .select("case_id, case_number, court, decided_at")
+    .ilike("case_number", `%${trimmed}%`)
+    .is("deleted_at", null)
+    .order("decided_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    caseId: r.case_id,
+    caseNumber: r.case_number,
+    court: r.court,
+    decidedAt: r.decided_at,
+  }));
+}
+
+export async function linkCandidateToCase(
+  client: SupabaseClient<Database>,
+  args: {
+    bookSlug: string;
+    slideIdx: number;
+    pdfUrl: string;
+    caseId: string;
+    createdBy: string;
+  },
+): Promise<{ resourceId: string; alreadyExists: boolean }> {
+  // 중복 등록 방지
+  const { data: existing } = await client
+    .from("lecture_resources")
+    .select("resource_id")
+    .eq("target_type", "case")
+    .eq("target_id", args.caseId)
+    .eq("pdf_url", args.pdfUrl)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (existing) return { resourceId: existing.resource_id, alreadyExists: true };
+
+  const sourcePdfId = await deterministicSourcePdfId(args.bookSlug);
+  const title = `${getBookNameBySlug(args.bookSlug)} (슬라이드 ${args.slideIdx})`;
+  const { data, error } = await client
+    .from("lecture_resources")
+    .insert({
+      target_type: "case",
+      target_id: args.caseId,
+      kind: "lecture_note",
+      title,
+      pdf_url: args.pdfUrl,
+      source_pdf_id: sourcePdfId,
+      source_page_start: args.slideIdx,
+      source_page_end: args.slideIdx,
+      created_by: args.createdBy,
+    })
+    .select("resource_id")
+    .single();
+  if (error) throw error;
+  return { resourceId: data.resource_id, alreadyExists: false };
+}
+
+export async function unlinkCandidateCase(
+  client: SupabaseClient<Database>,
+  args: { pdfUrl: string; caseId: string },
+): Promise<void> {
+  const { error } = await client
+    .from("lecture_resources")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("target_type", "case")
+    .eq("target_id", args.caseId)
+    .eq("pdf_url", args.pdfUrl)
+    .is("deleted_at", null);
+  if (error) throw error;
+}
+
+export async function setCandidateResolved(
+  client: SupabaseClient<Database>,
+  candidateId: string,
+  resolved: boolean,
+): Promise<void> {
+  const { error } = await client
+    .from("lecture_slide_candidates")
+    .update({ resolved_at: resolved ? new Date().toISOString() : null })
+    .eq("candidate_id", candidateId);
+  if (error) throw error;
+}

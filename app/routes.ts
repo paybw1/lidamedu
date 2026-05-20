@@ -453,6 +453,14 @@ export default [
         "features/lectures/api/lecture-resource.tsx",
       ),
       route(
+        "/api/admin/case-study-review",
+        "features/lectures/api/case-study-review.tsx",
+      ),
+      route(
+        "/admin/case-study-review",
+        "features/lectures/screens/admin-case-study-review.tsx",
+      ),
+      route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",
       ),

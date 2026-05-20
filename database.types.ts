@@ -2299,6 +2299,42 @@ export type Database = {
           },
         ]
       }
+      lecture_slide_candidates: {
+        Row: {
+          auto_candidates: string[]
+          body_preview: string | null
+          book_slug: string
+          candidate_id: string
+          created_at: string
+          pdf_url: string
+          resolved_at: string | null
+          slide_idx: number
+          updated_at: string
+        }
+        Insert: {
+          auto_candidates?: string[]
+          body_preview?: string | null
+          book_slug: string
+          candidate_id?: string
+          created_at?: string
+          pdf_url: string
+          resolved_at?: string | null
+          slide_idx: number
+          updated_at?: string
+        }
+        Update: {
+          auto_candidates?: string[]
+          body_preview?: string | null
+          book_slug?: string
+          candidate_id?: string
+          created_at?: string
+          pdf_url?: string
+          resolved_at?: string | null
+          slide_idx?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lecture_views: {
         Row: {
           completed_at: string | null
