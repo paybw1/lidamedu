@@ -39,6 +39,8 @@ import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import type { ContentComment } from "~/features/comments/queries.server";
 import { RelatedCasesList } from "~/features/laws/components/related-chips";
 import { RevisionHistory } from "~/features/laws/components/revision-history";
+import { LectureResourcesPanel } from "~/features/lectures/components/lecture-resources-panel";
+import type { LectureResourceListItem } from "~/features/lectures/queries.server";
 import {
   OPEN_COMMENT_TAB_EVENT,
   type OpenCommentTabEventDetail,
@@ -97,11 +99,6 @@ const PLACEHOLDER_TABS: PlaceholderTab[] = [
     value: "ox",
     featId: "feat-4-A-114",
     hint: "이 조문이 출제된 객관식 지문(O/X) 자동 연동 + 별도 업로드 정오문제. 답 체크 시 정답·해설 즉시 공개.",
-  },
-  {
-    value: "materials",
-    featId: "feat-4-A-107",
-    hint: "강의노트(PDF/MD) · 강의영상(외부 임베드).",
   },
   {
     value: "comment",
@@ -181,6 +178,7 @@ export function ArticleRightPanel({
   revisions,
   viewerIsStaff = false,
   importance,
+  lectureResources,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
@@ -205,6 +203,8 @@ export function ArticleRightPanel({
   viewerIsStaff?: boolean;
   // 콘텐츠 importance — staff 중요도 모드에서 사용. case/article/problem 뷰어가 전달.
   importance?: number;
+  // feat-4-A-117 — 관련자료(강의노트). undefined = 탭 자체 미표시(article/case/problem 외 타겟).
+  lectureResources?: LectureResourceListItem[];
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
@@ -218,6 +218,10 @@ export function ArticleRightPanel({
       : null;
   const showCommentLive = comments !== undefined && commentTargetType !== null;
   const showRevisions = revisions !== undefined;
+  // feat-4-A-117 — lecture_resources 의 target_type 은 article/case/problem/science_section 이지만
+  // 우측 패널은 commentTargetType (article/case/problem) 만 사용. 그 외는 패널 미표시.
+  const showMaterials =
+    lectureResources !== undefined && commentTargetType !== null;
 
   // feat-8-025 — staff 가 case/article/problem 을 볼 때 "즐겨찾기" 탭을 중요도 에디터로.
   const staffImportanceMode =
@@ -298,6 +302,10 @@ export function ArticleRightPanel({
           : "";
       case "comment":
         return comments && comments.length > 0 ? `${comments.length} 건` : "";
+      case "materials":
+        return lectureResources && lectureResources.length > 0
+          ? `${lectureResources.length} 건`
+          : "";
       default:
         return "";
     }
@@ -359,6 +367,13 @@ export function ArticleRightPanel({
               value="comment"
               count={comments?.length ?? 0}
               dim={(comments?.length ?? 0) === 0}
+            />
+          ) : null}
+          {showMaterials ? (
+            <RailButton
+              value="materials"
+              count={lectureResources?.length ?? 0}
+              dim={(lectureResources?.length ?? 0) === 0 && !viewerIsStaff}
             />
           ) : null}
           {placeholderTabs.map((t) => (
@@ -466,6 +481,17 @@ export function ArticleRightPanel({
                   comments={comments ?? []}
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
+                />
+              </TabsContent>
+            ) : null}
+
+            {showMaterials && commentTargetType ? (
+              <TabsContent value="materials" className="mt-0">
+                <LectureResourcesPanel
+                  targetType={commentTargetType}
+                  targetId={target.id}
+                  initial={lectureResources ?? []}
+                  canManage={viewerIsStaff}
                 />
               </TabsContent>
             ) : null}

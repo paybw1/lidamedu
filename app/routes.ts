@@ -449,6 +449,10 @@ export default [
       ),
       route("/api/comments/comment", "features/comments/api/comment.tsx"),
       route(
+        "/api/lecture-resources",
+        "features/lectures/api/lecture-resource.tsx",
+      ),
+      route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",
       ),

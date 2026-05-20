@@ -48,6 +48,7 @@ import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
 import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
 import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { listComments } from "~/features/comments/queries.server";
+import { listLectureResources } from "~/features/lectures/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
@@ -175,6 +176,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     staffRole,
     oxQuestions,
     articleComments,
+    lectureResources,
   ] = await Promise.all([
     getRelatedCasesByArticle(client, article.articleId),
     getBookmark(client, user.id, "article", article.articleId),
@@ -187,6 +189,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getStaffRole(client, user.id),
     getOxQuestionsForArticle(client, article.articleId, 50),
     listComments(client, "article", article.articleId),
+    listLectureResources(client, "article", article.articleId),
   ]);
 
   // 개정 이력은 staff (instructor/admin) 만 조회 — 학생에게는 노출 안 함.
@@ -263,6 +266,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     oxQuestions,
     oxAnnotationsByRef,
     articleComments,
+    lectureResources,
   };
 }
 
@@ -307,6 +311,7 @@ function ArticleViewerInner({
     oxQuestions,
     oxAnnotationsByRef,
     articleComments,
+    lectureResources,
   } = loaderData;
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
@@ -582,6 +587,7 @@ function ArticleViewerInner({
                       revisions={revisions ?? undefined}
                       viewerIsStaff={staffRole !== null}
                       importance={article.importance}
+                      lectureResources={lectureResources}
                     />
                   </div>
                 </SheetContent>
@@ -1102,6 +1108,7 @@ function ArticleViewerInner({
                 revisions={revisions ?? undefined}
                 viewerIsStaff={staffRole !== null}
                 importance={article.importance}
+                lectureResources={lectureResources}
               />
             </div>
           </aside>

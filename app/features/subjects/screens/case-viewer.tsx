@@ -32,6 +32,7 @@ import {
   listCaseReferences,
 } from "~/features/cases/queries.server";
 import { listComments } from "~/features/comments/queries.server";
+import { listLectureResources } from "~/features/lectures/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
   RelatedArticlesChips,
@@ -147,6 +148,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     staffRole,
     caseComments,
     examProblems,
+    lectureResources,
   ] = await Promise.all([
     getRelatedArticlesByCase(client, kase.caseId),
     getRelatedProblemsByCase(client, kase.caseId, 12),
@@ -158,6 +160,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getStaffRole(client, user.id),
     listComments(client, "case", kase.caseId),
     getExamProblemsForCase(client, kase.caseId),
+    listLectureResources(client, "case", kase.caseId),
   ]);
 
   recordStudySession(client, user.id, {
@@ -197,6 +200,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     canEditCase: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
+    lectureResources,
   };
 }
 
@@ -221,6 +225,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     canEditCase,
     isAdmin,
     currentUserId,
+    lectureResources,
   } = loaderData;
 
   // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
@@ -348,6 +353,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         isAdmin={isAdmin}
                         viewerIsStaff={canEditCase}
                         importance={kase.importance}
+                        lectureResources={lectureResources}
                       />
                     </div>
                   </SheetContent>

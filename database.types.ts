@@ -2227,6 +2227,78 @@ export type Database = {
         }
         Relationships: []
       }
+      lecture_resources: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          duration_sec: number | null
+          kind: Database["public"]["Enums"]["resource_kind"]
+          ord: number
+          pdf_url: string | null
+          resource_id: string
+          source_page_end: number | null
+          source_page_start: number | null
+          source_pdf_id: string | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["resource_target_type"]
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          duration_sec?: number | null
+          kind: Database["public"]["Enums"]["resource_kind"]
+          ord?: number
+          pdf_url?: string | null
+          resource_id?: string
+          source_page_end?: number | null
+          source_page_start?: number | null
+          source_pdf_id?: string | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["resource_target_type"]
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          duration_sec?: number | null
+          kind?: Database["public"]["Enums"]["resource_kind"]
+          ord?: number
+          pdf_url?: string | null
+          resource_id?: string
+          source_page_end?: number | null
+          source_page_start?: number | null
+          source_pdf_id?: string | null
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["resource_target_type"]
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_resources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "lecture_resources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       lecture_views: {
         Row: {
           completed_at: string | null
@@ -4842,6 +4914,12 @@ export type Database = {
       qna_quality_grade: "high" | "mid" | "low"
       qna_status: "open" | "answered" | "closed"
       qna_target_type: "article" | "case" | "problem"
+      resource_kind:
+        | "lecture_note"
+        | "lecture_video"
+        | "reference"
+        | "answer_video"
+      resource_target_type: "article" | "case" | "problem" | "science_section"
       science_subject: "physics" | "chemistry" | "biology" | "earth_science"
       staff_notification_kind:
         | "subjective_review_request"
@@ -5058,6 +5136,13 @@ export const Constants = {
       qna_quality_grade: ["high", "mid", "low"],
       qna_status: ["open", "answered", "closed"],
       qna_target_type: ["article", "case", "problem"],
+      resource_kind: [
+        "lecture_note",
+        "lecture_video",
+        "reference",
+        "answer_video",
+      ],
+      resource_target_type: ["article", "case", "problem", "science_section"],
       science_subject: ["physics", "chemistry", "biology", "earth_science"],
       staff_notification_kind: [
         "subjective_review_request",

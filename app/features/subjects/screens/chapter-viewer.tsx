@@ -47,6 +47,7 @@ import {
   listBlankSetsByArticle,
 } from "~/features/blanks/queries.server";
 import { listCommentsBulk } from "~/features/comments/queries.server";
+import { listLectureResourcesByArticleIds } from "~/features/lectures/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
@@ -138,6 +139,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     oxQuestionsByArticle,
     commentsByArticle,
     staffRole,
+    lectureResourcesByArticle,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
@@ -167,6 +169,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ).then((entries) => Object.fromEntries(entries)),
     listCommentsBulk(client, "article", articleIds),
     getStaffRole(client, user.id),
+    listLectureResourcesByArticleIds(client, articleIds),
   ]);
 
   const ownerParam = new URL(request.url).searchParams.get("blank-owner");
@@ -233,6 +236,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     canEditComment: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
+    lectureResourcesByArticle,
   };
 }
 
@@ -269,6 +273,7 @@ function Inner({
     commentsByArticle,
     canEditComment,
     isAdmin,
+    lectureResourcesByArticle,
     currentUserId,
   } = loaderData;
   const { axis } = useSortAxis();
@@ -713,6 +718,9 @@ function Inner({
                         isAdmin={isAdmin}
                         viewerIsStaff={canEditComment}
                         importance={a.importance}
+                        lectureResources={
+                          lectureResourcesByArticle[a.articleId] ?? []
+                        }
                       />
                     </div>
                   </div>
