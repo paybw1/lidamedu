@@ -518,3 +518,187 @@ export async function setCandidateResolved(
     .eq("candidate_id", candidateId);
   if (error) throw error;
 }
+
+// ──────────────────────────────────────────────────────────
+// 체계도(systematic_nodes) 트리 export / import (운영자)
+// /admin/systematic-tree — 한 과목 트리를 JSON 으로 다운로드 → 수정 → 다른 과목으로 적재
+// ──────────────────────────────────────────────────────────
+
+export interface SystematicNodeExport {
+  tmpId: string;
+  parentTmpId: string | null;
+  ord: number;
+  displayLabel: string;
+  linkedArticleNumbers: string[]; // articles.article_number — target law lookup 용
+}
+
+export interface SystematicTreeExport {
+  sourceLawCode: string;
+  exportedAt: string;
+  nodeCount: number;
+  nodes: SystematicNodeExport[];
+}
+
+export async function exportSystematicTree(
+  client: SupabaseClient<Database>,
+  lawCode: string,
+): Promise<SystematicTreeExport> {
+  const { data: nodes, error: nErr } = await client
+    .from("systematic_nodes")
+    .select("node_id, parent_id, display_label, ord, path")
+    .eq("law_code", lawCode)
+    .order("path", { ascending: true });
+  if (nErr) throw nErr;
+  const nodeList = nodes ?? [];
+
+  // tmp_id 매핑 — path 순으로 (트리 안정 순서) n_001 ~
+  const idMap = new Map<string, string>();
+  nodeList.forEach((n, i) => {
+    idMap.set(n.node_id, `n_${String(i + 1).padStart(3, "0")}`);
+  });
+
+  // article links
+  const linkMap = new Map<string, string[]>();
+  if (nodeList.length > 0) {
+    const { data: links, error: lErr } = await client
+      .from("article_systematic_links")
+      .select("node_id, articles:article_id(article_number)")
+      .in(
+        "node_id",
+        nodeList.map((n) => n.node_id),
+      );
+    if (lErr) throw lErr;
+    for (const l of links ?? []) {
+      const art = l.articles as unknown as { article_number: string } | null;
+      if (!art) continue;
+      const arr = linkMap.get(l.node_id) ?? [];
+      arr.push(art.article_number);
+      linkMap.set(l.node_id, arr);
+    }
+  }
+
+  return {
+    sourceLawCode: lawCode,
+    exportedAt: new Date().toISOString(),
+    nodeCount: nodeList.length,
+    nodes: nodeList.map((n) => ({
+      tmpId: idMap.get(n.node_id)!,
+      parentTmpId: n.parent_id ? (idMap.get(n.parent_id) ?? null) : null,
+      ord: n.ord,
+      displayLabel: n.display_label,
+      linkedArticleNumbers: (linkMap.get(n.node_id) ?? []).sort(),
+    })),
+  };
+}
+
+export interface ImportSystematicResult {
+  inserted: number;
+  linked: number;
+  skippedLinks: { articleNumber: string; reason: string }[];
+  deletedExisting: number;
+}
+
+export async function importSystematicTree(
+  client: SupabaseClient<Database>,
+  args: {
+    targetLawCode: string;
+    tree: SystematicTreeExport;
+    replaceExisting: boolean;
+  },
+): Promise<ImportSystematicResult> {
+  // 1) target law_id
+  const { data: law, error: lawErr } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", args.targetLawCode)
+    .single();
+  if (lawErr || !law)
+    throw new Error(`law_code=${args.targetLawCode} 미적재 (laws 테이블)`);
+
+  // 2) 기존 nodes 삭제 (옵션)
+  let deletedExisting = 0;
+  if (args.replaceExisting) {
+    const { data: existing } = await client
+      .from("systematic_nodes")
+      .select("node_id")
+      .eq("law_code", args.targetLawCode);
+    if (existing && existing.length > 0) {
+      const ids = existing.map((e) => e.node_id);
+      // links 먼저 (FK)
+      await client.from("article_systematic_links").delete().in("node_id", ids);
+      await client.from("systematic_nodes").delete().in("node_id", ids);
+      deletedExisting = ids.length;
+    }
+  }
+
+  // 3) BFS — parent 가 먼저 insert 되도록
+  const tmpToReal = new Map<string, { nodeId: string; path: string }>();
+  let inserted = 0;
+  let processedThisIter = true;
+  const remaining = [...args.tree.nodes];
+  for (let safety = 0; safety < 30 && remaining.length > 0 && processedThisIter; safety++) {
+    processedThisIter = false;
+    for (let i = remaining.length - 1; i >= 0; i--) {
+      const n = remaining[i];
+      if (n.parentTmpId && !tmpToReal.has(n.parentTmpId)) continue;
+      const parentInfo = n.parentTmpId ? tmpToReal.get(n.parentTmpId)! : null;
+      const path = parentInfo
+        ? `${parentInfo.path}.b${n.ord}`
+        : `${args.targetLawCode}.b${n.ord}`;
+      const { data, error } = await client
+        .from("systematic_nodes")
+        .insert({
+          law_code: args.targetLawCode,
+          parent_id: parentInfo?.nodeId ?? null,
+          path,
+          display_label: n.displayLabel,
+          ord: n.ord,
+        })
+        .select("node_id")
+        .single();
+      if (error) throw error;
+      tmpToReal.set(n.tmpId, { nodeId: data.node_id, path });
+      inserted++;
+      processedThisIter = true;
+      remaining.splice(i, 1);
+    }
+  }
+  if (remaining.length > 0)
+    throw new Error(
+      `${remaining.length} 노드를 트리에 배치하지 못했습니다 (parent_tmp_id 참조 오류 가능)`,
+    );
+
+  // 4) article_systematic_links — article_number 로 lookup
+  let linked = 0;
+  const skippedLinks: { articleNumber: string; reason: string }[] = [];
+  for (const n of args.tree.nodes) {
+    if (n.linkedArticleNumbers.length === 0) continue;
+    const real = tmpToReal.get(n.tmpId);
+    if (!real) continue;
+    for (const num of n.linkedArticleNumbers) {
+      const { data: art } = await client
+        .from("articles")
+        .select("article_id")
+        .eq("law_id", law.law_id)
+        .eq("article_number", num)
+        .maybeSingle();
+      if (!art) {
+        skippedLinks.push({
+          articleNumber: num,
+          reason: `${args.targetLawCode} articles 에 없음`,
+        });
+        continue;
+      }
+      const { error } = await client
+        .from("article_systematic_links")
+        .insert({ article_id: art.article_id, node_id: real.nodeId });
+      if (error) {
+        skippedLinks.push({ articleNumber: num, reason: error.message });
+        continue;
+      }
+      linked++;
+    }
+  }
+
+  return { inserted, linked, skippedLinks, deletedExisting };
+}

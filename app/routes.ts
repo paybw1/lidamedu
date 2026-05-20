@@ -461,6 +461,10 @@ export default [
         "features/lectures/screens/admin-case-study-review.tsx",
       ),
       route(
+        "/admin/systematic-tree",
+        "features/lectures/screens/admin-systematic-tree.tsx",
+      ),
+      route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",
       ),
