@@ -633,6 +633,83 @@ export async function updateOxReviewItem(
   }
 }
 
+// 진도별 모의고사 팩(mcq_packs.kind=mock_progressive)의 OX 시험 모드 풀이용.
+// 팩의 문제(mcq_pack_problems)들의 problem_choices · problem_box_items 중
+// ox_truth IS NOT NULL AND ox_ineligible=false 인 지문 모두 반환.
+// 순서: 팩의 ord → 문제 안에서 choice 먼저, box 나중.
+export async function getOxQuestionsForPack(
+  client: SupabaseClient<Database>,
+  packId: string,
+): Promise<OxQuestionItem[]> {
+  const { data: packProblems, error: ppErr } = await client
+    .from("mcq_pack_problems")
+    .select("problem_id, ord")
+    .eq("pack_id", packId)
+    .order("ord", { ascending: true });
+  if (ppErr) throw ppErr;
+  const problemIds = (packProblems ?? []).map((p) => p.problem_id);
+  if (problemIds.length === 0) return [];
+
+  const out: OxQuestionItem[] = [];
+
+  const { data: choiceRows } = await client
+    .from("problem_choices")
+    .select(
+      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+    )
+    .in("problem_id", problemIds)
+    .eq("ox_ineligible", false)
+    .not("ox_truth", "is", null);
+  for (const r of choiceRows ?? []) {
+    if (r.problems.deleted_at) continue;
+    out.push({
+      refType: "choice",
+      refId: r.choice_id,
+      problemId: r.problem_id,
+      bodyMd: r.body_md,
+      oxTruth: r.ox_truth as OxTruth,
+      explanationMd: r.explanation_md,
+      year: r.problems.year,
+      problemNumber: r.problems.problem_number,
+      origin: r.problems.origin,
+    });
+  }
+
+  const { data: boxRows } = await client
+    .from("problem_box_items")
+    .select(
+      "box_item_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+    )
+    .in("problem_id", problemIds)
+    .eq("ox_ineligible", false)
+    .not("ox_truth", "is", null);
+  for (const r of boxRows ?? []) {
+    if (r.problems.deleted_at) continue;
+    out.push({
+      refType: "box",
+      refId: r.box_item_id,
+      problemId: r.problem_id,
+      bodyMd: r.body_md,
+      oxTruth: r.ox_truth as OxTruth,
+      explanationMd: r.explanation_md,
+      year: r.problems.year,
+      problemNumber: r.problems.problem_number,
+      origin: r.problems.origin,
+    });
+  }
+
+  const ordMap = new Map<string, number>();
+  (packProblems ?? []).forEach((p) => ordMap.set(p.problem_id, p.ord));
+  out.sort((a, b) => {
+    const oa = ordMap.get(a.problemId) ?? 9999;
+    const ob = ordMap.get(b.problemId) ?? 9999;
+    if (oa !== ob) return oa - ob;
+    return a.refType === b.refType ? 0 : a.refType === "choice" ? -1 : 1;
+  });
+
+  return out;
+}
+
 // 과목 전체 OX 가능 지문 — /subjects/:subject/ox 풀이용. 셔플은 클라에서.
 export async function getOxQuestionsForSubject(
   client: SupabaseClient<Database>,

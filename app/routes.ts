@@ -219,6 +219,10 @@ export default [
           "/mcq/:packId/result/:sessionId",
           "features/latest/screens/mcq-pack-result.tsx",
         ),
+        route(
+          "/mcq/:packId/ox-exam",
+          "features/latest/screens/mcq-pack-ox-exam.tsx",
+        ),
         route("/essay", "features/latest/screens/essay.tsx"),
         // feat-3-205 학습정보 2차문제 뷰어.
         route(

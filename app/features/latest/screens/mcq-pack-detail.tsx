@@ -3,6 +3,7 @@
 // 키트 lidam-latest/McqPackDetailScreen 디자인.
 
 import {
+  CheckCircle2Icon,
   ChevronRightIcon,
   ClockIcon,
   FileTextIcon,
@@ -142,6 +143,19 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
                   {pack.durationMin ? ` (${pack.durationMin}분)` : ""}
                 </Button>
               </Form>
+            ) : null}
+            {pack.kind === "mock_progressive" ? (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="h-9 rounded-full"
+                disabled={problems.length === 0}
+              >
+                <Link to={`/latest/mcq/${pack.packId}/ox-exam`}>
+                  <CheckCircle2Icon className="size-3.5" /> 정오문제 시험
+                </Link>
+              </Button>
             ) : null}
           </div>
         </div>
