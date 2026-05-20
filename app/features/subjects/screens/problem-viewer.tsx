@@ -26,6 +26,7 @@ import {
 } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
@@ -621,7 +622,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         /* No session: simple back link row */
-        <div className="mx-auto flex max-w-screen-2xl items-center px-4 py-3 md:px-6">
+        <div className="mx-auto flex max-w-screen-2xl items-center gap-2 px-4 py-3 md:px-6">
           <Link
             to={`/subjects/${subject.slug}?tab=problems`}
             viewTransition
@@ -630,6 +631,18 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             <ArrowLeftIcon className="size-3.5" />
             {subject.name} 문제 색인
           </Link>
+          {/* feat-9-004 — AI Q&A 진입 (세션 외 학습 모드). 시험 세션에선 산만함 방지로 숨김. */}
+          <span className="ml-auto">
+            <AskAiButton
+              anchorType="problem"
+              anchorId={problem.problemId}
+              seed={
+                problem.year && problem.problemNumber
+                  ? `${problem.year}년 ${problem.problemNumber}번 문제 해설을 정리해줘.`
+                  : "이 문제의 해설을 정리해줘."
+              }
+            />
+          </span>
         </div>
       )}
 

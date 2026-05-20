@@ -24,6 +24,7 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
+import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import {
   Sheet,
   SheetContent,
@@ -901,6 +902,12 @@ function ArticleViewerInner({
 
                 {/* Ghost action buttons on the right */}
                 <div className="ml-auto flex items-center gap-1.5">
+                  {/* feat-9-004 — AI Q&A 진입. 현재 조문이 앵커. */}
+                  <AskAiButton
+                    anchorType="article"
+                    anchorId={article.articleId}
+                    seed={`${article.displayLabel ?? `${article.articleNumber}조`} 에 대해 설명해줘.`}
+                  />
                   {canEdit ? (
                     <>
                       <Button

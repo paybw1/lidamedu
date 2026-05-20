@@ -39,6 +39,7 @@ import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   getConversationWithMessages,
   listMyConversations,
@@ -423,13 +424,17 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
     <div className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+          "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
           isUser
-            ? "bg-primary text-primary-foreground"
+            ? "bg-primary text-primary-foreground whitespace-pre-wrap"
             : "bg-card border-border border",
         )}
       >
-        {message.bodyMd}
+        {isUser ? (
+          message.bodyMd
+        ) : (
+          <MarkdownView text={message.bodyMd} className="text-sm leading-relaxed" />
+        )}
         {!isUser && message.citations.length > 0 ? (
           <CitationsRow citations={message.citations} />
         ) : null}

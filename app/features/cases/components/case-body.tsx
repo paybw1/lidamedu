@@ -10,6 +10,7 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { cn } from "~/core/lib/utils";
+import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
@@ -115,6 +116,13 @@ export function CaseBody({
             caseNumber={kase.caseNumber}
             caseType={kase.caseType}
             isEnBanc={kase.isEnBanc}
+          />
+
+          {/* feat-9-004 — AI Q&A 진입. 이 판례가 앵커. */}
+          <AskAiButton
+            anchorType="case"
+            anchorId={kase.caseId}
+            seed={`${kase.caseNumber} 판례의 요지와 쟁점을 정리해줘.`}
           />
 
           {/* 운영자 — 판례 수정 (staff 전용, feat-7-005) */}
