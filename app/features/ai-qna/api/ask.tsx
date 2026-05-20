@@ -37,6 +37,7 @@ import type { Citation } from "~/features/ai-qna/lib/citations";
 import { AI_QNA_MODEL } from "~/features/ai-qna/lib/constants";
 import { answerQuestion } from "~/features/ai-qna/lib/answer.server";
 import { hybridSearch } from "~/features/ai-qna/lib/hybrid-search.server";
+import { getQuotaState } from "~/features/ai-qna/settings.server";
 
 import type { Route } from "./+types/ask";
 
@@ -70,6 +71,26 @@ export async function action({ request }: Route.ActionArgs) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
+  // feat-9-006 한도 체크 — 답변 토큰 생성 전.
+  // 초과 시 user 메시지·신규 대화 생성 없이 즉시 거절(SSE 가 아니라 일반 JSON 으로 — 클라가 모달).
+  const quota = await getQuotaState(client, user.id);
+  if (quota.exceeded) {
+    return data(
+      {
+        error: "quota_exceeded",
+        tier: quota.tier,
+        dailyLimit: quota.dailyLimit,
+        usedToday: quota.usedToday,
+        // 사용자 안내 문구 — 화면 단의 모달이 사용.
+        message:
+          quota.tier === "tier1"
+            ? `오늘 사용한 ${quota.usedToday}회로 일일 한도(${quota.dailyLimit}회)에 도달했습니다. 내일 다시 이용하거나 강사 Q&A 를 이용해 주세요.`
+            : `오늘 사용한 ${quota.usedToday}회로 무료 한도(${quota.dailyLimit}회)에 도달했습니다. 상위 요금제로 업그레이드하거나 강사 Q&A 를 이용해 주세요.`,
+      },
+      { status: 429 },
+    );
+  }
 
   // 대화 확보 — 없으면 신규.
   let conversationId = incomingConvId;
@@ -112,8 +133,9 @@ export async function action({ request }: Route.ActionArgs) {
           anchor,
         });
 
-        // 1) 하이브리드 검색.
+        // 1) 하이브리드 검색 — 운영자 quota.maxContextChunks 캡 적용.
         const search = await hybridSearch(client, question, {
+          topK: quota.quotas.maxContextChunks,
           lawCodesOverride:
             lawCodesParam.length > 0 ? lawCodesParam : undefined,
         });
@@ -137,7 +159,9 @@ export async function action({ request }: Route.ActionArgs) {
         let tokenUsage = { input: 0, output: 0 };
         let errored = false;
 
-        for await (const ev of answerQuestion(claudeMessages, search.hits)) {
+        for await (const ev of answerQuestion(claudeMessages, search.hits, {
+          maxTokens: quota.quotas.maxOutputTokens,
+        })) {
           if (ev.type === "text") {
             fullText += ev.delta;
             send({ type: "text", delta: ev.delta });

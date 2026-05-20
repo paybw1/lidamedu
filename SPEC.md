@@ -528,7 +528,7 @@
 | feat-9-003 | 답변 생성 — Claude API + 시스템 프롬프트 가드레일 + 출처 인용 + 스트리밍 | P2 | 🟡 |
 | feat-9-004 | AI Q&A 화면 — `/ai` 채팅 UI + `ai_conversations`/`ai_messages` + 대화 이력 + 뷰어·대시보드 진입점 | P2 | 🟡 |
 | feat-9-005 | 피드백 · eval · 품질 튜닝 — 👍/👎 + eval셋 + 지표 측정 | P2 | 🔲 |
-| feat-9-006 | 구독 게이팅 · 레이트 리밋 — feat-8-018 결제 연계 + 일 한도 | P2 | 🔲 |
+| feat-9-006 | 구독 게이팅 · 레이트 리밋 — feat-8-018 결제 연계 + 일 한도 | P2 | 🟡 |
 
 **feat-9-001 진행 상황 (🟡)**: 마이그레이션 적용 완료(`content_chunks` 테이블 + 4종 인덱스 + RLS), `database.types.ts` 재생성, 청킹 로직(`app/features/ai-qna/lib/chunker.ts`) + reindex 헬퍼(`source-chunker.server.ts`) + 큐 API(`queries.server.ts`) + cron 라우트(`/api/cron/embed-chunks`, dry-run + Voyage live) + dirty hooks(법 개정 publish / 판례 저장·생성 / 문제 저장·생성) + 백필 스크립트(`scripts/backfill-content-chunks.mjs`) + Vercel cron 등록(`*/15 * * * *`) 완료. **잔여**: ① Vercel 환경변수 `VOYAGE_API_KEY` 설정 ② `node scripts/backfill-content-chunks.mjs --apply` 백필 실행 ③ 임베딩 cron 자동 호출 모니터링.
 
@@ -537,6 +537,8 @@
 **feat-9-003 진행 상황 (🟡)**: 시스템 프롬프트 + 컨텍스트 빌더(`system-prompt.ts` — 5조항 가드레일 + [N] 라벨 출처 블록), Claude 스트리밍 클라이언트(`answer.server.ts` — `@anthropic-ai/sdk` messages.stream, AsyncGenerator<AnswerEvent>, token usage 누적), 인용 파서(`citations.ts` — `[N]` 마커 → Citation[]). SSE 검증 endpoint `/api/ai-qna/answer-debug?q=...` (staff only) — `search` → `text` 스트리밍 → `done(citations, tokenUsage)` 이벤트 순. **잔여**: ① `ANTHROPIC_API_KEY` Vercel 환경변수 설정 ② 실제 질의·답변 정합성 점검(가드레일 ③ "강사 Q&A" fallback 발동 케이스, 자연과학 거절 케이스, 환각 라벨 무시 케이스) ③ prompt caching(시스템 프롬프트 캐시) 도입(v1.1).
 
 **feat-9-004 진행 상황 (🟡)**: DB 마이그레이션(`ai_conversations` + `ai_messages` + `ai_message_role` enum + RLS 본인만 R/W + soft delete + 메시지 insert 시 부모 updated_at 트리거). 대화 CRUD(`conversations.server.ts` — listMyConversations 미리보기·count 포함 / getConversationWithMessages / createConversation / appendUserMessage / appendAssistantMessage / softDeleteConversation / autoTitleFromQuestion / setMessageFeedback) + 멀티턴 빌더(`buildMultiturnMessages` — AI_QNA_MULTITURN_LIMIT=4). `answer.server.ts` 시그니처 `messages[]` 받도록 변경(멀티턴 지원). 실사용 SSE `POST /api/ai-qna/ask` — 인증만, conversation_id 또는 새 대화 자동 생성, anchor·lawCodes 옵션, user 메시지 검색 전 저장 + assistant 메시지 done 시점 저장. 채팅 화면 `/ai` (`screens/ai-chat.tsx`) — 좌측 대화 list / 우측 메시지·출처 카드·입력창, 추천 질문 빈 상태, SSE 클라이언트(fetch+ReadableStream), 피드백 👍/👎(action), soft delete 버튼. navigation-bar 학습보조 dropdown 에 "AI Q&A (베타)" 진입점. **잔여**: ① 뷰어(조문/판례/문제) 우측 패널에 "AI에게 묻기" 진입점 + 앵커 전달 ② 대시보드 "최근 AI 대화" 카드 ③ markdown 렌더링 (현재 whitespace-pre-wrap) ④ 신규 대화 자동 제목을 LLM 요약으로(현재는 질문 60자 truncate).
+
+**feat-9-006 진행 상황 (🟡)**: `app_settings.ai_qna_quotas` jsonb 단일 키로 한도·토큰 캡 운영 변경 가능(2026-05-21 보수안 seed: free 5/일, tier1 20/일, maxOutputTokens 800, maxContextChunks 8). tier 결정 — staff 또는 area_study_mgmt 보유 = tier1, 그 외 free (`getUserAiTier`). 사용량 측정 — KST 자정 기준 본인 assistant 메시지 카운트(`countAssistantMessagesToday`). `POST /api/ai-qna/ask` 초반에 `getQuotaState` 호출 → 초과 시 429 + JSON{tier, dailyLimit, usedToday, message}. answerQuestion 에 quota.maxOutputTokens 전달, hybridSearch 에 quota.maxContextChunks 전달. `/ai` 화면 헤더에 QuotaBadge("오늘 N/M", 0 잔여 = rose, 잔여 ≤2 = amber), 429 응답 시 QuotaBanner 인라인 + 강사 Q&A 안내. 운영자 화면 `/admin/ai-qna/settings` — 4개 필드 폼 + 실시간 비용 추정(회원3·무료 인원별). `ai_messages.token_usage` 가 이미 저장돼 향후 사용량 기반 정산에 그대로 활용. **잔여**: ① feat-8-018 결제 연계로 tier2/tier3(또는 PAYG) 도입 시 settings.server.ts tier 분기 확장 ② 한도 초과 시 강사 Q&A 자동 스레드 생성(에스컬레이션) ③ 월별 사용량 리포트(운영팀 비용 가시화).
 
 ---
 

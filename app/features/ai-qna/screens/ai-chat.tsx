@@ -48,6 +48,10 @@ import {
   type ConversationSummary,
 } from "~/features/ai-qna/conversations.server";
 import type { Citation } from "~/features/ai-qna/lib/citations";
+import {
+  getQuotaState,
+  type QuotaState,
+} from "~/features/ai-qna/settings.server";
 
 import type { Route } from "./+types/ai-chat";
 
@@ -67,7 +71,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const activeId = url.searchParams.get("c");
 
-  const conversations = await listMyConversations(client, user.id, 50);
+  const [conversations, quota] = await Promise.all([
+    listMyConversations(client, user.id, 50),
+    getQuotaState(client, user.id),
+  ]);
 
   let active: {
     conversation: ConversationSummary;
@@ -77,7 +84,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     active = await getConversationWithMessages(client, activeId);
   }
 
-  return { conversations, active };
+  return { conversations, active, quota };
 }
 
 // ── action — delete / feedback ────────────────────────────────────────────
@@ -153,7 +160,7 @@ const INITIAL_STREAM: StreamingState = {
 };
 
 export default function AiChat({ loaderData }: Route.ComponentProps) {
-  const { conversations, active } = loaderData;
+  const { conversations, active, quota } = loaderData;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
@@ -165,6 +172,12 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
   const [input, setInput] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [stream, setStream] = useState<StreamingState>(INITIAL_STREAM);
+  const [quotaBlock, setQuotaBlock] = useState<{
+    tier: string;
+    dailyLimit: number;
+    usedToday: number;
+    message: string;
+  } | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   // seed 자동 전송 — 한 번만.
@@ -199,6 +212,25 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
 
     try {
       const resp = await fetch("/api/ai-qna/ask", { method: "POST", body: fd });
+      // feat-9-006 한도 초과 — 429 응답 JSON 으로 인라인 배너 처리.
+      if (resp.status === 429) {
+        const json = (await resp.json().catch(() => ({}))) as {
+          tier?: string;
+          dailyLimit?: number;
+          usedToday?: number;
+          message?: string;
+        };
+        setQuotaBlock({
+          tier: json.tier ?? quota.tier,
+          dailyLimit: json.dailyLimit ?? quota.dailyLimit,
+          usedToday: json.usedToday ?? quota.usedToday,
+          message:
+            json.message ??
+            "오늘의 AI 사용 한도에 도달했습니다. 강사 Q&A 를 이용해 주세요.",
+        });
+        setStream({ ...INITIAL_STREAM });
+        return;
+      }
       if (!resp.ok || !resp.body) {
         const text = await resp.text().catch(() => "");
         throw new Error(text || `HTTP ${resp.status}`);
@@ -340,12 +372,16 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
               {active.conversation.anchor.sourceId.slice(0, 8)}
             </Badge>
           ) : null}
+          {/* feat-9-006 한도 표시 — staff/회원3 = tier1, 그 외 = free */}
+          <QuotaBadge quota={quota} />
           {active ? (
             <DeleteConversationButton
               conversationId={active.conversation.conversationId}
             />
           ) : null}
         </header>
+
+        {quotaBlock ? <QuotaBanner block={quotaBlock} /> : null}
 
         <div className="flex-1 overflow-y-auto px-4 py-6">
           {!active && stream.assistantText === "" && !sending ? (
@@ -596,6 +632,57 @@ function Composer({
         </Button>
       </div>
     </form>
+  );
+}
+
+function QuotaBadge({ quota }: { quota: QuotaState }) {
+  const danger = quota.remaining === 0;
+  const warn = quota.remaining > 0 && quota.remaining <= 2;
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "ml-auto text-[11px] tabular-nums",
+        danger
+          ? "border-rose-500/40 text-rose-700 dark:text-rose-300"
+          : warn
+            ? "border-amber-500/40 text-amber-700 dark:text-amber-300"
+            : "",
+      )}
+      title={`tier=${quota.tier} · 한도 ${quota.dailyLimit}/일 · 출력토큰 ${quota.quotas.maxOutputTokens} · 컨텍스트 ${quota.quotas.maxContextChunks}`}
+    >
+      오늘 {quota.usedToday}/{quota.dailyLimit}
+    </Badge>
+  );
+}
+
+function QuotaBanner({
+  block,
+}: {
+  block: {
+    tier: string;
+    dailyLimit: number;
+    usedToday: number;
+    message: string;
+  };
+}) {
+  return (
+    <div className="border-rose-500/30 bg-rose-500/[0.05] flex items-start gap-3 border-b px-4 py-3 text-sm">
+      <div className="min-w-0 flex-1">
+        <p className="text-rose-700 font-semibold dark:text-rose-300">
+          오늘의 AI 사용 한도에 도달했습니다 ({block.usedToday}/{block.dailyLimit})
+        </p>
+        <p className="text-foreground/80 mt-1 text-xs leading-relaxed">
+          {block.message}
+        </p>
+      </div>
+      <Link
+        to="/qna/new"
+        className="text-primary text-xs underline-offset-4 hover:underline"
+      >
+        강사 Q&A →
+      </Link>
+    </div>
   );
 }
 

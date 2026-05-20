@@ -457,6 +457,11 @@ export default [
       ),
       // feat-9-004 — AI Q&A 채팅 화면.
       route("/ai", "features/ai-qna/screens/ai-chat.tsx"),
+      // feat-9-006 — 운영자 한도 설정.
+      route(
+        "/admin/ai-qna/settings",
+        "features/ai-qna/screens/admin-ai-qna-settings.tsx",
+      ),
       route("/onboarding/welcome", "features/onboarding/screens/welcome.tsx"),
       route("/pricing", "features/subscriptions/screens/pricing.tsx"),
       route(
