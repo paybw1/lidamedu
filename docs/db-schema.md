@@ -1003,3 +1003,65 @@ create table public.app_settings (
 - `latest_cases_recency_months` — `/latest/cases` 노출 기간(롤링 개월). 시드값 `0`(제한 없음). N>0 이면 `decided_at ≥ 오늘−N개월` 판례만 노출(수험생·운영자 공통, `/latest/cases` 전용 — 학습과목 판례 탭·뷰어는 미적용). 접근 헬퍼 `app/core/lib/app-settings.server.ts`.
 
 상세: `docs/features/feat-3-204-latest-cases-recency.md`.
+
+---
+
+## 24. content_chunks (feat-9-001 RAG 색인)
+
+생성형 AI Q&A(feat-9, `docs/features/feat-9-ai-qna.md`) 의 검색·임베딩 단위. 조문/판례/문제 콘텐츠를 청킹해 평문(`body_text`) + 임베딩(`embedding`) 둘 다 저장. 하이브리드 검색 — pgvector(의미) + pg_trgm(키워드) + 구조화 필터(`law_code`) + 연관관계 그래프 확장.
+
+```sql
+create extension if not exists vector with schema extensions;
+
+create type public.chunk_source_type as enum ('article','case','problem');
+
+create table public.content_chunks (
+  chunk_id       uuid primary key default gen_random_uuid(),
+  source_type    chunk_source_type not null,
+  source_id      uuid not null,                       -- polymorphic, FK 없음 (relations 패턴)
+  chunk_index    int not null,                        -- 한 source 안에서 청크 순서
+  law_code       text,                                -- 구조화 필터
+  heading_path   text,                                -- "특허법 제29조" / "대법원 2018후10844 · 요지" 식 표시·재랭킹용
+  body_text      text not null,                       -- 임베딩 + trigram 양쪽 대상
+  token_count    int not null,                        -- 비용 추적
+  embedding      vector(1024),                        -- Voyage voyage-3-large. null=임베딩 대기(dirty)
+  content_hash   text not null,                       -- sha256(body_text). 동일 시 재임베딩 skip
+  embedded_at    timestamptz,                         -- null=dirty, set=완료
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+
+-- upsert 키.
+create unique index content_chunks_source_index_uniq
+  on content_chunks (source_type, source_id, chunk_index);
+
+-- 의미 검색.
+create index content_chunks_embedding_hnsw
+  on content_chunks using hnsw (embedding vector_cosine_ops);
+
+-- 키워드 검색.
+create index content_chunks_body_trgm
+  on content_chunks using gin (body_text gin_trgm_ops);
+
+-- 구조화 필터.
+create index content_chunks_law_code
+  on content_chunks (law_code) where law_code is not null;
+
+-- dirty 큐.
+create index content_chunks_dirty
+  on content_chunks (created_at) where embedded_at is null;
+```
+
+**RLS**: 인증 사용자 read all(`for select to authenticated using (true)`). 콘텐츠 평문은 이미 공개 콘텐츠에서 파생이므로 별도 차단 의미 없음. write 는 service_role 만 (`supa-admin-client`) — 임베딩 cron / 백필 스크립트.
+
+**dirty 마킹 hooks**:
+- 조문 개정 publish (`article_revisions` 발효) 후 영향 조문 → `markChunksDirtyForSource('article', ids)`
+- 판례 수정 저장 후 해당 case → `markChunksDirtyForSource('case', [id])`
+- 문제 출제/수정 후 해당 problem → `markChunksDirtyForSource('problem', [id])`
+- source 삭제 시 → `deleteChunksForSource(...)`
+
+**임베딩 워커**: `/api/cron/embed-chunks` (`CRON_SECRET` 보호). 외부 cron 주기적 호출. `VOYAGE_API_KEY` 미설정 시 dry-run(보고만). `runAfterResponse()` 로 즉시 임베딩 트리거도 가능.
+
+**차원 변경 주의**: `vector(1024)` 의 1024 는 임베딩 모델(현재 Voyage `voyage-3-large`)에 종속. 모델·차원 변경 시 마이그레이션 + 전체 재임베딩 필요. 단일 소유 상수: `app/features/ai-qna/lib/constants.ts`.
+
+> v1 에서 `ai_conversations` / `ai_messages` 는 feat-9-004 단계에 도입(별도 마이그레이션). 이 섹션은 RAG 색인 인프라만.

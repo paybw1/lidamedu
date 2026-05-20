@@ -515,20 +515,22 @@
 
 ---
 
-## 5.9 AI 학습 Q&A (RAG) — feat-9 (계획)
+## 5.9 AI 학습 Q&A (RAG) — feat-9 🟡
 
 생성형 AI 가 조문·판례·문제를 색인(RAG)해 수험생 질문에 **출처를 인용해** 즉답한다. 사람-간 Q&A(`feat-qna`)와 별개 — feat-qna 는 강사 답변, feat-9 는 AI 즉답. v1 출시 이후의 전략적 확장. 상세 계획: `docs/features/feat-9-ai-qna.md`.
 
+§14 결정 6건 권장안 채택 (2026-05-20): Voyage `voyage-3-large` 1024 차원, `claude-sonnet-4-6`, 무료 5/일·회원3 50/일, 뷰어 패널 먼저, 직전 4턴, 자연과학 v1 제외.
+
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-9-001 | RAG 인프라 — `vector` 확장 + `content_chunks`(임베딩) + 청킹 + 임베딩 파이프라인(`/api/cron/embed-chunks`) + 전체 백필 | P2 | 🔲 |
+| feat-9-001 | RAG 인프라 — `vector` 확장 + `content_chunks`(임베딩) + 청킹 + 임베딩 파이프라인(`/api/cron/embed-chunks`) + 전체 백필 | P2 | 🟡 |
 | feat-9-002 | 하이브리드 검색 — pgvector 의미 + pg_trgm 키워드 + 구조화 필터 + 연관관계 그래프 확장 + RRF 융합 | P2 | 🔲 |
 | feat-9-003 | 답변 생성 — Claude API + 시스템 프롬프트 가드레일 + 출처 인용 + 스트리밍 | P2 | 🔲 |
 | feat-9-004 | AI Q&A 화면 — `/ai` 채팅 UI + `ai_conversations`/`ai_messages` + 대화 이력 + 뷰어·대시보드 진입점 | P2 | 🔲 |
 | feat-9-005 | 피드백 · eval · 품질 튜닝 — 👍/👎 + eval셋 + 지표 측정 | P2 | 🔲 |
 | feat-9-006 | 구독 게이팅 · 레이트 리밋 — feat-8-018 결제 연계 + 일 한도 | P2 | 🔲 |
 
-> ❓ 착수 전 결정 필요 (`feat-9-ai-qna.md` §14): 임베딩 모델·차원, LLM 모델 정책, 구독 게이팅 한도, 진입점 우선순위, 자연과학 포함 여부.
+**feat-9-001 진행 상황 (🟡)**: 마이그레이션 적용 완료(`content_chunks` 테이블 + 4종 인덱스 + RLS), `database.types.ts` 재생성, 청킹 로직(`app/features/ai-qna/lib/chunker.ts`) + 큐 API(`queries.server.ts`) + cron 라우트(`/api/cron/embed-chunks`, dry-run + Voyage live) 골격 완료. **잔여**: dirty 마킹 hooks(조문 publish / 판례 저장 / 문제 저장 후) + 전체 백필 스크립트 + Vercel cron 등록 + `VOYAGE_API_KEY` 환경변수 설정.
 
 ---
 
@@ -574,7 +576,7 @@
 ### M5+ — 확장
 - 5.5 온라인 GS 본격 ✅ (학생 응시·peer/AI/강사 채점·통계·우수답안·포인트 P1 항목 다 완료. 추가 폴리시는 운영 피드백 기반)
 - 5.6 커뮤니티 본격 🔲 (placeholder 만)
-- 5.9 AI 학습 Q&A (RAG) 🔲 — `feat-9-*`, 계획 문서 `docs/features/feat-9-ai-qna.md` 작성 완료. 착수 전 §14 결정 6건 필요
+- 5.9 AI 학습 Q&A (RAG) 🟡 — `feat-9-*`, §14 결정 6건 권장안 채택. feat-9-001(RAG 인프라) 골격 완료
 - P2 잔여 항목: `feat-3-504` 논문 PDF Storage · `feat-7-014` 수강권/결제 · `feat-4-A-320` 주관식 색인(과목 hub)
 
 ---

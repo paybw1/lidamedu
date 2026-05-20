@@ -408,6 +408,11 @@ export default [
         "/api/cron/exam-result-reminder",
         "features/cron/api/exam-result-reminder.tsx",
       ),
+      // feat-9-001 — RAG 임베딩 cron (Voyage). dry-run 모드는 VOYAGE_API_KEY 미설정 시 자동.
+      route(
+        "/api/cron/embed-chunks",
+        "features/cron/api/embed-chunks.tsx",
+      ),
       route(
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",

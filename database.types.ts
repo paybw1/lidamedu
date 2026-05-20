@@ -1301,6 +1301,54 @@ export type Database = {
           },
         ]
       }
+      content_chunks: {
+        Row: {
+          body_text: string
+          chunk_id: string
+          chunk_index: number
+          content_hash: string
+          created_at: string
+          embedded_at: string | null
+          embedding: string | null
+          heading_path: string | null
+          law_code: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["chunk_source_type"]
+          token_count: number
+          updated_at: string
+        }
+        Insert: {
+          body_text: string
+          chunk_id?: string
+          chunk_index: number
+          content_hash: string
+          created_at?: string
+          embedded_at?: string | null
+          embedding?: string | null
+          heading_path?: string | null
+          law_code?: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["chunk_source_type"]
+          token_count: number
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string
+          chunk_id?: string
+          chunk_index?: number
+          content_hash?: string
+          created_at?: string
+          embedded_at?: string | null
+          embedding?: string | null
+          heading_path?: string | null
+          law_code?: string | null
+          source_id?: string
+          source_type?: Database["public"]["Enums"]["chunk_source_type"]
+          token_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       content_comments: {
         Row: {
           author_id: string | null
@@ -4911,6 +4959,7 @@ export type Database = {
       assignment_status: "pending" | "partial" | "completed"
       auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
+      chunk_source_type: "article" | "case" | "problem"
       community_board: "free" | "study" | "review"
       content_comment_target_type: "article" | "case" | "problem"
       curriculum_item_kind:
@@ -5130,6 +5179,7 @@ export const Constants = {
       assignment_status: ["pending", "partial", "completed"],
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
+      chunk_source_type: ["article", "case", "problem"],
       community_board: ["free", "study", "review"],
       content_comment_target_type: ["article", "case", "problem"],
       curriculum_item_kind: [
