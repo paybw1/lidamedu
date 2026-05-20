@@ -4867,6 +4867,24 @@ export type Database = {
         Args: { p_announcement_id: string; p_user_id: string }
         Returns: boolean
       }
+      match_content_chunks: {
+        Args: {
+          law_filter?: string[]
+          match_k?: number
+          query_embedding: string
+        }
+        Returns: {
+          body_text: string
+          chunk_id: string
+          chunk_index: number
+          heading_path: string
+          law_code: string
+          similarity: number
+          source_id: string
+          source_type: Database["public"]["Enums"]["chunk_source_type"]
+          token_count: number
+        }[]
+      }
       mcq_exam_attempt_stats: {
         Args: { p_exam_id: string }
         Returns: {

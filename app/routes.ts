@@ -63,6 +63,10 @@ export default [
       route("/attempt", "features/recitation/api/attempt.tsx"),
     ]),
     ...prefix("/qna", [route("/thread", "features/qna/api/thread.tsx")]),
+    // feat-9-002 — 하이브리드 검색 검증용 dev endpoint (staff only).
+    ...prefix("/ai-qna", [
+      route("/search-debug", "features/ai-qna/api/search-debug.tsx"),
+    ]),
     ...prefix("/community", [
       route("/post", "features/community/api/post.tsx"),
       route("/comment", "features/community/api/comment.tsx"),
