@@ -63,8 +63,11 @@ export default [
       route("/attempt", "features/recitation/api/attempt.tsx"),
     ]),
     ...prefix("/qna", [route("/thread", "features/qna/api/thread.tsx")]),
-    // feat-9-002/003 — 검증용 dev endpoint (staff only).
+    // feat-9-002/003/004 — AI Q&A endpoints.
+    //   ask: 실사용자 SSE (인증만)
+    //   search-debug / answer-debug: 운영자 점검용 dev endpoint (staff only)
     ...prefix("/ai-qna", [
+      route("/ask", "features/ai-qna/api/ask.tsx"),
       route("/search-debug", "features/ai-qna/api/search-debug.tsx"),
       route("/answer-debug", "features/ai-qna/api/answer-debug.tsx"),
     ]),
@@ -452,6 +455,8 @@ export default [
         "/me/ox-wrong-note",
         "features/latest/screens/my-ox-wrong-note.tsx",
       ),
+      // feat-9-004 — AI Q&A 채팅 화면.
+      route("/ai", "features/ai-qna/screens/ai-chat.tsx"),
       route("/onboarding/welcome", "features/onboarding/screens/welcome.tsx"),
       route("/pricing", "features/subscriptions/screens/pricing.tsx"),
       route(

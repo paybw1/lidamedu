@@ -38,18 +38,26 @@ function getClient(): Anthropic {
   return _client;
 }
 
+export interface AnswerTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 /**
  * 답변 스트리밍. 호출부는 `for await (const ev of answerQuestion(...))` 패턴.
  *
+ * messages — Claude 에 보낼 turn 배열. 마지막은 반드시 현재 user 질문. 멀티턴이면
+ * 직전 (assistant/user)... 가 앞에 붙는다 (`buildMultiturnMessages`).
+ *
  * 흐름:
- *  1. 컨텍스트 빌드 ([1] [2] 라벨 부여)
- *  2. system prompt + user message 로 messages.stream
+ *  1. 컨텍스트 빌드 ([1] [2] 라벨 부여) — hits 기반
+ *  2. system prompt + messages 로 messages.stream
  *  3. content_block_delta(text_delta) 마다 yield {type:'text', delta}
  *  4. 스트림 종료 후 fullText 누적본에서 [N] 마커 → citations 추출 → yield done
  *  5. 예외 시 yield {type:'error'}
  */
 export async function* answerQuestion(
-  question: string,
+  messages: ReadonlyArray<AnswerTurn>,
   hits: ReadonlyArray<SearchHit>,
   options: AnswerOptions = {},
 ): AsyncGenerator<AnswerEvent, void, unknown> {
@@ -57,6 +65,14 @@ export async function* answerQuestion(
   const system = buildSystemPrompt(items);
   const model = options.model ?? AI_QNA_MODEL;
   const maxTokens = options.maxTokens ?? 1024;
+
+  if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
+    yield {
+      type: "error",
+      message: "messages 의 마지막은 user 여야 합니다.",
+    };
+    return;
+  }
 
   let fullText = "";
   let tokenUsage = { input: 0, output: 0 };
@@ -67,7 +83,7 @@ export async function* answerQuestion(
       model,
       max_tokens: maxTokens,
       system,
-      messages: [{ role: "user", content: question }],
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
     });
 
     for await (const event of stream) {

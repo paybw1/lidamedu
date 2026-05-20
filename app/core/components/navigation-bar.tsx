@@ -80,6 +80,8 @@ const studyAidItems: SimpleLink[] = [
   { label: "즐겨찾기", to: "/study/bookmarks" },
   { label: "포스트잇", to: "/study/notes" },
   { label: "메모", to: "/study/comments" },
+  // feat-9-004 — 생성형 AI Q&A. 베타.
+  { label: "AI Q&A (베타)", to: "/ai" },
 ];
 
 // 1차는 통합 시험(다과목)·진도별로 분리. 진도별은 색인 loader 의 ?kind= 활용.

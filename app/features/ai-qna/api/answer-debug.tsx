@@ -79,8 +79,11 @@ export async function loader({ request }: Route.LoaderArgs) {
           })),
         });
 
-        // 2) Claude 스트리밍.
-        for await (const ev of answerQuestion(q, search.hits)) {
+        // 2) Claude 스트리밍 — dev endpoint 는 단일턴(현재 질문만).
+        for await (const ev of answerQuestion(
+          [{ role: "user", content: q }],
+          search.hits,
+        )) {
           send(ev);
           if (ev.type === "done" || ev.type === "error") break;
         }

@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_conversations: {
+        Row: {
+          anchor: Json | null
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anchor?: Json | null
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anchor?: Json | null
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      ai_messages: {
+        Row: {
+          body_md: string
+          citations: Json
+          conversation_id: string
+          created_at: string
+          feedback: number | null
+          message_id: string
+          retrieval_meta: Json | null
+          role: Database["public"]["Enums"]["ai_message_role"]
+          token_usage: Json | null
+        }
+        Insert: {
+          body_md: string
+          citations?: Json
+          conversation_id: string
+          created_at?: string
+          feedback?: number | null
+          message_id?: string
+          retrieval_meta?: Json | null
+          role: Database["public"]["Enums"]["ai_message_role"]
+          token_usage?: Json | null
+        }
+        Update: {
+          body_md?: string
+          citations?: Json
+          conversation_id?: string
+          created_at?: string
+          feedback?: number | null
+          message_id?: string
+          retrieval_meta?: Json | null
+          role?: Database["public"]["Enums"]["ai_message_role"]
+          token_usage?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["conversation_id"]
+          },
+        ]
+      }
       announcement_audiences: {
         Row: {
           added_at: string
@@ -4959,6 +5048,7 @@ export type Database = {
         | "cites"
         | "similar_to"
         | "contrary_to"
+      ai_message_role: "user" | "assistant"
       annotation_target_type:
         | "article"
         | "case"
@@ -5177,6 +5267,7 @@ export const Constants = {
         "similar_to",
         "contrary_to",
       ],
+      ai_message_role: ["user", "assistant"],
       annotation_target_type: [
         "article",
         "case",
