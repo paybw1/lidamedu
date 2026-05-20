@@ -437,6 +437,11 @@ export default [
         "/me/exam-results",
         "features/exam-results/screens/my-exam-results.tsx",
       ),
+      route("/me/ox-sessions", "features/latest/screens/my-ox-sessions.tsx"),
+      route(
+        "/me/ox-wrong-note",
+        "features/latest/screens/my-ox-wrong-note.tsx",
+      ),
       route("/onboarding/welcome", "features/onboarding/screens/welcome.tsx"),
       route("/pricing", "features/subscriptions/screens/pricing.tsx"),
       route(

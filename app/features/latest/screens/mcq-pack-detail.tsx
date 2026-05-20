@@ -36,7 +36,9 @@ import {
 } from "~/features/mcq-packs/labels";
 import {
   getPackById,
+  listMyOxSessions,
   listPackProblems,
+  type OxSessionRow,
 } from "~/features/mcq-packs/queries.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 
@@ -67,11 +69,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     await requireFeature(client, user.id, "area_mock_exams");
   }
   const problems = await listPackProblems(client, params.packId);
-  return { pack, problems, canEdit: role !== null };
+  const oxSessions = await listMyOxSessions(client, user.id, {
+    limit: 5,
+    packId: params.packId,
+  });
+  return { pack, problems, canEdit: role !== null, oxSessions };
 }
 
 export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
-  const { pack, problems, canEdit } = loaderData;
+  const { pack, problems, canEdit, oxSessions } = loaderData;
   const mockPack = isMockKind(pack.kind);
 
   const metaParts: string[] = [];
@@ -144,19 +150,18 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
                 </Button>
               </Form>
             ) : null}
-            {pack.kind === "mock_progressive" ? (
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="h-9 rounded-full"
-                disabled={problems.length === 0}
-              >
-                <Link to={`/latest/mcq/${pack.packId}/ox-exam`}>
-                  <CheckCircle2Icon className="size-3.5" /> 정오문제 시험
-                </Link>
-              </Button>
-            ) : null}
+            {/* 객관식 팩(mock_*, past_exam) 모두에서 OX 시험 가능 — 보기·박스 항목의 OX 지문 활용 */}
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="h-9 rounded-full"
+              disabled={problems.length === 0}
+            >
+              <Link to={`/latest/mcq/${pack.packId}/ox-exam`}>
+                <CheckCircle2Icon className="size-3.5" /> 정오문제 시험
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -234,10 +239,59 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
         )}
       </div>
 
+      {oxSessions.length > 0 ? (
+        <OxSessionsPanel sessions={oxSessions} />
+      ) : null}
+
       {canEdit && mockPack ? (
         <ReleasePanel packId={pack.packId} problems={problems} />
       ) : null}
     </McqAreaShell>
+  );
+}
+
+function OxSessionsPanel({ sessions }: { sessions: OxSessionRow[] }) {
+  return (
+    <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border shadow-sm">
+      <div className="border-border flex items-center justify-between border-b px-4 py-3">
+        <p className="text-sm font-bold tracking-tight">
+          <CheckCircle2Icon className="text-primary mr-1.5 inline size-4" />
+          내 정오문제 응시 이력{" "}
+          <span className="text-muted-foreground tabular-nums">
+            {sessions.length}
+          </span>
+        </p>
+        <Link
+          to="/me/ox-sessions"
+          className="text-primary text-xs underline-offset-4 hover:underline"
+        >
+          전체 보기 →
+        </Link>
+      </div>
+      <ul className="divide-border divide-y">
+        {sessions.map((s) => {
+          const answered = s.correct + s.wrong;
+          const rate =
+            answered > 0 ? Math.round((s.correct / answered) * 100) : 0;
+          const when = (s.completedAt ?? s.startedAt).slice(0, 16).replace("T", " ");
+          return (
+            <li
+              key={s.sessionId}
+              className="hover:bg-muted/40 flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm transition-colors"
+            >
+              <span className="text-muted-foreground tabular-nums">{when}</span>
+              <Pill tone={rate >= 80 ? "primary" : rate >= 60 ? "amber" : "outline"}>
+                정답률 {rate}%
+              </Pill>
+              <Pill tone="outline">
+                {s.correct}/{answered}
+                {s.blank > 0 ? ` · 미응답 ${s.blank}` : ""}
+              </Pill>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

@@ -633,6 +633,120 @@ export async function updateOxReviewItem(
   }
 }
 
+// 본인의 OX 오답 노트 — user_problem_attempts.ox_answer IS NOT NULL 의 최근 응시가
+// is_correct=false 인 지문만 모은다. 같은 지문을 여러 번 응시한 경우 최근 한 번만 사용.
+export interface OxWrongItem extends OxQuestionItem {
+  lastAttemptAt: string;
+  userAnswerAtLast: OxTruth;
+}
+
+export async function listMyOxWrongNoteItems(
+  client: SupabaseClient<Database>,
+  userId: string,
+  limit = 100,
+): Promise<OxWrongItem[]> {
+  const { data: attempts } = await client
+    .from("user_problem_attempts")
+    .select(
+      "attempted_at, problem_id, selected_choice_id, selected_box_item_id, ox_answer, is_correct",
+    )
+    .eq("user_id", userId)
+    .not("ox_answer", "is", null)
+    .order("attempted_at", { ascending: false })
+    .limit(2000); // distinct 처리에 충분한 윈도우
+  const wrongRefs: {
+    problemId: string;
+    refType: "choice" | "box";
+    refId: string;
+    lastAt: string;
+    userAnswer: OxTruth;
+  }[] = [];
+  const seen = new Set<string>();
+  for (const a of attempts ?? []) {
+    const refId = a.selected_choice_id ?? a.selected_box_item_id;
+    if (!refId) continue;
+    if (seen.has(refId)) continue;
+    seen.add(refId);
+    if (a.is_correct) continue;
+    wrongRefs.push({
+      problemId: a.problem_id,
+      refType: a.selected_choice_id ? "choice" : "box",
+      refId,
+      lastAt: a.attempted_at,
+      userAnswer: a.ox_answer as OxTruth,
+    });
+    if (wrongRefs.length >= limit) break;
+  }
+  if (wrongRefs.length === 0) return [];
+
+  const out: OxWrongItem[] = [];
+
+  const choiceIds = wrongRefs
+    .filter((w) => w.refType === "choice")
+    .map((w) => w.refId);
+  if (choiceIds.length > 0) {
+    const { data: rows } = await client
+      .from("problem_choices")
+      .select(
+        "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+      )
+      .in("choice_id", choiceIds)
+      .not("ox_truth", "is", null);
+    for (const r of rows ?? []) {
+      if (r.problems.deleted_at) continue;
+      const wr = wrongRefs.find((w) => w.refId === r.choice_id);
+      if (!wr) continue;
+      out.push({
+        refType: "choice",
+        refId: r.choice_id,
+        problemId: r.problem_id,
+        bodyMd: r.body_md,
+        oxTruth: r.ox_truth as OxTruth,
+        explanationMd: r.explanation_md,
+        year: r.problems.year,
+        problemNumber: r.problems.problem_number,
+        origin: r.problems.origin,
+        lastAttemptAt: wr.lastAt,
+        userAnswerAtLast: wr.userAnswer,
+      });
+    }
+  }
+
+  const boxIds = wrongRefs
+    .filter((w) => w.refType === "box")
+    .map((w) => w.refId);
+  if (boxIds.length > 0) {
+    const { data: rows } = await client
+      .from("problem_box_items")
+      .select(
+        "box_item_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+      )
+      .in("box_item_id", boxIds)
+      .not("ox_truth", "is", null);
+    for (const r of rows ?? []) {
+      if (r.problems.deleted_at) continue;
+      const wr = wrongRefs.find((w) => w.refId === r.box_item_id);
+      if (!wr) continue;
+      out.push({
+        refType: "box",
+        refId: r.box_item_id,
+        problemId: r.problem_id,
+        bodyMd: r.body_md,
+        oxTruth: r.ox_truth as OxTruth,
+        explanationMd: r.explanation_md,
+        year: r.problems.year,
+        problemNumber: r.problems.problem_number,
+        origin: r.problems.origin,
+        lastAttemptAt: wr.lastAt,
+        userAnswerAtLast: wr.userAnswer,
+      });
+    }
+  }
+
+  out.sort((a, b) => b.lastAttemptAt.localeCompare(a.lastAttemptAt));
+  return out;
+}
+
 // 진도별 모의고사 팩(mcq_packs.kind=mock_progressive)의 OX 시험 모드 풀이용.
 // 팩의 문제(mcq_pack_problems)들의 problem_choices · problem_box_items 중
 // ox_truth IS NOT NULL AND ox_ineligible=false 인 지문 모두 반환.

@@ -160,6 +160,94 @@ export async function getPackById(
 }
 
 // 팩에 속한 문제들 — ord 순서. problem 본문 일부 포함.
+// 본인의 OX 시험 응시 이력 list — /me/ox-sessions 화면용.
+// quiz_sessions.scope_payload->>exam_kind = 'ox' 인 row + attempts 통계 + pack 메타.
+export interface OxSessionRow {
+  sessionId: string;
+  packId: string | null;
+  packTitle: string | null;
+  packKind: string | null;
+  packSubjectScope: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  total: number; // scope_payload.ref_count
+  correct: number;
+  wrong: number;
+  blank: number; // total - (correct + wrong)
+  durationSec: number | null;
+}
+
+export async function listMyOxSessions(
+  client: SupabaseClient<Database>,
+  userId: string,
+  opts: { limit?: number; packId?: string } = {},
+): Promise<OxSessionRow[]> {
+  const { limit = 50, packId } = opts;
+  let query = client
+    .from("quiz_sessions")
+    .select(
+      "session_id, pack_id, started_at, completed_at, scope_payload, mcq_packs:pack_id(title, kind, subject_scope)",
+    )
+    .eq("user_id", userId)
+    .filter("scope_payload->>exam_kind", "eq", "ox");
+  if (packId) query = query.eq("pack_id", packId);
+  const { data: sessions, error: sErr } = await query
+    .order("completed_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (sErr) throw sErr;
+  const sessionList = sessions ?? [];
+  if (sessionList.length === 0) return [];
+
+  const sessionIds = sessionList.map((s) => s.session_id);
+  const { data: attempts } = await client
+    .from("user_problem_attempts")
+    .select("session_id, is_correct")
+    .in("session_id", sessionIds);
+  const statsMap = new Map<string, { c: number; w: number }>();
+  for (const a of attempts ?? []) {
+    if (!a.session_id) continue;
+    const s = statsMap.get(a.session_id) ?? { c: 0, w: 0 };
+    if (a.is_correct) s.c++;
+    else s.w++;
+    statsMap.set(a.session_id, s);
+  }
+
+  return sessionList.map((s) => {
+    const stats = statsMap.get(s.session_id) ?? { c: 0, w: 0 };
+    const total =
+      (s.scope_payload as { ref_count?: number } | null)?.ref_count ??
+      stats.c + stats.w;
+    const durationSec =
+      s.completed_at && s.started_at
+        ? Math.max(
+            0,
+            Math.round(
+              (new Date(s.completed_at).getTime() -
+                new Date(s.started_at).getTime()) /
+                1000,
+            ),
+          )
+        : null;
+    const mp = s.mcq_packs as unknown as
+      | { title: string; kind: string; subject_scope: string }
+      | null;
+    return {
+      sessionId: s.session_id,
+      packId: s.pack_id,
+      packTitle: mp?.title ?? null,
+      packKind: mp?.kind ?? null,
+      packSubjectScope: mp?.subject_scope ?? null,
+      startedAt: s.started_at,
+      completedAt: s.completed_at,
+      total,
+      correct: stats.c,
+      wrong: stats.w,
+      blank: Math.max(0, total - stats.c - stats.w),
+      durationSec,
+    };
+  });
+}
+
 export async function listPackProblems(
   client: SupabaseClient<Database>,
   packId: string,
