@@ -110,11 +110,16 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "feedback") {
     const messageId = String(fd.get("messageId") ?? "");
     const value = Number(fd.get("feedback") ?? 0);
+    const noteRaw = fd.get("note");
+    const note =
+      typeof noteRaw === "string" && noteRaw.trim().length > 0
+        ? noteRaw.trim().slice(0, 1000)
+        : null;
     if (!messageId)
       return data({ error: "messageId 필수" }, { status: 400 });
     if (value !== 1 && value !== -1 && value !== 0)
       return data({ error: "feedback 은 -1/0/1" }, { status: 400 });
-    await setMessageFeedback(client, messageId, value as 1 | -1 | 0);
+    await setMessageFeedback(client, messageId, value as 1 | -1 | 0, note);
     return data({ ok: true });
   }
 
@@ -428,7 +433,13 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
         {!isUser && message.citations.length > 0 ? (
           <CitationsRow citations={message.citations} />
         ) : null}
-        {!isUser ? <FeedbackButtons messageId={message.messageId} feedback={message.feedback} /> : null}
+        {!isUser ? (
+          <FeedbackButtons
+            messageId={message.messageId}
+            feedback={message.feedback}
+            feedbackNote={message.feedbackNote}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -503,12 +514,16 @@ function citationHref(c: Citation): string {
 function FeedbackButtons({
   messageId,
   feedback,
+  feedbackNote,
 }: {
   messageId: string;
   feedback: number | null;
+  feedbackNote: string | null;
 }) {
   const fetcher = useFetcher();
   const submitting = fetcher.state !== "idle";
+  const [noteDraft, setNoteDraft] = useState<string>(feedbackNote ?? "");
+  const [noteOpen, setNoteOpen] = useState<boolean>(false);
 
   function set(value: 1 | -1) {
     const next = feedback === value ? 0 : value;
@@ -516,35 +531,103 @@ function FeedbackButtons({
     fd.set("intent", "feedback");
     fd.set("messageId", messageId);
     fd.set("feedback", String(next));
+    // 👎 토글 켤 때 사유 입력 영역 노출. 끌 때 닫고 사유 비움.
+    if (next === -1) {
+      setNoteOpen(true);
+    } else {
+      setNoteOpen(false);
+      setNoteDraft("");
+      fd.set("note", "");
+    }
+    fetcher.submit(fd, { method: "post" });
+  }
+
+  function submitNote() {
+    if (feedback !== -1) return;
+    const trimmed = noteDraft.trim();
+    if (trimmed === (feedbackNote ?? "")) return; // 변경 없음
+    const fd = new FormData();
+    fd.set("intent", "feedback");
+    fd.set("messageId", messageId);
+    fd.set("feedback", "-1");
+    fd.set("note", trimmed);
     fetcher.submit(fd, { method: "post" });
   }
 
   return (
-    <div className="border-border/60 mt-2 flex gap-1 border-t pt-2">
-      <button
-        type="button"
-        onClick={() => set(1)}
-        disabled={submitting}
-        aria-pressed={feedback === 1}
-        className={cn(
-          "hover:bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
-          feedback === 1 && "text-emerald-700 dark:text-emerald-300",
-        )}
-      >
-        <ThumbsUpIcon className="size-3" />
-      </button>
-      <button
-        type="button"
-        onClick={() => set(-1)}
-        disabled={submitting}
-        aria-pressed={feedback === -1}
-        className={cn(
-          "hover:bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
-          feedback === -1 && "text-rose-700 dark:text-rose-300",
-        )}
-      >
-        <ThumbsDownIcon className="size-3" />
-      </button>
+    <div className="border-border/60 mt-2 space-y-2 border-t pt-2">
+      <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={() => set(1)}
+          disabled={submitting}
+          aria-pressed={feedback === 1}
+          className={cn(
+            "hover:bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
+            feedback === 1 && "text-emerald-700 dark:text-emerald-300",
+          )}
+        >
+          <ThumbsUpIcon className="size-3" />
+        </button>
+        <button
+          type="button"
+          onClick={() => set(-1)}
+          disabled={submitting}
+          aria-pressed={feedback === -1}
+          className={cn(
+            "hover:bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
+            feedback === -1 && "text-rose-700 dark:text-rose-300",
+          )}
+        >
+          <ThumbsDownIcon className="size-3" />
+        </button>
+        {feedback === -1 && !noteOpen ? (
+          <button
+            type="button"
+            onClick={() => setNoteOpen(true)}
+            className="text-muted-foreground hover:bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors"
+          >
+            사유 {feedbackNote ? "수정" : "추가"}
+          </button>
+        ) : null}
+      </div>
+      {feedback === -1 && noteOpen ? (
+        <div className="space-y-1.5">
+          <Textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            onBlur={submitNote}
+            rows={2}
+            maxLength={1000}
+            placeholder="무엇이 부정확했나요? (예: 출처가 맞지 않음 / 누락된 조문 / 거짓 사실 등)"
+            className="text-xs"
+          />
+          <div className="flex justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setNoteOpen(false);
+                setNoteDraft(feedbackNote ?? "");
+              }}
+              className="text-muted-foreground hover:bg-muted rounded-full px-2 py-0.5 text-[11px]"
+            >
+              닫기
+            </button>
+            <button
+              type="button"
+              onClick={submitNote}
+              disabled={submitting}
+              className="bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[11px]"
+            >
+              사유 저장
+            </button>
+          </div>
+        </div>
+      ) : feedback === -1 && feedbackNote ? (
+        <p className="text-muted-foreground text-[11px] leading-snug">
+          사유: {feedbackNote}
+        </p>
+      ) : null}
     </div>
   );
 }

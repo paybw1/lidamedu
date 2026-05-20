@@ -66,6 +66,8 @@ export type Database = {
           conversation_id: string
           created_at: string
           feedback: number | null
+          feedback_at: string | null
+          feedback_note: string | null
           message_id: string
           retrieval_meta: Json | null
           role: Database["public"]["Enums"]["ai_message_role"]
@@ -77,6 +79,8 @@ export type Database = {
           conversation_id: string
           created_at?: string
           feedback?: number | null
+          feedback_at?: string | null
+          feedback_note?: string | null
           message_id?: string
           retrieval_meta?: Json | null
           role: Database["public"]["Enums"]["ai_message_role"]
@@ -88,6 +92,8 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           feedback?: number | null
+          feedback_at?: string | null
+          feedback_note?: string | null
           message_id?: string
           retrieval_meta?: Json | null
           role?: Database["public"]["Enums"]["ai_message_role"]
@@ -4801,6 +4807,29 @@ export type Database = {
           problems_mc: number
           problems_subjective: number
           revisions_published: number
+        }[]
+      }
+      ai_qna_daily_metrics: {
+        Args: { p_days?: number }
+        Returns: {
+          day: string
+          input_tokens: number
+          negative_feedback: number
+          output_tokens: number
+          positive_feedback: number
+          refusal_responses: number
+          responses: number
+        }[]
+      }
+      ai_qna_total_metrics: {
+        Args: never
+        Returns: {
+          negative_feedback: number
+          positive_feedback: number
+          total_input_tokens: number
+          total_output_tokens: number
+          total_responses: number
+          total_users: number
         }[]
       }
       backfill_article_article_links_from_body: {

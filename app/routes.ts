@@ -457,6 +457,15 @@ export default [
       ),
       // feat-9-004 — AI Q&A 채팅 화면.
       route("/ai", "features/ai-qna/screens/ai-chat.tsx"),
+      // feat-9-005 — 운영자 피드백 큐 + 지표.
+      route(
+        "/admin/ai-qna/feedback",
+        "features/ai-qna/screens/admin-ai-qna-feedback.tsx",
+      ),
+      route(
+        "/admin/ai-qna/metrics",
+        "features/ai-qna/screens/admin-ai-qna-metrics.tsx",
+      ),
       // feat-9-006 — 운영자 한도 설정.
       route(
         "/admin/ai-qna/settings",

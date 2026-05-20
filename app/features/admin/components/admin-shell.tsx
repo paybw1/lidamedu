@@ -146,6 +146,9 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "알림 인박스", to: "/admin/inbox" },
       { label: "감사 로그", to: "/admin/audit-logs" },
       { label: "주관식 첨삭 큐", to: "/admin/subjective-reviews" },
+      // feat-9-005 — AI Q&A 운영 (피드백 큐 + 지표).
+      { label: "AI Q&A 부정 피드백", to: "/admin/ai-qna/feedback" },
+      { label: "AI Q&A 지표", to: "/admin/ai-qna/metrics" },
       // feat-9-006 — AI Q&A 운영 설정 (한도/토큰 캡).
       { label: "AI Q&A 한도 설정", to: "/admin/ai-qna/settings" },
     ],

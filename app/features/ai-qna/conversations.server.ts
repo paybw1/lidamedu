@@ -33,6 +33,7 @@ export interface ConversationMessage {
   bodyMd: string;
   citations: Citation[];
   feedback: number | null;
+  feedbackNote: string | null;
   createdAt: string;
 }
 
@@ -106,7 +107,9 @@ export async function getConversationWithMessages(
 
   const { data: msgs } = await client
     .from("ai_messages")
-    .select("message_id, conversation_id, role, body_md, citations, feedback, created_at")
+    .select(
+      "message_id, conversation_id, role, body_md, citations, feedback, feedback_note, created_at",
+    )
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
   const messages = (msgs ?? []).map((m) => ({
@@ -116,6 +119,7 @@ export async function getConversationWithMessages(
     bodyMd: m.body_md,
     citations: parseCitations(m.citations),
     feedback: m.feedback,
+    feedbackNote: m.feedback_note,
     createdAt: m.created_at,
   }));
 
@@ -238,15 +242,21 @@ export async function setConversationTitle(
   if (error) throw error;
 }
 
-/** 메시지에 피드백 (👍=1 / 👎=-1 / 0=clear). */
+/** 메시지에 피드백 (👍=1 / 👎=-1 / 0=clear). 👎 시 자유 사유 note 옵션. */
 export async function setMessageFeedback(
   client: SupabaseClient<Database>,
   messageId: string,
   feedback: 1 | -1 | 0,
+  note: string | null = null,
 ): Promise<void> {
+  const update: Database["public"]["Tables"]["ai_messages"]["Update"] = {
+    feedback: feedback === 0 ? null : feedback,
+    feedback_note: feedback === -1 ? note : null,
+    feedback_at: feedback === 0 ? null : new Date().toISOString(),
+  };
   const { error } = await client
     .from("ai_messages")
-    .update({ feedback: feedback === 0 ? null : feedback })
+    .update(update)
     .eq("message_id", messageId)
     .eq("role", "assistant");
   if (error) throw error;
