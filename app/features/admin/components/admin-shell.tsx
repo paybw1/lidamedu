@@ -71,7 +71,8 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "판례",
     Icon: ScaleIcon,
     screens: [
-      { label: "판례 매핑", to: "/admin/cases" },
+      { label: "판례-조문 매칭", to: "/admin/cases" },
+      { label: "판례-기출 매칭", to: "/admin/relations/exam-cases" },
       { label: "판례 신규 등록", to: "/admin/cases/edit" },
       { label: "강의노트 case-study 검토", to: "/admin/case-study-review" },
     ],
@@ -104,7 +105,6 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "미배정 점검", to: "/admin/relations/gaps" },
       { label: "일괄 등록", to: "/admin/relations/bulk" },
-      { label: "기출 판례 매칭", to: "/admin/relations/exam-cases" },
     ],
   },
   {
