@@ -22,10 +22,13 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { COURT_LABELS } from "~/features/cases/labels";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
+import type { RelatedArticle } from "~/features/relations/labels";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
@@ -62,15 +65,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     new URL(request.url).searchParams.get("returnTo"),
   );
   const caseId = params.caseId ?? null;
-  if (!caseId) return { kase: null, returnTo, role };
-  const { data: row, error } = await client
-    .from("cases")
-    .select("*")
-    .eq("case_id", caseId)
-    .maybeSingle();
+  if (!caseId)
+    return {
+      kase: null,
+      returnTo,
+      role,
+      relatedArticles: [] as RelatedArticle[],
+    };
+  const [{ data: row, error }, relatedArticles] = await Promise.all([
+    client.from("cases").select("*").eq("case_id", caseId).maybeSingle(),
+    getRelatedArticlesByCase(client, caseId),
+  ]);
   if (error) throw data(error.message, { status: 500 });
   if (!row) throw data("Case not found", { status: 404 });
-  return { kase: row, returnTo, role };
+  return { kase: row, returnTo, role, relatedArticles };
 }
 
 const COURTS: Array<keyof typeof COURT_LABELS> = [
@@ -83,7 +91,7 @@ const COURTS: Array<keyof typeof COURT_LABELS> = [
 /* ── 페이지 ──────────────────────────────────────────────────────────── */
 
 export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
-  const { kase, returnTo, role } = loaderData;
+  const { kase, returnTo, role, relatedArticles } = loaderData;
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
 
@@ -101,10 +109,10 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
       headerRight={
         !isNew ? (
           <Link
-            to="/admin/relations/article/patent/29"
+            to="/admin/relations/gaps?law=patent"
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
           >
-            <NetworkIcon className="size-3.5" /> 관련 조문은 별도 페이지에서
+            <NetworkIcon className="size-3.5" /> 연관관계 부족분 일괄 편집
           </Link>
         ) : undefined
       }
@@ -327,22 +335,195 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
       </Form>
 
       {!isNew ? (
-        <p className="text-muted-foreground mt-4 text-xs">
-          관련 조문 매핑은{" "}
-          <Link to={returnTo} className="text-primary hover:underline">
-            판례 매핑 관리
-          </Link>{" "}
-          또는{" "}
-          <Link
-            to="/admin/relations/gaps?law=patent"
-            className="text-primary hover:underline"
-          >
-            연관관계 편집
-          </Link>{" "}
-          페이지에서 진행하세요.
-        </p>
+        <RelatedArticlesEditor
+          caseId={kase.case_id}
+          subjectLaws={(kase.subject_laws ?? []) as LawSubjectSlug[]}
+          relatedArticles={relatedArticles}
+        />
       ) : null}
     </AdminShell>
+  );
+}
+
+/* ── RelatedArticlesEditor ──────────────────────────────────────────── */
+// feat-7-005 후속: 개별 판례 수정 페이지에서 관련 조문 직접 편집.
+// /api/admin/case-link (intent=add/remove) 호출. fetcher 로 revalidate 자동.
+function RelatedArticlesEditor({
+  caseId,
+  subjectLaws,
+  relatedArticles,
+}: {
+  caseId: string;
+  subjectLaws: LawSubjectSlug[];
+  relatedArticles: RelatedArticle[];
+}) {
+  const addFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const removeFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const revalidator = useRevalidator();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedLaw, setSelectedLaw] = useState<LawSubjectSlug>(
+    (subjectLaws[0] ?? "patent") as LawSubjectSlug,
+  );
+
+  const isAdding = addFetcher.state !== "idle";
+  const removingKey =
+    removeFetcher.state !== "idle"
+      ? `${removeFetcher.formData?.get("lawCode")}:${removeFetcher.formData?.get("articleNumber")}`
+      : null;
+
+  // 추가/삭제 성공 후 loader revalidate + toast.
+  useEffect(() => {
+    if (addFetcher.state !== "idle" || !addFetcher.data) return;
+    if (addFetcher.data.ok) {
+      toast.success("관련 조문이 추가되었습니다.");
+      if (inputRef.current) inputRef.current.value = "";
+      revalidator.revalidate();
+    } else if (addFetcher.data.error) {
+      toast.error(addFetcher.data.error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addFetcher.state, addFetcher.data]);
+
+  useEffect(() => {
+    if (removeFetcher.state !== "idle" || !removeFetcher.data) return;
+    if (removeFetcher.data.ok) {
+      toast.success("관련 조문이 제거되었습니다.");
+      revalidator.revalidate();
+    } else if (removeFetcher.data.error) {
+      toast.error(removeFetcher.data.error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [removeFetcher.state, removeFetcher.data]);
+
+  // articleNumber 가 비어 있을 때 추가 버튼 disable — onSubmit 가드.
+  function onAddSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const fd = new FormData(e.currentTarget);
+    const v = String(fd.get("articleNumber") ?? "").trim();
+    if (!v) {
+      e.preventDefault();
+      toast.error("조문 번호를 입력하세요. 예: 29 또는 제29조의2");
+    }
+  }
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          관련 조문
+        </p>
+        <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+          이 판례를 인용·해석한 조문을 매핑합니다. 학생 화면 우측 패널의 "관련
+          조문" 칩과 학습과목 case 뷰어의 조문 chips 에 반영됩니다.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {relatedArticles.length > 0 ? (
+          <ul className="flex flex-wrap gap-1.5">
+            {relatedArticles.map((a) => {
+              const num = a.articleNumber;
+              const lawCode = selectedLaw; // remove 는 case 의 subject_laws 중 어느 쪽인지 알 수 없으니
+              // — 현재 선택된 law 또는 첫 subject_laws 사용. case_link API 가 (caseId+articleNumber) 만 사용해 정확 매칭됨.
+              const key = `${lawCode}:${num ?? ""}`;
+              const removing = removingKey === key;
+              return (
+                <li key={a.articleId}>
+                  <span
+                    className={cn(
+                      "border-border bg-muted/40 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
+                      removing && "opacity-50",
+                    )}
+                  >
+                    <span className="font-medium">{a.displayLabel}</span>
+                    {num ? (
+                      <removeFetcher.Form
+                        method="post"
+                        action="/api/admin/case-link"
+                        className="inline-flex"
+                      >
+                        <input type="hidden" name="intent" value="remove" />
+                        <input type="hidden" name="caseId" value={caseId} />
+                        <input
+                          type="hidden"
+                          name="lawCode"
+                          value={lawCode}
+                        />
+                        <input
+                          type="hidden"
+                          name="articleNumber"
+                          value={num}
+                        />
+                        <button
+                          type="submit"
+                          aria-label={`${a.displayLabel} 매핑 제거`}
+                          title="제거"
+                          disabled={removing}
+                          className="hover:text-rose-600 disabled:opacity-50"
+                        >
+                          <Trash2Icon className="size-3" />
+                        </button>
+                      </removeFetcher.Form>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
+            아직 매핑된 관련 조문이 없습니다.
+          </p>
+        )}
+
+        <addFetcher.Form
+          method="post"
+          action="/api/admin/case-link"
+          onSubmit={onAddSubmit}
+          className="flex flex-wrap items-end gap-2"
+        >
+          <input type="hidden" name="intent" value="add" />
+          <input type="hidden" name="caseId" value={caseId} />
+          {subjectLaws.length > 1 ? (
+            <Field label="과목" htmlFor="newLawCode">
+              <AdminSelect
+                id="newLawCode"
+                name="lawCode"
+                value={selectedLaw}
+                onChange={(e) =>
+                  setSelectedLaw(e.currentTarget.value as LawSubjectSlug)
+                }
+                className="w-32"
+              >
+                {subjectLaws.map((s) => (
+                  <option key={s} value={s}>
+                    {LAW_SUBJECTS[s]?.name ?? s}
+                  </option>
+                ))}
+              </AdminSelect>
+            </Field>
+          ) : (
+            <input type="hidden" name="lawCode" value={selectedLaw} />
+          )}
+          <Field label="조문 번호" htmlFor="newArticleNumber">
+            <Input
+              id="newArticleNumber"
+              ref={inputRef}
+              name="articleNumber"
+              placeholder="예: 29 또는 제29조의2"
+              maxLength={20}
+              className="w-48"
+            />
+          </Field>
+          <Button type="submit" size="sm" disabled={isAdding}>
+            <PlusIcon className="size-3.5" />
+            {isAdding ? "추가 중…" : "조문 추가"}
+          </Button>
+        </addFetcher.Form>
+        <p className="text-muted-foreground text-[10px] leading-relaxed">
+          "제29조", "29조", "29" 모두 인식. 가지조문은 "29의2" 또는 "제29조의2".
+          매핑은 즉시 반영됩니다.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
