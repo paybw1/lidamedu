@@ -231,4 +231,17 @@ body {
     color: inherit;
     text-decoration: underline rgb(2, 132, 199) solid 2px; /* sky-600 */
   }
+
+  /* feat-3-207 — 5번째 옵션 "밑줄". 배경 없이 텍스트 데코레이션만.
+     학생: 가는 단색 밑줄. 강사: 두꺼운 강조 밑줄(amber-600). */
+  ::highlight(lidam-hl-underline) {
+    color: inherit;
+    text-decoration: underline currentColor solid 1.5px;
+    text-underline-offset: 2px;
+  }
+  ::highlight(lidam-hl-staff-underline) {
+    color: inherit;
+    text-decoration: underline rgb(217, 119, 6) solid 2.5px; /* amber-600 */
+    text-underline-offset: 3px;
+  }
 }

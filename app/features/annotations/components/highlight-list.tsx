@@ -17,6 +17,13 @@ const COLOR_CLASS: Record<HighlightColor, string> = {
   yellow: "bg-amber-100 text-amber-900 border-amber-300",
   red: "bg-rose-100 text-rose-900 border-rose-300",
   blue: "bg-sky-100 text-sky-900 border-sky-300",
+  // 밑줄(underline) — 배경 없이 발췌 자체에 underline 데코레이션.
+  underline: "bg-background text-foreground border-foreground/30",
+};
+
+// 발췌 텍스트에 추가로 적용할 inline 스타일 (underline 일 때만 밑줄).
+const EXCERPT_TEXT_CLASS: Partial<Record<HighlightColor, string>> = {
+  underline: "underline decoration-foreground/70 decoration-[1.5px] underline-offset-[3px]",
 };
 
 export function HighlightList({
@@ -76,7 +83,9 @@ export function HighlightList({
                       강사
                     </span>
                   ) : null}
-                  <span className="flex-1">{h.excerpt || "(발췌 없음)"}</span>
+                  <span className={cn("flex-1", EXCERPT_TEXT_CLASS[h.color])}>
+                    {h.excerpt || "(발췌 없음)"}
+                  </span>
                   {h.isMine ? (
                     <deleteFetcher.Form
                       method="post"

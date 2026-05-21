@@ -42,7 +42,8 @@ export const meta: Route.MetaFunction = () => [
   { title: "하이라이트 | Lidam Patent Attorney Academy" },
 ];
 
-// 4색 하이라이트 — 사용자 데이터이므로 다색 유지 (brief §4.3).
+// 4색 + 밑줄 — 사용자 데이터이므로 다색 유지 (brief §4.3). 밑줄(underline) 은
+// 배경 없이 텍스트 데코레이션만 (feat-3-207).
 const COLOR: Record<
   HighlightColor,
   { label: string; box: string; bar: string; dot: string }
@@ -71,6 +72,12 @@ const COLOR: Record<
     bar: "border-sky-400",
     dot: "bg-sky-400",
   },
+  underline: {
+    label: "밑줄",
+    box: "bg-background dark:bg-background",
+    bar: "border-foreground/40",
+    dot: "bg-foreground/60",
+  },
 };
 
 type TypeFilter = "article" | "case" | "problem" | "ox";
@@ -93,7 +100,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     listAllHighlights(client, user.id),
     getStudyAidCounts(client, user.id),
   ]);
-  const counts = { total: items.length, green: 0, yellow: 0, red: 0, blue: 0 };
+  const counts = {
+    total: items.length,
+    green: 0,
+    yellow: 0,
+    red: 0,
+    blue: 0,
+    underline: 0,
+  };
   for (const h of items) counts[h.color] += 1;
   return { items, counts, aidCounts };
 }
@@ -146,6 +160,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
         { label: "초록", value: counts.green, dotClass: COLOR.green.dot },
         { label: "빨강", value: counts.red, dotClass: COLOR.red.dot },
         { label: "파랑", value: counts.blue, dotClass: COLOR.blue.dot },
+        { label: "밑줄", value: counts.underline, dotClass: COLOR.underline.dot },
       ]}
     >
       <FilterBar

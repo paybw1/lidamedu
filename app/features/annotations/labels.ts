@@ -56,7 +56,15 @@ export interface MemoRecord {
   isMine: boolean;
 }
 
-export const HIGHLIGHT_COLORS = ["green", "yellow", "red", "blue"] as const;
+// 5번째 옵션 "underline" 은 배경 없이 텍스트 데코레이션(밑줄)만 — feat-3-207.
+// 강사가 그으면 모든 수험생에게 노출(전체 공개), 학생이 그으면 본인만 — RLS 는 기존 정책 그대로.
+export const HIGHLIGHT_COLORS = [
+  "green",
+  "yellow",
+  "red",
+  "blue",
+  "underline",
+] as const;
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
 
 export const highlightColorSchema = z.enum(HIGHLIGHT_COLORS);

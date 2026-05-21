@@ -2,8 +2,11 @@
 // 클릭 시 즉시 저장 (POST /api/annotations/highlight) 후 툴바 닫힘.
 // 강사·수험생 동일 — 강사가 만든 하이라이트/포스트잇은 RLS 가 전체 공개로 처리한다.
 //
+// feat-3-207 — 5번째 옵션 "밑줄"(underline) 추가. 배경 없이 텍스트 데코레이션만.
+// staff RLS 는 기존 색상들과 동일 — staff 가 그으면 모든 학생에게 노출.
+//
 // 주의: 색상 버튼 클릭 시 selection 이 사라지지 않도록 onMouseDown + preventDefault 사용.
-import { NotebookPenIcon } from "lucide-react";
+import { NotebookPenIcon, UnderlineIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
@@ -22,6 +25,8 @@ const COLOR_BTN: Record<HighlightColor, string> = {
   green: "bg-emerald-200 hover:bg-emerald-300",
   red: "bg-rose-200 hover:bg-rose-300",
   blue: "bg-sky-200 hover:bg-sky-300",
+  // underline 은 별도 렌더 (아이콘 버튼) 이라 여기엔 placeholder 만.
+  underline: "",
 };
 
 const COLOR_TITLE: Record<HighlightColor, string> = {
@@ -29,7 +34,13 @@ const COLOR_TITLE: Record<HighlightColor, string> = {
   green: "초록 하이라이트",
   red: "빨강 하이라이트",
   blue: "파랑 하이라이트",
+  underline: "밑줄",
 };
+
+// 색상 버튼 list — underline 은 별도 렌더 (아이콘 버튼) 이라 4색만 자동 매핑.
+const SWATCH_COLORS = HIGHLIGHT_COLORS.filter(
+  (c): c is Exclude<HighlightColor, "underline"> => c !== "underline",
+);
 
 interface PendingSelection {
   text: string;
@@ -229,7 +240,8 @@ export function HighlightToolbar({
 
   if (!pending) return null;
 
-  const TOOLBAR_W = 208;
+  // 4색 + 밑줄 1 + divider + 포스트잇 1 = 색 7개 너비. 색 4 × 28 + (밑줄·메모) 2 × 28 + divider 1 + padding ≈ 240.
+  const TOOLBAR_W = 240;
   const TOOLBAR_H = 36;
   const { top, left } = placeToolbar(pending.rect, TOOLBAR_W, TOOLBAR_H);
   const submitting = fetcher.state !== "idle";
@@ -242,7 +254,7 @@ export function HighlightToolbar({
       className="bg-popover text-popover-foreground fixed z-50 flex items-center gap-1 rounded-md border p-1 shadow-md"
       style={{ top, left, width: TOOLBAR_W, height: TOOLBAR_H }}
     >
-      {HIGHLIGHT_COLORS.map((c) => (
+      {SWATCH_COLORS.map((c) => (
         <button
           key={c}
           type="button"
@@ -260,6 +272,20 @@ export function HighlightToolbar({
           )}
         />
       ))}
+      <button
+        key="underline"
+        type="button"
+        aria-label={COLOR_TITLE.underline}
+        title={COLOR_TITLE.underline}
+        disabled={submitting}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          handlePickColor("underline");
+        }}
+        className="hover:bg-accent text-foreground inline-flex size-7 items-center justify-center rounded border border-black/10 transition-colors disabled:opacity-50"
+      >
+        <UnderlineIcon className="size-4" />
+      </button>
       <span className="bg-border mx-0.5 h-5 w-px" aria-hidden />
       <button
         type="button"
