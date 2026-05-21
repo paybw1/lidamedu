@@ -3,7 +3,7 @@
 
 import { FileTextIcon, PencilIcon, StarIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -50,6 +50,10 @@ export function CaseBody({
   viewerIsStaff?: boolean;
 }) {
   const enableHighlights = highlights !== undefined;
+  // staff "수정" 버튼 — 현재 경로(학생 판례 뷰어 / 학습정보 뷰어 등)를 returnTo 로 전달해
+  // 변경 저장 후 같은 페이지로 돌아오게 한다. safeReturnTo (api/admin/case.tsx) 가 화이트리스트.
+  const location = useLocation();
+  const editReturnTo = `${location.pathname}${location.search}`;
   // summaryItems 가 있으면 우선 사용. 없으면 legacy summary_body_md 를 한 묶음으로 폴백.
   const summaryItems =
     kase.summaryItems.length > 0
@@ -132,7 +136,9 @@ export function CaseBody({
               size="sm"
               className="h-7 gap-1 text-xs"
             >
-              <Link to={`/admin/cases/edit/${kase.caseId}`}>
+              <Link
+                to={`/admin/cases/edit/${kase.caseId}?returnTo=${encodeURIComponent(editReturnTo)}`}
+              >
                 <PencilIcon className="size-3" /> 수정
               </Link>
             </Button>

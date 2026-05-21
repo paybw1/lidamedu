@@ -74,11 +74,17 @@ function emptyToNull(raw: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
-// returnTo 는 /admin/cases 목록 경로만 허용 — open-redirect 방지.
+// returnTo 화이트리스트 — open-redirect 방지. 우리 도메인 안의 안전 경로만 허용.
+//   1) /admin/cases  — admin 목록·필터 보존
+//   2) /subjects/<slug>/cases/<uuid> — 학생/공개 판례 본문 (case-body 의 "수정" 진입점)
+// 그 외(외부 URL, `//evil.com`, `/admin/users` 등)는 모두 기본값으로 대체.
+// admin-case-edit.tsx loader 와 동일 함수 — 두 곳에 두지만 5줄짜리 정규식이라 lib 분리 보류.
 function safeReturnTo(raw: unknown): string {
-  return typeof raw === "string" && /^\/admin\/cases(\?|$)/.test(raw)
-    ? raw
-    : "/admin/cases?law=patent";
+  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//"))
+    return "/admin/cases?law=patent";
+  if (/^\/admin\/cases(\/|\?|$)/.test(raw)) return raw;
+  if (/^\/subjects\/[a-z_]+\/cases\/[a-f0-9-]+(\?|#|$)/i.test(raw)) return raw;
+  return "/admin/cases?law=patent";
 }
 
 export async function action({ request }: Route.ActionArgs) {
