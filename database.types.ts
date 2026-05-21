@@ -59,6 +59,76 @@ export type Database = {
           },
         ]
       }
+      ai_eval_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          difficulty: number
+          eval_item_id: string
+          law_codes: string[]
+          notes: string | null
+          question: string
+          reference_answer: string
+          reference_sources: Json
+          source_message_id: string | null
+          status: Database["public"]["Enums"]["ai_eval_status"]
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          difficulty?: number
+          eval_item_id?: string
+          law_codes?: string[]
+          notes?: string | null
+          question: string
+          reference_answer: string
+          reference_sources?: Json
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["ai_eval_status"]
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          difficulty?: number
+          eval_item_id?: string
+          law_codes?: string[]
+          notes?: string | null
+          question?: string
+          reference_answer?: string
+          reference_sources?: Json
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["ai_eval_status"]
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_eval_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ai_eval_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ai_eval_items_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "ai_messages"
+            referencedColumns: ["message_id"]
+          },
+        ]
+      }
       ai_messages: {
         Row: {
           body_md: string
@@ -5077,6 +5147,7 @@ export type Database = {
         | "cites"
         | "similar_to"
         | "contrary_to"
+      ai_eval_status: "active" | "archived"
       ai_message_role: "user" | "assistant"
       annotation_target_type:
         | "article"
@@ -5296,6 +5367,7 @@ export const Constants = {
         "similar_to",
         "contrary_to",
       ],
+      ai_eval_status: ["active", "archived"],
       ai_message_role: ["user", "assistant"],
       annotation_target_type: [
         "article",

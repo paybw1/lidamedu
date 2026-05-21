@@ -457,7 +457,7 @@ export default [
       ),
       // feat-9-004 — AI Q&A 채팅 화면.
       route("/ai", "features/ai-qna/screens/ai-chat.tsx"),
-      // feat-9-005 — 운영자 피드백 큐 + 지표.
+      // feat-9-005 — 운영자 피드백 큐 + 지표 + eval 셋.
       route(
         "/admin/ai-qna/feedback",
         "features/ai-qna/screens/admin-ai-qna-feedback.tsx",
@@ -465,6 +465,19 @@ export default [
       route(
         "/admin/ai-qna/metrics",
         "features/ai-qna/screens/admin-ai-qna-metrics.tsx",
+      ),
+      route(
+        "/admin/ai-qna/eval",
+        "features/ai-qna/screens/admin-ai-qna-eval.tsx",
+      ),
+      route(
+        "/admin/ai-qna/eval/new",
+        "features/ai-qna/screens/admin-ai-qna-eval-edit.tsx",
+        { id: "admin-ai-qna-eval-new" },
+      ),
+      route(
+        "/admin/ai-qna/eval/:evalItemId",
+        "features/ai-qna/screens/admin-ai-qna-eval-edit.tsx",
       ),
       // feat-9-006 — 운영자 한도 설정.
       route(

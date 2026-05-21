@@ -92,8 +92,14 @@ export default function AdminAiQnaFeedback({
                     출처 {it.citations.length}
                   </Badge>
                   <Link
-                    to={`/qna/new?ref=${encodeURIComponent(it.precedingQuestion ?? "")}`}
+                    to={`/admin/ai-qna/eval/new?fromMessage=${it.messageId}`}
                     className="text-primary ml-auto inline-flex items-center gap-1 text-[11px] underline-offset-4 hover:underline"
+                  >
+                    eval 로 승격 <ArrowRightIcon className="size-3" />
+                  </Link>
+                  <Link
+                    to={`/qna/new?ref=${encodeURIComponent(it.precedingQuestion ?? "")}`}
+                    className="text-muted-foreground inline-flex items-center gap-1 text-[11px] underline-offset-4 hover:underline"
                   >
                     강사 Q&A 로 옮기기 <ArrowRightIcon className="size-3" />
                   </Link>
