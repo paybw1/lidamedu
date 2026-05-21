@@ -20,7 +20,15 @@ import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import type { OxQuestionItem, OxTruth } from "~/features/problems/labels";
-import { listMyOxWrongNoteItems } from "~/features/problems/queries.server";
+import {
+  type OxWrongItem,
+  listMyOxWrongNoteItems,
+} from "~/features/problems/queries.server";
+import {
+  RANGE_PRESETS,
+  inRangePreset,
+  type RangePreset,
+} from "~/features/study/components/study-aids-list";
 
 import type { Route } from "./+types/my-ox-wrong-note";
 
@@ -200,6 +208,10 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
   const { items } = loaderData;
+  const [range, setRange] = useState<RangePreset>("all");
+  const visible = items.filter((it) =>
+    inRangePreset((it as OxWrongItem).lastAttemptAt, range),
+  );
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">
@@ -211,7 +223,9 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="tabular-nums">
-            오답 {items.length} 개
+            {range === "all"
+              ? `오답 ${items.length} 개`
+              : `${visible.length} / ${items.length} 개`}
           </Badge>
           <Button asChild size="sm" variant="outline" className="ml-auto">
             <Link to="/me/ox-sessions">
@@ -219,21 +233,43 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
             </Link>
           </Button>
         </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-[11px] font-semibold">
+            최근 시도
+          </span>
+          {RANGE_PRESETS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => setRange(p.value)}
+              aria-pressed={range === p.value}
+              className={cn(
+                "inline-flex h-[26px] items-center rounded-full border px-2.5 text-xs font-semibold transition-colors",
+                range === p.value
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-muted/40 text-foreground hover:bg-muted",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </header>
 
-      {items.length === 0 ? (
+      {visible.length === 0 ? (
         <div className="rounded-2xl border border-dashed py-12 text-center">
           <CheckCircle2Icon
             className="text-emerald-500 dark:text-emerald-400 mx-auto size-10"
             aria-hidden="true"
           />
           <p className="text-muted-foreground mt-3 text-sm">
-            오답 노트가 비어있습니다. 모두 정답 처리되었거나 아직 OX 시험 응시
-            이력이 없습니다.
+            {items.length === 0
+              ? "오답 노트가 비어있습니다. 모두 정답 처리되었거나 아직 OX 시험 응시 이력이 없습니다."
+              : "선택한 기간에 해당하는 오답 지문이 없습니다."}
           </p>
         </div>
       ) : (
-        <WrongNoteRunner items={items} />
+        <WrongNoteRunner key={range} items={visible} />
       )}
     </div>
   );
