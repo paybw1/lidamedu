@@ -205,6 +205,34 @@ export async function getPost(
   };
 }
 
+// feat-6 v2.2 — 첨부 list 조회.
+import type { CommunityPostAttachment, CommunityPostAttachmentKind } from "./labels";
+
+export async function listAttachments(
+  client: SupabaseClient<Database>,
+  postId: string,
+): Promise<CommunityPostAttachment[]> {
+  const { data, error } = await client
+    .from("community_post_attachments")
+    .select(
+      "attachment_id, post_id, kind, path, original_filename, size_bytes, mime, sort_order, created_at",
+    )
+    .eq("post_id", postId)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    attachmentId: r.attachment_id,
+    postId: r.post_id,
+    kind: r.kind as CommunityPostAttachmentKind,
+    path: r.path,
+    originalFilename: r.original_filename,
+    sizeBytes: r.size_bytes,
+    mime: r.mime,
+    sortOrder: r.sort_order,
+    createdAt: r.created_at,
+  }));
+}
+
 /** feat-6 v2.1 — 좋아요 토글. 이미 있으면 delete, 없으면 insert. */
 export async function togglePostLike(
   client: SupabaseClient<Database>,

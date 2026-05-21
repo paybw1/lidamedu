@@ -3,7 +3,9 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 
 import {
   createComment,
@@ -58,6 +60,34 @@ export async function action({ request }: Route.ActionArgs) {
     });
     if (!result.ok) {
       return data({ ok: false, error: result.error }, { status: 400, headers });
+    }
+    // feat-6 v2.2 — 글 작성자에게 댓글 알림 (본인 댓글 제외, best-effort).
+    if (post.author?.id && post.author.id !== user.id) {
+      const preview =
+        input.bodyMd.length > 80
+          ? input.bodyMd.slice(0, 80) + "…"
+          : input.bodyMd;
+      runAfterResponse(
+        (async () => {
+          const { error } = await adminClient
+            .from("user_notifications")
+            .insert({
+              recipient_id: post.author!.id,
+              kind: "community_post_comment",
+              entity_type: "community_post",
+              entity_id: post.postId,
+              title: `새 댓글: ${post.title}`,
+              body: preview,
+              href: `/community/${post.board}/${post.postId}`,
+            });
+          if (error) {
+            console.warn(
+              "[community comment notify] insert 실패:",
+              error.message,
+            );
+          }
+        })(),
+      );
     }
     return data({ ok: true, commentId: result.commentId }, { headers });
   }

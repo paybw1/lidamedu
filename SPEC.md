@@ -433,9 +433,12 @@
 |----|------|:-------:|:---:|
 | feat-6-001 | 커뮤니티 메뉴 라벨 + Placeholder 화면 — `/community` ComingSoon 컴포넌트 사용. | P0 | ✅ |
 | feat-6-002 | 커뮤니티 게시판 3종 (자유게시판·스터디 모집·합격 후기) — 단일 `community_posts`+`community_post_comments`+`board` enum. `/community` 허브 + `/community/:board` 목록·검색 + 작성/수정 + 상세·댓글. RLS 하이브리드(인증 전체 읽기 + 본인 쓰기 + manager 모더레이션·고정), soft delete, `public_profiles` 뷰로 작성자 표시. 상세: `docs/features/feat-6-002-community-boards.md`. | P1 | ✅ |
-| feat-6-XXX | (잔여) 좋아요·첨부·알림·페이지네이션 등 게시판 v2 | P2 | 🟡 |
+| feat-6-XXX | (잔여) 좋아요·첨부·알림·페이지네이션 등 게시판 v2 | P2 | ✅ |
 
-**v2.1 진행 (2026-05-21)**: `community_post_likes` 테이블((post_id, user_id) PK, RLS: 누구나 read, 본인만 insert/delete). `togglePostLike` + post API `intent="toggle_like"`. `listPosts` 페이지네이션(page/pageSize default 20, count exact) + likedByMe/likeCount 매핑(`fetchLikeMeta` batch). community-board 카드에 ♥ N 표시 + 페이지네이션 네비. community-post-detail 에 옵티미스틱 LikeToggle 버튼(좋아요 색상 분기). **v2.2 잔여**: 이미지/PDF 첨부(Storage) · 댓글/좋아요 알림(인박스 fanout).
+**v2.1 + v2.2 완료 (2026-05-21)**: 
+- v2.1 좋아요·페이지네이션: `community_post_likes` 테이블((post_id, user_id) PK), `togglePostLike` + post API `intent="toggle_like"`, `listPosts` 페이지네이션(page/pageSize default 20, count exact) + likedByMe/likeCount 매핑(`fetchLikeMeta` batch), community-board 카드 ♥ N + 페이지 네비, post-detail 옵티미스틱 LikeToggle.
+- v2.2 첨부: `community_post_attachment_kind` enum(image/pdf/file) + `community_post_attachments` 테이블 + RLS(post 작성자/manager+ write, authenticated read), private bucket `community-attachments`(10MB, image+pdf MIME 화이트리스트). `/api/community/attachment` (multipart upload/delete, 작성자/manager+ 가드) + `/community/attachment/signed-url` (5분). post-detail 본문 아래 `AttachmentsList`(이미지 인라인 썸네일, PDF/기타 chip) + 작성자/manager+ 만 `AttachmentUploadForm`.
+- v2.2 알림: `staff_notification_kind` enum 에 `community_post_comment` 값 추가. comment API create 흐름에서 글 작성자에게 user_notifications insert (본인 댓글 제외, runAfterResponse best-effort).
 
 ---
 

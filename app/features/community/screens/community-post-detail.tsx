@@ -23,7 +23,8 @@ import {
   type CommunityComment,
   type CommunityPostDetail,
 } from "../labels";
-import { getPost, listComments } from "../queries.server";
+import { getPost, listAttachments, listComments } from "../queries.server";
+import type { CommunityPostAttachment } from "../labels";
 
 import type { Route } from "./+types/community-post-detail";
 
@@ -50,7 +51,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!post || post.board !== boardParse.data) {
     throw data("글을 찾을 수 없습니다", { status: 404 });
   }
-  const comments = await listComments(client, post.postId);
+  const [comments, attachments] = await Promise.all([
+    listComments(client, post.postId),
+    listAttachments(client, post.postId),
+  ]);
 
   const { data: profile } = await client
     .from("profiles")
@@ -61,6 +65,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return {
     post,
     comments,
+    attachments,
     currentUserId: user.id,
     isManager: roleAtLeast(profile?.role, "manager"),
   };
@@ -69,8 +74,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function CommunityPostDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { post, comments, currentUserId, isManager } = loaderData;
+  const { post, comments, attachments, currentUserId, isManager } = loaderData;
   const isAuthor = post.author?.id === currentUserId;
+  const canEditAttach = isAuthor || isManager;
   const isStudy = post.board === "study";
 
   return (
@@ -112,6 +118,18 @@ export default function CommunityPostDetail({
         <p className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85] whitespace-pre-line">
           {post.bodyMd}
         </p>
+
+        {/* feat-6 v2.2 — 첨부 list */}
+        {attachments.length > 0 ? (
+          <AttachmentsList
+            attachments={attachments}
+            canEdit={canEditAttach}
+          />
+        ) : null}
+        {canEditAttach ? (
+          <AttachmentUploadForm postId={post.postId} />
+        ) : null}
+
         {/* feat-6 v2.1 — 좋아요 버튼 */}
         <LikeToggle
           postId={post.postId}
@@ -386,6 +404,180 @@ function CommentForm({ postId }: { postId: string }) {
           댓글 등록 <SendIcon className="size-3.5" />
         </Button>
       </div>
+    </fetcher.Form>
+  );
+}
+
+// feat-6 v2.2 — 첨부 list 표시. 이미지는 인라인 썸네일(클릭 시 signed URL), 그 외는 다운로드 chip.
+function AttachmentsList({
+  attachments,
+  canEdit,
+}: {
+  attachments: ReadonlyArray<CommunityPostAttachment>;
+  canEdit: boolean;
+}) {
+  return (
+    <div className="border-border/60 mt-4 space-y-3 border-t pt-3">
+      <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+        첨부 {attachments.length}건
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {attachments.map((a) => (
+          <AttachmentItem key={a.attachmentId} a={a} canEdit={canEdit} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AttachmentItem({
+  a,
+  canEdit,
+}: {
+  a: CommunityPostAttachment;
+  canEdit: boolean;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [loadingUrl, setLoadingUrl] = useState(false);
+  const fetcher = useFetcher();
+
+  // 이미지면 mount 시 signed URL 자동 fetch.
+  useEffect(() => {
+    if (a.kind !== "image") return;
+    let cancelled = false;
+    setLoadingUrl(true);
+    fetch(`/community/attachment/signed-url?attachmentId=${a.attachmentId}`)
+      .then((r) => r.json() as Promise<{ url?: string }>)
+      .then((j) => {
+        if (!cancelled && j.url) setUrl(j.url);
+      })
+      .finally(() => !cancelled && setLoadingUrl(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [a.attachmentId, a.kind]);
+
+  async function openSigned() {
+    setLoadingUrl(true);
+    try {
+      const r = await fetch(
+        `/community/attachment/signed-url?attachmentId=${a.attachmentId}`,
+      );
+      const j = (await r.json()) as { url?: string };
+      if (j.url) window.open(j.url, "_blank", "noopener,noreferrer");
+    } finally {
+      setLoadingUrl(false);
+    }
+  }
+
+  function doDelete() {
+    if (!confirm(`첨부 "${a.originalFilename}" 를 삭제할까요?`)) return;
+    const fd = new FormData();
+    fd.set("intent", "delete");
+    fd.set("attachmentId", a.attachmentId);
+    fetcher.submit(fd, {
+      method: "post",
+      action: "/api/community/attachment",
+      encType: "multipart/form-data",
+    });
+  }
+
+  if (a.kind === "image") {
+    return (
+      <div className="border-border relative inline-flex flex-col gap-1 overflow-hidden rounded-xl border bg-card">
+        {url ? (
+          <button
+            type="button"
+            onClick={openSigned}
+            className="block"
+            title={a.originalFilename}
+          >
+            <img
+              src={url}
+              alt={a.originalFilename}
+              className="block max-h-48 max-w-xs object-contain"
+            />
+          </button>
+        ) : (
+          <div className="text-muted-foreground flex h-32 w-48 items-center justify-center text-xs">
+            {loadingUrl ? "불러오는 중…" : "이미지"}
+          </div>
+        )}
+        <p className="text-muted-foreground truncate px-2 py-1 text-[10px]">
+          {a.originalFilename}
+        </p>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={doDelete}
+            disabled={fetcher.state !== "idle"}
+            className="absolute top-1 right-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white"
+            aria-label="삭제"
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  // pdf / file — chip 형태.
+  return (
+    <div className="border-border bg-card inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs">
+      <button
+        type="button"
+        onClick={openSigned}
+        disabled={loadingUrl}
+        className="text-foreground inline-flex items-center gap-1"
+        title={a.originalFilename}
+      >
+        📎 {a.originalFilename}
+      </button>
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={doDelete}
+          disabled={fetcher.state !== "idle"}
+          className="text-rose-600 hover:text-rose-700"
+          aria-label="삭제"
+        >
+          ×
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function AttachmentUploadForm({ postId }: { postId: string }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const submitting = fetcher.state !== "idle";
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/community/attachment"
+      encType="multipart/form-data"
+      className="border-border/60 mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-dashed bg-muted/20 p-2 text-xs"
+    >
+      <input type="hidden" name="intent" value="upload" />
+      <input type="hidden" name="postId" value={postId} />
+      <input
+        type="file"
+        name="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+        required
+        className="text-xs"
+      />
+      <Button
+        type="submit"
+        size="sm"
+        disabled={submitting}
+        className="h-7 rounded-full px-3 text-xs"
+      >
+        {submitting ? "업로드 중…" : "추가"}
+      </Button>
+      {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
+        <span className="text-xs text-rose-600">{fetcher.data.error}</span>
+      ) : null}
     </fetcher.Form>
   );
 }

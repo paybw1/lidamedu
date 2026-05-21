@@ -78,6 +78,8 @@ export default [
     ...prefix("/community", [
       route("/post", "features/community/api/post.tsx"),
       route("/comment", "features/community/api/comment.tsx"),
+      // feat-6 v2.2 — 첨부 upload/delete (multipart).
+      route("/attachment", "features/community/api/attachment.tsx"),
     ]),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
@@ -347,6 +349,11 @@ export default [
         "/community/:board/:postId/edit",
         "features/community/screens/community-post-new.tsx",
         { id: "community-post-edit" },
+      ),
+      // feat-6 v2.2 — 첨부 signed URL (인증 사용자).
+      route(
+        "/community/attachment/signed-url",
+        "features/community/api/attachment-signed-url.tsx",
       ),
       route(
         "/announcements",

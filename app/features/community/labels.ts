@@ -60,3 +60,17 @@ export interface CommunityComment {
   createdAt: string;
   updatedAt: string;
 }
+
+// feat-6 v2.2 — 게시글 첨부.
+export type CommunityPostAttachmentKind = "image" | "pdf" | "file";
+export interface CommunityPostAttachment {
+  attachmentId: string;
+  postId: string;
+  kind: CommunityPostAttachmentKind;
+  path: string;
+  originalFilename: string;
+  sizeBytes: number;
+  mime: string;
+  sortOrder: number;
+  createdAt: string;
+}

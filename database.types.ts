@@ -1456,6 +1456,67 @@ export type Database = {
           },
         ]
       }
+      community_post_attachments: {
+        Row: {
+          attachment_id: string
+          created_at: string
+          kind: Database["public"]["Enums"]["community_post_attachment_kind"]
+          mime: string
+          original_filename: string
+          path: string
+          post_id: string
+          size_bytes: number
+          sort_order: number
+          uploaded_by: string | null
+        }
+        Insert: {
+          attachment_id?: string
+          created_at?: string
+          kind: Database["public"]["Enums"]["community_post_attachment_kind"]
+          mime: string
+          original_filename: string
+          path: string
+          post_id: string
+          size_bytes: number
+          sort_order?: number
+          uploaded_by?: string | null
+        }
+        Update: {
+          attachment_id?: string
+          created_at?: string
+          kind?: Database["public"]["Enums"]["community_post_attachment_kind"]
+          mime?: string
+          original_filename?: string
+          path?: string
+          post_id?: string
+          size_bytes?: number
+          sort_order?: number
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_post_attachments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["post_id"]
+          },
+          {
+            foreignKeyName: "community_post_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_post_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       community_post_comments: {
         Row: {
           author_id: string | null
@@ -5323,6 +5384,7 @@ export type Database = {
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
       chunk_source_type: "article" | "case" | "problem"
       community_board: "free" | "study" | "review"
+      community_post_attachment_kind: "image" | "pdf" | "file"
       content_comment_target_type: "article" | "case" | "problem"
       curriculum_item_kind:
         | "article"
@@ -5378,6 +5440,7 @@ export type Database = {
         | "student_note_shared"
         | "exam_certificate_submitted"
         | "exam_result_reminder"
+        | "community_post_comment"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -5548,6 +5611,7 @@ export const Constants = {
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
       chunk_source_type: ["article", "case", "problem"],
       community_board: ["free", "study", "review"],
+      community_post_attachment_kind: ["image", "pdf", "file"],
       content_comment_target_type: ["article", "case", "problem"],
       curriculum_item_kind: [
         "article",
@@ -5607,6 +5671,7 @@ export const Constants = {
         "student_note_shared",
         "exam_certificate_submitted",
         "exam_result_reminder",
+        "community_post_comment",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
