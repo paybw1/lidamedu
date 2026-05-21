@@ -1,5 +1,6 @@
 // 커뮤니티 글 상세 + 댓글 — `/community/:board/:postId`. feat-6-002.
 import {
+  HeartIcon,
   MessageSquareIcon,
   PencilIcon,
   PinIcon,
@@ -45,7 +46,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw redirect("/login");
   }
 
-  const post = await getPost(client, params.postId);
+  const post = await getPost(client, params.postId, user.id);
   if (!post || post.board !== boardParse.data) {
     throw data("글을 찾을 수 없습니다", { status: 404 });
   }
@@ -111,6 +112,12 @@ export default function CommunityPostDetail({
         <p className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85] whitespace-pre-line">
           {post.bodyMd}
         </p>
+        {/* feat-6 v2.1 — 좋아요 버튼 */}
+        <LikeToggle
+          postId={post.postId}
+          likeCount={post.likeCount}
+          likedByMe={post.likedByMe}
+        />
       </article>
 
       {isAuthor || isManager ? (
@@ -380,5 +387,56 @@ function CommentForm({ postId }: { postId: string }) {
         </Button>
       </div>
     </fetcher.Form>
+  );
+}
+
+// feat-6 v2.1 — 좋아요 토글 버튼. 옵티미스틱 갱신 + fetcher submit.
+function LikeToggle({
+  postId,
+  likeCount,
+  likedByMe,
+}: {
+  postId: string;
+  likeCount: number;
+  likedByMe: boolean;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; liked?: boolean; error?: string }>();
+  // 옵티미스틱 상태.
+  const [count, setCount] = useState(likeCount);
+  const [liked, setLiked] = useState(likedByMe);
+
+  function handle() {
+    const fd = new FormData();
+    fd.set("intent", "toggle_like");
+    fd.set("postId", postId);
+    setLiked((v) => !v);
+    setCount((c) => (liked ? c - 1 : c + 1));
+    fetcher.submit(fd, { method: "post", action: "/api/community/post" });
+  }
+
+  // 서버 응답으로 정정.
+  useEffect(() => {
+    if (fetcher.data && fetcher.data.ok && typeof fetcher.data.liked === "boolean") {
+      setLiked(fetcher.data.liked);
+    }
+  }, [fetcher.data]);
+
+  return (
+    <div className="mt-4 flex items-center gap-2">
+      <button
+        type="button"
+        onClick={handle}
+        disabled={fetcher.state !== "idle"}
+        aria-pressed={liked}
+        className={
+          liked
+            ? "inline-flex items-center gap-1.5 rounded-full border border-rose-500/40 bg-rose-500/[0.06] px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300"
+            : "border-border hover:border-primary/40 inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-xs font-semibold transition-colors"
+        }
+      >
+        <HeartIcon className={liked ? "size-3.5 fill-current" : "size-3.5"} />
+        좋아요 <span className="tabular-nums">{Math.max(0, count)}</span>
+      </button>
+    </div>
   );
 }

@@ -41,15 +41,32 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!user) {
     throw redirect("/login");
   }
-  const query = new URL(request.url).searchParams.get("q") ?? "";
-  const posts = await listPosts(client, { board: boardParse.data, query });
-  return { board: boardParse.data, posts, query, currentUserId: user.id };
+  const url = new URL(request.url);
+  const query = url.searchParams.get("q") ?? "";
+  const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
+  const result = await listPosts(client, {
+    board: boardParse.data,
+    query,
+    page,
+    pageSize: 20,
+    userId: user.id,
+  });
+  return {
+    board: boardParse.data,
+    posts: result.items,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    query,
+    currentUserId: user.id,
+  };
 }
 
 export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
-  const { board, posts, query, currentUserId } = loaderData;
+  const { board, posts, total, page, pageSize, query, currentUserId } = loaderData;
   const Icon = BOARD_ICON[board];
   const filterActive = query.trim().length > 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <CommunityShell
@@ -135,6 +152,7 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
                   <p className="text-muted-foreground mt-1 text-[13px]">
                     {post.author?.name ?? "알 수 없음"}
                     {post.commentCount > 0 ? ` · 댓글 ${post.commentCount}` : ""}
+                    {post.likeCount > 0 ? ` · ♥ ${post.likeCount}` : ""}
                   </p>
                 </Link>
               </li>
@@ -142,6 +160,34 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
           })}
         </ul>
       )}
+
+      {/* feat-6 v2.1 — 페이지네이션 */}
+      {totalPages > 1 ? (
+        <nav
+          className="mt-4 flex items-center justify-center gap-1"
+          aria-label="페이지"
+        >
+          {page > 1 ? (
+            <Link
+              to={`/community/${board}?page=${page - 1}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+              className="border-border hover:bg-muted rounded-md border px-3 py-1 text-xs"
+            >
+              ← 이전
+            </Link>
+          ) : null}
+          <span className="text-muted-foreground tabular-nums px-3 text-xs">
+            {page} / {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link
+              to={`/community/${board}?page=${page + 1}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
+              className="border-border hover:bg-muted rounded-md border px-3 py-1 text-xs"
+            >
+              다음 →
+            </Link>
+          ) : null}
+        </nav>
+      ) : null}
     </CommunityShell>
   );
 }

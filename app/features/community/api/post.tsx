@@ -15,6 +15,7 @@ import {
   setPostClosed,
   setPostPinned,
   softDeletePost,
+  togglePostLike,
   updatePost,
 } from "../queries.server";
 
@@ -49,6 +50,8 @@ const schema = z.discriminatedUnion("intent", [
     postId: z.string().uuid(),
     closed: boolField,
   }),
+  // feat-6 v2.1 — 좋아요 토글.
+  z.object({ intent: z.literal("toggle_like"), postId: z.string().uuid() }),
 ]);
 
 async function currentRole(
@@ -95,6 +98,19 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ ok: false, error: result.error }, { status: 400, headers });
     }
     return redirect(`/community/${input.board}/${result.postId}`, { headers });
+  }
+
+  // toggle_like — 게시글 존재만 확인 후 본인 row 토글 (RLS 가 user_id=auth.uid() 강제).
+  if (input.intent === "toggle_like") {
+    const exists = await getPost(client, input.postId);
+    if (!exists) {
+      return data({ ok: false, error: "not-found" }, { status: 404, headers });
+    }
+    const result = await togglePostLike(client, input.postId, user.id);
+    if (!result.ok) {
+      return data({ ok: false, error: result.error }, { status: 400, headers });
+    }
+    return data({ ok: true, liked: result.liked }, { headers });
   }
 
   // update/delete/pin/close — 게시글 존재 확인 후 intent 별 권한 검증

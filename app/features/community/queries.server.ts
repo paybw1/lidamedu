@@ -73,7 +73,11 @@ type RawPostRow = {
 };
 type RawPostDetailRow = RawPostRow & { body_md: string };
 
-function toSummary(row: RawPostRow, authors: Map<string, PostAuthor>): CommunityPostSummary {
+function toSummary(
+  row: RawPostRow,
+  authors: Map<string, PostAuthor>,
+  likeMeta?: { count: number; likedByMe: boolean },
+): CommunityPostSummary {
   return {
     postId: row.post_id,
     board: row.board,
@@ -82,25 +86,66 @@ function toSummary(row: RawPostRow, authors: Map<string, PostAuthor>): Community
     isPinned: row.is_pinned,
     closedAt: row.closed_at,
     commentCount: row.community_post_comments[0]?.count ?? 0,
+    likeCount: likeMeta?.count ?? 0,
+    likedByMe: likeMeta?.likedByMe ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+async function fetchLikeMeta(
+  client: SupabaseClient<Database>,
+  postIds: string[],
+  userId: string | null,
+): Promise<Map<string, { count: number; likedByMe: boolean }>> {
+  const out = new Map<string, { count: number; likedByMe: boolean }>();
+  if (postIds.length === 0) return out;
+  const { data, error } = await client
+    .from("community_post_likes")
+    .select("post_id, user_id")
+    .in("post_id", postIds);
+  if (error) throw error;
+  for (const r of data ?? []) {
+    const m = out.get(r.post_id) ?? { count: 0, likedByMe: false };
+    m.count += 1;
+    if (userId && r.user_id === userId) m.likedByMe = true;
+    out.set(r.post_id, m);
+  }
+  for (const id of postIds) if (!out.has(id)) out.set(id, { count: 0, likedByMe: false });
+  return out;
 }
 
 export interface ListPostsOptions {
   board: CommunityBoard;
   query?: string;
   limit?: number;
+  /** feat-6 v2.1 — 페이지네이션. page 1-base, pageSize default 20. */
+  page?: number;
+  pageSize?: number;
+  /** feat-6 v2.1 — 본인 좋아요 표시용. 없으면 likedByMe=false. */
+  userId?: string | null;
+}
+
+export interface ListPostsResult {
+  items: CommunityPostSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 // 게시판 목록 — 고정글 상단, 최신순. RLS 가 가시성(deleted_at) 처리.
 export async function listPosts(
   client: SupabaseClient<Database>,
   options: ListPostsOptions,
-): Promise<CommunityPostSummary[]> {
+): Promise<ListPostsResult> {
+  const page = Math.max(1, options.page ?? 1);
+  const pageSize = Math.max(1, Math.min(100, options.pageSize ?? options.limit ?? 20));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   let q = client
     .from("community_posts")
-    .select(POST_SUMMARY_COLUMNS)
+    .select(POST_SUMMARY_COLUMNS, { count: "exact" })
     .eq("board", options.board)
     .is("deleted_at", null);
 
@@ -109,24 +154,37 @@ export async function listPosts(
     q = q.or(`title.ilike.%${term}%,body_md.ilike.%${term}%`);
   }
 
-  q = q
+  const { data, error, count } = await q
     .order("is_pinned", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(options.limit ?? 50);
-
-  const { data, error } = await q;
+    .range(from, to);
   if (error) throw error;
   const rows = (data as unknown as RawPostRow[] | null) ?? [];
-  const authors = await fetchAuthors(
-    client,
-    rows.map((r) => r.author_id),
-  );
-  return rows.map((r) => toSummary(r, authors));
+  const [authors, likeMeta] = await Promise.all([
+    fetchAuthors(
+      client,
+      rows.map((r) => r.author_id),
+    ),
+    fetchLikeMeta(
+      client,
+      rows.map((r) => r.post_id),
+      options.userId ?? null,
+    ),
+  ]);
+  return {
+    items: rows.map((r) =>
+      toSummary(r, authors, likeMeta.get(r.post_id)),
+    ),
+    total: count ?? 0,
+    page,
+    pageSize,
+  };
 }
 
 export async function getPost(
   client: SupabaseClient<Database>,
   postId: string,
+  userId: string | null = null,
 ): Promise<CommunityPostDetail | null> {
   const { data, error } = await client
     .from("community_posts")
@@ -137,8 +195,43 @@ export async function getPost(
   if (error) throw error;
   if (!data) return null;
   const row = data as unknown as RawPostDetailRow;
-  const authors = await fetchAuthors(client, [row.author_id]);
-  return { ...toSummary(row, authors), bodyMd: row.body_md };
+  const [authors, likeMeta] = await Promise.all([
+    fetchAuthors(client, [row.author_id]),
+    fetchLikeMeta(client, [row.post_id], userId),
+  ]);
+  return {
+    ...toSummary(row, authors, likeMeta.get(row.post_id)),
+    bodyMd: row.body_md,
+  };
+}
+
+/** feat-6 v2.1 — 좋아요 토글. 이미 있으면 delete, 없으면 insert. */
+export async function togglePostLike(
+  client: SupabaseClient<Database>,
+  postId: string,
+  userId: string,
+): Promise<{ ok: true; liked: boolean } | { ok: false; error: string }> {
+  // 본인이 이미 눌렀는지.
+  const { data: existing } = await client
+    .from("community_post_likes")
+    .select("post_id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (existing) {
+    const { error } = await client
+      .from("community_post_likes")
+      .delete()
+      .eq("post_id", postId)
+      .eq("user_id", userId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, liked: false };
+  }
+  const { error } = await client
+    .from("community_post_likes")
+    .insert({ post_id: postId, user_id: userId });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, liked: true };
 }
 
 /* ── 댓글 조회 ────────────────────────────────────────────────────────── */

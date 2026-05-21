@@ -40,6 +40,10 @@ export interface CommunityPostSummary {
   /** study 게시판 모집 마감 시각. null = 모집 중 / 비대상 게시판. */
   closedAt: string | null;
   commentCount: number;
+  /** feat-6 v2.1 — 게시글 좋아요 카운트. */
+  likeCount: number;
+  /** feat-6 v2.1 — 현재 사용자의 좋아요 여부. listPosts options.userId 전달 시 채워짐. */
+  likedByMe: boolean;
   createdAt: string;
   updatedAt: string;
 }

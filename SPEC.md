@@ -433,7 +433,9 @@
 |----|------|:-------:|:---:|
 | feat-6-001 | 커뮤니티 메뉴 라벨 + Placeholder 화면 — `/community` ComingSoon 컴포넌트 사용. | P0 | ✅ |
 | feat-6-002 | 커뮤니티 게시판 3종 (자유게시판·스터디 모집·합격 후기) — 단일 `community_posts`+`community_post_comments`+`board` enum. `/community` 허브 + `/community/:board` 목록·검색 + 작성/수정 + 상세·댓글. RLS 하이브리드(인증 전체 읽기 + 본인 쓰기 + manager 모더레이션·고정), soft delete, `public_profiles` 뷰로 작성자 표시. 상세: `docs/features/feat-6-002-community-boards.md`. | P1 | ✅ |
-| feat-6-XXX | (잔여) 좋아요·첨부·알림·페이지네이션 등 게시판 v2 | P2 | 🔲 |
+| feat-6-XXX | (잔여) 좋아요·첨부·알림·페이지네이션 등 게시판 v2 | P2 | 🟡 |
+
+**v2.1 진행 (2026-05-21)**: `community_post_likes` 테이블((post_id, user_id) PK, RLS: 누구나 read, 본인만 insert/delete). `togglePostLike` + post API `intent="toggle_like"`. `listPosts` 페이지네이션(page/pageSize default 20, count exact) + likedByMe/likeCount 매핑(`fetchLikeMeta` batch). community-board 카드에 ♥ N 표시 + 페이지네이션 네비. community-post-detail 에 옵티미스틱 LikeToggle 버튼(좋아요 색상 분기). **v2.2 잔여**: 이미지/PDF 첨부(Storage) · 댓글/좋아요 알림(인박스 fanout).
 
 ---
 
