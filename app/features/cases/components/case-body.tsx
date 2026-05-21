@@ -398,7 +398,9 @@ function Prose({ text }: { text: string }) {
   return (
     <div className="text-foreground/90 dark:text-foreground/85 space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
       {paras.map((p, i) => (
-        <p key={i} className="whitespace-pre-line">
+        // whitespace-pre-wrap — staff 가 입력한 연속 공백/줄넘김 모두 보존(타이핑 그대로 렌더).
+        // pre-line 은 연속 공백을 1개로 압축해 띄어쓰기 수정이 반영되지 않던 문제 해결.
+        <p key={i} className="whitespace-pre-wrap">
           {renderWithUnderline(p)}
         </p>
       ))}
