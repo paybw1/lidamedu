@@ -60,6 +60,11 @@ import {
   getUserSubjectiveStats,
   getWeakAreas,
 } from "~/features/study/queries.server";
+import {
+  ALL_RANGE_SELECTION,
+  RangeSelectionGroup,
+  type RangeSelection,
+} from "~/features/study/components/study-aids-list";
 import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
 import {
   LAW_SUBJECTS,
@@ -99,8 +104,45 @@ const RANGE_QUERY_ARGS: Record<
   all: { dailyDays: 84, trendWeeks: 12, passDays: 30 },
 };
 
+// preset → since (KST 자정 기준 시작 시각). "all" 은 null = 전체 누적.
+function presetToSince(preset: RangeValue): Date | null {
+  if (preset === "all") return null;
+  // KST(UTC+9) 자정 ms.
+  const now = Date.now();
+  const kstMs = now + 9 * 60 * 60 * 1000;
+  const startKstMs = Math.floor(kstMs / 86400000) * 86400000;
+  const todayUtcMs = startKstMs - 9 * 60 * 60 * 1000;
+  if (preset === "today") return new Date(todayUtcMs);
+  if (preset === "7d") return new Date(todayUtcMs - 6 * 86400000);
+  if (preset === "30d") return new Date(todayUtcMs - 29 * 86400000);
+  return null;
+}
+
+// "YYYY-MM-DD" → KST 자정 UTC ms. invalid 면 null.
+function ymdToKstUtcMs(ymd: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], 0, 0, 0) - 9 * 60 * 60 * 1000;
+}
+
 function isRangeValue(v: string | null): v is RangeValue {
   return v !== null && (RANGE_VALUES as readonly string[]).includes(v);
+}
+
+// URL search params → RangeSelection. custom 인 경우 from/to 추출.
+function parseRangeSelection(params: URLSearchParams): RangeSelection {
+  const r = params.get("range");
+  if (r === "custom") {
+    return {
+      kind: "custom",
+      from: params.get("from"),
+      to: params.get("to"),
+    };
+  }
+  if (isRangeValue(r) && r !== DEFAULT_RANGE) {
+    return { kind: "preset", preset: r };
+  }
+  return ALL_RANGE_SELECTION;
 }
 
 export const meta: Route.MetaFunction = () => [
@@ -115,9 +157,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
 
   const url = new URL(request.url);
-  const rangeParam = url.searchParams.get("range");
-  const range: RangeValue = isRangeValue(rangeParam) ? rangeParam : DEFAULT_RANGE;
-  const { dailyDays, trendWeeks, passDays } = RANGE_QUERY_ARGS[range];
+  const rangeSel = parseRangeSelection(url.searchParams);
+
+  // 시계열 차트 인자 (custom 은 default 84/12/30 유지 — 차트는 그대로 두고 누적 stat 만 영향).
+  // 시계열까지 custom 적용은 v3 별도.
+  const tsKey: RangeValue = rangeSel.kind === "preset" ? rangeSel.preset : "all";
+  const { dailyDays, trendWeeks, passDays } = RANGE_QUERY_ARGS[tsKey];
+
+  // 누적 통계용 since.
+  let since: Date | null = null;
+  if (rangeSel.kind === "preset") {
+    since = presetToSince(rangeSel.preset);
+  } else if (rangeSel.from) {
+    const ms = ymdToKstUtcMs(rangeSel.from);
+    if (ms !== null) since = new Date(ms);
+  }
 
   const lawCodes = LAW_SUBJECT_SLUGS.map((s) => ({
     slug: s,
@@ -142,25 +196,25 @@ export async function loader({ request }: Route.LoaderArgs) {
     accuracyTrend,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
-    getDashboardKpis(client, user.id),
-    getStudyAidCounts(client, user.id),
+    getDashboardKpis(client, user.id, since),
+    getStudyAidCounts(client, user.id, since),
     getAllSubjectsProgress(client, user.id, lawCodes),
     getDailyStudyStats(client, user.id, dailyDays),
     getArticleStudyStats(client, user.id, lawCodes),
     getCaseStudyStats(client, user.id, lawCodes),
-    getUserSubjectiveStats(client, user.id, lawCodes),
+    getUserSubjectiveStats(client, user.id, lawCodes, since),
     getAllScienceSubjectsProgress(client, user.id),
-    getWeakAreas(client, user.id, 5),
-    getUserBlankStats(client, user.id),
-    getUserAutoBlankStats(client, user.id, "subject"),
-    getUserAutoBlankStats(client, user.id, "period"),
-    getUserRecitationStats(client, user.id),
+    getWeakAreas(client, user.id, 5, since),
+    getUserBlankStats(client, user.id, since),
+    getUserAutoBlankStats(client, user.id, "subject", since),
+    getUserAutoBlankStats(client, user.id, "period", since),
+    getUserRecitationStats(client, user.id, since),
     getUserAccuracyTrend(client, user.id, trendWeeks),
   ]);
   const passTrend = await getUserPassPredictionTrend(client, user.id, passDays);
 
   return {
-    range,
+    rangeSel,
     overall,
     kpis,
     aidCounts,
@@ -187,7 +241,7 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
   const tab: TabValue = isTabValue(searchParams.get("tab"))
     ? (searchParams.get("tab") as TabValue)
     : DEFAULT_TAB;
-  const range: RangeValue = loaderData.range;
+  const rangeSel: RangeSelection = loaderData.rangeSel;
 
   const setTab = (next: string) => {
     setSearchParams(
@@ -201,14 +255,22 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
     );
   };
 
-  // 기간 변경 시 URL ?range= 갱신 → loader 재호출 → 시계열 query 갱신.
+  // 기간 변경 시 URL ?range=&from=&to= 갱신 → loader 재호출 → query 갱신.
   // preventScrollReset 으로 위치 보존, replace 로 history 늘어남 방지.
-  const setRange = (next: RangeValue) => {
+  const setRange = (next: RangeSelection) => {
     setSearchParams(
       (prev) => {
         const params = new URLSearchParams(prev);
-        if (next === DEFAULT_RANGE) params.delete("range");
-        else params.set("range", next);
+        params.delete("range");
+        params.delete("from");
+        params.delete("to");
+        if (next.kind === "custom") {
+          params.set("range", "custom");
+          if (next.from) params.set("from", next.from);
+          if (next.to) params.set("to", next.to);
+        } else if (next.preset !== DEFAULT_RANGE) {
+          params.set("range", next.preset);
+        }
         return params;
       },
       { preventScrollReset: true, replace: true },
@@ -242,31 +304,13 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
 
-        {/* 기간 preset — 시계열 차트(누적 학습량·주간 정답률·합격 가능성) 에만 영향.
-            누적 통계(정답률·학습 조문 수 등) 는 항상 전체 기준이라 변하지 않음. */}
+        {/* 기간 preset/custom — 정답률·시도수·약점 등 누적 통계와 시계열 차트에 적용.
+            진도(% 완료) 와 학습한 조문·판례 수는 항상 전체 기준. */}
         <div className="border-border bg-muted/30 mt-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
-          <span className="text-muted-foreground text-[11px] font-semibold whitespace-nowrap">
-            기간
-          </span>
-          {RANGE_VALUES.map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setRange(v)}
-              aria-pressed={range === v}
-              className={cn(
-                "inline-flex h-7 items-center rounded-full border px-3 text-xs font-semibold transition-colors",
-                range === v
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-foreground hover:bg-muted",
-              )}
-            >
-              {RANGE_LABEL[v]}
-            </button>
-          ))}
+          <RangeSelectionGroup value={rangeSel} onChange={setRange} />
           <p className="text-muted-foreground ml-auto text-[11px] leading-relaxed">
-            시계열 차트(누적 학습량·주간 정답률·합격 가능성)에 적용. 누적 통계는
-            전체 기준 유지.
+            정답률·시도수·약점·메모·하이라이트·빈칸·암송·주관식 등에 적용.
+            진도(% 완료) 와 학습한 조문·판례 수는 누적 기준.
           </p>
         </div>
       </header>

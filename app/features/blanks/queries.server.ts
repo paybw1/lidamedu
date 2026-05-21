@@ -1046,16 +1046,20 @@ export interface WeakBlank {
   answer: string;
 }
 
+// since 가 주어지면 그 시각 이후 시도만 집계 — feat-3-209 v2(stats 기간 적용).
 export async function getUserBlankStats(
   client: SupabaseClient<Database>,
   userId: string,
+  since: Date | null = null,
 ): Promise<UserBlankStats> {
-  const { data: attempts, error } = await client
+  let q = client
     .from("user_blank_attempts")
     .select("set_id, blank_idx, is_correct, attempted_at, user_input")
     .eq("user_id", userId)
     .order("attempted_at", { ascending: false })
     .limit(2000);
+  if (since) q = q.gte("attempted_at", since.toISOString());
+  const { data: attempts, error } = await q;
   if (error) throw error;
 
   const all = attempts ?? [];
@@ -1482,8 +1486,9 @@ export async function getUserAutoBlankStats(
   client: SupabaseClient<Database>,
   userId: string,
   blankType: AutoBlankType,
+  since: Date | null = null,
 ): Promise<UserAutoBlankStats> {
-  const { data: attempts, error } = await client
+  let q = client
     .from("user_auto_blank_attempts")
     .select(
       "article_id, block_index, cum_offset, answer, is_correct, attempted_at",
@@ -1492,6 +1497,8 @@ export async function getUserAutoBlankStats(
     .eq("blank_type", blankType)
     .order("attempted_at", { ascending: false })
     .limit(2000);
+  if (since) q = q.gte("attempted_at", since.toISOString());
+  const { data: attempts, error } = await q;
   if (error) throw error;
   const all = attempts ?? [];
 

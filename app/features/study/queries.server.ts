@@ -258,37 +258,63 @@ export interface StudyAidCounts {
   comments: number;
 }
 
+// since 가 주어지면 그 시각 이후 작성된 학습보조만 집계 — feat-3-209 v2.
+// 오답 카운트는 listWrongAttempts/listOxWrongAttempts 가 "가장 최근 시도가 오답" 룰이라
+// 기간 인자 호환이 모호 — since 적용은 annotation 류(bookmarks/memos/highlights/comments) 에만.
 export async function getStudyAidCounts(
   client: SupabaseClient<Database>,
   userId: string,
+  since: Date | null = null,
 ): Promise<StudyAidCounts> {
+  const sinceIso = since?.toISOString();
+  const applySince = <
+    Q extends {
+      gte: (col: string, v: string) => Q;
+    },
+  >(
+    q: Q,
+    col: string,
+  ): Q => (sinceIso ? q.gte(col, sinceIso) : q);
+
   const [wrongs, oxWrongs, bookmarkRes, memoRes, highlightRes, commentRes] =
     await Promise.all([
     // 객관식 오답 카운트 — 최근 시도 기준 정확 카운트는 expensive 라서
     // 정확한 listWrongAttempts 를 한 번 돌려 길이를 본다 (실제 위젯 표시용).
     listWrongAttempts(client, userId),
     listOxWrongAttempts(client, userId),
-    client
-      .from("user_bookmarks")
-      .select("bookmark_id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .is("deleted_at", null)
-      .gt("star_level", 0),
-    client
-      .from("user_memos")
-      .select("memo_id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .is("deleted_at", null),
-    client
-      .from("user_highlights")
-      .select("highlight_id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .is("deleted_at", null),
-    client
-      .from("content_comments")
-      .select("comment_id", { count: "exact", head: true })
-      .eq("author_id", userId)
-      .is("deleted_at", null),
+    applySince(
+      client
+        .from("user_bookmarks")
+        .select("bookmark_id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .gt("star_level", 0),
+      "updated_at",
+    ),
+    applySince(
+      client
+        .from("user_memos")
+        .select("memo_id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .is("deleted_at", null),
+      "updated_at",
+    ),
+    applySince(
+      client
+        .from("user_highlights")
+        .select("highlight_id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .is("deleted_at", null),
+      "created_at",
+    ),
+    applySince(
+      client
+        .from("content_comments")
+        .select("comment_id", { count: "exact", head: true })
+        .eq("author_id", userId)
+        .is("deleted_at", null),
+      "updated_at",
+    ),
   ]);
   return {
     wrongMcq: wrongs.length,
@@ -1140,16 +1166,21 @@ export interface DashboardKpis {
   };
 }
 
+// since 가 주어지면 그 시각 이후 시도만 집계 — feat-3-209 v2(stats 기간 적용).
+// last7d 통계는 항상 최근 7일 기준 — since 와 별개 (대시보드 표시용 보조 데이터).
 export async function getDashboardKpis(
   client: SupabaseClient<Database>,
   userId: string,
+  since: Date | null = null,
 ): Promise<DashboardKpis> {
-  const { data: rows, error } = await client
+  let q = client
     .from("user_problem_attempts")
     .select("problem_id, is_correct, time_spent_ms, attempted_at")
     .eq("user_id", userId)
     .order("attempted_at", { ascending: false })
     .limit(5000);
+  if (since) q = q.gte("attempted_at", since.toISOString());
+  const { data: rows, error } = await q;
   if (error) throw error;
   const list = rows ?? [];
 
@@ -1360,9 +1391,11 @@ export async function getWeakAreas(
   client: SupabaseClient<Database>,
   userId: string,
   limit = 5,
+  since: Date | null = null,
 ): Promise<WeakAreaItem[]> {
-  // 1. 본인 attempts 최신 → 마지막이 오답인 problem 만 후보.
-  const wrongs = await listWrongAttempts(client, userId);
+  // 1. 본인 attempts 최신 → 마지막이 오답인 problem 만 후보. since 가 주어지면
+  //    그 시각 이후 시도만 — 기간 안 약점 영역만 집계.
+  const wrongs = await listWrongAttempts(client, userId, undefined, since);
   if (wrongs.length === 0) return [];
 
   // 2. 후보 problem_id 들의 글로벌 통계.
@@ -1403,8 +1436,9 @@ export async function listWrongAttempts(
   client: SupabaseClient<Database>,
   userId: string,
   lawCode?: LawSubjectSlug,
+  since: Date | null = null,
 ): Promise<WrongAttemptItem[]> {
-  const { data: rows, error } = await client
+  let q = client
     .from("user_problem_attempts")
     .select(
       "problem_id, is_correct, attempted_at, problems!inner(body_md, year, problem_number, primary_article_id, law_id, articles!primary_article_id(display_label), laws!inner(law_code))",
@@ -1413,6 +1447,8 @@ export async function listWrongAttempts(
     .is("ox_answer", null)
     .order("attempted_at", { ascending: false })
     .limit(500);
+  if (since) q = q.gte("attempted_at", since.toISOString());
+  const { data: rows, error } = await q;
   if (error) throw error;
   const list = rows ?? [];
   const lastByProblem = new Map<
@@ -1474,8 +1510,9 @@ export async function listOxWrongAttempts(
   client: SupabaseClient<Database>,
   userId: string,
   lawCode?: LawSubjectSlug,
+  since: Date | null = null,
 ): Promise<OxWrongAttemptItem[]> {
-  const { data: rows, error } = await client
+  let q = client
     .from("user_problem_attempts")
     .select(
       "problem_id, selected_choice_id, selected_box_item_id, ox_answer, is_correct, attempted_at",
@@ -1484,6 +1521,8 @@ export async function listOxWrongAttempts(
     .not("ox_answer", "is", null)
     .order("attempted_at", { ascending: false })
     .limit(2000);
+  if (since) q = q.gte("attempted_at", since.toISOString());
+  const { data: rows, error } = await q;
   if (error) throw error;
   const list = rows ?? [];
 
@@ -1924,14 +1963,18 @@ export async function getUserSubjectiveStats(
   client: SupabaseClient<Database>,
   userId: string,
   lawCodes: ReadonlyArray<{ slug: LawSubjectSlug; name: string }>,
+  since: Date | null = null,
 ): Promise<UserSubjectiveStats> {
-  const { data: rows, error } = await client
+  let q = client
     .from("user_subjective_attempts")
     .select(
       "attempt_id, self_score, submitted_at, review_requested_at, review_completed_at, problems!inner(law_id, laws!inner(law_code))",
     )
     .eq("user_id", userId)
     .is("deleted_at", null);
+  // updated_at 기준 — 작성/수정 시각.
+  if (since) q = q.gte("updated_at", since.toISOString());
+  const { data: rows, error } = await q;
   if (error) throw error;
   const list = rows ?? [];
 

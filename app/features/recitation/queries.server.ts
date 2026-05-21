@@ -35,16 +35,20 @@ export interface UserRecitationStats {
   weakArticles: RecitationWeakArticle[];
 }
 
+// since 가 주어지면 그 시각 이후 시도만 집계 — feat-3-209 v2(stats 기간 적용).
 export async function getUserRecitationStats(
   client: SupabaseClient<Database>,
   userId: string,
+  since: Date | null = null,
 ): Promise<UserRecitationStats> {
-  const { data: attempts, error } = await client
+  let q = client
     .from("user_recitation_attempts")
     .select("article_id, similarity, is_complete, attempted_at")
     .eq("user_id", userId)
     .order("attempted_at", { ascending: false })
     .limit(2000);
+  if (since) q = q.gte("attempted_at", since.toISOString());
+  const { data: attempts, error } = await q;
   if (error) throw error;
   const all = attempts ?? [];
 

@@ -9,6 +9,7 @@ import { data } from "react-router";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listAllComments } from "~/features/comments/queries.server";
 import {
+  ALL_RANGE_SELECTION,
   CardCta,
   CardHeaderRow,
   EmptyState,
@@ -17,12 +18,13 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
-  RangePresetGroup,
+  RangeSelectionGroup,
   ResultCard,
   formatRelative,
-  inRangePreset,
+  inRangeSelection,
+  isRangeSelectionAll,
   subjectName,
-  type RangePreset,
+  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -71,14 +73,17 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
   const { items: all, counts, aidCounts } = loaderData;
   const [subject, setSubject] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter | null>(null);
-  const [range, setRange] = useState<RangePreset>("all");
+  const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
   const [q, setQ] = useState("");
   const hasActive =
-    subject !== null || type !== null || range !== "all" || q.trim() !== "";
+    subject !== null ||
+    type !== null ||
+    !isRangeSelectionAll(rangeSel) ||
+    q.trim() !== "";
   const reset = () => {
     setSubject(null);
     setType(null);
-    setRange("all");
+    setRangeSel(ALL_RANGE_SELECTION);
     setQ("");
   };
 
@@ -86,7 +91,7 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
   const items = all.filter((c) => {
     if (subject && c.lawCode !== subject) return false;
     if (type && c.targetType !== type) return false;
-    if (!inRangePreset(c.updatedAt, range)) return false;
+    if (!inRangeSelection(c.updatedAt, rangeSel)) return false;
     if (needle) {
       const hay = [c.bodyMd, c.primaryLabel, c.secondaryLabel, c.bodySnippet]
         .filter(Boolean)
@@ -161,7 +166,7 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
           ))}
         </FilterGroup>
         <FilterDivider />
-        <RangePresetGroup value={range} onChange={setRange} />
+        <RangeSelectionGroup value={rangeSel} onChange={setRangeSel} />
       </FilterBar>
 
       {items.length === 0 ? (

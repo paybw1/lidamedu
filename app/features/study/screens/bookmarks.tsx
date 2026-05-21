@@ -8,6 +8,7 @@ import { data } from "react-router";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listAllBookmarks } from "~/features/annotations/queries.server";
 import {
+  ALL_RANGE_SELECTION,
   CardCta,
   CardHeaderRow,
   EmptyState,
@@ -16,14 +17,15 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
-  RangePresetGroup,
+  RangeSelectionGroup,
   ResultCard,
   SessionBanner,
   StarBar,
   formatRelative,
-  inRangePreset,
+  inRangeSelection,
+  isRangeSelectionAll,
   subjectName,
-  type RangePreset,
+  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -75,14 +77,17 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
   const [subject, setSubject] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter | null>(null);
   const [minStar, setMinStar] = useState(1);
-  const [range, setRange] = useState<RangePreset>("all");
+  const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
   const hasActive =
-    subject !== null || type !== null || minStar > 1 || range !== "all";
+    subject !== null ||
+    type !== null ||
+    minStar > 1 ||
+    !isRangeSelectionAll(rangeSel);
   const reset = () => {
     setSubject(null);
     setType(null);
     setMinStar(1);
-    setRange("all");
+    setRangeSel(ALL_RANGE_SELECTION);
   };
 
   const items = all.filter((b) => {
@@ -95,7 +100,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
         return false;
     } else if (type && b.targetType !== type) return false;
     if (b.starLevel < minStar) return false;
-    if (!inRangePreset(b.updatedAt, range)) return false;
+    if (!inRangeSelection(b.updatedAt, rangeSel)) return false;
     return true;
   });
   const problemCount = items.filter((b) => b.targetType === "problem").length;
@@ -166,7 +171,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
           ))}
         </FilterGroup>
         <FilterDivider />
-        <RangePresetGroup value={range} onChange={setRange} />
+        <RangeSelectionGroup value={rangeSel} onChange={setRangeSel} />
       </FilterBar>
 
       {problemCount > 0 ? (

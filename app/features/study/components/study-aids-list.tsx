@@ -3,12 +3,13 @@
 
 import {
   ArrowRightIcon,
+  CalendarIcon,
   PlayIcon,
   RotateCcwIcon,
   SearchIcon,
   StarIcon,
 } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Form, Link } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -204,6 +205,206 @@ export function RangePresetGroup({
         </FilterChip>
       ))}
     </FilterGroup>
+  );
+}
+
+// feat-3-209 Part B — 사용자 지정 기간 (from~to KST 자정 기준).
+// preset 외 "custom" 선택 가능. selection 이 RangeSelection 으로 확장.
+export type RangeSelection =
+  | { kind: "preset"; preset: RangePreset }
+  | { kind: "custom"; from: string | null; to: string | null }; // YYYY-MM-DD
+
+export const ALL_RANGE_SELECTION: RangeSelection = {
+  kind: "preset",
+  preset: "all",
+};
+
+export function isRangeSelectionAll(sel: RangeSelection): boolean {
+  return sel.kind === "preset" && sel.preset === "all";
+}
+
+// "YYYY-MM-DD" → KST 자정의 UTC ms.
+function kstDayStartUtcMs(ymd: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d))
+    return null;
+  // 그 KST 날짜의 00:00 = UTC 의 (전날 15:00).
+  return Date.UTC(y, mo - 1, d, 0, 0, 0) - 9 * 60 * 60 * 1000;
+}
+
+export function inRangeSelection(
+  iso: string | Date | null | undefined,
+  sel: RangeSelection,
+): boolean {
+  if (sel.kind === "preset") return inRangePreset(iso, sel.preset);
+  // custom — from/to 없는 면 전체 통과.
+  if (!iso) return false;
+  const t =
+    typeof iso === "string" ? new Date(iso).getTime() : iso.getTime();
+  if (!Number.isFinite(t)) return false;
+  if (sel.from) {
+    const start = kstDayStartUtcMs(sel.from);
+    if (start !== null && t < start) return false;
+  }
+  if (sel.to) {
+    // to 는 그 날짜의 끝까지 포함 — 다음날 자정 직전.
+    const end = kstDayStartUtcMs(sel.to);
+    if (end !== null && t >= end + 86400000) return false;
+  }
+  return true;
+}
+
+// preset chip 4개 + "사용자 지정" chip + Popover (from/to native date input).
+export function RangeSelectionGroup({
+  value,
+  onChange,
+  label = "기간",
+}: {
+  value: RangeSelection;
+  onChange: (next: RangeSelection) => void;
+  label?: string;
+}) {
+  const selectedCustom = value.kind === "custom";
+  const customLabel = selectedCustom
+    ? `${value.from ?? "처음"} ~ ${value.to ?? "지금"}`
+    : "사용자 지정";
+
+  return (
+    <FilterGroup label={label}>
+      {RANGE_PRESETS.map((p) => (
+        <FilterChip
+          key={p.value}
+          selected={
+            value.kind === "preset" && value.preset === p.value
+          }
+          onClick={() => onChange({ kind: "preset", preset: p.value })}
+        >
+          {p.label}
+        </FilterChip>
+      ))}
+      <RangeCustomChip
+        selected={selectedCustom}
+        from={selectedCustom ? value.from : null}
+        to={selectedCustom ? value.to : null}
+        label={customLabel}
+        onApply={(from, to) => onChange({ kind: "custom", from, to })}
+        onClear={() => onChange({ kind: "preset", preset: "all" })}
+      />
+    </FilterGroup>
+  );
+}
+
+// "사용자 지정" 칩 — 클릭 시 popover 펼침. 내부 from/to native date input + 적용.
+function RangeCustomChip({
+  selected,
+  from,
+  to,
+  label,
+  onApply,
+  onClear,
+}: {
+  selected: boolean;
+  from: string | null;
+  to: string | null;
+  label: string;
+  onApply: (from: string | null, to: string | null) => void;
+  onClear: () => void;
+}) {
+  // popover 의 단순 구현 — details/summary 패턴 X, 그냥 toggle + 외부 click handler.
+  // 의도적으로 dependencies 추가 없이 native input + 작은 state 만 사용.
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [draftFrom, setDraftFrom] = useState<string>(from ?? "");
+  const [draftTo, setDraftTo] = useState<string>(to ?? "");
+
+  // 외부 click 으로 popover 닫기.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // 외부 값 변경 시 draft 동기화.
+  useEffect(() => {
+    setDraftFrom(from ?? "");
+    setDraftTo(to ?? "");
+  }, [from, to]);
+
+  return (
+    <div ref={wrapperRef} className="relative inline-block">
+      <FilterChip
+        selected={selected}
+        onClick={() => setOpen((v) => !v)}
+        className="gap-1.5"
+      >
+        <CalendarIcon className="size-3" />
+        {label}
+      </FilterChip>
+      {open ? (
+        <div className="bg-popover text-popover-foreground border-border absolute top-full left-0 z-30 mt-1 w-[260px] rounded-md border p-3 shadow-md">
+          <p className="text-muted-foreground mb-2 text-[10px] font-bold tracking-widest uppercase">
+            기간 선택
+          </p>
+          <div className="space-y-2">
+            <label className="block">
+              <span className="text-foreground/80 text-xs font-semibold">
+                시작
+              </span>
+              <input
+                type="date"
+                value={draftFrom}
+                max={draftTo || undefined}
+                onChange={(e) => setDraftFrom(e.target.value)}
+                className="bg-background border-border focus:border-primary mt-0.5 block w-full rounded-md border px-2 py-1.5 text-xs outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-foreground/80 text-xs font-semibold">
+                종료
+              </span>
+              <input
+                type="date"
+                value={draftTo}
+                min={draftFrom || undefined}
+                onChange={(e) => setDraftTo(e.target.value)}
+                className="bg-background border-border focus:border-primary mt-0.5 block w-full rounded-md border px-2 py-1.5 text-xs outline-none"
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                onClear();
+                setOpen(false);
+              }}
+              className="hover:bg-muted text-muted-foreground rounded-md px-2 py-1 text-xs font-semibold"
+            >
+              초기화
+            </button>
+            <button
+              type="button"
+              disabled={!draftFrom && !draftTo}
+              onClick={() => {
+                onApply(draftFrom || null, draftTo || null);
+                setOpen(false);
+              }}
+              className="bg-primary text-primary-foreground rounded-md px-3 py-1 text-xs font-semibold disabled:opacity-50"
+            >
+              적용
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

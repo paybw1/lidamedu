@@ -7,6 +7,7 @@ import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
+  ALL_RANGE_SELECTION,
   CardCta,
   CardHeaderRow,
   EmptyState,
@@ -15,13 +16,14 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
-  RangePresetGroup,
+  RangeSelectionGroup,
   ResultCard,
   SectionTitle,
   SessionBanner,
-  inRangePreset,
+  inRangeSelection,
+  isRangeSelectionAll,
   subjectName,
-  type RangePreset,
+  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -79,16 +81,16 @@ function AttemptChip({ count }: { count: number }) {
 export default function WrongNote({ loaderData }: Route.ComponentProps) {
   const { items, oxItems, aidCounts } = loaderData;
   const [subject, setSubject] = useState<string | null>(null);
-  const [range, setRange] = useState<RangePreset>("all");
+  const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
 
   const mcq = items.filter((p) => {
     if (subject && p.lawCode !== subject) return false;
-    if (!inRangePreset(p.lastAttemptedAt, range)) return false;
+    if (!inRangeSelection(p.lastAttemptedAt, rangeSel)) return false;
     return true;
   });
   const ox = oxItems.filter((o) => {
     if (subject && o.lawCode !== subject) return false;
-    if (!inRangePreset(o.lastAttemptedAt, range)) return false;
+    if (!inRangeSelection(o.lastAttemptedAt, rangeSel)) return false;
     return true;
   });
 
@@ -108,10 +110,10 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
       ]}
     >
       <FilterBar
-        hasActive={subject !== null || range !== "all"}
+        hasActive={subject !== null || !isRangeSelectionAll(rangeSel)}
         onReset={() => {
           setSubject(null);
-          setRange("all");
+          setRangeSel(ALL_RANGE_SELECTION);
         }}
       >
         <FilterGroup label="1차 과목">
@@ -144,9 +146,9 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
           ))}
         </FilterGroup>
         <FilterDivider />
-        <RangePresetGroup
-          value={range}
-          onChange={setRange}
+        <RangeSelectionGroup
+          value={rangeSel}
+          onChange={setRangeSel}
           label="최근 시도"
         />
       </FilterBar>

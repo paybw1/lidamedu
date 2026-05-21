@@ -18,6 +18,7 @@ import {
   listAllHighlights,
 } from "~/features/annotations/queries.server";
 import {
+  ALL_RANGE_SELECTION,
   CardCta,
   CardHeaderRow,
   EmptyState,
@@ -26,12 +27,13 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
-  RangePresetGroup,
+  RangeSelectionGroup,
   ResultCard,
   formatRelative,
-  inRangePreset,
+  inRangeSelection,
+  isRangeSelectionAll,
   subjectName,
-  type RangePreset,
+  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -128,19 +130,19 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
   const [subject, setSubject] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter | null>(null);
   const [color, setColor] = useState<HighlightColor | null>(null);
-  const [range, setRange] = useState<RangePreset>("all");
+  const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
   const [q, setQ] = useState("");
   const hasActive =
     subject !== null ||
     type !== null ||
     color !== null ||
-    range !== "all" ||
+    !isRangeSelectionAll(rangeSel) ||
     q.trim() !== "";
   const reset = () => {
     setSubject(null);
     setType(null);
     setColor(null);
-    setRange("all");
+    setRangeSel(ALL_RANGE_SELECTION);
     setQ("");
   };
 
@@ -155,7 +157,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
         return false;
     } else if (type && h.targetType !== type) return false;
     if (color && h.color !== color) return false;
-    if (!inRangePreset(h.createdAt, range)) return false;
+    if (!inRangeSelection(h.createdAt, rangeSel)) return false;
     if (needle) {
       const hay = [h.excerpt, h.primaryLabel, h.secondaryLabel, h.bodySnippet]
         .filter(Boolean)
@@ -244,7 +246,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
           ))}
         </FilterGroup>
         <FilterDivider />
-        <RangePresetGroup value={range} onChange={setRange} />
+        <RangeSelectionGroup value={rangeSel} onChange={setRangeSel} />
       </FilterBar>
 
       {items.length === 0 ? (
