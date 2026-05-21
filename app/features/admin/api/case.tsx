@@ -10,10 +10,10 @@ import { reindexCases } from "~/features/ai-qna/lib/source-chunker.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import {
   CASE_IMAGE_POSITIONS,
+  parseCaseImages,
   type CaseImage,
   type CaseImagePosition,
 } from "~/features/cases/labels";
-import { parseCaseImages } from "~/features/cases/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 

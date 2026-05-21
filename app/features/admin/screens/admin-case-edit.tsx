@@ -29,10 +29,10 @@ import {
   CASE_IMAGE_POSITIONS,
   CASE_IMAGE_POSITION_LABELS,
   COURT_LABELS,
+  parseCaseImages,
   type CaseImage,
   type CaseImagePosition,
 } from "~/features/cases/labels";
-import { parseCaseImages } from "~/features/cases/queries.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";

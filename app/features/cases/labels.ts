@@ -73,6 +73,45 @@ export interface CaseImage {
   sortOrder: number;
 }
 
+// cases.images jsonb → CaseImage[]. position/sortOrder 별로 안정 정렬.
+// 잘못된 항목(필수 필드 결손)은 silently skip — staff 가 admin UI 에서 정정.
+// labels.ts(클라이언트·서버 공용) 에 두는 이유: admin-case-edit 의 클라이언트 컴포넌트에서도
+// 직접 호출 — queries.server.ts 에 두면 server-only 모듈이 클라이언트 번들에 새는 위반.
+export function parseCaseImages(raw: unknown): CaseImage[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CaseImage[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    if (typeof o.id !== "string" || typeof o.url !== "string") continue;
+    if (typeof o.storagePath !== "string") continue;
+    const position: CaseImagePosition = (
+      CASE_IMAGE_POSITIONS as readonly string[]
+    ).includes(o.position as string)
+      ? (o.position as CaseImagePosition)
+      : "pending";
+    out.push({
+      id: o.id,
+      url: o.url,
+      storagePath: o.storagePath,
+      mimeType: typeof o.mimeType === "string" ? o.mimeType : "image/jpeg",
+      width: typeof o.width === "number" ? o.width : null,
+      height: typeof o.height === "number" ? o.height : null,
+      alt: typeof o.alt === "string" ? o.alt : "",
+      position,
+      sortOrder: typeof o.sortOrder === "number" ? o.sortOrder : 0,
+    });
+  }
+  out.sort((a, b) => {
+    const pa = CASE_IMAGE_POSITIONS.indexOf(a.position);
+    const pb = CASE_IMAGE_POSITIONS.indexOf(b.position);
+    if (pa !== pb) return pa - pb;
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.id.localeCompare(b.id);
+  });
+  return out;
+}
+
 export interface CaseDetail extends CaseListItem {
   summaryBodyMd: string | null;
   summaryItems: SummaryItem[];
