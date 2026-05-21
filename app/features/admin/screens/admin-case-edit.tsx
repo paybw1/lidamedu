@@ -12,6 +12,7 @@ import {
   UploadIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
 
@@ -632,8 +633,15 @@ function SummaryItemsEditor({
   const [items, setItems] = useState<SummaryItem[]>(
     defaultItems.length > 0 ? defaultItems : [{ title: "", body: "" }],
   );
+  // controlled hidden input(`summaryItems`) 의 DOM value 를 commit 보다 먼저 동기화 —
+  // React 18 batching 으로 setState 가 deferred 되면 typing 직후 "변경 저장" 클릭 시
+  // FormData 가 stale 한 JSON 을 수집해 첫 submit 이 옛 값으로 저장되는 race 방지.
+  const setItemsSync = (updater: (prev: SummaryItem[]) => SummaryItem[]) =>
+    flushSync(() => setItems(updater));
   const patch = (i: number, p: Partial<SummaryItem>) =>
-    setItems((prev) => prev.map((it, j) => (j === i ? { ...it, ...p } : it)));
+    setItemsSync((prev) =>
+      prev.map((it, j) => (j === i ? { ...it, ...p } : it)),
+    );
 
   return (
     <div className="space-y-3">
@@ -656,7 +664,7 @@ function SummaryItemsEditor({
                 variant="ghost"
                 className="h-6 gap-1 px-2 text-[11px] text-rose-600 hover:text-rose-700"
                 onClick={() =>
-                  setItems((prev) => prev.filter((_, j) => j !== i))
+                  setItemsSync((prev) => prev.filter((_, j) => j !== i))
                 }
               >
                 <Trash2Icon className="size-3" /> 항목 삭제
@@ -682,7 +690,7 @@ function SummaryItemsEditor({
         size="sm"
         variant="outline"
         onClick={() =>
-          setItems((prev) => [...prev, { title: "", body: "" }])
+          setItemsSync((prev) => [...prev, { title: "", body: "" }])
         }
       >
         <PlusIcon className="size-3.5" /> 요지 항목 추가
@@ -692,6 +700,9 @@ function SummaryItemsEditor({
 }
 
 /* ── DeleteForm ─────────────────────────────────────────────────────── */
+// HTML5 form-in-form nesting 회피 — DOM <form> 태그 없이 fetcher.submit 으로 처리.
+// 메인 <Form> 안에 <DeleteForm> 이 렌더되는데, 그 안에 또 <Form> 을 두면 invalid
+// HTML 이라 첫 클릭이 inner form 으로 라우팅되거나 무시되는 브라우저 quirk 가 있다.
 
 function DeleteForm({
   caseId,
@@ -702,28 +713,29 @@ function DeleteForm({
   caseNumber: string;
   returnTo: string;
 }) {
+  const fetcher = useFetcher();
+  const submitting = fetcher.state !== "idle";
+
+  function onDelete() {
+    if (!confirm(`판례 ${caseNumber} 을(를) 삭제하시겠습니까?`)) return;
+    const fd = new FormData();
+    fd.set("intent", "delete");
+    fd.set("caseId", caseId);
+    fd.set("returnTo", returnTo);
+    fetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
   return (
-    <Form
-      method="post"
-      action="/api/admin/case"
-      onSubmit={(e) => {
-        if (!confirm(`판례 ${caseNumber} 을(를) 삭제하시겠습니까?`)) {
-          e.preventDefault();
-        }
-      }}
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
+      onClick={onDelete}
+      disabled={submitting}
     >
-      <input type="hidden" name="intent" value="delete" />
-      <input type="hidden" name="caseId" value={caseId} />
-      <input type="hidden" name="returnTo" value={returnTo} />
-      <Button
-        type="submit"
-        size="sm"
-        variant="ghost"
-        className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
-      >
-        <Trash2Icon className="size-3.5" /> 삭제
-      </Button>
-    </Form>
+      <Trash2Icon className="size-3.5" /> {submitting ? "삭제 중…" : "삭제"}
+    </Button>
   );
 }
 
@@ -747,6 +759,8 @@ function FullTextPdfNotice() {
   );
 }
 
+// HTML5 form-in-form nesting 회피 — 메인 <Form> 안에 <FullTextPdfCard> 가 렌더되므로
+// 안에는 <form> 태그를 두지 않고 button onClick + fetcher.submit 으로 처리한다.
 function FullTextPdfCard({
   kase,
 }: {
@@ -787,6 +801,31 @@ function FullTextPdfCard({
     }
   }, [removeFetcher.data, revalidator]);
 
+  function onRemove() {
+    if (!confirm("판결전문 PDF 를 제거하시겠습니까?")) return;
+    const fd = new FormData();
+    fd.set("intent", "remove_full_text_pdf");
+    fd.set("caseId", kase.case_id);
+    removeFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  function onUpload() {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) {
+      toast.error("PDF 파일을 선택하세요.");
+      return;
+    }
+    const fd = new FormData();
+    fd.set("intent", "upload_full_text_pdf");
+    fd.set("caseId", kase.case_id);
+    fd.set("file", file);
+    uploadFetcher.submit(fd, {
+      method: "post",
+      action: "/api/admin/case",
+      encType: "multipart/form-data",
+    });
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -805,62 +844,42 @@ function FullTextPdfCard({
             >
               <ExternalLinkIcon className="size-3.5" /> 현재 PDF 열기
             </a>
-            <removeFetcher.Form
-              method="post"
-              action="/api/admin/case"
-              encType="multipart/form-data"
-              onSubmit={(e) => {
-                if (!confirm("판결전문 PDF 를 제거하시겠습니까?")) {
-                  e.preventDefault();
-                }
-              }}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
+              onClick={onRemove}
+              disabled={isRemoving}
             >
-              <input
-                type="hidden"
-                name="intent"
-                value="remove_full_text_pdf"
-              />
-              <input type="hidden" name="caseId" value={kase.case_id} />
-              <Button
-                type="submit"
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
-                disabled={isRemoving}
-              >
-                <Trash2Icon className="size-3.5" />{" "}
-                {isRemoving ? "제거 중…" : "제거"}
-              </Button>
-            </removeFetcher.Form>
+              <Trash2Icon className="size-3.5" />{" "}
+              {isRemoving ? "제거 중…" : "제거"}
+            </Button>
           </div>
         ) : (
           <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
             아직 업로드된 PDF 가 없습니다.
           </p>
         )}
-        <uploadFetcher.Form
-          method="post"
-          action="/api/admin/case"
-          encType="multipart/form-data"
-          className="flex flex-wrap items-end gap-2"
-        >
-          <input type="hidden" name="intent" value="upload_full_text_pdf" />
-          <input type="hidden" name="caseId" value={kase.case_id} />
+        <div className="flex flex-wrap items-end gap-2">
           <Field label={currentUrl ? "교체 PDF 파일" : "PDF 파일"} required>
             <Input
               ref={fileInputRef}
               type="file"
-              name="file"
               accept="application/pdf"
-              required
               className="text-xs"
             />
           </Field>
-          <Button type="submit" size="sm" disabled={isUploading}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onUpload}
+            disabled={isUploading}
+          >
             <UploadIcon className="size-3.5" />
             {isUploading ? "업로드 중…" : currentUrl ? "교체" : "업로드"}
           </Button>
-        </uploadFetcher.Form>
+        </div>
         <p className="text-muted-foreground text-[10px]">
           최대 30MB · application/pdf 만 허용.
         </p>
