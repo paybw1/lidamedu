@@ -62,6 +62,12 @@ import {
   listNotesForStudent,
   type StudentNote,
 } from "~/features/student-notes/queries.server";
+import {
+  listPaymentsForUser,
+  listUserSubscriptionHistory,
+} from "~/features/subscriptions/admin-queries.server";
+import { AdminSubscriptionPanel } from "~/features/subscriptions/components/admin-subscription-panel";
+import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/admin-student-detail";
 
@@ -94,11 +100,29 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  const [student, cohortComparisons, notes, passTrend] = await Promise.all([
+  const [
+    student,
+    cohortComparisons,
+    notes,
+    passTrend,
+    subscriptions,
+    payments,
+    plans,
+  ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
     listNotesForStudent(params.profileId),
     getUserPassPredictionTrend(adminClient, params.profileId, 30),
+    // feat-7-014 — manager+ 만 구독 패널에 데이터 노출.
+    roleAtLeast(role, "manager")
+      ? listUserSubscriptionHistory(params.profileId)
+      : Promise.resolve([]),
+    roleAtLeast(role, "manager")
+      ? listPaymentsForUser(params.profileId)
+      : Promise.resolve([]),
+    roleAtLeast(role, "manager")
+      ? listSubscriptionPlans(client)
+      : Promise.resolve([]),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
   return {
@@ -106,6 +130,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     cohortComparisons,
     notes,
     passTrend,
+    subscriptions,
+    payments,
+    plans,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -128,6 +155,9 @@ export default function AdminStudentDetail({
     cohortComparisons,
     notes,
     passTrend,
+    subscriptions,
+    payments,
+    plans,
     currentUserId,
     isAdmin,
     role,
@@ -232,6 +262,18 @@ export default function AdminStudentDetail({
           isAdmin={isAdmin}
         />
       </div>
+
+      {/* feat-7-014 — manager+ 만 노출. loader 가 비 manager 면 빈 배열 반환. */}
+      {isAdmin && plans.length > 0 ? (
+        <div className="mb-6">
+          <AdminSubscriptionPanel
+            userId={student.profileId}
+            subscriptions={subscriptions}
+            payments={payments}
+            plans={plans}
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">

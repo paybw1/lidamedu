@@ -115,6 +115,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "사용자", to: "/admin/users" },
       { label: "반 목록", to: "/admin/cohorts" },
       { label: "커리큘럼", to: "/admin/curricula" },
+      // feat-7-014 — manager+ 전용. 메뉴는 노출, loader 에서 차단.
+      { label: "수강권 관리", to: "/admin/subscriptions" },
     ],
   },
   {

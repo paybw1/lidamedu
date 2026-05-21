@@ -511,6 +511,15 @@ export default [
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",
       ),
+      // feat-7-014 — 운영자 수강권 관리 (manager+).
+      route(
+        "/admin/subscriptions",
+        "features/subscriptions/screens/admin-subscriptions.tsx",
+      ),
+      route(
+        "/api/admin/subscription",
+        "features/subscriptions/api/admin-subscription.tsx",
+      ),
       route("/api/comments/comment", "features/comments/api/comment.tsx"),
       route(
         "/api/lecture-resources",
