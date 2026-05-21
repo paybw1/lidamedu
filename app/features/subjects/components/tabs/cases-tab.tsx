@@ -12,7 +12,13 @@ import {
   XIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Form, Link, useNavigation, useSearchParams } from "react-router";
+import {
+  Form,
+  Link,
+  useLocation,
+  useNavigation,
+  useSearchParams,
+} from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -411,6 +417,12 @@ function CaseRow({
   subject: LawSubjectMeta;
   item: CaseListItem;
 }) {
+  // 사건 본문 link 에 `back=` query 로 현재 목록 URL search 를 넘긴다.
+  // case-viewer 의 "판례 목록으로" 가 이 값으로 원래 page·필터 페이지로 복귀.
+  const location = useLocation();
+  const detailHref = `/subjects/${subject.slug}/cases/${item.caseId}${
+    location.search ? `?back=${encodeURIComponent(location.search)}` : ""
+  }`;
   // 사건명 컬럼 표시 우선순위: 요지 [1] 제목 → legacy summary_title → case_title (사건유형).
   const detailLabel =
     item.summaryFirstTitle ?? item.summaryTitle ?? item.caseTitle;
@@ -460,7 +472,7 @@ function CaseRow({
           </span>
         ) : null}
         <Link
-          to={`/subjects/${subject.slug}/cases/${item.caseId}`}
+          to={detailHref}
           viewTransition
           className="hover:text-primary block truncate text-sm font-medium"
         >

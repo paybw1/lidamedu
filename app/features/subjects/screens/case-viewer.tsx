@@ -231,6 +231,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
   const [searchParams] = useSearchParams();
   const replacedNotice = searchParams.get("from") === "replaced";
+  // 목록 페이지에서 전달된 ?back=… (cases-tab CaseRow 가 부착) — 원래 페이지·필터 보존.
+  // staff "수정" → 변경 저장 → returnTo 로 복귀해도 back 은 그대로 유지되므로
+  // "판례 목록으로" 클릭 시 page/search 잃지 않는다.
+  const backRaw = searchParams.get("back");
+  const backSafe = backRaw && backRaw.startsWith("?") ? backRaw : null;
+  const listHref = `/subjects/${subject.slug}${backSafe ?? "?tab=cases"}`;
 
   return (
     <div className="bg-background min-h-[calc(100vh-56px)]">
@@ -252,7 +258,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
         {/* 뒤로가기 링크 */}
         <div className="mb-4">
           <Link
-            to={`/subjects/${subject.slug}?tab=cases`}
+            to={listHref}
             viewTransition
             className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
           >
