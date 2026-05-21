@@ -279,7 +279,12 @@ function RefsCollapsible({
   refs: Inline[];
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  // feat-3-211: refs 안에 underline 노드(staff highlight 변환 source)가 있으면 default open —
+  // 닫힌 상태에서는 그 안 underline highlight 의 textContent offset 이 정합 안 됨.
+  // 사용자가 명시적으로 닫으면 그 후로는 사용자 의지 우선.
+  const hasUnderlinesInside = refs.some((r) => r.type === "underline");
+  const [userOpen, setUserOpen] = useState<boolean | null>(null);
+  const open = userOpen ?? hasUnderlinesInside;
   const refCount = refs.filter((r) => r.type === "ref_article").length;
   if (refCount === 0) return null;
   return (
@@ -291,7 +296,7 @@ function RefsCollapsible({
     >
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setUserOpen(!open)}
         aria-expanded={open}
         className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left transition-colors hover:bg-indigo-500/10"
       >
@@ -441,10 +446,34 @@ function SubArticleGroup({
     for (const sa of block.articles) if (checkBlocks(sa.blocks)) return true;
     return false;
   }, [blanksRender, block]);
-  // userOpen 이 null 인 동안에는 hasBlanksInside 를 따라간다 (blank 가 추가되면 자동 펼침).
+  // feat-3-211: 그룹 안에 underline inline 노드(staff highlight 변환 source) 가 있으면 default open.
+  const hasUnderlinesInside = useMemo(() => {
+    const checkInline = (inline: Inline[]): boolean =>
+      inline.some((n) => n.type === "underline");
+    const checkBlocks = (blocks: Block[]): boolean => {
+      for (const b of blocks) {
+        if (b.kind === "clause" || b.kind === "item" || b.kind === "sub") {
+          if (checkInline(b.inline)) return true;
+          if (checkBlocks(b.children)) return true;
+        } else if (b.kind === "para") {
+          if (checkInline(b.inline)) return true;
+        } else if (b.kind === "sub_article_group") {
+          if (b.preface && checkBlocks(b.preface)) return true;
+          for (const sa of b.articles) if (checkBlocks(sa.blocks)) return true;
+        } else if (b.kind === "header_refs") {
+          if (checkInline(b.refs)) return true;
+        }
+      }
+      return false;
+    };
+    if (block.preface && checkBlocks(block.preface)) return true;
+    for (const sa of block.articles) if (checkBlocks(sa.blocks)) return true;
+    return false;
+  }, [block]);
+  // userOpen 이 null 인 동안에는 blanks/underlines 가 있으면 자동 펼침.
   // 사용자가 클릭해서 토글하면 그 후로는 사용자 의지를 우선.
   const [userOpen, setUserOpen] = useState<boolean | null>(null);
-  const open = userOpen ?? hasBlanksInside;
+  const open = userOpen ?? (hasBlanksInside || hasUnderlinesInside);
   const articleCount = block.articles.length;
   const ctx = useContext(Ctx);
 

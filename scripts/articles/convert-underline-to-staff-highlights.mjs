@@ -106,9 +106,10 @@ function emitInlines(inlines, parts) {
 // `"관련 조문" + "${refCount}건"` — 6글자 이상.
 function emitRefsCollapsibleButton(refs, parts) {
   const refCount = (refs ?? []).filter((r) => r && r.type === "ref_article").length;
-  if (refCount === 0) return;
+  if (refCount === 0) return false;
   parts.push("관련 조문");
   parts.push(`${refCount}건`);
+  return true;
 }
 
 // SubArticleGroup button 의 textContent.
@@ -117,13 +118,43 @@ function emitSubArticleGroupButton(block, parts) {
   parts.push(`${(block.articles ?? []).length}개`);
 }
 
+// 영역 안에 underline 노드가 있는지 — feat-3-211 default open 정책과 동일.
+function refsHaveUnderlines(refs) {
+  return (refs ?? []).some((r) => r && r.type === "underline");
+}
+function blocksHaveUnderlines(blocks) {
+  for (const b of blocks ?? []) {
+    if (b.kind === "clause" || b.kind === "item" || b.kind === "sub") {
+      if (refsHaveUnderlines(b.inline)) return true;
+      if (blocksHaveUnderlines(b.children)) return true;
+    } else if (b.kind === "para") {
+      if (refsHaveUnderlines(b.inline)) return true;
+    } else if (b.kind === "sub_article_group") {
+      if (b.preface && blocksHaveUnderlines(b.preface)) return true;
+      for (const sa of b.articles) if (blocksHaveUnderlines(sa.blocks)) return true;
+    } else if (b.kind === "header_refs") {
+      if (refsHaveUnderlines(b.refs)) return true;
+    }
+  }
+  return false;
+}
+
+// RefsCollapsible 의 펼친 상태 textContent — 안 inline (refs/tail) 의 textContent 까지.
+// RefsCollapsible 안 InlineRun 은 일반 InlineNode 와 동일 — ref_article 은 raw, underline 은 text.
+function emitRefsCollapsible(refs, parts) {
+  if (!emitRefsCollapsibleButton(refs, parts)) return;
+  // default open 정책: 안에 underline 이 있을 때만 펼침.
+  if (refsHaveUnderlines(refs)) {
+    emitInlines(refs, parts);
+  }
+}
+
 function emitBlock(block, parts) {
   switch (block.kind) {
     case "para": {
       const { main, tail } = splitTrailingRefs(block.inline);
       emitInlines(main, parts);
-      // tail 의 ref_article 는 RefsCollapsible button text 로 등장.
-      emitRefsCollapsibleButton(tail, parts);
+      emitRefsCollapsible(tail, parts);
       break;
     }
     case "title_marker":
@@ -136,16 +167,33 @@ function emitBlock(block, parts) {
       if (block.subtitle) parts.push(`(${block.subtitle})`);
       const { main, tail } = splitTrailingRefs(block.inline);
       emitInlines(main, parts);
-      emitRefsCollapsibleButton(tail, parts);
+      emitRefsCollapsible(tail, parts);
       for (const c of block.children) emitBlock(c, parts);
       break;
     }
-    case "sub_article_group":
+    case "sub_article_group": {
       emitSubArticleGroupButton(block, parts);
-      // 그 내부는 closed-by-default — textContent 에서 빠짐
+      // default open 정책: 안에 underline 이 있을 때만 펼침.
+      const hasUL =
+        (block.preface ? blocksHaveUnderlines(block.preface) : false) ||
+        block.articles.some((sa) => blocksHaveUnderlines(sa.blocks));
+      if (hasUL) {
+        if (block.preface && block.preface.length > 0) {
+          parts.push("코멘트"); // preface 박스의 "코멘트" 라벨
+          for (const b of block.preface) emitBlock(b, parts);
+        }
+        for (const sa of block.articles) {
+          // SubArticleView 의 title — JSX 그대로 매핑.
+          parts.push(
+            `제${sa.number}조${sa.branch ? `의${sa.branch}` : ""} (${sa.title})`,
+          );
+          for (const b of sa.blocks) emitBlock(b, parts);
+        }
+      }
       break;
+    }
     case "header_refs":
-      emitRefsCollapsibleButton(block.refs, parts);
+      emitRefsCollapsible(block.refs, parts);
       break;
   }
 }
@@ -156,44 +204,43 @@ function articleBodyTextContent(body) {
   return parts.join("");
 }
 
-// ─── underline 노드 순회 — closed 영역 제외 ────────────────────────────────
+// ─── underline 노드 순회 ───────────────────────────────────────────────────
+// feat-3-211 v2: sub_article_group / header_refs 안 underline 도 변환 대상 — default open 정책.
 function collectUnderlineNodes(body) {
-  // [{ node, container: "para"|"clause"|... , isClosedArea: bool }]
-  // closed 영역 안 노드는 isClosedArea = true 로 표시 — 보고만 하고 변환 X.
   const out = [];
-  function walkInlines(inlines, isClosedArea, mutate) {
-    // mutate 콜백 — 변환 시점에 underline → text 노드 치환.
+  function walkInlines(inlines, mutate) {
     for (let i = 0; i < inlines.length; i += 1) {
       const n = inlines[i];
       if (n.type === "underline") {
-        out.push({ text: n.text, isClosedArea, swap: () => mutate(i, n) });
+        out.push({ text: n.text, isClosedArea: false, swap: () => mutate(i) });
       }
     }
   }
-  function walkBlock(block, isClosedArea = false) {
+  function walkBlock(block) {
     switch (block.kind) {
       case "para":
-        walkInlines(block.inline, isClosedArea, (i) => {
+        walkInlines(block.inline, (i) => {
           block.inline[i] = { type: "text", text: block.inline[i].text };
         });
         break;
       case "clause":
       case "item":
       case "sub":
-        walkInlines(block.inline, isClosedArea, (i) => {
+        walkInlines(block.inline, (i) => {
           block.inline[i] = { type: "text", text: block.inline[i].text };
         });
-        for (const c of block.children) walkBlock(c, isClosedArea);
+        for (const c of block.children) walkBlock(c);
         break;
       case "sub_article_group":
-        if (block.preface) for (const b of block.preface) walkBlock(b, true);
+        if (block.preface) for (const b of block.preface) walkBlock(b);
         for (const sa of block.articles) {
-          for (const b of sa.blocks) walkBlock(b, true);
+          for (const b of sa.blocks) walkBlock(b);
         }
         break;
       case "header_refs":
-        // refs 안 underline 도 closed
-        walkInlines(block.refs, true, () => {});
+        walkInlines(block.refs, (i) => {
+          block.refs[i] = { type: "text", text: block.refs[i].text };
+        });
         break;
     }
   }
