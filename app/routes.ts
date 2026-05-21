@@ -489,6 +489,10 @@ export default [
         "features/ai-qna/screens/admin-ai-qna-usage.tsx",
       ),
       route(
+        "/admin/ai-qna/embed-status",
+        "features/ai-qna/screens/admin-ai-qna-embed-status.tsx",
+      ),
+      route(
         "/admin/ai-qna/eval",
         "features/ai-qna/screens/admin-ai-qna-eval.tsx",
       ),

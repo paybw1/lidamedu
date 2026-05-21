@@ -5079,6 +5079,35 @@ export type Database = {
           revisions_published: number
         }[]
       }
+      ai_embedding_dirty_sample: {
+        Args: { p_limit?: number }
+        Returns: {
+          chunk_id: string
+          created_at: string
+          heading_path: string
+          law_code: string
+          source_id: string
+          source_type: Database["public"]["Enums"]["chunk_source_type"]
+          token_count: number
+        }[]
+      }
+      ai_embedding_status: {
+        Args: never
+        Returns: {
+          dirty_articles: number
+          dirty_cases: number
+          dirty_chunks: number
+          dirty_problems: number
+          embedded_chunks: number
+          embedded_last_24h: number
+          latest_embedded_at: string
+          oldest_dirty_at: string
+          total_articles: number
+          total_cases: number
+          total_chunks: number
+          total_problems: number
+        }[]
+      }
       ai_qna_daily_metrics: {
         Args: { p_days?: number }
         Returns: {
