@@ -1086,19 +1086,35 @@ function ymdKst(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// custom 기간(from~to) 지원 옵션 — feat-3-209 v3.
+//   - daysBack 모드: 오늘 기준 N일 (기본 84) — preset all/today/7d/30d
+//   - since/until 모드: 명시적 KST 범위 — custom 적용 시
+// since/until 이 주어지면 daysBack 무시. axis 는 since~until 의 KST 일별로 채움.
 export async function getDailyStudyStats(
   client: SupabaseClient<Database>,
   userId: string,
-  daysBack = 84,
+  opts: { daysBack?: number; since?: Date | null; until?: Date | null } = {},
 ): Promise<DailyStudyStats> {
-  const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-  const { data: rows, error } = await client
+  const daysBack = opts.daysBack ?? 84;
+  let rangeStart: Date;
+  let rangeEnd: Date;
+  if (opts.since || opts.until) {
+    rangeStart = opts.since ?? new Date(0);
+    rangeEnd = opts.until ?? new Date();
+  } else {
+    rangeStart = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+    rangeEnd = new Date();
+  }
+
+  let q = client
     .from("user_problem_attempts")
     .select("attempted_at, is_correct, time_spent_ms")
     .eq("user_id", userId)
-    .gte("attempted_at", since.toISOString())
+    .gte("attempted_at", rangeStart.toISOString())
     .order("attempted_at", { ascending: true })
     .limit(10000);
+  if (opts.until) q = q.lt("attempted_at", new Date(rangeEnd.getTime() + 86400000).toISOString());
+  const { data: rows, error } = await q;
   if (error) throw error;
 
   const byDate = new Map<string, DailyStudyDay>();
@@ -1116,11 +1132,14 @@ export async function getDailyStudyStats(
     byDate.set(d, cur);
   }
 
-  // 오래된 → 오늘까지 빈 날 채움.
+  // since~until 범위의 KST 일자별로 빈 날 채움.
   const days: DailyStudyDay[] = [];
-  for (let i = daysBack - 1; i >= 0; i -= 1) {
-    const dt = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const ymd = ymdKst(dt);
+  const startMs = rangeStart.getTime();
+  const endMs = rangeEnd.getTime();
+  // 일자 step 으로 iter — KST 자정 기준 grid 가 자연스러움.
+  for (let t = startMs; t <= endMs + 86400000 - 1; t += 86400000) {
+    const ymd = ymdKst(new Date(t));
+    if (days.length > 0 && days[days.length - 1].date === ymd) continue;
     days.push(
       byDate.get(ymd) ?? {
         date: ymd,
@@ -1129,6 +1148,8 @@ export async function getDailyStudyStats(
         timeMs: 0,
       },
     );
+    // 너무 긴 custom 범위 (1년+) 보호 — 최대 366일 grid.
+    if (days.length >= 366) break;
   }
 
   const activeDays = days.filter((d) => d.attemptCount > 0);
@@ -1140,11 +1161,11 @@ export async function getDailyStudyStats(
         (60 * 60 * 1000)
       : 0;
 
-  // 오늘부터 거꾸로 연속 활동 카운트. 오늘 활동이 없으면 어제부터.
+  // 오늘(혹은 axis 의 마지막) 부터 거꾸로 연속 활동 카운트.
   let currentStreak = 0;
   for (let i = days.length - 1; i >= 0; i -= 1) {
     if (days[i].attemptCount > 0) currentStreak += 1;
-    else if (i === days.length - 1) continue; // 오늘 0 이면 어제부터 시작 가능
+    else if (i === days.length - 1) continue;
     else break;
   }
 
@@ -1747,11 +1768,15 @@ export interface ArticleStudyStats {
   }>;
 }
 
+// since 가 주어지면 study_sessions.started_at 이후 visited + 그 기간 안 작성된
+// annotation(bookmark/memo/highlight) 만 집계 — feat-3-209 v3.
 export async function getArticleStudyStats(
   client: SupabaseClient<Database>,
   userId: string,
   lawCodes: ReadonlyArray<{ slug: LawSubjectSlug; name: string }>,
+  since: Date | null = null,
 ): Promise<ArticleStudyStats> {
+  const sinceIso = since?.toISOString();
   const slugs = lawCodes.map((s) => s.slug) as string[];
   const { data: lawRows } = await client
     .from("laws")
@@ -1774,11 +1799,13 @@ export async function getArticleStudyStats(
     }),
   );
 
-  const { data: sessRows } = await client
+  let sessQ = client
     .from("study_sessions")
     .select("scope")
     .eq("user_id", userId)
     .limit(5000);
+  if (sinceIso) sessQ = sessQ.gte("started_at", sinceIso);
+  const { data: sessRows } = await sessQ;
   const visitedAll = new Set<string>();
   const visitedBySubject = new Map<string, Set<string>>();
   for (const r of sessRows ?? []) {
@@ -1802,6 +1829,12 @@ export async function getArticleStudyStats(
       .eq("target_type", "article")
       .is("deleted_at", null);
     if (table === "user_bookmarks") q = q.gt("star_level", 0);
+    if (sinceIso) {
+      q = q.gte(
+        table === "user_highlights" ? "created_at" : "updated_at",
+        sinceIso,
+      );
+    }
     const { data } = await q.limit(10000);
     return (data ?? []).map((r) => r.target_id as string);
   };
@@ -1871,21 +1904,26 @@ export interface CaseStudyStats {
   }>;
 }
 
+// since 가 주어지면 그 기간 안 visited + 작성된 annotation 만 집계 — feat-3-209 v3.
 export async function getCaseStudyStats(
   client: SupabaseClient<Database>,
   userId: string,
   lawCodes: ReadonlyArray<{ slug: LawSubjectSlug; name: string }>,
+  since: Date | null = null,
 ): Promise<CaseStudyStats> {
+  const sinceIso = since?.toISOString();
   const { count: totalCases } = await client
     .from("cases")
     .select("case_id", { head: true, count: "exact" })
     .is("deleted_at", null);
 
-  const { data: sessRows } = await client
+  let sessQ = client
     .from("study_sessions")
     .select("scope")
     .eq("user_id", userId)
     .limit(5000);
+  if (sinceIso) sessQ = sessQ.gte("started_at", sinceIso);
+  const { data: sessRows } = await sessQ;
   const visitedAll = new Set<string>();
   const visitedBySubject = new Map<string, Set<string>>();
   for (const r of sessRows ?? []) {
@@ -1921,6 +1959,12 @@ export async function getCaseStudyStats(
       .eq("target_type", "case")
       .is("deleted_at", null);
     if (table === "user_bookmarks") q = q.gt("star_level", 0);
+    if (sinceIso) {
+      q = q.gte(
+        table === "user_highlights" ? "created_at" : "updated_at",
+        sinceIso,
+      );
+    }
     const { count } = await q;
     return count ?? 0;
   };
@@ -2083,22 +2127,39 @@ function mondayStartKstLocal(d: Date): Date {
   return new Date(k.getTime() - 9 * 3600 * 1000);
 }
 
+// weekCount 모드 또는 since/until 모드. since/until 이 주어지면 그 기간을 주 단위로 분할.
 export async function getUserAccuracyTrend(
   client: SupabaseClient<Database>,
   userId: string,
-  weekCount = 12,
+  opts: { weekCount?: number; since?: Date | null; until?: Date | null } = {},
 ): Promise<UserWeeklyAccuracyTrend> {
   const thisWeekStart = mondayStartKstLocal(new Date());
-  const oldestStart = new Date(
-    thisWeekStart.getTime() - (weekCount - 1) * 7 * 24 * 3600 * 1000,
-  );
+  let firstWeekStart: Date;
+  let lastWeekStart: Date;
+  if (opts.since || opts.until) {
+    firstWeekStart = mondayStartKstLocal(opts.since ?? new Date(0));
+    lastWeekStart = mondayStartKstLocal(opts.until ?? new Date());
+  } else {
+    const weekCount = opts.weekCount ?? 12;
+    firstWeekStart = new Date(
+      thisWeekStart.getTime() - (weekCount - 1) * 7 * 24 * 3600 * 1000,
+    );
+    lastWeekStart = thisWeekStart;
+  }
 
-  const { data: rows, error } = await client
+  let q = client
     .from("user_problem_attempts")
     .select("attempted_at, is_correct")
     .eq("user_id", userId)
-    .gte("attempted_at", oldestStart.toISOString())
+    .gte("attempted_at", firstWeekStart.toISOString())
     .limit(20000);
+  if (opts.until) {
+    const tilEndWeek = new Date(
+      lastWeekStart.getTime() + 7 * 24 * 3600 * 1000,
+    );
+    q = q.lt("attempted_at", tilEndWeek.toISOString());
+  }
+  const { data: rows, error } = await q;
   if (error) throw error;
 
   const byWeek = new Map<string, { total: number; correct: number }>();
@@ -2111,14 +2172,22 @@ export async function getUserAccuracyTrend(
     byWeek.set(key, entry);
   }
 
+  // firstWeekStart 부터 lastWeekStart 까지 한 주씩 채움 (최대 52주 보호).
   const weeks: UserWeeklyAccuracyItem[] = [];
-  for (let i = weekCount - 1; i >= 0; i--) {
-    const ws = new Date(thisWeekStart.getTime() - i * 7 * 24 * 3600 * 1000);
+  let cursor = firstWeekStart.getTime();
+  const lastMs = lastWeekStart.getTime();
+  let safety = 0;
+  while (cursor <= lastMs && safety < 52) {
+    const ws = new Date(cursor);
     const key = ymdKstLocal(ws);
     const entry = byWeek.get(key);
     const total = entry?.total ?? 0;
     const correct = entry?.correct ?? 0;
-    const label = i === 0 ? "이번 주" : `${i}주 전`;
+    const weeksAgo = Math.round(
+      (thisWeekStart.getTime() - cursor) / (7 * 24 * 3600 * 1000),
+    );
+    const label =
+      weeksAgo === 0 ? "이번 주" : weeksAgo > 0 ? `${weeksAgo}주 전` : `+${-weeksAgo}주`;
     weeks.push({
       weekStart: key,
       label,
@@ -2127,6 +2196,8 @@ export async function getUserAccuracyTrend(
       accuracyPct:
         total > 0 ? Math.round((correct / total) * 1000) / 10 : null,
     });
+    cursor += 7 * 24 * 3600 * 1000;
+    safety += 1;
   }
   return { weeks };
 }
@@ -2138,18 +2209,31 @@ export interface PassPredictionSnapshotItem {
   rating: string;
 }
 
+// days 모드 또는 since/until 모드. since/until 이 주어지면 그 기간만.
 export async function getUserPassPredictionTrend(
   client: SupabaseClient<Database>,
   userId: string,
-  days = 30,
+  opts: { days?: number; since?: Date | null; until?: Date | null } = {},
 ): Promise<PassPredictionSnapshotItem[]> {
-  const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
-  const { data, error } = await client
+  let sinceYmd: string;
+  let untilYmd: string | null = null;
+  if (opts.since || opts.until) {
+    sinceYmd = (opts.since ?? new Date(0)).toISOString().slice(0, 10);
+    untilYmd = (opts.until ?? new Date()).toISOString().slice(0, 10);
+  } else {
+    const days = opts.days ?? 30;
+    sinceYmd = new Date(Date.now() - days * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+  }
+  let q = client
     .from("pass_prediction_snapshots")
     .select("snapshot_date, score, rating")
     .eq("user_id", userId)
-    .gte("snapshot_date", since)
+    .gte("snapshot_date", sinceYmd)
     .order("snapshot_date", { ascending: true });
+  if (untilYmd) q = q.lte("snapshot_date", untilYmd);
+  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((r) => ({
     snapshotDate: r.snapshot_date,

@@ -94,7 +94,7 @@ async function sendStudentReport(userId: string): Promise<{
     getOverallProgress(adminClient, userId),
     getDashboardKpis(adminClient, userId),
     getWeakAreas(adminClient, userId, 3),
-    getDailyStudyStats(adminClient, userId, 14),
+    getDailyStudyStats(adminClient, userId, { daysBack: 14 }),
     listStudentAssignments(userId),
   ]);
 

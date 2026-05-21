@@ -112,7 +112,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
     listNotesForStudent(params.profileId),
-    getUserPassPredictionTrend(adminClient, params.profileId, 30),
+    getUserPassPredictionTrend(adminClient, params.profileId, { days: 30 }),
     // feat-7-014 — manager+ 만 구독 패널에 데이터 노출.
     roleAtLeast(role, "manager")
       ? listUserSubscriptionHistory(params.profileId)

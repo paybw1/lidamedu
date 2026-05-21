@@ -12,9 +12,11 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { MCQ_PACK_KIND_LABELS, MCQ_PACK_SUBJECT_LABELS } from "~/features/mcq-packs/labels";
 import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import {
-  RANGE_PRESETS,
-  inRangePreset,
-  type RangePreset,
+  ALL_RANGE_SELECTION,
+  RangeSelectionGroup,
+  inRangeSelection,
+  isRangeSelectionAll,
+  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 
 import type { Route } from "./+types/my-ox-sessions";
@@ -49,9 +51,9 @@ function fmtDate(iso: string | null): string {
 
 export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
   const { sessions } = loaderData;
-  const [range, setRange] = useState<RangePreset>("all");
+  const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
   const visible = sessions.filter((s) =>
-    inRangePreset(s.completedAt ?? s.startedAt, range),
+    inRangeSelection(s.completedAt ?? s.startedAt, rangeSel),
   );
 
   return (
@@ -64,7 +66,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="tabular-nums">
-            {range === "all"
+            {isRangeSelectionAll(rangeSel)
               ? `총 ${sessions.length} 회`
               : `${visible.length} / ${sessions.length} 회`}
           </Badge>
@@ -75,25 +77,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
           </Button>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-muted-foreground text-[11px] font-semibold">
-            기간
-          </span>
-          {RANGE_PRESETS.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => setRange(p.value)}
-              aria-pressed={range === p.value}
-              className={cn(
-                "inline-flex h-[26px] items-center rounded-full border px-2.5 text-xs font-semibold transition-colors",
-                range === p.value
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-muted/40 text-foreground hover:bg-muted",
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+          <RangeSelectionGroup value={rangeSel} onChange={setRangeSel} />
         </div>
       </header>
 

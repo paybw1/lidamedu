@@ -34,7 +34,7 @@ async function snapshotForUser(userId: string): Promise<{
     const [overall, kpis, daily, gs, assignments] = await Promise.all([
       getOverallProgress(adminClient, userId),
       getDashboardKpis(adminClient, userId),
-      getDailyStudyStats(adminClient, userId, 14),
+      getDailyStudyStats(adminClient, userId, { daysBack: 14 }),
       getUserGsAveragePct(adminClient, userId),
       listStudentAssignments(userId),
     ]);

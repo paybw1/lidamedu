@@ -25,9 +25,11 @@ import {
   listMyOxWrongNoteItems,
 } from "~/features/problems/queries.server";
 import {
-  RANGE_PRESETS,
-  inRangePreset,
-  type RangePreset,
+  ALL_RANGE_SELECTION,
+  RangeSelectionGroup,
+  inRangeSelection,
+  isRangeSelectionAll,
+  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 
 import type { Route } from "./+types/my-ox-wrong-note";
@@ -208,10 +210,15 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
   const { items } = loaderData;
-  const [range, setRange] = useState<RangePreset>("all");
+  const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
   const visible = items.filter((it) =>
-    inRangePreset((it as OxWrongItem).lastAttemptAt, range),
+    inRangeSelection((it as OxWrongItem).lastAttemptAt, rangeSel),
   );
+  // runner key — 필터 변경 시 답안 상태 자동 리셋.
+  const runnerKey =
+    rangeSel.kind === "preset"
+      ? rangeSel.preset
+      : `custom:${rangeSel.from ?? ""}:${rangeSel.to ?? ""}`;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">
@@ -223,7 +230,7 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="tabular-nums">
-            {range === "all"
+            {isRangeSelectionAll(rangeSel)
               ? `오답 ${items.length} 개`
               : `${visible.length} / ${items.length} 개`}
           </Badge>
@@ -234,25 +241,11 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
           </Button>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-muted-foreground text-[11px] font-semibold">
-            최근 시도
-          </span>
-          {RANGE_PRESETS.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => setRange(p.value)}
-              aria-pressed={range === p.value}
-              className={cn(
-                "inline-flex h-[26px] items-center rounded-full border px-2.5 text-xs font-semibold transition-colors",
-                range === p.value
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-muted/40 text-foreground hover:bg-muted",
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+          <RangeSelectionGroup
+            value={rangeSel}
+            onChange={setRangeSel}
+            label="최근 시도"
+          />
         </div>
       </header>
 
@@ -269,7 +262,7 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
           </p>
         </div>
       ) : (
-        <WrongNoteRunner key={range} items={visible} />
+        <WrongNoteRunner key={runnerKey} items={visible} />
       )}
     </div>
   );

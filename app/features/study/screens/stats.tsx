@@ -159,19 +159,39 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const rangeSel = parseRangeSelection(url.searchParams);
 
-  // 시계열 차트 인자 (custom 은 default 84/12/30 유지 — 차트는 그대로 두고 누적 stat 만 영향).
-  // 시계열까지 custom 적용은 v3 별도.
+  // 시계열 차트 인자.
   const tsKey: RangeValue = rangeSel.kind === "preset" ? rangeSel.preset : "all";
   const { dailyDays, trendWeeks, passDays } = RANGE_QUERY_ARGS[tsKey];
 
-  // 누적 통계용 since.
+  // since/until 계산 — preset 이면 since 만, custom 이면 둘 다.
   let since: Date | null = null;
+  let until: Date | null = null;
   if (rangeSel.kind === "preset") {
     since = presetToSince(rangeSel.preset);
-  } else if (rangeSel.from) {
-    const ms = ymdToKstUtcMs(rangeSel.from);
-    if (ms !== null) since = new Date(ms);
+  } else {
+    if (rangeSel.from) {
+      const ms = ymdToKstUtcMs(rangeSel.from);
+      if (ms !== null) since = new Date(ms);
+    }
+    if (rangeSel.to) {
+      const ms = ymdToKstUtcMs(rangeSel.to);
+      // until 은 그 날 끝까지 — 다음날 자정 직전.
+      if (ms !== null) until = new Date(ms + 86_400_000 - 1);
+    }
   }
+  // 시계열 query 옵션: custom 이면 since/until, preset 이면 days/weeks.
+  const dailyOpts =
+    rangeSel.kind === "custom"
+      ? { since, until }
+      : { daysBack: dailyDays };
+  const trendOpts =
+    rangeSel.kind === "custom"
+      ? { since, until }
+      : { weekCount: trendWeeks };
+  const passOpts =
+    rangeSel.kind === "custom"
+      ? { since, until }
+      : { days: passDays };
 
   const lawCodes = LAW_SUBJECT_SLUGS.map((s) => ({
     slug: s,
@@ -199,9 +219,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     getDashboardKpis(client, user.id, since),
     getStudyAidCounts(client, user.id, since),
     getAllSubjectsProgress(client, user.id, lawCodes),
-    getDailyStudyStats(client, user.id, dailyDays),
-    getArticleStudyStats(client, user.id, lawCodes),
-    getCaseStudyStats(client, user.id, lawCodes),
+    getDailyStudyStats(client, user.id, dailyOpts),
+    getArticleStudyStats(client, user.id, lawCodes, since),
+    getCaseStudyStats(client, user.id, lawCodes, since),
     getUserSubjectiveStats(client, user.id, lawCodes, since),
     getAllScienceSubjectsProgress(client, user.id),
     getWeakAreas(client, user.id, 5, since),
@@ -209,9 +229,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     getUserAutoBlankStats(client, user.id, "subject", since),
     getUserAutoBlankStats(client, user.id, "period", since),
     getUserRecitationStats(client, user.id, since),
-    getUserAccuracyTrend(client, user.id, trendWeeks),
+    getUserAccuracyTrend(client, user.id, trendOpts),
   ]);
-  const passTrend = await getUserPassPredictionTrend(client, user.id, passDays);
+  const passTrend = await getUserPassPredictionTrend(client, user.id, passOpts);
 
   return {
     rangeSel,
@@ -309,8 +329,8 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
         <div className="border-border bg-muted/30 mt-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
           <RangeSelectionGroup value={rangeSel} onChange={setRange} />
           <p className="text-muted-foreground ml-auto text-[11px] leading-relaxed">
-            정답률·시도수·약점·메모·하이라이트·빈칸·암송·주관식 등에 적용.
-            진도(% 완료) 와 학습한 조문·판례 수는 누적 기준.
+            기간 안 학습 활동·시도·약점 모두 반영. 진도(% 완료) 만 누적 기준
+            유지.
           </p>
         </div>
       </header>

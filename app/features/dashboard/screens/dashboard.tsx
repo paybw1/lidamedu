@@ -162,7 +162,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         name: LAW_SUBJECTS[s].name,
       })),
     ),
-    getDailyStudyStats(client, user.id, 84),
+    getDailyStudyStats(client, user.id, { daysBack: 84 }),
     getStudyGoals(client, user.id),
     getWeakAreas(client, user.id, 5),
   ]);
