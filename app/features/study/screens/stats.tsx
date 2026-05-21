@@ -76,6 +76,33 @@ function isTabValue(v: string | null): v is TabValue {
   return v !== null && (TAB_VALUES as readonly string[]).includes(v);
 }
 
+// feat-3-209 — stats 페이지의 시계열 차트(누적 학습량/주간 정답률/합격 가능성) 기간 preset.
+// 누적 통계(정답률·학습한 조문 수 등) 는 기간이 의미가 다르므로 V1 에서는 시계열에만 적용.
+const RANGE_VALUES = ["today", "7d", "30d", "all"] as const;
+type RangeValue = (typeof RANGE_VALUES)[number];
+const DEFAULT_RANGE: RangeValue = "all";
+const RANGE_LABEL: Record<RangeValue, string> = {
+  today: "오늘",
+  "7d": "7일",
+  "30d": "30일",
+  all: "전체",
+};
+
+// 시계열 query 인자 매핑: preset → (daysBack for daily/passTrend, weeks for accuracy).
+const RANGE_QUERY_ARGS: Record<
+  RangeValue,
+  { dailyDays: number; trendWeeks: number; passDays: number }
+> = {
+  today: { dailyDays: 1, trendWeeks: 1, passDays: 1 },
+  "7d": { dailyDays: 7, trendWeeks: 1, passDays: 7 },
+  "30d": { dailyDays: 30, trendWeeks: 4, passDays: 30 },
+  all: { dailyDays: 84, trendWeeks: 12, passDays: 30 },
+};
+
+function isRangeValue(v: string | null): v is RangeValue {
+  return v !== null && (RANGE_VALUES as readonly string[]).includes(v);
+}
+
 export const meta: Route.MetaFunction = () => [
   { title: "학습 통계 | Lidam Patent Attorney Academy" },
 ];
@@ -86,6 +113,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
+
+  const url = new URL(request.url);
+  const rangeParam = url.searchParams.get("range");
+  const range: RangeValue = isRangeValue(rangeParam) ? rangeParam : DEFAULT_RANGE;
+  const { dailyDays, trendWeeks, passDays } = RANGE_QUERY_ARGS[range];
 
   const lawCodes = LAW_SUBJECT_SLUGS.map((s) => ({
     slug: s,
@@ -113,7 +145,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getDashboardKpis(client, user.id),
     getStudyAidCounts(client, user.id),
     getAllSubjectsProgress(client, user.id, lawCodes),
-    getDailyStudyStats(client, user.id, 84),
+    getDailyStudyStats(client, user.id, dailyDays),
     getArticleStudyStats(client, user.id, lawCodes),
     getCaseStudyStats(client, user.id, lawCodes),
     getUserSubjectiveStats(client, user.id, lawCodes),
@@ -123,11 +155,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     getUserAutoBlankStats(client, user.id, "subject"),
     getUserAutoBlankStats(client, user.id, "period"),
     getUserRecitationStats(client, user.id),
-    getUserAccuracyTrend(client, user.id, 12),
+    getUserAccuracyTrend(client, user.id, trendWeeks),
   ]);
-  const passTrend = await getUserPassPredictionTrend(client, user.id, 30);
+  const passTrend = await getUserPassPredictionTrend(client, user.id, passDays);
 
   return {
+    range,
     overall,
     kpis,
     aidCounts,
@@ -154,6 +187,7 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
   const tab: TabValue = isTabValue(searchParams.get("tab"))
     ? (searchParams.get("tab") as TabValue)
     : DEFAULT_TAB;
+  const range: RangeValue = loaderData.range;
 
   const setTab = (next: string) => {
     setSearchParams(
@@ -161,6 +195,20 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
         const params = new URLSearchParams(prev);
         if (next === DEFAULT_TAB) params.delete("tab");
         else params.set("tab", next);
+        return params;
+      },
+      { preventScrollReset: true, replace: true },
+    );
+  };
+
+  // 기간 변경 시 URL ?range= 갱신 → loader 재호출 → 시계열 query 갱신.
+  // preventScrollReset 으로 위치 보존, replace 로 history 늘어남 방지.
+  const setRange = (next: RangeValue) => {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        if (next === DEFAULT_RANGE) params.delete("range");
+        else params.set("range", next);
         return params;
       },
       { preventScrollReset: true, replace: true },
@@ -192,6 +240,34 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
               </Link>
             </Button>
           </div>
+        </div>
+
+        {/* 기간 preset — 시계열 차트(누적 학습량·주간 정답률·합격 가능성) 에만 영향.
+            누적 통계(정답률·학습 조문 수 등) 는 항상 전체 기준이라 변하지 않음. */}
+        <div className="border-border bg-muted/30 mt-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+          <span className="text-muted-foreground text-[11px] font-semibold whitespace-nowrap">
+            기간
+          </span>
+          {RANGE_VALUES.map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setRange(v)}
+              aria-pressed={range === v}
+              className={cn(
+                "inline-flex h-7 items-center rounded-full border px-3 text-xs font-semibold transition-colors",
+                range === v
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-foreground hover:bg-muted",
+              )}
+            >
+              {RANGE_LABEL[v]}
+            </button>
+          ))}
+          <p className="text-muted-foreground ml-auto text-[11px] leading-relaxed">
+            시계열 차트(누적 학습량·주간 정답률·합격 가능성)에 적용. 누적 통계는
+            전체 기준 유지.
+          </p>
         </div>
       </header>
 

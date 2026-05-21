@@ -53,6 +53,11 @@ import {
   getQuotaState,
   type QuotaState,
 } from "~/features/ai-qna/settings.server";
+import {
+  RANGE_PRESETS,
+  inRangePreset,
+  type RangePreset,
+} from "~/features/study/components/study-aids-list";
 
 import type { Route } from "./+types/ai-chat";
 
@@ -170,6 +175,10 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
+  const [convRange, setConvRange] = useState<RangePreset>("all");
+  const visibleConversations = conversations.filter((c) =>
+    inRangePreset(c.updatedAt, convRange),
+  );
 
   const activeId = active?.conversation.conversationId ?? null;
   const anchorParam = searchParams.get("anchor");
@@ -332,14 +341,35 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
             </Link>
           </Button>
         </div>
+        {/* 기간 필터 — KST 자정 기준. 좁은 사이드바라 그리드로 한 줄. */}
+        <div className="border-border grid grid-cols-4 gap-1 border-b px-2 py-2">
+          {RANGE_PRESETS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => setConvRange(p.value)}
+              aria-pressed={convRange === p.value}
+              className={cn(
+                "rounded-md px-1 py-1 text-[11px] font-semibold transition-colors",
+                convRange === p.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
         <div className="flex-1 overflow-y-auto p-2">
-          {conversations.length === 0 ? (
+          {visibleConversations.length === 0 ? (
             <p className="text-muted-foreground p-3 text-center text-xs">
-              아직 대화가 없습니다.
+              {conversations.length === 0
+                ? "아직 대화가 없습니다."
+                : "선택한 기간에 대화가 없습니다."}
             </p>
           ) : (
             <ul className="space-y-0.5">
-              {conversations.map((c) => (
+              {visibleConversations.map((c) => (
                 <li key={c.conversationId}>
                   <Link
                     to={`/ai?c=${c.conversationId}`}
