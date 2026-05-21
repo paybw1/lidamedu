@@ -8,6 +8,8 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 
 import type { Citation } from "./lib/citations";
 
+export type ReviewStatus = "pending" | "reviewed" | "escalated" | "dismissed";
+
 export interface NegativeFeedbackItem {
   messageId: string;
   conversationId: string;
@@ -20,7 +22,14 @@ export interface NegativeFeedbackItem {
   feedback: number;
   feedbackNote: string | null;
   feedbackAt: string | null;
+  reviewStatus: ReviewStatus;
+  reviewedAt: string | null;
   createdAt: string;
+}
+
+export interface ListNegativeFeedbackOptions {
+  reviewStatus?: ReviewStatus | "all";
+  limit?: number;
 }
 
 /**
@@ -28,14 +37,19 @@ export interface NegativeFeedbackItem {
  * 호출부에서 staff 권한 검증 후 호출.
  */
 export async function listNegativeFeedback(
-  limit = 100,
+  opts: ListNegativeFeedbackOptions = {},
 ): Promise<NegativeFeedbackItem[]> {
-  const { data: msgs, error } = await adminClient
+  const limit = opts.limit ?? 100;
+  let q = adminClient
     .from("ai_messages")
     .select(
-      "message_id, conversation_id, body_md, citations, feedback, feedback_note, feedback_at, created_at, ai_conversations!inner(user_id)",
+      "message_id, conversation_id, body_md, citations, feedback, feedback_note, feedback_at, review_status, reviewed_at, created_at, ai_conversations!inner(user_id)",
     )
-    .eq("feedback", -1)
+    .eq("feedback", -1);
+  if (opts.reviewStatus && opts.reviewStatus !== "all") {
+    q = q.eq("review_status", opts.reviewStatus);
+  }
+  const { data: msgs, error } = await q
     .order("feedback_at", { ascending: false, nullsFirst: false })
     .limit(limit);
   if (error) throw error;
@@ -75,9 +89,28 @@ export async function listNegativeFeedback(
       feedback: m.feedback as number,
       feedbackNote: m.feedback_note,
       feedbackAt: m.feedback_at,
+      reviewStatus: (m.review_status as ReviewStatus) ?? "pending",
+      reviewedAt: m.reviewed_at,
       createdAt: m.created_at,
     };
   });
+}
+
+export async function setMessageReviewStatus(
+  messageId: string,
+  status: ReviewStatus,
+  reviewerId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await adminClient
+    .from("ai_messages")
+    .update({
+      review_status: status,
+      reviewed_at: status === "pending" ? null : new Date().toISOString(),
+      reviewed_by: status === "pending" ? null : reviewerId,
+    })
+    .eq("message_id", messageId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 function parseCitations(raw: unknown): Citation[] {

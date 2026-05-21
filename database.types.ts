@@ -209,7 +209,11 @@ export type Database = {
           feedback_at: string | null
           feedback_note: string | null
           message_id: string
+          refusal_kind: Database["public"]["Enums"]["ai_refusal_kind"] | null
           retrieval_meta: Json | null
+          review_status: Database["public"]["Enums"]["ai_review_status"]
+          reviewed_at: string | null
+          reviewed_by: string | null
           role: Database["public"]["Enums"]["ai_message_role"]
           token_usage: Json | null
         }
@@ -222,7 +226,11 @@ export type Database = {
           feedback_at?: string | null
           feedback_note?: string | null
           message_id?: string
+          refusal_kind?: Database["public"]["Enums"]["ai_refusal_kind"] | null
           retrieval_meta?: Json | null
+          review_status?: Database["public"]["Enums"]["ai_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           role: Database["public"]["Enums"]["ai_message_role"]
           token_usage?: Json | null
         }
@@ -235,7 +243,11 @@ export type Database = {
           feedback_at?: string | null
           feedback_note?: string | null
           message_id?: string
+          refusal_kind?: Database["public"]["Enums"]["ai_refusal_kind"] | null
           retrieval_meta?: Json | null
+          review_status?: Database["public"]["Enums"]["ai_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           role?: Database["public"]["Enums"]["ai_message_role"]
           token_usage?: Json | null
         }
@@ -246,6 +258,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ai_conversations"
             referencedColumns: ["conversation_id"]
+          },
+          {
+            foreignKeyName: "ai_messages_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ai_messages_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -4957,8 +4983,20 @@ export type Database = {
           negative_feedback: number
           output_tokens: number
           positive_feedback: number
+          refusal_insufficient: number
           refusal_responses: number
+          refusal_science: number
           responses: number
+        }[]
+      }
+      ai_qna_monthly_usage: {
+        Args: { p_months?: number }
+        Returns: {
+          input_tokens: number
+          message_count: number
+          month: string
+          output_tokens: number
+          user_id: string
         }[]
       }
       ai_qna_total_metrics: {
@@ -5220,6 +5258,8 @@ export type Database = {
       ai_eval_status: "active" | "archived"
       ai_eval_verdict: "pass" | "partial" | "fail"
       ai_message_role: "user" | "assistant"
+      ai_refusal_kind: "unsupported_science" | "insufficient_grounds"
+      ai_review_status: "pending" | "reviewed" | "escalated" | "dismissed"
       annotation_target_type:
         | "article"
         | "case"
@@ -5441,6 +5481,8 @@ export const Constants = {
       ai_eval_status: ["active", "archived"],
       ai_eval_verdict: ["pass", "partial", "fail"],
       ai_message_role: ["user", "assistant"],
+      ai_refusal_kind: ["unsupported_science", "insufficient_grounds"],
+      ai_review_status: ["pending", "reviewed", "escalated", "dismissed"],
       annotation_target_type: [
         "article",
         "case",

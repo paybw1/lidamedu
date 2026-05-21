@@ -187,11 +187,28 @@ export interface AssistantMessageInsert {
   tokenUsage?: { input: number; output: number; model: string };
 }
 
+/**
+ * 시스템 프롬프트의 가드레일 ③⑤ 거절 정형 문장을 감지해 refusal_kind 분류.
+ * 가드레일 변경 시 문장도 갱신.
+ *
+ * ⑤ 자연과학 거절: "자연과학 질문은 현재 AI Q&A 가 지원하지 않습니다. 강사 Q&A 를 이용해 주세요."
+ * ③ 근거 부족 거절: "제공된 자료로는 확실히 답하기 어렵습니다. 강사 Q&A 를 이용해 주세요."
+ */
+export function classifyRefusal(
+  bodyMd: string,
+): "unsupported_science" | "insufficient_grounds" | null {
+  if (bodyMd.includes("자연과학 질문은 현재 AI Q&A")) return "unsupported_science";
+  if (bodyMd.includes("제공된 자료로는 확실히 답하기 어렵습니다"))
+    return "insufficient_grounds";
+  return null;
+}
+
 export async function appendAssistantMessage(
   client: SupabaseClient<Database>,
   conversationId: string,
   payload: AssistantMessageInsert,
 ): Promise<string> {
+  const refusalKind = classifyRefusal(payload.bodyMd);
   const { data, error } = await client
     .from("ai_messages")
     .insert({
@@ -205,6 +222,7 @@ export async function appendAssistantMessage(
       token_usage: payload.tokenUsage as
         | Database["public"]["Tables"]["ai_messages"]["Insert"]["token_usage"]
         | undefined,
+      refusal_kind: refusalKind,
     })
     .select("message_id")
     .single();

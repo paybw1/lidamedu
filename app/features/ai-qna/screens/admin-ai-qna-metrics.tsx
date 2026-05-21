@@ -178,12 +178,21 @@ export default function AdminAiQnaMetrics({ loaderData }: Route.ComponentProps) 
                           {row.negative_feedback}
                         </td>
                         <td className="px-3 py-2 text-right">
-                          <Badge variant="outline" className="tabular-nums">
+                          <Badge
+                            variant="outline"
+                            className="tabular-nums"
+                            title={`근거부족 ${row.refusal_insufficient} / 자연과학 ${row.refusal_science}`}
+                          >
                             {row.refusal_responses}{" "}
                             <span className="text-muted-foreground">
                               ({refusalRate}%)
                             </span>
                           </Badge>
+                          {(row.refusal_insufficient > 0 || row.refusal_science > 0) ? (
+                            <div className="text-muted-foreground mt-1 text-[10px]">
+                              근거 {row.refusal_insufficient} / 과학 {row.refusal_science}
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {fmtCount(row.input_tokens)}
