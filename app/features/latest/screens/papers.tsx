@@ -428,6 +428,7 @@ function PaperCard({
             </a>
           </Button>
         ) : null}
+        {paper.pdfPath ? <PdfDownloadButton paperId={paper.paperId} /> : null}
         {canEdit ? (
           <Button
             size="sm"
@@ -715,6 +716,7 @@ function PaperForm({
   }, [fetcher.state, fetcher.data, onClose, navigate, location.pathname, location.search]);
 
   return (
+    <>
     <fetcher.Form
       method="post"
       action="/api/admin/paper"
@@ -852,6 +854,85 @@ function PaperForm({
         </Button>
       </div>
     </fetcher.Form>
+    {/* feat-3-504 — PDF 첨부는 form 중첩 회피 위해 fetcher.Form 형제로 렌더. */}
+    {mode === "update" && paper ? (
+      <PdfAttachSection paperId={paper.paperId} currentPath={paper.pdfPath} />
+    ) : null}
+    </>
+  );
+}
+
+function PdfAttachSection({
+  paperId,
+  currentPath,
+}: {
+  paperId: string;
+  currentPath: string | null;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const submitting = fetcher.state !== "idle";
+  return (
+    <div className="border-border/60 mt-4 rounded-xl border-dashed border bg-muted/20 p-3">
+      <p className="text-foreground text-xs font-semibold">
+        <FileTextIcon className="mr-1 inline size-3" /> PDF 첨부 (Supabase Storage)
+      </p>
+      <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+        외부 링크 대신 PDF 를 직접 업로드합니다(최대 20MB). 학생은 "첨부 PDF"
+        버튼으로 5분 signed URL 로 열람.
+      </p>
+      {currentPath ? (
+        <div className="text-muted-foreground mt-2 text-[11px]">
+          현재 파일: <code className="text-foreground">{currentPath}</code>
+        </div>
+      ) : null}
+      <fetcher.Form
+        method="post"
+        encType="multipart/form-data"
+        action="/api/admin/paper-pdf"
+        className="mt-2 flex flex-wrap items-center gap-2"
+      >
+        <input type="hidden" name="paperId" value={paperId} />
+        <input
+          type="file"
+          name="file"
+          accept="application/pdf"
+          required
+          className="text-xs"
+        />
+        <Button
+          type="submit"
+          name="intent"
+          value="upload"
+          size="sm"
+          disabled={submitting}
+          className="h-7 rounded-full px-3 text-xs"
+        >
+          업로드
+        </Button>
+        {currentPath ? (
+          <Button
+            type="submit"
+            name="intent"
+            value="delete"
+            size="sm"
+            variant="ghost"
+            disabled={submitting}
+            className="h-7 rounded-full px-3 text-xs text-rose-600 hover:text-rose-700"
+            onClick={(e) => {
+              if (!confirm("첨부 PDF 를 삭제할까요?")) e.preventDefault();
+            }}
+          >
+            삭제
+          </Button>
+        ) : null}
+        {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
+          <span className="text-xs text-rose-600">{fetcher.data.error}</span>
+        ) : null}
+        {fetcher.data && "ok" in fetcher.data && fetcher.data.ok ? (
+          <span className="text-xs text-emerald-600">완료</span>
+        ) : null}
+      </fetcher.Form>
+    </div>
   );
 }
 
@@ -869,5 +950,38 @@ function Field({
       </Label>
       {children}
     </>
+  );
+}
+
+// feat-3-504 — pdf_path 가 있는 논문은 signed URL fetch 해서 새 탭 열기.
+function PdfDownloadButton({ paperId }: { paperId: string }) {
+  const [loading, setLoading] = useState(false);
+  async function handle() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const resp = await fetch(`/papers/signed-url?paperId=${paperId}`);
+      const json = (await resp.json()) as { url?: string; error?: string };
+      if (json.url) {
+        window.open(json.url, "_blank", "noopener,noreferrer");
+      } else {
+        alert(json.error ?? "PDF 를 불러올 수 없습니다");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <Button
+      type="button"
+      onClick={handle}
+      disabled={loading}
+      size="sm"
+      variant="outline"
+      className="h-8 rounded-full"
+    >
+      <FileTextIcon className="size-3" />
+      {loading ? "여는 중…" : "첨부 PDF"}
+    </Button>
   );
 }

@@ -3073,6 +3073,7 @@ export type Database = {
           deleted_at: string | null
           importance: number
           paper_id: string
+          pdf_path: string | null
           pdf_url: string | null
           published_at: string | null
           source: string | null
@@ -3090,6 +3091,7 @@ export type Database = {
           deleted_at?: string | null
           importance?: number
           paper_id?: string
+          pdf_path?: string | null
           pdf_url?: string | null
           published_at?: string | null
           source?: string | null
@@ -3107,6 +3109,7 @@ export type Database = {
           deleted_at?: string | null
           importance?: number
           paper_id?: string
+          pdf_path?: string | null
           pdf_url?: string | null
           published_at?: string | null
           source?: string | null

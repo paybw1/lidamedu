@@ -25,7 +25,7 @@ export type {
 } from "./labels";
 
 const LIST_COLUMNS =
-  "paper_id, title, authors, source, published_at, abstract, url, pdf_url, subject_laws, importance, tags, created_at, updated_at";
+  "paper_id, title, authors, source, published_at, abstract, url, pdf_url, pdf_path, subject_laws, importance, tags, created_at, updated_at";
 
 interface PaperRow {
   paper_id: string;
@@ -36,6 +36,7 @@ interface PaperRow {
   abstract: string | null;
   url: string | null;
   pdf_url: string | null;
+  pdf_path: string | null;
   subject_laws: string[];
   importance: number;
   tags: string[];
@@ -57,6 +58,7 @@ function rowToListItem(row: PaperRow): PaperListItem {
     abstract: row.abstract,
     url: row.url,
     pdfUrl: row.pdf_url,
+    pdfPath: row.pdf_path,
     subjectLaws: row.subject_laws.filter(isLawSubjectSlug),
     importance: row.importance ?? 1,
     tags: row.tags ?? [],
@@ -234,6 +236,7 @@ export interface UpsertPaperInput {
   abstract?: string | null;
   url?: string | null;
   pdfUrl?: string | null;
+  pdfPath?: string | null;
   subjectLaws?: LawSubjectSlug[];
   importance?: number;
   tags?: string[];
@@ -254,6 +257,7 @@ export async function createPaper(
       abstract: input.abstract ?? null,
       url: input.url ?? null,
       pdf_url: input.pdfUrl ?? null,
+      pdf_path: input.pdfPath ?? null,
       subject_laws: input.subjectLaws ?? [],
       importance: input.importance ?? 1,
       tags: input.tags ?? [],
@@ -278,6 +282,7 @@ export async function updatePaper(
   if (patch.abstract !== undefined) update.abstract = patch.abstract;
   if (patch.url !== undefined) update.url = patch.url;
   if (patch.pdfUrl !== undefined) update.pdf_url = patch.pdfUrl;
+  if (patch.pdfPath !== undefined) update.pdf_path = patch.pdfPath;
   if (patch.subjectLaws !== undefined) update.subject_laws = patch.subjectLaws;
   if (patch.importance !== undefined) update.importance = patch.importance;
   if (patch.tags !== undefined) update.tags = patch.tags;

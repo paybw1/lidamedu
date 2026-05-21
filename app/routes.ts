@@ -63,6 +63,10 @@ export default [
       route("/attempt", "features/recitation/api/attempt.tsx"),
     ]),
     ...prefix("/qna", [route("/thread", "features/qna/api/thread.tsx")]),
+    // feat-3-504 — 논문 PDF signed URL (인증 사용자 누구나).
+    ...prefix("/papers", [
+      route("/signed-url", "features/papers/api/paper-signed-url.tsx"),
+    ]),
     // feat-9-002/003/004 — AI Q&A endpoints.
     //   ask: 실사용자 SSE (인증만)
     //   search-debug / answer-debug: 운영자 점검용 dev endpoint (staff only)
@@ -86,6 +90,8 @@ export default [
       route("/case-reference", "features/admin/api/case-reference.tsx"),
       route("/paper", "features/admin/api/paper.tsx"),
       route("/paper-link", "features/admin/api/paper-link.tsx"),
+      // feat-3-504 — 논문 PDF Supabase Storage 첨부.
+      route("/paper-pdf", "features/papers/api/paper-pdf.tsx"),
       route("/book-update", "features/admin/api/book-update.tsx"),
       route("/mcq-pack", "features/admin/api/mcq-pack.tsx"),
       route("/mcq-exam", "features/admin/api/mcq-exam.tsx"),

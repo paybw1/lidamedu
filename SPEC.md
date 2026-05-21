@@ -234,7 +234,7 @@
 | feat-3-501 | 논문 데이터 모델 — `papers` (title/authors/source/publishedAt/abstract/url/pdfUrl/subject_laws[]/importance/tags) + `paper_article_links` + `paper_case_links`. RLS: public read, staff write. pg_trgm 인덱스 + 다과목 GIN. Soft delete. | P1 | ✅ |
 | feat-3-502 | 논문 등록/수정 — `/api/admin/paper` (create/update/delete, Zod 검증) + `/api/admin/paper-link` (add/remove article/case by number). staff inline 폼 on /latest/papers. | P1 | ✅ |
 | feat-3-503 | 논문 피드 + 관련 링크 — `/latest/papers` 검색·과목·중요 필터 + 페이지네이션. 카드: 제목·저자·출처·초록·subject 배지·관련 조문/판례 chip·외부 링크/PDF 버튼. staff: inline 추가/수정/삭제 + 링크 관리 토글. | P1 | ✅ |
-| feat-3-504 | PDF 첨부 (Supabase Storage) | P2 | 🔲 |
+| feat-3-504 | PDF 첨부 (Supabase Storage) — `papers.pdf_path` 컬럼 + private `papers` 버킷(20MB, application/pdf, staff write RLS). `/api/admin/paper-pdf`(multipart upload/delete, staff+) + `/papers/signed-url?paperId=`(인증 사용자, 5분). `/latest/papers` staff 폼 `PdfAttachSection` (fetcher form 형제) + 학생 view `PdfDownloadButton` (signed URL fetch + window.open). pdf_url(외부 링크) 와 양립. | P2 | ✅ |
 | **5.3.6 도서 추록·정오표** | | | |
 | feat-3-601 | 도서 추록/정오표 데이터 모델 — `book_updates` (book_title/publisher/edition/kind:supplement\|errata\|other/title/description/publishedAt/url/pdfUrl/subject_laws[]/importance/tags). RLS: public read, staff write. trgm + subject_laws GIN 인덱스. Soft delete. | P1 | ✅ |
 | feat-3-602 | 도서 자료 등록/수정 — `/api/admin/book-update` (create/update/delete, Zod 검증) + staff inline 폼 on /latest/book-updates. | P1 | ✅ |

@@ -10,6 +10,8 @@ export interface PaperListItem {
   abstract: string | null;
   url: string | null;
   pdfUrl: string | null;
+  /** feat-3-504 — Supabase Storage `papers` 버킷 내 경로. signed URL 발급 대상. */
+  pdfPath: string | null;
   subjectLaws: LawSubjectSlug[];
   importance: number;
   tags: string[];
