@@ -559,7 +559,7 @@ function ReflowableTextarea({
     }
     if (
       !confirm(
-        `${fieldLabel} 본문에 ${after.split("\n\n").length}개 단락 구분을 적용합니다.\n\n("2019. 12. 24." 같은 날짜·사건번호 안의 구두점도 함께 분리될 수 있으므로, 적용 후 결과를 확인하고 잘못된 곳은 직접 수정하세요.)\n\n적용할까요?`,
+        `${fieldLabel} 본문에 ${after.split("\n\n").length}개 단락 구분을 적용합니다.\n\n("2019. 12. 24." 같은 날짜와 "(1) (2)" 같은 연속 인덱스 안의 구두점은 자동으로 보호됩니다.)\n\n적용할까요?`,
       )
     ) {
       return;
@@ -583,7 +583,7 @@ function ReflowableTextarea({
           variant="outline"
           className="h-6 px-2 text-[10px]"
           onClick={onReflow}
-          title="줄바꿈 없이 붙은 1./가./1)/(1) 등 항목 앞에 단락 구분을 자동 삽입 — 결과 확인 후 잘못된 곳은 수동 수정"
+          title="줄바꿈 없이 붙은 1./가./1)/(1) 등 항목 앞에 단락 구분을 자동 삽입 — 날짜와 연속 인덱스는 자동 보호"
         >
           넘버링 자동 정렬
         </Button>
