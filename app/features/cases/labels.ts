@@ -38,6 +38,41 @@ export interface SummaryItem {
   body: string;
 }
 
+// feat-7-005 후속: 판례 본문 이미지(상표법 다수, 특허법 일부).
+// position 별로 그룹화해 본문 섹션 뒤에 그리드로 렌더. storagePath 는 storage 객체 경로
+// (삭제 시 사용), url 은 public URL.
+export type CaseImagePosition =
+  | "summary"
+  | "reasoning"
+  | "comment"
+  | "pending";
+
+export const CASE_IMAGE_POSITIONS: readonly CaseImagePosition[] = [
+  "summary",
+  "reasoning",
+  "comment",
+  "pending",
+] as const;
+
+export const CASE_IMAGE_POSITION_LABELS: Record<CaseImagePosition, string> = {
+  summary: "판결요지",
+  reasoning: "판시이유",
+  comment: "비고",
+  pending: "미분류",
+};
+
+export interface CaseImage {
+  id: string;
+  url: string;
+  storagePath: string;
+  mimeType: string;
+  width: number | null;
+  height: number | null;
+  alt: string;
+  position: CaseImagePosition;
+  sortOrder: number;
+}
+
 export interface CaseDetail extends CaseListItem {
   summaryBodyMd: string | null;
   summaryItems: SummaryItem[];
@@ -45,6 +80,7 @@ export interface CaseDetail extends CaseListItem {
   fullTextPdf: string | null;
   commentSource: string | null;
   commentBodyMd: string | null;
+  images: CaseImage[];
 }
 
 // feat-4-A-214 관련논문/기사 링크.

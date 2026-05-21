@@ -5,6 +5,7 @@
 import {
   ExternalLinkIcon,
   FileTextIcon,
+  ImageIcon,
   NetworkIcon,
   PlusIcon,
   SaveIcon,
@@ -24,7 +25,14 @@ import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { COURT_LABELS } from "~/features/cases/labels";
+import {
+  CASE_IMAGE_POSITIONS,
+  CASE_IMAGE_POSITION_LABELS,
+  COURT_LABELS,
+  type CaseImage,
+  type CaseImagePosition,
+} from "~/features/cases/labels";
+import { parseCaseImages } from "~/features/cases/queries.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -341,11 +349,17 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
       </Form>
 
       {!isNew ? (
-        <RelatedArticlesEditor
-          caseId={kase.case_id}
-          subjectLaws={(kase.subject_laws ?? []) as LawSubjectSlug[]}
-          relatedArticles={relatedArticles}
-        />
+        <>
+          <ImagesCard
+            caseId={kase.case_id}
+            initialImages={parseCaseImages(kase.images)}
+          />
+          <RelatedArticlesEditor
+            caseId={kase.case_id}
+            subjectLaws={(kase.subject_laws ?? []) as LawSubjectSlug[]}
+            relatedArticles={relatedArticles}
+          />
+        </>
       ) : null}
     </AdminShell>
   );
@@ -883,6 +897,254 @@ function FullTextPdfCard({
         <p className="text-muted-foreground text-[10px]">
           최대 30MB · application/pdf 만 허용.
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── ImagesCard ─────────────────────────────────────────────────────── */
+// 판례 본문 이미지 — 다건 업로드/삭제/메타 수정. 폼 밖이라 메인 Form 과 독립.
+// 각 fetcher 가 자체 상태를 가지고, 액션 후 revalidator 로 loader 재실행.
+function ImagesCard({
+  caseId,
+  initialImages,
+}: {
+  caseId: string;
+  initialImages: CaseImage[];
+}) {
+  const uploadFetcher = useFetcher<{
+    ok?: boolean;
+    image?: CaseImage;
+    error?: string;
+  }>();
+  const removeFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const metaFetcher = useFetcher<{
+    ok?: boolean;
+    image?: CaseImage;
+    error?: string;
+  }>();
+  const revalidator = useRevalidator();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const altRef = useRef<HTMLInputElement>(null);
+  const [position, setPosition] = useState<CaseImagePosition>("summary");
+
+  const isUploading = uploadFetcher.state !== "idle";
+  const removingId =
+    removeFetcher.state !== "idle"
+      ? String(removeFetcher.formData?.get("imageId") ?? "")
+      : null;
+
+  useEffect(() => {
+    const r = uploadFetcher.data;
+    if (!r || uploadFetcher.state !== "idle") return;
+    if (r.ok) {
+      toast.success("이미지 업로드 완료");
+      if (fileRef.current) fileRef.current.value = "";
+      if (altRef.current) altRef.current.value = "";
+      revalidator.revalidate();
+    } else if (r.error) toast.error(r.error);
+  }, [uploadFetcher.state, uploadFetcher.data, revalidator]);
+
+  useEffect(() => {
+    const r = removeFetcher.data;
+    if (!r || removeFetcher.state !== "idle") return;
+    if (r.ok) {
+      toast.success("이미지 제거 완료");
+      revalidator.revalidate();
+    } else if (r.error) toast.error(r.error);
+  }, [removeFetcher.state, removeFetcher.data, revalidator]);
+
+  useEffect(() => {
+    const r = metaFetcher.data;
+    if (!r || metaFetcher.state !== "idle") return;
+    if (r.ok) {
+      toast.success("이미지 정보 변경 완료");
+      revalidator.revalidate();
+    } else if (r.error) toast.error(r.error);
+  }, [metaFetcher.state, metaFetcher.data, revalidator]);
+
+  function onUpload() {
+    const file = fileRef.current?.files?.[0];
+    if (!file) {
+      toast.error("이미지 파일을 선택하세요.");
+      return;
+    }
+    const fd = new FormData();
+    fd.set("intent", "upload_image");
+    fd.set("caseId", caseId);
+    fd.set("position", position);
+    fd.set("alt", altRef.current?.value ?? "");
+    fd.set("file", file);
+    uploadFetcher.submit(fd, {
+      method: "post",
+      action: "/api/admin/case",
+      encType: "multipart/form-data",
+    });
+  }
+
+  function onRemove(imageId: string, alt: string) {
+    const label = alt || "이미지";
+    if (!confirm(`"${label}" 을(를) 제거하시겠습니까?`)) return;
+    const fd = new FormData();
+    fd.set("intent", "remove_image");
+    fd.set("caseId", caseId);
+    fd.set("imageId", imageId);
+    removeFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  function onChangePosition(imageId: string, next: CaseImagePosition) {
+    const fd = new FormData();
+    fd.set("intent", "update_image_meta");
+    fd.set("caseId", caseId);
+    fd.set("imageId", imageId);
+    fd.set("position", next);
+    metaFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  // position 별 그룹화 (정렬은 parseCaseImages 에서 처리됨).
+  const grouped = new Map<CaseImagePosition, CaseImage[]>();
+  for (const p of CASE_IMAGE_POSITIONS) grouped.set(p, []);
+  for (const img of initialImages) grouped.get(img.position)!.push(img);
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+          <ImageIcon className="size-3.5" /> 본문 이미지
+        </p>
+        <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+          상표법·특허법 판례에 포함된 그림(상표 도형, 청구항 도면 등)을
+          업로드합니다. 표시 영역(판결요지/판시이유/비고/미분류) 별로 그룹핑되어
+          학생 본문에 렌더됩니다.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* 업로드 폼 */}
+        <div className="grid gap-2 sm:grid-cols-[1fr_180px_auto] sm:items-end">
+          <Field label="이미지 파일" required>
+            <Input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/bmp"
+              className="text-xs"
+            />
+          </Field>
+          <Field label="표시 영역" htmlFor="imgPosition">
+            <AdminSelect
+              id="imgPosition"
+              value={position}
+              onChange={(e) =>
+                setPosition(e.currentTarget.value as CaseImagePosition)
+              }
+              className="w-full"
+            >
+              {CASE_IMAGE_POSITIONS.map((p) => (
+                <option key={p} value={p}>
+                  {CASE_IMAGE_POSITION_LABELS[p]}
+                </option>
+              ))}
+            </AdminSelect>
+          </Field>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onUpload}
+            disabled={isUploading}
+          >
+            <UploadIcon className="size-3.5" />
+            {isUploading ? "업로드 중…" : "업로드"}
+          </Button>
+        </div>
+        <Field label="설명 (alt, 선택 — 최대 200자)" htmlFor="imgAlt">
+          <Input
+            id="imgAlt"
+            ref={altRef}
+            placeholder="예: 청구항 1 도면 / 등록 상표 도형"
+            maxLength={200}
+          />
+        </Field>
+        <p className="text-muted-foreground text-[10px]">
+          최대 10MB · JPG / PNG / WEBP / GIF / BMP. BMP 는 화면 표시는 되지만
+          전송 비용이 크므로 JPG/PNG 권장.
+        </p>
+
+        {/* 그룹별 그리드 */}
+        {initialImages.length === 0 ? (
+          <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
+            아직 등록된 이미지가 없습니다.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {CASE_IMAGE_POSITIONS.map((pos) => {
+              const arr = grouped.get(pos) ?? [];
+              if (arr.length === 0) return null;
+              return (
+                <div key={pos} className="space-y-2">
+                  <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                    {CASE_IMAGE_POSITION_LABELS[pos]} ({arr.length})
+                  </p>
+                  <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                    {arr.map((img) => (
+                      <li
+                        key={img.id}
+                        className="border-border bg-muted/20 group relative flex flex-col gap-1 rounded-md border p-2"
+                      >
+                        <a
+                          href={img.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block aspect-square overflow-hidden rounded bg-white"
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.alt}
+                            loading="lazy"
+                            className="h-full w-full object-contain"
+                          />
+                        </a>
+                        <p className="text-foreground/80 line-clamp-2 text-[11px]">
+                          {img.alt || (
+                            <span className="text-muted-foreground italic">
+                              (설명 없음)
+                            </span>
+                          )}
+                        </p>
+                        <div className="flex items-center justify-between gap-1">
+                          <AdminSelect
+                            value={img.position}
+                            onChange={(e) =>
+                              onChangePosition(
+                                img.id,
+                                e.currentTarget.value as CaseImagePosition,
+                              )
+                            }
+                            className="h-6 text-[10px]"
+                          >
+                            {CASE_IMAGE_POSITIONS.map((p) => (
+                              <option key={p} value={p}>
+                                {CASE_IMAGE_POSITION_LABELS[p]}
+                              </option>
+                            ))}
+                          </AdminSelect>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-1.5 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
+                            onClick={() => onRemove(img.id, img.alt)}
+                            disabled={removingId === img.id}
+                          >
+                            <Trash2Icon className="size-3" />
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

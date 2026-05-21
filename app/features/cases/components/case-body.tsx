@@ -21,6 +21,8 @@ import {
 import {
   COURT_LABELS,
   type CaseDetail,
+  type CaseImage,
+  type CaseImagePosition,
   type CaseReference,
 } from "~/features/cases/labels";
 import type { ExamProblemRef } from "~/features/problems/labels";
@@ -54,6 +56,9 @@ export function CaseBody({
   // 변경 저장 후 같은 페이지로 돌아오게 한다. safeReturnTo (api/admin/case.tsx) 가 화이트리스트.
   const location = useLocation();
   const editReturnTo = `${location.pathname}${location.search}`;
+  // 본문 이미지 — position 별로 그룹화. summary/reasoning/comment 섹션 뒤에 렌더.
+  // pending 은 본문 끝에 별도 섹션으로 묶음.
+  const imagesByPosition = groupImagesByPosition(kase.images);
   // summaryItems 가 있으면 우선 사용. 없으면 legacy summary_body_md 를 한 묶음으로 폴백.
   const summaryItems =
     kase.summaryItems.length > 0
@@ -195,6 +200,7 @@ export function CaseBody({
                 ))}
               </div>
             </MaybeHighlight>
+            <CaseImagesGrid images={imagesByPosition.summary} />
           </BodySection>
         ) : null}
 
@@ -209,6 +215,7 @@ export function CaseBody({
             >
               <Prose text={kase.reasoningMd} />
             </MaybeHighlight>
+            <CaseImagesGrid images={imagesByPosition.reasoning} />
           </BodySection>
         ) : null}
 
@@ -259,11 +266,68 @@ export function CaseBody({
             >
               <Prose text={kase.commentBodyMd} />
             </MaybeHighlight>
+            <CaseImagesGrid images={imagesByPosition.comment} />
+          </BodySection>
+        ) : null}
+
+        {imagesByPosition.pending.length > 0 ? (
+          <BodySection title="첨부 이미지">
+            <CaseImagesGrid images={imagesByPosition.pending} />
           </BodySection>
         ) : null}
       </CardContent>
     </Card>
   );
+}
+
+// ── 본문 이미지 그리드 ───────────────────────────────────────
+// 자연스러운 흐름: lightbox 없이 클릭 시 새 탭으로. 객체 비율 보존(object-contain),
+// 흰 배경(상표·도형 투명 PNG 대응). alt 캡션은 이미지 아래.
+function CaseImagesGrid({ images }: { images: CaseImage[] }) {
+  if (images.length === 0) return null;
+  return (
+    <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+      {images.map((img) => (
+        <li
+          key={img.id}
+          className="border-border bg-card overflow-hidden rounded-lg border"
+        >
+          <a
+            href={img.url}
+            target="_blank"
+            rel="noreferrer"
+            className="block aspect-[4/3] bg-white"
+          >
+            <img
+              src={img.url}
+              alt={img.alt}
+              loading="lazy"
+              className="h-full w-full object-contain"
+            />
+          </a>
+          {img.alt ? (
+            <p className="text-muted-foreground border-border border-t px-3 py-2 text-xs leading-relaxed">
+              {img.alt}
+            </p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// position 별 그룹화 — case-body 헤더와 각 본문 섹션에서 사용.
+function groupImagesByPosition(
+  images: CaseImage[],
+): Record<CaseImagePosition, CaseImage[]> {
+  const out: Record<CaseImagePosition, CaseImage[]> = {
+    summary: [],
+    reasoning: [],
+    comment: [],
+    pending: [],
+  };
+  for (const img of images) out[img.position].push(img);
+  return out;
 }
 
 // ── 하이라이트 오버레이 조건부 래퍼 ───────────────────────────

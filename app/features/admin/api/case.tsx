@@ -1,5 +1,6 @@
 // 판례 등록/수정 API (feat-7-005). staff(instructor/admin) 전용.
 
+import type { Json } from "database.types";
 import { data, redirect } from "react-router";
 import { z } from "zod";
 
@@ -7,6 +8,12 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { reindexCases } from "~/features/ai-qna/lib/source-chunker.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
+import {
+  CASE_IMAGE_POSITIONS,
+  type CaseImage,
+  type CaseImagePosition,
+} from "~/features/cases/labels";
+import { parseCaseImages } from "~/features/cases/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
@@ -67,6 +74,26 @@ const FULL_TEXT_PDF_MAX_BYTES = 30 * 1024 * 1024;
 const FULL_TEXT_PDF_URL_RE = new RegExp(
   `/storage/v1/object/public/${FULL_TEXT_PDF_BUCKET}/(.+)$`,
 );
+
+// 판례 본문 이미지 storage 버킷.
+const CASE_IMAGES_BUCKET = "case-images";
+const CASE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const CASE_IMAGE_ALLOWED = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/bmp",
+]);
+const CASE_IMAGE_URL_RE = new RegExp(
+  `/storage/v1/object/public/${CASE_IMAGES_BUCKET}/(.+)$`,
+);
+
+// CaseImage[] → Supabase Json. interface 의 strict 필드는 jsonb 컬럼 타입(Json)과
+// 직접 호환되지 않으므로 round-trip 으로 plain object 로 변환.
+function imagesToJson(arr: CaseImage[]): Json {
+  return JSON.parse(JSON.stringify(arr)) as Json;
+}
 
 function emptyToNull(raw: FormDataEntryValue | null): string | null {
   if (raw === null) return null;
@@ -209,6 +236,186 @@ export async function action({ request }: Route.ActionArgs) {
       },
     });
     return data({ ok: true, url: publicUrl });
+  }
+
+  // ── 판례 본문 이미지 (feat-7-005 후속) ──────────────────────────────
+  if (
+    intent === "upload_image" ||
+    intent === "remove_image" ||
+    intent === "update_image_meta"
+  ) {
+    const caseId = String(fd.get("caseId") ?? "");
+    if (!z.string().uuid().safeParse(caseId).success) {
+      return data({ error: "Invalid caseId" }, { status: 400 });
+    }
+
+    const { data: existing } = await client
+      .from("cases")
+      .select("images, case_number")
+      .eq("case_id", caseId)
+      .maybeSingle();
+    const existingImages = parseCaseImages(existing?.images ?? []);
+
+    // ── 업로드 ──
+    if (intent === "upload_image") {
+      const file = fd.get("file");
+      if (!(file instanceof File) || file.size === 0) {
+        return data({ error: "파일이 없습니다." }, { status: 400 });
+      }
+      if (!CASE_IMAGE_ALLOWED.has(file.type)) {
+        return data(
+          { error: "지원 형식: JPG / PNG / WEBP / GIF / BMP." },
+          { status: 400 },
+        );
+      }
+      if (file.size > CASE_IMAGE_MAX_BYTES) {
+        return data({ error: "파일이 10MB 를 초과합니다." }, { status: 400 });
+      }
+
+      const positionRaw = String(fd.get("position") ?? "pending");
+      const position: CaseImagePosition = (
+        CASE_IMAGE_POSITIONS as readonly string[]
+      ).includes(positionRaw)
+        ? (positionRaw as CaseImagePosition)
+        : "pending";
+      const altRaw = String(fd.get("alt") ?? "").trim().slice(0, 200);
+
+      const ts = Date.now();
+      const ext = (file.name.match(/\.([a-zA-Z0-9]+)$/)?.[1] ?? "img").toLowerCase();
+      const safeBase = (file.name || `image.${ext}`)
+        .replace(/\\/g, "/")
+        .split("/")
+        .pop()!
+        .replace(/[^\w.-]+/g, "_")
+        .slice(-80);
+      const objectPath = `${caseId}/${ts}-${safeBase}`;
+
+      const { error: upErr } = await client.storage
+        .from(CASE_IMAGES_BUCKET)
+        .upload(objectPath, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+      if (upErr) return data({ error: upErr.message }, { status: 400 });
+
+      const { data: pub } = client.storage
+        .from(CASE_IMAGES_BUCKET)
+        .getPublicUrl(objectPath);
+
+      const newImage: CaseImage = {
+        id: crypto.randomUUID(),
+        url: pub.publicUrl,
+        storagePath: objectPath,
+        mimeType: file.type,
+        width: null,
+        height: null,
+        alt: altRaw,
+        position,
+        sortOrder:
+          (existingImages
+            .filter((i) => i.position === position)
+            .reduce((m, i) => Math.max(m, i.sortOrder), -1) ?? -1) + 1,
+      };
+      const nextImages = [...existingImages, newImage];
+
+      const { error: updErr } = await client
+        .from("cases")
+        .update({ images: imagesToJson(nextImages) })
+        .eq("case_id", caseId);
+      if (updErr) return data({ error: updErr.message }, { status: 400 });
+
+      void logAuditEvent({
+        actorId: user.id,
+        actorRole: role,
+        action: "case.upload_image",
+        entityType: "case",
+        entityId: caseId,
+        metadata: {
+          caseNumber: existing?.case_number ?? null,
+          imageId: newImage.id,
+          bytes: file.size,
+          position,
+        },
+      });
+      return data({ ok: true, image: newImage });
+    }
+
+    // ── 제거 ──
+    if (intent === "remove_image") {
+      const imageId = String(fd.get("imageId") ?? "");
+      const target = existingImages.find((i) => i.id === imageId);
+      if (!target) {
+        return data({ error: "이미지를 찾을 수 없습니다." }, { status: 404 });
+      }
+      // storage 객체 삭제 — best-effort. storagePath 우선, 없으면 URL 에서 추출.
+      let path = target.storagePath;
+      if (!path) {
+        const m = target.url.match(CASE_IMAGE_URL_RE);
+        if (m) path = m[1];
+      }
+      if (path) {
+        await client.storage.from(CASE_IMAGES_BUCKET).remove([path]);
+      }
+      const nextImages = existingImages.filter((i) => i.id !== imageId);
+      const { error: updErr } = await client
+        .from("cases")
+        .update({ images: imagesToJson(nextImages) })
+        .eq("case_id", caseId);
+      if (updErr) return data({ error: updErr.message }, { status: 400 });
+      void logAuditEvent({
+        actorId: user.id,
+        actorRole: role,
+        action: "case.remove_image",
+        entityType: "case",
+        entityId: caseId,
+        metadata: { caseNumber: existing?.case_number ?? null, imageId },
+      });
+      return data({ ok: true });
+    }
+
+    // ── 메타 수정 (position, alt, sortOrder) ──
+    const imageId = String(fd.get("imageId") ?? "");
+    const target = existingImages.find((i) => i.id === imageId);
+    if (!target) {
+      return data({ error: "이미지를 찾을 수 없습니다." }, { status: 404 });
+    }
+    const positionRaw = fd.get("position");
+    const altRaw = fd.get("alt");
+    const sortOrderRaw = fd.get("sortOrder");
+    const next: CaseImage = { ...target };
+    if (typeof positionRaw === "string") {
+      next.position = (CASE_IMAGE_POSITIONS as readonly string[]).includes(
+        positionRaw,
+      )
+        ? (positionRaw as CaseImagePosition)
+        : target.position;
+    }
+    if (typeof altRaw === "string") next.alt = altRaw.trim().slice(0, 200);
+    if (typeof sortOrderRaw === "string") {
+      const n = Number(sortOrderRaw);
+      if (Number.isFinite(n)) next.sortOrder = n;
+    }
+    const nextImages = existingImages.map((i) =>
+      i.id === imageId ? next : i,
+    );
+    const { error: updErr } = await client
+      .from("cases")
+      .update({ images: imagesToJson(nextImages) })
+      .eq("case_id", caseId);
+    if (updErr) return data({ error: updErr.message }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "case.update_image_meta",
+      entityType: "case",
+      entityId: caseId,
+      metadata: {
+        caseNumber: existing?.case_number ?? null,
+        imageId,
+        position: next.position,
+      },
+    });
+    return data({ ok: true, image: next });
   }
 
   if (intent !== "create" && intent !== "update") {

@@ -1226,6 +1226,7 @@ export type Database = {
           exam_1st_years: number[]
           exam_2nd_years: number[]
           full_text_pdf: string | null
+          images: Json
           importance: number | null
           is_en_banc: boolean
           nickname: string | null
@@ -1251,6 +1252,7 @@ export type Database = {
           exam_1st_years?: number[]
           exam_2nd_years?: number[]
           full_text_pdf?: string | null
+          images?: Json
           importance?: number | null
           is_en_banc?: boolean
           nickname?: string | null
@@ -1276,6 +1278,7 @@ export type Database = {
           exam_1st_years?: number[]
           exam_2nd_years?: number[]
           full_text_pdf?: string | null
+          images?: Json
           importance?: number | null
           is_en_banc?: boolean
           nickname?: string | null

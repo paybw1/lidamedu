@@ -1,13 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-import type {
-  CaseCourt,
-  CaseDetail,
-  CaseListItem,
-  CaseReference,
-  CaseReferenceKind,
-  SummaryItem,
+import {
+  CASE_IMAGE_POSITIONS,
+  type CaseCourt,
+  type CaseDetail,
+  type CaseImage,
+  type CaseImagePosition,
+  type CaseListItem,
+  type CaseReference,
+  type CaseReferenceKind,
+  type SummaryItem,
 } from "./labels";
 
 import type { ExamProblemRef } from "~/features/problems/labels";
@@ -86,6 +89,43 @@ function parseSummaryItems(raw: unknown): SummaryItem[] {
     if (typeof o.title !== "string" || typeof o.body !== "string") continue;
     out.push({ title: o.title, body: o.body });
   }
+  return out;
+}
+
+// cases.images jsonb → CaseImage[]. position/sortOrder 별로 안정 정렬.
+// 잘못된 항목(필수 필드 결손)은 silently skip — staff 가 admin UI 에서 정정.
+export function parseCaseImages(raw: unknown): CaseImage[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CaseImage[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    if (typeof o.id !== "string" || typeof o.url !== "string") continue;
+    if (typeof o.storagePath !== "string") continue;
+    const position: CaseImagePosition = CASE_IMAGE_POSITIONS.includes(
+      o.position as CaseImagePosition,
+    )
+      ? (o.position as CaseImagePosition)
+      : "pending";
+    out.push({
+      id: o.id,
+      url: o.url,
+      storagePath: o.storagePath,
+      mimeType: typeof o.mimeType === "string" ? o.mimeType : "image/jpeg",
+      width: typeof o.width === "number" ? o.width : null,
+      height: typeof o.height === "number" ? o.height : null,
+      alt: typeof o.alt === "string" ? o.alt : "",
+      position,
+      sortOrder: typeof o.sortOrder === "number" ? o.sortOrder : 0,
+    });
+  }
+  out.sort((a, b) => {
+    const pa = CASE_IMAGE_POSITIONS.indexOf(a.position);
+    const pb = CASE_IMAGE_POSITIONS.indexOf(b.position);
+    if (pa !== pb) return pa - pb;
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.id.localeCompare(b.id);
+  });
   return out;
 }
 
@@ -388,7 +428,7 @@ export async function getCaseById(
   const { data, error } = await client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md",
+      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md, images",
     )
     .eq("case_id", caseId)
     .is("deleted_at", null)
@@ -404,6 +444,7 @@ export async function getCaseById(
     fullTextPdf: data.full_text_pdf,
     commentSource: data.comment_source,
     commentBodyMd: data.comment_body_md,
+    images: parseCaseImages(data.images),
   };
 }
 
