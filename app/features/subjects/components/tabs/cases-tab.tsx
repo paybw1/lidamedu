@@ -65,6 +65,18 @@ const SORT_OPTIONS = [
   { value: "case_no", label: "사건번호" },
 ] as const;
 
+// case_title vs summary_title 가 동일 내용인지 — 공백·일반 구두점 차이를 흡수해 비교.
+// 둘 중 하나가 다른 것을 포함하면 (prefix/suffix 차이) 같은 내용으로 본다.
+function sameLabelContent(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s.replace(/[\s:.,;'"()[\]{}·…\-—–]/g, "").toLowerCase();
+  const na = norm(a);
+  const nb = norm(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  return na.includes(nb) || nb.includes(na);
+}
+
 const DEFAULT_FILTERS: CaseFiltersApplied = {
   q: "",
   court: "all",
@@ -112,12 +124,31 @@ export function CasesTab({
     return n ? n.displayLabel : "체계도 항목";
   }, [treeFilter, articles, systematicNodes]);
 
+  // 트리 단독(검색어 미적용) 카운트 — caseTreeCounts 의 article/chapter/node 키.
+  // 검색어 동시 적용 시 banner 에서 "결과 N건 (트리 단독 M건)" 비교 표시.
+  const treeFilterTotalLabel = useMemo(() => {
+    if (!treeFilter) return "0건";
+    const n =
+      treeFilter.kind === "article"
+        ? (caseTreeCounts.byArticleId[treeFilter.articleId] ?? 0)
+        : treeFilter.kind === "chapter"
+          ? (caseTreeCounts.byChapterId[treeFilter.chapterId] ?? 0)
+          : (caseTreeCounts.byNodeId[treeFilter.nodeId] ?? 0);
+    return `${n}건`;
+  }, [treeFilter, caseTreeCounts]);
+
   // 트리 필터 해제 href — case_* 트리 키만 제거.
   const clearTreeHref = useMemo(() => {
     const sp = new URLSearchParams(searchParams);
     sp.delete("case_article");
     sp.delete("case_chapter");
     sp.delete("case_node");
+    return `?${sp.toString()}`;
+  }, [searchParams]);
+  // 검색어 해제 href — q 만 제거 (트리·정렬·법원·기출 필터는 유지).
+  const clearQueryHref = useMemo(() => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("q");
     return `?${sp.toString()}`;
   }, [searchParams]);
 
@@ -205,7 +236,8 @@ export function CasesTab({
           />
         </div>
 
-        {/* Tree filter active banner */}
+        {/* Tree filter active banner — 검색어 동시 적용 시 결과 카운트가 트리 카운트와
+            달라지는 혼란을 해소하기 위해 q 와 결과 건수를 함께 노출 + 검색어 단독 해제. */}
         {treeFilter ? (
           <div className="border-border bg-primary/[0.04] flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-xs">
             <GavelIcon className="text-primary size-3.5" />
@@ -213,6 +245,31 @@ export function CasesTab({
             <Badge variant="secondary" className="max-w-[260px] truncate">
               {treeFilterLabel}
             </Badge>
+            {filters.q ? (
+              <>
+                <span className="text-muted-foreground">+ 검색어:</span>
+                <Badge
+                  variant="secondary"
+                  className="max-w-[200px] truncate font-mono"
+                >
+                  {filters.q}
+                </Badge>
+                <Button asChild variant="ghost" size="sm" className="h-6 px-2">
+                  <Link to={clearQueryHref} preventScrollReset>
+                    <XIcon className="size-3" /> 검색어 해제
+                  </Link>
+                </Button>
+              </>
+            ) : null}
+            <span className="text-muted-foreground ml-1">
+              → 결과 <strong className="text-foreground">{cases.length}</strong>건
+              {filters.q ? (
+                <span className="text-muted-foreground/70">
+                  {" "}
+                  (트리 단독 {treeFilterTotalLabel})
+                </span>
+              ) : null}
+            </span>
             <Button asChild variant="ghost" size="sm" className="h-6 px-2">
               <Link to={clearTreeHref} preventScrollReset>
                 <XIcon className="size-3" /> 전체 보기
@@ -429,10 +486,14 @@ function CaseRow({
   const caseTitleTrim = item.caseTitle.trim();
   const detailTrim = detailLabel.trim();
   const caseTypeTrim = (item.caseType ?? "").trim();
+  // case_title 과 summary_*_title 이 사실상 같은 내용인데 미세한 구두점/공백 차이
+  // ("(실시제품 마법천자문)" vs "(실시제품: 마법천자문)", 끝 ":" 유무 등) 로 정확
+  // 일치 비교가 어긋나 sub-label 에 caseTitle 이 또 표시되던 문제.
+  // 공백·일반 구두점 제거 후 normalize 비교 + substring 포함 관계도 같은 내용으로 본다.
   const subLabel =
     (item.summaryFirstTitle || item.summaryTitle) &&
     caseTitleTrim !== "" &&
-    caseTitleTrim !== detailTrim &&
+    !sameLabelContent(caseTitleTrim, detailTrim) &&
     caseTitleTrim !== caseTypeTrim
       ? item.caseTitle
       : null;
