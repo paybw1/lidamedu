@@ -345,14 +345,15 @@ async function main() {
         color: "underline",
         label: mk.content.slice(0, 500),
       });
-      mk.swap(); // body_json mutate — underline → text
+      // swap 호출 X — body_json mutate 하면 후속 멱등 delete 가 변환 대상 article 을 다시 찾지 못함
+      // (collectUnderlineNodes 가 텍스트 노드로 바뀐 영역을 보지 못해 targetArticleIds 빈 배열).
+      // body_json cleanup 은 어차피 article_revisions immutable trigger 라 skip.
     }
     updateRows.push({
+      article_id: a.article_id,
       revision_id: a.current_revision_id,
       article_label: a.display_label,
       law_code: a.laws.law_code,
-      body_json: body,
-      body_text: rev.body_text, // body_text 도 그대로 — underline text 가 이미 들어 있어 변경 불필요
     });
 
     if (!sampleSeen.ok && articleMarks.length > 0) {
@@ -384,18 +385,7 @@ async function main() {
 
   // 1) 멱등성 — 기존 staff underline (article) row 먼저 정리.
   console.log(`\n기존 staff underline highlight 제거 (멱등성)...`);
-  const articleIds = updateRows.map((r) => r.revision_id ? null : null); // placeholder
-  // 실제로는 article_id 기준 delete — updateRows 에 article_id 없으니 articles 에서 조회.
-  // (revision_id 와 article_id 매핑 — 위 loop 에서 추적해야 깔끔)
-  // 간단화: articles 의 article_id 그대로 사용 (변환 대상만).
-  const targetArticleIds = articles
-    .filter((a) => {
-      const rev = revMap.get(a.current_revision_id);
-      if (!rev?.body_json) return false;
-      const us = collectUnderlineNodes(rev.body_json).filter((u) => !u.isClosedArea);
-      return us.length > 0;
-    })
-    .map((a) => a.article_id);
+  const targetArticleIds = updateRows.map((r) => r.article_id);
   for (let i = 0; i < targetArticleIds.length; i += 500) {
     const slice = targetArticleIds.slice(i, i + 500);
     const { error: delErr } = await supabase
@@ -428,6 +418,7 @@ async function main() {
 
   // article_revisions body_json 은 immutable — cleanup 안 함.
   // ArticleBodyView 의 underline 노드 렌더가 plain text 로 변경됐으므로 시각 중복 없음.
+  // body_json mutate 도 skip — 멱등 delete 가 변환 대상 article 식별을 못 하게 만들기 때문 (위 swap 미호출 사유 참조).
   console.log(
     `\nbody_json cleanup: skip (article_revisions immutable trigger — 의미적으로 영향 없음, ` +
       `ArticleBodyView 의 underline 노드 렌더가 plain text 라 시각 중복 없음)`,
