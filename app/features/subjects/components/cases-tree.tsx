@@ -189,8 +189,10 @@ function activeSystematicAncestors(
 }
 
 // 활성 필터 → URL searchParams 빌더.
-// 다른 case_* 트리 키는 제거하고 tab=cases 만 유지.
-// q / case_court / case_exam / case_sort 같은 비 트리 필터는 보존.
+// 다른 case_* 트리 키는 제거하고 tab=cases 만 유지. 검색어 q 도 자동 해제 —
+// 트리 클릭은 "이 조문의 판례를 본다" 강한 의도라 기존 검색어와의 교집합이
+// 사용자가 기대하는 동작이 아니다(트리 카운트와 실제 결과 건수 불일치 혼란).
+// case_court / case_exam / case_sort 같은 비-검색 필터는 그대로 보존.
 function buildTreeHref(
   linkBase: string,
   current: URLSearchParams,
@@ -201,6 +203,7 @@ function buildTreeHref(
   next.delete("case_article");
   next.delete("case_chapter");
   next.delete("case_node");
+  next.delete("q");
   if (target) {
     if (target.kind === "article") next.set("case_article", target.articleId);
     else if (target.kind === "chapter")
