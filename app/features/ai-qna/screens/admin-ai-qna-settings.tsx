@@ -141,10 +141,12 @@ export default function AdminAiQnaSettings({
           />
 
           {error ? (
-            <p className="text-sm text-rose-600">{error}</p>
+            <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>
           ) : null}
           {saved ? (
-            <p className="text-sm text-emerald-600">저장되었습니다.</p>
+            <p className="text-sm text-emerald-600 dark:text-emerald-300">
+              저장되었습니다.
+            </p>
           ) : null}
 
           <div className="flex items-center gap-2">

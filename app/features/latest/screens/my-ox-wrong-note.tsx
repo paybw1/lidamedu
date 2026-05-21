@@ -223,7 +223,10 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
 
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed py-12 text-center">
-          <CheckCircle2Icon className="text-emerald-500 mx-auto size-10" />
+          <CheckCircle2Icon
+            className="text-emerald-500 dark:text-emerald-400 mx-auto size-10"
+            aria-hidden="true"
+          />
           <p className="text-muted-foreground mt-3 text-sm">
             오답 노트가 비어있습니다. 모두 정답 처리되었거나 아직 OX 시험 응시
             이력이 없습니다.

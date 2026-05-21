@@ -196,7 +196,7 @@ export default function AdminAiQnaEmbedStatus({
           </pre>
         ) : null}
         {cronErr ? (
-          <p className="border-rose-500/30 bg-rose-500/[0.04] rounded-2xl border p-3 text-xs text-rose-600">
+          <p className="border-rose-500/30 bg-rose-500/[0.04] rounded-2xl border p-3 text-xs text-rose-600 dark:text-rose-300">
             {cronErr}
           </p>
         ) : null}
@@ -311,7 +311,10 @@ export default function AdminAiQnaEmbedStatus({
           </section>
         ) : (
           <div className="rounded-2xl border border-dashed py-12 text-center">
-            <CheckCircle2Icon className="mx-auto size-10 text-emerald-600" />
+            <CheckCircle2Icon
+              className="mx-auto size-10 text-emerald-600 dark:text-emerald-400"
+              aria-hidden="true"
+            />
             <p className="text-muted-foreground mt-3 text-sm">
               대기 중인 청크가 없습니다. 모두 임베딩 완료.
             </p>

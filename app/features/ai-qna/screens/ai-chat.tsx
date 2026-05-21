@@ -466,7 +466,9 @@ function StreamingBubble({
           </span>
         )}
         {stream.error ? (
-          <p className="mt-2 text-xs text-rose-600">오류: {stream.error}</p>
+          <p className="mt-2 text-xs text-rose-600 dark:text-rose-300">
+            오류: {stream.error}
+          </p>
         ) : null}
         {stream.hits.length > 0 ? (
           <div className="text-muted-foreground mt-3 flex flex-wrap gap-1 border-t border-border/60 pt-2 text-[11px]">
@@ -567,24 +569,36 @@ function FeedbackButtons({
           onClick={() => set(1)}
           disabled={submitting}
           aria-pressed={feedback === 1}
+          aria-label={
+            feedback === 1
+              ? "도움이 됐어요 — 다시 누르면 해제"
+              : "이 답변이 도움이 됐어요"
+          }
           className={cn(
             "hover:bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
             feedback === 1 && "text-emerald-700 dark:text-emerald-300",
           )}
         >
-          <ThumbsUpIcon className="size-3" />
+          <ThumbsUpIcon className="size-3" aria-hidden="true" />
+          <span className="sr-only">좋아요</span>
         </button>
         <button
           type="button"
           onClick={() => set(-1)}
           disabled={submitting}
           aria-pressed={feedback === -1}
+          aria-label={
+            feedback === -1
+              ? "도움이 안 됐어요 — 다시 누르면 해제"
+              : "이 답변이 도움이 안 됐어요"
+          }
           className={cn(
             "hover:bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
             feedback === -1 && "text-rose-700 dark:text-rose-300",
           )}
         >
-          <ThumbsDownIcon className="size-3" />
+          <ThumbsDownIcon className="size-3" aria-hidden="true" />
+          <span className="sr-only">싫어요</span>
         </button>
         {feedback === -1 && !noteOpen ? (
           <button
