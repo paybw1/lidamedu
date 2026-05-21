@@ -245,17 +245,6 @@ export function CaseBody({
 
         {kase.commentBodyMd ? (
           <BodySection title="비고">
-            {/* 출처 박스 */}
-            {kase.commentSource ? (
-              <div className="border-border bg-muted/60 mb-3 rounded-lg border px-4 py-3">
-                <p className="text-muted-foreground mb-0.5 font-mono text-[10px] font-bold tracking-widest uppercase">
-                  출처
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  {kase.commentSource}
-                </p>
-              </div>
-            ) : null}
             <MaybeHighlight
               on={enableHighlights}
               fieldPath="case.comment"
