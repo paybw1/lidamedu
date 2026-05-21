@@ -935,11 +935,11 @@ function InlineNode({
       );
     }
     case "underline":
-      return (
-        <span className="underline decoration-amber-600 decoration-2 underline-offset-2 dark:decoration-amber-400">
-          {renderTextWithBlanks(node.text, 0)}
-        </span>
-      );
+      // feat-3-211: underline 시각 표시는 staff highlight 시스템(color="underline")으로 통합.
+      // body_json 의 underline 노드는 immutable (article_revisions 발행 후 수정 차단) 이라
+      // 인라인 amber 밑줄을 직접 그리지 않고 일반 text 로 렌더 — 위치는 user_highlights 의
+      // staff underline row 가 CSS Highlight API 로 표시한다(scripts/articles/convert-underline-to-staff-highlights.mjs).
+      return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
     case "subtitle":
       return (
         <span className="text-foreground mx-0.5 font-bold tracking-tight">
