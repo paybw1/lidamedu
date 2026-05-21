@@ -15,10 +15,13 @@ import { cn } from "~/core/lib/utils";
 import {
   type AnnotationTargetType,
   HIGHLIGHT_COLORS,
+  HIGHLIGHT_COLOR_DEFAULT_LABEL,
+  highlightColorLabel,
   type HighlightColor,
 } from "../labels";
 import { captureContainerSelection } from "../lib/highlight-dom";
 import { dispatchMemoSnippet } from "../lib/memo-selection-event";
+import { useHighlightAliases } from "../lib/use-highlight-aliases";
 
 const COLOR_BTN: Record<HighlightColor, string> = {
   yellow: "bg-amber-200 hover:bg-amber-300",
@@ -29,13 +32,15 @@ const COLOR_BTN: Record<HighlightColor, string> = {
   underline: "",
 };
 
-const COLOR_TITLE: Record<HighlightColor, string> = {
-  yellow: "노랑 하이라이트",
-  green: "초록 하이라이트",
-  red: "빨강 하이라이트",
-  blue: "파랑 하이라이트",
-  underline: "밑줄",
-};
+// 기본 색 이름 기반 swatch title — alias 가 있으면 그 위에 prepend.
+function swatchTitle(color: HighlightColor, alias: string | undefined): string {
+  const base =
+    color === "underline"
+      ? "밑줄"
+      : `${HIGHLIGHT_COLOR_DEFAULT_LABEL[color]} 하이라이트`;
+  const aliasTrim = alias?.trim();
+  return aliasTrim ? `${aliasTrim} · ${base}` : base;
+}
 
 // 색상 버튼 list — underline 은 별도 렌더 (아이콘 버튼) 이라 4색만 자동 매핑.
 const SWATCH_COLORS = HIGHLIGHT_COLORS.filter(
@@ -162,6 +167,7 @@ export function HighlightToolbar({
   targetId?: string;
 }) {
   const fetcher = useFetcher();
+  const aliases = useHighlightAliases();
   const [pending, setPending] = useState<PendingSelection | null>(null);
   // 마지막 비-null pending 보관 — selectionchange 가 click 직전에 null 로 갱신되는 케이스 보호
   const lastPendingRef = useRef<PendingSelection | null>(null);
@@ -254,29 +260,32 @@ export function HighlightToolbar({
       className="bg-popover text-popover-foreground fixed z-50 flex items-center gap-1 rounded-md border p-1 shadow-md"
       style={{ top, left, width: TOOLBAR_W, height: TOOLBAR_H }}
     >
-      {SWATCH_COLORS.map((c) => (
-        <button
-          key={c}
-          type="button"
-          aria-label={COLOR_TITLE[c]}
-          title={COLOR_TITLE[c]}
-          disabled={submitting}
-          // mousedown 으로 처리 — click 전에 selection 손실 방지
-          onMouseDown={(e) => {
-            e.preventDefault();
-            handlePickColor(c);
-          }}
-          className={cn(
-            "size-7 rounded border border-black/10 transition-colors disabled:opacity-50",
-            COLOR_BTN[c],
-          )}
-        />
-      ))}
+      {SWATCH_COLORS.map((c) => {
+        const t = swatchTitle(c, aliases[c]);
+        return (
+          <button
+            key={c}
+            type="button"
+            aria-label={t}
+            title={t}
+            disabled={submitting}
+            // mousedown 으로 처리 — click 전에 selection 손실 방지
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handlePickColor(c);
+            }}
+            className={cn(
+              "size-7 rounded border border-black/10 transition-colors disabled:opacity-50",
+              COLOR_BTN[c],
+            )}
+          />
+        );
+      })}
       <button
         key="underline"
         type="button"
-        aria-label={COLOR_TITLE.underline}
-        title={COLOR_TITLE.underline}
+        aria-label={swatchTitle("underline", aliases.underline)}
+        title={swatchTitle("underline", aliases.underline)}
         disabled={submitting}
         onMouseDown={(e) => {
           e.preventDefault();

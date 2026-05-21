@@ -42,6 +42,10 @@ export default [
       route("/bookmark", "features/annotations/api/bookmark.tsx"),
       route("/memo", "features/annotations/api/memo.tsx"),
       route("/highlight", "features/annotations/api/highlight.tsx"),
+      route(
+        "/highlight-alias",
+        "features/annotations/api/highlight-alias.tsx",
+      ),
     ]),
     ...prefix("/blanks", [
       route("/attempt", "features/blanks/api/attempt.tsx"),

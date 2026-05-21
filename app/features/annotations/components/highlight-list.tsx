@@ -8,9 +8,11 @@ import { cn } from "~/core/lib/utils";
 
 import {
   type AnnotationTargetType,
+  HIGHLIGHT_COLOR_DEFAULT_LABEL,
   type HighlightColor,
   type HighlightRecord,
 } from "../labels";
+import { useHighlightAliases } from "../lib/use-highlight-aliases";
 
 const COLOR_CLASS: Record<HighlightColor, string> = {
   green: "bg-emerald-100 text-emerald-900 border-emerald-300",
@@ -39,6 +41,7 @@ export function HighlightList({
   viewerIsStaff?: boolean;
 }) {
   const deleteFetcher = useFetcher();
+  const aliases = useHighlightAliases();
 
   const deletingId =
     deleteFetcher.formData?.get("intent") === "delete"
@@ -81,6 +84,15 @@ export function HighlightList({
                   {isStaffHl ? (
                     <span className="mt-0.5 shrink-0 rounded-sm bg-black/10 px-1 py-0.5 text-[10px] font-bold">
                       강사
+                    </span>
+                  ) : null}
+                  {/* 색상 alias 칩 — alias 가 있으면 본인 하이라이트 한정으로 표시 (강사 작성은 강사 의도) */}
+                  {h.isMine && aliases[h.color] ? (
+                    <span
+                      className="mt-0.5 shrink-0 rounded-sm bg-black/5 px-1 py-0.5 text-[10px] font-semibold"
+                      title={`${aliases[h.color]} (${HIGHLIGHT_COLOR_DEFAULT_LABEL[h.color]})`}
+                    >
+                      {aliases[h.color]}
                     </span>
                   ) : null}
                   <span className={cn("flex-1", EXCERPT_TEXT_CLASS[h.color])}>

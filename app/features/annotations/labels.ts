@@ -82,3 +82,49 @@ export interface HighlightRecord {
   /** 현재 사용자가 작성자인지. false = 강사 작성(전체 공개) 하이라이트. */
   isMine: boolean;
 }
+
+// 색상별 기본 한글 이름 — 사용자 alias 가 없을 때 폴백.
+export const HIGHLIGHT_COLOR_DEFAULT_LABEL: Record<HighlightColor, string> = {
+  yellow: "노랑",
+  green: "초록",
+  red: "빨강",
+  blue: "파랑",
+  underline: "밑줄",
+};
+
+// 사용자별 색상 닉네임 — feat-3-208.
+// 사용자가 "이 색은 어떤 목적으로 쓴다" 라고 라벨링한 결과. 누락 키는 기본 색 이름으로 폴백.
+export type HighlightColorAliases = Partial<Record<HighlightColor, string>>;
+
+// alias 1건당 최대 길이 — DB 폭주 방지 + UI 한 줄 표시 가능.
+export const HIGHLIGHT_ALIAS_MAX_LEN = 24;
+
+export const highlightAliasSchema = z
+  .string()
+  .max(HIGHLIGHT_ALIAS_MAX_LEN)
+  .trim();
+
+// jsonb 자유 형식 → 안전 alias 맵으로 정규화.
+export function normalizeHighlightColorAliases(
+  raw: unknown,
+): HighlightColorAliases {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const src = raw as Record<string, unknown>;
+  const out: HighlightColorAliases = {};
+  for (const c of HIGHLIGHT_COLORS) {
+    const v = src[c];
+    if (typeof v === "string") {
+      const trimmed = v.trim().slice(0, HIGHLIGHT_ALIAS_MAX_LEN);
+      if (trimmed) out[c] = trimmed;
+    }
+  }
+  return out;
+}
+
+// 색상 → 표시용 라벨 (alias 우선, 없으면 기본 색 이름).
+export function highlightColorLabel(
+  color: HighlightColor,
+  aliases: HighlightColorAliases | null | undefined,
+): string {
+  return aliases?.[color]?.trim() || HIGHLIGHT_COLOR_DEFAULT_LABEL[color];
+}

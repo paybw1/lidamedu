@@ -3820,6 +3820,7 @@ export type Database = {
           analytics_consent_at: string | null
           avatar_url: string | null
           created_at: string
+          highlight_color_aliases: Json
           is_synthetic: boolean
           marketing_consent: boolean
           name: string
@@ -3836,6 +3837,7 @@ export type Database = {
           analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
+          highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
           name: string
@@ -3852,6 +3854,7 @@ export type Database = {
           analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
+          highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
           name?: string

@@ -7,11 +7,16 @@ import { data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { HighlightColorAliasEditor } from "~/features/annotations/components/highlight-color-alias-editor";
 import {
   HIGHLIGHT_COLORS,
+  highlightColorLabel,
   type HighlightColor,
 } from "~/features/annotations/labels";
-import { listAllHighlights } from "~/features/annotations/queries.server";
+import {
+  getHighlightColorAliases,
+  listAllHighlights,
+} from "~/features/annotations/queries.server";
 import {
   CardCta,
   CardHeaderRow,
@@ -96,9 +101,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
-  const [items, aidCounts] = await Promise.all([
+  const [items, aidCounts, aliases] = await Promise.all([
     listAllHighlights(client, user.id),
     getStudyAidCounts(client, user.id),
+    getHighlightColorAliases(client, user.id),
   ]);
   const counts = {
     total: items.length,
@@ -109,11 +115,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     underline: 0,
   };
   for (const h of items) counts[h.color] += 1;
-  return { items, counts, aidCounts };
+  return { items, counts, aidCounts, aliases };
 }
 
 export default function Highlights({ loaderData }: Route.ComponentProps) {
-  const { items: all, counts, aidCounts } = loaderData;
+  const { items: all, counts, aidCounts, aliases } = loaderData;
+  // 색상별 표시 라벨 — alias 우선, 없으면 기본 색 이름.
+  const labelFor = (c: HighlightColor) => highlightColorLabel(c, aliases);
   const [subject, setSubject] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter | null>(null);
   const [color, setColor] = useState<HighlightColor | null>(null);
@@ -156,13 +164,14 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
       desc="본문에 색칠한 발췌 모음. 최근 작성 순으로 정렬되며, 색상별로 좁혀 볼 수 있습니다."
       summaryStats={[
         { label: "전체", value: counts.total },
-        { label: "노랑", value: counts.yellow, dotClass: COLOR.yellow.dot },
-        { label: "초록", value: counts.green, dotClass: COLOR.green.dot },
-        { label: "빨강", value: counts.red, dotClass: COLOR.red.dot },
-        { label: "파랑", value: counts.blue, dotClass: COLOR.blue.dot },
-        { label: "밑줄", value: counts.underline, dotClass: COLOR.underline.dot },
+        { label: labelFor("yellow"), value: counts.yellow, dotClass: COLOR.yellow.dot },
+        { label: labelFor("green"), value: counts.green, dotClass: COLOR.green.dot },
+        { label: labelFor("red"), value: counts.red, dotClass: COLOR.red.dot },
+        { label: labelFor("blue"), value: counts.blue, dotClass: COLOR.blue.dot },
+        { label: labelFor("underline"), value: counts.underline, dotClass: COLOR.underline.dot },
       ]}
     >
+      <HighlightColorAliasEditor initial={aliases} />
       <FilterBar
         hasActive={hasActive}
         onReset={reset}
@@ -220,7 +229,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
                 aria-hidden
                 className={cn("size-2 rounded-full", COLOR[c].dot)}
               />
-              {COLOR[c].label}
+              {labelFor(c)}
             </FilterChip>
           ))}
         </FilterGroup>
@@ -260,7 +269,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
                           aria-hidden
                           className={cn("size-2 rounded-full", c.dot)}
                         />
-                        {c.label}
+                        {labelFor(h.color)}
                       </span>
                       <span className="text-muted-foreground text-[11px] tabular-nums">
                         {formatRelative(h.createdAt)}

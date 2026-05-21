@@ -25,8 +25,57 @@ export {
   annotationTargetTypeSchema,
   BOOKMARK_STEP_LEVELS,
   HIGHLIGHT_COLORS,
+  HIGHLIGHT_COLOR_DEFAULT_LABEL,
+  HIGHLIGHT_ALIAS_MAX_LEN,
+  highlightAliasSchema,
+  highlightColorLabel,
   highlightColorSchema,
+  normalizeHighlightColorAliases,
 } from "./labels";
+export type { HighlightColorAliases } from "./labels";
+
+// 사용자별 색상 alias (닉네임) 읽기 — feat-3-208.
+// 누락 키 또는 빈 값은 호출부 highlightColorLabel() 가 기본 색 이름으로 폴백.
+export async function getHighlightColorAliases(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<import("./labels").HighlightColorAliases> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("highlight_color_aliases")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  // 모듈 순환을 피하기 위해 normalize 는 require 가 아닌 위 import 의 reexport 사용.
+  const { normalizeHighlightColorAliases } = await import("./labels");
+  return normalizeHighlightColorAliases(data?.highlight_color_aliases ?? null);
+}
+
+// 특정 색상의 alias 값을 저장. 빈 문자열을 넘기면 해당 키를 삭제(기본 라벨로 복귀).
+// jsonb merge — 다른 색 alias 는 보존.
+export async function setHighlightColorAlias(
+  client: SupabaseClient<Database>,
+  userId: string,
+  color: HighlightColor,
+  alias: string,
+): Promise<import("./labels").HighlightColorAliases> {
+  // 기존 alias 맵 → 키 삽입/삭제 → 전체 jsonb 갱신. 동시 편집 충돌 가능성은 낮은 사용자
+  // 본인 데이터라 무시. (race 가 문제되는 양은 5색 × 1 명, 발생 가능성 거의 0.)
+  const current = await getHighlightColorAliases(client, userId);
+  const next: import("./labels").HighlightColorAliases = { ...current };
+  const trimmed = alias.trim().slice(0, 24);
+  if (trimmed) {
+    next[color] = trimmed;
+  } else {
+    delete next[color];
+  }
+  const { error } = await client
+    .from("profiles")
+    .update({ highlight_color_aliases: next })
+    .eq("profile_id", userId);
+  if (error) throw error;
+  return next;
+}
 
 // JSONB → BookmarkStepNotes 안전 변환. 알 수 없는 키는 무시.
 function parseStepNotes(value: unknown): BookmarkStepNotes {
