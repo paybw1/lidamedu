@@ -791,10 +791,15 @@ function FullTextPdfCard({
   const currentUrl = kase.full_text_pdf;
   const isUploading = uploadFetcher.state !== "idle";
   const isRemoving = removeFetcher.state !== "idle";
+  // ImagesCard 와 같은 이유로 처리된 응답을 ref 로 추적 — useRevalidator() 가
+  // revalidate 중 새 reference 를 내보내 무한 toast 가 도는 것을 방지.
+  const handledUploadRef = useRef<unknown>(null);
+  const handledRemoveRef = useRef<unknown>(null);
 
   useEffect(() => {
     const r = uploadFetcher.data;
-    if (!r) return;
+    if (!r || r === handledUploadRef.current) return;
+    handledUploadRef.current = r;
     if (r.ok) {
       toast.success("판결전문 PDF 업로드 완료");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -806,7 +811,8 @@ function FullTextPdfCard({
 
   useEffect(() => {
     const r = removeFetcher.data;
-    if (!r) return;
+    if (!r || r === handledRemoveRef.current) return;
+    handledRemoveRef.current = r;
     if (r.ok) {
       toast.success("판결전문 PDF 제거 완료");
       revalidator.revalidate();
@@ -934,9 +940,19 @@ function ImagesCard({
       ? String(removeFetcher.formData?.get("imageId") ?? "")
       : null;
 
+  // 처리된 응답을 ref 로 추적 — useRevalidator() 반환 객체가 매 render 새로 생겨
+  // useEffect deps 에 두면 무한 fire(메타 변경 → revalidate → 부모 re-render →
+  // 또 fire → toast → revalidate ...)되는 문제 회피.
+  // 같은 fetcher.data reference 는 한 번만 처리.
+  const handledUploadRef = useRef<unknown>(null);
+  const handledRemoveRef = useRef<unknown>(null);
+  const handledMetaRef = useRef<unknown>(null);
+
   useEffect(() => {
+    if (uploadFetcher.state !== "idle") return;
     const r = uploadFetcher.data;
-    if (!r || uploadFetcher.state !== "idle") return;
+    if (!r || r === handledUploadRef.current) return;
+    handledUploadRef.current = r;
     if (r.ok) {
       toast.success("이미지 업로드 완료");
       if (fileRef.current) fileRef.current.value = "";
@@ -946,8 +962,10 @@ function ImagesCard({
   }, [uploadFetcher.state, uploadFetcher.data, revalidator]);
 
   useEffect(() => {
+    if (removeFetcher.state !== "idle") return;
     const r = removeFetcher.data;
-    if (!r || removeFetcher.state !== "idle") return;
+    if (!r || r === handledRemoveRef.current) return;
+    handledRemoveRef.current = r;
     if (r.ok) {
       toast.success("이미지 제거 완료");
       revalidator.revalidate();
@@ -955,8 +973,10 @@ function ImagesCard({
   }, [removeFetcher.state, removeFetcher.data, revalidator]);
 
   useEffect(() => {
+    if (metaFetcher.state !== "idle") return;
     const r = metaFetcher.data;
-    if (!r || metaFetcher.state !== "idle") return;
+    if (!r || r === handledMetaRef.current) return;
+    handledMetaRef.current = r;
     if (r.ok) {
       toast.success("이미지 정보 변경 완료");
       revalidator.revalidate();
