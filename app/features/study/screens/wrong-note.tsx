@@ -15,10 +15,13 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  RangePresetGroup,
   ResultCard,
   SectionTitle,
   SessionBanner,
+  inRangePreset,
   subjectName,
+  type RangePreset,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -76,9 +79,18 @@ function AttemptChip({ count }: { count: number }) {
 export default function WrongNote({ loaderData }: Route.ComponentProps) {
   const { items, oxItems, aidCounts } = loaderData;
   const [subject, setSubject] = useState<string | null>(null);
+  const [range, setRange] = useState<RangePreset>("all");
 
-  const mcq = subject ? items.filter((p) => p.lawCode === subject) : items;
-  const ox = subject ? oxItems.filter((o) => o.lawCode === subject) : oxItems;
+  const mcq = items.filter((p) => {
+    if (subject && p.lawCode !== subject) return false;
+    if (!inRangePreset(p.lastAttemptedAt, range)) return false;
+    return true;
+  });
+  const ox = oxItems.filter((o) => {
+    if (subject && o.lawCode !== subject) return false;
+    if (!inRangePreset(o.lastAttemptedAt, range)) return false;
+    return true;
+  });
 
   return (
     <StudyAidsShell
@@ -95,7 +107,13 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
         },
       ]}
     >
-      <FilterBar hasActive={subject !== null} onReset={() => setSubject(null)}>
+      <FilterBar
+        hasActive={subject !== null || range !== "all"}
+        onReset={() => {
+          setSubject(null);
+          setRange("all");
+        }}
+      >
         <FilterGroup label="1차 과목">
           <FilterChip
             selected={subject === null}
@@ -125,6 +143,12 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
             </FilterChip>
           ))}
         </FilterGroup>
+        <FilterDivider />
+        <RangePresetGroup
+          value={range}
+          onChange={setRange}
+          label="최근 시도"
+        />
       </FilterBar>
 
       {mcq.length > 0 ? (

@@ -26,9 +26,12 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  RangePresetGroup,
   ResultCard,
   formatRelative,
+  inRangePreset,
   subjectName,
+  type RangePreset,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -125,13 +128,19 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
   const [subject, setSubject] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter | null>(null);
   const [color, setColor] = useState<HighlightColor | null>(null);
+  const [range, setRange] = useState<RangePreset>("all");
   const [q, setQ] = useState("");
   const hasActive =
-    subject !== null || type !== null || color !== null || q.trim() !== "";
+    subject !== null ||
+    type !== null ||
+    color !== null ||
+    range !== "all" ||
+    q.trim() !== "";
   const reset = () => {
     setSubject(null);
     setType(null);
     setColor(null);
+    setRange("all");
     setQ("");
   };
 
@@ -146,6 +155,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
         return false;
     } else if (type && h.targetType !== type) return false;
     if (color && h.color !== color) return false;
+    if (!inRangePreset(h.createdAt, range)) return false;
     if (needle) {
       const hay = [h.excerpt, h.primaryLabel, h.secondaryLabel, h.bodySnippet]
         .filter(Boolean)
@@ -233,6 +243,8 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
             </FilterChip>
           ))}
         </FilterGroup>
+        <FilterDivider />
+        <RangePresetGroup value={range} onChange={setRange} />
       </FilterBar>
 
       {items.length === 0 ? (

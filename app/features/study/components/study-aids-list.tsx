@@ -142,6 +142,71 @@ export function FilterDivider() {
   );
 }
 
+// feat-3-209 — 기간 필터 preset. KST(UTC+9) 자정 기준.
+// "오늘" 은 오늘 KST 자정 이후, "7d/30d" 는 N-1일 전 자정 이후 (오늘 포함 N일).
+export type RangePreset = "today" | "7d" | "30d" | "all";
+
+export const RANGE_PRESETS: { value: RangePreset; label: string }[] = [
+  { value: "today", label: "오늘" },
+  { value: "7d", label: "7일" },
+  { value: "30d", label: "30일" },
+  { value: "all", label: "전체" },
+];
+
+// KST 자정의 UTC ms.
+function kstStartOfTodayUtcMs(now: Date = new Date()): number {
+  const kstMs = now.getTime() + 9 * 60 * 60 * 1000;
+  const startKstMs = Math.floor(kstMs / 86400000) * 86400000;
+  return startKstMs - 9 * 60 * 60 * 1000;
+}
+
+// preset 의 경계 시각(UTC ms). "all" 은 -Infinity 로 항상 통과.
+export function rangePresetStartUtcMs(preset: RangePreset): number {
+  if (preset === "all") return Number.NEGATIVE_INFINITY;
+  const today = kstStartOfTodayUtcMs();
+  if (preset === "today") return today;
+  if (preset === "7d") return today - 6 * 86400000; // 오늘 포함 7일
+  if (preset === "30d") return today - 29 * 86400000;
+  return Number.NEGATIVE_INFINITY;
+}
+
+// iso 시각(또는 Date) 이 preset 범위 안에 있는지. iso 가 invalid 면 false.
+export function inRangePreset(
+  iso: string | Date | null | undefined,
+  preset: RangePreset,
+): boolean {
+  if (preset === "all") return true;
+  if (!iso) return false;
+  const t = typeof iso === "string" ? new Date(iso).getTime() : iso.getTime();
+  if (!Number.isFinite(t)) return false;
+  return t >= rangePresetStartUtcMs(preset);
+}
+
+// FilterGroup label="기간" + 4 chip. preset/onChange 와 동작 동일.
+export function RangePresetGroup({
+  value,
+  onChange,
+  label = "기간",
+}: {
+  value: RangePreset;
+  onChange: (next: RangePreset) => void;
+  label?: string;
+}) {
+  return (
+    <FilterGroup label={label}>
+      {RANGE_PRESETS.map((p) => (
+        <FilterChip
+          key={p.value}
+          selected={value === p.value}
+          onClick={() => onChange(p.value)}
+        >
+          {p.label}
+        </FilterChip>
+      ))}
+    </FilterGroup>
+  );
+}
+
 export function FilterChip({
   selected,
   onClick,

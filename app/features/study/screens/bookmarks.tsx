@@ -16,11 +16,14 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  RangePresetGroup,
   ResultCard,
   SessionBanner,
   StarBar,
   formatRelative,
+  inRangePreset,
   subjectName,
+  type RangePreset,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -72,11 +75,14 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
   const [subject, setSubject] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter | null>(null);
   const [minStar, setMinStar] = useState(1);
-  const hasActive = subject !== null || type !== null || minStar > 1;
+  const [range, setRange] = useState<RangePreset>("all");
+  const hasActive =
+    subject !== null || type !== null || minStar > 1 || range !== "all";
   const reset = () => {
     setSubject(null);
     setType(null);
     setMinStar(1);
+    setRange("all");
   };
 
   const items = all.filter((b) => {
@@ -89,6 +95,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
         return false;
     } else if (type && b.targetType !== type) return false;
     if (b.starLevel < minStar) return false;
+    if (!inRangePreset(b.updatedAt, range)) return false;
     return true;
   });
   const problemCount = items.filter((b) => b.targetType === "problem").length;
@@ -158,6 +165,8 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
             </FilterChip>
           ))}
         </FilterGroup>
+        <FilterDivider />
+        <RangePresetGroup value={range} onChange={setRange} />
       </FilterBar>
 
       {problemCount > 0 ? (

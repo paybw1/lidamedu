@@ -17,9 +17,12 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  RangePresetGroup,
   ResultCard,
   formatRelative,
+  inRangePreset,
   subjectName,
+  type RangePreset,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -76,11 +79,14 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
   const { items: all, counts, aidCounts } = loaderData;
   const [subject, setSubject] = useState<string | null>(null);
   const [type, setType] = useState<TypeFilter | null>(null);
+  const [range, setRange] = useState<RangePreset>("all");
   const [q, setQ] = useState("");
-  const hasActive = subject !== null || type !== null || q.trim() !== "";
+  const hasActive =
+    subject !== null || type !== null || range !== "all" || q.trim() !== "";
   const reset = () => {
     setSubject(null);
     setType(null);
+    setRange("all");
     setQ("");
   };
 
@@ -94,6 +100,7 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
       )
         return false;
     } else if (type && m.targetType !== type) return false;
+    if (!inRangePreset(m.updatedAt, range)) return false;
     if (needle) {
       const hay = [
         m.bodyMd,
@@ -174,6 +181,8 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
             </FilterChip>
           ))}
         </FilterGroup>
+        <FilterDivider />
+        <RangePresetGroup value={range} onChange={setRange} />
       </FilterBar>
 
       {items.length === 0 ? (
