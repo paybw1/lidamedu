@@ -23,7 +23,6 @@ import {
   type CaseDetail,
   type CaseReference,
 } from "~/features/cases/labels";
-import { reflowNumberingSafe } from "~/features/cases/lib/reflow-numbering";
 import type { ExamProblemRef } from "~/features/problems/labels";
 
 type HighlightsProp = React.ComponentProps<
@@ -392,14 +391,14 @@ function SummaryBlock({
 // element 로 풀어 시각적 밑줄로 표시한다. 마커 외의 HTML 태그는 들어오지 않는다는
 // 전제 — 파서가 `<u>` 만 입력한다 — 이라 dangerouslySetInnerHTML 은 쓰지 않는다.
 function Prose({ text }: { text: string }) {
-  const paras = reflowNumberingSafe(text)
-    .split(/\n{2,}/)
-    .filter((s) => s.trim() !== "");
+  // paragraph 분리는 DB 본문의 `\n\n` 만으로 결정 — staff 가 admin-case-edit 에서 입력한 그대로.
+  // reflowNumberingSafe 자동 호출은 같은 paragraph 안의 sub-marker("1)" 등)를 강제 분리해
+  // staff 의 수정 의도와 충돌하므로 제거. 자동 분리가 필요하면 admin 의 "넘버링 자동 정렬" 사용.
+  const paras = text.split(/\n{2,}/).filter((s) => s.trim() !== "");
   return (
     <div className="text-foreground/90 dark:text-foreground/85 space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
       {paras.map((p, i) => (
-        // whitespace-pre-wrap — staff 가 입력한 연속 공백/줄넘김 모두 보존(타이핑 그대로 렌더).
-        // pre-line 은 연속 공백을 1개로 압축해 띄어쓰기 수정이 반영되지 않던 문제 해결.
+        // whitespace-pre-wrap — 연속 공백 + 줄넘김 모두 보존(타이핑 그대로 렌더).
         <p key={i} className="whitespace-pre-wrap">
           {renderWithUnderline(p)}
         </p>
