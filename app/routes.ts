@@ -421,6 +421,11 @@ export default [
         "/api/cron/embed-chunks",
         "features/cron/api/embed-chunks.tsx",
       ),
+      // feat-9-005 v1.2 — eval 자동 평가 cron. ANTHROPIC/VOYAGE 키 미설정 시 dry-run.
+      route(
+        "/api/cron/ai-eval-run",
+        "features/cron/api/ai-eval-run.tsx",
+      ),
       route(
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",
@@ -474,6 +479,10 @@ export default [
         "/admin/ai-qna/eval/new",
         "features/ai-qna/screens/admin-ai-qna-eval-edit.tsx",
         { id: "admin-ai-qna-eval-new" },
+      ),
+      route(
+        "/admin/ai-qna/eval/:evalItemId/runs",
+        "features/ai-qna/screens/admin-ai-qna-eval-runs.tsx",
       ),
       route(
         "/admin/ai-qna/eval/:evalItemId",

@@ -1,16 +1,25 @@
 // feat-9-005 v1.1 — AI Q&A eval 데이터셋 list + 인라인 archive/restore.
 // 신규 추가는 /admin/ai-qna/eval/new (별도 파일).
 
-import { ArchiveIcon, BookmarkIcon, PlusIcon, RotateCcwIcon } from "lucide-react";
+import {
+  ArchiveIcon,
+  BookmarkIcon,
+  PlayIcon,
+  PlusIcon,
+  RotateCcwIcon,
+} from "lucide-react";
 import { Form, Link, data, redirect, useNavigation } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { runSingleEval } from "~/features/ai-qna/lib/eval-runner.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  getLastRunsForItems,
   listEvalItems,
   setEvalItemStatus,
 } from "~/features/ai-qna/queries.staff.server";
@@ -41,7 +50,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     search,
     limit: 200,
   });
-  return { items, filter: { status, lawCode, search } };
+  const lastRuns = await getLastRunsForItems(items.map((i) => i.evalItemId));
+  const itemsWithLast = items.map((i) => ({
+    ...i,
+    lastRun: lastRuns.get(i.evalItemId) ?? null,
+  }));
+  return { items: itemsWithLast, filter: { status, lawCode, search } };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -65,6 +79,31 @@ export async function action({ request }: Route.ActionArgs) {
     );
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
+  }
+  if (intent === "run") {
+    const evalItemId = String(fd.get("evalItemId") ?? "");
+    if (!evalItemId)
+      return data({ error: "evalItemId 필수" }, { status: 400 });
+    if (!process.env.ANTHROPIC_API_KEY || !process.env.VOYAGE_API_KEY) {
+      return data(
+        { error: "ANTHROPIC_API_KEY 또는 VOYAGE_API_KEY 미설정" },
+        { status: 503 },
+      );
+    }
+    try {
+      const r = await runSingleEval(evalItemId, { triggeredBy: user.id });
+      return data({
+        ok: true,
+        runId: r.runId,
+        score: r.score,
+        verdict: r.verdict,
+      });
+    } catch (e) {
+      return data(
+        { error: e instanceof Error ? e.message : String(e) },
+        { status: 500 },
+      );
+    }
   }
   return data({ error: "Unknown intent" }, { status: 400 });
 }
@@ -208,7 +247,57 @@ export default function AdminAiQnaEval({ loaderData }: Route.ComponentProps) {
                     메모: {it.notes}
                   </p>
                 ) : null}
-                <div className="border-border/60 mt-3 flex gap-2 border-t pt-2">
+                {it.lastRun ? (
+                  <div className="border-border/60 mt-3 flex items-center gap-2 border-t pt-2 text-[11px]">
+                    <span className="text-muted-foreground">최근 평가:</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "tabular-nums",
+                        it.lastRun.judgeVerdict === "pass"
+                          ? "border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                          : it.lastRun.judgeVerdict === "partial"
+                            ? "border-amber-500/40 text-amber-700 dark:text-amber-300"
+                            : "border-rose-500/40 text-rose-700 dark:text-rose-300",
+                      )}
+                    >
+                      {it.lastRun.judgeScore}/5 · {it.lastRun.judgeVerdict}
+                    </Badge>
+                    <span className="text-muted-foreground tabular-nums">
+                      {it.lastRun.createdAt.slice(0, 16).replace("T", " ")}
+                    </span>
+                    <Link
+                      to={`/admin/ai-qna/eval/${it.evalItemId}/runs`}
+                      className="text-primary ml-auto underline-offset-4 hover:underline"
+                    >
+                      이력 →
+                    </Link>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground border-border/60 mt-3 border-t pt-2 text-[11px]">
+                    아직 평가 이력 없음.
+                  </p>
+                )}
+
+                <div className="mt-3 flex gap-2">
+                  <Form method="post">
+                    <input type="hidden" name="intent" value="run" />
+                    <input type="hidden" name="evalItemId" value={it.evalItemId} />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="default"
+                      disabled={submitting || it.status !== "active"}
+                      className="h-7 rounded-full px-3 text-xs"
+                      title={
+                        it.status !== "active"
+                          ? "아카이브 항목은 평가 불가"
+                          : "지금 한 번 평가 (RAG → 답변 → judge)"
+                      }
+                    >
+                      <PlayIcon className="size-3" /> 지금 평가
+                    </Button>
+                  </Form>
                   <Button
                     asChild
                     size="sm"

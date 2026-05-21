@@ -323,6 +323,91 @@ export interface EvalPrefillFromMessage {
   feedbackNote: string | null;
 }
 
+// ── eval_runs ─────────────────────────────────────────────────────────────
+
+export interface EvalRunRow {
+  runId: string;
+  evalItemId: string;
+  aiAnswer: string;
+  aiCitations: Citation[];
+  searchMeta: unknown;
+  answerModel: string;
+  judgeScore: number;
+  judgeVerdict: "pass" | "partial" | "fail";
+  judgeRationale: string;
+  judgeModel: string;
+  tokenUsage: unknown;
+  triggeredBy: string | null;
+  createdAt: string;
+}
+
+export async function listEvalRuns(
+  evalItemId: string,
+  limit = 50,
+): Promise<EvalRunRow[]> {
+  const { data, error } = await adminClient
+    .from("ai_eval_runs")
+    .select(
+      "run_id, eval_item_id, ai_answer, ai_citations, search_meta, answer_model, judge_score, judge_verdict, judge_rationale, judge_model, token_usage, triggered_by, created_at",
+    )
+    .eq("eval_item_id", evalItemId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    runId: r.run_id,
+    evalItemId: r.eval_item_id,
+    aiAnswer: r.ai_answer,
+    aiCitations: parseCitations(r.ai_citations),
+    searchMeta: r.search_meta,
+    answerModel: r.answer_model,
+    judgeScore: r.judge_score,
+    judgeVerdict: r.judge_verdict as EvalRunRow["judgeVerdict"],
+    judgeRationale: r.judge_rationale,
+    judgeModel: r.judge_model,
+    tokenUsage: r.token_usage,
+    triggeredBy: r.triggered_by,
+    createdAt: r.created_at,
+  }));
+}
+
+export interface LastRunSummary {
+  runId: string;
+  judgeScore: number;
+  judgeVerdict: "pass" | "partial" | "fail";
+  createdAt: string;
+}
+
+/**
+ * eval list 화면용 — eval_item_id → 마지막 run 요약 매핑.
+ * runs 가 많아도 distinct on (eval_item_id) 한 row 만.
+ */
+export async function getLastRunsForItems(
+  evalItemIds: string[],
+): Promise<Map<string, LastRunSummary>> {
+  const out = new Map<string, LastRunSummary>();
+  if (evalItemIds.length === 0) return out;
+  // distinct on 은 PostgREST 직접 지원 안 됨 → 정렬 후 client 집계.
+  const { data, error } = await adminClient
+    .from("ai_eval_runs")
+    .select("run_id, eval_item_id, judge_score, judge_verdict, created_at")
+    .in("eval_item_id", evalItemIds)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  for (const r of data ?? []) {
+    if (out.has(r.eval_item_id)) continue;
+    out.set(r.eval_item_id, {
+      runId: r.run_id,
+      judgeScore: r.judge_score,
+      judgeVerdict: r.judge_verdict as LastRunSummary["judgeVerdict"],
+      createdAt: r.created_at,
+    });
+  }
+  return out;
+}
+
+// ── prefill (앞쪽에서 정의됨) ─────────────────────────────────────────────
+
 export async function getEvalPrefillFromMessage(
   messageId: string,
 ): Promise<EvalPrefillFromMessage | null> {

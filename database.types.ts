@@ -129,6 +129,76 @@ export type Database = {
           },
         ]
       }
+      ai_eval_runs: {
+        Row: {
+          ai_answer: string
+          ai_citations: Json
+          answer_model: string
+          created_at: string
+          eval_item_id: string
+          judge_model: string
+          judge_rationale: string
+          judge_score: number
+          judge_verdict: Database["public"]["Enums"]["ai_eval_verdict"]
+          run_id: string
+          search_meta: Json | null
+          token_usage: Json | null
+          triggered_by: string | null
+        }
+        Insert: {
+          ai_answer: string
+          ai_citations?: Json
+          answer_model: string
+          created_at?: string
+          eval_item_id: string
+          judge_model: string
+          judge_rationale: string
+          judge_score: number
+          judge_verdict: Database["public"]["Enums"]["ai_eval_verdict"]
+          run_id?: string
+          search_meta?: Json | null
+          token_usage?: Json | null
+          triggered_by?: string | null
+        }
+        Update: {
+          ai_answer?: string
+          ai_citations?: Json
+          answer_model?: string
+          created_at?: string
+          eval_item_id?: string
+          judge_model?: string
+          judge_rationale?: string
+          judge_score?: number
+          judge_verdict?: Database["public"]["Enums"]["ai_eval_verdict"]
+          run_id?: string
+          search_meta?: Json | null
+          token_usage?: Json | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_eval_runs_eval_item_id_fkey"
+            columns: ["eval_item_id"]
+            isOneToOne: false
+            referencedRelation: "ai_eval_items"
+            referencedColumns: ["eval_item_id"]
+          },
+          {
+            foreignKeyName: "ai_eval_runs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ai_eval_runs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       ai_messages: {
         Row: {
           body_md: string
@@ -5148,6 +5218,7 @@ export type Database = {
         | "similar_to"
         | "contrary_to"
       ai_eval_status: "active" | "archived"
+      ai_eval_verdict: "pass" | "partial" | "fail"
       ai_message_role: "user" | "assistant"
       annotation_target_type:
         | "article"
@@ -5368,6 +5439,7 @@ export const Constants = {
         "contrary_to",
       ],
       ai_eval_status: ["active", "archived"],
+      ai_eval_verdict: ["pass", "partial", "fail"],
       ai_message_role: ["user", "assistant"],
       annotation_target_type: [
         "article",
