@@ -26,8 +26,12 @@ const RE_SECTION = /^(제\d+(?:절|장|편)(?:\s+[^\d][^\t]*?)?)\s*\d*\s*$/;
 // 사건번호 뒤 tail("전원합의체 판결 【유형】" / "판결[유형]" / "유형" / "결정" 등)
 // 은 형식이 일정치 않아 통째로 캡처 후 caseTypeFromTail 로 파싱한다.
 // (병합)·축약 병합번호(,2880)는 caseNumber 에 포함하지 않고 tail 로 흘린다.
+//
+// seq prefix("1 " 등) 는 옵셔널. 기존 HWP→txt 변환은 seq 가 글자로 들어 있었으나
+// hwpx 직 변환에서는 한글 자동 번호매김이라 글자가 없을 수 있다. seq 가 없으면
+// 섹션 내부 카운터로 자동 부여한다.
 const RE_CASE_HEAD = new RegExp(
-  String.raw`^(?<seq>\d+)\s+` +
+  String.raw`^(?:(?<seq>\d+)\s+)?` +
   String.raw`(?<court>[가-힣]+(?:법원|재판소|심판원|법)|헌재)\s+` +
   String.raw`(?<y>\d{4})\.\s*(?<m>\d{1,2})\.\s*(?<d>\d{1,2})\.\s*` +
   String.raw`(?:선고|자)?\s*` +
@@ -86,6 +90,8 @@ export function parse(lines) {
   let blankCount = 0;
   // 직전(이전 비-빈 라인 처리 직전) 의 빈 줄 누적값 — 기출 분류 휴리스틱용.
   let lastBlankCount = 0;
+  // hwpx 입력에서 seq prefix 가 없는 경우 섹션 내부 카운터로 자동 부여.
+  let sectionCaseCounter = 0;
 
   function flush() {
     if (!paraBuf.length || cur == null) {
@@ -154,6 +160,7 @@ export function parse(lines) {
       if (head.startsWith("제") && /절/.test(head.slice(0, 6))) {
         closeCurrent();
         currentSection = head;
+        sectionCaseCounter = 0;
         continue;
       }
       if (
@@ -164,6 +171,7 @@ export function parse(lines) {
         closeCurrent();
         currentChapter = head;
         currentSection = null;
+        sectionCaseCounter = 0;
         continue;
       }
       if (
@@ -175,6 +183,7 @@ export function parse(lines) {
         currentPart = head;
         currentChapter = null;
         currentSection = null;
+        sectionCaseCounter = 0;
         continue;
       }
     }
@@ -194,8 +203,9 @@ export function parse(lines) {
     if (mCase) {
       closeCurrent();
       const { seq, court, y, m, d, caseNo, tail } = mCase.groups;
+      const seqNum = seq != null ? Number(seq) : ++sectionCaseCounter;
       cur = {
-        seqInSection: Number(seq),
+        seqInSection: seqNum,
         court,
         decisionDate: `${y}-${String(Number(m)).padStart(2, "0")}-${String(Number(d)).padStart(2, "0")}`,
         caseNumber: caseNo.trim(),

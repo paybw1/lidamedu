@@ -39,6 +39,7 @@ const supa = createClient(SUPABASE_URL, SERVICE_KEY, {
 
 function normalizeBody(s) {
   return s
+    .replace(/<\/?u>/g, "") // case 본문 underline 마커는 임베딩 노이즈로 제거
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")

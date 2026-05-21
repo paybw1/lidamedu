@@ -26,8 +26,10 @@ export interface ChunkInput {
 }
 
 // 평문 정규화 — 멀티스페이스/개행 압축, 양끝 trim. content_hash 안정화.
+// `<u>...</u>` 는 판례 본문의 underline 시각 마커이며 임베딩/검색에는 노이즈이므로 제거.
 function normalizeBody(s: string): string {
   return s
+    .replace(/<\/?u>/g, "")
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")

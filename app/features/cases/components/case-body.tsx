@@ -377,8 +377,10 @@ function SummaryBlock({
   if (showLabel && !label) {
     label = `[${index + 1}]`;
   }
+  // 제목 중복 비교는 underline 마커를 무시한 plain 텍스트 기준.
+  const titleStripped = displayTitle.replace(/<\/?u>/g, "").trim();
   const duplicatesHeader =
-    displayTitle.trim() !== "" && displayTitle.trim() === caseTitle.trim();
+    titleStripped !== "" && titleStripped === caseTitle.trim();
   const shownTitle = duplicatesHeader ? "" : displayTitle;
   return (
     <div className="space-y-2">
@@ -387,7 +389,7 @@ function SummaryBlock({
           {label ? (
             <span className="text-primary mr-1.5 font-mono">{label}</span>
           ) : null}
-          {shownTitle}
+          {renderWithUnderline(shownTitle)}
         </p>
       ) : null}
       {body ? <Prose text={body} /> : null}
@@ -397,6 +399,9 @@ function SummaryBlock({
 
 // ── 본문 텍스트 렌더러 ────────────────────────────────────────
 // generous reading size (~17px / 1.8 leading) per design brief §4.2
+// 원 소스(HWPX)의 underline 영역은 `<u>...</u>` 마커로 들어오며, 여기서 React `<u>`
+// element 로 풀어 시각적 밑줄로 표시한다. 마커 외의 HTML 태그는 들어오지 않는다는
+// 전제 — 파서가 `<u>` 만 입력한다 — 이라 dangerouslySetInnerHTML 은 쓰지 않는다.
 function Prose({ text }: { text: string }) {
   const paras = reflowNumberingSafe(text)
     .split(/\n{2,}/)
@@ -405,9 +410,35 @@ function Prose({ text }: { text: string }) {
     <div className="text-foreground/90 dark:text-foreground/85 space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
       {paras.map((p, i) => (
         <p key={i} className="whitespace-pre-line">
-          {p}
+          {renderWithUnderline(p)}
         </p>
       ))}
     </div>
   );
+}
+
+// `<u>...</u>` 마커를 React fragment + <u> element 시퀀스로 변환.
+// HighlightOverlay 는 CSS Highlight API 기반(DOM 누적 text-node offset)이라 `<u>`
+// element 가 끼어들어도 textContent 시퀀스는 동일 — 하이라이트 offset 정합성 유지.
+function renderWithUnderline(text: string): ReactNode {
+  if (!text) return null;
+  if (!text.includes("<u>")) return text;
+  const parts: ReactNode[] = [];
+  const re = /<u>([\s\S]*?)<\/u>/g;
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > cursor) parts.push(text.slice(cursor, m.index));
+    parts.push(
+      <u
+        key={`u-${m.index}`}
+        className="decoration-foreground/70 underline decoration-[1.5px] underline-offset-[3px]"
+      >
+        {m[1]}
+      </u>,
+    );
+    cursor = m.index + m[0].length;
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return parts;
 }
