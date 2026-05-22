@@ -260,54 +260,52 @@ export async function getCasePlacementMaps(
   lawCode: string,
   lawId: string,
 ): Promise<CasePlacementMaps> {
-  // 1) 과목의 case 들 — primary_* 만 select.
-  const { data: caseRows, error: caseErr } = await client
-    .from("cases")
-    .select("case_id, primary_article_id, primary_node_id")
-    .contains("subject_laws", [lawCode])
-    .is("deleted_at", null);
-  if (caseErr) throw caseErr;
+  // 3개 쿼리 병렬 — round trip 합산. 데이터셋 규모가 작아 페이지네이션 없이 한 번에 처리.
+  // inner join 도 articles 의 단순 lookup map 으로 대체해 join 오버헤드 제거.
+  const [caseRowsRes, aslRowsRes, articlesRes, aclRes] = await Promise.all([
+    client
+      .from("cases")
+      .select("case_id, primary_article_id, primary_node_id")
+      .contains("subject_laws", [lawCode])
+      .is("deleted_at", null),
+    client
+      .from("article_systematic_links")
+      .select("article_id, node_id"),
+    client.from("articles").select("article_id, law_id, deleted_at"),
+    client.from("article_case_links").select("article_id, case_id"),
+  ]);
+  if (caseRowsRes.error) throw caseRowsRes.error;
+  if (aslRowsRes.error) throw aslRowsRes.error;
+  if (articlesRes.error) throw articlesRes.error;
+  if (aclRes.error) throw aclRes.error;
 
-  // 2) 과목의 article_systematic_links — article → nodes.
-  const { data: aslRows, error: aslErr } = await client
-    .from("article_systematic_links")
-    .select("article_id, node_id, articles!inner(law_id, deleted_at)")
-    .eq("articles.law_id", lawId)
-    .is("articles.deleted_at", null);
-  if (aslErr) throw aslErr;
+  const caseRows = caseRowsRes.data ?? [];
+  const allArticles = articlesRes.data ?? [];
+  // 과목 articles set — law 필터링용.
+  const articleIdsInLaw = new Set<string>();
+  for (const a of allArticles) {
+    if (a.law_id === lawId && !a.deleted_at) articleIdsInLaw.add(a.article_id);
+  }
+
+  // article → systematic nodes map (과목 article 만).
   const nodesByArticle = new Map<string, Set<string>>();
-  for (const r of aslRows ?? []) {
+  for (const r of aslRowsRes.data ?? []) {
+    if (!articleIdsInLaw.has(r.article_id)) continue;
     const s = nodesByArticle.get(r.article_id) ?? new Set();
     s.add(r.node_id);
     nodesByArticle.set(r.article_id, s);
   }
 
-  // 3) legacy fallback 용 — primary 둘 다 null 인 case 의 article_case_links 만 필요.
-  // 일단 전체 link 모으고 case 별 grouping.
+  // 과목 case 들의 set (legacy fallback 필터링용).
+  const caseIdsInSubject = new Set(caseRows.map((c) => c.case_id));
+  // article_case_links 를 case 별로 grouping — 과목 article + 과목 case 만.
   const aclByCase = new Map<string, Set<string>>();
-  {
-    const PAGE = 1000;
-    let from = 0;
-    for (;;) {
-      const { data, error } = await client
-        .from("article_case_links")
-        .select(
-          "article_id, case_id, articles!inner(law_id, deleted_at), cases!inner(deleted_at)",
-        )
-        .eq("articles.law_id", lawId)
-        .is("articles.deleted_at", null)
-        .is("cases.deleted_at", null)
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      for (const r of data) {
-        const s = aclByCase.get(r.case_id) ?? new Set();
-        s.add(r.article_id);
-        aclByCase.set(r.case_id, s);
-      }
-      if (data.length < PAGE) break;
-      from += PAGE;
-    }
+  for (const r of aclRes.data ?? []) {
+    if (!articleIdsInLaw.has(r.article_id)) continue;
+    if (!caseIdsInSubject.has(r.case_id)) continue;
+    const s = aclByCase.get(r.case_id) ?? new Set();
+    s.add(r.article_id);
+    aclByCase.set(r.case_id, s);
   }
 
   // 4) case 별로 placement 결정 → byArticle / byNode set 채움.
@@ -360,34 +358,8 @@ export async function getCasePlacementMaps(
   return { caseSetByArticleId, caseSetByNodeId };
 }
 
-// 트리 노드 클릭 필터링 — 주어진 조문들과 연결된 판례 ID 셋.
-// 빈 배열을 받으면 빈 배열을 반환 (filter caller 가 0건으로 처리).
-export async function getCaseIdsByArticleIds(
-  client: SupabaseClient<Database>,
-  articleIds: readonly string[],
-): Promise<string[]> {
-  if (articleIds.length === 0) return [];
-  const out = new Set<string>();
-  const CHUNK = 200; // IN 절 크기 상한.
-  const PAGE = 1000;
-  for (let i = 0; i < articleIds.length; i += CHUNK) {
-    const slice = articleIds.slice(i, i + CHUNK);
-    let from = 0;
-    for (;;) {
-      const { data, error } = await client
-        .from("article_case_links")
-        .select("case_id")
-        .in("article_id", slice)
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      for (const r of data) out.add(r.case_id);
-      if (data.length < PAGE) break;
-      from += PAGE;
-    }
-  }
-  return [...out];
-}
+// (deprecated) getCaseIdsByArticleIds — placement 모델로 전환되며 사용 안 함.
+// 호출처 없음. getCaseIdsByPlacement(articleIds, nodeIds=[]) 가 동일 역할 + legacy fallback.
 
 // 체계도 placement 기반 case ID 조회 — cases.primary_node_id / primary_article_id 우선.
 // 사용자 결정: 한 case 가 한 곳에만 placement.
@@ -434,24 +406,16 @@ export async function getCaseIdsByPlacement(
     }
 
     // step 3) legacy fallback — primary 둘 다 null 인 case 중 article_case_links 매핑.
-    // article_case_links 의 candidate case_id 들을 먼저 모은 뒤 그 candidate 의 cases 에서
-    // primary 둘 다 null 인 것만 거름.
+    // candidate case_id 모음 + cases.primary 둘 다 null 필터.
     const candidates = new Set<string>();
     for (let i = 0; i < articleIds.length; i += CHUNK) {
       const slice = articleIds.slice(i, i + CHUNK);
-      let from = 0;
-      for (;;) {
-        const { data, error } = await client
-          .from("article_case_links")
-          .select("case_id")
-          .in("article_id", slice)
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        for (const r of data) candidates.add(r.case_id);
-        if (data.length < PAGE) break;
-        from += PAGE;
-      }
+      const { data, error } = await client
+        .from("article_case_links")
+        .select("case_id")
+        .in("article_id", slice);
+      if (error) throw error;
+      for (const r of data ?? []) candidates.add(r.case_id);
     }
     if (candidates.size > 0) {
       const arr = [...candidates];
