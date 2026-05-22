@@ -463,13 +463,15 @@ function BodySection({
 
 // ── 판결요지 단일 항목 ([N] 라벨 + 본문) ─────────────────────
 // 파서는 title 앞에 "[1] " 같은 prefix 를 이미 붙여 두지만, 여러 항목일 때 시각적 라벨 분리.
-// caseTitle 과 displayTitle 이 동일하면 헤더와 중복이라 제목은 숨기고 본문만 표시.
+// caseTitle prop 은 호환성 위해 유지하되 사용 안 함 — 학생/공개 case header 에 case_title 이
+// 표시되지 않으므로 "헤더와 중복" 휴리스틱이 오작동했음(2001후2238 처럼 case_title 과
+// summary[0].title 이 동일하면 박스 안 제목이 통째로 사라지던 버그). 항상 표시한다.
 function SummaryBlock({
   title,
   body,
   showLabel,
   index,
-  caseTitle,
+  caseTitle: _caseTitle,
 }: {
   title: string;
   body: string;
@@ -487,11 +489,7 @@ function SummaryBlock({
   if (showLabel && !label) {
     label = `[${index + 1}]`;
   }
-  // 제목 중복 비교는 underline 마커를 무시한 plain 텍스트 기준.
-  const titleStripped = displayTitle.replace(/<\/?u>/g, "").trim();
-  const duplicatesHeader =
-    titleStripped !== "" && titleStripped === caseTitle.trim();
-  const shownTitle = duplicatesHeader ? "" : displayTitle;
+  const shownTitle = displayTitle;
   // label 의 [N] 표기에서 숫자만 추출 — 박스형 제목 배지에는 숫자만 보이게.
   const labelNumber = label ? label.replace(/[^\d]/g, "") : null;
   return (
