@@ -25,6 +25,11 @@ import {
   type CaseImagePosition,
   type CaseReference,
 } from "~/features/cases/labels";
+import {
+  isMarkdownTableParagraph,
+  parseImageParagraph,
+  renderTableHtml,
+} from "~/features/cases/lib/case-markdown";
 import type { ExamProblemRef } from "~/features/problems/labels";
 
 type HighlightsProp = React.ComponentProps<
@@ -480,20 +485,71 @@ function SummaryBlock({
 // 원 소스(HWPX)의 underline 영역은 `<u>...</u>` 마커로 들어오며, 여기서 React `<u>`
 // element 로 풀어 시각적 밑줄로 표시한다. 마커 외의 HTML 태그는 들어오지 않는다는
 // 전제 — 파서가 `<u>` 만 입력한다 — 이라 dangerouslySetInnerHTML 은 쓰지 않는다.
-function Prose({ text }: { text: string }) {
+// admin-case-edit 의 라이브 preview 에서도 사용하므로 export.
+export function Prose({ text }: { text: string }) {
   // paragraph 분리는 DB 본문의 `\n\n` 만으로 결정 — staff 가 admin-case-edit 에서 입력한 그대로.
-  // reflowNumberingSafe 자동 호출은 같은 paragraph 안의 sub-marker("1)" 등)를 강제 분리해
-  // staff 의 수정 의도와 충돌하므로 제거. 자동 분리가 필요하면 admin 의 "넘버링 자동 정렬" 사용.
+  // 각 paragraph 의 타입을 한 번 분기:
+  //   - 이미지 단독(`![alt](url)`) → <img> 블록 (staff highlight 의 textContent 흐름에
+  //     "" 만 기여하므로 기존 offset 영향 없음)
+  //   - GFM 표 → <table> 블록 (sanitized HTML). 표 cell 텍스트가 textContent 흐름에
+  //     추가되므로 표 후속의 staff highlight offset 은 staff 가 새로 그을 때 정합
+  //   - 그 외 → 텍스트 + `<u>` 마커 (기존 동작)
   const paras = text.split(/\n{2,}/).filter((s) => s.trim() !== "");
   return (
     <div className="text-foreground/90 dark:text-foreground/85 space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
-      {paras.map((p, i) => (
-        // whitespace-pre-wrap — 연속 공백 + 줄넘김 모두 보존(타이핑 그대로 렌더).
-        <p key={i} className="whitespace-pre-wrap">
-          {renderWithUnderline(p)}
-        </p>
-      ))}
+      {paras.map((p, i) => {
+        const img = parseImageParagraph(p);
+        if (img) return <InlineImage key={i} alt={img.alt} url={img.url} />;
+        if (isMarkdownTableParagraph(p))
+          return <InlineTable key={i} markdown={p} />;
+        return (
+          // whitespace-pre-wrap — 연속 공백 + 줄넘김 모두 보존(타이핑 그대로 렌더).
+          <p key={i} className="whitespace-pre-wrap">
+            {renderWithUnderline(p)}
+          </p>
+        );
+      })}
     </div>
+  );
+}
+
+// 이미지 단독 paragraph — clickable(새 탭) + 흰 배경 + object-contain.
+// CaseImagesGrid 의 단일 이미지 카드와 동일 톤이지만 본문 흐름 안에 인라인 배치.
+function InlineImage({ alt, url }: { alt: string; url: string }) {
+  return (
+    <figure className="my-2">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="border-border bg-white block overflow-hidden rounded-lg border"
+      >
+        <img
+          src={url}
+          alt={alt}
+          loading="lazy"
+          className="mx-auto block max-h-[480px] w-auto object-contain"
+        />
+      </a>
+      {alt ? (
+        <figcaption className="text-muted-foreground mt-1.5 text-center text-xs leading-relaxed">
+          {alt}
+        </figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+// GFM 표 paragraph — sanitized HTML 로 변환 후 dangerouslySetInnerHTML.
+// renderTableHtml 의 DOMPurify whitelist 가 table 관련 태그만 허용.
+function InlineTable({ markdown }: { markdown: string }) {
+  const html = renderTableHtml(markdown);
+  return (
+    <div
+      className="case-md-table my-3 overflow-x-auto"
+      // 허용 태그 제한 + isomorphic-dompurify sanitize — 안전.
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }
 

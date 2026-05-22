@@ -3,6 +3,7 @@
 // 리스킨: AdminShell(cluster=cases, P3, width=960), Field + AdminSelect, 통일 폼 레이아웃.
 
 import {
+  ClipboardCopyIcon,
   ExternalLinkIcon,
   FileTextIcon,
   ImageIcon,
@@ -18,6 +19,8 @@ import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
 
 import { reflowNumbering } from "~/features/cases/lib/reflow-numbering";
+import { MARKDOWN_TABLE_TEMPLATE } from "~/features/cases/lib/case-markdown";
+import { Prose } from "~/features/cases/components/case-body";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -591,6 +594,47 @@ function ReflowableTextarea({
 }) {
   const isControlled = value !== undefined;
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  // 라이브 preview 토글 + textarea 의 현재 값을 추적해 preview 렌더.
+  // controlled mode 면 value, uncontrolled mode 면 onInput 시점 textarea.value 를 state.
+  const [previewOn, setPreviewOn] = useState(false);
+  const [uncontrolledMirror, setUncontrolledMirror] = useState(
+    defaultValue ?? "",
+  );
+  const previewText = isControlled ? (value ?? "") : uncontrolledMirror;
+
+  // cursor 위치(또는 selection 끝)에 텍스트를 삽입하고 cursor 를 삽입 직후로 이동.
+  function insertAtCursor(snippet: string) {
+    const el = ref.current;
+    if (!el) return;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    // 앞뒤 paragraph 경계 보장 — 이미 \n\n 가 있으면 그대로, 아니면 추가.
+    const before = el.value.slice(0, start);
+    const after = el.value.slice(end);
+    const needLead =
+      before.length > 0 && !/\n\n$/.test(before) ? (before.endsWith("\n") ? "\n" : "\n\n") : "";
+    const needTail =
+      after.length > 0 && !/^\n\n/.test(after) ? (after.startsWith("\n") ? "\n" : "\n\n") : "";
+    const insertion = `${needLead}${snippet}${needTail}`;
+    const nextValue = `${before}${insertion}${after}`;
+    if (isControlled) {
+      onChange?.(nextValue);
+    } else {
+      el.value = nextValue;
+      setUncontrolledMirror(nextValue);
+    }
+    // 다음 frame 에 cursor 위치 보정 — React 가 controlled 모드에서 value 를 commit 한 후.
+    const cursor = before.length + insertion.length;
+    requestAnimationFrame(() => {
+      el.focus();
+      try {
+        el.setSelectionRange(cursor, cursor);
+      } catch {
+        /* readonly 등 — ignore */
+      }
+    });
+  }
+
   const onReflow = () => {
     const before = isControlled ? (value ?? "") : (ref.current?.value ?? "");
     if (!before.trim()) {
@@ -613,6 +657,7 @@ function ReflowableTextarea({
       onChange?.(after);
     } else if (ref.current) {
       ref.current.value = after;
+      setUncontrolledMirror(after);
       ref.current.focus();
     }
     toast.success(
@@ -621,7 +666,27 @@ function ReflowableTextarea({
   };
   return (
     <>
-      <div className="mb-1 flex items-center justify-end">
+      <div className="mb-1 flex items-center justify-end gap-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-[10px]"
+          onClick={() => insertAtCursor(MARKDOWN_TABLE_TEMPLATE)}
+          title="cursor 위치에 markdown 표 템플릿 삽입"
+        >
+          표 삽입
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={previewOn ? "default" : "outline"}
+          className="h-6 px-2 text-[10px]"
+          onClick={() => setPreviewOn((v) => !v)}
+          title="라이브 미리보기 — 입력 결과(이미지·표 포함) 를 옆에서 실시간 확인"
+        >
+          {previewOn ? "미리보기 끄기" : "미리보기"}
+        </Button>
         <Button
           type="button"
           size="sm"
@@ -633,15 +698,43 @@ function ReflowableTextarea({
           넘버링 자동 정렬
         </Button>
       </div>
-      {isControlled ? (
-        <Textarea
-          value={value ?? ""}
-          onChange={(e) => onChange?.(e.target.value)}
-          rows={rows}
-        />
-      ) : (
-        <Textarea ref={ref} name={name} defaultValue={defaultValue} rows={rows} />
-      )}
+      <div
+        className={cn(
+          "gap-3",
+          previewOn ? "grid lg:grid-cols-2" : "",
+        )}
+      >
+        {isControlled ? (
+          <Textarea
+            ref={ref}
+            value={value ?? ""}
+            onChange={(e) => onChange?.(e.target.value)}
+            rows={rows}
+          />
+        ) : (
+          <Textarea
+            ref={ref}
+            name={name}
+            defaultValue={defaultValue}
+            rows={rows}
+            onInput={(e) =>
+              setUncontrolledMirror((e.target as HTMLTextAreaElement).value)
+            }
+          />
+        )}
+        {previewOn ? (
+          <div className="border-border bg-muted/20 max-h-[400px] overflow-y-auto rounded-md border p-3">
+            {previewText.trim() ? (
+              <Prose text={previewText} />
+            ) : (
+              <p className="text-muted-foreground text-xs italic">
+                미리보기 — 본문을 입력하면 여기에 실시간 표시됩니다 (이미지 표
+                포함).
+              </p>
+            )}
+          </div>
+        ) : null}
+      </div>
     </>
   );
 }
@@ -1125,6 +1218,18 @@ function ImagesCard({
     metaFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
   }
 
+  // 본문 textarea 의 cursor 위치에 paste 해 인라인 배치할 수 있도록 markdown 을
+  // 클립보드 복사. staff 가 화면 보면서 위치 결정.
+  async function copyImageMarkdown(img: CaseImage) {
+    const md = `![${img.alt || ""}](${img.url})`;
+    try {
+      await navigator.clipboard.writeText(md);
+      toast.success("이미지 markdown 을 복사했습니다 — 본문에서 Ctrl+V 로 붙여넣으세요.");
+    } catch {
+      toast.error("클립보드 복사가 차단됐습니다. URL 을 수동 복사하세요.");
+    }
+  }
+
   // position 별 그룹화 (정렬은 parseCaseImages 에서 처리됨).
   const grouped = new Map<CaseImagePosition, CaseImage[]>();
   for (const p of CASE_IMAGE_POSITIONS) grouped.set(p, []);
@@ -1301,6 +1406,16 @@ function ImagesCard({
                               </option>
                             ))}
                           </AdminSelect>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-1.5"
+                            title="이 이미지의 Markdown(![alt](url))을 클립보드에 복사 — 본문 textarea 원하는 위치에 Ctrl+V 로 붙여넣기"
+                            onClick={() => copyImageMarkdown(img)}
+                          >
+                            <ClipboardCopyIcon className="size-3" />
+                          </Button>
                           <Button
                             type="button"
                             size="sm"

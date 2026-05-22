@@ -245,3 +245,26 @@ body {
     text-underline-offset: 3px;
   }
 }
+
+/* feat-7-005 — Prose 안 markdown 표 스타일 (InlineTable + dangerouslySetInnerHTML).
+   Tailwind utility 가 sanitized HTML 안에 적용 안 되므로 직접 selector. */
+.case-md-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.case-md-table th,
+.case-md-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: top;
+  text-align: left;
+}
+.case-md-table thead th {
+  background-color: color-mix(in oklch, var(--muted) 70%, transparent);
+  font-weight: 600;
+}
+.case-md-table tbody tr:nth-child(odd) td {
+  background-color: color-mix(in oklch, var(--muted) 25%, transparent);
+}
