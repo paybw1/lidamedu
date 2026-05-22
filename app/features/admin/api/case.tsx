@@ -62,7 +62,8 @@ const upsertSchema = z.object({
     )
     .max(30),
   reasoningMd: z.string().max(50_000).nullable(),
-  commentSource: z.string().trim().max(500).nullable(),
+  // commentSource 는 admin UI 에서 입력 필드 제거됨 — DB 컬럼·기존 데이터는 보존하고,
+  // upsert 시 이 필드는 건드리지 않는다(payload 에 comment_source 포함 안 함).
   commentBodyMd: z.string().max(50_000).nullable(),
   relatedMd: z.string().max(50_000).nullable(),
   exam1stYears: z.array(z.number().int().min(1990).max(2099)),
@@ -446,7 +447,6 @@ export async function action({ request }: Route.ActionArgs) {
     caseType: emptyToNull(fd.get("caseType")),
     summaryItems: summaryItemsRaw,
     reasoningMd: emptyToNull(fd.get("reasoningMd")),
-    commentSource: emptyToNull(fd.get("commentSource")),
     commentBodyMd: emptyToNull(fd.get("commentBodyMd")),
     relatedMd: emptyToNull(fd.get("relatedMd")),
     exam1stYears: parseIntList(fd.get("exam1stYears")),
@@ -479,7 +479,6 @@ export async function action({ request }: Route.ActionArgs) {
     summary_title: summaryItems[0]?.title || null,
     summary_body_md: summaryItems[0]?.body || null,
     reasoning_md: input.reasoningMd,
-    comment_source: input.commentSource,
     comment_body_md: input.commentBodyMd,
     related_md: input.relatedMd,
     exam_1st_years: input.exam1stYears,

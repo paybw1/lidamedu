@@ -310,7 +310,8 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
 
-        {/* 비고 · 평석 */}
+        {/* 비고 · 평석 — 출처 필드는 학생 화면에서도 표시 안 하므로 입력 폼에서 제거.
+            DB 의 comment_source 컬럼·기존 데이터는 보존(이전 입력 손실 방지). */}
         <Card>
           <CardHeader>
             <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
@@ -318,14 +319,6 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Field label="비고/평석 출처" htmlFor="commentSource">
-              <Input
-                id="commentSource"
-                name="commentSource"
-                defaultValue={kase?.comment_source ?? ""}
-                maxLength={500}
-              />
-            </Field>
             <Field label="비고/평석 본문 (Markdown)" htmlFor="commentBodyMd">
               <ReflowableTextarea
                 name="commentBodyMd"
@@ -1123,8 +1116,9 @@ function FullTextPdfCard({
 }
 
 /* ── ImagesCard ─────────────────────────────────────────────────────── */
-// 판례 본문 이미지 — 다건 업로드/삭제/메타 수정. 폼 밖이라 메인 Form 과 독립.
-// 각 fetcher 가 자체 상태를 가지고, 액션 후 revalidator 로 loader 재실행.
+// 판례 본문 이미지 — 업로드는 본문 textarea 의 Ctrl+V 가 단일 진입점 (자동 업로드 +
+// markdown 인라인 삽입). 이 카드는 등록된 이미지 관리만 — 표시 영역 변경 / Markdown
+// 복사 / 삭제. 폼 밖이라 메인 Form 과 독립.
 function ImagesCard({
   caseId,
   initialImages,
@@ -1132,11 +1126,6 @@ function ImagesCard({
   caseId: string;
   initialImages: CaseImage[];
 }) {
-  const uploadFetcher = useFetcher<{
-    ok?: boolean;
-    image?: CaseImage;
-    error?: string;
-  }>();
   const removeFetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const metaFetcher = useFetcher<{
     ok?: boolean;
@@ -1144,17 +1133,7 @@ function ImagesCard({
     error?: string;
   }>();
   const revalidator = useRevalidator();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const altRef = useRef<HTMLInputElement>(null);
-  const [position, setPosition] = useState<CaseImagePosition>("summary");
-  // 클립보드 paste(Ctrl+V) 또는 드래그&드롭으로 들어온 파일 — 업로드 직전 preview.
-  // file input 의 .files 와는 별도로 관리(브라우저가 input.files 를 보안상 직접
-  // 쓰기 불가능한 경로가 있어 state 로 통합 처리).
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
 
-  const isUploading = uploadFetcher.state !== "idle";
   const removingId =
     removeFetcher.state !== "idle"
       ? String(removeFetcher.formData?.get("imageId") ?? "")
@@ -1164,23 +1143,8 @@ function ImagesCard({
   // useEffect deps 에 두면 무한 fire(메타 변경 → revalidate → 부모 re-render →
   // 또 fire → toast → revalidate ...)되는 문제 회피.
   // 같은 fetcher.data reference 는 한 번만 처리.
-  const handledUploadRef = useRef<unknown>(null);
   const handledRemoveRef = useRef<unknown>(null);
   const handledMetaRef = useRef<unknown>(null);
-
-  useEffect(() => {
-    if (uploadFetcher.state !== "idle") return;
-    const r = uploadFetcher.data;
-    if (!r || r === handledUploadRef.current) return;
-    handledUploadRef.current = r;
-    if (r.ok) {
-      toast.success("이미지 업로드 완료");
-      if (fileRef.current) fileRef.current.value = "";
-      if (altRef.current) altRef.current.value = "";
-      setPendingFile(null);
-      revalidator.revalidate();
-    } else if (r.error) toast.error(r.error);
-  }, [uploadFetcher.state, uploadFetcher.data, revalidator]);
 
   useEffect(() => {
     if (removeFetcher.state !== "idle") return;
@@ -1203,97 +1167,6 @@ function ImagesCard({
       revalidator.revalidate();
     } else if (r.error) toast.error(r.error);
   }, [metaFetcher.state, metaFetcher.data, revalidator]);
-
-  // pendingFile 변경 시 preview blob URL 갱신 + 이전 URL revoke.
-  useEffect(() => {
-    if (!pendingFile) {
-      setPendingPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(pendingFile);
-    setPendingPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [pendingFile]);
-
-  function acceptFile(file: File): boolean {
-    if (!file.type.startsWith("image/")) {
-      toast.error("이미지 파일만 가능합니다.");
-      return false;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("파일이 10MB 를 초과합니다.");
-      return false;
-    }
-    setPendingFile(file);
-    // file input 도 동기화 — 사용자가 보던 input 의 파일명도 같이 갱신.
-    try {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      if (fileRef.current) fileRef.current.files = dt.files;
-    } catch {
-      // 일부 브라우저에서 DataTransfer 지원 미흡 — state 만으로도 업로드 가능.
-    }
-    return true;
-  }
-
-  // 클립보드 paste — 이미지 데이터가 있으면 pendingFile 로 set.
-  function onPaste(e: React.ClipboardEvent) {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      if (it.kind === "file" && it.type.startsWith("image/")) {
-        const file = it.getAsFile();
-        if (file && acceptFile(file)) {
-          e.preventDefault();
-          toast.success("클립보드 이미지가 준비됐습니다 — 업로드를 누르세요.");
-          return;
-        }
-      }
-    }
-  }
-
-  // 드래그&드롭.
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    setIsDragOver(true);
-  }
-  function onDragLeave() {
-    setIsDragOver(false);
-  }
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && acceptFile(file)) {
-      toast.success("이미지가 준비됐습니다 — 업로드를 누르세요.");
-    }
-  }
-
-  function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.currentTarget.files?.[0];
-    if (file) acceptFile(file);
-    else setPendingFile(null);
-  }
-
-  function onUpload() {
-    const file = pendingFile ?? fileRef.current?.files?.[0];
-    if (!file) {
-      toast.error("이미지 파일을 선택·붙여넣기·드래그해서 추가하세요.");
-      return;
-    }
-    const fd = new FormData();
-    fd.set("intent", "upload_image");
-    fd.set("caseId", caseId);
-    fd.set("position", position);
-    fd.set("alt", altRef.current?.value ?? "");
-    fd.set("file", file);
-    uploadFetcher.submit(fd, {
-      method: "post",
-      action: "/api/admin/case",
-      encType: "multipart/form-data",
-    });
-  }
 
   function onRemove(imageId: string, alt: string) {
     const label = alt || "이미지";
@@ -1338,116 +1211,16 @@ function ImagesCard({
           <ImageIcon className="size-3.5" /> 본문 이미지
         </p>
         <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-          상표법·특허법 판례에 포함된 그림(상표 도형, 청구항 도면 등)을
-          업로드합니다. 표시 영역(판결요지/판시이유/비고/미분류) 별로 그룹핑되어
-          학생 본문에 렌더됩니다.
+          이미지는 본문 textarea(요지·판시이유·비고·관련자료) 에 <strong>Ctrl+V</strong> 로
+          붙여넣으면 즉시 업로드되어 그 위치에 삽입됩니다. 이 영역은 등록된 이미지의
+          분류 변경 / Markdown 복사 / 삭제를 위한 관리 패널입니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* 클립보드 paste / 드래그&드롭 zone — 이미지 파일 인입 통합 영역.
-            클릭 시 focus → Ctrl+V 로 클립보드 이미지 직접 붙여넣기. 또는 파일을
-            영역으로 드래그&드롭. file input 선택 결과도 같은 pendingFile 로 통합. */}
-        <div
-          tabIndex={0}
-          role="button"
-          aria-label="이미지 붙여넣기·드래그 영역"
-          onPaste={onPaste}
-          onDragOver={onDragOver}
-          onDragLeave={onDragLeave}
-          onDrop={onDrop}
-          onClick={(e) => (e.currentTarget as HTMLDivElement).focus()}
-          className={cn(
-            "border-border bg-muted/30 hover:bg-muted/50 focus:border-primary focus:bg-primary/[0.05] flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-6 text-center outline-none transition-colors",
-            isDragOver &&
-              "border-primary bg-primary/[0.06] ring-primary/30 ring-2",
-            pendingPreview && "border-emerald-400/60 bg-emerald-50/40 dark:bg-emerald-950/20",
-          )}
-        >
-          {pendingPreview ? (
-            <>
-              <img
-                src={pendingPreview}
-                alt="paste preview"
-                className="max-h-32 rounded object-contain"
-              />
-              <p className="text-foreground/80 text-xs">
-                {pendingFile?.name}{" "}
-                <span className="text-muted-foreground">
-                  · {Math.round((pendingFile?.size ?? 0) / 1024).toLocaleString()}KB
-                </span>
-              </p>
-              <p className="text-muted-foreground text-[10px]">
-                업로드 버튼을 누르거나 다른 이미지로 다시 붙여넣기·드래그하면 교체됩니다.
-              </p>
-            </>
-          ) : (
-            <>
-              <ImageIcon className="text-muted-foreground/60 size-6" />
-              <p className="text-muted-foreground text-xs">
-                <strong className="text-foreground">클릭 후 Ctrl+V</strong> 로
-                클립보드 이미지를 붙여넣거나, 파일을 이 영역으로 드래그하세요.
-              </p>
-              <p className="text-muted-foreground text-[10px]">
-                또는 아래 파일 선택을 사용할 수 있습니다.
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* 업로드 폼 — 파일 선택은 보조 경로로 유지(같은 pendingFile 로 통합) */}
-        <div className="grid gap-2 sm:grid-cols-[1fr_180px_auto] sm:items-end">
-          <Field label="파일 선택 (선택)">
-            <Input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/bmp"
-              onChange={onFileInputChange}
-              className="text-xs"
-            />
-          </Field>
-          <Field label="표시 영역" htmlFor="imgPosition">
-            <AdminSelect
-              id="imgPosition"
-              value={position}
-              onChange={(e) =>
-                setPosition(e.currentTarget.value as CaseImagePosition)
-              }
-              className="w-full"
-            >
-              {CASE_IMAGE_POSITIONS.map((p) => (
-                <option key={p} value={p}>
-                  {CASE_IMAGE_POSITION_LABELS[p]}
-                </option>
-              ))}
-            </AdminSelect>
-          </Field>
-          <Button
-            type="button"
-            size="sm"
-            onClick={onUpload}
-            disabled={isUploading || !pendingFile}
-          >
-            <UploadIcon className="size-3.5" />
-            {isUploading ? "업로드 중…" : "업로드"}
-          </Button>
-        </div>
-        <Field label="설명 (alt, 선택 — 최대 200자)" htmlFor="imgAlt">
-          <Input
-            id="imgAlt"
-            ref={altRef}
-            placeholder="예: 청구항 1 도면 / 등록 상표 도형"
-            maxLength={200}
-          />
-        </Field>
-        <p className="text-muted-foreground text-[10px]">
-          최대 10MB · JPG / PNG / WEBP / GIF / BMP. BMP 는 화면 표시는 되지만
-          전송 비용이 크므로 JPG/PNG 권장.
-        </p>
-
         {/* 그룹별 그리드 */}
         {initialImages.length === 0 ? (
           <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
-            아직 등록된 이미지가 없습니다.
+            아직 등록된 이미지가 없습니다. 본문에 Ctrl+V 로 이미지를 붙여넣어 추가하세요.
           </p>
         ) : (
           <div className="space-y-3">
