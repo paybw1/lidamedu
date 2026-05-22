@@ -465,15 +465,23 @@ function SummaryBlock({
   const duplicatesHeader =
     titleStripped !== "" && titleStripped === caseTitle.trim();
   const shownTitle = duplicatesHeader ? "" : displayTitle;
+  // label 의 [N] 표기에서 숫자만 추출 — 박스형 제목 배지에는 숫자만 보이게.
+  const labelNumber = label ? label.replace(/[^\d]/g, "") : null;
   return (
     <div className="space-y-2">
       {label || shownTitle ? (
-        <p className="text-[16px] leading-snug font-bold tracking-tight">
-          {label ? (
-            <span className="text-primary mr-1.5 font-mono">{label}</span>
-          ) : null}
-          {renderWithUnderline(shownTitle)}
-        </p>
+        // 박스형 제목 — 본문과 시각 구분 + 줄간격(1.75)을 본문(1.8)과 비슷하게.
+        // 옅은 outline + 거의 흰 배경 (minimal), 연한 파란 라벨 배지(blue-500).
+        <div className="border-border bg-muted/40 rounded-lg border px-3.5 py-2.5 dark:bg-zinc-900/40">
+          <p className="text-foreground text-[16px] leading-[1.75] font-bold tracking-tight">
+            {labelNumber ? (
+              <span className="bg-primary/85 mr-2 inline-flex items-center rounded px-1.5 align-[2px] font-mono text-[11.5px] font-extrabold text-white">
+                {labelNumber}
+              </span>
+            ) : null}
+            {renderWithUnderline(shownTitle)}
+          </p>
+        </div>
       ) : null}
       {body ? <Prose text={body} /> : null}
     </div>

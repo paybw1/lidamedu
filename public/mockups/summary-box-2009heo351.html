@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>판결요지 박스형 제목 미리보기 — 2009허351</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+    />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #18181b;
+        --fg-soft: #3f3f46;
+        --muted: #71717a;
+        --muted-soft: #a1a1aa;
+        --border: #e4e4e7;
+        --border-strong: #d4d4d8;
+        --primary: #2563eb;          /* blue-600 — section eyebrow */
+        --title-bg: #f4f4f5;          /* zinc-100 — 박스 배경 (very light) */
+        --title-bg-soft: #fafafa;     /* zinc-50  — alt */
+        --title-border: #d4d4d8;      /* zinc-300 — 박스 outline */
+        --title-accent: #2563eb;      /* blue-600 — 좌측 stripe */
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          "Pretendard Variable", "Pretendard", system-ui, -apple-system,
+          sans-serif;
+        font-feature-settings: "ss03";
+        margin: 0;
+        padding: 24px;
+        max-width: 920px;
+        margin-inline: auto;
+        line-height: 1.7;
+      }
+      h1.page {
+        font-size: 14px;
+        color: var(--muted);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin: 0 0 18px;
+      }
+      .meta {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 18px;
+      }
+      .meta strong {
+        color: var(--fg);
+        font-weight: 700;
+      }
+      .compare-grid {
+        display: grid;
+        gap: 28px;
+      }
+      .variant {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 22px;
+        background: #fff;
+      }
+      .variant > .variant-label {
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .variant > .variant-desc {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 14px;
+        line-height: 1.6;
+      }
+
+      /* 판결요지 섹션 eyebrow */
+      .section-eyebrow {
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin: 0 0 12px;
+      }
+
+      .summary-block {
+        margin-bottom: 22px;
+      }
+      .summary-block:last-child {
+        margin-bottom: 0;
+      }
+      .body {
+        font-size: 17px;
+        line-height: 1.8;
+        color: rgba(24, 24, 27, 0.9);
+        letter-spacing: -0.005em;
+        margin-top: 12px;
+      }
+      .body p {
+        margin: 0 0 12px;
+        white-space: pre-wrap;
+      }
+      .body p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* ===================== variant A: 박스 + 좌측 stripe ===================== */
+      .variant-a .title-box {
+        position: relative;
+        border: 1px solid var(--title-border);
+        background: var(--title-bg);
+        border-radius: 10px;
+        padding: 12px 16px 12px 18px;
+        border-left: 4px solid var(--title-accent);
+      }
+      .variant-a .title-box .label {
+        display: inline-block;
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--title-accent);
+        margin-right: 6px;
+      }
+      .variant-a .title-box .title-text {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: -0.005em;
+        /* 줄간격을 본문(1.8)에 맞춤 — 기존 leading-snug(1.375) 보다 훨씬 넓음 */
+        line-height: 1.75;
+      }
+
+      /* ===================== variant B: 박스 only ===================== */
+      .variant-b .title-box {
+        border: 1px solid var(--title-border);
+        background: var(--title-bg);
+        border-radius: 10px;
+        padding: 12px 16px;
+      }
+      .variant-b .title-box .label {
+        display: inline-flex;
+        align-items: center;
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 11.5px;
+        font-weight: 800;
+        color: #fff;
+        background: var(--primary);
+        border-radius: 4px;
+        padding: 1px 6px;
+        margin-right: 8px;
+        vertical-align: 1.5px;
+      }
+      .variant-b .title-box .title-text {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: -0.005em;
+        line-height: 1.75;
+      }
+
+      /* ===================== variant C: outlined / subtle bg ===================== */
+      .variant-c .title-box {
+        border: 1.5px solid var(--title-border);
+        background: var(--title-bg-soft);
+        border-radius: 8px;
+        padding: 10px 14px;
+      }
+      .variant-c .title-box .label {
+        font-family:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        font-weight: 800;
+        color: var(--title-accent);
+        margin-right: 6px;
+      }
+      .variant-c .title-box .title-text {
+        font-size: 15.5px;
+        font-weight: 700;
+        letter-spacing: -0.005em;
+        line-height: 1.7;
+        color: var(--fg-soft);
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="page">판결요지 박스형 제목 — 시안 (2009허351)</h1>
+    <p class="meta">
+      <strong>특허법원 2009. 10. 16. 선고 2009허351 판결 【등록무효(특)】</strong><br />
+      현재 화면은 제목이 <code>leading-snug</code>(1.375), 본문이
+      <code>leading-[1.8]</code>(1.8) 으로 차이가 큼. 아래 세 시안 모두 제목의
+      줄간격을 <code>1.75</code> 로 맞추고, 박스형 outline 으로 시각 분리.
+    </p>
+
+    <div class="compare-grid">
+      <!-- ============ Variant D (FINAL) : C 기반 + 파란 배지(살짝 연한) ============ -->
+      <section
+        class="variant"
+        style="
+          border: 1.5px solid #2563eb33;
+          background: #f0f7ff66;
+        "
+      >
+        <p class="variant-label" style="color: #2563eb">
+          시안 D (확정) — C 기반 + 연한 파란 배지
+        </p>
+        <p class="variant-desc">
+          C 의 minimal 박스 outline + B 의 라벨 배지 형태. 색은 한 단계씩 연하게:
+          배지 <code>blue-500</code> (기존 600 보다 한 단계), 박스 outline
+          <code>zinc-200</code>. 본문과 자연스럽게 어우러지면서 제목 영역만
+          또렷이 분리.
+        </p>
+
+        <p class="section-eyebrow">판결요지</p>
+
+        <div class="summary-block">
+          <div
+            style="
+              border: 1.5px solid #e4e4e7;
+              background: #fafafa;
+              border-radius: 8px;
+              padding: 11px 14px;
+            "
+          >
+            <span
+              style="
+                display: inline-flex;
+                align-items: center;
+                background: #3b82f6;
+                color: #fff;
+                font-family:
+                  ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+                  monospace;
+                font-size: 11.5px;
+                font-weight: 800;
+                padding: 1px 7px;
+                border-radius: 5px;
+                margin-right: 8px;
+                vertical-align: 2px;
+              "
+              >1</span
+            ><span
+              style="
+                font-size: 16px;
+                font-weight: 700;
+                letter-spacing: -0.005em;
+                line-height: 1.75;
+                color: #18181b;
+              "
+              >만화한자학습교재(실시제품: 마법천자문)에 관한 특허발명이 만화 등의
+              시각적 이미지를 통한 학습효과를 높이기 위하여 특정한 스토리를 가지는
+              한자학습교재의 한자만화 이미지 도시면에 등장캐릭터가 외치는 한자의
+              뜻과 소리 표시부, 해당 한자 표시부, 해당 한자의 뜻을 나타내는 만화
+              이미지 표시부가 함께 도시되도록 하고 한자만화 이미지 도시면에 등장하는
+              한자가 스토리의 전개와 연관되도록 하는 구성을 취하고 있는 경우 자연
+              법칙을 이용한 경우에 해당한다는 사례:</span
+            >
+          </div>
+          <div class="body">
+            <p>
+              특허발명은 한자학습교재라는 물건의 발명으로서, 만화 등의 시각적
+              이미지를 통한 학습효과를 높이기 위하여 …
+            </p>
+          </div>
+        </div>
+
+        <div class="summary-block">
+          <div
+            style="
+              border: 1.5px solid #e4e4e7;
+              background: #fafafa;
+              border-radius: 8px;
+              padding: 11px 14px;
+            "
+          >
+            <span
+              style="
+                display: inline-flex;
+                align-items: center;
+                background: #3b82f6;
+                color: #fff;
+                font-family:
+                  ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+                  monospace;
+                font-size: 11.5px;
+                font-weight: 800;
+                padding: 1px 7px;
+                border-radius: 5px;
+                margin-right: 8px;
+                vertical-align: 2px;
+              "
+              >2</span
+            ><span
+              style="
+                font-size: 16px;
+                font-weight: 700;
+                letter-spacing: -0.005em;
+                line-height: 1.75;
+                color: #18181b;
+              "
+              >위 특허발명에 재현가능성 내지 산업상 이용가능성이 있다는 사례</span
+            >
+          </div>
+          <div class="body">
+            <p>
+              특허발명은 학습만화에 관한 것으로 그 기술분야는 만화 및 애니메이션
+              산업분야라 할 것이므로, 이 발명이 속하는 기술분야에서 통상의 지식을
+              가진 사람(이하 ‘통상의 기술자’라 한다)이라면 …
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Variant A : 박스 + 좌측 accent stripe ============ -->
+      <section class="variant variant-a">
+        <p class="variant-label">시안 A — 박스 + 좌측 accent stripe</p>
+        <p class="variant-desc">
+          은은한 회색 박스 + 좌측에 4px 파란 stripe. 차분하지만 시작 위치가
+          뚜렷해 한 눈에 들어옴. 라벨은 stripe 와 같은 색 mono.
+        </p>
+
+        <p class="section-eyebrow">판결요지</p>
+
+        <div class="summary-block">
+          <div class="title-box">
+            <span class="label">[1]</span><span class="title-text"
+              >만화한자학습교재(실시제품: 마법천자문)에 관한 특허발명이 만화 등의
+              시각적 이미지를 통한 학습효과를 높이기 위하여 특정한 스토리를 가지는
+              한자학습교재의 한자만화 이미지 도시면에 등장캐릭터가 외치는 한자의
+              뜻과 소리 표시부, 해당 한자 표시부, 해당 한자의 뜻을 나타내는 만화
+              이미지 표시부가 함께 도시되도록 하고 한자만화 이미지 도시면에 등장하는
+              한자가 스토리의 전개와 연관되도록 하는 구성을 취하고 있는 경우 자연
+              법칙을 이용한 경우에 해당한다는 사례:</span
+            >
+          </div>
+          <div class="body">
+            <p>
+              특허발명은 한자학습교재라는 물건의 발명으로서, 만화 등의 시각적 이미지를 통한 학습효과를 높이기 위하여 특정한 스토리를 가지는 한자학습교재의 한자만화 이미지 도시면에 등장캐릭터가 외치는 한자의 뜻과 소리 표시부, 해당 한자 표시부, 해당 한자의 뜻을 나타내는 만화 이미지 표시부가 함께 도시되도록 하고 한자만화 이미지 도시면에 등장하는 한 자가 스토리의 전개와 연관되도록 하는 구성을 취하고 있고, 특허발명이 이와 같은 구성을 취한 것은 …
+            </p>
+          </div>
+        </div>
+
+        <div class="summary-block">
+          <div class="title-box">
+            <span class="label">[2]</span><span class="title-text"
+              >위 특허발명에 재현가능성 내지 산업상 이용가능성이 있다는 사례</span
+            >
+          </div>
+          <div class="body">
+            <p>
+              특허발명은 학습만화에 관한 것으로 그 기술분야는 만화 및 애니메이션 산업분야라 할 것이므로, 이 발명이 속하는 기술분야에서 통상의 지식을 가진 사람(이하 ‘통상의 기술자’라 한다)이라면 특허발명에 개시된 기술적 수단을 이용하여 특허발명을 용이하게 반복실시할 수 있을 것으로 보이고, …
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Variant B : 박스 + 라벨 배지 ============ -->
+      <section class="variant variant-b">
+        <p class="variant-label">시안 B — 박스 + 파란 라벨 배지</p>
+        <p class="variant-desc">
+          박스는 회색 배경 + 가는 outline. 라벨은 작은 파란 배지로 단단히 눈에
+          띔. stripe 가 없어 더 깔끔.
+        </p>
+
+        <p class="section-eyebrow">판결요지</p>
+
+        <div class="summary-block">
+          <div class="title-box">
+            <span class="label">1</span><span class="title-text"
+              >만화한자학습교재(실시제품: 마법천자문)에 관한 특허발명이 만화 등의
+              시각적 이미지를 통한 학습효과를 높이기 위하여 특정한 스토리를 가지는
+              한자학습교재의 한자만화 이미지 도시면에 등장캐릭터가 외치는 한자의
+              뜻과 소리 표시부, 해당 한자 표시부, 해당 한자의 뜻을 나타내는 만화
+              이미지 표시부가 함께 도시되도록 하고 한자만화 이미지 도시면에 등장하는
+              한자가 스토리의 전개와 연관되도록 하는 구성을 취하고 있는 경우 자연
+              법칙을 이용한 경우에 해당한다는 사례:</span
+            >
+          </div>
+          <div class="body">
+            <p>
+              특허발명은 한자학습교재라는 물건의 발명으로서, 만화 등의 시각적 이미지를 통한 학습효과를 높이기 위하여 특정한 스토리를 가지는 …
+            </p>
+          </div>
+        </div>
+
+        <div class="summary-block">
+          <div class="title-box">
+            <span class="label">2</span><span class="title-text"
+              >위 특허발명에 재현가능성 내지 산업상 이용가능성이 있다는 사례</span
+            >
+          </div>
+          <div class="body">
+            <p>
+              특허발명은 학습만화에 관한 것으로 그 기술분야는 만화 및 애니메이션 산업분야라 할 것이므로, 이 발명이 속하는 기술분야에서 통상의 지식을 가진 사람(이하 ‘통상의 기술자’라 한다)이라면 …
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Variant C : 더 옅은 outlined ============ -->
+      <section class="variant variant-c">
+        <p class="variant-label">시안 C — outlined / 옅은 배경 (가장 minimal)</p>
+        <p class="variant-desc">
+          박스 outline 만 살리고 배경은 거의 흰색. 가장 절제된 톤. 본문과 비슷한
+          색감을 유지하되 박스로 영역만 구분.
+        </p>
+
+        <p class="section-eyebrow">판결요지</p>
+
+        <div class="summary-block">
+          <div class="title-box">
+            <span class="label">[1]</span><span class="title-text"
+              >만화한자학습교재(실시제품: 마법천자문)에 관한 특허발명이 만화 등의
+              시각적 이미지를 통한 학습효과를 높이기 위하여 특정한 스토리를 가지는
+              한자학습교재의 한자만화 이미지 도시면에 등장캐릭터가 외치는 한자의
+              뜻과 소리 표시부, 해당 한자 표시부, 해당 한자의 뜻을 나타내는 만화
+              이미지 표시부가 함께 도시되도록 하고 한자만화 이미지 도시면에 등장하는
+              한자가 스토리의 전개와 연관되도록 하는 구성을 취하고 있는 경우 자연
+              법칙을 이용한 경우에 해당한다는 사례:</span
+            >
+          </div>
+          <div class="body">
+            <p>
+              특허발명은 한자학습교재라는 물건의 발명으로서, …
+            </p>
+          </div>
+        </div>
+
+        <div class="summary-block">
+          <div class="title-box">
+            <span class="label">[2]</span><span class="title-text"
+              >위 특허발명에 재현가능성 내지 산업상 이용가능성이 있다는 사례</span
+            >
+          </div>
+          <div class="body">
+            <p>특허발명은 학습만화에 관한 것으로 …</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p
+      style="
+        margin-top: 28px;
+        padding-top: 18px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--muted);
+      "
+    >
+      이 페이지는 시안 비교용 정적 파일입니다 (
+      <code>public/mockups/summary-box-2009heo351.html</code>). 시안 결정 후
+      <code>case-body.tsx</code> 의 <code>SummaryBlock</code> 컴포넌트에 반영됩니다.
+    </p>
+  </body>
+</html>
