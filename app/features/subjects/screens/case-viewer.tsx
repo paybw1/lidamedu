@@ -28,7 +28,7 @@ import { CaseBody } from "~/features/cases/components/case-body";
 import {
   findActiveCaseByDeletedId,
   getCaseById,
-  getCaseCountsByArticle,
+  getCasePlacementMaps,
   listCaseReferences,
 } from "~/features/cases/queries.server";
 import { listComments } from "~/features/comments/queries.server";
@@ -98,12 +98,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Law not seeded", { status: 404 });
   }
 
-  const [kase, articles, systematicNodes, caseCountsByArticle] =
+  const [kase, articles, systematicNodes, placementMaps] =
     await Promise.all([
       getCaseById(client, params.caseId),
       getArticleSkeleton(client, law.lawId),
       getSystematicSkeleton(client, lawCode),
-      getCaseCountsByArticle(client, law.lawId),
+      getCasePlacementMaps(client, lawCode, law.lawId),
     ]);
 
   if (!kase) {
@@ -173,7 +173,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const caseTreeCounts = buildCaseTreeCounts(
     articles,
     systematicNodes,
-    caseCountsByArticle,
+    placementMaps.caseSetByArticleId,
+    placementMaps.caseSetByNodeId,
   );
 
   const axisCounts = await getSubjectAxisCounts(client, lawCode, law.lawId);

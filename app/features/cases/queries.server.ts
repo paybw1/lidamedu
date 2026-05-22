@@ -246,6 +246,120 @@ export async function getCaseCountsByArticle(
   return counts;
 }
 
+// placement-aware case ↔ article/node 카운트 — 한 case 는 단일 placement.
+// 우선순위: primary_node_id > primary_article_id > legacy(article_case_links).
+// 반환: nodeId → distinct case_id Set, articleId → distinct case_id Set (leaf 단위).
+// 부모 노드 카운트는 buildCaseTreeCounts 의 aggregate 에서 자손 union → size.
+export interface CasePlacementMaps {
+  caseSetByArticleId: Record<string, string[]>;
+  caseSetByNodeId: Record<string, string[]>;
+}
+
+export async function getCasePlacementMaps(
+  client: SupabaseClient<Database>,
+  lawCode: string,
+  lawId: string,
+): Promise<CasePlacementMaps> {
+  // 1) 과목의 case 들 — primary_* 만 select.
+  const { data: caseRows, error: caseErr } = await client
+    .from("cases")
+    .select("case_id, primary_article_id, primary_node_id")
+    .contains("subject_laws", [lawCode])
+    .is("deleted_at", null);
+  if (caseErr) throw caseErr;
+
+  // 2) 과목의 article_systematic_links — article → nodes.
+  const { data: aslRows, error: aslErr } = await client
+    .from("article_systematic_links")
+    .select("article_id, node_id, articles!inner(law_id, deleted_at)")
+    .eq("articles.law_id", lawId)
+    .is("articles.deleted_at", null);
+  if (aslErr) throw aslErr;
+  const nodesByArticle = new Map<string, Set<string>>();
+  for (const r of aslRows ?? []) {
+    const s = nodesByArticle.get(r.article_id) ?? new Set();
+    s.add(r.node_id);
+    nodesByArticle.set(r.article_id, s);
+  }
+
+  // 3) legacy fallback 용 — primary 둘 다 null 인 case 의 article_case_links 만 필요.
+  // 일단 전체 link 모으고 case 별 grouping.
+  const aclByCase = new Map<string, Set<string>>();
+  {
+    const PAGE = 1000;
+    let from = 0;
+    for (;;) {
+      const { data, error } = await client
+        .from("article_case_links")
+        .select(
+          "article_id, case_id, articles!inner(law_id, deleted_at), cases!inner(deleted_at)",
+        )
+        .eq("articles.law_id", lawId)
+        .is("articles.deleted_at", null)
+        .is("cases.deleted_at", null)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      for (const r of data) {
+        const s = aclByCase.get(r.case_id) ?? new Set();
+        s.add(r.article_id);
+        aclByCase.set(r.case_id, s);
+      }
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+
+  // 4) case 별로 placement 결정 → byArticle / byNode set 채움.
+  const byArticle = new Map<string, Set<string>>();
+  const byNode = new Map<string, Set<string>>();
+  function addArticle(articleId: string, caseId: string) {
+    let s = byArticle.get(articleId);
+    if (!s) {
+      s = new Set();
+      byArticle.set(articleId, s);
+    }
+    s.add(caseId);
+  }
+  function addNode(nodeId: string, caseId: string) {
+    let s = byNode.get(nodeId);
+    if (!s) {
+      s = new Set();
+      byNode.set(nodeId, s);
+    }
+    s.add(caseId);
+  }
+
+  for (const c of caseRows ?? []) {
+    if (c.primary_node_id) {
+      // node 직접 placement — article 카운트엔 안 들어감.
+      addNode(c.primary_node_id, c.case_id);
+      continue;
+    }
+    if (c.primary_article_id) {
+      addArticle(c.primary_article_id, c.case_id);
+      for (const n of nodesByArticle.get(c.primary_article_id) ?? new Set()) {
+        addNode(n, c.case_id);
+      }
+      continue;
+    }
+    // legacy — 모든 article 매핑 + 그 article 의 system nodes.
+    const articles = aclByCase.get(c.case_id) ?? new Set<string>();
+    for (const a of articles) {
+      addArticle(a, c.case_id);
+      for (const n of nodesByArticle.get(a) ?? new Set()) {
+        addNode(n, c.case_id);
+      }
+    }
+  }
+
+  const caseSetByArticleId: Record<string, string[]> = {};
+  for (const [k, v] of byArticle.entries()) caseSetByArticleId[k] = [...v];
+  const caseSetByNodeId: Record<string, string[]> = {};
+  for (const [k, v] of byNode.entries()) caseSetByNodeId[k] = [...v];
+  return { caseSetByArticleId, caseSetByNodeId };
+}
+
 // 트리 노드 클릭 필터링 — 주어진 조문들과 연결된 판례 ID 셋.
 // 빈 배열을 받으면 빈 배열을 반환 (filter caller 가 0건으로 처리).
 export async function getCaseIdsByArticleIds(
@@ -275,56 +389,88 @@ export async function getCaseIdsByArticleIds(
   return [...out];
 }
 
-// 체계도 노드 직접 매핑 — case_systematic_links 의 (node_id ∈ slice) case_id 셋.
-// article 경유와 union 으로 사용 (sub-node 분류된 case 가 부모/자손 어디 검색이든 잡힘).
-export async function getCaseIdsByNodeIds(
+// 체계도 placement 기반 case ID 조회 — cases.primary_node_id / primary_article_id 우선.
+// 사용자 결정: 한 case 가 한 곳에만 placement.
+//   1) primary_node_id IN target nodeIds → 그 case
+//   2) primary_node_id IS NULL AND primary_article_id IN target articleIds → 그 case
+//   3) primary_article_id IS NULL AND primary_node_id IS NULL AND
+//      article_case_links.article_id IN target articleIds → legacy fallback case
+// 합집합 distinct. articleIds 빈 배열이면 step 2/3 skip, nodeIds 빈 배열이면 step 1 skip.
+export async function getCaseIdsByPlacement(
   client: SupabaseClient<Database>,
+  articleIds: readonly string[],
   nodeIds: readonly string[],
 ): Promise<string[]> {
-  if (nodeIds.length === 0) return [];
   const out = new Set<string>();
   const CHUNK = 200;
   const PAGE = 1000;
-  for (let i = 0; i < nodeIds.length; i += CHUNK) {
-    const slice = nodeIds.slice(i, i + CHUNK);
-    let from = 0;
-    for (;;) {
+
+  // step 1) primary_node_id 직접 매핑
+  if (nodeIds.length > 0) {
+    for (let i = 0; i < nodeIds.length; i += CHUNK) {
+      const slice = nodeIds.slice(i, i + CHUNK);
       const { data, error } = await client
-        .from("case_systematic_links")
+        .from("cases")
         .select("case_id")
-        .in("node_id", slice)
-        .range(from, from + PAGE - 1);
+        .in("primary_node_id", slice)
+        .is("deleted_at", null);
       if (error) throw error;
-      if (!data || data.length === 0) break;
-      for (const r of data) out.add(r.case_id);
-      if (data.length < PAGE) break;
-      from += PAGE;
+      for (const r of data ?? []) out.add(r.case_id);
     }
   }
-  return [...out];
-}
 
-// case 한 건이 직접 매핑된 systematic_nodes — admin-case-edit 에서 현재 분류 표시 + 편집.
-export async function getCaseSystematicLinks(
-  client: SupabaseClient<Database>,
-  caseId: string,
-): Promise<{ nodeId: string; displayLabel: string; path: string }[]> {
-  const { data, error } = await client
-    .from("case_systematic_links")
-    .select("node_id, systematic_nodes!inner(display_label, path)")
-    .eq("case_id", caseId);
-  if (error) throw error;
-  return (data ?? []).map((r) => {
-    const n = r.systematic_nodes as unknown as {
-      display_label: string;
-      path: string;
-    };
-    return {
-      nodeId: r.node_id,
-      displayLabel: n.display_label,
-      path: n.path,
-    };
-  });
+  if (articleIds.length > 0) {
+    // step 2) primary_article_id 가 target 에 속하고 primary_node_id 가 null
+    for (let i = 0; i < articleIds.length; i += CHUNK) {
+      const slice = articleIds.slice(i, i + CHUNK);
+      const { data, error } = await client
+        .from("cases")
+        .select("case_id")
+        .in("primary_article_id", slice)
+        .is("primary_node_id", null)
+        .is("deleted_at", null);
+      if (error) throw error;
+      for (const r of data ?? []) out.add(r.case_id);
+    }
+
+    // step 3) legacy fallback — primary 둘 다 null 인 case 중 article_case_links 매핑.
+    // article_case_links 의 candidate case_id 들을 먼저 모은 뒤 그 candidate 의 cases 에서
+    // primary 둘 다 null 인 것만 거름.
+    const candidates = new Set<string>();
+    for (let i = 0; i < articleIds.length; i += CHUNK) {
+      const slice = articleIds.slice(i, i + CHUNK);
+      let from = 0;
+      for (;;) {
+        const { data, error } = await client
+          .from("article_case_links")
+          .select("case_id")
+          .in("article_id", slice)
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const r of data) candidates.add(r.case_id);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+    if (candidates.size > 0) {
+      const arr = [...candidates];
+      for (let i = 0; i < arr.length; i += CHUNK) {
+        const slice = arr.slice(i, i + CHUNK);
+        const { data, error } = await client
+          .from("cases")
+          .select("case_id")
+          .in("case_id", slice)
+          .is("primary_article_id", null)
+          .is("primary_node_id", null)
+          .is("deleted_at", null);
+        if (error) throw error;
+        for (const r of data ?? []) out.add(r.case_id);
+      }
+    }
+  }
+
+  return [...out];
 }
 
 // feat-4-A-214 관련논문/기사 링크.

@@ -240,49 +240,47 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, url: publicUrl });
   }
 
-  // ── 판례 ↔ 체계도 노드 직접 매핑 (feat-7-005 후속) ─────────────────
-  if (intent === "add_systematic" || intent === "remove_systematic") {
+  // ── 메인 조문 + 발명 sub-node placement 단일 결정 (feat-7-005 후속) ─
+  // primary_article_id 가 set 되면 그 case 는 단일 위치에 표시됨.
+  // primary_article_id 가 발명(제2조) 인 경우만 primary_node_id 도 함께 받음.
+  if (intent === "set_primary_placement") {
     const caseId = String(fd.get("caseId") ?? "");
-    const nodeId = String(fd.get("nodeId") ?? "");
     if (!z.string().uuid().safeParse(caseId).success) {
       return data({ error: "Invalid caseId" }, { status: 400 });
     }
-    if (!z.string().uuid().safeParse(nodeId).success) {
-      return data({ error: "Invalid nodeId" }, { status: 400 });
-    }
-    if (intent === "add_systematic") {
-      const { error } = await client
-        .from("case_systematic_links")
-        .upsert(
-          { case_id: caseId, node_id: nodeId, created_by: user.id },
-          { onConflict: "case_id,node_id" },
-        );
-      if (error) return data({ error: error.message }, { status: 400 });
-      void logAuditEvent({
-        actorId: user.id,
-        actorRole: role,
-        action: "case.add_systematic",
-        entityType: "case",
-        entityId: caseId,
-        metadata: { nodeId },
-      });
-      return data({ ok: true });
-    }
+    const articleIdRaw = String(fd.get("articleId") ?? "");
+    const nodeIdRaw = String(fd.get("nodeId") ?? "");
+    const articleId =
+      articleIdRaw && z.string().uuid().safeParse(articleIdRaw).success
+        ? articleIdRaw
+        : null;
+    const nodeId =
+      nodeIdRaw && z.string().uuid().safeParse(nodeIdRaw).success
+        ? nodeIdRaw
+        : null;
     const { error } = await client
-      .from("case_systematic_links")
-      .delete()
-      .eq("case_id", caseId)
-      .eq("node_id", nodeId);
+      .from("cases")
+      .update({ primary_article_id: articleId, primary_node_id: nodeId })
+      .eq("case_id", caseId);
     if (error) return data({ error: error.message }, { status: 400 });
     void logAuditEvent({
       actorId: user.id,
       actorRole: role,
-      action: "case.remove_systematic",
+      action: "case.set_primary_placement",
       entityType: "case",
       entityId: caseId,
-      metadata: { nodeId },
+      metadata: { articleId, nodeId },
     });
     return data({ ok: true });
+  }
+
+  // ── (legacy) add_systematic / remove_systematic — 사용 안 함. ──────
+  // 사용자 결정에 따라 단일 placement 모델로 전환됨. set_primary_placement 사용.
+  if (intent === "add_systematic" || intent === "remove_systematic") {
+    return data(
+      { error: "deprecated — use set_primary_placement" },
+      { status: 410 },
+    );
   }
 
   // ── 판례 본문 이미지 (feat-7-005 후속) ──────────────────────────────

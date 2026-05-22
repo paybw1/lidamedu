@@ -10,6 +10,7 @@ import {
   NetworkIcon,
   PlusIcon,
   SaveIcon,
+  StarIcon,
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
@@ -38,7 +39,6 @@ import {
 } from "~/features/cases/labels";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
-import { getCaseSystematicLinks } from "~/features/cases/queries.server";
 import {
   getStaffRole,
   getSystematicSkeleton,
@@ -94,14 +94,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       role,
       relatedArticles: [] as RelatedArticle[],
       systematicNodes: [] as SystematicNode[],
-      systematicLinks: [] as { nodeId: string; displayLabel: string; path: string }[],
     };
-  const [{ data: row, error }, relatedArticles, systematicLinks] =
-    await Promise.all([
-      client.from("cases").select("*").eq("case_id", caseId).maybeSingle(),
-      getRelatedArticlesByCase(client, caseId),
-      getCaseSystematicLinks(client, caseId),
-    ]);
+  const [{ data: row, error }, relatedArticles] = await Promise.all([
+    client.from("cases").select("*").eq("case_id", caseId).maybeSingle(),
+    getRelatedArticlesByCase(client, caseId),
+  ]);
   if (error) throw data(error.message, { status: 500 });
   if (!row) throw data("Case not found", { status: 404 });
   // case 의 subject_laws 중 첫 번째 lawCode 의 systematic 트리 로드 — 다과목 케이스는
@@ -119,7 +116,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     role,
     relatedArticles,
     systematicNodes,
-    systematicLinks,
   };
 }
 
@@ -133,14 +129,8 @@ const COURTS: Array<keyof typeof COURT_LABELS> = [
 /* ── 페이지 ──────────────────────────────────────────────────────────── */
 
 export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
-  const {
-    kase,
-    returnTo,
-    role,
-    relatedArticles,
-    systematicNodes,
-    systematicLinks,
-  } = loaderData;
+  const { kase, returnTo, role, relatedArticles, systematicNodes } =
+    loaderData;
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
 
@@ -414,15 +404,13 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             caseId={kase.case_id}
             initialImages={parseCaseImages(kase.images)}
           />
-          <SystematicLinksEditor
-            caseId={kase.case_id}
-            systematicNodes={systematicNodes}
-            systematicLinks={systematicLinks}
-          />
           <RelatedArticlesEditor
             caseId={kase.case_id}
             subjectLaws={(kase.subject_laws ?? []) as LawSubjectSlug[]}
             relatedArticles={relatedArticles}
+            primaryArticleId={kase.primary_article_id ?? null}
+            primaryNodeId={kase.primary_node_id ?? null}
+            systematicNodes={systematicNodes}
           />
         </>
       ) : null}
@@ -430,11 +418,10 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   );
 }
 
-/* ── SystematicLinksEditor ───────────────────────────────────────────── */
-// 판례 ↔ 체계도 노드 직접 매핑 편집기. 발명 sub-node(일반발명/BM발명/용도(의약)발명/
-// 미생물발명/식물발명/실시) 같은 sub-node 분류에 사용. 메인 Form 밖이라 fetcher 로
-// 독립 처리(nested-form 회피).
-function SystematicLinksEditor({
+/* ── (deprecated) SystematicLinksEditor 제거됨 ────────────────────────
+   체계도 분류는 case 의 메인 조문 + 발명 sub-node 단일 placement 로 통합 —
+   RelatedArticlesEditor 에 메인 라디오 + 발명 sub-node select 가 노출됨. */
+function _SystematicLinksEditor_DEPRECATED({
   caseId,
   systematicNodes,
   systematicLinks,
@@ -601,22 +588,68 @@ function SystematicLinksEditor({
 /* ── RelatedArticlesEditor ──────────────────────────────────────────── */
 // feat-7-005 후속: 개별 판례 수정 페이지에서 관련 조문 직접 편집.
 // /api/admin/case-link (intent=add/remove) 호출. fetcher 로 revalidate 자동.
+// 학생 트리에서 case 의 단일 placement 결정에 사용하는 patent 제2조(발명) article_id.
+// 다른 과목으로 확장 시 매핑 테이블 도입.
+const PATENT_INVENTION_ARTICLE_ID = "c38b3f2d-1e84-4268-9220-f00f0d05001d";
+// 발명 sub-node parent id (patent.b1.b2). 학생 트리 발명 자식 6개를 추려내는 키.
+const PATENT_INVENTION_NODE_ID = "e2145cae-6ae1-4bcb-b477-824e5a9f37d4";
+
 function RelatedArticlesEditor({
   caseId,
   subjectLaws,
   relatedArticles,
+  primaryArticleId,
+  primaryNodeId,
+  systematicNodes,
 }: {
   caseId: string;
   subjectLaws: LawSubjectSlug[];
   relatedArticles: RelatedArticle[];
+  primaryArticleId: string | null;
+  primaryNodeId: string | null;
+  systematicNodes: SystematicNode[];
 }) {
   const addFetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const removeFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const primaryFetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const revalidator = useRevalidator();
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedLaw, setSelectedLaw] = useState<LawSubjectSlug>(
     (subjectLaws[0] ?? "patent") as LawSubjectSlug,
   );
+  // 발명 자식 6 sub-node — 학생 트리의 발명 sub 분류 select 에 사용.
+  const inventionSubNodes = useMemo(
+    () =>
+      systematicNodes
+        .filter((n) => n.parentId === PATENT_INVENTION_NODE_ID)
+        .sort((a, b) => a.path.localeCompare(b.path)),
+    [systematicNodes],
+  );
+  const isInventionPrimary = primaryArticleId === PATENT_INVENTION_ARTICLE_ID;
+
+  // 메인 placement 설정 — articleId(null=해제) + 발명일 때 nodeId 동시 전달.
+  function setPrimary(articleId: string | null, nodeId: string | null) {
+    const fd = new FormData();
+    fd.set("intent", "set_primary_placement");
+    fd.set("caseId", caseId);
+    if (articleId) fd.set("articleId", articleId);
+    if (nodeId) fd.set("nodeId", nodeId);
+    primaryFetcher.submit(fd, {
+      method: "post",
+      action: "/api/admin/case",
+    });
+  }
+  const handledPrimaryRef = useRef<unknown>(null);
+  useEffect(() => {
+    if (primaryFetcher.state !== "idle") return;
+    const r = primaryFetcher.data;
+    if (!r || r === handledPrimaryRef.current) return;
+    handledPrimaryRef.current = r;
+    if (r.ok) {
+      toast.success("메인 조문이 설정됐습니다.");
+      revalidator.revalidate();
+    } else if (r.error) toast.error(r.error);
+  }, [primaryFetcher.state, primaryFetcher.data, revalidator]);
 
   const isAdding = addFetcher.state !== "idle";
   const removingKey =
@@ -662,11 +695,14 @@ function RelatedArticlesEditor({
     <Card className="mt-4">
       <CardHeader>
         <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          관련 조문
+          관련 조문 · 메인 위치
         </p>
         <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-          이 판례를 인용·해석한 조문을 매핑합니다. 학생 화면 우측 패널의 "관련
-          조문" 칩과 학습과목 case 뷰어의 조문 chips 에 반영됩니다.
+          관련 조문을 매핑하고, 그 중 <strong>메인 조문</strong>(★)을
+          한 개 선택하세요. 학생 화면의 판례 트리에서는 그 메인 조문이 속한 위치 한
+          곳에만 노출됩니다. <strong>제2조 발명</strong>이 메인이면 발명 sub-node
+          (일반발명/BM발명/용도(의약)발명/미생물발명/식물발명/실시) 중 하나를 함께
+          선택합니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -678,14 +714,46 @@ function RelatedArticlesEditor({
               // — 현재 선택된 law 또는 첫 subject_laws 사용. case_link API 가 (caseId+articleNumber) 만 사용해 정확 매칭됨.
               const key = `${lawCode}:${num ?? ""}`;
               const removing = removingKey === key;
+              const isPrimary = a.articleId === primaryArticleId;
               return (
                 <li key={a.articleId}>
                   <span
                     className={cn(
                       "border-border bg-muted/40 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
                       removing && "opacity-50",
+                      isPrimary &&
+                        "border-amber-400 bg-amber-50 dark:bg-amber-950/30",
                     )}
                   >
+                    <button
+                      type="button"
+                      title={isPrimary ? "메인 조문 (해제)" : "메인 조문으로 설정"}
+                      aria-label={
+                        isPrimary
+                          ? "메인 조문 해제"
+                          : `${a.displayLabel} 을(를) 메인 조문으로 설정`
+                      }
+                      onClick={() =>
+                        isPrimary
+                          ? setPrimary(null, null)
+                          : setPrimary(
+                              a.articleId,
+                              a.articleId === PATENT_INVENTION_ARTICLE_ID
+                                ? null
+                                : null,
+                            )
+                      }
+                      className={cn(
+                        "transition-colors",
+                        isPrimary
+                          ? "text-amber-500"
+                          : "text-muted-foreground/60 hover:text-amber-500",
+                      )}
+                    >
+                      <StarIcon
+                        className={cn("size-3.5", isPrimary && "fill-amber-400")}
+                      />
+                    </button>
                     <span className="font-medium">{a.displayLabel}</span>
                     {num ? (
                       <removeFetcher.Form
@@ -726,6 +794,42 @@ function RelatedArticlesEditor({
             아직 매핑된 관련 조문이 없습니다.
           </p>
         )}
+
+        {/* 발명 sub-node select — 메인이 제2조(발명)일 때만 노출 */}
+        {isInventionPrimary ? (
+          <div className="border-amber-300 bg-amber-50/60 dark:border-amber-700/50 dark:bg-amber-950/20 flex flex-wrap items-end gap-2 rounded-md border px-3 py-2">
+            <Field
+              label="발명 sub-node (메인이 제2조 발명일 때 필수)"
+              htmlFor="inventionSubNode"
+            >
+              <AdminSelect
+                id="inventionSubNode"
+                value={primaryNodeId ?? ""}
+                onChange={(e) => {
+                  const v = e.currentTarget.value;
+                  setPrimary(
+                    PATENT_INVENTION_ARTICLE_ID,
+                    v === "" ? null : v,
+                  );
+                }}
+                className="w-56"
+              >
+                <option value="">— 선택 안 함 (발명 노드 자체) —</option>
+                {inventionSubNodes.map((n) => (
+                  <option key={n.nodeId} value={n.nodeId}>
+                    {n.displayLabel}
+                  </option>
+                ))}
+              </AdminSelect>
+            </Field>
+          </div>
+        ) : null}
+
+        {primaryArticleId && !isInventionPrimary && primaryNodeId ? (
+          <p className="text-muted-foreground text-[11px]">
+            메인이 제2조 발명이 아니므로 sub-node 는 자동으로 무시됩니다.
+          </p>
+        ) : null}
 
         <addFetcher.Form
           method="post"

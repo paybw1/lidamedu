@@ -1211,42 +1211,6 @@ export type Database = {
           },
         ]
       }
-      case_systematic_links: {
-        Row: {
-          case_id: string
-          created_at: string
-          created_by: string | null
-          node_id: string
-        }
-        Insert: {
-          case_id: string
-          created_at?: string
-          created_by?: string | null
-          node_id: string
-        }
-        Update: {
-          case_id?: string
-          created_at?: string
-          created_by?: string | null
-          node_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "case_systematic_links_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "cases"
-            referencedColumns: ["case_id"]
-          },
-          {
-            foreignKeyName: "case_systematic_links_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "systematic_nodes"
-            referencedColumns: ["node_id"]
-          },
-        ]
-      }
       cases: {
         Row: {
           case_id: string
@@ -1266,6 +1230,8 @@ export type Database = {
           importance: number | null
           is_en_banc: boolean
           nickname: string | null
+          primary_article_id: string | null
+          primary_node_id: string | null
           reasoning_md: string | null
           related_md: string | null
           search_tsv: unknown
@@ -1293,6 +1259,8 @@ export type Database = {
           importance?: number | null
           is_en_banc?: boolean
           nickname?: string | null
+          primary_article_id?: string | null
+          primary_node_id?: string | null
           reasoning_md?: string | null
           related_md?: string | null
           search_tsv?: unknown
@@ -1320,6 +1288,8 @@ export type Database = {
           importance?: number | null
           is_en_banc?: boolean
           nickname?: string | null
+          primary_article_id?: string | null
+          primary_node_id?: string | null
           reasoning_md?: string | null
           related_md?: string | null
           search_tsv?: unknown
@@ -1329,7 +1299,22 @@ export type Database = {
           summary_title?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cases_primary_article_id_fkey"
+            columns: ["primary_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "cases_primary_node_id_fkey"
+            columns: ["primary_node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+        ]
       }
       cohort_curricula: {
         Row: {
