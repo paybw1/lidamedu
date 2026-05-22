@@ -958,6 +958,12 @@ function ImagesCard({
   const fileRef = useRef<HTMLInputElement>(null);
   const altRef = useRef<HTMLInputElement>(null);
   const [position, setPosition] = useState<CaseImagePosition>("summary");
+  // 클립보드 paste(Ctrl+V) 또는 드래그&드롭으로 들어온 파일 — 업로드 직전 preview.
+  // file input 의 .files 와는 별도로 관리(브라우저가 input.files 를 보안상 직접
+  // 쓰기 불가능한 경로가 있어 state 로 통합 처리).
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const isUploading = uploadFetcher.state !== "idle";
   const removingId =
@@ -982,6 +988,7 @@ function ImagesCard({
       toast.success("이미지 업로드 완료");
       if (fileRef.current) fileRef.current.value = "";
       if (altRef.current) altRef.current.value = "";
+      setPendingFile(null);
       revalidator.revalidate();
     } else if (r.error) toast.error(r.error);
   }, [uploadFetcher.state, uploadFetcher.data, revalidator]);
@@ -1008,10 +1015,82 @@ function ImagesCard({
     } else if (r.error) toast.error(r.error);
   }, [metaFetcher.state, metaFetcher.data, revalidator]);
 
+  // pendingFile 변경 시 preview blob URL 갱신 + 이전 URL revoke.
+  useEffect(() => {
+    if (!pendingFile) {
+      setPendingPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingFile);
+    setPendingPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
+
+  function acceptFile(file: File): boolean {
+    if (!file.type.startsWith("image/")) {
+      toast.error("이미지 파일만 가능합니다.");
+      return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("파일이 10MB 를 초과합니다.");
+      return false;
+    }
+    setPendingFile(file);
+    // file input 도 동기화 — 사용자가 보던 input 의 파일명도 같이 갱신.
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      if (fileRef.current) fileRef.current.files = dt.files;
+    } catch {
+      // 일부 브라우저에서 DataTransfer 지원 미흡 — state 만으로도 업로드 가능.
+    }
+    return true;
+  }
+
+  // 클립보드 paste — 이미지 데이터가 있으면 pendingFile 로 set.
+  function onPaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "file" && it.type.startsWith("image/")) {
+        const file = it.getAsFile();
+        if (file && acceptFile(file)) {
+          e.preventDefault();
+          toast.success("클립보드 이미지가 준비됐습니다 — 업로드를 누르세요.");
+          return;
+        }
+      }
+    }
+  }
+
+  // 드래그&드롭.
+  function onDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(true);
+  }
+  function onDragLeave() {
+    setIsDragOver(false);
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && acceptFile(file)) {
+      toast.success("이미지가 준비됐습니다 — 업로드를 누르세요.");
+    }
+  }
+
+  function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.currentTarget.files?.[0];
+    if (file) acceptFile(file);
+    else setPendingFile(null);
+  }
+
   function onUpload() {
-    const file = fileRef.current?.files?.[0];
+    const file = pendingFile ?? fileRef.current?.files?.[0];
     if (!file) {
-      toast.error("이미지 파일을 선택하세요.");
+      toast.error("이미지 파일을 선택·붙여넣기·드래그해서 추가하세요.");
       return;
     }
     const fd = new FormData();
@@ -1064,13 +1143,64 @@ function ImagesCard({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* 업로드 폼 */}
+        {/* 클립보드 paste / 드래그&드롭 zone — 이미지 파일 인입 통합 영역.
+            클릭 시 focus → Ctrl+V 로 클립보드 이미지 직접 붙여넣기. 또는 파일을
+            영역으로 드래그&드롭. file input 선택 결과도 같은 pendingFile 로 통합. */}
+        <div
+          tabIndex={0}
+          role="button"
+          aria-label="이미지 붙여넣기·드래그 영역"
+          onPaste={onPaste}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          onClick={(e) => (e.currentTarget as HTMLDivElement).focus()}
+          className={cn(
+            "border-border bg-muted/30 hover:bg-muted/50 focus:border-primary focus:bg-primary/[0.05] flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-6 text-center outline-none transition-colors",
+            isDragOver &&
+              "border-primary bg-primary/[0.06] ring-primary/30 ring-2",
+            pendingPreview && "border-emerald-400/60 bg-emerald-50/40 dark:bg-emerald-950/20",
+          )}
+        >
+          {pendingPreview ? (
+            <>
+              <img
+                src={pendingPreview}
+                alt="paste preview"
+                className="max-h-32 rounded object-contain"
+              />
+              <p className="text-foreground/80 text-xs">
+                {pendingFile?.name}{" "}
+                <span className="text-muted-foreground">
+                  · {Math.round((pendingFile?.size ?? 0) / 1024).toLocaleString()}KB
+                </span>
+              </p>
+              <p className="text-muted-foreground text-[10px]">
+                업로드 버튼을 누르거나 다른 이미지로 다시 붙여넣기·드래그하면 교체됩니다.
+              </p>
+            </>
+          ) : (
+            <>
+              <ImageIcon className="text-muted-foreground/60 size-6" />
+              <p className="text-muted-foreground text-xs">
+                <strong className="text-foreground">클릭 후 Ctrl+V</strong> 로
+                클립보드 이미지를 붙여넣거나, 파일을 이 영역으로 드래그하세요.
+              </p>
+              <p className="text-muted-foreground text-[10px]">
+                또는 아래 파일 선택을 사용할 수 있습니다.
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* 업로드 폼 — 파일 선택은 보조 경로로 유지(같은 pendingFile 로 통합) */}
         <div className="grid gap-2 sm:grid-cols-[1fr_180px_auto] sm:items-end">
-          <Field label="이미지 파일" required>
+          <Field label="파일 선택 (선택)">
             <Input
               ref={fileRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif,image/bmp"
+              onChange={onFileInputChange}
               className="text-xs"
             />
           </Field>
@@ -1094,7 +1224,7 @@ function ImagesCard({
             type="button"
             size="sm"
             onClick={onUpload}
-            disabled={isUploading}
+            disabled={isUploading || !pendingFile}
           >
             <UploadIcon className="size-3.5" />
             {isUploading ? "업로드 중…" : "업로드"}
