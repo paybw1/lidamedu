@@ -294,6 +294,7 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             <Field label="판결요지 (여러 항목 가능)">
               <SummaryItemsEditor
                 defaultItems={parseSummaryItems(kase?.summary_items)}
+                caseId={isNew ? null : kase.case_id}
               />
             </Field>
             <Field label="판시이유 (Markdown)" htmlFor="reasoningMd">
@@ -302,6 +303,8 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
                 defaultValue={kase?.reasoning_md ?? ""}
                 rows={8}
                 fieldLabel="판시이유"
+                caseId={isNew ? null : kase.case_id}
+                imagePosition="reasoning"
               />
             </Field>
           </CardContent>
@@ -329,6 +332,8 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
                 defaultValue={kase?.comment_body_md ?? ""}
                 rows={6}
                 fieldLabel="비고/평석 본문"
+                caseId={isNew ? null : kase.case_id}
+                imagePosition="comment"
               />
             </Field>
           </CardContent>
@@ -354,6 +359,8 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
                 defaultValue={kase?.related_md ?? ""}
                 rows={6}
                 fieldLabel="관련자료 본문"
+                caseId={isNew ? null : kase.case_id}
+                imagePosition="related"
               />
             </Field>
           </CardContent>
@@ -584,6 +591,8 @@ function ReflowableTextarea({
   onChange,
   rows,
   fieldLabel,
+  caseId,
+  imagePosition,
 }: {
   name?: string;
   defaultValue?: string;
@@ -591,23 +600,30 @@ function ReflowableTextarea({
   onChange?: (next: string) => void;
   rows: number;
   fieldLabel: string;
+  /** 신규 등록(create) 모드면 null — 그 경우 paste 이미지 업로드 비활성. */
+  caseId?: string | null;
+  /** paste 업로드된 이미지의 표시 영역. 본문 위치에 맞춰 자동 분류. */
+  imagePosition?: CaseImagePosition;
 }) {
   const isControlled = value !== undefined;
   const ref = useRef<HTMLTextAreaElement | null>(null);
+  const revalidator = useRevalidator();
   // 라이브 preview 토글 + textarea 의 현재 값을 추적해 preview 렌더.
   // controlled mode 면 value, uncontrolled mode 면 onInput 시점 textarea.value 를 state.
   const [previewOn, setPreviewOn] = useState(false);
   const [uncontrolledMirror, setUncontrolledMirror] = useState(
     defaultValue ?? "",
   );
+  const [pasteUploading, setPasteUploading] = useState(false);
   const previewText = isControlled ? (value ?? "") : uncontrolledMirror;
 
   // cursor 위치(또는 selection 끝)에 텍스트를 삽입하고 cursor 를 삽입 직후로 이동.
-  function insertAtCursor(snippet: string) {
+  // pos 가 주어지면 그 위치를 기준(async upload 후 호출), 없으면 현재 selection.
+  function insertAtCursor(snippet: string, pos?: number) {
     const el = ref.current;
     if (!el) return;
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? el.value.length;
+    const start = pos ?? el.selectionStart ?? el.value.length;
+    const end = pos ?? el.selectionEnd ?? el.value.length;
     // 앞뒤 paragraph 경계 보장 — 이미 \n\n 가 있으면 그대로, 아니면 추가.
     const before = el.value.slice(0, start);
     const after = el.value.slice(end);
@@ -633,6 +649,75 @@ function ReflowableTextarea({
         /* readonly 등 — ignore */
       }
     });
+  }
+
+  // 클립보드 이미지 → 즉시 storage 업로드 + cursor 위치에 markdown 삽입.
+  // 응답이 늦어 사용자가 그 사이 typing 해도 paste 시점 cursor 위치를 기준으로
+  // 삽입. caseId 가 없으면 (create 모드) 호출되지 않는다.
+  async function uploadAndInsertImage(file: File, cursorAt: number) {
+    if (!caseId) return;
+    setPasteUploading(true);
+    const fd = new FormData();
+    fd.set("intent", "upload_image");
+    fd.set("caseId", caseId);
+    fd.set("position", imagePosition ?? "pending");
+    fd.set("alt", "");
+    fd.set("file", file);
+    try {
+      const resp = await fetch("/api/admin/case", {
+        method: "POST",
+        body: fd,
+      });
+      if (!resp.ok) {
+        // action 이 data({error}, {status:4xx}) 로 반환 — JSON 시도.
+        let msg = `HTTP ${resp.status}`;
+        try {
+          const j = (await resp.json()) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          /* ignore */
+        }
+        toast.error(`이미지 업로드 실패: ${msg}`);
+        return;
+      }
+      const data = (await resp.json()) as {
+        ok?: boolean;
+        image?: { url?: string };
+        error?: string;
+      };
+      if (data.ok && data.image?.url) {
+        insertAtCursor(`![](${data.image.url})`, cursorAt);
+        toast.success(
+          `${fieldLabel} 에 이미지가 삽입됐습니다 — 미리보기로 확인하세요.`,
+        );
+        revalidator.revalidate(); // ImagesCard 갱신
+      } else {
+        toast.error(data.error ?? "이미지 업로드 실패");
+      }
+    } catch (err) {
+      toast.error("이미지 업로드 실패 — 네트워크를 확인하세요.");
+    } finally {
+      setPasteUploading(false);
+    }
+  }
+
+  function onPasteImage(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (!caseId) return; // create 모드 — 기본 paste 동작 유지
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "file" && it.type.startsWith("image/")) {
+        const file = it.getAsFile();
+        if (!file) continue;
+        e.preventDefault();
+        const el = e.currentTarget;
+        const start = el.selectionStart ?? el.value.length;
+        void uploadAndInsertImage(file, start);
+        return;
+      }
+    }
+    // 텍스트 paste — 기본 동작 유지
   }
 
   const onReflow = () => {
@@ -698,6 +783,11 @@ function ReflowableTextarea({
           넘버링 자동 정렬
         </Button>
       </div>
+      {caseId && pasteUploading ? (
+        <p className="text-muted-foreground mb-1 text-[10px]">
+          이미지 업로드 중… 응답이 도착하면 cursor 위치에 markdown 이 삽입됩니다.
+        </p>
+      ) : null}
       <div
         className={cn(
           "gap-3",
@@ -709,6 +799,7 @@ function ReflowableTextarea({
             ref={ref}
             value={value ?? ""}
             onChange={(e) => onChange?.(e.target.value)}
+            onPaste={onPasteImage}
             rows={rows}
           />
         ) : (
@@ -720,6 +811,7 @@ function ReflowableTextarea({
             onInput={(e) =>
               setUncontrolledMirror((e.target as HTMLTextAreaElement).value)
             }
+            onPaste={onPasteImage}
           />
         )}
         {previewOn ? (
@@ -759,8 +851,10 @@ function parseSummaryItems(raw: unknown): SummaryItem[] {
 
 function SummaryItemsEditor({
   defaultItems,
+  caseId,
 }: {
   defaultItems: SummaryItem[];
+  caseId: string | null;
 }) {
   const [items, setItems] = useState<SummaryItem[]>(
     defaultItems.length > 0 ? defaultItems : [{ title: "", body: "" }],
@@ -814,6 +908,8 @@ function SummaryItemsEditor({
             onChange={(next) => patch(i, { body: next })}
             rows={5}
             fieldLabel={`요지 [${i + 1}] 본문`}
+            caseId={caseId}
+            imagePosition="summary"
           />
         </div>
       ))}
