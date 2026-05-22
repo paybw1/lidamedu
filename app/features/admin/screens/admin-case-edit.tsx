@@ -625,7 +625,13 @@ function RelatedArticlesEditor({
         .sort((a, b) => a.path.localeCompare(b.path)),
     [systematicNodes],
   );
-  const isInventionPrimary = primaryArticleId === PATENT_INVENTION_ARTICLE_ID;
+  // 발명 sub-node UI 노출 조건:
+  //   1) staff 가 ★ 로 제2조 발명을 메인으로 명시 설정한 경우 (primary_article_id 일치)
+  //   2) 자동 배치로 primary_node_id 가 발명 자식(일반발명/BM발명/...) 으로 set 된 경우
+  //      이때 primary_article_id 가 null 이어도 sub-node 편집 가능해야 staff 가 보정 가능.
+  const isInventionPrimary =
+    primaryArticleId === PATENT_INVENTION_ARTICLE_ID ||
+    inventionSubNodes.some((n) => n.nodeId === primaryNodeId);
 
   // 메인 placement 설정 — articleId(null=해제) + 발명일 때 nodeId 동시 전달.
   function setPrimary(articleId: string | null, nodeId: string | null) {
@@ -807,10 +813,9 @@ function RelatedArticlesEditor({
                 value={primaryNodeId ?? ""}
                 onChange={(e) => {
                   const v = e.currentTarget.value;
-                  setPrimary(
-                    PATENT_INVENTION_ARTICLE_ID,
-                    v === "" ? null : v,
-                  );
+                  // sub-node 변경 시 메인 조문도 제2조 발명으로 명시 — 자동 배치 결과의
+                  // primary_article_id=null 상태를 staff 첫 변경에서 일관화.
+                  setPrimary(PATENT_INVENTION_ARTICLE_ID, v === "" ? null : v);
                 }}
                 className="w-56"
               >
