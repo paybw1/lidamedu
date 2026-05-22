@@ -63,7 +63,12 @@ export function CaseBody({
   const editReturnTo = `${location.pathname}${location.search}`;
   // 본문 이미지 — position 별로 그룹화. summary/reasoning/comment 섹션 뒤에 렌더.
   // pending 은 본문 끝에 별도 섹션으로 묶음.
-  const imagesByPosition = groupImagesByPosition(kase.images);
+  // 본문 markdown 안 ![](url) 인라인 이미지로 이미 박혀 있는 url 은 그리드에서 제외 —
+  // 같은 이미지가 본문 + 그리드 두 곳에 중복 표시되는 것 방지.
+  const inlineImageUrls = collectInlineImageUrls(kase);
+  const imagesByPosition = groupImagesByPosition(
+    kase.images.filter((img) => !inlineImageUrls.has(img.url)),
+  );
   // summaryItems 가 있으면 우선 사용. 없으면 legacy summary_body_md 를 한 묶음으로 폴백.
   const summaryItems =
     kase.summaryItems.length > 0
@@ -338,6 +343,28 @@ function CaseImagesGrid({ images }: { images: CaseImage[] }) {
       ))}
     </ul>
   );
+}
+
+// 본문 markdown 의 ![](url) 인라인 이미지 url 들 — 그리드 중복 제거에 사용.
+// summary_items.body + summary_body_md + reasoning_md + comment_body_md + related_md 까지
+// 한 case 의 모든 본문 텍스트에서 추출.
+function collectInlineImageUrls(kase: CaseDetail): Set<string> {
+  const re = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+  const out = new Set<string>();
+  const bodies: string[] = [
+    kase.summaryBodyMd ?? "",
+    kase.reasoningMd ?? "",
+    kase.commentBodyMd ?? "",
+    kase.relatedMd ?? "",
+    ...kase.summaryItems.map((it) => it.body ?? ""),
+  ];
+  for (const b of bodies) {
+    if (!b) continue;
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(b)) !== null) out.add(m[1]);
+  }
+  return out;
 }
 
 // position 별 그룹화 — case-body 헤더와 각 본문 섹션에서 사용.
