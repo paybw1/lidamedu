@@ -391,7 +391,7 @@ export async function getCaseById(
   const { data, error } = await client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md, images",
+      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md, related_md, images",
     )
     .eq("case_id", caseId)
     .is("deleted_at", null)
@@ -407,6 +407,7 @@ export async function getCaseById(
     fullTextPdf: data.full_text_pdf,
     commentSource: data.comment_source,
     commentBodyMd: data.comment_body_md,
+    relatedMd: data.related_md,
     images: parseCaseImages(data.images),
   };
 }

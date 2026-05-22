@@ -1231,6 +1231,7 @@ export type Database = {
           is_en_banc: boolean
           nickname: string | null
           reasoning_md: string | null
+          related_md: string | null
           search_tsv: unknown
           subject_laws: string[]
           summary_body_md: string | null
@@ -1257,6 +1258,7 @@ export type Database = {
           is_en_banc?: boolean
           nickname?: string | null
           reasoning_md?: string | null
+          related_md?: string | null
           search_tsv?: unknown
           subject_laws: string[]
           summary_body_md?: string | null
@@ -1283,6 +1285,7 @@ export type Database = {
           is_en_banc?: boolean
           nickname?: string | null
           reasoning_md?: string | null
+          related_md?: string | null
           search_tsv?: unknown
           subject_laws?: string[]
           summary_body_md?: string | null

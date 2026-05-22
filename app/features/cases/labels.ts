@@ -41,16 +41,19 @@ export interface SummaryItem {
 // feat-7-005 후속: 판례 본문 이미지(상표법 다수, 특허법 일부).
 // position 별로 그룹화해 본문 섹션 뒤에 그리드로 렌더. storagePath 는 storage 객체 경로
 // (삭제 시 사용), url 은 public URL.
+// "related" — 관련자료 (그림·표·도면 등 본문 보조 자료) 영역. related_md 본문과 함께.
 export type CaseImagePosition =
   | "summary"
   | "reasoning"
   | "comment"
+  | "related"
   | "pending";
 
 export const CASE_IMAGE_POSITIONS: readonly CaseImagePosition[] = [
   "summary",
   "reasoning",
   "comment",
+  "related",
   "pending",
 ] as const;
 
@@ -58,6 +61,7 @@ export const CASE_IMAGE_POSITION_LABELS: Record<CaseImagePosition, string> = {
   summary: "판결요지",
   reasoning: "판시이유",
   comment: "비고",
+  related: "관련자료",
   pending: "미분류",
 };
 
@@ -119,6 +123,8 @@ export interface CaseDetail extends CaseListItem {
   fullTextPdf: string | null;
   commentSource: string | null;
   commentBodyMd: string | null;
+  // feat-7-005 후속: 관련자료 본문 (그림·표 설명). 그림 자체는 images[position=related].
+  relatedMd: string | null;
   images: CaseImage[];
 }
 

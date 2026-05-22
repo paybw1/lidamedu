@@ -270,6 +270,25 @@ export function CaseBody({
           </BodySection>
         ) : null}
 
+        {/* 관련자료 — 본문(텍스트) 또는 이미지(그림·표) 하나라도 있으면 표시.
+            본문은 case.related fieldPath 로 하이라이트 활성, 그림은 그 아래 그리드. */}
+        {kase.relatedMd || imagesByPosition.related.length > 0 ? (
+          <BodySection title="관련자료">
+            {kase.relatedMd ? (
+              <MaybeHighlight
+                on={enableHighlights}
+                fieldPath="case.related"
+                caseId={kase.caseId}
+                highlights={highlights}
+                viewerIsStaff={viewerIsStaff}
+              >
+                <Prose text={kase.relatedMd} />
+              </MaybeHighlight>
+            ) : null}
+            <CaseImagesGrid images={imagesByPosition.related} />
+          </BodySection>
+        ) : null}
+
         {imagesByPosition.pending.length > 0 ? (
           <BodySection title="첨부 이미지">
             <CaseImagesGrid images={imagesByPosition.pending} />
@@ -324,6 +343,7 @@ function groupImagesByPosition(
     summary: [],
     reasoning: [],
     comment: [],
+    related: [],
     pending: [],
   };
   for (const img of images) out[img.position].push(img);

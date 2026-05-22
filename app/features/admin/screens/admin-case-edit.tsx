@@ -331,6 +331,31 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
 
+        {/* 관련자료 — 그림·표 등 본문 보조 자료. 그림/표 자체는 폼 외부 ImagesCard
+            의 position=관련자료 로 업로드, 본문 설명은 여기서 작성. */}
+        <Card>
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              관련자료
+            </p>
+            <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+              그림·표·도면 등 본문 보조 자료에 대한 설명을 입력합니다. 그림/표
+              자체는 아래 "본문 이미지" 카드에서 표시 영역을 "관련자료" 로
+              지정해 업로드하세요.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="관련자료 본문 (Markdown)" htmlFor="relatedMd">
+              <ReflowableTextarea
+                name="relatedMd"
+                defaultValue={kase?.related_md ?? ""}
+                rows={6}
+                fieldLabel="관련자료 본문"
+              />
+            </Field>
+          </CardContent>
+        </Card>
+
         {/* 저장/삭제 바닥 */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           {!isNew ? (

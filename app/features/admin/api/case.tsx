@@ -64,6 +64,7 @@ const upsertSchema = z.object({
   reasoningMd: z.string().max(50_000).nullable(),
   commentSource: z.string().trim().max(500).nullable(),
   commentBodyMd: z.string().max(50_000).nullable(),
+  relatedMd: z.string().max(50_000).nullable(),
   exam1stYears: z.array(z.number().int().min(1990).max(2099)),
   exam2ndYears: z.array(z.number().int().min(1990).max(2099)),
 });
@@ -447,6 +448,7 @@ export async function action({ request }: Route.ActionArgs) {
     reasoningMd: emptyToNull(fd.get("reasoningMd")),
     commentSource: emptyToNull(fd.get("commentSource")),
     commentBodyMd: emptyToNull(fd.get("commentBodyMd")),
+    relatedMd: emptyToNull(fd.get("relatedMd")),
     exam1stYears: parseIntList(fd.get("exam1stYears")),
     exam2ndYears: parseIntList(fd.get("exam2ndYears")),
   });
@@ -479,6 +481,7 @@ export async function action({ request }: Route.ActionArgs) {
     reasoning_md: input.reasoningMd,
     comment_source: input.commentSource,
     comment_body_md: input.commentBodyMd,
+    related_md: input.relatedMd,
     exam_1st_years: input.exam1stYears,
     exam_2nd_years: input.exam2ndYears,
     summary_items: summaryItems,
