@@ -240,6 +240,51 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, url: publicUrl });
   }
 
+  // ── 판례 ↔ 체계도 노드 직접 매핑 (feat-7-005 후속) ─────────────────
+  if (intent === "add_systematic" || intent === "remove_systematic") {
+    const caseId = String(fd.get("caseId") ?? "");
+    const nodeId = String(fd.get("nodeId") ?? "");
+    if (!z.string().uuid().safeParse(caseId).success) {
+      return data({ error: "Invalid caseId" }, { status: 400 });
+    }
+    if (!z.string().uuid().safeParse(nodeId).success) {
+      return data({ error: "Invalid nodeId" }, { status: 400 });
+    }
+    if (intent === "add_systematic") {
+      const { error } = await client
+        .from("case_systematic_links")
+        .upsert(
+          { case_id: caseId, node_id: nodeId, created_by: user.id },
+          { onConflict: "case_id,node_id" },
+        );
+      if (error) return data({ error: error.message }, { status: 400 });
+      void logAuditEvent({
+        actorId: user.id,
+        actorRole: role,
+        action: "case.add_systematic",
+        entityType: "case",
+        entityId: caseId,
+        metadata: { nodeId },
+      });
+      return data({ ok: true });
+    }
+    const { error } = await client
+      .from("case_systematic_links")
+      .delete()
+      .eq("case_id", caseId)
+      .eq("node_id", nodeId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "case.remove_systematic",
+      entityType: "case",
+      entityId: caseId,
+      metadata: { nodeId },
+    });
+    return data({ ok: true });
+  }
+
   // ── 판례 본문 이미지 (feat-7-005 후속) ──────────────────────────────
   if (
     intent === "upload_image" ||

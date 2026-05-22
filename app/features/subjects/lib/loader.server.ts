@@ -16,6 +16,7 @@ import {
   type CaseSubjectSort,
   getCaseCountsByArticle,
   getCaseIdsByArticleIds,
+  getCaseIdsByNodeIds,
   listCasesBySubject,
 } from "~/features/cases/queries.server";
 import {
@@ -191,6 +192,38 @@ function descendantArticleIds(
   return out;
 }
 
+// node_id → case_id[] map — case_systematic_links 한 번 페이지네이션으로 모아 그룹화.
+async function getDirectCaseMappingsByNodes(
+  client: SupabaseClient<Database>,
+  nodeIds: readonly string[],
+): Promise<Record<string, string[]>> {
+  if (nodeIds.length === 0) return {};
+  const out: Record<string, string[]> = {};
+  const CHUNK = 200;
+  const PAGE = 1000;
+  for (let i = 0; i < nodeIds.length; i += CHUNK) {
+    const slice = nodeIds.slice(i, i + CHUNK);
+    let from = 0;
+    for (;;) {
+      const { data, error } = await client
+        .from("case_systematic_links")
+        .select("case_id, node_id")
+        .in("node_id", slice)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      for (const r of data) {
+        const arr = out[r.node_id] ?? [];
+        arr.push(r.case_id);
+        out[r.node_id] = arr;
+      }
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+  return out;
+}
+
 // systematic 부분트리에 속하는 모든 article id (중복 제거).
 function systematicSubtreeArticleIds(
   nodes: SystematicNode[],
@@ -205,6 +238,22 @@ function systematicSubtreeArticleIds(
     for (const a of n.articles) set.add(a.articleId);
   }
   return [...set];
+}
+
+// systematic 부분트리에 속하는 모든 node id (자신 + 자손) — case_systematic_links 직접
+// 매핑 검색 시 사용. case 가 sub-node 에 분류되어 있어도 부모 노드 필터링에 잡힘.
+function systematicSubtreeNodeIds(
+  nodes: SystematicNode[],
+  rootNodeId: string,
+): string[] {
+  const root = nodes.find((n) => n.nodeId === rootNodeId);
+  if (!root) return [];
+  const prefix = `${root.path}.`;
+  const out: string[] = [];
+  for (const n of nodes) {
+    if (n.path === root.path || n.path.startsWith(prefix)) out.push(n.nodeId);
+  }
+  return out;
 }
 
 function aggregateChapterCounts(
@@ -241,6 +290,7 @@ function aggregateChapterCounts(
 function aggregateSystematicNodeCounts(
   nodes: SystematicNode[],
   byArticleId: Record<string, number>,
+  caseIdsByNodeId: Record<string, string[]>,
 ): Record<string, number> {
   const childrenByParent = new Map<string | null, SystematicNode[]>();
   for (const n of nodes) {
@@ -248,22 +298,36 @@ function aggregateSystematicNodeCounts(
     list.push(n);
     childrenByParent.set(n.parentId, list);
   }
-  const cache = new Map<string, Set<string>>();
-  function subtree(node: SystematicNode): Set<string> {
+  // node 별로 (자손 article 들의 case 합집합) ∪ (자손 노드 직접 매핑 case 합집합).
+  // 직접 매핑은 caseIdsByNodeId 에 노드별로 case_id[] 가 들어와 합산해 distinct.
+  type Sets = { articleIds: Set<string>; caseIds: Set<string> };
+  const cache = new Map<string, Sets>();
+  function subtree(node: SystematicNode): Sets {
     const cached = cache.get(node.nodeId);
     if (cached) return cached;
-    const set = new Set<string>();
-    for (const a of node.articles) set.add(a.articleId);
+    const articleIds = new Set<string>();
+    const caseIds = new Set<string>();
+    for (const a of node.articles) articleIds.add(a.articleId);
+    for (const cid of caseIdsByNodeId[node.nodeId] ?? []) caseIds.add(cid);
     for (const c of childrenByParent.get(node.nodeId) ?? []) {
-      for (const id of subtree(c)) set.add(id);
+      const sub = subtree(c);
+      for (const id of sub.articleIds) articleIds.add(id);
+      for (const id of sub.caseIds) caseIds.add(id);
     }
-    cache.set(node.nodeId, set);
-    return set;
+    const out = { articleIds, caseIds };
+    cache.set(node.nodeId, out);
+    return out;
   }
   const out: Record<string, number> = {};
   for (const n of nodes) {
-    let total = 0;
-    for (const id of subtree(n)) total += byArticleId[id] ?? 0;
+    const sub = subtree(n);
+    let total = sub.caseIds.size;
+    // article 경유 카운트는 byArticleId(article 별 case 수)의 합. 같은 case 가 여러
+    // article 에 묶일 수 있어 byArticleId 합산이 case 단위로는 과대 카운트일 수
+    // 있으나, getCaseCountsByArticle 가 (article, case) distinct 보장하므로 article
+    // 단위 합산이 의미 있는 수치. 다만 직접 매핑된 case 가 같은 article 경유에도
+    // 포함될 수 있어 일부 중복 가능 — 정확 카운트는 admin 화면이 별도 distinct 쿼리.
+    for (const id of sub.articleIds) total += byArticleId[id] ?? 0;
     if (total > 0) out[n.nodeId] = total;
   }
   return out;
@@ -274,6 +338,7 @@ export function buildCaseTreeCounts(
   articles: ArticleNode[],
   systematicNodes: SystematicNode[],
   caseCountsByArticle: Record<string, number>,
+  caseIdsByNodeId: Record<string, string[]> = {},
 ): CaseTreeCounts {
   return {
     byArticleId: caseCountsByArticle,
@@ -281,6 +346,7 @@ export function buildCaseTreeCounts(
     byNodeId: aggregateSystematicNodeCounts(
       systematicNodes,
       caseCountsByArticle,
+      caseIdsByNodeId,
     ),
   };
 }
@@ -440,9 +506,12 @@ export async function loadSubjectHub(
   ]);
 
   // 트리 필터 → 대상 article id 셋 → case id 셋.
+  // systematic node 의 경우 article 경유 외에 case 직접 매핑(case_systematic_links)
+  // 도 union — sub-node 분류가 article 단위로 표현하기 어려운 case 들을 포괄.
   let filterCaseIds: string[] | null = null;
   if (caseFilters.tree) {
     let targetArticleIds: string[] = [];
+    let nodeIds: string[] = [];
     if (caseFilters.tree.kind === "article") {
       targetArticleIds = [caseFilters.tree.articleId];
     } else if (caseFilters.tree.kind === "chapter") {
@@ -455,11 +524,24 @@ export async function loadSubjectHub(
         systematicNodes,
         caseFilters.tree.nodeId,
       );
+      nodeIds = systematicSubtreeNodeIds(
+        systematicNodes,
+        caseFilters.tree.nodeId,
+      );
     }
-    filterCaseIds =
+    const [viaArticles, viaNodes] = await Promise.all([
       targetArticleIds.length === 0
-        ? []
-        : await getCaseIdsByArticleIds(client, targetArticleIds);
+        ? Promise.resolve<string[]>([])
+        : getCaseIdsByArticleIds(client, targetArticleIds),
+      nodeIds.length === 0
+        ? Promise.resolve<string[]>([])
+        : getCaseIdsByNodeIds(client, nodeIds),
+    ]);
+    if (viaArticles.length === 0 && viaNodes.length === 0) {
+      filterCaseIds = [];
+    } else {
+      filterCaseIds = [...new Set([...viaArticles, ...viaNodes])];
+    }
   }
 
   // 2단계 — case 목록, 문제, 최신 개정.
@@ -489,10 +571,19 @@ export async function loadSubjectHub(
   const cases = casesPage.items;
   const casesTotal = casesPage.total;
 
+  // 체계도 노드별 직접 매핑 case 들 — buildCaseTreeCounts 가 node 카운트 합산에 사용.
+  // 모든 노드를 한꺼번에 조회해 nodeId → case_id[] map 생성.
+  const allNodeIds = systematicNodes.map((n) => n.nodeId);
+  const directCaseIdsByNodeId = await getDirectCaseMappingsByNodes(
+    client,
+    allNodeIds,
+  );
+
   const caseTreeCounts = buildCaseTreeCounts(
     articles,
     systematicNodes,
     caseCountsByArticle,
+    directCaseIdsByNodeId,
   );
 
   const totalArticleCount = articles.filter(

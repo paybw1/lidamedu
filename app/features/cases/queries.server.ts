@@ -275,6 +275,58 @@ export async function getCaseIdsByArticleIds(
   return [...out];
 }
 
+// 체계도 노드 직접 매핑 — case_systematic_links 의 (node_id ∈ slice) case_id 셋.
+// article 경유와 union 으로 사용 (sub-node 분류된 case 가 부모/자손 어디 검색이든 잡힘).
+export async function getCaseIdsByNodeIds(
+  client: SupabaseClient<Database>,
+  nodeIds: readonly string[],
+): Promise<string[]> {
+  if (nodeIds.length === 0) return [];
+  const out = new Set<string>();
+  const CHUNK = 200;
+  const PAGE = 1000;
+  for (let i = 0; i < nodeIds.length; i += CHUNK) {
+    const slice = nodeIds.slice(i, i + CHUNK);
+    let from = 0;
+    for (;;) {
+      const { data, error } = await client
+        .from("case_systematic_links")
+        .select("case_id")
+        .in("node_id", slice)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      for (const r of data) out.add(r.case_id);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+  return [...out];
+}
+
+// case 한 건이 직접 매핑된 systematic_nodes — admin-case-edit 에서 현재 분류 표시 + 편집.
+export async function getCaseSystematicLinks(
+  client: SupabaseClient<Database>,
+  caseId: string,
+): Promise<{ nodeId: string; displayLabel: string; path: string }[]> {
+  const { data, error } = await client
+    .from("case_systematic_links")
+    .select("node_id, systematic_nodes!inner(display_label, path)")
+    .eq("case_id", caseId);
+  if (error) throw error;
+  return (data ?? []).map((r) => {
+    const n = r.systematic_nodes as unknown as {
+      display_label: string;
+      path: string;
+    };
+    return {
+      nodeId: r.node_id,
+      displayLabel: n.display_label,
+      path: n.path,
+    };
+  });
+}
+
 // feat-4-A-214 관련논문/기사 링크.
 // case 한 건에 연결된 외부 자료 (논문/기사/기타). 읽기는 공개, 쓰기는 staff.
 // 타입은 ./labels 에 정의 — 클라이언트 번들 안전 import.

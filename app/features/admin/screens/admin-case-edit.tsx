@@ -13,7 +13,7 @@ import {
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
@@ -38,7 +38,12 @@ import {
 } from "~/features/cases/labels";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
-import { getStaffRole } from "~/features/laws/queries.server";
+import { getCaseSystematicLinks } from "~/features/cases/queries.server";
+import {
+  getStaffRole,
+  getSystematicSkeleton,
+} from "~/features/laws/queries.server";
+import type { SystematicNode } from "~/features/laws/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import type { RelatedArticle } from "~/features/relations/labels";
 import {
@@ -88,14 +93,34 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       returnTo,
       role,
       relatedArticles: [] as RelatedArticle[],
+      systematicNodes: [] as SystematicNode[],
+      systematicLinks: [] as { nodeId: string; displayLabel: string; path: string }[],
     };
-  const [{ data: row, error }, relatedArticles] = await Promise.all([
-    client.from("cases").select("*").eq("case_id", caseId).maybeSingle(),
-    getRelatedArticlesByCase(client, caseId),
-  ]);
+  const [{ data: row, error }, relatedArticles, systematicLinks] =
+    await Promise.all([
+      client.from("cases").select("*").eq("case_id", caseId).maybeSingle(),
+      getRelatedArticlesByCase(client, caseId),
+      getCaseSystematicLinks(client, caseId),
+    ]);
   if (error) throw data(error.message, { status: 500 });
   if (!row) throw data("Case not found", { status: 404 });
-  return { kase: row, returnTo, role, relatedArticles };
+  // case 의 subject_laws 중 첫 번째 lawCode 의 systematic 트리 로드 — 다과목 케이스는
+  // 그 첫 과목 기준 분류(현재 한국 변리사 시험 case 는 보통 단일 과목 매핑).
+  const firstSubjectRaw = (row.subject_laws ?? [])[0];
+  const firstSubject = (LAW_SUBJECT_SLUGS as readonly string[]).includes(
+    firstSubjectRaw,
+  )
+    ? (firstSubjectRaw as LawSubjectSlug)
+    : ("patent" as LawSubjectSlug);
+  const systematicNodes = await getSystematicSkeleton(client, firstSubject);
+  return {
+    kase: row,
+    returnTo,
+    role,
+    relatedArticles,
+    systematicNodes,
+    systematicLinks,
+  };
 }
 
 const COURTS: Array<keyof typeof COURT_LABELS> = [
@@ -108,7 +133,14 @@ const COURTS: Array<keyof typeof COURT_LABELS> = [
 /* ── 페이지 ──────────────────────────────────────────────────────────── */
 
 export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
-  const { kase, returnTo, role, relatedArticles } = loaderData;
+  const {
+    kase,
+    returnTo,
+    role,
+    relatedArticles,
+    systematicNodes,
+    systematicLinks,
+  } = loaderData;
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
 
@@ -382,6 +414,11 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             caseId={kase.case_id}
             initialImages={parseCaseImages(kase.images)}
           />
+          <SystematicLinksEditor
+            caseId={kase.case_id}
+            systematicNodes={systematicNodes}
+            systematicLinks={systematicLinks}
+          />
           <RelatedArticlesEditor
             caseId={kase.case_id}
             subjectLaws={(kase.subject_laws ?? []) as LawSubjectSlug[]}
@@ -390,6 +427,174 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         </>
       ) : null}
     </AdminShell>
+  );
+}
+
+/* ── SystematicLinksEditor ───────────────────────────────────────────── */
+// 판례 ↔ 체계도 노드 직접 매핑 편집기. 발명 sub-node(일반발명/BM발명/용도(의약)발명/
+// 미생물발명/식물발명/실시) 같은 sub-node 분류에 사용. 메인 Form 밖이라 fetcher 로
+// 독립 처리(nested-form 회피).
+function SystematicLinksEditor({
+  caseId,
+  systematicNodes,
+  systematicLinks,
+}: {
+  caseId: string;
+  systematicNodes: SystematicNode[];
+  systematicLinks: { nodeId: string; displayLabel: string; path: string }[];
+}) {
+  const addFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const removeFetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const revalidator = useRevalidator();
+  // depth=0(과목 root) 와 depth=1(대분류) 같은 컨테이너성 노드는 기본 숨김 — leaf 분류에
+  // 의미가 있는 노드만 선택. 그러나 체계도 구조가 다양해 일단 전체 노출하고 path 들여쓰기로
+  // 시각 구분.
+  const sortedNodes = useMemo(
+    () =>
+      [...systematicNodes].sort((a, b) => a.path.localeCompare(b.path)),
+    [systematicNodes],
+  );
+  const [selectedNodeId, setSelectedNodeId] = useState<string>("");
+
+  const isAdding = addFetcher.state !== "idle";
+  const removingId =
+    removeFetcher.state !== "idle"
+      ? String(removeFetcher.formData?.get("nodeId") ?? "")
+      : null;
+  const handledAddRef = useRef<unknown>(null);
+  const handledRemoveRef = useRef<unknown>(null);
+
+  useEffect(() => {
+    if (addFetcher.state !== "idle") return;
+    const r = addFetcher.data;
+    if (!r || r === handledAddRef.current) return;
+    handledAddRef.current = r;
+    if (r.ok) {
+      toast.success("체계도 분류 추가됨");
+      setSelectedNodeId("");
+      revalidator.revalidate();
+    } else if (r.error) toast.error(r.error);
+  }, [addFetcher.state, addFetcher.data, revalidator]);
+
+  useEffect(() => {
+    if (removeFetcher.state !== "idle") return;
+    const r = removeFetcher.data;
+    if (!r || r === handledRemoveRef.current) return;
+    handledRemoveRef.current = r;
+    if (r.ok) {
+      toast.success("체계도 분류 제거됨");
+      revalidator.revalidate();
+    } else if (r.error) toast.error(r.error);
+  }, [removeFetcher.state, removeFetcher.data, revalidator]);
+
+  function onAdd() {
+    if (!selectedNodeId) {
+      toast.error("분류를 선택하세요.");
+      return;
+    }
+    if (systematicLinks.some((l) => l.nodeId === selectedNodeId)) {
+      toast.info("이미 추가된 분류입니다.");
+      return;
+    }
+    const fd = new FormData();
+    fd.set("intent", "add_systematic");
+    fd.set("caseId", caseId);
+    fd.set("nodeId", selectedNodeId);
+    addFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  function onRemove(nodeId: string) {
+    const fd = new FormData();
+    fd.set("intent", "remove_systematic");
+    fd.set("caseId", caseId);
+    fd.set("nodeId", nodeId);
+    removeFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  // 들여쓰기 — path 의 . 개수로 depth.
+  function depthOf(path: string) {
+    return path.split(".").length;
+  }
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+          <NetworkIcon className="size-3.5" /> 체계도 분류
+        </p>
+        <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+          이 판례를 학습 체계도의 sub-node(예: 발명 &gt; 일반발명 /
+          BM발명 / 용도(의약)발명 / 미생물발명 / 식물발명 / 실시)에 직접 분류합니다.
+          관련 조문 매핑과 별개로 동작하며, 학생 화면의 판례 트리에서 해당 노드를
+          누르면 이 판례가 결과에 포함됩니다.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {systematicLinks.length > 0 ? (
+          <ul className="flex flex-wrap gap-1.5">
+            {systematicLinks.map((l) => {
+              const removing = removingId === l.nodeId;
+              return (
+                <li key={l.nodeId}>
+                  <span
+                    className={cn(
+                      "border-border bg-muted/40 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
+                      removing && "opacity-50",
+                    )}
+                  >
+                    <span className="font-medium">{l.displayLabel}</span>
+                    <span className="text-muted-foreground font-mono text-[10px]">
+                      {l.path}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`${l.displayLabel} 분류 제거`}
+                      title="제거"
+                      onClick={() => onRemove(l.nodeId)}
+                      disabled={removing}
+                      className="hover:text-rose-600 disabled:opacity-50"
+                    >
+                      <Trash2Icon className="size-3" />
+                    </button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs">
+            아직 매핑된 체계도 분류가 없습니다.
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="분류 추가" htmlFor="newSystematicNode">
+            <AdminSelect
+              id="newSystematicNode"
+              value={selectedNodeId}
+              onChange={(e) => setSelectedNodeId(e.currentTarget.value)}
+              className="w-72"
+            >
+              <option value="">— 선택 —</option>
+              {sortedNodes.map((n) => {
+                const indent = "··".repeat(Math.max(0, depthOf(n.path) - 1));
+                return (
+                  <option key={n.nodeId} value={n.nodeId}>
+                    {indent}
+                    {indent ? " " : ""}
+                    {n.displayLabel}
+                  </option>
+                );
+              })}
+            </AdminSelect>
+          </Field>
+          <Button type="button" size="sm" onClick={onAdd} disabled={isAdding}>
+            <PlusIcon className="size-3.5" />
+            {isAdding ? "추가 중…" : "분류 추가"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

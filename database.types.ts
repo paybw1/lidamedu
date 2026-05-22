@@ -1211,6 +1211,42 @@ export type Database = {
           },
         ]
       }
+      case_systematic_links: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string | null
+          node_id: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          node_id: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_systematic_links_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_systematic_links_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
+          },
+        ]
+      }
       cases: {
         Row: {
           case_id: string
