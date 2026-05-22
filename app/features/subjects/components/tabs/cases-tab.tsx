@@ -516,8 +516,16 @@ function CaseRow({
       <TableCell className="text-muted-foreground text-center text-xs tabular-nums">
         {item.decidedAt}
       </TableCell>
-      <TableCell className="text-foreground font-mono text-xs font-semibold">
-        {item.caseNumber}
+      <TableCell className="font-mono text-xs font-semibold">
+        {/* 사건명이 비어 있는 case(예: 2018도14446) 도 본문 진입할 수 있도록 사건번호도
+            Link 로 노출. 사건명 link 와 같은 detailHref 사용. */}
+        <Link
+          to={detailHref}
+          viewTransition
+          className="text-foreground hover:text-primary"
+        >
+          {item.caseNumber}
+        </Link>
       </TableCell>
       <TableCell>
         {item.caseType ? (
