@@ -58,6 +58,8 @@ const upsertSchema = z.object({
       z.object({
         title: z.string().max(500),
         body: z.string().max(20_000),
+        // 항목별 비고(코멘트). 빈 문자열은 저장 시 제거 후 commentMd 키 자체를 빼둔다.
+        commentMd: z.string().max(20_000).optional(),
       }),
     )
     .max(30),
@@ -283,6 +285,141 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
+  // ── 체계도 위치(source_seq) 재배열 — 같은 placement(primary_node_id 우선,
+  //     없으면 primary_article_id) 형제 case 들의 순서를 staff 가 수동 조정.
+  //     direction:
+  //       up / down            — 인접 형제와 swap
+  //       first / last         — 맨 위/아래로
+  //       to_position(+pos N)  — 1-base 위치 N 으로 이동
+  //     매 호출마다 모든 형제의 source_seq 를 1..N 으로 renumber (작은 set 라 안전).
+  if (intent === "move_source_seq") {
+    const caseId = String(fd.get("caseId") ?? "");
+    if (!z.string().uuid().safeParse(caseId).success) {
+      return data({ error: "Invalid caseId" }, { status: 400 });
+    }
+    const direction = String(fd.get("direction") ?? "");
+    const positionRaw = String(fd.get("position") ?? "");
+    const targetPosition = positionRaw && /^\d+$/.test(positionRaw)
+      ? parseInt(positionRaw, 10)
+      : null;
+
+    // 1) 현재 case 의 placement key
+    const { data: me, error: meErr } = await client
+      .from("cases")
+      .select("primary_node_id, primary_article_id, case_number")
+      .eq("case_id", caseId)
+      .maybeSingle();
+    if (meErr) return data({ error: meErr.message }, { status: 400 });
+    if (!me) return data({ error: "case 를 찾을 수 없음" }, { status: 404 });
+    const useNode = me.primary_node_id !== null;
+    const placementId = me.primary_node_id ?? me.primary_article_id;
+    if (!placementId) {
+      return data(
+        { error: "메인 조문/노드가 설정되지 않은 case 는 순서 조정 불가" },
+        { status: 400 },
+      );
+    }
+
+    // 2) 형제 cases 조회 (source_seq 정렬)
+    let q = client
+      .from("cases")
+      .select("case_id, case_number, source_seq")
+      .is("deleted_at", null);
+    q = useNode
+      ? q.eq("primary_node_id", placementId)
+      : q
+          .eq("primary_article_id", placementId)
+          .is("primary_node_id", null);
+    const { data: siblings, error: sibErr } = await q
+      .order("source_seq", { ascending: true, nullsFirst: false })
+      .order("case_number", { ascending: true });
+    if (sibErr) return data({ error: sibErr.message }, { status: 400 });
+    if (!siblings || siblings.length === 0) {
+      return data({ error: "형제 case 가 없음" }, { status: 400 });
+    }
+
+    const idx = siblings.findIndex((s) => s.case_id === caseId);
+    if (idx < 0) {
+      return data({ error: "형제 목록에 현재 case 없음" }, { status: 400 });
+    }
+
+    // 3) 새 위치 계산 (0-based)
+    let newIdx: number;
+    switch (direction) {
+      case "up":
+        newIdx = Math.max(0, idx - 1);
+        break;
+      case "down":
+        newIdx = Math.min(siblings.length - 1, idx + 1);
+        break;
+      case "first":
+        newIdx = 0;
+        break;
+      case "last":
+        newIdx = siblings.length - 1;
+        break;
+      case "to_position": {
+        if (targetPosition === null) {
+          return data({ error: "position 값이 필요합니다" }, { status: 400 });
+        }
+        const clamped = Math.max(
+          1,
+          Math.min(siblings.length, targetPosition),
+        );
+        newIdx = clamped - 1;
+        break;
+      }
+      default:
+        return data({ error: "Unknown direction" }, { status: 400 });
+    }
+
+    if (newIdx === idx) {
+      return data({ ok: true, noop: true });
+    }
+
+    // 4) 재정렬 + 1..N renumber
+    const reordered = [...siblings];
+    const [moved] = reordered.splice(idx, 1);
+    reordered.splice(newIdx, 0, moved);
+
+    const updates: { case_id: string; source_seq: number }[] = [];
+    for (let i = 0; i < reordered.length; i++) {
+      const newSeq = i + 1;
+      if (reordered[i].source_seq !== newSeq) {
+        updates.push({ case_id: reordered[i].case_id, source_seq: newSeq });
+      }
+    }
+    // 병렬 update — 형제 set 는 작아 (보통 < 20) 부담 없음.
+    const results = await Promise.all(
+      updates.map((u) =>
+        client
+          .from("cases")
+          .update({ source_seq: u.source_seq })
+          .eq("case_id", u.case_id),
+      ),
+    );
+    const firstErr = results.find((r) => r.error);
+    if (firstErr?.error) {
+      return data({ error: firstErr.error.message }, { status: 400 });
+    }
+
+    void logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "case.move_source_seq",
+      entityType: "case",
+      entityId: caseId,
+      metadata: {
+        caseNumber: me.case_number,
+        placementKind: useNode ? "node" : "article",
+        placementId,
+        from: idx + 1,
+        to: newIdx + 1,
+      },
+    });
+    return data({ ok: true, from: idx + 1, to: newIdx + 1 });
+  }
+
   // ── 판례 본문 이미지 (feat-7-005 후속) ──────────────────────────────
   if (
     intent === "upload_image" ||
@@ -503,11 +640,24 @@ export async function action({ request }: Route.ActionArgs) {
   }
   const input = parsed.data;
 
-  // 다항목 요지 — 제목·본문 모두 공백인 항목은 제거.
+  // 다항목 요지 — 제목·본문·비고 모두 공백인 항목은 제거.
   // summary_title / summary_body_md (목록·검색 컬럼) 는 첫 항목에서 파생.
+  // commentMd 는 trim 후 비어 있으면 key 제거(jsonb 깔끔하게).
   const summaryItems = input.summaryItems
-    .map((it) => ({ title: it.title.trim(), body: it.body }))
-    .filter((it) => it.title !== "" || it.body.trim() !== "");
+    .map((it) => {
+      const comment = (it.commentMd ?? "").trim();
+      return {
+        title: it.title.trim(),
+        body: it.body,
+        ...(comment !== "" ? { commentMd: comment } : {}),
+      };
+    })
+    .filter(
+      (it) =>
+        it.title !== "" ||
+        it.body.trim() !== "" ||
+        (it.commentMd !== undefined && it.commentMd !== ""),
+    );
 
   // full_text_pdf 컬럼은 별도 intent(upload/remove)로만 변경 — 메타 폼은 건드리지 않는다.
   const payload = {
@@ -576,8 +726,9 @@ export async function action({ request }: Route.ActionArgs) {
   });
   // feat-9-001 RAG dirty hook — 판례 본문 변경 청크 재생성.
   runAfterResponse(reindexCases([caseId]));
-  // 저장 후 운영자가 보던 목록 페이지로 (returnTo — 페이지·필터 보존).
-  // resource route(/api/admin/case)는 컴포넌트가 없어, plain <Form> 제출에
-  // data() 를 돌려주면 렌더할 화면이 없어 네비게이션이 멈추므로 redirect 필수.
+  // 저장 후 본래 화면(returnTo)으로 복귀 — case-viewer 의 "수정" 버튼으로 진입한
+  // 경우 그 case-viewer 로, admin-cases 목록에서 진입한 경우 그 목록으로 복귀.
+  // resource route(/api/admin/case)는 컴포넌트가 없어 data() 만 돌리면 non-JS
+  // 환경에서 raw JSON 이 노출되므로 redirect 형태 유지.
   return redirect(safeReturnTo(fd.get("returnTo")));
 }

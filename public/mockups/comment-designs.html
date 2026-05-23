@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>비고 디자인 옵션 — 91마540</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --border: #e3e0d8;
+    --primary: #2D5BA8;
+    --primary-soft: #2D5BA814;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, "Noto Sans KR", sans-serif;
+    margin: 0;
+    padding: 32px 24px 64px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 18px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 28px; }
+  .container { max-width: 760px; margin: 0 auto; }
+  .opt {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .opt:last-of-type { border-bottom: none; }
+  .opt-name {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .opt-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  /* === 공통 — 판결요지 박스/본문 === */
+  .summary-title {
+    background: #f5f3ee;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+  .summary-title .num {
+    background: rgba(45, 91, 168, 0.85);
+    color: white;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: 2px;
+    font-weight: 800;
+  }
+  .summary-body {
+    color: #2a2a2a;
+    font-size: 16px;
+    line-height: 1.8;
+    letter-spacing: -0.003em;
+    margin-bottom: 0;
+  }
+  .item { margin-bottom: 28px; }
+
+  /* ===== A. 현재 디자인 (amber 좌측 라인) ===== */
+  .a-comment {
+    margin-top: 12px;
+    border-left: 4px solid #fcd34d;
+    background: rgba(254, 243, 199, 0.5);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 12px 10px 14px;
+  }
+  .a-comment-label {
+    color: #b45309;
+    font-family: ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .a-comment-body {
+    color: #3d3a32;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  /* ===== B. 차분한 인디고 좌측 + 헤더 라벨 ===== */
+  .b-comment {
+    margin-top: 14px;
+    border-left: 3px solid #6366f1;
+    background: #f3f4f9;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 14px;
+  }
+  .b-comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .b-comment-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #6366f1;
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .b-comment-label {
+    color: #4338ca;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+  }
+  .b-comment-body {
+    color: #2a2a2a;
+    font-size: 14.5px;
+    line-height: 1.75;
+  }
+
+  /* ===== C. 탭형 헤더 — 분리감 강조 ===== */
+  .c-wrap { margin-top: 16px; }
+  .c-tab {
+    display: inline-block;
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-bottom: 1px solid white;
+    padding: 5px 12px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4b5563;
+    border-radius: 6px 6px 0 0;
+    letter-spacing: 0.03em;
+    margin-bottom: -1px;
+    position: relative;
+    z-index: 2;
+  }
+  .c-body-card {
+    border: 1px solid #d4d4d4;
+    border-radius: 0 8px 8px 8px;
+    background: #fafafa;
+    padding: 14px 16px;
+    color: #2a2a2a;
+    font-size: 14.5px;
+    line-height: 1.8;
+  }
+
+  /* ===== D. 인용구 스타일 — 좌측 따옴표 + 들여쓰기 ===== */
+  .d-wrap {
+    margin-top: 14px;
+    padding-left: 24px;
+    position: relative;
+  }
+  .d-mark {
+    position: absolute;
+    left: 0;
+    top: -4px;
+    font-family: Georgia, serif;
+    font-size: 36px;
+    color: #d1d5db;
+    line-height: 1;
+  }
+  .d-label {
+    display: inline-block;
+    background: #e5e7eb;
+    color: #4b5563;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+  .d-body {
+    color: #4b5563;
+    font-size: 14.5px;
+    line-height: 1.8;
+    font-style: normal;
+  }
+
+  /* ===== E. 미니멀 — 점선 구분 + 작은 chip ===== */
+  .e-comment {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed #d1d5db;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .e-chip {
+    flex-shrink: 0;
+    background: #1f2937;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 99px;
+    letter-spacing: 0.04em;
+    margin-top: 4px;
+  }
+  .e-body {
+    flex: 1;
+    color: #374151;
+    font-size: 14.5px;
+    line-height: 1.8;
+  }
+
+  /* ===== F. 펼침형 (요약+자세히) ===== */
+  .f-details {
+    margin-top: 14px;
+    border: 1px solid #d4d4d4;
+    border-radius: 8px;
+    background: white;
+    overflow: hidden;
+  }
+  .f-summary {
+    padding: 10px 14px;
+    cursor: pointer;
+    user-select: none;
+    background: #f9fafb;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+  }
+  .f-summary::-webkit-details-marker { display: none; }
+  .f-summary::before {
+    content: "▶";
+    font-size: 9px;
+    color: #9ca3af;
+    transition: transform 0.15s;
+  }
+  .f-details[open] .f-summary::before {
+    transform: rotate(90deg);
+  }
+  .f-summary .badge {
+    background: #2D5BA8;
+    color: white;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .f-body {
+    padding: 12px 16px 14px;
+    color: #2a2a2a;
+    font-size: 14.5px;
+    line-height: 1.8;
+    border-top: 1px solid #e5e7eb;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>비고 디자인 옵션 — 91마540 (요지 [1] 만 표시)</h1>
+<p class="sub">같은 데이터로 6가지 안 비교. 마음에 드는 안 (또는 조합) 알려주세요.</p>
+
+<!-- ============ A. 현재 (amber) ============ -->
+<section class="opt">
+  <span class="opt-name">옵션 A — 현재</span>
+  <p class="opt-desc">amber 좌측 라인 + 옅은 amber 배경. 따뜻한 하이라이트 톤.</p>
+  <div class="item">
+    <div class="summary-title"><span class="num">1</span>발명에 있어 신규성과 진보성의 판단 기준</div>
+    <p class="summary-body">특허발명의 진보성은 신규성이 있음을 전제로 하는 것으로서, 어느 발명이 공지기술에 비추어 새로운 것인가의 신규성의 문제와 그것이 공지기술로부터 용이하게 생각해 낼 수 있는 것인가의 진보성의 문제는 구별되어야 하고, 따라서 발명의 진보성을 판단하기 위해서는 먼저 그 발명의 신규성의 판단이 선행되는 것이 순서라고 할 것이다.</p>
+    <div class="a-comment">
+      <span class="a-comment-label">비고 [1]</span>
+      <div class="a-comment-body">다만, 심사절차의 간소화 및 출원인의 대응 용이성을 위해 신규성이 없다고 판단되는 발명에 대해 진보성도 없다는 거절이유를 함께 통지할 수 있다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ B. 인디고 ============ -->
+<section class="opt">
+  <span class="opt-name">옵션 B — 인디고 + 아이콘</span>
+  <p class="opt-desc">brand color 와 톤 맞춤. 좌측 라인 + 헤더에 작은 [N] 배지 아이콘.</p>
+  <div class="item">
+    <div class="summary-title"><span class="num">1</span>발명에 있어 신규성과 진보성의 판단 기준</div>
+    <p class="summary-body">특허발명의 진보성은 신규성이 있음을 전제로 하는 것으로서, 어느 발명이 공지기술에 비추어 새로운 것인가의 신규성의 문제와 그것이 공지기술로부터 용이하게 생각해 낼 수 있는 것인가의 진보성의 문제는 구별되어야 하고, 따라서 발명의 진보성을 판단하기 위해서는 먼저 그 발명의 신규성의 판단이 선행되는 것이 순서라고 할 것이다.</p>
+    <div class="b-comment">
+      <div class="b-comment-header">
+        <span class="b-comment-icon">1</span>
+        <span class="b-comment-label">비고 — 해설</span>
+      </div>
+      <div class="b-comment-body">다만, 심사절차의 간소화 및 출원인의 대응 용이성을 위해 신규성이 없다고 판단되는 발명에 대해 진보성도 없다는 거절이유를 함께 통지할 수 있다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C. 탭형 ============ -->
+<section class="opt">
+  <span class="opt-name">옵션 C — 탭형 헤더</span>
+  <p class="opt-desc">상단 탭(폴더 라벨) + 본문 카드. 분리감 강하고 문서 색채.</p>
+  <div class="item">
+    <div class="summary-title"><span class="num">1</span>발명에 있어 신규성과 진보성의 판단 기준</div>
+    <p class="summary-body">특허발명의 진보성은 신규성이 있음을 전제로 하는 것으로서, 어느 발명이 공지기술에 비추어 새로운 것인가의 신규성의 문제와 그것이 공지기술로부터 용이하게 생각해 낼 수 있는 것인가의 진보성의 문제는 구별되어야 하고, 따라서 발명의 진보성을 판단하기 위해서는 먼저 그 발명의 신규성의 판단이 선행되는 것이 순서라고 할 것이다.</p>
+    <div class="c-wrap">
+      <span class="c-tab">📝 비고 [1]</span>
+      <div class="c-body-card">다만, 심사절차의 간소화 및 출원인의 대응 용이성을 위해 신규성이 없다고 판단되는 발명에 대해 진보성도 없다는 거절이유를 함께 통지할 수 있다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ D. 인용구 ============ -->
+<section class="opt">
+  <span class="opt-name">옵션 D — 인용구 스타일</span>
+  <p class="opt-desc">큰 따옴표 + 들여쓰기 + 작은 chip. 본문과 톤 차이가 가장 크지 않음(부드러움).</p>
+  <div class="item">
+    <div class="summary-title"><span class="num">1</span>발명에 있어 신규성과 진보성의 판단 기준</div>
+    <p class="summary-body">특허발명의 진보성은 신규성이 있음을 전제로 하는 것으로서, 어느 발명이 공지기술에 비추어 새로운 것인가의 신규성의 문제와 그것이 공지기술로부터 용이하게 생각해 낼 수 있는 것인가의 진보성의 문제는 구별되어야 하고, 따라서 발명의 진보성을 판단하기 위해서는 먼저 그 발명의 신규성의 판단이 선행되는 것이 순서라고 할 것이다.</p>
+    <div class="d-wrap">
+      <span class="d-mark">“</span>
+      <span class="d-label">비고 [1]</span>
+      <div class="d-body">다만, 심사절차의 간소화 및 출원인의 대응 용이성을 위해 신규성이 없다고 판단되는 발명에 대해 진보성도 없다는 거절이유를 함께 통지할 수 있다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ E. 미니멀 ============ -->
+<section class="opt">
+  <span class="opt-name">옵션 E — 미니멀 / chip</span>
+  <p class="opt-desc">점선 구분선 + 좌측 작은 검정 chip. 본문 흐름 최소 방해.</p>
+  <div class="item">
+    <div class="summary-title"><span class="num">1</span>발명에 있어 신규성과 진보성의 판단 기준</div>
+    <p class="summary-body">특허발명의 진보성은 신규성이 있음을 전제로 하는 것으로서, 어느 발명이 공지기술에 비추어 새로운 것인가의 신규성의 문제와 그것이 공지기술로부터 용이하게 생각해 낼 수 있는 것인가의 진보성의 문제는 구별되어야 하고, 따라서 발명의 진보성을 판단하기 위해서는 먼저 그 발명의 신규성의 판단이 선행되는 것이 순서라고 할 것이다.</p>
+    <div class="e-comment">
+      <span class="e-chip">비고 1</span>
+      <div class="e-body">다만, 심사절차의 간소화 및 출원인의 대응 용이성을 위해 신규성이 없다고 판단되는 발명에 대해 진보성도 없다는 거절이유를 함께 통지할 수 있다.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ F. 펼침형 ============ -->
+<section class="opt">
+  <span class="opt-name">옵션 F — 펼침형 (details/summary)</span>
+  <p class="opt-desc">기본은 헤더만 노출, 클릭하면 본문 펼침. 비고가 긴 case 에서 가독성·집중력 보호.</p>
+  <div class="item">
+    <div class="summary-title"><span class="num">1</span>발명에 있어 신규성과 진보성의 판단 기준</div>
+    <p class="summary-body">특허발명의 진보성은 신규성이 있음을 전제로 하는 것으로서, 어느 발명이 공지기술에 비추어 새로운 것인가의 신규성의 문제와 그것이 공지기술로부터 용이하게 생각해 낼 수 있는 것인가의 진보성의 문제는 구별되어야 하고, 따라서 발명의 진보성을 판단하기 위해서는 먼저 그 발명의 신규성의 판단이 선행되는 것이 순서라고 할 것이다.</p>
+    <details class="f-details" open>
+      <summary class="f-summary"><span class="badge">비고 1</span> 이 요지에 대한 코멘트 펼치기</summary>
+      <div class="f-body">다만, 심사절차의 간소화 및 출원인의 대응 용이성을 위해 신규성이 없다고 판단되는 발명에 대해 진보성도 없다는 거절이유를 함께 통지할 수 있다.</div>
+    </details>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -15,9 +15,12 @@ const createSchema = z.object({
   intent: z.literal("create"),
   targetType: annotationTargetTypeSchema,
   targetId: z.string().uuid(),
-  bodyMd: z.string().min(1).max(4000),
+  // 입력 한도는 학습 노트 길게 쓰는 케이스까지 수용. DB 컬럼은 text 무제한.
+  bodyMd: z.string().min(1).max(10000),
   // 사용자가 본문에서 paste 한 단어/구문 — 메모 카드에 인용 표시. 빈 문자열은 null 로 저장.
-  snippet: z.string().max(500).optional(),
+  // 본문 한 단락 전체 선택 후 메모로 전환하는 케이스까지 통과시키도록 충분히 크게.
+  // (highlight.excerpt 와 동일 한도 — 같은 UX 흐름에서 entry 가 거부되지 않게)
+  snippet: z.string().max(10000).optional(),
   // 본문 위 정확 위치 — walkBlocks pre-order block 인덱스 + 그 block 안 cumulative offset.
   // selection 으로 메모 추가 시 자동 캡처. 같은 단어가 여러 곳에 등장해도 그 자리에만 마크.
   blockIndex: z.coerce.number().int().min(0).optional(),

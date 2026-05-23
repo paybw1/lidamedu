@@ -1235,6 +1235,7 @@ export type Database = {
           reasoning_md: string | null
           related_md: string | null
           search_tsv: unknown
+          source_seq: number | null
           subject_laws: string[]
           summary_body_md: string | null
           summary_items: Json
@@ -1264,6 +1265,7 @@ export type Database = {
           reasoning_md?: string | null
           related_md?: string | null
           search_tsv?: unknown
+          source_seq?: number | null
           subject_laws: string[]
           summary_body_md?: string | null
           summary_items?: Json
@@ -1293,6 +1295,7 @@ export type Database = {
           reasoning_md?: string | null
           related_md?: string | null
           search_tsv?: unknown
+          source_seq?: number | null
           subject_laws?: string[]
           summary_body_md?: string | null
           summary_items?: Json
@@ -4301,6 +4304,8 @@ export type Database = {
       }
       systematic_nodes: {
         Row: {
+          case_display_label: string | null
+          case_only: boolean
           created_at: string
           display_label: string
           law_code: string
@@ -4311,6 +4316,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          case_display_label?: string | null
+          case_only?: boolean
           created_at?: string
           display_label: string
           law_code: string
@@ -4321,6 +4328,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          case_display_label?: string | null
+          case_only?: boolean
           created_at?: string
           display_label?: string
           law_code?: string

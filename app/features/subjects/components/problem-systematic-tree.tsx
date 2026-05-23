@@ -67,13 +67,19 @@ export function ProblemSystematicTree({
   emptyHint?: string;
 }) {
   const [searchParams] = useSearchParams();
-  const tree = useMemo(() => buildTree(nodes), [nodes]);
+  // 문제 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
+  // 세부 분기(예: 신규성일반/동일성)는 문제 화면에 등장하지 않는다.
+  const visibleNodes = useMemo(
+    () => nodes.filter((n) => !n.caseOnly),
+    [nodes],
+  );
+  const tree = useMemo(() => buildTree(visibleNodes), [visibleNodes]);
   // 활성 노드 + 그 조상은 펼친 상태로 시작.
   const forceOpen = useMemo(() => {
-    const set = ancestorIds(nodes, activeNodeId);
+    const set = ancestorIds(visibleNodes, activeNodeId);
     if (activeNodeId) set.add(activeNodeId);
     return set;
-  }, [nodes, activeNodeId]);
+  }, [visibleNodes, activeNodeId]);
 
   if (tree.length === 0) {
     return (
@@ -181,7 +187,12 @@ function NodeItem({
         </span>
         {starredCount > 0 ? (
           <span
-            className="inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums text-amber-500"
+            className={cn(
+              "inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors",
+              isActive
+                ? "rounded-full bg-amber-500 px-1.5 py-0.5 font-bold text-white"
+                : "text-amber-500 group-hover:font-semibold",
+            )}
             title={`별점 문제 ${starredCount}개`}
           >
             <span className="text-[11px] leading-none">★</span>
@@ -189,7 +200,14 @@ function NodeItem({
           </span>
         ) : null}
         {count > 0 ? (
-          <span className="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums">
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors",
+              isActive
+                ? "bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 font-bold"
+                : "text-muted-foreground group-hover:text-current group-hover:font-semibold",
+            )}
+          >
             <ListChecksIcon className="size-3" />
             {count}
           </span>

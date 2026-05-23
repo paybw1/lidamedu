@@ -4,11 +4,19 @@
 // 미연결된 문제를 사건번호 입력으로 직접 매칭한다.
 import type { Route } from "./+types/admin-exam-case-links";
 
-import { RefreshCwIcon } from "lucide-react";
-import { Form, Link, data, useSearchParams } from "react-router";
+import { ExternalLinkIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Form,
+  Link,
+  data,
+  useFetcher,
+  useSearchParams,
+} from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { ExamCaseRow } from "~/features/admin/components/exam-case-row";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
@@ -290,6 +298,11 @@ export default function AdminExamCaseLinks({
         </div>
       </div>
 
+      {/* 판례 빠른 검색 — 사건번호를 모를 때 검색해서 복사. 결과의 사건번호를
+          클릭하면 클립보드에 복사되어, 아래 각 문제 row 의 "사건번호" 입력란에
+          paste 해 매칭한다. */}
+      <CaseSearchBox lawCode={lawCode} />
+
       {/* 액션 피드백 */}
       {actionError ? (
         <p className="mb-3 text-xs text-rose-600">{actionError}</p>
@@ -324,5 +337,133 @@ export default function AdminExamCaseLinks({
         </ul>
       )}
     </AdminShell>
+  );
+}
+
+// 사건번호 추출(검색 결과 secondary 에서) — admin-exam-case-links action 동일 규칙.
+const SEARCH_CASE_NUMBER_RE = /[0-9]{2,4}[가-힣]+[0-9]+/;
+
+interface CaseSearchItem {
+  id: string;
+  label: string;
+  secondary?: string;
+}
+
+// 운영자가 매칭할 사건번호를 모를 때 — 사건명·사건번호 일부로 검색해 후보를
+// 본다. 사건번호 칩 클릭 시 클립보드 복사, 외부링크 아이콘으로 판례 viewer
+// 새창. 매칭은 아래 각 row 의 "사건번호" 입력란에 paste 후 [추가] 버튼.
+//
+// 검색 API: /api/admin/search-content?kind=case&q=... (이미 존재, LIMIT 20).
+// 디바운스 300ms — 빠른 타이핑 중 매 stroke 마다 쿼리 발사 방지.
+function CaseSearchBox({ lawCode }: { lawCode: LawSubjectSlug }) {
+  const fetcher = useFetcher<{ items: CaseSearchItem[] }>();
+  const [q, setQ] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = q.trim();
+    if (t.length < 2) return;
+    const tid = setTimeout(() => {
+      fetcher.load(
+        `/api/admin/search-content?kind=case&q=${encodeURIComponent(t)}`,
+      );
+    }, 300);
+    return () => clearTimeout(tid);
+    // fetcher 는 의존성에서 의도적으로 제외 — 매 렌더마다 새 참조라 무한루프.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  async function copyToken(token: string) {
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopied(token);
+      setTimeout(() => setCopied((c) => (c === token ? null : c)), 1500);
+    } catch {
+      // 클립보드 권한 없으면 무시 — 사건번호는 secondary 에 그대로 보임.
+    }
+  }
+
+  const items = fetcher.data?.items ?? [];
+  const busy = fetcher.state !== "idle";
+  const hasQuery = q.trim().length >= 2;
+
+  return (
+    <div className="border-border bg-card mb-4 rounded-xl border p-3 shadow-sm">
+      <div className="flex items-end gap-2">
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="text-muted-foreground text-[11px] font-semibold">
+            판례 빠른 검색 — 사건명 또는 사건번호 일부 (사건번호 클릭 시 복사)
+          </span>
+          <div className="relative">
+            <SearchIcon className="text-muted-foreground absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="예: 2019후, 신규성, 진보성"
+              className="border-input bg-background focus:border-primary h-9 w-full rounded-md border pl-8 pr-3 text-[13px] outline-none"
+            />
+          </div>
+        </label>
+        {busy ? (
+          <span className="text-muted-foreground self-end pb-2.5 text-[11px]">
+            검색 중…
+          </span>
+        ) : null}
+      </div>
+
+      {hasQuery && !busy && items.length === 0 ? (
+        <p className="text-muted-foreground mt-2 text-[11px]">
+          검색 결과가 없습니다.
+        </p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <ul className="mt-2 max-h-72 space-y-1 overflow-auto">
+          {items.map((it) => {
+            const token = it.secondary?.match(SEARCH_CASE_NUMBER_RE)?.[0];
+            return (
+              <li
+                key={it.id}
+                className="bg-background flex items-start gap-2 rounded-md border px-2 py-1.5 text-[12px]"
+              >
+                {token ? (
+                  <button
+                    type="button"
+                    onClick={() => copyToken(token)}
+                    title="사건번호 복사"
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-mono text-[11px] font-bold transition-colors",
+                      copied === token
+                        ? "bg-emerald-500 text-white"
+                        : "bg-muted hover:bg-muted/70 text-foreground",
+                    )}
+                  >
+                    {copied === token ? "복사됨" : token}
+                  </button>
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground line-clamp-2">{it.label}</p>
+                  {it.secondary ? (
+                    <p className="text-muted-foreground truncate text-[11px]">
+                      {it.secondary}
+                    </p>
+                  ) : null}
+                </div>
+                <Link
+                  to={`/subjects/${lawCode}/cases/${it.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="판례 새 창으로 열기"
+                  className="text-muted-foreground hover:text-foreground self-center"
+                >
+                  <ExternalLinkIcon className="size-3.5" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
   );
 }

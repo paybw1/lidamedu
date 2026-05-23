@@ -1,6 +1,8 @@
 import type { Route } from "./+types/systematic-node-viewer";
 
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   EyeIcon,
   EyeOffIcon,
   ListTreeIcon,
@@ -231,11 +233,35 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     articles: node.articles.length,
   };
 
+  // ←/→ 형제 노드 이동 — 같은 parent_id 안의 노드 ord 순. parent_id null 인 루트는
+  // 같은 law 의 다른 루트들 사이 이동. 조문 viewer 의 PrevNextButton 과 동일 위치(헤더 우측).
+  // SystematicNodeWithArticles 는 parentId 필드가 없어 skeleton 에서 self 매칭으로 추출.
+  const selfInSkeleton = systematicNodes.find((n) => n.nodeId === node.nodeId);
+  const selfParentId = selfInSkeleton?.parentId ?? null;
+  const siblings = systematicNodes
+    .filter((n) => n.parentId === selfParentId)
+    .sort((a, b) => a.ord - b.ord);
+  const sibIdx = siblings.findIndex((s) => s.nodeId === node.nodeId);
+  const prevSibling = sibIdx > 0 ? siblings[sibIdx - 1] : null;
+  const nextSibling =
+    sibIdx >= 0 && sibIdx < siblings.length - 1
+      ? siblings[sibIdx + 1]
+      : null;
+  const nodePrevNext = {
+    idx: sibIdx,
+    total: siblings.length,
+    prevNodeId: prevSibling?.nodeId ?? null,
+    prevLabel: prevSibling?.displayLabel ?? null,
+    nextNodeId: nextSibling?.nodeId ?? null,
+    nextLabel: nextSibling?.displayLabel ?? null,
+  };
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
     lawId: law.lawId,
     node,
+    nodePrevNext,
     articles,
     systematicNodes,
     bookmarkLevels,
@@ -278,6 +304,7 @@ function Inner({
     subject,
     lawId,
     node,
+    nodePrevNext,
     articles,
     systematicNodes,
     bookmarkLevels,
@@ -468,10 +495,31 @@ function Inner({
           {/* ── 체계도 노드 헤더 카드 ── */}
           <Card className="overflow-hidden rounded-xl border shadow-sm">
             <CardHeader className="px-6 pt-5 pb-4">
-              {/* eyebrow */}
-              <p className="text-primary mb-2 text-[11px] font-bold tracking-widest uppercase">
-                {subject.name} · 체계도 노드
-              </p>
+              {/* eyebrow + 형제 노드 ←/→ — 같은 parent 안 ord 순. 조문 viewer 와 동일 위치. */}
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-primary text-[11px] font-bold tracking-widest uppercase">
+                  {subject.name} · 체계도 노드{" "}
+                  {nodePrevNext.total > 1 ? (
+                    <span className="text-muted-foreground ml-1 normal-case tracking-normal">
+                      ({nodePrevNext.idx + 1} / {nodePrevNext.total})
+                    </span>
+                  ) : null}
+                </p>
+                <div className="flex items-center gap-2">
+                  <NodePrevNextButton
+                    direction="prev"
+                    subjectSlug={subject.slug}
+                    nodeId={nodePrevNext.prevNodeId}
+                    label={nodePrevNext.prevLabel}
+                  />
+                  <NodePrevNextButton
+                    direction="next"
+                    subjectSlug={subject.slug}
+                    nodeId={nodePrevNext.nextNodeId}
+                    label={nodePrevNext.nextLabel}
+                  />
+                </div>
+              </div>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <h1 className="text-foreground text-[28px] leading-tight font-extrabold tracking-tight">
                   {stripSystematicNumber(node.displayLabel)}
@@ -763,5 +811,50 @@ function Inner({
         </main>
       </div>
     </div>
+  );
+}
+
+// ── 같은 parent 안 형제 노드 ←/→ ─────────────────────────────
+// 조문 viewer 의 PrevNextButton 과 동일 톤(rounded-full border, font-mono 라벨).
+// href null → disabled "처음"/"마지막" pill.
+function NodePrevNextButton({
+  direction,
+  subjectSlug,
+  nodeId,
+  label,
+}: {
+  direction: "prev" | "next";
+  subjectSlug: string;
+  nodeId: string | null;
+  label: string | null;
+}) {
+  const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
+  const aria = direction === "prev" ? "이전 노드" : "다음 노드";
+  if (!nodeId || !label) {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-label={aria}
+        className="border-border bg-background text-muted-foreground inline-flex h-8 cursor-not-allowed items-center gap-1 rounded-full border px-3 text-xs opacity-40"
+      >
+        {direction === "prev" ? <Icon className="size-3.5" /> : null}
+        <span>{direction === "prev" ? "처음" : "마지막"}</span>
+        {direction === "next" ? <Icon className="size-3.5" /> : null}
+      </button>
+    );
+  }
+  return (
+    <Link
+      to={`/subjects/${subjectSlug}/systematic/${nodeId}`}
+      aria-label={`${aria}: ${stripSystematicNumber(label)}`}
+      className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1 rounded-full border px-3 text-[12px] font-semibold transition-colors"
+    >
+      {direction === "prev" ? <Icon className="size-3.5 shrink-0" /> : null}
+      <span className="max-w-[160px] truncate">
+        {stripSystematicNumber(label)}
+      </span>
+      {direction === "next" ? <Icon className="size-3.5 shrink-0" /> : null}
+    </Link>
   );
 }

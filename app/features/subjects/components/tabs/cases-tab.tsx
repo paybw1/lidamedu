@@ -63,19 +63,8 @@ const SORT_OPTIONS = [
   { value: "decided_desc", label: "선고일 ↓" },
   { value: "decided_asc", label: "선고일 ↑" },
   { value: "case_no", label: "사건번호" },
+  { value: "source_asc", label: "원본 순서" },
 ] as const;
-
-// case_title vs summary_title 가 동일 내용인지 — 공백·일반 구두점 차이를 흡수해 비교.
-// 둘 중 하나가 다른 것을 포함하면 (prefix/suffix 차이) 같은 내용으로 본다.
-function sameLabelContent(a: string, b: string): boolean {
-  const norm = (s: string) =>
-    s.replace(/[\s:.,;'"()[\]{}·…\-—–]/g, "").toLowerCase();
-  const na = norm(a);
-  const nb = norm(b);
-  if (!na || !nb) return false;
-  if (na === nb) return true;
-  return na.includes(nb) || nb.includes(na);
-}
 
 const DEFAULT_FILTERS: CaseFiltersApplied = {
   q: "",
@@ -480,23 +469,10 @@ function CaseRow({
   const detailHref = `/subjects/${subject.slug}/cases/${item.caseId}${
     location.search ? `?back=${encodeURIComponent(location.search)}` : ""
   }`;
-  // 사건명 컬럼 표시 우선순위: 요지 [1] 제목 → legacy summary_title → case_title (사건유형).
-  const detailLabel =
-    item.summaryFirstTitle ?? item.summaryTitle ?? item.caseTitle;
-  const caseTitleTrim = item.caseTitle.trim();
-  const detailTrim = detailLabel.trim();
-  const caseTypeTrim = (item.caseType ?? "").trim();
-  // case_title 과 summary_*_title 이 사실상 같은 내용인데 미세한 구두점/공백 차이
-  // ("(실시제품 마법천자문)" vs "(실시제품: 마법천자문)", 끝 ":" 유무 등) 로 정확
-  // 일치 비교가 어긋나 sub-label 에 caseTitle 이 또 표시되던 문제.
-  // 공백·일반 구두점 제거 후 normalize 비교 + substring 포함 관계도 같은 내용으로 본다.
-  const subLabel =
-    (item.summaryFirstTitle || item.summaryTitle) &&
-    caseTitleTrim !== "" &&
-    !sameLabelContent(caseTitleTrim, detailTrim) &&
-    caseTitleTrim !== caseTypeTrim
-      ? item.caseTitle
-      : null;
+  // 사건명 컬럼은 항상 case_title 만 표시 — 요지 [1] 제목/legacy summary_title 폴백을
+  // 폐지(2017허4501 처럼 case_title 과 summary_title 이 서로 다른 긴 문장이라 둘 다
+  // 노출되며 "사건명이 2개로 보임"). 사건명이 없는 case 라도 같은 행의 사건번호 셀이
+  // 본문 진입 Link 라 사용성 손실 없음.
   // 기출 chip — 1차는 출제 문제(클릭 시 문제 뷰어로 이동), 2차는 연도 배지.
   // exam1stProblems 는 쿼리에서 연도·문항번호 오름차순 정렬됨.
   const sorted2nd = [...item.exam2ndYears].sort((a, b) => a - b);
@@ -545,11 +521,8 @@ function CaseRow({
           viewTransition
           className="hover:text-primary block truncate text-sm font-medium"
         >
-          {detailLabel}
+          {item.caseTitle}
         </Link>
-        {subLabel ? (
-          <p className="text-muted-foreground truncate text-xs">{subLabel}</p>
-        ) : null}
         {item.exam1stProblems.length + sorted2nd.length > 0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
             {Array.from(

@@ -147,10 +147,16 @@ export function SystematicTree({
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
   progressByArticle?: NodeProgressByArticle;
 }) {
-  const tree = useMemo(() => buildTree(nodes), [nodes]);
+  // 조문 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
+  // 세부 분기(예: 신규성일반/동일성)는 조문 화면에 등장하지 않는다.
+  const visibleNodes = useMemo(
+    () => nodes.filter((n) => !n.caseOnly),
+    [nodes],
+  );
+  const tree = useMemo(() => buildTree(visibleNodes), [visibleNodes]);
   const expandedIds = useMemo(
-    () => findActiveAncestors(nodes, activeArticleId),
-    [nodes, activeArticleId],
+    () => findActiveAncestors(visibleNodes, activeArticleId),
+    [visibleNodes, activeArticleId],
   );
   const [importanceFilter, setImportanceFilter] = useState<ImportanceFilter>(0);
   const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
@@ -332,9 +338,12 @@ function SystematicItem({
       </span>
     </>
   );
+  // subtreeArticleCount chip — 기본은 muted, group-hover 시 text-current 로 대비 ↑.
+  // 체계도 노드 자체는 active target 이 아니라 active 색상 변경은 없음
+  // (active 는 leaf article 단위). cases-tree CountChip 과 같은 hover 톤.
   const countEl =
     node.subtreeArticleCount > 0 ? (
-      <span className="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums">
+      <span className="text-muted-foreground group-hover:text-current group-hover:font-semibold inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors">
         <NetworkIcon className="size-3" />
         {node.subtreeArticleCount}
       </span>

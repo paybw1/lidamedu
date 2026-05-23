@@ -371,11 +371,19 @@ export interface SystematicArticleRef {
   importance: number;
 }
 
+// caseOnly / caseDisplayLabel — 판례 체계도 전용 노출·라벨 오버라이드.
+// 트리 빌더는 화면 컨텍스트(case vs article/problem)에 따라 두 필드를 다르게 처리:
+//   • 판례 트리 (cases-tree)            → caseOnly 포함, 라벨은 caseDisplayLabel ?? displayLabel
+//   • 조문/문제 트리 (systematic-tree,
+//     problem-systematic-tree)        → caseOnly 제외, 라벨은 항상 displayLabel
+// loader 는 모든 노드를 한 번에 fetch 하고 각 트리 컴포넌트가 자기 규칙으로 거른다.
 export interface SystematicNode {
   nodeId: string;
   parentId: string | null;
   path: string;
   displayLabel: string;
+  caseDisplayLabel: string | null;
+  caseOnly: boolean;
   ord: number;
   articles: SystematicArticleRef[];
 }
@@ -386,7 +394,9 @@ export async function getSystematicSkeleton(
 ): Promise<SystematicNode[]> {
   const { data: nodes, error: nodeErr } = await client
     .from("systematic_nodes")
-    .select("node_id, parent_id, path, display_label, ord")
+    .select(
+      "node_id, parent_id, path, display_label, case_display_label, case_only, ord",
+    )
     .eq("law_code", lawCode)
     .order("path");
   if (nodeErr) throw nodeErr;
@@ -422,6 +432,8 @@ export async function getSystematicSkeleton(
     parentId: n.parent_id,
     path: typeof n.path === "string" ? n.path : String(n.path ?? ""),
     displayLabel: n.display_label,
+    caseDisplayLabel: n.case_display_label ?? null,
+    caseOnly: n.case_only ?? false,
     ord: n.ord,
     articles: articlesByNode.get(n.node_id) ?? [],
   }));

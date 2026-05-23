@@ -204,6 +204,10 @@ function buildTreeHref(
   next.delete("case_chapter");
   next.delete("case_node");
   next.delete("q");
+  // back= 도 제거 — 트리 노드 클릭은 "새로 목록을 탐색" 의도. 기존 case-viewer 의
+  // ?back= 를 그대로 carry 하면 list 페이지에서 case 클릭 시 detail href 의 back
+  // 값에 또 wrap 되어 URL 이 지수적으로 누적 (각 단계마다 인코딩 한 겹씩 추가).
+  next.delete("back");
   if (target) {
     if (target.kind === "article") next.set("case_article", target.articleId);
     else if (target.kind === "chapter")
@@ -250,10 +254,23 @@ export function CasesTree({
       ),
     [articles, caseTreeCounts.byArticleId, caseTreeCounts.byChapterId],
   );
-  // 체계도는 trim 없이 전체 노드 표시 — 조문 탭 체계도와 목차 일치.
-  const systematicTreeBase = useMemo(
-    () => buildSystematicTree(systematicNodes),
+  // 판례 트리는 caseOnly 노드를 포함하고 caseDisplayLabel 이 있으면 그것을
+  // displayLabel 자리에 노출 (조문/문제 트리와 분리된 판례 전용 라벨 오버라이드).
+  // 한 번에 매핑해 두면 검색·렌더 모두 같은 라벨로 동작.
+  const caseViewNodes = useMemo(
+    () =>
+      systematicNodes.map((n) =>
+        n.caseDisplayLabel
+          ? { ...n, displayLabel: n.caseDisplayLabel }
+          : n,
+      ),
     [systematicNodes],
+  );
+  // 체계도는 trim 없이 전체 노드 표시 — 조문 탭 체계도와 목차 일치 (단, 판례 전용
+  // 노드는 추가 노출).
+  const systematicTreeBase = useMemo(
+    () => buildSystematicTree(caseViewNodes),
+    [caseViewNodes],
   );
 
   const articleTree = useMemo(
@@ -295,10 +312,10 @@ export function CasesTree({
         (n as SystematicTreeNode).nodeId,
       );
     }
-    const set = activeSystematicAncestors(systematicNodes, activeNodeId);
+    const set = activeSystematicAncestors(caseViewNodes, activeNodeId);
     if (activeNodeId) set.add(activeNodeId);
     return set;
-  }, [systematicNodes, activeNodeId, trimmedQuery, systematicTree]);
+  }, [caseViewNodes, activeNodeId, trimmedQuery, systematicTree]);
 
   const tree = renderSystematic ? systematicTree : articleTree;
   const isEmpty = tree.length === 0;
@@ -402,10 +419,21 @@ export function CasesTree({
   );
 }
 
-function CountChip({ value }: { value: number }) {
+// 노드 우측 판례 개수 chip. row 상태에 따라 가시성 차등:
+//   • 기본: muted (조용)
+//   • group-hover: text-current (accent-foreground 로 대비 ↑, hover 시 잘 보임)
+//   • isActive: 역상 솔리드 pill (bg-primary + 흰 글씨) — 선택된 노드 한눈에
+function CountChip({ value, isActive }: { value: number; isActive?: boolean }) {
   if (value <= 0) return null;
   return (
-    <span className="text-muted-foreground inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums">
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors",
+        isActive
+          ? "bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 font-bold"
+          : "text-muted-foreground group-hover:text-current group-hover:font-semibold",
+      )}
+    >
       <GavelIcon className="size-3" />
       {value}
     </span>
@@ -506,7 +534,7 @@ function ArticleItem({
       >
         {expandToggle}
         <span className="flex-1 truncate">{node.displayLabel}</span>
-        <CountChip value={count} />
+        <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (
         <ul className="space-y-0.5">
@@ -609,7 +637,7 @@ function SystematicItem({
         <span className="flex-1 truncate">
           {stripSystematicNumber(node.displayLabel)}
         </span>
-        <CountChip value={count} />
+        <CountChip value={count} isActive={isActive} />
       </Link>
       {hasChildren && open ? (
         <ul className="space-y-0.5">

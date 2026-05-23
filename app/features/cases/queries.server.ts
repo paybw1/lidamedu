@@ -85,7 +85,17 @@ function parseSummaryItems(raw: unknown): SummaryItem[] {
     if (!it || typeof it !== "object") continue;
     const o = it as Record<string, unknown>;
     if (typeof o.title !== "string" || typeof o.body !== "string") continue;
-    out.push({ title: o.title, body: o.body });
+    const comment =
+      typeof o.commentMd === "string"
+        ? o.commentMd
+        : typeof o.comment_md === "string"
+          ? (o.comment_md as string)
+          : undefined;
+    out.push({
+      title: o.title,
+      body: o.body,
+      ...(comment !== undefined && comment !== "" ? { commentMd: comment } : {}),
+    });
   }
   return out;
 }
@@ -116,7 +126,13 @@ export async function listRecentCases(
   return (data ?? []).map((r) => rowToListItem(r as CaseListRow));
 }
 
-export type CaseSubjectSort = "decided_desc" | "decided_asc" | "case_no";
+// source_asc — "원본 자료 순서". DB 에 source seq 컬럼이 따로 없어 created_at(import 시점)
+// 오름차순으로 대체. 같은 systematic node 안에서는 시드 시점의 source 순서가 대체로 보존됨.
+export type CaseSubjectSort =
+  | "decided_desc"
+  | "decided_asc"
+  | "case_no"
+  | "source_asc";
 export type CaseExamFilter = "any" | "exam_1st" | "exam_2nd" | "exam_both";
 export type CaseCourtFilter = "all" | CaseCourt;
 
@@ -197,6 +213,13 @@ export async function listCasesBySubject(
     case "case_no":
       q = q.order("case_number", { ascending: true });
       break;
+    case "source_asc":
+      // 원본 자료 순서 — cases.source_seq (precedents.json seqInSection 백필).
+      // NULLs(시드에 없는 staff 직접 등록 case)는 끝으로 보내고 case_number tie-break.
+      q = q
+        .order("source_seq", { ascending: true, nullsFirst: false })
+        .order("case_number", { ascending: true });
+      break;
     default:
       q = q.order("decided_at", { ascending: false });
   }
@@ -246,10 +269,13 @@ export async function getCaseCountsByArticle(
   return counts;
 }
 
-// placement-aware case ↔ article/node 카운트 — 한 case 는 단일 placement.
-// 우선순위: primary_node_id > primary_article_id > legacy(article_case_links).
-// 반환: nodeId → distinct case_id Set, articleId → distinct case_id Set (leaf 단위).
-// 부모 노드 카운트는 buildCaseTreeCounts 의 aggregate 에서 자손 union → size.
+// 트리 축별 case 카운트 — 정책 (사용자 결정):
+//   • 체계도 axis (byNodeId): 한 case 는 단일 placement.
+//     우선순위: primary_node_id > primary_article_id 의 article_systematic_links
+//             > legacy(article_case_links 의 article_systematic_links). 중복 배치 불가.
+//   • 조문 axis (byArticleId): article_case_links many-to-many. 한 case 가 N 개 조문에
+//     연결되어 있으면 N 곳 모두 카운트 (중복 배치 허용).
+// 부모 노드/장 카운트는 buildCaseTreeCounts 의 aggregate 에서 자손 union → size 로 계산.
 export interface CasePlacementMaps {
   caseSetByArticleId: Record<string, string[]>;
   caseSetByNodeId: Record<string, string[]>;
@@ -296,9 +322,8 @@ export async function getCasePlacementMaps(
     nodesByArticle.set(r.article_id, s);
   }
 
-  // 과목 case 들의 set (legacy fallback 필터링용).
+  // 과목 case 들의 set + article_case_links 를 case 별로 grouping (과목 한정).
   const caseIdsInSubject = new Set(caseRows.map((c) => c.case_id));
-  // article_case_links 를 case 별로 grouping — 과목 article + 과목 case 만.
   const aclByCase = new Map<string, Set<string>>();
   for (const r of aclRes.data ?? []) {
     if (!articleIdsInLaw.has(r.article_id)) continue;
@@ -308,7 +333,6 @@ export async function getCasePlacementMaps(
     aclByCase.set(r.case_id, s);
   }
 
-  // 4) case 별로 placement 결정 → byArticle / byNode set 채움.
   const byArticle = new Map<string, Set<string>>();
   const byNode = new Map<string, Set<string>>();
   function addArticle(articleId: string, caseId: string) {
@@ -328,27 +352,32 @@ export async function getCasePlacementMaps(
     s.add(caseId);
   }
 
-  for (const c of caseRows ?? []) {
+  // 1) 체계도 axis — 단일 placement.
+  for (const c of caseRows) {
     if (c.primary_node_id) {
-      // node 직접 placement — article 카운트엔 안 들어감.
       addNode(c.primary_node_id, c.case_id);
       continue;
     }
     if (c.primary_article_id) {
-      addArticle(c.primary_article_id, c.case_id);
       for (const n of nodesByArticle.get(c.primary_article_id) ?? new Set()) {
         addNode(n, c.case_id);
       }
       continue;
     }
-    // legacy — 모든 article 매핑 + 그 article 의 system nodes.
+    // legacy — primary 미지정이면 ACL 의 article 들이 가리키는 nodes 모두.
     const articles = aclByCase.get(c.case_id) ?? new Set<string>();
     for (const a of articles) {
-      addArticle(a, c.case_id);
       for (const n of nodesByArticle.get(a) ?? new Set()) {
         addNode(n, c.case_id);
       }
     }
+  }
+
+  // 2) 조문 axis — article_case_links many-to-many (중복 배치 허용).
+  //    primary_* 와 무관, ACL 만 본다. 한 case 가 article 1·2 에 연결되어 있으면
+  //    조문 트리에서 article 1·2 양쪽 모두에 노출/카운트.
+  for (const [caseId, articles] of aclByCase) {
+    for (const a of articles) addArticle(a, caseId);
   }
 
   const caseSetByArticleId: Record<string, string[]> = {};
@@ -361,8 +390,30 @@ export async function getCasePlacementMaps(
 // (deprecated) getCaseIdsByArticleIds — placement 모델로 전환되며 사용 안 함.
 // 호출처 없음. getCaseIdsByPlacement(articleIds, nodeIds=[]) 가 동일 역할 + legacy fallback.
 
-// 체계도 placement 기반 case ID 조회 — cases.primary_node_id / primary_article_id 우선.
-// 사용자 결정: 한 case 가 한 곳에만 placement.
+// 조문 axis 필터 — article_case_links many-to-many.
+// 한 case 가 여러 article 에 연결되어 있으면 모든 article 위치에서 잡힌다(중복 배치).
+// primary_* 는 보지 않는다. cases-tab 의 article/chapter 트리 필터 전용.
+export async function getCaseIdsByArticleLinks(
+  client: SupabaseClient<Database>,
+  articleIds: readonly string[],
+): Promise<string[]> {
+  if (articleIds.length === 0) return [];
+  const out = new Set<string>();
+  const CHUNK = 200;
+  for (let i = 0; i < articleIds.length; i += CHUNK) {
+    const slice = articleIds.slice(i, i + CHUNK);
+    const { data, error } = await client
+      .from("article_case_links")
+      .select("case_id, cases!inner(deleted_at)")
+      .in("article_id", slice)
+      .is("cases.deleted_at", null);
+    if (error) throw error;
+    for (const r of data ?? []) out.add(r.case_id);
+  }
+  return [...out];
+}
+
+// 체계도 axis 필터 — cases.primary_node_id / primary_article_id 단일 placement.
 //   1) primary_node_id IN target nodeIds → 그 case
 //   2) primary_node_id IS NULL AND primary_article_id IN target articleIds → 그 case
 //   3) primary_article_id IS NULL AND primary_node_id IS NULL AND
@@ -546,6 +597,104 @@ export async function deleteCaseReference(
   return { ok: true };
 }
 
+// 한 case 의 placement 형제 — 같은 primary_node_id (또는 primary_node_id 가 null 이면
+// 같은 primary_article_id) 의 case 들을 source_seq 정렬로 반환.
+// admin-case-edit 의 순서 조정 UI 가 사용.
+export interface CaseSibling {
+  caseId: string;
+  caseNumber: string;
+  caseTitle: string;
+  sourceSeq: number | null;
+}
+
+export async function getCaseSiblings(
+  client: SupabaseClient<Database>,
+  caseId: string,
+): Promise<{ kind: "node" | "article"; placementId: string; siblings: CaseSibling[] } | null> {
+  const { data: me, error: meErr } = await client
+    .from("cases")
+    .select("primary_node_id, primary_article_id")
+    .eq("case_id", caseId)
+    .maybeSingle();
+  if (meErr) throw meErr;
+  if (!me) return null;
+
+  // 1순위: primary placement (node 우선, 그 다음 article)
+  const useNode = me.primary_node_id !== null;
+  const placementId = me.primary_node_id ?? me.primary_article_id;
+
+  if (placementId) {
+    let q = client
+      .from("cases")
+      .select("case_id, case_number, case_title, source_seq")
+      .is("deleted_at", null);
+    q = useNode
+      ? q.eq("primary_node_id", placementId)
+      : q.eq("primary_article_id", placementId).is("primary_node_id", null);
+
+    const { data, error } = await q
+      .order("source_seq", { ascending: true, nullsFirst: false })
+      .order("case_number", { ascending: true });
+    if (error) throw error;
+    return {
+      kind: useNode ? "node" : "article",
+      placementId,
+      siblings: (data ?? []).map((r) => ({
+        caseId: r.case_id,
+        caseNumber: r.case_number,
+        caseTitle: r.case_title,
+        sourceSeq: r.source_seq,
+      })),
+    };
+  }
+
+  // primary placement 가 없는 case 는 null. URL 컨텍스트(case_node/case_article) 기반
+  // fallback 은 case-viewer 가 직접 처리 (목록 화면의 트리 chip 과 정합 보장).
+  return null;
+}
+
+// case_id 셋으로 cases 정보 조회 → CaseSibling[]. case-viewer 의 prev/next 가
+// URL 컨텍스트(case_node subtree, case_article ACL) 로 미리 계산한 case id 셋을
+// 그대로 형제로 노출하는 데 사용. 정렬: source_seq asc nullsLast → decided_desc → case_number.
+// (체계도 axis 기본 정렬: source_asc nullsLast. article axis: decided_desc. 두 컨텍스트
+// 모두에 무난한 통합 정렬 적용.)
+export async function getCasesByIds(
+  client: SupabaseClient<Database>,
+  caseIds: readonly string[],
+): Promise<CaseSibling[]> {
+  if (caseIds.length === 0) return [];
+  const { data, error } = await client
+    .from("cases")
+    .select("case_id, case_number, case_title, source_seq, decided_at")
+    .in("case_id", caseIds as string[])
+    .is("deleted_at", null);
+  if (error) throw error;
+  const rows = data ?? [];
+  rows.sort((a, b) => {
+    // source_seq 부여된 항목 우선(asc), 없는 항목은 뒤로.
+    const sa = a.source_seq;
+    const sb = b.source_seq;
+    if (sa != null && sb != null) {
+      if (sa !== sb) return sa - sb;
+    } else if (sa != null) {
+      return -1;
+    } else if (sb != null) {
+      return 1;
+    }
+    // tiebreaker: decided_at desc
+    const da = a.decided_at ?? "";
+    const db = b.decided_at ?? "";
+    if (da !== db) return da < db ? 1 : -1;
+    return (a.case_number ?? "").localeCompare(b.case_number ?? "");
+  });
+  return rows.map((r) => ({
+    caseId: r.case_id,
+    caseNumber: r.case_number,
+    caseTitle: r.case_title,
+    sourceSeq: r.source_seq,
+  }));
+}
+
 export async function getCaseById(
   client: SupabaseClient<Database>,
   caseId: string,
@@ -553,7 +702,7 @@ export async function getCaseById(
   const { data, error } = await client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md, related_md, images",
+      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md, related_md, images, primary_article_id, primary_node_id",
     )
     .eq("case_id", caseId)
     .is("deleted_at", null)
@@ -571,6 +720,8 @@ export async function getCaseById(
     commentBodyMd: data.comment_body_md,
     relatedMd: data.related_md,
     images: parseCaseImages(data.images),
+    primaryArticleId: data.primary_article_id,
+    primaryNodeId: data.primary_node_id,
   };
 }
 

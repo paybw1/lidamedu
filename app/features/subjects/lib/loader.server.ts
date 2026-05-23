@@ -14,6 +14,7 @@ import {
   type CaseExamFilter,
   type CaseListItem,
   type CaseSubjectSort,
+  getCaseIdsByArticleLinks,
   getCaseIdsByPlacement,
   getCasePlacementMaps,
   listCasesBySubject,
@@ -133,6 +134,7 @@ const CASE_SORTS: readonly CaseSubjectSort[] = [
   "decided_desc",
   "decided_asc",
   "case_no",
+  "source_asc",
 ];
 const CASE_COURT_FILTERS: readonly CaseCourtFilter[] = [
   "all",
@@ -150,10 +152,6 @@ const CASE_EXAM_FILTERS: readonly CaseExamFilter[] = [
 
 function parseCaseFilters(url: URL): CaseFiltersApplied {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-  const sortRaw = url.searchParams.get("case_sort") ?? "decided_desc";
-  const sort = (CASE_SORTS as readonly string[]).includes(sortRaw)
-    ? (sortRaw as CaseSubjectSort)
-    : "decided_desc";
   const courtRaw = url.searchParams.get("case_court") ?? "all";
   const court = (CASE_COURT_FILTERS as readonly string[]).includes(courtRaw)
     ? (courtRaw as CaseCourtFilter)
@@ -170,6 +168,22 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
   if (articleId) tree = { kind: "article", articleId };
   else if (chapterId) tree = { kind: "chapter", chapterId };
   else if (nodeId) tree = { kind: "node", nodeId };
+  // 정렬 기본값 — 트리 축 별 (case_sort 미지정 시):
+  //   • node 클릭 (체계도 axis) → source_asc (원본 자료 순서, created_at ASC).
+  //     같은 systematic 노드 안에서는 시드 시점의 학습 순서대로 정렬.
+  //   • article / chapter 클릭 (조문 axis) → decided_desc (최신 판례 우선).
+  //     조문은 최신 해석부터 보는 게 자연스럽다.
+  //   • 트리 미적용 (전체 목록·검색) → decided_desc.
+  // 사용자가 정렬 옵션을 직접 바꾸면 그 값이 우선(case_sort URL param 으로 명시).
+  const sortRaw = url.searchParams.get("case_sort");
+  let sort: CaseSubjectSort;
+  if (sortRaw && (CASE_SORTS as readonly string[]).includes(sortRaw)) {
+    sort = sortRaw as CaseSubjectSort;
+  } else if (tree?.kind === "node") {
+    sort = "source_asc";
+  } else {
+    sort = "decided_desc";
+  }
   return { q, court, exam, sort, tree };
 }
 
@@ -193,7 +207,9 @@ function descendantArticleIds(
 
 
 // systematic 부분트리에 속하는 모든 article id (중복 제거).
-function systematicSubtreeArticleIds(
+// case-viewer 의 prev/next 형제 계산에서도 재사용 — cases-tab 의 노드 필터와
+// 동일 로직으로 정합성 유지(목록 7건 ↔ viewer 7건).
+export function systematicSubtreeArticleIds(
   nodes: SystematicNode[],
   rootNodeId: string,
 ): string[] {
@@ -210,7 +226,8 @@ function systematicSubtreeArticleIds(
 
 // systematic 부분트리에 속하는 모든 node id (자신 + 자손) — case_systematic_links 직접
 // 매핑 검색 시 사용. case 가 sub-node 에 분류되어 있어도 부모 노드 필터링에 잡힘.
-function systematicSubtreeNodeIds(
+// case-viewer 의 prev/next 에서도 재사용.
+export function systematicSubtreeNodeIds(
   nodes: SystematicNode[],
   rootNodeId: string,
 ): string[] {
@@ -466,37 +483,36 @@ export async function loadSubjectHub(
     getCasePlacementMaps(client, lawCode, law.lawId),
   ]);
 
-  // 트리 필터 → 대상 article id 셋 → case id 셋.
-  // systematic node 의 경우 article 경유 외에 case 직접 매핑(case_systematic_links)
-  // 도 union — sub-node 분류가 article 단위로 표현하기 어려운 case 들을 포괄.
+  // 트리 필터 → case id 셋. 축에 따라 다른 정책:
+  //   • article / chapter (조문 axis) → article_case_links many-to-many
+  //     (한 case 가 여러 article 에 연결되어 있으면 각 위치에서 모두 잡힘).
+  //   • node (체계도 axis) → primary placement (단일 배치).
   let filterCaseIds: string[] | null = null;
   if (caseFilters.tree) {
-    let targetArticleIds: string[] = [];
-    let nodeIds: string[] = [];
     if (caseFilters.tree.kind === "article") {
-      targetArticleIds = [caseFilters.tree.articleId];
+      filterCaseIds = await getCaseIdsByArticleLinks(client, [
+        caseFilters.tree.articleId,
+      ]);
     } else if (caseFilters.tree.kind === "chapter") {
-      targetArticleIds = descendantArticleIds(
-        articles,
-        caseFilters.tree.chapterId,
+      filterCaseIds = await getCaseIdsByArticleLinks(
+        client,
+        descendantArticleIds(articles, caseFilters.tree.chapterId),
       );
     } else {
-      targetArticleIds = systematicSubtreeArticleIds(
+      const targetArticleIds = systematicSubtreeArticleIds(
         systematicNodes,
         caseFilters.tree.nodeId,
       );
-      nodeIds = systematicSubtreeNodeIds(
+      const nodeIds = systematicSubtreeNodeIds(
         systematicNodes,
         caseFilters.tree.nodeId,
+      );
+      filterCaseIds = await getCaseIdsByPlacement(
+        client,
+        targetArticleIds,
+        nodeIds,
       );
     }
-    // cases.primary_* placement 기반 case id 셋 (placement 우선순위:
-    // primary_node_id > primary_article_id > legacy article_case_links).
-    filterCaseIds = await getCaseIdsByPlacement(
-      client,
-      targetArticleIds,
-      nodeIds,
-    );
   }
 
   // 2단계 — case 목록, 문제, 최신 개정.

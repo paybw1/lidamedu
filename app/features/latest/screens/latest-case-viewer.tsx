@@ -1,16 +1,20 @@
 // 학습정보 판례 뷰어 (feat-3-205) — /latest/cases/:caseId.
-// 학습정보 피드(최근 판례)에서 진입하는 경량 read-only 뷰어. CaseBody 공용 컴포넌트 재사용.
+// 학습정보 피드(최근 판례)에서 진입하는 경량 뷰어. CaseBody 공용 컴포넌트 재사용.
 // 학습과목 뷰어(/subjects/.../cases/:id)와 달리 주석·트리·진도·Q&A 없음.
+// 단, 본문 하이라이트는 활성 — staff 가 학습정보에서 본 판례에도 밑줄을 그어
+// 학생에게 공유할 수 있도록(`highlights` + `viewerIsStaff` prop 전달).
 
 import { ArrowLeftIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { listHighlights } from "~/features/annotations/queries.server";
 import { CaseBody } from "~/features/cases/components/case-body";
 import {
   getCaseById,
   listCaseReferences,
 } from "~/features/cases/queries.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import { getExamProblemsForCase } from "~/features/problems/queries.server";
 
 import type { Route } from "./+types/latest-case-viewer";
@@ -34,18 +38,27 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const kase = await getCaseById(client, params.caseId);
   if (!kase) throw data("판례를 찾을 수 없습니다.", { status: 404 });
 
-  const [examProblems, references] = await Promise.all([
+  const [examProblems, references, highlights, staffRole] = await Promise.all([
     getExamProblemsForCase(client, kase.caseId),
     listCaseReferences(client, kase.caseId),
+    listHighlights(client, user.id, "case", kase.caseId),
+    getStaffRole(client, user.id),
   ]);
 
-  return { kase, examProblems, references };
+  return {
+    kase,
+    examProblems,
+    references,
+    highlights,
+    viewerIsStaff: staffRole !== null,
+  };
 }
 
 export default function LatestCaseViewer({
   loaderData,
 }: Route.ComponentProps) {
-  const { kase, examProblems, references } = loaderData;
+  const { kase, examProblems, references, highlights, viewerIsStaff } =
+    loaderData;
   return (
     <div className="bg-background min-h-[calc(100vh-56px)]">
       <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-8 md:py-8">
@@ -63,6 +76,8 @@ export default function LatestCaseViewer({
           kase={kase}
           examProblems={examProblems}
           references={references}
+          highlights={highlights}
+          viewerIsStaff={viewerIsStaff}
         />
       </div>
     </div>

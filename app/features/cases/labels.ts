@@ -36,6 +36,10 @@ export interface CaseListItem {
 export interface SummaryItem {
   title: string;
   body: string;
+  // 항목별 비고 — 같은 인덱스의 summary 소제목/본문에 대한 코멘트. 빈 문자열 또는
+  // undefined 면 비고 없음. legacy cases.comment_body_md 의 "N. ..." 단락을
+  // 항목별로 풀어낸 것 (자동 마이그레이션). render 측에서는 "N. " 라벨이 자동 부여.
+  commentMd?: string;
 }
 
 // feat-7-005 후속: 판례 본문 이미지(상표법 다수, 특허법 일부).
@@ -126,6 +130,10 @@ export interface CaseDetail extends CaseListItem {
   // feat-7-005 후속: 관련자료 본문 (그림·표 설명). 그림 자체는 images[position=related].
   relatedMd: string | null;
   images: CaseImage[];
+  // 판례 트리에서 이 case 의 현재 placement — case-viewer 좌측 트리 사이드바가
+  // 이 위치로 자동 펼침 + 하이라이트. node 가 set 되면 node 우선, 아니면 article.
+  primaryArticleId: string | null;
+  primaryNodeId: string | null;
 }
 
 // feat-4-A-214 관련논문/기사 링크.

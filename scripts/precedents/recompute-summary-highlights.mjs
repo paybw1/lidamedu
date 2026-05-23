@@ -99,7 +99,9 @@ function proseTextContent(text) {
   return out;
 }
 
-// SummaryBlock textContent — labelNumber + displayTitle + Prose(body) 합.
+// SummaryBlock textContent — labelNumber + displayTitle + Prose(body) [+ "비고{N}" +
+// Prose(commentMd) 인라인]. 사용자 결정으로 항목별 비고가 SummaryBlock 안에 amber
+// 카드로 인라인 렌더되며, "비고 [N]" 라벨 헤더 텍스트도 textContent 에 포함된다.
 function summaryBlockTextContent(item, index, totalItems) {
   const t = item.title ?? "";
   let label = null;
@@ -116,6 +118,22 @@ function summaryBlockTextContent(item, index, totalItems) {
   if (labelNumber) out += labelNumber;
   out += stripUnderline(displayTitle);
   out += proseTextContent(item.body ?? "");
+  // 항목별 비고 (인라인 <details> 펼침형 카드 — 디자인 옵션 F).
+  // textContent 흐름:
+  //   summary 의 span 들: "비고{ N}" + "이 요지에 대한 코멘트"
+  //   body: Prose(commentMd)
+  // chevron svg 는 text node 없음.
+  const commentRaw =
+    typeof item.commentMd === "string"
+      ? item.commentMd
+      : typeof item.comment_md === "string"
+        ? item.comment_md
+        : "";
+  if (commentRaw && commentRaw.trim() !== "") {
+    out += labelNumber ? `비고 ${labelNumber}` : "비고";
+    out += "이 요지에 대한 코멘트";
+    out += proseTextContent(commentRaw);
+  }
   return out;
 }
 
@@ -155,12 +173,17 @@ async function main() {
 
   const caseIds = cases.map((c) => c.case_id);
   const hlByCase = new Map();
+  // commentMigrationCandidates — comment_body_md=NULL AND summary_items 안 commentMd
+  // 가 존재하는 case 들. 그 case 의 case.comment highlight 는 새 case.summary 안
+  // commentMd portion 으로 이전 대상.
+  const commentMigrationByCase = new Map();
   for (let i = 0; i < caseIds.length; i += 500) {
     const slice = caseIds.slice(i, i + 500);
     if (slice.length === 0) continue;
+    // case.summary 하이라이트
     const { data: hls, error: he } = await supabase
       .from("user_highlights")
-      .select("highlight_id, target_id, start_offset, end_offset, label")
+      .select("highlight_id, target_id, start_offset, end_offset, label, field_path")
       .eq("user_id", STAFF_USER_ID)
       .eq("target_type", "case")
       .eq("color", "underline")
@@ -176,58 +199,139 @@ async function main() {
       arr.push(h);
       hlByCase.set(h.target_id, arr);
     }
+    // case.comment 하이라이트 — 이전 대상 후보
+    const { data: chls, error: che } = await supabase
+      .from("user_highlights")
+      .select("highlight_id, target_id, start_offset, end_offset, label, field_path")
+      .eq("user_id", STAFF_USER_ID)
+      .eq("target_type", "case")
+      .eq("color", "underline")
+      .eq("field_path", "case.comment")
+      .is("deleted_at", null)
+      .in("target_id", slice);
+    if (che) {
+      console.error("comment 하이라이트 조회 실패:", che.message);
+      process.exit(1);
+    }
+    for (const h of chls ?? []) {
+      const arr = commentMigrationByCase.get(h.target_id) ?? [];
+      arr.push(h);
+      commentMigrationByCase.set(h.target_id, arr);
+    }
   }
   const totalHls = [...hlByCase.values()].reduce((a, arr) => a + arr.length, 0);
+  const totalCommentHls = [...commentMigrationByCase.values()].reduce(
+    (a, arr) => a + arr.length,
+    0,
+  );
   console.log(`staff underline (case.summary): ${totalHls} in ${hlByCase.size} cases`);
+  console.log(
+    `staff underline (case.comment): ${totalCommentHls} in ${commentMigrationByCase.size} cases (이전 대상 후보)`,
+  );
 
   // 2) case 별 새 textContent + highlight label 검색.
   const updates = [];
   let matched = 0;
   let unmatched = 0;
   let noChange = 0;
+  let movedFromComment = 0;
   for (const c of cases) {
-    const hls = hlByCase.get(c.case_id);
-    if (!hls || hls.length === 0) continue;
     const newText = caseSummaryTextContent(c);
-    // 같은 case 안 여러 highlight 가 같은 label 인 경우 순서 보장 — 기존 start_offset
-    // 오름차순으로 처리 + cursor 진행.
-    const sorted = [...hls].sort((a, b) => a.start_offset - b.start_offset);
-    let cursor = 0;
-    for (const h of sorted) {
-      const label = h.label ?? "";
-      if (!label) {
-        unmatched += 1;
-        continue;
+    // 2-1) case.summary 하이라이트 재배치
+    const hls = hlByCase.get(c.case_id);
+    if (hls && hls.length > 0) {
+      // 같은 case 안 여러 highlight 가 같은 label 인 경우 순서 보장 — 기존 start_offset
+      // 오름차순으로 처리 + cursor 진행.
+      const sorted = [...hls].sort((a, b) => a.start_offset - b.start_offset);
+      let cursor = 0;
+      for (const h of sorted) {
+        const label = h.label ?? "";
+        if (!label) {
+          unmatched += 1;
+          continue;
+        }
+        const idx = newText.indexOf(label, cursor);
+        if (idx < 0) {
+          unmatched += 1;
+          console.warn(
+            `  unmatched(summary): ${c.case_number} hl=${h.highlight_id} label="${label.slice(0, 50)}${label.length > 50 ? "…" : ""}"`,
+          );
+          continue;
+        }
+        matched += 1;
+        const newStart = idx;
+        const newEnd = idx + label.length;
+        if (newStart === h.start_offset && newEnd === h.end_offset) {
+          noChange += 1;
+        } else {
+          updates.push({
+            highlight_id: h.highlight_id,
+            case_number: c.case_number,
+            start_offset: newStart,
+            end_offset: newEnd,
+            content_hash: sha256Hex(label),
+            // field_path 변경 없음 — case.summary 그대로
+            old: `summary ${h.start_offset}→${h.end_offset}`,
+            newRange: `summary ${newStart}→${newEnd}`,
+          });
+        }
+        cursor = newEnd;
       }
-      const idx = newText.indexOf(label, cursor);
-      if (idx < 0) {
-        unmatched += 1;
-        console.warn(
-          `  unmatched: ${c.case_number} hl=${h.highlight_id} label="${label.slice(0, 50)}${label.length > 50 ? "…" : ""}"`,
+    }
+    // 2-2) case.comment 하이라이트 이전 — 마이그된 case (comment_body_md=null,
+    // 항목별 commentMd 존재) 의 경우 본문이 case.summary 안 commentMd portion 으로
+    // 옮겨갔으므로 label 을 새 case.summary textContent 에서 찾아 fieldPath + offset
+    // 재배치.
+    const commentHls = commentMigrationByCase.get(c.case_id);
+    if (commentHls && commentHls.length > 0) {
+      const hasItemComments = (c.summary_items ?? []).some(
+        (it) =>
+          (typeof it.commentMd === "string" && it.commentMd.trim() !== "") ||
+          (typeof it.comment_md === "string" && it.comment_md.trim() !== ""),
+      );
+      // 이전 대상은 "comment_body_md 가 비고, 항목별 비고는 채워져 있는 경우" 만.
+      // (case_body 가 comment_body_md 있으면 별도 섹션으로 그대로 노출하므로
+      // case.comment 하이라이트도 그대로 유지되어야 한다.)
+      if (!c.comment_body_md && hasItemComments) {
+        const sorted = [...commentHls].sort(
+          (a, b) => a.start_offset - b.start_offset,
         );
-        continue;
+        let cursor = 0;
+        for (const h of sorted) {
+          const label = h.label ?? "";
+          if (!label) {
+            unmatched += 1;
+            continue;
+          }
+          const idx = newText.indexOf(label, cursor);
+          if (idx < 0) {
+            unmatched += 1;
+            console.warn(
+              `  unmatched(comment): ${c.case_number} hl=${h.highlight_id} label="${label.slice(0, 50)}${label.length > 50 ? "…" : ""}"`,
+            );
+            continue;
+          }
+          matched += 1;
+          movedFromComment += 1;
+          const newStart = idx;
+          const newEnd = idx + label.length;
+          updates.push({
+            highlight_id: h.highlight_id,
+            case_number: c.case_number,
+            field_path: "case.summary",
+            start_offset: newStart,
+            end_offset: newEnd,
+            content_hash: sha256Hex(label),
+            old: `comment ${h.start_offset}→${h.end_offset}`,
+            newRange: `summary ${newStart}→${newEnd}`,
+          });
+          cursor = newEnd;
+        }
       }
-      matched += 1;
-      const newStart = idx;
-      const newEnd = idx + label.length;
-      if (newStart === h.start_offset && newEnd === h.end_offset) {
-        noChange += 1;
-      } else {
-        updates.push({
-          highlight_id: h.highlight_id,
-          case_number: c.case_number,
-          start_offset: newStart,
-          end_offset: newEnd,
-          content_hash: sha256Hex(label),
-          old: `${h.start_offset}→${h.end_offset}`,
-          newRange: `${newStart}→${newEnd}`,
-        });
-      }
-      cursor = newEnd;
     }
   }
   console.log(
-    `\n── 결과 ── matched=${matched}, unmatched=${unmatched}, no-change=${noChange}, will-update=${updates.length}`,
+    `\n── 결과 ── matched=${matched}, unmatched=${unmatched}, no-change=${noChange}, will-update=${updates.length} (이전 case.comment→case.summary: ${movedFromComment})`,
   );
 
   if (updates.slice(0, 10).length > 0) {

@@ -21,7 +21,9 @@ const createSchema = z.object({
   endOffset: z.coerce.number().int().positive(),
   contentHash: z.string().max(128),
   color: highlightColorSchema,
-  excerpt: z.string().min(1).max(500),
+  // 입력 한도는 paragraph 한 단락(보통 1~2 KB) 보다 충분히 크게.
+  // DB 저장(`label` 컬럼) 은 createHighlight 에서 500 자 slice 로 truncate 됨.
+  excerpt: z.string().min(1).max(10000),
 });
 
 const deleteSchema = z.object({

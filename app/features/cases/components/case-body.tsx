@@ -1,8 +1,14 @@
 // 판례 본문 렌더 — 학습과목 뷰어(case-viewer)와 학습정보 뷰어(latest-case-viewer) 공용. feat-3-205.
 // highlights 를 전달하면 본문에 하이라이트 오버레이 활성(학습과목), 미전달이면 read-only(학습정보).
 
-import { FileTextIcon, PencilIcon, StarIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  FileTextIcon,
+  PencilIcon,
+  StarIcon,
+} from "lucide-react";
+import { Fragment, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -26,15 +32,30 @@ import {
   type CaseReference,
 } from "~/features/cases/labels";
 import {
+  endsWithInlineQuote,
   isMarkdownTableParagraph,
   parseImageParagraph,
   renderTableHtml,
+  startsWithInlineQuote,
 } from "~/features/cases/lib/case-markdown";
 import type { ExamProblemRef } from "~/features/problems/labels";
 
 type HighlightsProp = React.ComponentProps<
   typeof HighlightOverlay
 >["highlights"];
+
+// 같은 placement 형제 case 들 사이 ←/→ 이동 데이터.
+// 조문 뷰어의 PrevNextButton 과 동일한 위치(헤더 카드 상단 우측) 에 노출하기 위해
+// case-viewer 가 미리 계산해 CaseBody 에 전달. latest-case-viewer 처럼 형제 정보가
+// 없는 read-only 진입점에서는 미전달(null) → 버튼 미노출.
+export interface CasePrevNextData {
+  idx: number;
+  total: number;
+  prevHref: string | null;
+  prevLabel: string | null;
+  nextHref: string | null;
+  nextLabel: string | null;
+}
 
 export function CaseBody({
   kase,
@@ -44,6 +65,7 @@ export function CaseBody({
   canEditReferences = false,
   highlights,
   viewerIsStaff = false,
+  prevNext = null,
 }: {
   kase: CaseDetail;
   examProblems: ExamProblemRef[];
@@ -55,6 +77,8 @@ export function CaseBody({
   /** 전달 시 본문 하이라이트 오버레이 활성(학습과목). 미전달이면 read-only(학습정보). */
   highlights?: HighlightsProp;
   viewerIsStaff?: boolean;
+  /** 형제 case ←/→ 이동. null 이면 헤더에서 prev/next 영역 미노출. */
+  prevNext?: CasePrevNextData | null;
 }) {
   const enableHighlights = highlights !== undefined;
   // staff "수정" 버튼 — 현재 경로(학생 판례 뷰어 / 학습정보 뷰어 등)를 returnTo 로 전달해
@@ -77,9 +101,37 @@ export function CaseBody({
         ? [{ title: kase.summaryTitle ?? "", body: kase.summaryBodyMd }]
         : [];
 
+  // 비고 분리 정책 (사용자 결정):
+  //   • 항목별 비고 (summary_items[i].commentMd) → SummaryBlock 안에서 본문 바로 아래
+  //     "비고 [N]" 라벨로 인라인 렌더 — 수험생이 어느 요지에 대한 코멘트인지 즉시 파악.
+  //   • 전체 비고 (cases.comment_body_md) → 판결문 전체에 대한 일반 비고. 별도 섹션으로
+  //     아래쪽에 노출.
+  // 두 종류가 동시에 존재할 수 있다(공존). 항목별 비고 자동 조립 로직은 폐기.
+
   return (
     <Card className="border-border rounded-xl border shadow-sm">
       <CardHeader className="px-6 pt-6 pb-4">
+        {/* ←/→ 형제 case 이동 + breadcrumb eyebrow — 조문 뷰어의 prev/next 위치와 동일.
+            형제가 없거나 placement 미설정 case 면 미노출. */}
+        {prevNext ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-widest uppercase">
+              판례 {prevNext.idx + 1} / {prevNext.total}
+            </p>
+            <div className="flex items-center gap-2">
+              <CasePrevNextButton
+                direction="prev"
+                href={prevNext.prevHref}
+                label={prevNext.prevLabel}
+              />
+              <CasePrevNextButton
+                direction="next"
+                href={prevNext.nextHref}
+                label={prevNext.nextLabel}
+              />
+            </div>
+          </div>
+        ) : null}
         {/* 판례 닉네임 — 중요 판례의 통칭(예: 수지상 세포 사건). 선택. */}
         {kase.nickname ? (
           <p className="mb-1.5 text-[13px] font-bold tracking-tight text-amber-700 dark:text-amber-400">
@@ -203,6 +255,7 @@ export function CaseBody({
                     key={i}
                     title={it.title}
                     body={it.body}
+                    commentMd={it.commentMd}
                     showLabel={summaryItems.length > 1}
                     index={i}
                     caseTitle={kase.caseTitle}
@@ -266,7 +319,7 @@ export function CaseBody({
         ) : null}
 
         {kase.commentBodyMd ? (
-          <BodySection title="비고">
+          <BodySection title="비고 (전체 판결문)">
             <MaybeHighlight
               on={enableHighlights}
               fieldPath="case.comment"
@@ -306,6 +359,48 @@ export function CaseBody({
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+// ── ←/→ 사건번호 이동 버튼 ─────────────────────────────────────
+// 조문 뷰어의 PrevNextButton 과 같은 톤 — 카드 헤더 안 우측, rounded-full border,
+// 사건번호 mono, href=null → disabled "처음" / "마지막" pill.
+function CasePrevNextButton({
+  direction,
+  href,
+  label,
+}: {
+  direction: "prev" | "next";
+  href: string | null;
+  label: string | null;
+}) {
+  const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
+  const aria = direction === "prev" ? "이전 판례" : "다음 판례";
+  if (!href || !label) {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-label={aria}
+        className="border-border bg-background text-muted-foreground inline-flex h-8 cursor-not-allowed items-center gap-1 rounded-full border px-3 text-xs opacity-40"
+      >
+        {direction === "prev" ? <Icon className="size-3.5" /> : null}
+        <span>{direction === "prev" ? "처음" : "마지막"}</span>
+        {direction === "next" ? <Icon className="size-3.5" /> : null}
+      </button>
+    );
+  }
+  return (
+    <Link
+      to={href}
+      viewTransition
+      aria-label={`${aria}: ${label}`}
+      className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1 rounded-full border px-3 font-mono text-[12px] font-semibold transition-colors"
+    >
+      {direction === "prev" ? <Icon className="size-3.5 shrink-0" /> : null}
+      <span className="max-w-[120px] truncate">{label}</span>
+      {direction === "next" ? <Icon className="size-3.5 shrink-0" /> : null}
+    </Link>
   );
 }
 
@@ -461,20 +556,28 @@ function BodySection({
   );
 }
 
-// ── 판결요지 단일 항목 ([N] 라벨 + 본문) ─────────────────────
+// ── 판결요지 단일 항목 ([N] 라벨 + 본문 + 항목별 비고) ───────
 // 파서는 title 앞에 "[1] " 같은 prefix 를 이미 붙여 두지만, 여러 항목일 때 시각적 라벨 분리.
 // caseTitle prop 은 호환성 위해 유지하되 사용 안 함 — 학생/공개 case header 에 case_title 이
 // 표시되지 않으므로 "헤더와 중복" 휴리스틱이 오작동했음(2001후2238 처럼 case_title 과
 // summary[0].title 이 동일하면 박스 안 제목이 통째로 사라지던 버그). 항상 표시한다.
+//
+// commentMd — 항목별 비고. 같은 인덱스의 소제목·본문에 직접 매칭되는 코멘트.
+// 비고가 있으면 본문 아래에 amber 강조 카드로 인라인 렌더 ("비고 [N]" 라벨).
+// 수험생이 "어느 비고가 어느 요지에 대한 것인지" 직관적으로 파악 가능.
+// textContent 흐름: title + body + commentMd. 기존 case.summary 하이라이트는
+// recompute-summary-highlights 스크립트로 새 offset 으로 재정렬됨.
 function SummaryBlock({
   title,
   body,
+  commentMd,
   showLabel,
   index,
   caseTitle: _caseTitle,
 }: {
   title: string;
   body: string;
+  commentMd?: string;
   showLabel: boolean;
   index: number;
   caseTitle: string;
@@ -492,6 +595,7 @@ function SummaryBlock({
   const shownTitle = displayTitle;
   // label 의 [N] 표기에서 숫자만 추출 — 박스형 제목 배지에는 숫자만 보이게.
   const labelNumber = label ? label.replace(/[^\d]/g, "") : null;
+  const hasComment = !!commentMd && commentMd.trim() !== "";
   return (
     <div className="space-y-2">
       {label || shownTitle ? (
@@ -509,6 +613,29 @@ function SummaryBlock({
         </div>
       ) : null}
       {body ? <Prose text={body} /> : null}
+      {hasComment ? (
+        // 항목별 비고 — `<details>` 펼침형 (사용자 결정: 디자인 옵션 F).
+        // 기본 펼침. 헤더 좌측 chevron 이 펼침 상태에 따라 회전.
+        // textContent 흐름 — `<details>` 가 닫혀도 child 텍스트는 DOM 에 그대로 있어
+        // case.summary 컨테이너의 textContent 가 변하지 않음 → 하이라이트 안정.
+        <details
+          className="group/comment border-border bg-card mt-3 rounded-md border"
+          open
+        >
+          <summary className="bg-muted/40 flex cursor-pointer items-center gap-2 rounded-t-md px-3.5 py-2 select-none [&::-webkit-details-marker]:hidden">
+            <ChevronRightIcon className="text-muted-foreground size-3 shrink-0 transition-transform group-open/comment:rotate-90" />
+            <span className="bg-primary text-primary-foreground inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider">
+              비고{labelNumber ? ` ${labelNumber}` : ""}
+            </span>
+            <span className="text-muted-foreground text-[11px]">
+              이 요지에 대한 코멘트
+            </span>
+          </summary>
+          <div className="border-border border-t px-4 py-3">
+            <Prose text={commentMd!} />
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -519,30 +646,118 @@ function SummaryBlock({
 // element 로 풀어 시각적 밑줄로 표시한다. 마커 외의 HTML 태그는 들어오지 않는다는
 // 전제 — 파서가 `<u>` 만 입력한다 — 이라 dangerouslySetInnerHTML 은 쓰지 않는다.
 // admin-case-edit 의 라이브 preview 에서도 사용하므로 export.
+//
+// 인라인 임베드 이미지 — `"…"\n\n![](url)\n\n"…"` 패턴(image-only paragraph 가
+// 따옴표류로 끝나는 앞 paragraph 와 따옴표류로 시작하는 뒤 paragraph 사이에
+// 끼인 경우)을 한 paragraph 로 병합해 텍스트 흐름 안에 작은 글리프로 렌더한다.
+// staff highlight 의 textContent 흐름은 image 의 alt 가 "" 이면 변동 없음
+// (figcaption 도 alt 빈에서는 미렌더) — offset 정합성 유지.
+type ProseBlock =
+  | {
+      kind: "para";
+      parts: (
+        | { kind: "text"; text: string }
+        | { kind: "inlineImg"; alt: string; url: string }
+      )[];
+    }
+  | { kind: "blockImg"; alt: string; url: string }
+  | { kind: "table"; markdown: string };
+
+function buildProseBlocks(text: string): ProseBlock[] {
+  const paras = text.split(/\n{2,}/).filter((s) => s.trim() !== "");
+  const blocks: ProseBlock[] = [];
+  for (let i = 0; i < paras.length; i++) {
+    const p = paras[i];
+    const img = parseImageParagraph(p);
+    if (img) {
+      // 인라인 임베드 검출 — 직전이 텍스트 paragraph 이고 따옴표로 끝나며,
+      // 다음이 따옴표로 시작하는 텍스트 paragraph 일 때만 병합.
+      const prev = blocks.length > 0 ? blocks[blocks.length - 1] : null;
+      const next = paras[i + 1] ?? null;
+      const prevLast =
+        prev && prev.kind === "para"
+          ? prev.parts[prev.parts.length - 1]
+          : null;
+      const prevText =
+        prevLast && prevLast.kind === "text" ? prevLast.text : null;
+      const nextIsText = next != null && parseImageParagraph(next) == null;
+      if (
+        prev &&
+        prev.kind === "para" &&
+        prevText != null &&
+        endsWithInlineQuote(prevText) &&
+        nextIsText &&
+        next != null &&
+        startsWithInlineQuote(next)
+      ) {
+        prev.parts.push({ kind: "inlineImg", alt: img.alt, url: img.url });
+        prev.parts.push({ kind: "text", text: next });
+        i += 1; // skip the next paragraph — consumed.
+        continue;
+      }
+      blocks.push({ kind: "blockImg", alt: img.alt, url: img.url });
+      continue;
+    }
+    if (isMarkdownTableParagraph(p)) {
+      blocks.push({ kind: "table", markdown: p });
+      continue;
+    }
+    blocks.push({ kind: "para", parts: [{ kind: "text", text: p }] });
+  }
+  return blocks;
+}
+
 export function Prose({ text }: { text: string }) {
   // paragraph 분리는 DB 본문의 `\n\n` 만으로 결정 — staff 가 admin-case-edit 에서 입력한 그대로.
   // 각 paragraph 의 타입을 한 번 분기:
-  //   - 이미지 단독(`![alt](url)`) → <img> 블록 (staff highlight 의 textContent 흐름에
-  //     "" 만 기여하므로 기존 offset 영향 없음)
+  //   - 이미지 단독(`![alt](url)`) → 따옴표 컨텍스트면 인라인 임베드, 아니면 <img> 블록
   //   - GFM 표 → <table> 블록 (sanitized HTML). 표 cell 텍스트가 textContent 흐름에
   //     추가되므로 표 후속의 staff highlight offset 은 staff 가 새로 그을 때 정합
   //   - 그 외 → 텍스트 + `<u>` 마커 (기존 동작)
-  const paras = text.split(/\n{2,}/).filter((s) => s.trim() !== "");
+  const blocks = buildProseBlocks(text);
   return (
     <div className="text-foreground/90 dark:text-foreground/85 space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
-      {paras.map((p, i) => {
-        const img = parseImageParagraph(p);
-        if (img) return <InlineImage key={i} alt={img.alt} url={img.url} />;
-        if (isMarkdownTableParagraph(p))
-          return <InlineTable key={i} markdown={p} />;
+      {blocks.map((b, i) => {
+        if (b.kind === "blockImg")
+          return <InlineImage key={i} alt={b.alt} url={b.url} />;
+        if (b.kind === "table") return <InlineTable key={i} markdown={b.markdown} />;
         return (
           // whitespace-pre-wrap — 연속 공백 + 줄넘김 모두 보존(타이핑 그대로 렌더).
           <p key={i} className="whitespace-pre-wrap">
-            {renderWithUnderline(p)}
+            {b.parts.map((part, j) =>
+              part.kind === "text" ? (
+                <Fragment key={j}>{renderWithUnderline(part.text)}</Fragment>
+              ) : (
+                <EmbeddedInlineImage key={j} alt={part.alt} url={part.url} />
+              ),
+            )}
           </p>
         );
       })}
     </div>
+  );
+}
+
+// 인라인 임베드 이미지 — 따옴표 컨텍스트로 검출된 글리프성 이미지.
+// figure/보더/배경 없이 텍스트 line-height 에 맞춘 작은 inline element.
+// 클릭 시 원본을 새 탭에서 열어 확대 확인 가능. alt 가 있으면 title 로 노출
+// (캡션 노출은 인라인 흐름을 깨므로 생략 — 그래도 a11y/툴팁은 유지).
+function EmbeddedInlineImage({ alt, url }: { alt: string; url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="mx-0.5 inline-flex items-center align-middle"
+      title={alt || undefined}
+    >
+      <img
+        src={url}
+        alt={alt}
+        loading="lazy"
+        className="inline-block max-h-[1.8em] w-auto object-contain align-middle"
+      />
+    </a>
   );
 }
 
@@ -575,11 +790,12 @@ function InlineImage({ alt, url }: { alt: string; url: string }) {
 
 // GFM 표 paragraph — sanitized HTML 로 변환 후 dangerouslySetInnerHTML.
 // renderTableHtml 의 DOMPurify whitelist 가 table 관련 태그만 허용.
+// 셀 안 <img> 는 셀 너비에 맞춰 contain, 높이 160px 상한 — 표가 거대해지지 않게.
 function InlineTable({ markdown }: { markdown: string }) {
   const html = renderTableHtml(markdown);
   return (
     <div
-      className="case-md-table my-3 overflow-x-auto"
+      className="case-md-table my-3 overflow-x-auto [&_img]:mx-auto [&_img]:block [&_img]:max-h-[160px] [&_img]:w-auto [&_img]:object-contain"
       // 허용 태그 제한 + isomorphic-dompurify sanitize — 안전.
       dangerouslySetInnerHTML={{ __html: html }}
     />

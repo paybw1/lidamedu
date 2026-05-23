@@ -20,7 +20,10 @@ import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
 
 import { reflowNumbering } from "~/features/cases/lib/reflow-numbering";
-import { MARKDOWN_TABLE_TEMPLATE } from "~/features/cases/lib/case-markdown";
+import {
+  MARKDOWN_TABLE_TEMPLATE,
+  clipboardToMarkdownTable,
+} from "~/features/cases/lib/case-markdown";
 import { Prose } from "~/features/cases/components/case-body";
 
 import { Button } from "~/core/components/ui/button";
@@ -44,6 +47,10 @@ import {
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
 import type { SystematicNode } from "~/features/laws/queries.server";
+import {
+  getCaseSiblings,
+  type CaseSibling,
+} from "~/features/cases/queries.server";
 import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import type { RelatedArticle } from "~/features/relations/labels";
 import {
@@ -94,10 +101,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       role,
       relatedArticles: [] as RelatedArticle[],
       systematicNodes: [] as SystematicNode[],
+      siblings: null as Awaited<ReturnType<typeof getCaseSiblings>>,
     };
-  const [{ data: row, error }, relatedArticles] = await Promise.all([
+  const [{ data: row, error }, relatedArticles, siblings] = await Promise.all([
     client.from("cases").select("*").eq("case_id", caseId).maybeSingle(),
     getRelatedArticlesByCase(client, caseId),
+    getCaseSiblings(client, caseId),
   ]);
   if (error) throw data(error.message, { status: 500 });
   if (!row) throw data("Case not found", { status: 404 });
@@ -116,6 +125,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     role,
     relatedArticles,
     systematicNodes,
+    siblings,
   };
 }
 
@@ -129,7 +139,7 @@ const COURTS: Array<keyof typeof COURT_LABELS> = [
 /* ── 페이지 ──────────────────────────────────────────────────────────── */
 
 export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
-  const { kase, returnTo, role, relatedArticles, systematicNodes } =
+  const { kase, returnTo, role, relatedArticles, systematicNodes, siblings } =
     loaderData;
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
@@ -332,21 +342,27 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
           </CardContent>
         </Card>
 
-        {/* 비고 · 평석 — 출처 필드는 학생 화면에서도 표시 안 하므로 입력 폼에서 제거.
-            DB 의 comment_source 컬럼·기존 데이터는 보존(이전 입력 손실 방지). */}
+        {/* 비고 · 평석 — 두 종류 분리 (사용자 결정):
+              · 항목별 비고 → SummaryItemsEditor 안 "비고 [N]" textarea (요지별 인라인)
+              · 전체 비고 → 이 textarea. 판결문 전체에 대한 일반 코멘트. */}
         <Card>
           <CardHeader>
             <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              비고 · 평석
+              비고 — 전체 판결문
+            </p>
+            <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+              요지 [N] 항목별 코멘트는 위 "요지" 섹션 각 항목 안의 비고 [N] 입력란을
+              사용하세요. 이 필드는 <strong>판결문 전체에 걸친 일반 비고</strong>를
+              위한 용도입니다.
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Field label="비고/평석 본문 (Markdown)" htmlFor="commentBodyMd">
+            <Field label="비고 본문 (Markdown)" htmlFor="commentBodyMd">
               <ReflowableTextarea
                 name="commentBodyMd"
                 defaultValue={kase?.comment_body_md ?? ""}
                 rows={6}
-                fieldLabel="비고/평석 본문"
+                fieldLabel="비고 본문"
                 caseId={isNew ? null : kase.case_id}
                 imagePosition="comment"
               />
@@ -412,9 +428,215 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
             primaryNodeId={kase.primary_node_id ?? null}
             systematicNodes={systematicNodes}
           />
+          {siblings && siblings.siblings.length > 1 ? (
+            <CaseSourceSeqEditor
+              caseId={kase.case_id}
+              kind={siblings.kind}
+              siblings={siblings.siblings}
+            />
+          ) : null}
         </>
       ) : null}
     </AdminShell>
+  );
+}
+
+/* ── CaseSourceSeqEditor — 체계도 위치(source_seq) 수동 재배열 ─────────
+   같은 placement(primary_node_id 우선, 없으면 primary_article_id) 형제 case 들의
+   순서를 staff 가 직접 조정. 학생 판례 트리는 같은 노드 안에서 source_asc 정렬을
+   기본으로 사용하므로(체계도 axis), 여기서의 순서가 학습 흐름에 그대로 반영됨.
+
+   UI: 형제 목록 + 현재 case 하이라이트 + ↑↓·맨위·맨아래 버튼 + 위치 입력.
+   서버는 매 호출마다 모든 형제의 source_seq 를 1..N 으로 renumber (작은 set 가정). */
+function CaseSourceSeqEditor({
+  caseId,
+  kind,
+  siblings,
+}: {
+  caseId: string;
+  kind: "node" | "article";
+  siblings: CaseSibling[];
+}) {
+  const moveFetcher = useFetcher<{ ok?: boolean; error?: string; from?: number; to?: number; noop?: boolean }>();
+  const revalidator = useRevalidator();
+  const currentIdx = siblings.findIndex((s) => s.caseId === caseId);
+  const isFirst = currentIdx === 0;
+  const isLast = currentIdx === siblings.length - 1;
+  const isBusy = moveFetcher.state !== "idle";
+
+  // toast + revalidate
+  const handledRef = useRef<unknown>(null);
+  useEffect(() => {
+    if (moveFetcher.state !== "idle") return;
+    const r = moveFetcher.data;
+    if (!r || r === handledRef.current) return;
+    handledRef.current = r;
+    if (r.ok) {
+      if (!r.noop) {
+        toast.success(`순서 변경: ${r.from} → ${r.to}`);
+        revalidator.revalidate();
+      }
+    } else if (r.error) {
+      toast.error(r.error);
+    }
+  }, [moveFetcher.state, moveFetcher.data, revalidator]);
+
+  function submitMove(
+    direction: "up" | "down" | "first" | "last" | "to_position",
+    position?: number,
+  ) {
+    const fd = new FormData();
+    fd.set("intent", "move_source_seq");
+    fd.set("caseId", caseId);
+    fd.set("direction", direction);
+    if (direction === "to_position" && position) {
+      fd.set("position", String(position));
+    }
+    moveFetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  const [positionInput, setPositionInput] = useState(
+    currentIdx >= 0 ? String(currentIdx + 1) : "",
+  );
+  // currentIdx 가 외부 revalidate 로 바뀌면 input 도 동기화.
+  useEffect(() => {
+    if (currentIdx >= 0) setPositionInput(String(currentIdx + 1));
+  }, [currentIdx]);
+
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          체계도 위치 (source_seq)
+        </p>
+        <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+          학생 판례 트리(체계도 축)에서 같은{" "}
+          <strong>{kind === "node" ? "체계도 노드" : "조문"}</strong> 안 case
+          들의 노출 순서를 조정합니다. 사용자는 원본 자료 순서(source_asc)로
+          노출되며, 여기서 변경한 순서가 그대로 반영됩니다.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* 현재 case 액션 바 */}
+        <div className="bg-muted/30 border-border flex flex-wrap items-center gap-2 rounded-md border px-3 py-2">
+          <span className="text-muted-foreground text-[11px]">
+            현재 위치
+          </span>
+          <span className="text-foreground text-sm font-semibold tabular-nums">
+            {currentIdx >= 0 ? `${currentIdx + 1} / ${siblings.length}` : "—"}
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-[11px]"
+              disabled={isFirst || isBusy}
+              onClick={() => submitMove("first")}
+            >
+              맨 위
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-[11px]"
+              disabled={isFirst || isBusy}
+              onClick={() => submitMove("up")}
+            >
+              ↑ 위로
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-[11px]"
+              disabled={isLast || isBusy}
+              onClick={() => submitMove("down")}
+            >
+              ↓ 아래로
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-[11px]"
+              disabled={isLast || isBusy}
+              onClick={() => submitMove("last")}
+            >
+              맨 아래
+            </Button>
+            <span className="text-muted-foreground ml-2 text-[11px]">|</span>
+            <Input
+              type="number"
+              min={1}
+              max={siblings.length}
+              value={positionInput}
+              onChange={(e) => setPositionInput(e.currentTarget.value)}
+              className="h-7 w-16 px-2 text-center text-[12px] tabular-nums"
+              aria-label="이동할 위치"
+              disabled={isBusy}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-[11px]"
+              disabled={isBusy}
+              onClick={() => {
+                const n = parseInt(positionInput, 10);
+                if (!Number.isInteger(n) || n < 1 || n > siblings.length) {
+                  toast.error(`1 ~ ${siblings.length} 사이 숫자를 입력하세요.`);
+                  return;
+                }
+                if (n === currentIdx + 1) return;
+                submitMove("to_position", n);
+              }}
+            >
+              위치로
+            </Button>
+          </div>
+        </div>
+
+        {/* 형제 목록 — 읽기 전용 (시각적 위치 확인용) */}
+        <ol className="border-border divide-border space-y-0 divide-y rounded-md border text-[12px]">
+          {siblings.map((s, i) => {
+            const isCurrent = s.caseId === caseId;
+            return (
+              <li
+                key={s.caseId}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5",
+                  isCurrent
+                    ? "bg-amber-50 dark:bg-amber-950/30"
+                    : "hover:bg-muted/30",
+                )}
+              >
+                <span className="text-muted-foreground w-6 shrink-0 text-right font-mono tabular-nums">
+                  {i + 1}
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 font-mono text-[11px]",
+                    isCurrent ? "text-amber-700 dark:text-amber-300 font-bold" : "text-foreground",
+                  )}
+                >
+                  {s.caseNumber}
+                </span>
+                <span className="text-foreground/80 flex-1 truncate">
+                  {s.caseTitle}
+                </span>
+                {isCurrent ? (
+                  <span className="shrink-0 rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-900 dark:bg-amber-700/40 dark:text-amber-200">
+                    현재
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -593,6 +815,97 @@ function _SystematicLinksEditor_DEPRECATED({
 const PATENT_INVENTION_ARTICLE_ID = "c38b3f2d-1e84-4268-9220-f00f0d05001d";
 // 발명 sub-node parent id (patent.b1.b2). 학생 트리 발명 자식 6개를 추려내는 키.
 const PATENT_INVENTION_NODE_ID = "e2145cae-6ae1-4bcb-b477-824e5a9f37d4";
+// 제29조 특허요건 — 4개 leaf sub-node 직접 매핑(산업상 이용가능성/신규성/진보성/확대된 선출원).
+// 같은 parent(patent.b2.b1) 아래 "선출원주의"(제36조 소관)는 의도적으로 제외.
+const PATENT_PATENTABILITY_ARTICLE_ID = "79650d86-1a89-46bb-ae76-323f5e72a05d";
+const PATENT_PATENTABILITY_SUB_NODE_IDS: readonly string[] = [
+  "71569e62-2884-4840-954b-bcc18a957c1e", // 산업상 이용가능성
+  "1d0dcfcc-e4b7-4765-aaa0-f83977732fba", // 신규성
+  "0371855a-405f-4023-82a1-be93e2d06900", // 진보성
+  "0414fdbe-5db4-43d9-85c9-978c1cae23f3", // 확대된 선출원
+];
+
+// 출원인(patent.b2.b3.b1) — 3개 case_only 자식(권리능력/발명자·승계인/공동출원)을
+// 직접 매핑. 메인 조문이 제25조/제33조/제44조 어느 것이든 같은 picker 노출.
+const PATENT_APPLICANT_PARENT_NODE_ID = "8692dd8d-74b7-4ad8-ad0e-105a224eda98";
+const PATENT_APPLICANT_ARTICLE_IDS: readonly string[] = [
+  "2f59441e-c048-4304-97f1-30c131b4fea2", // 제25조 외국인의 권리능력 → 권리능력
+  "7996f53d-74c8-4b25-81ce-28d8049c3e10", // 제33조 특허를 받을 수 있는 자 → 발명자/승계인
+  "743b334c-1562-4216-8b72-73c7b82c3e7d", // 제44조 공동출원 → 공동출원
+];
+
+// 특허출원에 필요한 서류(patent.b2.b4.b1) — 5개 case_only 자식(기재방법일반/연결부/
+// 젭슨청구항/PBP청구항/기능식표현청구항). 메인 조문이 제42·42의2·42의3·43조
+// 어느 것이든 같은 picker 노출.
+const PATENT_DESCRIPTION_PARENT_NODE_ID = "f52d55dc-3d25-4acd-82eb-f246dcaf165c";
+const PATENT_DESCRIPTION_ARTICLE_IDS: readonly string[] = [
+  "7acfbe55-ec48-42c2-a5b5-615c92c98185", // 제42조 특허출원
+  "7f9bbc74-df0c-406c-a775-4a9123885c46", // 제42조의2 특허출원일 등
+  "e34d4487-8474-4598-acac-71ae3b979002", // 제42조의3 외국어특허출원 등
+  "2a6d5b58-7bcd-4309-8a5b-a6fa2cebf67e", // 제43조 요약서
+];
+
+// 메인 조문별 sub-node 분류 — 메인 조문이 학습상 다중 분기되는 경우 staff 가
+// sub-node 를 명시 선택한다. 학생 트리는 sub-node 가 set 되면 그 leaf 한 곳에만
+// case 를 노출(`primary_node_id` 우선; `getCasePlacementMaps` 참조).
+//   • 제2조 정의 → 발명 부모(patent.b1.b2)의 자식 6개 (일반발명/BM발명/...)
+//   • 제29조 특허요건 → 4개 leaf node 직접 (산업상 이용가능성/신규성/진보성/확대된 선출원)
+//   • 제25·33·44조 출원인 → 출원인 부모(patent.b2.b3.b1)의 case_only 자식 3개
+//                          (권리능력/발명자·승계인/공동출원)
+//   • 제42·42의2·42의3·43조 출원서류 → 특허출원에 필요한 서류 부모(patent.b2.b4.b1)의
+//                          case_only 자식 5개 (기재방법일반/연결부/젭슨청구항/PBP청구항/
+//                          기능식표현청구항)
+// 확장 시 SUB_NODE_CONFIGS 에 항목 추가.
+type SubNodeArticleConfig = {
+  articleId: string;
+  articleLabel: string;
+  resolveSubNodes: (all: SystematicNode[]) => SystematicNode[];
+};
+
+const resolvePatentApplicantSubNodes = (all: SystematicNode[]) =>
+  all
+    .filter(
+      (n) => n.parentId === PATENT_APPLICANT_PARENT_NODE_ID && n.caseOnly,
+    )
+    .sort((a, b) => a.ord - b.ord);
+
+const resolvePatentDescriptionSubNodes = (all: SystematicNode[]) =>
+  all
+    .filter(
+      (n) => n.parentId === PATENT_DESCRIPTION_PARENT_NODE_ID && n.caseOnly,
+    )
+    .sort((a, b) => a.ord - b.ord);
+
+const SUB_NODE_CONFIGS: readonly SubNodeArticleConfig[] = [
+  {
+    articleId: PATENT_INVENTION_ARTICLE_ID,
+    articleLabel: "제2조 발명",
+    resolveSubNodes: (all) =>
+      all
+        .filter((n) => n.parentId === PATENT_INVENTION_NODE_ID)
+        .sort((a, b) => a.path.localeCompare(b.path)),
+  },
+  {
+    articleId: PATENT_PATENTABILITY_ARTICLE_ID,
+    articleLabel: "제29조 특허요건",
+    resolveSubNodes: (all) => {
+      const byId = new Map(all.map((n) => [n.nodeId, n] as const));
+      return PATENT_PATENTABILITY_SUB_NODE_IDS.map((id) => byId.get(id)).filter(
+        (n): n is SystematicNode => Boolean(n),
+      );
+    },
+  },
+  ...PATENT_APPLICANT_ARTICLE_IDS.map((articleId) => ({
+    articleId,
+    articleLabel: "출원인",
+    resolveSubNodes: resolvePatentApplicantSubNodes,
+  })),
+  ...PATENT_DESCRIPTION_ARTICLE_IDS.map((articleId) => ({
+    articleId,
+    articleLabel: "특허출원에 필요한 서류",
+    resolveSubNodes: resolvePatentDescriptionSubNodes,
+  })),
+];
 
 function RelatedArticlesEditor({
   caseId,
@@ -617,21 +930,103 @@ function RelatedArticlesEditor({
   const [selectedLaw, setSelectedLaw] = useState<LawSubjectSlug>(
     (subjectLaws[0] ?? "patent") as LawSubjectSlug,
   );
-  // 발명 자식 6 sub-node — 학생 트리의 발명 sub 분류 select 에 사용.
-  const inventionSubNodes = useMemo(
+  // 각 sub-node config 의 실제 노드 리스트 (systematicNodes 로부터 resolve).
+  // 판례 트리 컨텍스트 — caseDisplayLabel 이 있으면 선택지 라벨에 오버라이드 적용
+  // (예: "일반발명" → "발명일반"). 학생 판례 트리와 라벨 일치.
+  const caseViewNodes = useMemo(
     () =>
-      systematicNodes
-        .filter((n) => n.parentId === PATENT_INVENTION_NODE_ID)
-        .sort((a, b) => a.path.localeCompare(b.path)),
+      systematicNodes.map((n) =>
+        n.caseDisplayLabel
+          ? { ...n, displayLabel: n.caseDisplayLabel }
+          : n,
+      ),
     [systematicNodes],
   );
-  // 발명 sub-node UI 노출 조건:
-  //   1) staff 가 ★ 로 제2조 발명을 메인으로 명시 설정한 경우 (primary_article_id 일치)
-  //   2) 자동 배치로 primary_node_id 가 발명 자식(일반발명/BM발명/...) 으로 set 된 경우
+  const configsWithNodes = useMemo(
+    () =>
+      SUB_NODE_CONFIGS.map((cfg) => ({
+        cfg,
+        nodes: cfg.resolveSubNodes(caseViewNodes),
+      })),
+    [caseViewNodes],
+  );
+  // 활성 config 결정 — sub-node UI 노출 + setPrimary 시 articleId 참조용.
+  //   1) staff 가 ★ 로 메인 조문(제2조·제29조)을 명시 설정한 경우 (primary_article_id 일치)
+  //   2) 자동 배치로 primary_node_id 가 1차 sub-node 중 하나로 set 된 경우
+  //   3) primary_node_id 가 1차 sub-node 의 case_only 자식(예: 동일성)인 경우
+  //      — 부모(신규성)를 통해 config 를 찾아 2차 picker 가 정상 노출되도록.
   //      이때 primary_article_id 가 null 이어도 sub-node 편집 가능해야 staff 가 보정 가능.
-  const isInventionPrimary =
-    primaryArticleId === PATENT_INVENTION_ARTICLE_ID ||
-    inventionSubNodes.some((n) => n.nodeId === primaryNodeId);
+  const activeSubNodeConfig = useMemo(() => {
+    const byArticle = configsWithNodes.find(
+      (c) => c.cfg.articleId === primaryArticleId,
+    );
+    if (byArticle) return byArticle;
+    if (primaryNodeId) {
+      const byNode = configsWithNodes.find((c) =>
+        c.nodes.some((n) => n.nodeId === primaryNodeId),
+      );
+      if (byNode) return byNode;
+      // primary 가 1차 sub-node 의 자식이면 부모 기준으로 config 매칭.
+      const me = caseViewNodes.find((n) => n.nodeId === primaryNodeId);
+      if (me?.parentId) {
+        const byParent = configsWithNodes.find((c) =>
+          c.nodes.some((n) => n.nodeId === me.parentId),
+        );
+        if (byParent) return byParent;
+      }
+    }
+    return null;
+  }, [configsWithNodes, primaryArticleId, primaryNodeId, caseViewNodes]);
+
+  // 2차 sub-node picker — 1차 선택값(또는 그 부모)에 case_only 자식이 있으면 노출.
+  //   예: 제29조 → 신규성 → 신규성일반/동일성. 판례 트리 전용 (case_only) 자식만
+  //   다단 선택 대상이라 조문/문제 트리는 영향 없음.
+  // 반환:
+  //   • parentId: 1차 picker 가 가리키는 노드 (예: 신규성)
+  //   • parentLabel: 그 노드 라벨 (라벨 오버라이드 반영됨)
+  //   • children: case_only 자식 노드 리스트 (ord 오름차순)
+  //   • selectedChildId: primary_node_id 가 자식이면 그 id, 부모면 null
+  const level2 = useMemo(() => {
+    if (!activeSubNodeConfig || !primaryNodeId) return null;
+    // primary 가 1차 옵션 자체일 때 — 그 노드의 자식을 2차 후보로.
+    const asLevel1 = activeSubNodeConfig.nodes.find(
+      (n) => n.nodeId === primaryNodeId,
+    );
+    if (asLevel1) {
+      const children = caseViewNodes
+        .filter((n) => n.parentId === asLevel1.nodeId && n.caseOnly)
+        .sort((a, b) => a.ord - b.ord);
+      if (children.length === 0) return null;
+      return {
+        parentId: asLevel1.nodeId,
+        parentLabel: asLevel1.displayLabel,
+        children,
+        selectedChildId: null as string | null,
+      };
+    }
+    // primary 가 1차 옵션 자식(case_only) — 부모를 통해 2차 picker 재구성.
+    const me = caseViewNodes.find((n) => n.nodeId === primaryNodeId);
+    if (!me?.parentId) return null;
+    const parent = activeSubNodeConfig.nodes.find(
+      (n) => n.nodeId === me.parentId,
+    );
+    if (!parent) return null;
+    const children = caseViewNodes
+      .filter((n) => n.parentId === parent.nodeId && n.caseOnly)
+      .sort((a, b) => a.ord - b.ord);
+    if (children.length === 0) return null;
+    return {
+      parentId: parent.nodeId,
+      parentLabel: parent.displayLabel,
+      children,
+      selectedChildId: primaryNodeId,
+    };
+  }, [activeSubNodeConfig, primaryNodeId, caseViewNodes]);
+
+  // 1차 select 가 표시할 값 — primary 가 2차 자식이면 부모(예: 신규성)를 노출.
+  const level1Value = level2
+    ? level2.parentId
+    : (primaryNodeId ?? "");
 
   // 메인 placement 설정 — articleId(null=해제) + 발명일 때 nodeId 동시 전달.
   function setPrimary(articleId: string | null, nodeId: string | null) {
@@ -706,9 +1101,9 @@ function RelatedArticlesEditor({
         <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
           관련 조문을 매핑하고, 그 중 <strong>메인 조문</strong>(★)을
           한 개 선택하세요. 학생 화면의 판례 트리에서는 그 메인 조문이 속한 위치 한
-          곳에만 노출됩니다. <strong>제2조 발명</strong>이 메인이면 발명 sub-node
-          (일반발명/BM발명/용도(의약)발명/미생물발명/식물발명/실시) 중 하나를 함께
-          선택합니다.
+          곳에만 노출됩니다. <strong>제2조 발명</strong>(일반발명/BM발명/용도(의약)/
+          미생물/식물/실시) 또는 <strong>제29조 특허요건</strong>(산업상 이용가능성/
+          신규성/진보성/확대된 선출원)이 메인이면 sub-node 도 함께 선택합니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -742,12 +1137,7 @@ function RelatedArticlesEditor({
                       onClick={() =>
                         isPrimary
                           ? setPrimary(null, null)
-                          : setPrimary(
-                              a.articleId,
-                              a.articleId === PATENT_INVENTION_ARTICLE_ID
-                                ? null
-                                : null,
-                            )
+                          : setPrimary(a.articleId, null)
                       }
                       className={cn(
                         "transition-colors",
@@ -801,38 +1191,73 @@ function RelatedArticlesEditor({
           </p>
         )}
 
-        {/* 발명 sub-node select — 메인이 제2조(발명)일 때만 노출 */}
-        {isInventionPrimary ? (
+        {/* sub-node select — 메인 조문이 sub-node 분기 대상(제2조 발명 / 제29조 특허요건 /
+            제25·33·44조 출원인 / 제42·42의2·42의3·43조 출원서류)일 때만 노출.
+            1차 picker 의 선택값에 case_only 자식이 있으면(예: 신규성 → 신규성일반/동일성)
+            2차 picker 가 같은 박스 안에 함께 노출된다. */}
+        {activeSubNodeConfig ? (
           <div className="border-amber-300 bg-amber-50/60 dark:border-amber-700/50 dark:bg-amber-950/20 flex flex-wrap items-end gap-2 rounded-md border px-3 py-2">
             <Field
-              label="발명 sub-node (메인이 제2조 발명일 때 필수)"
-              htmlFor="inventionSubNode"
+              label={`${activeSubNodeConfig.cfg.articleLabel} sub-node (메인이 ${activeSubNodeConfig.cfg.articleLabel}일 때 필수)`}
+              htmlFor="primarySubNode"
             >
               <AdminSelect
-                id="inventionSubNode"
-                value={primaryNodeId ?? ""}
+                id="primarySubNode"
+                value={level1Value}
                 onChange={(e) => {
                   const v = e.currentTarget.value;
-                  // sub-node 변경 시 메인 조문도 제2조 발명으로 명시 — 자동 배치 결과의
-                  // primary_article_id=null 상태를 staff 첫 변경에서 일관화.
-                  setPrimary(PATENT_INVENTION_ARTICLE_ID, v === "" ? null : v);
+                  // 1차 변경 시 2차 선택은 자연 해제 — primary_node_id 가 새 1차 옵션
+                  // (또는 null = 조문 자체) 으로 set 되면서 level2 가 재계산된다.
+                  setPrimary(
+                    activeSubNodeConfig.cfg.articleId,
+                    v === "" ? null : v,
+                  );
                 }}
                 className="w-56"
               >
-                <option value="">— 선택 안 함 (발명 노드 자체) —</option>
-                {inventionSubNodes.map((n) => (
+                <option value="">— 선택 안 함 (조문 자체) —</option>
+                {activeSubNodeConfig.nodes.map((n) => (
                   <option key={n.nodeId} value={n.nodeId}>
                     {n.displayLabel}
                   </option>
                 ))}
               </AdminSelect>
             </Field>
+            {level2 ? (
+              <Field
+                label={`${level2.parentLabel} 세부 분기 (선택)`}
+                htmlFor="primarySubSubNode"
+              >
+                <AdminSelect
+                  id="primarySubSubNode"
+                  value={level2.selectedChildId ?? ""}
+                  onChange={(e) => {
+                    const v = e.currentTarget.value;
+                    // 빈 값 → 부모 노드(예: 신규성) 자체로 placement 복귀.
+                    setPrimary(
+                      activeSubNodeConfig.cfg.articleId,
+                      v === "" ? level2.parentId : v,
+                    );
+                  }}
+                  className="w-44"
+                >
+                  <option value="">— {level2.parentLabel} 그대로 —</option>
+                  {level2.children.map((c) => (
+                    <option key={c.nodeId} value={c.nodeId}>
+                      {c.displayLabel}
+                    </option>
+                  ))}
+                </AdminSelect>
+              </Field>
+            ) : null}
           </div>
         ) : null}
 
-        {primaryArticleId && !isInventionPrimary && primaryNodeId ? (
+        {primaryArticleId && !activeSubNodeConfig && primaryNodeId ? (
           <p className="text-muted-foreground text-[11px]">
-            메인이 제2조 발명이 아니므로 sub-node 는 자동으로 무시됩니다.
+            메인 조문이 sub-node 분기 대상(제2조 발명 / 제29조 특허요건 /
+            제25·33·44조 출원인 / 제42·42의2·42의3·43조 출원서류)이 아니므로
+            sub-node 는 자동으로 무시됩니다.
           </p>
         ) : null}
 
@@ -1008,21 +1433,38 @@ function ReflowableTextarea({
     }
   }
 
+  // 클립보드 paste 핸들러 — 세 가지 형식 자동 감지:
+  //   1) 이미지 파일 → storage 업로드 + ![](url) 삽입 (caseId 필요)
+  //   2) HTML/TSV 표 → GFM markdown 표로 변환·삽입 (caseId 무관, create 모드도 가능)
+  //   3) 그 외 → 기본 paste 동작 (텍스트)
   function onPasteImage(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    if (!caseId) return; // create 모드 — 기본 paste 동작 유지
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i];
-      if (it.kind === "file" && it.type.startsWith("image/")) {
-        const file = it.getAsFile();
-        if (!file) continue;
-        e.preventDefault();
-        const el = e.currentTarget;
-        const start = el.selectionStart ?? el.value.length;
-        void uploadAndInsertImage(file, start);
-        return;
+    // 이미지 우선 (caseId 있을 때만 — create 모드에서는 storage 업로드 불가)
+    if (caseId) {
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          if (it.kind === "file" && it.type.startsWith("image/")) {
+            const file = it.getAsFile();
+            if (!file) continue;
+            e.preventDefault();
+            const el = e.currentTarget;
+            const start = el.selectionStart ?? el.value.length;
+            void uploadAndInsertImage(file, start);
+            return;
+          }
+        }
       }
+    }
+    // 표 변환 시도 — HTML <table> 또는 TSV 일 때만 매칭. 일반 텍스트는 null 반환.
+    const tableMd = clipboardToMarkdownTable(e.clipboardData ?? null);
+    if (tableMd) {
+      e.preventDefault();
+      const el = e.currentTarget;
+      const start = el.selectionStart ?? el.value.length;
+      insertAtCursor(tableMd, start);
+      toast.success(`${fieldLabel} 에 표가 markdown 으로 변환되어 삽입됐습니다.`);
+      return;
     }
     // 텍스트 paste — 기본 동작 유지
   }
@@ -1065,7 +1507,7 @@ function ReflowableTextarea({
           variant="outline"
           className="h-6 px-2 text-[10px]"
           onClick={() => insertAtCursor(MARKDOWN_TABLE_TEMPLATE)}
-          title="cursor 위치에 markdown 표 템플릿 삽입"
+          title="cursor 위치에 markdown 표 템플릿 삽입. Excel/Word 표는 그냥 Ctrl+V 로 paste 해도 자동 변환됨."
         >
           표 삽입
         </Button>
@@ -1140,7 +1582,7 @@ function ReflowableTextarea({
 
 /* ── SummaryItemsEditor ──────────────────────────────────────────────── */
 
-type SummaryItem = { title: string; body: string };
+type SummaryItem = { title: string; body: string; commentMd?: string };
 
 function parseSummaryItems(raw: unknown): SummaryItem[] {
   if (!Array.isArray(raw)) return [];
@@ -1148,9 +1590,16 @@ function parseSummaryItems(raw: unknown): SummaryItem[] {
   for (const it of raw) {
     if (!it || typeof it !== "object") continue;
     const o = it as Record<string, unknown>;
+    const comment =
+      typeof o.commentMd === "string"
+        ? o.commentMd
+        : typeof o.comment_md === "string"
+          ? (o.comment_md as string)
+          : "";
     out.push({
       title: typeof o.title === "string" ? o.title : "",
       body: typeof o.body === "string" ? o.body : "",
+      ...(comment !== "" ? { commentMd: comment } : {}),
     });
   }
   return out;
@@ -1218,6 +1667,24 @@ function SummaryItemsEditor({
             caseId={caseId}
             imagePosition="summary"
           />
+          {/* 항목별 비고 — 이 요지 소제목·본문에 대한 코멘트.
+              학생 화면의 요지 [N] 본문 바로 아래에 amber 카드로 인라인 노출
+              ("비고 [N]" 라벨). 비어 있으면 비고 노출 안 함. */}
+          <div className="space-y-1 border-t border-dashed pt-2">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+              비고 [{i + 1}] — 이 요지에 대한 코멘트 (인라인 노출)
+            </p>
+            <ReflowableTextarea
+              value={it.commentMd ?? ""}
+              onChange={(next) =>
+                patch(i, { commentMd: next === "" ? undefined : next })
+              }
+              rows={3}
+              fieldLabel={`비고 [${i + 1}]`}
+              caseId={caseId}
+              imagePosition="comment"
+            />
+          </div>
         </div>
       ))}
       <Button

@@ -4,6 +4,8 @@
 /.react-router/
 /build/
 .env
+# 작업용 hwpx 임시 추출 디렉토리 (cd 후 unzip 결과)
+/.tmp-hwpx/
 
 # HWPX 추출/파싱 결과 — 원본 hwpx 에서 derive 가능. 대용량 (수 MB).
 /source/_converted/problem-extracted/
