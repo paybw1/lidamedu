@@ -9,6 +9,7 @@ import {
   FlagIcon,
   ListTreeIcon,
   PanelRightIcon,
+  PencilIcon,
   TimerIcon,
   VideoIcon,
 } from "lucide-react";
@@ -810,13 +811,39 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                     </span>
                   ) : null}
                   {problem.year ? (
-                    <span className="text-muted-foreground ml-auto text-xs tabular-nums">
+                    <span
+                      className={cn(
+                        "text-muted-foreground text-xs tabular-nums",
+                        canEditComment ? "" : "ml-auto",
+                      )}
+                    >
                       {problem.year}년
                       {problem.examRoundNo ? ` ${problem.examRoundNo}회` : ""}
                       {problem.problemNumber
                         ? ` · 문제 ${problem.problemNumber}번`
                         : ""}
                     </span>
+                  ) : null}
+                  {/* 운영자 — 문제·해설 수정 (staff 전용). case-viewer 의 헤더
+                      메타 줄 수정 버튼과 동일 위치 패턴. */}
+                  {canEditComment ? (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-7 gap-1 text-xs",
+                        problem.year ? "" : "ml-auto",
+                      )}
+                    >
+                      <Link
+                        to={`/admin/problems/${problem.problemId}?returnTo=${encodeURIComponent(
+                          `/subjects/${subject.slug}/problems/${problem.problemId}`,
+                        )}`}
+                      >
+                        <PencilIcon className="size-3" /> 수정
+                      </Link>
+                    </Button>
                   ) : null}
                 </div>
 

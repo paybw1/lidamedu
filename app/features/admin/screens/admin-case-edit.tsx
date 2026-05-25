@@ -14,7 +14,7 @@ import {
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 import { toast } from "sonner";
@@ -950,6 +950,71 @@ function RelatedArticlesEditor({
       })),
     [caseViewNodes],
   );
+  // 일반 메인 노드 picker — sub-node config 가 없는 메인 조문도 staff 가
+  // 체계도 노드를 명시 선택 가능하게. 메인 조문이 ASL로 매핑된 모든 노드를 옵션.
+  // path 라벨(부모 > 자식 체인)로 staff 가 노드 위치를 한눈에 파악.
+  const nodeMap = useMemo(
+    () => new Map(caseViewNodes.map((n) => [n.nodeId, n] as const)),
+    [caseViewNodes],
+  );
+  const nodesByArticle = useMemo(() => {
+    const m = new Map<string, typeof caseViewNodes>();
+    for (const n of caseViewNodes) {
+      for (const a of n.articles) {
+        const arr = m.get(a.articleId);
+        if (arr) arr.push(n);
+        else m.set(a.articleId, [n]);
+      }
+    }
+    return m;
+  }, [caseViewNodes]);
+  const pathOf = useCallback(
+    (nodeId: string): string => {
+      const parts: string[] = [];
+      let cur = nodeMap.get(nodeId);
+      let safety = 10;
+      while (cur && safety-- > 0) {
+        parts.unshift(cur.displayLabel);
+        cur = cur.parentId ? nodeMap.get(cur.parentId) : undefined;
+      }
+      return parts.join(" > ");
+    },
+    [nodeMap],
+  );
+  // ASL 매핑 노드 + 그 자손 중 caseOnly 인 노드들도 옵션에 포함.
+  // caseOnly 자손은 ASL 직접 매핑이 없는 판례 전용 세부 분기(예: 효력내용 ↘
+  // 하자/자유기술/권리남용에 의한 제한). staff 가 picker 에서 바로 선택 가능.
+  // 비-caseOnly 자손은 별도 ASL 매핑 영역이므로 포함하지 않는다 — 그게 정작
+  // 같은 article 의 매핑이라면 이미 1단계 ASL 검색에 잡힌다.
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string, typeof caseViewNodes>();
+    for (const n of caseViewNodes) {
+      if (!n.parentId) continue;
+      const arr = m.get(n.parentId);
+      if (arr) arr.push(n);
+      else m.set(n.parentId, [n]);
+    }
+    return m;
+  }, [caseViewNodes]);
+  const primaryAslNodes = useMemo(() => {
+    if (!primaryArticleId) return [];
+    const aslNodes = nodesByArticle.get(primaryArticleId) ?? [];
+    const out: typeof caseViewNodes = [...aslNodes];
+    const seen = new Set(aslNodes.map((n) => n.nodeId));
+    const queue = [...seen];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      for (const child of childrenByParent.get(id) ?? []) {
+        if (!child.caseOnly || seen.has(child.nodeId)) continue;
+        seen.add(child.nodeId);
+        out.push(child);
+        queue.push(child.nodeId);
+      }
+    }
+    return out.sort((a, b) =>
+      pathOf(a.nodeId).localeCompare(pathOf(b.nodeId), "ko"),
+    );
+  }, [primaryArticleId, nodesByArticle, childrenByParent, pathOf]);
   // 활성 config 결정 — sub-node UI 노출 + setPrimary 시 articleId 참조용.
   //   1) staff 가 ★ 로 메인 조문(제2조·제29조)을 명시 설정한 경우 (primary_article_id 일치)
   //   2) 자동 배치로 primary_node_id 가 1차 sub-node 중 하나로 set 된 경우
@@ -1253,12 +1318,55 @@ function RelatedArticlesEditor({
           </div>
         ) : null}
 
-        {primaryArticleId && !activeSubNodeConfig && primaryNodeId ? (
-          <p className="text-muted-foreground text-[11px]">
-            메인 조문이 sub-node 분기 대상(제2조 발명 / 제29조 특허요건 /
-            제25·33·44조 출원인 / 제42·42의2·42의3·43조 출원서류)이 아니므로
-            sub-node 는 자동으로 무시됩니다.
-          </p>
+        {/* 일반 메인 노드 picker — sub-node config 없는 메인 조문도 staff 가
+            체계도 노드를 명시 선택. 메인 조문이 여러 노드에 ASL 매핑된 경우
+            한 case 가 양쪽에 산포되는 단일 placement 위반을 여기서 해소. */}
+        {primaryArticleId && !activeSubNodeConfig ? (
+          primaryAslNodes.length === 0 ? (
+            <p className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-[11px]">
+              이 메인 조문은 체계도(<code>article_systematic_links</code>)에
+              매핑되어 있지 않습니다. 학생 판례 트리의 체계도 axis 에는
+              노출되지 않습니다.
+            </p>
+          ) : (
+            <div className="border-amber-300 bg-amber-50/60 dark:border-amber-700/50 dark:bg-amber-950/20 flex flex-wrap items-end gap-2 rounded-md border px-3 py-2">
+              <Field label="체계도 메인 노드" htmlFor="primaryGenericNode">
+                <AdminSelect
+                  id="primaryGenericNode"
+                  value={primaryNodeId ?? ""}
+                  onChange={(e) => {
+                    const v = e.currentTarget.value;
+                    setPrimary(primaryArticleId, v === "" ? null : v);
+                  }}
+                  className="w-72"
+                >
+                  <option value="">
+                    — 자동 (미지정 — 매핑된 모든 노드에 산포){" "}
+                    {primaryAslNodes.length >= 2 ? "⚠" : ""}
+                  </option>
+                  {primaryAslNodes.map((n) => (
+                    <option key={n.nodeId} value={n.nodeId}>
+                      {pathOf(n.nodeId)}
+                    </option>
+                  ))}
+                </AdminSelect>
+              </Field>
+              <p className="text-muted-foreground basis-full text-[11px] leading-relaxed">
+                {primaryAslNodes.length >= 2 ? (
+                  <>
+                    메인 조문이 <strong>{primaryAslNodes.length}개</strong>
+                    체계도 노드에 매핑되어 있어, 미지정 시 학생 판례 트리에서
+                    양쪽에 중복 노출됩니다. 한 노드를 메인으로 지정하세요.
+                  </>
+                ) : (
+                  <>
+                    메인 조문이 한 체계도 노드에만 매핑되어 있어 미지정으로
+                    두어도 됩니다. 다른 노드로 옮기려면 위에서 선택하세요.
+                  </>
+                )}
+              </p>
+            </div>
+          )
         ) : null}
 
         <addFetcher.Form

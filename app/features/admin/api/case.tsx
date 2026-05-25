@@ -138,6 +138,14 @@ export async function action({ request }: Route.ActionArgs) {
     if (!z.string().uuid().safeParse(caseId).success) {
       return data({ error: "Invalid id" }, { status: 400 });
     }
+    // 삭제 후 redirect 대상 결정에 필요한 placement·subject 정보를 미리 조회.
+    // viewer URL 로 그대로 보내면 그 case 는 deleted_at 으로 404 가 떨어진다 →
+    // 노드(또는 조문) 목록 URL 로 변환해 같은 컨텍스트를 유지한다.
+    const { data: kase } = await client
+      .from("cases")
+      .select("primary_node_id, primary_article_id, subject_laws")
+      .eq("case_id", caseId)
+      .maybeSingle();
     const { error } = await client
       .from("cases")
       .update({ deleted_at: new Date().toISOString() })
@@ -150,7 +158,22 @@ export async function action({ request }: Route.ActionArgs) {
       entityType: "case",
       entityId: caseId,
     });
-    return redirect(safeReturnTo(fd.get("returnTo")));
+    const returnToRaw = fd.get("returnTo");
+    const returnToStr = typeof returnToRaw === "string" ? returnToRaw : "";
+    const isViewerReturn =
+      /^\/subjects\/[a-z_-]+\/cases\/[a-f0-9-]+(\?|#|$)/i.test(returnToStr);
+    if (isViewerReturn && kase) {
+      const slug = (kase.subject_laws ?? [])[0] ?? "patent";
+      const params = new URLSearchParams();
+      params.set("tab", "cases");
+      if (kase.primary_node_id) {
+        params.set("case_node", kase.primary_node_id);
+      } else if (kase.primary_article_id) {
+        params.set("case_article", kase.primary_article_id);
+      }
+      return redirect(`/subjects/${slug}?${params.toString()}`);
+    }
+    return redirect(safeReturnTo(returnToRaw));
   }
 
   if (intent === "upload_full_text_pdf" || intent === "remove_full_text_pdf") {

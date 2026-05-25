@@ -386,6 +386,14 @@ export default [
         "/admin/cases/edit/:caseId",
         "features/admin/screens/admin-case-edit.tsx",
       ),
+      route(
+        "/admin/cases/violations",
+        "features/admin/screens/admin-case-violations.tsx",
+      ),
+      route(
+        "/admin/cases/orphan-highlights",
+        "features/admin/screens/admin-orphan-highlights.tsx",
+      ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
       route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),
       route(

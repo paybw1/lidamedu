@@ -76,6 +76,19 @@ const SCOPES: ProblemScope[] = ["unit", "comprehensive"];
 // header 의 검토완료 버튼이 form 속성으로 메인 폼을 가리키기 위한 고정 id.
 const FORM_ID = "admin-problem-edit-form";
 
+// returnTo 화이트리스트 — open-redirect 방지. admin-case-edit 의 safeReturnTo 와
+// 동일 패턴. 우리 도메인 안의 안전 경로만 허용:
+//   1) /admin/problems    — admin 목록·필터 보존 (?law=patent 등 query 포함)
+//   2) /subjects/<slug>/problems/<uuid> — 학생/공개 문제 viewer (viewer "수정" 진입점)
+function safeReturnTo(raw: unknown): string {
+  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//"))
+    return "/admin/problems";
+  if (/^\/admin\/problems(\/|\?|$)/.test(raw)) return raw;
+  if (/^\/subjects\/[a-z_-]+\/problems\/[a-f0-9-]+(\?|#|$)/i.test(raw))
+    return raw;
+  return "/admin/problems";
+}
+
 export async function loader({ params, request }: Route.LoaderArgs) {
   const problemId = params.problemId;
   if (!problemId) throw data("Missing problemId", { status: 404 });
@@ -409,6 +422,12 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   // feat-9-001 RAG dirty hook — 문제 본문/보기/박스 변경 청크 재생성.
   runAfterResponse(reindexProblems([problemId]));
+  // viewer "수정" 등 외부에서 진입한 경우 returnTo 가 form 에 carry 됨 — 저장 후
+  // 본래 화면으로 복귀. 없으면 기존 동작 그대로 (같은 페이지 + toast).
+  const returnToRaw = fd.get("returnTo");
+  if (typeof returnToRaw === "string" && returnToRaw.trim() !== "") {
+    throw redirect(safeReturnTo(returnToRaw));
+  }
   return { ok: true, kind: andReview ? "save_and_review" : "save" } as const;
 }
 
@@ -418,9 +437,16 @@ export default function AdminProblemEdit({
 }: Route.ComponentProps) {
   const { problem, mcqPacks, role } = loaderData;
   // 목록에서 편집 진입 시 따라오는 필터 쿼리를 보존해 ← 클릭 시 같은 필터 상태로 되돌린다.
+  // viewer "수정" 진입은 ?returnTo=<viewer URL> 로 들어오는데, 이 경우 ← 가 그
+  // viewer 로 복귀하도록 우선 적용 + form hidden 으로 carry 해 저장 후 redirect.
   const [editSearchParams] = useSearchParams();
+  const returnTo = editSearchParams.get("returnTo");
   const backQs = editSearchParams.toString();
-  const backTo = backQs ? `/admin/problems?${backQs}` : "/admin/problems";
+  const backTo = returnTo
+    ? returnTo
+    : backQs
+      ? `/admin/problems?${backQs}`
+      : "/admin/problems";
   // 메타 중 자식 (ChoiceEditor / BoxItemEditor) 의 자동 OX·기본 종류에 영향을 주는 값은 lift 해서
   // 저장 전에도 즉시 반영되게 한다. origin 은 showRound 토글에 사용.
   const [origin, setOrigin] = useState<ProblemOrigin>(problem.origin);
@@ -605,6 +631,9 @@ export default function AdminProblemEdit({
           name="choiceCount"
           value={problem.choices.length}
         />
+        {returnTo ? (
+          <input type="hidden" name="returnTo" value={returnTo} />
+        ) : null}
 
         <Card>
           <CardHeader>

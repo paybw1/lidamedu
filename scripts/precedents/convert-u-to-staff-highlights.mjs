@@ -42,33 +42,63 @@ const supabase = createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-// ─── reflowNumberingSafe (app/features/cases/lib/reflow-numbering.ts 와 동일 로직) ───
-const NUMBERING_RX =
-  /(?<=[가-힣)\]]\.?)\s+(?=(?:\d\.|[가나다라마바사아자차카타파하]\.|\d\)|[가나다라마바사아자차카타파하]\)|\(\d\)|\([가나다라마바사아자차카타파하]\))\s)/g;
-const SUBTITLE_WORDS = "판단|결론|사실관계|검토";
-const SUBTITLE_RX = new RegExp(
-  `(?<=(?:\\d\\.|[가나다라마바사아자차카타파하]\\.|\\d\\)|[가나다라마바사아자차카타파하]\\)|\\(\\d\\)|\\([가나다라마바사아자차카타파하]\\))\\s(?:${SUBTITLE_WORDS}))\\s+(?=\\S)`,
-  "g",
-);
-function reflowNumberingSafe(text) {
-  return text.replace(NUMBERING_RX, "\n\n").replace(SUBTITLE_RX, "\n\n");
-}
-
 function sha256Hex(s) {
   return createHash("sha256").update(s, "utf-8").digest("hex");
 }
 
 function stripU(s) {
-  return s.replace(/<\/?u>/g, "");
+  return (s ?? "").replace(/<\/?u>/g, "");
 }
 
-// ─── textContent flow 모방 ─────────────────────────────────────────────────
-// case-body.tsx 의 SummaryBlock + Prose 의 React 렌더가 만드는 textContent 시퀀스를
-// 그대로 재현해서 각 <u>...</u> 마커의 누적 offset 을 계산.
+// ─── textContent flow 모방 — case-body.tsx 의 SummaryBlock + Prose 정확히 따라감.
+//     reflow 는 적용하지 않는다 (case-body 가 본문을 reflow 없이 그대로 렌더).
+//     labelNumber 는 괄호 없는 숫자만, dupHeader 휴리스틱은 폐기(commit 8aa2fa6),
+//     commentMd 분기는 "비고 N" + "이 요지에 대한 코멘트" + Prose(commentMd) 추가.
+//     단, 본문에 <u> 가 박혀있는 동안의 누적 offset 계산이 목적이므로 consume() 가
+//     본문에서 <u> 마커를 strip 하면서 그 안 텍스트만 acc 에 누적.
 
-// case.summary container: 여러 SummaryBlock 의 textContent 가 순서대로 누적.
-// 각 SummaryBlock = (label?) + (shownTitle?) + body paragraphs (reflow 후 split)
-function buildSummaryOffsets(summaryItems, caseTitle) {
+// markdown 표 detection (case-body 의 isMarkdownTableParagraph 정합)
+function isMarkdownTableParagraph(p) {
+  const lines = p.split("\n");
+  if (lines.length < 2) return false;
+  const head = lines[0].trim();
+  const sep = lines[1].trim();
+  if (!head.startsWith("|") || !head.endsWith("|")) return false;
+  if (!sep.startsWith("|") || !sep.endsWith("|")) return false;
+  const cells = sep
+    .slice(1, -1)
+    .split("|")
+    .map((c) => c.trim());
+  if (cells.length === 0) return false;
+  return cells.every((c) => /^:?-{3,}:?$/.test(c));
+}
+// 표 paragraph 의 textContent — header + body row cells join.
+function tableTextContent(p) {
+  const lines = p.split("\n");
+  const cells = [];
+  for (const l of lines) {
+    const t = l.trim();
+    if (!t.startsWith("|")) continue;
+    if (/^\|\s*:?-{3,}:?(\s*\|\s*:?-{3,}:?\s*)+\|$/.test(t)) continue;
+    const arr = t
+      .slice(1, t.endsWith("|") ? -1 : undefined)
+      .split("|")
+      .map((c) => c.trim());
+    cells.push(...arr);
+  }
+  return cells.join("");
+}
+const IMG_PARA_RE =
+  /^!\[(?<alt>[^\]]*)\]\((?<url>[^)\s]+)(?:\s+"[^"]*")?\)\s*$/;
+function parseImageParagraph(p) {
+  const m = p.trim().match(IMG_PARA_RE);
+  if (!m || !m.groups) return null;
+  return { alt: m.groups.alt, url: m.groups.url };
+}
+
+// consume — 주어진 문자열을 acc 에 누적하면서 <u>...</u> 마커를 검출.
+// 마커 안 텍스트의 acc 상 [start, end) 를 marks 에 push.
+function makeConsumer() {
   let acc = "";
   const marks = [];
   function consume(s) {
@@ -86,70 +116,97 @@ function buildSummaryOffsets(summaryItems, caseTitle) {
     }
     acc += s.slice(last);
   }
+  return {
+    consume,
+    get acc() {
+      return acc;
+    },
+    marks,
+  };
+}
 
-  const showLabel = summaryItems.length > 1;
+// Prose 의 textContent — paragraph 별 처리 (이미지/표/텍스트).
+// case-body.tsx 의 buildProseBlocks + Prose 와 정확히 정합. reflow 없음.
+function feedProse(text, c) {
+  if (!text) return;
+  const paras = text.split(/\n{2,}/).filter((s) => s.trim() !== "");
+  for (const p of paras) {
+    const img = parseImageParagraph(p);
+    if (img) {
+      // InlineImage 의 figcaption = alt (alt 있을 때만 텍스트로 출력).
+      // img element 자체는 textContent 빈.
+      c.consume(img.alt ?? "");
+      continue;
+    }
+    if (isMarkdownTableParagraph(p)) {
+      // 표 paragraph 에는 <u> 마커 검사하지 않음 — 표 안에 <u> 있을 경우 stripU 만.
+      c.consume(stripU(tableTextContent(p)));
+      continue;
+    }
+    c.consume(p);
+  }
+}
+
+// SummaryBlock textContent — labelNumber + displayTitle + Prose(body) [+ "비고 N" +
+// "이 요지에 대한 코멘트" + Prose(commentMd)].
+function feedSummaryItem(item, index, totalItems, c) {
+  const t = item.title ?? "";
+  let label = null;
+  let displayTitle = t;
+  const m = t.match(/^\[(\d+)\]\s*(.*)$/);
+  if (m) {
+    label = `[${m[1]}]`;
+    displayTitle = m[2];
+  }
+  const showLabel = totalItems > 1;
+  if (showLabel && !label) label = `[${index + 1}]`;
+  const labelNumber = label ? label.replace(/[^\d]/g, "") : null;
+
+  if (labelNumber) c.consume(labelNumber);
+  c.consume(displayTitle);
+  feedProse(item.body ?? "", c);
+
+  const commentRaw =
+    typeof item.commentMd === "string"
+      ? item.commentMd
+      : typeof item.comment_md === "string"
+        ? item.comment_md
+        : "";
+  if (commentRaw && commentRaw.trim() !== "") {
+    c.consume(labelNumber ? `비고 ${labelNumber}` : "비고");
+    c.consume("이 요지에 대한 코멘트");
+    feedProse(commentRaw, c);
+  }
+}
+
+// case.summary container — 여러 SummaryBlock 누적.
+function buildSummaryOffsets(summaryItems) {
+  const c = makeConsumer();
   for (let i = 0; i < summaryItems.length; i += 1) {
-    const it = summaryItems[i];
-    let label = null;
-    let displayTitle = it.title ?? "";
-    const tm = displayTitle.match(/^\[(\d+)\]\s*(.*)$/);
-    if (tm) {
-      label = `[${tm[1]}]`;
-      displayTitle = tm[2];
-    }
-    if (showLabel && !label) label = `[${i + 1}]`;
-
-    const titleStripped = stripU(displayTitle).trim();
-    const dupHeader =
-      titleStripped !== "" && titleStripped === (caseTitle ?? "").trim();
-    const shownTitle = dupHeader ? "" : displayTitle;
-
-    if (label || shownTitle) {
-      if (label) consume(label);
-      if (shownTitle) consume(shownTitle);
-    }
-    if (it.body) {
-      const paras = reflowNumberingSafe(it.body)
-        .split(/\n{2,}/)
-        .filter((s) => s.trim() !== "");
-      for (const p of paras) consume(p);
-    }
+    feedSummaryItem(summaryItems[i], i, summaryItems.length, c);
   }
-  return { textContent: acc, marks };
+  return { textContent: c.acc, marks: c.marks };
 }
 
-// case.reasoning / case.comment container: Prose 1개. body paragraphs.
+// case.reasoning / case.comment container — Prose 1개.
 function buildProseOffsets(text) {
-  let acc = "";
-  const marks = [];
-  function consume(s) {
-    if (!s) return;
-    const re = /<u>([\s\S]*?)<\/u>/g;
-    let last = 0;
-    let m;
-    while ((m = re.exec(s)) !== null) {
-      acc += s.slice(last, m.index);
-      const start = acc.length;
-      acc += m[1];
-      const end = acc.length;
-      marks.push({ start, end, content: m[1] });
-      last = m.index + m[0].length;
-    }
-    acc += s.slice(last);
-  }
-  const paras = reflowNumberingSafe(text)
-    .split(/\n{2,}/)
-    .filter((s) => s.trim() !== "");
-  for (const p of paras) consume(p);
-  return { textContent: acc, marks };
+  const c = makeConsumer();
+  feedProse(text, c);
+  return { textContent: c.acc, marks: c.marks };
 }
 
-// ─── 본문 cleanup — DB 에서 <u> 마커 제거 ─────────────────────────────────
+// ─── 본문 cleanup — DB 에서 <u> 마커 제거 (commentMd 포함) ────────────
 function cleanSummaryItems(items) {
   return (items ?? []).map((it) => ({
     ...it,
     title: it.title ? stripU(it.title) : it.title,
     body: it.body ? stripU(it.body) : it.body,
+    ...(typeof it.commentMd === "string"
+      ? { commentMd: stripU(it.commentMd) }
+      : {}),
+    ...(typeof it.comment_md === "string"
+      ? { comment_md: stripU(it.comment_md) }
+      : {}),
   }));
 }
 
@@ -183,10 +240,7 @@ async function main() {
 
     // summary
     if ((c.summary_items ?? []).length > 0) {
-      const { textContent, marks } = buildSummaryOffsets(
-        c.summary_items,
-        c.case_title,
-      );
+      const { textContent, marks } = buildSummaryOffsets(c.summary_items);
       for (const mk of marks) {
         insertRows.push({
           user_id: STAFF_USER_ID,
@@ -310,30 +364,52 @@ async function main() {
     return;
   }
 
-  // 1) 기존 underline staff highlight 가 중복 생성되지 않도록 사전 정리.
-  console.log(`\n기존 staff underline highlight 제거 (멱등성)...`);
-  const caseIds = updateRows.map((r) => r.case_id);
-  // 배치 in() — 500 개씩.
-  for (let i = 0; i < caseIds.length; i += 500) {
-    const slice = caseIds.slice(i, i + 500);
-    const { error: delErr } = await supabase
+  // 변환 대상은 "본문에 <u> 가 있는 case" 만 (updateRows 로 좁힘). 한 번 변환하면
+  // 본문 <u> 가 제거돼 재실행 시 자동 skip — 멱등. 따라서 사전 delete 불필요.
+  // 이 정책 덕에 staff 가 직접 그어둔 underline highlight 가 보존된다.
+  //
+  // dedup 가드 — 과거 실행 등으로 이미 같은 (target_id, field_path, start, end,
+  // content_hash) underline 이 있으면 skip. 본문에서 <u> 마커는 제거하지만 highlight
+  // 는 새로 만들지 않는다. 본문 cleanup 만 이뤄지므로 다음 실행부터 정합.
+
+  // 1) 대상 case 의 기존 underline highlight (이 user_id 의) 를 모두 가져와 key set 구성.
+  const targetCaseIds = updateRows.map((r) => r.case_id);
+  const existingKey = new Set();
+  for (let i = 0; i < targetCaseIds.length; i += 500) {
+    const slice = targetCaseIds.slice(i, i + 500);
+    const { data: exist, error: exErr } = await supabase
       .from("user_highlights")
-      .delete()
+      .select("target_id, field_path, start_offset, end_offset, content_hash")
       .eq("user_id", STAFF_USER_ID)
       .eq("target_type", "case")
       .eq("color", "underline")
       .in("target_id", slice);
-    if (delErr) {
-      console.error(`  delete batch ${i} 실패:`, delErr.message);
+    if (exErr) {
+      console.error(`  기존 highlight 조회 실패:`, exErr.message);
+      process.exit(1);
+    }
+    for (const r of exist ?? []) {
+      existingKey.add(
+        `${r.target_id}|${r.field_path}|${r.start_offset}|${r.end_offset}|${r.content_hash}`,
+      );
     }
   }
+  const toInsert = insertRows.filter(
+    (r) =>
+      !existingKey.has(
+        `${r.target_id}|${r.field_path}|${r.start_offset}|${r.end_offset}|${r.content_hash}`,
+      ),
+  );
+  const skipped = insertRows.length - toInsert.length;
+  console.log(
+    `\nhighlights insert ... (dedup skip ${skipped}, will insert ${toInsert.length})`,
+  );
 
   // 2) highlights insert (200 개씩).
-  console.log(`\nhighlights insert ...`);
   let okIns = 0;
   let failIns = 0;
-  for (let i = 0; i < insertRows.length; i += 200) {
-    const slice = insertRows.slice(i, i + 200);
+  for (let i = 0; i < toInsert.length; i += 200) {
+    const slice = toInsert.slice(i, i + 200);
     const { error: insErr } = await supabase
       .from("user_highlights")
       .insert(slice);

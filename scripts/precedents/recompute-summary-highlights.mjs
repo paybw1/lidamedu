@@ -159,7 +159,7 @@ async function main() {
   let q = supabase
     .from("cases")
     .select(
-      "case_id, case_number, summary_items, summary_title, summary_body_md",
+      "case_id, case_number, summary_items, summary_title, summary_body_md, comment_body_md, reasoning_md",
     )
     .contains("subject_laws", ["patent"])
     .is("deleted_at", null);
@@ -177,6 +177,8 @@ async function main() {
   // 가 존재하는 case 들. 그 case 의 case.comment highlight 는 새 case.summary 안
   // commentMd portion 으로 이전 대상.
   const commentMigrationByCase = new Map();
+  // case.reasoning highlight — reasoning_md 안에서 forward search 로 offset 재배치.
+  const reasoningByCase = new Map();
   for (let i = 0; i < caseIds.length; i += 500) {
     const slice = caseIds.slice(i, i + 500);
     if (slice.length === 0) continue;
@@ -218,15 +220,41 @@ async function main() {
       arr.push(h);
       commentMigrationByCase.set(h.target_id, arr);
     }
+    // case.reasoning 하이라이트
+    const { data: rhls, error: rhe } = await supabase
+      .from("user_highlights")
+      .select("highlight_id, target_id, start_offset, end_offset, label, field_path")
+      .eq("user_id", STAFF_USER_ID)
+      .eq("target_type", "case")
+      .eq("color", "underline")
+      .eq("field_path", "case.reasoning")
+      .is("deleted_at", null)
+      .in("target_id", slice);
+    if (rhe) {
+      console.error("reasoning 하이라이트 조회 실패:", rhe.message);
+      process.exit(1);
+    }
+    for (const h of rhls ?? []) {
+      const arr = reasoningByCase.get(h.target_id) ?? [];
+      arr.push(h);
+      reasoningByCase.set(h.target_id, arr);
+    }
   }
   const totalHls = [...hlByCase.values()].reduce((a, arr) => a + arr.length, 0);
   const totalCommentHls = [...commentMigrationByCase.values()].reduce(
     (a, arr) => a + arr.length,
     0,
   );
+  const totalReasoningHls = [...reasoningByCase.values()].reduce(
+    (a, arr) => a + arr.length,
+    0,
+  );
   console.log(`staff underline (case.summary): ${totalHls} in ${hlByCase.size} cases`);
   console.log(
     `staff underline (case.comment): ${totalCommentHls} in ${commentMigrationByCase.size} cases (이전 대상 후보)`,
+  );
+  console.log(
+    `staff underline (case.reasoning): ${totalReasoningHls} in ${reasoningByCase.size} cases`,
   );
 
   // 2) case 별 새 textContent + highlight label 검색.
@@ -278,10 +306,11 @@ async function main() {
         cursor = newEnd;
       }
     }
-    // 2-2) case.comment 하이라이트 이전 — 마이그된 case (comment_body_md=null,
-    // 항목별 commentMd 존재) 의 경우 본문이 case.summary 안 commentMd portion 으로
-    // 옮겨갔으므로 label 을 새 case.summary textContent 에서 찾아 fieldPath + offset
-    // 재배치.
+    // 2-2) case.comment 하이라이트 처리.
+    //   (a) comment_body_md=null + 항목별 commentMd 존재 → case.summary 안 commentMd
+    //       portion 으로 이전(fieldPath 변경) — 본문이 옮겨간 경우.
+    //   (b) comment_body_md 있음 → 별도 섹션이라 fieldPath 유지하되 본문 변경분
+    //       (admin 편집·정정 등) 에 맞춰 offset 만 재배치.
     const commentHls = commentMigrationByCase.get(c.case_id);
     if (commentHls && commentHls.length > 0) {
       const hasItemComments = (c.summary_items ?? []).some(
@@ -289,13 +318,11 @@ async function main() {
           (typeof it.commentMd === "string" && it.commentMd.trim() !== "") ||
           (typeof it.comment_md === "string" && it.comment_md.trim() !== ""),
       );
-      // 이전 대상은 "comment_body_md 가 비고, 항목별 비고는 채워져 있는 경우" 만.
-      // (case_body 가 comment_body_md 있으면 별도 섹션으로 그대로 노출하므로
-      // case.comment 하이라이트도 그대로 유지되어야 한다.)
+      const sorted = [...commentHls].sort(
+        (a, b) => a.start_offset - b.start_offset,
+      );
       if (!c.comment_body_md && hasItemComments) {
-        const sorted = [...commentHls].sort(
-          (a, b) => a.start_offset - b.start_offset,
-        );
+        // (a) 이전 — newText (case.summary) 에서 label 검색.
         let cursor = 0;
         for (const h of sorted) {
           const label = h.label ?? "";
@@ -307,7 +334,7 @@ async function main() {
           if (idx < 0) {
             unmatched += 1;
             console.warn(
-              `  unmatched(comment): ${c.case_number} hl=${h.highlight_id} label="${label.slice(0, 50)}${label.length > 50 ? "…" : ""}"`,
+              `  unmatched(comment→summary): ${c.case_number} hl=${h.highlight_id} label="${label.slice(0, 50)}${label.length > 50 ? "…" : ""}"`,
             );
             continue;
           }
@@ -327,6 +354,86 @@ async function main() {
           });
           cursor = newEnd;
         }
+      } else if (c.comment_body_md) {
+        // (b) comment_body_md 안 본문이 변경된 경우 offset 만 재배치.
+        // case-body 의 comment 섹션은 Prose(comment_body_md) 만 렌더 — 별도 헤더
+        // 텍스트 없음. textContent = proseTextContent(comment_body_md).
+        const commentText = proseTextContent(c.comment_body_md);
+        let cursor = 0;
+        for (const h of sorted) {
+          const label = h.label ?? "";
+          if (!label) {
+            unmatched += 1;
+            continue;
+          }
+          const idx = commentText.indexOf(label, cursor);
+          if (idx < 0) {
+            unmatched += 1;
+            console.warn(
+              `  unmatched(comment): ${c.case_number} hl=${h.highlight_id} label="${label.slice(0, 50)}${label.length > 50 ? "…" : ""}"`,
+            );
+            continue;
+          }
+          matched += 1;
+          const newStart = idx;
+          const newEnd = idx + label.length;
+          if (newStart === h.start_offset && newEnd === h.end_offset) {
+            noChange += 1;
+          } else {
+            updates.push({
+              highlight_id: h.highlight_id,
+              case_number: c.case_number,
+              start_offset: newStart,
+              end_offset: newEnd,
+              content_hash: sha256Hex(label),
+              old: `comment ${h.start_offset}→${h.end_offset}`,
+              newRange: `comment ${newStart}→${newEnd}`,
+            });
+          }
+          cursor = newEnd;
+        }
+      }
+    }
+    // 2-3) case.reasoning 하이라이트 재배치. case-body 의 reasoning 섹션은
+    // Prose(reasoning_md). textContent = proseTextContent(reasoning_md).
+    const reasoningHls = reasoningByCase.get(c.case_id);
+    if (reasoningHls && reasoningHls.length > 0 && c.reasoning_md) {
+      const reasoningText = proseTextContent(c.reasoning_md);
+      const sorted = [...reasoningHls].sort(
+        (a, b) => a.start_offset - b.start_offset,
+      );
+      let cursor = 0;
+      for (const h of sorted) {
+        const label = h.label ?? "";
+        if (!label) {
+          unmatched += 1;
+          continue;
+        }
+        const idx = reasoningText.indexOf(label, cursor);
+        if (idx < 0) {
+          unmatched += 1;
+          console.warn(
+            `  unmatched(reasoning): ${c.case_number} hl=${h.highlight_id} label="${label.slice(0, 50)}${label.length > 50 ? "…" : ""}"`,
+          );
+          continue;
+        }
+        matched += 1;
+        const newStart = idx;
+        const newEnd = idx + label.length;
+        if (newStart === h.start_offset && newEnd === h.end_offset) {
+          noChange += 1;
+        } else {
+          updates.push({
+            highlight_id: h.highlight_id,
+            case_number: c.case_number,
+            start_offset: newStart,
+            end_offset: newEnd,
+            content_hash: sha256Hex(label),
+            old: `reasoning ${h.start_offset}→${h.end_offset}`,
+            newRange: `reasoning ${newStart}→${newEnd}`,
+          });
+        }
+        cursor = newEnd;
       }
     }
   }

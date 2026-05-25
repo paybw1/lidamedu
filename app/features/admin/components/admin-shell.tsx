@@ -74,6 +74,8 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "판례-조문 매칭", to: "/admin/cases" },
       { label: "판례-기출 매칭", to: "/admin/relations/exam-cases" },
       { label: "판례 신규 등록", to: "/admin/cases/edit" },
+      { label: "체계도 단일 placement 위반", to: "/admin/cases/violations" },
+      { label: "Orphan staff underline", to: "/admin/cases/orphan-highlights" },
       { label: "강의노트 case-study 검토", to: "/admin/case-study-review" },
     ],
   },
