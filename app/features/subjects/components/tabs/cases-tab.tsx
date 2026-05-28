@@ -528,7 +528,7 @@ function CaseRow({
         <Link
           to={detailHref}
           viewTransition
-          className="hover:text-primary block truncate text-sm font-medium"
+          className="hover:text-primary block text-sm font-medium break-words"
         >
           {item.caseTitle}
         </Link>
