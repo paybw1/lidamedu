@@ -6,6 +6,8 @@
 // 시드 데이터는 beforeAll 에서 생성, afterAll 에서 정리 — self-contained.
 
 import { type Page, expect, test } from "@playwright/test";
+
+import { loginUser } from "e2e/utils/test-helpers";
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "database.types";
@@ -267,11 +269,7 @@ test.describe(`${MARKER} 통합 모의고사`, () => {
     page.on("dialog", (d) => void d.accept());
 
     // 로그인.
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL, TEST_PASSWORD);
 
     // 시험 러너 — 응시 전: 교시 2개 + 응시 시작 버튼.
     await page.goto(`/latest/mcq/exam/${examId}`);

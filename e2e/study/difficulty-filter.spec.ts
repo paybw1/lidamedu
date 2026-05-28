@@ -4,6 +4,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.DIFFFILTER_TEST_USER_EMAIL;
 const TEST_PROBLEM_ID = process.env.DIFFFILTER_TEST_PROBLEM_ID;
 const TEST_PASSWORD = "Test1234!";
@@ -57,11 +59,7 @@ test.describe.serial("ProblemsTab 난이도 필터", () => {
   test("?p_difficulty=very_hard → 시드 문제만 테이블에 잔존", async ({
     page,
   }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     // 필터 미적용: 369문항 노출 (수가 많아 toBeVisible 만 확인).
     await page.goto("/subjects/patent?tab=problems");

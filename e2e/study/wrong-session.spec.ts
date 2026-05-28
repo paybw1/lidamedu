@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.WRONG_SESSION_TEST_USER_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -67,11 +69,7 @@ test.describe.serial("오답노트 → 세션 묶기", () => {
   test("오답 2건 시드 → wrong-note → 시험 모드 → 세션 첫 문제", async ({
     page,
   }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/study/wrong-note");
     await expect(page.getByText("오답 2건을 한 세션으로")).toBeVisible();

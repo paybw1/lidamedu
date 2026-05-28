@@ -7,6 +7,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const ADMIN_EMAIL = process.env.COHORT_STATS_ADMIN_EMAIL;
 const STUDENT_EMAIL = process.env.COHORT_STATS_STUDENT_EMAIL;
 const TEST_PASSWORD = "Test1234!";
@@ -118,11 +120,7 @@ test.describe.serial("운영자 — cohort 진도/통계", () => {
 
   test("/admin/cohorts/:id/progress — 학생별 진도 표", async ({ page }) => {
     if (!cohortId) throw new Error("cohortId 없음");
-    await page.goto("/login");
-    await page.locator("#email").fill(ADMIN_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, ADMIN_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/admin/cohorts/${cohortId}/progress`);
     await expect(
@@ -138,11 +136,7 @@ test.describe.serial("운영자 — cohort 진도/통계", () => {
     page,
   }) => {
     if (!cohortId) throw new Error("cohortId 없음");
-    await page.goto("/login");
-    await page.locator("#email").fill(ADMIN_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, ADMIN_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/admin/cohorts/${cohortId}/stats`);
     await expect(
@@ -168,11 +162,7 @@ test.describe.serial("운영자 — cohort 진도/통계", () => {
 
   test("학생 detail — 반 평균 대비 비교 카드", async ({ page }) => {
     if (!studentId) throw new Error("studentId 없음");
-    await page.goto("/login");
-    await page.locator("#email").fill(ADMIN_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, ADMIN_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/admin/students/${studentId}`);
     await expect(

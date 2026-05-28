@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.GS_INSERT_TEST_USER_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -94,11 +96,7 @@ test.describe.serial("GS 페이지 끼워넣기", () => {
   test("슬롯 1·3 업로드 후 슬롯 2 자리 끼워넣기 → 3·4 로 시프트", async ({ page }) => {
     page.on("dialog", (d) => d.accept());
 
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/gs/${testRoundId}/take`);
     await expect(

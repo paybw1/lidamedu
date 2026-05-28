@@ -6,6 +6,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.GS_DIST_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -150,11 +152,7 @@ test.describe.serial("GS 우수답안", () => {
   });
 
   test("우수답안 카드가 학생 화면에 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/gs/${testRoundId}/distinguished`);
 

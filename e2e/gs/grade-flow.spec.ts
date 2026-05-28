@@ -6,6 +6,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const ADMIN_EMAIL = process.env.GS_GRADER_EMAIL;
 const STUDENT_EMAIL = process.env.GS_GRADED_EMAIL;
 const TEST_PASSWORD = "Test1234!";
@@ -166,11 +168,7 @@ test.describe.serial("GS 운영자 채점 흐름", () => {
   test("학생 클릭 → 점수 입력 + 저장 → 채점 마무리 → DB 갱신", async ({ page }) => {
     page.on("dialog", (d) => d.accept());
 
-    await page.goto("/login");
-    await page.locator("#email").fill(ADMIN_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, ADMIN_EMAIL!, TEST_PASSWORD);
 
     // 채점 목록 진입.
     await page.goto(`/admin/gs/${testRoundId}/grade`);

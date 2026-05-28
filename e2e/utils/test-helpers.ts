@@ -1,41 +1,42 @@
 /**
  * E2E Test Helper Functions
- * 
- * This file contains utility functions used across multiple E2E test files to:
- * 1. Validate form fields and error messages
- * 2. Create, login, and manage test users
- * 3. Handle email confirmation flows
- * 4. Clean up test data after tests
- * 
- * These helpers ensure consistent testing patterns and reduce code duplication
- * across the test suite, making tests more maintainable and readable.
+ *
+ * 로그인이 카카오 OAuth 단일로 바뀌면서(이메일/비밀번호 폼 제거) 브라우저에서 폼으로
+ * 로그인할 수 없다. 카카오 OAuth 는 Playwright 로 자동화가 어려우므로, 테스트는
+ * Supabase password grant 로 세션을 받아 @supabase/ssr 가 쓰는 쿠키 포맷 그대로 캡처해
+ * 브라우저 컨텍스트에 주입한다. (Supabase auth 자체는 password grant 를 계속 지원하며,
+ * 카카오 전용은 앱 UI 차원의 제약이다.)
  */
 
 import { type Page, expect } from "@playwright/test";
-import { eq, sql } from "drizzle-orm";
+import { type CookieOptions, createServerClient } from "@supabase/ssr";
+import { type SupabaseClient, createClient } from "@supabase/supabase-js";
+import { eq } from "drizzle-orm";
 import { authUsers } from "drizzle-orm/supabase";
 
 import db from "~/core/db/drizzle-client.server";
 
+const TEST_DOMAIN = "localhost";
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`E2E: 환경변수 ${name} 가 필요합니다`);
+  return value;
+}
+
 /**
  * Check if a form field has validation errors
- * 
- * This function verifies that a field is invalid and has a non-empty validation message.
- * It uses the browser's built-in form validation API to check validity and retrieve
- * the validation message, ensuring consistent validation testing across forms.
- * 
- * @param page - The Playwright Page object
- * @param fieldId - The HTML id attribute of the input field to check
+ *
+ * Uses the browser's built-in form validation API to assert a field is invalid
+ * and surfaces a non-empty validation message.
  */
 export async function checkInvalidField(page: Page, fieldId: string) {
-  // Check if the field is marked as invalid by the browser
   const isValid = await page.$eval(
     `#${fieldId}`,
     (el: HTMLInputElement) => el.validity.valid,
   );
   expect(isValid).toBe(false);
 
-  // Verify that there is a non-empty validation message
   const message = await page.$eval(
     `#${fieldId}`,
     (el: HTMLInputElement) => el.validationMessage,
@@ -44,111 +45,104 @@ export async function checkInvalidField(page: Page, fieldId: string) {
 }
 
 /**
- * Create a test user (placeholder function)
- * 
- * This is a placeholder for a potential helper function to create test users.
- * Currently not implemented, but kept as a stub for future expansion.
- * 
- * @param page - The Playwright Page object
+ * service_role Supabase 클라이언트 (테스트 전용 — 사용자 생성/정리)
  */
-export async function createTestUser(page: Page) {}
-
-/**
- * Log in a user with email and password
- * 
- * This function navigates to the login page, fills in the credentials,
- * submits the form, and waits for the login process to complete.
- * 
- * The extended timeout (15 seconds) allows for server-side processing,
- * potential redirects, and session establishment to complete.
- * 
- * @param page - The Playwright Page object
- * @param email - The email address of the user to log in
- * @param password - The password for the user account
- */
-export async function loginUser(page: Page, email: string, password: string) {
-  // Navigate to the login page
-  await page.goto("/login");
-  // Fill in the email and password fields
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(password);
-  // Click the login button
-  await page.getByRole("button", { name: "Log in" }).click();
-  // Wait for login process to complete (including potential redirects)
-  await page.waitForTimeout(15000);
-}
-
-/**
- * Register a new user account
- * 
- * This function navigates to the registration page, fills in all required fields,
- * opts into marketing emails, submits the form, and waits for the success message.
- * 
- * The function automatically generates a name from the email address by using
- * the part before the @ symbol, which is useful for automated testing.
- * 
- * @param page - The Playwright Page object
- * @param email - The email address for the new user
- * @param password - The password for the new user account
- */
-export async function registerUser(
-  page: Page,
-  email: string,
-  password: string,
-) {
-  // Navigate to the registration page
-  await page.goto("/join");
-  // Fill in the registration form
-  await page.locator("#name").fill(email.split("@")[0]); // Use part before @ as name
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(password);
-  await page.locator("#confirmPassword").fill(password);
-  // Opt into marketing emails
-  await page
-    .getByRole("checkbox", { name: "Sign up for marketing emails" })
-    .click();
-  // Submit the registration form
-  await page.getByRole("button", { name: "Create account" }).click();
-  // Wait for success message to confirm registration completed
-  await page.waitForSelector("text=Account created!");
-}
-
-/**
- * Confirm a user's email address
- * 
- * This function simulates clicking the confirmation link in the verification email.
- * It directly queries the database to get the confirmation token for the specified user,
- * then navigates to the confirmation URL with that token.
- * 
- * This approach allows testing the email confirmation flow without actually
- * sending or intercepting emails, which simplifies the testing process.
- * 
- * @param page - The Playwright Page object
- * @param email - The email address of the user to confirm
- */
-export async function confirmUser(page: Page, email: string) {
-  // Get the confirmation token directly from the database
-  const [{ confirmation_token }] = await db.execute<{
-    confirmation_token: string;
-  }>(sql`SELECT confirmation_token FROM auth.users WHERE email = ${email}`);
-  
-  // Navigate to the confirmation URL with the token
-  await page.goto(
-`/auth/confirm?token_hash=${confirmation_token}&type=email&next=/&testid=35389`
+function adminClient(): SupabaseClient {
+  return createClient(
+    requireEnv("SUPABASE_URL"),
+    requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    { auth: { autoRefreshToken: false, persistSession: false } },
   );
 }
 
 /**
- * Delete a test user from the database
- * 
- * This function removes a user account from the database by email address.
- * It's used in test cleanup to ensure test data doesn't accumulate and
- * that tests can be run repeatedly without conflicts.
- * 
- * The function uses Drizzle ORM to perform a direct database deletion,
- * bypassing the application's API for efficiency and reliability in tests.
- * 
- * @param email - The email address of the user to delete
+ * 이메일 확인이 끝난 테스트 사용자를 생성한다 (admin API).
+ *
+ * 카카오 전용 전환으로 가입 폼이 사라졌으므로, 테스트 사용자는 service_role 로 직접 만든다.
+ * password 를 부여하므로 이후 loginUser 로 프로그래매틱 로그인이 가능하다.
+ *
+ * @returns 생성된 사용자의 profile_id (auth user id)
+ */
+export async function createConfirmedUser(
+  email: string,
+  password: string,
+  name?: string,
+): Promise<string> {
+  const admin = adminClient();
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: name ? { name, display_name: name } : undefined,
+  });
+  if (error || !data.user) {
+    throw new Error(`createConfirmedUser 실패 (${email}): ${error?.message}`);
+  }
+  return data.user.id;
+}
+
+function normalizeSameSite(
+  value: CookieOptions["sameSite"],
+): "Strict" | "Lax" | "None" {
+  if (value === "strict" || value === true) return "Strict";
+  if (value === "none") return "None";
+  return "Lax";
+}
+
+/**
+ * 프로그래매틱 로그인 — 폼 입력 없이 세션 쿠키를 브라우저에 주입한다.
+ *
+ * 1. @supabase/ssr createServerClient 로 password grant 수행
+ * 2. setAll 로 떨어지는 인증 쿠키(앱과 동일 포맷, 청크 포함)를 캡처
+ * 3. Playwright 컨텍스트에 주입 후 홈을 한 번 로드해 세션 활성화
+ *
+ * 사용자는 미리 존재해야 한다(createConfirmedUser 또는 admin.createUser).
+ */
+export async function loginUser(page: Page, email: string, password: string) {
+  const supabaseUrl = requireEnv("SUPABASE_URL");
+  const anonKey = requireEnv("SUPABASE_ANON_KEY");
+
+  const captured: { name: string; value: string; options: CookieOptions }[] =
+    [];
+  const client = createServerClient(supabaseUrl, anonKey, {
+    cookies: {
+      getAll: () => [],
+      setAll: (cookies) => {
+        for (const cookie of cookies) captured.push(cookie);
+      },
+    },
+  });
+
+  const { error } = await client.auth.signInWithPassword({ email, password });
+  if (error) {
+    throw new Error(`E2E loginUser 실패 (${email}): ${error.message}`);
+  }
+  if (captured.length === 0) {
+    throw new Error("E2E loginUser: 인증 쿠키가 생성되지 않았습니다");
+  }
+
+  await page.context().addCookies(
+    captured.map(({ name, value, options }) => ({
+      name,
+      value,
+      domain: TEST_DOMAIN,
+      path: options.path ?? "/",
+      httpOnly: false,
+      secure: false,
+      sameSite: normalizeSameSite(options.sameSite),
+      expires:
+        typeof options.maxAge === "number"
+          ? Math.floor(Date.now() / 1000) + options.maxAge
+          : -1,
+    })),
+  );
+
+  // 세션 활성화 — 이후 spec 이 보호 라우트로 곧장 이동할 수 있도록 홈을 한 번 로드.
+  await page.goto("/");
+}
+
+/**
+ * Delete a test user from auth.users (직접 DB 삭제 — admin API 가 이 환경에서 무효).
  */
 export async function deleteUser(email: string) {
   await db.delete(authUsers).where(eq(authUsers.email, email));

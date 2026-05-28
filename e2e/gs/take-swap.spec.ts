@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.GS_SWAP_TEST_USER_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -100,11 +102,7 @@ test.describe.serial("GS 페이지 swap (드래그&드롭)", () => {
     page.on("dialog", (d) => d.accept());
 
     // 로그인.
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     // 응시.
     await page.goto(`/gs/${testRoundId}/take`);

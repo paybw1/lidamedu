@@ -8,6 +8,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.WRONG_NOTE_TEST_USER_EMAIL;
 const TEST_PROBLEM_ID = process.env.WRONG_NOTE_TEST_PROBLEM_ID;
 const TEST_PASSWORD = "Test1234!";
@@ -47,12 +49,7 @@ test.describe.serial("오답노트 풀이 기록 플로우", () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    // 로그인 성공 시 / 로 리다이렉트.
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
   });
 
   test("오답 시도 → wrong-note 에 노출", async ({ page }) => {

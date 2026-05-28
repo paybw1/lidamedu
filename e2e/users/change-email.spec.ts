@@ -17,10 +17,9 @@ import { expect, test } from "@playwright/test";
 import { sql } from "drizzle-orm";
 import {
   checkInvalidField,
-  confirmUser,
+  createConfirmedUser,
   deleteUser,
   loginUser,
-  registerUser,
 } from "e2e/utils/test-helpers";
 
 import db from "~/core/db/drizzle-client.server";
@@ -58,12 +57,8 @@ test.describe("Change Email", async () => {
    * This creates a user account with the original test email that will be
    * used to test the email change process.
    */
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await registerUser(page, TEST_EMAIL, "password");
-    await confirmUser(page, TEST_EMAIL);
-    await context.close();
+  test.beforeAll(async () => {
+    await createConfirmedUser(TEST_EMAIL, "password", TEST_EMAIL.split("@")[0]);
   });
   
   /**

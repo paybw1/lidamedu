@@ -245,13 +245,6 @@ function Actions({
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
             <SheetClose asChild>
-              <Link to="/debug/sentry" viewTransition>
-                Sentry
-              </Link>
-            </SheetClose>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <SheetClose asChild>
               <Link to="/debug/analytics" viewTransition>
                 Google Tag
               </Link>

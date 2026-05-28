@@ -4,6 +4,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.STUDY_AIDS_TEST_USER_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -41,11 +43,7 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
   });
 
   test("4 페이지 — 빈 상태에서 헤더 + 안내 문구 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     // 오답노트
     await page.goto("/study/wrong-note");
@@ -81,11 +79,7 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
   });
 
   test("대시보드 재학습 진입점 타일 4개 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/dashboard");
     const tiles = page.getByTestId("study-aid-tiles");
@@ -97,11 +91,7 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
   });
 
   test("통합 학습 통계 — 4 탭 + 1차/2차 sub-section 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/study/stats");
     await expect(page.getByRole("heading", { name: "학습 통계" })).toBeVisible();
@@ -140,11 +130,7 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
   });
 
   test("/study/blanks 는 /study/stats?tab=blanks 로 redirect", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/study/blanks");
     await page.waitForURL(/\/study\/stats\?tab=blanks/, { timeout: 5000 });

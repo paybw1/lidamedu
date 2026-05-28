@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.SEARCH_TEST_USER_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -40,11 +42,7 @@ test.describe.serial("문제 본문 검색", () => {
   });
 
   test("?p_search=취소신청 → 결과 축소 + 키워드 본문 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     // 키워드 직접 URL 로 (입력 폼 제출도 동일).
     await page.goto("/subjects/patent?tab=problems&p_search=특허취소신청");

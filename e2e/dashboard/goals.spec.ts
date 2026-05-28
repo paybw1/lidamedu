@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.GOALS_TEST_USER_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -40,11 +42,7 @@ test.describe.serial("학습목표 → 대시보드", () => {
   });
 
   test("/goals 저장 → 대시보드 D-day · 주간 목표 갱신", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     // 초기 대시보드: 목표 미설정 → fallback "2026-07-23" 라벨.
     await page.goto("/dashboard");

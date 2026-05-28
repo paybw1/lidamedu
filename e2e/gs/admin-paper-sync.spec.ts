@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.GS_PAPER_TEST_USER_EMAIL;
 const TEST_PASSWORD = "Test1234!";
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -94,11 +96,7 @@ test.describe.serial("GS 운영자: 시험지 페이지 ↔ expected_pages 동�
   test("시험지 PDF 업로드 → 페이지 수 불일치 안내 → 맞추기 → 저장", async ({
     page,
   }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/admin/gs/${testRoundId}`);
     await expect(

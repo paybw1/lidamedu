@@ -8,6 +8,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TEST_PASSWORD = "Test1234!";
@@ -34,11 +36,7 @@ async function loginAs(
   page: import("@playwright/test").Page,
   email: string,
 ): Promise<void> {
-  await page.goto("/login");
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(TEST_PASSWORD);
-  await page.getByRole("button", { name: "Log in" }).click();
-  await page.waitForURL("/", { timeout: 20000 });
+  await loginUser(page, email, TEST_PASSWORD);
 }
 
 test.describe("lecture_resources — 관련자료 패널", () => {

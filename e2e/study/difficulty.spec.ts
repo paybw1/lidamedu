@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.DIFFICULTY_TEST_USER_EMAIL;
 const TEST_PROBLEM_ID = process.env.DIFFICULTY_TEST_PROBLEM_ID;
 const TEST_PASSWORD = "Test1234!";
@@ -61,11 +63,7 @@ test.describe.serial("문제 난이도 뱃지", () => {
   });
 
   test("표본 충분 + 0% → '매우 어려움' 뱃지 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/subjects/patent/problems/${TEST_PROBLEM_ID}`);
     const stats = page.getByTestId("problem-stats");

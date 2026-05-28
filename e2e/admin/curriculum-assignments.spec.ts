@@ -5,6 +5,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const ADMIN_EMAIL = process.env.CURRICULUM_ADMIN_EMAIL;
 const STUDENT_EMAIL = process.env.CURRICULUM_STUDENT_EMAIL;
 const TEST_PASSWORD = "Test1234!";
@@ -150,11 +152,7 @@ test.describe.serial("운영자 — 커리큘럼/과제", () => {
   });
 
   test("/admin/curricula — 목록 + 신규 커리큘럼 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(ADMIN_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, ADMIN_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/admin/curricula");
     await expect(
@@ -165,11 +163,7 @@ test.describe.serial("운영자 — 커리큘럼/과제", () => {
 
   test("/admin/curricula/:id — 편집 페이지 + 주차 + 항목", async ({ page }) => {
     if (!curriculumId) throw new Error("curriculumId 없음");
-    await page.goto("/login");
-    await page.locator("#email").fill(ADMIN_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, ADMIN_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/admin/curricula/${curriculumId}`);
     await expect(
@@ -180,11 +174,7 @@ test.describe.serial("운영자 — 커리큘럼/과제", () => {
 
   test("/admin/cohorts/:id/assignments — 주차 자동 변환", async ({ page }) => {
     if (!cohortId) throw new Error("cohortId 없음");
-    await page.goto("/login");
-    await page.locator("#email").fill(ADMIN_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, ADMIN_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/admin/cohorts/${cohortId}/assignments`);
     await expect(page.getByText(/E2E 커리큘럼 검증 cohort/)).toBeVisible();
@@ -214,11 +204,7 @@ test.describe.serial("운영자 — 커리큘럼/과제", () => {
     if (a.error || !a.data) throw a.error;
 
     // 학생 로그인
-    await page.goto("/login");
-    await page.locator("#email").fill(STUDENT_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, STUDENT_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/assignments");
     await expect(page.getByRole("heading", { name: "내 과제" })).toBeVisible();

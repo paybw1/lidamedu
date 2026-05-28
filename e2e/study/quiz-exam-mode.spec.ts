@@ -4,6 +4,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.EXAM_TEST_USER_EMAIL;
 const NODE_ID = process.env.EXAM_TEST_NODE_ID;
 const FIRST_PROBLEM_ID = process.env.EXAM_TEST_FIRST_PROBLEM_ID;
@@ -44,11 +46,7 @@ test.describe.serial("시험 모드 풀이 → 결과 화면", () => {
 
   test("진입 → 2문제 오답 → 끝내기 → 결과 화면 KPI", async ({ page }) => {
     // 로그인.
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     // 시험 모드 진입 — 로더가 세션을 만들고 ?session=<sid> 붙여 redirect.
     await page.goto(

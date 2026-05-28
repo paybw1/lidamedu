@@ -18,10 +18,9 @@ import { expect } from "@playwright/test";
 import { test } from "@playwright/test";
 import {
   checkInvalidField,
-  confirmUser,
+  createConfirmedUser,
   deleteUser,
   loginUser,
-  registerUser,
 } from "e2e/utils/test-helpers";
 
 /**
@@ -52,12 +51,8 @@ test.describe("Change Password", () => {
    * This creates a user account with a known password that will be
    * used to test the password change process.
    */
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await registerUser(page, TEST_EMAIL, "password");
-    await confirmUser(page, TEST_EMAIL);
-    await context.close();
+  test.beforeAll(async () => {
+    await createConfirmedUser(TEST_EMAIL, "password", TEST_EMAIL.split("@")[0]);
   });
 
   /**

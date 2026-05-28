@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.OX_TEST_USER_EMAIL;
 const ARTICLE_SLUG = process.env.OX_TEST_ARTICLE_SLUG;
 const TEST_PASSWORD = "Test1234!";
@@ -41,11 +43,7 @@ test.describe.serial("정오문제 패널", () => {
   });
 
   test("article-viewer → 정오문제 탭 → O 클릭 → 결과 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/subjects/patent/articles/${ARTICLE_SLUG}`);
     // 우측 패널이 로드된 후 정오문제 탭 클릭.

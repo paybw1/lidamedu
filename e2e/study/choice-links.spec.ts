@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.EXPLAIN_TEST_USER_EMAIL;
 const TEST_PROBLEM_ID = process.env.EXPLAIN_TEST_PROBLEM_ID;
 const TEST_PASSWORD = "Test1234!";
@@ -43,11 +45,7 @@ test.describe.serial("해설 카드 관련 조문 링크", () => {
   test("정답 확인 → 해설 → 관련 조문 링크 → article-viewer 이동", async ({
     page,
   }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto(`/subjects/patent/problems/${TEST_PROBLEM_ID}`);
     await expect(page.getByTestId("problem-choice-1")).toBeVisible({

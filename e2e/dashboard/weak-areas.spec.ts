@@ -3,6 +3,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 
+import { loginUser } from "e2e/utils/test-helpers";
+
 const TEST_EMAIL = process.env.WEAK_TEST_USER_EMAIL;
 const TEST_PROBLEM_ID = process.env.WEAK_TEST_PROBLEM_ID;
 const TEST_PASSWORD = "Test1234!";
@@ -53,11 +55,7 @@ test.describe.serial("대시보드 약점 우선 복습", () => {
   });
 
   test("오답 1건 시드 → 약점 카드에 노출", async ({ page }) => {
-    await page.goto("/login");
-    await page.locator("#email").fill(TEST_EMAIL!);
-    await page.locator("#password").fill(TEST_PASSWORD);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL("/", { timeout: 15000 });
+    await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/dashboard");
     const card = page.getByTestId("weak-areas");
