@@ -30,6 +30,11 @@ export interface CaseListItem {
   subjectLaws: string[];
   // feat-8-024: 이 판례가 출제된 1차 객관식 기출문제 — 목록에서 ExamProblemChip 으로 표시.
   exam1stProblems: ExamProblemRef[];
+  // 운영자가 admin-case-edit 의 "1차 기출 연도" 컬럼(cases.exam_1st_years) 에 수동
+  // 입력한 연도 중, problem_case_links 파생(exam1stProblems) 의 year 집합에 없는
+  // 것만. ExamYearChip(round="first") 로 보조 표시 — problem link 없는 historical
+  // 기록 또는 누락분을 운영자가 채울 수 있게 한다.
+  exam1stExtraYears: number[];
   exam2ndYears: number[];
 }
 

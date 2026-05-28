@@ -128,6 +128,8 @@ export interface SubjectHubData {
   systematicNodeProblemStats: Record<string, SystematicNodeProblemStat>;
   // 문제 탭 체계도 노드 필터 (?node=) — 미적용/무효 노드면 null.
   problemNodeFilter: ProblemNodeFilter | null;
+  // 책갈피 레일 3축 총량(필터 무관 head-count). BookmarkTab 옆 카운트 표시용.
+  axisCounts: Record<SubjectTab, number>;
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
@@ -446,6 +448,11 @@ export async function loadSubjectHub(
   const caseQuery = caseFilters.q;
   const problemFilters = parseProblemFilters(url);
   const problemNodeId = url.searchParams.get("node")?.trim() || null;
+  // case 트리 필터(case_node/case_article/case_chapter) 는 cases 탭에 있을
+  // 때만 cases 목록·총카운트에 적용한다. articles/problems 탭으로 전환하면
+  // 책갈피 레일의 "판례 N" 카운트가 그 노드의 필터된 수에 갇혀 stale 처럼
+  // 보였던 문제 해결.
+  const activeTabIsCases = url.searchParams.get("tab") === "cases";
 
   const [client] = makeServerClient(request);
   const law = await getLawByCode(client, lawCode);
@@ -472,23 +479,45 @@ export async function loadSubjectHub(
       problemAggStats: {},
       recommendedArticles: [],
       progressByArticle: {} as NodeProgressByArticle,
+      axisCounts: { articles: 0, cases: 0, problems: 0 },
     };
   }
   // 1단계 — 트리/판례 카운트 등 case-filter 결정에 선행해야 하는 데이터.
   // placement maps 는 case 의 primary_* 단일 분류 기반 — 트리 카운트와 listing 의
   // 정합성을 위해 함께 사용.
-  const [articles, systematicNodes, placementMaps] = await Promise.all([
+  // totalCaseCount 는 헤더 "내 학습 현황" 의 판례 진도% 분모. 필터 무관한
+  // 전체 카운트라 listCasesBySubject 의 total(필터 적용 결과)과는 다르다.
+  const [
+    articles,
+    systematicNodes,
+    placementMaps,
+    totalCaseCountRes,
+    totalProblemCountRes,
+  ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
     getCasePlacementMaps(client, lawCode, law.lawId),
+    client
+      .from("cases")
+      .select("*", { count: "exact", head: true })
+      .contains("subject_laws", [lawCode])
+      .is("deleted_at", null),
+    client
+      .from("problems")
+      .select("*", { count: "exact", head: true })
+      .eq("law_id", law.lawId)
+      .is("deleted_at", null),
   ]);
+  const totalCaseCount = totalCaseCountRes.count ?? 0;
+  const totalProblemCount = totalProblemCountRes.count ?? 0;
 
   // 트리 필터 → case id 셋. 축에 따라 다른 정책:
   //   • article / chapter (조문 axis) → article_case_links many-to-many
   //     (한 case 가 여러 article 에 연결되어 있으면 각 위치에서 모두 잡힘).
   //   • node (체계도 axis) → primary placement (단일 배치).
+  // 활성 탭이 cases 가 아니면 필터 무시 — 책갈피 cases 카운트는 전체 기준.
   let filterCaseIds: string[] | null = null;
-  if (caseFilters.tree) {
+  if (activeTabIsCases && caseFilters.tree) {
     if (caseFilters.tree.kind === "article") {
       filterCaseIds = await getCaseIdsByArticleLinks(client, [
         caseFilters.tree.articleId,
@@ -565,7 +594,13 @@ export async function loadSubjectHub(
     progressByArticle,
   ] = user
     ? await Promise.all([
-        getSubjectProgress(client, user.id, lawCode, totalArticleCount),
+        getSubjectProgress(
+          client,
+          user.id,
+          lawCode,
+          totalArticleCount,
+          totalCaseCount,
+        ),
         getUserArticleBookmarkLevels(client, user.id),
         getUserArticleAnnotationCounts(client, user.id),
         getUserProblemStats(client, user.id, lawCode),
@@ -647,6 +682,11 @@ export async function loadSubjectHub(
     bookmarkLevels,
     annotationCounts,
     caseQuery,
+    axisCounts: {
+      articles: totalArticleCount,
+      cases: totalCaseCount,
+      problems: totalProblemCount,
+    },
     problemYears,
     problemFilters,
     problemStats,

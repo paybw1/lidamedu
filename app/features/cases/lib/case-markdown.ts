@@ -61,9 +61,11 @@ export function startsWithInlineQuote(s: string): boolean {
   return INLINE_QUOTE_CHARS.has(t.charAt(0));
 }
 
-// GFM 표 — 첫 줄 헤더(|...|), 둘째 줄 separator(|---|---|), 세 번째부터 데이터.
-// alignment 마커 :---:, ---:, :--- 허용.
+// 표 paragraph 인지 — GFM 표 또는 raw HTML `<table>` 시작.
+// HTML 표는 colspan/rowspan 표현 가능. hwpx 등 외부 자료에서 변환된 본문에
+// 사용된다(renderTableHtml 이 sanitize 후 그대로 렌더).
 export function isMarkdownTableParagraph(p: string): boolean {
+  if (p.trimStart().toLowerCase().startsWith("<table")) return true;
   const lines = p.split("\n");
   if (lines.length < 2) return false;
   const head = lines[0].trim();
@@ -117,7 +119,12 @@ const ALLOWED_TABLE_ATTR = [
 ];
 
 export function renderTableHtml(p: string): string {
-  const html = marked.parse(p, { async: false, gfm: true }) as string;
+  // raw HTML `<table>` 입력은 marked 거치지 않고 그대로 sanitize.
+  // (marked 의 inline-html 통과 동작에 의존하지 않고 명시적으로 처리.)
+  const isRawHtml = p.trimStart().toLowerCase().startsWith("<table");
+  const html = isRawHtml
+    ? p
+    : (marked.parse(p, { async: false, gfm: true }) as string);
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ALLOWED_TABLE_TAGS,
     ALLOWED_ATTR: ALLOWED_TABLE_ATTR,

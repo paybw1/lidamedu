@@ -92,6 +92,7 @@ export default [
     ...prefix("/admin", [
       route("/case", "features/admin/api/case.tsx"),
       route("/case-link", "features/admin/api/case-link.tsx"),
+      route("/case-citations", "features/admin/api/case-citations.tsx"),
       route("/problem-create", "features/admin/api/problem-create.tsx"),
       route("/case-reference", "features/admin/api/case-reference.tsx"),
       route("/paper", "features/admin/api/paper.tsx"),

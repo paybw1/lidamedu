@@ -30,6 +30,12 @@ export interface SubjectProgress {
   visitedArticleIds: Set<string>;
   totalArticleCount: number;
   pctViewed: number;
+  // 판례 진도 — case-viewer 가 study_sessions 에 target_type='case' 로
+  // 기록한 distinct 방문 집계. 같은 study_sessions 쿼리 안에서 article 과
+  // 함께 카운트한다(추가 쿼리 없음).
+  visitedCaseIds: Set<string>;
+  totalCaseCount: number;
+  pctCasesViewed: number;
   lastVisited: {
     articleId: string;
     articleNumber: string | null;
@@ -43,8 +49,9 @@ export async function getSubjectProgress(
   userId: string,
   lawCode: LawSubjectSlug,
   totalArticleCount: number,
+  totalCaseCount: number,
 ): Promise<SubjectProgress> {
-  // 본인이 본 article 단위 study_sessions
+  // 본인의 study_sessions — article·case 방문을 같은 쿼리에서 집계.
   const { data, error } = await client
     .from("study_sessions")
     .select("scope, started_at")
@@ -55,23 +62,27 @@ export async function getSubjectProgress(
   if (error) throw error;
 
   const visited = new Set<string>();
+  const visitedCases = new Set<string>();
   let last: SubjectProgress["lastVisited"] = null;
   for (const row of data ?? []) {
     const scope = row.scope as Partial<StudyScope> | null;
-    if (!scope || scope.subject !== lawCode) continue;
-    if (scope.target_type !== "article" || !scope.target_id) continue;
-    visited.add(scope.target_id);
-    if (!last) {
-      last = {
-        articleId: scope.target_id,
-        articleNumber: null,
-        displayLabel: "",
-        visitedAt: row.started_at,
-      };
+    if (!scope || scope.subject !== lawCode || !scope.target_id) continue;
+    if (scope.target_type === "article") {
+      visited.add(scope.target_id);
+      if (!last) {
+        last = {
+          articleId: scope.target_id,
+          articleNumber: null,
+          displayLabel: "",
+          visitedAt: row.started_at,
+        };
+      }
+    } else if (scope.target_type === "case") {
+      visitedCases.add(scope.target_id);
     }
   }
 
-  // last visited 의 displayLabel 채우기
+  // last visited 의 displayLabel 채우기 (article 만 — "이어서 학습"의 대상).
   if (last) {
     const { data: a } = await client
       .from("articles")
@@ -88,11 +99,18 @@ export async function getSubjectProgress(
     totalArticleCount > 0
       ? Math.round((visited.size / totalArticleCount) * 100)
       : 0;
+  const pctCases =
+    totalCaseCount > 0
+      ? Math.round((visitedCases.size / totalCaseCount) * 100)
+      : 0;
 
   return {
     visitedArticleIds: visited,
     totalArticleCount,
     pctViewed: pct,
+    visitedCaseIds: visitedCases,
+    totalCaseCount,
+    pctCasesViewed: pctCases,
     lastVisited: last,
   };
 }

@@ -17,6 +17,10 @@ import type {
 import { ArticleTree } from "../article-tree";
 import { SortAxisToggle, useSortAxis } from "../sort-axis";
 import { SubjectLearningHub } from "../subject-learning-hub";
+import {
+  SubjectStudyStatus,
+  type SubjectStudyStatusProps,
+} from "../subject-study-status";
 import { SystematicTree } from "../systematic-tree";
 
 export function ArticlesTab({
@@ -33,6 +37,7 @@ export function ArticlesTab({
   casesTotal,
   problems,
   problemStats,
+  studyStatus,
 }: {
   subject: LawSubjectMeta;
   lawId?: string;
@@ -47,6 +52,7 @@ export function ArticlesTab({
   casesTotal: number;
   problems: ProblemListItem[];
   problemStats: UserProblemStats | null;
+  studyStatus: SubjectStudyStatusProps;
 }) {
   const { axis } = useSortAxis();
   const articleCount = articles.filter((a) => a.level === "article").length;
@@ -99,17 +105,20 @@ export function ArticlesTab({
         </div>
       </aside>
 
-      {/* Right: 조문·판례·문제 학습 허브 */}
-      <SubjectLearningHub
-        subject={subject}
-        articleCount={articleCount}
-        progress={progress}
-        recommendedArticles={recommendedArticles}
-        cases={cases}
-        casesTotal={casesTotal}
-        problems={problems}
-        problemStats={problemStats}
-      />
+      {/* Right: 학습 현황 + 학습 허브 */}
+      <div className="min-w-0 space-y-4">
+        <SubjectStudyStatus {...studyStatus} />
+        <SubjectLearningHub
+          subject={subject}
+          articleCount={articleCount}
+          progress={progress}
+          recommendedArticles={recommendedArticles}
+          cases={cases}
+          casesTotal={casesTotal}
+          problems={problems}
+          problemStats={problemStats}
+        />
+      </div>
     </div>
   );
 }

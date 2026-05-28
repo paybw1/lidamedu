@@ -81,6 +81,11 @@ export interface HighlightRecord {
   excerpt: string;
   /** 현재 사용자가 작성자인지. false = 강사 작성(전체 공개) 하이라이트. */
   isMine: boolean;
+  // 자동 재앵커링용 — 본문 수정 시 offset 이 어긋났을 때 위치 재탐색.
+  // null = legacy(이 컬럼 추가 전 생성). overlay 는 label 로 fallback.
+  snippet?: string | null;
+  beforeCtx?: string | null;
+  afterCtx?: string | null;
 }
 
 // 색상별 기본 한글 이름 — 사용자 alias 가 없을 때 폴백.

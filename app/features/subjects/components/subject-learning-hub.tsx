@@ -5,7 +5,6 @@
 import {
   ArrowRightIcon,
   BookmarkIcon,
-  ClockIcon,
   GavelIcon,
   ListChecksIcon,
   SparklesIcon,
@@ -54,10 +53,6 @@ export function SubjectLearningHub({
   problems: ProblemListItem[];
   problemStats: UserProblemStats | null;
 }) {
-  const visitedCount = progress?.visitedArticleIds.size ?? 0;
-  const articlePct = Math.min(100, Math.max(0, progress?.pctViewed ?? 0));
-  const lastVisited = progress?.lastVisited ?? null;
-
   const importantCases = cases.filter((c) => c.importance >= 3);
   const examCases = cases.filter(
     (c) => c.exam1stProblems.length + c.exam2ndYears.length > 0,
@@ -74,102 +69,8 @@ export function SubjectLearningHub({
 
   return (
     <div className="min-w-0 space-y-4">
-      {/* 블록 1 — 조문·판례·문제 3축 현황 */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {/* 조문 — 현재 탭이라 링크 없이 진도만 */}
-        <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="bg-primary/10 text-primary inline-flex size-8 items-center justify-center rounded-[9px]">
-              <BookmarkIcon className="size-[17px]" />
-            </span>
-            <p className="text-sm font-extrabold">조문</p>
-          </div>
-          <p className="text-foreground mt-3 text-[25px] leading-none font-extrabold tracking-tight tabular-nums">
-            {articlePct}
-            <span className="text-muted-foreground text-sm font-bold">%</span>
-          </p>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {visitedCount.toLocaleString("ko-KR")} /{" "}
-            {articleCount.toLocaleString("ko-KR")} 조문 열람
-          </p>
-          <div className="bg-muted mt-2.5 h-1.5 overflow-hidden rounded-full">
-            <div
-              className="bg-primary h-full rounded-full"
-              style={{ width: `${articlePct}%` }}
-            />
-          </div>
-        </div>
-
-        {/* 판례 */}
-        <AxisCard
-          to={`/subjects/${subject.slug}?tab=cases`}
-          icon={GavelIcon}
-          accent="violet"
-          name="판례"
-          cta="판례 보기"
-          value={casesTotal.toLocaleString("ko-KR")}
-          unit="건"
-          sub={`중요 ★3 ${importantCases.length}건 · 기출 ${examCases.length}건`}
-        />
-
-        {/* 문제 */}
-        <AxisCard
-          to={`/subjects/${subject.slug}?tab=problems`}
-          icon={ListChecksIcon}
-          accent="emerald"
-          name="문제"
-          cta="문제 풀기"
-          value={accuracyPct === null ? "—" : String(accuracyPct)}
-          unit={accuracyPct === null ? "" : "%"}
-          sub={
-            attempted > 0
-              ? `${attempted.toLocaleString("ko-KR")} / ${problems.length.toLocaleString("ko-KR")} 풀이 · 정답률`
-              : `총 ${problems.length.toLocaleString("ko-KR")}문제 · 아직 풀이 없음`
-          }
-        />
-      </div>
-
-      {/* 블록 2 — 이어서 학습 */}
-      <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-        <p className="text-muted-foreground mb-3 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
-          <ClockIcon className="text-primary size-3.5" /> 이어서 학습
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="bg-primary/10 text-primary inline-flex size-11 shrink-0 items-center justify-center rounded-xl">
-            <BookmarkIcon className="size-5" />
-          </span>
-          {lastVisited ? (
-            <>
-              <div className="min-w-0 flex-1">
-                <p className="text-muted-foreground text-xs">최근 학습한 조문</p>
-                <p className="text-foreground truncate text-base font-bold">
-                  {lastVisited.displayLabel}
-                </p>
-              </div>
-              {lastVisited.articleNumber ? (
-                <Link
-                  to={`/subjects/${subject.slug}/articles/${lastVisited.articleNumber}`}
-                  viewTransition
-                  className="bg-primary text-primary-foreground inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold transition-opacity hover:opacity-90"
-                >
-                  이어서 보기 <ArrowRightIcon className="size-3.5" />
-                </Link>
-              ) : null}
-            </>
-          ) : (
-            <div className="min-w-0 flex-1">
-              <p className="text-foreground text-base font-bold">
-                {subject.name} 학습을 시작해 보세요
-              </p>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                좌측 목차에서 조문을 고르거나, 아래 추천에서 시작하세요.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 블록 3 — 오늘의 학습 추천 */}
+      {/* 오늘의 학습 추천 — "이어서 학습" 블록은 SubjectStudyStatus 의
+          "마지막 학습 조문" 카드와 중복이라 제거함. */}
       <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
         <p className="text-muted-foreground mb-1 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
           <SparklesIcon className="text-primary size-3.5" /> 오늘의 학습 추천
@@ -243,6 +144,7 @@ export function SubjectLearningHub({
           ) : null}
         </div>
       </div>
+
     </div>
   );
 }

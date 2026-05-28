@@ -34,6 +34,7 @@ import {
 import {
   ExamProblemChip,
   ExamYearChip,
+  mergeFirstRoundChips,
 } from "~/features/cases/components/exam-year-chip";
 import { COURT_LABELS, type CaseListItem } from "~/features/cases/labels";
 import type {
@@ -43,6 +44,10 @@ import type {
 
 import { CasesTree } from "../cases-tree";
 import { SortAxisToggle, useSortAxis } from "../sort-axis";
+import {
+  SubjectStudyStatus,
+  type SubjectStudyStatusProps,
+} from "../subject-study-status";
 
 const COURT_OPTIONS = [
   { value: "all", label: "전체 법원" },
@@ -82,6 +87,7 @@ export function CasesTab({
   articles,
   systematicNodes,
   caseTreeCounts,
+  studyStatus,
 }: {
   subject: LawSubjectMeta;
   cases: CaseListItem[];
@@ -91,6 +97,7 @@ export function CasesTab({
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
   caseTreeCounts: CaseTreeCounts;
+  studyStatus: SubjectStudyStatusProps;
 }) {
   const filters = caseFilters ?? { ...DEFAULT_FILTERS, q: initialQuery };
   const [searchParams] = useSearchParams();
@@ -204,8 +211,10 @@ export function CasesTab({
         </div>
       </aside>
 
-      {/* Right: KPIs + filter + table */}
+      {/* Right: study status + KPIs + filter + table */}
       <section className="space-y-4">
+        <SubjectStudyStatus {...studyStatus} />
+
         {/* KPI cards — 3 columns */}
         <div className="grid gap-3 sm:grid-cols-3">
           <CasesKpiCard
@@ -523,22 +532,15 @@ function CaseRow({
         >
           {item.caseTitle}
         </Link>
-        {item.exam1stProblems.length + sorted2nd.length > 0 ? (
+        {item.exam1stProblems.length +
+          item.exam1stExtraYears.length +
+          sorted2nd.length >
+        0 ? (
           <div className="mt-1 flex flex-wrap gap-1">
-            {Array.from(
-              new Map(
-                item.exam1stProblems.map((p) => [p.year, p]),
-              ).values(),
-            )
-              .sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
-              .map((p) => (
-                <ExamProblemChip
-                  key={p.problemId}
-                  lawCode={p.lawCode}
-                  problemId={p.problemId}
-                  year={p.year}
-                />
-              ))}
+            {mergeFirstRoundChips(
+              item.exam1stProblems,
+              item.exam1stExtraYears,
+            )}
             {sorted2nd.map((y) => (
               <ExamYearChip key={`2-${y}`} round="second" year={y} />
             ))}

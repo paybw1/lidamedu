@@ -27,7 +27,7 @@ export { COURT_LABELS } from "./labels";
 
 // list 쿼리에서 select 하는 컬럼 묶음 — DRY.
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years";
 
 interface CaseListRow {
   case_id: string;
@@ -42,6 +42,7 @@ interface CaseListRow {
   summary_title: string | null;
   summary_items: unknown;
   subject_laws: string[];
+  exam_1st_years: number[] | null;
   exam_2nd_years: number[] | null;
 }
 
@@ -59,6 +60,11 @@ function rowToListItem(
   row: CaseListRow,
   examProblemsByCase?: Map<string, ExamProblemRef[]>,
 ): CaseListItem {
+  const problems = examProblemsByCase?.get(row.case_id) ?? [];
+  const problemYears = new Set(problems.map((p) => p.year));
+  const extraYears = (row.exam_1st_years ?? []).filter(
+    (y) => !problemYears.has(y),
+  );
   return {
     caseId: row.case_id,
     court: row.court,
@@ -73,7 +79,9 @@ function rowToListItem(
     summaryFirstTitle: extractFirstSummaryTitle(row.summary_items),
     subjectLaws: row.subject_laws ?? [],
     // feat-8-024: 1차 기출문제는 problem_case_links 기반 파생값.
-    exam1stProblems: examProblemsByCase?.get(row.case_id) ?? [],
+    exam1stProblems: problems,
+    // 운영자가 cases.exam_1st_years 컬럼에 수동 입력한 연도 중 link 파생에 없는 것.
+    exam1stExtraYears: extraYears.sort((a, b) => a - b),
     exam2ndYears: row.exam_2nd_years ?? [],
   };
 }

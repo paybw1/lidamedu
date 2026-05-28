@@ -209,27 +209,24 @@ body {
   }
 
   /* 강사·원장 작성 하이라이트 (feat-8-023) — 모든 수험생에게 노출.
-     수험생 본인 하이라이트(lidam-hl-*)와 구분: 더 진한 틴트 + 아래쪽 실선 밑줄.
-     ::highlight() 는 text-decoration shorthand 만 안정적으로 지원하므로 longhand 미사용. */
+     수험생 본인 하이라이트(lidam-hl-*)와 구분은 진한 틴트만으로. underline 데코는
+     5번째 옵션(lidam-hl-staff-underline) 에서만 명시적으로 사용한다 —
+     색상 선택과 무관하게 항상 밑줄이 따라붙어 텍스트와 어긋나 보이는 문제를 해결. */
   ::highlight(lidam-hl-staff-yellow) {
     background-color: rgba(252, 211, 77, 0.5); /* amber-300 */
     color: inherit;
-    text-decoration: underline rgb(217, 119, 6) solid 2px; /* amber-600 */
   }
   ::highlight(lidam-hl-staff-green) {
     background-color: rgba(110, 231, 183, 0.5); /* emerald-300 */
     color: inherit;
-    text-decoration: underline rgb(5, 150, 105) solid 2px; /* emerald-600 */
   }
   ::highlight(lidam-hl-staff-red) {
     background-color: rgba(253, 164, 175, 0.5); /* rose-300 */
     color: inherit;
-    text-decoration: underline rgb(225, 29, 72) solid 2px; /* rose-600 */
   }
   ::highlight(lidam-hl-staff-blue) {
     background-color: rgba(125, 211, 252, 0.5); /* sky-300 */
     color: inherit;
-    text-decoration: underline rgb(2, 132, 199) solid 2px; /* sky-600 */
   }
 
   /* feat-3-207 — 5번째 옵션 "밑줄". 배경 없이 텍스트 데코레이션만.

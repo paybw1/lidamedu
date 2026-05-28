@@ -39,6 +39,7 @@ export default function SubjectCivilProcedure({
       progressByArticle={loaderData.progressByArticle}
       systematicNodeProblemStats={loaderData.systematicNodeProblemStats}
       problemNodeFilter={loaderData.problemNodeFilter}
+      axisCounts={loaderData.axisCounts}
     />
   );
 }

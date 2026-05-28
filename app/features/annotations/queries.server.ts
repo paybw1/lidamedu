@@ -227,7 +227,7 @@ export async function listHighlightsByArticleIds(
   const { data, error } = await client
     .from("user_highlights")
     .select(
-      "highlight_id, user_id, target_id, field_path, start_offset, end_offset, content_hash, color, label, created_at",
+      "highlight_id, user_id, target_id, field_path, start_offset, end_offset, content_hash, color, label, snippet, before_ctx, after_ctx, created_at",
     )
     .eq("target_type", "article")
     .in("target_id", articleIds)
@@ -248,6 +248,9 @@ export async function listHighlightsByArticleIds(
       createdAt: row.created_at,
       excerpt: row.label ?? "",
       isMine: row.user_id === userId,
+      snippet: row.snippet,
+      beforeCtx: row.before_ctx,
+      afterCtx: row.after_ctx,
     });
     out[row.target_id] = list;
   }
@@ -1521,6 +1524,11 @@ interface HighlightInput {
   color: HighlightColor;
   label: string | null;
   excerpt: string;
+  // 자동 재앵커링용 컨텍스트 — Phase 2. 본문 수정 시 snippet + before/after 로
+  // 새 위치를 단일 매치 탐색. null 이면 hash 검증만(legacy 데이터).
+  snippet?: string | null;
+  beforeCtx?: string | null;
+  afterCtx?: string | null;
 }
 
 export async function listHighlights(
@@ -1533,7 +1541,7 @@ export async function listHighlights(
   const { data, error } = await client
     .from("user_highlights")
     .select(
-      "highlight_id, user_id, field_path, start_offset, end_offset, content_hash, color, label, created_at",
+      "highlight_id, user_id, field_path, start_offset, end_offset, content_hash, color, label, snippet, before_ctx, after_ctx, created_at",
     )
     .eq("target_type", targetType)
     .eq("target_id", targetId)
@@ -1550,10 +1558,12 @@ export async function listHighlights(
     color: row.color as HighlightColor,
     label: row.label,
     createdAt: row.created_at,
-    // excerpt 는 label 에 캐시되거나 별도 컬럼이 없어 클라이언트에서 텍스트 선택 시 저장한 것을 활용.
-    // 1차에서는 label 을 발췌 텍스트 보관소로 활용 (아래 createHighlight 참조)
+    // excerpt 는 label(500자 truncate) — 표시용. reanchor 는 snippet 사용.
     excerpt: row.label ?? "",
     isMine: row.user_id === userId,
+    snippet: row.snippet,
+    beforeCtx: row.before_ctx,
+    afterCtx: row.after_ctx,
   }));
 }
 
@@ -1564,7 +1574,7 @@ export async function createHighlight(
   targetId: string,
   input: HighlightInput,
 ): Promise<HighlightRecord> {
-  // 발췌 텍스트는 label 컬럼에 저장 (별도 excerpt 컬럼은 향후 추가)
+  // 발췌 텍스트는 label(500자 truncate, UI 표시용) + snippet(full, reanchor 용) 둘 다 저장.
   const { data, error } = await client
     .from("user_highlights")
     .insert({
@@ -1577,9 +1587,12 @@ export async function createHighlight(
       content_hash: input.contentHash,
       color: input.color,
       label: input.excerpt.slice(0, 500),
+      snippet: input.snippet ?? input.excerpt,
+      before_ctx: input.beforeCtx ?? null,
+      after_ctx: input.afterCtx ?? null,
     })
     .select(
-      "highlight_id, field_path, start_offset, end_offset, content_hash, color, label, created_at",
+      "highlight_id, field_path, start_offset, end_offset, content_hash, color, label, snippet, before_ctx, after_ctx, created_at",
     )
     .single();
 
@@ -1595,6 +1608,9 @@ export async function createHighlight(
     createdAt: data.created_at,
     excerpt: data.label ?? "",
     isMine: true,
+    snippet: data.snippet,
+    beforeCtx: data.before_ctx,
+    afterCtx: data.after_ctx,
   };
 }
 

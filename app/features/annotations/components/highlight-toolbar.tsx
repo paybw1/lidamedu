@@ -19,7 +19,10 @@ import {
   highlightColorLabel,
   type HighlightColor,
 } from "../labels";
-import { captureContainerSelection } from "../lib/highlight-dom";
+import {
+  captureContainerSelection,
+  containerText,
+} from "../lib/highlight-dom";
 import { dispatchMemoSnippet } from "../lib/memo-selection-event";
 import { useHighlightAliases } from "../lib/use-highlight-aliases";
 
@@ -60,7 +63,13 @@ interface PendingSelection {
   // 계산. 같은 snippet 이 여러 곳에 등장해도 그 자리만 식별 가능하게 하기 위해 메모용으로 캡처.
   blockIndex: number | null;
   cumOffset: number | null;
+  // 자동 재앵커링용 컨텍스트(Phase 2) — 본문 수정 시 단일 매치 탐색에 사용.
+  // 선택 시점의 컨테이너 textContent 에서 직접 추출(30자).
+  beforeCtx: string;
+  afterCtx: string;
 }
+
+const REANCHOR_CTX_CHARS = 30;
 
 async function digestSha256(text: string): Promise<string> {
   const encoded = new TextEncoder().encode(text);
@@ -121,6 +130,17 @@ function captureWithRect(): PendingSelection | null {
   }
   const info = captureContainerSelection(containerEl);
   if (!info) return null;
+  // 자동 재앵커링용 컨텍스트 — 선택 시점에 30자씩 추출. 본문 수정 후 새 위치를
+  // before+snippet+after 단일 매치로 찾는다.
+  const full = containerText(containerEl);
+  const beforeCtx = full.slice(
+    Math.max(0, info.startOffset - REANCHOR_CTX_CHARS),
+    info.startOffset,
+  );
+  const afterCtx = full.slice(
+    info.endOffset,
+    info.endOffset + REANCHOR_CTX_CHARS,
+  );
   const rect = range.getBoundingClientRect();
   return {
     text: info.text,
@@ -137,6 +157,8 @@ function captureWithRect(): PendingSelection | null {
     containerTargetId: containerEl.dataset.highlightTargetId ?? null,
     blockIndex,
     cumOffset,
+    beforeCtx,
+    afterCtx,
   };
 }
 
@@ -219,6 +241,9 @@ export function HighlightToolbar({
     fd.set("contentHash", contentHash);
     fd.set("color", color);
     fd.set("excerpt", target.text);
+    fd.set("snippet", target.text);
+    fd.set("beforeCtx", target.beforeCtx);
+    fd.set("afterCtx", target.afterCtx);
     fetcher.submit(fd, {
       method: "post",
       action: "/api/annotations/highlight",

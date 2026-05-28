@@ -11,7 +11,42 @@
 import { type ReactNode, useEffect, useRef } from "react";
 
 import { type HighlightColor, type HighlightRecord } from "../labels";
-import { rangeFromOffsets } from "../lib/highlight-dom";
+import { containerText, rangeFromOffsets } from "../lib/highlight-dom";
+
+// haystack 안에 needle 이 단 한 번만 등장하면 그 인덱스, 아니면 -1.
+function uniqueIndexOf(haystack: string, needle: string): number {
+  if (!needle) return -1;
+  const first = haystack.indexOf(needle);
+  if (first < 0) return -1;
+  const second = haystack.indexOf(needle, first + 1);
+  return second < 0 ? first : -1;
+}
+
+// 본문 수정 후 저장된 offset 이 어긋났을 때 snippet + before/after 컨텍스트로
+// 단일 매치를 찾아 새 위치(startOffset/endOffset)를 돌려준다. 실패 시 null.
+function tryReanchor(
+  fullText: string,
+  snippet: string,
+  beforeCtx: string | null,
+  afterCtx: string | null,
+): { startOffset: number; endOffset: number } | null {
+  if (!snippet) return null;
+  // 1) before + snippet + after 단일 매치 (강한 컨텍스트).
+  const before = beforeCtx ?? "";
+  const after = afterCtx ?? "";
+  if (before || after) {
+    const composite = before + snippet + after;
+    const idx = uniqueIndexOf(fullText, composite);
+    if (idx >= 0) {
+      const start = idx + before.length;
+      return { startOffset: start, endOffset: start + snippet.length };
+    }
+  }
+  // 2) snippet 단독 단일 매치 (fallback).
+  const idx2 = uniqueIndexOf(fullText, snippet);
+  if (idx2 < 0) return null;
+  return { startOffset: idx2, endOffset: idx2 + snippet.length };
+}
 
 // staff 여부에 따라 lidam-hl-* (수험생) / lidam-hl-staff-* (강사) registry name 선택.
 function highlightName(color: HighlightColor, staff: boolean): string {
@@ -81,8 +116,41 @@ export function HighlightOverlay({
 
     // 이번 인스턴스가 추가한 (name, range) 들 — cleanup 에서 자기 것만 제거
     const added: Array<{ name: string; range: Range }> = [];
+    // 본문이 staff 수정으로 바뀌면 저장된 offset 이 어긋날 수 있다. 매 렌더마다
+    //   1) offset 으로 Range 복원 → text 와 snippet/excerpt 정확 비교 (정합성 가드)
+    //   2) 불일치면 snippet + before/after 컨텍스트로 단일 매치 재탐색(클라이언트 reanchor)
+    //   3) 그래도 못 찾으면 그리지 않음(orphan — DB 는 보존)
+    // legacy 데이터(snippet 컬럼 NULL) 는 excerpt(=label, 500자 truncate) 로 fallback.
+    let fullTextCache: string | null = null;
+    const getFullText = (): string => {
+      if (fullTextCache === null) fullTextCache = containerText(container);
+      return fullTextCache;
+    };
     for (const h of relevant) {
-      const range = rangeFromOffsets(container, h.startOffset, h.endOffset);
+      const expected = (h.snippet ?? h.excerpt ?? "").trim();
+      let range = rangeFromOffsets(container, h.startOffset, h.endOffset);
+      const matchesAtOffset =
+        range !== null &&
+        expected !== "" &&
+        (h.snippet
+          ? range.toString() === h.snippet
+          : range.toString().startsWith(expected));
+      if (!matchesAtOffset) {
+        // 위치 어긋남 — reanchor 시도.
+        const reanchored = tryReanchor(
+          getFullText(),
+          h.snippet ?? expected,
+          h.beforeCtx ?? null,
+          h.afterCtx ?? null,
+        );
+        range = reanchored
+          ? rangeFromOffsets(
+              container,
+              reanchored.startOffset,
+              reanchored.endOffset,
+            )
+          : null;
+      }
       if (!range) continue;
       // 강사 작성 하이라이트(= 내 것이 아니거나, 내가 강사) 는 staff 스타일.
       const staffAuthored = !h.isMine || viewerIsStaff;

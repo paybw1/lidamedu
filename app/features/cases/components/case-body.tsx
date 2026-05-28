@@ -21,8 +21,8 @@ import { HighlightOverlay } from "~/features/annotations/components/highlight-ov
 import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
 import {
-  ExamProblemChip,
   ExamYearChip,
+  mergeFirstRoundChips,
 } from "~/features/cases/components/exam-year-chip";
 import {
   COURT_LABELS,
@@ -212,21 +212,13 @@ export function CaseBody({
           ) : null}
         </div>
 
-        {/* 기출 표시 — 1차는 출제 기출문제 칩(feat-8-024), 2차는 연도 배지 */}
-        {examProblems.length + kase.exam2ndYears.length > 0 ? (
+        {/* 기출 표시 — 1차는 problem link + 수동 연도 통합(연도 asc), 2차는 연도 배지 */}
+        {examProblems.length +
+          kase.exam1stExtraYears.length +
+          kase.exam2ndYears.length >
+        0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {Array.from(
-              new Map(examProblems.map((ep) => [ep.year, ep])).values(),
-            )
-              .sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
-              .map((ep) => (
-                <ExamProblemChip
-                  key={ep.problemId}
-                  lawCode={ep.lawCode}
-                  problemId={ep.problemId}
-                  year={ep.year}
-                />
-              ))}
+            {mergeFirstRoundChips(examProblems, kase.exam1stExtraYears)}
             {[...kase.exam2ndYears]
               .sort((a, b) => a - b)
               .map((y) => (

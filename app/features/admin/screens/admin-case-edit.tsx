@@ -41,7 +41,12 @@ import {
   type CaseImagePosition,
 } from "~/features/cases/labels";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { CaseCitationsCard } from "~/features/admin/components/case-citations-card";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
+import {
+  getCaseCitationsInProblems,
+  type CaseCitationSummary,
+} from "~/features/admin/queries/case-citations.server";
 import {
   getStaffRole,
   getSystematicSkeleton,
@@ -102,6 +107,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       relatedArticles: [] as RelatedArticle[],
       systematicNodes: [] as SystematicNode[],
       siblings: null as Awaited<ReturnType<typeof getCaseSiblings>>,
+      citations: null as CaseCitationSummary | null,
     };
   const [{ data: row, error }, relatedArticles, siblings] = await Promise.all([
     client.from("cases").select("*").eq("case_id", caseId).maybeSingle(),
@@ -118,7 +124,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   )
     ? (firstSubjectRaw as LawSubjectSlug)
     : ("patent" as LawSubjectSlug);
-  const systematicNodes = await getSystematicSkeleton(client, firstSubject);
+  const [systematicNodes, citations] = await Promise.all([
+    getSystematicSkeleton(client, firstSubject),
+    getCaseCitationsInProblems(client, row.case_id, row.case_number),
+  ]);
   return {
     kase: row,
     returnTo,
@@ -126,6 +135,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     relatedArticles,
     systematicNodes,
     siblings,
+    citations,
   };
 }
 
@@ -139,8 +149,15 @@ const COURTS: Array<keyof typeof COURT_LABELS> = [
 /* ── 페이지 ──────────────────────────────────────────────────────────── */
 
 export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
-  const { kase, returnTo, role, relatedArticles, systematicNodes, siblings } =
-    loaderData;
+  const {
+    kase,
+    returnTo,
+    role,
+    relatedArticles,
+    systematicNodes,
+    siblings,
+    citations,
+  } = loaderData;
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
 
@@ -433,6 +450,13 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               caseId={kase.case_id}
               kind={siblings.kind}
               siblings={siblings.siblings}
+            />
+          ) : null}
+          {citations ? (
+            <CaseCitationsCard
+              caseId={kase.case_id}
+              caseNumber={kase.case_number}
+              summary={citations}
             />
           ) : null}
         </>

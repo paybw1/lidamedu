@@ -40,6 +40,7 @@ import {
 } from "../lib/subjects";
 import { SortAxisProvider, SortAxisToggle } from "./sort-axis";
 import { BOOKMARK_AXES, BookmarkTabInner } from "./subject-bookmark-rail";
+import type { SubjectStudyStatusProps } from "./subject-study-status";
 import { ArticlesTab } from "./tabs/articles-tab";
 import { CasesTab } from "./tabs/cases-tab";
 import { ProblemsTab } from "./tabs/problems-tab";
@@ -67,6 +68,8 @@ interface SubjectHubProps {
   recommendedArticles?: RecommendedArticleItem[];
   systematicNodeProblemStats?: Record<string, SystematicNodeProblemStat>;
   problemNodeFilter?: ProblemNodeFilter | null;
+  // 책갈피 레일 3축 총량 — BookmarkTab 옆 카운트 배지.
+  axisCounts?: Record<SubjectTab, number>;
 }
 
 export function SubjectHub(props: SubjectHubProps) {
@@ -100,6 +103,7 @@ function SubjectHubInner({
   progressByArticle,
   systematicNodeProblemStats,
   problemNodeFilter,
+  axisCounts,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -129,36 +133,29 @@ function SubjectHubInner({
     [setSearchParams],
   );
 
-  const articleCount = (articles ?? []).filter(
-    (a) => a.level === "article",
-  ).length;
-  const caseCount = (cases ?? []).length;
-  const problemCount = (problems ?? []).length;
-  const countByAxis: Record<SubjectTab, number> = {
-    articles: articleCount,
-    cases: caseCount,
-    problems: problemCount,
+  const problemTotal = (problems ?? []).length;
+  // 즐겨찾기·노트 합산 — 인포라인 카운트용. 현재는 article 만 합산(loader 가
+  // article 만 가져옴). case 도 표시하려면 추후 polymorphic 카운트 헬퍼 도입.
+  const bookmarkCount = Object.keys(bookmarkLevels ?? {}).length;
+  const annotationCount = Object.values(annotationCounts ?? {}).reduce(
+    (sum, c) => sum + c.memos + c.highlights,
+    0,
+  );
+
+  // 학습 현황 카드 — 헤더에서 빼고 각 탭 본문 컬럼 최상단에 동일하게 표시.
+  // 책갈피 레일·좌측 트리와 같은 행에 옆으로 보이게 하기 위함.
+  const studyStatus: SubjectStudyStatusProps = {
+    subject,
+    progress: progress ?? null,
+    problemStats: problemStats ?? null,
+    problemTotal,
+    bookmarkCount,
+    annotationCount,
   };
-  const problemAttempts = problemStats?.totalAttempts ?? 0;
-  const problemAccuracyPct =
-    problemStats && problemStats.attemptedCount > 0
-      ? Math.round(
-          (problemStats.correctCount / problemStats.attemptedCount) * 100,
-        )
-      : null;
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
-      <SubjectHeader
-        subject={subject}
-        progressPct={progress?.pctViewed}
-        recentRevisionDate={recentRevisionDate}
-        articleCount={articleCount}
-        caseCount={caseCount}
-        problemCount={problemCount}
-        problemAttempts={problemAttempts}
-        problemAccuracyPct={problemAccuracyPct}
-      />
+      <SubjectHeader subject={subject} />
 
       {/* 세로 책갈피 내비게이션 — 조문·판례·문제 3축을 좌측 패널 바깥에 부착.
           활성 탭은 네이비로 좌측 트리 패널에 맞물린다. */}
@@ -176,7 +173,7 @@ function SubjectHubInner({
               value={axis.value}
               icon={axis.icon}
               label={axis.label}
-              count={countByAxis[axis.value]}
+              count={axisCounts?.[axis.value]}
             />
           ))}
         </TabsList>
@@ -197,6 +194,7 @@ function SubjectHubInner({
               casesTotal={casesTotal ?? cases?.length ?? 0}
               problems={problems ?? []}
               problemStats={problemStats ?? null}
+              studyStatus={studyStatus}
             />
           </TabsContent>
           <TabsContent value="cases" className="mt-0">
@@ -215,6 +213,7 @@ function SubjectHubInner({
                   byNodeId: {},
                 }
               }
+              studyStatus={studyStatus}
             />
           </TabsContent>
           <TabsContent value="problems" className="mt-0">
@@ -228,6 +227,7 @@ function SubjectHubInner({
               systematicNodes={systematicNodes ?? []}
               nodeStats={systematicNodeProblemStats ?? {}}
               nodeFilter={problemNodeFilter ?? null}
+              studyStatus={studyStatus}
             />
           </TabsContent>
         </div>
@@ -254,7 +254,7 @@ function BookmarkTab({
   value: SubjectTab;
   icon: ComponentType<{ className?: string }>;
   label: string;
-  count: number;
+  count?: number;
 }) {
   return (
     <TabsTrigger
@@ -278,35 +278,14 @@ function BookmarkTab({
   );
 }
 
-function SubjectHeader({
-  subject,
-  progressPct,
-  recentRevisionDate,
-  articleCount,
-  caseCount,
-  problemCount,
-  problemAttempts,
-  problemAccuracyPct,
-}: {
-  subject: LawSubjectMeta;
-  progressPct?: number;
-  recentRevisionDate?: string | null;
-  articleCount: number;
-  caseCount: number;
-  problemCount: number;
-  problemAttempts: number;
-  problemAccuracyPct: number | null;
-}) {
+function SubjectHeader({ subject }: { subject: LawSubjectMeta }) {
   return (
-    <header className="space-y-5">
-      {/* Eyebrow */}
+    <header className="space-y-4">
       <p className="text-primary font-mono text-[11px] font-bold tracking-[0.10em] uppercase">
         과목별 학습 · {subject.categoryLabel}
       </p>
-
-      {/* Title row + action buttons */}
       <div className="flex flex-wrap items-end justify-between gap-6">
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <h1 className="text-foreground text-4xl font-extrabold tracking-tight">
             {subject.name}
           </h1>
@@ -318,80 +297,6 @@ function SubjectHeader({
         </div>
         <SortAxisToggle />
       </div>
-
-      {/* KPI strip card */}
-      <div
-        className="border-border bg-muted/50 grid gap-3 rounded-xl border p-5"
-        style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-        }}
-        data-testid="subject-kpi"
-      >
-        <KpiItem label="조문" value={articleCount.toLocaleString("ko-KR")} />
-        <KpiItem label="판례" value={caseCount.toLocaleString("ko-KR")} />
-        <KpiItem
-          label="문제"
-          value={problemCount.toLocaleString("ko-KR")}
-          sub={
-            problemAttempts > 0
-              ? `내 풀이 ${problemAttempts.toLocaleString("ko-KR")}`
-              : undefined
-          }
-        />
-        <KpiItem
-          label="정답률"
-          value={problemAccuracyPct !== null ? `${problemAccuracyPct}%` : "—"}
-          sub="최근 풀이 기준"
-        />
-        <KpiProgressItem pct={progressPct} />
-      </div>
     </header>
-  );
-}
-
-function KpiItem({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
-        {label}
-      </p>
-      <p className="text-foreground mt-1.5 text-[22px] leading-none font-extrabold tracking-tight tabular-nums">
-        {value}
-      </p>
-      {sub ? (
-        <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
-          {sub}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function KpiProgressItem({ pct }: { pct?: number }) {
-  const clamped =
-    pct !== undefined ? Math.max(0, Math.min(100, pct)) : undefined;
-  return (
-    <div className="min-w-0">
-      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
-        진도
-      </p>
-      <p className="text-primary mt-1.5 text-[22px] leading-none font-extrabold tracking-tight tabular-nums">
-        {clamped !== undefined ? `${clamped}%` : "—"}
-      </p>
-      <div className="bg-muted mt-2 h-1.5 overflow-hidden rounded-full">
-        <div
-          className="bg-primary h-full rounded-full transition-all"
-          style={{ width: clamped !== undefined ? `${clamped}%` : "0%" }}
-        />
-      </div>
-    </div>
   );
 }

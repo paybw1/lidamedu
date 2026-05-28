@@ -35,6 +35,7 @@ export default function SubjectCivil({ loaderData }: Route.ComponentProps) {
       progressByArticle={loaderData.progressByArticle}
       systematicNodeProblemStats={loaderData.systematicNodeProblemStats}
       problemNodeFilter={loaderData.problemNodeFilter}
+      axisCounts={loaderData.axisCounts}
     />
   );
 }

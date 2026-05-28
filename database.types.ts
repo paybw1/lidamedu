@@ -4490,6 +4490,8 @@ export type Database = {
       }
       user_highlights: {
         Row: {
+          after_ctx: string | null
+          before_ctx: string | null
           color: string
           content_hash: string
           created_at: string
@@ -4498,12 +4500,15 @@ export type Database = {
           field_path: string
           highlight_id: string
           label: string | null
+          snippet: string | null
           start_offset: number
           target_id: string
           target_type: Database["public"]["Enums"]["annotation_target_type"]
           user_id: string
         }
         Insert: {
+          after_ctx?: string | null
+          before_ctx?: string | null
           color: string
           content_hash: string
           created_at?: string
@@ -4512,12 +4517,15 @@ export type Database = {
           field_path: string
           highlight_id?: string
           label?: string | null
+          snippet?: string | null
           start_offset: number
           target_id: string
           target_type: Database["public"]["Enums"]["annotation_target_type"]
           user_id: string
         }
         Update: {
+          after_ctx?: string | null
+          before_ctx?: string | null
           color?: string
           content_hash?: string
           created_at?: string
@@ -4526,6 +4534,7 @@ export type Database = {
           field_path?: string
           highlight_id?: string
           label?: string | null
+          snippet?: string | null
           start_offset?: number
           target_id?: string
           target_type?: Database["public"]["Enums"]["annotation_target_type"]

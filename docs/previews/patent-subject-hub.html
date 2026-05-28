@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>내 학습 현황 — 미리보기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: "class" };
+    </script>
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --card: #ffffff;
+        --muted: #f3f2ef;
+        --border: #e7e5e4;
+        --fg: #0c0a09;
+        --mute: #78716c;
+        --brand: #2563eb;
+        --emerald: #059669;
+        --violet: #7c3aed;
+        --amber: #d97706;
+        --rose: #e11d48;
+      }
+      html.dark {
+        --bg: #0b0a09;
+        --card: #161513;
+        --muted: #1f1d1a;
+        --border: #2a2724;
+        --fg: #f5f5f4;
+        --mute: #a8a29e;
+        --brand: #60a5fa;
+        --emerald: #34d399;
+        --violet: #a78bfa;
+        --amber: #fbbf24;
+        --rose: #fb7185;
+      }
+      html, body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          system-ui, sans-serif;
+      }
+      .num { font-variant-numeric: tabular-nums; }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <div class="mx-auto max-w-4xl px-5 py-10 md:px-8 md:py-14">
+      <!-- 미리보기 머리말 — 실제 화면엔 들어가지 않음 -->
+      <div
+        class="mb-5 flex items-center justify-between text-[12px]"
+        style="color: var(--mute)"
+      >
+        <span>
+          미리보기 ·
+          <span class="mono">/subjects/patent?tab=cases</span>
+          상단 "내 학습 현황" 영역
+        </span>
+        <button
+          id="theme-toggle"
+          class="rounded-full border px-2.5 py-1 hover:opacity-80"
+          style="border-color: var(--border); background: var(--card)"
+        >
+          다크 모드
+        </button>
+      </div>
+
+      <!-- ====== 시안 A — 도넛 2 + 마지막 학습 + 활동 인포라인 ====== -->
+      <section
+        aria-labelledby="stat-heading-a"
+        class="rounded-2xl border p-5 md:p-6"
+        style="background: var(--muted); border-color: var(--border)"
+      >
+        <div class="flex items-center justify-between">
+          <h2
+            id="stat-heading-a"
+            class="mono text-[11px] font-bold tracking-[0.08em] uppercase"
+            style="color: var(--mute)"
+          >
+            내 학습 현황
+          </h2>
+          <span class="text-[11px]" style="color: var(--mute)">
+            최근 학습 7시간 전
+          </span>
+        </div>
+
+        <!-- 도넛 3개 — 조문/판례/문제 -->
+        <div class="mt-4 grid grid-cols-3 gap-3" id="donuts"></div>
+
+        <!-- 마지막 학습 / 이어보기 — 풀폭 한 줄 -->
+        <div
+          class="mt-4 flex flex-wrap items-center gap-3 rounded-xl border p-3.5"
+          style="background: var(--card); border-color: var(--border)"
+        >
+          <span
+            class="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-base"
+            style="background: color-mix(in oklab, var(--brand) 14%, transparent); color: var(--brand)"
+            aria-hidden="true"
+          >
+            📖
+          </span>
+          <div class="min-w-0 flex-1">
+            <p
+              class="mono text-[10px] font-bold tracking-[0.1em] uppercase"
+              style="color: var(--mute)"
+            >
+              마지막 학습 조문
+            </p>
+            <p class="mt-0.5 truncate text-base font-extrabold leading-tight">
+              제29조 — 특허요건
+              <span class="ml-1 text-[11px] font-bold" style="color: var(--mute)">
+                · 메모 3 · 하이라이트 2
+              </span>
+            </p>
+          </div>
+          <a
+            href="#"
+            class="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-bold"
+            style="background: var(--brand); color: white"
+          >
+            이어서 보기 →
+          </a>
+        </div>
+
+        <!-- 활동 인포라인 — 판례·즐겨찾기·메모·오답 -->
+        <ul
+          id="info-line"
+          class="mt-5 grid grid-cols-1 gap-2 border-t pt-4 sm:grid-cols-3"
+          style="border-color: var(--border)"
+        ></ul>
+      </section>
+
+      <!-- ====== 시안 B — 가로 막대형 (현재 코드와 동일 구조, 비교용) ====== -->
+      <p
+        class="mt-10 mb-3 mono text-[11px] font-bold tracking-[0.1em] uppercase"
+        style="color: var(--mute)"
+      >
+        참고: 현재 코드 구조 (SubjectHeader.tsx) — 비교용
+      </p>
+      <section
+        class="rounded-2xl border p-5"
+        style="background: var(--muted); border-color: var(--border)"
+      >
+        <h2
+          class="mono text-[11px] font-bold tracking-[0.08em] uppercase"
+          style="color: var(--mute)"
+        >
+          내 학습 현황
+        </h2>
+        <div id="bars" class="mt-3 space-y-3"></div>
+      </section>
+    </div>
+
+    <script>
+      // ===== 도넛 3개 =====
+      const donuts = [
+        {
+          label: "조문 진도",
+          pct: 68,
+          frac: "161 / 237",
+          color: "var(--brand)",
+        },
+        {
+          label: "판례 학습",
+          pct: 41,
+          frac: "485 / 1,184",
+          color: "var(--violet)",
+        },
+        {
+          label: "문제 정답률",
+          pct: 73,
+          frac: "1,640 풀이",
+          color: "var(--emerald)",
+        },
+      ];
+      document.getElementById("donuts").innerHTML = donuts
+        .map(
+          (d) => `
+          <figure class="flex flex-col items-center">
+            <svg viewBox="0 0 120 120" class="w-full max-w-[120px]" role="img" aria-label="${d.label} ${d.pct}%">
+              <circle cx="60" cy="60" r="50" fill="none" stroke-width="12" style="stroke: var(--border)" />
+              <circle
+                cx="60" cy="60" r="50" fill="none" stroke-width="12" stroke-linecap="round"
+                style="stroke: ${d.color}"
+                stroke-dasharray="${d.pct} 100"
+                pathLength="100"
+                transform="rotate(-90 60 60)"
+              />
+              <text x="60" y="58" text-anchor="middle" class="num"
+                style="font-size: 24px; font-weight: 800; fill: currentColor;">${d.pct}%</text>
+              <text x="60" y="76" text-anchor="middle" class="num"
+                style="font-size: 10px; fill: var(--mute);">${d.frac}</text>
+            </svg>
+            <figcaption class="mt-1 text-[13px] font-extrabold text-center">${d.label}</figcaption>
+          </figure>`,
+        )
+        .join("");
+
+      // ===== 활동 인포라인 — 3칸 (판례는 도넛으로 갔으니 제외) =====
+      const infos = [
+        {
+          icon: "⭐",
+          label: "즐겨찾기",
+          value: "32",
+          sub: "조문·판례 책갈피",
+          color: "var(--amber)",
+        },
+        {
+          icon: "✎",
+          label: "메모/하이라이트",
+          value: "18",
+          sub: "내 노트",
+          color: "var(--brand)",
+        },
+        {
+          icon: "⚠",
+          label: "오답",
+          value: "14",
+          sub: "복습 대기 →",
+          color: "var(--rose)",
+          link: true,
+        },
+      ];
+      document.getElementById("info-line").innerHTML = infos
+        .map((s) => {
+          const tag = s.link ? "a" : "div";
+          const cls = s.link
+            ? "block rounded-lg px-2 -mx-2 py-1 hover:bg-black/5 dark:hover:bg-white/5 transition"
+            : "px-2 -mx-2";
+          return `
+            <li>
+              <${tag} ${s.link ? 'href="#"' : ""} class="${cls}">
+                <p class="text-[11px] font-bold" style="color: var(--mute)">
+                  <span style="color:${s.color}">${s.icon}</span> ${s.label}
+                </p>
+                <p class="mt-0.5 num text-xl font-extrabold leading-none">${s.value}</p>
+                <p class="mt-0.5 text-[11px]" style="color:${s.link ? s.color : "var(--mute)"}">${s.sub}</p>
+              </${tag}>
+            </li>`;
+        })
+        .join("");
+
+      // ===== 시안 B — 가로 막대형 (판례도 진도% 통일) =====
+      const bars = [
+        {
+          label: "조문 학습",
+          pct: 68,
+          right: "68%",
+          sub: "161 / 237 열람",
+          color: "var(--brand)",
+        },
+        {
+          label: "판례 학습",
+          pct: 41,
+          right: "41%",
+          sub: "485 / 1,184 열람",
+          color: "var(--violet)",
+        },
+        {
+          label: "문제 정답률",
+          pct: 73,
+          right: "73%",
+          sub: "1,640 / 2,930 풀이",
+          color: "var(--emerald)",
+        },
+      ];
+      document.getElementById("bars").innerHTML = bars
+        .map((b) => {
+          const trackBg = `color-mix(in oklab, ${b.color} 15%, transparent)`;
+          const bar =
+            b.pct === null
+              ? '<div class="hidden sm:block"></div>'
+              : `<div class="h-2 overflow-hidden rounded-full" style="background:${trackBg}">
+                  <div class="h-full rounded-full" style="width:${b.pct}%; background:${b.color}"></div>
+                </div>`;
+          return `
+            <div class="grid grid-cols-1 sm:grid-cols-[7.5rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1">
+              <p class="text-sm font-bold">${b.label}</p>
+              ${bar}
+              <p class="num text-[20px] font-extrabold leading-none sm:text-right" style="color:${b.color}">${b.right}</p>
+              <p class="num text-[11px] sm:col-start-2 sm:col-span-2 sm:text-right" style="color: var(--mute)">${b.sub}</p>
+            </div>`;
+        })
+        .join("");
+
+      // ===== 다크모드 토글 =====
+      const btn = document.getElementById("theme-toggle");
+      const apply = (dark) => {
+        document.documentElement.classList.toggle("dark", dark);
+        btn.textContent = dark ? "라이트 모드" : "다크 모드";
+      };
+      btn.addEventListener("click", () =>
+        apply(!document.documentElement.classList.contains("dark")),
+      );
+      apply(
+        window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches,
+      );
+    </script>
+  </body>
+</html>

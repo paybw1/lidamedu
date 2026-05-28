@@ -24,6 +24,11 @@ const createSchema = z.object({
   // 입력 한도는 paragraph 한 단락(보통 1~2 KB) 보다 충분히 크게.
   // DB 저장(`label` 컬럼) 은 createHighlight 에서 500 자 slice 로 truncate 됨.
   excerpt: z.string().min(1).max(10000),
+  // 자동 재앵커링용 컨텍스트(Phase 2). snippet 은 발췌 원문 풀(label 은 500자 truncate).
+  // before/after 는 30자. 본문 수정 시 단일 매치 탐색으로 위치를 자동 추종.
+  snippet: z.string().min(1).max(10000).optional(),
+  beforeCtx: z.string().max(200).optional(),
+  afterCtx: z.string().max(200).optional(),
 });
 
 const deleteSchema = z.object({
@@ -65,6 +70,9 @@ export async function action({ request }: Route.ActionArgs) {
       contentHash,
       color,
       excerpt,
+      snippet,
+      beforeCtx,
+      afterCtx,
     } = parsed.data;
 
     if (endOffset <= startOffset) {
@@ -87,6 +95,9 @@ export async function action({ request }: Route.ActionArgs) {
         color,
         label: null,
         excerpt,
+        snippet: snippet ?? excerpt,
+        beforeCtx: beforeCtx ?? null,
+        afterCtx: afterCtx ?? null,
       },
     );
     return data({ ok: true, highlight }, { headers });

@@ -56,6 +56,10 @@ import type { UserProblemStats } from "~/features/study/queries.server";
 
 import type { LawSubjectMeta } from "../../lib/subjects";
 import { ProblemSystematicTree } from "../problem-systematic-tree";
+import {
+  SubjectStudyStatus,
+  type SubjectStudyStatusProps,
+} from "../subject-study-status";
 import { stripSystematicNumber } from "../systematic-node-label";
 
 const ORIGIN_OPTS: ProblemOrigin[] = [
@@ -95,6 +99,7 @@ export function ProblemsTab({
   systematicNodes,
   nodeStats,
   nodeFilter,
+  studyStatus,
 }: {
   subject: LawSubjectMeta;
   problems: ProblemListItem[];
@@ -105,6 +110,7 @@ export function ProblemsTab({
   systematicNodes: SystematicNode[];
   nodeStats: Record<string, SystematicNodeProblemStat>;
   nodeFilter: ProblemNodeFilter | null;
+  studyStatus: SubjectStudyStatusProps;
 }) {
   const firstRound = problems.filter((p) => p.examRound === "first");
   const secondRound = problems.filter((p) => p.examRound === "second");
@@ -156,6 +162,8 @@ export function ProblemsTab({
         </div>
       </aside>
       <section className="space-y-4">
+        <SubjectStudyStatus {...studyStatus} />
+
         {/* KPI cards — 3 columns */}
         <div className="grid gap-3 sm:grid-cols-3">
           <ProblemsKpiCard

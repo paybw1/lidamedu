@@ -6,7 +6,7 @@
 // 노드 클릭 → 현재 URL search 에 case_article / case_chapter / case_node 셋업 → 셔플.
 
 import { ChevronRightIcon, GavelIcon, SearchIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -244,6 +244,46 @@ export function CasesTree({
   const [searchQuery, setSearchQuery] = useState("");
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
+  // 사이드바 scrollTop 보존 — 노드 클릭·case 편집 back·라우트 전환 어디서든
+  // 사용자가 마지막에 본 트리 scroll 위치를 그대로 둔다. axis(statutory/systematic)
+  // 별로 트리 구조가 다르므로 키 분리. fallback: saved 가 없으면 active 노드를
+  // 시야로 한 번 끌어옴 (첫 진입 시 active 가 화면 밖일 수 있어서).
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    let scrollEl: HTMLElement | null = root.parentElement;
+    while (scrollEl) {
+      const overflowY = window.getComputedStyle(scrollEl).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") break;
+      scrollEl = scrollEl.parentElement;
+    }
+    if (!scrollEl) return;
+    const STORAGE_KEY = `lidam-cases-tree-scroll-${axis}`;
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved !== null) {
+      const top = Number.parseInt(saved, 10);
+      if (Number.isFinite(top)) scrollEl.scrollTop = top;
+    } else {
+      const activeEl = root.querySelector<HTMLElement>(
+        '[data-cases-tree-active="true"]',
+      );
+      if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
+    }
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const target = scrollEl;
+    const onScroll = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        sessionStorage.setItem(STORAGE_KEY, String(target.scrollTop));
+      }, 100);
+    };
+    target.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      target.removeEventListener("scroll", onScroll);
+      if (timer) clearTimeout(timer);
+    };
+  }, [axis]);
 
   const articleTreeBase = useMemo(
     () =>
@@ -321,7 +361,7 @@ export function CasesTree({
   const isEmpty = tree.length === 0;
 
   return (
-    <div className="space-y-2">
+    <div ref={rootRef} className="space-y-2">
       <div className="px-2">
         <div className="relative">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-2 size-3 -translate-y-1/2" />
@@ -471,7 +511,6 @@ function ArticleItem({
   const hasChildren = node.children.length > 0;
   const isActive =
     activeArticleId === node.articleId || activeChapterId === node.articleId;
-
   const count = isArticle
     ? byArticleId[node.articleId] ?? 0
     : byChapterId[node.articleId] ?? 0;
@@ -524,7 +563,7 @@ function ArticleItem({
   );
 
   return (
-    <li>
+    <li data-cases-tree-active={isActive ? "true" : undefined}>
       <Link
         to={href}
         preventScrollReset
@@ -583,7 +622,6 @@ function SystematicItem({
   const hasChildren = node.children.length > 0;
   const isActive = activeNodeId === node.nodeId;
   const count = byNodeId[node.nodeId] ?? 0;
-
   const groupClass = (() => {
     if (depth === 0) return "text-foreground font-bold";
     if (!hasChildren) return "text-foreground/70";
@@ -624,7 +662,7 @@ function SystematicItem({
   });
 
   return (
-    <li>
+    <li data-cases-tree-active={isActive ? "true" : undefined}>
       <Link
         to={href}
         preventScrollReset

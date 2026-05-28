@@ -49,7 +49,7 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 const LIST_COLUMNS =
-  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_2nd_years";
+  "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, summary_items, subject_laws, exam_1st_years, exam_2nd_years";
 
 function extractFirstSummaryTitle(raw: unknown): string | null {
   if (!Array.isArray(raw) || raw.length === 0) return null;
@@ -114,22 +114,30 @@ async function listLatestCases(
     count,
   } = await q.order("decided_at", { ascending: false }).range(from, to);
   if (error) throw error;
-  const items: CaseListItem[] = (rows ?? []).map((r) => ({
-    caseId: r.case_id,
-    court: r.court,
-    decidedAt: r.decided_at,
-    caseNumber: r.case_number,
-    caseTitle: r.case_title,
-    nickname: r.nickname,
-    caseType: r.case_type,
-    isEnBanc: r.is_en_banc,
-    importance: r.importance ?? 1,
-    summaryTitle: r.summary_title,
-    summaryFirstTitle: extractFirstSummaryTitle(r.summary_items),
-    subjectLaws: r.subject_laws ?? [],
-    exam1stProblems: examProblemsByCase.get(r.case_id) ?? [],
-    exam2ndYears: r.exam_2nd_years ?? [],
-  }));
+  const items: CaseListItem[] = (rows ?? []).map((r) => {
+    const problems = examProblemsByCase.get(r.case_id) ?? [];
+    const problemYears = new Set(problems.map((p) => p.year));
+    const extraYears = (r.exam_1st_years ?? [])
+      .filter((y: number) => !problemYears.has(y))
+      .sort((a: number, b: number) => a - b);
+    return {
+      caseId: r.case_id,
+      court: r.court,
+      decidedAt: r.decided_at,
+      caseNumber: r.case_number,
+      caseTitle: r.case_title,
+      nickname: r.nickname,
+      caseType: r.case_type,
+      isEnBanc: r.is_en_banc,
+      importance: r.importance ?? 1,
+      summaryTitle: r.summary_title,
+      summaryFirstTitle: extractFirstSummaryTitle(r.summary_items),
+      subjectLaws: r.subject_laws ?? [],
+      exam1stProblems: problems,
+      exam1stExtraYears: extraYears,
+      exam2ndYears: r.exam_2nd_years ?? [],
+    };
+  });
   return { items, total: count ?? 0 };
 }
 
