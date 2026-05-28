@@ -229,9 +229,11 @@ export default function AdminLawRevisionWorkspace({
             <PublishChecklist revision={revision} articles={articles} />
           ) : null}
 
+          {/* 학생 노출 첨부(PDF·개정이유·동영상·종류)는 보조 자료라 발행 후에도 수정 가능.
+              조문 스냅샷(아래 영향 조문)만 불변 — DB 가드도 번호/일자/status 만 잠근다. */}
           <AttachmentForm
             lawRevisionId={revision.lawRevisionId}
-            editable={!isPublished}
+            editable
             initial={{
               revisionKind: revision.revisionKind,
               reasonMd: revision.reasonMd ?? "",
