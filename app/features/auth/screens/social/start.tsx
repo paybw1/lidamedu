@@ -50,6 +50,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // Create Supabase client and get response headers for auth cookies
   const [client, headers] = makeServerClient(request);
 
+  // SITE_URL 의 끝 슬래시를 제거 — 안 그러면 redirectTo 가 `//auth/...` (슬래시 2개)가 돼
+  // Supabase Redirect 허용목록과 불일치 → 콜백 실패(bad_oauth_state)로 이어진다.
+  const siteUrl = (process.env.SITE_URL ?? "").replace(/\/+$/, "");
+
   // Initialize OAuth flow with the specified provider
   const { data: signInData, error: signInError } =
     await client.auth.signInWithOAuth({
@@ -58,7 +62,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         // 카카오는 Supabase(GoTrue)가 account_email·profile_image·profile_nickname 을
         // 강제 요청하므로 scopes 로 줄일 수 없다. account_email 동의항목은 비즈앱 전환이
         // 전제 — 카카오 콘솔에서 세 항목 모두 동의항목 ON 해야 KOE205 가 사라진다.
-        redirectTo: `${process.env.SITE_URL}/auth/social/complete/${parsedParams.provider}`,
+        redirectTo: `${siteUrl}/auth/social/complete/${parsedParams.provider}`,
       },
     });
 
