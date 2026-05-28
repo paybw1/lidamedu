@@ -360,7 +360,7 @@ export function CasesTab({
               </p>
             </div>
           ) : (
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="text-muted-foreground/70 w-10 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
@@ -519,7 +519,7 @@ function CaseRow({
           </span>
         ) : null}
       </TableCell>
-      <TableCell>
+      <TableCell className="whitespace-normal">
         {item.nickname ? (
           <span className="mb-0.5 inline-flex max-w-full items-center truncate rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
             {item.nickname}
