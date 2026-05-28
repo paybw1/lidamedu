@@ -54,7 +54,7 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
     // 즐겨찾기
     await page.goto("/study/bookmarks");
     await expect(
-      page.getByRole("heading", { name: "즐겨찾기 모음" }),
+      page.getByRole("heading", { name: "즐겨찾기", exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText("즐겨찾기가 없습니다", { exact: false }),

@@ -47,7 +47,7 @@ test.describe.serial("맞춤 퀴즈 설정 플로우", () => {
     // 5문항 옵션은 기본 후보(10/20/30/50/100) 에 없으므로 가장 작은 10 선택.
     await page.goto("/subjects/patent/quiz/setup");
     await expect(
-      page.getByRole("heading", { name: /맞춤 퀴즈 설정/ }),
+      page.getByRole("heading", { name: /맞춤 퀴즈 만들기/ }),
     ).toBeVisible();
 
     // radio 입력은 sr-only 라 force 옵션으로 직접 check.
