@@ -366,22 +366,22 @@ export function CasesTab({
                   <TableHead className="text-muted-foreground/70 w-10 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     ★
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     법원
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     선고일
                   </TableHead>
                   <TableHead className="text-muted-foreground/70 w-32 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건번호
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     사건유형
                   </TableHead>
                   <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건명 / 기출
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-14 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-14 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     전합
                   </TableHead>
                 </TableRow>
@@ -493,12 +493,12 @@ function CaseRow({
           <StarIcon className="mx-auto size-3.5 text-amber-500" />
         ) : null}
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden md:table-cell">
         <span className="text-primary text-xs font-semibold">
           {COURT_LABELS[item.court]}
         </span>
       </TableCell>
-      <TableCell className="text-muted-foreground text-center text-xs tabular-nums">
+      <TableCell className="text-muted-foreground hidden text-center text-xs tabular-nums md:table-cell">
         {item.decidedAt}
       </TableCell>
       <TableCell className="font-mono text-xs font-semibold">
@@ -512,9 +512,9 @@ function CaseRow({
           {item.caseNumber}
         </Link>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden align-top whitespace-normal md:table-cell">
         {item.caseType ? (
-          <span className="border-border bg-muted/50 text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
+          <span className="border-border bg-muted/50 text-muted-foreground inline-block max-w-full rounded-full border px-2 py-0.5 text-[11px] font-medium break-words">
             {item.caseType}
           </span>
         ) : null}
@@ -547,7 +547,7 @@ function CaseRow({
           </div>
         ) : null}
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="hidden text-center md:table-cell">
         {item.isEnBanc ? (
           <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
             전합
