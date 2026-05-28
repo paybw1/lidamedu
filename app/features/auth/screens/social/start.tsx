@@ -55,6 +55,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     await client.auth.signInWithOAuth({
       provider: parsedParams.provider,
       options: {
+        // 카카오 동의항목은 닉네임만 요청한다. (account_email 은 비즈앱 전환 후에야
+        // 사용 설정 가능 — 기본 scope 그대로 두면 KOE205. 비즈앱 전환 시 이 줄 제거)
+        scopes: "profile_nickname",
         // Set the callback URL for when authentication is complete
         redirectTo: `${process.env.SITE_URL}/auth/social/complete/${parsedParams.provider}`,
       },
