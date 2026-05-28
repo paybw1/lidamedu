@@ -29,12 +29,19 @@ async function ensureCleanUser(email: string) {
 test.describe.serial("문제 본문 검색", () => {
   test.beforeAll(async () => {
     await ensureCleanUser(TEST_EMAIL!);
-    const { error } = await admin.auth.admin.createUser({
+    const { data, error } = await admin.auth.admin.createUser({
       email: TEST_EMAIL!,
       password: TEST_PASSWORD,
       email_confirm: true,
     });
     if (error) throw error;
+    // onboarding(feat-8-017) 우회 — onboarded_at 이 null 이면 보호 라우트가 wizard 로 redirect.
+    if (data.user) {
+      await admin
+        .from("profiles")
+        .update({ onboarded_at: new Date().toISOString() })
+        .eq("profile_id", data.user.id);
+    }
   });
 
   test.afterAll(async () => {

@@ -30,12 +30,19 @@ async function ensureCleanUser(email: string) {
 test.describe.serial("대시보드 실데이터", () => {
   test.beforeAll(async () => {
     await ensureCleanUser(TEST_EMAIL!);
-    const { error } = await admin.auth.admin.createUser({
+    const { data, error } = await admin.auth.admin.createUser({
       email: TEST_EMAIL!,
       password: TEST_PASSWORD,
       email_confirm: true,
     });
     if (error) throw error;
+    // onboarding(feat-8-017) 우회 — onboarded_at 이 null 이면 /dashboard 가 wizard 로 redirect.
+    if (data.user) {
+      await admin
+        .from("profiles")
+        .update({ onboarded_at: new Date().toISOString() })
+        .eq("profile_id", data.user.id);
+    }
   });
 
   test.afterAll(async () => {
@@ -47,65 +54,60 @@ test.describe.serial("대시보드 실데이터", () => {
 
     await page.goto("/dashboard");
 
-    // 오늘 날짜 라벨 — Intl 포맷이 한국어로 출력됨.
-    await expect(page.getByTestId("today-label")).toBeVisible();
-    await expect(page.getByTestId("today-label")).toContainText("년");
+    // 재스킨(2026-05-19) 후 대시보드는 testid 가 모두 제거됨 — 실제 노출 문자열로 재anchor.
+    // 오늘 날짜 라벨 — DashHeader eyebrow 가 "{Intl 한국어 날짜} · {cohort}" 로 출력.
+    await expect(page.getByText(/\d{4}년.*월.*일/)).toBeVisible();
 
-    // 3 KPI — 새 유저라 0/0/0%.
+    // 3 KPI — 새 유저라 0/0/0% (DashKpiStrip).
     await expect(page.getByText("누적 풀이 시간")).toBeVisible();
     await expect(page.getByText("푼 문제 수")).toBeVisible();
     await expect(page.getByText("평균 정답률")).toBeVisible();
 
-    // 과목별 진도 카드 — 1차(객관식)/2차(주관식) 그룹으로 분리.
+    // 과목별 진도 카드(SubjectsProgressCard) — 1차(객관식)/2차(주관식) 그룹으로 분리.
     // 산업재산권법(특허/상표/디자인)은 양쪽 그룹에 노출되므로 .first() 사용.
-    const subjectCard = page.getByTestId("subjects-progress");
-    await expect(subjectCard).toBeVisible();
-    await expect(subjectCard.getByText("1차 · 객관식")).toBeVisible();
-    await expect(subjectCard.getByText("2차 · 주관식")).toBeVisible();
-    await expect(subjectCard.getByText("특허법").first()).toBeVisible();
-    await expect(subjectCard.getByText("상표법").first()).toBeVisible();
-    await expect(subjectCard.getByText("디자인보호법").first()).toBeVisible();
-    await expect(subjectCard.getByText("민법", { exact: true })).toBeVisible();
-    await expect(subjectCard.getByText("민사소송법")).toBeVisible();
+    await expect(page.getByText("법률 과목 진도")).toBeVisible();
+    await expect(page.getByText("1차 · 객관식", { exact: true })).toBeVisible();
+    await expect(page.getByText("2차 · 주관식", { exact: true })).toBeVisible();
+    await expect(page.getByText("특허법").first()).toBeVisible();
+    await expect(page.getByText("상표법").first()).toBeVisible();
+    await expect(page.getByText("디자인보호법").first()).toBeVisible();
+    await expect(page.getByText("민법", { exact: true })).toBeVisible();
+    await expect(page.getByText("민사소송법")).toBeVisible();
 
-    // 히트맵/주간 요약 — 새 유저는 0일/0시간/0연속.
-    const heatmapSummary = page.getByTestId("heatmap-summary");
-    await expect(heatmapSummary).toBeVisible();
-    await expect(heatmapSummary).toContainText("총 0일 학습");
-    await expect(heatmapSummary).toContainText("연속 0일");
+    // 히트맵 요약(HeatmapCard) — 새 유저는 활동 0일. 연속(streak) 은 오늘 진척도 카드로 이동.
+    await expect(page.getByText("학습 히트맵")).toBeVisible();
+    await expect(page.getByText("0일", { exact: true }).first()).toBeVisible();
 
-    // 이번 주 막대 — 합계 0.0h.
-    await expect(page.getByTestId("weekly-total-hours")).toContainText("0.0h");
+    // 이번 주 학습량 — 오늘 진척도 카드의 "이번 주 0.0h" (WeekBars 오늘 막대도 0.0h).
+    await expect(page.getByText("이번 주 0.0h")).toBeVisible();
 
-    // 오늘 진척도 카드 — 0.0h / 3.6h (기본 25/7).
-    const today = page.getByTestId("today-progress");
-    await expect(today).toBeVisible();
-    await expect(page.getByTestId("today-hours")).toContainText("0.0");
-    await expect(today).toContainText("h /");
-    await expect(today).toContainText("0일 연속");
-    await expect(today).toContainText("맞춤 퀴즈");
-    await expect(today).toContainText("오답노트");
-    await expect(today).toContainText("체계별 풀이");
+    // 오늘 진척도 카드(TodayProgressCard) — 0.0h 오늘 학습 / 0일 연속.
+    await expect(page.getByText("오늘의 진척도")).toBeVisible();
+    await expect(page.getByText("오늘 학습")).toBeVisible();
+    await expect(page.getByText("0일 연속")).toBeVisible();
+    // 재학습 진입점은 별도 RE-STUDY 카드(ReentryChipsCard)로 분리됨 — "오답노트" 진입 타일 확인.
+    await expect(page.getByText("오답노트").first()).toBeVisible();
+    // TODO(reskin): "맞춤 퀴즈"/"체계별 풀이" 퀵액션은 재스킨된 대시보드에 더 이상 없음(데이터 의존 추천 CTA 로만 조건부 등장).
 
-    // 신규 법 개정 / 최근 판례 카드 (실제 시드 데이터 16건/3건 존재).
-    const revisions = page.getByTestId("recent-revisions");
-    await expect(revisions).toBeVisible();
-    await expect(revisions).toContainText("모든 개정 보기");
-    const cases = page.getByTestId("recent-cases");
-    await expect(cases).toBeVisible();
-    await expect(cases).toContainText("모든 판례 보기");
+    // 신규 법 개정 / 최근 판례 카드(dash-feed) — 둘 다 "모두 보기 →" 링크.
+    // 헤딩 텍스트로 카드 존재 확인 + 링크는 href 로 구분.
+    await expect(page.getByText("신규 법 개정")).toBeVisible();
+    await expect(page.locator('a[href="/latest/laws"]').first()).toBeVisible();
+    await expect(page.getByText("최근 판례", { exact: true })).toBeVisible();
+    await expect(page.locator('a[href="/latest/cases"]').first()).toBeVisible();
 
-    // 전체 진척도 도넛 3개 — 새 유저는 모두 0%.
-    const overall = page.getByTestId("overall-progress");
-    await expect(overall).toBeVisible();
-    await expect(page.getByTestId("donut-articles")).toContainText("0%");
-    await expect(page.getByTestId("donut-cases")).toContainText("0%");
-    await expect(page.getByTestId("donut-problems")).toContainText("0%");
+    // 전체 진척도 도넛 3개(OverallProgressCard) — 새 유저는 모두 0%.
+    await expect(page.getByText("전체 학습 진척도")).toBeVisible();
+    // 도넛 라벨 "조문"/"판례"/"문제" + 0% 가 함께 노출.
+    await expect(page.getByText("조문", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("0%").first()).toBeVisible();
 
-    // 최근 학습 피드 — 새 유저는 빈 상태.
-    await expect(page.getByTestId("recent-activity-empty")).toBeVisible();
+    // 최근 학습 피드 — 새 유저는 빈 상태(RecentActivityCard).
+    await expect(page.getByText("최근 학습 활동이 없습니다.")).toBeVisible();
 
-    // 즐겨찾기 빠른 접근 — 새 유저는 빈 메시지.
-    await expect(page.getByTestId("quick-bookmarks-empty")).toBeVisible();
+    // 즐겨찾기 빠른 접근 — 새 유저는 빈 메시지(BookmarksQuickCard).
+    await expect(
+      page.getByText("즐겨찾기가 비어 있습니다", { exact: false }),
+    ).toBeVisible();
   });
 });

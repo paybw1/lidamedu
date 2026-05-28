@@ -29,12 +29,19 @@ async function ensureCleanUser(email: string) {
 test.describe.serial("학습목표 → 대시보드", () => {
   test.beforeAll(async () => {
     await ensureCleanUser(TEST_EMAIL!);
-    const { error } = await admin.auth.admin.createUser({
+    const { data, error } = await admin.auth.admin.createUser({
       email: TEST_EMAIL!,
       password: TEST_PASSWORD,
       email_confirm: true,
     });
     if (error) throw error;
+    // onboarding(feat-8-017) 우회 — onboarded_at 이 null 이면 /dashboard 가 wizard 로 redirect.
+    if (data.user) {
+      await admin
+        .from("profiles")
+        .update({ onboarded_at: new Date().toISOString() })
+        .eq("profile_id", data.user.id);
+    }
   });
 
   test.afterAll(async () => {
@@ -44,9 +51,13 @@ test.describe.serial("학습목표 → 대시보드", () => {
   test("/goals 저장 → 대시보드 D-day · 주간 목표 갱신", async ({ page }) => {
     await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
-    // 초기 대시보드: 목표 미설정 → fallback "2026-07-23" 라벨.
+    // 초기 대시보드: 목표 미설정 → DashHeader 의 시험 D-day 영역(fallback)만 노출.
+    // 재스킨 후 exam-date-label testid 제거 — "변리사 1차" eyebrow + 미설정 안내 링크로 확인.
     await page.goto("/dashboard");
-    await expect(page.getByTestId("exam-date-label")).toContainText("2026");
+    await expect(page.getByText("변리사 1차")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /시험일.*설정하기/ }),
+    ).toBeVisible();
 
     // /goals 진입 → 시험일 30일 뒤 + 주간 35시간 입력.
     await page.goto("/goals");
@@ -60,12 +71,14 @@ test.describe.serial("학습목표 → 대시보드", () => {
       timeout: 10000,
     });
 
-    // 대시보드 재진입 → 새 시험일 + D-30 + 주간 목표 35시간.
+    // 대시보드 재진입 → 새 시험일(DashHeader "시험일 {ISO}") + D-30 + 주간 목표 35h.
     await page.goto("/dashboard");
-    await expect(page.getByTestId("exam-date-label")).toContainText(
-      String(new Date(futureDate).getFullYear()),
-    );
+    // 설정 후 헤더가 시험일 ISO 를 노출 → 연도 포함.
+    await expect(
+      page.getByText(futureDate, { exact: false }),
+    ).toBeVisible();
     await expect(page.getByText("D-30")).toBeVisible();
-    await expect(page.getByText("목표 35시간")).toBeVisible();
+    // 주간 목표는 오늘 진척도 카드에 "목표 35h" 로 노출(재스킨: 시간→h).
+    await expect(page.getByText("목표 35h")).toBeVisible();
   });
 });

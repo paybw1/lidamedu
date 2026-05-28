@@ -29,12 +29,19 @@ async function ensureCleanUser(email: string) {
 test.describe.serial("Command Palette", () => {
   test.beforeAll(async () => {
     await ensureCleanUser(TEST_EMAIL!);
-    const { error } = await admin.auth.admin.createUser({
+    const { data, error } = await admin.auth.admin.createUser({
       email: TEST_EMAIL!,
       password: TEST_PASSWORD,
       email_confirm: true,
     });
     if (error) throw error;
+    // onboarding(feat-8-017) 우회 — onboarded_at 이 null 이면 /dashboard 가 wizard 로 redirect.
+    if (data.user) {
+      await admin
+        .from("profiles")
+        .update({ onboarded_at: new Date().toISOString() })
+        .eq("profile_id", data.user.id);
+    }
   });
 
   test.afterAll(async () => {
@@ -43,7 +50,9 @@ test.describe.serial("Command Palette", () => {
 
   test("Ctrl+K 로 열리고 검색어 입력 시 API 응답 표시", async ({ page }) => {
     await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
-    await page.goto("/dashboard");
+    // 재스킨 후 /dashboard 는 자체 chrome(사이드바+탑바)으로 전역 nav 레이아웃 밖에 있어
+    // CommandPalette 가 mount 되지 않는다. 전역 nav + 팔레트가 있는 보호 라우트로 진입.
+    await page.goto("/study/wrong-note");
 
     // 단축키로 모달 열기.
     await page.keyboard.press("Control+k");
@@ -67,7 +76,8 @@ test.describe.serial("Command Palette", () => {
 
   test("네비 검색 버튼 클릭으로도 열림", async ({ page }) => {
     await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
-    await page.goto("/dashboard");
+    // open-command-palette 버튼은 전역 navigation-bar 에 있음 (대시보드 자체 탑바 아님).
+    await page.goto("/study/wrong-note");
 
     await page.getByTestId("open-command-palette").click();
     await expect(

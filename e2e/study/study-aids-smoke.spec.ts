@@ -30,12 +30,20 @@ async function ensureCleanUser(email: string) {
 test.describe.serial("학습 보조 4-set 스모크", () => {
   test.beforeAll(async () => {
     await ensureCleanUser(TEST_EMAIL!);
-    const { error } = await admin.auth.admin.createUser({
+    const { data, error } = await admin.auth.admin.createUser({
       email: TEST_EMAIL!,
       password: TEST_PASSWORD,
       email_confirm: true,
     });
     if (error) throw error;
+    // onboarding(feat-8-017) 우회 — 가입 트리거가 instructor 로 만들어 paywall 은
+    // 통과하지만 onboarded_at 이 null 이면 /dashboard 가 wizard 로 redirect 한다.
+    if (data.user) {
+      await admin
+        .from("profiles")
+        .update({ onboarded_at: new Date().toISOString() })
+        .eq("profile_id", data.user.id);
+    }
   });
 
   test.afterAll(async () => {
@@ -83,12 +91,12 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
     await loginUser(page, TEST_EMAIL!, TEST_PASSWORD);
 
     await page.goto("/dashboard");
-    const tiles = page.getByTestId("study-aid-tiles");
-    await expect(tiles).toBeVisible();
-    await expect(tiles.getByText("오답노트")).toBeVisible();
-    await expect(tiles.getByText("즐겨찾기")).toBeVisible();
-    await expect(tiles.getByText("포스트잇")).toBeVisible();
-    await expect(tiles.getByText("하이라이트")).toBeVisible();
+    // 재스킨 후 testid 제거 — "재학습 진입" 카드(ReentryChipsCard) 의 4 진입 타일을 텍스트로 검증.
+    await expect(page.getByText("재학습 진입", { exact: true })).toBeVisible();
+    await expect(page.getByText("오답노트").first()).toBeVisible();
+    await expect(page.getByText("즐겨찾기").first()).toBeVisible();
+    await expect(page.getByText("포스트잇").first()).toBeVisible();
+    await expect(page.getByText("하이라이트").first()).toBeVisible();
   });
 
   test("통합 학습 통계 — 4 탭 + 1차/2차 sub-section 노출", async ({ page }) => {
@@ -127,7 +135,8 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
     await expect(page.getByRole("tab", { name: /내용 빈칸/ })).toBeVisible();
     await expect(page.getByRole("tab", { name: /주체 빈칸/ })).toBeVisible();
     await expect(page.getByRole("tab", { name: /시기 빈칸/ })).toBeVisible();
-    await expect(page.getByRole("tab", { name: /암기/ })).toBeVisible();
+    // "암기" sub-tab — 상위 "빈칸·암기" 탭과 구분되도록 시작 위치 anchor.
+    await expect(page.getByRole("tab", { name: /^암기/ })).toBeVisible();
   });
 
   test("/study/blanks 는 /study/stats?tab=blanks 로 redirect", async ({ page }) => {
