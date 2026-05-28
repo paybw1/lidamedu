@@ -1,6 +1,5 @@
 import {
   BellIcon,
-  CogIcon,
   HomeIcon,
   LockIcon,
   LogOutIcon,
@@ -236,22 +235,6 @@ function Actions({
           </Link>
         </Button>
       ) : null}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild className="cursor-pointer">
-          <Button variant="ghost" size="icon">
-            <CogIcon className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <SheetClose asChild>
-              <Link to="/debug/analytics" viewTransition>
-                Google Tag
-              </Link>
-            </SheetClose>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
       <ThemeSwitcher />
     </>
   );
