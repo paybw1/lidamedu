@@ -7,6 +7,7 @@ import {
   ChevronDownIcon,
   ExternalLinkIcon,
   FileTextIcon,
+  PencilIcon,
   PlayIcon,
   ScaleIcon,
   SearchXIcon,
@@ -27,6 +28,7 @@ import {
 import { LatestShell } from "~/features/latest/components/latest-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
+  getStaffRole,
   listRecentLawRevisions,
   type LawRevisionKind,
   type RecentRevisionItem,
@@ -84,11 +86,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const filters: Filters = { q, subject };
 
+  // 원장·스태프는 행에서 바로 개정 워크스페이스로 진입할 수 있는 수정 버튼을 본다.
+  const role = await getStaffRole(client, user.id);
   const revisions = await listRecentLawRevisions(client, 100, user.id, {
     subject: filters.subject,
     query: filters.q || undefined,
   });
-  return { revisions, filters };
+  return { revisions, filters, isStaff: role !== null };
 }
 
 const COLUMNS = [
@@ -105,7 +109,7 @@ const COLUMNS = [
 ];
 
 export default function LatestLaws({ loaderData }: Route.ComponentProps) {
-  const { revisions, filters } = loaderData;
+  const { revisions, filters, isStaff } = loaderData;
   const filterActive = !!filters.subject || filters.q !== "";
   const [open, setOpen] = useState<{
     revisionId: string;
@@ -245,10 +249,22 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                               ★ 내 즐겨찾기 {r.myBookmarkedAffectedCount}
                             </Pill>
                           ) : null}
+                          {isStaff ? (
+                            <Link
+                              to={`/admin/laws/${r.lawCode}/revisions/${r.lawRevisionId}`}
+                              viewTransition
+                              className="text-muted-foreground hover:text-primary ml-auto inline-flex items-center gap-0.5 text-[11px] font-semibold"
+                            >
+                              <PencilIcon className="size-3" /> 수정
+                            </Link>
+                          ) : null}
                           <Link
                             to={`/subjects/${r.lawCode}`}
                             viewTransition
-                            className="text-primary ml-auto text-[11px] font-semibold hover:underline"
+                            className={cn(
+                              "text-primary text-[11px] font-semibold hover:underline",
+                              isStaff ? "" : "ml-auto",
+                            )}
                           >
                             보러가기 →
                           </Link>
