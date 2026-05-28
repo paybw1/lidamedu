@@ -11,10 +11,6 @@
 import { type Page, expect } from "@playwright/test";
 import { type CookieOptions, createServerClient } from "@supabase/ssr";
 import { type SupabaseClient, createClient } from "@supabase/supabase-js";
-import { eq } from "drizzle-orm";
-import { authUsers } from "drizzle-orm/supabase";
-
-import db from "~/core/db/drizzle-client.server";
 
 const TEST_DOMAIN = "localhost";
 
@@ -142,8 +138,14 @@ export async function loginUser(page: Page, email: string, password: string) {
 }
 
 /**
- * Delete a test user from auth.users (직접 DB 삭제 — admin API 가 이 환경에서 무효).
+ * Best-effort 테스트 사용자 정리 (service_role admin API).
+ *
+ * 이 환경에서 admin.deleteUser 가 auth.users 를 실제로 못 지우는 경우가 있어
+ * (메모: e2e-deleteuser-noop) 재실행은 고유 이메일 사용을 권장한다.
  */
 export async function deleteUser(email: string) {
-  await db.delete(authUsers).where(eq(authUsers.email, email));
+  const admin = adminClient();
+  const { data } = await admin.auth.admin.listUsers();
+  const existing = data?.users.find((user) => user.email === email);
+  if (existing) await admin.auth.admin.deleteUser(existing.id);
 }

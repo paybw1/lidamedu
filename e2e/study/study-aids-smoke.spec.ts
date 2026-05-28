@@ -48,7 +48,8 @@ test.describe.serial("학습 보조 4-set 스모크", () => {
     // 오답노트
     await page.goto("/study/wrong-note");
     await expect(page.getByRole("heading", { name: "오답노트" })).toBeVisible();
-    await expect(page.getByText("오답이 없습니다")).toBeVisible();
+    // 오답노트는 객관식/OX 두 섹션으로 각각 빈 상태 문구를 노출 → 첫 매치만 확인.
+    await expect(page.getByText("오답이 없습니다").first()).toBeVisible();
 
     // 즐겨찾기
     await page.goto("/study/bookmarks");
