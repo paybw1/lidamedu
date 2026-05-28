@@ -53,7 +53,7 @@ const CHIP_CLASS =
   "inline-flex items-center rounded-full border border-black/[0.06] bg-[#FAFAFA] px-[13px] py-[7px] text-[13px] font-semibold leading-none tracking-[-0.01em] text-foreground no-underline outline-none transition-all duration-150 hover:border-transparent hover:bg-[#2D5BA8] hover:text-white focus-visible:border-transparent focus-visible:bg-[#2D5BA8] focus-visible:text-white dark:border-border dark:bg-muted";
 
 // 상단 네비게이션 8개 top-level (좌→우):
-// 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습보조▾ · 학습정보▾ · 모의고사▾ · 커뮤니티▾ · 운영자(flat)
+// 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습지원▾ · 학습정보▾ · 모의고사▾ · 커뮤니티▾ · 운영자(flat)
 
 const leadingFlats: SimpleLink[] = [
   { label: "대시보드", to: "/dashboard" },
@@ -439,7 +439,7 @@ export function NavigationBar({
               </NavigationMenuItem>
 
               <SimpleDropdown
-                label="학습보조"
+                label="학습지원"
                 items={studyAidItems}
                 locked={lockStudyAids}
               />
@@ -521,7 +521,7 @@ export function NavigationBar({
                 </Fragment>
               ))}
 
-              <MobileGroup label="학습보조" items={studyAidItems} />
+              <MobileGroup label="학습지원" items={studyAidItems} />
               <MobileGroup label="학습정보" items={latestItems} />
               <MobileGroup label="모의고사" items={mockExamItems} />
               <MobileGroup label="커뮤니티" items={communityItems} />
