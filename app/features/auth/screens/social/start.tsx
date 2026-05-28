@@ -21,11 +21,10 @@ import makeServerClient from "~/core/lib/supa-client.server";
 /**
  * Schema for validating URL parameters
  *
- * Ensures that a valid OAuth provider is specified in the URL parameters
- * Add more providers as you enable them in your Supabase dashboard
+ * 로그인 수단은 카카오 OAuth 하나로 통일한다. 다른 provider 는 서버에서 거부한다.
  */
 const paramsSchema = z.object({
-  provider: z.enum(["github", "kakao"]),
+  provider: z.enum(["kakao"]),
 });
 
 /**
