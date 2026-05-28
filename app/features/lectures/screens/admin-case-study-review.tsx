@@ -46,6 +46,7 @@ const COURT_LABEL: Record<string, string> = {
 
 interface CandidateWithSignedUrl extends SlideCandidateRow {
   signedUrl: string | null;
+  bookName: string;
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -75,6 +76,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const withUrls: CandidateWithSignedUrl[] = candidates.map((c, i) => ({
     ...c,
     signedUrl: signedUrls[i],
+    bookName: getBookNameBySlug(c.bookSlug),
   }));
 
   // 통계 (전체 / 미해결)
@@ -161,7 +163,7 @@ function CandidateCard({ candidate }: { candidate: CandidateWithSignedUrl }) {
 
   if (hidden) return null;
 
-  const bookName = getBookNameBySlug(candidate.bookSlug);
+  const bookName = candidate.bookName;
 
   function handleLinked(c: SlideCandidateLinkedCase) {
     setLinkedCases((prev) =>

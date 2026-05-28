@@ -74,7 +74,6 @@ import { SubjectBookmarkRail } from "~/features/subjects/components/subject-book
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
-  EXAM_LABEL,
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
@@ -456,12 +455,6 @@ function Inner({
                 <h1 className="text-foreground text-[28px] leading-tight font-extrabold tracking-tight">
                   {chapter.displayLabel}
                 </h1>
-                <Badge
-                  variant="secondary"
-                  className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
-                >
-                  {EXAM_LABEL[subject.exam]}
-                </Badge>
               </div>
               <p className="text-muted-foreground mt-1 text-sm">
                 조문{" "}

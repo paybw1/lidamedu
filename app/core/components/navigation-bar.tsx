@@ -6,6 +6,7 @@ import {
   LogOutIcon,
   MenuIcon,
   SearchIcon,
+  UserIcon,
 } from "lucide-react";
 import { Fragment } from "react";
 import { Link } from "react-router";
@@ -119,10 +120,20 @@ function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Avatar className="size-8 cursor-pointer rounded-lg">
-          <AvatarImage src={avatarUrl ?? undefined} />
-          <AvatarFallback>{name.slice(0, 2)}</AvatarFallback>
-        </Avatar>
+        <button
+          type="button"
+          className="flex cursor-pointer items-center gap-2 rounded-lg outline-none"
+        >
+          <Avatar className="size-8 rounded-lg">
+            <AvatarImage src={avatarUrl ?? undefined} />
+            <AvatarFallback>
+              <UserIcon className="size-4" />
+            </AvatarFallback>
+          </Avatar>
+          <span className="hidden max-w-[12rem] truncate text-sm font-medium sm:inline">
+            {name}
+          </span>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
         <DropdownMenuLabel className="grid flex-1 text-left text-sm leading-tight">

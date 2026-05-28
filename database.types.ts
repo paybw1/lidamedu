@@ -1138,6 +1138,36 @@ export type Database = {
           },
         ]
       }
+      bug_reports: {
+        Row: {
+          created_at: string
+          message: string
+          report_id: string
+          reporter_id: string | null
+          status: string
+          url: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          message: string
+          report_id?: string
+          reporter_id?: string | null
+          status?: string
+          url: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          message?: string
+          report_id?: string
+          reporter_id?: string | null
+          status?: string
+          url?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       case_references: {
         Row: {
           authors: string | null

@@ -7,9 +7,10 @@ import {
   FileTextIcon,
   PencilIcon,
   StarIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useFetcher, useLocation } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -55,6 +56,48 @@ export interface CasePrevNextData {
   prevLabel: string | null;
   nextHref: string | null;
   nextLabel: string | null;
+}
+
+// 본문 뷰어 헤더의 staff 전용 "삭제" 버튼 — 수정 화면에 들어가지 않고 바로 soft delete.
+// /api/admin/case (intent=delete) 가 deleted_at 설정 + audit log + redirect 처리.
+// returnTo 가 viewer URL 이면 API 가 placement 노드 목록으로 자동 변환(삭제된 case 404 회피).
+function CaseDeleteButton({
+  caseId,
+  caseNumber,
+  returnTo,
+}: {
+  caseId: string;
+  caseNumber: string;
+  returnTo: string;
+}) {
+  const fetcher = useFetcher();
+  const submitting = fetcher.state !== "idle";
+
+  function onDelete() {
+    if (
+      !confirm(`판례 ${caseNumber} 을(를) 삭제하시겠습니까?\n삭제 후 목록으로 이동합니다.`)
+    ) {
+      return;
+    }
+    const fd = new FormData();
+    fd.set("intent", "delete");
+    fd.set("caseId", caseId);
+    fd.set("returnTo", returnTo);
+    fetcher.submit(fd, { method: "post", action: "/api/admin/case" });
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-7 gap-1 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20"
+      onClick={onDelete}
+      disabled={submitting}
+    >
+      <Trash2Icon className="size-3" /> {submitting ? "삭제 중…" : "삭제"}
+    </Button>
+  );
 }
 
 export function CaseBody({
@@ -195,20 +238,27 @@ export function CaseBody({
             seed={`${kase.caseNumber} 판례의 요지와 쟁점을 정리해줘.`}
           />
 
-          {/* 운영자 — 판례 수정 (staff 전용, feat-7-005) */}
+          {/* 운영자 — 판례 수정 + 삭제 (staff 전용, feat-7-005) */}
           {canEditCase ? (
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1 text-xs"
-            >
-              <Link
-                to={`/admin/cases/edit/${kase.caseId}?returnTo=${encodeURIComponent(editReturnTo)}`}
+            <>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 text-xs"
               >
-                <PencilIcon className="size-3" /> 수정
-              </Link>
-            </Button>
+                <Link
+                  to={`/admin/cases/edit/${kase.caseId}?returnTo=${encodeURIComponent(editReturnTo)}`}
+                >
+                  <PencilIcon className="size-3" /> 수정
+                </Link>
+              </Button>
+              <CaseDeleteButton
+                caseId={kase.caseId}
+                caseNumber={kase.caseNumber}
+                returnTo={editReturnTo}
+              />
+            </>
           ) : null}
         </div>
 

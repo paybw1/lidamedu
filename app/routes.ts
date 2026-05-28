@@ -19,6 +19,7 @@ export default [
   ...prefix("/api", [
     route("/search", "features/search/api/search.tsx"),
     route("/search/clear-history", "features/search/api/clear-history.tsx"),
+    route("/bug-report", "features/bug-reports/api/bug-report.tsx"),
     route(
       "/api/notifications/mark-read",
       "features/notifications/api/mark-read.tsx",
@@ -371,6 +372,10 @@ export default [
       ),
       route("/admin/audit-logs", "features/admin/screens/admin-audit-logs.tsx"),
       route("/admin/inbox", "features/notifications/screens/staff-inbox.tsx"),
+      route(
+        "/admin/bug-reports",
+        "features/bug-reports/screens/admin-bug-reports.tsx",
+      ),
       route(
         "/admin/announcements",
         "features/admin/screens/admin-announcements.tsx",

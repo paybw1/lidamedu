@@ -869,6 +869,17 @@ const PATENT_DESCRIPTION_ARTICLE_IDS: readonly string[] = [
   "2a6d5b58-7bcd-4309-8a5b-a6fa2cebf67e", // 제43조 요약서
 ];
 
+// 정정심판/특허의 정정(patent.b6.b6.b5) — 6개 case_only 자식(정정의 요건/의견제출기회/
+// 일부인용·기각/특허의 정정·무효심판/정정심판·무효심판/기타). ASL 직접 매핑이 없는
+// case_only 노드이므로 메인 조문(제132조의3/제133조의2/제136조/제137조)으로 picker 활성.
+const PATENT_CORRECTION_PARENT_NODE_ID = "0956e634-3723-438a-a20d-f610bda7cd67";
+const PATENT_CORRECTION_ARTICLE_IDS: readonly string[] = [
+  "97614cc8-0cad-495c-aa1a-0b2977409364", // 제132조의3 특허취소신청절차에서의 특허의 정정
+  "5f92f6ca-24b8-42f2-8d3d-bd4cdcc7421e", // 제133조의2 특허무효심판절차에서의 특허의 정정
+  "7ff02222-c030-4d00-ace6-60718f38e425", // 제136조 정정심판
+  "291b05f6-9c91-4cb7-b4c8-d1584ed54a44", // 제137조 정정의 무효심판
+];
+
 // 메인 조문별 sub-node 분류 — 메인 조문이 학습상 다중 분기되는 경우 staff 가
 // sub-node 를 명시 선택한다. 학생 트리는 sub-node 가 set 되면 그 leaf 한 곳에만
 // case 를 노출(`primary_node_id` 우선; `getCasePlacementMaps` 참조).
@@ -879,6 +890,9 @@ const PATENT_DESCRIPTION_ARTICLE_IDS: readonly string[] = [
 //   • 제42·42의2·42의3·43조 출원서류 → 특허출원에 필요한 서류 부모(patent.b2.b4.b1)의
 //                          case_only 자식 5개 (기재방법일반/연결부/젭슨청구항/PBP청구항/
 //                          기능식표현청구항)
+//   • 제132조의3/제133조의2/제136조/제137조 정정 → 정정심판/특허의 정정 부모(patent.b6.b6.b5)의
+//                          case_only 자식 6개 (정정의 요건/의견제출기회/일부인용·기각/
+//                          특허의 정정·무효심판/정정심판·무효심판/기타)
 // 확장 시 SUB_NODE_CONFIGS 에 항목 추가.
 type SubNodeArticleConfig = {
   articleId: string;
@@ -897,6 +911,13 @@ const resolvePatentDescriptionSubNodes = (all: SystematicNode[]) =>
   all
     .filter(
       (n) => n.parentId === PATENT_DESCRIPTION_PARENT_NODE_ID && n.caseOnly,
+    )
+    .sort((a, b) => a.ord - b.ord);
+
+const resolvePatentCorrectionSubNodes = (all: SystematicNode[]) =>
+  all
+    .filter(
+      (n) => n.parentId === PATENT_CORRECTION_PARENT_NODE_ID && n.caseOnly,
     )
     .sort((a, b) => a.ord - b.ord);
 
@@ -928,6 +949,11 @@ const SUB_NODE_CONFIGS: readonly SubNodeArticleConfig[] = [
     articleId,
     articleLabel: "특허출원에 필요한 서류",
     resolveSubNodes: resolvePatentDescriptionSubNodes,
+  })),
+  ...PATENT_CORRECTION_ARTICLE_IDS.map((articleId) => ({
+    articleId,
+    articleLabel: "정정심판/특허의 정정",
+    resolveSubNodes: resolvePatentCorrectionSubNodes,
   })),
 ];
 

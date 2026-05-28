@@ -90,7 +90,6 @@ import { SubjectBookmarkRail } from "~/features/subjects/components/subject-book
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
-  EXAM_LABEL,
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
@@ -609,17 +608,11 @@ function ArticleViewerInner({
                 {/* Title row: big article number + prev/next */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    {/* Law name chip + exam badge + importance stars */}
+                    {/* Law name chip + importance stars */}
                     <div className="mb-2.5 flex flex-wrap items-center gap-2">
                       <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
                         {subject.name}
                       </span>
-                      <Badge
-                        variant="secondary"
-                        className="rounded-full text-[11px]"
-                      >
-                        {EXAM_LABEL[subject.exam]}
-                      </Badge>
                       {article.importance >= 1 ? (
                         <span className="inline-flex items-center gap-0.5">
                           {Array.from({

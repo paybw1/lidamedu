@@ -5,6 +5,7 @@ import { Await, Outlet } from "react-router";
 
 import Footer from "../components/footer";
 import { NavigationBar } from "../components/navigation-bar";
+import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
 import makeServerClient from "../lib/supa-client.server";
 import { getUnreadCount } from "~/features/notifications/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -77,6 +78,11 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
         </div>
       </div>
       <Footer />
+      <Suspense fallback={null}>
+        <Await resolve={userPromise}>
+          {({ data: { user } }) => (user ? <BugReportWidget /> : null)}
+        </Await>
+      </Suspense>
     </div>
   );
 }
