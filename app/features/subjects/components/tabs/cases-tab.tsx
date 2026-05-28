@@ -511,6 +511,10 @@ function CaseRow({
         >
           {item.caseNumber}
         </Link>
+        {/* 모바일에서는 선고일 컬럼이 숨겨지므로 사건번호 아래에 날짜를 함께 노출. */}
+        <span className="text-muted-foreground mt-0.5 block text-[10px] font-normal tabular-nums md:hidden">
+          {item.decidedAt}
+        </span>
       </TableCell>
       <TableCell className="hidden align-top whitespace-normal md:table-cell">
         {item.caseType ? (
