@@ -5125,6 +5125,8 @@ export type Database = {
         Returns: {
           article_comments: number
           articles: number
+          articles_with_body: number
+          blank_sets: number
           cases: number
           display_label: string
           law_code: string
@@ -5132,6 +5134,7 @@ export type Database = {
           problems_mc: number
           problems_subjective: number
           revisions_published: number
+          systematic_nodes: number
         }[]
       }
       ai_embedding_dirty_sample: {

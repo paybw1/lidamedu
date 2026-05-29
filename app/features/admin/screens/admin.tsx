@@ -127,7 +127,13 @@ function ContentStatsRow({ stats }: { stats: StaffContentStats }) {
 
 type CoverageMetricKey = keyof Pick<
   SubjectCoverageRow,
-  "articles" | "cases" | "problemsMc" | "problemsSubjective"
+  | "articles"
+  | "cases"
+  | "problemsMc"
+  | "problemsSubjective"
+  | "blankSets"
+  | "systematicNodes"
+  | "articleComments"
 >;
 
 const COVERAGE_METRIC_LABEL: Record<CoverageMetricKey, string> = {
@@ -135,6 +141,9 @@ const COVERAGE_METRIC_LABEL: Record<CoverageMetricKey, string> = {
   cases: "판례",
   problemsMc: "객관식",
   problemsSubjective: "주관식",
+  blankSets: "빈칸",
+  systematicNodes: "체계도",
+  articleComments: "강사메모",
 };
 
 // 시드 진행률 — 1차(객관식)/2차(주관식)로 분리. 민법은 1차 표에만, 민사소송법은
@@ -145,6 +154,9 @@ function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
     "cases",
     "problemsMc",
     "problemsSubjective",
+    "blankSets",
+    "systematicNodes",
+    "articleComments",
   ];
   // 막대 기준 = 전 과목 통틀어 각 지표의 최댓값.
   const baseline = allKeys.reduce(
@@ -169,14 +181,14 @@ function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
         <SeedTable
           sectionLabel="1차 시드 진행률"
           mode="1차"
-          metricKeys={["articles", "cases", "problemsMc"]}
+          metricKeys={["articles", "cases", "problemsMc", "blankSets", "systematicNodes", "articleComments"]}
           rows={firstRows}
           baseline={baseline}
         />
         <SeedTable
           sectionLabel="2차 시드 진행률"
           mode="2차"
-          metricKeys={["articles", "cases", "problemsSubjective"]}
+          metricKeys={["articles", "cases", "problemsSubjective", "blankSets", "systematicNodes", "articleComments"]}
           rows={secondRows}
           baseline={baseline}
         />

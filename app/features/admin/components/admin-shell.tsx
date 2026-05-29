@@ -61,8 +61,7 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "법령·개정",
     Icon: GavelIcon,
     screens: [
-      { label: "개정 워크스페이스", to: "/admin/laws/patent/revisions" },
-      { label: "법령 완성도", to: "/admin/laws/patent/completeness" },
+      { label: "법령 운영 허브", to: "/admin/laws" },
       { label: "체계도 트리", to: "/admin/systematic-tree" },
     ],
   },

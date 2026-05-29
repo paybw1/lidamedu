@@ -9,11 +9,14 @@ import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 export interface SubjectCoverageRow {
   lawCode: LawSubjectSlug;
   displayLabel: string;
-  articles: number;
+  articles: number; // level='article' 기준
+  articlesWithBody: number;
   cases: number;
   problemsMc: number;
   problemsSubjective: number;
   articleComments: number;
+  blankSets: number;
+  systematicNodes: number;
   revisionsPublished: number;
 }
 
@@ -26,10 +29,13 @@ export async function getSubjectCoverage(
     lawCode: row.law_code as LawSubjectSlug,
     displayLabel: row.display_label,
     articles: Number(row.articles),
+    articlesWithBody: Number(row.articles_with_body),
     cases: Number(row.cases),
     problemsMc: Number(row.problems_mc),
     problemsSubjective: Number(row.problems_subjective),
     articleComments: Number(row.article_comments),
+    blankSets: Number(row.blank_sets),
+    systematicNodes: Number(row.systematic_nodes),
     revisionsPublished: Number(row.revisions_published),
   }));
 }

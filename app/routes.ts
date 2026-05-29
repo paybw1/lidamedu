@@ -603,6 +603,10 @@ export default [
         "features/admin/screens/admin-article-relations.tsx",
       ),
       route(
+        "/admin/laws",
+        "features/admin/screens/admin-laws-hub.tsx",
+      ),
+      route(
         "/admin/laws/:lawCode/revisions",
         "features/admin/screens/admin-law-revisions.tsx",
       ),
