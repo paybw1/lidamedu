@@ -236,8 +236,9 @@ for (let i = bodyStart; i < pList.length; i++) {
     const number = +hM[1];
     const branch = hM[2] ? +hM[2] : null;
     const title = norm(hM[3]);
+    // 중요도 = 헤더의 ★ 개수. 별 표시 없으면 0 (일반 조문).
     const stars = (text.match(/★/g) || []).length;
-    const importance = stars > 0 ? Math.min(3, stars) : 1;
+    const importance = Math.min(3, stars);
     curArticle = { number, branch, title, importance, blocks: [], headerRefs: [] };
     articles.push(curArticle);
     curClause = null;
