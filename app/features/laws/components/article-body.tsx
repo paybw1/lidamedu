@@ -287,46 +287,62 @@ function RefsCollapsible({
   const open = userOpen ?? hasUnderlinesInside;
   const refCount = refs.filter((r) => r.type === "ref_article").length;
   if (refCount === 0) return null;
+
+  // 접힌 상태: 알약 모양 탭.
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setUserOpen(true)}
+        aria-expanded={false}
+        className={cn(
+          "my-1 inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 transition-transform hover:-translate-y-px hover:border-indigo-300 dark:border-indigo-700/60 dark:bg-indigo-950/40",
+          className,
+        )}
+      >
+        <span className="inline-flex size-4 items-center justify-center rounded-full bg-indigo-500 text-white">
+          <ChevronRightIcon className="size-2.5" />
+        </span>
+        <span className="text-[12px] font-bold text-indigo-900 dark:text-indigo-200">
+          관련 조문
+        </span>
+        <span className="text-[11px] font-bold text-indigo-700 tabular-nums dark:text-indigo-300">
+          {refCount}
+        </span>
+      </button>
+    );
+  }
+
+  // 펼친 상태: 라벨 배지가 튀어나오는 플로팅 카드.
   return (
     <aside
       className={cn(
-        "overflow-hidden rounded-md border-l-4 border-indigo-500/60 bg-indigo-50/40 dark:border-indigo-400/60 dark:bg-indigo-900/20",
+        "bg-card relative my-3 rounded-xl border border-indigo-100 p-3 shadow-[0_6px_20px_-10px_rgba(99,102,241,0.25)] dark:border-indigo-700/40 dark:bg-indigo-950/10",
         className,
       )}
     >
       <button
         type="button"
-        onClick={() => setUserOpen(!open)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left transition-colors hover:bg-indigo-500/10"
+        onClick={() => setUserOpen(false)}
+        aria-expanded={true}
+        title="접기"
+        className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-indigo-500 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase shadow-sm hover:bg-indigo-600"
       >
-        <ChevronRightIcon
-          className={cn(
-            "size-3.5 shrink-0 text-indigo-700 transition-transform dark:text-indigo-300",
-            open && "rotate-90",
-          )}
-        />
-        <span className="flex-1 text-[11px] font-semibold tracking-wide text-indigo-900 uppercase dark:text-indigo-200">
-          관련 조문
-        </span>
-        <span className="text-[11px] text-indigo-700/80 tabular-nums dark:text-indigo-300/80">
-          {refCount}건
-        </span>
+        <ChevronRightIcon className="size-2.5 rotate-90" />
+        관련 조문 {refCount}건
       </button>
-      {open ? (
-        <Ctx.Provider value={{ ...useContext(Ctx), refTone: "indigo" }}>
-          {/* RefsCollapsible 의 inline (tail refs 또는 header refs) 은 상위 block 의 cumulative
-              text 안에서 main 뒤에 위치하지만, 여기서는 refs 만 단독으로 0 offset 부터 렌더된다.
-              상위 block 의 BlockCtx 를 그대로 쓰면 blockHits 의 offset 이 어긋나 main 영역의
-              hit 이 refs 자리에 잘못 그려질 수 있어 BlockCtx 를 null 로 차단. refs 영역은
-              빈칸 매칭 대상이 아니므로 legacy per-token resolveText 로 fallback 되는 것이 안전. */}
-          <BlockCtx.Provider value={null}>
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-indigo-500/20 px-3 py-2 dark:border-indigo-400/20">
-              <InlineRun inline={refs} />
-            </div>
-          </BlockCtx.Provider>
-        </Ctx.Provider>
-      ) : null}
+      <Ctx.Provider value={{ ...useContext(Ctx), refTone: "indigo" }}>
+        {/* RefsCollapsible 의 inline (tail refs 또는 header refs) 은 상위 block 의 cumulative
+            text 안에서 main 뒤에 위치하지만, 여기서는 refs 만 단독으로 0 offset 부터 렌더된다.
+            상위 block 의 BlockCtx 를 그대로 쓰면 blockHits 의 offset 이 어긋나 main 영역의
+            hit 이 refs 자리에 잘못 그려질 수 있어 BlockCtx 를 null 로 차단. refs 영역은
+            빈칸 매칭 대상이 아니므로 legacy per-token resolveText 로 fallback 되는 것이 안전. */}
+        <BlockCtx.Provider value={null}>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <InlineRun inline={refs} />
+          </div>
+        </BlockCtx.Provider>
+      </Ctx.Provider>
     </aside>
   );
 }
@@ -477,48 +493,65 @@ function SubArticleGroup({
   const articleCount = block.articles.length;
   const ctx = useContext(Ctx);
 
-  return (
-    <aside className="bg-muted/40 my-2 overflow-hidden rounded-md border-l-4 border-emerald-500/60">
+  // 접힌 상태: 알약 모양 탭.
+  if (!open) {
+    return (
       <button
         type="button"
-        onClick={() => setUserOpen(!open)}
-        aria-expanded={open}
-        className="hover:bg-muted/60 flex w-full items-center gap-1.5 p-3 text-left transition-colors"
+        onClick={() => setUserOpen(true)}
+        aria-expanded={false}
+        className="my-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-300/70 bg-gradient-to-br from-emerald-100 to-emerald-200/70 px-2.5 py-0.5 transition-transform hover:-translate-y-px hover:border-emerald-400 dark:border-emerald-700/60 dark:from-emerald-900/40 dark:to-emerald-900/60"
       >
-        <ChevronRightIcon
-          className={cn(
-            "size-3.5 shrink-0 text-emerald-700 transition-transform dark:text-emerald-400",
-            open && "rotate-90",
-          )}
-        />
-        <ScrollIcon className="size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400" />
-        <p className="flex-1 text-xs font-semibold tracking-wide text-emerald-900 dark:text-emerald-200">
-          함께 공부할 조문 — {block.source}
-        </p>
-        <span className="text-[11px] text-emerald-700/80 tabular-nums dark:text-emerald-300/80">
-          {articleCount}개
+        <span className="inline-flex size-4 items-center justify-center rounded-full bg-emerald-700 text-white dark:bg-emerald-600">
+          <ScrollIcon className="size-2.5" />
+        </span>
+        <span className="text-[12px] font-bold text-emerald-900 dark:text-emerald-100">
+          함께 공부할 조문
+        </span>
+        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+          · {block.source} · {articleCount}개
         </span>
       </button>
-      {open ? (
-        <div className="space-y-3 px-3 pb-3">
-          {block.preface && block.preface.length > 0 ? (
-            <div className="rounded border border-amber-200/60 bg-amber-50 px-3 py-2 text-[13px] leading-relaxed dark:border-amber-700/40 dark:bg-amber-900/20">
-              <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
-                코멘트
-              </p>
-              {/* 코멘트(구특허법/구시행령 박스 등 강사 산문)에서는 자동 링크 비활성 */}
-              <Ctx.Provider value={{ ...ctx, insideSubArticle: true }}>
-                {block.preface.map((b, i) => (
-                  <BlockView key={i} block={b} depth={0} />
-                ))}
-              </Ctx.Provider>
-            </div>
-          ) : null}
-          {block.articles.map((sa, i) => (
-            <SubArticleView key={i} entry={sa} />
-          ))}
-        </div>
-      ) : null}
+    );
+  }
+
+  // 펼친 상태: 라벨 배지가 튀어나오는 플로팅 카드.
+  return (
+    <aside className="bg-card relative my-4 rounded-xl border border-emerald-200 p-4 shadow-[0_6px_20px_-10px_rgba(16,185,129,0.25)] dark:border-emerald-700/40 dark:bg-emerald-950/10">
+      <button
+        type="button"
+        onClick={() => setUserOpen(false)}
+        aria-expanded={true}
+        title="접기"
+        className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase shadow-sm hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+      >
+        <ScrollIcon className="size-2.5" />
+        함께 공부할 조문 · {articleCount}개
+      </button>
+      <p className="text-muted-foreground mt-1 text-[11px]">{block.source}</p>
+      <div className="mt-3 space-y-2">
+        {block.preface && block.preface.length > 0 ? (
+          <div className="rounded-lg border border-amber-200/60 bg-amber-50 px-3 py-2 text-[13px] leading-relaxed dark:border-amber-700/40 dark:bg-amber-900/20">
+            <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+              코멘트
+            </p>
+            {/* 코멘트(구특허법/구시행령 박스 등 강사 산문)에서는 자동 링크 비활성 */}
+            <Ctx.Provider value={{ ...ctx, insideSubArticle: true }}>
+              {block.preface.map((b, i) => (
+                <BlockView key={i} block={b} depth={0} />
+              ))}
+            </Ctx.Provider>
+          </div>
+        ) : null}
+        {block.articles.map((sa, i) => (
+          <div
+            key={i}
+            className="rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2.5 dark:border-emerald-700/30 dark:bg-emerald-950/30"
+          >
+            <SubArticleView entry={sa} />
+          </div>
+        ))}
+      </div>
     </aside>
   );
 }
