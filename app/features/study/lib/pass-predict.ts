@@ -37,7 +37,7 @@ function rate(score: number): PassRating {
 }
 
 const RATING_HINTS: Record<PassRating, string> = {
-  안정: "현재 페이스 유지. 약점 영역만 보강하세요.",
+  안정: "현재 속도 유지. 약점 영역만 보강하세요.",
   가능: "합격선 안정권 진입까지 정답률 또는 진척 추가가 필요합니다.",
   주의: "학습량 vs 정답률 중 약한 쪽을 집중 보강하세요.",
   취약: "꾸준한 학습 습관부터 회복. 마감 과제를 우선 처리.",

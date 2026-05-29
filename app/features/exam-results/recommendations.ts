@@ -136,7 +136,7 @@ export function generateRecommendedActions(
           priority: "medium",
           icon: "trend",
           title: "학습 시간 격차 좁히기",
-          body: `합격자 평균 대비 ${Math.round((1 - ratio) * 100)}% 부족. +${deltaH}시간을 목표로 페이스 조정 권장.`,
+          body: `합격자 평균 대비 ${Math.round((1 - ratio) * 100)}% 부족. +${deltaH}시간을 목표로 속도 조정 권장.`,
           ctaLabel: "학습 목표",
           ctaUrl: "/goals",
           metric: `-${deltaH}h`,
@@ -215,7 +215,7 @@ export function generateRecommendedActions(
         priority: "celebrate",
         icon: "trophy",
         title: "✨ 합격자 평균 모든 지표 상회",
-        body: "현재 페이스를 유지하시면 충분합니다. 시험 직전엔 새 자료보다 익숙한 자료를 반복하세요.",
+        body: "현재 속도를 유지하시면 충분합니다. 시험 직전엔 새 자료보다 익숙한 자료를 반복하세요.",
         ctaLabel: "합격자 후기 보기",
         ctaUrl: "/study/passer-summaries",
       });
@@ -323,7 +323,7 @@ export function generateRecommendedActions(
       priority: "celebrate",
       icon: "flame",
       title: `🔥 ${input.dailyStats.currentStreak}일 연속 학습 중`,
-      body: "꾸준함이 합격의 기본기. 페이스를 무너뜨리지 마시고 계속 가세요.",
+      body: "꾸준함이 합격의 기본기. 속도를 무너뜨리지 마시고 계속 가세요.",
       ctaLabel: "오늘 학습 시작",
       ctaUrl: "/dashboard",
     });

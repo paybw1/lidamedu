@@ -178,7 +178,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
           body={
             filterActive
               ? "검색어나 과목 필터를 바꿔 다시 찾아보세요."
-              : "새 법령 개정이 공시되면 이곳에 색인표로 모입니다."
+              : "새 법령 개정이 공시되면 이곳에 목록으로 모입니다."
           }
         />
       ) : (

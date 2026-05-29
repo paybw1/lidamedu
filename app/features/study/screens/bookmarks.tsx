@@ -178,7 +178,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
         <SessionBanner
           action="/api/study/session-from-bookmarks"
           count={problemCount}
-          hint="필터 결과 안의 객관식 문제만 한 세션으로 묶어 풀기."
+          hint="필터 결과 안의 객관식 문제만 한 회차로 묶어 풀기."
           testidPrefix="bookmark-start"
           hidden={
             <>

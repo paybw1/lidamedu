@@ -66,8 +66,8 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
       title={`시리즈 추이 · ${series.title}`}
       desc={
         summary
-          ? `${subjectLabel} · 응시 ${summary.roundsTaken}회 · 코호트 평균 대비 추이`
-          : `${subjectLabel} · 예정 ${series.expectedRounds}회 · 코호트 평균 대비 추이`
+          ? `${subjectLabel} · 응시 ${summary.roundsTaken}회 · 반 평균 대비 추이`
+          : `${subjectLabel} · 예정 ${series.expectedRounds}회 · 반 평균 대비 추이`
       }
     >
       {summary ? (
@@ -115,7 +115,7 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
       )}
 
       {progress.length > 0 ? (
-        <Section eyebrow="회차별 코호트 비교">
+        <Section eyebrow="회차별 반 비교">
           <p className="text-muted-foreground mb-2.5 -mt-1 text-xs leading-relaxed">
             z-score는 같은 회차의 다른 응시자 평균(0σ) 기준 본인 위치입니다.
             +1σ ~ +2σ가 상위권, -1σ 이하면 분발이 필요합니다. 회차마다 난이도가
@@ -130,7 +130,7 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
                       ["#", "left"],
                       ["회차", "left"],
                       ["내 점수", "right"],
-                      ["코호트 평균", "right"],
+                      ["반 평균", "right"],
                       ["z-score", "left"],
                       ["순위", "left"],
                       ["분포 비교", "left"],
@@ -356,7 +356,7 @@ function ZScoreTrend({
         })}
       </div>
       <p className="text-muted-foreground text-[11px] leading-relaxed">
-        세로 가운데 선이 코호트 평균(0σ). 위로 갈수록 상위권, 아래로 갈수록
+        세로 가운데 선이 반 평균(0σ). 위로 갈수록 상위권, 아래로 갈수록
         하위권.
       </p>
     </div>

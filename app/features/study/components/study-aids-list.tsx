@@ -468,7 +468,7 @@ export function SessionBanner({
       <div className="min-w-0">
         <div className="text-sm font-bold tracking-tight">
           <span className="tabular-nums">{count.toLocaleString("ko-KR")}</span>
-          건을 한 세션으로 묶어 풀기
+          건을 한 회차로 묶어 풀기
         </div>
         <div className="text-muted-foreground mt-0.5 text-xs">{hint}</div>
       </div>

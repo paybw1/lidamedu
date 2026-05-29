@@ -261,10 +261,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         : session.scopeType === "filter"
           ? "맞춤 퀴즈"
           : session.scopeType === "wrong-note"
-            ? "오답노트 세션"
+            ? "오답노트 회차"
             : session.scopeType === "bookmark"
-              ? "즐겨찾기 세션"
-              : "퀴즈 세션"
+              ? "즐겨찾기 회차"
+              : "퀴즈 회차"
     : nodeSequence
       ? `체계: ${nodeSequence.node.displayLabel}`
       : null;
