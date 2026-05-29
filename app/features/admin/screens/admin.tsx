@@ -26,11 +26,7 @@ import {
   getAdminWorkQueue,
 } from "~/features/admin/queries/work-queue.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-import {
-  LAW_SUBJECTS,
-  isFirstExamSubject,
-  isSecondExamSubject,
-} from "~/features/subjects/lib/subjects";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
   { title: "운영관리 | Lidam Patent Attorney Academy" },
@@ -225,51 +221,40 @@ function ContentStatsRow({ stats }: { stats: StaffContentStats }) {
   );
 }
 
-/* ── 과목 시드 진행률 — 1차 / 2차 ─────────────────────────────────────── */
+/* ── 과목 시드 진행률 — 통합 표 ──────────────────────────────────────── */
 
 type CoverageMetricKey = keyof Pick<
   SubjectCoverageRow,
-  | "articles"
-  | "cases"
-  | "problemsMc"
-  | "problemsSubjective"
-  | "blankSets"
-  | "systematicNodes"
-  | "articleComments"
+  "articles" | "cases" | "problemsMc" | "problemsSubjective" | "systematicNodes"
 >;
 
 const COVERAGE_METRIC_LABEL: Record<CoverageMetricKey, string> = {
+  systematicNodes: "체계도",
   articles: "조문",
   cases: "판례",
   problemsMc: "객관식",
   problemsSubjective: "주관식",
-  blankSets: "빈칸",
-  systematicNodes: "체계도",
-  articleComments: "강사메모",
 };
 
-// 시드 진행률 — 1차(객관식)/2차(주관식)로 분리. 민법은 1차 표에만, 민사소송법은
-// 2차 표에만, 산업재산권법(특허·상표·디자인)은 양쪽 표에 노출된다.
+// 사용자 요청 순서 — 체계도·조문·판례·객관식·주관식.
+const METRIC_KEYS: CoverageMetricKey[] = [
+  "systematicNodes",
+  "articles",
+  "cases",
+  "problemsMc",
+  "problemsSubjective",
+];
+
+// 시드 진행률 — 1차/2차 분리 없이 5법 5지표 단일 표.
 function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
-  const allKeys: CoverageMetricKey[] = [
-    "articles",
-    "cases",
-    "problemsMc",
-    "problemsSubjective",
-    "blankSets",
-    "systematicNodes",
-    "articleComments",
-  ];
   // 막대 기준 = 전 과목 통틀어 각 지표의 최댓값.
-  const baseline = allKeys.reduce(
+  const baseline = METRIC_KEYS.reduce(
     (acc, k) => {
       acc[k] = Math.max(1, ...rows.map((r) => r[k]));
       return acc;
     },
     {} as Record<CoverageMetricKey, number>,
   );
-  const firstRows = rows.filter((r) => isFirstExamSubject(r.lawCode));
-  const secondRows = rows.filter((r) => isSecondExamSubject(r.lawCode));
   return (
     <section className="mb-6" data-testid="admin-hub-seed-coverage">
       <p className="text-muted-foreground mb-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
@@ -279,65 +264,37 @@ function SubjectCoverageCard({ rows }: { rows: SubjectCoverageRow[] }) {
         과목별 콘텐츠 수 — 최댓값(보통 특허법) 대비 막대로 격차 가시화. 비어있는
         셀은 시드 우선순위.
       </p>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SeedTable
-          sectionLabel="1차 시드 진행률"
-          mode="1차"
-          metricKeys={["articles", "cases", "problemsMc", "blankSets", "systematicNodes", "articleComments"]}
-          rows={firstRows}
-          baseline={baseline}
-        />
-        <SeedTable
-          sectionLabel="2차 시드 진행률"
-          mode="2차"
-          metricKeys={["articles", "cases", "problemsSubjective", "blankSets", "systematicNodes", "articleComments"]}
-          rows={secondRows}
-          baseline={baseline}
-        />
-      </div>
+      <SeedTable rows={rows} baseline={baseline} />
     </section>
   );
 }
 
 function SeedTable({
-  sectionLabel,
-  mode,
-  metricKeys,
   rows,
   baseline,
 }: {
-  sectionLabel: string;
-  mode: "1차" | "2차";
-  metricKeys: CoverageMetricKey[];
   rows: SubjectCoverageRow[];
   baseline: Record<CoverageMetricKey, number>;
 }) {
   return (
     <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-      <div className="border-border flex items-center justify-between border-b px-4 py-3">
-        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-          {sectionLabel}
-        </p>
-        <Chip tone="blue">{mode}</Chip>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-muted/60">
-              <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
-                과목
+      <table className="w-full border-collapse table-fixed">
+        <thead>
+          <tr className="bg-muted/60">
+            <th className="text-muted-foreground w-[28%] px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase sm:w-[22%]">
+              과목
+            </th>
+            {METRIC_KEYS.map((k) => (
+              <th
+                key={k}
+                className="text-muted-foreground px-2 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase sm:px-3"
+              >
+                {COVERAGE_METRIC_LABEL[k]}
               </th>
-              {metricKeys.map((k) => (
-                <th
-                  key={k}
-                  className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase"
-                >
-                  {COVERAGE_METRIC_LABEL[k]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
             {rows.map((r) => {
               const meta = LAW_SUBJECTS[r.lawCode];
               return (
@@ -361,7 +318,7 @@ function SeedTable({
                       완성도 진단 →
                     </Link>
                   </td>
-                  {metricKeys.map((k) => {
+                  {METRIC_KEYS.map((k) => {
                     const value = r[k];
                     const ratio = baseline[k] ? value / baseline[k] : 0;
                     const widthPct = Math.round(ratio * 100);
@@ -374,9 +331,9 @@ function SeedTable({
                             ? "bg-sky-500"
                             : "bg-emerald-500";
                     return (
-                      <td key={k} className="px-3 py-2.5 text-right">
+                      <td key={k} className="px-2 py-2.5 text-right sm:px-3">
                         <div className="flex items-center justify-end gap-2">
-                          <div className="bg-muted hidden h-1.5 w-16 overflow-hidden rounded-full sm:block">
+                          <div className="bg-muted hidden h-1.5 w-12 overflow-hidden rounded-full md:block lg:w-16">
                             <div
                               className={cn("h-full rounded-full", fill)}
                               style={{ width: `${widthPct}%` }}
@@ -392,9 +349,8 @@ function SeedTable({
                 </tr>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 }
