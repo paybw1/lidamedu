@@ -108,8 +108,9 @@ export function markerToInline(text: string): Inline[] {
 
 // ── block 단위 변환 ───────────────────────────────────────────────────────
 
-// 시각 편집기가 편집 대상으로 다루는 블록 종류. 나머지(header_refs, sub_article_group)는
-// raw 토큰으로 보존되어 JSON 모드에서만 수정 가능.
+// 시각 편집기가 편집 대상으로 다루는 블록 종류.
+// header_refs 만 frozen(JSON 모드 전용). sub_article_group("함께 공부할 조문") 은
+// SubGroupEditable 로 펼쳐 카드 편집 가능.
 export type EditableBlock =
   | {
       kind: "para";
@@ -121,7 +122,7 @@ export type EditableBlock =
       label: string;
       subtitle: string;
       marker: string;
-      children: EditableBlock[];
+      children: EditorBlock[];
     }
   | {
       kind: "item";
@@ -129,7 +130,7 @@ export type EditableBlock =
       label: string;
       subtitle: string;
       marker: string;
-      children: EditableBlock[];
+      children: EditorBlock[];
     }
   | {
       kind: "sub";
@@ -137,37 +138,45 @@ export type EditableBlock =
       label: string;
       subtitle: string;
       marker: string;
-      children: EditableBlock[];
+      children: EditorBlock[];
     }
   | {
       kind: "title_marker";
       text: string;
     };
 
-// editor UI 가 다루기 어려운 block 들 (sub_article_group, header_refs) 은 frozen 상태로 보존.
+// 함께 공부할 조문 — 출처 + (선택)머리말 + 각 조문(제목 + 본문 블록).
+export interface SubGroupArticleEditable {
+  number: number;
+  branch: number | null;
+  title: string;
+  blocks: EditorBlock[];
+}
+export interface SubGroupEditable {
+  kind: "sub_group";
+  source: string;
+  preface: EditorBlock[];
+  articles: SubGroupArticleEditable[];
+}
+
+// editor UI 가 다루기 어려운 block (header_refs) 은 frozen 상태로 보존.
 export interface FrozenBlock {
   kind: "frozen";
-  position: number; // 원본 blocks 배열 안의 위치 — 저장 시 순서 복원
+  position: number; // 원본 blocks 배열 안의 위치 (호환용, 순서는 배열로 보존)
   block: Block;
 }
 
+export type EditorBlock = EditableBlock | SubGroupEditable | FrozenBlock;
+
 export interface EditableArticleBody {
-  blocks: Array<EditableBlock | FrozenBlock>;
+  blocks: EditorBlock[];
 }
 
 export function bodyToEditable(body: ArticleBody): EditableArticleBody {
-  const out: EditableArticleBody["blocks"] = [];
-  body.blocks.forEach((block, i) => {
-    const editable = blockToEditable(block, i);
-    out.push(editable);
-  });
-  return { blocks: out };
+  return { blocks: body.blocks.map((block, i) => blockToEditable(block, i)) };
 }
 
-function blockToEditable(
-  block: Block,
-  position: number,
-): EditableBlock | FrozenBlock {
+function blockToEditable(block: Block, position: number): EditorBlock {
   if (block.kind === "para") {
     return { kind: "para", marker: inlineToMarker(block.inline) };
   }
@@ -181,7 +190,7 @@ function blockToEditable(
       label: block.label,
       subtitle: block.subtitle ?? "",
       marker: inlineToMarker(block.inline),
-      children: block.children.map((c, i) => editableChild(c, i)),
+      children: block.children.map((c, i) => blockToEditable(c, i)),
     };
   }
   if (block.kind === "item") {
@@ -191,7 +200,7 @@ function blockToEditable(
       label: block.label,
       subtitle: block.subtitle ?? "",
       marker: inlineToMarker(block.inline),
-      children: block.children.map((c, i) => editableChild(c, i)),
+      children: block.children.map((c, i) => blockToEditable(c, i)),
     };
   }
   if (block.kind === "sub") {
@@ -201,43 +210,31 @@ function blockToEditable(
       label: block.label,
       subtitle: block.subtitle ?? "",
       marker: inlineToMarker(block.inline),
-      children: block.children.map((c, i) => editableChild(c, i)),
+      children: block.children.map((c, i) => blockToEditable(c, i)),
     };
   }
-  // header_refs / sub_article_group → frozen
+  if (block.kind === "sub_article_group") {
+    return {
+      kind: "sub_group",
+      source: block.source,
+      preface: (block.preface ?? []).map((c, i) => blockToEditable(c, i)),
+      articles: block.articles.map((a) => ({
+        number: a.number,
+        branch: a.branch ?? null,
+        title: a.title,
+        blocks: a.blocks.map((c, i) => blockToEditable(c, i)),
+      })),
+    };
+  }
+  // header_refs → frozen
   return { kind: "frozen", position, block };
 }
 
-// child 는 frozen 이 될 수도 있지만 시각편집기 UI 에서는 child frozen 케이스가 없다.
-// (clause/item/sub 의 children 은 보통 item/sub/para 만 등장)
-function editableChild(block: Block, position: number): EditableBlock {
-  const e = blockToEditable(block, position);
-  if (e.kind === "frozen") {
-    // 매우 드문 케이스: clause 안에 sub_article_group 이 들어온 경우. para 로 fallback (raw text 풀어서 보존).
-    return {
-      kind: "para",
-      marker: extractRawText(e.block),
-    };
-  }
-  return e;
-}
-
-function extractRawText(block: Block): string {
-  if (block.kind === "para") return inlineToMarker(block.inline);
-  if (block.kind === "title_marker") return block.text;
-  if (block.kind === "clause" || block.kind === "item" || block.kind === "sub") {
-    return inlineToMarker(block.inline);
-  }
-  return "";
-}
-
 export function editableToBody(edit: EditableArticleBody): ArticleBody {
-  return {
-    blocks: edit.blocks.map((b) => editableToBlock(b)),
-  };
+  return { blocks: edit.blocks.map((b) => editableToBlock(b)) };
 }
 
-function editableToBlock(eb: EditableBlock | FrozenBlock): Block {
+function editableToBlock(eb: EditorBlock): Block {
   if (eb.kind === "frozen") return eb.block;
   if (eb.kind === "para") {
     return { kind: "para", inline: markerToInline(eb.marker) };
@@ -265,13 +262,27 @@ function editableToBlock(eb: EditableBlock | FrozenBlock): Block {
       children: eb.children.map((c) => editableToBlock(c)),
     };
   }
-  // sub
+  if (eb.kind === "sub") {
+    return {
+      kind: "sub",
+      letter: eb.letter,
+      label: eb.label,
+      subtitle: eb.subtitle.trim().length > 0 ? eb.subtitle : null,
+      inline: markerToInline(eb.marker),
+      children: eb.children.map((c) => editableToBlock(c)),
+    };
+  }
+  // sub_group
+  const preface = eb.preface.map((c) => editableToBlock(c));
   return {
-    kind: "sub",
-    letter: eb.letter,
-    label: eb.label,
-    subtitle: eb.subtitle.trim().length > 0 ? eb.subtitle : null,
-    inline: markerToInline(eb.marker),
-    children: eb.children.map((c) => editableToBlock(c)),
+    kind: "sub_article_group",
+    source: eb.source,
+    ...(preface.length > 0 ? { preface } : {}),
+    articles: eb.articles.map((a) => ({
+      number: a.number,
+      ...(a.branch != null ? { branch: a.branch } : {}),
+      title: a.title,
+      blocks: a.blocks.map((c) => editableToBlock(c)),
+    })),
   };
 }

@@ -1,37 +1,106 @@
 // 비전문가용 시각 편집기. 조문 본문을 block 단위 카드로 나눠 표시하고,
 // 각 카드 안에서 텍스트를 직접 수정한다. 강조 종류는 마커로 round-trip:
 //   __X__ 밑줄 / [X] 강사 강조 / ((X)) 인라인 소제목
-// 텍스트 영역 위 toggle 버튼으로 선택영역을 wrap. 키보드 단축키도 동일 효과.
 //
-// header_refs 와 sub_article_group 은 read-only 카드로 표시 (JSON 모드에서 편집).
+// 구조 편집: 각 목록(본문/자식/머리말/조문)에 항·호·목·문단 추가, 카드별 ↑↓ 이동·삭제.
+// "함께 공부할 조문"(sub_article_group) 도 출처·조문(번호/제목)·본문을 직접 편집.
+// header_refs 만 read-only (JSON 모드).
 //
 // preview 가 함께 보이므로 비전문가도 결과를 즉시 확인하면서 작성 가능.
 
 import {
   BoldIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   HighlighterIcon,
   LockIcon,
+  PlusIcon,
   TagIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { type ChangeEvent, useCallback, useMemo, useRef } from "react";
 
-import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import {
   type EditableArticleBody,
-  type EditableBlock,
+  type EditorBlock,
+  type SubGroupArticleEditable,
+  type SubGroupEditable,
   editableToBody,
 } from "~/features/laws/lib/article-body-marker";
 
 interface BlockEditorProps {
   value: EditableArticleBody;
   onChange: (next: EditableArticleBody) => void;
-  // 변경 미리보기에 ref/title 칩 클릭 라우팅이 필요하면 lawCode/titleMap 을 전달.
-  // (편집 중 미리보기는 상호작용 차단을 위해 pointer-events:none 으로 덮어 처리)
   previewLawCode?: import("~/features/subjects/lib/subjects").LawSubjectSlug;
   previewTitleMap?: Map<string, string>;
+}
+
+type AddableKind = "clause" | "item" | "sub" | "para";
+
+// ── 라벨 생성 ─────────────────────────────────────────────────────────────
+const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳";
+const KO_LETTERS = "가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허";
+
+function clauseLabel(n: number): string {
+  return n >= 1 && n <= CIRCLED.length ? CIRCLED[n - 1] : `(${n})`;
+}
+function subLetter(idx0: number): string {
+  return idx0 < KO_LETTERS.length ? KO_LETTERS[idx0] : `(${idx0 + 1})`;
+}
+
+// 같은 목록(siblings) 기준으로 다음 번호를 매겨 새 블록 생성.
+function makeBlock(kind: AddableKind, siblings: EditorBlock[]): EditorBlock {
+  if (kind === "para") return { kind: "para", marker: "" };
+  if (kind === "clause") {
+    const n = siblings.filter((b) => b.kind === "clause").length + 1;
+    return {
+      kind: "clause",
+      number: n,
+      label: clauseLabel(n),
+      subtitle: "",
+      marker: "",
+      children: [],
+    };
+  }
+  if (kind === "item") {
+    const n = siblings.filter((b) => b.kind === "item").length + 1;
+    return {
+      kind: "item",
+      number: n,
+      label: `${n}.`,
+      subtitle: "",
+      marker: "",
+      children: [],
+    };
+  }
+  const idx0 = siblings.filter((b) => b.kind === "sub").length;
+  const letter = subLetter(idx0);
+  return {
+    kind: "sub",
+    letter,
+    label: `${letter}.`,
+    subtitle: "",
+    marker: "",
+    children: [],
+  };
+}
+
+// 불변 리스트 헬퍼.
+function replaceAt<T>(list: T[], index: number, next: T): T[] {
+  return list.map((x, i) => (i === index ? next : x));
+}
+function removeAt<T>(list: T[], index: number): T[] {
+  return list.filter((_, i) => i !== index);
+}
+function moveItem<T>(list: T[], index: number, dir: -1 | 1): T[] {
+  const j = index + dir;
+  if (j < 0 || j >= list.length) return list;
+  const next = list.slice();
+  [next[index], next[j]] = [next[j], next[index]];
+  return next;
 }
 
 export function ArticleBlockEditor({
@@ -40,23 +109,6 @@ export function ArticleBlockEditor({
   previewLawCode,
   previewTitleMap,
 }: BlockEditorProps) {
-  const updateBlock = useCallback(
-    (
-      indexPath: number[],
-      patch: Partial<Omit<EditableBlock, "kind" | "children">>,
-    ) => {
-      const next: EditableArticleBody = {
-        blocks: value.blocks.map((b, i) =>
-          i === indexPath[0]
-            ? applyPatch(b, indexPath.slice(1), patch)
-            : b,
-        ),
-      };
-      onChange(next);
-    },
-    [value, onChange],
-  );
-
   const previewBody = useMemo(() => {
     try {
       return editableToBody(value);
@@ -71,16 +123,10 @@ export function ArticleBlockEditor({
         <div className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
           편집
         </div>
-        <div className="space-y-2">
-          {value.blocks.map((b, i) => (
-            <BlockCard
-              key={i}
-              block={b}
-              indexPath={[i]}
-              updateBlock={updateBlock}
-            />
-          ))}
-        </div>
+        <BlockList
+          blocks={value.blocks}
+          onChange={(blocks) => onChange({ blocks })}
+        />
       </div>
       <div className="space-y-2">
         <div className="text-muted-foreground sticky top-0 z-10 bg-background/95 py-1 text-[11px] font-semibold tracking-wide uppercase backdrop-blur">
@@ -103,55 +149,64 @@ export function ArticleBlockEditor({
   );
 }
 
-// indexPath 를 따라 children 재귀 진입해 patch 적용.
-function applyPatch(
-  block: EditableArticleBody["blocks"][number],
-  rest: number[],
-  patch: Partial<Omit<EditableBlock, "kind" | "children">>,
-): EditableArticleBody["blocks"][number] {
-  if (rest.length === 0) {
-    if (block.kind === "frozen") return block;
-    return { ...block, ...patch } as EditableBlock;
-  }
-  if (block.kind !== "clause" && block.kind !== "item" && block.kind !== "sub") {
-    return block;
-  }
-  const [head, ...tail] = rest;
-  return {
-    ...block,
-    children: block.children.map((c, i) =>
-      i === head ? (applyPatch(c, tail, patch) as EditableBlock) : c,
-    ),
-  } as EditableBlock;
+// 블록 목록 — 추가/삭제/이동을 담당. 카드 안 children/preface/조문본문에 재귀 사용.
+function BlockList({
+  blocks,
+  onChange,
+}: {
+  blocks: EditorBlock[];
+  onChange: (next: EditorBlock[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {blocks.map((b, i) => (
+        <BlockCard
+          key={i}
+          block={b}
+          onChange={(nb) => onChange(replaceAt(blocks, i, nb))}
+          controls={
+            <CardControls
+              canUp={i > 0}
+              canDown={i < blocks.length - 1}
+              onUp={() => onChange(moveItem(blocks, i, -1))}
+              onDown={() => onChange(moveItem(blocks, i, 1))}
+              onDelete={() => onChange(removeAt(blocks, i))}
+            />
+          }
+        />
+      ))}
+      <AddRow onAdd={(kind) => onChange([...blocks, makeBlock(kind, blocks)])} />
+    </div>
+  );
 }
 
 function BlockCard({
   block,
-  indexPath,
-  updateBlock,
+  onChange,
+  controls,
 }: {
-  block: EditableArticleBody["blocks"][number];
-  indexPath: number[];
-  updateBlock: (
-    indexPath: number[],
-    patch: Partial<Omit<EditableBlock, "kind" | "children">>,
-  ) => void;
+  block: EditorBlock;
+  onChange: (next: EditorBlock) => void;
+  controls?: React.ReactNode;
 }) {
   if (block.kind === "frozen") {
-    return <FrozenCard block={block.block} />;
+    return <FrozenCard block={block.block} controls={controls} />;
+  }
+  if (block.kind === "sub_group") {
+    return (
+      <SubGroupCard block={block} onChange={onChange} controls={controls} />
+    );
   }
   if (block.kind === "title_marker") {
     return (
       <Card className="py-3">
         <CardHeader className="pb-2">
-          <Header label="편/장 표지" indexPath={indexPath} />
+          <Header label="편/장 표지" controls={controls} />
         </CardHeader>
         <CardContent className="space-y-2">
           <textarea
             value={block.text}
-            onChange={(e) =>
-              updateBlock(indexPath, { text: e.target.value })
-            }
+            onChange={(e) => onChange({ ...block, text: e.target.value })}
             rows={1}
             className="bg-background w-full resize-y rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
@@ -163,98 +218,325 @@ function BlockCard({
     return (
       <Card className="py-3">
         <CardHeader className="pb-2">
-          <Header label="문단" indexPath={indexPath} />
+          <Header label="문단" controls={controls} />
         </CardHeader>
         <CardContent className="space-y-2">
           <MarkerTextarea
             value={block.marker}
-            onChange={(v) => updateBlock(indexPath, { marker: v })}
+            onChange={(v) => onChange({ ...block, marker: v })}
           />
         </CardContent>
       </Card>
     );
   }
   // clause / item / sub
-  const numericLabel =
-    block.kind === "sub" ? `${block.letter}목` : block.label;
   const kindLabel =
     block.kind === "clause" ? "항" : block.kind === "item" ? "호" : "목";
   return (
     <Card className="py-3">
       <CardHeader className="pb-2">
-        <Header label={`${kindLabel} · ${numericLabel}`} indexPath={indexPath} />
+        <Header label={kindLabel} controls={controls} />
       </CardHeader>
       <CardContent className="space-y-2">
-        <div>
-          <label className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
-            소제목 (선택)
-          </label>
-          <input
-            type="text"
-            value={block.subtitle}
-            onChange={(e) =>
-              updateBlock(indexPath, { subtitle: e.target.value })
-            }
-            placeholder="예: 특허요건"
-            className="bg-background mt-1 w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+        <div className="flex gap-2">
+          <div className="w-24 shrink-0">
+            <label className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+              번호 표기
+            </label>
+            <input
+              type="text"
+              value={block.label}
+              onChange={(e) => onChange({ ...block, label: e.target.value })}
+              placeholder={block.kind === "clause" ? "①" : "1."}
+              className="bg-background mt-1 w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <label className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+              소제목 (선택)
+            </label>
+            <input
+              type="text"
+              value={block.subtitle}
+              onChange={(e) => onChange({ ...block, subtitle: e.target.value })}
+              placeholder="예: 특허요건"
+              className="bg-background mt-1 w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
         </div>
         <MarkerTextarea
           value={block.marker}
-          onChange={(v) => updateBlock(indexPath, { marker: v })}
+          onChange={(v) => onChange({ ...block, marker: v })}
         />
-        {block.children.length > 0 ? (
-          <div className="ml-3 mt-2 border-l-2 pl-3">
-            <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wide uppercase">
-              자식 ({block.children.length})
-            </p>
-            <div className="space-y-2">
-              {block.children.map((c, i) => (
-                <BlockCard
-                  key={i}
-                  block={c}
-                  indexPath={[...indexPath, i]}
-                  updateBlock={updateBlock}
-                />
-              ))}
-            </div>
-          </div>
-        ) : null}
+        <div className="ml-3 mt-1 border-l-2 pl-3">
+          <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+            하위 ({block.children.length})
+          </p>
+          <BlockList
+            blocks={block.children}
+            onChange={(children) => onChange({ ...block, children })}
+          />
+        </div>
       </CardContent>
     </Card>
   );
 }
 
+// "함께 공부할 조문" — 출처 + (선택)머리말 + 각 조문(번호/제목 + 본문) 편집.
+function SubGroupCard({
+  block,
+  onChange,
+  controls,
+}: {
+  block: SubGroupEditable;
+  onChange: (next: EditorBlock) => void;
+  controls?: React.ReactNode;
+}) {
+  const updateArticle = (
+    ai: number,
+    next: SubGroupArticleEditable,
+  ) => onChange({ ...block, articles: replaceAt(block.articles, ai, next) });
+
+  const addArticle = () => {
+    const lastNum = block.articles.at(-1)?.number ?? 1;
+    onChange({
+      ...block,
+      articles: [
+        ...block.articles,
+        { number: lastNum, branch: null, title: "", blocks: [] },
+      ],
+    });
+  };
+
+  return (
+    <Card className="border-amber-300/60 bg-amber-50/30 py-3 dark:border-amber-700/40 dark:bg-amber-950/15">
+      <CardHeader className="pb-2">
+        <Header label="함께 공부할 조문" controls={controls} tone="amber" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <label className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+            출처
+          </label>
+          <input
+            type="text"
+            value={block.source}
+            onChange={(e) => onChange({ ...block, source: e.target.value })}
+            placeholder="예: 시행규칙 제38조, 제40조-제40조의3"
+            className="bg-background mt-1 w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+
+        {block.preface.length > 0 ? (
+          <div>
+            <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wide uppercase">
+              머리말
+            </p>
+            <BlockList
+              blocks={block.preface}
+              onChange={(preface) => onChange({ ...block, preface })}
+            />
+          </div>
+        ) : null}
+
+        <div className="space-y-3">
+          {block.articles.map((a, ai) => (
+            <div
+              key={ai}
+              className="rounded-md border border-amber-200/70 bg-background/60 p-2.5 dark:border-amber-800/40"
+            >
+              <div className="mb-2 flex items-end gap-2">
+                <div className="w-16 shrink-0">
+                  <label className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                    조
+                  </label>
+                  <input
+                    type="number"
+                    value={a.number}
+                    min={1}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (Number.isFinite(n) && n > 0)
+                        updateArticle(ai, { ...a, number: n });
+                    }}
+                    className="bg-background mt-1 w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="w-16 shrink-0">
+                  <label className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                    의(가지)
+                  </label>
+                  <input
+                    type="number"
+                    value={a.branch ?? ""}
+                    min={1}
+                    placeholder="—"
+                    onChange={(e) => {
+                      const v = e.target.value.trim();
+                      const n = v === "" ? null : parseInt(v, 10);
+                      updateArticle(ai, {
+                        ...a,
+                        branch: n != null && Number.isFinite(n) && n > 0 ? n : null,
+                      });
+                    }}
+                    className="bg-background mt-1 w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <label className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                    조문 제목
+                  </label>
+                  <input
+                    type="text"
+                    value={a.title}
+                    onChange={(e) =>
+                      updateArticle(ai, { ...a, title: e.target.value })
+                    }
+                    className="bg-background mt-1 w-full rounded-md border px-2 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <CardControls
+                  canUp={ai > 0}
+                  canDown={ai < block.articles.length - 1}
+                  onUp={() =>
+                    onChange({
+                      ...block,
+                      articles: moveItem(block.articles, ai, -1),
+                    })
+                  }
+                  onDown={() =>
+                    onChange({
+                      ...block,
+                      articles: moveItem(block.articles, ai, 1),
+                    })
+                  }
+                  onDelete={() =>
+                    onChange({
+                      ...block,
+                      articles: removeAt(block.articles, ai),
+                    })
+                  }
+                  deleteLabel="조문 삭제"
+                />
+              </div>
+              <BlockList
+                blocks={a.blocks}
+                onChange={(b) => updateArticle(ai, { ...a, blocks: b })}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addArticle}
+            className="inline-flex h-7 items-center gap-1 rounded border border-dashed border-amber-400/70 px-2 text-[11px] text-amber-800 transition-colors hover:bg-amber-100/60 dark:text-amber-200 dark:hover:bg-amber-900/30"
+          >
+            <PlusIcon className="size-3" /> 조문 추가
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const ADD_LABELS: Record<AddableKind, string> = {
+  clause: "항",
+  item: "호",
+  sub: "목",
+  para: "문단",
+};
+
+function AddRow({ onAdd }: { onAdd: (kind: AddableKind) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1 pt-0.5">
+      {(["clause", "item", "sub", "para"] as AddableKind[]).map((k) => (
+        <button
+          key={k}
+          type="button"
+          onClick={() => onAdd(k)}
+          className="inline-flex h-6 items-center gap-1 rounded border border-dashed px-2 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <PlusIcon className="size-3" /> {ADD_LABELS[k]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CardControls({
+  canUp,
+  canDown,
+  onUp,
+  onDown,
+  onDelete,
+  deleteLabel = "이 블록 삭제",
+}: {
+  canUp: boolean;
+  canDown: boolean;
+  onUp: () => void;
+  onDown: () => void;
+  onDelete: () => void;
+  deleteLabel?: string;
+}) {
+  const btn =
+    "inline-flex size-6 items-center justify-center rounded border transition-colors disabled:opacity-30 disabled:pointer-events-none hover:bg-muted";
+  return (
+    <div className="flex items-center gap-0.5">
+      <button type="button" className={btn} onClick={onUp} disabled={!canUp} title="위로" aria-label="위로">
+        <ChevronUpIcon className="size-3" />
+      </button>
+      <button type="button" className={btn} onClick={onDown} disabled={!canDown} title="아래로" aria-label="아래로">
+        <ChevronDownIcon className="size-3" />
+      </button>
+      <button
+        type="button"
+        className={cn(btn, "text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/20")}
+        onClick={() => {
+          if (confirm(`${deleteLabel}?`)) onDelete();
+        }}
+        title={deleteLabel}
+        aria-label={deleteLabel}
+      >
+        <Trash2Icon className="size-3" />
+      </button>
+    </div>
+  );
+}
+
 function Header({
   label,
-  indexPath,
+  controls,
+  tone,
 }: {
   label: string;
-  indexPath: number[];
+  controls?: React.ReactNode;
+  tone?: "amber";
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+      <p
+        className={cn(
+          "text-[11px] font-semibold tracking-wide uppercase",
+          tone === "amber"
+            ? "text-amber-900 dark:text-amber-200"
+            : "text-muted-foreground",
+        )}
+      >
         {label}
       </p>
-      <span className="text-muted-foreground/70 font-mono text-[10px]">
-        #{indexPath.join(".")}
-      </span>
+      {controls}
     </div>
   );
 }
 
 function FrozenCard({
   block,
+  controls,
 }: {
   block: import("~/features/laws/lib/article-body").Block;
+  controls?: React.ReactNode;
 }) {
   const kindLabel =
-    block.kind === "header_refs"
-      ? "관련조문 헤더"
-      : block.kind === "sub_article_group"
-        ? "함께 공부할 조문"
-        : block.kind;
+    block.kind === "header_refs" ? "관련조문 헤더" : block.kind;
   return (
     <Card className="border-amber-300/60 bg-amber-50/40 py-3 dark:border-amber-700/40 dark:bg-amber-950/20">
       <CardHeader className="pb-2">
@@ -262,16 +544,18 @@ function FrozenCard({
           <p className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide uppercase text-amber-900 dark:text-amber-200">
             <LockIcon className="size-3" /> {kindLabel} (read-only)
           </p>
-          <span className="text-muted-foreground/70 font-mono text-[10px]">
-            JSON 모드에서 편집
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground/70 font-mono text-[10px]">
+              JSON 모드에서 편집
+            </span>
+            {controls}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <p className="text-muted-foreground text-[11px] leading-relaxed">
-          이 블록은 시각 편집기에서 직접 수정할 수 없습니다. 우상단의 "JSON
-          모드" 버튼으로 전환해 수정하세요. 시각 편집기에서 저장하면 이 블록은
-          원본 그대로 보존됩니다.
+          이 블록은 시각 편집기에서 내용을 직접 수정할 수 없습니다 (위치 이동·삭제는
+          가능). 내용 수정은 "JSON 모드" 버튼으로 전환해 진행하세요.
         </p>
       </CardContent>
     </Card>
@@ -299,7 +583,6 @@ function MarkerTextarea({
       const inner = sel.length > 0 ? sel : "내용";
       const next = `${before}${open}${inner}${close}${after}`;
       onChange(next);
-      // 선택 영역을 안쪽 텍스트에 맞춰 복원
       requestAnimationFrame(() => {
         if (!ref.current) return;
         const cursorStart = before.length + open.length;
