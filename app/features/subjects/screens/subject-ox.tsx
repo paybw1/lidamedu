@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import { OxQuestionsPanel } from "~/features/problems/components/ox-questions-panel";
 import { getOxQuestionsForSubject } from "~/features/problems/queries.server";
 import {
@@ -30,8 +31,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
+  const role = await getStaffRole(client, user.id);
   const items = await getOxQuestionsForSubject(client, lawCode, 200);
-  return { subject: LAW_SUBJECTS[lawCode], items };
+  return { subject: LAW_SUBJECTS[lawCode], items, isStaff: role !== null };
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -44,7 +46,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function SubjectOx({ loaderData }: Route.ComponentProps) {
-  const { subject, items } = loaderData;
+  const { subject, items, isStaff } = loaderData;
   // 진입 시 1회 셔플 (서버 사이드 useMemo 는 idempotent — Date.now seed 없음).
   const shuffled = useMemo(() => shuffle(items), [items]);
 
@@ -106,7 +108,11 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
 
             {/* Panel content — OxQuestionsPanel handles all logic/state */}
             <div className="px-6 py-5">
-              <OxQuestionsPanel items={shuffled} subject={subject.slug} />
+              <OxQuestionsPanel
+                items={shuffled}
+                subject={subject.slug}
+                isStaff={isStaff}
+              />
             </div>
           </div>
         )}

@@ -8,6 +8,7 @@ import {
   ChevronRightIcon,
   CircleCheckIcon,
   CircleXIcon,
+  PencilIcon,
   PlayIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -17,6 +18,7 @@ import { z } from "zod";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   getQuizSession,
@@ -78,6 +80,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
+  const role = await getStaffRole(client, user.id);
+
   return {
     scienceSubject: subject,
     subjectMeta: SCIENCE_SUBJECTS[subject],
@@ -85,6 +89,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     sessionId,
     sessionMode,
     position,
+    isStaff: role !== null,
   };
 }
 
@@ -140,6 +145,7 @@ export default function ScienceProblemViewer({
     sessionId,
     sessionMode,
     position,
+    isStaff,
   } = loaderData;
   const attemptFetcher = useFetcher<typeof action>();
   const [selected, setSelected] = useState<string | null>(null);
@@ -188,16 +194,27 @@ export default function ScienceProblemViewer({
               </span>
             ) : null}
           </div>
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide",
-              sessionMode === "exam"
-                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                : "bg-primary/10 text-primary",
-            )}
-          >
-            {sessionMode === "exam" ? "시험 모드" : "학습 모드"}
-          </span>
+          <div className="flex items-center gap-3">
+            {isStaff ? (
+              <Link
+                to={`/admin/problems/${problem.problemId}`}
+                viewTransition
+                className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs font-semibold"
+              >
+                <PencilIcon className="size-3.5" /> 수정
+              </Link>
+            ) : null}
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide",
+                sessionMode === "exam"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  : "bg-primary/10 text-primary",
+              )}
+            >
+              {sessionMode === "exam" ? "시험 모드" : "학습 모드"}
+            </span>
+          </div>
         </header>
 
         {/* Problem card */}

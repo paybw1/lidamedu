@@ -5,7 +5,12 @@ import type { Database } from "database.types";
 
 import type { Route } from "./+types/cases";
 
-import { CalendarClockIcon, GavelIcon, SearchXIcon } from "lucide-react";
+import {
+  CalendarClockIcon,
+  GavelIcon,
+  PencilIcon,
+  SearchXIcon,
+} from "lucide-react";
 import { Link, data, useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -335,41 +340,56 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
               ),
             ].sort((a, b) => a - b);
             return (
-              <FeedCardLink key={c.caseId} to={caseHref}>
-                <MetaRow right={`선고 ${c.decidedAt}`}>
-                  <Pill tone="violet">
-                    <GavelIcon className="size-3" />
-                    {COURT_LABELS[c.court]}
-                  </Pill>
-                  <Pill tone="outline" className="font-mono">
-                    {c.caseNumber}
-                  </Pill>
-                  {c.caseType ? <Pill>{c.caseType}</Pill> : null}
-                  {c.isEnBanc ? <Pill tone="primary">전합</Pill> : null}
-                  {c.subjectLaws.map((s) => (
-                    <Pill key={s} tone="outline">
-                      {lawName(s)}
-                    </Pill>
-                  ))}
-                  {isRecent(c.decidedAt) ? <NewBadge /> : null}
-                </MetaRow>
-                <div className="text-[15px] leading-snug font-bold tracking-tight">
-                  {c.summaryTitle ?? c.caseTitle}
-                </div>
-                {exam1stYears.length + c.exam2ndYears.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {exam1stYears.map((y) => (
-                      <ExamYearChip key={`1-${y}`} round="first" year={y} />
-                    ))}
-                    {[...c.exam2ndYears]
-                      .sort((a, b) => a - b)
-                      .map((y) => (
-                        <ExamYearChip key={`2-${y}`} round="second" year={y} />
-                      ))}
-                  </div>
+              <div key={c.caseId} className="relative">
+                {isStaff ? (
+                  <Link
+                    to={`/admin/cases/edit/${c.caseId}`}
+                    viewTransition
+                    className="text-muted-foreground hover:text-primary bg-card/80 absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm"
+                  >
+                    <PencilIcon className="size-3.5" /> 수정
+                  </Link>
                 ) : null}
-                <CardCta label="판례 본문 보기" />
-              </FeedCardLink>
+                <FeedCardLink to={caseHref}>
+                  <MetaRow right={`선고 ${c.decidedAt}`}>
+                    <Pill tone="violet">
+                      <GavelIcon className="size-3" />
+                      {COURT_LABELS[c.court]}
+                    </Pill>
+                    <Pill tone="outline" className="font-mono">
+                      {c.caseNumber}
+                    </Pill>
+                    {c.caseType ? <Pill>{c.caseType}</Pill> : null}
+                    {c.isEnBanc ? <Pill tone="primary">전합</Pill> : null}
+                    {c.subjectLaws.map((s) => (
+                      <Pill key={s} tone="outline">
+                        {lawName(s)}
+                      </Pill>
+                    ))}
+                    {isRecent(c.decidedAt) ? <NewBadge /> : null}
+                  </MetaRow>
+                  <div className="text-[15px] leading-snug font-bold tracking-tight">
+                    {c.summaryTitle ?? c.caseTitle}
+                  </div>
+                  {exam1stYears.length + c.exam2ndYears.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {exam1stYears.map((y) => (
+                        <ExamYearChip key={`1-${y}`} round="first" year={y} />
+                      ))}
+                      {[...c.exam2ndYears]
+                        .sort((a, b) => a - b)
+                        .map((y) => (
+                          <ExamYearChip
+                            key={`2-${y}`}
+                            round="second"
+                            year={y}
+                          />
+                        ))}
+                    </div>
+                  ) : null}
+                  <CardCta label="판례 본문 보기" />
+                </FeedCardLink>
+              </div>
             );
           })}
         </ListStack>

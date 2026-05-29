@@ -6,6 +6,7 @@ import {
   CircleXIcon,
   HeartIcon,
   NotebookPenIcon,
+  PencilIcon,
   RefreshCcwIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -37,10 +38,12 @@ export function OxQuestionsPanel({
   items,
   subject,
   annotationsByRef,
+  isStaff = false,
 }: {
   items: OxQuestionItem[];
   subject: LawSubjectSlug;
   annotationsByRef?: Record<string, OxRefAnnotations>;
+  isStaff?: boolean;
 }) {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<OxTruth | null>(null);
@@ -285,6 +288,13 @@ export function OxQuestionsPanel({
                 원문제 →
               </Link>
             </Button>
+            {isStaff ? (
+              <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+                <Link to={`/admin/problems/${cur.problemId}`} viewTransition>
+                  <PencilIcon className="size-3.5" /> 수정
+                </Link>
+              </Button>
+            ) : null}
           </div>
 
           {annoOpen === "bookmark" ? (

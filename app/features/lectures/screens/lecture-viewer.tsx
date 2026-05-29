@@ -5,6 +5,7 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
   ExternalLinkIcon,
+  PencilIcon,
   PlayCircleIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -14,6 +15,7 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import { TrackedLectureFrame } from "~/features/lectures/components/tracked-lecture-frame";
 import { toEmbedUrl } from "~/features/lectures/lib/embed";
 import {
@@ -38,11 +40,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const item = await getLectureItemForUser(params.itemId, user.id);
   if (!item) throw data("강의에 접근할 권한이 없습니다", { status: 403 });
   const view = await getMyLectureView(params.itemId, user.id);
-  return { item, view };
+  const role = await getStaffRole(client, user.id);
+  return { item, view, isStaff: role !== null };
 }
 
 export default function LectureViewer({ loaderData }: Route.ComponentProps) {
-  const { item, view } = loaderData;
+  const { item, view, isStaff } = loaderData;
   const embedUrl = toEmbedUrl(item.lectureUrl);
   const initialCompleted = !!view?.completedAt;
   const [autoCompleted, setAutoCompleted] = useState(false);
@@ -81,11 +84,22 @@ export default function LectureViewer({ loaderData }: Route.ComponentProps) {
           <h1 className="text-2xl font-bold tracking-tight">
             {item.lectureTitle}
           </h1>
-          {completed ? (
-            <Badge variant="default" className="text-[10px]">
-              <CheckCircle2Icon className="size-3" /> 수강 완료
-            </Badge>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {completed ? (
+              <Badge variant="default" className="text-[10px]">
+                <CheckCircle2Icon className="size-3" /> 수강 완료
+              </Badge>
+            ) : null}
+            {isStaff ? (
+              <Link
+                to="/admin/systematic-tree"
+                viewTransition
+                className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs font-semibold"
+              >
+                <PencilIcon className="size-3.5" /> 수정
+              </Link>
+            ) : null}
+          </div>
         </div>
         <div className="text-muted-foreground inline-flex items-center gap-2 text-xs">
           {item.lectureDurationMin ? (

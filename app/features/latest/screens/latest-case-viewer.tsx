@@ -76,6 +76,7 @@ export default function LatestCaseViewer({
           kase={kase}
           examProblems={examProblems}
           references={references}
+          canEditCase={viewerIsStaff}
           highlights={highlights}
           viewerIsStaff={viewerIsStaff}
         />

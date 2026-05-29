@@ -1,9 +1,10 @@
 // 최신 2차 기출문제 — 등록일 최신순. 검색·과목·년도·출처 필터.
 // 키트 lidam-latest/EssayScreen 디자인.
 
-import { PenLineIcon, SearchXIcon } from "lucide-react";
-import { data } from "react-router";
+import { PenLineIcon, PencilIcon, SearchXIcon } from "lucide-react";
+import { Link, data } from "react-router";
 
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   ORIGIN_LABEL,
   SUBJECTIVE_KIND_LABEL,
@@ -107,7 +108,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     subjectiveKind: filters.subjectiveKind,
     subjectiveKeyword: filters.subjectiveKeyword,
   });
-  return { problems, filters };
+  const role = await getStaffRole(client, user.id);
+  return { problems, filters, isStaff: role !== null };
 }
 
 function lawName(slug: string): string {
@@ -116,7 +118,7 @@ function lawName(slug: string): string {
 }
 
 export default function LatestEssay({ loaderData }: Route.ComponentProps) {
-  const { problems, filters } = loaderData;
+  const { problems, filters, isStaff } = loaderData;
   const filterActive =
     !!filters.subject ||
     !!filters.year ||
@@ -227,41 +229,49 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
       ) : (
         <ListStack testid="latest-essay-list">
           {problems.map((p) => (
-            <FeedCardLink
-              key={p.problemId}
-              to={`/latest/essay/${p.problemId}`}
-            >
-              <MetaRow right={relativeKo(p.createdAt)}>
-                <Pill tone="rose">
-                  <PenLineIcon className="size-3" />
-                  {lawName(p.lawCode)}
-                </Pill>
-                <Pill>
-                  {ORIGIN_LABEL[p.origin as ProblemOrigin] ?? p.origin}
-                </Pill>
-                {p.year ? (
-                  <Pill tone="outline" className="font-mono">
-                    {p.year}
-                    {p.problemNumber ? ` · ${p.problemNumber}번` : ""}
-                  </Pill>
-                ) : null}
-                {p.subjectiveKind ? (
-                  <Pill tone="primary">
-                    {SUBJECTIVE_KIND_LABEL[p.subjectiveKind]}
-                  </Pill>
-                ) : null}
-                {isRecent(p.createdAt) ? <NewBadge /> : null}
-              </MetaRow>
-              {p.subjectiveTopic ? (
-                <p className="text-[15px] leading-snug font-bold tracking-tight">
-                  {p.subjectiveTopic}
-                </p>
+            <div key={p.problemId} className="relative">
+              {isStaff ? (
+                <Link
+                  to={`/admin/problems/${p.problemId}`}
+                  viewTransition
+                  className="text-muted-foreground hover:text-primary bg-card/80 absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm"
+                >
+                  <PencilIcon className="size-3.5" /> 수정
+                </Link>
               ) : null}
-              <p className="text-foreground/80 mt-1 line-clamp-2 text-[13px] leading-relaxed">
-                {p.bodySnippet}
-              </p>
-              <CardCta label="지금 풀어보기" />
-            </FeedCardLink>
+              <FeedCardLink to={`/latest/essay/${p.problemId}`}>
+                <MetaRow right={relativeKo(p.createdAt)}>
+                  <Pill tone="rose">
+                    <PenLineIcon className="size-3" />
+                    {lawName(p.lawCode)}
+                  </Pill>
+                  <Pill>
+                    {ORIGIN_LABEL[p.origin as ProblemOrigin] ?? p.origin}
+                  </Pill>
+                  {p.year ? (
+                    <Pill tone="outline" className="font-mono">
+                      {p.year}
+                      {p.problemNumber ? ` · ${p.problemNumber}번` : ""}
+                    </Pill>
+                  ) : null}
+                  {p.subjectiveKind ? (
+                    <Pill tone="primary">
+                      {SUBJECTIVE_KIND_LABEL[p.subjectiveKind]}
+                    </Pill>
+                  ) : null}
+                  {isRecent(p.createdAt) ? <NewBadge /> : null}
+                </MetaRow>
+                {p.subjectiveTopic ? (
+                  <p className="text-[15px] leading-snug font-bold tracking-tight">
+                    {p.subjectiveTopic}
+                  </p>
+                ) : null}
+                <p className="text-foreground/80 mt-1 line-clamp-2 text-[13px] leading-relaxed">
+                  {p.bodySnippet}
+                </p>
+                <CardCta label="지금 풀어보기" />
+              </FeedCardLink>
+            </div>
           ))}
         </ListStack>
       )}

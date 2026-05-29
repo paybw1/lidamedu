@@ -2,10 +2,11 @@
 // 학습정보 피드(2차 기출문제)에서 진입하는 경량 read-only 뷰어.
 // 학습과목 problem-viewer 와 달리 답안 작성·첨삭·진도 없음 — 본문 + 모범답안/채점기준 열람만.
 
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import { Pill } from "~/features/latest/components/latest-list";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { SUBJECTIVE_KIND_LABEL } from "~/features/problems/labels";
@@ -32,13 +33,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const problem = await getProblemById(client, params.problemId);
   if (!problem) throw data("문제를 찾을 수 없습니다.", { status: 404 });
 
-  return { problem };
+  const role = await getStaffRole(client, user.id);
+  return { problem, isStaff: role !== null };
 }
 
 export default function LatestEssayViewer({
   loaderData,
 }: Route.ComponentProps) {
-  const { problem } = loaderData;
+  const { problem, isStaff } = loaderData;
   const hasReveal =
     problem.explanationMd != null ||
     problem.modelAnswerMd != null ||
@@ -48,7 +50,7 @@ export default function LatestEssayViewer({
   return (
     <div className="bg-background min-h-[calc(100vh-56px)]">
       <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-8 md:py-8">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between gap-2">
           <Link
             to="/latest/essay"
             viewTransition
@@ -57,6 +59,15 @@ export default function LatestEssayViewer({
             <ArrowLeftIcon className="size-3.5" />
             2차 기출문제 목록으로
           </Link>
+          {isStaff ? (
+            <Link
+              to={`/admin/problems/${problem.problemId}`}
+              viewTransition
+              className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs font-semibold"
+            >
+              <PencilIcon className="size-3.5" /> 수정
+            </Link>
+          ) : null}
         </div>
 
         <article className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">

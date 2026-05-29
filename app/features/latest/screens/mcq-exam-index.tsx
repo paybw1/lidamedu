@@ -2,10 +2,11 @@
 // 시험 = 여러 교시(mcq_packs) 묶음. 명칭 클릭 → 시험 러너.
 // 출제·편집은 운영자 화면(/admin/mcq-exams) 으로 분리됨.
 
-import { LayersIcon } from "lucide-react";
+import { LayersIcon, PencilIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
 import { cn } from "~/core/lib/utils";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   IndexCard,
   LatestEmpty,
@@ -29,13 +30,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
   const exams = await listExams(client);
-  return { exams };
+  const role = await getStaffRole(client, user.id);
+  return { exams, isStaff: role !== null };
 }
 
 const COLUMNS = ["No", "명칭", "교시", "합격 평균", "연도"];
 
 export default function McqExamIndex({ loaderData }: Route.ComponentProps) {
-  const { exams } = loaderData;
+  const { exams, isStaff } = loaderData;
 
   return (
     <MockExamShell
@@ -73,7 +75,12 @@ export default function McqExamIndex({ loaderData }: Route.ComponentProps) {
             </thead>
             <tbody>
               {exams.map((e, i) => (
-                <ExamRow key={e.examId} exam={e} index={i + 1} />
+                <ExamRow
+                  key={e.examId}
+                  exam={e}
+                  index={i + 1}
+                  isStaff={isStaff}
+                />
               ))}
             </tbody>
           </table>
@@ -83,25 +90,42 @@ export default function McqExamIndex({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function ExamRow({ exam, index }: { exam: McqExamItem; index: number }) {
+function ExamRow({
+  exam,
+  index,
+  isStaff,
+}: {
+  exam: McqExamItem;
+  index: number;
+  isStaff: boolean;
+}) {
   return (
     <tr className="border-border/60 hover:bg-muted/40 border-b transition-colors">
       <td className="text-muted-foreground px-3 py-3 text-center text-[13px] tabular-nums">
         {index}
       </td>
       <td className="px-3 py-3">
-        <Link
-          to={`/latest/mcq/exam/${exam.examId}`}
-          viewTransition
-          className="hover:text-primary text-[13px] font-semibold"
-        >
-          {exam.title}
-        </Link>
-        {exam.paperCount === 0 ? (
-          <Pill tone="rose" className="ml-2">
-            교시 미구성
-          </Pill>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to={`/latest/mcq/exam/${exam.examId}`}
+            viewTransition
+            className="hover:text-primary text-[13px] font-semibold"
+          >
+            {exam.title}
+          </Link>
+          {exam.paperCount === 0 ? (
+            <Pill tone="rose">교시 미구성</Pill>
+          ) : null}
+          {isStaff ? (
+            <Link
+              to={`/admin/mcq-exams/${exam.examId}`}
+              viewTransition
+              className="text-muted-foreground hover:text-primary ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
+            >
+              <PencilIcon className="size-3" /> 수정
+            </Link>
+          ) : null}
+        </div>
         {exam.description ? (
           <p className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">
             {exam.description}
