@@ -43,11 +43,11 @@ $("hp\\:p, p").each((_, el) => {
   if (text) lines.push(text);
 });
 
-// 운영자 큐레이션 — 원본 hwpx 에 있으나 체계도에서 제외할 리프.
+// 운영자 큐레이션 — 이 리프는 별도 노드로 만들지 않고, 그 조문 ref 를 상위 카테고리에 직접 붙인다.
 //   { under: 상위(L2 또는 L1) 라벨, label: 리프 라벨 }
-const LEAF_EXCLUDE = [{ under: "[02] 보칙 규정", label: "보칙" }];
-const isExcluded = (parentLabel, label) =>
-  LEAF_EXCLUDE.some((e) => e.under === parentLabel && e.label === label);
+const LEAF_MERGE_TO_PARENT = [{ under: "[02] 보칙 규정", label: "보칙" }];
+const mergeToParent = (parentLabel, label) =>
+  LEAF_MERGE_TO_PARENT.some((e) => e.under === parentLabel && e.label === label);
 
 // "(法 …)" ref 추출 → {label, ref|null}
 function splitRef(s) {
@@ -77,7 +77,8 @@ for (const raw of lines) {
     const { label, ref } = splitRef(raw.replace(/^•\s*/, ""));
     const parent = l2 ?? l1;
     if (!parent) continue;
-    if (isExcluded(parent.label, label)) {
+    if (mergeToParent(parent.label, label)) {
+      if (ref) parent.ref = ref; // 조문 링크를 상위 카테고리로 끌어올림
       l3 = null;
       continue;
     }
