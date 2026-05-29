@@ -43,6 +43,12 @@ $("hp\\:p, p").each((_, el) => {
   if (text) lines.push(text);
 });
 
+// 운영자 큐레이션 — 원본 hwpx 에 있으나 체계도에서 제외할 리프.
+//   { under: 상위(L2 또는 L1) 라벨, label: 리프 라벨 }
+const LEAF_EXCLUDE = [{ under: "[02] 보칙 규정", label: "보칙" }];
+const isExcluded = (parentLabel, label) =>
+  LEAF_EXCLUDE.some((e) => e.under === parentLabel && e.label === label);
+
 // "(法 …)" ref 추출 → {label, ref|null}
 function splitRef(s) {
   const m = /\((法[^)]*)\)\s*$/.exec(s);
@@ -71,6 +77,10 @@ for (const raw of lines) {
     const { label, ref } = splitRef(raw.replace(/^•\s*/, ""));
     const parent = l2 ?? l1;
     if (!parent) continue;
+    if (isExcluded(parent.label, label)) {
+      l3 = null;
+      continue;
+    }
     l3 = { ord: parent.children.length + 1, label };
     if (ref) l3.ref = ref;
     l3.children = [];
