@@ -300,24 +300,24 @@ function RefsCollapsible({
           className,
         )}
       >
-        <span className="inline-flex size-4 items-center justify-center rounded-full bg-indigo-500 text-white">
+        <span className="inline-flex size-4 items-center justify-center rounded-full bg-indigo-600 text-white">
           <ChevronRightIcon className="size-2.5" />
         </span>
-        <span className="text-[12px] font-bold text-indigo-900 dark:text-indigo-200">
+        <span className="text-[12px] font-bold text-indigo-700 dark:text-indigo-200">
           관련 조문
         </span>
-        <span className="text-[11px] font-bold text-indigo-700 tabular-nums dark:text-indigo-300">
+        <span className="text-[11px] font-bold text-indigo-600 tabular-nums dark:text-indigo-300">
           {refCount}
         </span>
       </button>
     );
   }
 
-  // 펼친 상태: 라벨 배지가 튀어나오는 플로팅 카드.
+  // 펼친 상태: 라벨 배지가 튀어나오는 카드 (그림자 없음).
   return (
     <aside
       className={cn(
-        "bg-card relative my-3 rounded-xl border border-indigo-100 p-3 shadow-[0_6px_20px_-10px_rgba(99,102,241,0.25)] dark:border-indigo-700/40 dark:bg-indigo-950/10",
+        "bg-card relative my-3 rounded-xl border border-indigo-200 p-3 dark:border-indigo-700/40 dark:bg-indigo-950/10",
         className,
       )}
     >
@@ -326,7 +326,7 @@ function RefsCollapsible({
         onClick={() => setUserOpen(false)}
         aria-expanded={true}
         title="접기"
-        className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-indigo-500 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase shadow-sm hover:bg-indigo-600"
+        className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-indigo-600 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase hover:bg-indigo-700"
       >
         <ChevronRightIcon className="size-2.5 rotate-90" />
         관련 조문 {refCount}건
@@ -493,19 +493,19 @@ function SubArticleGroup({
   const articleCount = block.articles.length;
   const ctx = useContext(Ctx);
 
-  // 접힌 상태: 알약 모양 탭.
+  // 접힌 상태: 알약 모양 탭 (단색).
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => setUserOpen(true)}
         aria-expanded={false}
-        className="my-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-300/70 bg-gradient-to-br from-emerald-100 to-emerald-200/70 px-2.5 py-0.5 transition-transform hover:-translate-y-px hover:border-emerald-400 dark:border-emerald-700/60 dark:from-emerald-900/40 dark:to-emerald-900/60"
+        className="my-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 transition-transform hover:-translate-y-px hover:border-emerald-300 dark:border-emerald-700/60 dark:bg-emerald-950/40"
       >
-        <span className="inline-flex size-4 items-center justify-center rounded-full bg-emerald-700 text-white dark:bg-emerald-600">
+        <span className="inline-flex size-4 items-center justify-center rounded-full bg-emerald-600 text-white">
           <ScrollIcon className="size-2.5" />
         </span>
-        <span className="text-[12px] font-bold text-emerald-900 dark:text-emerald-100">
+        <span className="text-[12px] font-bold text-emerald-800 dark:text-emerald-100">
           함께 공부할 조문
         </span>
         <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
@@ -515,15 +515,15 @@ function SubArticleGroup({
     );
   }
 
-  // 펼친 상태: 라벨 배지가 튀어나오는 플로팅 카드.
+  // 펼친 상태: 라벨 배지가 튀어나오는 카드 (그림자 없음).
   return (
-    <aside className="bg-card relative my-4 rounded-xl border border-emerald-200 p-4 shadow-[0_6px_20px_-10px_rgba(16,185,129,0.25)] dark:border-emerald-700/40 dark:bg-emerald-950/10">
+    <aside className="bg-card relative my-4 rounded-xl border border-emerald-200 p-4 dark:border-emerald-700/40 dark:bg-emerald-950/10">
       <button
         type="button"
         onClick={() => setUserOpen(false)}
         aria-expanded={true}
         title="접기"
-        className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase shadow-sm hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+        className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10.5px] font-extrabold tracking-[0.06em] text-white uppercase hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
       >
         <ScrollIcon className="size-2.5" />
         함께 공부할 조문 · {articleCount}개
@@ -546,7 +546,7 @@ function SubArticleGroup({
         {block.articles.map((sa, i) => (
           <div
             key={i}
-            className="rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2.5 dark:border-emerald-700/30 dark:bg-emerald-950/30"
+            className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2.5 dark:border-emerald-700/30 dark:bg-emerald-950/30"
           >
             <SubArticleView entry={sa} />
           </div>
