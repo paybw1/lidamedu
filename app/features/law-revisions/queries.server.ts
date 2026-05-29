@@ -7,33 +7,26 @@ import type { Database, Json } from "database.types";
 import type {
   ArticleChangeKind,
   LawRevisionListItem,
-  LawRevisionStatus,
   RevisionArticleEntry,
 } from "./labels";
 
 export type {
   ArticleChangeKind,
   LawRevisionListItem,
-  LawRevisionStatus,
   RevisionArticleEntry,
 } from "./labels";
-export {
-  CHANGE_KIND_LABELS,
-  LAW_REVISION_STATUS_LABELS,
-} from "./labels";
+export { CHANGE_KIND_LABELS } from "./labels";
 
 const LIST_COLUMNS =
-  "law_revision_id, law_id, revision_number, revision_kind, status, promulgated_at, effective_date, published_at, reason_md, comparison_pdf, explanation_pdf, video_url, created_at, laws!inner(law_code, short_label, display_label)";
+  "law_revision_id, law_id, revision_number, revision_kind, promulgated_at, effective_date, reason_md, comparison_pdf, explanation_pdf, video_url, created_at, laws!inner(law_code, short_label, display_label)";
 
 interface LawRevisionRow {
   law_revision_id: string;
   law_id: string;
   revision_number: string;
   revision_kind: string | null;
-  status: string;
   promulgated_at: string | null;
   effective_date: string | null;
-  published_at: string | null;
   reason_md: string | null;
   comparison_pdf: string | null;
   explanation_pdf: string | null;
@@ -42,16 +35,8 @@ interface LawRevisionRow {
   laws: { law_code: string; short_label: string | null; display_label: string };
 }
 
-function asStatus(value: string): LawRevisionStatus {
-  return value === "draft" || value === "review" || value === "published"
-    ? value
-    : "draft";
-}
-
 export interface ListLawRevisionsOptions {
   lawCode?: string; // law_code 필터
-  status?: LawRevisionStatus;
-  includeDeleted?: boolean;
 }
 
 export async function listLawRevisionsForAdmin(
@@ -60,7 +45,6 @@ export async function listLawRevisionsForAdmin(
 ): Promise<LawRevisionListItem[]> {
   let q = client.from("law_revisions").select(LIST_COLUMNS);
   if (options.lawCode) q = q.eq("laws.law_code", options.lawCode);
-  if (options.status) q = q.eq("status", options.status);
   const { data, error } = await q
     .order("effective_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
@@ -91,10 +75,8 @@ export async function listLawRevisionsForAdmin(
     lawName: r.laws.short_label ?? r.laws.display_label,
     revisionNumber: r.revision_number,
     revisionKind: asKind(r.revision_kind),
-    status: asStatus(r.status),
     promulgatedAt: r.promulgated_at,
     effectiveDate: r.effective_date,
-    publishedAt: r.published_at,
     reasonMd: r.reason_md,
     comparisonPdf: r.comparison_pdf,
     explanationPdf: r.explanation_pdf,
@@ -132,10 +114,8 @@ export async function getLawRevisionById(
     lawName: r.laws.short_label ?? r.laws.display_label,
     revisionNumber: r.revision_number,
     revisionKind: asKind(r.revision_kind),
-    status: asStatus(r.status),
     promulgatedAt: r.promulgated_at,
     effectiveDate: r.effective_date,
-    publishedAt: r.published_at,
     reasonMd: r.reason_md,
     comparisonPdf: r.comparison_pdf,
     explanationPdf: r.explanation_pdf,
@@ -211,8 +191,7 @@ export async function createLawRevision(
       law_id: input.lawId,
       revision_number: input.revisionNumber,
       reason_md: input.reasonMd ?? null,
-      status: "draft",
-      // promulgated_at / effective_date 는 발행 시점에 set.
+      // promulgated_at / effective_date 는 "조문에 반영" 시점에 set.
     })
     .select("law_revision_id")
     .single();
@@ -225,7 +204,8 @@ export interface UpdateLawRevisionInput {
   reasonMd?: string | null;
   videoUrl?: string | null;
   revisionKind?: import("./labels").LawRevisionKind;
-  status?: LawRevisionStatus;
+  promulgatedAt?: string | null;
+  effectiveDate?: string | null;
 }
 
 export async function updateLawRevisionMeta(
@@ -240,7 +220,10 @@ export async function updateLawRevisionMeta(
   if (patch.videoUrl !== undefined) update.video_url = patch.videoUrl;
   if (patch.revisionKind !== undefined)
     update.revision_kind = patch.revisionKind;
-  if (patch.status !== undefined) update.status = patch.status;
+  if (patch.promulgatedAt !== undefined)
+    update.promulgated_at = patch.promulgatedAt;
+  if (patch.effectiveDate !== undefined)
+    update.effective_date = patch.effectiveDate;
   if (Object.keys(update).length === 0) return { ok: true };
   const { error } = await client
     .from("law_revisions")
@@ -250,7 +233,7 @@ export async function updateLawRevisionMeta(
   return { ok: true };
 }
 
-// draft 삭제 (published 는 트리거가 막음).
+// 개정 삭제 — 시행 중 스냅샷이 있으면 날짜 가드 트리거가 막는다(미반영·미래만 삭제 가능).
 export async function deleteDraftLawRevision(
   client: SupabaseClient<Database>,
   lawRevisionId: string,
@@ -312,7 +295,7 @@ export async function addArticleToDraft(
       body_json: body,
       change_kind: changeKind,
       created_by: authorId,
-      // effective_date 는 발행 시점에 set (NULL 허용).
+      // effective_date 는 "조문에 반영" 시점에 set (NULL 허용).
     })
     .select("revision_id")
     .single();
@@ -349,19 +332,17 @@ export async function removeArticleFromDraft(
   return { ok: true };
 }
 
-// 발행 — transactional RPC.
-export async function publishLawRevision(
+// 조문에 반영 — transactional RPC. 시행일 스탬프 + 직전본 마감 + 시행 도래분 현행 스왑.
+export async function applyLawRevision(
   client: SupabaseClient<Database>,
   lawRevisionId: string,
   promulgatedAt: string,
   effectiveDate: string,
-  publishedBy: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await client.rpc("publish_law_revision", {
+  const { error } = await client.rpc("apply_law_revision", {
     p_law_revision_id: lawRevisionId,
     p_promulgated_at: promulgatedAt,
     p_effective_date: effectiveDate,
-    p_published_by: publishedBy,
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true };

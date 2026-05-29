@@ -25,7 +25,7 @@ import { Separator } from "~/core/components/ui/separator";
 import { Textarea } from "~/core/components/ui/textarea";
 import { cn } from "~/core/lib/utils";
 import { AdminShell } from "~/features/admin/components/admin-shell";
-import { Chip, StatusChip } from "~/features/admin/components/admin-ui";
+import { Chip } from "~/features/admin/components/admin-ui";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { ArticleBlockEditor } from "~/features/laws/components/article-block-editor";
 import { articleBodySchema } from "~/features/laws/lib/article-body";
@@ -38,11 +38,9 @@ import { getLawByCode, getStaffRole } from "~/features/laws/queries.server";
 import {
   CHANGE_KIND_LABELS,
   LAW_REVISION_KIND_LABELS,
-  LAW_REVISION_STATUS_LABELS,
   type ArticleChangeKind,
   type LawRevisionKind,
   type LawRevisionListItem,
-  type LawRevisionStatus,
   type RevisionArticleEntry,
 } from "~/features/law-revisions/labels";
 import {
@@ -145,9 +143,11 @@ export default function AdminLawRevisionWorkspace({
     chapterLabelByPath,
     role,
   } = loaderData;
-  const isDraft = revision.status === "draft";
-  const isReview = revision.status === "review";
-  const isPublished = revision.status === "published";
+  const today = new Date().toISOString().slice(0, 10);
+  // 반영 = 시행일이 확정됨. 시행 중 = 시행일이 도래함(스냅샷 불변).
+  const isReflected = revision.effectiveDate != null;
+  const isInForce = isReflected && revision.effectiveDate! <= today;
+  const isUpcoming = isReflected && !isInForce;
 
   return (
     <AdminShell
@@ -155,13 +155,16 @@ export default function AdminLawRevisionWorkspace({
       role={role}
       width={1400}
       title={`${subjectName} · ${revision.revisionNumber}`}
-      desc="개정 워크스페이스 — 발행 전 체크리스트와 영향 조문을 한 화면에서 관리합니다."
+      desc="개정 워크스페이스 — 신구조문대비표 내용을 조문에 반영하고 영향 조문을 한 화면에서 관리합니다."
       headerRight={
         <div className="flex flex-wrap items-center gap-2">
-          <StatusChip
-            status={revision.status}
-            label={LAW_REVISION_STATUS_LABELS[revision.status]}
-          />
+          {isInForce ? (
+            <Chip tone="emerald">시행 중</Chip>
+          ) : isUpcoming ? (
+            <Chip tone="amber">시행 예정</Chip>
+          ) : (
+            <Chip tone="neutral">미반영</Chip>
+          )}
           {revision.effectiveDate ? (
             <Chip tone="outline">시행 {revision.effectiveDate}</Chip>
           ) : null}
@@ -171,49 +174,31 @@ export default function AdminLawRevisionWorkspace({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ── 좌측 본문 ── */}
         <div className="flex flex-col gap-4">
-          {/* 상태 전이 + 발행 */}
+          {/* 조문에 반영 */}
           <Card>
             <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3.5">
               <p className="text-primary font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                상태
+                조문에 반영
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                {isDraft ? (
-                  <StatusTransitionButton
-                    lawRevisionId={revision.lawRevisionId}
-                    status="review"
-                    label="검토 단계로"
-                    icon={<ChevronRightIcon className="size-3.5" />}
-                  />
-                ) : null}
-                {isReview ? (
-                  <StatusTransitionButton
-                    lawRevisionId={revision.lawRevisionId}
-                    status="draft"
-                    label="초안으로 되돌리기"
-                    icon={<ChevronRightIcon className="size-3.5 rotate-180" />}
-                    variant="outline"
-                  />
-                ) : null}
-                {isDraft || isReview ? (
-                  <PublishDialog
+                {!isInForce ? (
+                  <ApplyForm
                     lawRevisionId={revision.lawRevisionId}
                     disabled={articles.length === 0}
+                    reflected={isReflected}
+                    initialPromulgatedAt={revision.promulgatedAt}
+                    initialEffectiveDate={revision.effectiveDate}
                   />
-                ) : null}
-                {isPublished ? (
-                  <span className="text-emerald-600 inline-flex items-center gap-1 text-xs font-semibold dark:text-emerald-400">
-                    <CheckCircle2Icon className="size-3.5" /> 발행 완료
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2Icon className="size-3.5" /> 시행 중 — 조문 스냅샷 불변
                   </span>
-                ) : null}
+                )}
               </div>
               <span className="text-muted-foreground ml-auto text-xs tabular-nums">
                 영향 조문 {articles.length}건
                 {revision.promulgatedAt
                   ? ` · 공포 ${revision.promulgatedAt}`
-                  : ""}
-                {revision.publishedAt
-                  ? ` · 발행 ${revision.publishedAt.slice(0, 10)}`
                   : ""}
               </span>
             </CardContent>
@@ -225,7 +210,7 @@ export default function AdminLawRevisionWorkspace({
             </p>
           ) : null}
 
-          {isDraft || isReview ? (
+          {!isInForce ? (
             <PublishChecklist revision={revision} articles={articles} />
           ) : null}
 
@@ -252,8 +237,8 @@ export default function AdminLawRevisionWorkspace({
                 </span>
               </p>
               <p className="text-muted-foreground text-[11px]">
-                {isPublished
-                  ? "발행된 개정 — 조문 스냅샷은 불변"
+                {isInForce
+                  ? "시행 중인 개정 — 조문 스냅샷은 불변"
                   : "우측 패널에서 조문 추가"}
               </p>
             </CardHeader>
@@ -268,7 +253,7 @@ export default function AdminLawRevisionWorkspace({
                 <GroupedArticleList
                   articles={articles}
                   chapterLabelByPath={chapterLabelByPath}
-                  editable={!isPublished}
+                  editable={!isInForce}
                 />
               )}
             </CardContent>
@@ -277,7 +262,7 @@ export default function AdminLawRevisionWorkspace({
 
         {/* ── 우측 조문 추가 패널 ── */}
         <aside className="lg:sticky lg:top-28 lg:self-start">
-          {!isPublished ? (
+          {!isInForce ? (
             <AddArticleCard
               lawRevisionId={revision.lawRevisionId}
               lawId={law.lawId}
@@ -295,11 +280,11 @@ export default function AdminLawRevisionWorkspace({
               <CardContent className="space-y-2 px-4 py-4 text-xs">
                 <p className="inline-flex items-center gap-1 font-semibold">
                   <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
-                  발행됨
+                  시행 중
                 </p>
                 <p className="text-muted-foreground">
-                  이 개정은 발행되었습니다. 조문 스냅샷은 불변이며, 새 개정을
-                  만들어 후속 변경하세요.
+                  이 개정은 시행일이 도래해 시행 중입니다. 조문 스냅샷은 불변이며,
+                  새 개정을 만들어 후속 변경하세요.
                 </p>
               </CardContent>
             </Card>
@@ -344,7 +329,7 @@ function PublishChecklist({
     hint:
       articles.length > 0
         ? `${articles.length}건 — 우측 카드에서 추가 가능`
-        : "발행 전 최소 1개 조문 추가 필요",
+        : "반영 전 최소 1개 조문 추가 필요",
   });
 
   // 본문 변경 점검: 모든 amended 항목이 실제로 변경됐는가
@@ -408,7 +393,7 @@ function PublishChecklist({
   return (
     <Card>
       <CardHeader className="border-border/60 flex flex-row items-center justify-between gap-2 border-b pb-3">
-        <p className="text-sm font-semibold">발행 전 체크리스트</p>
+        <p className="text-sm font-semibold">반영 전 체크리스트</p>
         <div className="flex items-center gap-1.5">
           {missing > 0 ? (
             <Chip tone="coral">필수 미완 {missing}</Chip>
@@ -1299,53 +1284,21 @@ function ChangeKindSelect({
   );
 }
 
-function StatusTransitionButton({
-  lawRevisionId,
-  status,
-  label,
-  icon,
-  variant = "secondary",
-}: {
-  lawRevisionId: string;
-  status: LawRevisionStatus;
-  label: string;
-  icon?: React.ReactNode;
-  variant?: "default" | "secondary" | "outline";
-}) {
-  const fetcher = useFetcher<{ ok?: true; error?: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  useEffect(() => {
-    if (
-      fetcher.state === "idle" &&
-      fetcher.data &&
-      "ok" in fetcher.data &&
-      fetcher.data.ok
-    ) {
-      navigate(location.pathname + location.search, {
-        replace: true,
-        preventScrollReset: true,
-      });
-    }
-  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
-  return (
-    <fetcher.Form method="post" action="/api/admin/law-revision">
-      <input type="hidden" name="intent" value="update_meta" />
-      <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
-      <input type="hidden" name="status" value={status} />
-      <Button type="submit" size="sm" variant={variant} disabled={fetcher.state !== "idle"}>
-        {icon} {label}
-      </Button>
-    </fetcher.Form>
-  );
-}
-
-function PublishDialog({
+// 조문에 반영 — 공포일/시행일을 확정하면 신구조문대비표 본문이 조문 스냅샷에 반영된다.
+// 시행일이 오늘 이전이면 즉시 현행으로, 미래면 "시행 예정"으로 대기한다.
+// reflected=true(이미 반영됨, 시행 전)면 시행일·공포일 정정을 위한 "재반영"으로 동작.
+function ApplyForm({
   lawRevisionId,
   disabled,
+  reflected,
+  initialPromulgatedAt,
+  initialEffectiveDate,
 }: {
   lawRevisionId: string;
   disabled: boolean;
+  reflected: boolean;
+  initialPromulgatedAt: string | null;
+  initialEffectiveDate: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -1373,11 +1326,13 @@ function PublishDialog({
       <Button
         type="button"
         size="sm"
+        variant={reflected ? "outline" : "default"}
         onClick={() => setOpen(true)}
         disabled={disabled}
         title={disabled ? "포함된 조문이 없습니다" : ""}
       >
-        <RocketIcon className="size-3.5" /> 발행 (Publish)
+        <RocketIcon className="size-3.5" />
+        {reflected ? "시행일 정정" : "조문에 반영"}
       </Button>
     );
   }
@@ -1387,7 +1342,7 @@ function PublishDialog({
       action="/api/admin/law-revision"
       className="bg-card flex flex-wrap items-end gap-2 rounded-md border p-3"
     >
-      <input type="hidden" name="intent" value="publish" />
+      <input type="hidden" name="intent" value="apply" />
       <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
       <div>
         <Label className="text-muted-foreground text-[11px]">공포일 *</Label>
@@ -1395,6 +1350,7 @@ function PublishDialog({
           name="promulgatedAt"
           type="date"
           required
+          defaultValue={initialPromulgatedAt ?? ""}
           className="h-8 text-xs"
         />
       </div>
@@ -1404,11 +1360,12 @@ function PublishDialog({
           name="effectiveDate"
           type="date"
           required
+          defaultValue={initialEffectiveDate ?? ""}
           className="h-8 text-xs"
         />
       </div>
       <Button type="submit" size="sm" disabled={isSaving}>
-        <RocketIcon className="size-3.5" /> 확정 발행
+        <RocketIcon className="size-3.5" /> {reflected ? "재반영" : "반영"}
       </Button>
       <Button
         type="button"

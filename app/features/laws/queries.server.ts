@@ -242,7 +242,6 @@ export interface RecentRevisionItem {
   revisionNumber: string | null;
   promulgatedAt: string | null;
   effectiveDate: string | null;
-  publishedAt: string | null;
   hasReason: boolean;
   hasComparison: boolean;
   hasExplanation: boolean;
@@ -271,9 +270,10 @@ export async function listRecentLawRevisions(
   let q = client
     .from("law_revisions")
     .select(
-      "law_revision_id, law_id, revision_kind, revision_number, promulgated_at, effective_date, published_at, reason_md, comparison_pdf, explanation_pdf, video_url, laws!inner(law_code, display_label, short_label)",
+      "law_revision_id, law_id, revision_kind, revision_number, promulgated_at, effective_date, reason_md, comparison_pdf, explanation_pdf, video_url, laws!inner(law_code, display_label, short_label)",
     )
-    .eq("status", "published");
+    // 반영된 개정만 (시행일 set). 미반영 초안은 학습지원 목록에서 제외.
+    .not("effective_date", "is", null);
   if (options.subject) q = q.eq("laws.law_code", options.subject);
   const trimmed = options.query?.trim();
   if (trimmed) {
@@ -284,7 +284,8 @@ export async function listRecentLawRevisions(
     );
   }
   const { data, error } = await q
-    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("effective_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
   const rows = data ?? [];
@@ -331,7 +332,6 @@ export async function listRecentLawRevisions(
       revisionNumber: r.revision_number,
       promulgatedAt: r.promulgated_at,
       effectiveDate: r.effective_date,
-      publishedAt: r.published_at,
       hasReason: !!r.reason_md && r.reason_md.trim().length > 0,
       hasComparison: !!r.comparison_pdf && r.comparison_pdf.trim().length > 0,
       hasExplanation:
@@ -351,17 +351,49 @@ export async function getLatestPublishedRevisionDate(
   client: SupabaseClient<Database>,
   lawId: string,
 ): Promise<string | null> {
+  const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await client
     .from("law_revisions")
     .select("effective_date")
     .eq("law_id", lawId)
-    .eq("status", "published")
+    .not("effective_date", "is", null)
+    .lte("effective_date", today)
     .order("effective_date", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) throw error;
   return data?.effective_date ?? null;
+}
+
+// 다가오는 시행 예정 조문 — effective_date 가 미래(오늘 초과)인 가장 이른 스냅샷.
+// 조문 뷰어에서 "현재본 + 시행 예정본" 동시 표시에 사용.
+export interface UpcomingArticleRevision {
+  revisionId: string;
+  bodyJson: unknown;
+  effectiveDate: string;
+}
+
+export async function getUpcomingArticleRevision(
+  client: SupabaseClient<Database>,
+  articleId: string,
+  today: string, // "YYYY-MM-DD"
+): Promise<UpcomingArticleRevision | null> {
+  const { data, error } = await client
+    .from("article_revisions")
+    .select("revision_id, body_json, effective_date")
+    .eq("article_id", articleId)
+    .gt("effective_date", today)
+    .order("effective_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || !data.effective_date) return null;
+  return {
+    revisionId: data.revision_id,
+    bodyJson: data.body_json,
+    effectiveDate: data.effective_date,
+  };
 }
 
 export interface SystematicArticleRef {
@@ -700,9 +732,6 @@ export async function saveArticleQuickEdit(
       revision_number: `quick-${stamp}`,
       promulgated_at: today,
       effective_date: today,
-      status: "published",
-      published_at: new Date().toISOString(),
-      published_by: input.authorId,
     })
     .select("law_revision_id")
     .single();

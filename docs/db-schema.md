@@ -124,21 +124,22 @@ create table public.law_revisions (
   law_revision_id uuid primary key default gen_random_uuid(),
   law_id          uuid not null references laws(law_id),
   revision_number text not null,               -- '법률 제 21065호'
-  promulgated_at  date not null,
-  effective_date  date not null,
+  revision_kind   public.law_revision_kind not null default 'act', -- act/decree/rule
+  promulgated_at  date,                         -- 공포일 ("조문에 반영" 시 set)
+  effective_date  date,                         -- 시행일 ("조문에 반영" 시 set). 노출·현행 여부의 단일 기준
   reason_md       text,                         -- 개정이유
   comparison_pdf  text,                         -- 신구조문대비표 URL (Storage)
-  explanation_md  text,                         -- 개정해설
+  explanation_pdf text,                         -- 개정해설 PDF URL
   video_url       text,                         -- 동영상
-  status          text not null default 'draft', -- 'draft' / 'review' / 'published'
-  published_at    timestamptz,
-  published_by    uuid references profiles(profile_id),
   created_at      timestamptz not null default now()
 );
 ```
 
-- "최신 정보 — 법 개정" (`feat-3-101~103`) 화면이 이 테이블 직접 사용
-- `comparison_pdf` 와 `explanation_md` 는 다운로드 가능 (PPT slide 14)
+- "최신 정보 — 법 개정" (`feat-3-101~103`) 화면이 이 테이블 직접 사용. **초안/검토/발행 상태·발행일(`status`/`published_at`) 없음** — 노출·현행 전환은 `effective_date` 로만 결정 (`feat-7-004`).
+- `effective_date IS NULL` = 미반영(작성 중, staff 만 열람) / `effective_date > 오늘` = 시행 예정 / `<= 오늘` = 시행 중.
+- 반영 RPC `apply_law_revision(p_law_revision_id, p_promulgated_at, p_effective_date)`: article_revisions 에 시행일 스탬프 + 직전본 `expired_date` 마감 + 시행일 도래분만 `articles.current_revision_id` 스왑. 시행일 도래 자동 전환은 cron `promote_effective_revisions()`.
+- 불변성: 트리거 `article_revisions_protect_in_force` — 시행 중(effective_date ≤ 오늘) 스냅샷의 본문·식별 필드 수정·삭제 금지 (미래/미반영은 편집 가능, `expired_date` 는 예외).
+- `comparison_pdf` 와 `explanation_pdf` 는 다운로드 가능 (PPT slide 14)
 
 ---
 

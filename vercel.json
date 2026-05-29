@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/ai-eval-run?limit=10",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/promote-law-revisions",
+      "schedule": "5 0 * * *"
     }
   ]
 }

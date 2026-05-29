@@ -10,10 +10,10 @@ import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   addArticleToDraft,
+  applyLawRevision,
   createLawRevision,
   deleteDraftLawRevision,
   findArticleByNumber,
-  publishLawRevision,
   removeArticleFromDraft,
   updateDraftArticle,
   updateLawRevisionMeta,
@@ -75,13 +75,20 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (intent === "update_meta") {
+    const dateSchema = z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional();
     const schema = z.object({
       lawRevisionId: z.string().uuid(),
       revisionNumber: z.string().trim().min(1).max(100).optional(),
       reasonMd: z.string().trim().max(20000).nullable().optional(),
       videoUrl: z.string().trim().url().max(2000).nullable().optional(),
       revisionKind: z.enum(["act", "decree", "rule"]).optional(),
-      status: z.enum(["draft", "review", "published"]).optional(),
+      promulgatedAt: dateSchema,
+      effectiveDate: dateSchema,
     });
     const parsed = schema.safeParse({
       lawRevisionId: fd.get("lawRevisionId"),
@@ -91,7 +98,12 @@ export async function action({ request }: Route.ActionArgs) {
       videoUrl:
         fd.has("videoUrl") ? emptyToNull(fd.get("videoUrl"), 2000) : undefined,
       revisionKind: fd.get("revisionKind") ?? undefined,
-      status: fd.get("status") ?? undefined,
+      promulgatedAt: fd.has("promulgatedAt")
+        ? emptyToNull(fd.get("promulgatedAt"), 10)
+        : undefined,
+      effectiveDate: fd.has("effectiveDate")
+        ? emptyToNull(fd.get("effectiveDate"), 10)
+        : undefined,
     });
     if (!parsed.success) {
       return data(
@@ -104,8 +116,8 @@ export async function action({ request }: Route.ActionArgs) {
       reasonMd: parsed.data.reasonMd,
       videoUrl: parsed.data.videoUrl,
       revisionKind: parsed.data.revisionKind,
-      // published 로 직접 전환은 발행 RPC 만 허용.
-      status: parsed.data.status === "published" ? undefined : parsed.data.status,
+      promulgatedAt: parsed.data.promulgatedAt,
+      effectiveDate: parsed.data.effectiveDate,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
@@ -334,7 +346,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true });
   }
 
-  if (intent === "publish") {
+  if (intent === "apply") {
     const schema = z.object({
       lawRevisionId: z.string().uuid(),
       promulgatedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -351,17 +363,16 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    const res = await publishLawRevision(
+    const res = await applyLawRevision(
       client,
       parsed.data.lawRevisionId,
       parsed.data.promulgatedAt,
       parsed.data.effectiveDate,
-      user.id,
     );
     if (!res.ok) return data({ error: res.error }, { status: 400 });
 
-    // feat-9-001 RAG dirty hook — 발효된 개정의 영향 조문 청크 재생성.
-    // publish 후 article_revisions.law_revision_id 로 영향 article_id 추출.
+    // feat-9-001 RAG dirty hook — 반영된 개정의 영향 조문 청크 재생성.
+    // 반영 후 article_revisions.law_revision_id 로 영향 article_id 추출.
     runAfterResponse(
       (async () => {
         const { data: affected } = await client

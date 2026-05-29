@@ -1,13 +1,5 @@
 // 클라이언트·서버 공용 타입.
 
-export type LawRevisionStatus = "draft" | "review" | "published";
-
-export const LAW_REVISION_STATUS_LABELS: Record<LawRevisionStatus, string> = {
-  draft: "초안",
-  review: "검토",
-  published: "발행",
-};
-
 export type ArticleChangeKind = "created" | "amended" | "deleted";
 
 export const CHANGE_KIND_LABELS: Record<ArticleChangeKind, string> = {
@@ -31,10 +23,8 @@ export interface LawRevisionListItem {
   lawName: string;
   revisionNumber: string;
   revisionKind: LawRevisionKind;
-  status: LawRevisionStatus;
   promulgatedAt: string | null;
   effectiveDate: string | null;
-  publishedAt: string | null;
   reasonMd: string | null;
   comparisonPdf: string | null;
   explanationPdf: string | null;

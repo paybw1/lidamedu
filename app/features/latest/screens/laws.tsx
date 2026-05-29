@@ -1,7 +1,7 @@
-// 법 개정 — 관보식 색인표.
+// 법 개정 — 법령 개정 목록.
 // 10개 컬럼(No / 구분 / 명칭 / 법률번호 / 개정일 / 시행일 / 개정이유 / 신구조문대비표 / 개정해설 / 동영상)
 // + 영향 조문/즐겨찾기 chip. 첨부 O 클릭 시 행 아래 본문 패널 인라인 노출.
-// 키트 lidam-latest/LawsScreen 디자인.
+// 원장/스태프/강사는 상단에서 과목을 골라 새 개정을 추가하고, 행에서 바로 수정할 수 있다.
 
 import {
   ChevronDownIcon,
@@ -9,6 +9,7 @@ import {
   FileTextIcon,
   PencilIcon,
   PlayIcon,
+  PlusIcon,
   ScaleIcon,
   SearchXIcon,
   XIcon,
@@ -165,6 +166,24 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
           ]}
         />
       </LatestFilterForm>
+
+      {isStaff ? (
+        <div className="border-border bg-muted/30 mb-4 flex flex-wrap items-center gap-2 rounded-xl border px-4 py-3">
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold">
+            <PlusIcon className="size-3.5" /> 새 개정 추가
+          </span>
+          {LAW_SUBJECT_SLUGS.map((s) => (
+            <Link
+              key={s}
+              to={`/admin/laws/${s}/revisions`}
+              viewTransition
+              className="border-border hover:border-primary hover:text-primary rounded-full border bg-background px-2.5 py-1 text-[11px] font-medium transition-colors"
+            >
+              {LAW_SUBJECTS[s].name}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       {revisions.length === 0 ? (
         <LatestEmpty

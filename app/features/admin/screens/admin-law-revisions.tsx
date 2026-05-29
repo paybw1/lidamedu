@@ -1,5 +1,5 @@
-// 법 개정 목록 (feat-7-004). 한 법령의 모든 개정(draft/review/published).
-// 리스킨: AdminShell(cluster=laws, P2), IndexTable → 섹션별 표, StatusChip(Chip)
+// 법 개정 목록 (feat-7-004). 한 법령의 모든 개정 — 시행일 기준 단일 목록.
+// 노출/현행 여부는 시행일로 결정(상태 워크플로우 없음).
 
 import {
   ChevronRightIcon,
@@ -28,11 +28,7 @@ import {
   TD,
   TR,
 } from "~/features/admin/components/admin-ui";
-import {
-  LAW_REVISION_STATUS_LABELS,
-  type LawRevisionListItem,
-  type LawRevisionStatus,
-} from "~/features/law-revisions/labels";
+import { type LawRevisionListItem } from "~/features/law-revisions/labels";
 import { listLawRevisionsForAdmin } from "~/features/law-revisions/queries.server";
 import { getLawByCode, getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -73,16 +69,17 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return { law, lawCode, revisions, role };
 }
 
-/* ── 상태 → Chip 톤 ────────────────────────────────────────────────────── */
+/* ── 시행 상태 → Chip (시행일 파생) ──────────────────────────────────────── */
 
-const STATUS_CHIP_TONE: Record<
-  LawRevisionStatus,
-  "emerald" | "amber" | "neutral"
-> = {
-  draft: "neutral",
-  review: "amber",
-  published: "emerald",
-};
+function forceState(
+  effectiveDate: string | null,
+  today: string,
+): { tone: "emerald" | "amber" | "neutral"; label: string; inForce: boolean } {
+  if (!effectiveDate) return { tone: "neutral", label: "미반영", inForce: false };
+  if (effectiveDate <= today)
+    return { tone: "emerald", label: "시행 중", inForce: true };
+  return { tone: "amber", label: "시행 예정", inForce: false };
+}
 
 /* ── 컴포넌트 ─────────────────────────────────────────────────────────── */
 
@@ -92,20 +89,20 @@ export default function AdminLawRevisions({
   const { law, lawCode, revisions, role } = loaderData;
   const [showAdd, setShowAdd] = useState(false);
   const subject = LAW_SUBJECTS[lawCode];
-  const drafts = revisions.filter((r) => r.status === "draft");
-  const reviews = revisions.filter((r) => r.status === "review");
-  const published = revisions.filter((r) => r.status === "published");
+  const today = new Date().toISOString().slice(0, 10);
+  const reflected = revisions.filter((r) => r.effectiveDate != null).length;
+  const drafts = revisions.length - reflected;
 
   return (
     <AdminShell
       cluster="laws"
       role={role}
       title={`${subject.name} 개정 목록`}
-      desc={`초안 ${drafts.length} · 검토 ${reviews.length} · 발행 ${published.length}`}
+      desc={`전체 ${revisions.length} · 반영 ${reflected} · 미반영 ${drafts}`}
       headerRight={
         !showAdd ? (
           <Button size="sm" onClick={() => setShowAdd(true)}>
-            <PlusIcon className="size-3.5" /> 새 개정 (Draft)
+            <PlusIcon className="size-3.5" /> 새 개정
           </Button>
         ) : undefined
       }
@@ -120,23 +117,11 @@ export default function AdminLawRevisions({
       ) : null}
 
       <RevisionSection
-        title="초안 (Draft)"
-        revisions={drafts}
+        title="개정"
+        revisions={revisions}
         lawCode={lawCode}
-        emptyText="초안이 없습니다."
-      />
-      <RevisionSection
-        title="검토 (Review)"
-        revisions={reviews}
-        lawCode={lawCode}
-        emptyText="검토 중인 개정이 없습니다."
-      />
-      <RevisionSection
-        title="발행 (Published)"
-        revisions={published}
-        lawCode={lawCode}
-        readonly
-        emptyText="발행된 개정이 없습니다."
+        today={today}
+        emptyText="등록된 개정이 없습니다."
       />
     </AdminShell>
   );
@@ -148,13 +133,13 @@ function RevisionSection({
   title,
   revisions,
   lawCode,
-  readonly,
+  today,
   emptyText,
 }: {
   title: string;
   revisions: LawRevisionListItem[];
   lawCode: LawSubjectSlug;
-  readonly?: boolean;
+  today: string;
   emptyText: string;
 }) {
   return (
@@ -172,14 +157,13 @@ function RevisionSection({
         </div>
       ) : (
         <IndexTable
-          minWidth={640}
+          minWidth={620}
           headers={[
-            { label: "상태", width: "6rem" },
+            { label: "시행 상태", width: "6rem" },
             { label: "개정 번호" },
             { label: "조문", align: "right", width: "6rem" },
             { label: "시행일", align: "right", width: "8rem" },
             { label: "공포일", align: "right", width: "8rem" },
-            { label: "발행", align: "right", width: "8rem" },
             { label: "", align: "right", width: "5rem" },
           ]}
         >
@@ -188,7 +172,7 @@ function RevisionSection({
               key={r.lawRevisionId}
               revision={r}
               lawCode={lawCode}
-              readonly={readonly}
+              today={today}
             />
           ))}
         </IndexTable>
@@ -202,12 +186,13 @@ function RevisionSection({
 function RevisionRow({
   revision,
   lawCode,
-  readonly,
+  today,
 }: {
   revision: LawRevisionListItem;
   lawCode: LawSubjectSlug;
-  readonly?: boolean;
+  today: string;
 }) {
+  const fs = forceState(revision.effectiveDate, today);
   const delFetcher = useFetcher<{ ok?: true; error?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -235,9 +220,7 @@ function RevisionRow({
   return (
     <TR>
       <TD>
-        <Chip tone={STATUS_CHIP_TONE[revision.status]}>
-          {LAW_REVISION_STATUS_LABELS[revision.status]}
-        </Chip>
+        <Chip tone={fs.tone}>{fs.label}</Chip>
       </TD>
       <TD>
         <Link
@@ -263,11 +246,8 @@ function RevisionRow({
       <TD align="right" mono soft>
         {revision.promulgatedAt ?? "—"}
       </TD>
-      <TD align="right" mono soft>
-        {revision.publishedAt ? revision.publishedAt.slice(0, 10) : "—"}
-      </TD>
       <TD align="right">
-        {!readonly ? (
+        {!fs.inForce ? (
           <delFetcher.Form method="post" action="/api/admin/law-revision">
             <input type="hidden" name="intent" value="delete" />
             <input
@@ -285,7 +265,7 @@ function RevisionRow({
               onClick={(e) => {
                 if (
                   !confirm(
-                    `"${revision.revisionNumber}" 초안을 삭제하시겠습니까? 포함된 조문 스냅샷도 함께 삭제됩니다.`,
+                    `"${revision.revisionNumber}" 개정을 삭제하시겠습니까? 포함된 조문 스냅샷도 함께 삭제됩니다.`,
                   )
                 ) {
                   e.preventDefault();

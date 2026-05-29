@@ -69,6 +69,7 @@ import {
   getLawByCode,
   getStaffRole,
   getSystematicSkeleton,
+  getUpcomingArticleRevision,
   listArticleRevisionHistory,
 } from "~/features/laws/queries.server";
 import {
@@ -192,6 +193,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listLectureResources(client, "article", article.articleId),
   ]);
 
+  // 시행 예정 본문 — 현재 시점(at/compare 아님)일 때만, 다가오는 시행본을 함께 노출.
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming =
+    !atDate && !compareDate
+      ? await getUpcomingArticleRevision(client, article.articleId, today)
+      : null;
+
   // 개정 이력은 staff (instructor/admin) 만 조회 — 학생에게는 노출 안 함.
   const revisions: RevisionHistoryEntry[] | null = staffRole
     ? await listArticleRevisionHistory(
@@ -243,6 +251,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? parseArticleBody(compareArticle.bodyJson)
       : null,
     compareEffectiveDate: compareArticle?.effectiveDate ?? null,
+    upcomingBody: upcoming ? parseArticleBody(upcoming.bodyJson) : null,
+    upcomingEffectiveDate: upcoming?.effectiveDate ?? null,
     initialBlankMode: {
       subject: subjectBlankParam,
       period: periodBlankParam,
@@ -292,6 +302,8 @@ function ArticleViewerInner({
     compareDate,
     compareBody,
     compareEffectiveDate,
+    upcomingBody,
+    upcomingEffectiveDate,
     initialBlankMode,
     articles,
     systematicNodes,
@@ -1058,6 +1070,46 @@ function ArticleViewerInner({
                             <div className="text-foreground text-[17px] leading-[1.85]">
                               <ArticleBodyView
                                 body={compareBody}
+                                titleMap={titleMap}
+                                subtitlesOnly={subtitlesOnly}
+                                lawCode={subject.slug}
+                                memos={[]}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : upcomingBody ? (
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div>
+                            <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wide uppercase">
+                              현재 시행
+                              {article.effectiveDate
+                                ? ` (${article.effectiveDate})`
+                                : ""}
+                            </p>
+                            {body ? (
+                              <div className="text-foreground text-[17px] leading-[1.85]">
+                                <ArticleBodyView
+                                  body={body}
+                                  titleMap={titleMap}
+                                  subtitlesOnly={subtitlesOnly}
+                                  lawCode={subject.slug}
+                                  memos={memos}
+                                />
+                              </div>
+                            ) : (
+                              <p className="text-muted-foreground text-sm italic">
+                                본문 없음
+                              </p>
+                            )}
+                          </div>
+                          <div className="rounded-lg border border-amber-300/60 bg-amber-50/40 p-4 dark:border-amber-700/40 dark:bg-amber-950/15 md:border-0 md:border-l md:border-amber-300/60 md:bg-transparent md:p-0 md:pl-5 md:dark:bg-transparent">
+                            <p className="mb-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-300">
+                              🗓 {upcomingEffectiveDate} 시행 예정
+                            </p>
+                            <div className="text-foreground text-[17px] leading-[1.85]">
+                              <ArticleBodyView
+                                body={upcomingBody}
                                 titleMap={titleMap}
                                 subtitlesOnly={subtitlesOnly}
                                 lawCode={subject.slug}

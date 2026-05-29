@@ -2603,12 +2603,9 @@ export type Database = {
           law_id: string
           law_revision_id: string
           promulgated_at: string | null
-          published_at: string | null
-          published_by: string | null
           reason_md: string | null
           revision_kind: Database["public"]["Enums"]["law_revision_kind"]
           revision_number: string
-          status: string
           video_url: string | null
         }
         Insert: {
@@ -2619,12 +2616,9 @@ export type Database = {
           law_id: string
           law_revision_id?: string
           promulgated_at?: string | null
-          published_at?: string | null
-          published_by?: string | null
           reason_md?: string | null
           revision_kind?: Database["public"]["Enums"]["law_revision_kind"]
           revision_number: string
-          status?: string
           video_url?: string | null
         }
         Update: {
@@ -2635,12 +2629,9 @@ export type Database = {
           law_id?: string
           law_revision_id?: string
           promulgated_at?: string | null
-          published_at?: string | null
-          published_by?: string | null
           reason_md?: string | null
           revision_kind?: Database["public"]["Enums"]["law_revision_kind"]
           revision_number?: string
-          status?: string
           video_url?: string | null
         }
         Relationships: [
@@ -2650,20 +2641,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "laws"
             referencedColumns: ["law_id"]
-          },
-          {
-            foreignKeyName: "law_revisions_published_by_fkey"
-            columns: ["published_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "law_revisions_published_by_fkey"
-            columns: ["published_by"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -5221,6 +5198,14 @@ export type Database = {
           total_users: number
         }[]
       }
+      apply_law_revision: {
+        Args: {
+          p_effective_date: string
+          p_law_revision_id: string
+          p_promulgated_at: string
+        }
+        Returns: undefined
+      }
       backfill_article_article_links_from_body: {
         Args: never
         Returns: {
@@ -5415,15 +5400,7 @@ export type Database = {
           z_score: number
         }[]
       }
-      publish_law_revision: {
-        Args: {
-          p_effective_date: string
-          p_law_revision_id: string
-          p_promulgated_at: string
-          p_published_by: string
-        }
-        Returns: undefined
-      }
+      promote_effective_revisions: { Args: never; Returns: string[] }
       scan_exam_case_links: { Args: never; Returns: number }
       search_articles_ranked: {
         Args: { lim?: number; q: string }

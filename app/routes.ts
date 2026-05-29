@@ -442,6 +442,11 @@ export default [
         "/api/cron/ai-eval-run",
         "features/cron/api/ai-eval-run.tsx",
       ),
+      // feat-7-004 — 시행일 도래 개정 자동 현행 전환 cron.
+      route(
+        "/api/cron/promote-law-revisions",
+        "features/cron/api/promote-law-revisions.tsx",
+      ),
       route(
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",
