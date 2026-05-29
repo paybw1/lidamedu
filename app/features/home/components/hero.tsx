@@ -64,7 +64,7 @@ export function Hero() {
                 background: PALETTE.primary,
               }}
             />
-            리담 변리사 학원
+            리담변리사학원
           </div>
           <h1
             id="hero-h1"

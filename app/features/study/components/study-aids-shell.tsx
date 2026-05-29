@@ -76,7 +76,7 @@ function StudyAidsTabs({
 }) {
   return (
     <nav
-      aria-label="학습보조"
+      aria-label="학습지원"
       className="border-border bg-muted/50 flex w-max max-w-full gap-1 overflow-x-auto rounded-full border p-1"
     >
       {TABS.map((t) => {
@@ -169,7 +169,7 @@ export function StudyAidsShell({
       const { downloadElementAsPdf } = await import(
         "~/core/lib/pdf-export.client"
       );
-      await downloadElementAsPdf(contentRef.current, `학습보조-${title}.pdf`);
+      await downloadElementAsPdf(contentRef.current, `학습지원-${title}.pdf`);
     } finally {
       setExporting(false);
     }
@@ -182,7 +182,7 @@ export function StudyAidsShell({
           <div className="space-y-1.5">
             <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
               <ActiveIcon className="size-3" />
-              STUDY AIDS · 학습보조
+              STUDY AIDS · 학습지원
             </p>
             <h1 className="text-[28px] font-extrabold tracking-tight">
               {title}
