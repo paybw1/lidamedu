@@ -44,6 +44,8 @@ const REVNUM = args.revnum ?? `${DISPLAY} 조문 시드`;
 const REASON = args.reason ?? null;
 const EFFECTIVE = args.effective ?? null; // 기본 NULL = 시각 편집 가능
 const PROMULGATED = args.promulgated ?? null;
+// 강사 메모(content_comments) 작성자 — 기본 admin 임병웅.
+const NOTES_AUTHOR = args.notesAuthor ?? "8dbc9c0e-a32d-456e-bf53-bf89160669e0";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -88,6 +90,23 @@ async function getOrCreateLaw() {
   if (existing) {
     // 기존 콘텐츠 wipe
     console.log(`→ wipe (law ${LAW} 존재)`);
+    // content_comments 는 polymorphic(FK 없음) — articles wipe 전 해당 조문 코멘트 정리.
+    const { data: oldArts } = await supa
+      .from("articles")
+      .select("article_id")
+      .eq("law_id", existing.law_id)
+      .eq("level", "article");
+    const oldIds = (oldArts ?? []).map((a) => a.article_id);
+    if (oldIds.length > 0) {
+      const { error: cErr } = await supa
+        .from("content_comments")
+        .delete()
+        .eq("target_type", "article")
+        .eq("author_id", NOTES_AUTHOR)
+        .in("target_id", oldIds);
+      if (cErr) console.warn(`  content_comments cleanup: ${cErr.message}`);
+      else console.log(`  - content_comments(시드분): cleaned`);
+    }
     await delAll("problems", { law_id: existing.law_id });
     await delAll("articles", { law_id: existing.law_id });
     await delAll("law_revisions", { law_id: existing.law_id });
@@ -126,7 +145,8 @@ async function seedChaptersAndArticles(lawId, lawRevId) {
   console.log("→ chapters + articles");
   let chCount = 0,
     aCount = 0,
-    rCount = 0;
+    rCount = 0,
+    noteCount = 0;
   for (const ch of data.chapters) {
     const chPath = chapterPath(ch);
     const { data: chRow, error: chErr } = await supa
@@ -189,9 +209,29 @@ async function seedChaptersAndArticles(lawId, lawRevId) {
         if (uErr) throw new Error(`current_revision_id: ${uErr.message}`);
       }
     }
+
+    // 강사 메모(notes) → content_comments
+    const noteInserts = [];
+    for (let i = 0; i < ch.articles.length; i++) {
+      for (const note of ch.articles[i].notes ?? []) {
+        if (note && note.trim())
+          noteInserts.push({
+            target_type: "article",
+            target_id: inserted[i].article_id,
+            body_md: note.trim(),
+            author_id: NOTES_AUTHOR,
+          });
+      }
+    }
+    if (noteInserts.length > 0) {
+      const { error: nErr } = await supa.from("content_comments").insert(noteInserts);
+      if (nErr) throw new Error(`content_comments in ${ch.label}: ${nErr.message}`);
+      noteCount += noteInserts.length;
+    }
+
     console.log(`  ✓ ${ch.label} → ${inserted.length}조 / ${revInserts.length} rev`);
   }
-  console.log(`  total: ${chCount} chapters / ${aCount} articles / ${rCount} revisions`);
+  console.log(`  total: ${chCount} chapters / ${aCount} articles / ${rCount} revisions / ${noteCount} notes`);
 }
 
 async function main() {

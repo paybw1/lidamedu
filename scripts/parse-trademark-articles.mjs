@@ -202,56 +202,127 @@ if (chapterMeta.length === 0) {
 
 // ── 본문 walk → articles ───────────────────────────────────────────────────
 const HEADER_RE = /^제(\d+)조(?:의(\d+))?\s*\(([^)]*)\)/;
+const SUB_HEADER_RE = /^제(\d+)조(?:의(\d+))?\s*(?:\(([^)]*)\))?/; // 함께 공부할 조문 내부 헤더(HStyle9)
 const articles = [];
 let curArticle = null;
-let curClause = null;
-let curItem = null;
+// 함께 공부할 조문(시행령/시행규칙) 컨테이너 상태.
+let curGroup = null; // sub_article_group block (current main article 의 blocks 에 부착)
+let curSub = null; // group 내 현재 sub-article {number,branch,title,blocks}
+// 메인 조문 / 임베드 sub-article 각각의 항·호 컨텍스트 (임베드가 메인 항 사이에 끼어들어도
+// 닫힌 뒤 메인 항 nesting 이 보존되도록 분리).
+const mainCtx = { clause: null, item: null };
+const subCtx = { clause: null, item: null };
+
+// 임베드 본문 스타일 — 시행령/시행규칙 조문 내용. HStyle9 는 헤더(별도 처리).
+const EMBED_CONTENT = new Set(["HStyle6", "HStyle7", "HStyle8"]);
 
 function pushBlock(block) {
+  const top = curSub ? curSub.blocks : curArticle.blocks;
+  const ctx = curSub ? subCtx : mainCtx;
   if (block.kind === "clause") {
-    curArticle.blocks.push(block);
-    curClause = block;
-    curItem = null;
+    top.push(block);
+    ctx.clause = block;
+    ctx.item = null;
   } else if (block.kind === "item") {
-    if (curClause) curClause.children.push(block);
-    else curArticle.blocks.push(block);
-    curItem = block;
+    if (ctx.clause) ctx.clause.children.push(block);
+    else top.push(block);
+    ctx.item = block;
   } else if (block.kind === "sub") {
-    if (curItem) curItem.children.push(block);
-    else if (curClause) curClause.children.push(block);
-    else curArticle.blocks.push(block);
+    if (ctx.item) ctx.item.children.push(block);
+    else if (ctx.clause) ctx.clause.children.push(block);
+    else top.push(block);
   } else {
-    // para
-    curArticle.blocks.push(block);
+    top.push(block); // para
   }
+}
+
+function openSubFromSource() {
+  const sn = /제(\d+)조(?:의(\d+))?/.exec(curGroup.source);
+  curSub = {
+    number: sn ? +sn[1] : curGroup.articles.length + 1,
+    branch: sn && sn[2] ? +sn[2] : null,
+    title: "",
+    blocks: [],
+  };
+  curGroup.articles.push(curSub);
+  subCtx.clause = null;
+  subCtx.item = null;
 }
 
 for (let i = bodyStart; i < pList.length; i++) {
   const { cls, text, $p } = pList[i];
   if (!text) continue;
 
-  // 조 헤더
+  // 메인 조 헤더 (HStyle4/5) — 진행 중이던 함께 공부할 조문 그룹 종료 + 메인 컨텍스트 리셋.
   const hM = HEADER_RE.exec(text);
   if (/^HStyle[45]$/.test(cls) && hM) {
-    const number = +hM[1];
-    const branch = hM[2] ? +hM[2] : null;
-    const title = norm(hM[3]);
-    // 중요도 = 헤더의 ★ 개수. 별 표시 없으면 0 (일반 조문).
     const stars = (text.match(/★/g) || []).length;
-    const importance = Math.min(3, stars);
-    curArticle = { number, branch, title, importance, blocks: [], headerRefs: [] };
+    curArticle = {
+      number: +hM[1],
+      branch: hM[2] ? +hM[2] : null,
+      title: norm(hM[3]),
+      importance: Math.min(3, stars), // ★ 개수 = 중요도, 없으면 0
+      blocks: [],
+      headerRefs: [],
+      notes: [], // ※ cf)/주의 — 본문 아닌 강사 메모(우측 패널 content_comments)
+    };
     articles.push(curArticle);
-    curClause = null;
-    curItem = null;
+    mainCtx.clause = null;
+    mainCtx.item = null;
+    curGroup = null;
+    curSub = null;
     continue;
   }
   if (!curArticle) continue; // 헤더 이전 잡문 skip
+
+  // ※ cf)/주의 — 강사 메모(content_comments). 본문에서 제외, 그룹 종료.
+  if (text.startsWith("※")) {
+    curArticle.notes.push(norm(text));
+    curGroup = null;
+    curSub = null;
+    continue;
+  }
+
+  // 함께 공부할 조문 출처 헤더 (HStyle14) — 시행령/시행규칙 임베드 시작.
+  if (cls === "HStyle14") {
+    curGroup = { kind: "sub_article_group", source: norm(text), articles: [] };
+    curArticle.blocks.push(curGroup);
+    curSub = null;
+    subCtx.clause = null;
+    subCtx.item = null;
+    continue;
+  }
+  // 함께 공부할 조문 내부 조 헤더 (HStyle9).
+  if (cls === "HStyle9") {
+    if (!curGroup) {
+      curGroup = { kind: "sub_article_group", source: "함께 공부할 조문", articles: [] };
+      curArticle.blocks.push(curGroup);
+    }
+    const sm = SUB_HEADER_RE.exec(text);
+    curSub = {
+      number: sm ? +sm[1] : curGroup.articles.length + 1,
+      branch: sm && sm[2] ? +sm[2] : null,
+      title: sm && sm[3] ? norm(sm[3]) : norm(text.replace(/^제\d+조(?:의\d+)?\s*/, "")),
+      blocks: [],
+    };
+    curGroup.articles.push(curSub);
+    subCtx.clause = null;
+    subCtx.item = null;
+    continue;
+  }
+
+  // 컨테이너 라우팅 — 임베드 본문 스타일이면 그룹 안, 아니면 메인(그룹 종료).
+  if (curGroup && EMBED_CONTENT.has(cls)) {
+    if (!curSub) openSubFromSource();
+  } else {
+    curGroup = null;
+    curSub = null;
+  }
 
   const tokens = paragraphTokens($p);
   if (tokens.length === 0) continue;
   const firstText = tokens[0].type === "text" ? tokens[0].text.replace(/^\s+/, "") : "";
 
-  // 항/호/목 마커
   let m;
   if ((m = /^([①-⑳])/.exec(firstText))) {
     const stripped = stripMarker(tokens, firstText.indexOf(m[1]) + m[1].length);
@@ -266,18 +337,23 @@ for (let i = bodyStart; i < pList.length; i++) {
     const { subtitle, inline } = splitSubtitle(stripped);
     pushBlock({ kind: "sub", letter: m[1], label: `${m[1]}.`, subtitle, inline, children: [] });
   } else {
-    // para (lead text, cf/주의, 개정 단독 등)
     const { subtitle, inline } = splitSubtitle(tokens);
     if (inline.length === 0) continue;
-    const para = { kind: "para", inline };
-    if (subtitle) para.inline.unshift({ type: "subtitle", text: subtitle }); // para 엔 subtitle 필드 없음 → 다시 inline 으로
-    // 위 unshift 는 schema 상 para subtitle 불가라 text 로 변환
-    if (subtitle) {
-      para.inline.shift();
-      para.inline.unshift({ type: "text", text: `(${subtitle}) ` });
-    }
-    curArticle.blocks.push(para);
+    if (subtitle) inline.unshift({ type: "text", text: `(${subtitle}) ` });
+    pushBlock({ kind: "para", inline });
   }
+}
+
+// ── 빈 함께-공부할-조문 정리 ──────────────────────────────────────────────────
+for (const a of articles) {
+  for (const b of a.blocks) {
+    if (b.kind === "sub_article_group") {
+      b.articles = b.articles.filter((sa) => sa.blocks.length > 0);
+    }
+  }
+  a.blocks = a.blocks.filter(
+    (b) => !(b.kind === "sub_article_group" && b.articles.length === 0),
+  );
 }
 
 // ── chapters[] 구성 ────────────────────────────────────────────────────────
