@@ -41,31 +41,6 @@ export function Hero() {
         }}
       >
         <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              background: PALETTE.tint,
-              color: PALETTE.primary,
-              borderRadius: 9999,
-              font: "600 11px/1 Pretendard, sans-serif",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              marginBottom: 20,
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: PALETTE.primary,
-              }}
-            />
-            리담변리사학원
-          </div>
           <h1
             id="hero-h1"
             style={{
