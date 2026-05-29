@@ -62,7 +62,9 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: GavelIcon,
     screens: [
       { label: "법령 운영 허브", to: "/admin/laws" },
+      { label: "콘텐츠 헬스 점수", to: "/admin/laws/health" },
       { label: "체계도 트리", to: "/admin/systematic-tree" },
+      { label: "시드 import dry-run", to: "/admin/seeds/preview" },
     ],
   },
   {
@@ -115,6 +117,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "사용자", to: "/admin/users" },
       { label: "반 목록", to: "/admin/cohorts" },
+      { label: "위험군 큐", to: "/admin/cohorts/at-risk" },
       { label: "커리큘럼", to: "/admin/curricula" },
       // feat-7-014 — manager+ 전용. 메뉴는 노출, loader 에서 차단.
       { label: "수강권 관리", to: "/admin/subscriptions" },

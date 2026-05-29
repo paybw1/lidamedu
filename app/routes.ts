@@ -388,6 +388,14 @@ export default [
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
       route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),
       route(
+        "/admin/cohorts/at-risk",
+        "features/admin/screens/admin-at-risk.tsx",
+      ),
+      route(
+        "/api/admin/at-risk-notify",
+        "features/admin/api/at-risk-notify.tsx",
+      ),
+      route(
         "/admin/cohorts/:cohortId",
         "features/admin/screens/admin-cohort-detail.tsx",
       ),
@@ -605,6 +613,14 @@ export default [
       route(
         "/admin/laws",
         "features/admin/screens/admin-laws-hub.tsx",
+      ),
+      route(
+        "/admin/laws/health",
+        "features/admin/screens/admin-law-health.tsx",
+      ),
+      route(
+        "/admin/seeds/preview",
+        "features/admin/screens/admin-seeds-preview.tsx",
       ),
       route(
         "/admin/laws/:lawCode/revisions",

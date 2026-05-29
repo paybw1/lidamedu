@@ -21,6 +21,10 @@ import {
   type SubjectCoverageRow,
   getSubjectCoverage,
 } from "~/features/admin/queries/subject-coverage.server";
+import {
+  type AdminWorkQueueCounts,
+  getAdminWorkQueue,
+} from "~/features/admin/queries/work-queue.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LAW_SUBJECTS,
@@ -39,22 +43,24 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/admin");
   const role = await getStaffRole(client, user.id);
-  const [contentStats, subjectCoverage] = role
+  const [contentStats, subjectCoverage, workQueue] = role
     ? await Promise.all([
         getStaffContentStats(client, user.id),
         getSubjectCoverage(client),
+        getAdminWorkQueue(client),
       ])
-    : [null, null];
+    : [null, null, null];
   return {
     role,
     userEmail: user.email ?? null,
     contentStats,
     subjectCoverage,
+    workQueue,
   };
 }
 
 export default function Admin({ loaderData }: Route.ComponentProps) {
-  const { role, contentStats, subjectCoverage } = loaderData;
+  const { role, contentStats, subjectCoverage, workQueue } = loaderData;
 
   if (!role) {
     return <StudentGuidance />;
@@ -67,10 +73,106 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
       desc="콘텐츠 제작·수강생 운영·시험 운영·데이터 분석을 한 곳에서."
       role={role}
     >
+      {workQueue ? <WorkQueueRow counts={workQueue} /> : null}
       {contentStats ? <ContentStatsRow stats={contentStats} /> : null}
       {subjectCoverage ? <SubjectCoverageCard rows={subjectCoverage} /> : null}
       <ClusterGrid />
     </AdminShell>
+  );
+}
+
+/* ── 운영 워크큐 — 오늘 처리할 항목 6 타일 ───────────────────────────── */
+
+interface WorkQueueTile {
+  label: string;
+  value: number;
+  to: string;
+  hint: string;
+}
+
+function WorkQueueRow({ counts }: { counts: AdminWorkQueueCounts }) {
+  const tiles: WorkQueueTile[] = [
+    {
+      label: "오늘 신규 가입",
+      value: counts.newSignupsToday,
+      to: "/admin/users",
+      hint: "KST 오늘 자정 이후 가입한 사용자",
+    },
+    {
+      label: "첨삭 대기",
+      value: counts.subjectivePending,
+      to: "/admin/subjective-reviews",
+      hint: "주관식 첨삭 요청 미완료",
+    },
+    {
+      label: "AI 부정 피드백",
+      value: counts.aiNegativePending,
+      to: "/admin/ai-qna/feedback",
+      hint: "👎 + 미검토",
+    },
+    {
+      label: "미배정 점검",
+      value: counts.relationGapsTotal,
+      to: "/admin/relations/gaps",
+      hint: "체계도·판례·문제 연결 누락 합산",
+    },
+    {
+      label: "7일 무접속",
+      value: counts.inactiveStudents7d,
+      to: "/admin/cohorts/at-risk",
+      hint: "최근 7일 study_session 없는 수강생",
+    },
+    {
+      label: "감사 이상",
+      value: counts.auditAnomaliesToday,
+      to: "/admin/audit-logs",
+      hint: "오늘 다건 삭제·권한 변경",
+    },
+  ];
+  return (
+    <section className="mb-6" data-testid="admin-hub-work-queue">
+      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        오늘 처리할 항목
+      </p>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        {tiles.map((t) => {
+          const active = t.value > 0;
+          return (
+            <Link
+              key={t.label}
+              to={t.to}
+              viewTransition
+              title={t.hint}
+              className={cn(
+                "block rounded-xl border p-3.5 shadow-sm transition-colors",
+                active
+                  ? "border-amber-300/60 bg-amber-50/60 hover:border-amber-400 dark:border-amber-700/40 dark:bg-amber-950/30"
+                  : "border-border bg-card hover:border-primary",
+              )}
+            >
+              <p
+                className={cn(
+                  "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
+                  active
+                    ? "text-amber-700 dark:text-amber-300"
+                    : "text-muted-foreground",
+                )}
+              >
+                {t.label}
+              </p>
+              <p
+                className={cn(
+                  "mt-1.5 text-[22px] leading-none font-extrabold tracking-tight tabular-nums",
+                  active ? "text-amber-900 dark:text-amber-100" : "text-foreground",
+                )}
+              >
+                {t.value.toLocaleString("ko-KR")}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

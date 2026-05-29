@@ -1,7 +1,7 @@
 // 법령 운영 허브 — 4법(특허/상표/디자인/민법) × {개정 워크스페이스, 법령 완성도} 진입.
 // 사이드바의 patent 하드코딩(/admin/laws/patent/{revisions,completeness}) 을 대체.
 
-import { ArrowRightIcon, FileTextIcon, GavelIcon, NetworkIcon } from "lucide-react";
+import { ActivityIcon, ArrowRightIcon, FileTextIcon, GavelIcon, NetworkIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -35,6 +35,23 @@ export default function AdminLawsHub({ loaderData }: Route.ComponentProps) {
       title="법령 운영"
       desc="과목을 선택해 개정 워크스페이스 / 법령 완성도 / 체계도로 진입하세요."
     >
+      <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-foreground text-sm font-bold">콘텐츠 헬스 점수</p>
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              4법+민소법 × 8지표 매트릭스. 가장 시급한 항목을 자동으로 추출합니다.
+            </p>
+          </div>
+          <Link
+            to="/admin/laws/health"
+            viewTransition
+            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold"
+          >
+            <ActivityIcon className="size-3.5" /> 헬스 점수 보기
+          </Link>
+        </div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {BLANK_LAW_SLUGS.map((slug) => {
           const meta = LAW_SUBJECTS[slug];

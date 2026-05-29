@@ -58,6 +58,42 @@ export interface AuditLogItem {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+export type AuditAnomalyType = "bulk_delete" | "role_change";
+export type AuditAnomalySeverity = "high" | "medium" | "low";
+
+export interface AuditAnomalyItem {
+  anomalyType: AuditAnomalyType;
+  severity: AuditAnomalySeverity;
+  bucketStart: string;
+  actorId: string | null;
+  actorName: string | null;
+  entityType: string;
+  eventCount: number;
+  sampleLogId: string;
+  detail: Record<string, unknown> | null;
+}
+
+export async function listAuditAnomalies(
+  client: SupabaseClient<Database>,
+  hours = 24,
+): Promise<AuditAnomalyItem[]> {
+  const { data, error } = await client.rpc("admin_audit_anomalies", {
+    p_hours: hours,
+  });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    anomalyType: r.anomaly_type as AuditAnomalyType,
+    severity: r.severity as AuditAnomalySeverity,
+    bucketStart: r.bucket_start,
+    actorId: r.actor_id,
+    actorName: r.actor_name,
+    entityType: r.entity_type,
+    eventCount: Number(r.event_count),
+    sampleLogId: r.sample_log_id,
+    detail: (r.detail as Record<string, unknown> | null) ?? null,
+  }));
+}
+
 export async function listAuditLogs(
   client: SupabaseClient<Database>,
   options: AuditLogListOptions = {},

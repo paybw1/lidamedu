@@ -2,6 +2,7 @@
 // /admin/audit-logs?action=...&entity_type=...&q=...&offset=...
 
 import {
+  AlertTriangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshCwIcon,
@@ -10,8 +11,13 @@ import {
 import { Form, Link, data } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { listAuditLogs } from "~/features/admin/queries/audit-log.server";
+import {
+  type AuditAnomalyItem,
+  listAuditAnomalies,
+  listAuditLogs,
+} from "~/features/admin/queries/audit-log.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -44,17 +50,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   const offset =
     offsetRaw && /^\d+$/.test(offsetRaw) ? Number(offsetRaw) : 0;
 
-  const { items, total } = await listAuditLogs(client, {
-    action: action || undefined,
-    entityType: entityType || undefined,
-    q: q || undefined,
-    limit: PAGE_SIZE,
-    offset,
-  });
+  const [{ items, total }, anomalies] = await Promise.all([
+    listAuditLogs(client, {
+      action: action || undefined,
+      entityType: entityType || undefined,
+      q: q || undefined,
+      limit: PAGE_SIZE,
+      offset,
+    }),
+    listAuditAnomalies(client, 24),
+  ]);
 
   return {
     items,
     total,
+    anomalies,
     filters: { action, entityType, q },
     offset,
     role,
@@ -82,7 +92,7 @@ function actionChipTone(action: string): "emerald" | "amber" | "coral" | "neutra
 }
 
 export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
-  const { items, total, filters, offset, role } = loaderData;
+  const { items, total, anomalies, filters, offset, role } = loaderData;
   const nextOffset = offset + PAGE_SIZE;
   const prevOffset = Math.max(0, offset - PAGE_SIZE);
   const hasNext = nextOffset < total;
@@ -109,6 +119,9 @@ export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
         <ShieldCheckIcon className="text-primary size-4" aria-hidden />
         <Chip tone="blue">원장 전용</Chip>
       </div>
+
+      {/* 이상 신호 패널 — 최근 24시간 */}
+      <AnomalyPanel anomalies={anomalies} />
 
       {/* 필터 바 */}
       <Form
@@ -254,6 +267,128 @@ export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
         </>
       )}
     </AdminShell>
+  );
+}
+
+/* ── 이상 신호 패널 ───────────────────────────────────────────────────── */
+
+function anomalyTone(severity: AuditAnomalyItem["severity"]): {
+  bg: string;
+  border: string;
+  text: string;
+  label: string;
+} {
+  if (severity === "high")
+    return {
+      bg: "bg-rose-50 dark:bg-rose-950/30",
+      border: "border-rose-300/60 dark:border-rose-700/40",
+      text: "text-rose-700 dark:text-rose-300",
+      label: "심각",
+    };
+  if (severity === "medium")
+    return {
+      bg: "bg-amber-50 dark:bg-amber-950/30",
+      border: "border-amber-300/60 dark:border-amber-700/40",
+      text: "text-amber-700 dark:text-amber-300",
+      label: "주의",
+    };
+  return {
+    bg: "bg-sky-50 dark:bg-sky-950/30",
+    border: "border-sky-300/60 dark:border-sky-700/40",
+    text: "text-sky-700 dark:text-sky-300",
+    label: "관찰",
+  };
+}
+
+function anomalyTypeLabel(type: AuditAnomalyItem["anomalyType"]): string {
+  if (type === "bulk_delete") return "다건 삭제 burst";
+  return "권한 변경";
+}
+
+function AnomalyPanel({ anomalies }: { anomalies: AuditAnomalyItem[] }) {
+  if (anomalies.length === 0) {
+    return (
+      <div className="border-border bg-muted/30 mb-4 flex items-center gap-2 rounded-xl border border-dashed p-3 text-xs">
+        <ShieldCheckIcon className="size-3.5 text-emerald-600" aria-hidden />
+        <span className="text-muted-foreground">
+          최근 24시간 이상 신호 없음.
+        </span>
+      </div>
+    );
+  }
+  const highCount = anomalies.filter((a) => a.severity === "high").length;
+  return (
+    <section className="mb-4">
+      <div className="mb-2 flex items-center gap-2">
+        <AlertTriangleIcon className="size-3.5 text-rose-600" aria-hidden />
+        <p className="text-foreground text-xs font-bold">
+          이상 신호 — 최근 24시간 {anomalies.length}건
+          {highCount > 0 ? (
+            <span className="text-rose-600 dark:text-rose-300">
+              {" "}
+              · 심각 {highCount}건
+            </span>
+          ) : null}
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {anomalies.slice(0, 9).map((a) => {
+          const tone = anomalyTone(a.severity);
+          return (
+            <div
+              key={a.sampleLogId}
+              className={cn(
+                "rounded-xl border p-3 shadow-sm",
+                tone.bg,
+                tone.border,
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={cn(
+                    "font-mono text-[10px] font-bold tracking-[0.06em] uppercase",
+                    tone.text,
+                  )}
+                >
+                  {anomalyTypeLabel(a.anomalyType)}
+                </span>
+                <span
+                  className={cn(
+                    "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold",
+                    tone.bg,
+                    tone.text,
+                  )}
+                >
+                  {tone.label}
+                </span>
+              </div>
+              <p className="text-foreground mt-1.5 text-[13px] font-semibold">
+                {a.actorName ?? "(이름 없음)"} · {a.entityType}
+              </p>
+              <p className="text-muted-foreground mt-0.5 font-mono text-[11px] tabular-nums">
+                {new Date(a.bucketStart).toLocaleString("ko-KR")}
+              </p>
+              {a.anomalyType === "bulk_delete" ? (
+                <p className="text-foreground mt-1 text-[12px]">
+                  1시간 윈도우{" "}
+                  <span className="font-bold">{a.eventCount}건</span> 삭제
+                </p>
+              ) : (
+                <p className="text-foreground mt-1 text-[12px]">
+                  대상 profile_id:{" "}
+                  <code className="bg-muted/40 rounded px-1 font-mono text-[10px]">
+                    {String(
+                      (a.detail?.subject_profile_id as string | undefined) ?? "",
+                    ).slice(0, 8)}
+                    …
+                  </code>
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

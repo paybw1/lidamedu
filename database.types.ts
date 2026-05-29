@@ -5043,6 +5043,20 @@ export type Database = {
       }
     }
     Functions: {
+      admin_audit_anomalies: {
+        Args: { p_hours?: number }
+        Returns: {
+          actor_id: string
+          actor_name: string
+          anomaly_type: string
+          bucket_start: string
+          detail: Json
+          entity_type: string
+          event_count: number
+          sample_log_id: string
+          severity: string
+        }[]
+      }
       admin_law_completeness: {
         Args: { p_law_code: string }
         Returns: {
@@ -5059,6 +5073,26 @@ export type Database = {
           total_cases: number
           total_mcq: number
           total_subjective: number
+        }[]
+      }
+      admin_law_health_matrix: {
+        Args: never
+        Returns: {
+          articles_blank_ratio: number
+          articles_body_ratio: number
+          articles_comment_ratio: number
+          articles_systematic_ratio: number
+          cases_linked_ratio: number
+          cases_summary_ratio: number
+          display_label: string
+          health_score: number
+          law_code: string
+          mcq_explanation_ratio: number
+          ord: number
+          problems_per_article_ratio: number
+          total_articles: number
+          total_cases: number
+          total_mcq: number
         }[]
       }
       admin_mcq_problem_stats: {
@@ -5135,6 +5169,17 @@ export type Database = {
           problems_subjective: number
           revisions_published: number
           systematic_nodes: number
+        }[]
+      }
+      admin_work_queue_counts: {
+        Args: never
+        Returns: {
+          ai_negative_pending: number
+          audit_anomalies_today: number
+          inactive_students_7d: number
+          new_signups_today: number
+          relation_gaps_total: number
+          subjective_pending: number
         }[]
       }
       ai_embedding_dirty_sample: {
