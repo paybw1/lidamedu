@@ -410,7 +410,7 @@ export function ProblemsTab({
               ) : null}
             </div>
           ) : (
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="text-muted-foreground/70 w-12 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
@@ -419,22 +419,22 @@ export function ProblemsTab({
                   <TableHead className="text-muted-foreground/70 w-16 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     No.
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     출처
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     유형
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     극성
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     단원/종합
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     연도/회차
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     난이도
                   </TableHead>
                   <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
@@ -705,33 +705,35 @@ function ProblemRow({
       <TableCell className="text-xs tabular-nums">
         {item.problemNumber ?? "—"}
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden md:table-cell">
         {/* origin chip */}
         <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium">
           {ORIGIN_LABEL[item.origin]}
         </span>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden md:table-cell">
         {/* format chip */}
         <span className="border-border text-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
           {FORMAT_LABEL[item.format]}
         </span>
       </TableCell>
-      <TableCell className="text-xs">
+      <TableCell className="hidden text-xs md:table-cell">
         {item.polarity ? POLARITY_LABEL[item.polarity] : "—"}
       </TableCell>
-      <TableCell className="text-xs">
+      <TableCell className="hidden text-xs md:table-cell">
         {item.scope ? SCOPE_LABEL[item.scope] : "—"}
       </TableCell>
-      <TableCell className="text-xs tabular-nums">{yearLabel}</TableCell>
-      <TableCell>
+      <TableCell className="hidden text-xs tabular-nums md:table-cell">
+        {yearLabel}
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
         <DifficultyCell agg={agg} />
       </TableCell>
-      <TableCell>
+      <TableCell className="whitespace-normal">
         <Link
           to={`/subjects/${subject.slug}/problems/${item.problemId}`}
           viewTransition
-          className="hover:text-primary block truncate text-sm"
+          className="hover:text-primary block text-sm break-words"
         >
           {renderBodySnippet(item.bodyMd, searchQuery)}
         </Link>
