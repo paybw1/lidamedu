@@ -1,6 +1,9 @@
-// 특허법 체계도(systematic_nodes) + article_systematic_links 시드.
+// 체계도(systematic_nodes) + article_systematic_links 시드 (범용).
+// JSON 의 law_code 기준으로 해당 과목에 적재 — --json 으로 다른 과목 트리도 사용.
+//   node scripts/seed-systematic-patent.mjs                                  (기본: patent)
+//   node scripts/seed-systematic-patent.mjs --json=source/_converted/systematic-tree-trademark.json
 //
-// 입력: source/_converted/systematic-tree-patent.json
+// 입력(기본): source/_converted/systematic-tree-patent.json
 // 흐름:
 //   1. 기존 patent law 의 systematic_nodes / article_systematic_links 삭제 (재시드 안전)
 //   2. articles 테이블에서 patent law 의 모든 (article_number, article_id) 매핑 로드
@@ -33,7 +36,14 @@ import "dotenv/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const JSON_PATH = resolve(ROOT, "source/_converted/systematic-tree-patent.json");
+const argJson = process.argv
+  .slice(2)
+  .map((a) => /^--json=(.*)$/.exec(a))
+  .find(Boolean);
+const JSON_PATH = resolve(
+  ROOT,
+  argJson ? argJson[1] : "source/_converted/systematic-tree-patent.json",
+);
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
