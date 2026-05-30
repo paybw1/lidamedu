@@ -42,6 +42,7 @@ import {
   getPasserBenchmarks,
   type PasserBenchmark,
 } from "~/features/exam-results/analytics.server";
+import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 
 import type { Route } from "./+types/goals";
 
@@ -69,7 +70,12 @@ export async function loader({ request }: Route.LoaderArgs) {
         })),
       ),
       getDailyStudyStats(client, user.id, { daysBack: 84 }),
-      getPasserBenchmarks(user.id),
+      // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
+      isPasserBenchmarkEnabled().then((gate) =>
+        gate.enabled
+          ? getPasserBenchmarks(user.id, { excludeSynthetic: true })
+          : null,
+      ),
     ]);
   return { goals, overall, subjects, dailyStats, passerBenchmark };
 }

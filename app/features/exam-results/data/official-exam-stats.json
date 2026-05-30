@@ -1,0 +1,93 @@
+{
+  "source": "한국산업인력공단(큐넷) 변리사 국가자격시험 합격자 공고 채점통계 (공개·익명 공식 통계)",
+  "extracted_for": "변리사 학습 플랫폼 pass-criteria / benchmark SSoT 적재용",
+  "important_notes": [
+    "이 데이터는 집계 통계이며 개별 학습 로그가 아님 → 합격자 '학습 패턴' 비교(프로그램2 핵심)에는 쓸 수 없고, '합격 기준/벤치마크'에만 사용",
+    "법정 기준(floor: 과락40·평균60)과 실측 합격선(target: cut_line)은 반드시 구분 — 실제 합격은 floor가 아니라 cut_line으로 결정됨",
+    "1차 cut_line은 평균60보다 훨씬 높음(상대 3배수 선발), 2차 cut_line은 60보다 낮음(최소인원 보정). 단순 60점 룰을 목표로 쓰면 안 됨",
+    "공개·익명 데이터라 PII·합성데이터 오염 문제 없음"
+  ],
+  "round1": {
+    "statutory_criteria": {
+      "subject_floor": 40,
+      "average": 60,
+      "english": "영어능력검정시험 기준점수 이상으로 대체(점수 미산입)",
+      "subjects": ["산업재산권법", "민법개론", "자연과학개론"],
+      "selection": "절대기준(각 과목 40 이상 & 3과목 평균 60 이상) 충족자 중 총점 높은 순. 선발예정 600명(최소합격인원 3배수). 동점자 합격처리.",
+      "operative_target_note": "실제 합격은 cut_line(총점/평균 기준 상대컷)으로 결정. 평균 60은 응시 자격선에 가까움."
+    },
+    "by_year": [
+      {"year":2021,"round":58,"applicants":3380,"sat":3035,"passers":613,"pass_rate":20.19,"cut_line":null,"top_score":null,
+        "subjects":{"산업재산권법":{"avg":60.99,"fail_rate":21.28},"민법개론":{"avg":60.45,"fail_rate":21.60},"자연과학개론":{"avg":51.25,"fail_rate":26.12}}},
+      {"year":2022,"round":59,"applicants":3713,"sat":3349,"passers":602,"pass_rate":17.97,"cut_line":81.66,"top_score":95.83,
+        "subjects":{"산업재산권법":{"avg":61.36,"fail_rate":27.23},"민법개론":{"avg":65.42,"fail_rate":17.54},"자연과학개론":{"avg":54.27,"fail_rate":19.94}}},
+      {"year":2023,"round":60,"applicants":3640,"sat":3312,"passers":665,"pass_rate":20.07,"cut_line":null,"top_score":null,
+        "subjects":{"산업재산권법":{"avg":58.14,"fail_rate":27.32},"민법개론":{"avg":50.57,"fail_rate":34.61},"자연과학개론":{"avg":45.40,"fail_rate":31.63}}},
+      {"year":2024,"round":61,"applicants":3465,"sat":3071,"passers":607,"pass_rate":19.76,"cut_line":76.66,"top_score":93.33,
+        "subjects":{"산업재산권법":{"avg":59.63,"fail_rate":27.18},"민법개론":{"avg":58.63,"fail_rate":28.71},"자연과학개론":{"avg":48.37,"fail_rate":25.54}}},
+      {"year":2025,"round":62,"applicants":3974,"sat":3541,"passers":661,"pass_rate":18.66,"cut_line":79.16,"top_score":99.16,
+        "subjects":{"산업재산권법":{"avg":55.81,"fail_rate":31.99},"민법개론":{"avg":61.32,"fail_rate":24.97},"자연과학개론":{"avg":48.70,"fail_rate":30.28}}},
+      {"year":2026,"round":63,"applicants":4236,"sat":3697,"passers":632,"pass_rate":17.09,"cut_line":80.00,"top_score":95.00,
+        "subjects":{"산업재산권법":{"avg":52.87,"fail_rate":35.78},"민법개론":{"avg":59.67,"fail_rate":31.02},"자연과학개론":{"avg":50.26,"fail_rate":26.52}}}
+    ]
+  },
+  "round2": {
+    "statutory_criteria": {
+      "required_subject_floor": 40,
+      "required_average": 60,
+      "elective": {"pass_fail": true, "pass_floor": 50, "counts_toward_total": false},
+      "required_subjects": ["특허법", "상표법", "민사소송법"],
+      "min_headcount_adjustment": "필수 평균 60 이상자가 최소합격인원(약 200명) 미달 시, 과락 면한 자 중 필수 평균 높은 순으로 보정 선발. 동점자 전원 합격.",
+      "operative_target_note": "실제 합격선(cut_line)은 60보다 낮음(보정 단서). 최근 51~55점 선."
+    },
+    "by_year": [
+      {"year":2018,"round":55,"applicants":1254,"sat":1170,"passers":207,"pass_rate":17.69,"cut_line":53.44,"top_score":61.88},
+      {"year":2019,"round":56,"applicants":1241,"sat":1160,"passers":203,"pass_rate":17.50,"cut_line":52.44,"top_score":63.55,
+        "required_subjects":{"특허법":{"avg":40.48,"fail_rate":34.71},"상표법":{"avg":41.59,"fail_rate":29.65},"민사소송법":{"avg":51.02,"fail_rate":19.05}},
+        "elective_fail_rate":43.75},
+      {"year":2020,"round":57,"applicants":1209,"sat":1157,"passers":210,"pass_rate":18.15,"cut_line":51.11,"top_score":58.66,
+        "required_subjects":{"특허법":{"avg":38.83,"fail_rate":39.51},"상표법":{"avg":38.66,"fail_rate":42.44},"민사소송법":{"avg":51.31,"fail_rate":18.69}},
+        "elective_fail_rate":37.03},
+      {"year":2021,"round":58,"applicants":1193,"sat":1111,"passers":201,"pass_rate":18.09,"cut_line":54.77,"top_score":63.11,
+        "required_subjects":{"특허법":{"avg":45.65,"fail_rate":22.50},"상표법":{"avg":43.76,"fail_rate":23.72},"민사소송법":{"avg":49.74,"fail_rate":20.24}},
+        "elective_fail_rate":36.24},
+      {"year":2022,"round":59,"applicants":1160,"sat":1093,"passers":210,"pass_rate":19.21,"cut_line":55.22,"top_score":61.66,
+        "required_subjects":{"특허법":{"avg":44.40,"fail_rate":22.14},"상표법":{"avg":40.91,"fail_rate":30.30},"민사소송법":{"avg":57.12,"fail_rate":10.82}},
+        "elective_fail_rate":27.91},
+      {"year":2023,"round":60,"applicants":1184,"sat":1116,"passers":209,"pass_rate":18.72,"cut_line":54.33,"top_score":61.11,
+        "required_subjects":{"특허법":{"avg":44.39,"fail_rate":23.74},"상표법":{"avg":45.15,"fail_rate":20.95},"민사소송법":{"avg":45.36,"fail_rate":27.17}},
+        "elective_fail_rate":22.79}
+    ],
+    "electives_overview": {
+      "note": "선택과목 P/F(50점 이상 통과·총점 미산입). '합격률'은 필수과목 실력에 좌우되므로 선택 평가는 평균/과락(50미만)으로 볼 것. 표본 큰 과목 위주.",
+      "by_subject": {
+        "디자인보호법": [{"year":2020,"sat":411,"passers":82,"avg":51.99},{"year":2021,"sat":445,"passers":81,"avg":51.69},{"year":2022,"sat":518,"passers":93,"avg":50.17},{"year":2023,"sat":542,"passers":115,"avg":51.93}],
+        "회로이론":    [{"year":2020,"sat":232,"passers":43,"avg":45.10},{"year":2021,"sat":161,"passers":35,"avg":50.36},{"year":2022,"sat":112,"passers":17,"avg":50.36},{"year":2023,"sat":84,"passers":15,"avg":78.29}],
+        "유기화학":    [{"year":2020,"sat":101,"passers":22,"avg":51.19},{"year":2021,"sat":75,"passers":19,"avg":56.62},{"year":2022,"sat":52,"passers":10,"avg":60.45},{"year":2023,"sat":44,"passers":7,"avg":50.26}],
+        "화학반응공학":[{"year":2020,"sat":86,"passers":17,"avg":57.06},{"year":2021,"sat":64,"passers":23,"avg":67.29},{"year":2022,"sat":52,"passers":13,"avg":68.88},{"year":2023,"sat":55,"passers":13,"avg":65.39}],
+        "저작권법":    [{"year":2020,"sat":44,"passers":6,"avg":60.36},{"year":2021,"sat":104,"passers":14,"avg":50.34},{"year":2022,"sat":138,"passers":35,"avg":62.45},{"year":2023,"sat":191,"passers":38,"avg":50.81}],
+        "열역학":      [{"year":2020,"sat":110,"passers":14,"avg":47.46},{"year":2021,"sat":111,"passers":16,"avg":45.40},{"year":2022,"sat":83,"passers":25,"avg":66.46},{"year":2023,"sat":65,"passers":12,"avg":46.37}],
+        "분자생물학":  [{"year":2020,"sat":41,"passers":6,"avg":46.33},{"year":2021,"sat":43,"passers":3,"avg":43.81},{"year":2022,"sat":31,"passers":7,"avg":69.52},{"year":2023,"sat":30,"passers":3,"avg":67.97}]
+      }
+    }
+  },
+  "demographics_optional": {
+    "note": "마케팅/동기부여 콘텐츠용. 학습 엔진 직접 입력 아님.",
+    "round1_passer_age": {
+      "2026": {"20s":406,"30s":204,"40s":17,"50plus":5,"total":632},
+      "2025": {"20s":437,"30s":210,"40s":9,"50plus":5,"total":661},
+      "2024": {"20s":400,"30s":182,"40s":19,"50plus":6,"total":607},
+      "2022": {"20s":445,"30s":137,"40s":13,"50plus":7,"total":602}
+    },
+    "round2_passer_age": {
+      "2023": {"20s":159,"30s":47,"40s":3,"total":209},
+      "2022": {"20s":168,"30s":40,"40s":2,"total":210},
+      "2021": {"20s":165,"30s":34,"40s":2,"total":201},
+      "2020": {"20s":142,"30s":60,"40s":8,"total":210}
+    },
+    "round2_passer_major": {
+      "2023": {"기계금속":45,"전기전자":50,"화학약품생명":72,"토목건축산업":8,"인문":3,"기타":31},
+      "2022": {"기계금속":56,"전기전자":40,"화학약품생명":74,"토목건축산업":11,"인문":0,"기타":29}
+    }
+  }
+}

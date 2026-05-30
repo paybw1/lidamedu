@@ -618,6 +618,10 @@ export default [
         "features/exam-results/screens/passer-trend.tsx",
       ),
       route(
+        "/study/electives-guide",
+        "features/exam-results/screens/electives-guide.tsx",
+      ),
+      route(
         "/admin/students/:profileId",
         "features/admin/screens/admin-student-detail.tsx",
       ),

@@ -1,5 +1,16 @@
 // 합격 진단 점수 — 단순 가중평균 모델. 학생 동기부여용 지표.
-// v1: 4개 구성요소 → 0~100점. 실제 데이터 누적되면 후속 정밀화 (회귀 / 시험 점수 보정).
+// v1: 4개 구성요소 → 0~100점.
+// 임계값은 한국산업인력공단 공식 합격선(`official-exam-stats.json`)을 참조.
+// 차수별로 다른 임계값 사용 (1차 ~80 / 2차 ~54) — 단순 60 룰 사용 금지.
+// "데이터 누적되면 정밀화" 의 첫 단계: 공식 통계로 임의값 80/60/40 을 교체.
+
+import {
+  type ExamRound,
+  type PredictionThresholds,
+  getDefaultPredictionThresholds,
+  getRound1PredictionThresholds,
+  getRound2PredictionThresholds,
+} from "~/features/exam-results/pass-criteria";
 
 export interface PassPredictInput {
   overallArticlesPct: number; // 조문 열람 %
@@ -10,6 +21,8 @@ export interface PassPredictInput {
   activeDaysLast14: number; // 최근 14일 중 활동 일수
   pendingAssignmentsCount: number; // 미완 과제 수
   totalAssignmentsCount: number; // 전체 과제 수
+  /** 본인 응시 차수 — 임계값 분기. null 시 1차 default. */
+  examRound?: ExamRound | null;
 }
 
 export type PassRating = "안정" | "가능" | "주의" | "취약";
@@ -25,23 +38,44 @@ export interface PassPrediction {
     completion: number; // 과제 완수율
   };
   hint: string;
+  /** 사용된 임계값 출처 라벨 — UI 노출 가능. */
+  basisLabel: string;
+  thresholds: PredictionThresholds;
 }
 
-const RATING_THRESHOLDS = { safe: 80, ok: 60, caution: 40 };
-
-function rate(score: number): PassRating {
-  if (score >= RATING_THRESHOLDS.safe) return "안정";
-  if (score >= RATING_THRESHOLDS.ok) return "가능";
-  if (score >= RATING_THRESHOLDS.caution) return "주의";
+function rate(score: number, th: PredictionThresholds): PassRating {
+  if (score >= th.safe) return "안정";
+  if (score >= th.ok) return "가능";
+  if (score >= th.caution) return "주의";
   return "취약";
 }
 
-const RATING_HINTS: Record<PassRating, string> = {
-  안정: "현재 속도 유지. 약점 영역만 보강하세요.",
-  가능: "합격선 안정권 진입까지 정답률 또는 진척 추가가 필요합니다.",
-  주의: "학습량 vs 정답률 중 약한 쪽을 집중 보강하세요.",
-  취약: "꾸준한 학습 습관부터 회복. 마감 과제를 우선 처리.",
-};
+function buildHint(
+  rating: PassRating,
+  th: PredictionThresholds,
+  round: ExamRound,
+): string {
+  const roundLabel = round === "first" ? "1차" : "2차";
+  switch (rating) {
+    case "안정":
+      return `${roundLabel} 실측 합격선(${th.ok}점) + 안전 마진까지 도달. 약점 영역만 보강하세요.`;
+    case "가능":
+      return `${roundLabel} 실측 합격선(${th.ok}점) 도달권. 안정권(${th.safe}점)까지 정답률·풀이량 추가.`;
+    case "주의":
+      return `${roundLabel} 실측 합격선(${th.ok}점) 미달. 약점 영역 집중 보강 필요.`;
+    case "취약":
+      return `과락선(${th.caution}점) 근접. 꾸준한 학습 습관부터 회복하세요.`;
+  }
+}
+
+function pickThresholds(round: ExamRound | null | undefined): {
+  th: PredictionThresholds;
+  round: ExamRound;
+} {
+  if (round === "first") return { th: getRound1PredictionThresholds(), round };
+  if (round === "second") return { th: getRound2PredictionThresholds(), round };
+  return { th: getDefaultPredictionThresholds(), round: "first" };
+}
 
 export function predictPassScore(input: PassPredictInput): PassPrediction {
   const study = Math.round(
@@ -75,11 +109,14 @@ export function predictPassScore(input: PassPredictInput): PassPrediction {
     raw = study * 0.4 + accuracy * 0.4 + activity * 0.1 + completion * 0.1;
   }
   const score = Math.max(0, Math.min(100, Math.round(raw)));
-  const rating = rate(score);
+  const { th, round } = pickThresholds(input.examRound);
+  const rating = rate(score, th);
   return {
     score,
     rating,
     components: { study, accuracy, gs, activity, completion },
-    hint: RATING_HINTS[rating],
+    hint: buildHint(rating, th, round),
+    basisLabel: th.basisLabel,
+    thresholds: th,
   };
 }

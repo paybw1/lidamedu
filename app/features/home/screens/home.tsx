@@ -40,7 +40,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   // 항상 표시하지만, 향후 실제 데이터 연동을 위해 loader 는 유지.
   let stats: PublicPlatformStats | null = null;
   try {
-    stats = await getPublicPlatformStats();
+    // 비로그인 랜딩 — 합성 합격자가 마케팅 통계에 섞이지 않도록 차단.
+    stats = await getPublicPlatformStats({ excludeSynthetic: true });
   } catch {
     stats = null;
   }

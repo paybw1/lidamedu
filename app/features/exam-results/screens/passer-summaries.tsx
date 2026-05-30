@@ -34,6 +34,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     year: yearStr ? Number(yearStr) : null,
     round: (url.searchParams.get("round") as ExamRound | null) || null,
     limit: 100,
+    // 학생 화면 — 합성 후기 노출 금지.
+    excludeSynthetic: true as const,
   };
   const summaries = await listPasserSummaries(filter);
   return { summaries, filter };

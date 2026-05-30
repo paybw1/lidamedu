@@ -82,7 +82,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     getOxSrsCounts(client, user.id),
     getDueArticleReviews(client, user.id, 50),
     getArticleReviewCounts(client, user.id),
-    getPasserSrsBenchmark(user.id),
+    // 게이트 OFF (1년차) — 합격자 SRS 비교 자체를 비활성화.
+    (async () => {
+      const { isPasserBenchmarkEnabled } = await import(
+        "~/features/exam-results/passer-benchmark-gate.server"
+      );
+      const gate = await isPasserBenchmarkEnabled();
+      return gate.enabled
+        ? getPasserSrsBenchmark(user.id, { excludeSynthetic: true })
+        : null;
+    })(),
     getSrsTrend(client, user.id, 30),
   ]);
   return {
@@ -447,8 +456,17 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
-      {/* feat-2-019 합격자 비교 */}
-      <PasserBenchmarkSection benchmark={passerBenchmark} />
+      {/* feat-2-019 합격자 비교 — 게이트 OFF (1년차) 시 카드 자체를 숨김 */}
+      {passerBenchmark ? (
+        <PasserBenchmarkSection benchmark={passerBenchmark} />
+      ) : (
+        <Card className="mt-8 border-dashed">
+          <CardContent className="text-muted-foreground py-6 text-center text-xs">
+            합격자 SRS 비교는 준비 중입니다. 실 합격자 데이터가 누적되면 자동
+            활성화됩니다.
+          </CardContent>
+        </Card>
+      )}
 
       {/* 알고리즘 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">

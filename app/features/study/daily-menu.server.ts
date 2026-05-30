@@ -15,7 +15,34 @@ import { getCurrentWeekTrack } from "~/features/curricula/queries.server";
 import { getDueArticleReviews } from "~/features/study/article-review.server";
 import { getWeakAreas } from "~/features/study/queries.server";
 import { getDueProblems } from "~/features/study/srs.server";
+import {
+  getRound1SubjectStats,
+  type SubjectStat,
+} from "~/features/exam-results/official-stats";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+
+/**
+ * 공식 통계상 "통계적 과락 위험" 라벨. 약점 슬롯 body 에 컨텍스트로 보강.
+ * 1차 과목 한정 (산업재산권법/민법개론/자연과학개론) — 2차는 fail_rate 가 더 변동성 큼.
+ *
+ * lawCode → 공식 통계 과목명 매핑:
+ *   patent/trademark/design → 산업재산권법
+ *   civil → 민법개론
+ *   (자연과학은 별도 LawSubjectSlug 가 아님 — daily-menu 약점은 law 만 다룸)
+ */
+function officialFailRateLabel(lawCode: LawSubjectSlug): string | null {
+  const subject =
+    lawCode === "civil"
+      ? "민법개론"
+      : lawCode === "patent" || lawCode === "trademark" || lawCode === "design"
+        ? "산업재산권법"
+        : null;
+  if (!subject) return null;
+  const stats: SubjectStat[] = getRound1SubjectStats(5);
+  const row = stats.find((s) => s.subject === subject);
+  if (!row) return null;
+  return `공식 통계 과락률 ${row.failRateAcrossYears}%`;
+}
 
 /** KST 자정 기준 오늘 날짜 YYYY-MM-DD. */
 export function kstToday(now: Date = new Date()): string {
@@ -143,12 +170,13 @@ async function pickWeakProblem(
   const weak = await getWeakAreas(client, userId, 1);
   const top = weak[0];
   if (!top) return null;
+  const failHint = officialFailRateLabel(top.lawCode);
   return {
     kind: "weak_problem",
     title: `약점 문제 재시도 — ${top.primaryArticleLabel ?? "미분류"}`,
     body: `최근 오답이면서 전체 정답률이 가장 낮은 문제. 글로벌 ${
       top.globalAccuracyPct ?? "—"
-    }%`,
+    }%${failHint ? ` · ${failHint}` : ""}`,
     ctaLabel: "이 문제 풀기",
     ctaUrl: `/subjects/${top.lawCode}/problems/${top.problemId}`,
     estimatedMinutes: 3,

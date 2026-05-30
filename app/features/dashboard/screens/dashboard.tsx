@@ -39,6 +39,7 @@ import {
   getPasserLawAverages,
   listPasserSummaries,
 } from "~/features/exam-results/analytics.server";
+import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import { generateRecommendedActions } from "~/features/exam-results/recommendations";
 import { predictPassScore } from "~/features/study/lib/pass-predict";
 
@@ -63,6 +64,7 @@ import {
   WeekTrackCard,
 } from "~/features/dashboard/components/dash-today";
 import {
+  PassCriterionAnnouncementCard,
   PasserBenchmarkCard,
   PasserSummariesCard,
   PassPredictionCard,
@@ -138,6 +140,17 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
+  // pass-predict 차수 분기용 — next_exam_round 조회. null = 1차 default.
+  const { data: predictProfile } = await client
+    .from("profiles")
+    .select("next_exam_round")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  const userExamRound = (predictProfile?.next_exam_round ?? null) as
+    | "first"
+    | "second"
+    | null;
+
   // 빈칸 학습 요약 + 문제풀이 KPI + 5과목 진도 + 84일 활동 병렬 조회.
   const [
     content,
@@ -179,10 +192,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     studentAssignments,
     gsAveragePct,
     weekTrack,
-    passerBenchmark,
-    passerSummaries,
-    passerLawAverages,
-    failerBaseline,
+    passerBundle,
     oxRecentSessions,
     oxWrongCount,
     aiConversations,
@@ -198,16 +208,39 @@ export async function loader({ request }: Route.LoaderArgs) {
     listStudentAssignments(user.id),
     getUserGsAveragePct(client, user.id),
     getCurrentWeekTrack(user.id),
-    getPasserBenchmarks(user.id),
-    listPasserSummaries({ limit: 3 }),
-    getPasserLawAverages(),
-    getFailerBaseline(),
+    // 학생 화면 — 합성 합격자 절대 노출 금지. excludeSynthetic:true 강제.
+    // 게이트 OFF (실 합격자 < 임계값) 시 합격자 비교 자체를 비활성화.
+    isPasserBenchmarkEnabled().then(async (gate) => {
+      if (!gate.enabled) {
+        return {
+          gate,
+          benchmark: null,
+          summaries: [] as Awaited<ReturnType<typeof listPasserSummaries>>,
+          lawAverages: {} as Awaited<ReturnType<typeof getPasserLawAverages>>,
+          failerBaseline: null as Awaited<ReturnType<typeof getFailerBaseline>>,
+        };
+      }
+      const [benchmark, summaries, lawAverages, failerBaseline] =
+        await Promise.all([
+          getPasserBenchmarks(user.id, { excludeSynthetic: true }),
+          listPasserSummaries({ limit: 3, excludeSynthetic: true }),
+          getPasserLawAverages({ excludeSynthetic: true }),
+          getFailerBaseline({ excludeSynthetic: true }),
+        ]);
+      return { gate, benchmark, summaries, lawAverages, failerBaseline };
+    }),
     // feat-10-006 — 대시보드 OX 카드용. 최신 10건 + 누적 응시 수 계산.
     listMyOxSessions(client, user.id, { limit: 50 }),
     countMyOxWrongNoteItems(client, user.id),
     // feat-9-004 — 대시보드 AI Q&A 카드용. last 3 대화.
     listMyConversations(client, user.id, 3),
   ]);
+  // A3 게이트 — 합격자 비교 OFF 시 4종 값 모두 null/[]. 컴포넌트 단에서 합격 기준 안내 카드로 대체.
+  const passerGate = passerBundle.gate;
+  const passerBenchmark = passerBundle.benchmark;
+  const passerSummaries = passerBundle.summaries;
+  const passerLawAverages = passerBundle.lawAverages;
+  const failerBaseline = passerBundle.failerBaseline;
   // 마감 임박 진행중 과제 top 3
   const pendingAssignments = studentAssignments
     .filter((a) => a.submission?.status !== "completed")
@@ -227,6 +260,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       (a) => a.submission?.status !== "completed",
     ).length,
     totalAssignmentsCount: studentAssignments.length,
+    examRound: userExamRound,
   });
 
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
@@ -284,6 +318,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     hasMgmt,
     planCode,
     weekTrack,
+    passerGate,
     passerBenchmark,
     passerSummaries,
     passerLawAverages,
@@ -433,6 +468,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     weekTrack,
     pendingAssignments,
     passPrediction,
+    passerGate,
     passerBenchmark,
     passerSummaries,
     recommendedActions,
@@ -607,16 +643,25 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             <SpanCol span={6}>
               <PassPredictionCard prediction={passPrediction} />
             </SpanCol>
-            {passerBenchmark !== null ? (
-              <SpanCol span={4}>
-                <PasserBenchmarkCard benchmark={passerBenchmark} />
+            {!passerGate.enabled ? (
+              // 1년차 — 합격자 비교 게이트 OFF. 합격 기준 안내 카드로 대체.
+              <SpanCol span={6}>
+                <PassCriterionAnnouncementCard gate={passerGate} />
               </SpanCol>
-            ) : null}
-            {passerSummaries.length > 0 ? (
-              <SpanCol span={2}>
-                <PasserSummariesCard summaries={passerSummaries} />
-              </SpanCol>
-            ) : null}
+            ) : (
+              <>
+                {passerBenchmark !== null ? (
+                  <SpanCol span={4}>
+                    <PasserBenchmarkCard benchmark={passerBenchmark} />
+                  </SpanCol>
+                ) : null}
+                {passerSummaries.length > 0 ? (
+                  <SpanCol span={2}>
+                    <PasserSummariesCard summaries={passerSummaries} />
+                  </SpanCol>
+                ) : null}
+              </>
+            )}
           </DashGrid>
 
           <SectionBand eyebrow="PROGRESS · 진도" />

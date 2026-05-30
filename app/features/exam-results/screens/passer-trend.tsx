@@ -13,6 +13,7 @@ import {
   type PasserTrendData,
   type WeeklyTrendPoint,
 } from "~/features/exam-results/analytics.server";
+import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 
 import type { Route } from "./+types/passer-trend";
@@ -27,7 +28,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
-  const trend = await getPasserTrendData(user.id);
+  // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
+  const gate = await isPasserBenchmarkEnabled();
+  const trend = gate.enabled
+    ? await getPasserTrendData(user.id, { excludeSynthetic: true })
+    : null;
   return { trend };
 }
 

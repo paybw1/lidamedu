@@ -37,23 +37,26 @@ function articleIntervalFor(visits: number): number {
 
 export async function getPasserSrsBenchmark(
   userId: string,
+  opts: { excludeSynthetic?: boolean } = {},
 ): Promise<PasserSrsBenchmark> {
   const admin = adminClient as SupabaseClient<Database>;
   const nowIso = new Date().toISOString();
   const now = Date.now();
 
-  // 1) 합격자 user_id 표본 — status='passed' + 분석 동의.
+  // 1) 합격자 user_id 표본 — status='passed' + 분석 동의. (옵션: 합성 제외)
   const { data: passers } = await admin
     .from("exam_results")
     .select(
-      "user_id, profiles!exam_results_user_id_fkey(analytics_consent_at)",
+      "user_id, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
     )
     .eq("status", "passed")
     .order("exam_year", { ascending: false })
     .limit(200);
   const consentedIds = new Set<string>();
   for (const p of passers ?? []) {
-    if (p.profiles?.analytics_consent_at) consentedIds.add(p.user_id);
+    if (!p.profiles?.analytics_consent_at) continue;
+    if (opts.excludeSynthetic && p.profiles?.is_synthetic) continue;
+    consentedIds.add(p.user_id);
   }
   const sampleIds = [...consentedIds];
   const sampleSize = sampleIds.length;

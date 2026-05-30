@@ -65,6 +65,12 @@ export interface ListPasserCasesFilter {
   round?: ExamRound | null;
   onlyVerified?: boolean;
   onlyConsented?: boolean;
+  /**
+   * `profiles.is_synthetic=true` 합성 합격자 제외 여부.
+   * 학생 화면 호출은 반드시 true (default). 운영자 시연 화면만 false 허용.
+   * 1년차 운영에서 실 합격자가 0명이면 결과 표본 = 0 이 정상 동작.
+   */
+  excludeSynthetic?: boolean;
 }
 
 // 내부 헬퍼 — 합격/비합격 공용. status 별 case + 학습 집계.
@@ -76,7 +82,7 @@ async function listExamCasesByStatus(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, profiles!exam_results_user_id_fkey(name, analytics_consent_at)",
+      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, profiles!exam_results_user_id_fkey(name, analytics_consent_at, is_synthetic)",
     )
     .eq("status", status)
     .order("exam_year", { ascending: false })
@@ -102,9 +108,14 @@ async function listExamCasesByStatus(
         : Number(r.self_reported_total_score),
     studySummaryMd: r.study_summary_md,
     analyticsConsentAt: r.profiles?.analytics_consent_at ?? null,
+    isSynthetic: r.profiles?.is_synthetic ?? false,
   }));
   if (filter.onlyConsented) {
     list = list.filter((r) => r.analyticsConsentAt !== null);
+  }
+  // 합성 데이터 제외 — 학생 화면 default. 운영자 시연 화면만 false 로 호출.
+  if (filter.excludeSynthetic) {
+    list = list.filter((r) => !r.isSynthetic);
   }
   if (list.length === 0) return [];
 
@@ -290,7 +301,9 @@ async function computeAggregates(
   };
 }
 
-export async function getPasserPoolStats(): Promise<{
+export async function getPasserPoolStats(
+  opts: { excludeSynthetic?: boolean } = {},
+): Promise<{
   passerCount: number;
   verifiedPasserCount: number;
   consentedPasserCount: number;
@@ -305,10 +318,13 @@ export async function getPasserPoolStats(): Promise<{
   const { data: rows } = await admin
     .from("exam_results")
     .select(
-      "user_id, exam_year, exam_round, verification_status, profiles!exam_results_user_id_fkey(analytics_consent_at)",
+      "user_id, exam_year, exam_round, verification_status, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
     )
     .eq("status", "passed");
-  const list = rows ?? [];
+  let list = rows ?? [];
+  if (opts.excludeSynthetic) {
+    list = list.filter((r) => !r.profiles?.is_synthetic);
+  }
   const passerCount = list.length;
   const verifiedPasserCount = list.filter(
     (r) => r.verification_status === "verified",
@@ -649,6 +665,7 @@ async function computeUserMetricsAllTime(
 
 export async function getPasserBenchmarks(
   userId: string,
+  opts: { excludeSynthetic?: boolean } = {},
 ): Promise<PasserBenchmark | null> {
   const admin = adminClient as SupabaseClient<Database>;
   const { data: profile } = await admin
@@ -664,6 +681,7 @@ export async function getPasserBenchmarks(
   // 표본 후보 — 우선 plan 매칭, 부족하면 (year-1, same round)
   const passerCases = await listPasserCases({
     onlyConsented: true,
+    excludeSynthetic: opts.excludeSynthetic,
     round: hasPlan ? (profile!.next_exam_round as ExamRound) : null,
   });
   const consented = passerCases.filter((c) => c.aggregates !== null);
@@ -750,10 +768,13 @@ export interface PasserLawAverage {
   learners: number;
 }
 
-export async function getPasserLawAverages(): Promise<
-  Record<string, PasserLawAverage>
-> {
-  const cases = await listPasserCases({ onlyConsented: true });
+export async function getPasserLawAverages(
+  opts: { excludeSynthetic?: boolean } = {},
+): Promise<Record<string, PasserLawAverage>> {
+  const cases = await listPasserCases({
+    onlyConsented: true,
+    excludeSynthetic: opts.excludeSynthetic,
+  });
   const map = new Map<
     string,
     { attemptsTotal: number; accuracySum: number; accuracyN: number; learners: number }
@@ -888,6 +909,7 @@ async function fetchPasserActivity(
 
 export async function getPasserTrendData(
   userId: string,
+  opts: { excludeSynthetic?: boolean } = {},
 ): Promise<PasserTrendData | null> {
   const admin = adminClient as SupabaseClient<Database>;
   const { data: profile } = await admin
@@ -901,7 +923,10 @@ export async function getPasserTrendData(
       profile.next_exam_round === "second");
 
   // 표본 — Phase C 컨설팅과 동일한 fallback chain
-  const candidates = await listPasserCases({ onlyConsented: true });
+  const candidates = await listPasserCases({
+    onlyConsented: true,
+    excludeSynthetic: opts.excludeSynthetic,
+  });
   if (candidates.length === 0) return null;
 
   let matchYear = hasPlan ? profile!.next_exam_year! : new Date().getFullYear();
@@ -1067,6 +1092,8 @@ export interface ListPasserSummariesFilter {
   year?: number | null;
   round?: ExamRound | null;
   limit?: number;
+  /** 합성 합격자 후기 제외 — 학생 화면 default true. */
+  excludeSynthetic?: boolean;
 }
 
 export async function listPasserSummaries(
@@ -1076,7 +1103,7 @@ export async function listPasserSummaries(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, created_at, profiles!exam_results_user_id_fkey(analytics_consent_at)",
+      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, created_at, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
     )
     .eq("status", "passed")
     .not("study_summary_md", "is", null)
@@ -1090,7 +1117,8 @@ export async function listPasserSummaries(
   const list = (data ?? []).filter(
     (r) =>
       r.profiles?.analytics_consent_at !== null &&
-      (r.study_summary_md?.trim().length ?? 0) > 0,
+      (r.study_summary_md?.trim().length ?? 0) > 0 &&
+      (!filter.excludeSynthetic || !r.profiles?.is_synthetic),
   );
   return list.map((r) => ({
     resultId: r.result_id,
@@ -1241,8 +1269,13 @@ export function computeGroupComparison(
 
 // 학생 위험 신호용 — failer baseline 만 가볍게 fetch (학습 곡선 fetch 없이 group mean 만).
 // 이미 listFailerCases 가 비싸므로 dashboard 에서 호출 시 캐싱 고려 필요.
-export async function getFailerBaseline(): Promise<GroupBaseline | null> {
-  const cases = await listFailerCases({ onlyConsented: true });
+export async function getFailerBaseline(
+  opts: { excludeSynthetic?: boolean } = {},
+): Promise<GroupBaseline | null> {
+  const cases = await listFailerCases({
+    onlyConsented: true,
+    excludeSynthetic: opts.excludeSynthetic,
+  });
   const consented = cases.filter((c) => c.aggregates !== null);
   if (consented.length === 0) return null;
   return baselineFromCases(consented);
@@ -1262,34 +1295,43 @@ export interface PublicPlatformStats {
   totalSummaries: number; // 후기 작성 합격자 수
 }
 
-export async function getPublicPlatformStats(): Promise<PublicPlatformStats> {
+export async function getPublicPlatformStats(
+  opts: { excludeSynthetic?: boolean } = {},
+): Promise<PublicPlatformStats> {
   const admin = adminClient as SupabaseClient<Database>;
 
-  // 합격자 카운트 — 동의자 + 전체 + 인증 (가볍게 count 만).
-  const [passerCount, verifiedCount, consentedRowsRes, summariesCount] =
-    await Promise.all([
-      admin
-        .from("exam_results")
-        .select("result_id", { head: true, count: "exact" })
-        .eq("status", "passed"),
-      admin
-        .from("exam_results")
-        .select("result_id", { head: true, count: "exact" })
-        .eq("status", "passed")
-        .eq("verification_status", "verified"),
-      admin
-        .from("exam_results")
-        .select(
-          "user_id, profiles!exam_results_user_id_fkey(analytics_consent_at)",
-        )
-        .eq("status", "passed")
-        .limit(500),
-      admin
-        .from("exam_results")
-        .select("result_id", { head: true, count: "exact" })
-        .eq("status", "passed")
-        .not("study_summary_md", "is", null),
-    ]);
+  // 합격자 카운트 — 동의자 + 전체 + 인증. 합성 제외 시 client-side 필터로 카운트 재계산.
+  const [allRowsRes, summariesRowsRes] = await Promise.all([
+    admin
+      .from("exam_results")
+      .select(
+        "result_id, user_id, verification_status, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
+      )
+      .eq("status", "passed")
+      .limit(2000),
+    admin
+      .from("exam_results")
+      .select(
+        "result_id, profiles!exam_results_user_id_fkey(is_synthetic)",
+      )
+      .eq("status", "passed")
+      .not("study_summary_md", "is", null)
+      .limit(2000),
+  ]);
+
+  const allRows = (allRowsRes.data ?? []).filter(
+    (r) => !opts.excludeSynthetic || !r.profiles?.is_synthetic,
+  );
+  const summaryRows = (summariesRowsRes.data ?? []).filter(
+    (r) => !opts.excludeSynthetic || !r.profiles?.is_synthetic,
+  );
+
+  const passerCount = { count: allRows.length };
+  const verifiedCount = {
+    count: allRows.filter((r) => r.verification_status === "verified").length,
+  };
+  const summariesCount = { count: summaryRows.length };
+  const consentedRowsRes = { data: allRows };
 
   const consentedUserIds = (consentedRowsRes.data ?? [])
     .filter((r) => r.profiles?.analytics_consent_at !== null)

@@ -7,6 +7,12 @@ import type { PassPrediction } from "~/features/study/lib/pass-predict";
 import type { WeakAreaItem } from "~/features/study/queries.server";
 import type { WeakNodeItem } from "~/features/subjects/lib/weak-nodes.server";
 
+import {
+  getOperativeTarget,
+  getStatutoryFloor,
+  operativeTargetLabel,
+  statutoryFloorLabel,
+} from "./pass-criteria";
 import type {
   GroupBaseline,
   PasserBenchmark,
@@ -220,6 +226,54 @@ export function generateRecommendedActions(
         ctaUrl: "/study/passer-summaries",
       });
     }
+  } else {
+    // ─── 2-alt) 합격자 표본 없음(게이트 OFF) — 공식 합격선 기반 액션 ───
+    // 1년차 운영. "합격자 평균 대비" 가 아니라 "공식 합격선 대비" 로 메시지 구성.
+    // 임계값은 pass-predict 가 이미 본인 차수별 합격선(1차 ~80 / 2차 ~54) 로 계산해 전달.
+    const acc = input.passPrediction.components.accuracy; // 0~100
+    const th = input.passPrediction.thresholds;
+    const okTarget = th.ok; // 실측 합격선 (1차 ~80 / 2차 ~54)
+    const floor = th.caution; // 법정 과락선 40
+
+    if (acc !== null && acc < floor) {
+      // 법정 과락선 미달 — high
+      actions.push({
+        id: "criterion-below-floor",
+        priority: "high",
+        icon: "alert",
+        title: `정답률이 과락선(${floor}점) 미달`,
+        body: `현재 객관식 정답률 ${acc}%. 법정 과락선 ${floor}점 + 실측 합격선 ${okTarget}점 (${th.basisLabel}). 약점 단원부터 집중 복습하세요.`,
+        ctaLabel: "오답노트",
+        ctaUrl: "/study/wrong-note",
+        metric: `${acc}%`,
+      });
+    } else if (acc !== null && acc < okTarget) {
+      // 실측 합격선 미달 — medium
+      const gap = okTarget - acc;
+      actions.push({
+        id: "criterion-below-average",
+        priority: "medium",
+        icon: "target",
+        title: `실측 합격선까지 ${gap}%p 부족`,
+        body: `현재 정답률 ${acc}% → 실측 합격선 ${okTarget}점 (${th.basisLabel}). 약점 영역 복습 + 풀이량 증가 권장.`,
+        ctaLabel: "약점 학습",
+        ctaUrl: input.weakNodes[0]
+          ? `/subjects/${input.weakNodes[0].lawCode}/systematic/${input.weakNodes[0].nodeId}`
+          : "/study/wrong-note",
+        metric: `-${gap}%p`,
+      });
+    } else if (acc !== null && acc >= th.safe) {
+      // 안정권 — celebrate
+      actions.push({
+        id: "criterion-safe",
+        priority: "celebrate",
+        icon: "trophy",
+        title: "✨ 합격선 안정권",
+        body: `현재 정답률 ${acc}% — 실측 합격선 ${okTarget}점 + 안전 마진(${th.safe}점)까지 도달. 약점 영역만 유지 점검하세요.`,
+        ctaLabel: "약점 점검",
+        ctaUrl: "/study/wrong-note",
+      });
+    }
   }
 
   // ─── 2.5) 비합격자 패턴 경고 (high) — 본인 metric 이 비합격자 평균 이하 ───
@@ -282,12 +336,15 @@ export function generateRecommendedActions(
     }
   }
 
-  // ─── 3) 약점 단원 (medium) — 합격자 평균 정보 결합 ───
+  // ─── 3) 약점 단원 (medium) — 합격자 평균(있을 때) or 합격 기준(과락 40) hint ───
   for (const node of input.weakNodes.slice(0, 2)) {
     const lawAvg = input.passerLawAverages[node.lawCode];
-    const hint = lawAvg
-      ? `합격자는 이 과목에서 평균 ${lawAvg.avgAttempts}회 풀이${lawAvg.avgAccuracyPct !== null ? ` · 정답률 ${lawAvg.avgAccuracyPct}%` : ""}. `
-      : "";
+    let hint = "";
+    if (lawAvg) {
+      hint = `합격자는 이 과목에서 평균 ${lawAvg.avgAttempts}회 풀이${lawAvg.avgAccuracyPct !== null ? ` · 정답률 ${lawAvg.avgAccuracyPct}%` : ""}. `;
+    } else if (node.accuracyPct < getStatutoryFloor("first").subjectFloor) {
+      hint = `법정 과락선 ${getStatutoryFloor("first").subjectFloor}점 미달. `;
+    }
     actions.push({
       id: `weak-node-${node.nodeId}`,
       priority: "medium",
@@ -350,22 +407,22 @@ export function generateRecommendedActions(
       priority: "low",
       icon: "calendar",
       title: "차기 응시 계획 설정",
-      body: "다음 응시 연도/차수를 설정하시면 합격자 비교 카드가 정확한 표본으로 활성화됩니다.",
+      body: "다음 응시 연도/차수를 설정하시면 본인 학습이 정확한 합격 기준에 매핑됩니다.",
       ctaLabel: "설정하러 가기",
       ctaUrl: "/me/exam-results",
     });
   }
 
-  // ─── 7) 합격자 표본 없음 — 안내 ───
+  // ─── 7) 합격자 표본 없음 (게이트 OFF) — 1년차 안내 ───
   if (!input.benchmark) {
     actions.push({
       id: "no-benchmark",
       priority: "low",
       icon: "spark",
-      title: "합격자 데이터 모이는 중",
-      body: "분석 동의 합격자가 모이면 자동으로 비교 컨설팅이 활성화됩니다. 본인도 합격 후 결과를 입력해 후배에게 도움이 되어주세요.",
-      ctaLabel: "합격자 후기 보기",
-      ctaUrl: "/study/passer-summaries",
+      title: "합격자 비교는 준비 중",
+      body: `현재는 한국산업인력공단 공식 합격선을 비교 앵커로 사용합니다 (${statutoryFloorLabel("first")} · ${operativeTargetLabel("first")}). 실 합격자 학습 패턴 비교는 데이터 누적 후 자동 활성화됩니다.`,
+      ctaLabel: "내 학습 통계",
+      ctaUrl: "/study/stats",
     });
   }
 

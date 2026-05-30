@@ -44,8 +44,15 @@ export interface AtRiskSummary {
 }
 
 // 합격자 평균(분석 동의자만) — cohort 전체에 같은 baseline 적용.
-async function computePasserBaseline(): Promise<PasserBaseline | null> {
-  const cases = await listPasserCases({ onlyConsented: true });
+// staff(cohort owner) 운영 화면 호출이라 default 는 합성 포함(시연 가능).
+// 실데이터 모드를 강제하려면 excludeSynthetic:true 전달.
+async function computePasserBaseline(
+  opts: { excludeSynthetic?: boolean } = {},
+): Promise<PasserBaseline | null> {
+  const cases = await listPasserCases({
+    onlyConsented: true,
+    excludeSynthetic: opts.excludeSynthetic,
+  });
   const consented = cases.filter((c) => c.aggregates !== null);
   if (consented.length === 0) return null;
   const attempts = consented.map((c) => c.aggregates!.totalProblemAttempts);

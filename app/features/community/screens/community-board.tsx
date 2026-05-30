@@ -73,6 +73,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           year: yearFilter,
           round: roundFilter,
           limit: 20,
+          // 학생/일반 사용자 화면 — 합성 후기 노출 금지.
+          excludeSynthetic: true,
         })
       : Promise.resolve([] as PasserSummary[]),
   ]);
