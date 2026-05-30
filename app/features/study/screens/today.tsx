@@ -30,8 +30,13 @@ import {
   type DailyMenuItem,
   type DailyMenuKind,
   type DailyMenuPriority,
+  KIND_LABEL,
   totalEstimatedMinutes,
 } from "~/features/study/lib/daily-menu";
+import {
+  type RecommendationCompletionSummary,
+  analyzeRecommendationCompletion,
+} from "~/features/study/recommendation-analytics.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "오늘의 학습 메뉴 | Lidam" },
@@ -45,12 +50,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw redirect("/login?next=/study/today");
 
   const today = kstToday();
-  const items = await getOrComposeDailyMenu(client, user.id, today);
+  const [items, completion] = await Promise.all([
+    getOrComposeDailyMenu(client, user.id, today),
+    analyzeRecommendationCompletion(client, user.id, 14),
+  ]);
 
   // 응답 후 viewed_at 마킹 — analytics 용.
   runAfterResponse(markDailyMenuViewed(client, user.id, today));
 
-  return { items, today };
+  return { items, today, completion };
 }
 
 const KIND_ICON: Record<DailyMenuKind, typeof TargetIcon> = {
@@ -91,7 +99,7 @@ function formatKstDate(yyyymmdd: string): string {
 }
 
 export default function StudyToday({ loaderData }: Route.ComponentProps) {
-  const { items, today } = loaderData;
+  const { items, today, completion } = loaderData;
   const totalMin = totalEstimatedMinutes(items);
 
   return (
@@ -141,6 +149,11 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
+      {/* 지난 14일 실행률 */}
+      {completion.daysAnalyzed > 0 ? (
+        <CompletionSummaryCard summary={completion} />
+      ) : null}
+
       {/* 하단 진입점 */}
       <div className="text-muted-foreground mt-8 flex flex-wrap items-center justify-center gap-2 text-xs">
         <Link to="/study/stats" className="hover:text-foreground underline">
@@ -156,6 +169,107 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
         </Link>
       </div>
     </div>
+  );
+}
+
+function CompletionSummaryCard({
+  summary,
+}: {
+  summary: RecommendationCompletionSummary;
+}) {
+  const ratePct = Math.round(summary.overallRate * 100);
+  const tone =
+    ratePct >= 70
+      ? "text-emerald-700 dark:text-emerald-300"
+      : ratePct >= 40
+        ? "text-amber-700 dark:text-amber-300"
+        : "text-rose-700 dark:text-rose-300";
+  return (
+    <Card className="mt-8">
+      <CardHeader className="pb-3">
+        <div className="flex items-baseline justify-between">
+          <p className="text-foreground text-sm font-bold">
+            지난 {summary.daysAnalyzed}일 실행률
+          </p>
+          <p className={cn("text-2xl font-extrabold tabular-nums", tone)}>
+            {ratePct}%
+          </p>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          추천 {summary.totalItems}건 중 {summary.totalCompleted}건 완수.
+        </p>
+      </CardHeader>
+      <CardContent className="pb-4">
+        {/* 슬롯별 막대 */}
+        <div className="space-y-2">
+          {summary.byKind.map((k) => {
+            const pct = Math.round(k.rate * 100);
+            return (
+              <div key={k.kind} className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground w-[88px] shrink-0">
+                  {KIND_LABEL[k.kind]}
+                </span>
+                <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+                  <div
+                    className={cn(
+                      "h-full rounded-full",
+                      pct >= 70
+                        ? "bg-emerald-500"
+                        : pct >= 40
+                          ? "bg-amber-500"
+                          : "bg-rose-500",
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-foreground w-[60px] text-right font-mono text-[11px] font-bold tabular-nums">
+                  {k.completedItems}/{k.totalItems}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* 일별 미니 막대 */}
+        {summary.byDay.length > 0 ? (
+          <div className="mt-4">
+            <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+              일별 추이
+            </p>
+            <div className="flex items-end gap-0.5">
+              {summary.byDay.map((d) => {
+                const pct =
+                  d.totalItems > 0 ? (d.completedItems / d.totalItems) * 100 : 0;
+                return (
+                  <div
+                    key={d.date}
+                    title={`${d.date} · ${d.completedItems}/${d.totalItems}`}
+                    className="bg-muted relative h-8 flex-1 rounded-sm"
+                  >
+                    <div
+                      className={cn(
+                        "absolute right-0 bottom-0 left-0 rounded-sm",
+                        pct >= 70
+                          ? "bg-emerald-500"
+                          : pct >= 40
+                            ? "bg-amber-500"
+                            : pct > 0
+                              ? "bg-rose-500"
+                              : "bg-muted-foreground/20",
+                      )}
+                      style={{ height: `${Math.max(pct, 4)}%` }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-muted-foreground mt-1 text-[10px]">
+              왼쪽 = {summary.byDay[0]?.date} / 오른쪽 ={" "}
+              {summary.byDay[summary.byDay.length - 1]?.date}
+            </p>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 

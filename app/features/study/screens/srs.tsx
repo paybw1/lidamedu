@@ -29,6 +29,11 @@ import {
   getDueBlankSets,
 } from "~/features/blanks/srs.server";
 import {
+  type DueOxRefItem,
+  getDueOxRefs,
+  getOxSrsCounts,
+} from "~/features/study/ox-srs.server";
+import {
   getDueProblems,
   getSrsCounts,
 } from "~/features/study/srs.server";
@@ -43,13 +48,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/study/srs");
-  const [items, counts, blankItems, blankCounts] = await Promise.all([
-    getDueProblems(client, user.id, 100),
-    getSrsCounts(client, user.id),
-    getDueBlankSets(client, user.id, 50),
-    getBlankSrsCounts(client, user.id),
-  ]);
-  return { items, counts, blankItems, blankCounts };
+  const [items, counts, blankItems, blankCounts, oxItems, oxCounts] =
+    await Promise.all([
+      getDueProblems(client, user.id, 100),
+      getSrsCounts(client, user.id),
+      getDueBlankSets(client, user.id, 50),
+      getBlankSrsCounts(client, user.id),
+      getDueOxRefs(client, user.id, 100),
+      getOxSrsCounts(client, user.id),
+    ]);
+  return { items, counts, blankItems, blankCounts, oxItems, oxCounts };
 }
 
 function fmtRelative(iso: string): string {
@@ -63,7 +71,8 @@ function fmtRelative(iso: string): string {
 }
 
 export default function StudySrs({ loaderData }: Route.ComponentProps) {
-  const { items, counts, blankItems, blankCounts } = loaderData;
+  const { items, counts, blankItems, blankCounts, oxItems, oxCounts } =
+    loaderData;
   return (
     <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:px-6 md:py-12">
       <header className="mb-6">
@@ -273,12 +282,138 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
+      {/* ── OX SRS 섹션 ─────────────────────────────────────────── */}
+      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        OX 채점
+      </p>
+
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="due ref"
+          value={oxCounts.due}
+          tone="rose"
+        />
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="7일 내 도래"
+          value={oxCounts.upcoming7d}
+          tone="amber"
+        />
+        <KpiTile
+          icon={<RepeatIcon className="size-3" />}
+          label="총 보유 ref"
+          value={oxCounts.total}
+          tone="sky"
+        />
+        <KpiTile
+          icon={<HistoryIcon className="size-3" />}
+          label="누적 실패"
+          value={oxCounts.lapsesSum}
+          tone="neutral"
+        />
+      </div>
+
+      {oxItems.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="text-muted-foreground space-y-2 py-8 text-center text-xs">
+            <RepeatIcon className="mx-auto size-6 opacity-30" />
+            <p>
+              {oxCounts.total === 0
+                ? "아직 OX SRS 항목이 없습니다. OX 모드에서 선택지/박스를 풀면 자동 큐잉됩니다."
+                : `지금 due 인 OX ref 가 없습니다. 7일 내 ${oxCounts.upcoming7d}건 도래.`}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <p className="text-foreground text-sm font-bold">
+              지금 풀어야 할 OX ref {oxItems.length}건
+            </p>
+            <p className="text-muted-foreground text-xs">
+              선택지·박스 항목 단위로 복습. 부모 문제로 진입해 O/X 다시 채점.
+            </p>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <OxSrsTable items={oxItems} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* 알고리즘 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
         간격 알고리즘: 정답 시 1 → 3 → 7 → 14 → 30 → 60일(최대 90일).
         실패 시 즉시 1일로 리셋 + 어려움 계수(ease) 0.2 감소(최저 1.3).
-        객관식·빈칸 동일 알고리즘. 빈칸은 칸 단위로 추적하고 세트 단위로 표시.
+        객관식·빈칸·OX 동일 알고리즘. 빈칸은 칸 단위로 추적하고 세트 단위로,
+        OX 는 ref(선택지/박스 항목) 단위로 추적·표시.
       </p>
+    </div>
+  );
+}
+
+function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[42%]">선택지·박스 항목</TableHead>
+            <TableHead className="w-[10%]">유형</TableHead>
+            <TableHead className="w-[10%]">과목</TableHead>
+            <TableHead className="w-[8%] text-right">실패</TableHead>
+            <TableHead className="w-[15%] text-right">due</TableHead>
+            <TableHead className="w-[15%]" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((it) => (
+            <TableRow key={`${it.refType}-${it.refId}`}>
+              <TableCell>
+                <p className="text-foreground line-clamp-2 text-xs leading-relaxed">
+                  {it.refSnippet || "(본문 없음)"}
+                </p>
+                {it.year && it.problemNumber ? (
+                  <p className="text-muted-foreground mt-1 font-mono text-[10px]">
+                    {it.year} · {it.problemNumber}번
+                  </p>
+                ) : null}
+              </TableCell>
+              <TableCell className="font-mono text-[11px]">
+                {it.refType === "choice" ? "선택지" : "박스"}
+              </TableCell>
+              <TableCell className="font-mono text-[11px]">
+                {it.lawCode ?? "—"}
+              </TableCell>
+              <TableCell
+                className={cn(
+                  "text-right font-mono text-xs tabular-nums",
+                  it.lapses > 2 ? "text-rose-700 dark:text-rose-300" : "",
+                )}
+              >
+                {it.lapses}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
+                {fmtRelative(it.nextDueAt)}
+              </TableCell>
+              <TableCell className="text-right">
+                {it.lawCode && it.problemId ? (
+                  <Button asChild size="sm" variant="ghost">
+                    <Link
+                      to={`/subjects/${it.lawCode}/problems/${it.problemId}`}
+                      viewTransition
+                    >
+                      풀기 <ArrowRightIcon className="size-3.5" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground text-[10px]">—</span>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

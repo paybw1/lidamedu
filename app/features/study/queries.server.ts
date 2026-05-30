@@ -147,9 +147,9 @@ export async function recordProblemAttempt(
   });
   if (error) throw error;
 
-  // feat-2-010 SRS hook — 시도 직후 SRS 상태 upsert. best-effort.
-  // OX 채점은 ref 단위라 별도 큐 (v1 에서는 객관식 problem 단위만).
+  // feat-2-010 / 2-014 SRS hook — 시도 직후 SRS 상태 upsert. best-effort.
   if (input.oxAnswer == null) {
+    // 객관식 단답/박스/사례 — problem 단위 SRS.
     const { applyProblemSrsUpdate } = await import(
       "~/features/study/srs.server"
     );
@@ -159,6 +159,14 @@ export async function recordProblemAttempt(
       input.problemId,
       input.isCorrect,
     );
+  } else if (input.selectedChoiceId || input.selectedBoxItemId) {
+    // feat-2-014 — OX 채점, ref 단위 SRS.
+    const { applyOxRefSrsUpdate } = await import(
+      "~/features/study/ox-srs.server"
+    );
+    const refType = input.selectedChoiceId ? "choice" : "box_item";
+    const refId = (input.selectedChoiceId ?? input.selectedBoxItemId)!;
+    await applyOxRefSrsUpdate(client, userId, refType, refId, input.isCorrect);
   }
 }
 

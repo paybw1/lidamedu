@@ -65,6 +65,8 @@ import {
   RangeSelectionGroup,
   type RangeSelection,
 } from "~/features/study/components/study-aids-list";
+import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
+import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
 import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
 import {
   LAW_SUBJECTS,
@@ -214,6 +216,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     blankPeriod,
     recitation,
     accuracyTrend,
+    heatmap,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -230,6 +233,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getUserAutoBlankStats(client, user.id, "period", since),
     getUserRecitationStats(client, user.id, since),
     getUserAccuracyTrend(client, user.id, trendOpts),
+    getActivityHeatmap(client, user.id, 365),
   ]);
   const passTrend = await getUserPassPredictionTrend(client, user.id, passOpts);
 
@@ -247,6 +251,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     weakAreas,
     accuracyTrend,
     passTrend,
+    heatmap,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -396,6 +401,7 @@ function OverviewTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
     scienceProgress,
     accuracyTrend,
     passTrend,
+    heatmap,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const firstExamSubjects = subjectsProgress.filter(
@@ -432,6 +438,21 @@ function OverviewTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
           subtle={`총 학습 ${totalHours}h · 활동일 ${daily.totalActiveDays}일`}
         />
       </div>
+
+      {/* feat-2-013 학습 활동 히트맵 */}
+      <Card>
+        <CardHeader className="pb-3">
+          <h2 className="text-base font-bold tracking-tight">
+            학습 활동 히트맵
+          </h2>
+          <p className="text-muted-foreground text-xs">
+            최근 365일 · 요일·시간대 패턴까지 한눈에.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ActivityHeatmap data={heatmap} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
