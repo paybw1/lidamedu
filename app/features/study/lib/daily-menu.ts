@@ -5,7 +5,9 @@ export type DailyMenuKind =
   | "weak_article"
   | "unread_case"
   | "blank_due"
-  | "gap_problems";
+  | "gap_problems"
+  | "cohort_track"
+  | "article_review";
 
 export type DailyMenuPriority = "high" | "medium" | "low";
 
@@ -27,6 +29,8 @@ export const KIND_LABEL: Record<DailyMenuKind, string> = {
   unread_case: "미열람 판례",
   blank_due: "빈칸 학습",
   gap_problems: "진도 보충",
+  cohort_track: "이번 주 트랙",
+  article_review: "조문 복습",
 };
 
 const PRIORITY_ORDER: Record<DailyMenuPriority, number> = {

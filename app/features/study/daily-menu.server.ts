@@ -10,6 +10,8 @@ import {
   sortDailyMenu,
 } from "~/features/study/lib/daily-menu";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
+import { getCurrentWeekTrack } from "~/features/curricula/queries.server";
+import { getDueArticleReviews } from "~/features/study/article-review.server";
 import { getWeakAreas } from "~/features/study/queries.server";
 import { getDueProblems } from "~/features/study/srs.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
@@ -67,18 +69,34 @@ export async function composeDailyMenu(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<DailyMenuItem[]> {
-  // 5 슬롯 병렬 평가 — 데이터 부족 슬롯은 null.
-  const [weakProblem, weakArticle, unreadCase, blankDue, gapProblems] =
-    await Promise.all([
-      pickWeakProblem(client, userId),
-      pickWeakArticle(client, userId),
-      pickUnreadCase(client, userId),
-      pickBlankDue(client, userId),
-      pickGapProblems(client, userId),
-    ]);
+  // 7 슬롯 병렬 평가 — 데이터 부족 슬롯은 null.
+  const [
+    weakProblem,
+    weakArticle,
+    unreadCase,
+    blankDue,
+    gapProblems,
+    cohortTrack,
+    articleReview,
+  ] = await Promise.all([
+    pickWeakProblem(client, userId),
+    pickWeakArticle(client, userId),
+    pickUnreadCase(client, userId),
+    pickBlankDue(client, userId),
+    pickGapProblems(client, userId),
+    pickCohortTrack(userId),
+    pickArticleReview(client, userId),
+  ]);
 
-  const items = [weakProblem, weakArticle, unreadCase, blankDue, gapProblems]
-    .filter((x): x is DailyMenuItem => x !== null);
+  const items = [
+    weakProblem,
+    weakArticle,
+    unreadCase,
+    blankDue,
+    gapProblems,
+    cohortTrack,
+    articleReview,
+  ].filter((x): x is DailyMenuItem => x !== null);
   return sortDailyMenu(items);
 }
 
@@ -370,6 +388,61 @@ async function pickGapProblems(
   };
 }
 
+/* ── 슬롯 6: cohort_track — 이번 주 트랙 미완 항목 1개 ──────────── */
+
+async function pickCohortTrack(userId: string): Promise<DailyMenuItem | null> {
+  const track = await getCurrentWeekTrack(userId);
+  if (!track) return null;
+  // 미완 항목 중 ord 가장 작은 것.
+  const next = track.items.find((it) => !it.isDone && it.entryUrl);
+  if (!next) return null;
+  return {
+    kind: "cohort_track",
+    title: `이번 주 트랙 — ${next.label}`,
+    body: `${track.cohortName} · ${track.weekNumber}주차 (${track.completedCount}/${track.totalCount} 완수). 다음 항목.`,
+    ctaLabel: "트랙 항목 시작",
+    ctaUrl: next.entryUrl ?? `/dashboard`,
+    estimatedMinutes: 10,
+    priority: "high",
+    metadata: {
+      cohortId: track.cohortId,
+      weekId: track.weekId,
+      itemId: next.itemId,
+      kind: next.kind,
+    },
+  };
+}
+
+/* ── 슬롯 7: article_review — 조문 정독 복습 due ─────────────────── */
+
+async function pickArticleReview(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<DailyMenuItem | null> {
+  const due = await getDueArticleReviews(client, userId, 5);
+  if (due.length === 0) return null;
+  const top = due[0];
+  const extra = due.length - 1;
+  const overdueDays = -top.daysUntilDue;
+  return {
+    kind: "article_review",
+    title: `조문 복습 — ${top.displayLabel}`,
+    body:
+      extra > 0
+        ? `${top.visitCount}회 방문 · ${overdueDays}일 지남. 다른 ${extra}개 조문도 복습 시점.`
+        : `${top.visitCount}회 방문 후 ${overdueDays}일 지남. 다시 한 번 정독.`,
+    ctaLabel: "조문 보기",
+    ctaUrl: `/subjects/${top.lawCode}/articles/${top.articleNumber}`,
+    estimatedMinutes: 5,
+    priority: "medium",
+    metadata: {
+      articleId: top.articleId,
+      lawCode: top.lawCode,
+      visitCount: top.visitCount,
+    },
+  };
+}
+
 /* ── kind helpers ────────────────────────────────────────────────────── */
 
 export const ALL_KINDS: DailyMenuKind[] = [
@@ -378,4 +451,6 @@ export const ALL_KINDS: DailyMenuKind[] = [
   "unread_case",
   "blank_due",
   "gap_problems",
+  "cohort_track",
+  "article_review",
 ];

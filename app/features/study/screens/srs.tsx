@@ -29,6 +29,11 @@ import {
   getDueBlankSets,
 } from "~/features/blanks/srs.server";
 import {
+  type DueArticleReviewItem,
+  getArticleReviewCounts,
+  getDueArticleReviews,
+} from "~/features/study/article-review.server";
+import {
   type DueOxRefItem,
   getDueOxRefs,
   getOxSrsCounts,
@@ -48,16 +53,35 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/study/srs");
-  const [items, counts, blankItems, blankCounts, oxItems, oxCounts] =
-    await Promise.all([
-      getDueProblems(client, user.id, 100),
-      getSrsCounts(client, user.id),
-      getDueBlankSets(client, user.id, 50),
-      getBlankSrsCounts(client, user.id),
-      getDueOxRefs(client, user.id, 100),
-      getOxSrsCounts(client, user.id),
-    ]);
-  return { items, counts, blankItems, blankCounts, oxItems, oxCounts };
+  const [
+    items,
+    counts,
+    blankItems,
+    blankCounts,
+    oxItems,
+    oxCounts,
+    articleItems,
+    articleCounts,
+  ] = await Promise.all([
+    getDueProblems(client, user.id, 100),
+    getSrsCounts(client, user.id),
+    getDueBlankSets(client, user.id, 50),
+    getBlankSrsCounts(client, user.id),
+    getDueOxRefs(client, user.id, 100),
+    getOxSrsCounts(client, user.id),
+    getDueArticleReviews(client, user.id, 50),
+    getArticleReviewCounts(client, user.id),
+  ]);
+  return {
+    items,
+    counts,
+    blankItems,
+    blankCounts,
+    oxItems,
+    oxCounts,
+    articleItems,
+    articleCounts,
+  };
 }
 
 function fmtRelative(iso: string): string {
@@ -71,8 +95,16 @@ function fmtRelative(iso: string): string {
 }
 
 export default function StudySrs({ loaderData }: Route.ComponentProps) {
-  const { items, counts, blankItems, blankCounts, oxItems, oxCounts } =
-    loaderData;
+  const {
+    items,
+    counts,
+    blankItems,
+    blankCounts,
+    oxItems,
+    oxCounts,
+    articleItems,
+    articleCounts,
+  } = loaderData;
   return (
     <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:px-6 md:py-12">
       <header className="mb-6">
@@ -341,13 +373,121 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
+      {/* ── 조문 정독 복습 섹션 ────────────────────────────────────── */}
+      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        조문 정독 복습
+      </p>
+
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="due 조문"
+          value={articleCounts.due}
+          tone="rose"
+        />
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="7일 내 도래"
+          value={articleCounts.upcoming7d}
+          tone="amber"
+        />
+        <KpiTile
+          icon={<RepeatIcon className="size-3" />}
+          label="방문한 조문"
+          value={articleCounts.totalVisitedArticles}
+          tone="sky"
+        />
+      </div>
+
+      {articleItems.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="text-muted-foreground space-y-2 py-8 text-center text-xs">
+            <RepeatIcon className="mx-auto size-6 opacity-30" />
+            <p>
+              {articleCounts.totalVisitedArticles === 0
+                ? "아직 방문한 조문이 없습니다. 조문 한 번 열면 자동으로 복습 일정에 들어갑니다."
+                : `복습 도래 조문이 없습니다. 7일 내 ${articleCounts.upcoming7d}건 예정.`}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <p className="text-foreground text-sm font-bold">
+              다시 정독할 조문 {articleItems.length}건
+            </p>
+            <p className="text-muted-foreground text-xs">
+              방문 횟수에 따라 7·14·30·60일 간격. 정답/오답 채점이 없어 단순
+              방문 알림 모델.
+            </p>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <ArticleReviewTable items={articleItems} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* 알고리즘 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
         간격 알고리즘: 정답 시 1 → 3 → 7 → 14 → 30 → 60일(최대 90일).
         실패 시 즉시 1일로 리셋 + 어려움 계수(ease) 0.2 감소(최저 1.3).
-        객관식·빈칸·OX 동일 알고리즘. 빈칸은 칸 단위로 추적하고 세트 단위로,
-        OX 는 ref(선택지/박스 항목) 단위로 추적·표시.
+        객관식·빈칸·OX 동일 알고리즘. 조문 정독은 방문 횟수 기반 7·14·30·60일.
       </p>
+    </div>
+  );
+}
+
+function ArticleReviewTable({ items }: { items: DueArticleReviewItem[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[40%]">조문</TableHead>
+            <TableHead className="w-[10%]">과목</TableHead>
+            <TableHead className="w-[10%] text-right">방문</TableHead>
+            <TableHead className="w-[10%] text-right">간격</TableHead>
+            <TableHead className="w-[15%] text-right">last visit</TableHead>
+            <TableHead className="w-[15%]" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((it) => (
+            <TableRow key={it.articleId}>
+              <TableCell>
+                <p className="text-foreground text-sm font-semibold">
+                  {it.displayLabel}
+                </p>
+                <p className="text-muted-foreground mt-0.5 font-mono text-[10px]">
+                  {it.articleNumber}
+                </p>
+              </TableCell>
+              <TableCell className="font-mono text-[11px]">
+                {it.lawCode}
+              </TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">
+                {it.visitCount}회
+              </TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">
+                {it.intervalDays}d
+              </TableCell>
+              <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
+                {fmtRelative(it.lastVisitedAt)}
+              </TableCell>
+              <TableCell className="text-right">
+                <Button asChild size="sm" variant="ghost">
+                  <Link
+                    to={`/subjects/${it.lawCode}/articles/${it.articleNumber}`}
+                    viewTransition
+                  >
+                    정독 <ArrowRightIcon className="size-3.5" />
+                  </Link>
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

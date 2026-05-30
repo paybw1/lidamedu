@@ -9,7 +9,9 @@ import {
   BookOpenIcon,
   CalendarIcon,
   ClockIcon,
+  GraduationCapIcon,
   PencilLineIcon,
+  RepeatIcon,
   ScaleIcon,
   SparklesIcon,
   TargetIcon,
@@ -67,6 +69,8 @@ const KIND_ICON: Record<DailyMenuKind, typeof TargetIcon> = {
   unread_case: ScaleIcon,
   blank_due: PencilLineIcon,
   gap_problems: SparklesIcon,
+  cohort_track: GraduationCapIcon,
+  article_review: RepeatIcon,
 };
 
 const PRIORITY_TONE: Record<

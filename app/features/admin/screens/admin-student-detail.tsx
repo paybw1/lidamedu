@@ -59,6 +59,10 @@ import {
   type StudentCohortComparison,
 } from "~/features/admin/queries/student-progress.server";
 import {
+  type StudentSrsSummary,
+  getStudentSrsSummary,
+} from "~/features/admin/queries/student-srs.server";
+import {
   listNotesForStudent,
   type StudentNote,
 } from "~/features/student-notes/queries.server";
@@ -108,6 +112,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     subscriptions,
     payments,
     plans,
+    srsSummary,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -123,6 +128,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     roleAtLeast(role, "manager")
       ? listSubscriptionPlans(client)
       : Promise.resolve([]),
+    getStudentSrsSummary(params.profileId),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
   return {
@@ -133,6 +139,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     subscriptions,
     payments,
     plans,
+    srsSummary,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -158,6 +165,7 @@ export default function AdminStudentDetail({
     subscriptions,
     payments,
     plans,
+    srsSummary,
     currentUserId,
     isAdmin,
     role,
@@ -253,6 +261,11 @@ export default function AdminStudentDetail({
           <PassTrendCard items={passTrend} />
         </div>
       ) : null}
+
+      {/* feat-2-017 학생별 SRS 큐 요약 */}
+      <div className="mb-6">
+        <StudentSrsCard summary={srsSummary} />
+      </div>
 
       <div className="mb-6">
         <NotesSection
@@ -679,6 +692,119 @@ function PassTrendCard({ items }: { items: PassPredictionSnapshotItem[] }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── feat-2-017 학생별 SRS 큐 요약 ───
+
+function StudentSrsCard({ summary }: { summary: StudentSrsSummary }) {
+  const totalDue =
+    summary.problemDue + summary.blankDueBlanks + summary.oxDue + summary.articleDue;
+  const totalLapses =
+    summary.problemLapses + summary.blankLapses + summary.oxLapses;
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-base font-bold tracking-tight">SRS 복습 큐</h2>
+          <div className="text-xs font-mono">
+            <span className="text-muted-foreground">총 due </span>
+            <span
+              className={
+                totalDue > 0
+                  ? "text-rose-700 dark:text-rose-300 font-bold"
+                  : "text-muted-foreground"
+              }
+            >
+              {totalDue.toLocaleString("ko-KR")}건
+            </span>
+            {summary.oldestOverdueDays > 0 ? (
+              <span className="text-rose-600 dark:text-rose-400 ml-2">
+                · 가장 오래된 {summary.oldestOverdueDays}일 지남
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          객관식·빈칸·OX·조문 4 종 SRS 통합. 학생이 다음 학습 진입 시 자동 큐잉.
+        </p>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <SrsTile
+            label="객관식"
+            due={summary.problemDue}
+            total={summary.problemTotal}
+            lapses={summary.problemLapses}
+          />
+          <SrsTile
+            label="빈칸 (세트)"
+            due={summary.blankDueSets}
+            total={summary.blankTotalBlanks}
+            lapses={summary.blankLapses}
+            note={`빈칸 ${summary.blankDueBlanks}개`}
+          />
+          <SrsTile
+            label="OX"
+            due={summary.oxDue}
+            total={summary.oxTotal}
+            lapses={summary.oxLapses}
+          />
+          <SrsTile
+            label="조문 복습"
+            due={summary.articleDue}
+            total={summary.articleVisited}
+            lapses={null}
+            note="방문 기반"
+          />
+        </div>
+        <p className="text-muted-foreground mt-3 text-[11px]">
+          누적 실패 합산: {totalLapses.toLocaleString("ko-KR")}회 (객관식+빈칸+OX).
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SrsTile({
+  label,
+  due,
+  total,
+  lapses,
+  note,
+}: {
+  label: string;
+  due: number;
+  total: number;
+  lapses: number | null;
+  note?: string;
+}) {
+  return (
+    <div className="border-border bg-card rounded-xl border p-3.5 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        {label}
+      </p>
+      <p
+        className={
+          (due > 0
+            ? "text-rose-700 dark:text-rose-300"
+            : "text-foreground") +
+          " mt-1.5 text-xl font-extrabold tabular-nums"
+        }
+      >
+        {due.toLocaleString("ko-KR")}
+        <span className="text-muted-foreground ml-1 text-xs font-medium">
+          / {total.toLocaleString("ko-KR")}
+        </span>
+      </p>
+      <p className="text-muted-foreground mt-1 text-[10px]">
+        {note
+          ? note
+          : lapses !== null
+            ? `실패 ${lapses.toLocaleString("ko-KR")}회`
+            : ""}
+      </p>
+    </div>
   );
 }
 
