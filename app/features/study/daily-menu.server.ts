@@ -7,6 +7,7 @@ import type { Database, Json } from "database.types";
 import {
   type DailyMenuItem,
   type DailyMenuKind,
+  parseRecommendationPrefs,
   sortDailyMenu,
 } from "~/features/study/lib/daily-menu";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
@@ -69,7 +70,15 @@ export async function composeDailyMenu(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<DailyMenuItem[]> {
-  // 7 슬롯 병렬 평가 — 데이터 부족 슬롯은 null.
+  // feat-2-021 — 사용자 슬롯 ON/OFF 설정 로딩.
+  const { data: profile } = await client
+    .from("profiles")
+    .select("recommendation_prefs")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  const enabled = parseRecommendationPrefs(profile?.recommendation_prefs);
+
+  // 7 슬롯 병렬 평가 — 비활성 슬롯은 즉시 null.
   const [
     weakProblem,
     weakArticle,
@@ -79,13 +88,13 @@ export async function composeDailyMenu(
     cohortTrack,
     articleReview,
   ] = await Promise.all([
-    pickWeakProblem(client, userId),
-    pickWeakArticle(client, userId),
-    pickUnreadCase(client, userId),
-    pickBlankDue(client, userId),
-    pickGapProblems(client, userId),
-    pickCohortTrack(userId),
-    pickArticleReview(client, userId),
+    enabled.weak_problem ? pickWeakProblem(client, userId) : null,
+    enabled.weak_article ? pickWeakArticle(client, userId) : null,
+    enabled.unread_case ? pickUnreadCase(client, userId) : null,
+    enabled.blank_due ? pickBlankDue(client, userId) : null,
+    enabled.gap_problems ? pickGapProblems(client, userId) : null,
+    enabled.cohort_track ? pickCohortTrack(userId) : null,
+    enabled.article_review ? pickArticleReview(client, userId) : null,
   ]);
 
   const items = [

@@ -44,6 +44,10 @@ import {
   getPasserSrsBenchmark,
 } from "~/features/study/passer-srs-benchmark.server";
 import {
+  type SrsTrend,
+  getSrsTrend,
+} from "~/features/study/srs-trend.server";
+import {
   getDueProblems,
   getSrsCounts,
 } from "~/features/study/srs.server";
@@ -68,6 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     articleItems,
     articleCounts,
     passerBenchmark,
+    trend,
   ] = await Promise.all([
     getDueProblems(client, user.id, 100),
     getSrsCounts(client, user.id),
@@ -78,6 +83,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getDueArticleReviews(client, user.id, 50),
     getArticleReviewCounts(client, user.id),
     getPasserSrsBenchmark(user.id),
+    getSrsTrend(client, user.id, 30),
   ]);
   return {
     items,
@@ -89,6 +95,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     articleItems,
     articleCounts,
     passerBenchmark,
+    trend,
   };
 }
 
@@ -113,6 +120,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
     articleItems,
     articleCounts,
     passerBenchmark,
+    trend,
   } = loaderData;
   return (
     <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:px-6 md:py-12">
@@ -129,8 +137,11 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </p>
       </header>
 
+      {/* feat-2-020 SRS 처리 추이 */}
+      <SrsTrendChart trend={trend} />
+
       {/* ── 객관식 SRS 섹션 ─────────────────────────────────────────── */}
-      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
         객관식 문제
       </p>
 
@@ -446,6 +457,88 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         객관식·빈칸·OX 동일 알고리즘. 조문 정독은 방문 횟수 기반 7·14·30·60일.
       </p>
     </div>
+  );
+}
+
+function SrsTrendChart({ trend }: { trend: SrsTrend }) {
+  const max = trend.days.reduce(
+    (m, d) => Math.max(m, d.added + d.reviewed),
+    0,
+  );
+  if (max === 0) {
+    return null;
+  }
+  return (
+    <Card className="mb-6">
+      <CardHeader className="pb-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-base font-bold tracking-tight">
+            SRS 처리 추이 — 최근 {trend.daysBack}일
+          </h2>
+          <p className="text-muted-foreground text-xs">
+            7일 평균: 신규{" "}
+            <span className="text-foreground font-bold">
+              {trend.avg7dAdded.toFixed(1)}
+            </span>
+            /일 · 재처리{" "}
+            <span className="text-foreground font-bold">
+              {trend.avg7dReviewed.toFixed(1)}
+            </span>
+            /일
+          </p>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          매일 SRS 큐에 새로 추가된 항목과 재처리된 항목. 재처리가 신규를 따라잡지
+          못하면 큐가 누적됩니다.
+        </p>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <div className="flex items-end gap-[2px]">
+          {trend.days.map((d) => {
+            const total = d.added + d.reviewed;
+            const addedPct = total > 0 ? (d.added / max) * 100 : 0;
+            const reviewedPct = total > 0 ? (d.reviewed / max) * 100 : 0;
+            return (
+              <div
+                key={d.date}
+                className="bg-muted relative h-24 flex-1 rounded-sm"
+                title={`${d.date} · 신규 ${d.added} · 재처리 ${d.reviewed}`}
+              >
+                {reviewedPct > 0 ? (
+                  <div
+                    className="absolute right-0 bottom-0 left-0 rounded-sm bg-emerald-500"
+                    style={{ height: `${Math.max(reviewedPct, 2)}%` }}
+                  />
+                ) : null}
+                {addedPct > 0 ? (
+                  <div
+                    className="absolute right-0 left-0 rounded-sm bg-rose-400"
+                    style={{
+                      height: `${Math.max(addedPct, 2)}%`,
+                      bottom: `${reviewedPct}%`,
+                    }}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-muted-foreground mt-2 flex items-center justify-between text-[10px] tabular-nums">
+          <span>{trend.days[0]?.date}</span>
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block size-2 rounded-sm bg-rose-400" />
+              신규 (큐 추가)
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block size-2 rounded-sm bg-emerald-500" />
+              재처리 (복습)
+            </span>
+          </div>
+          <span>{trend.days[trend.days.length - 1]?.date}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

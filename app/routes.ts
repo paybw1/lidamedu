@@ -39,6 +39,10 @@ export default [
         "features/users/api/disconnect-provider.tsx",
       ),
     ]),
+    route(
+      "/api/study/recommendation-prefs",
+      "features/study/api/recommendation-prefs.tsx",
+    ),
     ...prefix("/annotations", [
       route("/bookmark", "features/annotations/api/bookmark.tsx"),
       route("/memo", "features/annotations/api/memo.tsx"),

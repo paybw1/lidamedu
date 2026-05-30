@@ -3867,6 +3867,7 @@ export type Database = {
           onboarded_at: string | null
           phone_e164: string | null
           profile_id: string
+          recommendation_prefs: Json
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
@@ -3884,6 +3885,7 @@ export type Database = {
           onboarded_at?: string | null
           phone_e164?: string | null
           profile_id: string
+          recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
@@ -3901,6 +3903,7 @@ export type Database = {
           onboarded_at?: string | null
           phone_e164?: string | null
           profile_id?: string
+          recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }

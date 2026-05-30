@@ -33,6 +33,38 @@ export const KIND_LABEL: Record<DailyMenuKind, string> = {
   article_review: "조문 복습",
 };
 
+export const ALL_DAILY_MENU_KINDS: DailyMenuKind[] = [
+  "weak_problem",
+  "weak_article",
+  "unread_case",
+  "blank_due",
+  "gap_problems",
+  "cohort_track",
+  "article_review",
+];
+
+/** prefs jsonb 를 슬롯 enabled map 으로 변환. 미지정/true 는 enabled. */
+export function parseRecommendationPrefs(
+  prefs: unknown,
+): Record<DailyMenuKind, boolean> {
+  const out: Record<DailyMenuKind, boolean> = {
+    weak_problem: true,
+    weak_article: true,
+    unread_case: true,
+    blank_due: true,
+    gap_problems: true,
+    cohort_track: true,
+    article_review: true,
+  };
+  if (prefs && typeof prefs === "object") {
+    const p = prefs as Record<string, unknown>;
+    for (const k of ALL_DAILY_MENU_KINDS) {
+      if (p[k] === false) out[k] = false;
+    }
+  }
+  return out;
+}
+
 const PRIORITY_ORDER: Record<DailyMenuPriority, number> = {
   high: 0,
   medium: 1,

@@ -200,6 +200,8 @@
 | feat-2-005 | 과목별 "학습하러 가기" 버튼 (해당 과목 허브로 이동) | P1 | ✅ |
 | feat-2-006 | 진도 추이 그래프 (주별 12주 미니바) | P2 | ✅ |
 | feat-2-007 | 목표 달성 알림 (마일스톤 25/50/75/100% 뱃지) | P2 | ✅ |
+| feat-2-021 | **추천 슬롯 ON/OFF 사용자 설정** — `profiles.recommendation_prefs jsonb` (기본 `{}`, false 인 슬롯만 비활성). `parseRecommendationPrefs` 헬퍼 + `composeDailyMenu` 가 prefs 읽어 비활성 슬롯 즉시 null. POST `/api/study/recommendation-prefs`(zod) 가 본인 prefs upsert (true = 키 제거로 jsonb 최소화). `/study/today` 헤더 "추천 설정" 버튼 → 7 슬롯 토글 패널 (optimistic + 다음 KST 자정 안내). | P2 | ✅ |
+| feat-2-020 | **SRS 처리 추이 차트** — `/study/srs` 상단 30일 일별 stacked bar (신규 추가 vs 재처리). `getSrsTrend`(srs-trend.server.ts) — 3 종 SRS created_at + user_problem_attempts/user_blank_attempts attempted_at 매칭. 신규 = 그 날 created_at, 재처리 = 그 날 attempts 총수 - 신규. 7일 평균 캡션 (신규/일 · 재처리/일). 큐 누적 vs 처리 속도 즉시 가시화. | P2 | ✅ |
 | feat-2-019 | **합격자 SRS 표본 비교** — `/study/srs` 하단 `PasserBenchmarkSection`. 분석 동의 + status='passed' 합격자 표본 (≥3 명) 의 4 종 SRS due 평균을 본인 값과 비교. `getPasserSrsBenchmark`(passer-srs-benchmark.server.ts, admin client RLS 우회) — 합격자/본인 SRS bulk fetch + 학생별 집계 + 평균 산출. delta < 0 = 본인이 잘 처리(에메랄드), > 0 = 본인이 더 많이 보유(로즈). 표본 부족 시 안내 카드. | P2 | ✅ |
 | feat-2-018 | **운영자 SRS 코호트 인사이트** — `/admin/cohorts/:cohortId/stats` 하단 `CohortSrsSection`. `getCohortSrsAggregate`(cohort-srs.server.ts, admin client) — 4 종 SRS bulk fetch + 학생별 합산 → 평균 KPI 4타일(학생당 평균 due) + 정체 학생 top 5 표(반응형 7컬럼: 총 due / 객관식 / 빈칸 / OX / 조문 / 가장 오래 / 상세 deep link) + 정체 학생 비율 헤더. | P2 | ✅ |
 | feat-2-017 | **운영자 SRS 분석** — `/admin/students/:profileId` 에 `StudentSrsCard` 추가. `getStudentSrsSummary`(student-srs.server.ts, admin client) — 객관식 / 빈칸(세트 단위) / OX / 조문 복습 4 종 SRS 통합 카드 (due / total / lapses + 가장 오래된 overdue 일수). 4 SrsTile + 누적 실패 합산 캡션. | P2 | ✅ |
