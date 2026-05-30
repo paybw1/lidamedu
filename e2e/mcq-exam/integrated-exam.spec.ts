@@ -15,7 +15,8 @@ import type { Database } from "database.types";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // 실행마다 고유 이메일 — 재실행 시 createUser 충돌 방지.
-const TEST_EMAIL = `feat10005-e2e-${Date.now()}@example.com`;
+// @test.local 도메인 — sweepTestUsers 의 delete_test_user RPC 안전 가드 통과.
+const TEST_EMAIL = `feat10005-e2e-${Date.now()}@test.local`;
 const TEST_PASSWORD = "Test1234!";
 // 시드 데이터 식별용 — 제목 prefix 로 재실행 시 잔여물 정리.
 const MARKER = "[E2E feat-10-005]";
@@ -45,10 +46,10 @@ let packBId = "";
 let packAProblems: SeedProblem[] = [];
 let packBProblems: SeedProblem[] = [];
 
-// 이전 실행 잔여물 포함, feat10005-e2e-* 테스트 사용자를 전부 정리.
-// 학습 데이터·profiles 행을 지운 뒤 auth 사용자를 삭제한다.
-// auth.users 삭제(deleteUser)는 best-effort — 실행마다 고유 이메일이라 잔여물이
-// 남아도 재실행에는 영향 없음. listUsers 는 빈 페이지가 나올 때까지 훑는다.
+// 이전 실행 잔여물 포함, feat10005-e2e-*@test.local 테스트 사용자를 전부 정리.
+// auth.users DELETE 는 delete_test_user RPC(@test.local 안전 가드 + SQL CASCADE) 로
+// 일괄 처리 — supabase-js admin.deleteUser 가 누적 잔재를 만드는 이슈
+// (메모: e2e-deleteuser-noop) 우회.
 async function sweepTestUsers() {
   for (let page = 1; page <= 100; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page });
@@ -57,14 +58,8 @@ async function sweepTestUsers() {
     if (users.length === 0) break;
     for (const u of users) {
       if (!u.email?.startsWith("feat10005-e2e-")) continue;
-      await admin
-        .from("user_problem_attempts")
-        .delete()
-        .eq("user_id", u.id);
-      await admin.from("quiz_sessions").delete().eq("user_id", u.id);
-      await admin.from("mcq_exam_attempts").delete().eq("user_id", u.id);
-      await admin.from("profiles").delete().eq("profile_id", u.id);
-      await admin.auth.admin.deleteUser(u.id);
+      if (!u.email.endsWith("@test.local")) continue;
+      await admin.rpc("delete_test_user", { p_email: u.email });
     }
   }
 }

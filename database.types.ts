@@ -5268,6 +5268,7 @@ export type Database = {
           total_existing_count: number
         }[]
       }
+      delete_test_user: { Args: { p_email: string }; Returns: boolean }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
       get_problem_stats: {
         Args: { p_ids: string[] }

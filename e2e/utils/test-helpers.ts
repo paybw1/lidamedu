@@ -138,14 +138,22 @@ export async function loginUser(page: Page, email: string, password: string) {
 }
 
 /**
- * Best-effort 테스트 사용자 정리 (service_role admin API).
+ * 테스트 사용자 정리.
  *
- * 이 환경에서 admin.deleteUser 가 auth.users 를 실제로 못 지우는 경우가 있어
- * (메모: e2e-deleteuser-noop) 재실행은 고유 이메일 사용을 권장한다.
+ * supabase-js admin.deleteUser 가 이 환경에서 auth.users 를 실제로 못 지우는 경우가
+ * 있어(메모: e2e-deleteuser-noop) `delete_test_user` RPC(SQL DELETE + @test.local 안전
+ * 가드) 로 우회. 테스트 사용자 이메일은 반드시 `*@test.local` 형식이어야 한다 —
+ * RPC 가 그 외 도메인을 거부해 실 사용자 삭제 사고를 차단한다.
  */
 export async function deleteUser(email: string) {
+  if (!email.endsWith("@test.local")) {
+    throw new Error(
+      `deleteUser: 테스트 이메일은 @test.local 도메인이어야 합니다 (got ${email})`,
+    );
+  }
   const admin = adminClient();
-  const { data } = await admin.auth.admin.listUsers();
-  const existing = data?.users.find((user) => user.email === email);
-  if (existing) await admin.auth.admin.deleteUser(existing.id);
+  const { error } = await admin.rpc("delete_test_user", { p_email: email });
+  if (error) {
+    throw new Error(`deleteUser RPC 실패 (${email}): ${error.message}`);
+  }
 }
