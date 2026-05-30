@@ -4495,6 +4495,30 @@ export type Database = {
           },
         ]
       }
+      user_daily_recommendations: {
+        Row: {
+          generated_at: string
+          items: Json
+          recommendation_date: string
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          generated_at?: string
+          items?: Json
+          recommendation_date: string
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          generated_at?: string
+          items?: Json
+          recommendation_date?: string
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: []
+      }
       user_highlights: {
         Row: {
           after_ctx: string | null

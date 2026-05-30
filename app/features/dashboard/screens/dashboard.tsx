@@ -1,4 +1,5 @@
-import { redirect } from "react-router";
+import { ArrowRightIcon, SparklesIcon } from "lucide-react";
+import { Link, redirect } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
@@ -349,6 +350,30 @@ const KOREAN_WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"];
 const HOUR_MS = 60 * 60 * 1000;
 
 // ISO → 상대 시간 ("방금" / "N분 전" / "N시간 전" / "어제" / "N일 전" / 날짜)
+/* ── feat-2-009 — 오늘의 학습 메뉴 진입점 배너 ───────────────────── */
+
+function DailyMenuBanner() {
+  return (
+    <Link
+      to="/study/today"
+      viewTransition
+      className="border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/10 group mb-4 flex items-center gap-3 rounded-xl border p-4 transition-colors"
+    >
+      <span className="bg-primary text-primary-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-lg">
+        <SparklesIcon className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-sm font-bold">오늘의 학습 메뉴</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          본인 약점·미열람·진도 데이터를 합성한 자동 추천 5개. 오늘 어디부터
+          시작할지 정해드립니다.
+        </p>
+      </div>
+      <ArrowRightIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
+
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const min = Math.floor(diff / 60000);
@@ -555,27 +580,26 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             }}
           />
 
+          <SectionBand eyebrow="TODAY · 오늘 할 일" />
+          <DailyMenuBanner />
           {hasToday ? (
-            <>
-              <SectionBand eyebrow="TODAY · 오늘 할 일" />
-              <DashGrid>
-                {weekTrack !== null ? (
-                  <SpanCol span={3}>
-                    <WeekTrackCard track={weekTrack} />
-                  </SpanCol>
-                ) : null}
-                {recommendedActions.length > 0 ? (
-                  <SpanCol span={3}>
-                    <RecommendedActionsCard actions={recommendedActions} />
-                  </SpanCol>
-                ) : null}
-                {pendingAssignments.length > 0 ? (
-                  <SpanCol span={6}>
-                    <PendingAssignmentsCard assignments={pendingAssignments} />
-                  </SpanCol>
-                ) : null}
-              </DashGrid>
-            </>
+            <DashGrid>
+              {weekTrack !== null ? (
+                <SpanCol span={3}>
+                  <WeekTrackCard track={weekTrack} />
+                </SpanCol>
+              ) : null}
+              {recommendedActions.length > 0 ? (
+                <SpanCol span={3}>
+                  <RecommendedActionsCard actions={recommendedActions} />
+                </SpanCol>
+              ) : null}
+              {pendingAssignments.length > 0 ? (
+                <SpanCol span={6}>
+                  <PendingAssignmentsCard assignments={pendingAssignments} />
+                </SpanCol>
+              ) : null}
+            </DashGrid>
           ) : null}
 
           <SectionBand eyebrow="PASS FORECAST · 합격 진단" />

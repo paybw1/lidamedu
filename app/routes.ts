@@ -182,6 +182,7 @@ export default [
         [
           route("/goals", "features/goals/screens/goals.tsx"),
           route("/study/stats", "features/study/screens/stats.tsx"),
+          route("/study/today", "features/study/screens/today.tsx"),
         ],
       ),
       // feat-8-008 학습보조 영역 게이트 — area_study_aids 미보유 시 /pricing redirect.
