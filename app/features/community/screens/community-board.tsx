@@ -17,6 +17,11 @@ import {
   relativeKo,
 } from "~/features/community/components/community-ui";
 
+import {
+  type PasserSummary,
+  listPasserSummaries,
+} from "~/features/exam-results/analytics.server";
+
 import { BOARD_ICON } from "../components/board-icon";
 import { BOARD_DESC, BOARD_LABEL, communityBoardSchema } from "../labels";
 import { type PopularPostItem, listPopularPosts } from "../popular.server";
@@ -45,7 +50,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q") ?? "";
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
-  const [result, popular] = await Promise.all([
+
+  // feat-6-006 — review 보드는 합격 후기 필터 추가.
+  const yearRaw = url.searchParams.get("year");
+  const roundRaw = url.searchParams.get("round");
+  const yearFilter =
+    yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : null;
+  const roundFilter: "first" | "second" | null =
+    roundRaw === "first" || roundRaw === "second" ? roundRaw : null;
+
+  const [result, popular, passerSummaries] = await Promise.all([
     listPosts(client, {
       board: boardParse.data,
       query,
@@ -54,11 +68,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       userId: user.id,
     }),
     listPopularPosts(client, { board: boardParse.data, days: 7, limit: 3 }),
+    boardParse.data === "review"
+      ? listPasserSummaries({
+          year: yearFilter,
+          round: roundFilter,
+          limit: 20,
+        })
+      : Promise.resolve([] as PasserSummary[]),
   ]);
   return {
     board: boardParse.data,
     posts: result.items,
     popular,
+    passerSummaries,
+    passerFilters: { year: yearFilter, round: roundFilter },
     total: result.total,
     page: result.page,
     pageSize: result.pageSize,
@@ -68,8 +91,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
-  const { board, posts, popular, total, page, pageSize, query, currentUserId } =
-    loaderData;
+  const {
+    board,
+    posts,
+    popular,
+    passerSummaries,
+    passerFilters,
+    total,
+    page,
+    pageSize,
+    query,
+    currentUserId,
+  } = loaderData;
   const Icon = BOARD_ICON[board];
   const filterActive = query.trim().length > 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -87,6 +120,14 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
+      {/* feat-6-006 — review 보드: 합격자 후기 섹션 */}
+      {board === "review" ? (
+        <PasserSummariesSection
+          items={passerSummaries}
+          filters={passerFilters}
+        />
+      ) : null}
+
       {/* feat-6-003 — 이번 주 BEST */}
       {popular.length > 0 ? <PopularSection items={popular} board={board} /> : null}
 
@@ -198,6 +239,86 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
         </nav>
       ) : null}
     </CommunityShell>
+  );
+}
+
+// ─── feat-6-006 합격자 후기 통합 ───
+
+function PasserSummariesSection({
+  items,
+  filters,
+}: {
+  items: PasserSummary[];
+  filters: { year: number | null; round: "first" | "second" | null };
+}) {
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
+  return (
+    <section className="mb-3.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          공식 합격자 후기
+        </p>
+        <Form method="get" className="flex items-center gap-2 text-[11px]">
+          <select
+            name="year"
+            defaultValue={filters.year ? String(filters.year) : ""}
+            className="border-input bg-background focus:border-primary h-7 rounded-md border px-2 text-[11px] outline-none"
+          >
+            <option value="">전체 연도</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+          <select
+            name="round"
+            defaultValue={filters.round ?? ""}
+            className="border-input bg-background focus:border-primary h-7 rounded-md border px-2 text-[11px] outline-none"
+          >
+            <option value="">전체 차수</option>
+            <option value="first">1차</option>
+            <option value="second">2차</option>
+          </select>
+          <Button type="submit" size="sm" variant="outline" className="h-7">
+            적용
+          </Button>
+        </Form>
+      </div>
+      {items.length === 0 ? (
+        <div className="border-border bg-muted/30 text-muted-foreground rounded-xl border border-dashed py-6 text-center text-xs">
+          조건에 맞는 공식 합격 후기가 없습니다.
+        </div>
+      ) : (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {items.slice(0, 6).map((s) => (
+            <li key={s.resultId}>
+              <div className="border-emerald-300/60 bg-emerald-50/50 dark:border-emerald-700/40 dark:bg-emerald-950/20 rounded-xl border p-3">
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  <Chip tone="emerald">합격</Chip>
+                  <span className="text-muted-foreground font-mono text-[10px] tabular-nums">
+                    {s.examYear} · {s.examRound === "first" ? "1차" : "2차"}
+                  </span>
+                  {s.scoreBucket ? (
+                    <Chip tone="primary">{s.scoreBucket}</Chip>
+                  ) : null}
+                  {s.verified ? <Chip tone="outline">인증</Chip> : null}
+                </div>
+                <p className="text-foreground/85 line-clamp-3 text-[12.5px] leading-relaxed whitespace-pre-line">
+                  {s.summaryMd}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {items.length > 6 ? (
+        <p className="text-muted-foreground mt-2 text-right text-[11px]">
+          전체 {items.length}건 — 필터 좁혀 확인
+        </p>
+      ) : null}
+    </section>
   );
 }
 

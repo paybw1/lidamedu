@@ -1678,6 +1678,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           is_pinned: boolean
+          max_members: number | null
           post_id: string
           title: string
           updated_at: string
@@ -1691,6 +1692,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           is_pinned?: boolean
+          max_members?: number | null
           post_id?: string
           title: string
           updated_at?: string
@@ -1704,6 +1706,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           is_pinned?: boolean
+          max_members?: number | null
           post_id?: string
           title?: string
           updated_at?: string
@@ -1723,6 +1726,74 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      community_reports: {
+        Row: {
+          action_note: string | null
+          created_at: string
+          reason: string
+          report_id: string
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: Database["public"]["Enums"]["community_report_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["community_report_target"]
+        }
+        Insert: {
+          action_note?: string | null
+          created_at?: string
+          reason: string
+          report_id?: string
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["community_report_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["community_report_target"]
+        }
+        Update: {
+          action_note?: string | null
+          created_at?: string
+          reason?: string
+          report_id?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["community_report_status"]
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["community_report_target"]
+        }
+        Relationships: []
+      }
+      community_study_members: {
+        Row: {
+          joined_at: string
+          left_at: string | null
+          post_id: string
+          profile_id: string
+        }
+        Insert: {
+          joined_at?: string
+          left_at?: string | null
+          post_id: string
+          profile_id: string
+        }
+        Update: {
+          joined_at?: string
+          left_at?: string | null
+          post_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_study_members_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["post_id"]
           },
         ]
       }
@@ -5715,6 +5786,8 @@ export type Database = {
       chunk_source_type: "article" | "case" | "problem"
       community_board: "free" | "study" | "review"
       community_post_attachment_kind: "image" | "pdf" | "file"
+      community_report_status: "pending" | "resolved" | "dismissed"
+      community_report_target: "post" | "comment"
       content_comment_target_type: "article" | "case" | "problem"
       curriculum_item_kind:
         | "article"
@@ -5944,6 +6017,8 @@ export const Constants = {
       chunk_source_type: ["article", "case", "problem"],
       community_board: ["free", "study", "review"],
       community_post_attachment_kind: ["image", "pdf", "file"],
+      community_report_status: ["pending", "resolved", "dismissed"],
+      community_report_target: ["post", "comment"],
       content_comment_target_type: ["article", "case", "problem"],
       curriculum_item_kind: [
         "article",

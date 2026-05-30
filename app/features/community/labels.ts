@@ -39,6 +39,8 @@ export interface CommunityPostSummary {
   isPinned: boolean;
   /** study 게시판 모집 마감 시각. null = 모집 중 / 비대상 게시판. */
   closedAt: string | null;
+  /** feat-6-008 study 모집 인원 한도. null = 제한 없음 / 비대상 게시판. */
+  maxMembers: number | null;
   commentCount: number;
   /** feat-6 v2.1 — 게시글 좋아요 카운트. */
   likeCount: number;

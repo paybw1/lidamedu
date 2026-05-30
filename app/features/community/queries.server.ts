@@ -57,7 +57,7 @@ function resolveAuthor(
 /* ── 게시글 조회 ──────────────────────────────────────────────────────── */
 
 const POST_SUMMARY_COLUMNS =
-  "post_id, board, title, author_id, is_pinned, closed_at, created_at, updated_at, community_post_comments(count)";
+  "post_id, board, title, author_id, is_pinned, closed_at, max_members, created_at, updated_at, community_post_comments(count)";
 const POST_DETAIL_COLUMNS = `${POST_SUMMARY_COLUMNS}, body_md`;
 
 type RawPostRow = {
@@ -67,6 +67,7 @@ type RawPostRow = {
   author_id: string | null;
   is_pinned: boolean;
   closed_at: string | null;
+  max_members: number | null;
   created_at: string;
   updated_at: string;
   community_post_comments: { count: number }[];
@@ -85,6 +86,7 @@ function toSummary(
     author: resolveAuthor(row.author_id, authors),
     isPinned: row.is_pinned,
     closedAt: row.closed_at,
+    maxMembers: row.max_members,
     commentCount: row.community_post_comments[0]?.count ?? 0,
     likeCount: likeMeta?.count ?? 0,
     likedByMe: likeMeta?.likedByMe ?? false,

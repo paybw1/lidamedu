@@ -29,6 +29,10 @@ import { RichBody } from "../components/rich-body";
 import { resolveRefsForBodies } from "../content-refs.server";
 import { incrementPostView } from "../popular.server";
 import { getPost, listAttachments, listComments } from "../queries.server";
+import {
+  type StudyMembership,
+  getStudyMembership,
+} from "../study-members.server";
 import type { CommunityPostAttachment } from "../labels";
 
 import type { Route } from "./+types/community-post-detail";
@@ -73,6 +77,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     ...comments.map((c) => c.bodyMd),
   ]);
 
+  // feat-6-008 — study 보드 멤버십.
+  const membership: StudyMembership | null =
+    post.board === "study"
+      ? await getStudyMembership(client, post.postId, user.id, post.maxMembers)
+      : null;
+
   // feat-6-003 — 본인 글이 아니면 view_count 증가 (응답 후 best-effort).
   runAfterResponse(incrementPostView(client, post.postId));
 
@@ -81,6 +91,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     comments,
     attachments,
     refMap,
+    membership,
     currentUserId: user.id,
     isManager: roleAtLeast(profile?.role, "manager"),
   };
@@ -89,8 +100,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function CommunityPostDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { post, comments, attachments, refMap, currentUserId, isManager } =
-    loaderData;
+  const {
+    post,
+    comments,
+    attachments,
+    refMap,
+    membership,
+    currentUserId,
+    isManager,
+  } = loaderData;
   const isAuthor = post.author?.id === currentUserId;
   const canEditAttach = isAuthor || isManager;
   const isStudy = post.board === "study";
@@ -163,6 +181,21 @@ export default function CommunityPostDetail({
           isManager={isManager}
           isStudy={isStudy}
         />
+      ) : null}
+
+      {/* feat-6-008 — study 보드 멤버 패널. */}
+      {membership && post.board === "study" ? (
+        <StudyMembersPanel
+          postId={post.postId}
+          membership={membership}
+          isAuthor={isAuthor}
+          closed={post.closedAt !== null}
+        />
+      ) : null}
+
+      {/* feat-6-007 — 본인 글이 아닐 때만 신고 버튼 노출. */}
+      {!isAuthor ? (
+        <ReportButton targetType="post" targetId={post.postId} />
       ) : null}
 
       <CommentSection
@@ -656,5 +689,196 @@ function LikeToggle({
         좋아요 <span className="tabular-nums">{Math.max(0, count)}</span>
       </button>
     </div>
+  );
+}
+
+// ─── feat-6-008 스터디 멤버 패널 ───
+
+function StudyMembersPanel({
+  postId,
+  membership,
+  isAuthor,
+  closed,
+}: {
+  postId: string;
+  membership: StudyMembership;
+  isAuthor: boolean;
+  closed: boolean;
+}) {
+  const fetcher = useFetcher<{ ok: boolean; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  const optimisticJoined =
+    fetcher.formData && fetcher.formData.get("postId") === postId
+      ? fetcher.formData.get("intent") === "join"
+      : membership.isMine;
+  const errCode = fetcher.data?.error;
+
+  return (
+    <section className="border-border bg-card mt-3 rounded-2xl border p-4 shadow-sm md:p-5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-foreground text-sm font-bold">
+          스터디 멤버 · {membership.total}
+          {membership.maxMembers !== null ? (
+            <span className="text-muted-foreground font-mono text-[11px] font-medium">
+              {" "}
+              / {membership.maxMembers}
+            </span>
+          ) : null}
+        </p>
+        {!isAuthor ? (
+          <fetcher.Form method="post" action="/api/community/study-join">
+            <input type="hidden" name="postId" value={postId} />
+            <input
+              type="hidden"
+              name="intent"
+              value={optimisticJoined ? "leave" : "join"}
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant={optimisticJoined ? "outline" : "default"}
+              disabled={busy || (closed && !optimisticJoined) || (membership.isFull && !optimisticJoined)}
+            >
+              {optimisticJoined
+                ? "참여 취소"
+                : closed
+                  ? "마감"
+                  : membership.isFull
+                    ? "정원 가득"
+                    : "참여하기"}
+            </Button>
+          </fetcher.Form>
+        ) : null}
+      </div>
+      {membership.members.length === 0 ? (
+        <p className="text-muted-foreground text-xs">
+          아직 참여 멤버가 없습니다.
+        </p>
+      ) : (
+        <ul className="flex flex-wrap gap-1.5">
+          {membership.members.map((m) => (
+            <li
+              key={m.profileId}
+              className="border-border bg-muted/40 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px]"
+            >
+              <span className="bg-primary text-primary-foreground inline-flex size-4 items-center justify-center rounded-full text-[9px] font-bold">
+                {m.name.slice(0, 1)}
+              </span>
+              <span className="text-foreground font-medium">{m.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {errCode === "full" ? (
+        <p className="text-amber-600 dark:text-amber-400 mt-2 text-[11px]">
+          정원이 가득 찼습니다.
+        </p>
+      ) : errCode === "closed" ? (
+        <p className="text-rose-600 dark:text-rose-400 mt-2 text-[11px]">
+          이미 마감된 스터디입니다.
+        </p>
+      ) : errCode ? (
+        <p className="text-rose-600 dark:text-rose-400 mt-2 text-[11px]">
+          ✗ {errCode}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+// ─── feat-6-007 신고 버튼 ───
+
+function ReportButton({
+  targetType,
+  targetId,
+}: {
+  targetType: "post" | "comment";
+  targetId: string;
+}) {
+  const fetcher = useFetcher<{ ok: boolean; error?: string }>();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const busy = fetcher.state !== "idle";
+  const success = fetcher.data?.ok === true;
+  const dup = fetcher.data?.error === "already-reported";
+
+  if (!open) {
+    return (
+      <div className="mt-2 text-right text-[11px]">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400"
+        >
+          신고하기
+        </button>
+      </div>
+    );
+  }
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/community/report"
+      className="border-border bg-card mt-2 rounded-xl border p-3"
+      onSubmit={() => {
+        if (!reason.trim()) {
+          setReason("");
+        }
+      }}
+    >
+      <input type="hidden" name="targetType" value={targetType} />
+      <input type="hidden" name="targetId" value={targetId} />
+      {success ? (
+        <p className="text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+          ✓ 신고 접수됨. 모더레이션 큐로 전달됩니다.
+        </p>
+      ) : (
+        <>
+          <p className="text-foreground mb-2 text-xs font-bold">
+            신고 사유 (1~500자)
+          </p>
+          <textarea
+            name="reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            maxLength={500}
+            required
+            placeholder="구체적인 사유를 입력하세요"
+            className="bg-background border-input focus:border-primary w-full rounded-md border px-2 py-1.5 text-xs outline-none"
+            disabled={busy}
+          />
+          <div className="mt-2 flex items-center justify-end gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              disabled={busy}
+            >
+              취소
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={busy || reason.trim().length === 0}
+            >
+              신고
+            </Button>
+          </div>
+          {dup ? (
+            <p className="text-amber-600 dark:text-amber-400 mt-1 text-[11px]">
+              이미 신고한 항목입니다.
+            </p>
+          ) : null}
+          {fetcher.data?.error && !dup ? (
+            <p className="text-rose-600 dark:text-rose-400 mt-1 text-[11px]">
+              ✗ {fetcher.data.error}
+            </p>
+          ) : null}
+        </>
+      )}
+    </fetcher.Form>
   );
 }

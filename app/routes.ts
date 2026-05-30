@@ -43,6 +43,15 @@ export default [
       "/api/study/recommendation-prefs",
       "features/study/api/recommendation-prefs.tsx",
     ),
+    route("/api/community/report", "features/community/api/report.tsx"),
+    route(
+      "/api/community/report-resolve",
+      "features/community/api/report-resolve.tsx",
+    ),
+    route(
+      "/api/community/study-join",
+      "features/community/api/study-join.tsx",
+    ),
     ...prefix("/annotations", [
       route("/bookmark", "features/annotations/api/bookmark.tsx"),
       route("/memo", "features/annotations/api/memo.tsx"),
@@ -392,6 +401,10 @@ export default [
         "features/admin/screens/admin-orphan-highlights.tsx",
       ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
+      route(
+        "/admin/community/reports",
+        "features/admin/screens/admin-community-reports.tsx",
+      ),
       route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),
       route(
         "/admin/cohorts/at-risk",
