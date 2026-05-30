@@ -19,6 +19,7 @@ import {
 
 import { BOARD_ICON } from "../components/board-icon";
 import { BOARD_DESC, BOARD_LABEL, communityBoardSchema } from "../labels";
+import { type PopularPostItem, listPopularPosts } from "../popular.server";
 import { listPosts } from "../queries.server";
 
 import type { Route } from "./+types/community-board";
@@ -44,16 +45,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q") ?? "";
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
-  const result = await listPosts(client, {
-    board: boardParse.data,
-    query,
-    page,
-    pageSize: 20,
-    userId: user.id,
-  });
+  const [result, popular] = await Promise.all([
+    listPosts(client, {
+      board: boardParse.data,
+      query,
+      page,
+      pageSize: 20,
+      userId: user.id,
+    }),
+    listPopularPosts(client, { board: boardParse.data, days: 7, limit: 3 }),
+  ]);
   return {
     board: boardParse.data,
     posts: result.items,
+    popular,
     total: result.total,
     page: result.page,
     pageSize: result.pageSize,
@@ -63,7 +68,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
-  const { board, posts, total, page, pageSize, query, currentUserId } = loaderData;
+  const { board, posts, popular, total, page, pageSize, query, currentUserId } =
+    loaderData;
   const Icon = BOARD_ICON[board];
   const filterActive = query.trim().length > 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -81,6 +87,9 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
+      {/* feat-6-003 — 이번 주 BEST */}
+      {popular.length > 0 ? <PopularSection items={popular} board={board} /> : null}
+
       <Form
         method="get"
         className="border-border bg-card mb-3.5 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-sm"
@@ -189,5 +198,49 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
         </nav>
       ) : null}
     </CommunityShell>
+  );
+}
+
+// ─── feat-6-003 이번 주 BEST ───
+
+function PopularSection({
+  items,
+  board,
+}: {
+  items: PopularPostItem[];
+  board: string;
+}) {
+  return (
+    <section className="mb-3.5">
+      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        이번 주 화제 (7일)
+      </p>
+      <ul className="grid gap-2 sm:grid-cols-3">
+        {items.map((it, i) => (
+          <li key={it.postId}>
+            <Link
+              to={`/community/${board}/${it.postId}`}
+              viewTransition
+              className="border-primary/30 bg-primary/[0.04] hover:bg-primary/[0.08] hover:border-primary block h-full rounded-xl border p-3 transition-colors"
+            >
+              <div className="mb-1 flex items-center gap-1.5">
+                <span className="bg-primary text-primary-foreground inline-flex size-5 items-center justify-center rounded-full text-[10px] font-extrabold">
+                  {i + 1}
+                </span>
+                <span className="text-muted-foreground font-mono text-[10px] tabular-nums">
+                  ♡{it.likeCount} · 💬{it.commentCount} · 👁{it.viewCount}
+                </span>
+              </div>
+              <p className="line-clamp-2 text-sm font-bold leading-snug tracking-tight">
+                {it.title}
+              </p>
+              <p className="text-muted-foreground mt-1 text-[11px]">
+                {it.authorName}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

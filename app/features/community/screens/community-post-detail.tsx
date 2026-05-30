@@ -23,6 +23,11 @@ import {
   type CommunityComment,
   type CommunityPostDetail,
 } from "../labels";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+
+import { RichBody } from "../components/rich-body";
+import { resolveRefsForBodies } from "../content-refs.server";
+import { incrementPostView } from "../popular.server";
 import { getPost, listAttachments, listComments } from "../queries.server";
 import type { CommunityPostAttachment } from "../labels";
 
@@ -62,10 +67,20 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     .eq("profile_id", user.id)
     .maybeSingle();
 
+  // feat-6-005 — post + comments 본문에서 콘텐츠 marker 일괄 해석.
+  const refMap = await resolveRefsForBodies(client, [
+    post.bodyMd,
+    ...comments.map((c) => c.bodyMd),
+  ]);
+
+  // feat-6-003 — 본인 글이 아니면 view_count 증가 (응답 후 best-effort).
+  runAfterResponse(incrementPostView(client, post.postId));
+
   return {
     post,
     comments,
     attachments,
+    refMap,
     currentUserId: user.id,
     isManager: roleAtLeast(profile?.role, "manager"),
   };
@@ -74,7 +89,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function CommunityPostDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { post, comments, attachments, currentUserId, isManager } = loaderData;
+  const { post, comments, attachments, refMap, currentUserId, isManager } =
+    loaderData;
   const isAuthor = post.author?.id === currentUserId;
   const canEditAttach = isAuthor || isManager;
   const isStudy = post.board === "study";
@@ -115,9 +131,11 @@ export default function CommunityPostDetail({
             {new Date(post.createdAt).toLocaleString("ko-KR")}
           </span>
         </div>
-        <p className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85] whitespace-pre-line">
-          {post.bodyMd}
-        </p>
+        <RichBody
+          body={post.bodyMd}
+          refs={refMap}
+          className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85]"
+        />
 
         {/* feat-6 v2.2 — 첨부 list */}
         {attachments.length > 0 ? (
@@ -150,6 +168,7 @@ export default function CommunityPostDetail({
       <CommentSection
         postId={post.postId}
         comments={comments}
+        refMap={refMap}
         currentUserId={currentUserId}
         isManager={isManager}
       />
@@ -279,11 +298,13 @@ function CommentSection({
   comments,
   currentUserId,
   isManager,
+  refMap,
 }: {
   postId: string;
   comments: CommunityComment[];
   currentUserId: string;
   isManager: boolean;
+  refMap: import("~/features/community/content-refs").ResolvedRefMap;
 }) {
   return (
     <section className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
@@ -297,6 +318,7 @@ function CommentSection({
             <CommentItem
               key={comment.commentId}
               comment={comment}
+              refMap={refMap}
               canDelete={comment.author?.id === currentUserId || isManager}
             />
           ))}
@@ -315,9 +337,11 @@ function CommentSection({
 function CommentItem({
   comment,
   canDelete,
+  refMap,
 }: {
   comment: CommunityComment;
   canDelete: boolean;
+  refMap: import("~/features/community/content-refs").ResolvedRefMap;
 }) {
   const fetcher = useFetcher();
   // 삭제 제출 중에는 낙관적으로 숨긴다 (성공 시 revalidate 로 사라짐).
@@ -352,9 +376,11 @@ function CommentItem({
           </fetcher.Form>
         ) : null}
       </div>
-      <p className="text-foreground/85 mt-1.5 text-sm leading-relaxed whitespace-pre-line">
-        {comment.bodyMd}
-      </p>
+      <RichBody
+        body={comment.bodyMd}
+        refs={refMap}
+        className="text-foreground/85 mt-1.5 text-sm leading-relaxed"
+      />
     </li>
   );
 }

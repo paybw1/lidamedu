@@ -7,8 +7,10 @@ import { z } from "zod";
 
 import { roleAtLeast, type UserRole } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 
 import { communityBoardSchema } from "../labels";
+import { notifyMentions, notifyPostLiked } from "../notify.server";
 import {
   createPost,
   getPost,
@@ -66,6 +68,18 @@ async function currentRole(
   return profile?.role ?? "student";
 }
 
+async function currentName(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<string> {
+  const { data } = await client
+    .from("profiles")
+    .select("name")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  return data?.name ?? "(이름 없음)";
+}
+
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
     return data({ ok: false, error: "method-not-allowed" }, { status: 405 });
@@ -97,6 +111,19 @@ export async function action({ request }: Route.ActionArgs) {
     if (!result.ok) {
       return data({ ok: false, error: result.error }, { status: 400, headers });
     }
+    // feat-6-004 — 게시글 본문 멘션 알림 (best-effort).
+    const meName = await currentName(client, user.id);
+    runAfterResponse(
+      notifyMentions({
+        body: input.bodyMd,
+        postId: result.postId,
+        postTitle: input.title,
+        postBoard: input.board,
+        authorId: user.id,
+        authorName: meName,
+        kind: "post",
+      }),
+    );
     return redirect(`/community/${input.board}/${result.postId}`, { headers });
   }
 
@@ -109,6 +136,20 @@ export async function action({ request }: Route.ActionArgs) {
     const result = await togglePostLike(client, input.postId, user.id);
     if (!result.ok) {
       return data({ ok: false, error: result.error }, { status: 400, headers });
+    }
+    // feat-6-004 — 신규 좋아요만 알림 (취소는 skip).
+    if (result.liked && exists.author?.id) {
+      const meName = await currentName(client, user.id);
+      runAfterResponse(
+        notifyPostLiked({
+          postId: exists.postId,
+          postTitle: exists.title,
+          postBoard: exists.board,
+          postAuthorId: exists.author.id,
+          likerId: user.id,
+          likerName: meName,
+        }),
+      );
     }
     return data({ ok: true, liked: result.liked }, { headers });
   }

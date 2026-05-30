@@ -7,6 +7,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 
+import { notifyMentions } from "../notify.server";
 import {
   createComment,
   getPost,
@@ -89,6 +90,23 @@ export async function action({ request }: Route.ActionArgs) {
         })(),
       );
     }
+    // feat-6-004 — 댓글 본문 멘션 알림 (best-effort).
+    const { data: me } = await client
+      .from("profiles")
+      .select("name")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    runAfterResponse(
+      notifyMentions({
+        body: input.bodyMd,
+        postId: post.postId,
+        postTitle: post.title,
+        postBoard: post.board,
+        authorId: user.id,
+        authorName: me?.name ?? "(이름 없음)",
+        kind: "comment",
+      }),
+    );
     return data({ ok: true, commentId: result.commentId }, { headers });
   }
 

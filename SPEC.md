@@ -451,6 +451,9 @@
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
 | feat-6-001 | 커뮤니티 메뉴 라벨 + Placeholder 화면 — `/community` ComingSoon 컴포넌트 사용. | P0 | ✅ |
+| feat-6-005 | **콘텐츠 인용 marker** — 게시글·댓글 본문의 `[law:patent#29]` / `[case:2020다123456]` / `[problem:UUID]` 토큰을 인라인 미니 카드로 렌더. `extractContentRefs` / `splitBodyByRefs`(content-refs.ts, 클라/서버 공용) + `resolveRefsForBodies`(content-refs.server.ts, 일괄 lookup) + `RichBody` 컴포넌트(rich-body.tsx — kind 별 아이콘 + 라벨 + 학습 화면 진입 링크). 미해석 marker 는 회색 code 칩으로 표시. 게시글 ↔ 학습 콘텐츠 양방향 트래픽. | P1 | ✅ |
+| feat-6-004 | **커뮤니티 알림 — 좋아요·멘션** (댓글 알림은 feat-6-002 에 이미 있음). `staff_notification_kind` enum 에 `community_post_like` / `community_post_mention` 추가. `notifyPostLiked`(community/notify.server.ts) — 본인 글이 아니고 같은 user×post 의 좋아요 알림이 7일 dedup 없음일 때만. `parseMentions` + `notifyMentions` — `@닉네임` 토큰(한글/영문/숫자/_.- 2~30자) profiles.name lookup 후 fanout. 게시글 작성·댓글 작성 둘 다 hook. `togglePostLike` 의 신규 like 만 알림. | P1 | ✅ |
+| feat-6-003 | **인기·BEST 자동 강조** — RPC `community_popular_posts(p_board, p_days=7, p_limit=5)` security definer — `(likes×3 + comments×2 + views×0.5)` 점수로 정렬. `community_posts.view_count` 컬럼 + `community_increment_view` RPC (본인 글 제외). 게시글 상세 진입 시 `runAfterResponse` best-effort 증가. 보드 화면 상단 "이번 주 화제" top 3 카드 그리드 — 순위 배지 + 좋아요·댓글·조회 카운터. | P1 | ✅ |
 | feat-6-002 | 커뮤니티 게시판 3종 (자유게시판·스터디 모집·합격 후기) — 단일 `community_posts`+`community_post_comments`+`board` enum. `/community` 허브 + `/community/:board` 목록·검색 + 작성/수정 + 상세·댓글. RLS 하이브리드(인증 전체 읽기 + 본인 쓰기 + manager 모더레이션·고정), soft delete, `public_profiles` 뷰로 작성자 표시. 상세: `docs/features/feat-6-002-community-boards.md`. | P1 | ✅ |
 | feat-6-XXX | (잔여) 좋아요·첨부·알림·페이지네이션 등 게시판 v2 | P2 | ✅ |
 

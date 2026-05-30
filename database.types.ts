@@ -1681,6 +1681,7 @@ export type Database = {
           post_id: string
           title: string
           updated_at: string
+          view_count: number
         }
         Insert: {
           author_id?: string | null
@@ -1693,6 +1694,7 @@ export type Database = {
           post_id?: string
           title: string
           updated_at?: string
+          view_count?: number
         }
         Update: {
           author_id?: string | null
@@ -1705,6 +1707,7 @@ export type Database = {
           post_id?: string
           title?: string
           updated_at?: string
+          view_count?: number
         }
         Relationships: [
           {
@@ -5443,6 +5446,25 @@ export type Database = {
           total_existing_count: number
         }[]
       }
+      community_increment_view: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
+      community_popular_posts: {
+        Args: { p_board?: string; p_days?: number; p_limit?: number }
+        Returns: {
+          author_id: string
+          author_name: string
+          board: string
+          comment_count: number
+          created_at: string
+          like_count: number
+          popularity: number
+          post_id: string
+          title: string
+          view_count: number
+        }[]
+      }
       delete_test_user: { Args: { p_email: string }; Returns: boolean }
       email_already_registered: { Args: { p_email: string }; Returns: boolean }
       get_problem_stats: {
@@ -5749,6 +5771,8 @@ export type Database = {
         | "exam_certificate_submitted"
         | "exam_result_reminder"
         | "community_post_comment"
+        | "community_post_like"
+        | "community_post_mention"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -5980,6 +6004,8 @@ export const Constants = {
         "exam_certificate_submitted",
         "exam_result_reminder",
         "community_post_comment",
+        "community_post_like",
+        "community_post_mention",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],
