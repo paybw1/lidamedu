@@ -10,6 +10,7 @@ import {
   sortDailyMenu,
 } from "~/features/study/lib/daily-menu";
 import { getWeakAreas } from "~/features/study/queries.server";
+import { getDueProblems } from "~/features/study/srs.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 /** KST 자정 기준 오늘 날짜 YYYY-MM-DD. */
@@ -80,12 +81,37 @@ export async function composeDailyMenu(
   return sortDailyMenu(items);
 }
 
-/* ── 슬롯 1: weak_problem — 약점 문제 재시도 ────────────────────────── */
+/* ── 슬롯 1: weak_problem — SRS due 우선 + fallback weak areas ────── */
 
 async function pickWeakProblem(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<DailyMenuItem | null> {
+  // 1순위 — SRS 복습 due. 항목이 있으면 SRS 큐 길이를 noted.
+  const due = await getDueProblems(client, userId, 5);
+  if (due.length > 0) {
+    const top = due[0];
+    const overdueDays = -top.daysUntilDue;
+    const extraCount = due.length - 1;
+    return {
+      kind: "weak_problem",
+      title: `복습 due — ${top.primaryArticleLabel ?? "미분류"}`,
+      body:
+        extraCount > 0
+          ? `복습 시점 도래. SRS 큐 ${due.length}건 (${overdueDays}일 지남).`
+          : `복습 시점 도래 (${overdueDays}일 지남). 간격 ${top.intervalDays}일 · 실패 ${top.lapses}회.`,
+      ctaLabel: extraCount > 0 ? `복습 시작 (+${extraCount}건)` : "이 문제 풀기",
+      ctaUrl: `/subjects/${top.lawCode}/problems/${top.problemId}`,
+      estimatedMinutes: 3,
+      priority: "high",
+      metadata: {
+        problemId: top.problemId,
+        lawCode: top.lawCode,
+        srsDueCount: due.length,
+      },
+    };
+  }
+  // 2순위 — 기존 weak areas (SRS 이력 없음 = 신규 학생).
   const weak = await getWeakAreas(client, userId, 1);
   const top = weak[0];
   if (!top) return null;

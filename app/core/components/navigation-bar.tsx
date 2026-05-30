@@ -60,6 +60,7 @@ const leadingFlats: SimpleLink[] = [
 
 const studyItems: SimpleLink[] = [
   { label: "오늘의 학습 메뉴", to: "/study/today" },
+  { label: "SRS 복습 큐", to: "/study/srs" },
   { label: "학습목표 및 과목별 진도", to: "/goals" },
   { label: "학습 통계", to: "/study/stats" },
   { label: "내 과제", to: "/assignments" },

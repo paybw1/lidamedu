@@ -4790,6 +4790,56 @@ export type Database = {
           },
         ]
       }
+      user_problem_srs: {
+        Row: {
+          created_at: string
+          ease: number
+          interval_days: number
+          lapses: number
+          last_quality: number | null
+          last_reviewed_at: string | null
+          next_due_at: string
+          problem_id: string
+          reps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ease?: number
+          interval_days?: number
+          lapses?: number
+          last_quality?: number | null
+          last_reviewed_at?: string | null
+          next_due_at?: string
+          problem_id: string
+          reps?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ease?: number
+          interval_days?: number
+          lapses?: number
+          last_quality?: number | null
+          last_reviewed_at?: string | null
+          next_due_at?: string
+          problem_id?: string
+          reps?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_problem_srs_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+        ]
+      }
       user_recitation_attempts: {
         Row: {
           article_id: string

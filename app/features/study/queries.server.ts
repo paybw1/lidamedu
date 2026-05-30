@@ -146,6 +146,20 @@ export async function recordProblemAttempt(
     session_id: input.sessionId ?? null,
   });
   if (error) throw error;
+
+  // feat-2-010 SRS hook — 시도 직후 SRS 상태 upsert. best-effort.
+  // OX 채점은 ref 단위라 별도 큐 (v1 에서는 객관식 problem 단위만).
+  if (input.oxAnswer == null) {
+    const { applyProblemSrsUpdate } = await import(
+      "~/features/study/srs.server"
+    );
+    await applyProblemSrsUpdate(
+      client,
+      userId,
+      input.problemId,
+      input.isCorrect,
+    );
+  }
 }
 
 // ---- 퀴즈 세션 ----

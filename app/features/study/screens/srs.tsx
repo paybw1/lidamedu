@@ -1,0 +1,245 @@
+// feat-2-010 SRS 큐 화면 — /study/srs.
+// 본인 객관식 SRS due 항목 list + KPI.
+
+import type { Route } from "./+types/srs";
+
+import {
+  ArrowRightIcon,
+  CalendarClockIcon,
+  HistoryIcon,
+  RepeatIcon,
+} from "lucide-react";
+import { Link, data, redirect } from "react-router";
+
+import { Button } from "~/core/components/ui/button";
+import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/core/components/ui/table";
+import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import {
+  getDueProblems,
+  getSrsCounts,
+} from "~/features/study/srs.server";
+
+export const meta: Route.MetaFunction = () => [
+  { title: "SRS 복습 큐 | Lidam" },
+];
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) throw redirect("/login?next=/study/srs");
+  const [items, counts] = await Promise.all([
+    getDueProblems(client, user.id, 100),
+    getSrsCounts(client, user.id),
+  ]);
+  return { items, counts };
+}
+
+function fmtRelative(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const day = Math.floor(diffMs / 86_400_000);
+  if (day < -1) return `${-day}일 후`;
+  if (day === -1) return "내일";
+  if (day === 0) return "오늘";
+  if (day === 1) return "어제";
+  return `${day}일 전`;
+}
+
+export default function StudySrs({ loaderData }: Route.ComponentProps) {
+  const { items, counts } = loaderData;
+  return (
+    <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:px-6 md:py-12">
+      <header className="mb-6">
+        <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <RepeatIcon className="size-3" /> SRS · 자동 복습
+        </p>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
+          SRS 복습 큐
+        </h1>
+        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+          틀리면 1일·맞으면 3·7·14·30·60일 간격으로 자동 큐잉. 시스템이 망각
+          곡선을 따라 지금 봐야 할 문제를 끌어옵니다.
+        </p>
+      </header>
+
+      {/* KPI */}
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="오늘 due"
+          value={counts.due}
+          tone="rose"
+        />
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="7일 내 도래"
+          value={counts.upcoming7d}
+          tone="amber"
+        />
+        <KpiTile
+          icon={<RepeatIcon className="size-3" />}
+          label="총 보유 항목"
+          value={counts.total}
+          tone="sky"
+        />
+        <KpiTile
+          icon={<HistoryIcon className="size-3" />}
+          label="누적 실패"
+          value={counts.lapsesSum}
+          tone="neutral"
+        />
+      </div>
+
+      {/* 빈 상태 */}
+      {items.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="text-muted-foreground space-y-3 py-12 text-center">
+            <RepeatIcon className="mx-auto size-8 opacity-30" />
+            <p className="text-sm font-medium">
+              {counts.total === 0
+                ? "아직 SRS 항목이 없습니다."
+                : "지금 due 인 항목이 없습니다."}
+            </p>
+            <p className="text-xs">
+              {counts.total === 0
+                ? "문제를 한 번 시도하면 자동으로 SRS 큐에 들어갑니다."
+                : `다음 도래까지 7일 내 ${counts.upcoming7d}건.`}
+            </p>
+            <div className="flex justify-center gap-2 pt-2">
+              <Button asChild size="sm" variant="outline">
+                <Link to="/study/today">오늘의 학습 메뉴</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/study/stats">학습 통계</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <p className="text-foreground text-sm font-bold">
+              지금 풀어야 할 문제 {items.length}건
+            </p>
+            <p className="text-muted-foreground text-xs">
+              가장 오래 미룬 항목 먼저. 클릭해 풀면 자동으로 SRS 상태 갱신.
+            </p>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40%]">문제</TableHead>
+                    <TableHead className="w-[10%]">과목</TableHead>
+                    <TableHead className="w-[10%] text-right">
+                      간격
+                    </TableHead>
+                    <TableHead className="w-[10%] text-right">실패</TableHead>
+                    <TableHead className="w-[15%] text-right">due</TableHead>
+                    <TableHead className="w-[15%]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((it) => (
+                    <TableRow key={it.problemId}>
+                      <TableCell>
+                        <p className="text-foreground line-clamp-2 text-xs leading-relaxed">
+                          {it.bodySnippet}
+                          {it.bodySnippet.length === 100 ? "…" : ""}
+                        </p>
+                        {it.primaryArticleLabel ? (
+                          <p className="text-muted-foreground mt-1 font-mono text-[10px]">
+                            {it.primaryArticleLabel}
+                            {it.year ? ` · ${it.year}` : ""}
+                            {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px]">
+                        {it.lawCode}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs tabular-nums">
+                        {it.intervalDays}d
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right font-mono text-xs tabular-nums",
+                          it.lapses > 2
+                            ? "text-rose-700 dark:text-rose-300"
+                            : "",
+                        )}
+                      >
+                        {it.lapses}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
+                        {fmtRelative(it.nextDueAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild size="sm" variant="ghost">
+                          <Link
+                            to={`/subjects/${it.lawCode}/problems/${it.problemId}`}
+                            viewTransition
+                          >
+                            풀기 <ArrowRightIcon className="size-3.5" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 알고리즘 안내 */}
+      <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
+        간격 알고리즘: 정답 시 1 → 3 → 7 → 14 → 30 → 60일(최대 90일).
+        실패 시 즉시 1일로 리셋 + 어려움 계수(ease) 0.2 감소(최저 1.3).
+      </p>
+    </div>
+  );
+}
+
+function KpiTile({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: "rose" | "amber" | "sky" | "neutral";
+}) {
+  const cls =
+    tone === "rose"
+      ? "border-rose-300/60 bg-rose-50/60 text-rose-700 dark:border-rose-700/40 dark:bg-rose-950/30 dark:text-rose-300"
+      : tone === "amber"
+        ? "border-amber-300/60 bg-amber-50/60 text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300"
+        : tone === "sky"
+          ? "border-sky-300/60 bg-sky-50/60 text-sky-700 dark:border-sky-700/40 dark:bg-sky-950/30 dark:text-sky-300"
+          : "border-border bg-card text-muted-foreground";
+  return (
+    <div className={cn("rounded-xl border p-3.5", cls)}>
+      <p className="inline-flex items-center gap-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        {icon} {label}
+      </p>
+      <p className="text-foreground mt-1.5 text-[22px] leading-none font-extrabold tracking-tight tabular-nums">
+        {value.toLocaleString("ko-KR")}
+      </p>
+    </div>
+  );
+}
