@@ -95,6 +95,8 @@ import {
 import { AiQnaRecentCard } from "~/features/dashboard/components/dash-ai-qna";
 import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
 import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
+import { TodayEntryCard } from "~/features/dashboard/components/dash-today-entry";
+import { getTodaySummary } from "~/features/study/today-summary.server";
 import { listMyConversations } from "~/features/ai-qna/conversations.server";
 import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import { countMyOxWrongNoteItems } from "~/features/problems/queries.server";
@@ -192,6 +194,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     studentAssignments,
     gsAveragePct,
     weekTrack,
+    todaySummary,
     passerBundle,
     oxRecentSessions,
     oxWrongCount,
@@ -208,6 +211,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     listStudentAssignments(user.id),
     getUserGsAveragePct(client, user.id),
     getCurrentWeekTrack(user.id),
+    // 오늘 입구 카드 + [오늘] 본문 공유 데이터.
+    getTodaySummary(client, user.id),
     // 학생 화면 — 합성 합격자 절대 노출 금지. excludeSynthetic:true 강제.
     // 게이트 OFF (실 합격자 < 임계값) 시 합격자 비교 자체를 비활성화.
     isPasserBenchmarkEnabled().then(async (gate) => {
@@ -318,6 +323,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     hasMgmt,
     planCode,
     weekTrack,
+    todaySummary,
     passerGate,
     passerBenchmark,
     passerSummaries,
@@ -466,6 +472,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     topBookmarks,
     studyAidCounts,
     weekTrack,
+    todaySummary,
     pendingAssignments,
     passPrediction,
     passerGate,
@@ -605,6 +612,12 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               remainingHours: Math.max(0, dailyTargetHours - todayHours),
             }}
           />
+
+          {/* 최상단 — 오늘로 가는 입구. 통계가 아니라 오늘 할 일 요약 + 큰 진입 버튼. */}
+          <SectionBand eyebrow="TODAY · 오늘로 가는 입구" />
+          <TodayEntryCard summary={todaySummary} />
+
+          {/* 그 아래 — 내 위치 조망 (누적·추세). KPI 부터 시작. */}
           <DashKpiStrip
             data={{
               studyHours: kpis.totalProblemTimeMs / HOUR_MS,
@@ -616,27 +629,10 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             }}
           />
 
-          <SectionBand eyebrow="TODAY · 오늘 할 일" />
-          <DailyMenuBanner />
-          {hasToday ? (
-            <DashGrid>
-              {weekTrack !== null ? (
-                <SpanCol span={3}>
-                  <WeekTrackCard track={weekTrack} />
-                </SpanCol>
-              ) : null}
-              {recommendedActions.length > 0 ? (
-                <SpanCol span={3}>
-                  <RecommendedActionsCard actions={recommendedActions} />
-                </SpanCol>
-              ) : null}
-              {pendingAssignments.length > 0 ? (
-                <SpanCol span={6}>
-                  <PendingAssignmentsCard assignments={pendingAssignments} />
-                </SpanCol>
-              ) : null}
-            </DashGrid>
-          ) : null}
+          {/* RecommendedActionsCard / WeekTrackCard / PendingAssignmentsCard 는
+             [오늘] 본문 (/study/today) 에서 단일 흐름으로 표시. 대시보드 입구는
+             요약+버튼까지만 (지시서 §1-A 경계 규칙). 합격선 컨설팅 액션은 아래
+             WEAK SPOTS 섹션에 합쳐 노출. */}
 
           <SectionBand eyebrow="PASS FORECAST · 합격 진단" />
           <DashGrid>
@@ -689,18 +685,23 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             </SpanCol>
           </DashGrid>
 
-          {hasWeak ? (
+          {hasWeak || recommendedActions.length > 0 ? (
             <>
-              <SectionBand eyebrow="WEAK SPOTS · 약점" />
+              <SectionBand eyebrow="WEAK SPOTS · 약점 → 행동 다리" />
               <DashGrid>
                 {weakRows.length > 0 ? (
-                  <SpanCol span={4}>
+                  <SpanCol span={2}>
                     <WeakReviewCard areas={weakRows} />
                   </SpanCol>
                 ) : null}
                 {weakNodeRows.length > 0 ? (
                   <SpanCol span={2}>
                     <WeakNodesCard nodes={weakNodeRows} />
+                  </SpanCol>
+                ) : null}
+                {recommendedActions.length > 0 ? (
+                  <SpanCol span={2}>
+                    <RecommendedActionsCard actions={recommendedActions} />
                   </SpanCol>
                 ) : null}
               </DashGrid>
