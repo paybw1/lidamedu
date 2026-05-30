@@ -67,5 +67,15 @@ export async function action({ request }: Route.ActionArgs) {
     return { ok: false, error: insErr.message } as const;
   }
 
+  // feat-2-011 SRS hook — best-effort.
+  const { applyBlankSrsUpdate } = await import("~/features/blanks/srs.server");
+  await applyBlankSrsUpdate(
+    client,
+    user.id,
+    parsed.data.setId,
+    parsed.data.blankIdx,
+    isCorrect,
+  );
+
   return { ok: true, isCorrect, answer: isCorrect ? answer : undefined } as const;
 }

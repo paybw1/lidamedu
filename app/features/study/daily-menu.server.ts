@@ -9,6 +9,7 @@ import {
   type DailyMenuKind,
   sortDailyMenu,
 } from "~/features/study/lib/daily-menu";
+import { getDueBlankSets } from "~/features/blanks/srs.server";
 import { getWeakAreas } from "~/features/study/queries.server";
 import { getDueProblems } from "~/features/study/srs.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
@@ -230,20 +231,45 @@ async function pickUnreadCase(
   };
 }
 
-/* ── 슬롯 4: blank_due — 미시도 빈칸 세트 ─────────────────────────── */
+/* ── 슬롯 4: blank_due — 빈칸 SRS due 우선 + fallback 미시도 ────── */
 
 async function pickBlankDue(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<DailyMenuItem | null> {
-  // 본인이 시도한 set_id 들.
+  // 1순위 — 빈칸 SRS due (가장 오래된 due 의 set).
+  const dueSets = await getDueBlankSets(client, userId, 5);
+  if (dueSets.length > 0) {
+    const top = dueSets[0];
+    const overdueDays = -top.daysUntilDue;
+    const extra = dueSets.length - 1;
+    return {
+      kind: "blank_due",
+      title: `빈칸 복습 due — ${top.displayLabel}`,
+      body:
+        extra > 0
+          ? `${top.dueBlankCount}개 빈칸 복습 시점 도래 (${overdueDays}일 지남). 다른 ${extra}개 세트도 due.`
+          : `${top.dueBlankCount}개 빈칸 복습 시점 도래 (${overdueDays}일 지남).`,
+      ctaLabel: "복습 시작",
+      ctaUrl: `/subjects/${top.lawCode}/articles/${top.articleNumber}?blank=${top.setId}`,
+      estimatedMinutes: 5,
+      priority: "high",
+      metadata: {
+        setId: top.setId,
+        lawCode: top.lawCode,
+        dueBlankCount: top.dueBlankCount,
+        dueSetsCount: dueSets.length,
+      },
+    };
+  }
+
+  // 2순위 — 신규 미시도 빈칸 세트.
   const { data: tried } = await client
     .from("user_blank_attempts")
     .select("set_id")
     .eq("user_id", userId);
   const triedSet = new Set((tried ?? []).map((r) => r.set_id));
 
-  // 빈칸 세트 — 미시도 + importance 높은 조문 우선.
   const { data: sets } = await client
     .from("article_blank_sets")
     .select(

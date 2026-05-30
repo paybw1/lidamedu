@@ -4441,6 +4441,59 @@ export type Database = {
           },
         ]
       }
+      user_blank_srs: {
+        Row: {
+          blank_idx: number
+          created_at: string
+          ease: number
+          interval_days: number
+          lapses: number
+          last_quality: number | null
+          last_reviewed_at: string | null
+          next_due_at: string
+          reps: number
+          set_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blank_idx: number
+          created_at?: string
+          ease?: number
+          interval_days?: number
+          lapses?: number
+          last_quality?: number | null
+          last_reviewed_at?: string | null
+          next_due_at?: string
+          reps?: number
+          set_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blank_idx?: number
+          created_at?: string
+          ease?: number
+          interval_days?: number
+          lapses?: number
+          last_quality?: number | null
+          last_reviewed_at?: string | null
+          next_due_at?: string
+          reps?: number
+          set_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blank_srs_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "article_blank_sets"
+            referencedColumns: ["set_id"]
+          },
+        ]
+      }
       user_bookmarks: {
         Row: {
           bookmark_id: string

@@ -24,6 +24,11 @@ import {
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import {
+  type DueBlankSetItem,
+  getBlankSrsCounts,
+  getDueBlankSets,
+} from "~/features/blanks/srs.server";
+import {
   getDueProblems,
   getSrsCounts,
 } from "~/features/study/srs.server";
@@ -38,11 +43,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/study/srs");
-  const [items, counts] = await Promise.all([
+  const [items, counts, blankItems, blankCounts] = await Promise.all([
     getDueProblems(client, user.id, 100),
     getSrsCounts(client, user.id),
+    getDueBlankSets(client, user.id, 50),
+    getBlankSrsCounts(client, user.id),
   ]);
-  return { items, counts };
+  return { items, counts, blankItems, blankCounts };
 }
 
 function fmtRelative(iso: string): string {
@@ -56,7 +63,7 @@ function fmtRelative(iso: string): string {
 }
 
 export default function StudySrs({ loaderData }: Route.ComponentProps) {
-  const { items, counts } = loaderData;
+  const { items, counts, blankItems, blankCounts } = loaderData;
   return (
     <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:px-6 md:py-12">
       <header className="mb-6">
@@ -68,9 +75,14 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </h1>
         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
           틀리면 1일·맞으면 3·7·14·30·60일 간격으로 자동 큐잉. 시스템이 망각
-          곡선을 따라 지금 봐야 할 문제를 끌어옵니다.
+          곡선을 따라 지금 봐야 할 객관식 문제와 빈칸을 끌어옵니다.
         </p>
       </header>
+
+      {/* ── 객관식 SRS 섹션 ─────────────────────────────────────────── */}
+      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        객관식 문제
+      </p>
 
       {/* KPI */}
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -204,11 +216,129 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
+      {/* ── 빈칸 SRS 섹션 ─────────────────────────────────────────── */}
+      <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        빈칸 학습
+      </p>
+
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="due 세트"
+          value={blankCounts.dueSets}
+          tone="rose"
+        />
+        <KpiTile
+          icon={<CalendarClockIcon className="size-3" />}
+          label="due 빈칸"
+          value={blankCounts.dueBlanks}
+          tone="amber"
+        />
+        <KpiTile
+          icon={<RepeatIcon className="size-3" />}
+          label="총 보유 빈칸"
+          value={blankCounts.totalBlanks}
+          tone="sky"
+        />
+        <KpiTile
+          icon={<HistoryIcon className="size-3" />}
+          label="누적 실패"
+          value={blankCounts.lapsesSum}
+          tone="neutral"
+        />
+      </div>
+
+      {blankItems.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="text-muted-foreground space-y-2 py-8 text-center text-xs">
+            <RepeatIcon className="mx-auto size-6 opacity-30" />
+            <p>
+              {blankCounts.totalBlanks === 0
+                ? "아직 빈칸 SRS 항목이 없습니다. 빈칸 세트를 한 번 시도하면 자동으로 큐에 들어갑니다."
+                : `지금 due 인 빈칸이 없습니다. 7일 내 ${blankCounts.upcoming7dSets} 세트 도래.`}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <p className="text-foreground text-sm font-bold">
+              지금 풀어야 할 빈칸 {blankCounts.dueSets} 세트 · 빈칸{" "}
+              {blankCounts.dueBlanks}개
+            </p>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <BlankSrsTable items={blankItems} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* 알고리즘 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
         간격 알고리즘: 정답 시 1 → 3 → 7 → 14 → 30 → 60일(최대 90일).
         실패 시 즉시 1일로 리셋 + 어려움 계수(ease) 0.2 감소(최저 1.3).
+        객관식·빈칸 동일 알고리즘. 빈칸은 칸 단위로 추적하고 세트 단위로 표시.
       </p>
+    </div>
+  );
+}
+
+function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[40%]">조문</TableHead>
+            <TableHead className="w-[10%]">과목</TableHead>
+            <TableHead className="w-[10%] text-right">due 빈칸</TableHead>
+            <TableHead className="w-[10%] text-right">총 빈칸</TableHead>
+            <TableHead className="w-[15%] text-right">due</TableHead>
+            <TableHead className="w-[15%]" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((it) => (
+            <TableRow key={it.setId}>
+              <TableCell>
+                <p className="text-foreground text-sm font-semibold">
+                  {it.displayLabel}
+                </p>
+                <p className="text-muted-foreground mt-0.5 font-mono text-[10px]">
+                  {it.articleNumber}
+                </p>
+              </TableCell>
+              <TableCell className="font-mono text-[11px]">
+                {it.lawCode}
+              </TableCell>
+              <TableCell
+                className={cn(
+                  "text-right font-mono text-xs tabular-nums",
+                  it.dueBlankCount > 3 ? "text-rose-700 dark:text-rose-300" : "",
+                )}
+              >
+                {it.dueBlankCount}
+              </TableCell>
+              <TableCell className="text-right font-mono text-xs tabular-nums">
+                {it.totalBlankSrsCount}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
+                {fmtRelative(it.earliestDueAt)}
+              </TableCell>
+              <TableCell className="text-right">
+                <Button asChild size="sm" variant="ghost">
+                  <Link
+                    to={`/subjects/${it.lawCode}/articles/${it.articleNumber}?blank=${it.setId}`}
+                    viewTransition
+                  >
+                    풀기 <ArrowRightIcon className="size-3.5" />
+                  </Link>
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
