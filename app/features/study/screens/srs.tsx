@@ -39,6 +39,11 @@ import {
   getOxSrsCounts,
 } from "~/features/study/ox-srs.server";
 import {
+  type PasserSrsBenchmark,
+  type SrsRowMetric,
+  getPasserSrsBenchmark,
+} from "~/features/study/passer-srs-benchmark.server";
+import {
   getDueProblems,
   getSrsCounts,
 } from "~/features/study/srs.server";
@@ -62,6 +67,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     oxCounts,
     articleItems,
     articleCounts,
+    passerBenchmark,
   ] = await Promise.all([
     getDueProblems(client, user.id, 100),
     getSrsCounts(client, user.id),
@@ -71,6 +77,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getOxSrsCounts(client, user.id),
     getDueArticleReviews(client, user.id, 50),
     getArticleReviewCounts(client, user.id),
+    getPasserSrsBenchmark(user.id),
   ]);
   return {
     items,
@@ -81,6 +88,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     oxCounts,
     articleItems,
     articleCounts,
+    passerBenchmark,
   };
 }
 
@@ -104,6 +112,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
     oxCounts,
     articleItems,
     articleCounts,
+    passerBenchmark,
   } = loaderData;
   return (
     <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:px-6 md:py-12">
@@ -427,12 +436,92 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
+      {/* feat-2-019 합격자 비교 */}
+      <PasserBenchmarkSection benchmark={passerBenchmark} />
+
       {/* 알고리즘 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
         간격 알고리즘: 정답 시 1 → 3 → 7 → 14 → 30 → 60일(최대 90일).
         실패 시 즉시 1일로 리셋 + 어려움 계수(ease) 0.2 감소(최저 1.3).
         객관식·빈칸·OX 동일 알고리즘. 조문 정독은 방문 횟수 기반 7·14·30·60일.
       </p>
+    </div>
+  );
+}
+
+function PasserBenchmarkSection({
+  benchmark,
+}: {
+  benchmark: PasserSrsBenchmark;
+}) {
+  if (!benchmark.hasSample) {
+    return (
+      <Card className="mt-8 border-dashed">
+        <CardContent className="text-muted-foreground py-6 text-center text-xs">
+          합격자 표본 부족 — 분석 동의한 합격자 ≥ 3 명이 있을 때 본인 SRS 큐와
+          평균 비교가 활성화됩니다 (현재 {benchmark.sampleSize}명).
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card className="mt-8">
+      <CardHeader className="pb-3">
+        <h2 className="text-base font-bold tracking-tight">
+          합격자 평균 vs 본인
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          분석 동의 합격자 {benchmark.sampleSize}명 표본. SRS 큐 보유 평균과 본인
+          비교. 작을수록 잘 처리 중.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2 pb-4">
+        <BenchmarkRow label="객관식 due" metric={benchmark.problemDue} />
+        <BenchmarkRow label="빈칸 due (세트)" metric={benchmark.blankDueSets} />
+        <BenchmarkRow label="OX due" metric={benchmark.oxDue} />
+        <BenchmarkRow label="조문 복습 due" metric={benchmark.articleDue} />
+        <div className="border-border/40 mt-3 flex items-center justify-between gap-2 border-t pt-2 text-[11px]">
+          <span className="text-muted-foreground">누적 실패 합산</span>
+          <span className="font-mono tabular-nums">
+            합격자 평균 {benchmark.totalLapsesAvg.toFixed(1)}회 / 본인{" "}
+            {benchmark.userTotalLapses.toLocaleString("ko-KR")}회
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BenchmarkRow({
+  label,
+  metric,
+}: {
+  label: string;
+  metric: SrsRowMetric;
+}) {
+  // delta > 0 = 본인이 더 많이 보유(due 많음) → 부정적, 빨강.
+  // delta < 0 = 본인이 더 적게 보유(잘 처리 중) → 긍정, 에메랄드.
+  const aheadGood = metric.delta < 0;
+  const same = Math.abs(metric.delta) < 0.5;
+  const deltaTone = same
+    ? "text-muted-foreground"
+    : aheadGood
+      ? "text-emerald-600 dark:text-emerald-400"
+      : "text-rose-600 dark:text-rose-400";
+  const deltaSign = same ? "≈" : metric.delta > 0 ? "+" : "";
+  return (
+    <div className="grid grid-cols-3 items-center gap-2 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-mono tabular-nums">
+        평균 {metric.passerAvg.toFixed(1)} · 본인{" "}
+        <span className="text-foreground font-bold">
+          {metric.userValue}
+        </span>
+      </span>
+      <span className={cn("text-right font-mono font-bold tabular-nums", deltaTone)}>
+        {deltaSign}
+        {Math.abs(metric.delta).toFixed(1)}
+      </span>
     </div>
   );
 }

@@ -200,6 +200,8 @@
 | feat-2-005 | 과목별 "학습하러 가기" 버튼 (해당 과목 허브로 이동) | P1 | ✅ |
 | feat-2-006 | 진도 추이 그래프 (주별 12주 미니바) | P2 | ✅ |
 | feat-2-007 | 목표 달성 알림 (마일스톤 25/50/75/100% 뱃지) | P2 | ✅ |
+| feat-2-019 | **합격자 SRS 표본 비교** — `/study/srs` 하단 `PasserBenchmarkSection`. 분석 동의 + status='passed' 합격자 표본 (≥3 명) 의 4 종 SRS due 평균을 본인 값과 비교. `getPasserSrsBenchmark`(passer-srs-benchmark.server.ts, admin client RLS 우회) — 합격자/본인 SRS bulk fetch + 학생별 집계 + 평균 산출. delta < 0 = 본인이 잘 처리(에메랄드), > 0 = 본인이 더 많이 보유(로즈). 표본 부족 시 안내 카드. | P2 | ✅ |
+| feat-2-018 | **운영자 SRS 코호트 인사이트** — `/admin/cohorts/:cohortId/stats` 하단 `CohortSrsSection`. `getCohortSrsAggregate`(cohort-srs.server.ts, admin client) — 4 종 SRS bulk fetch + 학생별 합산 → 평균 KPI 4타일(학생당 평균 due) + 정체 학생 top 5 표(반응형 7컬럼: 총 due / 객관식 / 빈칸 / OX / 조문 / 가장 오래 / 상세 deep link) + 정체 학생 비율 헤더. | P2 | ✅ |
 | feat-2-017 | **운영자 SRS 분석** — `/admin/students/:profileId` 에 `StudentSrsCard` 추가. `getStudentSrsSummary`(student-srs.server.ts, admin client) — 객관식 / 빈칸(세트 단위) / OX / 조문 복습 4 종 SRS 통합 카드 (due / total / lapses + 가장 오래된 overdue 일수). 4 SrsTile + 누적 실패 합산 캡션. | P2 | ✅ |
 | feat-2-016 | **조문 정독 복습** — study_sessions(target_type='article') 기반 passive SRS — 별도 테이블 없이 visit_count + last_visit 으로 due 동적 계산. 매핑: 1회=7d / 2회=14d / 3회=30d / 4회+=60d. `getDueArticleReviews` / `getArticleReviewCounts`(article-review.server.ts). `/study/srs` 4번째 섹션(3 KPI + 표). daily-menu `article_review` 슬롯(medium priority). 정답/오답 채점이 없는 영역이라 SM-2 가 아닌 "방문 간격 알림" 모델. | P2 | ✅ |
 | feat-2-015 | **cohort_track 데일리 슬롯** — feat-2-009 daily-menu 6번째 슬롯. `getCurrentWeekTrack` 미완 항목 중 ord 가장 작은 것 1개를 high priority 카드로. `cohort_track` kind 추가, cohort 미가입 학생은 자동 비움. | P1 | ✅ |

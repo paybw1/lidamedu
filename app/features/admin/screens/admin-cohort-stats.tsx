@@ -32,6 +32,10 @@ import {
   type AccuracyBucket,
   type CohortWeeklyTrendItem,
 } from "~/features/admin/queries/student-progress.server";
+import {
+  type CohortSrsAggregate,
+  getCohortSrsAggregate,
+} from "~/features/admin/queries/cohort-srs.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 
@@ -58,11 +62,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("본인 소유 반만 조회 가능", { status: 403 });
   }
 
-  const [stats, trend] = await Promise.all([
+  const [stats, trend, srs] = await Promise.all([
     getCohortAggregateStats(params.cohortId),
     getCohortAccuracyTrend(params.cohortId, 4),
+    getCohortSrsAggregate(params.cohortId),
   ]);
-  return { cohort, stats, trend, role };
+  return { cohort, stats, trend, srs, role };
 }
 
 function accuracyTone(pct: number | null): string {
@@ -103,7 +108,7 @@ const BUCKET_LABEL: Record<AccuracyBucket, string> = {
 export default function AdminCohortStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, stats, trend, role } = loaderData;
+  const { cohort, stats, trend, srs, role } = loaderData;
   const maxBucketCount = Math.max(
     1,
     ...stats.accuracyDistribution.map((d) => d.count),
@@ -294,6 +299,12 @@ export default function AdminCohortStats({
               emptyText="시도 ≥ 5인 학생이 부족합니다."
             />
           </div>
+
+          {/* feat-2-018 SRS 코호트 인사이트 */}
+          <CohortSrsSection
+            srs={srs}
+            cohortName={cohort.name}
+          />
         </div>
       )}
     </AdminShell>
@@ -437,5 +448,165 @@ function RankCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── feat-2-018 SRS 코호트 인사이트 ───
+
+function CohortSrsSection({
+  srs,
+  cohortName,
+}: {
+  srs: CohortSrsAggregate;
+  cohortName: string;
+}) {
+  const stalledPct = Math.round(srs.stalledStudentRatio * 100);
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-base font-bold tracking-tight">SRS 코호트 인사이트</h2>
+          <p className="text-muted-foreground text-xs">
+            반 멤버 {srs.memberCount}명 · 총 due {srs.totalDueAcrossAll.toLocaleString("ko-KR")}건
+            <span className="ml-2">
+              ·{" "}
+              <span
+                className={
+                  stalledPct >= 70
+                    ? "text-rose-600 dark:text-rose-400 font-bold"
+                    : stalledPct >= 30
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                }
+              >
+                {stalledPct}%
+              </span>{" "}
+              가 1+ 건 정체
+            </span>
+          </p>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          {cohortName} 반의 4 종 SRS (객관식·빈칸·OX·조문) 평균 + 가장 정체된 학생.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4 pb-4">
+        {/* 평균 KPI */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <SrsAvgTile label="객관식 평균 due" value={srs.avgProblemDue} />
+          <SrsAvgTile label="빈칸 평균 due (세트)" value={srs.avgBlankDueSets} />
+          <SrsAvgTile label="OX 평균 due" value={srs.avgOxDue} />
+          <SrsAvgTile label="조문 평균 due" value={srs.avgArticleDue} />
+        </div>
+
+        {/* 정체 top5 */}
+        {srs.topStalled.length === 0 ? (
+          <div className="text-muted-foreground rounded-lg border border-dashed py-6 text-center text-xs">
+            지금 due 가 있는 학생이 없습니다. 좋은 상태!
+          </div>
+        ) : (
+          <div>
+            <p className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+              정체 top 5 (전체 due 합산)
+            </p>
+            <div className="border-border overflow-hidden rounded-lg border">
+              <table className="w-full">
+                <thead className="bg-muted/60">
+                  <tr>
+                    <th className="text-muted-foreground px-3 py-2 text-left font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                      학생
+                    </th>
+                    <th className="text-muted-foreground px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                      총 due
+                    </th>
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                      객관식
+                    </th>
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                      빈칸
+                    </th>
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                      OX
+                    </th>
+                    <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
+                      조문
+                    </th>
+                    <th className="text-muted-foreground px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase">
+                      가장 오래
+                    </th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {srs.topStalled.map((s) => (
+                    <tr key={s.profileId} className="border-border/60 border-t">
+                      <td className="px-3 py-2 text-sm font-semibold">
+                        {s.name}
+                      </td>
+                      <td className="text-foreground px-2 py-2 text-right font-mono text-xs font-bold tabular-nums">
+                        {s.totalDue}
+                      </td>
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-xs tabular-nums sm:table-cell">
+                        {s.problemDue}
+                      </td>
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-xs tabular-nums sm:table-cell">
+                        {s.blankDueSets}
+                      </td>
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-xs tabular-nums sm:table-cell">
+                        {s.oxDue}
+                      </td>
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-xs tabular-nums sm:table-cell">
+                        {s.articleDue}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-2 py-2 text-right font-mono text-xs tabular-nums",
+                          s.oldestOverdueDays >= 14
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {s.oldestOverdueDays}d
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <Link
+                          to={`/admin/students/${s.profileId}`}
+                          className="text-primary inline-flex items-center gap-0.5 text-[11px] font-semibold hover:underline"
+                          viewTransition
+                        >
+                          상세 <ArrowRightIcon className="size-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        <p className="text-muted-foreground text-[11px]">
+          누적 실패(객관식+빈칸+OX 합산): {srs.totalLapses.toLocaleString("ko-KR")}회.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SrsAvgTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="border-border bg-card rounded-xl border p-3.5 shadow-sm">
+      <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+        {label}
+      </p>
+      <p className="text-foreground mt-1.5 text-xl font-extrabold tabular-nums">
+        {value.toFixed(1)}
+      </p>
+      <p className="text-muted-foreground mt-0.5 text-[10px]">학생당</p>
+    </div>
   );
 }
