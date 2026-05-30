@@ -4192,6 +4192,207 @@ export type Database = {
           },
         ]
       }
+      srs_items: {
+        Row: {
+          back: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          front: string
+          item_id: string
+          law_ref: string | null
+          source: string | null
+          source_id: string | null
+          source_type: string | null
+          subject: string
+          topic: string | null
+          type: Database["public"]["Enums"]["srs_item_type"]
+        }
+        Insert: {
+          back: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          front: string
+          item_id?: string
+          law_ref?: string | null
+          source?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          subject: string
+          topic?: string | null
+          type: Database["public"]["Enums"]["srs_item_type"]
+        }
+        Update: {
+          back?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          front?: string
+          item_id?: string
+          law_ref?: string | null
+          source?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          subject?: string
+          topic?: string | null
+          type?: Database["public"]["Enums"]["srs_item_type"]
+        }
+        Relationships: []
+      }
+      srs_review_logs: {
+        Row: {
+          cohort_id: string | null
+          elapsed_ms: number | null
+          grade: number
+          item_id: string
+          log_id: string
+          new_ef: number
+          new_interval: number
+          new_state: Database["public"]["Enums"]["srs_state"]
+          prev_ef: number
+          prev_interval: number
+          prev_state: Database["public"]["Enums"]["srs_state"]
+          reviewed_at: string
+          source_type: string | null
+          user_id: string
+        }
+        Insert: {
+          cohort_id?: string | null
+          elapsed_ms?: number | null
+          grade: number
+          item_id: string
+          log_id?: string
+          new_ef: number
+          new_interval: number
+          new_state: Database["public"]["Enums"]["srs_state"]
+          prev_ef: number
+          prev_interval: number
+          prev_state: Database["public"]["Enums"]["srs_state"]
+          reviewed_at?: string
+          source_type?: string | null
+          user_id: string
+        }
+        Update: {
+          cohort_id?: string | null
+          elapsed_ms?: number | null
+          grade?: number
+          item_id?: string
+          log_id?: string
+          new_ef?: number
+          new_interval?: number
+          new_state?: Database["public"]["Enums"]["srs_state"]
+          prev_ef?: number
+          prev_interval?: number
+          prev_state?: Database["public"]["Enums"]["srs_state"]
+          reviewed_at?: string
+          source_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "srs_review_logs_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "srs_review_logs_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "srs_items"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
+      srs_review_states: {
+        Row: {
+          cohort_id: string | null
+          created_at: string
+          due_date: string
+          ease_factor: number
+          interval_days: number
+          item_id: string
+          lapses: number
+          last_reviewed_at: string | null
+          repetitions: number
+          state: Database["public"]["Enums"]["srs_state"]
+          state_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cohort_id?: string | null
+          created_at?: string
+          due_date?: string
+          ease_factor?: number
+          interval_days?: number
+          item_id: string
+          lapses?: number
+          last_reviewed_at?: string | null
+          repetitions?: number
+          state?: Database["public"]["Enums"]["srs_state"]
+          state_id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cohort_id?: string | null
+          created_at?: string
+          due_date?: string
+          ease_factor?: number
+          interval_days?: number
+          item_id?: string
+          lapses?: number
+          last_reviewed_at?: string | null
+          repetitions?: number
+          state?: Database["public"]["Enums"]["srs_state"]
+          state_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "srs_review_states_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "srs_review_states_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "srs_items"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
+      srs_user_settings: {
+        Row: {
+          created_at: string
+          max_reviews_per_day: number
+          new_per_day: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          max_reviews_per_day?: number
+          new_per_day?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          max_reviews_per_day?: number
+          new_per_day?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       student_notes: {
         Row: {
           author_id: string
@@ -5740,6 +5941,24 @@ export type Database = {
           score: number
         }[]
       }
+      srs_record_review: {
+        Args: {
+          p_elapsed_ms?: number
+          p_grade: number
+          p_item_id: string
+          p_new_due: string
+          p_new_ef: number
+          p_new_interval: number
+          p_new_lapses: number
+          p_new_reps: number
+          p_new_state: Database["public"]["Enums"]["srs_state"]
+          p_prev_ef: number
+          p_prev_interval: number
+          p_prev_state: Database["public"]["Enums"]["srs_state"]
+          p_source_type?: string
+        }
+        Returns: undefined
+      }
       user_is_in_cohort: {
         Args: { p_cohort_id: string; p_user_id: string }
         Returns: boolean
@@ -5833,6 +6052,8 @@ export type Database = {
         | "answer_video"
       resource_target_type: "article" | "case" | "problem" | "science_section"
       science_subject: "physics" | "chemistry" | "biology" | "earth_science"
+      srs_item_type: "qa" | "cloze" | "ox" | "mcq"
+      srs_state: "new" | "learning" | "review" | "relearning"
       staff_notification_kind:
         | "subjective_review_request"
         | "qna_new_question"
@@ -6068,6 +6289,8 @@ export const Constants = {
       ],
       resource_target_type: ["article", "case", "problem", "science_section"],
       science_subject: ["physics", "chemistry", "biology", "earth_science"],
+      srs_item_type: ["qa", "cloze", "ox", "mcq"],
+      srs_state: ["new", "learning", "review", "relearning"],
       staff_notification_kind: [
         "subjective_review_request",
         "qna_new_question",

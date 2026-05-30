@@ -10,6 +10,10 @@
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "db:typegen": "dotenv -e .env -- supabase gen types typescript --project-id nctokynztakhjwezkckn > database.types.ts.tmp && mv database.types.ts.tmp database.types.ts",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "srs:seed": "dotenv -e .env -- tsx scripts/srs/seed-items.ts",
+    "srs:demo": "dotenv -e .env -- tsx scripts/srs/demo-fake-today.ts",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
     "format": "prettier --write \"app/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\""
@@ -114,9 +118,11 @@
     "supabase": "^2.95.3",
     "tailwindcss": "^4.0.17",
     "tesseract.js": "^7.0.0",
+    "tsx": "^4.22.3",
     "typescript": "^5.7.2",
     "vite": "^5.4.11",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.7"
   },
   "overrides": {
     "jsdom": "25.0.1"

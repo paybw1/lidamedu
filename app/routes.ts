@@ -43,6 +43,10 @@ export default [
       "/api/study/recommendation-prefs",
       "features/study/api/recommendation-prefs.tsx",
     ),
+    route("/api/srs/queue", "features/srs/api/queue.tsx"),
+    route("/api/srs/review", "features/srs/api/review.tsx"),
+    route("/api/srs/stats", "features/srs/api/stats.tsx"),
+    route("/api/srs/export", "features/srs/api/export.tsx"),
     route("/api/community/report", "features/community/api/report.tsx"),
     route(
       "/api/community/report-resolve",
@@ -187,6 +191,10 @@ export default [
     // Authenticated app pages
     layout("core/layouts/private.layout.tsx", { id: "private-app" }, [
       route("/logout", "features/auth/screens/logout.tsx"),
+
+      // SRS v2 — Anki 스타일 명시적 카드 SRS (학생 효과 테스트). 영역 게이트 없음(MVP).
+      route("/srs", "features/srs/screens/srs-review.tsx"),
+      route("/srs/stats", "features/srs/screens/srs-stats.tsx"),
 
       // feat-8-008 학습관리 영역 게이트 — area_study_mgmt 미보유 시 /pricing redirect.
       layout(
