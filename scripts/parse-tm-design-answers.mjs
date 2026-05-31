@@ -95,33 +95,46 @@ for (let i = 0; i < ansDoc.paragraphs.length; i++) {
     continue;
   }
 
-  // 보기 해설 — 한 paragraph 에 "① [○] body1 ② [×] body2 ③ [○] body3 …" 식으로
-  // 다중 보기가 합쳐진 경우(design 2025+ 해설) 도 split 하여 모두 흡수.
+  // 보기 해설 — 한 paragraph 에 다중 보기가 합쳐진 경우 split 하여 모두 흡수.
+  //  - design 2025+ : "① [○] body1 ② [×] body2 ③ [○] body3 …"
+  //  - design 2024- : "해설② body1 ③ body2 ④ body3 …"  ([○]/[×] 마커 없음)
   if (cur) {
     const stripped = text.replace(/^해설\s*/, "");
     if (/^[①②③④⑤]/.test(stripped)) {
-      const parts = stripped.split(/(?=[①②③④⑤]+\s*\[[○×]\])/);
+      // anchor: 다음 보기 마커 (마커 다음 공백 또는 [...]). 마커가 본문 중간 단어로 등장하지
+      // 않도록 마커 앞은 paragraph 시작이거나 공백, 마커 뒤는 공백/마침표/[/(.
+      const parts = stripped.split(
+        /(?=(?:^|\s)[①②③④⑤]+(?:\s|\[))/,
+      );
       let consumed = false;
+      let lastIdx = 0;
       for (const part of parts) {
-        const m = /^([①②③④⑤]+)\s*(?:\[([○×])\])?\s*([\s\S]*)$/.exec(part.trim());
+        const trimmed = part.trim();
+        const m = /^([①②③④⑤]+)\s*(?:\[([○×])\])?\s*([\s\S]*)$/.exec(trimmed);
         if (!m || !/[①②③④⑤]/.test(m[1])) continue;
         const body = m[3].trim();
+        if (!body) continue;
         for (const ch of m[1]) {
           const idx = CIRCLE_TO_NUM[ch];
-          if (idx) cur.choiceExplanations[idx] = body;
+          if (!idx || idx < 1 || idx > 5) continue;
+          // sequential 확인 — 1-5 순서 어긋나면 false positive 가능. 일단 적용.
+          cur.choiceExplanations[idx] = body;
+          lastIdx = idx;
         }
         consumed = true;
       }
+      void lastIdx;
       if (consumed) continue;
     }
     // 박스 ㉠~㉤
     if (/^[㉠㉡㉢㉣㉤]/.test(stripped)) {
-      const parts = stripped.split(/(?=[㉠㉡㉢㉣㉤]+\s*\[[○×]\])/);
+      const parts = stripped.split(/(?=(?:^|\s)[㉠㉡㉢㉣㉤]+(?:\s|\[))/);
       let consumed = false;
       for (const part of parts) {
         const m = /^([㉠㉡㉢㉣㉤]+)\s*(?:\[([○×])\])?\s*([\s\S]*)$/.exec(part.trim());
         if (!m) continue;
         const body = m[3].trim();
+        if (!body) continue;
         for (const ch of m[1]) cur.boxExplanations[ch] = body;
         consumed = true;
       }

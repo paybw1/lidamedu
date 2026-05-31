@@ -2267,3 +2267,47 @@ export async function listProblemYears(
   }
   return [...set].sort((a, b) => b - a);
 }
+
+// 인접 문제 (prev / next). 같은 law_id 안에서 (year DESC, problem_number ASC) 순서 기준.
+// 문제집 정렬: 최근 연도 먼저, 같은 연도면 문제번호 순.
+export interface AdjacentProblem {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  origin: Database["public"]["Enums"]["problem_origin"];
+}
+export async function getAdjacentProblems(
+  client: SupabaseClient<Database>,
+  problemId: string,
+): Promise<{ prev: AdjacentProblem | null; next: AdjacentProblem | null }> {
+  const { data: cur } = await client
+    .from("problems")
+    .select("law_id, year, problem_number")
+    .eq("problem_id", problemId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!cur || !cur.law_id) return { prev: null, next: null };
+  const { data: rows } = await client
+    .from("problems")
+    .select("problem_id, year, problem_number, origin")
+    .eq("law_id", cur.law_id)
+    .is("deleted_at", null)
+    .order("year", { ascending: false, nullsFirst: false })
+    .order("problem_number", { ascending: true, nullsFirst: false });
+  if (!rows) return { prev: null, next: null };
+  const idx = rows.findIndex((r) => r.problem_id === problemId);
+  if (idx < 0) return { prev: null, next: null };
+  const toAdj = (r: (typeof rows)[number] | undefined): AdjacentProblem | null =>
+    r
+      ? {
+          problemId: r.problem_id,
+          year: r.year,
+          problemNumber: r.problem_number,
+          origin: r.origin,
+        }
+      : null;
+  return {
+    prev: toAdj(rows[idx - 1]),
+    next: toAdj(rows[idx + 1]),
+  };
+}

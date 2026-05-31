@@ -56,8 +56,10 @@ import {
   deriveChoiceOxTruth,
 } from "~/features/problems/lib/auto-ox";
 import {
+  type AdjacentProblem,
   getCasesCitedByProblem,
   getChoiceLinkRefs,
+  getAdjacentProblems,
   getProblemById,
   getRelatedProblems,
   getSystematicNodeProblemSequence,
@@ -81,7 +83,6 @@ import { SubjectBookmarkRail } from "~/features/subjects/components/subject-book
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
-  EXAM_LABEL,
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
@@ -167,6 +168,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     citedCases,
     problemComments,
     staffRole,
+    adjacent,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -180,6 +182,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getCasesCitedByProblem(client, problem.problemId),
     listComments(client, "problem", problem.problemId),
     getStaffRole(client, user.id),
+    getAdjacentProblems(client, problem.problemId),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -346,6 +349,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     canEditComment: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
+    adjacent,
   };
 }
 
@@ -414,6 +418,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     canEditComment,
     isAdmin,
     currentUserId,
+    adjacent,
   } = loaderData;
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -784,11 +789,23 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
 
               {/* Problem header */}
               <div className="mb-6">
+                {/* Prev / Next — 조문·판례 뷰어와 동일 위치(헤더 첫 줄). */}
+                {adjacent && (adjacent.prev || adjacent.next) ? (
+                  <div className="border-border/40 mb-3 flex items-center justify-end gap-2 border-b pb-3">
+                    <ProblemPrevNextButton
+                      direction="prev"
+                      target={adjacent.prev}
+                      subjectSlug={subject.slug}
+                    />
+                    <ProblemPrevNextButton
+                      direction="next"
+                      target={adjacent.next}
+                      subjectSlug={subject.slug}
+                    />
+                  </div>
+                ) : null}
                 {/* Chips row */}
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                    {EXAM_LABEL[subject.exam]}
-                  </span>
                   <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
                     {ORIGIN_LABEL[problem.origin]}
                   </span>
@@ -2045,4 +2062,49 @@ function SavingStatus({
     );
   }
   return <span className="text-muted-foreground">미저장</span>;
+}
+
+// ── ProblemPrevNextButton ────────────────────────────────────────────────
+// 조문/판례 뷰어의 prev/next 버튼과 같은 톤. 같은 law 의 (year DESC, problem_number ASC)
+// 순서로 인접 문제로 이동. 없으면 disabled "처음"/"마지막".
+function ProblemPrevNextButton({
+  direction,
+  target,
+  subjectSlug,
+}: {
+  direction: "prev" | "next";
+  target: AdjacentProblem | null;
+  subjectSlug: string;
+}) {
+  const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
+  const ariaLabel = direction === "prev" ? "이전 문제" : "다음 문제";
+  if (!target) {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-label={ariaLabel}
+        className="border-border bg-background text-muted-foreground inline-flex h-9 cursor-not-allowed items-center gap-1 rounded-full border px-3 text-xs opacity-40"
+      >
+        {direction === "prev" ? <Icon className="size-3.5" /> : null}
+        <span>{direction === "prev" ? "처음" : "마지막"}</span>
+        {direction === "next" ? <Icon className="size-3.5" /> : null}
+      </button>
+    );
+  }
+  const label = target.year
+    ? `${target.year}년 #${target.problemNumber ?? "?"}`
+    : `#${target.problemNumber ?? "?"}`;
+  return (
+    <Link
+      to={`/subjects/${subjectSlug}/problems/${target.problemId}`}
+      viewTransition
+      aria-label={`${ariaLabel}: ${label}`}
+      className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors"
+    >
+      {direction === "prev" ? <Icon className="size-3.5 shrink-0" /> : null}
+      <span className="max-w-[140px] truncate">{label}</span>
+      {direction === "next" ? <Icon className="size-3.5 shrink-0" /> : null}
+    </Link>
+  );
 }
