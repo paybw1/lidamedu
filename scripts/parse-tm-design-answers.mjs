@@ -60,9 +60,11 @@ for (let i = 0; i < ansDoc.paragraphs.length; i++) {
   if (!text) continue;
 
   if (DESIGN_AREA_RE.test(text)) {
-    flushCur();
-    lawCode = "design";
-    round = null;
+    if (lawCode !== "design") {
+      flushCur();
+      lawCode = "design";
+      round = null;
+    }
     continue;
   }
   const mRound = ROUND_RE.exec(text);
@@ -93,33 +95,37 @@ for (let i = 0; i < ansDoc.paragraphs.length; i++) {
     continue;
   }
 
-  // 보기 해설
+  // 보기 해설 — 한 paragraph 에 "① [○] body1 ② [×] body2 ③ [○] body3 …" 식으로
+  // 다중 보기가 합쳐진 경우(design 2025+ 해설) 도 split 하여 모두 흡수.
   if (cur) {
-    const mExpl = EXPL_RE.exec(text);
-    if (mExpl && mExpl[1] && /[①②③④⑤]/.test(mExpl[1])) {
-      const judgement = mExpl[2] ?? "";
-      const body = mExpl[3].trim();
-      const compose = body || (judgement ? `[${judgement}]` : "");
-      // 복수 보기 (예 "②④⑤") — 같은 본문을 각 보기에 복제.
-      for (const ch of mExpl[1]) {
-        const idx = CIRCLE_TO_NUM[ch];
-        if (!idx) continue;
-        // judgement(○/×) 는 problem_choices.is_correct 로 이미 표시되므로 본문에서 제거 — UI 중복 방지.
-        const text = body;
-        cur.choiceExplanations[idx] = text;
+    const stripped = text.replace(/^해설\s*/, "");
+    if (/^[①②③④⑤]/.test(stripped)) {
+      const parts = stripped.split(/(?=[①②③④⑤]+\s*\[[○×]\])/);
+      let consumed = false;
+      for (const part of parts) {
+        const m = /^([①②③④⑤]+)\s*(?:\[([○×])\])?\s*([\s\S]*)$/.exec(part.trim());
+        if (!m || !/[①②③④⑤]/.test(m[1])) continue;
+        const body = m[3].trim();
+        for (const ch of m[1]) {
+          const idx = CIRCLE_TO_NUM[ch];
+          if (idx) cur.choiceExplanations[idx] = body;
+        }
+        consumed = true;
       }
-      continue;
+      if (consumed) continue;
     }
-    const mBox = BOX_EXPL_RE.exec(text);
-    if (mBox && mBox[1]) {
-      const judgement = mBox[2] ?? "";
-      const body = mBox[3].trim();
-      for (const ch of mBox[1]) {
-        // judgement(○/×) 는 problem_choices.is_correct 로 이미 표시되므로 본문에서 제거 — UI 중복 방지.
-        const text = body;
-        cur.boxExplanations[ch] = text;
+    // 박스 ㉠~㉤
+    if (/^[㉠㉡㉢㉣㉤]/.test(stripped)) {
+      const parts = stripped.split(/(?=[㉠㉡㉢㉣㉤]+\s*\[[○×]\])/);
+      let consumed = false;
+      for (const part of parts) {
+        const m = /^([㉠㉡㉢㉣㉤]+)\s*(?:\[([○×])\])?\s*([\s\S]*)$/.exec(part.trim());
+        if (!m) continue;
+        const body = m[3].trim();
+        for (const ch of m[1]) cur.boxExplanations[ch] = body;
+        consumed = true;
       }
-      continue;
+      if (consumed) continue;
     }
     // explanation 본문/연장
     if (cur.explanation) cur.explanation += " " + text;

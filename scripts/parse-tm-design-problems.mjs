@@ -60,12 +60,15 @@ for (let i = 0; i < paragraphs.length; i++) {
   const text = (p.text ?? "").trim();
   if (!text) continue;
 
-  // 디자인 영역 전환
+  // 디자인 영역 전환 — 첫 매칭만 처리. design 영역 안의 같은 헤더가 후속 paragraph 에
+  // 반복 등장하면서 round 가 reset 되던 버그(2023~2026 회차 누락) 차단.
   if (DESIGN_AREA_RE.test(text)) {
-    flush();
-    lawCode = "design";
-    round = null;
-    cur = null;
+    if (lawCode !== "design") {
+      flush();
+      lawCode = "design";
+      round = null;
+      cur = null;
+    }
     continue;
   }
 
