@@ -104,7 +104,8 @@ for (let i = 0; i < ansDoc.paragraphs.length; i++) {
       for (const ch of mExpl[1]) {
         const idx = CIRCLE_TO_NUM[ch];
         if (!idx) continue;
-        const text = judgement ? `[${judgement}] ${body}`.trim() : body;
+        // judgement(○/×) 는 problem_choices.is_correct 로 이미 표시되므로 본문에서 제거 — UI 중복 방지.
+        const text = body;
         cur.choiceExplanations[idx] = text;
       }
       continue;
@@ -114,7 +115,8 @@ for (let i = 0; i < ansDoc.paragraphs.length; i++) {
       const judgement = mBox[2] ?? "";
       const body = mBox[3].trim();
       for (const ch of mBox[1]) {
-        const text = judgement ? `[${judgement}] ${body}`.trim() : body;
+        // judgement(○/×) 는 problem_choices.is_correct 로 이미 표시되므로 본문에서 제거 — UI 중복 방지.
+        const text = body;
         cur.boxExplanations[ch] = text;
       }
       continue;
