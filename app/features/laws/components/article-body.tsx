@@ -1008,19 +1008,43 @@ function InlineNode({
           ({renderTextWithBlanks(node.text, 0)})
         </span>
       );
-    case "annotation":
+    case "annotation": {
       // 빈칸이 이 annotation 토큰을 덮고 있으면 [...] 라벨 대신 빈칸으로 렌더.
       if (tokenHasBlankHit(node.text.length)) {
         return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
       }
+      // 데이터 안 annotation text 가 이미 [...] 또는 (...) 로 감싸져 있으면 그대로 출력,
+      // 아니면 [...] 로 감싸 렌더. (과거 import 데이터 일관성 부족 — wrap 모양·unwrap 모양
+      // 양쪽이 섞여 있어 둘 다 자연스럽게 보여야 함.)
+      const t = node.text;
+      const alreadyWrapped =
+        (t.startsWith("[") && t.endsWith("]")) ||
+        (t.startsWith("(") && t.endsWith(")"));
       return (
         <span
           title="강사 보강 라벨"
           className="rounded bg-amber-100 [box-decoration-break:clone] px-1 text-[12px] font-medium text-amber-900 [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
         >
-          [{node.text}]
+          {alreadyWrapped ? t : `[${t}]`}
         </span>
       );
+    }
+    case "ordinance_ref": {
+      // 하위 조문 라벨 — annotation(노란)과 구분되는 인디고 chip + (text) 모양.
+      if (tokenHasBlankHit(node.text.length)) {
+        return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
+      }
+      const t = node.text;
+      const alreadyWrapped = t.startsWith("(") && t.endsWith(")");
+      return (
+        <span
+          title="하위 조문 라벨 (시행령·시행규칙·대통령령·총리령 등)"
+          className="rounded bg-indigo-100 [box-decoration-break:clone] px-1 text-[12px] font-medium text-indigo-900 [-webkit-box-decoration-break:clone] dark:bg-indigo-900/40 dark:text-indigo-200"
+        >
+          {alreadyWrapped ? t : `(${t})`}
+        </span>
+      );
+    }
     case "ref_article": {
       const t = node.target;
       const hash = articleAnchor(t);

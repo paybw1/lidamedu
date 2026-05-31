@@ -161,22 +161,22 @@ export function Card({
   style?: CSSProperties;
   hover?: boolean;
 }) {
-  const [hovered, setHovered] = useState(false);
+  // 디자인 시스템 v1 (Notion·Linear 톤) — 그림자 0, 얇은 단색 경계, hover 시 경계만 강조.
+  // 호출 시그니처 보존 (padding/hover/style props) — 6 섹션 카드 일괄 톤 통일.
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
-        background: T.paper,
-        borderRadius: 16,
-        boxShadow: hovered && hover ? T.elev8 : T.elev4,
+        background: "var(--card)",
+        color: "var(--card-foreground)",
+        borderRadius: 12,
+        border: "1px solid var(--border)",
         padding,
-        transition: `box-shadow 200ms ${T.ease}, transform 200ms ${T.ease}`,
-        transform: hovered && hover ? "translateY(-2px)" : "translateY(0)",
+        transition: "border-color 150ms ease",
         minWidth: 0,
         height: "100%",
         ...style,
       }}
+      className={hover ? "hover:border-primary/40" : undefined}
     >
       {children}
     </div>
@@ -185,20 +185,21 @@ export function Card({
 
 export function Eyebrow({
   children,
-  color = T.blue,
+  color,
   style,
 }: {
   children: ReactNode;
+  /** 색 override — 기본은 새 토큰 `--ink-faint` (회색 모노). */
   color?: string;
   style?: CSSProperties;
 }) {
   return (
     <div
       style={{
-        font: `700 11px/1 Pretendard, sans-serif`,
-        letterSpacing: "0.10em",
+        font: `600 11px/1 Pretendard, sans-serif`,
+        letterSpacing: "0.08em",
         textTransform: "uppercase",
-        color,
+        color: color ?? "var(--ink-faint)",
         ...style,
       }}
     >
@@ -220,11 +221,11 @@ export function SectionBand({
         display: "flex",
         alignItems: "baseline",
         justifyContent: "space-between",
-        marginTop: 24,
-        marginBottom: 4,
+        marginTop: 32, // 디자인 시스템 v1: 섹션 간 mt-8 = 32px
+        marginBottom: 12,
       }}
     >
-      <Eyebrow color={T.inkMute}>{eyebrow}</Eyebrow>
+      <Eyebrow>{eyebrow}</Eyebrow>
       {right ? <div>{right}</div> : null}
     </div>
   );
@@ -232,13 +233,17 @@ export function SectionBand({
 
 export type ChipTone = "neutral" | "blue" | "emerald" | "coral" | "amber" | "solid";
 
-const CHIP_TONES: Record<ChipTone, { bg: string; color: string; border: string }> = {
-  neutral: { bg: T.subtle, color: T.ink, border: T.lineSoft },
-  blue: { bg: T.blueSoft, color: T.blue, border: "transparent" },
-  emerald: { bg: T.emeraldSoft, color: T.emerald, border: "transparent" },
-  coral: { bg: T.coralSoft, color: T.coral, border: "transparent" },
-  amber: { bg: T.amberSoft, color: T.amberInk, border: "transparent" },
-  solid: { bg: T.blue, color: "#fff", border: "transparent" },
+// 디자인 시스템 v1 — Chip 의 톤별 Tailwind class. dark mode 자동 매핑.
+const CHIP_TONE_CLS: Record<ChipTone, string> = {
+  neutral: "bg-muted text-ink-soft border-border",
+  blue: "bg-secondary text-secondary-foreground border-secondary",
+  emerald:
+    "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900",
+  coral:
+    "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900",
+  amber:
+    "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900",
+  solid: "bg-primary text-primary-foreground border-primary",
 };
 
 export function Chip({
@@ -250,24 +255,10 @@ export function Chip({
   tone?: ChipTone;
   style?: CSSProperties;
 }) {
-  const t = CHIP_TONES[tone];
   return (
     <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        height: 22,
-        padding: "0 8px",
-        borderRadius: 9999,
-        background: t.bg,
-        color: t.color,
-        border: `1px solid ${t.border}`,
-        font: "600 11px/1 Pretendard, sans-serif",
-        letterSpacing: "-0.01em",
-        whiteSpace: "nowrap",
-        ...style,
-      }}
+      className={`${CHIP_TONE_CLS[tone]} inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none whitespace-nowrap`}
+      style={style}
     >
       {children}
     </span>
@@ -291,14 +282,20 @@ export function ProgressBar({
 }) {
   const [ref, inView] = useInView<HTMLDivElement>(0.2);
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
-  const bg = tone === "emerald" ? T.emerald : tone === "coral" ? T.coral : T.blue;
+  // 의미 토큰 — primary(blue)/positive(emerald)/danger(coral) 매핑. dark mode 자동.
+  const bg =
+    tone === "emerald"
+      ? "rgb(16 185 129)" // emerald-500
+      : tone === "coral"
+        ? "rgb(244 63 94)" // rose-500
+        : "var(--primary)";
   return (
     <div
       ref={ref}
       style={{
         height,
         borderRadius: 9999,
-        background: T.muted,
+        background: "var(--muted)",
         overflow: "hidden",
       }}
     >
@@ -319,12 +316,13 @@ export function Num({
   value,
   unit,
   size = 28,
-  weight = 800,
-  color = T.ink,
+  weight = 600,
+  color,
 }: {
   value: string | number;
   unit?: string;
   size?: number;
+  /** 기본 weight 600 — Notion·Linear 톤. 강조 시 호출에서 800 가능. */
   weight?: number;
   color?: string;
 }) {
@@ -334,7 +332,7 @@ export function Num({
         font: `${weight} ${size}px/1 Pretendard, sans-serif`,
         letterSpacing: "-0.02em",
         fontVariantNumeric: "tabular-nums",
-        color,
+        color: color ?? "var(--foreground)",
       }}
     >
       {value}
@@ -342,9 +340,9 @@ export function Num({
         <span
           style={{
             fontSize: Math.round(size * 0.55),
-            color: T.inkSoft,
+            color: "var(--ink-soft)",
             marginLeft: 2,
-            fontWeight: 600,
+            fontWeight: 500,
           }}
         >
           {unit}
@@ -364,8 +362,8 @@ export function Sub({
   return (
     <div
       style={{
-        font: "400 12px/1.5 Pretendard, sans-serif",
-        color: T.inkSoft,
+        font: "400 13px/1.5 Pretendard, sans-serif",
+        color: "var(--ink-soft)",
         letterSpacing: "-0.005em",
         ...style,
       }}
@@ -384,11 +382,12 @@ export function Title({
   size?: number;
   style?: CSSProperties;
 }) {
+  // Notion·Linear 톤: weight 700 → 600 절제.
   return (
     <div
       style={{
-        font: `700 ${size}px/1.3 Pretendard, sans-serif`,
-        color: T.ink,
+        font: `600 ${size}px/1.3 Pretendard, sans-serif`,
+        color: "var(--foreground)",
         letterSpacing: "-0.015em",
         ...style,
       }}

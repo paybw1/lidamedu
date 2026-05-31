@@ -13,6 +13,7 @@ import { Link, data, redirect } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import { Eyebrow, StudentShell } from "~/core/components/student";
 import {
   Table,
   TableBody,
@@ -53,7 +54,7 @@ import {
 } from "~/features/study/srs.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "SRS 복습 큐 | Lidam" },
+  { title: "오늘의 복습 | 리담" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -132,17 +133,17 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
     trend,
   } = loaderData;
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:px-6 md:py-12">
+    <StudentShell>
       <header className="mb-6">
-        <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-          <RepeatIcon className="size-3" /> SRS · 자동 복습
-        </p>
-        <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-          SRS 복습 큐
+        <Eyebrow>
+          <RepeatIcon className="mr-1 inline size-3" /> 자동 일정 복습
+        </Eyebrow>
+        <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+          복습
         </h1>
-        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-          틀리면 1일·맞으면 3·7·14·30·60일 간격으로 자동 큐잉. 시스템이 망각
-          곡선을 따라 지금 봐야 할 객관식 문제와 빈칸을 끌어옵니다.
+        <p className="text-ink-soft mt-2 text-sm leading-relaxed">
+          틀리면 1일·맞으면 3·7·14·30·60일 간격으로 자동 일정. 지금 봐야 할
+          객관식 문제와 빈칸을 시스템이 끌어옵니다.
         </p>
       </header>
 
@@ -154,29 +155,29 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         객관식 문제
       </p>
 
-      {/* KPI */}
+      {/* 지표 */}
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="오늘 due"
+          label="오늘 풀 것"
           value={counts.due}
           tone="rose"
         />
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="7일 내 도래"
+          label="7일 안 예정"
           value={counts.upcoming7d}
           tone="amber"
         />
         <KpiTile
           icon={<RepeatIcon className="size-3" />}
-          label="총 보유 항목"
+          label="총 복습 항목"
           value={counts.total}
           tone="sky"
         />
         <KpiTile
           icon={<HistoryIcon className="size-3" />}
-          label="누적 실패"
+          label="총 틀린 횟수"
           value={counts.lapsesSum}
           tone="neutral"
         />
@@ -189,13 +190,13 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <RepeatIcon className="mx-auto size-8 opacity-30" />
             <p className="text-sm font-medium">
               {counts.total === 0
-                ? "아직 SRS 항목이 없습니다."
-                : "지금 due 인 항목이 없습니다."}
+                ? "아직 복습 항목이 없습니다."
+                : "지금 풀어야 할 항목이 없습니다."}
             </p>
             <p className="text-xs">
               {counts.total === 0
-                ? "문제를 한 번 시도하면 자동으로 SRS 큐에 들어갑니다."
-                : `다음 도래까지 7일 내 ${counts.upcoming7d}건.`}
+                ? "문제를 한 번 풀면 자동으로 복습 일정에 들어갑니다."
+                : `다음 복습까지 7일 안 ${counts.upcoming7d}건.`}
             </p>
             <div className="flex justify-center gap-2 pt-2">
               <Button asChild size="sm" variant="outline">
@@ -214,7 +215,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
               지금 풀어야 할 문제 {items.length}건
             </p>
             <p className="text-muted-foreground text-xs">
-              가장 오래 미룬 항목 먼저. 클릭해 풀면 자동으로 SRS 상태 갱신.
+              가장 오래 미룬 항목 먼저. 클릭해 풀면 다음 복습 일정이 자동으로
+              갱신됩니다.
             </p>
           </CardHeader>
           <CardContent className="pb-3">
@@ -227,8 +229,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                     <TableHead className="w-[10%] text-right">
                       간격
                     </TableHead>
-                    <TableHead className="w-[10%] text-right">실패</TableHead>
-                    <TableHead className="w-[15%] text-right">due</TableHead>
+                    <TableHead className="w-[10%] text-right">틀림</TableHead>
+                    <TableHead className="w-[15%] text-right">예정일</TableHead>
                     <TableHead className="w-[15%]" />
                   </TableRow>
                 </TableHeader>
@@ -286,7 +288,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
-      {/* ── 빈칸 SRS 섹션 ─────────────────────────────────────────── */}
+      {/* ── 빈칸 학습 섹션 ─────────────────────────────────────────── */}
       <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
         빈칸 학습
       </p>
@@ -294,25 +296,25 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="due 세트"
+          label="오늘 풀 세트"
           value={blankCounts.dueSets}
           tone="rose"
         />
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="due 빈칸"
+          label="오늘 풀 빈칸"
           value={blankCounts.dueBlanks}
           tone="amber"
         />
         <KpiTile
           icon={<RepeatIcon className="size-3" />}
-          label="총 보유 빈칸"
+          label="총 빈칸"
           value={blankCounts.totalBlanks}
           tone="sky"
         />
         <KpiTile
           icon={<HistoryIcon className="size-3" />}
-          label="누적 실패"
+          label="총 틀린 횟수"
           value={blankCounts.lapsesSum}
           tone="neutral"
         />
@@ -324,8 +326,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <RepeatIcon className="mx-auto size-6 opacity-30" />
             <p>
               {blankCounts.totalBlanks === 0
-                ? "아직 빈칸 SRS 항목이 없습니다. 빈칸 세트를 한 번 시도하면 자동으로 큐에 들어갑니다."
-                : `지금 due 인 빈칸이 없습니다. 7일 내 ${blankCounts.upcoming7dSets} 세트 도래.`}
+                ? "아직 복습 일정에 들어간 빈칸이 없습니다. 빈칸 세트를 한 번 풀면 자동으로 일정이 잡힙니다."
+                : `지금 풀 빈칸이 없습니다. 7일 안 ${blankCounts.upcoming7dSets}세트 예정.`}
             </p>
           </CardContent>
         </Card>
@@ -343,7 +345,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
-      {/* ── OX SRS 섹션 ─────────────────────────────────────────── */}
+      {/* ── OX 채점 섹션 ─────────────────────────────────────────── */}
       <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
         OX 채점
       </p>
@@ -351,25 +353,25 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="due ref"
+          label="오늘 풀 항목"
           value={oxCounts.due}
           tone="rose"
         />
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="7일 내 도래"
+          label="7일 안 예정"
           value={oxCounts.upcoming7d}
           tone="amber"
         />
         <KpiTile
           icon={<RepeatIcon className="size-3" />}
-          label="총 보유 ref"
+          label="총 OX 항목"
           value={oxCounts.total}
           tone="sky"
         />
         <KpiTile
           icon={<HistoryIcon className="size-3" />}
-          label="누적 실패"
+          label="총 틀린 횟수"
           value={oxCounts.lapsesSum}
           tone="neutral"
         />
@@ -381,8 +383,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <RepeatIcon className="mx-auto size-6 opacity-30" />
             <p>
               {oxCounts.total === 0
-                ? "아직 OX SRS 항목이 없습니다. OX 모드에서 선택지/박스를 풀면 자동 큐잉됩니다."
-                : `지금 due 인 OX ref 가 없습니다. 7일 내 ${oxCounts.upcoming7d}건 도래.`}
+                ? "아직 복습 일정에 들어간 OX 항목이 없습니다. OX 모드에서 선택지/박스를 풀면 자동으로 일정이 잡힙니다."
+                : `지금 풀 OX 항목이 없습니다. 7일 안 ${oxCounts.upcoming7d}건 예정.`}
             </p>
           </CardContent>
         </Card>
@@ -390,10 +392,10 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         <Card>
           <CardHeader className="pb-3">
             <p className="text-foreground text-sm font-bold">
-              지금 풀어야 할 OX ref {oxItems.length}건
+              지금 풀어야 할 OX 항목 {oxItems.length}건
             </p>
             <p className="text-muted-foreground text-xs">
-              선택지·박스 항목 단위로 복습. 부모 문제로 진입해 O/X 다시 채점.
+              선택지·박스 항목 단위로 복습. 부모 문제로 들어가 O/X 다시 채점하세요.
             </p>
           </CardHeader>
           <CardContent className="pb-3">
@@ -410,13 +412,13 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="due 조문"
+          label="오늘 다시 볼 조문"
           value={articleCounts.due}
           tone="rose"
         />
         <KpiTile
           icon={<CalendarClockIcon className="size-3" />}
-          label="7일 내 도래"
+          label="7일 안 예정"
           value={articleCounts.upcoming7d}
           tone="amber"
         />
@@ -435,7 +437,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <p>
               {articleCounts.totalVisitedArticles === 0
                 ? "아직 방문한 조문이 없습니다. 조문 한 번 열면 자동으로 복습 일정에 들어갑니다."
-                : `복습 도래 조문이 없습니다. 7일 내 ${articleCounts.upcoming7d}건 예정.`}
+                : `다시 볼 조문이 없습니다. 7일 안 ${articleCounts.upcoming7d}건 예정.`}
             </p>
           </CardContent>
         </Card>
@@ -446,8 +448,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
               다시 정독할 조문 {articleItems.length}건
             </p>
             <p className="text-muted-foreground text-xs">
-              방문 횟수에 따라 7·14·30·60일 간격. 정답/오답 채점이 없어 단순
-              방문 알림 모델.
+              방문 횟수에 따라 7·14·30·60일 간격으로 다시 알림이 옵니다. 채점은
+              없고 단순히 다시 한 번 읽어보라는 알림이에요.
             </p>
           </CardHeader>
           <CardContent className="pb-3">
@@ -462,19 +464,19 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       ) : (
         <Card className="mt-8 border-dashed">
           <CardContent className="text-muted-foreground py-6 text-center text-xs">
-            합격자 SRS 비교는 준비 중입니다. 실 합격자 데이터가 누적되면 자동
-            활성화됩니다.
+            합격자 비교는 준비 중입니다. 합격자 데이터가 쌓이면 자동으로
+            열립니다.
           </CardContent>
         </Card>
       )}
 
-      {/* 알고리즘 안내 */}
+      {/* 일정 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
-        간격 알고리즘: 정답 시 1 → 3 → 7 → 14 → 30 → 60일(최대 90일).
-        실패 시 즉시 1일로 리셋 + 어려움 계수(ease) 0.2 감소(최저 1.3).
-        객관식·빈칸·OX 동일 알고리즘. 조문 정독은 방문 횟수 기반 7·14·30·60일.
+        복습 일정: 맞히면 1 → 3 → 7 → 14 → 30 → 60일(최대 90일) 간격으로
+        벌어집니다. 틀리면 다음 날 다시 풀게 잡힙니다. 객관식·빈칸·OX 모두 같은
+        방식이고, 조문 정독은 방문 횟수에 따라 7·14·30·60일.
       </p>
-    </div>
+    </StudentShell>
   );
 }
 
@@ -491,14 +493,14 @@ function SrsTrendChart({ trend }: { trend: SrsTrend }) {
       <CardHeader className="pb-3">
         <div className="flex items-baseline justify-between">
           <h2 className="text-base font-bold tracking-tight">
-            SRS 처리 추이 — 최근 {trend.daysBack}일
+            복습 추이 — 최근 {trend.daysBack}일
           </h2>
           <p className="text-muted-foreground text-xs">
             7일 평균: 신규{" "}
             <span className="text-foreground font-bold">
               {trend.avg7dAdded.toFixed(1)}
             </span>
-            /일 · 재처리{" "}
+            /일 · 다시 푼 항목{" "}
             <span className="text-foreground font-bold">
               {trend.avg7dReviewed.toFixed(1)}
             </span>
@@ -506,8 +508,8 @@ function SrsTrendChart({ trend }: { trend: SrsTrend }) {
           </p>
         </div>
         <p className="text-muted-foreground text-xs">
-          매일 SRS 큐에 새로 추가된 항목과 재처리된 항목. 재처리가 신규를 따라잡지
-          못하면 큐가 누적됩니다.
+          매일 복습 일정에 새로 들어온 항목과 다시 푼 항목입니다. 다시 푸는
+          속도가 새로 들어오는 속도를 못 따라가면 밀린 항목이 쌓여요.
         </p>
       </CardHeader>
       <CardContent className="pb-4">
@@ -546,11 +548,11 @@ function SrsTrendChart({ trend }: { trend: SrsTrend }) {
           <div className="flex items-center gap-3 text-[11px]">
             <span className="inline-flex items-center gap-1">
               <span className="inline-block size-2 rounded-sm bg-rose-400" />
-              신규 (큐 추가)
+              새로 들어옴
             </span>
             <span className="inline-flex items-center gap-1">
               <span className="inline-block size-2 rounded-sm bg-emerald-500" />
-              재처리 (복습)
+              다시 푼 것
             </span>
           </div>
           <span>{trend.days[trend.days.length - 1]?.date}</span>
@@ -569,8 +571,8 @@ function PasserBenchmarkSection({
     return (
       <Card className="mt-8 border-dashed">
         <CardContent className="text-muted-foreground py-6 text-center text-xs">
-          합격자 표본 부족 — 분석 동의한 합격자 ≥ 3 명이 있을 때 본인 SRS 큐와
-          평균 비교가 활성화됩니다 (현재 {benchmark.sampleSize}명).
+          합격자 표본이 부족합니다. 분석에 동의한 합격자가 3명 이상 모이면 본인
+          복습 현황과 평균을 비교해 보여드려요 (현재 {benchmark.sampleSize}명).
         </CardContent>
       </Card>
     );
@@ -582,17 +584,17 @@ function PasserBenchmarkSection({
           합격자 평균 vs 본인
         </h2>
         <p className="text-muted-foreground text-xs">
-          분석 동의 합격자 {benchmark.sampleSize}명 표본. SRS 큐 보유 평균과 본인
-          비교. 작을수록 잘 처리 중.
+          분석에 동의한 합격자 {benchmark.sampleSize}명 표본. 복습 항목 평균과
+          본인 비교. 숫자가 작을수록 잘 따라가고 있다는 뜻.
         </p>
       </CardHeader>
       <CardContent className="space-y-2 pb-4">
-        <BenchmarkRow label="객관식 due" metric={benchmark.problemDue} />
-        <BenchmarkRow label="빈칸 due (세트)" metric={benchmark.blankDueSets} />
-        <BenchmarkRow label="OX due" metric={benchmark.oxDue} />
-        <BenchmarkRow label="조문 복습 due" metric={benchmark.articleDue} />
+        <BenchmarkRow label="객관식 풀 것" metric={benchmark.problemDue} />
+        <BenchmarkRow label="빈칸 풀 세트" metric={benchmark.blankDueSets} />
+        <BenchmarkRow label="OX 풀 항목" metric={benchmark.oxDue} />
+        <BenchmarkRow label="조문 다시 볼 것" metric={benchmark.articleDue} />
         <div className="border-border/40 mt-3 flex items-center justify-between gap-2 border-t pt-2 text-[11px]">
-          <span className="text-muted-foreground">누적 실패 합산</span>
+          <span className="text-muted-foreground">총 틀린 횟수</span>
           <span className="font-mono tabular-nums">
             합격자 평균 {benchmark.totalLapsesAvg.toFixed(1)}회 / 본인{" "}
             {benchmark.userTotalLapses.toLocaleString("ko-KR")}회
@@ -647,7 +649,7 @@ function ArticleReviewTable({ items }: { items: DueArticleReviewItem[] }) {
             <TableHead className="w-[10%]">과목</TableHead>
             <TableHead className="w-[10%] text-right">방문</TableHead>
             <TableHead className="w-[10%] text-right">간격</TableHead>
-            <TableHead className="w-[15%] text-right">last visit</TableHead>
+            <TableHead className="w-[15%] text-right">마지막 방문</TableHead>
             <TableHead className="w-[15%]" />
           </TableRow>
         </TableHeader>
@@ -701,8 +703,8 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
             <TableHead className="w-[42%]">선택지·박스 항목</TableHead>
             <TableHead className="w-[10%]">유형</TableHead>
             <TableHead className="w-[10%]">과목</TableHead>
-            <TableHead className="w-[8%] text-right">실패</TableHead>
-            <TableHead className="w-[15%] text-right">due</TableHead>
+            <TableHead className="w-[8%] text-right">틀림</TableHead>
+            <TableHead className="w-[15%] text-right">예정일</TableHead>
             <TableHead className="w-[15%]" />
           </TableRow>
         </TableHeader>
@@ -766,9 +768,9 @@ function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
           <TableRow>
             <TableHead className="w-[40%]">조문</TableHead>
             <TableHead className="w-[10%]">과목</TableHead>
-            <TableHead className="w-[10%] text-right">due 빈칸</TableHead>
+            <TableHead className="w-[10%] text-right">오늘 풀 빈칸</TableHead>
             <TableHead className="w-[10%] text-right">총 빈칸</TableHead>
-            <TableHead className="w-[15%] text-right">due</TableHead>
+            <TableHead className="w-[15%] text-right">예정일</TableHead>
             <TableHead className="w-[15%]" />
           </TableRow>
         </TableHeader>

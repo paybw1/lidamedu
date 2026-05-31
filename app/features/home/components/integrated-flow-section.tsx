@@ -154,8 +154,8 @@ export function IntegratedFlowSection() {
             letterSpacing: "-0.01em",
           }}
         >
-          polymorphic 메모 · 즐겨찾기 · 하이라이트 — 어느 화면에서든 본인의 노트가
-          따라옵니다.
+          메모 · 즐겨찾기 · 하이라이트 — 조문·판례·문제 어느 화면에서든
+          본인의 노트가 그대로 따라옵니다.
         </p>
       </Reveal>
 

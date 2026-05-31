@@ -32,6 +32,14 @@ const inlineAnnotationSchema = z.object({
   text: z.string(),
 });
 
+// 하위 조문 라벨 — 시행령·시행규칙·대통령령·총리령 등 위임 조문 참조.
+// annotation(강사 강조 라벨)과 시각적·의미적으로 구분돼야 한다.
+// 화면 표시: 인디고 chip + (text) 모양. text 는 wrap 없이 plain ("시행령 제5조").
+const inlineOrdinanceRefSchema = z.object({
+  type: z.literal("ordinance_ref"),
+  text: z.string(),
+});
+
 const inlineRefArticleSchema = z.object({
   type: z.literal("ref_article"),
   raw: z.string(),
@@ -60,6 +68,7 @@ const inlineSchema = z.discriminatedUnion("type", [
   inlineUnderlineSchema,
   inlineSubtitleSchema,
   inlineAnnotationSchema,
+  inlineOrdinanceRefSchema,
   inlineRefArticleSchema,
   inlineRefLawSchema,
   inlineAmendmentNoteSchema,

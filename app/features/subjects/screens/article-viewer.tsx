@@ -32,6 +32,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/core/components/ui/sheet";
+import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
@@ -916,7 +917,7 @@ function ArticleViewerInner({
                   {canEdit ? (
                     <>
                       <Button
-                        variant={editMode ? "default" : "ghost"}
+                        variant={editMode ? "default" : "outline"}
                         size="sm"
                         onClick={() => {
                           setEditMode((v) => !v);
@@ -925,15 +926,20 @@ function ArticleViewerInner({
                             setSubtitlesOnly(false);
                           }
                         }}
-                        className="h-7 gap-1.5 rounded-full px-3 text-xs"
-                        title={`${staffRole === "admin" ? "원장" : "강사"} 권한 — 새 개정으로 저장`}
+                        className={cn(
+                          "h-8 gap-1.5 rounded-full px-3.5 text-xs font-semibold",
+                          editMode
+                            ? ""
+                            : "border-amber-400/70 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60",
+                        )}
+                        title={`${staffRole === "admin" ? "원장" : "강사"} 권한 — 본문을 수정하면 새 개정으로 저장됩니다`}
                       >
                         {editMode ? (
                           <XIcon className="size-3.5" />
                         ) : (
                           <PencilIcon className="size-3.5" />
                         )}
-                        {editMode ? "편집 종료" : "편집"}
+                        {editMode ? "편집 종료" : "조문 수정"}
                       </Button>
                       <blankSetFetcher.Form
                         method="post"

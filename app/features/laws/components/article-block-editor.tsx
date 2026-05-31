@@ -600,12 +600,12 @@ function MarkerTextarea({
       if (e.key === "u" || e.key === "U") {
         e.preventDefault();
         wrap("__", "__");
-      } else if (e.key === "b" || e.key === "B") {
-        e.preventDefault();
-        wrap("[", "]");
       } else if (e.key === "i" || e.key === "I") {
         e.preventDefault();
         wrap("((", "))");
+      } else if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        wrap("{{", "}}");
       }
     },
     [wrap],
@@ -622,22 +622,23 @@ function MarkerTextarea({
           tone="amber"
         />
         <ToolbarButton
-          onClick={() => wrap("[", "]")}
-          icon={<HighlighterIcon className="size-3" />}
-          label="강조 라벨"
-          shortcut="⌘B"
-          tone="emerald"
-        />
-        <ToolbarButton
           onClick={() => wrap("((", "))")}
           icon={<TagIcon className="size-3" />}
           label="인라인 소제목"
           shortcut="⌘I"
           tone="primary"
         />
+        <ToolbarButton
+          onClick={() => wrap("{{", "}}")}
+          icon={<HighlighterIcon className="size-3" />}
+          label="하위 조문"
+          shortcut="⌘L"
+          tone="indigo"
+        />
         <span className="text-muted-foreground/70 ml-2 text-[10px]">
           텍스트 선택 후 클릭 — 마커: <code>__밑줄__</code>{" "}
-          <code>[강조]</code> <code>((소제목))</code>
+          <code>((소제목))</code> <code>{`{{`}시행령 제5조{`}}`}</code> · 강조
+          라벨은 본문에 <code>[강조]</code> 그대로 입력
         </span>
       </div>
       <textarea
@@ -664,14 +665,16 @@ function ToolbarButton({
   icon: React.ReactNode;
   label: string;
   shortcut: string;
-  tone: "amber" | "emerald" | "primary";
+  tone: "amber" | "emerald" | "primary" | "indigo";
 }) {
   const toneCls =
     tone === "amber"
       ? "hover:bg-amber-100 dark:hover:bg-amber-900/40"
       : tone === "emerald"
         ? "hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
-        : "hover:bg-primary/10";
+        : tone === "indigo"
+          ? "hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+          : "hover:bg-primary/10";
   return (
     <button
       type="button"

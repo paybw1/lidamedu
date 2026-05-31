@@ -58,6 +58,7 @@ import {
   DashHeader,
   DashKpiStrip,
 } from "~/features/dashboard/components/dash-header";
+import { DashKpiStripV2 } from "~/features/dashboard/components/dash-kpi-strip-v2";
 import {
   PendingAssignmentsCard,
   RecommendedActionsCard,
@@ -613,21 +614,25 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             }}
           />
 
-          {/* 최상단 — 오늘로 가는 입구. 통계가 아니라 오늘 할 일 요약 + 큰 진입 버튼. */}
-          <SectionBand eyebrow="TODAY · 오늘로 가는 입구" />
-          <TodayEntryCard summary={todaySummary} />
+          {/* 최상단 — 오늘로 가는 입구. 통계가 아니라 오늘 할 일 요약 + 큰 진입 버튼.
+             ★ Notion·Linear 톤 시범 리디자인 — 학생 공용 프리미티브 사용. */}
+          <div className="mb-8">
+            <TodayEntryCard summary={todaySummary} />
+          </div>
 
           {/* 그 아래 — 내 위치 조망 (누적·추세). KPI 부터 시작. */}
-          <DashKpiStrip
-            data={{
-              studyHours: kpis.totalProblemTimeMs / HOUR_MS,
-              problems: kpis.totalProblemsAttempted,
-              accuracy: kpis.overallAccuracyPct,
-              deltaHours: kpis.last7d.totalProblemTimeMs / HOUR_MS,
-              deltaProblems: kpis.last7d.totalProblemsAttempted,
-              accuracyBase: kpis.totalProblemsAttempted,
-            }}
-          />
+          <div className="mb-6">
+            <DashKpiStripV2
+              data={{
+                studyHours: kpis.totalProblemTimeMs / HOUR_MS,
+                problems: kpis.totalProblemsAttempted,
+                accuracy: kpis.overallAccuracyPct,
+                deltaHours: kpis.last7d.totalProblemTimeMs / HOUR_MS,
+                deltaProblems: kpis.last7d.totalProblemsAttempted,
+                accuracyBase: kpis.totalProblemsAttempted,
+              }}
+            />
+          </div>
 
           {/* RecommendedActionsCard / WeekTrackCard / PendingAssignmentsCard 는
              [오늘] 본문 (/study/today) 에서 단일 흐름으로 표시. 대시보드 입구는

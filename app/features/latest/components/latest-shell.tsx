@@ -13,6 +13,7 @@ import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
+import { SectionTabs } from "~/core/components/student";
 
 // 6 카테고리 — 랜딩 LatestSection 과 색 계열 일관 (brief §4.3).
 export type LatestCategory =
@@ -78,37 +79,23 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-// 6 카테고리 탭 strip — 형제 화면 단절 해소 (brief §5.2).
-function LatestTabs({ active }: { active: LatestCategory }) {
+// 학습정보 탭 — 공용 `SectionTabs` 프리미티브 사용.
+// 학습관리/지원 3 영역과 동일 디자인 톤. 카테고리 dot 색은 SectionTabs 의 dotClass prop 으로.
+// `active` 인자는 호환성 유지 (SectionTabs 가 path 기반 자동 매칭).
+function LatestTabs({ active: _active }: { active: LatestCategory }) {
   return (
-    <nav
-      aria-label="학습정보"
-      className="border-border bg-muted/50 flex w-max max-w-full gap-1 overflow-x-auto rounded-full border p-1"
-    >
-      {CATEGORIES.map((c) => {
-        const isActive = c.id === active;
-        return (
-          <Link
-            key={c.id}
-            to={c.to}
-            viewTransition
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] whitespace-nowrap transition-colors",
-              isActive
-                ? "bg-background text-primary font-bold shadow-sm"
-                : "text-foreground/70 hover:text-foreground font-medium",
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn("size-2 rounded-full", c.dotClass)}
-            />
-            <span>{c.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+    <SectionTabs
+      ariaLabel="학습정보"
+      sticky={false}
+      items={CATEGORIES.map((c) => ({
+        id: c.id,
+        to: c.to,
+        label: c.label,
+        dotClass: c.dotClass,
+        // mcq 는 ?kind=past_exam 쿼리가 to 에 들어 있어 path 매칭이 안 됨 — 명시 match.
+        match: c.id === "mcq" ? ["/latest/mcq"] : [c.to],
+      }))}
+    />
   );
 }
 

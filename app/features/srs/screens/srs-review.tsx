@@ -15,14 +15,26 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, redirect, useFetcher } from "react-router";
 
+import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
+
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getReviewQueue } from "~/features/srs/srs.server";
+import {
+  LAW_SUBJECTS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
+
+function subjectLabel(slug: string): string {
+  return (
+    LAW_SUBJECTS[slug as LawSubjectSlug]?.shortName ?? slug
+  );
+}
 
 export const meta: Route.MetaFunction = () => [
-  { title: "SRS 복습 | Lidam" },
+  { title: "카드 암기 | 리담" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -47,25 +59,25 @@ interface GradeButtonSpec {
 const GRADES: GradeButtonSpec[] = [
   {
     grade: 0,
-    label: "다시 (Again)",
+    label: "다시 외우기",
     shortcut: "1",
     tone: "bg-rose-500 hover:bg-rose-600 text-white",
   },
   {
     grade: 3,
-    label: "어려움 (Hard)",
+    label: "어려웠음",
     shortcut: "2",
     tone: "bg-amber-500 hover:bg-amber-600 text-white",
   },
   {
     grade: 4,
-    label: "보통 (Good)",
+    label: "보통",
     shortcut: "3",
     tone: "bg-emerald-500 hover:bg-emerald-600 text-white",
   },
   {
     grade: 5,
-    label: "쉬움 (Easy)",
+    label: "쉬웠음",
     shortcut: "4",
     tone: "bg-sky-500 hover:bg-sky-600 text-white",
   },
@@ -140,16 +152,18 @@ export default function SrsReview({ loaderData }: Route.ComponentProps) {
   }
 
   return (
+    <>
+      <StudyMgmtTabs />
     <div className="mx-auto w-full max-w-screen-md px-4 py-8 md:py-12">
       {/* 헤더 */}
       <header className="mb-5 flex items-baseline justify-between gap-3">
         <div>
           <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
             <SparklesIcon className="size-3" />
-            SRS v2 · {today}
+            카드 암기 · {today}
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-            오늘의 복습
+            오늘의 카드
           </h1>
         </div>
         <Link
@@ -160,18 +174,18 @@ export default function SrsReview({ loaderData }: Route.ComponentProps) {
         </Link>
       </header>
 
-      {/* 큐 카운터 */}
+      {/* 카드 카운터 */}
       <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Counter label="due" value={dueCount} tone="rose" />
+        <Counter label="오늘 복습" value={dueCount} tone="rose" />
         <Counter
-          label="new"
+          label="새 카드"
           value={newCount}
           tone="sky"
           hint={`오늘 ${newIntroducedToday}/${settings.newPerDay}`}
         />
         <Counter label="진행" value={`${progress.done}/${progress.total}`} tone="neutral" />
         <Counter
-          label="잔여"
+          label="남은 카드"
           value={Math.max(0, progress.total - progress.done)}
           tone="amber"
         />
@@ -199,6 +213,7 @@ export default function SrsReview({ loaderData }: Route.ComponentProps) {
         </p>
       ) : null}
     </div>
+    </>
   );
 }
 
@@ -258,24 +273,21 @@ function CardArea({
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="bg-primary/10 text-primary inline-flex h-5 items-center rounded-full px-2 font-mono text-[10px] font-bold tracking-[0.04em] uppercase">
-            {item.subject}
-          </span>
-          <span className="text-muted-foreground font-mono text-[10px] tracking-[0.04em] uppercase">
-            {item.type}
+            {subjectLabel(item.subject)}
           </span>
           {item.topic ? (
             <span className="text-muted-foreground text-[11px]">
-              · {item.topic}
+              {item.topic}
             </span>
           ) : null}
           {item.kind === "new" ? (
             <span className="ml-auto bg-sky-500/15 text-sky-700 dark:text-sky-300 inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold">
-              NEW
+              새 카드
             </span>
           ) : (
             <span className="text-muted-foreground ml-auto inline-flex items-center gap-1 text-[10px] tabular-nums">
               <ClockIcon className="size-2.5" />
-              {item.intervalDays}d
+              {item.intervalDays}일 간격
             </span>
           )}
         </div>
@@ -327,7 +339,7 @@ function CardArea({
         ) : (
           <div className="mt-4">
             <p className="text-muted-foreground mb-2 text-center font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
-              회상 품질 평가
+              얼마나 잘 떠올렸나요?
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {GRADES.map((g) => (
@@ -386,10 +398,10 @@ function EmptyCard() {
     <Card className="border-dashed">
       <CardContent className="text-muted-foreground space-y-2 py-10 text-center text-sm">
         <SparklesIcon className="mx-auto size-8 opacity-30" />
-        <p>오늘 복습할 카드가 없습니다.</p>
+        <p>오늘 외울 카드가 없습니다.</p>
         <p className="text-xs">
-          시드 스크립트로 카드를 추가하거나, 내일 다시 들어와 due 항목을
-          확인하세요.
+          내일 다시 들어오면 일정에 따라 새 카드와 복습 카드가 자동으로
+          올라옵니다.
         </p>
       </CardContent>
     </Card>

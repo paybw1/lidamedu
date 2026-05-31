@@ -18,9 +18,10 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStats } from "~/features/srs/srs.server";
+import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "SRS 통계 | Lidam" },
+  { title: "카드 암기 통계 | 리담" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -39,14 +40,16 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
   const recent7Reviewed = byDay.slice(-7).reduce((s, d) => s + d.reviewed, 0);
 
   return (
+    <>
+      <StudyMgmtTabs />
     <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:py-12">
       <header className="mb-6 flex items-baseline justify-between">
         <div>
           <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-            <TrendingUpIcon className="size-3" /> SRS v2 · 통계
+            <TrendingUpIcon className="size-3" /> 카드 암기 · 통계
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-            학습 진척도
+            카드 암기 진척도
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -57,7 +60,7 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
           </Button>
           <Button asChild size="sm">
             <Link to="/srs">
-              복습 시작 <ArrowRightIcon className="size-3.5" />
+              카드 암기 시작 <ArrowRightIcon className="size-3.5" />
             </Link>
           </Button>
         </div>
@@ -67,7 +70,7 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Kpi
           icon={<LayersIcon className="size-3" />}
-          label="총 보유 항목"
+          label="총 카드"
           value={totalItems}
           tone="neutral"
         />
@@ -76,18 +79,18 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
           label="누적 복습"
           value={totalReviewed}
           tone="sky"
-          hint={`최근 7일 ${recent7Reviewed}`}
+          hint={`최근 7일 ${recent7Reviewed}회`}
         />
         <Kpi
           icon={<TrendingUpIcon className="size-3" />}
-          label="유지율 (q≥3)"
+          label="기억 유지율"
           value={`${retentionPct}%`}
           tone={retentionPct >= 80 ? "emerald" : retentionPct >= 60 ? "amber" : "rose"}
-          hint={`성공 ${totalSuccess} / 전체 ${totalReviewed}`}
+          hint={`정답 ${totalSuccess}회 / 전체 ${totalReviewed}회`}
         />
         <Kpi
           icon={<CalendarClockIcon className="size-3" />}
-          label="오늘 due"
+          label="오늘 복습"
           value={forecast7d[0]?.dueCount ?? 0}
           tone={forecast7d[0]?.dueCount ? "rose" : "neutral"}
         />
@@ -100,7 +103,7 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
             최근 30일 복습량
           </h2>
           <p className="text-muted-foreground text-xs">
-            회색 = 전체 복습, 에메랄드 = 성공(q≥3).
+            회색 = 전체 복습, 초록 = 잘 떠올린 카드(보통·쉬웠음).
           </p>
         </CardHeader>
         <CardContent className="pb-4">
@@ -115,7 +118,7 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
             향후 7일 복습 예정
           </h2>
           <p className="text-muted-foreground text-xs">
-            각 날짜에 due 가 될 항목 수. 부담 분포 가시화.
+            날짜별로 복습이 잡혀 있는 카드 수. 하루에 몰리지 않는지 확인하세요.
           </p>
         </CardHeader>
         <CardContent className="pb-4">
@@ -123,6 +126,7 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
 
@@ -179,7 +183,7 @@ function DayBars({
           return (
             <div
               key={d.date}
-              title={`${d.date} · 복습 ${d.reviewed} · 성공 ${d.success}`}
+              title={`${d.date} · 복습 ${d.reviewed}회 · 잘 떠올림 ${d.success}회`}
               className="bg-muted relative h-20 flex-1 rounded-sm"
             >
               <div

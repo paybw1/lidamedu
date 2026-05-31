@@ -58,14 +58,16 @@ const leadingFlats: SimpleLink[] = [
   { label: "대시보드", to: "/dashboard" },
 ];
 
+// 학습관리 항목 — SRS/플래시카드 같은 학원 용어 대신 학생이 바로 이해할 수 있는 라벨로.
+// (URL slug 는 보존 — 북마크/공유 링크 호환성.)
+// "알림" 은 상단 우측 종모양 벨(읽지 않은 수 배지 포함) 로 단일화 — 본 dropdown 에서 제거.
 const studyItems: SimpleLink[] = [
-  { label: "오늘의 학습 메뉴", to: "/study/today" },
-  { label: "SRS 복습 큐", to: "/study/srs" },
-  { label: "플래시카드 (SRS v2 베타)", to: "/srs" },
-  { label: "학습목표 및 과목별 진도", to: "/goals" },
+  { label: "오늘 할 일", to: "/study/today" },
+  { label: "복습", to: "/study/srs" },
+  { label: "카드 암기", to: "/srs" },
+  { label: "학습 목표 · 진도", to: "/goals" },
   { label: "학습 통계", to: "/study/stats" },
-  { label: "내 과제", to: "/assignments" },
-  { label: "알림", to: "/inbox" },
+  { label: "과제", to: "/assignments" },
 ];
 
 const latestItems: SimpleLink[] = [

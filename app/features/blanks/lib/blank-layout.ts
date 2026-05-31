@@ -111,6 +111,7 @@ export function inlineTokenContent(t: Inline): string {
     t.type === "underline" ||
     t.type === "subtitle" ||
     t.type === "annotation" ||
+    t.type === "ordinance_ref" ||
     t.type === "amendment_note"
   ) {
     return t.text;

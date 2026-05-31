@@ -1,39 +1,74 @@
 /**
- * Login Screen — 카카오 전용
+ * Login Screen — Kakao / Google OAuth + 이메일·비밀번호.
  *
- * 로그인 수단은 카카오 OAuth 하나로 통일한다. (이메일/비밀번호·매직링크·OTP·기타 소셜 미제공)
- * 카카오는 신규/기존 구분 없이 동일 OAuth 흐름이므로 회원가입(/join)도 이 화면으로 합류한다.
- * 디자인 토큰은 랜딩(lidam-design-system, Wantedly blue + Pretendard)을 그대로 따른다.
+ * 진입 방식 3가지:
+ *  1) 카카오 OAuth (기본)
+ *  2) 구글 OAuth
+ *  3) 이메일 + 비밀번호 (Supabase email/password auth)
+ *
+ * 가입 화면(/join)도 동일 세 가지 진입. 디자인 토큰은 랜딩(lidam-design-system)을 따른다.
  */
 import type { Route } from "./+types/login";
 
-import type { MouseEventHandler } from "react";
-import { Link } from "react-router";
+import { type MouseEventHandler, useState } from "react";
+import { Form, Link, data, redirect, useNavigation } from "react-router";
+import { z } from "zod";
 
+import makeServerClient from "~/core/lib/supa-client.server";
 import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
+import { GoogleLogo } from "../components/logos/google";
 import { KakaoLogo } from "../components/logos/kakao";
 
 const FONT = "Pretendard, sans-serif";
 
-export const meta: Route.MetaFunction = () => {
-  return [
-    {
-      title: `로그인 | ${import.meta.env.VITE_APP_NAME}`,
-    },
-  ];
-};
+export const meta: Route.MetaFunction = () => [
+  { title: `로그인 | ${import.meta.env.VITE_APP_NAME}` },
+];
 
-const liftEnter: MouseEventHandler<HTMLElement> = (e) => {
+const credentialsSchema = z.object({
+  email: z.string().email("올바른 이메일 주소를 입력해주세요."),
+  password: z.string().min(6, "비밀번호는 6자 이상이어야 합니다."),
+});
+
+export async function action({ request }: Route.ActionArgs) {
+  const fd = await request.formData();
+  const parsed = credentialsSchema.safeParse({
+    email: fd.get("email"),
+    password: fd.get("password"),
+  });
+  if (!parsed.success) {
+    return data(
+      { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." },
+      { status: 400 },
+    );
+  }
+  const [client, headers] = makeServerClient(request);
+  const { error } = await client.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (error) {
+    return data({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 400 });
+  }
+  return redirect("/dashboard", { headers });
+}
+
+const liftKakao: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(-1px)";
   e.currentTarget.style.boxShadow = "0 12px 28px rgba(254, 229, 0, 0.45)";
 };
-const liftLeave: MouseEventHandler<HTMLElement> = (e) => {
+const liftKakaoLeave: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(0)";
   e.currentTarget.style.boxShadow = "0 8px 22px rgba(254, 229, 0, 0.35)";
 };
 
-export default function Login() {
+export default function Login({ actionData }: Route.ComponentProps) {
+  const nav = useNavigation();
+  const submitting = nav.state !== "idle" && nav.formMethod === "POST";
+  const error = actionData && "error" in actionData ? actionData.error : null;
+  const [showEmail, setShowEmail] = useState(false);
+
   return (
     <section
       style={{
@@ -73,14 +108,7 @@ export default function Login() {
               marginBottom: 22,
             }}
           >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: PALETTE.primary,
-              }}
-            />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: PALETTE.primary }} />
             리담 변리사 학원
           </div>
 
@@ -102,16 +130,15 @@ export default function Login() {
               margin: "0 0 28px",
             }}
           >
-            카카오 계정으로 간편하게 시작하세요.
-            <br />
-            별도의 회원가입은 필요하지 않아요.
+            카카오·구글·이메일 중 편한 방식으로 시작하세요.
           </p>
 
+          {/* 1) Kakao OAuth */}
           <Link
             to="/auth/social/start/kakao"
             viewTransition
-            onMouseEnter={liftEnter}
-            onMouseLeave={liftLeave}
+            onMouseEnter={liftKakao}
+            onMouseLeave={liftKakaoLeave}
             style={{
               display: "flex",
               width: "100%",
@@ -127,11 +154,172 @@ export default function Login() {
               textDecoration: "none",
               boxShadow: "0 8px 22px rgba(254, 229, 0, 0.35)",
               transition: `transform 160ms ${EASE_REVEAL}, box-shadow 160ms ${EASE_REVEAL}`,
+              marginBottom: 10,
             }}
           >
             <KakaoLogo style={{ width: 20, height: 20 }} />
-            카카오로 3초 만에 시작하기
+            카카오로 시작하기
           </Link>
+
+          {/* 2) Google OAuth */}
+          <Link
+            to="/auth/social/start/google"
+            viewTransition
+            style={{
+              display: "flex",
+              width: "100%",
+              height: 52,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              borderRadius: 12,
+              background: "#fff",
+              color: "#1f1f1f",
+              font: `600 15px/1 ${FONT}`,
+              letterSpacing: "-0.01em",
+              textDecoration: "none",
+              border: `1px solid ${PALETTE.line}`,
+              marginBottom: 18,
+            }}
+          >
+            <GoogleLogo style={{ width: 18, height: 18 }} />
+            구글로 시작하기
+          </Link>
+
+          {/* 3) Email + Password */}
+          {!showEmail ? (
+            <button
+              type="button"
+              onClick={() => setShowEmail(true)}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: PALETTE.inkSoft,
+                font: `500 13px/1.5 ${FONT}`,
+                textDecoration: "underline",
+              }}
+            >
+              이메일·비밀번호로 로그인
+            </button>
+          ) : (
+            <Form method="post" style={{ textAlign: "left" }}>
+              <label
+                htmlFor="login-email"
+                style={{
+                  display: "block",
+                  font: `500 12px/1.5 ${FONT}`,
+                  color: PALETTE.inkSoft,
+                  marginBottom: 4,
+                }}
+              >
+                이메일
+              </label>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                style={{
+                  width: "100%",
+                  height: 44,
+                  padding: "0 12px",
+                  borderRadius: 10,
+                  border: `1px solid ${PALETTE.line}`,
+                  font: `400 15px/1 ${FONT}`,
+                  color: PALETTE.ink,
+                  marginBottom: 12,
+                  background: PALETTE.base,
+                }}
+              />
+              <label
+                htmlFor="login-password"
+                style={{
+                  display: "block",
+                  font: `500 12px/1.5 ${FONT}`,
+                  color: PALETTE.inkSoft,
+                  marginBottom: 4,
+                }}
+              >
+                비밀번호
+              </label>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                style={{
+                  width: "100%",
+                  height: 44,
+                  padding: "0 12px",
+                  borderRadius: 10,
+                  border: `1px solid ${PALETTE.line}`,
+                  font: `400 15px/1 ${FONT}`,
+                  color: PALETTE.ink,
+                  marginBottom: 14,
+                  background: PALETTE.base,
+                }}
+              />
+              {error ? (
+                <p
+                  style={{
+                    font: `500 12px/1.4 ${FONT}`,
+                    color: "#c2410c",
+                    margin: "0 0 10px",
+                  }}
+                >
+                  {error}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  width: "100%",
+                  height: 48,
+                  borderRadius: 10,
+                  background: PALETTE.primary,
+                  color: "#fff",
+                  font: `700 15px/1 ${FONT}`,
+                  border: "none",
+                  cursor: submitting ? "wait" : "pointer",
+                  opacity: submitting ? 0.7 : 1,
+                }}
+              >
+                {submitting ? "로그인 중..." : "로그인"}
+              </button>
+              <p
+                style={{
+                  font: `400 13px/1.5 ${FONT}`,
+                  color: PALETTE.inkSoft,
+                  textAlign: "center",
+                  marginTop: 14,
+                }}
+              >
+                <Link
+                  to="/forgot-password"
+                  style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}
+                >
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </p>
+              <p
+                style={{
+                  font: `400 13px/1.5 ${FONT}`,
+                  color: PALETTE.inkSoft,
+                  textAlign: "center",
+                  marginTop: 6,
+                }}
+              >
+                계정이 없으세요?{" "}
+                <Link to="/join" style={{ color: PALETTE.primary, textDecoration: "underline" }}>
+                  회원가입
+                </Link>
+              </p>
+            </Form>
+          )}
 
           <p
             style={{
@@ -142,17 +330,11 @@ export default function Login() {
             }}
           >
             로그인 시{" "}
-            <Link
-              to="/legal/terms-of-service"
-              style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}
-            >
+            <Link to="/legal/terms-of-service" style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}>
               이용약관
             </Link>
             과{" "}
-            <Link
-              to="/legal/privacy-policy"
-              style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}
-            >
+            <Link to="/legal/privacy-policy" style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}>
               개인정보처리방침
             </Link>
             에 동의하게 됩니다.

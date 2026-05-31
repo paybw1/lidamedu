@@ -15,6 +15,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import type { Database } from "../../database.types";
+import { flattenBodyForCard } from "../../app/features/srs/lib/srs-flatten";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -117,16 +118,17 @@ async function main() {
 
     // 6) srs_items insert.
     const rows = pick.map((a) => {
-      const body = (
-        a.current_revision_id ? bodyMap.get(a.current_revision_id) : null
-      ) ?? "(본문 미시드 — 학습 화면에서 확인)";
-      const clipped = body.length > 500 ? body.slice(0, 500) + "…" : body;
+      const raw =
+        (a.current_revision_id ? bodyMap.get(a.current_revision_id) : null) ??
+        null;
+      const flat = raw ? flattenBodyForCard(raw) : null;
+      const body = flat ?? raw ?? "(본문 미시드 — 학습 화면에서 확인)";
       return {
         subject: subj.slug,
         topic: a.display_label,
         type: "qa" as const,
         front: `${subj.name} ${a.display_label}`,
-        back: clipped,
+        back: body,
         law_ref: `${subj.slug}#${a.article_number ?? ""}`.replace(/#$/, ""),
         source: `seed:${new Date().toISOString().slice(0, 10)}`,
         source_type: "article" as const,

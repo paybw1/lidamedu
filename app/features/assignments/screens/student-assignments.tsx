@@ -11,6 +11,7 @@ import { Link, data } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
+import { Eyebrow, StudentShell } from "~/core/components/student";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listStudentAssignments } from "~/features/assignments/queries.server";
 import {
@@ -51,13 +52,15 @@ export default function StudentAssignments({
   const done = assignments.filter((a) => a.submission?.status === "completed");
 
   return (
-    <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <ClipboardListIcon className="size-3.5" /> 과제
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">내 과제</h1>
-        <p className="text-muted-foreground text-sm">
+    <StudentShell>
+      <header className="mb-6">
+        <Eyebrow>
+          <ClipboardListIcon className="mr-1 inline size-3" /> 과제
+        </Eyebrow>
+        <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+          과제
+        </h1>
+        <p className="text-ink-soft mt-2 text-sm">
           반에서 받은 과제 — 마감 가까운 순. 완수는 자동 판정됩니다.
         </p>
       </header>
@@ -91,7 +94,7 @@ export default function StudentAssignments({
           </div>
         </section>
       ) : null}
-    </div>
+    </StudentShell>
   );
 }
 

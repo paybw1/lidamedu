@@ -10,9 +10,8 @@ import {
   NotebookPenIcon,
   StickyNoteIcon,
 } from "lucide-react";
-import { Link } from "react-router";
-
 import { cn } from "~/core/lib/utils";
+import { SectionTabs } from "~/core/components/student";
 import type { StudyAidCounts } from "~/features/study/queries.server";
 
 export type StudyAidTab =
@@ -66,50 +65,27 @@ const TABS: TabDef[] = [
   },
 ];
 
-// 학습보조 탭 strip — 4개 화면을 잇는 연결 조직 (brief §5.2).
+// 학습지원 탭 — 공용 `SectionTabs` 프리미티브 사용.
+// 학습관리/정보 3 영역과 동일 디자인 톤. 카운트 badge 는 SectionTabs 의 count prop 으로.
+// `active` prop 은 호출처 호환성 유지(SectionTabs 가 path 기반 자동 매칭).
 function StudyAidsTabs({
-  active,
   counts,
 }: {
-  active: StudyAidTab;
+  active?: StudyAidTab;
   counts: StudyAidTabCounts;
 }) {
   return (
-    <nav
-      aria-label="학습지원"
-      className="border-border bg-muted/50 flex w-max max-w-full gap-1 overflow-x-auto rounded-full border p-1"
-    >
-      {TABS.map((t) => {
-        const isActive = t.id === active;
-        return (
-          <Link
-            key={t.id}
-            to={t.to}
-            viewTransition
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] whitespace-nowrap transition-colors",
-              isActive
-                ? "bg-background text-primary font-bold shadow-sm"
-                : "text-foreground/70 hover:text-foreground font-medium",
-            )}
-          >
-            <t.Icon className="size-3.5" />
-            <span>{t.label}</span>
-            <span
-              className={cn(
-                "inline-block min-w-[22px] rounded-full px-1.5 text-center text-[10px] font-bold tabular-nums",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {counts[t.id].toLocaleString("ko-KR")}
-            </span>
-          </Link>
-        );
-      })}
-    </nav>
+    <SectionTabs
+      ariaLabel="학습지원"
+      sticky={false}
+      items={TABS.map((t) => ({
+        id: t.id,
+        to: t.to,
+        label: t.label,
+        icon: t.Icon,
+        count: counts[t.id],
+      }))}
+    />
   );
 }
 

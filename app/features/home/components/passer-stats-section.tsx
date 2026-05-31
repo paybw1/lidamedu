@@ -169,7 +169,7 @@ export function PasserStatsSection() {
               marginTop: 10,
             }}
           >
-            합격자가 직접 쓴 학습 후기 24건도 가입 후 열람 가능
+            가입 즉시 합격자 평균과 본인 진도를 나란히 비교
           </div>
         </Reveal>
       </div>

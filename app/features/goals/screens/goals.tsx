@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { cn } from "~/core/lib/utils";
+import { Eyebrow, StudentShell } from "~/core/components/student";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   getStudyGoals,
@@ -215,12 +216,14 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
   ];
 
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <TargetIcon className="size-3.5" /> 학습 목표
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">학습 목표 설정</h1>
+    <StudentShell width="narrow">
+      <header className="mb-6">
+        <Eyebrow>
+          <TargetIcon className="mr-1 inline size-3" /> 학습 목표
+        </Eyebrow>
+        <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+          학습 목표 · 진도
+        </h1>
         <p className="text-muted-foreground text-sm">
           시험일·주간 목표 시간을 입력하면 대시보드 D-day 와 주간 그래프에
           반영됩니다.
@@ -535,7 +538,7 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
           </Button>
         </div>
       </Form>
-    </div>
+    </StudentShell>
   );
 }
 

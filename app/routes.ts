@@ -21,7 +21,7 @@ export default [
     route("/search/clear-history", "features/search/api/clear-history.tsx"),
     route("/bug-report", "features/bug-reports/api/bug-report.tsx"),
     route(
-      "/api/notifications/mark-read",
+      "/notifications/mark-read",
       "features/notifications/api/mark-read.tsx",
     ),
     ...prefix("/settings", [
@@ -40,20 +40,20 @@ export default [
       ),
     ]),
     route(
-      "/api/study/recommendation-prefs",
+      "/study/recommendation-prefs",
       "features/study/api/recommendation-prefs.tsx",
     ),
-    route("/api/srs/queue", "features/srs/api/queue.tsx"),
-    route("/api/srs/review", "features/srs/api/review.tsx"),
-    route("/api/srs/stats", "features/srs/api/stats.tsx"),
-    route("/api/srs/export", "features/srs/api/export.tsx"),
-    route("/api/community/report", "features/community/api/report.tsx"),
+    route("/srs/queue", "features/srs/api/queue.tsx"),
+    route("/srs/review", "features/srs/api/review.tsx"),
+    route("/srs/stats", "features/srs/api/stats.tsx"),
+    route("/srs/export", "features/srs/api/export.tsx"),
+    route("/community/report", "features/community/api/report.tsx"),
     route(
-      "/api/community/report-resolve",
+      "/community/report-resolve",
       "features/community/api/report-resolve.tsx",
     ),
     route(
-      "/api/community/study-join",
+      "/community/study-join",
       "features/community/api/study-join.tsx",
     ),
     ...prefix("/annotations", [
@@ -171,12 +171,17 @@ export default [
   layout("core/layouts/navigation.layout.tsx", [
     index("features/home/screens/home.tsx"),
     route("/auth/confirm", "features/auth/screens/confirm.tsx"),
+    route("/new-password", "features/auth/screens/new-password.tsx"),
     route("/error", "core/screens/error.tsx"),
 
     // Only-when-logged-out
     layout("core/layouts/public.layout.tsx", [
       route("/login", "features/auth/screens/login.tsx"),
       route("/join", "features/auth/screens/join.tsx"),
+      route(
+        "/forgot-password",
+        "features/auth/screens/forgot-password.tsx",
+      ),
       ...prefix("/auth", [
         ...prefix("/social", [
           route("/start/:provider", "features/auth/screens/social/start.tsx"),
@@ -193,6 +198,8 @@ export default [
       route("/logout", "features/auth/screens/logout.tsx"),
 
       // SRS v2 — Anki 스타일 명시적 카드 SRS (학생 효과 테스트). 영역 게이트 없음(MVP).
+      // /srs (v2 SRS — 카드 암기) 는 학습관리 게이트 밖. 무료 사용자 접근 유지.
+      // 학습관리 탭은 srs-review.tsx / srs-stats.tsx 본문 상단에서 직접 import.
       route("/srs", "features/srs/screens/srs-review.tsx"),
       route("/srs/stats", "features/srs/screens/srs-stats.tsx"),
 

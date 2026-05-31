@@ -2,8 +2,10 @@
 //
 // 마커 규칙:
 //   __X__   → underline
-//   [X]     → annotation (강사 강조 라벨)
+//   [X]     → annotation (강사 강조 라벨) — 단, X가 개정 키워드면 amendment_note
+//   <X>     → amendment_note (`<개정 ...>` 류 — X가 개정 키워드일 때만)
 //   ((X))   → inline subtitle  (block 의 subtitle prop 과 별개로 본문 중간에 등장하는 케이스)
+//   {{X}}   → ordinance_ref (하위 조문 라벨 — 시행령·시행규칙·대통령령·총리령 등)
 //   그 외 텍스트는 그대로 text token. text 안의 "제29조..." 같은 ref 와 "<개정 ...>" 같은
 //   amendment 는 InlineNode 의 splitInlineParts 가 자동 인식하므로 별도 토큰화 불필요.
 //
@@ -24,6 +26,8 @@ export function inlineToMarker(inline: Inline[]): string {
           return `((${t.text}))`;
         case "annotation":
           return `[${t.text}]`;
+        case "ordinance_ref":
+          return `{{${t.text}}}`;
         case "ref_article":
         case "ref_law":
           return t.raw;
@@ -39,37 +43,89 @@ export function inlineToMarker(inline: Inline[]): string {
 interface MarkerMatch {
   start: number;
   end: number;
-  type: "underline" | "annotation" | "subtitle";
+  type:
+    | "underline"
+    | "annotation"
+    | "subtitle"
+    | "amendment_note"
+    | "ordinance_ref";
   inner: string;
+  // amendment_note 는 wrap 형태(`[전문개정 ...]`, `<개정 ...>`) 그대로 token.text 에 보존.
+  // 회귀 방지: editor 가 inlineToMarker 로 직렬화하면 그 wrap 모양이 그대로 다시 나오므로
+  // 같은 패턴으로 다시 매칭돼 amendment_note 로 안정적으로 라운드트립.
+  rawWithWrap: string;
 }
 
-// __X__, [X], ((X)) — non-greedy, non-nested. 가장 단순한 형태.
+// `[전문개정 ...]`, `<개정 ...>` 같은 개정이력 표기는 annotation 이 아니라
+// amendment_note 로 분류해야 화면에서 회색 italic chip 으로 표시되고 라운드트립도 안전.
+const AMENDMENT_KEYWORDS_RE =
+  /^(전문개정|제목개정|본조신설|개정|신설|삭제|시행일|종전|제\d+조의?\d*에서 이동)/;
+
+// __X__, [X], ((X)), <X> — non-greedy, non-nested. 가장 단순한 형태.
 // 같은 마커가 중첩되지 않는다고 가정 (UI 에서 wrap 시 기존 마커 영역에 wrap 못 하게 가드).
 function findMarkers(text: string): MarkerMatch[] {
   const matches: MarkerMatch[] = [];
-  const patterns: Array<{
-    re: RegExp;
-    type: MarkerMatch["type"];
-    open: number;
-    close: number;
-  }> = [
-    { re: /\(\((.+?)\)\)/g, type: "subtitle", open: 2, close: 2 },
-    { re: /__([^_]+?)__/g, type: "underline", open: 2, close: 2 },
-    { re: /\[([^\[\]]+?)\]/g, type: "annotation", open: 1, close: 1 },
-  ];
-  for (const p of patterns) {
-    for (const m of text.matchAll(p.re)) {
-      if (m.index === undefined) continue;
-      matches.push({
-        start: m.index,
-        end: m.index + m[0].length,
-        type: p.type,
-        inner: m[1],
-      });
-    }
+
+  // {{ordinance_ref}} — 두 글자 마커는 [X] 보다 먼저 매칭.
+  for (const m of text.matchAll(/\{\{(.+?)\}\}/g)) {
+    if (m.index === undefined) continue;
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      type: "ordinance_ref",
+      inner: m[1],
+      rawWithWrap: m[0],
+    });
   }
+  // ((subtitle)) — 두 글자 마커가 [X]/<X>/__X__ 보다 우선해야 안쪽 [X] 가 잘못 매칭 안 됨.
+  for (const m of text.matchAll(/\(\((.+?)\)\)/g)) {
+    if (m.index === undefined) continue;
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      type: "subtitle",
+      inner: m[1],
+      rawWithWrap: m[0],
+    });
+  }
+  // __underline__
+  for (const m of text.matchAll(/__([^_]+?)__/g)) {
+    if (m.index === undefined) continue;
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      type: "underline",
+      inner: m[1],
+      rawWithWrap: m[0],
+    });
+  }
+  // [X] → 개정 키워드면 amendment_note, 아니면 annotation.
+  for (const m of text.matchAll(/\[([^\[\]]+?)\]/g)) {
+    if (m.index === undefined) continue;
+    const isAmendment = AMENDMENT_KEYWORDS_RE.test(m[1]);
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      type: isAmendment ? "amendment_note" : "annotation",
+      inner: m[1],
+      rawWithWrap: m[0],
+    });
+  }
+  // <X> → 개정 키워드일 때만 amendment_note (`<개정 ...>` 류). 그 외 <X> 는 무시 (일반 본문).
+  for (const m of text.matchAll(/<([^<>]+?)>/g)) {
+    if (m.index === undefined) continue;
+    if (!AMENDMENT_KEYWORDS_RE.test(m[1])) continue;
+    matches.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      type: "amendment_note",
+      inner: m[1],
+      rawWithWrap: m[0],
+    });
+  }
+
   matches.sort((a, b) => a.start - b.start);
-  // 겹침 제거 (먼저 시작한 매칭 우선, 동률이면 더 긴 쪽)
+  // 겹침 제거 (먼저 시작한 매칭 우선)
   const filtered: MarkerMatch[] = [];
   for (const m of matches) {
     const last = filtered[filtered.length - 1];
@@ -95,8 +151,13 @@ export function markerToInline(text: string): Inline[] {
       out.push({ type: "underline", text: m.inner });
     } else if (m.type === "annotation") {
       out.push({ type: "annotation", text: m.inner });
-    } else {
+    } else if (m.type === "subtitle") {
       out.push({ type: "subtitle", text: m.inner });
+    } else if (m.type === "ordinance_ref") {
+      out.push({ type: "ordinance_ref", text: m.inner });
+    } else {
+      // amendment_note — wrap 형태(`[전문개정 ...]` / `<개정 ...>`) 그대로 보존.
+      out.push({ type: "amendment_note", text: m.rawWithWrap });
     }
     cursor = m.end;
   }
