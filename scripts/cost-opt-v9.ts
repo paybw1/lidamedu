@@ -66,20 +66,27 @@ interface RunResult {
 const NO_EV_RE =
   /제공된\s*자료로는\s*확실히\s*답하기\s*어렵습니다|자료에서\s*근거를\s*찾지\s*못했습니다|자연과학\s*질문은\s*현재\s*AI\s*Q&A\s*가\s*지원하지\s*않습니다/;
 
-function parseArgs(argv: string[]): { variant: string; topk: number; modelOverride?: string } {
+function parseArgs(argv: string[]): { variant: string; topk: number; modelOverride?: string; onlySafety: boolean; skipSafety: boolean } {
   let variant = "A";
   let topk = 12;
   let modelOverride: string | undefined;
+  let onlySafety = false;
+  let skipSafety = false;
   for (const x of argv.slice(2)) {
     if (x.startsWith("--variant=")) variant = x.slice("--variant=".length);
     else if (x.startsWith("--topk=")) topk = parseInt(x.slice("--topk=".length), 10);
     else if (x.startsWith("--model=")) modelOverride = x.slice("--model=".length);
+    else if (x === "--only-safety") onlySafety = true;
+    else if (x === "--skip-safety") skipSafety = true;
   }
   // variant 별 default
   if (variant === "B" && topk === 12) topk = 10;
   if (variant === "C" && topk === 12) topk = 8;
-  if (variant === "D" && !modelOverride) modelOverride = "claude-haiku-4-5-20251001";
-  return { variant, topk, modelOverride };
+  if (variant === "D") {
+    if (!modelOverride) modelOverride = "claude-haiku-4-5-20251001";
+    if (topk === 12) topk = 8;   // Haiku 측정은 채택 후보 topk=8 위에서
+  }
+  return { variant, topk, modelOverride, onlySafety, skipSafety };
 }
 
 /** 프롬프트 캐싱 적용한 비용 계산 — input 은 비캐시분만, cache_read 는 0.1×, cache_create 는 1.25× */
@@ -159,9 +166,10 @@ async function runOne(item: EvalItem, iteration: number, variant: string, topk: 
 }
 
 async function main(): Promise<void> {
-  const { variant, topk, modelOverride } = parseArgs(process.argv);
-  process.stdout.write(`=== cost-opt-v9 · variant=${variant} · topk=${topk} · model=${modelOverride ?? AI_QNA_MODEL} ===\n`);
-  process.stdout.write(`cap env: AI_QNA_DAILY_COST_USD_CAP=${process.env.AI_QNA_DAILY_COST_USD_CAP ?? "(unset)"}\n\n`);
+  const { variant, topk, modelOverride, onlySafety, skipSafety } = parseArgs(process.argv);
+  process.stdout.write(`=== cost-opt-v9 · variant=${variant} · topk=${topk} · model=${modelOverride ?? AI_QNA_MODEL}${onlySafety ? " · only-safety" : ""}${skipSafety ? " · skip-safety" : ""} ===\n`);
+  process.stdout.write(`cap env: AI_QNA_DAILY_COST_USD_CAP=${process.env.AI_QNA_DAILY_COST_USD_CAP ?? "(unset)"}\n`);
+  process.stdout.write(`gate env: AI_QNA_DOMAIN_GATE=${process.env.AI_QNA_DOMAIN_GATE ?? "(unset)"}\n\n`);
 
   const raw = await readFile(join(EVAL_DIR, "questions_v3.jsonl"), "utf8");
   const items: EvalItem[] = raw.split("\n").filter(Boolean).map((l) => JSON.parse(l) as EvalItem);
@@ -196,21 +204,25 @@ async function main(): Promise<void> {
     }
   }
 
-  // 1) 안전성 먼저
-  process.stdout.write(`\n────── safety (${safety.length} × 1) ──────\n`);
-  for (const item of safety) {
-    const ok = await execute(item, 1);
-    if (!ok) break;
+  // 1) 안전성 먼저 (--skip-safety 시 건너뜀)
+  if (!skipSafety) {
+    process.stdout.write(`\n────── safety (${safety.length} × 1) ──────\n`);
+    for (const item of safety) {
+      const ok = await execute(item, 1);
+      if (!ok) break;
+    }
   }
 
-  // 2) factual 5회
-  for (let iter = 1; iter <= 5; iter++) {
-    process.stdout.write(`\n────── factual iter ${iter}/5 (${factual.length}) ──────\n`);
-    for (const item of factual) {
-      const ok = await execute(item, iter);
-      if (!ok) {
-        process.stdout.write(`(중단)\n`);
-        break;
+  // 2) factual 5회 (--only-safety 시 건너뜀)
+  if (!onlySafety) {
+    for (let iter = 1; iter <= 5; iter++) {
+      process.stdout.write(`\n────── factual iter ${iter}/5 (${factual.length}) ──────\n`);
+      for (const item of factual) {
+        const ok = await execute(item, iter);
+        if (!ok) {
+          process.stdout.write(`(중단)\n`);
+          break;
+        }
       }
     }
   }
