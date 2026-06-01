@@ -1,12 +1,16 @@
 // feat-9-003 — Claude 시스템 프롬프트 + RAG 컨텍스트 빌더.
 //
-// 5조항 가드레일 (docs/features/feat-9-ai-qna.md §9):
+// 7조항 가드레일 (rag-lab v3 검증 — eval/reports/v3-summary.md):
 //   ① 컨텍스트 안에서만 답한다 (환각=법률 오답)
 //   ② 사용한 출처를 [N] 마커로 명시
 //   ③ 근거 부족이면 "강사 Q&A 안내" 로 거절
 //   ④ 법조문·판례 원문 왜곡 금지
 //   ⑤ 자연과학은 v1 미지원 — 명시적 거절
+//   ⑥ 톤 — 간결·정확·법률 용어 정확
+//   ⑦ 도메인 일치 원칙 (★ rag-lab v3 추가) — 인접 단어로 끌려와도 다른 도메인 자료 전용 금지.
+//      v2 noev2(민사소송법 항소장) 가 심판편람 각주를 끌어와 거짓답을 만든 회귀를 7번 규칙으로 차단함.
 
+import { DOC_TYPE_LABEL, type CitationSourceType } from "./citations";
 import type { SearchHit } from "./hybrid-search.server";
 
 export interface ContextItem {
@@ -14,12 +18,14 @@ export interface ContextItem {
   label: number;
   /** 답변 후 citations 매핑용. */
   chunkId: string;
-  sourceType: "article" | "case" | "problem";
+  sourceType: CitationSourceType;
   sourceId: string;
   /** 표시용 — "특허법 제29조" / "대법원 2018후10844 · 요지" 등. */
   headingPath: string;
   /** 모델에 전달할 본문 (길면 절단). */
   body: string;
+  /** v5-④ : 1=1차 (법령·판례·문제), 2=2차 (기본서·실무서). 모델 프롬프트의 [등급] 라벨. */
+  authorityTier: 1 | 2;
 }
 
 /** 한 청크 본문의 최대 길이 — 토큰 비용·컨텍스트 윈도우 보호. */
@@ -36,6 +42,7 @@ export function buildContextItems(hits: ReadonlyArray<SearchHit>): ContextItem[]
       h.bodyText.length > MAX_CHUNK_BODY_CHARS
         ? h.bodyText.slice(0, MAX_CHUNK_BODY_CHARS) + "…"
         : h.bodyText,
+    authorityTier: h.authorityTier,
   }));
 }
 
@@ -54,16 +61,23 @@ export function buildSystemPrompt(items: ReadonlyArray<ContextItem>): string {
     "4. 법조문·판례를 인용할 때 원문 표현을 왜곡하지 않습니다. 의역할 때는 '요약하면', '취지는' 같은 표현으로 명시합니다.",
     "5. 자연과학(물리·화학·생물·지구과학) 질문은 답하지 말고 다음 문장으로만 답하세요: \"자연과학 질문은 현재 AI Q&A 가 지원하지 않습니다. 강사 Q&A 를 이용해 주세요.\"",
     "6. 한국어 변리사 수험생 대상 톤 — 간결, 정확, 법률 용어 정확. 불필요한 서두·자기 소개 없이 바로 답합니다.",
+    "7. **도메인 일치 원칙(중요)**: 본 시스템 코퍼스 도메인은 특허법·상표법·디자인보호법(및 부속 기본서·실무서)입니다. 질문의 주제(과목)와 컨텍스트 자료의 주제가 다르면, 단어가 인접해 보여도 절대 답하지 마세요.",
+    "   - 예: 질문이 민법·민사소송법·상법·형법·보험 등에 관한 것이면, 심판편람·심사기준·심판청구서·답변서 등 변리사 영역 자료가 검색 결과에 끌려와도 그것을 근거로 답하지 마세요.",
+    "   - 인접 단어(예: \"답변서\"·\"심판\"·\"청구\"·\"항소\"·\"대리권\") 가 겹친다고 다른 도메인 자료를 끌어 쓰면 환각입니다.",
+    "   - 이런 경우 3번 거절 문장으로 답합니다.",
+    "8. 답변은 참고용이며, 학생은 반드시 최신 법령·원문·강사 검수를 통해 확인해야 합니다. 답변 말미에 한 줄 안전 고지를 추가하세요: \"※ 본 답변은 참고용이며, 최신 법령·원문 확인이 필요합니다.\"",
   ].join("\n");
 
   if (items.length === 0) {
     return `${guardrails}\n\n[제공된 출처]\n(없음)\n[/제공된 출처]`;
   }
 
+  // v5-④ : 컨텍스트 블록에 doc_type 한글 라벨([법령]/[판례]/[기본서]/[실무서]) 노출.
+  //   모델은 답변에 같은 라벨로 출처 인용 → 시스템 프롬프트 4번 (1차/2차 충돌 시 1차 우선) 활용도↑.
   const blocks = items
     .map(
       (it) =>
-        `[${it.label}] ${it.headingPath} (${it.sourceType})\n${it.body}`,
+        `[${it.label}] [${DOC_TYPE_LABEL[it.sourceType]}/T${it.authorityTier}] ${it.headingPath}\n${it.body}`,
     )
     .join("\n\n");
 

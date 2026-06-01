@@ -184,7 +184,20 @@ export interface AssistantMessageInsert {
   bodyMd: string;
   citations: Citation[];
   retrievalMeta?: unknown;
-  tokenUsage?: { input: number; output: number; model: string };
+  tokenUsage?: {
+    input: number;
+    output: number;
+    model: string;
+    /**
+     * v4-② 결과 상태 — 향후 차감 로직 정합성 근거.
+     *   success              : 정상 답변
+     *   refusal_no_evidence  : 모델 자체 거절 (시스템 프롬프트 3·5·7) — LLM 호출됨
+     *   refusal_gate         : 도메인 게이트 차단 — LLM 호출 없음
+     *   error                : 스트림 도중 에러
+     * 차감 규칙(향후): success 만 차감. refusal_* 는 무료.
+     */
+    status?: "success" | "refusal_no_evidence" | "refusal_gate" | "error";
+  };
 }
 
 /**

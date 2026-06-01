@@ -14,8 +14,26 @@ export interface ParsedQuery {
   articleNumbers: string[];
   /** 식별된 사건번호들. "대법원 2018후10844" 또는 단독 "2014후2061" 등 정규화 형태. */
   caseNumbers: string[];
+  /**
+   * v8-B1 : 질문이 명시적으로 실무서·기본서(2차) 를 참조하는가.
+   *   - "심판편람" / "심사기준" / "기본서" / "리담특허법" 등 키워드 매칭
+   *   - true 일 때 hybrid-search 가 doc_type_filter=['textbook','practice'] 의 추가 path 를 활성화
+   *   - 권위 가중치(0.7) 는 그대로 — noev2 같은 코퍼스 밖 질문은 키워드 매칭 X 라 본 path 발동 안 함 → 안전성 회귀 위험 0.
+   */
+  practiceIntent: boolean;
   /** 원문 그대로 (앵커·로깅용). */
   raw: string;
+}
+
+/**
+ * v8-B1 : 실무서·기본서 직접 참조 키워드.
+ *   특허/상표 영역에 있는 실무서·기본서를 명시적으로 묻는 패턴.
+ *   주의 : "답변서"·"청구" 같은 일반 단어 금지 (noev2 의 "민사소송법 답변서" 등 코퍼스 밖 질문이 매칭되면 안전성 깨짐).
+ */
+const PRACTICE_INTENT_RE = /심판편람|심사기준|기본서|실무서|리담특허법|리담상표|리담디자인/;
+
+function detectPracticeIntent(text: string): boolean {
+  return PRACTICE_INTENT_RE.test(text);
 }
 
 // 과목 키워드 → law_code 매핑. "특허법" 이 가장 흔한 형태. 별칭 일부.
@@ -79,6 +97,7 @@ export function parseQuestion(raw: string): ParsedQuery {
     lawCodes,
     articleNumbers: extractAllArticleNumbers(text),
     caseNumbers: extractAllCaseNumbers(text),
+    practiceIntent: detectPracticeIntent(text),
     raw: text,
   };
 }

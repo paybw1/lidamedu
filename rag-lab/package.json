@@ -1,0 +1,33 @@
+{
+  "name": "rag-lab",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "리담변리사학원 — RAG 통합 실험. 본 플랫폼 DB(읽기 전용) + 기본서/실무서를 단일 청크 스키마로 합쳐 단일 인덱스 빌드 → 하이브리드 검색 → 출처 인용 답변 → 평가.",
+  "scripts": {
+    "schema:check": "tsx src/schema/check.ts",
+    "export-db": "tsx src/cli/1-export-db.ts",
+    "chunk-added": "tsx src/cli/2-chunk-added.ts",
+    "build-index": "tsx src/cli/3-build-index.ts",
+    "ask": "tsx src/cli/4-ask.ts",
+    "eval": "tsx src/cli/5-eval.ts",
+    "draft-eval": "tsx src/cli/draft-patent-eval.ts",
+    "draft-hard-statute": "tsx src/cli/draft-hard-statute.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.1",
+    "@supabase/supabase-js": "^2.49.1",
+    "adm-zip": "^0.5.17",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^5.7.2",
+    "pdfjs-dist": "^5.7.284",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^20",
+    "tsx": "^4.22.3",
+    "typescript": "^5.7.2"
+  }
+}

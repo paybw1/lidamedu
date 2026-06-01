@@ -6,6 +6,7 @@
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 
+import { serializeBodyJson } from "./article-body.server";
 import {
   type ProblemChoicePlain,
   chunkArticle,
@@ -32,12 +33,16 @@ export async function reindexArticles(articleIds: string[]): Promise<void> {
     .filter((id): id is string => id !== null);
   if (revIds.length === 0) return;
 
+  // v7-A : body_text 는 article_revisions 에서 body_json 의 raw JSON 캐스트로 저장돼 평문이 아님.
+  //   → body_json 을 평문 직렬화 (rag-lab v1→v3 에서 검증한 패턴, article-body.server.ts).
+  //   기존 body_text 그대로 쓰던 v4 청킹은 임베딩·LLM 입력 모두 JSON 토큰("blocks", "kind"...)
+  //   에 노출돼 검색·답변 품질 손상 (baseline-v6 의 st5/st12 0/5 회귀 원인).
   const { data: revisions } = await adminClient
     .from("article_revisions")
-    .select("revision_id, body_text")
+    .select("revision_id, body_json")
     .in("revision_id", revIds);
   const revMap = new Map<string, string>(
-    (revisions ?? []).map((r) => [r.revision_id, r.body_text ?? ""]),
+    (revisions ?? []).map((r) => [r.revision_id, serializeBodyJson(r.body_json)]),
   );
 
   const chunks = articles.flatMap((a) => {

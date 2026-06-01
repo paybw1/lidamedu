@@ -21,6 +21,7 @@
 
 import { data } from "react-router";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import {
@@ -36,9 +37,34 @@ import {
 import type { Citation } from "~/features/ai-qna/lib/citations";
 import { AI_QNA_MODEL } from "~/features/ai-qna/lib/constants";
 import { answerQuestion } from "~/features/ai-qna/lib/answer.server";
+import {
+  GATE_REFUSAL_TEXT,
+  gateModeFromEnv,
+  postSearchGate,
+  preSearchGate,
+} from "~/features/ai-qna/lib/domain-gate.server";
 import { hybridSearch } from "~/features/ai-qna/lib/hybrid-search.server";
 import { summarizeConversationTitle } from "~/features/ai-qna/lib/title.server";
+import {
+  capBlockedMessage,
+  checkGlobalCap,
+  recordUsage,
+} from "~/features/ai-qna/lib/usage-tracker.server";
 import { getQuotaState } from "~/features/ai-qna/settings.server";
+
+/** assistant 메시지 결과 상태 — 차감·이상탐지 정합성용. */
+type AnswerStatus =
+  | "success"
+  | "refusal_no_evidence"   // 모델이 자체 거절 (시스템 프롬프트 3·5·7)
+  | "refusal_gate"          // 도메인 게이트 차단 (LLM 호출 없음)
+  | "error";
+
+function detectModelRefusal(text: string): boolean {
+  return (
+    /제공된\s*자료로는\s*확실히\s*답하기\s*어렵습니다/.test(text)
+    || /자연과학\s*질문은\s*현재\s*AI\s*Q&A\s*가\s*지원하지\s*않습니다/.test(text)
+  );
+}
 
 import type { Route } from "./+types/ask";
 
@@ -93,6 +119,22 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
+  // v4-③ 전역 일일 토큰·비용 가드 — 사용자 한도와 별개로 플랫폼 전체 폭주 차단.
+  // 환경변수 AI_QNA_DAILY_*_CAP 미설정 시 통과 (운영 default).
+  const globalCap = await checkGlobalCap(adminClient);
+  if (globalCap.blocked) {
+    return data(
+      {
+        error: "global_cap_exceeded",
+        reason: globalCap.reason,
+        cap: globalCap.cap,
+        current: globalCap.current,
+        message: capBlockedMessage(globalCap),
+      },
+      { status: 429 },
+    );
+  }
+
   // 대화 확보 — 없으면 신규.
   let conversationId = incomingConvId;
   let isNew = false;
@@ -138,12 +180,83 @@ export async function action({ request }: Route.ActionArgs) {
           anchor,
         });
 
+        // v4-② 보조 안전망 — 도메인 게이트(default OFF, env 로 토글).
+        // 시스템 프롬프트 7번(도메인 일치 원칙) 이 1차 방어, 게이트는 모델 회귀 감지용 옵션.
+        const gateMode = gateModeFromEnv();
+        const preGate = preSearchGate(question, gateMode);
+        if (preGate && !preGate.pass) {
+          const refusalText = `${GATE_REFUSAL_TEXT}\n\n※ 본 답변은 참고용이며, 최신 법령·원문 확인이 필요합니다.`;
+          savedFullText = refusalText;
+          savedErrored = false;
+          send({ type: "text", delta: refusalText });
+          const messageId = await appendAssistantMessage(
+            client,
+            conversationId,
+            {
+              bodyMd: refusalText,
+              citations: [],
+              retrievalMeta: { gate: { stage: "pre", decision: preGate } },
+              tokenUsage: {
+                input: 0,
+                output: 0,
+                model: AI_QNA_MODEL,
+                status: "refusal_gate" satisfies AnswerStatus,
+              },
+            },
+          );
+          send({
+            type: "done",
+            messageId,
+            citations: [],
+            tokenUsage: { input: 0, output: 0 },
+            fullText: refusalText,
+          });
+          return;
+        }
+
         // 1) 하이브리드 검색 — 운영자 quota.maxContextChunks 캡 적용.
         const search = await hybridSearch(client, question, {
           topK: quota.quotas.maxContextChunks,
           lawCodesOverride:
             lawCodesParam.length > 0 ? lawCodesParam : undefined,
         });
+
+        // v4-② 검색 후 게이트.
+        const postGate = postSearchGate(question, search.hits, gateMode);
+        if (!postGate.pass) {
+          const refusalText = `${GATE_REFUSAL_TEXT}\n\n※ 본 답변은 참고용이며, 최신 법령·원문 확인이 필요합니다.`;
+          savedFullText = refusalText;
+          savedErrored = false;
+          send({ type: "text", delta: refusalText });
+          const messageId = await appendAssistantMessage(
+            client,
+            conversationId,
+            {
+              bodyMd: refusalText,
+              citations: [],
+              retrievalMeta: {
+                parsed: search.parsed,
+                perPathCounts: search.perPathCounts,
+                hitIds: search.hits.map((h) => h.chunkId),
+                gate: { stage: "post", decision: postGate },
+              },
+              tokenUsage: {
+                input: 0,
+                output: 0,
+                model: AI_QNA_MODEL,
+                status: "refusal_gate" satisfies AnswerStatus,
+              },
+            },
+          );
+          send({
+            type: "done",
+            messageId,
+            citations: [],
+            tokenUsage: { input: 0, output: 0 },
+            fullText: refusalText,
+          });
+          return;
+        }
         send({
           type: "search",
           parsed: search.parsed,
@@ -187,6 +300,11 @@ export async function action({ request }: Route.ActionArgs) {
         if (!errored) {
           // 3) assistant 메시지 저장 — runAfterResponse 가 아니라 응답 안에 보장
           //    (사용자가 새로고침 시 즉시 보이도록).
+          // v4-② 결과 상태 분류 — 모델 거절(시스템 프롬프트 3·5·7) 발화 시 refusal_no_evidence.
+          //   본 분류는 향후 차감 로직에서 "거절 호출은 무료" 정합성 근거.
+          const status: AnswerStatus = detectModelRefusal(fullText)
+            ? "refusal_no_evidence"
+            : "success";
           const messageId = await appendAssistantMessage(
             client,
             conversationId,
@@ -198,8 +316,14 @@ export async function action({ request }: Route.ActionArgs) {
                 perPathCounts: search.perPathCounts,
                 hitIds: search.hits.map((h) => h.chunkId),
               },
-              tokenUsage: { ...tokenUsage, model: AI_QNA_MODEL },
+              tokenUsage: { ...tokenUsage, model: AI_QNA_MODEL, status },
             },
+          );
+          // v4-③ 전역 사용량 기록 — 차감 정합성상 refusal_* 은 cost 0 (input/output 본인이 0이면 skip).
+          //   거절도 모델 호출이 발생했으면 input/output 토큰이 있으므로 그대로 누적 (정직한 비용 추적).
+          //   게이트 차단(refusal_gate) 은 위쪽 분기에서 LLM 호출 0 으로 처리됨.
+          runAfterResponse(
+            recordUsage(adminClient, AI_QNA_MODEL, tokenUsage.input, tokenUsage.output),
           );
           send({
             type: "done",

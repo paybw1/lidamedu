@@ -48,6 +48,7 @@ import {
   type ConversationMessage,
   type ConversationSummary,
 } from "~/features/ai-qna/conversations.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import type { Citation } from "~/features/ai-qna/lib/citations";
 import {
   getQuotaState,
@@ -73,6 +74,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
+
+  // v4-⑤ 최소 노출 — 본 라운드는 운영자(instructor/manager/admin) 전용.
+  //   학생 공개·과금 연결은 다음 라운드. env `AI_QNA_STAFF_ONLY=false` 로 해제.
+  //   default = staff only (production 안전).
+  if ((process.env.AI_QNA_STAFF_ONLY ?? "true").toLowerCase() !== "false") {
+    const staffRole = await getStaffRole(client, user.id);
+    if (!staffRole) throw redirect("/?reason=ai-qna-staff-only");
+  }
 
   const url = new URL(request.url);
   const activeId = url.searchParams.get("c");

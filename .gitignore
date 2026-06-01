@@ -194,3 +194,17 @@ eng.traineddata
 
 # 강의노트 PDF 원본 — 251 MB, GitHub 100 MB 제한 초과
 /source/리담특허법 강의노트(제10판).pdf
+
+# 테스트용 학생 30명 csv — 비밀번호 평문 노출
+/test-students-30.csv
+
+# 단일 cases DB → csv export 산출물 (DB 에서 재생성 가능)
+/cases-export.csv
+
+# rag-lab 실험 환경 — 시크릿 + 대용량 derive 산출물
+rag-lab/.env
+rag-lab/.env.local
+rag-lab/index/
+rag-lab/data/db_export/
+rag-lab/data/chunks/
+rag-lab/dist/

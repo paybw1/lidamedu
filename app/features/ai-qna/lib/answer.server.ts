@@ -18,7 +18,11 @@ export type AnswerEvent =
       type: "done";
       fullText: string;
       citations: Citation[];
-      tokenUsage: { input: number; output: number };
+      /**
+       * v9-A : `cacheRead`/`cacheCreate` 는 프롬프트 캐싱 적용 후의 실제 토큰 사용.
+       *   cache hit 시 input 은 0~소수, cacheRead 가 대부분 차지. 비용 환산은 lib/pricing.ts 참조.
+       */
+      tokenUsage: { input: number; output: number; cacheRead?: number; cacheCreate?: number };
     }
   | { type: "error"; message: string };
 
@@ -75,10 +79,13 @@ export async function* answerQuestion(
   }
 
   let fullText = "";
-  let tokenUsage = { input: 0, output: 0 };
+  let tokenUsage: { input: number; output: number; cacheRead?: number; cacheCreate?: number } = { input: 0, output: 0 };
 
   try {
     const client = getClient();
+    // v9-A 캐싱 롤백 (2026-06-01) — 가드레일 + 컨텍스트가 한 문자열로 묶여 매 질문마다 prefix 가
+    //   invalidate, cache_read=0 / cache_create 만 1.25× write premium 부담(+20%). cache_control
+    //   제거로 write premium 차단. cacheRead/cacheCreate 필드는 향후 재시도 측정용으로 보존.
     const stream = client.messages.stream({
       model,
       max_tokens: maxTokens,
@@ -96,6 +103,10 @@ export async function* answerQuestion(
         }
       } else if (event.type === "message_start") {
         tokenUsage.input = event.message.usage?.input_tokens ?? 0;
+        // v9-A : 프롬프트 캐싱 토큰
+        const u = event.message.usage as { cache_read_input_tokens?: number; cache_creation_input_tokens?: number } | undefined;
+        if (u?.cache_read_input_tokens) tokenUsage.cacheRead = u.cache_read_input_tokens;
+        if (u?.cache_creation_input_tokens) tokenUsage.cacheCreate = u.cache_creation_input_tokens;
       } else if (event.type === "message_delta") {
         // message_delta.usage 는 누적이 아니라 현 시점 output 토큰 수.
         if ("usage" in event && event.usage) {

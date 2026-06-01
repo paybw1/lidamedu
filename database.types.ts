@@ -275,6 +275,30 @@ export type Database = {
           },
         ]
       }
+      ai_usage_daily: {
+        Row: {
+          date: string
+          total_cost_usd: number
+          total_input_tokens: number
+          total_output_tokens: number
+          updated_at: string
+        }
+        Insert: {
+          date: string
+          total_cost_usd?: number
+          total_input_tokens?: number
+          total_output_tokens?: number
+          updated_at?: string
+        }
+        Update: {
+          date?: string
+          total_cost_usd?: number
+          total_input_tokens?: number
+          total_output_tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       announcement_audiences: {
         Row: {
           added_at: string
@@ -1799,6 +1823,7 @@ export type Database = {
       }
       content_chunks: {
         Row: {
+          authority_tier: number
           body_text: string
           chunk_id: string
           chunk_index: number
@@ -1814,6 +1839,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          authority_tier?: number
           body_text: string
           chunk_id?: string
           chunk_index: number
@@ -1829,6 +1855,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          authority_tier?: number
           body_text?: string
           chunk_id?: string
           chunk_index?: number
@@ -4458,6 +4485,42 @@ export type Database = {
           },
         ]
       }
+      study_books: {
+        Row: {
+          author: string | null
+          book_id: string
+          created_at: string
+          edition: string | null
+          file_path: string | null
+          kind: Database["public"]["Enums"]["chunk_source_type"]
+          subject: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          book_id?: string
+          created_at?: string
+          edition?: string | null
+          file_path?: string | null
+          kind: Database["public"]["Enums"]["chunk_source_type"]
+          subject: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          book_id?: string
+          created_at?: string
+          edition?: string | null
+          file_path?: string | null
+          kind?: Database["public"]["Enums"]["chunk_source_type"]
+          subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       study_goals: {
         Row: {
           exam_date: string | null
@@ -5696,6 +5759,15 @@ export type Database = {
           total_users: number
         }[]
       }
+      ai_usage_daily_increment: {
+        Args: {
+          p_cost: number
+          p_date: string
+          p_input: number
+          p_output: number
+        }
+        Returns: undefined
+      }
       apply_law_revision: {
         Args: {
           p_effective_date: string
@@ -5879,11 +5951,13 @@ export type Database = {
       }
       match_content_chunks: {
         Args: {
+          doc_type_filter?: Database["public"]["Enums"]["chunk_source_type"][]
           law_filter?: string[]
           match_k?: number
           query_embedding: string
         }
         Returns: {
+          authority_tier: number
           body_text: string
           chunk_id: string
           chunk_index: number
@@ -6002,7 +6076,12 @@ export type Database = {
       assignment_status: "pending" | "partial" | "completed"
       auto_blank_type: "subject" | "period"
       case_court: "supreme" | "patent_court" | "high_court" | "district_court"
-      chunk_source_type: "article" | "case" | "problem"
+      chunk_source_type:
+        | "article"
+        | "case"
+        | "problem"
+        | "textbook"
+        | "practice"
       community_board: "free" | "study" | "review"
       community_post_attachment_kind: "image" | "pdf" | "file"
       community_report_status: "pending" | "resolved" | "dismissed"
@@ -6235,7 +6314,7 @@ export const Constants = {
       assignment_status: ["pending", "partial", "completed"],
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
-      chunk_source_type: ["article", "case", "problem"],
+      chunk_source_type: ["article", "case", "problem", "textbook", "practice"],
       community_board: ["free", "study", "review"],
       community_post_attachment_kind: ["image", "pdf", "file"],
       community_report_status: ["pending", "resolved", "dismissed"],
