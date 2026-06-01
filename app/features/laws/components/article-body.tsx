@@ -197,9 +197,10 @@ function BlockView({ block, depth }: { block: Block; depth: number }) {
 }
 
 function BlockBody({ block, depth }: { block: Block; depth: number }) {
+  const { lawCode } = useContext(Ctx);
   switch (block.kind) {
     case "para": {
-      const { main, tail } = splitTrailingRefs(block.inline);
+      const { main, tail } = splitTrailingRefs(block.inline, lawCode);
       return (
         <>
           {main.length > 0 ? (
@@ -347,14 +348,101 @@ function RefsCollapsible({
   );
 }
 
+// 특허법 import 일부 조문에서 본문 inline text 의 끝에 raw "法 NN(의N)?(①)?(Ⅰ)?" 한자 텍스트
+// 가 분리되지 않고 박혀 있다(예: clause text="... <개정 2014.6.11.>法 200의2①"). 이 시퀀스를
+// 텍스트 끝에서만 추출해 ref_article 토큰으로 변환 — splitTrailingRefs 가 그 다음에 toggle 박스로
+// 옮긴다. 매핑은 정상 파싱된 ref_article 토큰 (법 67의2①, 법 30③Ⅱ 등) 의 target 규칙과 동일:
+//   "의N" → branch, "①②…" → clause, "ⅠⅡ…" → item.
+// law_code 가 없거나 article 이 정수 변환 안 되면 raw text 그대로 fallback.
+const TRAILING_RAW_REFS_RE =
+  /(?:[\s,·、，/]*法\s*\d+(?:의\d+)?[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]*[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]*)+\s*$/;
+const SINGLE_RAW_REF_RE_G =
+  /法\s*(\d+)(?:의(\d+))?([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮])?([ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ])?/g;
+const CIRCLED_TO_INT: Record<string, number> = {
+  "①": 1, "②": 2, "③": 3, "④": 4, "⑤": 5,
+  "⑥": 6, "⑦": 7, "⑧": 8, "⑨": 9, "⑩": 10,
+  "⑪": 11, "⑫": 12, "⑬": 13, "⑭": 14, "⑮": 15,
+};
+const ROMAN_TO_INT: Record<string, number> = {
+  "Ⅰ": 1, "Ⅱ": 2, "Ⅲ": 3, "Ⅳ": 4, "Ⅴ": 5,
+  "Ⅵ": 6, "Ⅶ": 7, "Ⅷ": 8, "Ⅸ": 9, "Ⅹ": 10,
+};
+function parseSingleRawRef(
+  raw: string,
+  article: string,
+  branch: string | undefined,
+  clauseChar: string | undefined,
+  itemChar: string | undefined,
+  lawCode: LawSubjectSlug | null,
+): Inline {
+  const articleNum = parseInt(article, 10);
+  if (!lawCode || !Number.isInteger(articleNum) || articleNum <= 0) {
+    return { type: "text", text: raw };
+  }
+  const target: {
+    law_code: LawSubjectSlug;
+    article: number;
+    branch?: number;
+    clause?: number;
+    item?: number;
+  } = { law_code: lawCode, article: articleNum };
+  if (branch) {
+    const b = parseInt(branch, 10);
+    if (Number.isInteger(b) && b > 0) target.branch = b;
+  }
+  if (clauseChar) {
+    const c = CIRCLED_TO_INT[clauseChar];
+    if (c) target.clause = c;
+  }
+  if (itemChar) {
+    const i = ROMAN_TO_INT[itemChar];
+    if (i) target.item = i;
+  }
+  return { type: "ref_article", raw, target };
+}
+function extractTrailingRawRefs(
+  inline: Inline[],
+  lawCode: LawSubjectSlug | null,
+): Inline[] {
+  if (inline.length === 0) return inline;
+  const last = inline[inline.length - 1];
+  if (last.type !== "text") return inline;
+  const m = TRAILING_RAW_REFS_RE.exec(last.text);
+  if (!m) return inline;
+  const head = last.text.slice(0, m.index);
+  const refsBlob = m[0];
+
+  const refsOut: Inline[] = [];
+  let lastIdx = 0;
+  SINGLE_RAW_REF_RE_G.lastIndex = 0;
+  let rm: RegExpExecArray | null;
+  while ((rm = SINGLE_RAW_REF_RE_G.exec(refsBlob)) !== null) {
+    if (rm.index > lastIdx) {
+      const sep = refsBlob.slice(lastIdx, rm.index);
+      if (sep.length > 0) refsOut.push({ type: "text", text: sep });
+    }
+    refsOut.push(parseSingleRawRef(rm[0], rm[1], rm[2], rm[3], rm[4], lawCode));
+    lastIdx = rm.index + rm[0].length;
+  }
+  if (lastIdx < refsBlob.length) {
+    const trailSep = refsBlob.slice(lastIdx);
+    if (trailSep.trim().length > 0) refsOut.push({ type: "text", text: trailSep });
+  }
+
+  const out: Inline[] = inline.slice(0, -1);
+  if (head.length > 0) out.push({ type: "text", text: head });
+  out.push(...refsOut);
+  return out;
+}
+
 // inline 마지막에 연속 위치한 ref_article (사이의 콤마/슬래시/공백 separator 텍스트 포함) 을
 // 본문에서 분리해 RefsCollapsible 로 토글 표시할 수 있게 한다.
 // amendment_note 가 trailing 에 끼어 있어도 ref 추출을 막지 않고, amendment_note 는 main 에 보존한다.
-function splitTrailingRefs(inline: Inline[]): {
-  main: Inline[];
-  tail: Inline[];
-} {
-  const work = [...inline];
+function splitTrailingRefs(
+  inline: Inline[],
+  lawCode: LawSubjectSlug | null,
+): { main: Inline[]; tail: Inline[] } {
+  const work = [...extractTrailingRawRefs(inline, lawCode)];
   const tail: Inline[] = [];
   const heldAmendments: Inline[] = [];
   while (work.length > 0) {
@@ -396,7 +484,7 @@ function LabeledBlock({
   id: string;
   labelClass: string;
 }) {
-  const { subtitlesOnly } = useContext(Ctx);
+  const { subtitlesOnly, lawCode } = useContext(Ctx);
   // 소제목만 보기 모드일 때도 본문 중간의 inline subtitle 토큰은 보이도록 필터
   const baseInline = subtitlesOnly
     ? inline.filter((t) => t.type === "subtitle")
@@ -404,7 +492,7 @@ function LabeledBlock({
   // 끝에 붙은 관련조문 ref tail 분리 — 토글 박스로 표시
   const { main: visibleInline, tail: tailRefs } = subtitlesOnly
     ? { main: baseInline, tail: [] as Inline[] }
-    : splitTrailingRefs(baseInline);
+    : splitTrailingRefs(baseInline, lawCode);
   return (
     <div style={{ paddingLeft: `${depth * 16}px` }} id={id}>
       <p>
