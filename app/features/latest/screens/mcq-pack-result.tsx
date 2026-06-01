@@ -6,10 +6,13 @@ import {
   CheckCircle2Icon,
   CircleXIcon,
   ClockIcon,
+  ExternalLinkIcon,
   MinusCircleIcon,
+  RotateCcwIcon,
+  ScrollTextIcon,
   VideoIcon,
 } from "lucide-react";
-import { data } from "react-router";
+import { Form, Link, data } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
@@ -31,8 +34,14 @@ import {
 import { isMockKind, MCQ_PACK_KIND_LABELS } from "~/features/mcq-packs/labels";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 import {
-  getQuizSessionResult,
+  getEvidenceForWrongProblems,
+  getPreviousPackScores,
   getProblemStatsBulk,
+  getQuizSessionResult,
+  getSessionWeakNodes,
+  type PreviousScoreRow,
+  type WeakNodeRow,
+  type WrongEvidence,
 } from "~/features/study/queries.server";
 
 import type { Route } from "./+types/mcq-pack-result";
@@ -86,7 +95,28 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // feat-10-004 — 본인 점수·합격·등수 (exam 모드 응시 시에만 row 존재)
   const ranking = await getPackAttemptRanking(client, params.packId);
 
-  return { pack, result, aggStats, packStats, ranking };
+  // feat §B1 — 오답들의 근거 재료 bulk 추출 (AI source → choice ref → box ref → primary).
+  const wrongIds = result.items
+    .filter((it) => it.isCorrect === false)
+    .map((it) => it.problemId);
+  const [evidenceByProblem, weakNodes, previousScores] = await Promise.all([
+    getEvidenceForWrongProblems(client, user.id, params.sessionId, wrongIds),
+    // §B3 약점 진단 — 단원별 정답률.
+    getSessionWeakNodes(client, user.id, params.sessionId),
+    // §B4 성장 추이 — 같은 pack 본인 이전 응시 점수.
+    getPreviousPackScores(client, user.id, params.packId, params.sessionId, 5),
+  ]);
+
+  return {
+    pack,
+    result,
+    aggStats,
+    packStats,
+    ranking,
+    evidenceByProblem,
+    weakNodes,
+    previousScores,
+  };
 }
 
 function formatDuration(ms: number): string {
@@ -111,10 +141,27 @@ const FORMAT_ORDER: ProblemFormat[] = [
   "subjective",
 ];
 
+// feat §B3 — pack.subjectScope → /subjects/* lawCode. industrial(혼합) / science 는 null.
+function packSubjectToLawCode(s: string): string | null {
+  if (s === "patent" || s === "trademark" || s === "design" || s === "civil")
+    return s;
+  if (s === "civil_procedure") return "civil-procedure";
+  return null;
+}
+
 const CHOICE_TYPE_ORDER: ProblemChoiceType[] = ["statute", "precedent", "theory"];
 
 export default function McqPackResult({ loaderData }: Route.ComponentProps) {
-  const { pack, result, aggStats, packStats, ranking } = loaderData;
+  const {
+    pack,
+    result,
+    aggStats,
+    packStats,
+    ranking,
+    evidenceByProblem,
+    weakNodes,
+    previousScores,
+  } = loaderData;
   const { items, attemptedCount, correctCount, totalTimeMs } = result;
   const total = items.length;
   const wrongCount = attemptedCount - correctCount;
@@ -143,8 +190,19 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
       }
     >
       {ranking ? (
-        <ScoreSummary ranking={ranking} passScore={pack.passScore} />
+        <ScoreSummary
+          ranking={ranking}
+          passScore={pack.passScore}
+          previousScores={previousScores}
+        />
       ) : null}
+
+      {/* feat §B3 — 단원별 정답률 (약점 단원 강조). */}
+      {(() => {
+        const lawCode = packSubjectToLawCode(pack.subjectScope);
+        if (!lawCode) return null;
+        return <WeakNodesPanel weakNodes={weakNodes} lawCode={lawCode} />;
+      })()}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -209,6 +267,41 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
           }))}
         />
       </div>
+
+      {/* feat §B2 — 오답 묶기 재도전 액션 + (향후) SRS 자리. */}
+      {wrongCount > 0 ? (
+        <div className="border-border bg-card mb-4 flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold tracking-tight">
+              오답 {wrongCount}문항 묶어 다시 풀기
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              이번 회차 오답만 모아 새 회차로. 같은 문제·같은 순서.
+            </p>
+          </div>
+          <Form
+            method="post"
+            action="/api/study/session-from-attempts"
+            className="flex gap-2"
+          >
+            <input
+              type="hidden"
+              name="sourceSessionId"
+              value={result.session.sessionId}
+            />
+            <input type="hidden" name="mode" value="study" />
+            <Button
+              type="submit"
+              variant="default"
+              size="sm"
+              className="rounded-full"
+              data-testid="result-retry-wrong"
+            >
+              <RotateCcwIcon className="size-3.5" /> 오답 재도전
+            </Button>
+          </Form>
+        </div>
+      ) : null}
 
       <p className="mb-2 text-sm font-bold tracking-tight">
         문제별 결과
@@ -285,19 +378,170 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
           </tbody>
         </table>
       </IndexCard>
+
+      {/* feat §B1 — 오답별 근거 바로가기 (조문/판례 chip + AI 근거 청크 + 해설). */}
+      {wrongCount > 0 ? (
+        <>
+          <p className="mt-6 mb-2 text-sm font-bold tracking-tight">
+            오답별 근거 바로가기
+            <span className="text-muted-foreground ml-2 text-xs font-normal">
+              틀린 문제의 근거 조문·판례로 즉시 이동하세요.
+            </span>
+          </p>
+          <ul className="space-y-2.5">
+            {items
+              .map((it, idx) => ({ it, idx: idx + 1 }))
+              .filter(({ it }) => it.isCorrect === false)
+              .map(({ it, idx }) => (
+                <li key={it.problemId}>
+                  <WrongEvidenceCard
+                    item={it}
+                    seqNo={idx}
+                    evidence={evidenceByProblem[it.problemId]}
+                  />
+                </li>
+              ))}
+          </ul>
+        </>
+      ) : null}
     </McqAreaShell>
   );
 }
 
+function WrongEvidenceCard({
+  item,
+  seqNo,
+  evidence,
+}: {
+  item: import("~/features/study/queries.server").QuizSessionResultItem;
+  seqNo: number;
+  evidence: WrongEvidence | undefined;
+}) {
+  const hasEvidence =
+    evidence &&
+    (evidence.articles.length > 0 ||
+      evidence.cases.length > 0 ||
+      evidence.aiChunks.length > 0 ||
+      evidence.explanationMd);
+  return (
+    <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+      <div className="mb-2 flex flex-wrap items-baseline gap-2">
+        <span className="bg-rose-100 text-rose-700 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums dark:bg-rose-950/40 dark:text-rose-300">
+          {seqNo}
+        </span>
+        <Pill tone="rose">오답</Pill>
+        {item.year ? (
+          <span className="text-muted-foreground text-[11px] tabular-nums">
+            {item.year}년
+            {item.problemNumber ? ` · ${item.problemNumber}번` : ""}
+          </span>
+        ) : null}
+        <span className="text-muted-foreground ml-2 line-clamp-1 flex-1 text-xs">
+          {item.bodySnippet}
+        </span>
+      </div>
+
+      {!hasEvidence ? (
+        <p className="text-muted-foreground text-xs">
+          근거 정보가 없습니다. 강사 Q&amp;A 또는 해설을 참고하세요.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {evidence!.articles.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
+                조문
+              </span>
+              {evidence!.articles.map((a) => (
+                <Link
+                  key={`${a.articleId}-${a.via}`}
+                  to={`/subjects/${a.lawCode}/articles/${a.pathSlug}`}
+                  viewTransition
+                  prefetch="intent"
+                  title={a.via}
+                  className="border-primary/30 bg-primary/[0.08] text-primary hover:bg-primary/[0.15] inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
+                >
+                  <ScrollTextIcon className="size-3" />
+                  {a.displayLabel}
+                  <span className="text-muted-foreground/80 ml-0.5 text-[10px]">
+                    {a.via}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+          {evidence!.cases.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
+                판례
+              </span>
+              {evidence!.cases.map((c) => (
+                <Link
+                  key={`${c.caseId}-${c.via}`}
+                  to={`/subjects/${c.lawCode}/cases/${c.caseId}`}
+                  viewTransition
+                  prefetch="intent"
+                  title={c.via}
+                  className="inline-flex max-w-full items-center gap-1 truncate rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
+                >
+                  <ExternalLinkIcon className="size-3" />
+                  {c.caseNumber}
+                  <span className="text-muted-foreground/80 ml-0.5 text-[10px]">
+                    {c.via}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+          {evidence!.aiChunks.length > 0 ? (
+            <div className="border-border/60 mt-1 rounded-md border bg-muted/30 p-2">
+              <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-wide uppercase">
+                AI 근거 청크 ({evidence!.aiChunks.length})
+              </p>
+              <ul className="space-y-1">
+                {evidence!.aiChunks.slice(0, 2).map((ch) => (
+                  <li key={ch.chunkId} className="text-xs">
+                    <span className="text-muted-foreground mr-1.5 text-[10px]">
+                      [{ch.sourceType}
+                      {ch.headingPath ? ` · ${ch.headingPath}` : ""}]
+                    </span>
+                    {ch.bodyPreview}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {evidence!.explanationMd ? (
+            <details className="text-xs">
+              <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[11px] font-semibold">
+                해설 보기
+              </summary>
+              <p className="text-foreground/80 mt-1.5 whitespace-pre-line">
+                {evidence!.explanationMd}
+              </p>
+            </details>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // feat-10-004 — 모의고사 점수·합격 판정·등수 요약.
+// feat §B4 — 합격선까지 N점 / 지난 회차 ± 추이 추가.
 function ScoreSummary({
   ranking,
   passScore,
+  previousScores,
 }: {
   ranking: PackAttemptRanking;
   passScore: number | null;
+  previousScores: PreviousScoreRow[];
 }) {
   const passed = passScore !== null ? ranking.score >= passScore : null;
+  const distanceToPass = passScore !== null ? passScore - ranking.score : null;
+  const lastPrev = previousScores[0] ?? null;
+  const diffPrev = lastPrev ? ranking.score - lastPrev.score : null;
   return (
     <div className="border-border bg-card mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 shadow-sm">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
@@ -317,6 +561,32 @@ function ScoreSummary({
           정답 {ranking.correct} / {ranking.total}
           {passScore !== null ? ` · 합격선 ${passScore}점` : ""}
         </span>
+        {/* §B4 — 합격선까지 N점 (이번 점수 기준). */}
+        {distanceToPass !== null && distanceToPass > 0 ? (
+          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            합격까지 {distanceToPass}점
+          </span>
+        ) : distanceToPass !== null && distanceToPass <= 0 ? (
+          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+            합격선 +{Math.abs(distanceToPass)}점
+          </span>
+        ) : null}
+        {/* §B4 — 지난 회차 대비 ±. */}
+        {diffPrev !== null ? (
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+              diffPrev > 0
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : diffPrev < 0
+                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
+                  : "bg-muted text-muted-foreground",
+            )}
+          >
+            지난 회차 {diffPrev > 0 ? "+" : ""}
+            {diffPrev}점
+          </span>
+        ) : null}
       </div>
       <div className="text-right">
         <p className="text-lg font-bold tabular-nums">
@@ -327,6 +597,90 @@ function ScoreSummary({
           백분위 {ranking.percentile} · 표준점수 z {ranking.zScore}
         </p>
       </div>
+    </div>
+  );
+}
+
+// feat §B3 — 약점 단원 패널. 정답률 오름차순 상위 5개.
+function WeakNodesPanel({
+  weakNodes,
+  lawCode,
+}: {
+  weakNodes: WeakNodeRow[];
+  lawCode: string;
+}) {
+  if (weakNodes.length === 0) return null;
+  const top = weakNodes.slice(0, 5);
+  return (
+    <div className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <p className="text-sm font-bold tracking-tight">단원별 정답률</p>
+        <p className="text-muted-foreground text-[11px]">
+          정답률 낮은 순 · 약점 단원 우선
+        </p>
+      </div>
+      <ul className="space-y-1.5">
+        {top.map((n, idx) => {
+          const tone =
+            n.accuracyPct < 50
+              ? "rose"
+              : n.accuracyPct < 75
+                ? "amber"
+                : "emerald";
+          return (
+            <li
+              key={n.nodeId ?? `etc-${idx}`}
+              className="border-border/70 flex items-center gap-3 rounded-md border bg-background px-3 py-2"
+            >
+              <span
+                className={cn(
+                  "inline-block size-2 shrink-0 rounded-full",
+                  tone === "rose"
+                    ? "bg-rose-500"
+                    : tone === "amber"
+                      ? "bg-amber-500"
+                      : "bg-emerald-500",
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                {n.nodeId ? (
+                  <Link
+                    to={`/subjects/${lawCode}/systematic/${n.nodeId}`}
+                    viewTransition
+                    prefetch="intent"
+                    className="hover:text-primary text-sm font-medium"
+                  >
+                    {n.label}
+                  </Link>
+                ) : (
+                  <span className="text-sm font-medium">{n.label}</span>
+                )}
+              </div>
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {n.correct}/{n.total}
+              </span>
+              <span
+                className={cn(
+                  "text-sm font-bold tabular-nums",
+                  tone === "rose"
+                    ? "text-rose-600"
+                    : tone === "amber"
+                      ? "text-amber-600"
+                      : "text-emerald-600",
+                )}
+              >
+                {n.accuracyPct}%
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {weakNodes[0] && weakNodes[0].accuracyPct < 60 ? (
+        <p className="text-muted-foreground mt-2 text-[11px]">
+          💡 가장 약한 단원: <strong>{weakNodes[0].label}</strong> — 해당 단원
+          체계도에서 복습을 시작해보세요.
+        </p>
+      ) : null}
     </div>
   );
 }

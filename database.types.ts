@@ -5317,6 +5317,56 @@ export type Database = {
           },
         ]
       }
+      user_quiz_flags: {
+        Row: {
+          flagged_at: string
+          problem_id: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          flagged_at?: string
+          problem_id: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          flagged_at?: string
+          problem_id?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_quiz_flags_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "user_quiz_flags_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "user_quiz_flags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_quiz_flags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       user_recitation_attempts: {
         Row: {
           article_id: string

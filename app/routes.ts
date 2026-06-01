@@ -150,6 +150,11 @@ export default [
         "features/study/api/session-from-bookmarks.tsx",
       ),
       route("/start-flow", "features/study/api/start-flow.tsx"),
+      route("/quiz-flag", "features/study/api/quiz-flag.tsx"),
+      route(
+        "/session-from-attempts",
+        "features/study/api/session-from-attempts.tsx",
+      ),
     ]),
     ...prefix("/mcq-pack", [
       route("/start", "features/mcq-packs/api/start.tsx"),

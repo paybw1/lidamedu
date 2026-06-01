@@ -626,6 +626,309 @@ export async function getSessionAttemptsMap(
   return map;
 }
 
+// feat §A — "다시 볼 문제" 플래그 set. 재진입 시 sheet 복구용.
+export async function getSessionFlagSet(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("user_quiz_flags")
+    .select("problem_id")
+    .eq("user_id", userId)
+    .eq("session_id", sessionId);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.problem_id);
+}
+
+// feat §B1 — 오답들의 근거 재료 bulk 추출.
+//   우선순위: AI source_chunk_ids → 사용자가 선택한 오답 choice 의 related_article/case →
+//   박스형 box_items 의 related_article/case → primary_article_id → explanation_md.
+//
+// 한 화면에서 한 번 호출 — bulk SELECT 로 RTT 1~3단 만에 채움.
+
+export interface EvidenceArticleRef {
+  articleId: string;
+  displayLabel: string;
+  pathSlug: string;
+  lawCode: string;
+  via: string;
+}
+export interface EvidenceCaseRef {
+  caseId: string;
+  caseNumber: string;
+  caseTitle: string | null;
+  lawCode: string;
+  via: string;
+}
+export interface EvidenceAiChunk {
+  chunkId: string;
+  sourceType: string;
+  headingPath: string | null;
+  bodyPreview: string;
+}
+export interface WrongEvidence {
+  problemId: string;
+  articles: EvidenceArticleRef[];
+  cases: EvidenceCaseRef[];
+  aiChunks: EvidenceAiChunk[];
+  explanationMd: string | null;
+}
+
+export async function getEvidenceForWrongProblems(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+  wrongProblemIds: string[],
+): Promise<Record<string, WrongEvidence>> {
+  const out: Record<string, WrongEvidence> = {};
+  if (wrongProblemIds.length === 0) return out;
+
+  // 1) problems — primary_article_id, source_chunk_ids, explanation_md.
+  const { data: probs, error: pErr } = await client
+    .from("problems")
+    .select(
+      "problem_id, primary_article_id, source_chunk_ids, explanation_md",
+    )
+    .in("problem_id", wrongProblemIds);
+  if (pErr) throw pErr;
+
+  // 2) 사용자가 선택한 choice — selectedChoiceIndex 기준으로 그 choice 의 related_*.
+  //    user_problem_attempts 에서 selected_choice_id 가져옴.
+  const { data: attemptRows } = await client
+    .from("user_problem_attempts")
+    .select("problem_id, selected_choice_id, attempted_at")
+    .eq("user_id", userId)
+    .eq("session_id", sessionId)
+    .in("problem_id", wrongProblemIds)
+    .order("attempted_at", { ascending: false });
+  // 동일 problem 의 최신 attempt 만.
+  const selectedChoiceByProblem = new Map<string, string | null>();
+  for (const r of attemptRows ?? []) {
+    if (!selectedChoiceByProblem.has(r.problem_id)) {
+      selectedChoiceByProblem.set(r.problem_id, r.selected_choice_id);
+    }
+  }
+  const selectedChoiceIds = [...selectedChoiceByProblem.values()].filter(
+    (v): v is string => !!v,
+  );
+  const { data: selectedChoices } = selectedChoiceIds.length
+    ? await client
+        .from("problem_choices")
+        .select(
+          "choice_id, problem_id, related_article_id, related_case_id, related_article_number, related_case_number",
+        )
+        .in("choice_id", selectedChoiceIds)
+    : { data: [] };
+
+  // 3) box_items — mc_box 인 경우 모든 보기의 related_*. 사용자 선택 보기 추적은 단순화.
+  const { data: boxItems } = await client
+    .from("problem_box_items")
+    .select(
+      "box_item_id, problem_id, marker, related_article_id, related_case_id, ox_truth",
+    )
+    .in("problem_id", wrongProblemIds);
+
+  // 4) 모은 article_ids / case_ids 일괄 메타 조회.
+  const articleIds = new Set<string>();
+  const caseIds = new Set<string>();
+  const chunkIds = new Set<string>();
+  for (const p of probs ?? []) {
+    if (p.primary_article_id) articleIds.add(p.primary_article_id);
+    if (Array.isArray(p.source_chunk_ids)) {
+      for (const cid of p.source_chunk_ids as string[]) chunkIds.add(cid);
+    }
+  }
+  for (const c of selectedChoices ?? []) {
+    if (c.related_article_id) articleIds.add(c.related_article_id);
+    if (c.related_case_id) caseIds.add(c.related_case_id);
+  }
+  for (const b of boxItems ?? []) {
+    if (b.related_article_id) articleIds.add(b.related_article_id);
+    if (b.related_case_id) caseIds.add(b.related_case_id);
+  }
+
+  const articlesByIdPromise = articleIds.size
+    ? client
+        .from("articles")
+        .select(
+          "article_id, display_label, article_number, laws(law_code)",
+        )
+        .in("article_id", [...articleIds])
+    : Promise.resolve({ data: [] });
+  const casesByIdPromise = caseIds.size
+    ? client
+        .from("cases")
+        .select(
+          "case_id, case_number, case_title, primary_article_id, articles!primary_article_id(laws(law_code))",
+        )
+        .in("case_id", [...caseIds])
+    : Promise.resolve({ data: [] });
+  const chunksByIdPromise = chunkIds.size
+    ? client
+        .from("content_chunks")
+        .select("chunk_id, source_type, heading_path, body_text")
+        .in("chunk_id", [...chunkIds])
+    : Promise.resolve({ data: [] });
+  const [articlesRes, casesRes, chunksRes] = await Promise.all([
+    articlesByIdPromise,
+    casesByIdPromise,
+    chunksByIdPromise,
+  ]);
+  const articleMap = new Map<
+    string,
+    { displayLabel: string; pathSlug: string; lawCode: string }
+  >();
+  for (const a of articlesRes.data ?? []) {
+    if (!a.laws?.law_code || !a.article_number) continue;
+    articleMap.set(a.article_id, {
+      displayLabel: a.display_label ?? a.article_number,
+      pathSlug: articleSlug(a.article_number),
+      lawCode: a.laws.law_code,
+    });
+  }
+  const caseMap = new Map<
+    string,
+    { caseNumber: string; caseTitle: string | null; lawCode: string }
+  >();
+  for (const c of casesRes.data ?? []) {
+    const lawCode = c.articles?.laws?.law_code ?? null;
+    if (!lawCode) continue;
+    caseMap.set(c.case_id, {
+      caseNumber: c.case_number,
+      caseTitle: c.case_title,
+      lawCode,
+    });
+  }
+  const chunkMap = new Map<string, EvidenceAiChunk>();
+  for (const ch of chunksRes.data ?? []) {
+    chunkMap.set(ch.chunk_id, {
+      chunkId: ch.chunk_id,
+      sourceType: ch.source_type,
+      headingPath: ch.heading_path,
+      bodyPreview:
+        ch.body_text.length > 240
+          ? ch.body_text.slice(0, 240) + "…"
+          : ch.body_text,
+    });
+  }
+
+  // 5) 문제별 evidence 합산.
+  const probsById = new Map((probs ?? []).map((p) => [p.problem_id, p]));
+  const selectedChoiceByProb = new Map(
+    (selectedChoices ?? []).map((c) => [c.problem_id, c]),
+  );
+  const boxByProb = new Map<string, typeof boxItems>();
+  for (const b of boxItems ?? []) {
+    const list = boxByProb.get(b.problem_id) ?? [];
+    list.push(b);
+    boxByProb.set(b.problem_id, list);
+  }
+
+  for (const pid of wrongProblemIds) {
+    const articles: EvidenceArticleRef[] = [];
+    const cases: EvidenceCaseRef[] = [];
+    const aiChunks: EvidenceAiChunk[] = [];
+    const seenA = new Set<string>();
+    const seenC = new Set<string>();
+
+    // (1) AI source chunks — 우선순위 최상.
+    const probRow = probsById.get(pid);
+    if (probRow && Array.isArray(probRow.source_chunk_ids)) {
+      for (const cid of probRow.source_chunk_ids as string[]) {
+        const ch = chunkMap.get(cid);
+        if (ch) aiChunks.push(ch);
+      }
+    }
+
+    // (2) 사용자가 선택한 오답 choice 의 related_*.
+    const sc = selectedChoiceByProb.get(pid);
+    if (sc) {
+      if (sc.related_article_id) {
+        const a = articleMap.get(sc.related_article_id);
+        if (a && !seenA.has(sc.related_article_id)) {
+          seenA.add(sc.related_article_id);
+          articles.push({
+            articleId: sc.related_article_id,
+            displayLabel: a.displayLabel,
+            pathSlug: a.pathSlug,
+            lawCode: a.lawCode,
+            via: "내가 고른 보기 근거",
+          });
+        }
+      }
+      if (sc.related_case_id) {
+        const c = caseMap.get(sc.related_case_id);
+        if (c && !seenC.has(sc.related_case_id)) {
+          seenC.add(sc.related_case_id);
+          cases.push({
+            caseId: sc.related_case_id,
+            caseNumber: c.caseNumber,
+            caseTitle: c.caseTitle,
+            lawCode: c.lawCode,
+            via: "내가 고른 보기 근거",
+          });
+        }
+      }
+    }
+
+    // (3) 박스 항목들 — 박스형 오답의 보기별 근거.
+    const boxes = boxByProb.get(pid) ?? [];
+    for (const b of boxes) {
+      if (b.related_article_id) {
+        const a = articleMap.get(b.related_article_id);
+        if (a && !seenA.has(b.related_article_id)) {
+          seenA.add(b.related_article_id);
+          articles.push({
+            articleId: b.related_article_id,
+            displayLabel: a.displayLabel,
+            pathSlug: a.pathSlug,
+            lawCode: a.lawCode,
+            via: `${b.marker} 보기 근거`,
+          });
+        }
+      }
+      if (b.related_case_id) {
+        const c = caseMap.get(b.related_case_id);
+        if (c && !seenC.has(b.related_case_id)) {
+          seenC.add(b.related_case_id);
+          cases.push({
+            caseId: b.related_case_id,
+            caseNumber: c.caseNumber,
+            caseTitle: c.caseTitle,
+            lawCode: c.lawCode,
+            via: `${b.marker} 보기 근거`,
+          });
+        }
+      }
+    }
+
+    // (4) primary_article_id — fallback.
+    if (probRow?.primary_article_id) {
+      const a = articleMap.get(probRow.primary_article_id);
+      if (a && !seenA.has(probRow.primary_article_id)) {
+        seenA.add(probRow.primary_article_id);
+        articles.push({
+          articleId: probRow.primary_article_id,
+          displayLabel: a.displayLabel,
+          pathSlug: a.pathSlug,
+          lawCode: a.lawCode,
+          via: "주요 조문",
+        });
+      }
+    }
+
+    out[pid] = {
+      problemId: pid,
+      articles,
+      cases,
+      aiChunks,
+      explanationMd: probRow?.explanation_md ?? null,
+    };
+  }
+  return out;
+}
+
 export interface QuizSessionResultItem {
   problemId: string;
   problemNumber: number | null;
@@ -2280,4 +2583,175 @@ export async function getUserPassPredictionTrend(
     score: r.score,
     rating: r.rating,
   }));
+}
+
+// feat §B3 — 단원(systematic node) 별 정답률 집계. 한 회차의 약점 단원 찾기용.
+//   problems → primary_article_id → article_systematic_links → node_id → systematic_nodes.label
+//   primary_article 없는 문제는 "기타"로 묶음.
+
+export interface WeakNodeRow {
+  nodeId: string | null; // null = 기타
+  label: string;
+  correct: number;
+  total: number;
+  accuracyPct: number; // 0~100
+}
+
+export async function getSessionWeakNodes(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<WeakNodeRow[]> {
+  // 1) session.problemIds + 정오 (user_problem_attempts 최신).
+  const { data: session } = await client
+    .from("quiz_sessions")
+    .select("problem_ids")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!session || !session.problem_ids?.length) return [];
+  const pids: string[] = session.problem_ids;
+
+  const [attemptsRes, probsRes] = await Promise.all([
+    client
+      .from("user_problem_attempts")
+      .select("problem_id, is_correct, attempted_at")
+      .eq("user_id", userId)
+      .eq("session_id", sessionId)
+      .order("attempted_at", { ascending: false }),
+    client
+      .from("problems")
+      .select("problem_id, primary_article_id")
+      .in("problem_id", pids),
+  ]);
+
+  // 동일 문제 최신만.
+  const seen = new Set<string>();
+  const correctMap = new Map<string, boolean>();
+  for (const r of attemptsRes.data ?? []) {
+    if (seen.has(r.problem_id)) continue;
+    seen.add(r.problem_id);
+    correctMap.set(r.problem_id, r.is_correct);
+  }
+
+  const articleByProblem = new Map<string, string | null>();
+  for (const p of probsRes.data ?? []) {
+    articleByProblem.set(p.problem_id, p.primary_article_id);
+  }
+
+  // 2) article → node 매핑.
+  const articleIds = [...articleByProblem.values()].filter(
+    (v): v is string => !!v,
+  );
+  const nodeByArticle = new Map<string, string>();
+  if (articleIds.length > 0) {
+    const { data: links } = await client
+      .from("article_systematic_links")
+      .select("article_id, node_id")
+      .in("article_id", articleIds);
+    // 한 article 이 여러 노드에 매핑된 경우 첫 번째만 사용 (단순화).
+    for (const l of links ?? []) {
+      if (!nodeByArticle.has(l.article_id)) {
+        nodeByArticle.set(l.article_id, l.node_id);
+      }
+    }
+  }
+
+  // 3) node 라벨.
+  const nodeIds = [...new Set(nodeByArticle.values())];
+  const labelByNode = new Map<string, string>();
+  if (nodeIds.length > 0) {
+    const { data: nodes } = await client
+      .from("systematic_nodes")
+      .select("node_id, display_label")
+      .in("node_id", nodeIds);
+    for (const n of nodes ?? []) labelByNode.set(n.node_id, n.display_label);
+  }
+
+  // 4) 노드별 집계 (응답한 문제만 분모).
+  type Bucket = { correct: number; total: number };
+  const byNode = new Map<string | null, Bucket>();
+  for (const pid of pids) {
+    const isCorrect = correctMap.get(pid);
+    if (isCorrect === undefined) continue; // 미응답 skip
+    const articleId = articleByProblem.get(pid) ?? null;
+    const nodeId = articleId ? (nodeByArticle.get(articleId) ?? null) : null;
+    const key = nodeId;
+    const cur = byNode.get(key) ?? { correct: 0, total: 0 };
+    cur.total += 1;
+    if (isCorrect) cur.correct += 1;
+    byNode.set(key, cur);
+  }
+  const rows: WeakNodeRow[] = [];
+  for (const [nodeId, b] of byNode) {
+    rows.push({
+      nodeId,
+      label: nodeId ? (labelByNode.get(nodeId) ?? "(라벨 없음)") : "기타",
+      correct: b.correct,
+      total: b.total,
+      accuracyPct: b.total > 0 ? Math.round((b.correct / b.total) * 100) : 0,
+    });
+  }
+  rows.sort((a, b) => a.accuracyPct - b.accuracyPct);
+  return rows;
+}
+
+// feat §B4 — 같은 pack 의 본인 이전 완료 응시 점수 추이 (지난 회차 대비 ±).
+//   현재 응시(sessionId) 제외, 완료된 세션만, attempted_at 또는 completed_at desc.
+
+export interface PreviousScoreRow {
+  sessionId: string;
+  completedAt: string;
+  score: number; // 0~100 정답률 %
+  total: number;
+  correct: number;
+}
+
+export async function getPreviousPackScores(
+  client: SupabaseClient<Database>,
+  userId: string,
+  packId: string,
+  excludeSessionId: string,
+  limit = 5,
+): Promise<PreviousScoreRow[]> {
+  // 같은 pack 의 본인 완료 exam 세션 — completedAt desc.
+  const { data: sessions } = await client
+    .from("quiz_sessions")
+    .select("session_id, completed_at, problem_ids")
+    .eq("user_id", userId)
+    .eq("pack_id", packId)
+    .eq("mode", "exam")
+    .not("completed_at", "is", null)
+    .neq("session_id", excludeSessionId)
+    .order("completed_at", { ascending: false })
+    .limit(limit);
+  if (!sessions || sessions.length === 0) return [];
+
+  // 각 세션의 정답률 — user_problem_attempts 에서 isCorrect=true 카운트.
+  const out: PreviousScoreRow[] = [];
+  for (const s of sessions) {
+    const total = s.problem_ids?.length ?? 0;
+    if (total === 0) continue;
+    const { data: attempts } = await client
+      .from("user_problem_attempts")
+      .select("problem_id, is_correct, attempted_at")
+      .eq("user_id", userId)
+      .eq("session_id", s.session_id)
+      .order("attempted_at", { ascending: false });
+    const seen = new Set<string>();
+    let correct = 0;
+    for (const r of attempts ?? []) {
+      if (seen.has(r.problem_id)) continue;
+      seen.add(r.problem_id);
+      if (r.is_correct) correct += 1;
+    }
+    out.push({
+      sessionId: s.session_id,
+      completedAt: s.completed_at ?? "",
+      score: Math.round((correct / total) * 100),
+      total,
+      correct,
+    });
+  }
+  return out;
 }

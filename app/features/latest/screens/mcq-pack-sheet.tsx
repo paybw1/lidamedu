@@ -6,9 +6,11 @@
 
 import {
   BookOpenCheckIcon,
+  BookmarkIcon,
   CheckCircle2Icon,
   CircleXIcon,
   FlagIcon,
+  LayoutGridIcon,
   TimerIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -41,6 +43,7 @@ import { requireFeature } from "~/features/subscriptions/queries.server";
 import {
   getQuizSession,
   getSessionAttemptsMap,
+  getSessionFlagSet,
   type QuizMode,
   type SessionAttemptEntry,
 } from "~/features/study/queries.server";
@@ -72,12 +75,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const session = await getQuizSession(client, user.id, params.sessionId);
   if (!session) throw data("Session not found", { status: 404 });
 
-  const problems = await getProblemDetailsByIds(client, session.problemIds);
-  const attemptsMap = await getSessionAttemptsMap(
-    client,
-    user.id,
-    params.sessionId,
-  );
+  const [problems, attemptsMap, flagIds] = await Promise.all([
+    getProblemDetailsByIds(client, session.problemIds),
+    getSessionAttemptsMap(client, user.id, params.sessionId),
+    getSessionFlagSet(client, user.id, params.sessionId),
+  ]);
   // Map → plain object (loader 직렬화).
   const attempts: Record<string, SessionAttemptEntry> = {};
   for (const [k, v] of attemptsMap) attempts[k] = v;
@@ -87,6 +89,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     session,
     problems,
     attempts,
+    flagIds,
   };
 }
 
@@ -124,7 +127,7 @@ function useExamTimer(
 }
 
 export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
-  const { pack, session, problems, attempts } = loaderData;
+  const { pack, session, problems, attempts, flagIds } = loaderData;
   const mode: QuizMode = session.mode;
   const isExam = mode === "exam";
   // 기존 응답 복원.
@@ -137,6 +140,37 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
   }, [attempts]);
 
   const [selected, setSelected] = useState<SelectedChoiceState>(initialSelected);
+
+  // feat §A — 다시 볼 문제 플래그(북마크). 서버 mirror, 재진입 시 flagIds 복원.
+  const [flagged, setFlagged] = useState<Set<string>>(
+    () => new Set(flagIds ?? []),
+  );
+  const flagFetcher = useFetcher();
+  const toggleFlag = (problemId: string) => {
+    const isOn = flagged.has(problemId);
+    const next = new Set(flagged);
+    if (isOn) next.delete(problemId);
+    else next.add(problemId);
+    setFlagged(next);
+    const fd = new FormData();
+    fd.set("sessionId", session.sessionId);
+    fd.set("problemId", problemId);
+    fd.set("next", isOn ? "false" : "true");
+    flagFetcher.submit(fd, {
+      method: "post",
+      action: "/api/study/quiz-flag",
+    });
+  };
+
+  // feat §A — 미응답 확인 모달 상태.
+  const [confirmFinishOpen, setConfirmFinishOpen] = useState(false);
+  // 문항 네비게이터 sheet 상태.
+  const [navOpen, setNavOpen] = useState(false);
+  const jumpTo = (idx: number) => {
+    const el = document.getElementById(`p-${idx + 1}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setNavOpen(false);
+  };
   // 학습 모드 채점 결과 — 새로고침 후에도 살아남도록 localStorage 보존.
   // 이미 완료된 세션은 항상 채점 상태로 노출 (정답·해설 공개).
   const gradedStorageKey = `lidam:sheet:graded:${session.sessionId}`;
@@ -278,6 +312,15 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
             <CheckCircle2Icon className="size-4 text-emerald-600" />
             응답 {totalAnswered} / {totalProblems}
           </span>
+          {flagged.size > 0 ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+              data-testid="sheet-flag-count"
+            >
+              <BookmarkIcon className="size-3 fill-current" />
+              다시 볼 문제 {flagged.size}
+            </span>
+          ) : null}
           {graded && !isExam ? (
             <Pill tone="emerald">
               채점 완료 · {correctCount}/{totalProblems}
@@ -292,6 +335,15 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
               {timerText}
             </span>
           ) : null}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 rounded-full"
+            onClick={() => setNavOpen((v) => !v)}
+            data-testid="sheet-nav-toggle"
+          >
+            <LayoutGridIcon className="size-3.5" /> 네비
+          </Button>
           <div className="ml-auto inline-flex gap-2">
             {!isExam && !graded ? (
               <Button
@@ -318,12 +370,18 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
                 variant={graded || isExam ? "default" : "outline"}
                 className="h-9 rounded-full"
                 onClick={() => {
-                  const ok = confirm(
-                    isExam
-                      ? "시험을 끝내고 결과를 확인하시겠습니까?"
-                      : "응시를 종료하고 결과 통계를 확인하시겠습니까?",
-                  );
-                  if (ok) completeSession();
+                  // feat §A — 미응답 있으면 모달로 안내, 없으면 단순 confirm.
+                  const skipped = problems.length - Object.keys(selected).length;
+                  if (skipped > 0) {
+                    setConfirmFinishOpen(true);
+                  } else {
+                    const ok = confirm(
+                      isExam
+                        ? "시험을 끝내고 결과를 확인하시겠습니까?"
+                        : "응시를 종료하고 결과 통계를 확인하시겠습니까?",
+                    );
+                    if (ok) completeSession();
+                  }
                 }}
                 disabled={completeFetcher.state !== "idle"}
                 data-testid="sheet-finish"
@@ -336,6 +394,58 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
         </div>
       </div>
 
+      {/* feat §A — 문항 네비게이터 그리드. toggle 노출. */}
+      {navOpen ? (
+        <div
+          className="border-border bg-card mb-4 rounded-2xl border p-3 shadow-sm"
+          data-testid="sheet-nav-grid"
+        >
+          <div className="text-muted-foreground mb-2 flex items-center gap-3 text-[11px]">
+            <span className="inline-flex items-center gap-1">
+              <span className="bg-emerald-500 inline-block size-2 rounded-full" />
+              응답
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="border-border inline-block size-2 rounded-full border bg-background" />
+              미응답
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <BookmarkIcon className="size-2.5 fill-amber-500 text-amber-500" />
+              다시 볼 문제
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {problems.map((p, idx) => {
+              const answered = selected[p.problemId] !== undefined;
+              const flag = flagged.has(p.problemId);
+              return (
+                <button
+                  key={p.problemId}
+                  type="button"
+                  onClick={() => jumpTo(idx)}
+                  className={cn(
+                    "relative inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold tabular-nums transition-colors",
+                    answered
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : "border-border bg-background text-muted-foreground hover:border-primary",
+                  )}
+                  data-testid={`sheet-nav-cell-${idx + 1}`}
+                  aria-label={`${idx + 1}번 문항${answered ? " (응답)" : " (미응답)"}${flag ? " (다시 볼 문제)" : ""}`}
+                >
+                  {idx + 1}
+                  {flag ? (
+                    <BookmarkIcon
+                      className="absolute -top-1 -right-1 size-3 fill-amber-500 text-amber-500"
+                      strokeWidth={0}
+                    />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <ol className="space-y-5">
         {problems.map((problem, idx) => (
           <li key={problem.problemId} id={`p-${idx + 1}`}>
@@ -345,11 +455,31 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
               selectedChoice={selected[problem.problemId] ?? null}
               graded={graded}
               isExam={isExam}
+              flagged={flagged.has(problem.problemId)}
               onSelect={(ci) => onSelect(problem, ci)}
+              onToggleFlag={() => toggleFlag(problem.problemId)}
             />
           </li>
         ))}
       </ol>
+
+      {/* feat §A — 미응답 확인 모달. 강제 X — 실전이므로 그래도 제출 허용. */}
+      {confirmFinishOpen ? (
+        <UnansweredModal
+          problems={problems}
+          selected={selected}
+          isExam={isExam}
+          onJump={(idx) => {
+            setConfirmFinishOpen(false);
+            jumpTo(idx);
+          }}
+          onCancel={() => setConfirmFinishOpen(false)}
+          onProceed={() => {
+            setConfirmFinishOpen(false);
+            completeSession();
+          }}
+        />
+      ) : null}
 
       {/* 하단 끝내기 — sticky 헤더와 별개로 한 번 더 노출. */}
       <div className="border-border mt-8 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
@@ -404,14 +534,18 @@ function ProblemBlock({
   selectedChoice,
   graded,
   isExam,
+  flagged,
   onSelect,
+  onToggleFlag,
 }: {
   problem: ProblemDetail;
   index: number;
   selectedChoice: number | null;
   graded: boolean;
   isExam: boolean;
+  flagged: boolean;
   onSelect: (choiceIndex: number) => void;
+  onToggleFlag: () => void;
 }) {
   const showAnswers = graded && !isExam;
   return (
@@ -436,6 +570,25 @@ function ProblemBlock({
               {problem.problemNumber ? ` · ${problem.problemNumber}번` : ""}
             </span>
           ) : null}
+          {/* feat §A — 다시 볼 문제 플래그 toggle. */}
+          <button
+            type="button"
+            onClick={onToggleFlag}
+            aria-pressed={flagged}
+            data-testid={`sheet-flag-${index}`}
+            aria-label={flagged ? "다시 볼 문제 해제" : "다시 볼 문제로 표시"}
+            className={cn(
+              "border-border ml-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors",
+              flagged
+                ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-300"
+                : "text-muted-foreground hover:bg-accent",
+            )}
+          >
+            <BookmarkIcon
+              className={cn("size-3.5", flagged && "fill-current")}
+              strokeWidth={flagged ? 0 : 2}
+            />
+          </button>
         </div>
       </div>
       <div className="space-y-4 px-4 py-4">
@@ -622,6 +775,82 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
           <p className="whitespace-pre-line">{problem.explanationMd}</p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+// feat §A — 제출 직전 미응답 안내 모달. 강제 X — 실전이므로 그대로 제출 가능.
+function UnansweredModal({
+  problems,
+  selected,
+  isExam,
+  onJump,
+  onCancel,
+  onProceed,
+}: {
+  problems: ProblemDetail[];
+  selected: SelectedChoiceState;
+  isExam: boolean;
+  onJump: (idx: number) => void;
+  onCancel: () => void;
+  onProceed: () => void;
+}) {
+  const unansweredIdxs: number[] = [];
+  problems.forEach((p, idx) => {
+    if (selected[p.problemId] === undefined) unansweredIdxs.push(idx);
+  });
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      data-testid="sheet-unanswered-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="border-border bg-card max-h-[80vh] w-full max-w-md overflow-auto rounded-2xl border p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-1 text-lg font-bold tracking-tight">
+          미응답 {unansweredIdxs.length}문항이 있습니다
+        </h2>
+        <p className="text-muted-foreground mb-3 text-xs">
+          {isExam
+            ? "시험 모드 — 그래도 제출하면 미응답은 0점 처리됩니다."
+            : "그래도 제출하면 결과 통계로 이동합니다."}
+        </p>
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {unansweredIdxs.map((idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => onJump(idx)}
+              className="border-border hover:border-primary inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-bold tabular-nums"
+              data-testid={`sheet-unanswered-jump-${idx + 1}`}
+            >
+              {idx + 1}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            data-testid="sheet-unanswered-cancel"
+          >
+            계속 풀기
+          </Button>
+          <Button
+            variant={isExam ? "destructive" : "default"}
+            size="sm"
+            onClick={onProceed}
+            data-testid="sheet-unanswered-proceed"
+          >
+            그래도 제출
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -177,15 +177,21 @@ function StatusBanner({
     );
   }
 
-  // 응시 중.
+  // 응시 중. §B5 — 진행 상태/독립 타이머/잠금 이유 명시.
+  const nextPaperIdx = papers.findIndex((p) => p.status !== "completed");
+  const nextLabel =
+    nextPaperIdx >= 0 ? `${nextPaperIdx + 1}교시` : "다음 교시";
   return (
     <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5">
       <p className="inline-flex items-center gap-1.5 font-bold tracking-tight">
         <ClockIcon className="size-4 text-amber-600" />
         응시 중 · {doneCount}/{total}교시 완료
       </p>
-      <p className="text-muted-foreground mt-1 text-sm">
-        아래에서 다음 교시를 응시하세요. 교시는 순서대로 진행됩니다.
+      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+        지금 다음으로 풀 교시는 <strong>{nextLabel}</strong>입니다. 교시는
+        <strong> 순서대로 잠금이 해제</strong>되며, 각 교시는{" "}
+        <strong>독립 타이머</strong>로 운영됩니다(이전 교시 시간이 다음에
+        영향 없음). 교시 사이에 잠시 쉬어도 좋습니다.
       </p>
     </div>
   );
@@ -278,9 +284,14 @@ function PaperAction({
   if (!attemptId) return null;
   if (status === "locked") {
     return (
-      <Pill tone="outline">
-        <LockIcon className="size-3" /> 이전 교시 먼저
-      </Pill>
+      <span
+        title="이전 교시를 모두 완료해야 이 교시가 열립니다."
+        className="inline-block"
+      >
+        <Pill tone="outline">
+          <LockIcon className="size-3" /> 이전 교시 완료 후 열림
+        </Pill>
+      </span>
     );
   }
   // available | in_progress
