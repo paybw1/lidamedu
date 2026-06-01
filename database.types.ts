@@ -3749,6 +3749,8 @@ export type Database = {
       }
       problems: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           body_md: string
           created_at: string
           created_by: string | null
@@ -3758,6 +3760,9 @@ export type Database = {
           examined_at: string | null
           explanation_md: string | null
           format: Database["public"]["Enums"]["problem_format"]
+          gen_range: Json | null
+          generated_at: string | null
+          generated_by: string | null
           grading_rubric_md: string | null
           importance: number | null
           law_id: string | null
@@ -3769,13 +3774,16 @@ export type Database = {
           primary_article_id: string | null
           problem_id: string
           problem_number: number | null
+          rejected_reason: string | null
           released_at: string | null
+          review_status: Database["public"]["Enums"]["problem_review_status"]
           reviewed_at: string | null
           reviewed_by: string | null
           rubric_items: Json | null
           science_section_id: string | null
           science_subject: Database["public"]["Enums"]["science_subject"] | null
           scope: Database["public"]["Enums"]["problem_scope"] | null
+          source_chunk_ids: string[] | null
           source_doc_id: string | null
           source_gs_question_id: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
@@ -3788,6 +3796,8 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           body_md: string
           created_at?: string
           created_by?: string | null
@@ -3797,6 +3807,9 @@ export type Database = {
           examined_at?: string | null
           explanation_md?: string | null
           format: Database["public"]["Enums"]["problem_format"]
+          gen_range?: Json | null
+          generated_at?: string | null
+          generated_by?: string | null
           grading_rubric_md?: string | null
           importance?: number | null
           law_id?: string | null
@@ -3808,7 +3821,9 @@ export type Database = {
           primary_article_id?: string | null
           problem_id?: string
           problem_number?: number | null
+          rejected_reason?: string | null
           released_at?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
           rubric_items?: Json | null
@@ -3817,6 +3832,7 @@ export type Database = {
             | Database["public"]["Enums"]["science_subject"]
             | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
+          source_chunk_ids?: string[] | null
           source_doc_id?: string | null
           source_gs_question_id?: string | null
           subject_type: Database["public"]["Enums"]["problem_subject_type"]
@@ -3831,6 +3847,8 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           body_md?: string
           created_at?: string
           created_by?: string | null
@@ -3840,6 +3858,9 @@ export type Database = {
           examined_at?: string | null
           explanation_md?: string | null
           format?: Database["public"]["Enums"]["problem_format"]
+          gen_range?: Json | null
+          generated_at?: string | null
+          generated_by?: string | null
           grading_rubric_md?: string | null
           importance?: number | null
           law_id?: string | null
@@ -3851,7 +3872,9 @@ export type Database = {
           primary_article_id?: string | null
           problem_id?: string
           problem_number?: number | null
+          rejected_reason?: string | null
           released_at?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
           reviewed_at?: string | null
           reviewed_by?: string | null
           rubric_items?: Json | null
@@ -3860,6 +3883,7 @@ export type Database = {
             | Database["public"]["Enums"]["science_subject"]
             | null
           scope?: Database["public"]["Enums"]["problem_scope"] | null
+          source_chunk_ids?: string[] | null
           source_doc_id?: string | null
           source_gs_question_id?: string | null
           subject_type?: Database["public"]["Enums"]["problem_subject_type"]
@@ -3874,6 +3898,20 @@ export type Database = {
           year?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "problems_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problems_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "problems_created_by_fkey"
             columns: ["created_by"]
@@ -6116,8 +6154,14 @@ export type Database = {
         | "ox"
         | "blank"
         | "subjective"
-      problem_origin: "past_exam" | "past_exam_variant" | "expected" | "mock"
+      problem_origin:
+        | "past_exam"
+        | "past_exam_variant"
+        | "expected"
+        | "mock"
+        | "ai_draft"
       problem_polarity: "positive" | "negative"
+      problem_review_status: "draft" | "approved" | "rejected"
       problem_scope: "unit" | "comprehensive"
       problem_source_doc_kind: "problem" | "answer"
       problem_subject_type: "law" | "science"
@@ -6352,8 +6396,15 @@ export const Constants = {
         "blank",
         "subjective",
       ],
-      problem_origin: ["past_exam", "past_exam_variant", "expected", "mock"],
+      problem_origin: [
+        "past_exam",
+        "past_exam_variant",
+        "expected",
+        "mock",
+        "ai_draft",
+      ],
       problem_polarity: ["positive", "negative"],
+      problem_review_status: ["draft", "approved", "rejected"],
       problem_scope: ["unit", "comprehensive"],
       problem_source_doc_kind: ["problem", "answer"],
       problem_subject_type: ["law", "science"],

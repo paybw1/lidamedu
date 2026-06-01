@@ -81,6 +81,7 @@ export const ORIGIN_LABEL: Record<ProblemOrigin, string> = {
   past_exam_variant: "기출변형",
   expected: "예상문제",
   mock: "모의고사",
+  ai_draft: "AI 초안",
 };
 
 export const POLARITY_LABEL: Record<ProblemPolarity, string> = {
@@ -107,12 +108,13 @@ export const CHOICE_TYPE_COLOR: Record<ProblemChoiceType, string> = {
     "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
 };
 
-// 출처 중 연도/회차 가 의미있는 것 — 기출/기출변형/모의고사. 예상문제는 회차 없음.
+// 출처 중 연도/회차 가 의미있는 것 — 기출/기출변형/모의고사. 예상문제·AI 초안은 회차 없음.
 export const ORIGIN_HAS_ROUND: Record<ProblemOrigin, boolean> = {
   past_exam: true,
   past_exam_variant: true,
   mock: true,
   expected: false,
+  ai_draft: false,
 };
 
 export interface ProblemListItem {

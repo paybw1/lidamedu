@@ -498,6 +498,14 @@ export default [
         "features/lectures/screens/lecture-viewer.tsx",
       ),
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
+      route(
+        "/api/admin/problem-review",
+        "features/admin/api/problem-review.tsx",
+      ),
+      route(
+        "/api/admin/ai-problem-gen",
+        "features/admin/api/ai-problem-gen.tsx",
+      ),
       route("/api/admin/importance", "features/admin/api/importance.tsx"),
       // feat-8-008 학습관리 영역 게이트 (과제).
       layout(
@@ -724,6 +732,8 @@ export default [
       ...prefix("/admin/problems", [
         index("features/problems/screens/admin-problems-list.tsx"),
         route("/new", "features/admin/screens/admin-problem-new.tsx"),
+        route("/review", "features/admin/screens/admin-problem-review.tsx"),
+        route("/ai-gen", "features/admin/screens/admin-ai-problem-gen.tsx"),
         route("/ox", "features/problems/screens/admin-ox-review.tsx"),
         route("/stats", "features/admin/screens/admin-problem-stats.tsx"),
         route(

@@ -70,6 +70,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   if (kind === "problem") {
     // feat-10-002: 모의고사 팩 picker — 과목·차수 필터 지원.
+    // feat — 강사 검증 게이트. picker 는 운영자 UI 지만 학생 응시 풀(mcq_pack)에 들어가
+    //   학생 노출이 되므로, 미승인(draft/rejected) 문제는 picker 에 보이지 않는다.
+    //   강사 검증 화면 (§2) 은 search-content 가 아니라 별도 listing 엔드포인트 사용.
     const lawCode = url.searchParams.get("lawCode")?.trim() || null;
     const examRound = url.searchParams.get("examRound")?.trim() || null;
     let pq = adminClient
@@ -78,6 +81,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         "problem_id, body_md, year, problem_number, exam_round, origin, laws(law_code)",
       )
       .ilike("body_md", `%${safe}%`)
+      .eq("review_status", "approved")
       .is("deleted_at", null);
     if (lawCode) {
       const { data: law } = await adminClient

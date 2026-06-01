@@ -372,7 +372,21 @@ export async function addPackProblem(
   client: SupabaseClient<Database>,
   packId: string,
   problemId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  { ok: true } | { ok: false; error: string; unapproved?: true }
+> {
+  // feat — 강사 검증 게이트. 단건 호출도 미승인 차단.
+  const { data: prob, error: revErr } = await client
+    .from("problems")
+    .select("review_status")
+    .eq("problem_id", problemId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (revErr) return { ok: false, error: revErr.message };
+  if (!prob) return { ok: false, error: "Problem not found" };
+  if (prob.review_status !== "approved") {
+    return { ok: false, error: "검증 미승인 문제는 팩에 추가할 수 없습니다.", unapproved: true };
+  }
   const { data: maxRow } = await client
     .from("mcq_pack_problems")
     .select("ord")
@@ -422,14 +436,18 @@ export async function getPackProblemIds(
 }
 
 // 여러 problem_id 일괄 추가 — 이미 들어있는 문제는 건너뛴다 (멱등). feat-10-002.
+// feat — 강사 검증 게이트. 미승인(draft/rejected) 문제는 picker 가 우회되어도 서버에서
+//   재검증해 차단. skippedUnapproved 로 호출부에 통지 (UI 토스트).
 export async function addPackProblems(
   client: SupabaseClient<Database>,
   packId: string,
   problemIds: string[],
 ): Promise<
-  { ok: true; added: number; skipped: number } | { ok: false; error: string }
+  | { ok: true; added: number; skipped: number; skippedUnapproved: number }
+  | { ok: false; error: string }
 > {
-  if (problemIds.length === 0) return { ok: true, added: 0, skipped: 0 };
+  if (problemIds.length === 0)
+    return { ok: true, added: 0, skipped: 0, skippedUnapproved: 0 };
   const { data: existing, error: exErr } = await client
     .from("mcq_pack_problems")
     .select("problem_id")
@@ -437,9 +455,31 @@ export async function addPackProblems(
     .in("problem_id", problemIds);
   if (exErr) return { ok: false, error: exErr.message };
   const existingSet = new Set((existing ?? []).map((r) => r.problem_id));
-  const fresh = problemIds.filter((id) => !existingSet.has(id));
+  const candidate = problemIds.filter((id) => !existingSet.has(id));
+
+  // 강사 미승인 문제 차단 — 서버 재검증.
+  let skippedUnapproved = 0;
+  let fresh = candidate;
+  if (candidate.length > 0) {
+    const { data: approvedRows, error: revErr } = await client
+      .from("problems")
+      .select("problem_id")
+      .in("problem_id", candidate)
+      .eq("review_status", "approved")
+      .is("deleted_at", null);
+    if (revErr) return { ok: false, error: revErr.message };
+    const approvedSet = new Set((approvedRows ?? []).map((r) => r.problem_id));
+    fresh = candidate.filter((id) => approvedSet.has(id));
+    skippedUnapproved = candidate.length - fresh.length;
+  }
+
   if (fresh.length === 0) {
-    return { ok: true, added: 0, skipped: problemIds.length };
+    return {
+      ok: true,
+      added: 0,
+      skipped: problemIds.length - skippedUnapproved,
+      skippedUnapproved,
+    };
   }
   const { data: maxRow } = await client
     .from("mcq_pack_problems")
@@ -459,7 +499,8 @@ export async function addPackProblems(
   return {
     ok: true,
     added: fresh.length,
-    skipped: problemIds.length - fresh.length,
+    skipped: problemIds.length - fresh.length - skippedUnapproved,
+    skippedUnapproved,
   };
 }
 

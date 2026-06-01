@@ -81,7 +81,7 @@ export async function listProblemsBySubject(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
   filters: ListProblemsFilters = {},
-  opts: { includeHiddenMock?: boolean } = {},
+  opts: { includeHiddenMock?: boolean; includeUnapproved?: boolean } = {},
 ): Promise<ProblemListItem[]> {
   const { data: law } = await client
     .from("laws")
@@ -102,6 +102,13 @@ export async function listProblemsBySubject(
   // staff 문제 관리 화면(admin-problems-list)만 includeHiddenMock 으로 우회한다.
   if (!opts.includeHiddenMock) {
     query = query.or("origin.neq.mock,released_at.not.is.null");
+  }
+
+  // feat — 강사 검증 게이트. review_status='approved' 만 학생 노출. 기존 풀은 마이그
+  //   에서 일괄 approved backfill, 신규 (AI ai_draft + 수기) 만 draft 시작. staff 검증
+  //   화면은 includeUnapproved 로 우회.
+  if (!opts.includeUnapproved) {
+    query = query.eq("review_status", "approved");
   }
 
   if (filters.origin) query = query.eq("origin", filters.origin);
@@ -2309,5 +2316,205 @@ export async function getAdjacentProblems(
   return {
     prev: toAdj(rows[idx - 1]),
     next: toAdj(rows[idx + 1]),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// feat — 강사 검증·승인 큐 (§2)
+//   review_status='draft' 문제 목록 + 단건 상세(선지·박스·근거 청크 포함).
+//   approve/reject 액션은 별도 API.
+// ──────────────────────────────────────────────────────────────────────
+
+export interface ReviewQueueItem {
+  problemId: string;
+  lawCode: string | null;
+  lawLabel: string | null;
+  origin: ProblemOrigin;
+  format: ProblemFormat;
+  bodyMd: string;
+  createdAt: string;
+  generatedBy: string | null;
+  generatedAt: string | null;
+  sourceChunkCount: number;
+  primaryArticleLabel: string | null;
+  // 구조 검증 결과 (1차 자동 필터, §4 에서 채움). 지금은 null.
+  structureWarning: string | null;
+}
+
+export interface ListReviewFilters {
+  lawCode?: LawSubjectSlug;
+  format?: ProblemFormat;
+  origin?: ProblemOrigin;
+  // 'draft' | 'rejected' — approved 는 검토 완료라 큐 밖.
+  status?: "draft" | "rejected";
+  limit?: number;
+}
+
+export async function listProblemsForReview(
+  client: SupabaseClient<Database>,
+  filters: ListReviewFilters = {},
+): Promise<ReviewQueueItem[]> {
+  const status = filters.status ?? "draft";
+  let q = client
+    .from("problems")
+    .select(
+      "problem_id, origin, format, body_md, created_at, generated_by, generated_at, source_chunk_ids, law_id, primary_article_id, laws(law_code, short_label), articles!primary_article_id(display_label)",
+    )
+    .eq("review_status", status)
+    .is("deleted_at", null);
+  if (filters.format) q = q.eq("format", filters.format);
+  if (filters.origin) q = q.eq("origin", filters.origin);
+  if (filters.lawCode) {
+    const { data: law } = await client
+      .from("laws")
+      .select("law_id")
+      .eq("law_code", filters.lawCode)
+      .maybeSingle();
+    if (!law) return [];
+    q = q.eq("law_id", law.law_id);
+  }
+  const { data, error } = await q
+    .order("created_at", { ascending: false })
+    .limit(filters.limit ?? 100);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    problemId: r.problem_id,
+    lawCode: r.laws?.law_code ?? null,
+    lawLabel: r.laws?.short_label ?? null,
+    origin: r.origin as ProblemOrigin,
+    format: r.format as ProblemFormat,
+    bodyMd: r.body_md,
+    createdAt: r.created_at,
+    generatedBy: r.generated_by,
+    generatedAt: r.generated_at,
+    sourceChunkCount: Array.isArray(r.source_chunk_ids)
+      ? r.source_chunk_ids.length
+      : 0,
+    primaryArticleLabel: r.articles?.display_label ?? null,
+    structureWarning: null,
+  }));
+}
+
+export interface ReviewDetailChoice {
+  choiceId: string;
+  choiceIndex: number;
+  bodyMd: string;
+  isCorrect: boolean;
+  explanationMd: string | null;
+}
+
+export interface ReviewDetailBoxItem {
+  boxItemId: string;
+  positionIndex: number;
+  marker: string;
+  bodyMd: string;
+  explanationMd: string | null;
+  oxTruth: string | null;
+}
+
+export interface ReviewSourceChunk {
+  chunkId: string;
+  sourceType: string;
+  headingPath: string | null;
+  bodyText: string;
+}
+
+export interface ReviewDetail {
+  problemId: string;
+  lawCode: string | null;
+  origin: ProblemOrigin;
+  format: ProblemFormat;
+  reviewStatus: "draft" | "approved" | "rejected";
+  bodyMd: string;
+  explanationMd: string | null;
+  rejectedReason: string | null;
+  generatedBy: string | null;
+  generatedAt: string | null;
+  sourceChunkIds: string[];
+  genRange: unknown;
+  primaryArticleLabel: string | null;
+  choices: ReviewDetailChoice[];
+  boxItems: ReviewDetailBoxItem[];
+  sourceChunks: ReviewSourceChunk[];
+}
+
+export async function getProblemForReview(
+  client: SupabaseClient<Database>,
+  problemId: string,
+): Promise<ReviewDetail | null> {
+  const { data: row } = await client
+    .from("problems")
+    .select(
+      "problem_id, origin, format, review_status, body_md, explanation_md, rejected_reason, generated_by, generated_at, source_chunk_ids, gen_range, laws(law_code), articles!primary_article_id(display_label)",
+    )
+    .eq("problem_id", problemId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!row) return null;
+
+  const [choicesRes, boxRes] = await Promise.all([
+    client
+      .from("problem_choices")
+      .select(
+        "choice_id, choice_index, body_md, is_correct, explanation_md",
+      )
+      .eq("problem_id", problemId)
+      .order("choice_index", { ascending: true }),
+    client
+      .from("problem_box_items")
+      .select(
+        "box_item_id, position_index, marker, body_md, explanation_md, ox_truth",
+      )
+      .eq("problem_id", problemId)
+      .order("position_index", { ascending: true }),
+  ]);
+
+  const sourceChunkIds = Array.isArray(row.source_chunk_ids)
+    ? (row.source_chunk_ids as string[])
+    : [];
+  let sourceChunks: ReviewSourceChunk[] = [];
+  if (sourceChunkIds.length > 0) {
+    const { data: chunks } = await client
+      .from("content_chunks")
+      .select("chunk_id, source_type, heading_path, body_text")
+      .in("chunk_id", sourceChunkIds);
+    sourceChunks = (chunks ?? []).map((c) => ({
+      chunkId: c.chunk_id,
+      sourceType: c.source_type,
+      headingPath: c.heading_path,
+      bodyText: c.body_text,
+    }));
+  }
+
+  return {
+    problemId: row.problem_id,
+    lawCode: row.laws?.law_code ?? null,
+    origin: row.origin as ProblemOrigin,
+    format: row.format as ProblemFormat,
+    reviewStatus: row.review_status as "draft" | "approved" | "rejected",
+    bodyMd: row.body_md,
+    explanationMd: row.explanation_md,
+    rejectedReason: row.rejected_reason,
+    generatedBy: row.generated_by,
+    generatedAt: row.generated_at,
+    sourceChunkIds,
+    genRange: row.gen_range,
+    primaryArticleLabel: row.articles?.display_label ?? null,
+    choices: (choicesRes.data ?? []).map((c) => ({
+      choiceId: c.choice_id,
+      choiceIndex: c.choice_index,
+      bodyMd: c.body_md,
+      isCorrect: c.is_correct,
+      explanationMd: c.explanation_md,
+    })),
+    boxItems: (boxRes.data ?? []).map((b) => ({
+      boxItemId: b.box_item_id,
+      positionIndex: b.position_index,
+      marker: b.marker,
+      bodyMd: b.body_md,
+      explanationMd: b.explanation_md,
+      oxTruth: b.ox_truth,
+    })),
+    sourceChunks,
   };
 }
