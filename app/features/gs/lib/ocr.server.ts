@@ -3,6 +3,12 @@
 // API 키 미설정 시 null 반환 → 호출 측에서 "검사 불가" 로 graceful degrade.
 //
 // 환경변수: GOOGLE_CLOUD_VISION_API_KEY (Vercel 환경변수 / .env)
+//
+// §2 비용 가드:
+//   - cap 체크는 호출 측(route)이 담당 — 차단 시 본 함수는 호출되지 않고 route 가 skipped_cap 직접 기록.
+//   - 본 함수는 성공/실패/키없음 outcome 을 gs_ai_usage 에 기록한다.
+
+import { recordOcrUsage, type UsageMeta } from "~/features/gs/lib/usage-tracker.server";
 
 export interface OcrResult {
   text: string; // 인식된 텍스트 전체 (5000자까지 저장 — 채점 AI 컨텍스트로 재사용 가능).
@@ -45,10 +51,18 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export async function analyzeHandwriting(
   buffer: ArrayBuffer,
   mime: string,
+  meta?: UsageMeta,
 ): Promise<OcrResult | null> {
   const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
-  if (!apiKey) return null;
-  if (!mime.startsWith("image/")) return null;
+  if (!apiKey) {
+    await recordOcrUsage({
+      outcome: "skipped_no_key",
+      meta,
+      reason: "GOOGLE_CLOUD_VISION_API_KEY 미설정",
+    });
+    return null;
+  }
+  if (!mime.startsWith("image/")) return null; // 로깅 X — 정상 케이스 (PDF 업로드).
 
   let res: Response;
   try {
@@ -68,15 +82,29 @@ export async function analyzeHandwriting(
         }),
       },
     );
-  } catch {
+  } catch (e) {
+    await recordOcrUsage({
+      outcome: "failed",
+      meta,
+      reason:
+        e instanceof Error ? `fetch: ${e.message}`.slice(0, 300) : "fetch error",
+    });
     return null;
   }
-  if (!res.ok) return null;
+  if (!res.ok) {
+    await recordOcrUsage({
+      outcome: "failed",
+      meta,
+      reason: `HTTP ${res.status}`,
+    });
+    return null;
+  }
 
   let json: unknown;
   try {
     json = await res.json();
   } catch {
+    await recordOcrUsage({ outcome: "failed", meta, reason: "json parse" });
     return null;
   }
   const annotation =
@@ -98,7 +126,8 @@ export async function analyzeHandwriting(
     )?.responses?.[0]?.fullTextAnnotation ?? null;
 
   if (!annotation) {
-    // 빈 이미지 — 인식된 텍스트 없음.
+    // 빈 이미지 — 인식된 텍스트 없음. 호출은 일어났으므로 success 기록.
+    await recordOcrUsage({ outcome: "success", meta });
     return {
       text: "",
       charCount: 0,
@@ -129,6 +158,7 @@ export async function analyzeHandwriting(
   const koreanCharCount = koreanMatches ? koreanMatches.length : 0;
   const charCount = text.replace(/\s+/g, "").length;
 
+  await recordOcrUsage({ outcome: "success", meta });
   return {
     text: text.slice(0, 5000),
     charCount,

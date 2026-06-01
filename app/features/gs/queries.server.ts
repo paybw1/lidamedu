@@ -855,6 +855,8 @@ export interface GsAttachment {
   ocrConfidence?: number;
   ocrLevel?: "good" | "warn" | "bad";
   ocrCheckedAt?: string;
+  // §2 — OCR 가 호출되지 않은 사유 (cap 도달 등). undefined = 정상 호출(또는 호출 자체 안 함).
+  ocrSkippedReason?: "cap" | "no_key";
 }
 
 export interface GsAnswerRecord {

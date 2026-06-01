@@ -7,6 +7,7 @@ import {
   BellIcon,
   ChevronDownIcon,
   GavelIcon,
+  GraduationCapIcon,
   LayoutDashboardIcon,
   Link2Icon,
   ListChecksIcon,
@@ -30,6 +31,7 @@ export type AdminClusterId =
   | "problems"
   | "blanks"
   | "relations"
+  | "students"
   | "cohorts"
   | "gs"
   | "analytics"
@@ -61,10 +63,10 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "법령·개정",
     Icon: GavelIcon,
     screens: [
-      { label: "법령 운영 허브", to: "/admin/laws" },
-      { label: "콘텐츠 헬스 점수", to: "/admin/laws/health" },
-      { label: "체계도 트리", to: "/admin/systematic-tree" },
-      { label: "시드 import dry-run", to: "/admin/seeds/preview" },
+      { label: "법령 허브", to: "/admin/laws" },
+      { label: "콘텐츠 완성도", to: "/admin/laws/health" },
+      { label: "단원 체계도", to: "/admin/systematic-tree" },
+      { label: "데이터 가져오기 점검", to: "/admin/seeds/preview" },
     ],
   },
   {
@@ -72,24 +74,30 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "판례",
     Icon: ScaleIcon,
     screens: [
-      { label: "판례-조문 매칭", to: "/admin/cases" },
-      { label: "판례-기출 매칭", to: "/admin/relations/exam-cases" },
-      { label: "판례 신규 등록", to: "/admin/cases/edit" },
-      { label: "체계도 단일 placement 위반", to: "/admin/cases/violations" },
-      { label: "Orphan staff underline", to: "/admin/cases/orphan-highlights" },
-      { label: "강의노트 case-study 검토", to: "/admin/case-study-review" },
+      { label: "판례·조문 매칭", to: "/admin/cases" },
+      { label: "판례·기출 매칭", to: "/admin/relations/exam-cases" },
+      { label: "판례 등록", to: "/admin/cases/edit" },
+      { label: "체계도 배치 점검", to: "/admin/cases/violations" },
+      { label: "고아 하이라이트 점검", to: "/admin/cases/orphan-highlights" },
+      { label: "강의노트 사례연구 검토", to: "/admin/case-study-review" },
     ],
   },
   {
     id: "problems",
-    label: "객관식 문제, OX 운영",
+    label: "객관식 문제 · OX",
     Icon: ListChecksIcon,
     screens: [
-      { label: "문제 목록", to: "/admin/problems" },
-      { label: "신규 출제", to: "/admin/problems/new" },
+      // 출제 흐름 순서대로 — AI 초안 → 강사 검토 → 직접 출제/목록 → 팩 → 통합 시험.
+      { label: "AI 문제 초안 만들기", to: "/admin/problems/ai-gen" },
+      { label: "검토 대기 문제", to: "/admin/problems/review" },
+      { label: "문제 직접 만들기", to: "/admin/problems/new" },
+      { label: "전체 문제 보기", to: "/admin/problems" },
       { label: "OX 검수", to: "/admin/problems/ox" },
-      { label: "문제 통계", to: "/admin/problems/stats" },
-      { label: "통합 모의고사", to: "/admin/mcq-exams" },
+      { label: "정답률·통계", to: "/admin/problems/stats" },
+      // 학생용 라우트(/latest/mcq) — staff 진입 시 picker 노출.
+      // ?kind=mock 은 가상 통합 필터 (mock_full + mock_progressive) — 한 화면.
+      { label: "모의고사 팩 관리", to: "/latest/mcq?kind=mock" },
+      { label: "통합 모의고사 (3교시)", to: "/admin/mcq-exams" },
     ],
   },
   {
@@ -97,8 +105,8 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "빈칸 자료",
     Icon: PencilLineIcon,
     screens: [
-      { label: "빈칸 세트", to: "/admin/blanks" },
-      { label: "빈칸 통계", to: "/admin/blanks/stats" },
+      { label: "빈칸 자료 세트", to: "/admin/blanks" },
+      { label: "빈칸 정답률", to: "/admin/blanks/stats" },
     ],
   },
   {
@@ -106,31 +114,42 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "연관관계",
     Icon: Link2Icon,
     screens: [
-      { label: "미배정 점검", to: "/admin/relations/gaps" },
-      { label: "일괄 등록", to: "/admin/relations/bulk" },
+      { label: "연결 누락 점검", to: "/admin/relations/gaps" },
+      { label: "연결 일괄 등록", to: "/admin/relations/bulk" },
     ],
   },
   {
-    id: "cohorts",
-    label: "수강생·반",
+    // 수강생 — 학생 중심 (사용자/위험군/수강권). 반·강의(cohorts) 와 분리.
+    id: "students",
+    label: "수강생",
     Icon: UsersIcon,
     screens: [
-      { label: "사용자", to: "/admin/users" },
-      { label: "반 목록", to: "/admin/cohorts" },
-      { label: "위험군 큐", to: "/admin/cohorts/at-risk" },
-      { label: "커리큘럼", to: "/admin/curricula" },
+      { label: "수강생 목록", to: "/admin/users" },
+      { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
       // feat-7-014 — manager+ 전용. 메뉴는 노출, loader 에서 차단.
       { label: "수강권 관리", to: "/admin/subscriptions" },
     ],
   },
   {
+    // 반·강의 — 반 단위 + 커리큘럼. 수강생(students) 와 분리.
+    id: "cohorts",
+    label: "반·강의",
+    Icon: GraduationCapIcon,
+    screens: [
+      { label: "반 목록", to: "/admin/cohorts" },
+      { label: "커리큘럼 관리", to: "/admin/curricula" },
+    ],
+  },
+  {
     id: "gs",
-    label: "주관식 문제 운영",
+    label: "주관식 문제",
     Icon: AwardIcon,
     screens: [
-      { label: "회차 목록", to: "/admin/gs" },
-      { label: "시리즈 목록", to: "/admin/gs/series" },
+      { label: "주관식 회차", to: "/admin/gs" },
+      { label: "주관식 시리즈", to: "/admin/gs/series" },
       { label: "포인트 관리", to: "/admin/gs/points" },
+      // §3 GS 비용 가드 — 운영자 가시성.
+      { label: "AI·OCR 사용량", to: "/admin/gs/usage" },
     ],
   },
   {
@@ -138,9 +157,9 @@ export const ADMIN_NAV: NavCluster[] = [
     label: "합격자 분석",
     Icon: TrendingUpIcon,
     screens: [
-      { label: "합격 결과 운영", to: "/admin/exam-results" },
-      { label: "합격자 케이스", to: "/admin/analytics/passers" },
-      { label: "합격 vs 비합격", to: "/admin/analytics/failure-patterns" },
+      { label: "합격 결과", to: "/admin/exam-results" },
+      { label: "합격자 사례", to: "/admin/analytics/passers" },
+      { label: "합격 vs 불합격 패턴", to: "/admin/analytics/failure-patterns" },
     ],
   },
   {
@@ -149,16 +168,16 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: BellIcon,
     screens: [
       { label: "공지 발송", to: "/admin/announcements" },
-      { label: "알림 인박스", to: "/admin/inbox" },
-      { label: "감사 로그", to: "/admin/audit-logs" },
-      { label: "커뮤니티 신고 큐", to: "/admin/community/reports" },
-      { label: "주관식 첨삭 큐", to: "/admin/subjective-reviews" },
-      // feat-9-005 — AI Q&A 운영 (피드백 큐 + 지표 + eval 셋 + 월별 사용량 + 임베딩 상태).
+      { label: "받은 알림함", to: "/admin/inbox" },
+      { label: "감사 기록", to: "/admin/audit-logs" },
+      { label: "커뮤니티 신고", to: "/admin/community/reports" },
+      { label: "주관식 첨삭 대기", to: "/admin/subjective-reviews" },
+      // feat-9-005 — AI Q&A 운영 (피드백 + 지표 + 평가 세트 + 월별 사용량 + 색인 상태).
       { label: "AI Q&A 부정 피드백", to: "/admin/ai-qna/feedback" },
       { label: "AI Q&A 지표", to: "/admin/ai-qna/metrics" },
-      { label: "AI Q&A eval 셋", to: "/admin/ai-qna/eval" },
+      { label: "AI Q&A 평가 세트", to: "/admin/ai-qna/eval" },
       { label: "AI Q&A 월별 사용량", to: "/admin/ai-qna/usage" },
-      { label: "AI Q&A 임베딩 상태", to: "/admin/ai-qna/embed-status" },
+      { label: "AI Q&A 색인 상태", to: "/admin/ai-qna/embed-status" },
       // feat-9-006 — AI Q&A 운영 설정 (한도/토큰 캡).
       { label: "AI Q&A 한도 설정", to: "/admin/ai-qna/settings" },
     ],

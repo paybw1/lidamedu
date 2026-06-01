@@ -6,7 +6,14 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { generateGradingDraft } from "~/features/gs/lib/ai-grader.server";
+import {
+  capBlockedMessage,
+  checkAiCap,
+  notifyCapReachedOnce,
+  recordAiUsage,
+} from "~/features/gs/lib/usage-tracker.server";
 import {
   getGsRound,
   listGsQuestions,
@@ -84,6 +91,31 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "Question not found" }, { status: 404 });
   }
 
+  // §2 cap preflight — 차단 시 skipped_cap 기록 + UI-friendly 메시지로 응답.
+  // 강사 직접 채점은 정상 진행 (UI 가 초안 버튼만 비활성).
+  const capCheck = await checkAiCap();
+  if (capCheck.blocked) {
+    await recordAiUsage({
+      kind: "ai_draft",
+      model: "claude-opus-4-7",
+      inputTokens: 0,
+      outputTokens: 0,
+      outcome: "skipped_cap",
+      meta: {
+        roundId: round.roundId,
+        submissionId: parsed.data.submissionId,
+        userId: user.id,
+      },
+      reason: capCheck.reason,
+    });
+    // 같은 날 첫 도달이면 staff fanout (멱등). 응답 후 비동기.
+    runAfterResponse(notifyCapReachedOnce(capCheck));
+    return data(
+      { error: capBlockedMessage(capCheck), capBlocked: true as const },
+      { status: 503 },
+    );
+  }
+
   const draft = await generateGradingDraft({
     questionTitle: question.title,
     questionBody: question.bodyMd,
@@ -92,6 +124,14 @@ export async function action({ request }: Route.ActionArgs) {
     studentAnswerText,
     legibilityWarnings: warnings,
     rubric: question.rubric,
+    usage: {
+      kind: "ai_draft",
+      meta: {
+        roundId: round.roundId,
+        submissionId: parsed.data.submissionId,
+        userId: user.id,
+      },
+    },
   });
 
   if (!draft) {

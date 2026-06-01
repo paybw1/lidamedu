@@ -56,11 +56,15 @@ export const meta: Route.MetaFunction = () => [
   { title: "1차 기출문제 | Lidam Patent Attorney Academy" },
 ];
 
-const KINDS: Array<{ value: McqPackKind | "all"; label: string }> = [
+// "mock" 은 mock_full + mock_progressive 통합 가상 옵션 — DB column 값이 아니다.
+type KindFilterValue = McqPackKind | "all" | "mock";
+
+const KINDS: Array<{ value: KindFilterValue; label: string }> = [
   { value: "all", label: "전체" },
   { value: "past_exam", label: "기출" },
-  { value: "mock_full", label: "전체 모의" },
-  { value: "mock_progressive", label: "진도별 모의" },
+  { value: "mock", label: "모의 (통합)" },
+  { value: "mock_full", label: " └ 전체 모의" },
+  { value: "mock_progressive", label: " └ 진도별 모의" },
   { value: "other", label: "기타" },
 ];
 
@@ -79,6 +83,8 @@ interface Filters {
   q: string;
   subjectScope?: McqPackSubjectScope;
   kind?: McqPackKind;
+  /** "mock" — mock_full + mock_progressive 통합. kind 와 상호 배타. */
+  kindGroup?: "mock";
   year?: number;
 }
 
@@ -103,6 +109,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       ? subjectScopeRaw
       : undefined;
   const kindRaw = url.searchParams.get("kind");
+  const kindGroup: "mock" | undefined = kindRaw === "mock" ? "mock" : undefined;
   const kind: McqPackKind | undefined =
     kindRaw === "past_exam" ||
     kindRaw === "mock_full" ||
@@ -113,12 +120,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const yearRaw = url.searchParams.get("year");
   const year = yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined;
-  const filters: Filters = { q, subjectScope, kind, year };
+  const filters: Filters = { q, subjectScope, kind, kindGroup, year };
 
   const packs = await listPacks(client, {
     query: filters.q || undefined,
     subjectScope: filters.subjectScope,
     kind: filters.kind,
+    kinds:
+      filters.kindGroup === "mock"
+        ? ["mock_full", "mock_progressive"]
+        : undefined,
     year: filters.year,
   });
 
@@ -133,6 +144,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   const filterActive =
     !!filters.subjectScope ||
     !!filters.kind ||
+    !!filters.kindGroup ||
     !!filters.year ||
     filters.q !== "";
   // 빠른 year 옵션 — 최근 12년.
@@ -142,18 +154,30 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   const descParts = [`${packs.length.toLocaleString("ko-KR")}건`];
   if (filters.subjectScope)
     descParts.push(MCQ_PACK_SUBJECT_LABELS[filters.subjectScope]);
-  if (filters.kind)
+  if (filters.kindGroup === "mock") descParts.push("모의(통합)");
+  else if (filters.kind)
     descParts.push(filters.kind === "past_exam" ? "기출" : "모의");
   if (filters.year) descParts.push(`${filters.year}년`);
   if (filters.q) descParts.push(`"${filters.q}" 검색`);
   const isMock =
-    filters.kind === "mock_full" || filters.kind === "mock_progressive";
+    filters.kindGroup === "mock" ||
+    filters.kind === "mock_full" ||
+    filters.kind === "mock_progressive";
+  // 모의 통합 화면 — 진도별/전체 모의 한 화면. mock_progressive 단독은 기존 제목 유지.
+  const title =
+    filters.kindGroup === "mock"
+      ? "1차 모의고사 (전체)"
+      : filters.kind === "mock_full"
+        ? "1차 전체 모의고사"
+        : filters.kind === "mock_progressive"
+          ? "1차 진도별 모의고사"
+          : "1차 기출문제";
 
   return (
     <McqAreaShell
       isMock={isMock}
       width="index"
-      title={isMock ? "1차 진도별 모의고사" : "1차 기출문제"}
+      title={title}
       desc={`${descParts.join(" · ")} — 기출/모의 클릭 시 문제·해설·동영상·결과 통계로 진입합니다.`}
       headerRight={
         canEdit && !showAdd ? (
@@ -197,7 +221,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
         <FilterSelect
           name="kind"
           ariaLabel="구분"
-          defaultValue={filters.kind ?? ""}
+          defaultValue={filters.kindGroup ?? filters.kind ?? ""}
           options={KINDS.map((o) => ({
             value: o.value === "all" ? "" : o.value,
             label: o.label,

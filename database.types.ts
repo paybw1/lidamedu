@@ -2185,6 +2185,86 @@ export type Database = {
           },
         ]
       }
+      gs_ai_usage: {
+        Row: {
+          cost_usd: number
+          date: string
+          id: number
+          input_tokens: number
+          kind: string
+          model: string | null
+          occurred_at: string
+          outcome: string
+          output_tokens: number
+          pages: number
+          reason: string | null
+          round_id: string | null
+          submission_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number
+          date: string
+          id?: number
+          input_tokens?: number
+          kind: string
+          model?: string | null
+          occurred_at?: string
+          outcome: string
+          output_tokens?: number
+          pages?: number
+          reason?: string | null
+          round_id?: string | null
+          submission_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number
+          date?: string
+          id?: number
+          input_tokens?: number
+          kind?: string
+          model?: string | null
+          occurred_at?: string
+          outcome?: string
+          output_tokens?: number
+          pages?: number
+          reason?: string | null
+          round_id?: string | null
+          submission_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_ai_usage_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "gs_rounds"
+            referencedColumns: ["round_id"]
+          },
+          {
+            foreignKeyName: "gs_ai_usage_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "gs_submissions"
+            referencedColumns: ["submission_id"]
+          },
+          {
+            foreignKeyName: "gs_ai_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "gs_ai_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       gs_answers: {
         Row: {
           ai_suggested_at: string | null
@@ -2250,6 +2330,24 @@ export type Database = {
             referencedColumns: ["submission_id"]
           },
         ]
+      }
+      gs_cap_alerts: {
+        Row: {
+          date: string
+          notified_at: string
+          reason: string
+        }
+        Insert: {
+          date: string
+          notified_at?: string
+          reason: string
+        }
+        Update: {
+          date?: string
+          notified_at?: string
+          reason?: string
+        }
+        Relationships: []
       }
       gs_distinguished_answers: {
         Row: {
@@ -5779,6 +5877,7 @@ export type Database = {
           audit_anomalies_today: number
           inactive_students_7d: number
           new_signups_today: number
+          problems_review_pending: number
           relation_gaps_total: number
           subjective_pending: number
         }[]
@@ -5906,6 +6005,70 @@ export type Database = {
           correct_attempts: number
           distinct_users: number
           problem_id: string
+        }[]
+      }
+      gs_ai_usage_daily_summary: {
+        Args: { p_date?: string }
+        Returns: {
+          calls: number
+          cost_usd: number
+          date: string
+          failed: number
+          input_tokens: number
+          kind: string
+          output_tokens: number
+          pages: number
+          skipped_cap: number
+          skipped_no_key: number
+          success: number
+        }[]
+      }
+      gs_ai_usage_recent_days: {
+        Args: { p_days?: number }
+        Returns: {
+          ai_calls: number
+          ai_cost_usd: number
+          ai_skipped_cap: number
+          date: string
+          ocr_calls: number
+          ocr_cost_usd: number
+          ocr_pages: number
+          ocr_skipped_cap: number
+        }[]
+      }
+      gs_ai_usage_round_summary: {
+        Args: { p_round_id: string }
+        Returns: {
+          calls: number
+          cost_usd: number
+          input_tokens: number
+          kind: string
+          output_tokens: number
+          pages: number
+          skipped_cap: number
+          success: number
+        }[]
+      }
+      gs_ai_usage_today_totals: {
+        Args: never
+        Returns: {
+          ai_calls: number
+          ai_cost_usd: number
+          ocr_calls: number
+          ocr_cost_usd: number
+          ocr_pages: number
+        }[]
+      }
+      gs_ai_usage_top_rounds: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          ai_calls: number
+          ai_cost_usd: number
+          ocr_calls: number
+          ocr_cost_usd: number
+          round_id: string
+          round_title: string
+          total_cost_usd: number
         }[]
       }
       gs_my_points_balance: {
@@ -6240,6 +6403,7 @@ export type Database = {
         | "community_post_comment"
         | "community_post_like"
         | "community_post_mention"
+        | "gs_cap_reached"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -6484,6 +6648,7 @@ export const Constants = {
         "community_post_comment",
         "community_post_like",
         "community_post_mention",
+        "gs_cap_reached",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

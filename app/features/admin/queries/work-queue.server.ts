@@ -11,6 +11,7 @@ export interface AdminWorkQueueCounts {
   relationGapsTotal: number;
   inactiveStudents7d: number;
   auditAnomaliesToday: number;
+  problemsReviewPending: number;
 }
 
 export async function getAdminWorkQueue(
@@ -26,5 +27,6 @@ export async function getAdminWorkQueue(
     relationGapsTotal: Number(row?.relation_gaps_total ?? 0),
     inactiveStudents7d: Number(row?.inactive_students_7d ?? 0),
     auditAnomaliesToday: Number(row?.audit_anomalies_today ?? 0),
+    problemsReviewPending: Number(row?.problems_review_pending ?? 0),
   };
 }

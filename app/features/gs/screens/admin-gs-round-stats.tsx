@@ -18,6 +18,10 @@ import {
   getRoundQuestionStats,
   getRoundStudentStats,
 } from "~/features/gs/queries.server";
+import {
+  type RoundSummaryRow,
+  getRoundUsageSummary,
+} from "~/features/gs/queries-usage.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
@@ -42,13 +46,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const role = await getStaffRole(client, user.id);
   if (!role) throw data("Forbidden", { status: 403 });
 
-  const [round, students, questions] = await Promise.all([
+  const [round, students, questions, usage] = await Promise.all([
     getGsRound(client, roundId),
     getRoundStudentStats(client, roundId),
     getRoundQuestionStats(client, roundId),
+    getRoundUsageSummary(client, roundId),
   ]);
   if (!round) throw data("Round not found", { status: 404 });
-  return { round, students, questions, role };
+  return { round, students, questions, usage, role };
 }
 
 const QUESTION_HEADERS: TableHeaderDef[] = [
@@ -74,7 +79,7 @@ const STUDENT_HEADERS: TableHeaderDef[] = [
 export default function AdminGsRoundStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { round, students, questions, role } = loaderData;
+  const { round, students, questions, usage, role } = loaderData;
   const totalMax = questions.reduce((s, q) => s + q.maxScore, 0);
   const cohortAvg =
     students.length > 0
@@ -129,6 +134,9 @@ export default function AdminGsRoundStats({
           value={`${cohortMin} ~ ${cohortMax}`}
         />
       </div>
+
+      {/* §3 AI/OCR 사용량 — 본 회차에 기록된 호출만 (학생 수 곱 / 채점자 클릭 등 회차 전반). */}
+      <UsageCard usage={usage} />
 
       {/* 문항별 분포 */}
       <div className="mb-6">
@@ -387,5 +395,74 @@ function DistributionBar({
         title={`중앙값 ${median}`}
       />
     </div>
+  );
+}
+
+
+/* ── §3 AI/OCR 사용량 카드 ────────────────────────────────────────── */
+
+function UsageCard({ usage }: { usage: RoundSummaryRow[] }) {
+  const totalAiCost = usage
+    .filter((u) => u.kind !== "ocr")
+    .reduce((s, u) => s + u.costUsd, 0);
+  const totalOcrCost = usage
+    .filter((u) => u.kind === "ocr")
+    .reduce((s, u) => s + u.costUsd, 0);
+  const aiCalls = usage
+    .filter((u) => u.kind !== "ocr")
+    .reduce((s, u) => s + u.calls, 0);
+  const ocrCalls = usage
+    .filter((u) => u.kind === "ocr")
+    .reduce((s, u) => s + u.calls, 0);
+  const aiSkippedCap = usage
+    .filter((u) => u.kind !== "ocr")
+    .reduce((s, u) => s + u.skippedCap, 0);
+  const ocrSkippedCap = usage
+    .filter((u) => u.kind === "ocr")
+    .reduce((s, u) => s + u.skippedCap, 0);
+  if (
+    aiCalls === 0 &&
+    ocrCalls === 0 &&
+    aiSkippedCap === 0 &&
+    ocrSkippedCap === 0
+  ) {
+    return null;
+  }
+  return (
+    <section className="mb-6">
+      <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        AI · OCR 사용량 (이 회차)
+      </p>
+      <div className="border-border bg-card grid gap-3 rounded-xl border p-4 shadow-sm sm:grid-cols-2">
+        <div>
+          <p className="text-muted-foreground text-xs font-semibold">AI 채점 · 초안</p>
+          <p className="text-foreground mt-1 text-xl font-extrabold tabular-nums">
+            ${totalAiCost.toFixed(totalAiCost >= 1 ? 2 : 4)}{" "}
+            <span className="text-muted-foreground text-xs font-medium">
+              / {aiCalls.toLocaleString("ko-KR")}회
+            </span>
+          </p>
+          {aiSkippedCap > 0 ? (
+            <p className="text-rose-600 mt-1 text-xs">
+              cap 도달로 skip {aiSkippedCap}회
+            </p>
+          ) : null}
+        </div>
+        <div>
+          <p className="text-muted-foreground text-xs font-semibold">OCR (Vision)</p>
+          <p className="text-foreground mt-1 text-xl font-extrabold tabular-nums">
+            ${totalOcrCost.toFixed(totalOcrCost >= 1 ? 2 : 4)}{" "}
+            <span className="text-muted-foreground text-xs font-medium">
+              / {ocrCalls.toLocaleString("ko-KR")}회
+            </span>
+          </p>
+          {ocrSkippedCap > 0 ? (
+            <p className="text-rose-600 mt-1 text-xs">
+              cap 도달로 skip {ocrSkippedCap}회 (페이지 저장은 정상)
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }

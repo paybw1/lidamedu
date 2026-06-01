@@ -89,6 +89,14 @@ interface WorkQueueTile {
 function WorkQueueRow({ counts }: { counts: AdminWorkQueueCounts }) {
   const tiles: WorkQueueTile[] = [
     {
+      // 1차 객관식 §1-§5 — review_status='draft' 검토 대기.
+      // 최우선(좌측 첫 타일) — 신규 출제 흐름의 게이트.
+      label: "검토 대기 문제",
+      value: counts.problemsReviewPending,
+      to: "/admin/problems/review",
+      hint: "AI 초안·신규 출제 중 강사 승인 대기",
+    },
+    {
       label: "오늘 신규 가입",
       value: counts.newSignupsToday,
       to: "/admin/users",
@@ -130,7 +138,7 @@ function WorkQueueRow({ counts }: { counts: AdminWorkQueueCounts }) {
       <p className="text-muted-foreground mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
         오늘 처리할 항목
       </p>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
         {tiles.map((t) => {
           const active = t.value > 0;
           return (

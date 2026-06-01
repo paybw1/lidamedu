@@ -92,6 +92,8 @@ function rowToItem(row: PackRow, problemCount: number): McqPackItem {
 export interface ListPacksOptions {
   subjectScope?: McqPackSubjectScope;
   kind?: McqPackKind;
+  /** 여러 kind 통합 필터 — kinds 와 kind 둘 다 있으면 kinds 우선. */
+  kinds?: McqPackKind[];
   query?: string;
   year?: number;
 }
@@ -105,7 +107,8 @@ export async function listPacks(
     .select(LIST_COLUMNS)
     .is("deleted_at", null);
   if (options.subjectScope) q = q.eq("subject_scope", options.subjectScope);
-  if (options.kind) q = q.eq("kind", options.kind);
+  if (options.kinds && options.kinds.length > 0) q = q.in("kind", options.kinds);
+  else if (options.kind) q = q.eq("kind", options.kind);
   if (options.year !== undefined) q = q.eq("year", options.year);
   const trimmed = options.query?.trim();
   if (trimmed) {

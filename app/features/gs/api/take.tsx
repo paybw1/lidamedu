@@ -6,7 +6,13 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { analyzeHandwriting } from "~/features/gs/lib/ocr.server";
+import {
+  checkOcrCap,
+  notifyCapReachedOnce,
+  recordOcrUsage,
+} from "~/features/gs/lib/usage-tracker.server";
 import {
   type GsAttachment,
   deleteSubmissionPage,
@@ -218,8 +224,34 @@ export async function action({ request }: Route.ActionArgs) {
       );
     }
 
-    // 한국어 손글씨 OCR — 이미지에 한해. PDF 는 미실행.
-    const ocr = await analyzeHandwriting(arrayBuf, file.type);
+    // §2 — OCR cap preflight. 도달 시 OCR 만 skip (페이지 저장은 그대로 진행).
+    // 학생 응시·제출은 OCR 과 무관하게 가능해야 함 (판독 자가확인이 게이트).
+    const usageMeta = {
+      roundId: parsed.data.roundId,
+      submissionId: sub.submissionId,
+      userId: user.id,
+    };
+    let ocr: Awaited<ReturnType<typeof analyzeHandwriting>> = null;
+    let ocrSkippedReason: GsAttachment["ocrSkippedReason"] = undefined;
+    if (file.type.startsWith("image/")) {
+      const cap = await checkOcrCap();
+      if (cap.blocked) {
+        await recordOcrUsage({
+          outcome: "skipped_cap",
+          meta: usageMeta,
+          reason: cap.reason,
+        });
+        runAfterResponse(notifyCapReachedOnce(cap));
+        ocrSkippedReason = "cap";
+      } else {
+        // 한국어 손글씨 OCR — 이미지에 한해. PDF 는 미실행.
+        ocr = await analyzeHandwriting(arrayBuf, file.type, usageMeta);
+        if (!ocr && !process.env.GOOGLE_CLOUD_VISION_API_KEY) {
+          // skipped_no_key 로 lib 가 이미 기록함 — 마킹만.
+          ocrSkippedReason = "no_key";
+        }
+      }
+    }
 
     const attachment: GsAttachment = {
       path,
@@ -237,6 +269,8 @@ export async function action({ request }: Route.ActionArgs) {
       attachment.ocrConfidence = ocr.confidence;
       attachment.ocrLevel = ocr.level;
       attachment.ocrCheckedAt = new Date().toISOString();
+    } else if (ocrSkippedReason) {
+      attachment.ocrSkippedReason = ocrSkippedReason;
     }
     await upsertSubmissionPage(
       client,

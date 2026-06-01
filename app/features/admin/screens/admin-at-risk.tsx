@@ -115,9 +115,9 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="cohorts"
+      cluster="students"
       role={role}
-      title="수강생 위험군 큐"
+      title="위험 수강생 (7일 무접속)"
       desc="모든 활성 반의 위험 학생을 한 화면에서. 학생을 선택해 일괄 격려 메시지를 발송하세요."
       width={1280}
     >

@@ -2,10 +2,18 @@
 // 입력: 문제 + 모범답안 + 학생 답안(OCR 텍스트). 출력: 점수(0~maxScore) + 마크다운 피드백.
 //
 // 환경변수: ANTHROPIC_API_KEY (Vercel 환경변수 / .env)
+//
+// §2 비용 가드:
+//   - 호출 전 cap 체크는 호출 측(route)이 담당 (checkAiCap → 차단 시 본 함수 안 부름).
+//   - 본 함수는 성공/실패/키없음 outcome 을 gs_ai_usage 에 기록한다.
+//   - 토큰 사용량은 response.usage 로 측정해 비용 산정 정확성 확보.
 
 import Anthropic from "@anthropic-ai/sdk";
 
 import { type RubricCriterion } from "~/features/gs/queries.server";
+import { recordAiUsage, type UsageMeta } from "~/features/gs/lib/usage-tracker.server";
+
+const MODEL = "claude-opus-4-7";
 
 export interface AiGradingDraft {
   score: number;
@@ -22,6 +30,8 @@ interface GradeArgs {
   studentAnswerText: string; // 첨부들의 ocrText 를 합친 것.
   legibilityWarnings?: string[]; // 판독률 부족 등 경고.
   rubric?: RubricCriterion[]; // 비어있지 않으면 항목별 점수 모드.
+  /** §2 사용량 로깅용. ai_grade vs ai_draft 구분 + 회차/제출/사용자 메타. */
+  usage?: { kind: "ai_grade" | "ai_draft"; meta?: UsageMeta };
 }
 
 const SYSTEM_PROMPT = `당신은 대한민국 변리사 2차 시험(주관식·논술)의 채점 보조 AI 입니다.
@@ -37,8 +47,21 @@ const SYSTEM_PROMPT = `당신은 대한민국 변리사 2차 시험(주관식·�
 export async function generateGradingDraft(
   args: GradeArgs,
 ): Promise<AiGradingDraft | null> {
+  const usageKind = args.usage?.kind ?? "ai_draft";
+  const usageMeta = args.usage?.meta;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    await recordAiUsage({
+      kind: usageKind,
+      model: MODEL,
+      inputTokens: 0,
+      outputTokens: 0,
+      outcome: "skipped_no_key",
+      meta: usageMeta,
+      reason: "ANTHROPIC_API_KEY 미설정",
+    });
+    return null;
+  }
 
   const client = new Anthropic({ apiKey });
 
@@ -86,7 +109,7 @@ export async function generateGradingDraft(
   let response: Awaited<ReturnType<typeof client.messages.create>>;
   try {
     response = await client.messages.create({
-      model: "claude-opus-4-7",
+      model: MODEL,
       max_tokens: 4000,
       thinking: { type: "adaptive" },
       output_config: {
@@ -159,34 +182,91 @@ export async function generateGradingDraft(
       ],
     });
   } catch (e) {
-    if (e instanceof Anthropic.APIError) {
-      console.error("Anthropic API error", e.status, e.message);
-    } else {
-      console.error("AI grading failed", e);
-    }
+    const msg =
+      e instanceof Anthropic.APIError
+        ? `Anthropic API ${e.status}: ${e.message}`
+        : e instanceof Error
+          ? e.message
+          : String(e);
+    console.error("AI grading failed", msg);
+    await recordAiUsage({
+      kind: usageKind,
+      model: MODEL,
+      inputTokens: 0,
+      outputTokens: 0,
+      outcome: "failed",
+      meta: usageMeta,
+      reason: msg.slice(0, 300),
+    });
     return null;
   }
 
+  // Anthropic usage 객체 — cache 토큰 포함은 cost 계산에 제외 (input 만).
+  const inputTokens = Number(response.usage?.input_tokens ?? 0);
+  const outputTokens = Number(response.usage?.output_tokens ?? 0);
+
   // JSON 응답 파싱 — output_config.format=json_schema 면 첫 text block 이 JSON 문자열.
   const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") return null;
+  if (!textBlock || textBlock.type !== "text") {
+    await recordAiUsage({
+      kind: usageKind,
+      model: MODEL,
+      inputTokens,
+      outputTokens,
+      outcome: "failed",
+      meta: usageMeta,
+      reason: "no text block in response",
+    });
+    return null;
+  }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(textBlock.text);
   } catch {
     console.error("AI grading: JSON parse failed", textBlock.text.slice(0, 200));
+    await recordAiUsage({
+      kind: usageKind,
+      model: MODEL,
+      inputTokens,
+      outputTokens,
+      outcome: "failed",
+      meta: usageMeta,
+      reason: "JSON parse failed",
+    });
     return null;
   }
 
-  if (!parsed || typeof parsed !== "object") return null;
+  if (!parsed || typeof parsed !== "object") {
+    await recordAiUsage({
+      kind: usageKind,
+      model: MODEL,
+      inputTokens,
+      outputTokens,
+      outcome: "failed",
+      meta: usageMeta,
+      reason: "parsed is not object",
+    });
+    return null;
+  }
   const obj = parsed as Record<string, unknown>;
   const feedback = typeof obj.feedback === "string" ? obj.feedback : "";
   const reasoning = typeof obj.reasoning === "string" ? obj.reasoning : undefined;
 
   if (useRubric) {
     const raw = obj.rubric_scores;
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      await recordAiUsage({
+        kind: usageKind,
+        model: MODEL,
+        inputTokens,
+        outputTokens,
+        outcome: "failed",
+        meta: usageMeta,
+        reason: "rubric_scores missing",
+      });
+      return null;
+    }
     const rubricScores: Record<string, number> = {};
     let sum = 0;
     for (const c of args.rubric ?? []) {
@@ -197,11 +277,38 @@ export async function generateGradingDraft(
       sum += clamped;
     }
     const total = Math.max(0, Math.min(args.maxScore, Math.round(sum * 2) / 2));
+    await recordAiUsage({
+      kind: usageKind,
+      model: MODEL,
+      inputTokens,
+      outputTokens,
+      outcome: "success",
+      meta: usageMeta,
+    });
     return { score: total, feedback, reasoning, rubricScores };
   }
 
   const rawScore = typeof obj.score === "number" ? obj.score : null;
-  if (rawScore == null || !Number.isFinite(rawScore)) return null;
+  if (rawScore == null || !Number.isFinite(rawScore)) {
+    await recordAiUsage({
+      kind: usageKind,
+      model: MODEL,
+      inputTokens,
+      outputTokens,
+      outcome: "failed",
+      meta: usageMeta,
+      reason: "score not number",
+    });
+    return null;
+  }
   const score = Math.max(0, Math.min(args.maxScore, Math.round(rawScore * 2) / 2));
+  await recordAiUsage({
+    kind: usageKind,
+    model: MODEL,
+    inputTokens,
+    outputTokens,
+    outcome: "success",
+    meta: usageMeta,
+  });
   return { score, feedback, reasoning };
 }

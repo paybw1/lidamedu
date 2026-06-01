@@ -693,6 +693,8 @@ export default [
       ]),
       ...prefix("/admin/gs", [
         index("features/gs/screens/admin-gs-list.tsx"),
+        // §3 GS 비용 가드 — AI/OCR 사용량 + cap 잔여 + 회차 top.
+        route("/usage", "features/gs/screens/admin-gs-usage.tsx"),
         route("/series", "features/gs/screens/admin-gs-series-list.tsx", {
           id: "admin-gs-series-list",
         }),

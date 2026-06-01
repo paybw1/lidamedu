@@ -179,7 +179,7 @@ export default function AdminStudentDetail({
 
   return (
     <AdminShell
-      cluster="cohorts"
+      cluster="students"
       role={role}
       title={`수강생 · ${student.name || "(이름 없음)"}`}
       desc={`${roleLabel} · 가입 ${student.joinedAt.slice(0, 10)}`}

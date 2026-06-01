@@ -31,7 +31,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const kind = url.searchParams.get("kind") ?? "";
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-  if (q.length < MIN_QUERY) return { items: [] as SearchResult[] };
+
+  // problem kind 는 필터만으로도 검색 허용 (출처/형식/연도 단독). 그 외 kind 는 query 필수.
+  const isProblemKind = kind === "problem";
+  const hasProblemFilter =
+    isProblemKind &&
+    (url.searchParams.get("origin") ||
+      url.searchParams.get("format") ||
+      url.searchParams.get("year") ||
+      url.searchParams.get("lawCode"));
+  if (q.length < MIN_QUERY && !hasProblemFilter) {
+    return { items: [] as SearchResult[] };
+  }
 
   const safe = q.replace(/[%_]/g, (m) => `\\${m}`);
 
@@ -69,20 +80,24 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   if (kind === "problem") {
-    // feat-10-002: 모의고사 팩 picker — 과목·차수 필터 지원.
+    // feat-10-002: 모의고사 팩 picker — 과목·차수·출처·형식·연도 필터 지원.
     // feat — 강사 검증 게이트. picker 는 운영자 UI 지만 학생 응시 풀(mcq_pack)에 들어가
     //   학생 노출이 되므로, 미승인(draft/rejected) 문제는 picker 에 보이지 않는다.
     //   강사 검증 화면 (§2) 은 search-content 가 아니라 별도 listing 엔드포인트 사용.
     const lawCode = url.searchParams.get("lawCode")?.trim() || null;
     const examRound = url.searchParams.get("examRound")?.trim() || null;
+    const originRaw = url.searchParams.get("origin")?.trim() || null;
+    const formatRaw = url.searchParams.get("format")?.trim() || null;
+    const yearRaw = url.searchParams.get("year")?.trim() || null;
+
     let pq = adminClient
       .from("problems")
       .select(
-        "problem_id, body_md, year, problem_number, exam_round, origin, laws(law_code)",
+        "problem_id, body_md, year, problem_number, exam_round, origin, format, created_at, laws(law_code)",
       )
-      .ilike("body_md", `%${safe}%`)
       .eq("review_status", "approved")
       .is("deleted_at", null);
+    if (safe.length >= MIN_QUERY) pq = pq.ilike("body_md", `%${safe}%`);
     if (lawCode) {
       const { data: law } = await adminClient
         .from("laws")
@@ -94,13 +109,45 @@ export async function loader({ request }: Route.LoaderArgs) {
     if (examRound === "first" || examRound === "second") {
       pq = pq.eq("exam_round", examRound);
     }
+    const ALLOWED_ORIGINS = [
+      "past_exam",
+      "past_exam_variant",
+      "expected",
+      "mock",
+      "ai_draft",
+    ];
+    if (originRaw && ALLOWED_ORIGINS.includes(originRaw)) {
+      pq = pq.eq(
+        "origin",
+        originRaw as "past_exam" | "past_exam_variant" | "expected" | "mock" | "ai_draft",
+      );
+    }
+    const ALLOWED_FORMATS = [
+      "mc_short",
+      "mc_box",
+      "mc_case",
+      "ox",
+      "blank",
+      "subjective",
+    ];
+    if (formatRaw && ALLOWED_FORMATS.includes(formatRaw)) {
+      pq = pq.eq(
+        "format",
+        formatRaw as "mc_short" | "mc_box" | "mc_case" | "ox" | "blank" | "subjective",
+      );
+    }
+    if (yearRaw && /^\d{4}$/.test(yearRaw)) {
+      pq = pq.eq("year", Number(yearRaw));
+    }
+    // 필터 우선 검색은 최근 생성순(연도 정보 없는 AI 초안/예상문제 대응).
+    pq = pq.order("created_at", { ascending: false });
     const { data: rows } = await pq.limit(LIMIT);
     const items: SearchResult[] = (rows ?? []).map((r) => {
       const body = (r.body_md ?? "").slice(0, 80);
       return {
         id: r.problem_id,
         label: `${r.year ?? "?"}${r.problem_number ? ` ${r.problem_number}번` : ""} — ${body}${(r.body_md ?? "").length > 80 ? "…" : ""}`,
-        secondary: [r.laws?.law_code, r.exam_round, r.origin]
+        secondary: [r.laws?.law_code, r.exam_round, r.origin, r.format]
           .filter(Boolean)
           .join(" · "),
       };

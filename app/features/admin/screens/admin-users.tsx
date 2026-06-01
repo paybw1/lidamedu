@@ -112,7 +112,7 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="cohorts"
+      cluster="students"
       role={role}
       title="사용자 관리"
       desc={`가입한 사용자 ${total}명을 검색·필터하고 역할을 변경합니다. (원장 전용)`}
