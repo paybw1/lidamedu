@@ -32,6 +32,7 @@ export function RelatedProblemsList({
           key={it.problemId}
           to={`/subjects/${it.lawCode}/problems/${it.problemId}`}
           viewTransition
+          prefetch="intent"
           className="hover:border-primary block rounded-md border px-3 py-2 transition-colors"
         >
           <div className="mb-1 flex flex-wrap items-center gap-1.5">

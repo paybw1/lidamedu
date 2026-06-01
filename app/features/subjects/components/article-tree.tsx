@@ -605,6 +605,7 @@ function TreeItem({
         <Link
           to={`/subjects/${lawCode}/articles/${node.articleNumber}`}
           viewTransition
+          prefetch="intent"
           className={rowClass}
           aria-current={isActive ? "page" : undefined}
         >
@@ -622,6 +623,7 @@ function TreeItem({
         <Link
           to={`/subjects/${lawCode}/chapters/${node.articleId}`}
           viewTransition
+          prefetch="intent"
           className={rowClass}
           aria-current={isActive ? "page" : undefined}
         >

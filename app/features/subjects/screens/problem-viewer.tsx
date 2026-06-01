@@ -108,26 +108,38 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const [client] = makeServerClient(request);
-  const problem = await getProblemById(client, params.problemId);
-  if (!problem) {
-    throw data("Problem not found", { status: 404 });
-  }
-
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) {
-    throw data("Unauthorized", { status: 401 });
-  }
 
   const url = new URL(request.url);
   const nodeId = url.searchParams.get("node");
   const sessionIdParam = url.searchParams.get("session");
   const modeParam = url.searchParams.get("mode");
   const requestedMode: QuizMode = modeParam === "exam" ? "exam" : "study";
-  const nodeSequence = nodeId
-    ? await getSystematicNodeProblemSequence(client, nodeId)
-    : null;
+
+  // Phase A2 — problem/auth/law/nodeSequence 를 처음부터 모두 병렬 시작.
+  // 각 promise 가 서로 독립이라 4 RTT 가 1 RTT 로 압축. 후속 분기 (session, redirect,
+  // 12 병렬, choice ref) 는 이 결과들 의존이라 직렬 유지.
+  const problemPromise = getProblemById(client, params.problemId);
+  const authPromise = client.auth.getUser();
+  const lawPromise = getLawByCode(client, lawCode);
+  const nodeSeqPromise = nodeId
+    ? getSystematicNodeProblemSequence(client, nodeId)
+    : Promise.resolve(null);
+
+  const problem = await problemPromise;
+  if (!problem) {
+    await Promise.allSettled([authPromise, lawPromise, nodeSeqPromise]);
+    throw data("Problem not found", { status: 404 });
+  }
+
+  const {
+    data: { user },
+  } = await authPromise;
+  if (!user) {
+    await Promise.allSettled([lawPromise, nodeSeqPromise]);
+    throw data("Unauthorized", { status: 401 });
+  }
+
+  const nodeSequence = await nodeSeqPromise;
 
   // 세션 처리:
   //   - ?session=<sid>: 본인 세션 로드. 유효하지 않으면 무시.
@@ -154,7 +166,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw redirect(`${next.pathname}${next.search}`);
   }
 
-  const law = await getLawByCode(client, lawCode);
+  const law = await lawPromise;
+  // Phase A2 — getSubjectAxisCounts 를 13 병렬에 합쳐 별도 RTT 1단 제거.
+  //   (law 가 null 이면 axisCounts 도 lawId 없이 0 반환)
   const [
     systematicNodes,
     bookmark,
@@ -169,6 +183,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problemComments,
     staffRole,
     adjacent,
+    axisCounts,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -183,6 +198,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listComments(client, "problem", problem.problemId),
     getStaffRole(client, user.id),
     getAdjacentProblems(client, problem.problemId),
+    law
+      ? getSubjectAxisCounts(client, lawCode, law.lawId)
+      : Promise.resolve({ articles: 0, cases: 0, problems: 0 }),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -321,10 +339,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problem.format === "subjective"
       ? await getSubjectiveAttempt(client, user.id, problem.problemId)
       : null;
-
-  const axisCounts = law
-    ? await getSubjectAxisCounts(client, lawCode, law.lawId)
-    : { articles: 0, cases: 0, problems: 0 };
 
   return {
     subject: LAW_SUBJECTS[lawCode],
@@ -1236,6 +1250,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                           <Link
                                             to={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
                                             viewTransition
+                                            prefetch="intent"
                                             data-testid="choice-related-article"
                                             className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
                                           >
@@ -1261,6 +1276,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                           <Link
                                             to={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
                                             viewTransition
+                                            prefetch="intent"
                                             data-testid="choice-related-case"
                                             className="inline-flex items-center gap-1 rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
                                           >
@@ -2099,6 +2115,7 @@ function ProblemPrevNextButton({
     <Link
       to={`/subjects/${subjectSlug}/problems/${target.problemId}`}
       viewTransition
+      prefetch="intent"
       aria-label={`${ariaLabel}: ${label}`}
       className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors"
     >

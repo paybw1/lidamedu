@@ -385,6 +385,7 @@ function SystematicItem({
           <Link
             to={`/subjects/${lawCode}/systematic/${node.nodeId}`}
             viewTransition
+            prefetch="intent"
             className="flex min-w-0 flex-1 items-center gap-1.5 hover:underline"
           >
             {labelEl}
@@ -503,6 +504,7 @@ function ArticleLeafLink({
     <Link
       to={`/subjects/${lawCode}/articles/${article.articleNumber}`}
       viewTransition
+      prefetch="intent"
       className={rowClass}
       aria-current={isActive ? "page" : undefined}
     >

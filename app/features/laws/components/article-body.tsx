@@ -928,6 +928,7 @@ function KoreanRefLink({
     <Link
       to={`/subjects/${lawCode}/articles/${articleKey}${hash}`}
       viewTransition
+      prefetch="intent"
       title={targetTitle ?? undefined}
       className="text-primary hover:bg-primary/10 underline decoration-dotted underline-offset-2 hover:decoration-solid"
     >

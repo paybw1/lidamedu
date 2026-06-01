@@ -620,6 +620,7 @@ function SubjectiveCard({
     <Link
       to={`/subjects/${subjectSlug}/problems/${item.problemId}`}
       viewTransition
+      prefetch="intent"
       className="group block"
     >
       <div className="border-border bg-card hover:border-primary rounded-xl border p-4 transition-colors">
@@ -733,6 +734,7 @@ function ProblemRow({
         <Link
           to={`/subjects/${subject.slug}/problems/${item.problemId}`}
           viewTransition
+          prefetch="intent"
           className="hover:text-primary block text-sm break-words"
         >
           {renderBodySnippet(item.bodyMd, searchQuery)}

@@ -99,8 +99,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const [client] = makeServerClient(request);
+
+  // Phase A2 — auth 는 lawCode/lawId 의존성 없어 처음부터 병렬 시작.
+  const authPromise = client.auth.getUser();
+
   const law = await getLawByCode(client, lawCode);
   if (!law) {
+    await authPromise.catch(() => {});
     throw data("Law not seeded", { status: 404 });
   }
 
@@ -138,7 +143,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const {
     data: { user },
-  } = await client.auth.getUser();
+  } = await authPromise;
   if (!user) {
     throw data("Unauthorized", { status: 401 });
   }
@@ -187,6 +192,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     return getCaseSiblings(client, kase.caseId);
   })();
 
+  // Phase A2 — getSubjectAxisCounts 를 12 병렬에 합쳐 별도 RTT 1단 제거.
   const [
     relatedArticles,
     relatedProblems,
@@ -200,6 +206,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     examProblems,
     lectureResources,
     siblings,
+    axisCounts,
   ] = await Promise.all([
     getRelatedArticlesByCase(client, kase.caseId),
     getRelatedProblemsByCase(client, kase.caseId, 12),
@@ -213,6 +220,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getExamProblemsForCase(client, kase.caseId),
     listLectureResources(client, "case", kase.caseId),
     siblingsPromise,
+    getSubjectAxisCounts(client, lawCode, law.lawId),
   ]);
 
   recordStudySession(client, user.id, {
@@ -228,8 +236,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     placementMaps.caseSetByArticleId,
     placementMaps.caseSetByNodeId,
   );
-
-  const axisCounts = await getSubjectAxisCounts(client, lawCode, law.lawId);
 
   return {
     subject: LAW_SUBJECTS[lawCode],

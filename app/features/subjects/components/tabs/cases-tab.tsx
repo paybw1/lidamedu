@@ -507,6 +507,7 @@ function CaseRow({
         <Link
           to={detailHref}
           viewTransition
+          prefetch="intent"
           className="text-foreground hover:text-primary"
         >
           {item.caseNumber}
@@ -532,6 +533,7 @@ function CaseRow({
         <Link
           to={detailHref}
           viewTransition
+          prefetch="intent"
           className="hover:text-primary block text-sm font-medium break-words"
         >
           {item.caseTitle}

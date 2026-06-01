@@ -132,6 +132,7 @@ export function SubjectStudyStatus({
           <Link
             to={`/subjects/${subject.slug}/articles/${lastVisited.articleNumber}`}
             viewTransition
+            prefetch="intent"
             className="bg-primary text-primary-foreground inline-flex shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-bold shadow-sm transition-opacity hover:opacity-90"
           >
             이어서 보기 <ArrowRightIcon className="size-3.5" />

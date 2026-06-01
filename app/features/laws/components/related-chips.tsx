@@ -32,6 +32,7 @@ export function RelatedCasesList({
           <Link
             to={`/subjects/${subject}/cases/${c.caseId}`}
             viewTransition
+            prefetch="intent"
             className="hover:bg-accent block rounded-md border px-3 py-2 transition-colors"
           >
             <div className="flex flex-wrap items-center gap-1.5">
@@ -90,6 +91,7 @@ export function RelatedArticlesChips({
               <Link
                 to={`/subjects/${subject}/articles/${a.articleNumber}`}
                 viewTransition
+                prefetch="intent"
                 title={a.note ?? undefined}
               >
                 <Badge

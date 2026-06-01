@@ -455,8 +455,15 @@ export async function loadSubjectHub(
   const activeTabIsCases = url.searchParams.get("tab") === "cases";
 
   const [client] = makeServerClient(request);
+
+  // Phase A2 — auth.getUser 는 lawCode/lawId 의존성이 없어 처음부터 병렬 시작.
+  // Stage 3 진입 시점엔 이미 완료돼 RTT 1단 감축. (law 없는 early-return 경로는
+  // seed 직후 1회뿐이지만 unhandled rejection 방지로 catch 처리.)
+  const authPromise = client.auth.getUser();
+
   const law = await getLawByCode(client, lawCode);
   if (!law) {
+    await authPromise.catch(() => {});
     return {
       law: null,
       articles: [],
@@ -582,9 +589,10 @@ export async function loadSubjectHub(
     (a) => a.level === "article",
   ).length;
 
+  // Phase A2 — authPromise 는 처음에 시작돼 Stage 1+2 RTT 와 겹쳐 이 시점엔 보통 완료.
   const {
     data: { user },
-  } = await client.auth.getUser();
+  } = await authPromise;
   const [
     progress,
     bookmarkLevels,

@@ -121,8 +121,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const [client] = makeServerClient(request);
+
+  // Phase A2 — auth 는 lawCode/lawId 의존성 없어 처음부터 병렬 시작. Stage 5 진입 시
+  // 이미 완료돼 RTT 1단 감축. law 없는 early-throw 시 cleanup.
+  const authPromise = client.auth.getUser();
+
   const law = await getLawByCode(client, lawCode);
   if (!law) {
+    await authPromise.catch(() => {});
     throw data("Law not seeded", { status: 404 });
   }
 
@@ -161,11 +167,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const {
     data: { user },
-  } = await client.auth.getUser();
+  } = await authPromise;
   if (!user) {
     throw data("Unauthorized", { status: 401 });
   }
 
+  // Phase A2 — getSubjectAxisCounts 를 12 병렬에 합쳐 별도 RTT 1단 제거.
   const [
     relatedCases,
     bookmark,
@@ -179,6 +186,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     oxQuestions,
     articleComments,
     lectureResources,
+    axisCounts,
   ] = await Promise.all([
     getRelatedCasesByArticle(client, article.articleId),
     getBookmark(client, user.id, "article", article.articleId),
@@ -192,6 +200,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getOxQuestionsForArticle(client, article.articleId, 50),
     listComments(client, "article", article.articleId),
     listLectureResources(client, "article", article.articleId),
+    getSubjectAxisCounts(client, lawCode, law.lawId),
   ]);
 
   // 시행 예정 본문 — 현재 시점(at/compare 아님)일 때만, 다가오는 시행본을 함께 노출.
@@ -237,8 +246,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     target_id: article.articleId,
     tab: "articles",
   }).catch(() => {});
-
-  const axisCounts = await getSubjectAxisCounts(client, lawCode, law.lawId);
 
   return {
     subject: LAW_SUBJECTS[lawCode],
@@ -1250,6 +1257,7 @@ function PrevNextButton({
     <Link
       to={`/subjects/${subjectSlug}/articles/${target.articleNumber}`}
       viewTransition
+      prefetch="intent"
       aria-label={`${ariaLabel}: ${target.displayLabel}`}
       className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors"
     >

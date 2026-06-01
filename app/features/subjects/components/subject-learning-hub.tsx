@@ -87,6 +87,7 @@ export function SubjectLearningHub({
                     <Link
                       to={`/subjects/${subject.slug}/articles/${a.pathSlug}`}
                       viewTransition
+                      prefetch="intent"
                       title={a.displayLabel}
                       className="border-border bg-primary/[0.06] text-primary hover:border-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
                     >
@@ -116,6 +117,7 @@ export function SubjectLearningHub({
                     <Link
                       to={`/subjects/${subject.slug}/cases/${c.caseId}`}
                       viewTransition
+                      prefetch="intent"
                       className="border-border inline-flex max-w-[260px] items-center truncate rounded-full border bg-violet-500/[0.07] px-2.5 py-1 text-xs font-semibold text-violet-700 hover:border-violet-500 dark:text-violet-300"
                     >
                       {c.summaryFirstTitle ?? c.summaryTitle ?? c.caseTitle}
