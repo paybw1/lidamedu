@@ -166,6 +166,10 @@ export default [
       route("/take", "features/gs/api/take.tsx"),
       route("/ai-draft", "features/gs/api/ai-draft.tsx"),
       route("/peer", "features/gs/api/peer.tsx"),
+      route("/issue-draft", "features/gs/api/issue-draft.tsx"),
+      route("/issue-review", "features/gs/api/issue-review.tsx"),
+      route("/issue-attempt", "features/gs/api/issue-attempt.tsx"),
+      route("/issue-analyze", "features/gs/api/issue-analyze.tsx"),
     ]),
     ...prefix("/cron", [
       route("/gs-auto-assign", "features/gs/api/cron-auto-assign.tsx"),
@@ -341,6 +345,12 @@ export default [
       // feat-8-008 2차 모의(온라인 GS) 영역 게이트 — area_mock_exams.
       layout("features/gs/layouts/gs.layout.tsx", [
         route("/gs", "features/gs/screens/gs.tsx"),
+        // 논점 추출 훈련 — 별도 색인 + 응시. :roundId 보다 먼저 선언 (정적 세그먼트 우선).
+        route("/gs/issues", "features/gs/screens/gs-issues.tsx"),
+        route(
+          "/gs/issues/:questionId",
+          "features/gs/screens/gs-issue-take.tsx",
+        ),
         route("/gs/:roundId/take", "features/gs/screens/gs-take.tsx"),
         route("/gs/:roundId/result", "features/gs/screens/gs-result.tsx"),
         route(
@@ -733,6 +743,10 @@ export default [
         route(
           "/:roundId/distinctions",
           "features/gs/screens/admin-gs-distinctions.tsx",
+        ),
+        route(
+          "/:roundId/issues",
+          "features/gs/screens/admin-gs-issues.tsx",
         ),
         route("/points", "features/gs/screens/admin-gs-points.tsx"),
       ]),

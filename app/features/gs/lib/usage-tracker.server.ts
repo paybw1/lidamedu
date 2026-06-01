@@ -37,8 +37,14 @@ export function kstToday(now: Date = new Date()): string {
   return kst.toISOString().slice(0, 10);
 }
 
+export type AiUsageKind =
+  | "ai_grade"
+  | "ai_draft"
+  | "ai_issue_extract"  // §1 강사 액션 — 모범답안 → 논점 목록 초안
+  | "ai_issue_analyze"; // §3 학생 액션 — 학생 논점 ↔ 모범 매칭 분석
+
 interface RecordAiArgs {
-  kind: "ai_grade" | "ai_draft";
+  kind: AiUsageKind;
   model: string;
   inputTokens: number;
   outputTokens: number;

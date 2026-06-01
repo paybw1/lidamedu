@@ -2530,6 +2530,132 @@ export type Database = {
         }
         Relationships: []
       }
+      gs_question_issues: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description_md: string | null
+          generated_at: string
+          generated_by: string
+          gs_question_id: string | null
+          importance: Database["public"]["Enums"]["gs_issue_importance"]
+          issue_id: string
+          label: string
+          order_index: number
+          problem_id: string | null
+          ref_article_id: string | null
+          ref_case_id: string | null
+          ref_hint: string | null
+          rejected_reason: string | null
+          review_status: Database["public"]["Enums"]["problem_review_status"]
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description_md?: string | null
+          generated_at?: string
+          generated_by: string
+          gs_question_id?: string | null
+          importance?: Database["public"]["Enums"]["gs_issue_importance"]
+          issue_id?: string
+          label: string
+          order_index?: number
+          problem_id?: string | null
+          ref_article_id?: string | null
+          ref_case_id?: string | null
+          ref_hint?: string | null
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description_md?: string | null
+          generated_at?: string
+          generated_by?: string
+          gs_question_id?: string | null
+          importance?: Database["public"]["Enums"]["gs_issue_importance"]
+          issue_id?: string
+          label?: string
+          order_index?: number
+          problem_id?: string | null
+          ref_article_id?: string | null
+          ref_case_id?: string | null
+          ref_hint?: string | null
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_question_issues_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "gs_question_issues_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "gs_question_issues_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "gs_question_issues_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "gs_question_issues_gs_question_id_fkey"
+            columns: ["gs_question_id"]
+            isOneToOne: false
+            referencedRelation: "gs_questions"
+            referencedColumns: ["question_id"]
+          },
+          {
+            foreignKeyName: "gs_question_issues_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "gs_question_issues_ref_article_id_fkey"
+            columns: ["ref_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "gs_question_issues_ref_case_id_fkey"
+            columns: ["ref_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
       gs_question_pages: {
         Row: {
           created_at: string
@@ -5118,6 +5244,73 @@ export type Database = {
           },
         ]
       }
+      user_issue_attempts: {
+        Row: {
+          ai_analysis: Json | null
+          ai_analyzed_at: string | null
+          attempt_id: string
+          created_at: string
+          deleted_at: string | null
+          gs_question_id: string
+          self_check: Json | null
+          self_checked_at: string | null
+          student_issues_md: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          attempt_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          gs_question_id: string
+          self_check?: Json | null
+          self_checked_at?: string | null
+          student_issues_md?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          attempt_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          gs_question_id?: string
+          self_check?: Json | null
+          self_checked_at?: string | null
+          student_issues_md?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_issue_attempts_gs_question_id_fkey"
+            columns: ["gs_question_id"]
+            isOneToOne: false
+            referencedRelation: "gs_questions"
+            referencedColumns: ["question_id"]
+          },
+          {
+            foreignKeyName: "user_issue_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_issue_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       user_memos: {
         Row: {
           block_index: number | null
@@ -6352,6 +6545,7 @@ export type Database = {
         | "document_submitted"
         | "verified"
         | "rejected"
+      gs_issue_importance: "core" | "side"
       gs_round_status: "draft" | "published" | "closed"
       law_change_kind: "created" | "amended" | "deleted"
       law_revision_kind: "act" | "decree" | "rule"
@@ -6594,6 +6788,7 @@ export const Constants = {
         "verified",
         "rejected",
       ],
+      gs_issue_importance: ["core", "side"],
       gs_round_status: ["draft", "published", "closed"],
       law_change_kind: ["created", "amended", "deleted"],
       law_revision_kind: ["act", "decree", "rule"],

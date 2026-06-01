@@ -106,6 +106,31 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
         </>
       }
     >
+      {/* §4 — 논점 추출 훈련 진입 카드 (가벼운 반복 학습) */}
+      <Link
+        to="/gs/issues"
+        viewTransition
+        className="border-primary/20 bg-primary/[0.05] hover:border-primary/40 group mb-3 flex items-center gap-3.5 rounded-2xl border p-4 transition-colors"
+      >
+        <span className="bg-primary text-primary-foreground inline-flex size-11 shrink-0 items-center justify-center rounded-xl">
+          <PencilLineIcon className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-primary font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            논점 추출 훈련
+          </p>
+          <p className="text-foreground text-base font-bold tracking-tight">
+            답안 전체 말고 핵심 논점만 — 백지에서 빠르게 반복
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            사례 → 떠올린 논점 적기 → 모범과 대조 → 빠뜨린 논점의 조문/판례로 이동
+          </p>
+        </div>
+        <span className="border-border text-foreground/80 group-hover:border-foreground/30 inline-flex h-9 shrink-0 items-center gap-1 rounded-full border px-3.5 text-[13px] font-semibold transition-colors">
+          시작 <ArrowRightIcon className="size-3.5" />
+        </span>
+      </Link>
+
       {/* GS 포인트 카드 */}
       <Link
         to="/gs/points"

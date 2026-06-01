@@ -395,6 +395,11 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
                 <AwardIcon className="size-3.5" /> 우수 답안
               </Link>
             </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/admin/gs/${round.roundId}/issues`} viewTransition>
+                <ClipboardCheckIcon className="size-3.5" /> 논점 관리
+              </Link>
+            </Button>
             <deleteFetcher.Form method="post">
               <input type="hidden" name="intent" value="delete-round" />
               <Button
