@@ -78,6 +78,17 @@ export function StudentSidebar({
     }
   };
 
+  // 접힘 상태에서 그룹 아이콘 클릭 → 펼침 + 해당 그룹 자동 open.
+  const expandToGroup = (id: string) => {
+    setCollapsed(false);
+    persistCollapsed(false);
+    setOpen((s) => {
+      const next = new Set(s);
+      next.add(id);
+      return next;
+    });
+  };
+
   // 상단 nav 모드로 전환 — cookie + localStorage + reload.
   const switchToTopbar = () => {
     if (typeof window === "undefined") return;
@@ -157,7 +168,7 @@ export function StudentSidebar({
       </div>
 
       {/* ── 본문 — 메뉴 ── */}
-      <div className={cn("flex-1 overflow-y-auto", collapsed ? "p-2" : "p-3")}>
+      <div className={cn("flex-1 overflow-y-auto overflow-x-hidden", collapsed ? "p-1" : "p-3")}>
         {!collapsed && <SidebarSection label="핵심" />}
         <Row
           collapsed={collapsed}
@@ -177,6 +188,7 @@ export function StudentSidebar({
                 collapsed={collapsed}
                 open={open.has("subjects")}
                 onToggle={() => toggleGroup("subjects")}
+                onExpand={() => expandToGroup("subjects")}
                 path={path}
                 search={search}
                 onPick={collapseAfterPick}
@@ -206,6 +218,7 @@ export function StudentSidebar({
               group={g}
               open={open.has(g.id)}
               onToggle={() => toggleGroup(g.id)}
+              onExpand={() => expandToGroup(g.id)}
               path={path}
               search={search}
               onPick={collapseAfterPick}
@@ -222,6 +235,7 @@ export function StudentSidebar({
             group={g}
             open={open.has(g.id)}
             onToggle={() => toggleGroup(g.id)}
+            onExpand={() => expandToGroup(g.id)}
             path={path}
             search={search}
             onPick={collapseAfterPick}
@@ -293,6 +307,7 @@ interface GroupRowProps extends BaseRowProps {
   group: NavGroup;
   open: boolean;
   onToggle: () => void;
+  onExpand: () => void;
 }
 type RowProps = FlatRowProps | GroupRowProps;
 
@@ -312,7 +327,7 @@ function Row(props: RowProps) {
         group={props.group}
         path={props.path}
         search={props.search}
-        onPick={props.onPick}
+        onExpand={props.onExpand}
       />
     );
   }
@@ -418,14 +433,14 @@ function FlatIcon({
 }: Omit<FlatRowProps, "kind" | "collapsed">) {
   const active = isNavActive(to, path, search);
   return (
-    <div className="group relative my-0.5">
+    <div className="group relative">
       <Link
         to={to}
         viewTransition
         prefetch="intent"
         onClick={onPick}
         className={cn(
-          "flex h-9 items-center justify-center rounded-lg transition-colors",
+          "flex h-8 items-center justify-center rounded-lg transition-colors",
           active
             ? "bg-primary/10 text-primary"
             : "text-foreground/80 hover:bg-muted",
@@ -443,48 +458,29 @@ function GroupIcon({
   group,
   path,
   search,
-  onPick,
+  onExpand,
 }: {
   group: NavGroup;
   path: string;
   search: string;
-  onPick: () => void;
+  onExpand: () => void;
 }) {
   const Icon = group.Icon;
   const hasActive = group.items.some((i) => isNavActive(i.to, path, search));
   return (
-    <div className="group relative my-0.5">
-      <div
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={onExpand}
+        aria-label={group.label}
         className={cn(
-          "flex h-9 items-center justify-center rounded-lg transition-colors hover:bg-muted",
+          "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
           hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
         )}
-        aria-label={group.label}
       >
         <Icon className="size-5" />
-      </div>
-      <FlyoutPanel title={group.label}>
-        {group.items.map((it) => {
-          const active = isNavActive(it.to, path, search);
-          return (
-            <Link
-              key={it.to}
-              to={it.to}
-              viewTransition
-              prefetch="intent"
-              onClick={onPick}
-              className={cn(
-                "rounded-md px-2 py-1 text-xs transition-colors",
-                active
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {it.label}
-            </Link>
-          );
-        })}
-      </FlyoutPanel>
+      </button>
+      <Flyout>{group.label}</Flyout>
     </div>
   );
 }
@@ -493,6 +489,7 @@ interface SubjectsRowProps {
   collapsed: boolean;
   open: boolean;
   onToggle: () => void;
+  onExpand: () => void;
   path: string;
   search: string;
   onPick: () => void;
@@ -501,12 +498,13 @@ function SubjectsRow({
   collapsed,
   open,
   onToggle,
+  onExpand,
   path,
   search,
   onPick,
 }: SubjectsRowProps) {
   if (collapsed)
-    return <SubjectsIcon path={path} search={search} onPick={onPick} />;
+    return <SubjectsIcon path={path} search={search} onExpand={onExpand} />;
   return (
     <SubjectsFull
       open={open}
@@ -524,7 +522,7 @@ function SubjectsFull({
   path,
   search,
   onPick,
-}: Omit<SubjectsRowProps, "collapsed">) {
+}: Omit<SubjectsRowProps, "collapsed" | "onExpand">) {
   return (
     <div>
       <button
@@ -588,64 +586,29 @@ function SubjectsFull({
 function SubjectsIcon({
   path,
   search,
-  onPick,
+  onExpand,
 }: {
   path: string;
   search: string;
-  onPick: () => void;
+  onExpand: () => void;
 }) {
   const hasActive = SUBJECT_SECTIONS.some((s) =>
     s.groups.some((g) => g.items.some((i) => isNavActive(i.href, path, search))),
   );
   return (
-    <div className="group relative my-0.5">
-      <div
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={onExpand}
+        aria-label="학습과목"
         className={cn(
-          "flex h-9 items-center justify-center rounded-lg transition-colors hover:bg-muted",
+          "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
           hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
         )}
-        aria-label="학습과목"
       >
         <SUBJECT_ICON className="size-5" />
-      </div>
-      <FlyoutPanel title="학습과목" widthClass="w-[280px]">
-        {SUBJECT_SECTIONS.map((section) => (
-          <div key={section.exam} className="mb-2">
-            <p className="text-primary mt-1 mb-1 text-[9px] font-bold tracking-widest uppercase">
-              {section.label}
-            </p>
-            {section.groups.map((group) => (
-              <div key={`${section.exam}-${group.id}`} className="mb-1.5">
-                <p className="text-muted-foreground px-1 text-[10px] font-semibold">
-                  {group.label}
-                </p>
-                <div className="flex flex-col gap-0.5 pl-2">
-                  {group.items.map((item) => {
-                    const active = isNavActive(item.href, path, search);
-                    return (
-                      <Link
-                        key={`${section.exam}-${group.id}-${item.href}`}
-                        to={item.href}
-                        viewTransition
-                        prefetch="intent"
-                        onClick={onPick}
-                        className={cn(
-                          "rounded-md px-1.5 py-0.5 text-xs transition-colors",
-                          active
-                            ? "bg-primary/10 text-primary font-semibold"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        {item.name}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </FlyoutPanel>
+      </button>
+      <Flyout>학습과목</Flyout>
     </div>
   );
 }
@@ -653,30 +616,6 @@ function SubjectsIcon({
 function Flyout({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border bg-popover text-popover-foreground pointer-events-none absolute top-1/2 left-full z-50 ml-2 -translate-y-1/2 rounded-md border px-2 py-1 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100">
-      {children}
-    </div>
-  );
-}
-
-function FlyoutPanel({
-  title,
-  children,
-  widthClass = "w-[200px]",
-}: {
-  title: string;
-  children: React.ReactNode;
-  widthClass?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "border-border bg-popover absolute top-0 left-full z-50 ml-2 hidden flex-col gap-0.5 rounded-md border p-2 shadow-lg group-hover:flex",
-        widthClass,
-      )}
-    >
-      <p className="text-muted-foreground border-border mb-1 border-b pb-1 px-1 text-[10px] font-bold tracking-widest uppercase">
-        {title}
-      </p>
       {children}
     </div>
   );
