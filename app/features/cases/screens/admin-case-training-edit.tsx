@@ -46,13 +46,24 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!role) throw data("Forbidden", { status: 403 });
   const item = await getCaseTrainingItemForStaff(client, itemId);
   if (!item) throw data("Not found", { status: 404 });
-  return { item };
+  // ⑤ 연결용 GS 회차 목록.
+  const { data: roundsRaw } = await client
+    .from("gs_rounds")
+    .select("round_id, title, subject")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const gsRounds = (roundsRaw ?? []).map((r) => ({
+    roundId: r.round_id,
+    title: r.title,
+    subject: r.subject,
+  }));
+  return { item, gsRounds };
 }
 
 export default function AdminCaseTrainingEdit({
   loaderData,
 }: Route.ComponentProps) {
-  const { item: itemBundle } = loaderData;
+  const { item: itemBundle, gsRounds } = loaderData;
   const { item, caseRef, caseOfficialTextMd, issues } = itemBundle;
   const itemId = item.itemId;
 
@@ -114,6 +125,15 @@ export default function AdminCaseTrainingEdit({
       <IssuesSection
         itemId={itemId}
         issues={issues}
+        hasOfficialText={!!caseOfficialTextMd}
+      />
+
+      {/* ③④ 결론·강약 기준 + ⑤ GS 답안작성 연결 */}
+      <ConclusionsSection
+        itemId={itemId}
+        issues={issues}
+        linkedGsRoundId={item.linkedGsRoundId}
+        gsRounds={gsRounds}
         hasOfficialText={!!caseOfficialTextMd}
       />
     </main>
@@ -634,6 +654,225 @@ function IssueRow({
           </Button>
         </div>
       </div>
+    </li>
+  );
+}
+
+/* ── ③④ 결론·강약 + ⑤ GS 연결 ─────────────────────────────────────── */
+
+function ConclusionsSection({
+  itemId,
+  issues,
+  linkedGsRoundId,
+  gsRounds,
+  hasOfficialText,
+}: {
+  itemId: string;
+  issues: Array<{
+    issueId: string;
+    label: string;
+    importance: "core" | "side";
+    weight: number | null;
+    modelConclusionDirection: string | null;
+    modelConclusionMd: string | null;
+    reviewStatus: "draft" | "approved" | "rejected";
+  }>;
+  linkedGsRoundId: string | null;
+  gsRounds: Array<{ roundId: string; title: string; subject: string }>;
+  hasOfficialText: boolean;
+}) {
+  const aiFetcher = useFetcher<{
+    ok?: true;
+    error?: string;
+    inserted?: number;
+  }>();
+  const linkFetcher = useFetcher();
+  const revalidator = useRevalidator();
+  useEffect(() => {
+    if (aiFetcher.state === "idle" && aiFetcher.data && "ok" in aiFetcher.data)
+      revalidator.revalidate();
+  }, [aiFetcher.state, aiFetcher.data, revalidator]);
+  useEffect(() => {
+    if (linkFetcher.state === "idle" && linkFetcher.data) revalidator.revalidate();
+  }, [linkFetcher.state, linkFetcher.data, revalidator]);
+
+  const aiBusy = aiFetcher.state !== "idle";
+  const aiError =
+    aiFetcher.data && "error" in aiFetcher.data ? aiFetcher.data.error : null;
+
+  const liveIssues = issues.filter((i) => i.reviewStatus !== "rejected");
+  const withConclusion = liveIssues.filter(
+    (i) => (i.modelConclusionDirection ?? "").trim().length > 0,
+  ).length;
+
+  const generateAi = () => {
+    if (withConclusion > 0) {
+      if (!confirm("기존 결론을 AI 초안으로 덮어씁니다. 진행할까요?")) return;
+    }
+    const fd = new FormData();
+    fd.set("itemId", itemId);
+    fd.set("mode", "conclusions");
+    aiFetcher.submit(fd, {
+      method: "post",
+      action: "/api/case-training/draft-ai",
+    });
+  };
+
+  const setLinkedGs = (roundId: string) => {
+    const fd = new FormData();
+    fd.set("intent", "update_linked_gs");
+    fd.set("itemId", itemId);
+    fd.set("roundId", roundId);
+    linkFetcher.submit(fd, {
+      method: "post",
+      action: "/api/case-training/item",
+    });
+  };
+
+  return (
+    <section className="border-border bg-card space-y-3 rounded-2xl border p-4 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <p className="text-foreground font-bold">
+            ③ 결론도출 + ④ 응용목차 — 채점 기준 (선택)
+          </p>
+          <p className="text-muted-foreground text-xs">
+            각 쟁점에 모범 결론·근거·권장 비중(0~100, 선택)을 설정. 결론 정보가
+            2건 이상 채워지면 학생 응시 가능.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={generateAi}
+          disabled={aiBusy || !hasOfficialText || liveIssues.length < 2}
+          className="rounded-full"
+        >
+          <SparklesIcon className="size-3" />
+          {aiBusy ? "생성 중…" : "AI 결론·강약 초안"}
+        </Button>
+      </div>
+      {aiError ? (
+        <p className="text-rose-600 dark:text-rose-300 text-xs">{aiError}</p>
+      ) : null}
+      <p className="text-muted-foreground text-[11px]">
+        결론 정보 있음:{" "}
+        <strong className="text-foreground tabular-nums">
+          {withConclusion}
+        </strong>
+        /{liveIssues.length}건
+      </p>
+
+      <ul className="space-y-2">
+        {liveIssues.map((iss) => (
+          <ConclusionRow key={iss.issueId} issue={iss} />
+        ))}
+      </ul>
+
+      {/* ⑤ GS 연결 */}
+      <div className="border-border space-y-2 rounded-xl border border-dashed p-3">
+        <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+          ⑤ GS 답안작성 회차 연결 (선택)
+        </p>
+        <p className="text-muted-foreground text-[11px]">
+          결과 화면에서 학생이 "답안 작성으로 →" 진입할 수 있습니다.
+        </p>
+        <select
+          value={linkedGsRoundId ?? ""}
+          onChange={(e) => setLinkedGs(e.target.value)}
+          className="border-border bg-background w-full rounded-lg border px-3 py-2 text-sm"
+          disabled={linkFetcher.state !== "idle"}
+        >
+          <option value="">— 연결 없음 —</option>
+          {gsRounds.map((r) => (
+            <option key={r.roundId} value={r.roundId}>
+              [{r.subject}] {r.title}
+            </option>
+          ))}
+        </select>
+      </div>
+    </section>
+  );
+}
+
+function ConclusionRow({
+  issue,
+}: {
+  issue: {
+    issueId: string;
+    label: string;
+    importance: "core" | "side";
+    weight: number | null;
+    modelConclusionDirection: string | null;
+    modelConclusionMd: string | null;
+  };
+}) {
+  const [direction, setDirection] = useState(
+    issue.modelConclusionDirection ?? "",
+  );
+  const [rationale, setRationale] = useState(issue.modelConclusionMd ?? "");
+  const [weight, setWeight] = useState<string>(
+    issue.weight !== null ? String(issue.weight) : "",
+  );
+  const fetcher = useFetcher();
+  const revalidator = useRevalidator();
+  const lastSavedRef = useRef(
+    `${issue.modelConclusionDirection ?? ""}|${issue.modelConclusionMd ?? ""}|${issue.weight ?? ""}`,
+  );
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const cur = `${direction}|${rationale}|${weight}`;
+    if (cur === lastSavedRef.current) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      const fd = new FormData();
+      fd.set("intent", "update_conclusion");
+      fd.set("issueId", issue.issueId);
+      fd.set("modelConclusionDirection", direction);
+      fd.set("modelConclusionMd", rationale);
+      if (weight !== "") fd.set("weight", weight);
+      fetcher.submit(fd, { method: "post", action: "/api/case-training/issue" });
+      lastSavedRef.current = cur;
+    }, 1500);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direction, rationale, weight]);
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) revalidator.revalidate();
+  }, [fetcher.state, fetcher.data, revalidator]);
+
+  return (
+    <li className="border-border bg-card space-y-2 rounded-xl border p-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Chip tone={issue.importance === "core" ? "primary" : "outline"}>
+          {issue.importance === "core" ? "핵심" : "부차"}
+        </Chip>
+        <p className="text-foreground text-sm font-bold">{issue.label}</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+        <Input
+          value={direction}
+          onChange={(e) => setDirection(e.target.value)}
+          placeholder="결론 (예: 인정 / 부정)"
+        />
+        <Input
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          placeholder="weight 0-100"
+          type="number"
+          min={0}
+          max={100}
+        />
+      </div>
+      <Textarea
+        value={rationale}
+        onChange={(e) => setRationale(e.target.value)}
+        placeholder="근거 (1~2문장)"
+        className="min-h-[50px] text-xs"
+      />
     </li>
   );
 }

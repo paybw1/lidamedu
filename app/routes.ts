@@ -178,6 +178,15 @@ export default [
       route("/issue", "features/cases/api/case-training-issue.tsx"),
       route("/attempt", "features/cases/api/case-training-attempt.tsx"),
       route("/analyze", "features/cases/api/case-training-analyze.tsx"),
+      // ③④ 결론·강약 학생 endpoints.
+      route(
+        "/conclusion-attempt",
+        "features/cases/api/case-training-conclusion-attempt.tsx",
+      ),
+      route(
+        "/conclusion-analyze",
+        "features/cases/api/case-training-conclusion-analyze.tsx",
+      ),
     ]),
     ...prefix("/cron", [
       route("/gs-auto-assign", "features/gs/api/cron-auto-assign.tsx"),
@@ -726,6 +735,11 @@ export default [
       route(
         "/case-training/:itemId",
         "features/cases/screens/case-training-take.tsx",
+      ),
+      // ③④ 결론·강약 학생 응시.
+      route(
+        "/case-training/:itemId/conclusion",
+        "features/cases/screens/case-training-conclusion.tsx",
       ),
       // 판례 기반 쟁점추출 훈련 — 강사 출제.
       ...prefix("/admin/case-training", [

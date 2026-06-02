@@ -27,6 +27,8 @@ export interface CaseTrainingItem {
   rejectedReason: string | null;
   createdBy: string | null;
   createdAt: string;
+  /** ⑤ GS 답안작성 연결 — 선택. */
+  linkedGsRoundId: string | null;
 }
 
 export interface CaseTrainingIssueRow extends MasterIssue {
@@ -35,6 +37,10 @@ export interface CaseTrainingIssueRow extends MasterIssue {
   orderIndex: number;
   refArticleId: string | null;
   refCaseId: string | null;
+  // ③④ 결론·강약 채점 기준 (선택).
+  weight: number | null;
+  modelConclusionDirection: string | null;
+  modelConclusionMd: string | null;
 }
 
 export interface CaseRefForTraining {
@@ -70,7 +76,7 @@ export async function listApprovedCaseTrainingItems(
     .from("case_training_items")
     .select(
       `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
-       approved_at, rejected_reason, created_by, created_at,
+       approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path )`,
     )
     .eq("review_status", "approved")
@@ -97,6 +103,7 @@ export async function listApprovedCaseTrainingItems(
       rejectedReason: r.rejected_reason,
       createdBy: r.created_by,
       createdAt: r.created_at,
+      linkedGsRoundId: r.linked_gs_round_id,
       caseRef: {
         caseId: c?.case_id ?? r.case_id,
         caseTitle: c?.case_title ?? "",
@@ -123,7 +130,7 @@ export async function getApprovedCaseTrainingItem(
     .from("case_training_items")
     .select(
       `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
-       approved_at, rejected_reason, created_by, created_at,
+       approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path )`,
     )
     .eq("item_id", itemId)
@@ -145,7 +152,7 @@ export async function getApprovedCaseTrainingItem(
   const { data: issueRows, error: issErr } = await client
     .from("case_training_issues")
     .select(
-      `issue_id, item_id, label, description_md, importance, ref_article_id, ref_case_id, ref_hint, order_index, review_status, generated_by`,
+      `issue_id, item_id, label, description_md, importance, ref_article_id, ref_case_id, ref_hint, order_index, review_status, generated_by, weight, model_conclusion_direction, model_conclusion_md`,
     )
     .eq("item_id", itemId)
     .eq("review_status", "approved")
@@ -164,6 +171,9 @@ export async function getApprovedCaseTrainingItem(
     orderIndex: r.order_index,
     reviewStatus: r.review_status as "draft" | "approved" | "rejected",
     generatedBy: r.generated_by as "ai" | "staff",
+    weight: r.weight,
+    modelConclusionDirection: r.model_conclusion_direction,
+    modelConclusionMd: r.model_conclusion_md,
   }));
 
   return {
@@ -177,6 +187,7 @@ export async function getApprovedCaseTrainingItem(
       rejectedReason: itemRow.rejected_reason,
       createdBy: itemRow.created_by,
       createdAt: itemRow.created_at,
+      linkedGsRoundId: itemRow.linked_gs_round_id,
     },
     caseRef: {
       caseId: c?.case_id ?? itemRow.case_id,
@@ -202,7 +213,7 @@ export async function listCaseTrainingItemsForStaff(
     .from("case_training_items")
     .select(
       `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
-       approved_at, rejected_reason, created_by, created_at,
+       approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
        case_training_issues ( issue_id, review_status, deleted_at )`,
     )
@@ -235,6 +246,7 @@ export async function listCaseTrainingItemsForStaff(
       rejectedReason: r.rejected_reason,
       createdBy: r.created_by,
       createdAt: r.created_at,
+      linkedGsRoundId: r.linked_gs_round_id,
       caseRef: {
         caseId: c?.case_id ?? r.case_id,
         caseTitle: c?.case_title ?? "",
@@ -263,7 +275,7 @@ export async function getCaseTrainingItemForStaff(
     .from("case_training_items")
     .select(
       `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
-       approved_at, rejected_reason, created_by, created_at,
+       approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path )`,
     )
     .eq("item_id", itemId)
@@ -284,7 +296,7 @@ export async function getCaseTrainingItemForStaff(
   const { data: issueRows, error: issErr } = await client
     .from("case_training_issues")
     .select(
-      `issue_id, item_id, label, description_md, importance, ref_article_id, ref_case_id, ref_hint, order_index, review_status, generated_by`,
+      `issue_id, item_id, label, description_md, importance, ref_article_id, ref_case_id, ref_hint, order_index, review_status, generated_by, weight, model_conclusion_direction, model_conclusion_md`,
     )
     .eq("item_id", itemId)
     .is("deleted_at", null)
@@ -302,6 +314,7 @@ export async function getCaseTrainingItemForStaff(
       rejectedReason: itemRow.rejected_reason,
       createdBy: itemRow.created_by,
       createdAt: itemRow.created_at,
+      linkedGsRoundId: itemRow.linked_gs_round_id,
     },
     caseRef: {
       caseId: c?.case_id ?? itemRow.case_id,
@@ -324,6 +337,9 @@ export async function getCaseTrainingItemForStaff(
       orderIndex: r.order_index,
       reviewStatus: r.review_status as "draft" | "approved" | "rejected",
       generatedBy: r.generated_by as "ai" | "staff",
+      weight: r.weight,
+      modelConclusionDirection: r.model_conclusion_direction,
+      modelConclusionMd: r.model_conclusion_md,
     })),
   };
 }
@@ -641,4 +657,263 @@ export async function resetCaseAttempt(
     .eq("item_id", itemId)
     .is("deleted_at", null);
   if (error) throw error;
+}
+
+// ============================================================================
+// ③④ 결론·강약 — staff: linked_gs / conclusion 컬럼 update + AI 일괄 적용
+// ============================================================================
+
+export async function updateCaseTrainingItemLinkedGs(
+  client: Client,
+  itemId: string,
+  roundId: string | null,
+): Promise<void> {
+  const { error } = await client
+    .from("case_training_items")
+    .update({ linked_gs_round_id: roundId })
+    .eq("item_id", itemId);
+  if (error) throw error;
+}
+
+export interface IssueConclusionPatch {
+  weight?: number | null;
+  modelConclusionDirection?: string | null;
+  modelConclusionMd?: string | null;
+}
+
+export async function updateCaseTrainingIssueConclusion(
+  client: Client,
+  issueId: string,
+  patch: IssueConclusionPatch,
+): Promise<void> {
+  const up: Record<string, unknown> = {};
+  if (patch.weight !== undefined) up.weight = patch.weight;
+  if (patch.modelConclusionDirection !== undefined)
+    up.model_conclusion_direction = patch.modelConclusionDirection || null;
+  if (patch.modelConclusionMd !== undefined)
+    up.model_conclusion_md = patch.modelConclusionMd || null;
+  if (Object.keys(up).length === 0) return;
+  const { error } = await client
+    .from("case_training_issues")
+    .update(up)
+    .eq("issue_id", issueId);
+  if (error) throw error;
+}
+
+export interface AiConclusionDraft {
+  issueId: string;
+  weight: number | null;
+  modelConclusionDirection: string;
+  modelConclusionMd: string;
+}
+
+export async function bulkApplyAiConclusionDrafts(
+  client: Client,
+  drafts: AiConclusionDraft[],
+): Promise<void> {
+  // 행 단위 update (PostgREST 일괄 update 제약 — 개별 호출).
+  for (const d of drafts) {
+    await updateCaseTrainingIssueConclusion(client, d.issueId, {
+      weight: d.weight,
+      modelConclusionDirection: d.modelConclusionDirection,
+      modelConclusionMd: d.modelConclusionMd,
+    });
+  }
+}
+
+// ============================================================================
+// ③④ 결론·강약 — 학생 attempt CRUD (case_conclusion_attempts)
+// ============================================================================
+
+import type {
+  ConclusionAiAnalysis,
+  ConclusionSelfCheck,
+  ConclusionsMap,
+  EmphasisMap,
+} from "~/features/issue-extraction/lib/types";
+
+export interface CaseConclusionAttempt {
+  attemptId: string;
+  itemId: string;
+  conclusions: ConclusionsMap | null;
+  emphasisMap: EmphasisMap | null;
+  outlineMd: string;
+  selfCheck: ConclusionSelfCheck | null;
+  aiAnalysis: ConclusionAiAnalysis | null;
+  submittedAt: string | null;
+  selfCheckedAt: string | null;
+  aiAnalyzedAt: string | null;
+  doneAt: string | null;
+}
+
+export async function getMyConclusionAttempt(
+  client: Client,
+  userId: string,
+  itemId: string,
+): Promise<CaseConclusionAttempt | null> {
+  const { data, error } = await client
+    .from("case_conclusion_attempts")
+    .select(
+      `attempt_id, item_id, conclusions, emphasis_map, outline_md,
+       self_check, ai_analysis,
+       submitted_at, self_checked_at, ai_analyzed_at, done_at`,
+    )
+    .eq("user_id", userId)
+    .eq("item_id", itemId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    attemptId: data.attempt_id,
+    itemId: data.item_id,
+    conclusions: (data.conclusions as ConclusionsMap | null) ?? null,
+    emphasisMap: (data.emphasis_map as EmphasisMap | null) ?? null,
+    outlineMd: data.outline_md,
+    selfCheck: (data.self_check as ConclusionSelfCheck | null) ?? null,
+    aiAnalysis: (data.ai_analysis as ConclusionAiAnalysis | null) ?? null,
+    submittedAt: data.submitted_at,
+    selfCheckedAt: data.self_checked_at,
+    aiAnalyzedAt: data.ai_analyzed_at,
+    doneAt: data.done_at,
+  };
+}
+
+export async function upsertConclusionAttemptDraft(
+  client: Client,
+  userId: string,
+  itemId: string,
+  patch: {
+    conclusions: ConclusionsMap;
+    emphasisMap: EmphasisMap;
+    outlineMd: string;
+  },
+): Promise<string> {
+  const { data: existing } = await client
+    .from("case_conclusion_attempts")
+    .select("attempt_id, submitted_at")
+    .eq("user_id", userId)
+    .eq("item_id", itemId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (existing && existing.submitted_at) {
+    return existing.attempt_id;
+  }
+  const payload = {
+    conclusions: patch.conclusions as unknown as Database["public"]["Tables"]["case_conclusion_attempts"]["Update"]["conclusions"],
+    emphasis_map: patch.emphasisMap as unknown as Database["public"]["Tables"]["case_conclusion_attempts"]["Update"]["emphasis_map"],
+    outline_md: patch.outlineMd,
+  };
+  if (existing) {
+    const { error } = await client
+      .from("case_conclusion_attempts")
+      .update(payload)
+      .eq("attempt_id", existing.attempt_id);
+    if (error) throw error;
+    return existing.attempt_id;
+  }
+  const { data, error } = await client
+    .from("case_conclusion_attempts")
+    .insert({ user_id: userId, item_id: itemId, ...payload })
+    .select("attempt_id")
+    .single();
+  if (error) throw error;
+  return data.attempt_id;
+}
+
+export async function submitConclusionAttempt(
+  client: Client,
+  userId: string,
+  itemId: string,
+  patch: {
+    conclusions: ConclusionsMap;
+    emphasisMap: EmphasisMap;
+    outlineMd: string;
+  },
+): Promise<void> {
+  const attemptId = await upsertConclusionAttemptDraft(
+    client,
+    userId,
+    itemId,
+    patch,
+  );
+  const { error } = await client
+    .from("case_conclusion_attempts")
+    .update({ submitted_at: new Date().toISOString() })
+    .eq("attempt_id", attemptId)
+    .is("submitted_at", null);
+  if (error) throw error;
+}
+
+export async function selfCheckConclusionAttempt(
+  client: Client,
+  userId: string,
+  itemId: string,
+  selfCheck: ConclusionSelfCheck,
+): Promise<void> {
+  const { error } = await client
+    .from("case_conclusion_attempts")
+    .update({
+      self_check: selfCheck as unknown as Database["public"]["Tables"]["case_conclusion_attempts"]["Update"]["self_check"],
+      self_checked_at: new Date().toISOString(),
+      done_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("item_id", itemId)
+    .is("deleted_at", null);
+  if (error) throw error;
+}
+
+export async function setConclusionAttemptAiAnalysis(
+  client: Client,
+  userId: string,
+  itemId: string,
+  analysis: ConclusionAiAnalysis,
+): Promise<void> {
+  const { error } = await client
+    .from("case_conclusion_attempts")
+    .update({
+      ai_analysis: analysis as unknown as Database["public"]["Tables"]["case_conclusion_attempts"]["Update"]["ai_analysis"],
+      ai_analyzed_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("item_id", itemId)
+    .is("deleted_at", null);
+  if (error) throw error;
+}
+
+export async function resetConclusionAttempt(
+  client: Client,
+  userId: string,
+  itemId: string,
+): Promise<void> {
+  const { error } = await client
+    .from("case_conclusion_attempts")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("item_id", itemId)
+    .is("deleted_at", null);
+  if (error) throw error;
+}
+
+/** 학생 응시 가능한지 게이트 — item approved + 결론 정보 있는 쟁점 ≥ 2. */
+export async function isConclusionTrainingReady(
+  client: Client,
+  itemId: string,
+): Promise<boolean> {
+  const { data: it } = await client
+    .from("case_training_items")
+    .select("review_status, deleted_at")
+    .eq("item_id", itemId)
+    .maybeSingle();
+  if (!it || it.review_status !== "approved" || it.deleted_at !== null)
+    return false;
+  const { count } = await client
+    .from("case_training_issues")
+    .select("issue_id", { count: "exact", head: true })
+    .eq("item_id", itemId)
+    .eq("review_status", "approved")
+    .is("deleted_at", null)
+    .not("model_conclusion_direction", "is", null);
+  return (count ?? 0) >= 2;
 }

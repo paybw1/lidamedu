@@ -11,6 +11,7 @@ import {
   softDeleteCaseTrainingIssue,
   unapproveCaseTrainingIssue,
   updateCaseTrainingIssue,
+  updateCaseTrainingIssueConclusion,
 } from "~/features/cases/queries-case-training.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
@@ -45,6 +46,13 @@ const schema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("delete"),
     issueId: z.string().uuid(),
+  }),
+  z.object({
+    intent: z.literal("update_conclusion"),
+    issueId: z.string().uuid(),
+    weight: z.coerce.number().int().min(0).max(100).nullable().optional(),
+    modelConclusionDirection: z.string().max(120).optional(),
+    modelConclusionMd: z.string().max(2000).optional(),
   }),
 ]);
 
@@ -110,6 +118,14 @@ export async function action({ request }: Route.ActionArgs) {
     }
     case "delete": {
       await softDeleteCaseTrainingIssue(client, input.issueId);
+      return data({ ok: true as const });
+    }
+    case "update_conclusion": {
+      await updateCaseTrainingIssueConclusion(client, input.issueId, {
+        weight: input.weight,
+        modelConclusionDirection: input.modelConclusionDirection,
+        modelConclusionMd: input.modelConclusionMd,
+      });
       return data({ ok: true as const });
     }
   }

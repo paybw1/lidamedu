@@ -42,9 +42,11 @@ export type AiUsageKind =
   | "ai_draft"
   | "ai_issue_extract"        // GS §1 강사 액션 — 모범답안 → 논점 목록 초안
   | "ai_issue_analyze"        // GS §3 학생 액션 — 학생 논점 ↔ 모범 매칭 분석
-  | "ai_case_facts_draft"     // 판례훈련 §1 강사 — 판례 전문 → 사실관계 요약 초안
-  | "ai_case_issues_draft"    // 판례훈련 §1 강사 — 판례 전문 → 쟁점 목록 초안
-  | "ai_case_issue_analyze";  // 판례훈련 §3 학생 — 학생 쟁점 ↔ 모범 매칭 분석
+  | "ai_case_facts_draft"          // 판례훈련 §1 강사 — 판례 전문 → 사실관계 요약 초안
+  | "ai_case_issues_draft"         // 판례훈련 §1 강사 — 판례 전문 → 쟁점 목록 초안
+  | "ai_case_issue_analyze"        // 판례훈련 §3 학생 — 학생 쟁점 ↔ 모범 매칭 분석
+  | "ai_case_conclusion_draft"     // 결론·강약 훈련 §1 강사 — 쟁점 목록 → 결론·강약 초안
+  | "ai_case_conclusion_analyze";  // 결론·강약 훈련 §3 학생 — 학생 결론·강약 코칭
 
 interface RecordAiArgs {
   kind: AiUsageKind;

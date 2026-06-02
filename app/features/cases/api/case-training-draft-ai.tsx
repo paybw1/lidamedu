@@ -10,7 +10,9 @@ import {
   draftCaseFactsFromCase,
   draftCaseIssuesFromCase,
 } from "~/features/cases/lib/ai-case-drafter.server";
+import { draftCaseConclusionsFromIssues } from "~/features/cases/lib/ai-case-conclusion-drafter.server";
 import {
+  bulkApplyAiConclusionDrafts,
   bulkInsertCaseTrainingIssues,
   getCaseTrainingItemForStaff,
   updateCaseTrainingItemFacts,
@@ -27,7 +29,7 @@ import type { Route } from "./+types/case-training-draft-ai";
 
 const schema = z.object({
   itemId: z.string().uuid(),
-  mode: z.enum(["facts", "issues"]),
+  mode: z.enum(["facts", "issues", "conclusions"]),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -63,7 +65,9 @@ export async function action({ request }: Route.ActionArgs) {
   const kind =
     parsed.data.mode === "facts"
       ? ("ai_case_facts_draft" as const)
-      : ("ai_case_issues_draft" as const);
+      : parsed.data.mode === "issues"
+        ? ("ai_case_issues_draft" as const)
+        : ("ai_case_conclusion_draft" as const);
 
   // cap preflight.
   const capCheck = await checkAiCap();
@@ -105,19 +109,58 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true as const, mode: "facts" as const, factsMd });
   }
 
-  const issues = await draftCaseIssuesFromCase(args);
-  if (!issues) {
+  if (parsed.data.mode === "issues") {
+    const issues = await draftCaseIssuesFromCase(args);
+    if (!issues) {
+      return data(
+        { error: "AI 쟁점 초안 생성 실패 — API 키/전문 점검 필요." },
+        { status: 500 },
+      );
+    }
+    await bulkInsertCaseTrainingIssues(
+      client,
+      item.item.itemId,
+      issues,
+      "ai",
+      user.id,
+    );
+    return data({ ok: true as const, mode: "issues" as const, inserted: issues.length });
+  }
+
+  // mode === "conclusions"
+  const liveIssues = item.issues.filter(
+    (i) => i.reviewStatus !== "rejected",
+  );
+  if (liveIssues.length < 2) {
     return data(
-      { error: "AI 쟁점 초안 생성 실패 — API 키/전문 점검 필요." },
+      { error: "결론 초안 생성에는 쟁점 ≥2건이 필요합니다." },
+      { status: 400 },
+    );
+  }
+  const conclusions = await draftCaseConclusionsFromIssues({
+    caseTitle: item.caseRef.caseTitle,
+    caseNumber: item.caseRef.caseNumber,
+    factsSummaryMd: item.item.factsSummaryMd,
+    officialTextMd: item.caseOfficialTextMd,
+    issues: liveIssues.map((i) => ({
+      issueId: i.issueId,
+      label: i.label,
+      descriptionMd: i.descriptionMd,
+      importance: i.importance,
+      refHint: i.refHint,
+    })),
+    usage: { meta: { userId: user.id } },
+  });
+  if (!conclusions) {
+    return data(
+      { error: "AI 결론 초안 생성 실패." },
       { status: 500 },
     );
   }
-  await bulkInsertCaseTrainingIssues(
-    client,
-    item.item.itemId,
-    issues,
-    "ai",
-    user.id,
-  );
-  return data({ ok: true as const, mode: "issues" as const, inserted: issues.length });
+  await bulkApplyAiConclusionDrafts(client, conclusions);
+  return data({
+    ok: true as const,
+    mode: "conclusions" as const,
+    inserted: conclusions.length,
+  });
 }

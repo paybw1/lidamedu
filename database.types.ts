@@ -1192,6 +1192,68 @@ export type Database = {
         }
         Relationships: []
       }
+      case_conclusion_attempts: {
+        Row: {
+          ai_analysis: Json | null
+          ai_analyzed_at: string | null
+          attempt_id: string
+          conclusions: Json | null
+          created_at: string
+          deleted_at: string | null
+          done_at: string | null
+          emphasis_map: Json | null
+          item_id: string
+          outline_md: string
+          self_check: Json | null
+          self_checked_at: string | null
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          attempt_id?: string
+          conclusions?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          done_at?: string | null
+          emphasis_map?: Json | null
+          item_id: string
+          outline_md?: string
+          self_check?: Json | null
+          self_checked_at?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          attempt_id?: string
+          conclusions?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          done_at?: string | null
+          emphasis_map?: Json | null
+          item_id?: string
+          outline_md?: string
+          self_check?: Json | null
+          self_checked_at?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_conclusion_attempts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "case_training_items"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
       case_issue_attempts: {
         Row: {
           ai_analysis: Json | null
@@ -1335,6 +1397,8 @@ export type Database = {
           issue_id: string
           item_id: string
           label: string
+          model_conclusion_direction: string | null
+          model_conclusion_md: string | null
           order_index: number
           ref_article_id: string | null
           ref_case_id: string | null
@@ -1342,6 +1406,7 @@ export type Database = {
           rejected_reason: string | null
           review_status: Database["public"]["Enums"]["problem_review_status"]
           updated_at: string
+          weight: number | null
         }
         Insert: {
           approved_at?: string | null
@@ -1356,6 +1421,8 @@ export type Database = {
           issue_id?: string
           item_id: string
           label: string
+          model_conclusion_direction?: string | null
+          model_conclusion_md?: string | null
           order_index?: number
           ref_article_id?: string | null
           ref_case_id?: string | null
@@ -1363,6 +1430,7 @@ export type Database = {
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
+          weight?: number | null
         }
         Update: {
           approved_at?: string | null
@@ -1377,6 +1445,8 @@ export type Database = {
           issue_id?: string
           item_id?: string
           label?: string
+          model_conclusion_direction?: string | null
+          model_conclusion_md?: string | null
           order_index?: number
           ref_article_id?: string | null
           ref_case_id?: string | null
@@ -1384,6 +1454,7 @@ export type Database = {
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
+          weight?: number | null
         }
         Relationships: [
           {
@@ -1420,6 +1491,7 @@ export type Database = {
           facts_generated_by: string
           facts_summary_md: string
           item_id: string
+          linked_gs_round_id: string | null
           rejected_reason: string | null
           review_status: Database["public"]["Enums"]["problem_review_status"]
           updated_at: string
@@ -1434,6 +1506,7 @@ export type Database = {
           facts_generated_by?: string
           facts_summary_md?: string
           item_id?: string
+          linked_gs_round_id?: string | null
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
@@ -1448,6 +1521,7 @@ export type Database = {
           facts_generated_by?: string
           facts_summary_md?: string
           item_id?: string
+          linked_gs_round_id?: string | null
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
@@ -1459,6 +1533,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_training_items_linked_gs_round_id_fkey"
+            columns: ["linked_gs_round_id"]
+            isOneToOne: false
+            referencedRelation: "gs_rounds"
+            referencedColumns: ["round_id"]
           },
         ]
       }

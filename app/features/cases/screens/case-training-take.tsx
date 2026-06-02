@@ -11,6 +11,7 @@ import { Chip } from "~/features/community/components/community-ui";
 import {
   getApprovedCaseTrainingItem,
   getMyCaseAttempt,
+  isConclusionTrainingReady,
 } from "~/features/cases/queries-case-training.server";
 import {
   DoneStage,
@@ -62,13 +63,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? `/api/cases/${itemBundle.caseRef.caseId}/official-text-pdf`
       : null;
 
-  return { itemBundle, attempt, phase, pdfUrl };
+  // ③④ 결론·강약 훈련 진입 — 준비된 경우만(채점 후 노출).
+  const conclusionReady =
+    phase === "self-checked"
+      ? await isConclusionTrainingReady(client, itemId)
+      : false;
+
+  return { itemBundle, attempt, phase, pdfUrl, conclusionReady };
 }
 
 export default function CaseTrainingTake({
   loaderData,
 }: Route.ComponentProps) {
-  const { itemBundle, attempt, phase, pdfUrl } = loaderData;
+  const { itemBundle, attempt, phase, pdfUrl, conclusionReady } = loaderData;
   const { item, caseRef, approvedIssues } = itemBundle;
   const hiddenFields = { itemId: item.itemId };
 
@@ -132,12 +139,22 @@ export default function CaseTrainingTake({
           resetActionUrl="/api/case-training/attempt"
           hiddenFields={hiddenFields}
           primaryAction={
-            <Link
-              to="/case-training"
-              className="border-input bg-background hover:bg-accent inline-flex items-center gap-1 rounded-full border px-4 py-2 text-sm font-medium"
-            >
-              <ArrowLeftIcon className="size-4" /> 목록으로
-            </Link>
+            <>
+              {conclusionReady ? (
+                <Link
+                  to={`/case-training/${item.itemId}/conclusion`}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold"
+                >
+                  ③ 결론·강약 훈련으로 →
+                </Link>
+              ) : null}
+              <Link
+                to="/case-training"
+                className="border-input bg-background hover:bg-accent inline-flex items-center gap-1 rounded-full border px-4 py-2 text-sm font-medium"
+              >
+                <ArrowLeftIcon className="size-4" /> 목록으로
+              </Link>
+            </>
           }
           topSlot={
             pdfUrl ? (

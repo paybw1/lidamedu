@@ -22,3 +22,20 @@ export function canRevealModelIssues(phase: IssueExtractionPhase): boolean {
 export function isDone(phase: IssueExtractionPhase): boolean {
   return phase === "self-checked";
 }
+
+import type { ConclusionAttemptShape } from "./types";
+
+/** ③④ 결론·강약 attempt 의 phase 추론. */
+export function determineConclusionPhase(
+  attempt: ConclusionAttemptShape | null,
+): IssueExtractionPhase {
+  if (!attempt) return "blank";
+  if (attempt.selfCheckedAt) return "self-checked";
+  if (attempt.submittedAt) return "submitted";
+  if (
+    attempt.outlineMd ||
+    (attempt.conclusions && Object.keys(attempt.conclusions).length > 0)
+  )
+    return "in-progress";
+  return "blank";
+}
