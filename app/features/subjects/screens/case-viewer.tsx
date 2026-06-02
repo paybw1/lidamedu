@@ -237,16 +237,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     placementMaps.caseSetByNodeId,
   );
 
-  // 공식 전문 PDF — official_text_pdf_path 있으면 service_role 로 signed URL(1h) 발급.
-  // anon 직접 다운로드는 storage RLS 가 차단(verify-pdf-storage 검증) — signed URL 만 노출.
-  let officialPdfUrl: string | null = null;
-  if (kase.officialTextPdfPath) {
-    const { default: adminClient } = await import("~/core/lib/supa-admin-client.server");
-    const { data: signed } = await adminClient.storage
-      .from("case-fulltext")
-      .createSignedUrl(kase.officialTextPdfPath, 3600);
-    officialPdfUrl = signed?.signedUrl ?? null;
-  }
+  // 공식 전문 PDF — official_text_pdf_path 있을 때만 정적 redirect 라우트 URL 노출.
+  // 그 라우트가 매 클릭마다 fresh signed URL 발급(1h) + 302 redirect → TTL 만료 무관.
+  const officialPdfUrl = kase.officialTextPdfPath
+    ? `/api/cases/${kase.caseId}/official-text-pdf`
+    : null;
 
   return {
     subject: LAW_SUBJECTS[lawCode],

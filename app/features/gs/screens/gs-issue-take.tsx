@@ -67,8 +67,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // §4 — 빠뜨린 논점 deep link 용 ref lookup.
   const refLinks = await getRefLinksForIssues(client, masterIssues);
 
-  // 판례 전문 PDF — 서버 게이트. 자기채점 완료(self-checked) 단계에서만 signed URL 발급.
-  // 그 외 단계에선 응답에 URL 자체 미포함 → 클라이언트가 받을 방법 없음(쟁점 노출 방지).
+  // 판례 전문 PDF — 서버 게이트(UX). self-checked 단계에서만 URL Record 노출.
+  // 그 외 단계엔 빈 Record → 클라가 받을 방법 없음. URL 은 정적 redirect 라우트라
+  // 만료 무관(라우트가 매 클릭마다 fresh signed URL 발급 + 302).
   const phase: "blank" | "in-progress" | "submitted" | "self-checked" =
     !ctx.myAttempt
       ? "blank"
@@ -77,23 +78,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         : ctx.myAttempt.submittedAt
           ? "submitted"
           : "in-progress";
-  let casePdfUrls: Record<string, string> = {};
+  const casePdfUrls: Record<string, string> = {};
   if (phase === "self-checked") {
     const caseIds = Object.values(refLinks)
       .map((l) => l.case?.caseId)
       .filter((v): v is string => !!v);
     if (caseIds.length > 0) {
-      const { default: adminClient } = await import("~/core/lib/supa-admin-client.server");
-      const { data: rows } = await adminClient
+      const { data: rows } = await client
         .from("cases")
         .select("case_id, official_text_pdf_path")
         .in("case_id", caseIds);
       for (const r of rows ?? []) {
         if (!r.official_text_pdf_path) continue;
-        const { data: signed } = await adminClient.storage
-          .from("case-fulltext")
-          .createSignedUrl(r.official_text_pdf_path, 3600);
-        if (signed?.signedUrl) casePdfUrls[r.case_id] = signed.signedUrl;
+        casePdfUrls[r.case_id] = `/api/cases/${r.case_id}/official-text-pdf`;
       }
     }
   }

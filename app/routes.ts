@@ -611,6 +611,12 @@ export default [
         "features/subscriptions/api/admin-subscription.tsx",
       ),
       route("/api/comments/comment", "features/comments/api/comment.tsx"),
+      // 판례 공식 전문 PDF — 매 클릭마다 fresh signed URL 발급 + 302 redirect.
+      // 클라엔 정적 URL 만 노출(만료 무관). 학생 인증 필수.
+      route(
+        "/api/cases/:caseId/official-text-pdf",
+        "features/cases/api/official-text-pdf.tsx",
+      ),
       route(
         "/api/lecture-resources",
         "features/lectures/api/lecture-resource.tsx",
