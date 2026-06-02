@@ -419,6 +419,11 @@ export default [
         "/admin/cases/pdf-missing",
         "features/admin/screens/admin-case-pdf-missing.tsx",
       ),
+      // 정적 미리보기 — nav 리디자인 승인용. 실 이동 X.
+      route(
+        "/admin/nav-preview",
+        "features/admin/screens/admin-nav-preview.tsx",
+      ),
       route("/admin/cases/edit", "features/admin/screens/admin-case-edit.tsx", {
         id: "admin-case-new",
       }),
