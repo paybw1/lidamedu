@@ -48,22 +48,25 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 type NavLink = { label: string; to: string; meta?: string };
 type NavGroup = {
+  // id 는 풀의 키 — NavGroupId 로 좁히는 곳은 호출처에서 keyof 로 추론.
+  // 여기 직접 NavGroupId 쓰면 풀 정의와 순환 참조.
   id: string;
   label: string;
   Icon: typeof HomeIcon;
   items: NavLink[];
 };
 
-// 핵심(매일 사용) — 4 그룹.
-const CORE_GROUPS: NavGroup[] = [
-  {
-    id: "today",
+// 모든 nav 그룹 풀 — id 로 식별. 핵심·가끔은 "어느 위치에 놓을지" 의 문제이고,
+// 그룹 자체 정의는 풀에 한 번만. 향후 사용자 커스터마이징 시 풀에서 자유 배치.
+const NAV_GROUP_POOL = {
+  today: {
+    id: "today" as const,
     label: "오늘 할 일",
     Icon: CalendarCheckIcon,
     items: [{ label: "오늘 할 일", to: "/study/today" }],
   },
-  {
-    id: "review",
+  review: {
+    id: "review" as const,
     label: "복습",
     Icon: RotateCcwIcon,
     items: [
@@ -71,14 +74,14 @@ const CORE_GROUPS: NavGroup[] = [
       { label: "카드 암기", to: "/srs" },
     ],
   },
-  {
-    id: "subjects",
+  subjects: {
+    id: "subjects" as const,
     label: "학습과목",
     Icon: BookOpenIcon,
-    items: [], // 특별 — subjects 별도 렌더
+    items: [], // 특별 — SUBJECT_SECTIONS 로 별도 렌더
   },
-  {
-    id: "aids",
+  aids: {
+    id: "aids" as const,
     label: "학습지원",
     Icon: HighlighterIcon,
     items: [
@@ -90,12 +93,8 @@ const CORE_GROUPS: NavGroup[] = [
       { label: "AI Q&A (베타)", to: "/ai" },
     ],
   },
-];
-
-// 가끔(주 1~2회) — 4 그룹.
-const SECONDARY_GROUPS: NavGroup[] = [
-  {
-    id: "manage",
+  manage: {
+    id: "manage" as const,
     label: "학습관리",
     Icon: BarChart3Icon,
     items: [
@@ -105,8 +104,8 @@ const SECONDARY_GROUPS: NavGroup[] = [
       { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
     ],
   },
-  {
-    id: "info",
+  info: {
+    id: "info" as const,
     label: "학습정보",
     Icon: NewspaperIcon,
     items: [
@@ -118,8 +117,8 @@ const SECONDARY_GROUPS: NavGroup[] = [
       { label: "추록·정오표", to: "/latest/book-updates" },
     ],
   },
-  {
-    id: "mock",
+  mock: {
+    id: "mock" as const,
     label: "모의고사",
     Icon: PenLineIcon,
     items: [
@@ -128,8 +127,8 @@ const SECONDARY_GROUPS: NavGroup[] = [
       { label: "응시 결과", to: "/me/exam-results" },
     ],
   },
-  {
-    id: "community",
+  community: {
+    id: "community" as const,
     label: "커뮤니티",
     Icon: UsersIcon,
     items: [
@@ -140,7 +139,45 @@ const SECONDARY_GROUPS: NavGroup[] = [
       { label: "합격 후기", to: "/community/review" },
     ],
   },
-];
+} satisfies Record<string, NavGroup>;
+
+type NavGroupId = keyof typeof NAV_GROUP_POOL;
+
+// 디폴트 핵심 4탭 — user preference 가 없을 때 fallback.
+// (사용자 커스터마이징은 이번 범위 외 — 자리만 남겨둠.)
+const DEFAULT_CORE_TAB_IDS = [
+  "today",
+  "review",
+  "subjects",
+  "aids",
+] as const satisfies ReadonlyArray<NavGroupId>;
+
+/**
+ * 핵심 탭 id 반환.
+ *
+ * FUTURE: user preference 로 교체 가능.
+ *   - loader/hook 에서 user_nav_prefs 같은 row 조회
+ *   - 결과 없으면 DEFAULT_CORE_TAB_IDS 반환
+ *   - 결과의 id 들이 NAV_GROUP_POOL 에 존재하는지 검증 후 반환
+ * 지금은 default 고정 — 동작은 하드코딩과 동일.
+ */
+function getCoreTabIds(): ReadonlyArray<NavGroupId> {
+  return DEFAULT_CORE_TAB_IDS;
+}
+
+/**
+ * { core, secondary } 분리 — 풀에서 핵심 빼면 나머지가 가끔.
+ * 사이드바·하단탭은 이 함수만 호출해서 렌더.
+ */
+function useNavLayout(): { core: NavGroup[]; secondary: NavGroup[] } {
+  const coreIds = getCoreTabIds();
+  const coreSet = new Set<NavGroupId>(coreIds);
+  const core = coreIds.map((id) => NAV_GROUP_POOL[id]);
+  const secondary = (Object.keys(NAV_GROUP_POOL) as NavGroupId[])
+    .filter((id) => !coreSet.has(id))
+    .map((id) => NAV_GROUP_POOL[id]);
+  return { core, secondary };
+}
 
 // 학습과목 — 1차/2차 2섹션.
 const SUBJECT_SECTIONS = [
@@ -295,6 +332,7 @@ function IntentCard({
 // ── 데스크톱 사이드바 ─────────────────────────────────────────────────────
 
 function DesktopPreview({ isStaff }: { isStaff: boolean }) {
+  const { core, secondary } = useNavLayout();
   // 펼침 상태 — 초기: subjects + aids 펼침, 나머지 접힘.
   const [open, setOpen] = useState<Set<string>>(
     () => new Set(["subjects", "aids"]),
@@ -328,7 +366,7 @@ function DesktopPreview({ isStaff }: { isStaff: boolean }) {
             label={FLAT_HOME.label}
             to={FLAT_HOME.to}
           />
-          {CORE_GROUPS.map((g) =>
+          {core.map((g) =>
             g.id === "subjects" ? (
               <SidebarSubjects key={g.id} open={open.has("subjects")} onToggle={() => toggle("subjects")} />
             ) : g.items.length === 1 ? (
@@ -350,7 +388,7 @@ function DesktopPreview({ isStaff }: { isStaff: boolean }) {
 
           {/* 가끔 그룹 */}
           <SidebarSection label="가끔" />
-          {SECONDARY_GROUPS.map((g) => (
+          {secondary.map((g) => (
             <SidebarGroup
               key={g.id}
               group={g}
@@ -537,18 +575,33 @@ function SidebarSubjects({
 
 // ── 모바일 하단탭 + 더보기 시트 ────────────────────────────────────────────
 
+// 모바일 탭은 라벨이 짧음 — 핵심 그룹 label 의 모바일 단축 매핑.
+// 사용자 정의 그룹도 매핑 없으면 group.label 폴백.
+const MOBILE_TAB_LABELS: Partial<Record<NavGroupId, string>> = {
+  today: "오늘",
+  review: "복습",
+  subjects: "과목",
+  aids: "지원",
+  manage: "관리",
+  info: "정보",
+  mock: "모의",
+  community: "커뮤니티",
+};
+
 function MobilePreview({ isStaff }: { isStaff: boolean }) {
+  const { core, secondary } = useNavLayout();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"today" | "review" | "subjects" | "aids" | "more">(
-    "today",
-  );
+  // activeTab — 핵심 그룹 id 또는 "more". 풀에서 동적이라 string 유지.
+  const [activeTab, setActiveTab] = useState<string>(core[0]?.id ?? "today");
+  // 모바일 하단탭 = 핵심 N + "더보기" 1. iOS/Android 권장 5탭이라 core 4 기준.
   const TABS = [
-    { id: "today", label: "오늘", Icon: CalendarCheckIcon },
-    { id: "review", label: "복습", Icon: RotateCcwIcon },
-    { id: "subjects", label: "과목", Icon: BookOpenIcon },
-    { id: "aids", label: "지원", Icon: HighlighterIcon },
+    ...core.map((g) => ({
+      id: g.id,
+      label: MOBILE_TAB_LABELS[g.id as NavGroupId] ?? g.label,
+      Icon: g.Icon,
+    })),
     { id: "more", label: "더보기", Icon: MoreHorizontalIcon },
-  ] as const;
+  ];
   return (
     <div className="flex flex-wrap items-start gap-6">
       {/* 모바일 frame */}
@@ -565,51 +618,9 @@ function MobilePreview({ isStaff }: { isStaff: boolean }) {
               ? "더보기"
               : TABS.find((t) => t.id === activeTab)?.label}
           </h2>
-          {activeTab === "today" ? (
-            <>
-              <p className="text-muted-foreground mt-1 text-xs">
-                오늘 할 일 (current)
-              </p>
-              <div className="mt-3 space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="border-border h-12 rounded-xl border bg-muted/30"
-                  />
-                ))}
-              </div>
-            </>
-          ) : activeTab === "subjects" ? (
+          {activeTab === "more" ? (
             <div className="mt-3 space-y-3">
-              {SUBJECT_SECTIONS.map((s) => (
-                <div key={s.label}>
-                  <p className="text-primary mb-1 text-[10px] font-bold tracking-widest uppercase">
-                    {s.label}
-                  </p>
-                  {s.rows.map((row) => (
-                    <div key={row.group} className="mb-1.5">
-                      <p className="text-muted-foreground text-[10px] font-semibold">
-                        {row.group}
-                      </p>
-                      <div className="mt-0.5 flex flex-wrap gap-1">
-                        {row.items.map((it) => (
-                          <a
-                            key={`m-${s.label}-${row.group}-${it.label}`}
-                            href="#"
-                            className="border-border bg-muted/30 rounded-md border px-2 py-1 text-[10px]"
-                          >
-                            {it.label}
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          ) : activeTab === "more" ? (
-            <div className="mt-3 space-y-3">
-              {SECONDARY_GROUPS.map((g) => (
+              {secondary.map((g) => (
                 <div key={g.id}>
                   <p className="text-muted-foreground text-[10px] font-semibold">
                     {g.label}
@@ -647,29 +658,62 @@ function MobilePreview({ isStaff }: { isStaff: boolean }) {
                 ) : null}
               </div>
             </div>
-          ) : activeTab === "aids" ? (
-            <div className="mt-3 flex flex-col gap-0.5">
-              {CORE_GROUPS.find((g) => g.id === "aids")?.items.map((it) => (
-                <a
-                  key={`m-aids-${it.to}`}
-                  href="#"
-                  className="rounded-md px-2 py-1.5 text-xs hover:bg-muted"
-                >
-                  {it.label}
-                </a>
+          ) : activeTab === "subjects" ? (
+            <div className="mt-3 space-y-3">
+              {SUBJECT_SECTIONS.map((s) => (
+                <div key={s.label}>
+                  <p className="text-primary mb-1 text-[10px] font-bold tracking-widest uppercase">
+                    {s.label}
+                  </p>
+                  {s.rows.map((row) => (
+                    <div key={row.group} className="mb-1.5">
+                      <p className="text-muted-foreground text-[10px] font-semibold">
+                        {row.group}
+                      </p>
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {row.items.map((it) => (
+                          <a
+                            key={`m-${s.label}-${row.group}-${it.label}`}
+                            href="#"
+                            className="border-border bg-muted/30 rounded-md border px-2 py-1 text-[10px]"
+                          >
+                            {it.label}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ))}
             </div>
+          ) : activeTab === "today" ? (
+            <>
+              <p className="text-muted-foreground mt-1 text-xs">
+                오늘 할 일 (current)
+              </p>
+              <div className="mt-3 space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="border-border h-12 rounded-xl border bg-muted/30"
+                  />
+                ))}
+              </div>
+            </>
           ) : (
+            // 그 외 핵심 그룹 — 일반 리스트 렌더 (items 가 있는 그룹).
             <div className="mt-3 flex flex-col gap-0.5">
-              {CORE_GROUPS.find((g) => g.id === activeTab)?.items.map((it) => (
-                <a
-                  key={`m-${activeTab}-${it.to}`}
-                  href="#"
-                  className="rounded-md px-2 py-1.5 text-xs hover:bg-muted"
-                >
-                  {it.label}
-                </a>
-              ))}
+              {core
+                .find((g) => g.id === activeTab)
+                ?.items.map((it) => (
+                  <a
+                    key={`m-${activeTab}-${it.to}`}
+                    href="#"
+                    className="rounded-md px-2 py-1.5 text-xs hover:bg-muted"
+                  >
+                    {it.label}
+                  </a>
+                ))}
             </div>
           )}
         </div>
