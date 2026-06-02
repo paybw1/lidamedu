@@ -7,7 +7,7 @@ import {
   SearchIcon,
   UserIcon,
 } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { openCommandPalette } from "./command-palette";
@@ -110,7 +110,7 @@ const trailingFlats: SimpleLink[] = [
   { label: "운영관리", to: "/admin" },
 ];
 
-function UserMenu({
+export function UserMenu({
   name,
   email,
   avatarUrl,
@@ -158,6 +158,7 @@ function UserMenu({
             </Link>
           </SheetClose>
         </DropdownMenuItem>
+        <NavModeToggleItem />
         <DropdownMenuItem asChild>
           <SheetClose asChild>
             <Link to="/logout" viewTransition>
@@ -168,6 +169,33 @@ function UserMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * 사용자 메뉴 안 "사이드바로 전환 / 상단 바로 전환" 토글.
+ * localStorage("studentNavMode") 변경 + 페이지 reload 로 layout 즉시 갱신.
+ */
+function NavModeToggleItem() {
+  const [mode, setMode] = useState<"topbar" | "sidebar">("topbar");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("studentNavMode");
+    if (stored === "sidebar" || stored === "topbar") setMode(stored);
+  }, []);
+  const flip = () => {
+    const next = mode === "topbar" ? "sidebar" : "topbar";
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("studentNavMode", next);
+      // cookie 도 함께 — SSR loader 분기용. 만료 30일.
+      document.cookie = `studentNavMode=${next}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
+      window.location.reload();
+    }
+  };
+  return (
+    <DropdownMenuItem onSelect={flip}>
+      {mode === "topbar" ? "사이드바로 전환" : "상단 바로 전환"}
+    </DropdownMenuItem>
   );
 }
 
@@ -199,34 +227,49 @@ function AuthButtons() {
 function Actions({
   inboxUnread,
   inboxHref,
+  orientation = "horizontal",
 }: {
   inboxUnread: number | null;
   inboxHref: string | null;
+  /** sidebar 안에선 수직(아이콘 stack), topbar 에선 수평. */
+  orientation?: "horizontal" | "vertical";
 }) {
+  const isVertical = orientation === "vertical";
   return (
-    <>
+    <div className={cn("flex items-center", isVertical ? "flex-col gap-1" : "gap-1")}>
       <Button
         variant="ghost"
-        size="sm"
-        className="text-muted-foreground inline-flex h-8 items-center gap-1.5 px-2"
+        size={isVertical ? "icon" : "sm"}
+        className={cn(
+          "text-muted-foreground",
+          isVertical
+            ? "size-9"
+            : "inline-flex h-8 items-center gap-1.5 px-2",
+        )}
         onClick={() => openCommandPalette()}
         aria-label="전역 검색 (⌘K)"
         data-testid="open-command-palette"
+        title="전역 검색"
       >
-        <SearchIcon className="size-3.5" />
-        <span className="hidden text-xs sm:inline">검색</span>
-        <kbd className="bg-muted hidden rounded border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-          ⌘K
-        </kbd>
+        <SearchIcon className="size-4" />
+        {!isVertical && (
+          <>
+            <span className="hidden text-xs sm:inline">검색</span>
+            <kbd className="bg-muted hidden rounded border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
+              ⌘K
+            </kbd>
+          </>
+        )}
       </Button>
       {inboxUnread !== null && inboxHref ? (
         <Button
           asChild
           variant="ghost"
           size="icon"
-          className="relative"
+          className={cn("relative", isVertical ? "size-9" : "")}
           aria-label={`알림 인박스 (미읽음 ${inboxUnread})`}
           data-testid="open-inbox"
+          title="알림 인박스"
         >
           <Link to={inboxHref}>
             <BellIcon className="size-4" />
@@ -239,9 +282,12 @@ function Actions({
         </Button>
       ) : null}
       <ThemeSwitcher />
-    </>
+    </div>
   );
 }
+
+// 사이드바·외부에서도 도구 그룹 재사용.
+export { Actions as RightTools };
 
 // 모바일 sheet 안에서 그룹 헤더 + 들여쓴 링크들.
 function MobileGroup({ label, items }: { label: string; items: SimpleLink[] }) {
@@ -315,6 +361,7 @@ export function NavigationBar({
   isStaff = false,
   features,
   hideMenus = false,
+  hideAll = false,
 }: {
   name?: string;
   email?: string;
@@ -330,7 +377,11 @@ export function NavigationBar({
   features?: string[];
   // 새 nav 검증용 — 학생 사이드바 병존 시 기존 메뉴 dropdown 들 숨김. 로고·알림·유저메뉴는 유지.
   hideMenus?: boolean;
+  // 사이드바 모드 — 상단 nav 전체 숨김(로고·도구·유저메뉴 포함). 사이드바가 모든 역할 흡수.
+  hideAll?: boolean;
 }) {
+  // 사이드바 모드 — 상단 nav 전체 미렌더. 사이드바가 로고·도구·유저메뉴 흡수.
+  if (hideAll) return null;
   // feat-8-008 — 영역 잠금. staff 면제. 미산정 상태에선 잠금 미표시(로딩 깜빡임 방지).
   const isLocked = (area: string) =>
     !isStaff && features !== undefined && !features.includes(area);

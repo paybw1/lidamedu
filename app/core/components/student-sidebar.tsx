@@ -1,12 +1,16 @@
-// 학생 데스크톱 사이드바 — A안-아이콘 확정안.
+// 학생 데스크톱 사이드바 — A안 아이콘 모드 통합.
+//
+// 구성:
+//   - 헤더: 로고 (접힘=로고만, 펼침=로고+"리담변리사학원") + collapse 토글
+//   - 계정 메뉴: 로고 바로 아래 (사용자 menu dropdown)
+//   - 본문: 메뉴 (핵심·가끔·관리)
+//   - 하단: 검색·인박스·다크모드 (RightTools)
 //
 // 동작:
-//   - 펼침 (260px): 아이콘 + 라벨, 그룹 펼침 토글, subjects 1차/2차 2섹션
-//   - 접힘 (60px):  아이콘만. hover 시 옆에 flyout panel (라벨 / items / subjects 풀버전)
-//                  접힘 상태에서도 active 표시 유지.
-//   - 토글 버튼: 사이드바 헤더 우측. 클릭으로 펼침↔접힘.
-//   - 상태 persist: localStorage("studentSidebarCollapsed").
-// 모바일(md 미만): 자체 숨김. §3 모바일 하단탭이 별도.
+//   - 펼침(260px) / 접힘(60px) — localStorage("studentSidebarCollapsed")
+//   - 접힘 시 모든 항목 아이콘 + hover flyout
+//   - 메뉴 항목 클릭 시 자동 접힘 (사용자 학습 동선 방해 최소)
+//   - 모바일(md 미만) 자체 숨김 — StudentBottomBar 가 별도 담당
 
 import {
   ChevronDownIcon,
@@ -27,31 +31,59 @@ import {
   useNavLayout,
 } from "~/core/lib/nav-groups";
 
+import { RightTools, UserMenu } from "./navigation-bar";
+
 const STORAGE_KEY = "studentSidebarCollapsed";
 
-export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
+interface StudentSidebarProps {
+  isStaff: boolean;
+  user: {
+    name: string;
+    email: string | undefined;
+    avatarUrl?: string | null;
+  };
+  inboxUnread: number | null;
+  inboxHref: string | null;
+}
+
+export function StudentSidebar({
+  isStaff,
+  user,
+  inboxUnread,
+  inboxHref,
+}: StudentSidebarProps) {
   const { core, secondary } = useNavLayout();
   const location = useLocation();
   const path = location.pathname;
   const search = location.search;
 
-  // 접힘/펼침 — 초기 false(펼침), 클라에서만 localStorage 동기화 (SSR flash 1tick).
+  // 접힘/펼침 — 초기 false, 클라에서 localStorage 동기화.
   const [collapsed, setCollapsed] = useState<boolean>(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     setCollapsed(window.localStorage.getItem(STORAGE_KEY) === "1");
   }, []);
+  const persistCollapsed = (v: boolean) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, v ? "1" : "0");
+    }
+  };
   const toggleCollapsed = () => {
     setCollapsed((c) => {
       const next = !c;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-      }
+      persistCollapsed(next);
       return next;
     });
   };
+  // 항목 클릭 시 자동 접힘 (학습 동선에 방해 최소).
+  const collapseAfterPick = () => {
+    if (!collapsed) {
+      setCollapsed(true);
+      persistCollapsed(true);
+    }
+  };
 
-  // 그룹 펼침 상태 — 펼침 모드용. 초기: active 그룹 + subjects/aids 기본 펼침.
+  // 그룹 펼침 상태.
   const initialOpen = useMemo(() => {
     const s = new Set<string>(["subjects", "aids"]);
     for (const g of [...core, ...secondary]) {
@@ -60,7 +92,6 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
     return s;
   }, [path, search, core, secondary]);
   const [open, setOpen] = useState<Set<string>>(initialOpen);
-
   useEffect(() => {
     setOpen((prev) => {
       const next = new Set(prev);
@@ -70,8 +101,7 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
       return next;
     });
   }, [path, search, core, secondary]);
-
-  const toggle = (id: string) =>
+  const toggleGroup = (id: string) =>
     setOpen((s) => {
       const next = new Set(s);
       if (next.has(id)) next.delete(id);
@@ -84,40 +114,76 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
       data-testid="student-sidebar"
       data-collapsed={collapsed}
       className={cn(
-        "border-border bg-card sticky top-0 hidden h-screen shrink-0 overflow-y-auto overflow-x-visible border-r transition-[width] duration-150 ease-out md:block",
+        "border-border bg-card sticky top-0 hidden h-screen shrink-0 overflow-y-auto overflow-x-visible border-r transition-[width] duration-150 ease-out md:flex md:flex-col",
         collapsed ? "w-[60px]" : "w-[260px]",
       )}
     >
-      {/* 헤더 — 토글 버튼 (눈에 띄게: border + 라벨) */}
+      {/* ── 헤더 — 로고 + 토글 ── */}
       <div
         className={cn(
-          "border-border border-b p-2",
-          collapsed ? "flex justify-center" : "",
+          "border-border flex items-center gap-2 border-b p-2",
+          collapsed ? "justify-center" : "justify-between",
         )}
       >
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-          aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-          className={cn(
-            "border-border hover:border-primary hover:bg-primary/5 hover:text-primary flex items-center gap-1.5 rounded-md border bg-card transition-colors",
-            collapsed ? "size-8 justify-center" : "w-full justify-between px-2 py-1.5",
-          )}
+        <Link
+          to="/"
+          aria-label="리담변리사학원 홈"
+          className="flex items-center gap-2 shrink-0"
         >
-          {collapsed ? (
-            <PanelLeftOpenIcon className="size-4" />
-          ) : (
-            <>
-              <span className="text-xs font-medium">사이드바 접기</span>
-              <PanelLeftCloseIcon className="size-4" />
-            </>
+          <img
+            src="/lidam-logo.png"
+            alt="리담변리사학원"
+            className="h-7 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
+          />
+          {!collapsed && (
+            <span className="text-sm font-semibold tracking-tight">
+              리담변리사학원
+            </span>
           )}
-        </button>
+        </Link>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            title="사이드바 접기"
+            aria-label="사이드바 접기"
+            className="hover:bg-muted text-muted-foreground rounded-md p-1"
+          >
+            <PanelLeftCloseIcon className="size-4" />
+          </button>
+        )}
+      </div>
+      {/* 접힘 모드 — 토글 버튼은 로고 아래 별도 배치 */}
+      {collapsed && (
+        <div className="flex justify-center p-1">
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            title="사이드바 펼치기"
+            aria-label="사이드바 펼치기"
+            className="hover:bg-muted text-muted-foreground rounded-md p-1"
+          >
+            <PanelLeftOpenIcon className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ── 계정 메뉴 — 로고 바로 아래 ── */}
+      <div
+        className={cn(
+          "border-border flex items-center border-b p-2",
+          collapsed ? "justify-center" : "px-3",
+        )}
+      >
+        <UserMenu
+          name={user.name}
+          email={user.email}
+          avatarUrl={user.avatarUrl}
+        />
       </div>
 
-      <div className={cn(collapsed ? "p-2" : "p-3")}>
-        {/* 핵심 */}
+      {/* ── 본문 — 메뉴 ── */}
+      <div className={cn("flex-1 overflow-y-auto", collapsed ? "p-2" : "p-3")}>
         {!collapsed && <SidebarSection label="핵심" />}
         <Row
           collapsed={collapsed}
@@ -127,6 +193,7 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
           to={FLAT_HOME.to}
           path={path}
           search={search}
+          onPick={collapseAfterPick}
         />
         {core.map((g) => {
           if (g.id === "subjects") {
@@ -135,9 +202,10 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
                 key={g.id}
                 collapsed={collapsed}
                 open={open.has("subjects")}
-                onToggle={() => toggle("subjects")}
+                onToggle={() => toggleGroup("subjects")}
                 path={path}
                 search={search}
+                onPick={collapseAfterPick}
               />
             );
           }
@@ -152,6 +220,7 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
                 to={g.items[0].to}
                 path={path}
                 search={search}
+                onPick={collapseAfterPick}
               />
             );
           }
@@ -162,14 +231,14 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
               kind="group"
               group={g}
               open={open.has(g.id)}
-              onToggle={() => toggle(g.id)}
+              onToggle={() => toggleGroup(g.id)}
               path={path}
               search={search}
+              onPick={collapseAfterPick}
             />
           );
         })}
 
-        {/* 가끔 */}
         {!collapsed && <SidebarSection label="가끔" />}
         {secondary.map((g) => (
           <Row
@@ -178,13 +247,13 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
             kind="group"
             group={g}
             open={open.has(g.id)}
-            onToggle={() => toggle(g.id)}
+            onToggle={() => toggleGroup(g.id)}
             path={path}
             search={search}
+            onPick={collapseAfterPick}
           />
         ))}
 
-        {/* 관리 (staff) */}
         {isStaff ? (
           <>
             {!collapsed && <SidebarSection label="관리" />}
@@ -196,9 +265,24 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
               to={FLAT_ADMIN.to}
               path={path}
               search={search}
+              onPick={collapseAfterPick}
             />
           </>
         ) : null}
+      </div>
+
+      {/* ── 하단 — 검색·인박스·다크모드 ── */}
+      <div
+        className={cn(
+          "border-border border-t p-2",
+          collapsed ? "flex flex-col items-center gap-1" : "",
+        )}
+      >
+        <RightTools
+          inboxUnread={inboxUnread}
+          inboxHref={inboxHref}
+          orientation={collapsed ? "vertical" : "horizontal"}
+        />
       </div>
     </aside>
   );
@@ -212,12 +296,13 @@ function SidebarSection({ label }: { label: string }) {
   );
 }
 
-// ── Row — flat / group 통합. collapsed 분기 ────────────────────────────────
+// ── Row — flat / group 통합 ────────────────────────────────────────────────
 
 interface BaseRowProps {
   collapsed: boolean;
   path: string;
   search: string;
+  onPick: () => void;
 }
 interface FlatRowProps extends BaseRowProps {
   kind: "flat";
@@ -242,12 +327,14 @@ function Row(props: RowProps) {
         to={props.to}
         path={props.path}
         search={props.search}
+        onPick={props.onPick}
       />
     ) : (
       <GroupIcon
         group={props.group}
         path={props.path}
         search={props.search}
+        onPick={props.onPick}
       />
     );
   }
@@ -258,14 +345,13 @@ function Row(props: RowProps) {
   );
 }
 
-// ── 펼침(full) — 라벨 + 아이콘 ─────────────────────────────────────────────
-
 function FlatFull({
   Icon,
   label,
   to,
   path,
   search,
+  onPick,
 }: Omit<FlatRowProps, "kind" | "collapsed">) {
   const active = isNavActive(to, path, search);
   return (
@@ -273,6 +359,7 @@ function FlatFull({
       to={to}
       viewTransition
       prefetch="intent"
+      onClick={onPick}
       className={cn(
         "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
         active
@@ -292,6 +379,7 @@ function GroupFull({
   onToggle,
   path,
   search,
+  onPick,
 }: Omit<GroupRowProps, "kind" | "collapsed">) {
   const Icon = group.Icon;
   const hasActive = group.items.some((i) => isNavActive(i.to, path, search));
@@ -324,6 +412,7 @@ function GroupFull({
                 to={it.to}
                 viewTransition
                 prefetch="intent"
+                onClick={onPick}
                 className={cn(
                   "rounded-md px-2 py-1 text-xs transition-colors",
                   active
@@ -341,14 +430,13 @@ function GroupFull({
   );
 }
 
-// ── 접힘(collapsed) — 아이콘 only + hover flyout ───────────────────────────
-
 function FlatIcon({
   Icon,
   label,
   to,
   path,
   search,
+  onPick,
 }: Omit<FlatRowProps, "kind" | "collapsed">) {
   const active = isNavActive(to, path, search);
   return (
@@ -357,6 +445,7 @@ function FlatIcon({
         to={to}
         viewTransition
         prefetch="intent"
+        onClick={onPick}
         className={cn(
           "flex h-9 items-center justify-center rounded-lg transition-colors",
           active
@@ -376,10 +465,12 @@ function GroupIcon({
   group,
   path,
   search,
+  onPick,
 }: {
   group: NavGroup;
   path: string;
   search: string;
+  onPick: () => void;
 }) {
   const Icon = group.Icon;
   const hasActive = group.items.some((i) => isNavActive(i.to, path, search));
@@ -403,6 +494,7 @@ function GroupIcon({
               to={it.to}
               viewTransition
               prefetch="intent"
+              onClick={onPick}
               className={cn(
                 "rounded-md px-2 py-1 text-xs transition-colors",
                 active
@@ -419,14 +511,13 @@ function GroupIcon({
   );
 }
 
-// ── subjects — 펼침/접힘 양쪽 ────────────────────────────────────────────
-
 interface SubjectsRowProps {
   collapsed: boolean;
   open: boolean;
   onToggle: () => void;
   path: string;
   search: string;
+  onPick: () => void;
 }
 function SubjectsRow({
   collapsed,
@@ -434,9 +525,19 @@ function SubjectsRow({
   onToggle,
   path,
   search,
+  onPick,
 }: SubjectsRowProps) {
-  if (collapsed) return <SubjectsIcon path={path} search={search} />;
-  return <SubjectsFull open={open} onToggle={onToggle} path={path} search={search} />;
+  if (collapsed)
+    return <SubjectsIcon path={path} search={search} onPick={onPick} />;
+  return (
+    <SubjectsFull
+      open={open}
+      onToggle={onToggle}
+      path={path}
+      search={search}
+      onPick={onPick}
+    />
+  );
 }
 
 function SubjectsFull({
@@ -444,9 +545,8 @@ function SubjectsFull({
   onToggle,
   path,
   search,
+  onPick,
 }: Omit<SubjectsRowProps, "collapsed">) {
-  const isChipActive = (href: string): boolean => isNavActive(href, path, search);
-
   return (
     <div>
       <button
@@ -455,10 +555,7 @@ function SubjectsFull({
         aria-expanded={open}
         className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted"
       >
-        {(() => {
-          const Icon = SUBJECT_ICON;
-          return <Icon className="size-4" />;
-        })()}
+        <SUBJECT_ICON className="size-4" />
         <span className="flex-1 text-left">학습과목</span>
         {open ? (
           <ChevronDownIcon className="size-3" />
@@ -479,22 +576,26 @@ function SubjectsFull({
                     {group.label}
                   </p>
                   <div className="flex flex-col gap-0.5 pl-2">
-                    {group.items.map((item) => (
-                      <Link
-                        key={`${section.exam}-${group.id}-${item.href}`}
-                        to={item.href}
-                        viewTransition
-                        prefetch="intent"
-                        className={cn(
-                          "rounded-md px-1.5 py-0.5 text-xs transition-colors",
-                          isChipActive(item.href)
-                            ? "bg-primary/10 text-primary font-semibold"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        {item.name}
-                      </Link>
-                    ))}
+                    {group.items.map((item) => {
+                      const active = isNavActive(item.href, path, search);
+                      return (
+                        <Link
+                          key={`${section.exam}-${group.id}-${item.href}`}
+                          to={item.href}
+                          viewTransition
+                          prefetch="intent"
+                          onClick={onPick}
+                          className={cn(
+                            "rounded-md px-1.5 py-0.5 text-xs transition-colors",
+                            active
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          {item.name}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -506,8 +607,15 @@ function SubjectsFull({
   );
 }
 
-function SubjectsIcon({ path, search }: { path: string; search: string }) {
-  const Icon = SUBJECT_ICON;
+function SubjectsIcon({
+  path,
+  search,
+  onPick,
+}: {
+  path: string;
+  search: string;
+  onPick: () => void;
+}) {
   const hasActive = SUBJECT_SECTIONS.some((s) =>
     s.groups.some((g) => g.items.some((i) => isNavActive(i.href, path, search))),
   );
@@ -520,7 +628,7 @@ function SubjectsIcon({ path, search }: { path: string; search: string }) {
         )}
         aria-label="학습과목"
       >
-        <Icon className="size-5" />
+        <SUBJECT_ICON className="size-5" />
       </div>
       <FlyoutPanel title="학습과목" widthClass="w-[280px]">
         {SUBJECT_SECTIONS.map((section) => (
@@ -542,6 +650,7 @@ function SubjectsIcon({ path, search }: { path: string; search: string }) {
                         to={item.href}
                         viewTransition
                         prefetch="intent"
+                        onClick={onPick}
                         className={cn(
                           "rounded-md px-1.5 py-0.5 text-xs transition-colors",
                           active
@@ -563,9 +672,6 @@ function SubjectsIcon({ path, search }: { path: string; search: string }) {
   );
 }
 
-// ── Flyout (접힘 모드 hover 툴팁/패널) ────────────────────────────────────
-
-/** 단순 라벨 툴팁 — 아이콘만 있을 때 라벨 표시. */
 function Flyout({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border bg-popover text-popover-foreground pointer-events-none absolute top-1/2 left-full z-50 ml-2 -translate-y-1/2 rounded-md border px-2 py-1 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100">
@@ -574,7 +680,6 @@ function Flyout({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** 그룹 items / subjects 풀버전 panel — 아이콘 hover 시 옆에 펼침. */
 function FlyoutPanel({
   title,
   children,
@@ -599,6 +704,5 @@ function FlyoutPanel({
   );
 }
 
-// SubjectsIcon/SubjectsFull 공용 — 순환 import 우려 방지 위해 별도 상수.
 import { BookOpenIcon } from "lucide-react";
 const SUBJECT_ICON = BookOpenIcon;
