@@ -82,11 +82,7 @@ export function StudentSidebar({
   const expandToGroup = (id: string) => {
     setCollapsed(false);
     persistCollapsed(false);
-    setOpen((s) => {
-      const next = new Set(s);
-      next.add(id);
-      return next;
-    });
+    setOpenId(id);
   };
 
   // 상단 nav 모드로 전환 — cookie + localStorage + reload.
@@ -97,31 +93,25 @@ export function StudentSidebar({
     window.location.reload();
   };
 
-  // 그룹 펼침 상태.
-  const initialOpen = useMemo(() => {
-    const s = new Set<string>(["subjects", "aids"]);
+  // 그룹 펼침 — accordion exclusive (한 번에 한 그룹만).
+  // 초기: 현재 path 가 속한 그룹, 없으면 subjects 기본.
+  const initialOpen = useMemo<string | null>(() => {
     for (const g of [...core, ...secondary]) {
-      if (g.items.some((i) => isNavActive(i.to, path, search))) s.add(g.id);
+      if (g.items.some((i) => isNavActive(i.to, path, search))) return g.id;
     }
-    return s;
+    return "subjects";
   }, [path, search, core, secondary]);
-  const [open, setOpen] = useState<Set<string>>(initialOpen);
+  const [openId, setOpenId] = useState<string | null>(initialOpen);
   useEffect(() => {
-    setOpen((prev) => {
-      const next = new Set(prev);
-      for (const g of [...core, ...secondary]) {
-        if (g.items.some((i) => isNavActive(i.to, path, search))) next.add(g.id);
+    for (const g of [...core, ...secondary]) {
+      if (g.items.some((i) => isNavActive(i.to, path, search))) {
+        setOpenId(g.id);
+        return;
       }
-      return next;
-    });
+    }
   }, [path, search, core, secondary]);
   const toggleGroup = (id: string) =>
-    setOpen((s) => {
-      const next = new Set(s);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setOpenId((prev) => (prev === id ? null : id));
 
   return (
     <aside
@@ -129,7 +119,7 @@ export function StudentSidebar({
       data-collapsed={collapsed}
       className={cn(
         "border-border bg-card sticky top-0 hidden h-screen shrink-0 overflow-x-hidden overflow-y-auto border-r transition-[width] duration-150 ease-out md:flex md:flex-col",
-        collapsed ? "w-[60px]" : "w-[220px]",
+        collapsed ? "w-[60px]" : "w-[240px]",
       )}
     >
       {/* ── 로고 = 접힘/펼침 토글 ── 별도 토글 바 없음 ── */}
@@ -157,10 +147,15 @@ export function StudentSidebar({
         </button>
       </div>
 
-      {/* ── 계정 메뉴 — 아바타만, 이름 숨김 ── */}
-      <div className="border-border flex justify-center border-b p-2">
+      {/* ── 계정 메뉴 — 접힘=아바타만, 펼침=아바타+이름 (메뉴 아이콘 줄에 맞춤) ── */}
+      <div
+        className={cn(
+          "border-border border-b p-2 flex",
+          collapsed ? "justify-center" : "px-3 justify-start",
+        )}
+      >
         <UserMenu
-          hideName
+          hideName={collapsed}
           name={user.name}
           email={user.email}
           avatarUrl={user.avatarUrl}
@@ -186,7 +181,7 @@ export function StudentSidebar({
               <SubjectsRow
                 key={g.id}
                 collapsed={collapsed}
-                open={open.has("subjects")}
+                open={openId === "subjects"}
                 onToggle={() => toggleGroup("subjects")}
                 onExpand={() => expandToGroup("subjects")}
                 path={path}
@@ -216,7 +211,7 @@ export function StudentSidebar({
               collapsed={collapsed}
               kind="group"
               group={g}
-              open={open.has(g.id)}
+              open={openId === g.id}
               onToggle={() => toggleGroup(g.id)}
               onExpand={() => expandToGroup(g.id)}
               path={path}
@@ -233,7 +228,7 @@ export function StudentSidebar({
             collapsed={collapsed}
             kind="group"
             group={g}
-            open={open.has(g.id)}
+            open={openId === g.id}
             onToggle={() => toggleGroup(g.id)}
             onExpand={() => expandToGroup(g.id)}
             path={path}
@@ -259,19 +254,26 @@ export function StudentSidebar({
         ) : null}
       </div>
 
-      {/* ── 하단 — 검색·인박스·다크모드 + 상단 nav 전환 (항상 세로) ── */}
-      <div className="border-border flex flex-col items-center gap-1 border-t p-2">
+      {/* ── 하단 — 검색·인박스·다크모드·상단전환 (접힘=세로, 펼침=가로) ── */}
+      <div
+        className={cn(
+          "border-border border-t p-2 flex",
+          collapsed
+            ? "flex-col items-center gap-1"
+            : "items-center justify-around gap-1",
+        )}
+      >
         <RightTools
           inboxUnread={inboxUnread}
           inboxHref={inboxHref}
-          orientation="vertical"
+          orientation={collapsed ? "vertical" : "horizontal"}
         />
         <button
           type="button"
           onClick={switchToTopbar}
           title="상단 메뉴로 전환"
           aria-label="상단 메뉴로 전환"
-          className="hover:bg-muted text-muted-foreground hover:text-foreground mt-1 flex size-9 items-center justify-center rounded-md transition-colors"
+          className="hover:bg-muted text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors"
         >
           <PanelTopOpenIcon className="size-4" />
         </button>
