@@ -5,6 +5,7 @@
 //
 // 위치 결정: 두 컴포넌트(StudentSidebar / 모바일 하단탭) 공유 — core/lib.
 
+import { useMemo } from "react";
 import {
   BarChart3Icon,
   BookOpenIcon,
@@ -136,15 +137,20 @@ export function getCoreTabIds(): ReadonlyArray<NavGroupId> {
 /**
  * { core, secondary } 분리 — 풀에서 핵심 빼면 나머지가 가끔.
  * 사이드바·하단탭은 이 함수만 호출해서 렌더.
+ *
+ * useMemo 로 stable reference — 호출처 useEffect/useMemo 의 deps 무한루프 방지.
+ * getCoreTabIds() 가 user preference 로 교체될 때는 그 deps 도 추가 필요.
  */
 export function useNavLayout(): { core: NavGroup[]; secondary: NavGroup[] } {
-  const coreIds = getCoreTabIds();
-  const coreSet = new Set<NavGroupId>(coreIds);
-  const core = coreIds.map((id) => NAV_GROUP_POOL[id]);
-  const secondary = (Object.keys(NAV_GROUP_POOL) as NavGroupId[])
-    .filter((id) => !coreSet.has(id))
-    .map((id) => NAV_GROUP_POOL[id]);
-  return { core, secondary };
+  return useMemo(() => {
+    const coreIds = getCoreTabIds();
+    const coreSet = new Set<NavGroupId>(coreIds);
+    const core = coreIds.map((id) => NAV_GROUP_POOL[id]);
+    const secondary = (Object.keys(NAV_GROUP_POOL) as NavGroupId[])
+      .filter((id) => !coreSet.has(id))
+      .map((id) => NAV_GROUP_POOL[id]);
+    return { core, secondary };
+  }, []);
 }
 
 // Flat — 그룹이 아니라 단일 link.
