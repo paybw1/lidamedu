@@ -17,6 +17,7 @@ import {
   ChevronRightIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  PanelTopOpenIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
@@ -81,6 +82,14 @@ export function StudentSidebar({
       setCollapsed(true);
       persistCollapsed(true);
     }
+  };
+
+  // 상단 nav 모드로 전환 — cookie + localStorage + reload.
+  const switchToTopbar = () => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("studentNavMode", "topbar");
+    document.cookie = `studentNavMode=topbar; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
+    window.location.reload();
   };
 
   // 그룹 펼침 상태.
@@ -271,13 +280,22 @@ export function StudentSidebar({
         ) : null}
       </div>
 
-      {/* ── 하단 — 검색·인박스·다크모드 (항상 세로 stack) ── */}
+      {/* ── 하단 — 검색·인박스·다크모드 + 상단 nav 전환 (항상 세로) ── */}
       <div className="border-border flex flex-col items-center gap-1 border-t p-2">
         <RightTools
           inboxUnread={inboxUnread}
           inboxHref={inboxHref}
           orientation="vertical"
         />
+        <button
+          type="button"
+          onClick={switchToTopbar}
+          title="상단 메뉴로 전환"
+          aria-label="상단 메뉴로 전환"
+          className="hover:bg-muted text-muted-foreground hover:text-foreground mt-1 flex size-9 items-center justify-center rounded-md transition-colors"
+        >
+          <PanelTopOpenIcon className="size-4" />
+        </button>
       </div>
     </aside>
   );
