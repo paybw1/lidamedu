@@ -51,10 +51,6 @@ import {
   T,
 } from "~/features/dashboard/lib/dash";
 import {
-  DashSidebar,
-  DashTopbar,
-} from "~/features/dashboard/components/dash-shell";
-import {
   DashHeader,
   DashKpiStrip,
 } from "~/features/dashboard/components/dash-header";
@@ -583,7 +579,6 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         color: T.ink,
       }}
     >
-      <DashSidebar isStaff={loaderData.isStaff} />
       <div
         style={{
           flex: 1,
@@ -592,7 +587,6 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
           flexDirection: "column",
         }}
       >
-        <DashTopbar userName={user.name} inboxHref="/inbox" />
         <main
           style={{
             padding: "28px 32px 80px",
