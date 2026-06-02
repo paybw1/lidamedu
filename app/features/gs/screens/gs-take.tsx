@@ -109,7 +109,11 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
   );
   const allPagesConfirmed =
     pages.length > 0 && pages.every((p) => p.legibilityConfirmed);
-  const allReady = allQuestionsMapped && allPagesConfirmed;
+  // 제출 활성화: 1페이지 이상 업로드 + expected_pages 이내 + 모든 업로드 페이지 판독 확인.
+  // 미매핑 문항은 차단하지 않음(자동 채점에서 0점 처리 — 학생이 일부만 풀고 제출 가능).
+  const withinPageLimit = pages.length <= round.expectedPages;
+  const allReady =
+    pages.length > 0 && allPagesConfirmed && withinPageLimit;
   const unmappedCount = questions.filter(
     (q) => !mappedQuestionIds.has(q.questionId),
   ).length;
@@ -329,7 +333,11 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
             e.preventDefault();
             return;
           }
-          if (!confirm("제출 후에는 수정할 수 없습니다. 제출할까요?"))
+          const warn =
+            unmappedCount > 0
+              ? `미매핑 문항 ${unmappedCount}건은 자동 채점에서 0점 처리됩니다.\n`
+              : "";
+          if (!confirm(`${warn}제출 후에는 수정할 수 없습니다. 제출할까요?`))
             e.preventDefault();
         }}
         className="sticky bottom-4 mt-4"
@@ -357,15 +365,18 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
           <div className="min-w-0 flex-1">
             <p className="text-foreground font-semibold tracking-tight">
               {allReady
-                ? "모든 문항이 매핑되고 모든 페이지가 판독 확인되었습니다."
-                : `${unmappedCount > 0 ? `미매핑 문항 ${unmappedCount}건 · ` : ""}제출 조건을 채워 주세요.`}
+                ? unmappedCount > 0
+                  ? `제출 가능 (미매핑 문항 ${unmappedCount}건은 0점 처리)`
+                  : "제출 가능 — 모든 페이지 판독 확인 완료."
+                : "제출 조건을 채워 주세요."}
             </p>
             <p className="text-muted-foreground mt-0.5 text-xs">
               {allReady
-                ? "제출 후에는 답안 변경이 불가합니다."
+                ? `${pages.length}/${round.expectedPages} 페이지 업로드. 제출 후에는 답안 변경이 불가합니다.`
                 : [
-                    !allQuestionsMapped
-                      ? "모든 문항에 한 페이지 이상 매핑"
+                    pages.length === 0 ? "답안 1페이지 이상 업로드" : "",
+                    !withinPageLimit
+                      ? `페이지 수 ${pages.length} > 최대 ${round.expectedPages}`
                       : "",
                     !allPagesConfirmed ? "모든 페이지 판독 가능 확인" : "",
                   ]

@@ -408,25 +408,23 @@ export async function action({ request }: Route.ActionArgs) {
     if (!parsed.success) return data({ error: "Invalid input" }, { status: 400 });
     const sub = await ensureSubmission(parsed.data.roundId);
 
-    // 검증: 모든 문항이 1+ 페이지 매핑 + 모든 페이지가 자가확인 = true.
-    const [questions, pages] = await Promise.all([
-      listGsQuestions(client, parsed.data.roundId),
+    // 검증: 1+ 페이지 업로드 + 페이지 수 ≤ expected_pages + 모든 페이지 자가확인.
+    // 미매핑 문항은 차단 X — 자동 채점에서 0점 처리(학생이 일부만 풀고 제출 가능).
+    const [round, pages] = await Promise.all([
+      getGsRound(client, parsed.data.roundId),
       listSubmissionPages(client, sub.submissionId),
     ]);
+    if (!round) {
+      return data({ error: "회차 정보를 찾을 수 없습니다." }, { status: 404 });
+    }
     if (pages.length === 0) {
       return data({ error: "답안지를 1페이지 이상 업로드해 주세요." }, { status: 400 });
     }
-    const mappedQuestions = new Set<string>();
-    for (const p of pages) {
-      for (const qid of p.questionIds) mappedQuestions.add(qid);
-    }
-    for (const q of questions) {
-      if (!mappedQuestions.has(q.questionId)) {
-        return data(
-          { error: `문항 "${q.title ?? "본문"}" 에 매핑된 페이지가 없습니다.` },
-          { status: 400 },
-        );
-      }
+    if (pages.length > round.expectedPages) {
+      return data(
+        { error: `업로드 ${pages.length}페이지가 최대 ${round.expectedPages}페이지를 초과합니다.` },
+        { status: 400 },
+      );
     }
     for (const p of pages) {
       if (!p.legibilityConfirmed) {
