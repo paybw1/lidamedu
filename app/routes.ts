@@ -415,6 +415,10 @@ export default [
         "features/admin/screens/admin-announcement-audiences.tsx",
       ),
       route("/admin/cases", "features/admin/screens/admin-cases.tsx"),
+      route(
+        "/admin/cases/pdf-missing",
+        "features/admin/screens/admin-case-pdf-missing.tsx",
+      ),
       route("/admin/cases/edit", "features/admin/screens/admin-case-edit.tsx", {
         id: "admin-case-new",
       }),
