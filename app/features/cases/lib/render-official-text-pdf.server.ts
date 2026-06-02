@@ -12,7 +12,10 @@ import { resolve } from "node:path";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, type PDFFont, type PDFPage, rgb } from "pdf-lib";
 
-const FONT_PATH = resolve(process.cwd(), "public/fonts/NanumMyeongjo-Regular.ttf");
+// Noto Serif CJK KR — 한중일 통합. 옛 한자, 단위(℃ ㎝ ㎟), 그리스(α β Π),
+// 로마숫자(Ⅰ Ⅱ Ⅲ) 등 한국 옛 판례에 빈출하는 글자 모두 커버.
+// 나눔명조(NanumMyeongjo-Regular.ttf) 는 보존 — 향후 비교/롤백 가능.
+const FONT_PATH = resolve(process.cwd(), "public/fonts/NotoSerifCJKkr-Regular.otf");
 
 const A4_W = 595.28;
 const A4_H = 841.89;
@@ -83,6 +86,17 @@ interface FontkitGlyphProbe {
  */
 function substituteForFont(s: string): string {
   return s
+    // ∼(U+223C TILDE OPERATOR) — Noto Serif CJK KR 미커버. 평문 ~ 로.
+    .replace(/∼/g, "~")
+    // 아래첨자 ₀–₉ (U+2080–U+2089) — Noto Serif CJK KR 미커버. 평문 0–9 로.
+    // (화학식 등에 등장. 정보 손실 거의 없음.)
+    .replace(/[₀-₉]/g, (ch) => String(ch.codePointAt(0)! - 0x2080))
+    // 위첨자 ⁰–⁹ (U+2070, U+00B9, U+00B2, U+00B3, U+2074–U+2079) — 동일 대체.
+    .replace(/⁰/g, "0")
+    .replace(/¹/g, "1")
+    .replace(/²/g, "2")
+    .replace(/³/g, "3")
+    .replace(/[⁴-⁹]/g, (ch) => String(ch.codePointAt(0)! - 0x2070))
     // ①(U+2460) – ⑳(U+2473) → "(1)" – "(20)"
     .replace(/[①-⑳]/g, (ch) => `(${ch.codePointAt(0)! - 0x2460 + 1})`)
     // ⑴(U+2474) – ⒇(U+2487) → 동일
