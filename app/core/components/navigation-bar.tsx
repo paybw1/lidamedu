@@ -68,6 +68,8 @@ const studyItems: SimpleLink[] = [
   { label: "학습 목표 · 진도", to: "/goals" },
   { label: "학습 통계", to: "/study/stats" },
   { label: "과제", to: "/assignments" },
+  // feat-10-006 — 정오문제(OX) 이력은 오답·복습 결과 성격이라 학습관리에 둠.
+  { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
 ];
 
 const latestItems: SimpleLink[] = [
@@ -89,15 +91,11 @@ const studyAidItems: SimpleLink[] = [
   { label: "AI Q&A (베타)", to: "/ai" },
 ];
 
-// 1차는 통합 시험(다과목)·진도별로 분리. 진도별은 색인 loader 의 ?kind= 활용.
+// 1차 통합(3교시)·진도별은 /latest/mcq?kind=mock 한 색인에 함께 노출 — 한 항목으로 통합.
 const mockExamItems: SimpleLink[] = [
-  { label: "1차 통합 모의고사", to: "/latest/mcq/exams" },
-  { label: "1차 진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
+  { label: "1차 모의고사", to: "/latest/mcq?kind=mock" },
   { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
-  // feat-10-006 — 정오문제(OX) 응시 결과 진입. ox-sessions 화면 헤더에서 오답노트로 다시 진입.
-  { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
-  // feat-10-005 — 1차 통합 모의고사 응시 결과(별도 화면).
-  { label: "모의고사 응시 결과", to: "/me/exam-results" },
+  { label: "응시 결과", to: "/me/exam-results" },
 ];
 
 const communityItems: SimpleLink[] = [
