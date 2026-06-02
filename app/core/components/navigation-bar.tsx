@@ -4,6 +4,8 @@ import {
   LockIcon,
   LogOutIcon,
   MenuIcon,
+  PanelLeftOpenIcon,
+  PanelTopOpenIcon,
   SearchIcon,
   UserIcon,
 } from "lucide-react";
@@ -290,7 +292,45 @@ function Actions({
         </Button>
       ) : null}
       <ThemeSwitcher />
+      <NavModeIconButton isVertical={isVertical} />
     </div>
+  );
+}
+
+/** nav 모드 전환 아이콘 — RightTools 안. 밝기 옆. 항상 노출(상단 nav · 사이드바 양쪽). */
+function NavModeIconButton({ isVertical }: { isVertical: boolean }) {
+  const [mode, setMode] = useState<"topbar" | "sidebar">("topbar");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("studentNavMode");
+    if (stored === "sidebar" || stored === "topbar") setMode(stored);
+  }, []);
+  const flip = () => {
+    const next = mode === "topbar" ? "sidebar" : "topbar";
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("studentNavMode", next);
+    if (next === "sidebar") {
+      window.localStorage.setItem("studentSidebarCollapsed", "1");
+    }
+    document.cookie = `studentNavMode=${next}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
+    window.location.reload();
+  };
+  const title = mode === "topbar" ? "사이드바로 전환" : "상단 메뉴로 전환";
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={flip}
+      title={title}
+      aria-label={title}
+      className={cn(isVertical ? "size-9" : "")}
+    >
+      {mode === "topbar" ? (
+        <PanelLeftOpenIcon className="size-4" />
+      ) : (
+        <PanelTopOpenIcon className="size-4" />
+      )}
+    </Button>
   );
 }
 
