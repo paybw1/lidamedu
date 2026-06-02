@@ -2,6 +2,7 @@
 // 사실관계 + 쟁점 목록(처음부터 노출) → ConclusionWriteStage → SelfCheck → Done.
 // ⑤ linked_gs_round_id 있으면 Done에서 답안작성 진입.
 
+import { ArrowRightIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -149,6 +150,25 @@ export default function CaseTrainingConclusion({
           resetActionUrl="/api/case-training/conclusion-attempt"
           hiddenFields={hiddenFields}
           gsTakeHref={gsTakeHref}
+          bottomSlot={
+            gsTakeHref === null ? (
+              <div className="border-amber-300/40 bg-amber-50/30 dark:border-amber-700/40 dark:bg-amber-950/30 rounded-2xl border p-4">
+                <p className="text-foreground text-sm font-bold">
+                  연결된 답안 작성 회차가 없습니다
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                  이 항목은 강사가 GS 회차를 연결하지 않았습니다. 답안 작성은
+                  GS 메인에서 직접 회차를 골라 진행할 수 있습니다.
+                </p>
+                <Link
+                  to="/gs"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 mt-3 inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold"
+                >
+                  GS 메인으로 <ArrowRightIcon className="size-4" />
+                </Link>
+              </div>
+            ) : null
+          }
         />
       )}
     </main>

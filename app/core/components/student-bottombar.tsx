@@ -25,6 +25,7 @@ import {
   MOBILE_TAB_LABELS,
   type NavGroupId,
   isNavActive,
+  pickActiveLinkTo,
   useNavLayout,
 } from "~/core/lib/nav-groups";
 
@@ -187,9 +188,11 @@ function GroupSheet({
     <div>
       <p className="mb-2 text-sm font-bold">{g.label}</p>
       <div className="flex flex-col gap-0.5">
-        {g.items.map((it) => {
-          const active = isNavActive(it.to, path, search);
-          return (
+        {(() => {
+          const activeTo = pickActiveLinkTo(g.items, path, search);
+          return g.items.map((it) => {
+            const active = it.to === activeTo;
+            return (
             <Link
               key={it.to}
               to={it.to}
@@ -203,8 +206,9 @@ function GroupSheet({
             >
               {it.label}
             </Link>
-          );
-        })}
+            );
+          });
+        })()}
       </div>
     </div>
   );

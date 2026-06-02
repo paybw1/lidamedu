@@ -23,6 +23,7 @@ import {
   FLAT_HOME,
   type NavGroup,
   isNavActive,
+  pickActiveLinkTo,
   useNavLayout,
 } from "~/core/lib/nav-groups";
 
@@ -388,9 +389,12 @@ function GroupFull({
       </button>
       {open ? (
         <div className="border-border ml-6 flex flex-col gap-0.5 border-l py-1 pl-2">
-          {group.items.map((it) => {
-            const active = isNavActive(it.to, path, search);
-            return (
+          {(() => {
+            // 그룹 내 가장 긴 매칭 to 1 개만 active — prefix 충돌(/gs vs /gs/issues) 방지.
+            const activeTo = pickActiveLinkTo(group.items, path, search);
+            return group.items.map((it) => {
+              const active = it.to === activeTo;
+              return (
               <Link
                 key={it.to}
                 to={it.to}
@@ -406,8 +410,9 @@ function GroupFull({
               >
                 {it.label}
               </Link>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       ) : null}
     </div>

@@ -95,6 +95,7 @@ export const NAV_GROUP_POOL = {
     items: [
       { label: "1차 모의고사", to: "/latest/mcq?kind=mock" },
       { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
+      { label: "GS 논점추출", to: "/gs/issues" },
       { label: "판례 쟁점훈련", to: "/case-training" },
       { label: "응시 결과", to: "/me/exam-results" },
     ],
@@ -180,9 +181,38 @@ export const MOBILE_TAB_LABELS: Partial<Record<NavGroupId, string>> = {
 };
 
 /**
+ * 한 그룹 안에서 active 로 표시할 to 1 개 선택 — "가장 긴 매칭 우선".
+ *
+ * 같은 그룹에 prefix 관계 항목이 있으면(예: /gs vs /gs/issues), 단순 isNavActive
+ * 만으로는 두 항목이 동시에 활성으로 표시돼 "현재 위치 모름" 문제가 생긴다.
+ * 호출처는 그룹별로 이 함수로 winner 를 1 개 정한 뒤 그것과만 비교한다.
+ */
+export function pickActiveLinkTo(
+  items: ReadonlyArray<{ to: string }>,
+  pathname: string,
+  search: string,
+): string | null {
+  let bestTo: string | null = null;
+  let bestLen = -1;
+  for (const it of items) {
+    if (!isNavActive(it.to, pathname, search)) continue;
+    const len = it.to.length;
+    if (len > bestLen) {
+      bestLen = len;
+      bestTo = it.to;
+    }
+  }
+  return bestTo;
+}
+
+/**
  * 현재 경로(pathname + search)가 nav link 의 `to` 와 매칭되는지.
  *   - to 에 query 가 있으면: pathname 정확 일치 + search 의 그 쿼리 키-값 포함
  *   - to 에 query 가 없으면: pathname 정확 일치 또는 그 prefix 의 자식 경로
+ *
+ * 주의: prefix 매칭이라 같은 그룹 내 prefix 관계 항목 2 개가 동시에 true 가 될
+ * 수 있다 — 개별 link 의 active 표시는 isNavActive 직접 호출 대신
+ * pickActiveLinkTo 로 그룹 winner 를 정한 뒤 그것과만 비교할 것.
  */
 export function isNavActive(
   to: string,
