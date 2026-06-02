@@ -2,6 +2,7 @@
 
 import { Link, data } from "react-router";
 
+import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { Chip } from "~/features/community/components/community-ui";
 import { listApprovedCaseTrainingItems } from "~/features/cases/queries-case-training.server";
@@ -42,30 +43,58 @@ export default function CaseTrainingIndex({ loaderData }: Route.ComponentProps) 
         </div>
       ) : (
         <ul className="space-y-3">
-          {items.map((it) => (
-            <li
-              key={it.itemId}
-              className="border-border bg-card rounded-2xl border p-4 shadow-sm"
-            >
-              <Link
-                to={`/case-training/${it.itemId}`}
-                prefetch="intent"
-                className="block"
+          {items.map((it) => {
+            const conclusionReady = it.conclusionReadyCount >= 2;
+            return (
+              <li
+                key={it.itemId}
+                className="border-border bg-card rounded-2xl border p-4 shadow-sm"
               >
-                <div className="flex flex-wrap items-baseline gap-1.5">
-                  <Chip tone="outline">{it.caseRef.court}</Chip>
-                  <Chip tone="outline">{it.caseRef.decidedAt}</Chip>
+                <Link
+                  to={`/case-training/${it.itemId}`}
+                  prefetch="intent"
+                  className="block"
+                >
+                  <div className="flex flex-wrap items-baseline gap-1.5">
+                    <Chip tone="outline">{it.caseRef.court}</Chip>
+                    <Chip tone="outline">{it.caseRef.decidedAt}</Chip>
+                    {conclusionReady ? (
+                      <Chip tone="primary">③④ 결론·강약 가능</Chip>
+                    ) : null}
+                  </div>
+                  <p className="text-foreground mt-1 text-base font-bold">
+                    {it.caseRef.caseTitle}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    사실관계 약 {it.factsSummaryMd.length}자 — 1~2분 안에 읽고
+                    쟁점을 떠올려보세요.
+                  </p>
+                </Link>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button asChild size="sm" className="rounded-full">
+                    <Link to={`/case-training/${it.itemId}`} prefetch="intent">
+                      ② 쟁점추출 →
+                    </Link>
+                  </Button>
+                  {conclusionReady ? (
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                    >
+                      <Link
+                        to={`/case-training/${it.itemId}/conclusion`}
+                        prefetch="intent"
+                      >
+                        ③④ 결론·강약 →
+                      </Link>
+                    </Button>
+                  ) : null}
                 </div>
-                <p className="text-foreground mt-1 text-base font-bold">
-                  {it.caseRef.caseTitle}
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  사실관계 약 {it.factsSummaryMd.length}자 — 1~2분 안에 읽고
-                  쟁점을 떠올려보세요.
-                </p>
-              </Link>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>

@@ -71,13 +71,21 @@ export interface CaseTrainingAttempt {
 
 export async function listApprovedCaseTrainingItems(
   client: Client,
-): Promise<Array<CaseTrainingItem & { caseRef: CaseRefForTraining }>> {
+): Promise<
+  Array<
+    CaseTrainingItem & {
+      caseRef: CaseRefForTraining;
+      conclusionReadyCount: number;
+    }
+  >
+> {
   const { data, error } = await client
     .from("case_training_items")
     .select(
       `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
-       cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path )`,
+       cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
+       case_training_issues ( review_status, deleted_at, model_conclusion_direction )`,
     )
     .eq("review_status", "approved")
     .is("deleted_at", null)
@@ -93,6 +101,17 @@ export async function listApprovedCaseTrainingItems(
       official_text_md: string | null;
       official_text_pdf_path: string | null;
     } | null;
+    const issues = (r.case_training_issues ?? []) as Array<{
+      review_status: string;
+      deleted_at: string | null;
+      model_conclusion_direction: string | null;
+    }>;
+    const conclusionReadyCount = issues.filter(
+      (i) =>
+        i.deleted_at === null &&
+        i.review_status === "approved" &&
+        (i.model_conclusion_direction ?? "").trim().length > 0,
+    ).length;
     return {
       itemId: r.item_id,
       caseId: r.case_id,
@@ -113,6 +132,7 @@ export async function listApprovedCaseTrainingItems(
         hasOfficialText: !!c?.official_text_md,
         hasPdf: !!c?.official_text_pdf_path,
       },
+      conclusionReadyCount,
     };
   });
 }

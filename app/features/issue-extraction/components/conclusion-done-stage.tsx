@@ -132,7 +132,7 @@ export function ConclusionDoneStage({
         </div>
       ) : null}
 
-      {/* 쟁점별 비교 카드 — 결론 + 강약 한 줄. */}
+      {/* 쟁점별 비교 카드 — 결론 + 강약 + AI 쟁점별 코칭 메모. */}
       <ul className="space-y-2">
         {masterIssues.map((iss) => {
           const c = studentConclusions?.[iss.issueId];
@@ -140,6 +140,12 @@ export function ConclusionDoneStage({
           const rec = recommendedEmphasis(iss);
           const isCoreUnder =
             iss.importance === "core" && em[iss.issueId] === "under";
+          // AI 쟁점별 코칭 — emphasis · conclusion 두 종류 노출.
+          const aiNotesForIssue = (savedAiAnalysis?.notes ?? []).filter(
+            (n) =>
+              n.issueId === iss.issueId &&
+              (n.kind === "emphasis" || n.kind === "conclusion"),
+          );
           return (
             <li
               key={iss.issueId}
@@ -177,6 +183,18 @@ export function ConclusionDoneStage({
                   <strong className="text-foreground">{EMPHASIS_LABEL[rec]}</strong>
                 </div>
               </div>
+              {aiNotesForIssue.length > 0 ? (
+                <ul className="mt-2 space-y-1">
+                  {aiNotesForIssue.map((n, i) => (
+                    <li
+                      key={i}
+                      className="text-muted-foreground border-amber-300/40 bg-amber-50/30 dark:border-amber-700/40 dark:bg-amber-950/30 rounded-md border px-2 py-1 text-[11px] italic leading-relaxed"
+                    >
+                      AI {n.kind === "emphasis" ? "강약" : "결론"} 코칭: {n.note}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </li>
           );
         })}
