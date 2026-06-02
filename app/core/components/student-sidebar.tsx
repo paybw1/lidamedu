@@ -88,11 +88,11 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
         collapsed ? "w-[60px]" : "w-[260px]",
       )}
     >
-      {/* 헤더 — 토글 버튼 */}
+      {/* 헤더 — 토글 버튼 (눈에 띄게: border + 라벨) */}
       <div
         className={cn(
-          "border-border flex items-center border-b p-2",
-          collapsed ? "justify-center" : "justify-end",
+          "border-border border-b p-2",
+          collapsed ? "flex justify-center" : "",
         )}
       >
         <button
@@ -100,12 +100,18 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
           onClick={toggleCollapsed}
           title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
           aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-          className="hover:bg-muted text-muted-foreground rounded-md p-1 transition-colors"
+          className={cn(
+            "border-border hover:border-primary hover:bg-primary/5 hover:text-primary flex items-center gap-1.5 rounded-md border bg-card transition-colors",
+            collapsed ? "size-8 justify-center" : "w-full justify-between px-2 py-1.5",
+          )}
         >
           {collapsed ? (
             <PanelLeftOpenIcon className="size-4" />
           ) : (
-            <PanelLeftCloseIcon className="size-4" />
+            <>
+              <span className="text-xs font-medium">사이드바 접기</span>
+              <PanelLeftCloseIcon className="size-4" />
+            </>
           )}
         </button>
       </div>
