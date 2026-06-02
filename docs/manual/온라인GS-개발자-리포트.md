@@ -233,5 +233,69 @@ markDistinguished (intent=mark):
 
 ---
 
-*Last updated: 2026-06-01.*
-*다음 주요 업데이트 후보: AI 채점 자동 반영 (sample 검수 모드), 우수 답안 cross-회차 검색.*
+## 12. 신규 모듈 (2026-06-02 추가)
+
+### 12-1. 2차 논점 추출 훈련
+
+별도 학습 모드 — 답안 전체 작성 X, 사례 보고 핵심 쟁점만 백지에서 빠르게 반복.
+
+| 컴포넌트 | 파일 |
+|---|---|
+| 추출 (AI) | `app/features/gs/lib/ai-issue-extractor.server.ts` (Opus 4.7 + adaptive thinking + JSON schema) |
+| 분석 (AI 보조의견) | `app/features/gs/lib/ai-issue-analyzer.server.ts` (단정 X 톤 강제 + issue_id whitelist) |
+| 운영 query | `queries-issues.server.ts` (CRUD + 승인 흐름 + `getRefLinksForIssues`) |
+| 학생 query | `queries-issue-attempts.server.ts` (`getIssueQuestionForStudent`, `upsertIssueAttempt`) |
+| 운영 화면 | `screens/admin-gs-issues.tsx` |
+| 학생 화면 | `screens/gs-issues.tsx` + `gs-issue-take.tsx` + `gs-issue-take-ai-panel.tsx` |
+| API | `api/issue-draft.tsx`, `issue-review.tsx`, `issue-attempt.tsx`, `issue-analyze.tsx` |
+| 테이블 | `gs_question_issues` (gs_question_id XOR problem_id CHECK — 향후 problems 승격 대비), `user_issue_attempts` |
+| 검증 | `scripts/verify-gs-issue-*.ts` (총 35/35 통과) |
+
+서버 게이트: 모든 단계에서 미승인 논점 노출 0. `phase==='done'` (자기채점 완료) 일 때만 master issues + 판례 전문 PDF URL 응답에 포함.
+
+### 12-2. 판례 전문 자동 적재 + PDF 생성
+
+국가법령정보 OPEN API 로 사건번호 → 전문 텍스트 + PDF 자동 생성·저장. 강사 추가 수작업 0.
+
+| 컴포넌트 | 파일 |
+|---|---|
+| 사건번호 정규화 + 3중 매칭 안전망 | `app/features/cases/lib/case-number.ts` |
+| HTML 엔티티/`<br/>` 정규화 | `app/features/cases/lib/normalize-official-text.ts` |
+| PDF 조판 + 미커버 한자 감지 | `app/features/cases/lib/render-official-text-pdf.server.ts` |
+| 적재 파이프라인 (dry-run·apply·멱등) | `scripts/precedents/import-law-precedents.ts` |
+| PDF 일괄 재생성 | `scripts/precedents/build-case-pdfs.ts` |
+| API 진단 | `scripts/precedents/probe-law-api.mjs` + `probe-law-api-variants.mjs` |
+| 검증 | `scripts/precedents/verify-pdf-render.ts`, `verify-pdf-storage.ts`, `verify-e2e-search.ts` |
+| 컬럼 (cases) | `official_text_md` text, `official_text_pdf_path` text, `law_api_serial_id` text |
+| 버킷 | `case-fulltext` (private, signed URL only) |
+| 폰트 | `public/fonts/NanumMyeongjo-Regular.ttf` (OFL 1.1) + `@pdf-lib/fontkit` |
+
+매칭 안전망: API 응답 first-result 사용 금지. **3중 정확 매칭** (입력 정규화 = 목록 응답 사건번호 = 본문 응답 사건번호 = cases.case_number) 통과 시에만 적재.
+
+PDF 정책: 폰트가 렌더 못 하는 codepoint 1자라도 발견 시 PDF skip + 보고(□ 잠입 방지). 원문자 ①②… 는 `(1)(2)…` 평문 대체. signed URL 1시간 TTL.
+
+학생 열람 진입점:
+- `case-viewer.tsx` (학습 화면) 헤더 — `loaderData.officialPdfUrl` 통해 signed URL, 모든 사용자
+- `gs-issue-take.tsx` (논점 결과) — `phase==='done'` 일 때만 `casePdfUrls` Record 채움. **서버 게이트** 가 다른 phase 응답에서 URL 제거
+
+### 12-3. cases.case_number dedupe + partial UNIQUE
+
+| 컴포넌트 | 내용 |
+|---|---|
+| 백업 스크립트 | `scripts/precedents/dedupe-backup.ts` (rollback.sql 포함) |
+| Partial UNIQUE | `CREATE UNIQUE INDEX cases_case_number_unique_active ON cases (case_number) WHERE deleted_at IS NULL` |
+| 동작 | active row 끼리 동일 case_number 신규 INSERT 시 SQLSTATE 23505 |
+| 정책 | soft-deleted row 는 partial 에서 제외 — 5월 11일 dedupe 운영자 의도 존중 |
+
+### 12-4. GS 응시 제출 조건 완화
+
+`app/features/gs/screens/gs-take.tsx` + `app/features/gs/api/take.tsx`:
+- Before: 모든 문항 매핑 + 모든 페이지 판독 확인
+- After: **1+ 페이지 업로드** + **≤ round.expected_pages** + **모든 페이지 판독 확인**
+- 미매핑 문항은 차단 X — 자동 채점에서 0점 처리 (confirm 다이얼로그에 명시)
+- 백엔드도 expected_pages 초과 차단 추가
+
+---
+
+*Last updated: 2026-06-02.*
+*다음 주요 업데이트 후보: AI 채점 자동 반영 (sample 검수 모드), 우수 답안 cross-회차 검색, 미커버 한자 케이스 발생 시 Noto Serif CJK KR 폰트 교체.*
