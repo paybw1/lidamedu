@@ -297,10 +297,14 @@ create table public.cases (
   importance         smallint default 1 check (importance between 1 and 3),
   summary_title      text,                       -- 판결요지 제목
   summary_body_md    text,                       -- 판결요지 내용
-  reasoning_md       text,                       -- 판시이유
+  reasoning_md       text,                       -- 판시이유 (교재 기반 편집물)
   full_text_pdf      text,                       -- 판결전문 PDF URL (Storage)
   comment_source     text,                       -- 코멘트 출처
   comment_body_md    text,                       -- 코멘트 본문
+  -- 국가법령정보 OPEN API 적재 (scripts/precedents/import-law-precedents.ts).
+  -- 교재 reasoning_md/comment_body_md 와 의미·임베딩 청크 분리(A안).
+  official_text_md   text,                       -- 공식 판결 전문 (API <판례내용> 정규화 결과)
+  law_api_serial_id  text,                       -- API <판례정보일련번호> — 본문 재호출 캐시
   search_tsv         tsvector generated always as
                      (to_tsvector('simple', coalesce(summary_body_md,'') || ' ' || coalesce(reasoning_md,''))) stored,
   created_at         timestamptz not null default now(),
@@ -313,6 +317,7 @@ create index cases_court on cases(court);
 create index cases_case_number_trgm on cases using gin (case_number gin_trgm_ops);
 create index cases_search_tsv on cases using gin (search_tsv);
 create index cases_subject_laws on cases using gin (subject_laws);
+create index cases_law_api_serial_id_idx on cases (law_api_serial_id) where law_api_serial_id is not null;
 
 -- 관련 논문/기사
 create table public.case_papers (

@@ -109,9 +109,10 @@ export interface CaseChunkSource {
   /** subject_laws[0] 등으로 결정. null 이면 cross-subject. */
   lawCode: string | null;
   summaryTitle: string | null;
-  summaryBodyMd: string | null; // 요지
-  reasoningMd: string | null;   // 이유
-  commentBodyMd: string | null; // 평석
+  summaryBodyMd: string | null;  // 요지 (교재 기반)
+  reasoningMd: string | null;    // 이유 (교재 기반)
+  commentBodyMd: string | null;  // 평석 (교재 기반)
+  officialTextMd: string | null; // 공식 판결 전문 (국가법령정보 OPEN API, A안)
 }
 
 export function chunkCase(c: CaseChunkSource): ChunkInput[] {
@@ -120,6 +121,7 @@ export function chunkCase(c: CaseChunkSource): ChunkInput[] {
     { label: "요지", body: c.summaryBodyMd },
     { label: "이유", body: c.reasoningMd },
     { label: "평석", body: c.commentBodyMd },
+    { label: "공식전문", body: c.officialTextMd },
   ];
   for (const sec of sections) {
     if (!sec.body || !sec.body.trim()) continue;

@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -1283,7 +1283,9 @@ export type Database = {
           images: Json
           importance: number | null
           is_en_banc: boolean
+          law_api_serial_id: string | null
           nickname: string | null
+          official_text_md: string | null
           primary_article_id: string | null
           primary_node_id: string | null
           reasoning_md: string | null
@@ -1313,7 +1315,9 @@ export type Database = {
           images?: Json
           importance?: number | null
           is_en_banc?: boolean
+          law_api_serial_id?: string | null
           nickname?: string | null
+          official_text_md?: string | null
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
@@ -1343,7 +1347,9 @@ export type Database = {
           images?: Json
           importance?: number | null
           is_en_banc?: boolean
+          law_api_serial_id?: string | null
           nickname?: string | null
+          official_text_md?: string | null
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null

@@ -71,7 +71,7 @@ export async function reindexCases(caseIds: string[]): Promise<void> {
   const { data: cases, error } = await adminClient
     .from("cases")
     .select(
-      "case_id, subject_laws, court, decided_at, case_number, summary_title, summary_body_md, reasoning_md, comment_body_md",
+      "case_id, subject_laws, court, decided_at, case_number, summary_title, summary_body_md, reasoning_md, comment_body_md, official_text_md",
     )
     .in("case_id", caseIds)
     .is("deleted_at", null);
@@ -93,6 +93,7 @@ export async function reindexCases(caseIds: string[]): Promise<void> {
       summaryBodyMd: c.summary_body_md,
       reasoningMd: c.reasoning_md,
       commentBodyMd: c.comment_body_md,
+      officialTextMd: c.official_text_md,
     });
   });
 
