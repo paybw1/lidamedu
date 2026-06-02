@@ -10,24 +10,26 @@ import {
   useState,
 } from "react";
 
+// CSS 변수 매핑 — light/dark 양쪽에 자동 적응(Tailwind theme 토큰).
+// 변수 정의: app/app.css 의 :root / .dark.
 export const T = {
-  ink: "rgba(0,0,0,0.84)",
-  ink2: "rgba(0,0,0,0.74)",
-  inkSoft: "rgba(0,0,0,0.56)",
-  inkMute: "rgba(0,0,0,0.40)",
-  line: "rgba(0,0,0,0.12)",
-  lineSoft: "rgba(0,0,0,0.06)",
+  ink: "var(--foreground)",
+  ink2: "color-mix(in oklch, var(--foreground) 88%, transparent)",
+  inkSoft: "color-mix(in oklch, var(--foreground) 70%, transparent)",
+  inkMute: "color-mix(in oklch, var(--foreground) 50%, transparent)",
+  line: "var(--border)",
+  lineSoft: "color-mix(in oklch, var(--border) 50%, transparent)",
 
   blue: "#2D5BA8",
   blueStrong: "#1E4789",
   blueDeep: "#3B6FC4",
-  blueSoft: "rgba(45, 91, 168, 0.10)",
-  blueTint: "rgba(45, 91, 168, 0.04)",
+  blueSoft: "rgba(45, 91, 168, 0.12)",
+  blueTint: "rgba(45, 91, 168, 0.06)",
 
-  page: "#ffffff",
-  paper: "#ffffff",
-  subtle: "#FAFAFA",
-  muted: "#F2F2F0",
+  page: "var(--background)",
+  paper: "var(--card)",
+  subtle: "var(--muted)",
+  muted: "var(--muted)",
 
   emerald: "#10A37F",
   emeraldSoft: "rgba(16,163,127,0.10)",
