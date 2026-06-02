@@ -231,9 +231,16 @@ const SIMULATED_ACTIVE_PATH = "/study/today";
 
 // ── 컴포넌트 ──────────────────────────────────────────────────────────────
 
+type PreviewMode =
+  | "a-expanded" // A안 — 사이드바 펼침 (기본)
+  | "a-icon" // A안 — 사이드바 아이콘만
+  | "a-hidden" // A안 — 사이드바 완전 숨김
+  | "b-topbar" // B안 — 상단 가로바
+  | "mobile"; // 모바일 하단탭
+
 export default function AdminNavPreview({ loaderData }: Route.ComponentProps) {
   const { role } = loaderData;
-  const [mode, setMode] = useState<"desktop" | "mobile">("desktop");
+  const [mode, setMode] = useState<PreviewMode>("a-expanded");
   const isStaff = role === "admin" || role === "instructor";
 
   return (
@@ -251,33 +258,36 @@ export default function AdminNavPreview({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* 토글 */}
-      <div className="mb-4 flex items-center gap-2">
-        <Button
-          size="sm"
-          variant={mode === "desktop" ? "default" : "outline"}
-          onClick={() => setMode("desktop")}
-          className="gap-1"
-        >
-          <BookOpenIcon className="size-3" /> 데스크톱 사이드바
-        </Button>
-        <Button
-          size="sm"
-          variant={mode === "mobile" ? "default" : "outline"}
-          onClick={() => setMode("mobile")}
-          className="gap-1"
-        >
-          <SmartphoneIcon className="size-3" /> 모바일 하단탭
-        </Button>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold">데스크톱:</p>
+        <ModeButton mode={mode} target="a-expanded" set={setMode}>
+          A안 — 사이드바 펼침
+        </ModeButton>
+        <ModeButton mode={mode} target="a-icon" set={setMode}>
+          A안 — 아이콘만
+        </ModeButton>
+        <ModeButton mode={mode} target="a-hidden" set={setMode}>
+          A안 — 숨김
+        </ModeButton>
+        <ModeButton mode={mode} target="b-topbar" set={setMode}>
+          B안 — 상단 가로바
+        </ModeButton>
+        <span className="mx-2 h-4 w-px bg-border" />
+        <ModeButton mode={mode} target="mobile" set={setMode}>
+          <SmartphoneIcon className="mr-1 size-3 inline" /> 모바일
+        </ModeButton>
         <span className="text-muted-foreground ml-2 text-xs">
-          시뮬레이션 활성 경로: <code>{SIMULATED_ACTIVE_PATH}</code>
+          현재 경로: <code>{SIMULATED_ACTIVE_PATH}</code>
         </span>
       </div>
 
       {/* 미리보기 */}
-      {mode === "desktop" ? (
-        <DesktopPreview isStaff={isStaff} />
-      ) : (
+      {mode === "mobile" ? (
         <MobilePreview isStaff={isStaff} />
+      ) : mode === "b-topbar" ? (
+        <TopBarPreview isStaff={isStaff} />
+      ) : (
+        <SidebarPreview isStaff={isStaff} variant={mode} />
       )}
 
       {/* 그룹 분류 의도 */}
@@ -299,6 +309,29 @@ export default function AdminNavPreview({ loaderData }: Route.ComponentProps) {
         />
       </section>
     </AdminShell>
+  );
+}
+
+function ModeButton({
+  mode,
+  target,
+  set,
+  children,
+}: {
+  mode: PreviewMode;
+  target: PreviewMode;
+  set: (m: PreviewMode) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Button
+      size="sm"
+      variant={mode === target ? "default" : "outline"}
+      onClick={() => set(target)}
+      className="h-7 text-xs"
+    >
+      {children}
+    </Button>
   );
 }
 
@@ -329,13 +362,174 @@ function IntentCard({
   );
 }
 
-// ── 데스크톱 사이드바 ─────────────────────────────────────────────────────
+// ── 학습과목 더미 본문 ────────────────────────────────────────────────────
+// 두 안 모두 같은 본문 위에 깔아 본문 폭 차이를 체감.
 
-function DesktopPreview({ isStaff }: { isStaff: boolean }) {
+function SubjectViewerMock() {
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* 좌측 조문 트리 */}
+      <div className="w-[180px] shrink-0 overflow-y-auto border-r border-border bg-muted/10 p-3">
+        <p className="text-muted-foreground mb-2 text-[10px] font-bold tracking-widest uppercase">
+          특허법
+        </p>
+        <ul className="space-y-0.5 text-xs">
+          {[
+            "제1장 총칙",
+            "  제1조 목적",
+            "  제2조 정의",
+            "제2장 특허요건",
+            "  제29조 ★ 특허요건",
+            "  제30조 공지예외",
+            "  제33조 출원인",
+            "제3장 출원",
+            "  제42조 명세서",
+            "  제45조 단일성",
+            "제4장 심사",
+            "  제62조 거절결정",
+          ].map((s) => (
+            <li
+              key={s}
+              className={cn(
+                "rounded px-1.5 py-0.5",
+                s.includes("제29조")
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-muted/50",
+              )}
+            >
+              {s}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 중앙 본문 — flex-1 — 사이드바/가로바 영향에 따라 폭 가변 */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <p className="text-muted-foreground text-[11px] tracking-widest uppercase">
+          특허법
+        </p>
+        <h2 className="mt-1 text-xl font-bold">제29조 특허요건</h2>
+        <p className="text-muted-foreground mt-1 text-xs">
+          1973.2.8 제정 · 최근 개정 2024.4.21
+        </p>
+        <div className="prose dark:prose-invert mt-4 max-w-none text-sm leading-relaxed">
+          <p>
+            ① 산업상 이용할 수 있는 발명으로서 다음 각 호의 어느 하나에 해당하는
+            것을 제외하고는 그 발명에 대하여 특허를 받을 수 있다.
+          </p>
+          <p className="ml-4">
+            1. 특허출원 전에 국내 또는 국외에서 공공연히 알려진 발명
+            <br />
+            2. 특허출원 전에 국내 또는 국외에서 공공연히 실시된 발명
+            <br />
+            3. 특허출원 전에 국내 또는 국외에서 반포된 간행물에 게재된 발명
+            또는 전기통신회선을 통하여 공중이 이용할 수 있는 발명
+          </p>
+          <p>
+            ② 특허출원 전에 그 발명이 속하는 기술분야에서 통상의 지식을 가진
+            사람이 제1항 각 호의 어느 하나에 해당하는 발명에 의하여 쉽게 발명할
+            수 있는 것일 때에는 그 발명에 대해서는 제1항에도 불구하고 특허를
+            받을 수 없다.
+          </p>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="border-border h-20 rounded-xl border bg-muted/20 flex items-center justify-center text-[10px] text-muted-foreground"
+            >
+              관련 판례 / 기출 / 메모 카드 (더미)
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 우측 학습 패널 */}
+      <div className="w-[240px] shrink-0 overflow-y-auto border-l border-border bg-muted/10 p-3">
+        <p className="text-muted-foreground mb-2 text-[10px] font-bold tracking-widest uppercase">
+          학습 패널
+        </p>
+        <div className="space-y-2 text-xs">
+          <button className="border-border w-full rounded-lg border bg-card px-2 py-1.5 text-left hover:bg-muted">
+            ⭐ 즐겨찾기
+          </button>
+          <button className="border-border w-full rounded-lg border bg-card px-2 py-1.5 text-left hover:bg-muted">
+            📝 포스트잇
+          </button>
+          <button className="border-border w-full rounded-lg border bg-card px-2 py-1.5 text-left hover:bg-muted">
+            🤖 AI Q&A
+          </button>
+          <div className="border-border mt-3 rounded-lg border bg-card p-2">
+            <p className="text-[10px] font-semibold">하이라이트</p>
+            <p className="text-muted-foreground mt-0.5 text-[10px]">
+              본문에서 텍스트 선택 시 활성
+            </p>
+          </div>
+          <div className="border-border rounded-lg border bg-card p-2">
+            <p className="text-[10px] font-semibold">관련 판례 (3)</p>
+            <ul className="text-muted-foreground mt-0.5 text-[10px]">
+              <li>2012후726</li>
+              <li>2023후11340</li>
+              <li>...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── 데스크톱 사이드바 (A안 — 3 변형) ──────────────────────────────────────
+
+type SidebarVariant = "a-expanded" | "a-icon" | "a-hidden";
+
+function SidebarPreview({
+  isStaff,
+  variant,
+}: {
+  isStaff: boolean;
+  variant: SidebarVariant;
+}) {
+  return (
+    <div className="border-border overflow-hidden rounded-2xl border bg-muted/20">
+      {/* 가짜 브라우저 헤더 */}
+      <div className="border-border bg-muted/40 flex items-center gap-1.5 border-b px-3 py-2">
+        <span className="size-2.5 rounded-full bg-rose-400" />
+        <span className="size-2.5 rounded-full bg-amber-400" />
+        <span className="size-2.5 rounded-full bg-emerald-400" />
+        <span className="text-muted-foreground ml-2 font-mono text-[10px]">
+          lidamipedu.com/subjects/patent/articles/29
+        </span>
+        <span className="ml-auto text-[10px] text-muted-foreground">
+          {variant === "a-expanded" && "사이드바 폭 260px"}
+          {variant === "a-icon" && "사이드바 폭 60px (아이콘만)"}
+          {variant === "a-hidden" && "사이드바 폭 0 (숨김)"}
+        </span>
+      </div>
+      {/* 사이드바 + 본문 */}
+      <div className="flex h-[640px]">
+        {variant !== "a-hidden" ? (
+          <SidebarA variant={variant} isStaff={isStaff} />
+        ) : null}
+        <main className="flex-1 overflow-hidden">
+          <SubjectViewerMock />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function SidebarA({
+  variant,
+  isStaff,
+}: {
+  variant: Exclude<SidebarVariant, "a-hidden">;
+  isStaff: boolean;
+}) {
   const { core, secondary } = useNavLayout();
-  // 펼침 상태 — 초기: subjects + aids 펼침, 나머지 접힘.
-  const [open, setOpen] = useState<Set<string>>(
-    () => new Set(["subjects", "aids"]),
+  const isIcon = variant === "a-icon";
+  const [open, setOpen] = useState<Set<string>>(() =>
+    isIcon ? new Set() : new Set(["subjects", "aids"]),
   );
   const toggle = (id: string) => {
     setOpen((s) => {
@@ -346,6 +540,139 @@ function DesktopPreview({ isStaff }: { isStaff: boolean }) {
     });
   };
   return (
+    <aside
+      className={cn(
+        "shrink-0 overflow-y-auto border-r border-border bg-card",
+        isIcon ? "w-[60px] p-2" : "w-[260px] p-3",
+      )}
+    >
+      {!isIcon && <SidebarSection label="핵심" />}
+      {isIcon ? (
+        <IconRow
+          Icon={FLAT_HOME.Icon}
+          label={FLAT_HOME.label}
+          active={FLAT_HOME.to === SIMULATED_ACTIVE_PATH}
+        />
+      ) : (
+        <SidebarFlat
+          Icon={FLAT_HOME.Icon}
+          label={FLAT_HOME.label}
+          to={FLAT_HOME.to}
+        />
+      )}
+      {core.map((g) => {
+        const hasActive = g.items.some((i) => i.to === SIMULATED_ACTIVE_PATH);
+        if (isIcon) {
+          return (
+            <IconRow
+              key={g.id}
+              Icon={g.Icon}
+              label={g.label}
+              active={hasActive}
+            />
+          );
+        }
+        if (g.id === "subjects") {
+          return (
+            <SidebarSubjects
+              key={g.id}
+              open={open.has("subjects")}
+              onToggle={() => toggle("subjects")}
+            />
+          );
+        }
+        if (g.items.length === 1) {
+          return (
+            <SidebarFlat
+              key={g.id}
+              Icon={g.Icon}
+              label={g.label}
+              to={g.items[0].to}
+            />
+          );
+        }
+        return (
+          <SidebarGroup
+            key={g.id}
+            group={g}
+            open={open.has(g.id)}
+            onToggle={() => toggle(g.id)}
+          />
+        );
+      })}
+
+      {!isIcon && <SidebarSection label="가끔" />}
+      {secondary.map((g) => {
+        const hasActive = g.items.some((i) => i.to === SIMULATED_ACTIVE_PATH);
+        if (isIcon) {
+          return (
+            <IconRow
+              key={g.id}
+              Icon={g.Icon}
+              label={g.label}
+              active={hasActive}
+            />
+          );
+        }
+        return (
+          <SidebarGroup
+            key={g.id}
+            group={g}
+            open={open.has(g.id)}
+            onToggle={() => toggle(g.id)}
+          />
+        );
+      })}
+
+      {isStaff ? (
+        <>
+          {!isIcon && <SidebarSection label="관리" />}
+          {isIcon ? (
+            <IconRow
+              Icon={FLAT_ADMIN.Icon}
+              label={FLAT_ADMIN.label}
+              active={false}
+            />
+          ) : (
+            <SidebarFlat
+              Icon={FLAT_ADMIN.Icon}
+              label={FLAT_ADMIN.label}
+              to={FLAT_ADMIN.to}
+            />
+          )}
+        </>
+      ) : null}
+    </aside>
+  );
+}
+
+function IconRow({
+  Icon,
+  label,
+  active,
+}: {
+  Icon: typeof HomeIcon;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <div
+      title={label}
+      className={cn(
+        "my-0.5 flex h-9 cursor-pointer items-center justify-center rounded-lg hover:bg-muted",
+        active && "bg-primary/10 text-primary",
+      )}
+    >
+      <Icon className="size-5" />
+    </div>
+  );
+}
+
+// ── B안 상단 가로바 ────────────────────────────────────────────────────────
+
+function TopBarPreview({ isStaff }: { isStaff: boolean }) {
+  const { core, secondary } = useNavLayout();
+  return (
     <div className="border-border overflow-hidden rounded-2xl border bg-muted/20">
       {/* 가짜 브라우저 헤더 */}
       <div className="border-border bg-muted/40 flex items-center gap-1.5 border-b px-3 py-2">
@@ -353,79 +680,126 @@ function DesktopPreview({ isStaff }: { isStaff: boolean }) {
         <span className="size-2.5 rounded-full bg-amber-400" />
         <span className="size-2.5 rounded-full bg-emerald-400" />
         <span className="text-muted-foreground ml-2 font-mono text-[10px]">
-          lidamipedu.com{SIMULATED_ACTIVE_PATH}
+          lidamipedu.com/subjects/patent/articles/29
+        </span>
+        <span className="ml-auto text-[10px] text-muted-foreground">
+          상단 가로바 56px + 본문 100% 폭
         </span>
       </div>
-      {/* 사이드바 + 본문 */}
-      <div className="flex h-[640px]">
-        <aside className="w-[260px] shrink-0 overflow-y-auto border-r border-border bg-card p-3">
-          {/* 핵심 그룹 */}
-          <SidebarSection label="핵심" />
-          <SidebarFlat
-            Icon={FLAT_HOME.Icon}
-            label={FLAT_HOME.label}
-            to={FLAT_HOME.to}
-          />
-          {core.map((g) =>
-            g.id === "subjects" ? (
-              <SidebarSubjects key={g.id} open={open.has("subjects")} onToggle={() => toggle("subjects")} />
-            ) : g.items.length === 1 ? (
-              <SidebarFlat
-                key={g.id}
-                Icon={g.Icon}
-                label={g.label}
-                to={g.items[0].to}
-              />
-            ) : (
-              <SidebarGroup
-                key={g.id}
-                group={g}
-                open={open.has(g.id)}
-                onToggle={() => toggle(g.id)}
-              />
-            ),
-          )}
-
-          {/* 가끔 그룹 */}
-          <SidebarSection label="가끔" />
-          {secondary.map((g) => (
-            <SidebarGroup
-              key={g.id}
-              group={g}
-              open={open.has(g.id)}
-              onToggle={() => toggle(g.id)}
+      {/* 상단 가로바 */}
+      <div className="border-border flex items-center gap-1 border-b bg-card px-3 py-1.5">
+        <div className="border-border mr-3 border-r pr-3 text-sm font-bold">
+          리담
+        </div>
+        <TopBarFlat
+          Icon={FLAT_HOME.Icon}
+          label={FLAT_HOME.label}
+          to={FLAT_HOME.to}
+        />
+        <span className="mx-1 h-4 w-px bg-border" />
+        {core.map((g) => (
+          <TopBarItem key={g.id} group={g} />
+        ))}
+        <TopBarMore secondary={secondary} />
+        {isStaff ? (
+          <>
+            <span className="mx-1 h-4 w-px bg-border" />
+            <TopBarFlat
+              Icon={FLAT_ADMIN.Icon}
+              label={FLAT_ADMIN.label}
+              to={FLAT_ADMIN.to}
             />
-          ))}
-
-          {/* Flat */}
-          {isStaff ? (
-            <>
-              <SidebarSection label="관리" />
-              <SidebarFlat
-                Icon={FLAT_ADMIN.Icon}
-                label={FLAT_ADMIN.label}
-                to={FLAT_ADMIN.to}
-              />
-            </>
-          ) : null}
-        </aside>
-
-        {/* 본문 영역 (시뮬) */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <h2 className="text-lg font-bold">오늘 할 일</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            현재 경로 <code>/study/today</code> — 사이드바 좌측에서 강조 표시
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="border-border h-24 rounded-xl border bg-muted/30"
-              />
-            ))}
-          </div>
-        </main>
+          </>
+        ) : null}
+        <div className="ml-auto flex items-center gap-2">
+          <button className="bg-muted size-7 rounded-full text-[10px]">
+            🔔
+          </button>
+          <div className="bg-primary/20 size-7 rounded-full" />
+        </div>
       </div>
+      {/* 본문 — full width */}
+      <div className="h-[580px] overflow-hidden">
+        <SubjectViewerMock />
+      </div>
+    </div>
+  );
+}
+
+function TopBarFlat({
+  Icon,
+  label,
+  to,
+}: {
+  Icon: typeof HomeIcon;
+  label: string;
+  to: string;
+}) {
+  const active = to === SIMULATED_ACTIVE_PATH;
+  return (
+    <button
+      className={cn(
+        "flex items-center gap-1 rounded-md px-2 py-1.5 text-xs hover:bg-muted",
+        active && "bg-primary/10 text-primary font-semibold",
+      )}
+    >
+      <Icon className="size-3.5" />
+      {label}
+    </button>
+  );
+}
+
+function TopBarItem({ group }: { group: NavGroup }) {
+  const Icon = group.Icon;
+  const hasActive = group.items.some((i) => i.to === SIMULATED_ACTIVE_PATH);
+  return (
+    <button
+      className={cn(
+        "flex items-center gap-1 rounded-md px-2 py-1.5 text-xs hover:bg-muted",
+        hasActive && "bg-primary/10 text-primary font-semibold",
+      )}
+    >
+      <Icon className="size-3.5" />
+      {group.label}
+      <ChevronDownIcon className="size-3" />
+    </button>
+  );
+}
+
+function TopBarMore({ secondary }: { secondary: NavGroup[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs hover:bg-muted"
+      >
+        <MoreHorizontalIcon className="size-3.5" />
+        더보기
+        <ChevronDownIcon className="size-3" />
+      </button>
+      {open ? (
+        <div className="border-border bg-card absolute top-full left-0 z-10 mt-1 w-[260px] rounded-xl border p-2 shadow-lg">
+          {secondary.map((g) => (
+            <div key={g.id} className="mb-2">
+              <p className="text-muted-foreground px-1 text-[10px] font-semibold">
+                {g.label}
+              </p>
+              <div className="flex flex-col gap-0.5 pl-1">
+                {g.items.map((it) => (
+                  <a
+                    key={it.to}
+                    href="#"
+                    className="text-muted-foreground hover:bg-muted hover:text-foreground rounded px-1.5 py-1 text-xs"
+                  >
+                    {it.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
