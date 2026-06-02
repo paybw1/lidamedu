@@ -1,7 +1,19 @@
-// 학생 데스크톱 사이드바 — 좌측 고정. 미리보기(/admin/nav-preview) 디자인 기반.
-// 핵심 그룹 + 가끔 그룹 + Flat. active 표시, 펼침/접힘, staff 분기.
+// 학생 데스크톱 사이드바 — A안-아이콘 확정안.
+//
+// 동작:
+//   - 펼침 (260px): 아이콘 + 라벨, 그룹 펼침 토글, subjects 1차/2차 2섹션
+//   - 접힘 (60px):  아이콘만. hover 시 옆에 flyout panel (라벨 / items / subjects 풀버전)
+//                  접힘 상태에서도 active 표시 유지.
+//   - 토글 버튼: 사이드바 헤더 우측. 클릭으로 펼침↔접힘.
+//   - 상태 persist: localStorage("studentSidebarCollapsed").
+// 모바일(md 미만): 자체 숨김. §3 모바일 하단탭이 별도.
 
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -15,13 +27,31 @@ import {
   useNavLayout,
 } from "~/core/lib/nav-groups";
 
+const STORAGE_KEY = "studentSidebarCollapsed";
+
 export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
   const { core, secondary } = useNavLayout();
   const location = useLocation();
   const path = location.pathname;
   const search = location.search;
 
-  // 그룹별 펼침 상태 — 초기: 현재 경로가 속한 그룹은 자동 펼침 + subjects/aids 기본 펼침.
+  // 접힘/펼침 — 초기 false(펼침), 클라에서만 localStorage 동기화 (SSR flash 1tick).
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setCollapsed(window.localStorage.getItem(STORAGE_KEY) === "1");
+  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+      }
+      return next;
+    });
+  };
+
+  // 그룹 펼침 상태 — 펼침 모드용. 초기: active 그룹 + subjects/aids 기본 펼침.
   const initialOpen = useMemo(() => {
     const s = new Set<string>(["subjects", "aids"]);
     for (const g of [...core, ...secondary]) {
@@ -31,7 +61,6 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
   }, [path, search, core, secondary]);
   const [open, setOpen] = useState<Set<string>>(initialOpen);
 
-  // 경로 변경 시 active 그룹 자동 펼침(닫혀 있던 것도 펼침).
   useEffect(() => {
     setOpen((prev) => {
       const next = new Set(prev);
@@ -53,70 +82,118 @@ export function StudentSidebar({ isStaff }: { isStaff: boolean }) {
   return (
     <aside
       data-testid="student-sidebar"
-      className="border-border bg-card sticky top-0 hidden h-screen w-[260px] shrink-0 overflow-y-auto border-r p-3 md:block"
+      data-collapsed={collapsed}
+      className={cn(
+        "border-border bg-card sticky top-0 hidden h-screen shrink-0 overflow-y-auto overflow-x-visible border-r transition-[width] duration-150 ease-out md:block",
+        collapsed ? "w-[60px]" : "w-[260px]",
+      )}
     >
-      <SidebarSection label="핵심" />
-      <SidebarFlat
-        Icon={FLAT_HOME.Icon}
-        label={FLAT_HOME.label}
-        to={FLAT_HOME.to}
-        path={path}
-        search={search}
-      />
-      {core.map((g) =>
-        g.id === "subjects" ? (
-          <SidebarSubjects
+      {/* 헤더 — 토글 버튼 */}
+      <div
+        className={cn(
+          "border-border flex items-center border-b p-2",
+          collapsed ? "justify-center" : "justify-end",
+        )}
+      >
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          className="hover:bg-muted text-muted-foreground rounded-md p-1 transition-colors"
+        >
+          {collapsed ? (
+            <PanelLeftOpenIcon className="size-4" />
+          ) : (
+            <PanelLeftCloseIcon className="size-4" />
+          )}
+        </button>
+      </div>
+
+      <div className={cn(collapsed ? "p-2" : "p-3")}>
+        {/* 핵심 */}
+        {!collapsed && <SidebarSection label="핵심" />}
+        <Row
+          collapsed={collapsed}
+          kind="flat"
+          Icon={FLAT_HOME.Icon}
+          label={FLAT_HOME.label}
+          to={FLAT_HOME.to}
+          path={path}
+          search={search}
+        />
+        {core.map((g) => {
+          if (g.id === "subjects") {
+            return (
+              <SubjectsRow
+                key={g.id}
+                collapsed={collapsed}
+                open={open.has("subjects")}
+                onToggle={() => toggle("subjects")}
+                path={path}
+                search={search}
+              />
+            );
+          }
+          if (g.items.length === 1) {
+            return (
+              <Row
+                key={g.id}
+                collapsed={collapsed}
+                kind="flat"
+                Icon={g.Icon}
+                label={g.label}
+                to={g.items[0].to}
+                path={path}
+                search={search}
+              />
+            );
+          }
+          return (
+            <Row
+              key={g.id}
+              collapsed={collapsed}
+              kind="group"
+              group={g}
+              open={open.has(g.id)}
+              onToggle={() => toggle(g.id)}
+              path={path}
+              search={search}
+            />
+          );
+        })}
+
+        {/* 가끔 */}
+        {!collapsed && <SidebarSection label="가끔" />}
+        {secondary.map((g) => (
+          <Row
             key={g.id}
-            open={open.has("subjects")}
-            onToggle={() => toggle("subjects")}
-            path={path}
-            search={search}
-          />
-        ) : g.items.length === 1 ? (
-          <SidebarFlat
-            key={g.id}
-            Icon={g.Icon}
-            label={g.label}
-            to={g.items[0].to}
-            path={path}
-            search={search}
-          />
-        ) : (
-          <SidebarGroup
-            key={g.id}
+            collapsed={collapsed}
+            kind="group"
             group={g}
             open={open.has(g.id)}
             onToggle={() => toggle(g.id)}
             path={path}
             search={search}
           />
-        ),
-      )}
+        ))}
 
-      <SidebarSection label="가끔" />
-      {secondary.map((g) => (
-        <SidebarGroup
-          key={g.id}
-          group={g}
-          open={open.has(g.id)}
-          onToggle={() => toggle(g.id)}
-          path={path}
-          search={search}
-        />
-      ))}
-
-      {isStaff ? (
-        <>
-          <SidebarSection label="관리" />
-          <SidebarFlat
-            Icon={FLAT_ADMIN.Icon}
-            label={FLAT_ADMIN.label}
-            to={FLAT_ADMIN.to}
-            path={path}
-            search={search}
-          />
-        </>
-      ) : null}
+        {/* 관리 (staff) */}
+        {isStaff ? (
+          <>
+            {!collapsed && <SidebarSection label="관리" />}
+            <Row
+              collapsed={collapsed}
+              kind="flat"
+              Icon={FLAT_ADMIN.Icon}
+              label={FLAT_ADMIN.label}
+              to={FLAT_ADMIN.to}
+              path={path}
+              search={search}
+            />
+          </>
+        ) : null}
+      </div>
     </aside>
   );
 }
@@ -129,14 +206,61 @@ function SidebarSection({ label }: { label: string }) {
   );
 }
 
-interface FlatProps {
-  Icon: NavGroup["Icon"];
-  label: string;
-  to: string;
+// ── Row — flat / group 통합. collapsed 분기 ────────────────────────────────
+
+interface BaseRowProps {
+  collapsed: boolean;
   path: string;
   search: string;
 }
-function SidebarFlat({ Icon, label, to, path, search }: FlatProps) {
+interface FlatRowProps extends BaseRowProps {
+  kind: "flat";
+  Icon: NavGroup["Icon"];
+  label: string;
+  to: string;
+}
+interface GroupRowProps extends BaseRowProps {
+  kind: "group";
+  group: NavGroup;
+  open: boolean;
+  onToggle: () => void;
+}
+type RowProps = FlatRowProps | GroupRowProps;
+
+function Row(props: RowProps) {
+  if (props.collapsed) {
+    return props.kind === "flat" ? (
+      <FlatIcon
+        Icon={props.Icon}
+        label={props.label}
+        to={props.to}
+        path={props.path}
+        search={props.search}
+      />
+    ) : (
+      <GroupIcon
+        group={props.group}
+        path={props.path}
+        search={props.search}
+      />
+    );
+  }
+  return props.kind === "flat" ? (
+    <FlatFull {...props} />
+  ) : (
+    <GroupFull {...props} />
+  );
+}
+
+// ── 펼침(full) — 라벨 + 아이콘 ─────────────────────────────────────────────
+
+function FlatFull({
+  Icon,
+  label,
+  to,
+  path,
+  search,
+}: Omit<FlatRowProps, "kind" | "collapsed">) {
   const active = isNavActive(to, path, search);
   return (
     <Link
@@ -156,14 +280,13 @@ function SidebarFlat({ Icon, label, to, path, search }: FlatProps) {
   );
 }
 
-interface GroupProps {
-  group: NavGroup;
-  open: boolean;
-  onToggle: () => void;
-  path: string;
-  search: string;
-}
-function SidebarGroup({ group, open, onToggle, path, search }: GroupProps) {
+function GroupFull({
+  group,
+  open,
+  onToggle,
+  path,
+  search,
+}: Omit<GroupRowProps, "kind" | "collapsed">) {
   const Icon = group.Icon;
   const hasActive = group.items.some((i) => isNavActive(i.to, path, search));
   return (
@@ -212,16 +335,111 @@ function SidebarGroup({ group, open, onToggle, path, search }: GroupProps) {
   );
 }
 
-interface SubjectsProps {
+// ── 접힘(collapsed) — 아이콘 only + hover flyout ───────────────────────────
+
+function FlatIcon({
+  Icon,
+  label,
+  to,
+  path,
+  search,
+}: Omit<FlatRowProps, "kind" | "collapsed">) {
+  const active = isNavActive(to, path, search);
+  return (
+    <div className="group relative my-0.5">
+      <Link
+        to={to}
+        viewTransition
+        prefetch="intent"
+        className={cn(
+          "flex h-9 items-center justify-center rounded-lg transition-colors",
+          active
+            ? "bg-primary/10 text-primary"
+            : "text-foreground/80 hover:bg-muted",
+        )}
+        aria-label={label}
+      >
+        <Icon className="size-5" />
+      </Link>
+      <Flyout>{label}</Flyout>
+    </div>
+  );
+}
+
+function GroupIcon({
+  group,
+  path,
+  search,
+}: {
+  group: NavGroup;
+  path: string;
+  search: string;
+}) {
+  const Icon = group.Icon;
+  const hasActive = group.items.some((i) => isNavActive(i.to, path, search));
+  return (
+    <div className="group relative my-0.5">
+      <div
+        className={cn(
+          "flex h-9 items-center justify-center rounded-lg transition-colors hover:bg-muted",
+          hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
+        )}
+        aria-label={group.label}
+      >
+        <Icon className="size-5" />
+      </div>
+      <FlyoutPanel title={group.label}>
+        {group.items.map((it) => {
+          const active = isNavActive(it.to, path, search);
+          return (
+            <Link
+              key={it.to}
+              to={it.to}
+              viewTransition
+              prefetch="intent"
+              className={cn(
+                "rounded-md px-2 py-1 text-xs transition-colors",
+                active
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {it.label}
+            </Link>
+          );
+        })}
+      </FlyoutPanel>
+    </div>
+  );
+}
+
+// ── subjects — 펼침/접힘 양쪽 ────────────────────────────────────────────
+
+interface SubjectsRowProps {
+  collapsed: boolean;
   open: boolean;
   onToggle: () => void;
   path: string;
   search: string;
 }
-function SidebarSubjects({ open, onToggle, path, search }: SubjectsProps) {
-  // subject 칩 active 체크 — pathname 이 /subjects/<href 의 마지막 segment> 로 시작하는지.
-  const isChipActive = (href: string): boolean =>
-    isNavActive(href, path, search);
+function SubjectsRow({
+  collapsed,
+  open,
+  onToggle,
+  path,
+  search,
+}: SubjectsRowProps) {
+  if (collapsed) return <SubjectsIcon path={path} search={search} />;
+  return <SubjectsFull open={open} onToggle={onToggle} path={path} search={search} />;
+}
+
+function SubjectsFull({
+  open,
+  onToggle,
+  path,
+  search,
+}: Omit<SubjectsRowProps, "collapsed">) {
+  const isChipActive = (href: string): boolean => isNavActive(href, path, search);
 
   return (
     <div>
@@ -255,25 +473,22 @@ function SidebarSubjects({ open, onToggle, path, search }: SubjectsProps) {
                     {group.label}
                   </p>
                   <div className="flex flex-col gap-0.5 pl-2">
-                    {group.items.map((item) => {
-                      const active = isChipActive(item.href);
-                      return (
-                        <Link
-                          key={`${section.exam}-${group.id}-${item.href}`}
-                          to={item.href}
-                          viewTransition
-                          prefetch="intent"
-                          className={cn(
-                            "rounded-md px-1.5 py-0.5 text-xs transition-colors",
-                            active
-                              ? "bg-primary/10 text-primary font-semibold"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                          )}
-                        >
-                          {item.name}
-                        </Link>
-                      );
-                    })}
+                    {group.items.map((item) => (
+                      <Link
+                        key={`${section.exam}-${group.id}-${item.href}`}
+                        to={item.href}
+                        viewTransition
+                        prefetch="intent"
+                        className={cn(
+                          "rounded-md px-1.5 py-0.5 text-xs transition-colors",
+                          isChipActive(item.href)
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -285,7 +500,99 @@ function SidebarSubjects({ open, onToggle, path, search }: SubjectsProps) {
   );
 }
 
-// SidebarSubjects 의 헤더 아이콘 — NAV_GROUP_POOL 의 subjects.Icon 와 동일.
-// 직접 import 하면 순환 우려 방지 위해 별도 상수.
+function SubjectsIcon({ path, search }: { path: string; search: string }) {
+  const Icon = SUBJECT_ICON;
+  const hasActive = SUBJECT_SECTIONS.some((s) =>
+    s.groups.some((g) => g.items.some((i) => isNavActive(i.href, path, search))),
+  );
+  return (
+    <div className="group relative my-0.5">
+      <div
+        className={cn(
+          "flex h-9 items-center justify-center rounded-lg transition-colors hover:bg-muted",
+          hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
+        )}
+        aria-label="학습과목"
+      >
+        <Icon className="size-5" />
+      </div>
+      <FlyoutPanel title="학습과목" widthClass="w-[280px]">
+        {SUBJECT_SECTIONS.map((section) => (
+          <div key={section.exam} className="mb-2">
+            <p className="text-primary mt-1 mb-1 text-[9px] font-bold tracking-widest uppercase">
+              {section.label}
+            </p>
+            {section.groups.map((group) => (
+              <div key={`${section.exam}-${group.id}`} className="mb-1.5">
+                <p className="text-muted-foreground px-1 text-[10px] font-semibold">
+                  {group.label}
+                </p>
+                <div className="flex flex-col gap-0.5 pl-2">
+                  {group.items.map((item) => {
+                    const active = isNavActive(item.href, path, search);
+                    return (
+                      <Link
+                        key={`${section.exam}-${group.id}-${item.href}`}
+                        to={item.href}
+                        viewTransition
+                        prefetch="intent"
+                        className={cn(
+                          "rounded-md px-1.5 py-0.5 text-xs transition-colors",
+                          active
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </FlyoutPanel>
+    </div>
+  );
+}
+
+// ── Flyout (접힘 모드 hover 툴팁/패널) ────────────────────────────────────
+
+/** 단순 라벨 툴팁 — 아이콘만 있을 때 라벨 표시. */
+function Flyout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border-border bg-popover text-popover-foreground pointer-events-none absolute top-1/2 left-full z-50 ml-2 -translate-y-1/2 rounded-md border px-2 py-1 text-xs whitespace-nowrap opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+      {children}
+    </div>
+  );
+}
+
+/** 그룹 items / subjects 풀버전 panel — 아이콘 hover 시 옆에 펼침. */
+function FlyoutPanel({
+  title,
+  children,
+  widthClass = "w-[200px]",
+}: {
+  title: string;
+  children: React.ReactNode;
+  widthClass?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-border bg-popover absolute top-0 left-full z-50 ml-2 hidden flex-col gap-0.5 rounded-md border p-2 shadow-lg group-hover:flex",
+        widthClass,
+      )}
+    >
+      <p className="text-muted-foreground border-border mb-1 border-b pb-1 px-1 text-[10px] font-bold tracking-widest uppercase">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+// SubjectsIcon/SubjectsFull 공용 — 순환 import 우려 방지 위해 별도 상수.
 import { BookOpenIcon } from "lucide-react";
 const SUBJECT_ICON = BookOpenIcon;
