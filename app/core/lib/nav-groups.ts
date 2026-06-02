@@ -95,6 +95,7 @@ export const NAV_GROUP_POOL = {
     items: [
       { label: "1차 모의고사", to: "/latest/mcq?kind=mock" },
       { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
+      { label: "판례 쟁점훈련", to: "/case-training" },
       { label: "응시 결과", to: "/me/exam-results" },
     ],
   },
