@@ -14,7 +14,7 @@ import {
   notifyCapReachedOnce,
   recordAiUsage,
 } from "~/features/gs/lib/usage-tracker.server";
-import { getGsRound, listGsQuestions } from "~/features/gs/queries.server";
+import { getGsRound } from "~/features/gs/queries.server";
 import {
   getMaxOrderIndex,
   insertDraftIssuesFromAi,
