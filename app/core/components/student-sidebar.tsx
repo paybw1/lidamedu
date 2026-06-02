@@ -250,11 +250,11 @@ function SidebarSubjects({ open, onToggle, path, search }: SubjectsProps) {
                 {section.label}
               </p>
               {section.groups.map((group) => (
-                <div key={`${section.exam}-${group.id}`} className="mb-1">
+                <div key={`${section.exam}-${group.id}`} className="mb-1.5">
                   <p className="text-muted-foreground px-1 text-[10px] font-semibold">
                     {group.label}
                   </p>
-                  <div className="flex flex-wrap gap-1 px-1 py-0.5">
+                  <div className="flex flex-col gap-0.5 pl-2">
                     {group.items.map((item) => {
                       const active = isChipActive(item.href);
                       return (
@@ -264,10 +264,10 @@ function SidebarSubjects({ open, onToggle, path, search }: SubjectsProps) {
                           viewTransition
                           prefetch="intent"
                           className={cn(
-                            "rounded-md border px-1.5 py-0.5 text-[10px] transition-colors",
+                            "rounded-md px-1.5 py-0.5 text-xs transition-colors",
                             active
-                              ? "bg-primary/10 text-primary border-primary font-semibold"
-                              : "border-border bg-muted/30 hover:border-primary hover:text-primary",
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
                           )}
                         >
                           {item.name}
