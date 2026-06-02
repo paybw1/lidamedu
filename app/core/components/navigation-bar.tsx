@@ -187,7 +187,11 @@ function NavModeToggleItem() {
     const next = mode === "topbar" ? "sidebar" : "topbar";
     if (typeof window !== "undefined") {
       window.localStorage.setItem("studentNavMode", next);
-      // cookie 도 함께 — SSR loader 분기용. 만료 30일.
+      // 사이드바로 전환 시 기본 접힘(아이콘 모드) — 처음 진입 시 본문 풀폭 확보.
+      if (next === "sidebar") {
+        window.localStorage.setItem("studentSidebarCollapsed", "1");
+      }
+      // cookie — SSR loader 분기용. 만료 30일.
       document.cookie = `studentNavMode=${next}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
       window.location.reload();
     }

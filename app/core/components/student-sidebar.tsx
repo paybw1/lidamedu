@@ -271,17 +271,12 @@ export function StudentSidebar({
         ) : null}
       </div>
 
-      {/* ── 하단 — 검색·인박스·다크모드 ── */}
-      <div
-        className={cn(
-          "border-border border-t p-2",
-          collapsed ? "flex flex-col items-center gap-1" : "",
-        )}
-      >
+      {/* ── 하단 — 검색·인박스·다크모드 (항상 세로 stack) ── */}
+      <div className="border-border flex flex-col items-center gap-1 border-t p-2">
         <RightTools
           inboxUnread={inboxUnread}
           inboxHref={inboxHref}
-          orientation={collapsed ? "vertical" : "horizontal"}
+          orientation="vertical"
         />
       </div>
     </aside>
