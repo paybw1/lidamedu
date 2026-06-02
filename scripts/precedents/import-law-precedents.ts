@@ -45,6 +45,7 @@ import {
   verifyTripleMatch,
 } from "../../app/features/cases/lib/case-number";
 import { normalizeOfficialText } from "../../app/features/cases/lib/normalize-official-text";
+import { renderOfficialTextPdf } from "../../app/features/cases/lib/render-official-text-pdf.server";
 
 loadEnv();
 
@@ -308,9 +309,73 @@ async function processOne(input: string, idx: number, n: number, dbIndex: CasesI
     serialId,
     existingHasOfficialText: !!dbRow.official_text_md,
     textLen: officialNormalized.length, previewHead,
-    apply: { official_text_md: officialNormalized, law_api_serial_id: serialId },
+    apply: {
+      official_text_md: officialNormalized,
+      law_api_serial_id: serialId,
+      pdfMeta: {
+        caseNumber: inputToken,
+        caseTitle: dbRow.case_title,
+        court: dbRow.court,
+        decidedAt: dbRow.decided_at,
+      },
+    },
     elapsedMs: Date.now() - ts0,
   };
+}
+
+// ── pdf upload ─────────────────────────────────────────────────────────────
+interface PdfApplyOutcome {
+  status: "ok" | "skipped_unrenderable" | "error";
+  path?: string;
+  unrenderable?: ReadonlyArray<{ char: string; codePoint: number; offset: number }>;
+  errorMsg?: string;
+  pageCount?: number;
+  bytes?: number;
+}
+
+async function generateAndUploadPdf(
+  caseId: string,
+  fullText: string,
+  meta: {
+    caseNumber: string;
+    caseTitle: string | null;
+    court: string | null;
+    decidedAt: string | null;
+  },
+): Promise<PdfApplyOutcome> {
+  try {
+    const r = await renderOfficialTextPdf({
+      caseNumber: meta.caseNumber,
+      caseTitle: meta.caseTitle,
+      court: meta.court,
+      decidedAt: meta.decidedAt,
+      fullText,
+    });
+    if (r.unrenderable.length > 0) {
+      return { status: "skipped_unrenderable", unrenderable: r.unrenderable };
+    }
+    const path = `${caseId}.pdf`; // case_id 기반 — Storage 키는 ASCII 만. 덮어쓰기 멱등.
+    const { error } = await supa.storage
+      .from("case-fulltext")
+      .upload(path, r.pdfBytes, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+    if (error) return { status: "error", errorMsg: error.message };
+
+    const { error: upErr } = await supa
+      .from("cases")
+      .update({
+        official_text_pdf_path: path,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("case_id", caseId);
+    if (upErr) return { status: "error", errorMsg: upErr.message };
+
+    return { status: "ok", path, pageCount: r.pageCount, bytes: r.pdfBytes.length };
+  } catch (e) {
+    return { status: "error", errorMsg: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 // ── apply ──────────────────────────────────────────────────────────────────
@@ -370,7 +435,16 @@ async function main() {
     existingHasOfficialText: boolean;
     textLen: number;
     previewHead: string;
-    apply: { official_text_md: string; law_api_serial_id: string };
+    apply: {
+      official_text_md: string;
+      law_api_serial_id: string;
+      pdfMeta: {
+        caseNumber: string;
+        caseTitle: string | null;
+        court: string | null;
+        decidedAt: string | null;
+      };
+    };
     elapsedMs: number;
   };
   type NewCandidateItem = {
@@ -438,6 +512,8 @@ async function main() {
 
   process.stdout.write(`\n=== APPLY (upgrade ${upgrade.length}건) ===\n`);
   let ok = 0, ng = 0;
+  let pdfOk = 0, pdfSkip = 0, pdfErr = 0;
+  const pdfSkipList: Array<{ caseNumber: string; sampleChars: string[]; total: number }> = [];
   for (const u of upgrade) {
     try {
       await applyUpgrade(u);
@@ -445,6 +521,26 @@ async function main() {
       state.processed[u.inputToken] = { status: "upgrade", caseId: u.caseId, serialId: u.serialId, at: new Date().toISOString() };
       ok++;
       process.stdout.write(`  ✓ ${u.inputToken} → ${u.caseId.slice(0, 8)}…\n`);
+
+      // PDF 생성·업로드 — 텍스트 적재 직후 함께.
+      const pdfRes = await generateAndUploadPdf(
+        u.caseId,
+        u.apply.official_text_md,
+        u.apply.pdfMeta,
+      );
+      if (pdfRes.status === "ok") {
+        pdfOk++;
+        process.stdout.write(`     PDF ✓  ${pdfRes.pageCount}p, ${pdfRes.bytes}B  → case-fulltext/${pdfRes.path}\n`);
+      } else if (pdfRes.status === "skipped_unrenderable") {
+        pdfSkip++;
+        const uniq = new Set(pdfRes.unrenderable?.map((u) => u.char) ?? []);
+        const sample = [...uniq].slice(0, 8);
+        pdfSkipList.push({ caseNumber: u.inputToken, sampleChars: sample, total: pdfRes.unrenderable?.length ?? 0 });
+        process.stdout.write(`     PDF ⚠ skip — 미커버 ${pdfRes.unrenderable?.length}자 (예: ${sample.join(" ")})\n`);
+      } else {
+        pdfErr++;
+        process.stdout.write(`     PDF ✗  ${pdfRes.errorMsg}\n`);
+      }
     } catch (e) {
       ng++;
       process.stdout.write(`  ✗ ${u.inputToken} → ${e instanceof Error ? e.message : String(e)}\n`);
@@ -452,6 +548,13 @@ async function main() {
   }
   saveState(state);
   process.stdout.write(`\nupgrade 결과: ${ok} 성공 / ${ng} 실패\n`);
+  process.stdout.write(`PDF 결과: ${pdfOk} ok / ${pdfSkip} skip(미커버) / ${pdfErr} err\n`);
+  if (pdfSkipList.length > 0) {
+    process.stdout.write(`\n⚠ PDF 미커버로 skip된 판례 — Noto Serif CJK KR 등 대체 폰트 검토 필요:\n`);
+    for (const s of pdfSkipList) {
+      process.stdout.write(`   ${s.caseNumber}  미커버 ${s.total}자 — ${s.sampleChars.join(" ")}\n`);
+    }
+  }
 
   if (INSERT_NEW && newCandidate.length > 0) {
     process.stdout.write(`\n[insert-new] 신규 ${newCandidate.length}건 insert 는 별도 검토 필요 — 이번 turn 에서는 보고만. 사용자 확인 후 별도 스크립트로 진행.\n`);

@@ -109,6 +109,7 @@ export function CaseBody({
   highlights,
   viewerIsStaff = false,
   prevNext = null,
+  officialPdfUrl = null,
 }: {
   kase: CaseDetail;
   examProblems: ExamProblemRef[];
@@ -122,6 +123,8 @@ export function CaseBody({
   viewerIsStaff?: boolean;
   /** 형제 case ←/→ 이동. null 이면 헤더에서 prev/next 영역 미노출. */
   prevNext?: CasePrevNextData | null;
+  /** 공식 전문 PDF (signed URL, 1h). null 이면 버튼 미노출. */
+  officialPdfUrl?: string | null;
 }) {
   const enableHighlights = highlights !== undefined;
   // staff "수정" 버튼 — 현재 경로(학생 판례 뷰어 / 학습정보 뷰어 등)를 returnTo 로 전달해
@@ -237,6 +240,20 @@ export function CaseBody({
             anchorId={kase.caseId}
             seed={`${kase.caseNumber} 판례의 요지와 쟁점을 정리해줘.`}
           />
+
+          {/* 공식 전문 PDF — 국가법령정보 OPEN API 자동 생성. 모든 사용자 노출. */}
+          {officialPdfUrl ? (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+            >
+              <a href={officialPdfUrl} target="_blank" rel="noopener noreferrer">
+                <FileTextIcon className="size-3" /> 전문 PDF
+              </a>
+            </Button>
+          ) : null}
 
           {/* 운영자 — 판례 수정 + 삭제 (staff 전용, feat-7-005) */}
           {canEditCase ? (

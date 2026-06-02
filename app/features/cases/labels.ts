@@ -139,6 +139,8 @@ export interface CaseDetail extends CaseListItem {
   // 이 위치로 자동 펼침 + 하이라이트. node 가 set 되면 node 우선, 아니면 article.
   primaryArticleId: string | null;
   primaryNodeId: string | null;
+  /** 국가법령정보 OPEN API 자동 생성 PDF — Storage 경로. signed URL 발급용. */
+  officialTextPdfPath: string | null;
 }
 
 // feat-4-A-214 관련논문/기사 링크.

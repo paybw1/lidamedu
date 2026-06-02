@@ -67,7 +67,38 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // §4 — 빠뜨린 논점 deep link 용 ref lookup.
   const refLinks = await getRefLinksForIssues(client, masterIssues);
 
-  return { ...ctx, masterIssues, refLinks };
+  // 판례 전문 PDF — 서버 게이트. 자기채점 완료(self-checked) 단계에서만 signed URL 발급.
+  // 그 외 단계에선 응답에 URL 자체 미포함 → 클라이언트가 받을 방법 없음(쟁점 노출 방지).
+  const phase: "blank" | "in-progress" | "submitted" | "self-checked" =
+    !ctx.myAttempt
+      ? "blank"
+      : ctx.myAttempt.selfCheckedAt
+        ? "self-checked"
+        : ctx.myAttempt.submittedAt
+          ? "submitted"
+          : "in-progress";
+  let casePdfUrls: Record<string, string> = {};
+  if (phase === "self-checked") {
+    const caseIds = Object.values(refLinks)
+      .map((l) => l.case?.caseId)
+      .filter((v): v is string => !!v);
+    if (caseIds.length > 0) {
+      const { default: adminClient } = await import("~/core/lib/supa-admin-client.server");
+      const { data: rows } = await adminClient
+        .from("cases")
+        .select("case_id, official_text_pdf_path")
+        .in("case_id", caseIds);
+      for (const r of rows ?? []) {
+        if (!r.official_text_pdf_path) continue;
+        const { data: signed } = await adminClient.storage
+          .from("case-fulltext")
+          .createSignedUrl(r.official_text_pdf_path, 3600);
+        if (signed?.signedUrl) casePdfUrls[r.case_id] = signed.signedUrl;
+      }
+    }
+  }
+
+  return { ...ctx, masterIssues, refLinks, casePdfUrls };
 }
 
 type Phase = "blank" | "in-progress" | "submitted" | "self-checked";
@@ -80,7 +111,7 @@ function determinePhase(attempt: IssueAttempt | null): Phase {
 }
 
 export default function GsIssueTake({ loaderData }: Route.ComponentProps) {
-  const { question, round, myAttempt, masterIssues, refLinks } = loaderData;
+  const { question, round, myAttempt, masterIssues, refLinks, casePdfUrls } = loaderData;
   const phase = determinePhase(myAttempt);
 
   return (
@@ -120,6 +151,7 @@ export default function GsIssueTake({ loaderData }: Route.ComponentProps) {
           gsQuestionId={question.questionId}
           masterIssues={masterIssues}
           refLinks={refLinks}
+          casePdfUrls={casePdfUrls}
           roundId={round.roundId}
         />
       )}
@@ -503,12 +535,15 @@ function DoneStage({
   gsQuestionId,
   masterIssues,
   refLinks,
+  casePdfUrls,
   roundId,
 }: {
   attempt: IssueAttempt;
   gsQuestionId: string;
   masterIssues: QuestionIssue[];
   refLinks: Record<string, IssueRefLink>;
+  /** caseId → signed URL (1h). 서버에서 self-checked 단계에만 채워서 보냄. */
+  casePdfUrls: Record<string, string>;
   roundId: string;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -662,6 +697,16 @@ function DoneStage({
                         >
                           {link.case.caseTitle ?? "판례"}
                         </Link>
+                      ) : null}
+                      {link.case && casePdfUrls[link.case.caseId] ? (
+                        <a
+                          href={casePdfUrls[link.case.caseId]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline text-xs font-semibold"
+                        >
+                          📄 전문 PDF
+                        </a>
                       ) : null}
                     </div>
                   ) : null}

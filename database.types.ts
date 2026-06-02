@@ -1286,6 +1286,7 @@ export type Database = {
           law_api_serial_id: string | null
           nickname: string | null
           official_text_md: string | null
+          official_text_pdf_path: string | null
           primary_article_id: string | null
           primary_node_id: string | null
           reasoning_md: string | null
@@ -1318,6 +1319,7 @@ export type Database = {
           law_api_serial_id?: string | null
           nickname?: string | null
           official_text_md?: string | null
+          official_text_pdf_path?: string | null
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
@@ -1350,6 +1352,7 @@ export type Database = {
           law_api_serial_id?: string | null
           nickname?: string | null
           official_text_md?: string | null
+          official_text_pdf_path?: string | null
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null

@@ -237,6 +237,17 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     placementMaps.caseSetByNodeId,
   );
 
+  // 공식 전문 PDF — official_text_pdf_path 있으면 service_role 로 signed URL(1h) 발급.
+  // anon 직접 다운로드는 storage RLS 가 차단(verify-pdf-storage 검증) — signed URL 만 노출.
+  let officialPdfUrl: string | null = null;
+  if (kase.officialTextPdfPath) {
+    const { default: adminClient } = await import("~/core/lib/supa-admin-client.server");
+    const { data: signed } = await adminClient.storage
+      .from("case-fulltext")
+      .createSignedUrl(kase.officialTextPdfPath, 3600);
+    officialPdfUrl = signed?.signedUrl ?? null;
+  }
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
@@ -261,6 +272,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     currentUserId: user.id,
     lectureResources,
     siblings,
+    officialPdfUrl,
   };
 }
 
@@ -494,6 +506,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 canEditCase={canEditCase}
                 canEditReferences={canEditReferences}
                 prevNext={prevNext}
+                officialPdfUrl={loaderData.officialPdfUrl}
               />
             </main>
 
