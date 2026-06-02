@@ -12,13 +12,7 @@
 //   - 메뉴 항목 클릭 시 자동 접힘 (사용자 학습 동선 방해 최소)
 //   - 모바일(md 미만) 자체 숨김 — StudentBottomBar 가 별도 담당
 
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
-  PanelTopOpenIcon,
-} from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, PanelTopOpenIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -123,68 +117,39 @@ export function StudentSidebar({
       data-testid="student-sidebar"
       data-collapsed={collapsed}
       className={cn(
-        "border-border bg-card sticky top-0 hidden h-screen shrink-0 overflow-y-auto overflow-x-visible border-r transition-[width] duration-150 ease-out md:flex md:flex-col",
-        collapsed ? "w-[60px]" : "w-[260px]",
+        "border-border bg-card sticky top-0 hidden h-screen shrink-0 overflow-x-hidden overflow-y-auto border-r transition-[width] duration-150 ease-out md:flex md:flex-col",
+        collapsed ? "w-[60px]" : "w-[220px]",
       )}
     >
-      {/* ── 헤더 — 로고 + 토글 ── */}
-      <div
-        className={cn(
-          "border-border flex items-center gap-2 border-b p-2",
-          collapsed ? "justify-center" : "justify-between",
-        )}
-      >
-        <Link
-          to="/"
-          aria-label="리담변리사학원 홈"
-          className="flex items-center gap-2 shrink-0"
+      {/* ── 로고 = 접힘/펼침 토글 ── 별도 토글 바 없음 ── */}
+      <div className="border-border flex justify-center border-b p-2">
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          className="hover:opacity-80 transition-opacity flex shrink-0 items-center"
         >
-          <img
-            src="/lidam-logo.png"
-            alt="리담변리사학원"
-            className="h-7 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
-          />
-          {!collapsed && (
-            <span className="text-sm font-semibold tracking-tight">
-              리담변리사학원
-            </span>
+          {collapsed ? (
+            <img
+              src="/favicon.png"
+              alt="리담"
+              className="size-8 shrink-0 object-contain"
+            />
+          ) : (
+            <img
+              src="/lidam-logo.png"
+              alt="리담변리사학원"
+              className="h-7 w-auto max-h-7 object-contain dark:[filter:invert(1)_hue-rotate(180deg)]"
+            />
           )}
-        </Link>
-        {!collapsed && (
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            title="사이드바 접기"
-            aria-label="사이드바 접기"
-            className="hover:bg-muted text-muted-foreground rounded-md p-1"
-          >
-            <PanelLeftCloseIcon className="size-4" />
-          </button>
-        )}
+        </button>
       </div>
-      {/* 접힘 모드 — 토글 버튼은 로고 아래 별도 배치 */}
-      {collapsed && (
-        <div className="flex justify-center p-1">
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            title="사이드바 펼치기"
-            aria-label="사이드바 펼치기"
-            className="hover:bg-muted text-muted-foreground rounded-md p-1"
-          >
-            <PanelLeftOpenIcon className="size-4" />
-          </button>
-        </div>
-      )}
 
-      {/* ── 계정 메뉴 — 로고 바로 아래 ── */}
-      <div
-        className={cn(
-          "border-border flex items-center border-b p-2",
-          collapsed ? "justify-center" : "px-3",
-        )}
-      >
+      {/* ── 계정 메뉴 — 아바타만, 이름 숨김 ── */}
+      <div className="border-border flex justify-center border-b p-2">
         <UserMenu
+          hideName
           name={user.name}
           email={user.email}
           avatarUrl={user.avatarUrl}

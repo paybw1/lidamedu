@@ -111,10 +111,12 @@ const trailingFlats: SimpleLink[] = [
 ];
 
 export function UserMenu({
+  hideName = false,
   name,
   email,
   avatarUrl,
 }: {
+  hideName?: boolean;
   name: string;
   email?: string;
   avatarUrl?: string | null;
@@ -132,9 +134,11 @@ export function UserMenu({
               <UserIcon className="size-4" />
             </AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-[12rem] truncate text-sm font-medium sm:inline">
-            {name}
-          </span>
+          {!hideName && (
+            <span className="hidden max-w-[12rem] truncate text-sm font-medium sm:inline">
+              {name}
+            </span>
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
