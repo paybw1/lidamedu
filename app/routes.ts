@@ -171,6 +171,14 @@ export default [
       route("/issue-attempt", "features/gs/api/issue-attempt.tsx"),
       route("/issue-analyze", "features/gs/api/issue-analyze.tsx"),
     ]),
+    // 판례 기반 쟁점추출 훈련 — 강사 출제 + 학생 응시.
+    ...prefix("/case-training", [
+      route("/draft-ai", "features/cases/api/case-training-draft-ai.tsx"),
+      route("/item", "features/cases/api/case-training-item.tsx"),
+      route("/issue", "features/cases/api/case-training-issue.tsx"),
+      route("/attempt", "features/cases/api/case-training-attempt.tsx"),
+      route("/analyze", "features/cases/api/case-training-analyze.tsx"),
+    ]),
     ...prefix("/cron", [
       route("/gs-auto-assign", "features/gs/api/cron-auto-assign.tsx"),
     ]),
@@ -710,6 +718,24 @@ export default [
         "/admin/laws/:lawCode/completeness",
         "features/admin/screens/admin-law-completeness.tsx",
       ),
+      // 판례 기반 쟁점추출 훈련 — 학생 응시.
+      route(
+        "/case-training",
+        "features/cases/screens/case-training-index.tsx",
+      ),
+      route(
+        "/case-training/:itemId",
+        "features/cases/screens/case-training-take.tsx",
+      ),
+      // 판례 기반 쟁점추출 훈련 — 강사 출제.
+      ...prefix("/admin/case-training", [
+        index("features/cases/screens/admin-case-training-list.tsx"),
+        route("/new", "features/cases/screens/admin-case-training-new.tsx"),
+        route(
+          "/:itemId",
+          "features/cases/screens/admin-case-training-edit.tsx",
+        ),
+      ]),
       ...prefix("/admin/blanks", [
         index("features/blanks/screens/admin-blanks-list.tsx"),
         route("/stats", "features/blanks/screens/admin-blanks-stats.tsx"),

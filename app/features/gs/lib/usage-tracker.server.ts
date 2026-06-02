@@ -40,8 +40,11 @@ export function kstToday(now: Date = new Date()): string {
 export type AiUsageKind =
   | "ai_grade"
   | "ai_draft"
-  | "ai_issue_extract"  // §1 강사 액션 — 모범답안 → 논점 목록 초안
-  | "ai_issue_analyze"; // §3 학생 액션 — 학생 논점 ↔ 모범 매칭 분석
+  | "ai_issue_extract"        // GS §1 강사 액션 — 모범답안 → 논점 목록 초안
+  | "ai_issue_analyze"        // GS §3 학생 액션 — 학생 논점 ↔ 모범 매칭 분석
+  | "ai_case_facts_draft"     // 판례훈련 §1 강사 — 판례 전문 → 사실관계 요약 초안
+  | "ai_case_issues_draft"    // 판례훈련 §1 강사 — 판례 전문 → 쟁점 목록 초안
+  | "ai_case_issue_analyze";  // 판례훈련 §3 학생 — 학생 쟁점 ↔ 모범 매칭 분석
 
 interface RecordAiArgs {
   kind: AiUsageKind;

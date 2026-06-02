@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -1192,6 +1192,62 @@ export type Database = {
         }
         Relationships: []
       }
+      case_issue_attempts: {
+        Row: {
+          ai_analysis: Json | null
+          ai_analyzed_at: string | null
+          attempt_id: string
+          created_at: string
+          deleted_at: string | null
+          done_at: string | null
+          item_id: string
+          self_check: Json | null
+          self_checked_at: string | null
+          student_issues_md: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          attempt_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          done_at?: string | null
+          item_id: string
+          self_check?: Json | null
+          self_checked_at?: string | null
+          student_issues_md?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          attempt_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          done_at?: string | null
+          item_id?: string
+          self_check?: Json | null
+          self_checked_at?: string | null
+          student_issues_md?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_issue_attempts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "case_training_items"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
       case_references: {
         Row: {
           authors: string | null
@@ -1262,6 +1318,147 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      case_training_issues: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description_md: string | null
+          generated_at: string
+          generated_by: string
+          importance: Database["public"]["Enums"]["gs_issue_importance"]
+          issue_id: string
+          item_id: string
+          label: string
+          order_index: number
+          ref_article_id: string | null
+          ref_case_id: string | null
+          ref_hint: string | null
+          rejected_reason: string | null
+          review_status: Database["public"]["Enums"]["problem_review_status"]
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description_md?: string | null
+          generated_at?: string
+          generated_by?: string
+          importance?: Database["public"]["Enums"]["gs_issue_importance"]
+          issue_id?: string
+          item_id: string
+          label: string
+          order_index?: number
+          ref_article_id?: string | null
+          ref_case_id?: string | null
+          ref_hint?: string | null
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description_md?: string | null
+          generated_at?: string
+          generated_by?: string
+          importance?: Database["public"]["Enums"]["gs_issue_importance"]
+          issue_id?: string
+          item_id?: string
+          label?: string
+          order_index?: number
+          ref_article_id?: string | null
+          ref_case_id?: string | null
+          ref_hint?: string | null
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_training_issues_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "case_training_items"
+            referencedColumns: ["item_id"]
+          },
+          {
+            foreignKeyName: "case_training_issues_ref_article_id_fkey"
+            columns: ["ref_article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "case_training_issues_ref_case_id_fkey"
+            columns: ["ref_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
+      case_training_items: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          case_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          facts_generated_by: string
+          facts_summary_md: string
+          item_id: string
+          rejected_reason: string | null
+          review_status: Database["public"]["Enums"]["problem_review_status"]
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          facts_generated_by?: string
+          facts_summary_md?: string
+          item_id?: string
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          facts_generated_by?: string
+          facts_summary_md?: string
+          item_id?: string
+          rejected_reason?: string | null
+          review_status?: Database["public"]["Enums"]["problem_review_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_training_items_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["case_id"]
           },
         ]
       }
