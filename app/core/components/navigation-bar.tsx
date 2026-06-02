@@ -314,6 +314,7 @@ export function NavigationBar({
   inboxHref = null,
   isStaff = false,
   features,
+  hideMenus = false,
 }: {
   name?: string;
   email?: string;
@@ -327,6 +328,8 @@ export function NavigationBar({
   isStaff?: boolean;
   // feat-8-008 — 사용자의 구독/cohort 기반 영역 플래그. undefined = 미산정(로딩) → 잠금 미표시.
   features?: string[];
+  // 새 nav 검증용 — 학생 사이드바 병존 시 기존 메뉴 dropdown 들 숨김. 로고·알림·유저메뉴는 유지.
+  hideMenus?: boolean;
 }) {
   // feat-8-008 — 영역 잠금. staff 면제. 미산정 상태에선 잠금 미표시(로딩 깜빡임 방지).
   const isLocked = (area: string) =>
@@ -351,7 +354,7 @@ export function NavigationBar({
         </Link>
 
         {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
-        <div className="hidden h-full items-center md:flex">
+        <div className={cn("hidden h-full items-center md:flex", hideMenus && "md:hidden")}>
           <NavigationMenu viewport={false}>
             <NavigationMenuList>
               {leadingFlats.map((m) => (
