@@ -115,8 +115,13 @@ export function StudentSidebar({
         collapsed ? "w-[60px]" : "w-[240px]",
       )}
     >
-      {/* ── 로고 = 접힘/펼침 토글 ── 별도 토글 바 없음 ── */}
-      <div className="border-border flex justify-center border-b p-2">
+      {/* ── 로고 = 접힘/펼침 토글. 펼침 = 좌측 정렬(계정·메뉴 라인 통일) ── */}
+      <div
+        className={cn(
+          "border-border flex border-b p-2",
+          collapsed ? "justify-center" : "px-3 justify-start",
+        )}
+      >
         <button
           type="button"
           onClick={toggleCollapsed}

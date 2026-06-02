@@ -164,7 +164,6 @@ export function UserMenu({
             </Link>
           </SheetClose>
         </DropdownMenuItem>
-        <NavModeToggleItem />
         <DropdownMenuItem asChild>
           <SheetClose asChild>
             <Link to="/logout" viewTransition>
@@ -175,37 +174,6 @@ export function UserMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-/**
- * 사용자 메뉴 안 "사이드바로 전환 / 상단 바로 전환" 토글.
- * localStorage("studentNavMode") 변경 + 페이지 reload 로 layout 즉시 갱신.
- */
-function NavModeToggleItem() {
-  const [mode, setMode] = useState<"topbar" | "sidebar">("topbar");
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("studentNavMode");
-    if (stored === "sidebar" || stored === "topbar") setMode(stored);
-  }, []);
-  const flip = () => {
-    const next = mode === "topbar" ? "sidebar" : "topbar";
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("studentNavMode", next);
-      // 사이드바로 전환 시 기본 접힘(아이콘 모드) — 처음 진입 시 본문 풀폭 확보.
-      if (next === "sidebar") {
-        window.localStorage.setItem("studentSidebarCollapsed", "1");
-      }
-      // cookie — SSR loader 분기용. 만료 30일.
-      document.cookie = `studentNavMode=${next}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
-      window.location.reload();
-    }
-  };
-  return (
-    <DropdownMenuItem onSelect={flip}>
-      {mode === "topbar" ? "사이드바로 전환" : "상단 바로 전환"}
-    </DropdownMenuItem>
   );
 }
 

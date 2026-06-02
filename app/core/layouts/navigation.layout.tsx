@@ -26,14 +26,8 @@ function readNavModeCookie(request: Request): "topbar" | "sidebar" {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
-  // 1) ?newnav=1 검증용 토글 (deprecated — 2번 사용자 선호 cookie 로 통합 권장).
-  // 2) cookie 기반 사용자 nav 선호. ?newnav=1 이 우선.
-  const url = new URL(request.url);
-  const queryNew = url.searchParams.get("newnav") === "1";
-  const cookieMode = readNavModeCookie(request);
-  const navMode: "topbar" | "sidebar" = queryNew
-    ? "sidebar"
-    : cookieMode;
+  // cookie 기반 사용자 nav 선호. 기본 = topbar.
+  const navMode: "topbar" | "sidebar" = readNavModeCookie(request);
   const userPromise = client.auth.getUser();
   const inboxPromise = (async () => {
     const {
@@ -126,12 +120,16 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
           <Outlet />
         </div>
       </div>
-      {/* 모바일 하단탭 — md 미만에서만. sidebar 모드 사용자 + topbar 모드 모두 적용(모바일은 통일). */}
+      {/* 모바일 하단탭 — md 미만에서만. 모든 인증 사용자에게 노출. */}
       <Suspense fallback={null}>
-        <Await resolve={inboxPromise}>
-          {(inbox) =>
-            inbox.isStaff || inbox.features.length > 0 ? (
-              <StudentBottomBar isStaff={inbox.isStaff} />
+        <Await resolve={userPromise}>
+          {({ data: { user } }) =>
+            user ? (
+              <Suspense fallback={null}>
+                <Await resolve={inboxPromise}>
+                  {(inbox) => <StudentBottomBar isStaff={inbox.isStaff} />}
+                </Await>
+              </Suspense>
             ) : null
           }
         </Await>

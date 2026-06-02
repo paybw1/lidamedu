@@ -797,11 +797,10 @@ export default [
 
       route("/account/edit", "features/users/screens/account.tsx"),
     ]),
-  ]),
-
-  // Dashboard owns its own chrome (sidebar + topbar) — outside the global navigation layout
-  layout("features/dashboard/layouts/dashboard.layout.tsx", [
-    route("/dashboard", "features/dashboard/screens/dashboard.tsx"),
+    // Dashboard — 자체 인증 가드 layout 을 navigation.layout 안에 nest.
+    layout("features/dashboard/layouts/dashboard.layout.tsx", [
+      route("/dashboard", "features/dashboard/screens/dashboard.tsx"),
+    ]),
   ]),
 
   ...prefix("/legal", [route("/:slug", "features/legal/screens/policy.tsx")]),
