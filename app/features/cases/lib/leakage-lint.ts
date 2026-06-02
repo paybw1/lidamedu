@@ -20,7 +20,7 @@ export interface LeakageResult {
 const LEAKAGE_PATTERNS: ReadonlyArray<{ re: RegExp; label: string }> = [
   { re: /쟁점/g, label: "쟁점" },
   { re: /판시사항/g, label: "판시사항" },
-  { re: /(법원|대법원)\s*은[\s\S]{0,12}(판단|판결|결론)/g, label: "법원의 판단/판결" },
+  { re: /(법원|대법원)\s*은[\s\S]{0,25}(판단|판결|결론|보았다|봤다|인정|배척)/g, label: "법원의 판단/판결" },
   { re: /결론적으로/g, label: "결론" },
   { re: /따라서[\s\S]{0,20}(인정|불인정|기각|파기|무효|유효|위반|아니|없)/g, label: "따라서~결론" },
   { re: /이므로[\s\S]{0,20}(인정|불인정|기각|파기|무효|유효|위반)/g, label: "이므로~결론" },
