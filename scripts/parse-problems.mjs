@@ -33,6 +33,11 @@ const CHAPTER_RE = /^제(\d+)장\s+(.+)$/;
 //   "신규성(29①각호)30"
 //   "발명(2)4" / "목적(1)2"
 const SECTION_RE = /^([^()]+?)\s*\(\s*([\d①-⑳의\s,\-]+)\s*\)\s*(\d+)?\s*$/;
+// 예상문제 해설편 — bullet prefix `•목적(1)2`.
+const SECTION_BULLET_RE = /^[•·]\s*([^()]+?)\s*\(\s*([\d①-⑳②③④⑤의\s,\-]+)\s*\)\s*(\d+)?\s*$/;
+// 예상문제 문제편 — markdown table form `| 행위능력 |  | 3-5, 7의2 |`.
+//   첫 cell = section name, 셋째 cell = articleHint, 둘째 cell 은 공백 (TOC 영역의 `| • | ... | ... |` 4컬럼 form 은 제외).
+const SECTION_TABLE_RE = /^\|\s*([^|•·]+?)\s*\|\s*\|\s*([\d①-⑳②③④⑤의\s,\-]+?)\s*\|$/;
 // problem header — "01’91단원..." / "02’07변형종합..." / "01’24모의단원..."
 //   number(2digit) + ['’] + year(2digit) + (변형|모의|예상)? + (단원|종합) + stem
 const PROBLEM_RE =
@@ -99,7 +104,23 @@ function parseProblems(paragraphs) {
     if (inToc) continue;
 
     // 페이지 헤더 / footer 흐릿한 텍스트 skip — bookHeaderSeen 이후엔 chapter title 외 무시.
-    // section header
+    // section header (3 form):
+    //   (a) 평문 — "발명(2)4"
+    //   (b) bullet — "•발명(2)4" (해설편)
+    //   (c) markdown table — "| 발명 |  | 2 |" (문제편) — paragraph 첫 줄만 본다.
+    const firstLine = text.split(/\n/)[0];
+    const tableMatch = firstLine.match(SECTION_TABLE_RE);
+    if (tableMatch) {
+      currentSection = tableMatch[1].trim();
+      currentArticleHint = tableMatch[2].trim();
+      continue;
+    }
+    const bulletMatch = text.match(SECTION_BULLET_RE);
+    if (bulletMatch && /[①-⑳\d]/.test(bulletMatch[2])) {
+      currentSection = bulletMatch[1].trim();
+      currentArticleHint = bulletMatch[2].trim();
+      continue;
+    }
     const secMatch = text.match(SECTION_RE);
     if (secMatch && /[①-⑳\d]/.test(secMatch[2])) {
       currentSection = secMatch[1].trim();
@@ -317,6 +338,22 @@ function parseAnswers(paragraphs) {
     }
     if (inToc) continue;
 
+    // section header (bullet / plain / table 모두). 답안집은 보통 bullet.
+    const bulletMatchA = text.match(SECTION_BULLET_RE);
+    if (bulletMatchA && /[①-⑳\d]/.test(bulletMatchA[2])) {
+      flush();
+      currentSection = bulletMatchA[1].trim();
+      currentArticleHint = bulletMatchA[2].trim();
+      continue;
+    }
+    const firstLineA = text.split(/\n/)[0];
+    const tableMatchA = firstLineA.match(SECTION_TABLE_RE);
+    if (tableMatchA) {
+      flush();
+      currentSection = tableMatchA[1].trim();
+      currentArticleHint = tableMatchA[2].trim();
+      continue;
+    }
     const secMatch = text.match(SECTION_RE);
     if (secMatch && /[①-⑳\d]/.test(secMatch[2])) {
       flush();
@@ -385,35 +422,86 @@ function classifyChoice(text) {
   return "theory";
 }
 
-// problems + answers 를 (chapter, normalized section, problemNumber) 키로 매칭.
-// section 명은 두 책에서 띄어쓰기/구두점이 다를 수 있어 한글/숫자만 남기고 비교.
+// problems + answers 를 chapter 별 sequence(파일 출현 순서) 로 매칭.
+//
+// 예상문제 (객관식 Ⅱ) 는 section heading 일부 누락 + 같은 problemNumber
+// 가 한 chapter 안에 여러 번 출현 (sub-group 마다 reset) — 키 기반 매칭에서
+// 키 충돌이 발생. 두 책이 같은 순서로 출현하므로 chapter 내 N번째 ↔ N번째
+// 매칭이 가장 robust.
+//
+// 키 기반 매칭이 정상 동작하는 (기존 기출 + 상표/디자인) 케이스를 깨지
+// 않도록, 먼저 키 매칭 시도 후 미매칭만 sequence fallback.
 function normSection(s) {
   return (s ?? "").replace(/[^가-힣0-9]/g, "");
 }
 function keyOf(o) {
   return [o.chapter, normSection(o.section), o.problemNumber].join("|");
 }
-const ansByKey = new Map(answers.map((a) => [keyOf(a), a]));
+// 키 충돌 (동일 키 다중) — 충돌 키는 키매칭에서 제외하고 sequence 로.
+const ansKeyCount = new Map();
+for (const a of answers) {
+  ansKeyCount.set(keyOf(a), (ansKeyCount.get(keyOf(a)) ?? 0) + 1);
+}
+const probKeyCount = new Map();
+for (const p of problems) {
+  probKeyCount.set(keyOf(p), (probKeyCount.get(keyOf(p)) ?? 0) + 1);
+}
+const ansByKey = new Map();
+for (const a of answers) {
+  const k = keyOf(a);
+  if (ansKeyCount.get(k) === 1 && probKeyCount.get(k) === 1) ansByKey.set(k, a);
+}
 
-let matched = 0;
-let unmatched = 0;
+let matchedKey = 0;
+const probsToFallback = [];
 for (const prob of problems) {
   const a = ansByKey.get(keyOf(prob));
   if (a) {
-    matched++;
-    prob.correctIndex = a.correctIndex;
-    prob.explanation = a.explanation;
-    prob.choiceExplanations = a.perChoice;
-    prob.choiceTypes = {};
-    for (const c of prob.choices) {
-      const exp = a.perChoice[c.index] ?? a.explanation;
-      prob.choiceTypes[c.index] = classifyChoice(exp);
-    }
+    matchedKey++;
+    applyAnswer(prob, a);
+  } else {
+    probsToFallback.push(prob);
+  }
+}
+
+// chapter 내 sequence fallback.
+const ansByChSeq = new Map();
+for (const a of answers) {
+  const k = keyOf(a);
+  if (ansKeyCount.get(k) === 1 && probKeyCount.get(k) === 1) continue;
+  const arr = ansByChSeq.get(a.chapter) ?? [];
+  arr.push(a);
+  ansByChSeq.set(a.chapter, arr);
+}
+const probSeqIdx = new Map();
+let matchedSeq = 0;
+let unmatched = 0;
+for (const prob of probsToFallback) {
+  const arr = ansByChSeq.get(prob.chapter) ?? [];
+  const idx = probSeqIdx.get(prob.chapter) ?? 0;
+  const a = arr[idx];
+  if (a) {
+    applyAnswer(prob, a);
+    matchedSeq++;
+    probSeqIdx.set(prob.chapter, idx + 1);
   } else {
     unmatched++;
   }
 }
-console.log(`  · 답안 매칭: ${matched} / ${problems.length} (미매칭 ${unmatched})`);
+
+function applyAnswer(prob, a) {
+  prob.correctIndex = a.correctIndex;
+  prob.explanation = a.explanation;
+  prob.choiceExplanations = a.perChoice;
+  prob.choiceTypes = {};
+  for (const c of prob.choices) {
+    const exp = a.perChoice[c.index] ?? a.explanation;
+    prob.choiceTypes[c.index] = classifyChoice(exp);
+  }
+}
+
+const matched = matchedKey + matchedSeq;
+console.log(`  · 답안 매칭: ${matched} / ${problems.length} (key=${matchedKey} + seq=${matchedSeq}, 미매칭 ${unmatched})`);
 
 // 통계
 const byOrigin = problems.reduce((acc, p) => {
