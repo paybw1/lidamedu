@@ -522,6 +522,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     isAdmin={isAdmin}
                     viewerIsStaff={canEditCase}
                     importance={kase.importance}
+                    lectureResources={lectureResources}
                   />
                 </CardContent>
               </Card>
