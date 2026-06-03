@@ -39,6 +39,17 @@ const PROBLEM_RE =
   /^(\d{2})\s*['’]\s*(\d{2})\s*(변형|모의|예상)?\s*(단원|종합)?(.*)$/;
 // alternative for non-past-exam: "01모의단원..." / "01예상단원..." (no year mark)
 const PROBLEM_NO_YEAR_RE = /^(\d{2})\s*(모의|예상)\s*(단원|종합)?(.*)$/;
+// 객관식(Ⅱ) 예상문제 헤더 — 연도·키워드 모두 없음.
+// 패턴이 한컴 박스 변환으로 4가지 형태로 깨져 옴:
+//   (a) "01다음은…?단원"           — 끝에 마커
+//   (b) "05종합다음 보기…"          — 마커가 번호 직후
+//   (c) "단원02재외자…"             — 마커가 번호 앞
+//   (d) "04甲은…甲이 단원자신의…"   — stem 중간에 마커 끼어듦
+// 어느 형태든 다음 paragraph 가 `| 단원 | --- |` 또는 `| 종합 |` 인 게 안정적 시그널.
+// 그래서 look-ahead 로 다음 paragraph 검사.
+const PROBLEM_EXPECTED_HEAD_RE =
+  /^(?:(단원|종합)\s*)?(\d{2})((?:단원|종합)?[^\d①-⑤|].{5,})$/;
+const SCOPE_MARKER_RE = /^\|\s*(단원|종합)\s*\|/;
 const CHOICE_RE = /^([①②③④⑤])\s*(.+)$/;
 
 function yearFromYY(yy) {
@@ -118,6 +129,34 @@ function parseProblems(paragraphs) {
         origin = SOURCE_BY_KEYWORD[kind] ?? "expected";
         scope = scopeKW === "단원" ? "unit" : scopeKW === "종합" ? "comprehensive" : null;
         stem = rest.trim();
+      } else {
+        // 객관식(Ⅱ) 예상문제 — 다음 non-empty paragraph 가 `| 단원 |`/`| 종합 |` markdown 마커여야.
+        const expMatch = text.match(PROBLEM_EXPECTED_HEAD_RE);
+        if (expMatch) {
+          let nextScope = null;
+          for (let j = i + 1; j < Math.min(i + 4, paragraphs.length); j++) {
+            const nt = (paragraphs[j].text ?? "").trim();
+            if (!nt) continue;
+            const sm = nt.match(SCOPE_MARKER_RE);
+            if (sm) {
+              nextScope = sm[1];
+              break;
+            }
+            // 다음 non-empty 가 선지(①) 면 — 마커 없는 헤더. 거짓양성 차단.
+            if (/^[①-⑤]/.test(nt)) break;
+            // markdown table 시작 (`|`) 이긴 한데 단원/종합이 아니면 break (보기 박스일 수 있음 → 정상)
+            if (/^\|/.test(nt)) break;
+          }
+          if (nextScope || expMatch[1]) {
+            problemNumber = parseInt(expMatch[2], 10);
+            origin = "expected";
+            // 마커 우선순위: 헤더 prefix > 다음 paragraph markdown.
+            const scopeKW = expMatch[1] ?? nextScope;
+            scope = scopeKW === "단원" ? "unit" : "comprehensive";
+            // stem — body 에 끼어든 (단원|종합) 자체 제거 (정중간 케이스).
+            stem = expMatch[3].replace(/(단원|종합)/, "").trim();
+          }
+        }
       }
     }
     if (problemNumber != null && stem != null && stem.length > 5) {

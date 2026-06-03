@@ -66,7 +66,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const items = await listProblemsWithMissingLinks(client, {
     origins,
     lawCodes,
-    limit: 200,
+    limit: 1500,
   });
 
   let suggestions: LinkSuggestions | null = null;
