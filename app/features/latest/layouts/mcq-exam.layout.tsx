@@ -1,7 +1,7 @@
 // feat-8-008 — 통합 모의고사(/latest/mcq/exam/*) 영역 게이트.
 // 회원3(area_mock_exams)만 진입. staff 면제. 미보유 시 /pricing redirect.
 
-import { Outlet } from "react-router";
+import { Outlet, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
@@ -9,14 +9,15 @@ import { requireFeature } from "~/features/subscriptions/queries.server";
 import type { Route } from "./+types/mcq-exam.layout";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
+  // headers 전달 — supabase 갱신 cookie 누수 방지 (private.layout 와 동일 이유).
+  const [client, headers] = makeServerClient(request);
   const {
     data: { user },
   } = await client.auth.getUser();
   if (user) {
     await requireFeature(client, user.id, "area_mock_exams");
   }
-  return null;
+  return data(null, { headers });
 }
 
 export default function McqExamLayout() {

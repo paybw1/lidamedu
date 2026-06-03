@@ -1,7 +1,7 @@
 import type { Route } from "./+types/navigation.layout";
 
 import { Suspense } from "react";
-import { Await, Outlet } from "react-router";
+import { Await, Outlet, data } from "react-router";
 
 import Footer from "../components/footer";
 import { NavigationBar } from "../components/navigation-bar";
@@ -25,7 +25,10 @@ function readNavModeCookie(request: Request): "topbar" | "sidebar" {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
+  // headers 전달 — supabase 갱신 cookie 누수 방지 (private.layout 와 동일 이유).
+  // 비동기 promise streaming 도 같은 client 인스턴스 사용 — getUser 가 토큰 갱신
+  // 하면 setAll 콜백이 이 headers 에 누적된다.
+  const [client, headers] = makeServerClient(request);
   // cookie 기반 사용자 nav 선호. 기본 = topbar.
   const navMode: "topbar" | "sidebar" = readNavModeCookie(request);
   const userPromise = client.auth.getUser();
@@ -43,7 +46,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     ]);
     return { isStaff: role !== null, unread, features: sub.features };
   })();
-  return { userPromise, inboxPromise, navMode };
+  return data({ userPromise, inboxPromise, navMode }, { headers });
 }
 
 export default function NavigationLayout({ loaderData }: Route.ComponentProps) {

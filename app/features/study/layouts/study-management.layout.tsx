@@ -5,7 +5,7 @@
 // UI: 상단에 학습관리 탭 항상 노출 — 학생이 dropdown 을 열지 않고도 7개 화면 간
 // 한 번 클릭으로 이동. 디자인 시스템 v1 (Surface·토큰) 사용.
 
-import { Outlet } from "react-router";
+import { Outlet, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
@@ -14,14 +14,15 @@ import { requireFeature } from "~/features/subscriptions/queries.server";
 import type { Route } from "./+types/study-management.layout";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
+  // headers 전달 — supabase 갱신 cookie 누수 방지 (private.layout 와 동일 이유).
+  const [client, headers] = makeServerClient(request);
   const {
     data: { user },
   } = await client.auth.getUser();
   if (user) {
     await requireFeature(client, user.id, "area_study_mgmt");
   }
-  return null;
+  return data(null, { headers });
 }
 
 export default function StudyManagementLayout() {

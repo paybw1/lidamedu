@@ -1,20 +1,21 @@
 import type { Route } from "./+types/public.layout";
 
-import { Outlet, redirect } from "react-router";
+import { Outlet, data, redirect } from "react-router";
 
 import makeServerClient from "../lib/supa-client.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
+  // headers — supabase refresh_token 갱신 시 setAll 콜백이 누적하는 Set-Cookie.
+  // 응답에 반드시 전달해야 다음 요청도 살아있는 세션. (private.layout 와 동일 이유)
+  const [client, headers] = makeServerClient(request);
   const {
     data: { user },
   } = await client.auth.getUser();
   if (user) {
-    throw redirect("/dashboard");
+    throw redirect("/dashboard", { headers });
   }
 
-  // Return an empty object to avoid the "Cannot read properties of undefined" error
-  return {};
+  return data({}, { headers });
 }
 
 export default function PublicLayout() {
