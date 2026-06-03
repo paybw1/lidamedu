@@ -46,7 +46,8 @@ export type AiUsageKind =
   | "ai_case_issues_draft"         // 판례훈련 §1 강사 — 판례 전문 → 쟁점 목록 초안
   | "ai_case_issue_analyze"        // 판례훈련 §3 학생 — 학생 쟁점 ↔ 모범 매칭 분석
   | "ai_case_conclusion_draft"     // 결론·강약 훈련 §1 강사 — 쟁점 목록 → 결론·강약 초안
-  | "ai_case_conclusion_analyze";  // 결론·강약 훈련 §3 학생 — 학생 결론·강약 코칭
+  | "ai_case_conclusion_analyze"   // 결론·강약 훈련 §3 학생 — 학생 결론·강약 코칭
+  | "ai_problem_link_suggest";     // 예상문제 해설 → 조문/판례 연결 후보 (RAG 보완 검색)
 
 interface RecordAiArgs {
   kind: AiUsageKind;
