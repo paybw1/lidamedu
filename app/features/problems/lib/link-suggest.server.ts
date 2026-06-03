@@ -15,7 +15,7 @@ import { hybridSearch } from "~/features/ai-qna/lib/hybrid-search.server";
 import { parseQuestion } from "~/features/ai-qna/lib/query-parser";
 import { checkAiCap, recordAiUsage } from "~/features/gs/lib/usage-tracker.server";
 
-export type CandidateSource = "chunk" | "explicit" | "rag";
+export type CandidateSource = "chunk" | "explicit" | "rag" | "manual";
 
 export interface ArticleCandidate {
   articleId: string;
@@ -42,6 +42,10 @@ export interface ChoiceCandidates {
   choiceIndex: number;
   bodyMd: string;
   explanationMd: string | null;
+  /** 이 선지가 정답인가. */
+  isCorrect: boolean;
+  /** OX 진리값 — 'true' | 'false' | null. */
+  oxTruth: string | null;
   /** 이미 연결돼 있는 article (잠금 표시). */
   currentArticleId: string | null;
   currentCaseId: string | null;
@@ -54,6 +58,8 @@ export interface BoxCandidates {
   marker: string;
   bodyMd: string;
   explanationMd: string | null;
+  /** OX 진리값 — boxItem 도 ox_truth 보유. */
+  oxTruth: string | null;
   currentArticleId: string | null;
   currentCaseId: string | null;
   articles: ArticleCandidate[];
@@ -274,14 +280,14 @@ export async function suggestLinksForProblem(
 
   const { data: choicesRaw } = await client
     .from("problem_choices")
-    .select("choice_id, choice_index, body_md, explanation_md, related_article_id, related_case_id")
+    .select("choice_id, choice_index, body_md, explanation_md, related_article_id, related_case_id, is_correct, ox_truth")
     .eq("problem_id", problemId)
     .order("choice_index");
   const choices = choicesRaw ?? [];
 
   const { data: boxRaw } = await client
     .from("problem_box_items")
-    .select("box_item_id, marker, position_index, body_md, explanation_md, related_article_id, related_case_id")
+    .select("box_item_id, marker, position_index, body_md, explanation_md, related_article_id, related_case_id, ox_truth")
     .eq("problem_id", problemId)
     .order("position_index");
   const boxes = boxRaw ?? [];
@@ -444,6 +450,8 @@ export async function suggestLinksForProblem(
       choiceIndex: a.raw.choice_index,
       bodyMd: a.raw.body_md ?? "",
       explanationMd: a.raw.explanation_md,
+      isCorrect: a.raw.is_correct,
+      oxTruth: a.raw.ox_truth,
       currentArticleId: a.raw.related_article_id,
       currentCaseId: a.raw.related_case_id,
       articles: sortArticles([...a.art.map.values()]),
@@ -454,6 +462,7 @@ export async function suggestLinksForProblem(
       marker: a.raw.marker,
       bodyMd: a.raw.body_md ?? "",
       explanationMd: a.raw.explanation_md,
+      oxTruth: a.raw.ox_truth,
       currentArticleId: a.raw.related_article_id,
       currentCaseId: a.raw.related_case_id,
       articles: sortArticles([...a.art.map.values()]),

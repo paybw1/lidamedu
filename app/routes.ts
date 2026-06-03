@@ -548,6 +548,10 @@ export default [
         "features/admin/api/problem-link-approve.tsx",
       ),
       route(
+        "/api/admin/problem-link-search",
+        "features/admin/api/problem-link-search.tsx",
+      ),
+      route(
         "/api/admin/ai-problem-gen",
         "features/admin/api/ai-problem-gen.tsx",
       ),

@@ -437,6 +437,9 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   label={`선지 ${c.choiceIndex}`}
                   bodyMd={c.bodyMd}
                   explanationMd={c.explanationMd}
+                  isCorrect={c.isCorrect}
+                  oxTruth={c.oxTruth}
+                  lawCode={item.lawCode}
                   current={{ articleId: c.currentArticleId, caseId: c.currentCaseId }}
                   articles={c.articles}
                   cases={c.cases}
@@ -469,6 +472,9 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   label={`박스 ${b.marker}`}
                   bodyMd={b.bodyMd}
                   explanationMd={b.explanationMd}
+                  isCorrect={false}
+                  oxTruth={b.oxTruth}
+                  lawCode={item.lawCode}
                   current={{ articleId: b.currentArticleId, caseId: b.currentCaseId }}
                   articles={b.articles}
                   cases={b.cases}
@@ -494,6 +500,12 @@ interface SegmentBlockProps {
   label: string;
   bodyMd: string;
   explanationMd: string | null;
+  /** 정답 여부 (선지만 의미. 박스는 false 고정). */
+  isCorrect: boolean;
+  /** OX 진리값 — 'true' | 'false' | null. */
+  oxTruth: string | null;
+  /** 직접 추가용 — 검색 시 lawCode 필터. */
+  lawCode: string | null;
   current: { articleId: string | null; caseId: string | null };
   articles: ArticleCandidate[];
   cases: CaseCandidate[];
@@ -507,13 +519,34 @@ interface SegmentBlockProps {
 }
 
 function SegmentBlock(p: SegmentBlockProps) {
-  // 선지별 명시 후보 + 문제 전체 fallback 을 합쳐 중복 제거.
-  const articleMerged = mergeCandidates<ArticleCandidate>(p.articles, p.fallbackArticles, (a) => a.articleId);
-  const caseMerged = mergeCandidates<CaseCandidate>(p.cases, p.fallbackCases, (c) => c.caseId);
+  // 선지별 명시 후보 + 문제 전체 fallback + 직접 추가 한 항목을 합쳐 중복 제거.
+  const [manualArticles, setManualArticles] = useState<ArticleCandidate[]>([]);
+  const [manualCases, setManualCases] = useState<CaseCandidate[]>([]);
+
+  const articleMerged = mergeCandidates<ArticleCandidate>(
+    [...manualArticles, ...p.articles],
+    p.fallbackArticles,
+    (a) => a.articleId,
+  );
+  const caseMerged = mergeCandidates<CaseCandidate>(
+    [...manualCases, ...p.cases],
+    p.fallbackCases,
+    (c) => c.caseId,
+  );
+
+  const oxBadge =
+    p.oxTruth === "true" ? (
+      <Badge className="bg-blue-600 text-[10px]">O</Badge>
+    ) : p.oxTruth === "false" ? (
+      <Badge className="bg-red-600 text-[10px]">X</Badge>
+    ) : null;
+
   return (
     <div className="rounded border p-2">
-      <div className="mb-1 flex items-center gap-2 text-xs">
+      <div className="mb-1 flex flex-wrap items-center gap-1 text-xs">
         <Badge variant="outline">{p.label}</Badge>
+        {p.isCorrect && <Badge className="bg-amber-500 text-[10px]">정답</Badge>}
+        {oxBadge}
         {p.current.articleId && <Badge className="bg-emerald-600 text-[10px]">조문 기연결</Badge>}
         {p.current.caseId && <Badge className="bg-violet-600 text-[10px]">판례 기연결</Badge>}
       </div>
@@ -590,6 +623,157 @@ function SegmentBlock(p: SegmentBlockProps) {
               </div>
             )}
           </div>
+        </div>
+      )}
+      {/* 직접 추가 — 후보에 없는 조문·판례 검색 */}
+      <ManualAddPanel
+        lawCode={p.lawCode}
+        onAddArticle={(a) => {
+          setManualArticles((cur) => (cur.find((x) => x.articleId === a.articleId) ? cur : [...cur, a]));
+          p.onPickArticle(a.articleId);
+        }}
+        onAddCase={(c) => {
+          setManualCases((cur) => (cur.find((x) => x.caseId === c.caseId) ? cur : [...cur, c]));
+          p.onPickCase(c.caseId);
+        }}
+      />
+    </div>
+  );
+}
+
+interface ManualAddPanelProps {
+  lawCode: string | null;
+  onAddArticle: (a: ArticleCandidate) => void;
+  onAddCase: (c: CaseCandidate) => void;
+}
+
+function ManualAddPanel(p: ManualAddPanelProps) {
+  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<"article" | "case">("article");
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<
+    | { kind: "article"; items: Array<{ articleId: string; lawCode: string; articleNumber: string; displayLabel: string }> }
+    | { kind: "case"; items: Array<{ caseId: string; caseNumber: string; caseTitle: string }> }
+    | null
+  >(null);
+  const [busy, setBusy] = useState(false);
+
+  const search = async () => {
+    if (!q.trim()) return;
+    setBusy(true);
+    try {
+      const params = new URLSearchParams({ kind, q: q.trim() });
+      if (kind === "article" && p.lawCode) params.set("lawCode", p.lawCode);
+      const resp = await fetch(`/api/admin/problem-link-search?${params}`);
+      const json = await resp.json();
+      if (kind === "article") setResults({ kind, items: json.items ?? [] });
+      else setResults({ kind, items: json.items ?? [] });
+    } catch {
+      setResults(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-2 text-[10px] text-primary underline hover:no-underline"
+      >
+        + 직접 추가 (조문·판례 검색)
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded border border-dashed p-2 text-[11px]">
+      <div className="mb-1 flex items-center gap-1">
+        <select
+          value={kind}
+          onChange={(e) => {
+            setKind(e.target.value as "article" | "case");
+            setResults(null);
+          }}
+          className="rounded border bg-background px-1 py-0.5 text-[10px]"
+        >
+          <option value="article">조문</option>
+          <option value="case">판례</option>
+        </select>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              search();
+            }
+          }}
+          placeholder={kind === "article" ? '조 번호 (예: 29, 28의2)' : '사건번호 (예: 2018후10844)'}
+          className="flex-1 rounded border bg-background px-1 py-0.5 text-[10px]"
+        />
+        <button
+          onClick={search}
+          disabled={busy || !q.trim()}
+          className="rounded bg-primary px-2 py-0.5 text-[10px] text-primary-foreground disabled:opacity-50"
+        >
+          {busy ? "..." : "검색"}
+        </button>
+        <button
+          onClick={() => {
+            setOpen(false);
+            setResults(null);
+            setQ("");
+          }}
+          className="text-[10px] text-muted-foreground"
+        >
+          닫기
+        </button>
+      </div>
+      {kind === "article" && !p.lawCode && (
+        <div className="text-[10px] text-amber-700">문제에 law_code 가 없어 조문 검색 결과가 비어 있을 수 있습니다.</div>
+      )}
+      {results && results.items.length === 0 && (
+        <div className="text-[10px] text-muted-foreground">검색 결과 없음</div>
+      )}
+      {results && results.items.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {results.kind === "article"
+            ? results.items.map((a) => (
+                <button
+                  key={a.articleId}
+                  onClick={() => {
+                    p.onAddArticle({
+                      articleId: a.articleId,
+                      lawCode: a.lawCode,
+                      articleNumber: a.articleNumber,
+                      displayLabel: a.displayLabel,
+                      sources: ["manual"],
+                    });
+                  }}
+                  className="rounded border bg-muted px-2 py-0.5 text-[10px] hover:bg-muted/70"
+                >
+                  {a.displayLabel} <span className="text-[9px] text-muted-foreground">[manual]</span>
+                </button>
+              ))
+            : results.items.map((c) => (
+                <button
+                  key={c.caseId}
+                  onClick={() => {
+                    p.onAddCase({
+                      caseId: c.caseId,
+                      caseNumber: c.caseNumber,
+                      caseTitle: c.caseTitle,
+                      sources: ["manual"],
+                    });
+                  }}
+                  className="rounded border bg-muted px-2 py-0.5 text-[10px] hover:bg-muted/70"
+                >
+                  {c.caseNumber}
+                  {c.caseTitle && <span className="ml-1 text-muted-foreground">— {c.caseTitle.slice(0, 30)}</span>}{" "}
+                  <span className="text-[9px] text-muted-foreground">[manual]</span>
+                </button>
+              ))}
         </div>
       )}
     </div>
