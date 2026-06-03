@@ -46,6 +46,7 @@ import {
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
+import { listLectureResourcesByArticleIds } from "~/features/lectures/queries.server";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 import {
   getArticleSkeleton,
@@ -138,6 +139,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     problemsByArticle,
     commentsByArticle,
     staffRole,
+    lectureResourcesByArticle,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
@@ -176,6 +178,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listProblemsByArticleIds(client, articleIds),
     listCommentsBulk(client, "article", articleIds),
     getStaffRole(client, user.id),
+    listLectureResourcesByArticleIds(client, articleIds),
   ]);
 
   // ?blank-owner=<uuid> 로 모든 카드의 빈칸 set 일괄 owner 적용. 없으면 article별 첫 set.
@@ -281,6 +284,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     canEditComment: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
+    lectureResourcesByArticle,
   };
 }
 
@@ -324,6 +328,7 @@ function Inner({
     canEditComment,
     isAdmin,
     currentUserId,
+    lectureResourcesByArticle,
   } = loaderData;
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
@@ -794,6 +799,9 @@ function Inner({
                         isAdmin={isAdmin}
                         viewerIsStaff={canEditComment}
                         importance={a.importance}
+                        lectureResources={
+                          lectureResourcesByArticle[a.articleId] ?? []
+                        }
                       />
                     </div>
                   </div>

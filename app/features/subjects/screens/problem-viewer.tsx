@@ -39,6 +39,7 @@ import {
 } from "~/features/annotations/queries.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
+import { listLectureResources } from "~/features/lectures/queries.server";
 import {
   getLawByCode,
   getStaffRole,
@@ -184,6 +185,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     staffRole,
     adjacent,
     axisCounts,
+    lectureResources,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -201,6 +203,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     law
       ? getSubjectAxisCounts(client, lawCode, law.lawId)
       : Promise.resolve({ articles: 0, cases: 0, problems: 0 }),
+    listLectureResources(client, "problem", problem.problemId),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -364,6 +367,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
     adjacent,
+    lectureResources,
   };
 }
 
@@ -433,6 +437,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     isAdmin,
     currentUserId,
     adjacent,
+    lectureResources,
   } = loaderData;
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -780,6 +785,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       isAdmin={isAdmin}
                       viewerIsStaff={canEditComment}
                       importance={problem.importance}
+                      lectureResources={lectureResources}
                     />
                   </div>
                 </SheetContent>
@@ -1330,6 +1336,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
               comments={problemComments}
               canEditComment={canEditComment}
               currentUserId={currentUserId}
+              lectureResources={lectureResources}
               isAdmin={isAdmin}
               viewerIsStaff={canEditComment}
               importance={problem.importance}

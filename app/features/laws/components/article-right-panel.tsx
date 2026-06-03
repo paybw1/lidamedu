@@ -220,8 +220,11 @@ export function ArticleRightPanel({
   const showRevisions = revisions !== undefined;
   // feat-4-A-117 — lecture_resources 의 target_type 은 article/case/problem/science_section 이지만
   // 우측 패널은 commentTargetType (article/case/problem) 만 사용. 그 외는 패널 미표시.
+  // staff(원장/관리자/강사) 는 lectureResources prop 이 undefined 라도 무조건 탭 노출 —
+  // 빈 상태에서 클릭해 자료를 추가/편집할 수 있어야 한다.
   const showMaterials =
-    lectureResources !== undefined && commentTargetType !== null;
+    commentTargetType !== null &&
+    (lectureResources !== undefined || viewerIsStaff);
 
   // feat-8-025 — staff 가 case/article/problem 을 볼 때 "즐겨찾기" 탭을 중요도 에디터로.
   const staffImportanceMode =
