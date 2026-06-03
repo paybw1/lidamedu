@@ -89,9 +89,14 @@ function safeReturnTo(raw: unknown): string {
   return "/admin/problems";
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function loader({ params, request }: Route.LoaderArgs) {
   const problemId = params.problemId;
   if (!problemId) throw data("Missing problemId", { status: 404 });
+  // 비-uuid (e.g. /admin/problems/link-suggest 같은 새 child 라우트 미빌드 시
+  // 동적 라우트로 빠지는 사고 방지) — 404 로 graceful fail.
+  if (!UUID_RE.test(problemId)) throw data("Invalid problemId", { status: 404 });
   const [client] = makeServerClient(request);
   const {
     data: { user },
