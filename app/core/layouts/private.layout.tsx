@@ -1,21 +1,24 @@
 import type { Route } from "./+types/private.layout";
 
-import { Outlet, redirect } from "react-router";
+import { Outlet, data, redirect } from "react-router";
 
 import { CommandPalette } from "~/core/components/command-palette";
 import makeServerClient from "../lib/supa-client.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [client] = makeServerClient(request);
+  // headers 는 supabase 가 refresh_token 으로 access_token 을 자동 갱신할 때
+  // setAll 콜백으로 누적되는 Set-Cookie 들. 응답에 반드시 전달해야 브라우저가
+  // 새 cookie 를 저장하고 다음 요청이 살아있는 세션으로 동작.
+  // 빠뜨리면 갱신된 토큰이 휘발돼 access 만료 즉시 /login 무한 redirect.
+  const [client, headers] = makeServerClient(request);
   const {
     data: { user },
   } = await client.auth.getUser();
   if (!user) {
-    throw redirect("/login");
+    throw redirect("/login", { headers });
   }
 
-  // Return an empty object to avoid the "Cannot read properties of undefined" error
-  return {};
+  return data({}, { headers });
 }
 
 export default function PrivateLayout() {
