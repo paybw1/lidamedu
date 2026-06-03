@@ -160,7 +160,6 @@ function parseProblems(paragraphs) {
       }
     }
     if (problemNumber != null && stem != null && stem.length > 5) {
-      // stem 이 너무 짧으면 다음 paragraph 가 stem 일 가능성 — but 보통 같은 line 에 있음.
       problems.push({
         chapter: currentChapter,
         chapterTitle: currentChapterTitle,
@@ -172,26 +171,105 @@ function parseProblems(paragraphs) {
         scope,
         stem,
         choices: [],
+        boxItems: [],
       });
       continue;
     }
 
-    // choice
-    const cMatch = text.match(CHOICE_RE);
-    if (cMatch && problems.length > 0) {
-      const choiceIdx = "①②③④⑤".indexOf(cMatch[1]) + 1;
+    // ── 박스 본문 추출 ──
+    // markdown table row (`| ... |`) 이고 박스 마커가 들어 있으면 직전 문제의 boxItems 채움.
+    if (problems.length > 0 && /^\|\s/.test(text)) {
       const last = problems[problems.length - 1];
-      // 5개 이상이면 무시 (parsing 오류 방지)
-      if (last.choices.length < 5) {
-        last.choices.push({
-          index: choiceIdx,
-          body: cMatch[2].trim(),
-          italic: !!p.italic,
-        });
+      // 이미 선지가 들어왔다면 박스 단계 종료된 것 — skip.
+      if (last.choices.length === 0 && last.boxItems.length === 0) {
+        const items = extractBoxItems(text);
+        if (items.length >= 2) {
+          last.boxItems = items;
+          continue;
+        }
+      }
+    }
+
+    // ── 선지(단·복수) ──
+    // 한 paragraph 에 `① ... ② ... ③ ...` 처럼 여러 선지가 묶여 있을 수 있음 (예상문제 박스형).
+    if (problems.length > 0 && /[①②③④⑤]/.test(text)) {
+      const last = problems[problems.length - 1];
+      const split = splitChoices(text);
+      const usedIdx = new Set(last.choices.map((c) => c.index));
+      for (const sp of split) {
+        if (last.choices.length >= 5) break;
+        if (usedIdx.has(sp.index)) continue;
+        last.choices.push({ index: sp.index, body: sp.body, italic: !!p.italic });
+        usedIdx.add(sp.index);
       }
     }
   }
   return problems;
+}
+
+// 박스 마커 family — backfill-box-items.mjs 와 동일.
+const BOX_FAMILIES = [
+  { name: "kor_paren_double", chars: "㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗" },
+  { name: "kor_circled_jamo", chars: "㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩" },
+  { name: "kor_circled_syl", chars: "㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹" },
+  { name: "kor_paren", chars: "㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉" },
+];
+
+/**
+ * markdown table row `| ㉠ A   ㉡ B   ㉢ C |` → [{marker:'㉠', body:'A'}, ...].
+ * 적합한 family 1개 선택 (가장 많은 마커 출현). 마커 위치로 split.
+ */
+function extractBoxItems(rawText) {
+  // 표 마커 `| ` 와 `|` 제거.
+  let text = rawText.replace(/^\|\s*/, "").replace(/\s*\|\s*$/, "");
+  // 여러 줄(separator `| --- |`) 포함 가능 — 첫 줄만.
+  text = text.split(/\n/)[0];
+  let best = { items: [], count: 0 };
+  for (const fam of BOX_FAMILIES) {
+    const re = new RegExp(`[${fam.chars}]`, "g");
+    const positions = [];
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      positions.push({ marker: m[0], idx: m.index });
+    }
+    if (positions.length < 2) continue;
+    const items = [];
+    for (let k = 0; k < positions.length; k++) {
+      const cur = positions[k];
+      const next = positions[k + 1];
+      const bodyStart = cur.idx + cur.marker.length;
+      const bodyEnd = next ? next.idx : text.length;
+      const body = text.slice(bodyStart, bodyEnd).trim();
+      if (body.length > 0) items.push({ marker: cur.marker, body });
+    }
+    if (items.length > best.count) best = { items, count: items.length };
+  }
+  return best.items;
+}
+
+/**
+ * `① a ② b ③ c` 처럼 한 줄에 묶인 선지를 분리.
+ * 마커 위치 기준 split. 마커가 1개면 [{index, body}] 1개.
+ */
+function splitChoices(text) {
+  const re = /([①②③④⑤])\s*/g;
+  const positions = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    positions.push({ marker: m[1], idx: m.index, end: m.index + m[0].length });
+  }
+  const out = [];
+  for (let k = 0; k < positions.length; k++) {
+    const cur = positions[k];
+    const next = positions[k + 1];
+    const bodyStart = cur.end;
+    const bodyEnd = next ? next.idx : text.length;
+    const body = text.slice(bodyStart, bodyEnd).trim();
+    if (body.length === 0) continue;
+    const index = "①②③④⑤".indexOf(cur.marker) + 1;
+    out.push({ index, body });
+  }
+  return out;
 }
 
 const problems = parseProblems(problemDoc.paragraphs);

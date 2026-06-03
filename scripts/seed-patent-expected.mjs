@@ -131,7 +131,9 @@ async function resolveArticle(hint) {
   return id;
 }
 
-function inferFormat(stem) {
+function inferFormat(p) {
+  if (Array.isArray(p.boxItems) && p.boxItems.length > 0) return "mc_box";
+  const stem = p.stem ?? "";
   if (/사례/.test(stem)) return "mc_case";
   if (/<\s*보기\s*>|<보기>|\[\s*보기\s*\]|모두\s*고른|㈎|㉠/.test(stem)) return "mc_box";
   return "mc_short";
@@ -179,7 +181,7 @@ for (const p of problems) {
       exam_round: "first",
       subject_type: "law",
       origin: "expected",
-      format: inferFormat(p.stem),
+      format: inferFormat(p),
       scope: p.scope === "comprehensive" ? "comprehensive" : "unit",
       polarity: inferPolarity(p.stem),
       year: null, // 예상문제는 연도 없음
@@ -205,6 +207,19 @@ for (const p of problems) {
   if (choiceRows.length > 0) {
     const { error: cErr } = await supa.from("problem_choices").insert(choiceRows);
     if (cErr) console.error(`  choices insert 실패:`, cErr.message);
+  }
+  // box_items — 박스형 문제 (mc_box) 의 보기 항목.
+  if (Array.isArray(p.boxItems) && p.boxItems.length > 0) {
+    const boxRows = p.boxItems.map((b, i) => ({
+      problem_id: probRow.problem_id,
+      marker: b.marker,
+      position_index: i,
+      body_md: b.body,
+      // 해설은 별도 매칭 단계 — 일단 null. 강사가 link-suggest 에서 보강.
+      explanation_md: null,
+    }));
+    const { error: bErr } = await supa.from("problem_box_items").insert(boxRows);
+    if (bErr) console.error(`  box_items insert 실패:`, bErr.message);
   }
   inserted++;
 }
