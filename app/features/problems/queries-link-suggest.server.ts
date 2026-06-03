@@ -21,7 +21,10 @@ export interface MissingLinkItem {
 
 interface ListOpts {
   origins: ProblemOrigin[];
+  /** 단건 lawCode (legacy) — lawCodes 가 있으면 무시. */
   lawCode?: string | null;
+  /** 과목 멀티 필터 — 비었으면 전체. */
+  lawCodes?: string[];
   limit?: number;
 }
 
@@ -47,9 +50,16 @@ export async function listProblemsWithMissingLinks(
     .in("origin", opts.origins)
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (opts.lawCode) {
-    const { data: lawRow } = await client.from("laws").select("law_id").eq("law_code", opts.lawCode).maybeSingle();
-    if (lawRow) q = q.eq("law_id", lawRow.law_id);
+  const codes = opts.lawCodes && opts.lawCodes.length > 0
+    ? opts.lawCodes
+    : opts.lawCode
+      ? [opts.lawCode]
+      : [];
+  if (codes.length > 0) {
+    const { data: lawRows } = await client.from("laws").select("law_id, law_code").in("law_code", codes);
+    const ids = (lawRows ?? []).map((r) => r.law_id);
+    if (ids.length > 0) q = q.in("law_id", ids);
+    else q = q.eq("law_id", "00000000-0000-0000-0000-000000000000"); // 매칭 0건 강제
   }
   const { data: probs, error } = await q;
   if (error || !probs) return [];

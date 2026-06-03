@@ -34,6 +34,15 @@ export const meta: Route.MetaFunction = () => [
 const DEFAULT_ORIGINS: ProblemOrigin[] = ["expected", "ai_draft", "past_exam_variant"];
 const ALL_ORIGINS: ProblemOrigin[] = ["past_exam", "past_exam_variant", "expected", "mock", "ai_draft"];
 
+// 과목 chip — 표시 라벨은 LAW_LABEL 와 일치 (link-suggest.server.ts 내부 정의와 동일).
+const ALL_LAWS: Array<{ code: string; label: string }> = [
+  { code: "patent", label: "특허법" },
+  { code: "trademark", label: "상표법" },
+  { code: "design", label: "디자인" },
+  { code: "civil", label: "민법" },
+  { code: "civil-procedure", label: "민소법" },
+];
+
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -49,13 +58,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     originsRaw.length > 0
       ? (originsRaw.filter((o) => ALL_ORIGINS.includes(o as ProblemOrigin)) as ProblemOrigin[])
       : DEFAULT_ORIGINS;
-  const lawCode = url.searchParams.get("lawCode");
+  const lawsRaw = url.searchParams.getAll("law");
+  const lawCodes = lawsRaw.filter((l) => ALL_LAWS.some((al) => al.code === l));
   const focusId = url.searchParams.get("focus");
   const useRag = url.searchParams.get("rag") !== "off";
 
   const items = await listProblemsWithMissingLinks(client, {
     origins,
-    lawCode,
+    lawCodes,
     limit: 200,
   });
 
@@ -71,7 +81,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     items,
     suggestions,
-    filters: { origins, lawCode, useRag },
+    filters: { origins, lawCodes, useRag },
     role,
   };
 }
@@ -92,6 +102,16 @@ export default function AdminProblemLinkSuggest({ loaderData }: Route.ComponentP
     const active = cur.length > 0 ? cur : DEFAULT_ORIGINS;
     const newSet = active.includes(o) ? active.filter((x) => x !== o) : [...active, o];
     for (const v of newSet) next.append("origin", v);
+    next.delete("focus");
+    setSearchParams(next);
+  };
+
+  const toggleLaw = (code: string) => {
+    const next = new URLSearchParams(searchParams);
+    const cur = next.getAll("law");
+    next.delete("law");
+    const newSet = cur.includes(code) ? cur.filter((x) => x !== code) : [...cur, code];
+    for (const v of newSet) next.append("law", v);
     next.delete("focus");
     setSearchParams(next);
   };
@@ -146,6 +166,30 @@ export default function AdminProblemLinkSuggest({ loaderData }: Route.ComponentP
                         )}
                       >
                         {ORIGIN_LABEL[o]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 text-xs font-medium">
+                  과목(law) {filters.lawCodes.length === 0 && <span className="text-muted-foreground">— 전체</span>}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {ALL_LAWS.map((l) => {
+                    const active = filters.lawCodes.includes(l.code);
+                    return (
+                      <button
+                        key={l.code}
+                        onClick={() => toggleLaw(l.code)}
+                        className={cn(
+                          "rounded-md border px-2 py-1 text-xs",
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/70",
+                        )}
+                      >
+                        {l.label}
                       </button>
                     );
                   })}
