@@ -388,24 +388,44 @@ export async function listSlideCandidates(
   if (!cands || cands.length === 0) return [];
 
   const pdfUrls = cands.map((c) => c.pdf_url);
+  // lecture_resources.target_id 는 polymorphic 컬럼 — cases 로의 외래키 정의 없음.
+  // PostgREST embed (`cases:target_id(...)`) 는 FK 없으면 400 throw 하므로
+  // 두 쿼리로 분리해 안전하게 join 한다.
   const { data: links, error: linkErr } = await client
     .from("lecture_resources")
-    .select("pdf_url, target_id, cases:target_id(case_id, case_number, court)")
+    .select("pdf_url, target_id")
     .eq("target_type", "case")
     .is("deleted_at", null)
     .in("pdf_url", pdfUrls);
   if (linkErr) throw linkErr;
 
+  const targetIds = Array.from(
+    new Set(
+      (links ?? [])
+        .map((l) => l.target_id)
+        .filter((v): v is string => typeof v === "string" && v.length > 0),
+    ),
+  );
+  const casesById = new Map<
+    string,
+    { case_id: string; case_number: string; court: string | null }
+  >();
+  if (targetIds.length > 0) {
+    const { data: caseRows, error: caseErr } = await client
+      .from("cases")
+      .select("case_id, case_number, court")
+      .in("case_id", targetIds);
+    if (caseErr) throw caseErr;
+    for (const c of caseRows ?? []) casesById.set(c.case_id, c);
+  }
+
   const linkedByUrl = new Map<string, SlideCandidateLinkedCase[]>();
   for (const l of links ?? []) {
-    if (!l.cases || !l.pdf_url) continue;
+    if (!l.pdf_url || !l.target_id) continue;
+    const c = casesById.get(l.target_id);
+    if (!c) continue;
     const arr = linkedByUrl.get(l.pdf_url) ?? [];
-    const k = l.cases as unknown as {
-      case_id: string;
-      case_number: string;
-      court: string | null;
-    };
-    arr.push({ caseId: k.case_id, caseNumber: k.case_number, court: k.court });
+    arr.push({ caseId: c.case_id, caseNumber: c.case_number, court: c.court });
     linkedByUrl.set(l.pdf_url, arr);
   }
 
