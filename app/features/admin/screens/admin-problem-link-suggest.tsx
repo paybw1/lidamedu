@@ -425,7 +425,9 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
       {suggestions.perChoice.length > 0 && (
         <Card>
           <CardContent className="space-y-3 py-3">
-            <div className="text-sm font-medium">선지별 후보</div>
+            <div className="text-sm font-medium">
+              선지별 후보 — 조문·판례 <span className="text-muted-foreground">동시 선택 가능</span>
+            </div>
             {suggestions.perChoice.map((c) => {
               const selArt = selected.get(`choice:${c.choiceId}:art`)?.articleId ?? null;
               const selCase = selected.get(`choice:${c.choiceId}:case`)?.caseId ?? null;
@@ -438,6 +440,8 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   current={{ articleId: c.currentArticleId, caseId: c.currentCaseId }}
                   articles={c.articles}
                   cases={c.cases}
+                  fallbackArticles={suggestions.perProblem.articles}
+                  fallbackCases={suggestions.perProblem.cases}
                   selectedArticleId={selArt}
                   selectedCaseId={selCase}
                   onPickArticle={(id) => toggleArticleForSegment("choice", c.choiceId, id)}
@@ -453,7 +457,9 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
       {suggestions.perBoxItem.length > 0 && (
         <Card>
           <CardContent className="space-y-3 py-3">
-            <div className="text-sm font-medium">박스별 후보</div>
+            <div className="text-sm font-medium">
+              박스별 후보 — 조문·판례 <span className="text-muted-foreground">동시 선택 가능</span>
+            </div>
             {suggestions.perBoxItem.map((b) => {
               const selArt = selected.get(`box:${b.boxItemId}:art`)?.articleId ?? null;
               const selCase = selected.get(`box:${b.boxItemId}:case`)?.caseId ?? null;
@@ -466,6 +472,8 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   current={{ articleId: b.currentArticleId, caseId: b.currentCaseId }}
                   articles={b.articles}
                   cases={b.cases}
+                  fallbackArticles={suggestions.perProblem.articles}
+                  fallbackCases={suggestions.perProblem.cases}
                   selectedArticleId={selArt}
                   selectedCaseId={selCase}
                   onPickArticle={(id) => toggleArticleForSegment("box", b.boxItemId, id)}
@@ -489,6 +497,9 @@ interface SegmentBlockProps {
   current: { articleId: string | null; caseId: string | null };
   articles: ArticleCandidate[];
   cases: CaseCandidate[];
+  /** 문제 전체 단위 후보 (chunk·rag) — 선지별 후보가 비거나 보조 시. */
+  fallbackArticles: ArticleCandidate[];
+  fallbackCases: CaseCandidate[];
   selectedArticleId: string | null;
   selectedCaseId: string | null;
   onPickArticle: (id: string) => void;
@@ -496,11 +507,15 @@ interface SegmentBlockProps {
 }
 
 function SegmentBlock(p: SegmentBlockProps) {
+  // 선지별 명시 후보 + 문제 전체 fallback 을 합쳐 중복 제거.
+  const articleMerged = mergeCandidates<ArticleCandidate>(p.articles, p.fallbackArticles, (a) => a.articleId);
+  const caseMerged = mergeCandidates<CaseCandidate>(p.cases, p.fallbackCases, (c) => c.caseId);
   return (
     <div className="rounded border p-2">
       <div className="mb-1 flex items-center gap-2 text-xs">
         <Badge variant="outline">{p.label}</Badge>
-        {p.current.articleId && <Badge className="bg-emerald-600 text-[10px]">기연결</Badge>}
+        {p.current.articleId && <Badge className="bg-emerald-600 text-[10px]">조문 기연결</Badge>}
+        {p.current.caseId && <Badge className="bg-violet-600 text-[10px]">판례 기연결</Badge>}
       </div>
       <div className="mb-1 text-xs text-foreground">{p.bodyMd}</div>
       {p.explanationMd && (
@@ -508,15 +523,21 @@ function SegmentBlock(p: SegmentBlockProps) {
           해설: {p.explanationMd}
         </div>
       )}
-      {p.articles.length === 0 && p.cases.length === 0 ? (
-        <div className="text-[11px] text-muted-foreground">후보 없음 (직접 추가 — 향후 구현)</div>
+      {articleMerged.length === 0 && caseMerged.length === 0 ? (
+        <div className="text-[11px] text-muted-foreground">후보 없음 — 직접 추가는 향후 구현</div>
       ) : (
-        <div className="space-y-2">
-          {p.articles.length > 0 && (
-            <div>
-              <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">조문</div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          {/* ── 조문 ── */}
+          <div>
+            <div className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase text-muted-foreground">
+              <span>조문</span>
+              {p.selectedArticleId && <Badge className="h-3 bg-primary/80 px-1 text-[9px]">선택됨</Badge>}
+            </div>
+            {articleMerged.length === 0 ? (
+              <div className="text-[10px] text-muted-foreground">후보 없음</div>
+            ) : (
               <div className="flex flex-wrap gap-1">
-                {p.articles.map((a) => {
+                {articleMerged.map((a) => {
                   const active = p.selectedArticleId === a.articleId;
                   return (
                     <button
@@ -535,13 +556,19 @@ function SegmentBlock(p: SegmentBlockProps) {
                   );
                 })}
               </div>
+            )}
+          </div>
+          {/* ── 판례 ── */}
+          <div>
+            <div className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase text-muted-foreground">
+              <span>판례</span>
+              {p.selectedCaseId && <Badge className="h-3 bg-primary/80 px-1 text-[9px]">선택됨</Badge>}
             </div>
-          )}
-          {p.cases.length > 0 && (
-            <div>
-              <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">판례</div>
+            {caseMerged.length === 0 ? (
+              <div className="text-[10px] text-muted-foreground">후보 없음</div>
+            ) : (
               <div className="flex flex-wrap gap-1">
-                {p.cases.map((c) => {
+                {caseMerged.map((c) => {
                   const active = p.selectedCaseId === c.caseId;
                   return (
                     <button
@@ -561,12 +588,27 @@ function SegmentBlock(p: SegmentBlockProps) {
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
   );
+}
+
+function mergeCandidates<T extends { sources: string[] }>(
+  primary: T[],
+  fallback: T[],
+  keyOf: (x: T) => string,
+): T[] {
+  const out: T[] = [...primary];
+  const seen = new Set(primary.map(keyOf));
+  for (const f of fallback) {
+    if (seen.has(keyOf(f))) continue;
+    out.push(f);
+    seen.add(keyOf(f));
+  }
+  return out;
 }
 
 interface SectionCardProps {
