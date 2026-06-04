@@ -36,7 +36,7 @@ const MARKER_FAMILIES = [
   // 한글 괄호괄호 (㈎ ㈏ ㈐ ㈑ ㈒ ㈓ ㈔ ㈕ ㈖ ㈗) — U+3218..3227
   { name: "kor_paren_double", chars: "㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗", needsDot: false },
   // 한글 동그라미 자모 (㉠ ㉡ ㉢ ㉣ ㉤ ㉥ ㉦ ㉧ ㉨ ㉩) — U+3260..3269
-  { name: "kor_circled_jamo", chars: "㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩", needsDot: false },
+  { name: "kor_circled_jamo", chars: "㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭", needsDot: false },
   // 한글 동그라미 음절 (㉮ ㉯ ㉰ ㉱ ㉲ ㉳ ㉴ ㉵ ㉶ ㉷ ㉸ ㉹) — U+326E..3279
   { name: "kor_circled_syl", chars: "㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹", needsDot: false },
   // 한글 괄호 (㈀ ㈁ ㈂ ㈃ ㈄ ㈅ ㈆ ㈇ ㈈ ㈉) — U+3200..3209
@@ -127,7 +127,7 @@ console.log(`[index] paragraphs: ${paragraphs.length}, stems: ${stemIndex.length
 
 // ---- DB 후보 로드 ----
 // 박스 마커로 시작하는 choice 본문 판정.
-const BOX_MARKER_RE = /^[㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉]|^[ㄱ-ㅎ](\s|[.,，·]|$)/;
+const BOX_MARKER_RE = /^[㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉]|^[ㄱ-ㅎ](\s|[.,，·]|$)/;
 
 let pq = supa
   .from("problems")
@@ -242,7 +242,7 @@ for (const c of candidates) {
   const choiceMarkerSet = new Set();
   for (const ch of c.choices) {
     for (const ch2 of (ch.body_md || "")) {
-      if (/[㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊ]/.test(ch2)) {
+      if (/[㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊ]/.test(ch2)) {
         choiceMarkerSet.add(ch2);
       }
     }

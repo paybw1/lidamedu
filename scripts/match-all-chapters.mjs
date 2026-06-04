@@ -31,10 +31,10 @@ const PROBLEM_NO_YEAR_RE = /^(\d{2})\s*(모의|예상)\s*(단원|종합)?(.*)$/;
 const CHOICE_RE = /^([①②③④⑤])\s*(.+)$/;
 // 박스 항목 마커: 한글 원문자 ㉠..㉭ 또는 한글 괄호문자 ㈎..㈛.
 // 한 paragraph 가 마커로 시작하면 박스 항목.
-const BOX_MARKER_RE = /^([㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗])\s*(.+)$/;
+const BOX_MARKER_RE = /^([㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗])\s*(.+)$/;
 const ANSWER_HEADER_RE = /^(\d{2})\s*([①②③④⑤])\s*$/;
 // 답안집 박스 항목 해설: "㈎ ✕, ..." / "㉠ ○, ..." — 마커는 보통 한글괄호.
-const ANSWER_BOX_LINE_RE = /^([㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗])\s*([○✕XO])?\s*[,．、]?\s*(.*)$/;
+const ANSWER_BOX_LINE_RE = /^([㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗])\s*([○✕XO])?\s*[,．、]?\s*(.*)$/;
 // 복수 정답: "09 ③⑤"
 const ANSWER_MULTI_RE = /^(\d{2})\s*([①②③④⑤]{2,})\s*$/;
 // 정답 없음/취소: "05 답없음", "17 없음"
@@ -206,7 +206,7 @@ function parseProblemChapter(lines, range, fallbackName) {
       if (last.choices.length === 0) {
         const bm = t.match(BOX_MARKER_RE);
         if (bm) {
-          const markerCount = (t.match(/[㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗]/g) ?? []).length;
+          const markerCount = (t.match(/[㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗]/g) ?? []).length;
           if (markerCount === 1) {
             if (!last.boxItems.some((x) => x.marker === bm[1])) {
               last.boxItems.push({

@@ -229,9 +229,11 @@ function parseProblems(paragraphs) {
 }
 
 // 박스 마커 family — backfill-box-items.mjs 와 동일.
+// kor_circled_jamo: U+3260..U+326D — ㉠ ~ ㉭ (14자). 객관식(Ⅱ) 예상문제 등 일부 문제는
+//   ㉩(U+3269) 너머 ㉪㉫㉬㉭ 까지 보기 ≥10 개를 쓰는 케이스가 있어 확장.
 const BOX_FAMILIES = [
   { name: "kor_paren_double", chars: "㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗" },
-  { name: "kor_circled_jamo", chars: "㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩" },
+  { name: "kor_circled_jamo", chars: "㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭" },
   { name: "kor_circled_syl", chars: "㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹" },
   { name: "kor_paren", chars: "㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉" },
 ];
