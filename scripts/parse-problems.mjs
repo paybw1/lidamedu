@@ -381,8 +381,20 @@ function parseAnswers(paragraphs) {
 
     if (!current) continue;
 
-    // 해설 본문 시작 marker — "해설" 단독 또는 "해설..." prefix
+    // 해설 본문 시작 marker — "해설" 단독.
     if (text === "해설") continue;
+    // "해설①" / "해설②④" — 해설 prefix + 선지 marker 가 한 paragraph 에. perChoice 로.
+    // 예상문제 해설편 첫 줄 패턴 (433 paragraphs).
+    const haeSeolChoice = text.match(/^해설\s*([①②③④⑤]+)\s*(.+)$/);
+    if (haeSeolChoice) {
+      const indices = [...haeSeolChoice[1]].map((c) => "①②③④⑤".indexOf(c) + 1);
+      const body = haeSeolChoice[2].trim();
+      for (const idx of indices) {
+        const cur = current.perChoice[idx] ?? "";
+        current.perChoice[idx] = cur ? cur + " " + body : body;
+      }
+      continue;
+    }
     const cMatch = text.match(ANSWER_CHOICE_RE);
     if (cMatch) {
       const indices = [...cMatch[1]].map((c) => "①②③④⑤".indexOf(c) + 1);
