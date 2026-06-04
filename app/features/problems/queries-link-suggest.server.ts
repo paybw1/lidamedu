@@ -122,6 +122,10 @@ export type ApplyTarget =
       caseId: string | null;
       /** 분류 (선택) — statute/precedent/theory. */
       choiceType?: "statute" | "precedent" | "theory" | null;
+      /** OX 진리값 (선택). */
+      oxTruth?: "O" | "X" | null;
+      /** OX 불가 토글 (선택). */
+      oxIneligible?: boolean;
     }
   | {
       kind: "box";
@@ -129,6 +133,8 @@ export type ApplyTarget =
       articleId: string | null;
       caseId: string | null;
       choiceType?: "statute" | "precedent" | "theory" | null;
+      oxTruth?: "O" | "X" | null;
+      oxIneligible?: boolean;
     }
   | { kind: "primary"; problemId: string; articleId: string }
   | { kind: "problem-case"; problemId: string; caseId: string };
@@ -151,6 +157,12 @@ export async function applyLinkApprovals(
       if (t.articleId !== null) update.related_article_id = t.articleId;
       if (t.caseId !== null) update.related_case_id = t.caseId;
       if (t.choiceType !== undefined) update.choice_type = t.choiceType;
+      if (t.oxTruth !== undefined) update.ox_truth = t.oxTruth;
+      if (t.oxIneligible !== undefined) {
+        update.ox_ineligible = t.oxIneligible;
+        // 불가로 토글하면 ox_truth 자동 비움.
+        if (t.oxIneligible) update.ox_truth = null;
+      }
       if (Object.keys(update).length === 0) continue;
       const { error } = await client
         .from("problem_choices")
@@ -163,6 +175,11 @@ export async function applyLinkApprovals(
       if (t.articleId !== null) update.related_article_id = t.articleId;
       if (t.caseId !== null) update.related_case_id = t.caseId;
       if (t.choiceType !== undefined) update.choice_type = t.choiceType;
+      if (t.oxTruth !== undefined) update.ox_truth = t.oxTruth;
+      if (t.oxIneligible !== undefined) {
+        update.ox_ineligible = t.oxIneligible;
+        if (t.oxIneligible) update.ox_truth = null;
+      }
       if (Object.keys(update).length === 0) continue;
       const { error } = await client
         .from("problem_box_items")

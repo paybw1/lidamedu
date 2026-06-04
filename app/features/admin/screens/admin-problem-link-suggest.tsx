@@ -298,6 +298,26 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
       return next;
     });
   };
+  // OX 진리값 변경.
+  const [oxChanges, setOxChanges] = useState<Map<string, OxTruthVal>>(new Map());
+  const setOxTruthFor = (segmentKind: "choice" | "box", segmentId: string, t: OxTruthVal) => {
+    setOxChanges((cur) => {
+      const next = new Map(cur);
+      next.set(`${segmentKind}:${segmentId}`, t);
+      return next;
+    });
+  };
+  // OX 불가 변경.
+  const [oxIneligibleChanges, setOxIneligibleChanges] = useState<Map<string, boolean>>(new Map());
+  const setOxIneligibleFor = (segmentKind: "choice" | "box", segmentId: string, v: boolean) => {
+    setOxIneligibleChanges((cur) => {
+      const next = new Map(cur);
+      next.set(`${segmentKind}:${segmentId}`, v);
+      return next;
+    });
+    // 불가로 켜면 OX 도 null 로 일치시킴 (DB 와 동일 동작).
+    if (v) setOxTruthFor(segmentKind, segmentId, null);
+  };
 
   const toggleArticleForSegment = (segmentKind: "choice" | "box", segmentId: string, articleId: string) => {
     const key = `${segmentKind}:${segmentId}:art`;
@@ -341,46 +361,71 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
   };
 
   const buildTargets = () => {
+    // segmentKey → { articleId?, caseId?, choiceType?, oxTruth?, oxIneligible? } 모아 1개 target 으로.
+    const segMap = new Map<string, {
+      kind: "choice" | "box";
+      id: string;
+      articleId: string | null;
+      caseId: string | null;
+      choiceType?: ChoiceTypeVal;
+      oxTruth?: OxTruthVal;
+      oxIneligible?: boolean;
+    }>();
+    const ensureSeg = (kind: "choice" | "box", id: string) => {
+      const k = `${kind}:${id}`;
+      let seg = segMap.get(k);
+      if (!seg) {
+        seg = { kind, id, articleId: null, caseId: null };
+        segMap.set(k, seg);
+      }
+      return seg;
+    };
+
     const out: unknown[] = [];
-    // 후보 선택 targets.
+    // 후보 선택.
     for (const v of selected.values()) {
-      if (v.kind === "choice") {
-        const t = typeChanges.get(`choice:${v.segmentId}`);
-        out.push({
-          kind: "choice" as const,
-          choiceId: v.segmentId,
-          articleId: v.articleId ?? null,
-          caseId: v.caseId ?? null,
-          choiceType: t === undefined ? undefined : t,
-        });
-      } else if (v.kind === "box") {
-        const t = typeChanges.get(`box:${v.segmentId}`);
-        out.push({
-          kind: "box" as const,
-          boxItemId: v.segmentId,
-          articleId: v.articleId ?? null,
-          caseId: v.caseId ?? null,
-          choiceType: t === undefined ? undefined : t,
-        });
+      if (v.kind === "choice" || v.kind === "box") {
+        const seg = ensureSeg(v.kind, v.segmentId);
+        if (v.articleId) seg.articleId = v.articleId;
+        if (v.caseId) seg.caseId = v.caseId;
       } else if (v.kind === "primary") {
         out.push({ kind: "primary" as const, problemId: v.segmentId, articleId: v.articleId! });
       } else {
         out.push({ kind: "problem-case" as const, problemId: v.segmentId, caseId: v.caseId! });
       }
     }
-    // 분류만 바뀌었고 chip 선택이 없는 segment 도 target 추가.
-    const selectedKeys = new Set<string>();
-    for (const v of selected.values()) {
-      if (v.kind === "choice") selectedKeys.add(`choice:${v.segmentId}`);
-      else if (v.kind === "box") selectedKeys.add(`box:${v.segmentId}`);
-    }
+    // 분류 / OX / OX불가 변경분 흡수.
     for (const [k, t] of typeChanges) {
-      if (selectedKeys.has(k)) continue;
       const [kind, id] = k.split(":");
-      if (kind === "choice") {
-        out.push({ kind: "choice" as const, choiceId: id, articleId: null, caseId: null, choiceType: t });
-      } else if (kind === "box") {
-        out.push({ kind: "box" as const, boxItemId: id, articleId: null, caseId: null, choiceType: t });
+      if (kind !== "choice" && kind !== "box") continue;
+      const seg = ensureSeg(kind, id);
+      seg.choiceType = t;
+    }
+    for (const [k, t] of oxChanges) {
+      const [kind, id] = k.split(":");
+      if (kind !== "choice" && kind !== "box") continue;
+      const seg = ensureSeg(kind, id);
+      seg.oxTruth = t;
+    }
+    for (const [k, t] of oxIneligibleChanges) {
+      const [kind, id] = k.split(":");
+      if (kind !== "choice" && kind !== "box") continue;
+      const seg = ensureSeg(kind, id);
+      seg.oxIneligible = t;
+    }
+
+    for (const seg of segMap.values()) {
+      const base = {
+        articleId: seg.articleId,
+        caseId: seg.caseId,
+        ...(seg.choiceType !== undefined ? { choiceType: seg.choiceType } : {}),
+        ...(seg.oxTruth !== undefined ? { oxTruth: seg.oxTruth } : {}),
+        ...(seg.oxIneligible !== undefined ? { oxIneligible: seg.oxIneligible } : {}),
+      };
+      if (seg.kind === "choice") {
+        out.push({ kind: "choice" as const, choiceId: seg.id, ...base });
+      } else {
+        out.push({ kind: "box" as const, boxItemId: seg.id, ...base });
       }
     }
     return out;
@@ -398,8 +443,13 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
     if (intent === "apply") {
       setSelected(new Map());
       setTypeChanges(new Map());
+      setOxChanges(new Map());
+      setOxIneligibleChanges(new Map());
     }
   };
+
+  const totalEdits =
+    selected.size + typeChanges.size + oxChanges.size + oxIneligibleChanges.size;
 
   return (
     <div className="space-y-4">
@@ -409,12 +459,12 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
           <Badge variant="outline">{ORIGIN_LABEL[item.origin]}</Badge>
           {item.lawCode && <Badge variant="secondary">{item.lawCode}</Badge>}
           <span className="ml-auto text-muted-foreground">
-            선택 {selected.size}건 / 분류 변경 {typeChanges.size}건
+            선택 {selected.size} · 분류 {typeChanges.size} · OX {oxChanges.size + oxIneligibleChanges.size}
           </span>
-          <Button size="sm" variant="outline" disabled={busy || (selected.size === 0 && typeChanges.size === 0)} onClick={() => submit("dry-run")}>
+          <Button size="sm" variant="outline" disabled={busy || totalEdits === 0} onClick={() => submit("dry-run")}>
             미리보기
           </Button>
-          <Button size="sm" disabled={busy || (selected.size === 0 && typeChanges.size === 0)} onClick={() => submit("apply")}>
+          <Button size="sm" disabled={busy || totalEdits === 0} onClick={() => submit("apply")}>
             {busy ? "적용 중…" : "승인 적용"}
           </Button>
         </CardContent>
@@ -490,8 +540,20 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   bodyMd={c.bodyMd}
                   explanationMd={c.explanationMd}
                   isCorrect={c.isCorrect}
-                  oxTruth={c.oxTruth}
+                  oxTruth={c.oxTruth as OxTruthVal}
                   oxIneligible={c.oxIneligible}
+                  selectedOx={
+                    oxChanges.has(`choice:${c.choiceId}`)
+                      ? oxChanges.get(`choice:${c.choiceId}`)!
+                      : (c.oxTruth as OxTruthVal)
+                  }
+                  onChangeOx={(t) => setOxTruthFor("choice", c.choiceId, t)}
+                  selectedOxIneligible={
+                    oxIneligibleChanges.has(`choice:${c.choiceId}`)
+                      ? oxIneligibleChanges.get(`choice:${c.choiceId}`)!
+                      : c.oxIneligible
+                  }
+                  onChangeOxIneligible={(v) => setOxIneligibleFor("choice", c.choiceId, v)}
                   choiceType={c.choiceType as ChoiceTypeVal}
                   selectedType={
                     typeChanges.has(`choice:${c.choiceId}`)
@@ -533,8 +595,20 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   bodyMd={b.bodyMd}
                   explanationMd={b.explanationMd}
                   isCorrect={false}
-                  oxTruth={b.oxTruth}
+                  oxTruth={b.oxTruth as OxTruthVal}
                   oxIneligible={b.oxIneligible}
+                  selectedOx={
+                    oxChanges.has(`box:${b.boxItemId}`)
+                      ? oxChanges.get(`box:${b.boxItemId}`)!
+                      : (b.oxTruth as OxTruthVal)
+                  }
+                  onChangeOx={(t) => setOxTruthFor("box", b.boxItemId, t)}
+                  selectedOxIneligible={
+                    oxIneligibleChanges.has(`box:${b.boxItemId}`)
+                      ? oxIneligibleChanges.get(`box:${b.boxItemId}`)!
+                      : b.oxIneligible
+                  }
+                  onChangeOxIneligible={(v) => setOxIneligibleFor("box", b.boxItemId, v)}
                   choiceType={b.choiceType as ChoiceTypeVal}
                   selectedType={
                     typeChanges.has(`box:${b.boxItemId}`)
@@ -565,6 +639,7 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
 // ── 후보 표시 — 단위(선지/박스) ─────────────────────────────────────────
 
 type ChoiceTypeVal = "statute" | "precedent" | "theory" | null;
+type OxTruthVal = "O" | "X" | null;
 
 interface SegmentBlockProps {
   label: string;
@@ -572,12 +647,16 @@ interface SegmentBlockProps {
   explanationMd: string | null;
   /** 정답 여부 (선지만 의미. 박스는 false 고정). */
   isCorrect: boolean;
-  /** OX 진리값 — 'true' | 'false' | null. */
-  oxTruth: string | null;
+  oxTruth: OxTruthVal;
   oxIneligible: boolean;
+  /** 강사가 OX 라디오 변경. null = 미판정. */
+  onChangeOx: (next: OxTruthVal) => void;
+  selectedOx: OxTruthVal;
+  /** OX 불가 토글 변경. */
+  onChangeOxIneligible: (next: boolean) => void;
+  selectedOxIneligible: boolean;
   /** 분류 — 현재 DB 값. 강사가 셀렉트로 변경 가능. */
   choiceType: ChoiceTypeVal;
-  /** 분류 변경 시 호출 (apply 시 함께 전송). */
   onChangeType: (next: ChoiceTypeVal) => void;
   selectedType: ChoiceTypeVal;
   /** 직접 추가용 — 검색 시 lawCode 필터. */
@@ -609,15 +688,10 @@ function SegmentBlock(p: SegmentBlockProps) {
     (c) => c.caseId,
   );
 
-  const oxBadge =
-    p.oxTruth === "true" ? (
-      <Badge className="bg-blue-600 text-[10px]">O</Badge>
-    ) : p.oxTruth === "false" ? (
-      <Badge className="bg-red-600 text-[10px]">X</Badge>
-    ) : null;
-
-  // 분류 effective — selectedType 가 있으면 그것, 없으면 DB 값.
+  // effective 값 — strate state 가 set 됐으면 그것, 아니면 DB 값.
   const effectiveType: ChoiceTypeVal = p.selectedType ?? p.choiceType;
+  const effectiveOx: OxTruthVal = p.selectedOx ?? (p.oxTruth as OxTruthVal);
+  const effectiveOxIneligible: boolean = p.selectedOxIneligible;
   // 입력 영역 분기:
   //   precedent → 조문(부) + 판례(주) 둘 다
   //   statute / theory → 조문만
@@ -631,8 +705,61 @@ function SegmentBlock(p: SegmentBlockProps) {
       <div className="mb-1 flex flex-wrap items-center gap-1 text-xs">
         <Badge variant="outline">{p.label}</Badge>
         {p.isCorrect && <Badge className="bg-amber-500 text-[10px]">정답</Badge>}
-        {oxBadge}
-        {p.oxIneligible && <Badge variant="outline" className="text-[10px] text-muted-foreground">OX 불가</Badge>}
+        {/* OX 라디오 — O / X / 미판정. 불가일 땐 disable. */}
+        <div className={cn(
+          "inline-flex items-center gap-0.5 rounded border px-0.5 py-0.5 text-[10px]",
+          effectiveOxIneligible && "opacity-40",
+        )}>
+          {(["O", "X"] as const).map((v) => {
+            const active = effectiveOx === v;
+            return (
+              <button
+                key={v}
+                type="button"
+                disabled={effectiveOxIneligible}
+                onClick={() => p.onChangeOx(active ? null : v)}
+                className={cn(
+                  "rounded px-1.5 py-0.5 font-bold",
+                  active && v === "O" && "bg-emerald-600 text-white",
+                  active && v === "X" && "bg-rose-600 text-white",
+                  !active && "text-muted-foreground hover:bg-muted",
+                  effectiveOxIneligible && "cursor-not-allowed",
+                )}
+                title={`OX = ${v}`}
+              >
+                {v}
+              </button>
+            );
+          })}
+          {effectiveOx && !effectiveOxIneligible && (
+            <button
+              type="button"
+              onClick={() => p.onChangeOx(null)}
+              className="rounded px-1 py-0.5 text-[9px] text-muted-foreground hover:text-foreground"
+              title="OX 지움"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {/* OX 불가 토글 */}
+        <label
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px]",
+            effectiveOxIneligible
+              ? "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+          title="단독 OX 문제로 분리할 수 없는 지문 (보기묶음 ‘①, ④’ / 사례 의존 등)"
+        >
+          <input
+            type="checkbox"
+            checked={effectiveOxIneligible}
+            onChange={(e) => p.onChangeOxIneligible(e.target.checked)}
+            className="size-3"
+          />
+          OX 불가
+        </label>
         {p.current.articleId && <Badge className="bg-emerald-600 text-[10px]">조문 기연결</Badge>}
         {p.current.caseId && <Badge className="bg-violet-600 text-[10px]">판례 기연결</Badge>}
         <select
@@ -917,6 +1044,8 @@ function PreviewTable({ rows, suggestions }: { rows: PreviewRow[]; suggestions: 
       if (v === "theory") return "이론";
       return v;
     }
+    if (field === "ox_truth") return v === "O" || v === "X" ? v : "—";
+    if (field === "ox_ineligible") return v === "true" ? "✓" : "—";
     return v;
   };
 

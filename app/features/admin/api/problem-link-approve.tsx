@@ -16,6 +16,8 @@ import {
 import type { Route } from "./+types/problem-link-approve";
 
 const choiceTypeSchema = z.enum(["statute", "precedent", "theory"]).nullable().optional();
+const oxTruthSchema = z.enum(["O", "X"]).nullable().optional();
+const oxIneligibleSchema = z.boolean().optional();
 
 const targetSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -24,6 +26,8 @@ const targetSchema = z.discriminatedUnion("kind", [
     articleId: z.string().uuid().nullable(),
     caseId: z.string().uuid().nullable(),
     choiceType: choiceTypeSchema,
+    oxTruth: oxTruthSchema,
+    oxIneligible: oxIneligibleSchema,
   }),
   z.object({
     kind: z.literal("box"),
@@ -31,6 +35,8 @@ const targetSchema = z.discriminatedUnion("kind", [
     articleId: z.string().uuid().nullable(),
     caseId: z.string().uuid().nullable(),
     choiceType: choiceTypeSchema,
+    oxTruth: oxTruthSchema,
+    oxIneligible: oxIneligibleSchema,
   }),
   z.object({
     kind: z.literal("primary"),
@@ -105,7 +111,7 @@ async function dryRunPreview(
     if (t.kind === "choice") {
       const { data: cur } = await client
         .from("problem_choices")
-        .select("related_article_id, related_case_id, choice_type")
+        .select("related_article_id, related_case_id, choice_type, ox_truth, ox_ineligible")
         .eq("choice_id", t.choiceId)
         .maybeSingle();
       const before: Record<string, string | null> = {};
@@ -122,6 +128,14 @@ async function dryRunPreview(
         before.choice_type = cur?.choice_type ?? null;
         after.choice_type = t.choiceType;
       }
+      if (t.oxTruth !== undefined) {
+        before.ox_truth = cur?.ox_truth ?? null;
+        after.ox_truth = t.oxTruth;
+      }
+      if (t.oxIneligible !== undefined) {
+        before.ox_ineligible = cur?.ox_ineligible ? "true" : "false";
+        after.ox_ineligible = t.oxIneligible ? "true" : "false";
+      }
       rows.push({
         target: t,
         before,
@@ -133,7 +147,7 @@ async function dryRunPreview(
     } else if (t.kind === "box") {
       const { data: cur } = await client
         .from("problem_box_items")
-        .select("related_article_id, related_case_id, choice_type")
+        .select("related_article_id, related_case_id, choice_type, ox_truth, ox_ineligible")
         .eq("box_item_id", t.boxItemId)
         .maybeSingle();
       const before: Record<string, string | null> = {};
@@ -149,6 +163,14 @@ async function dryRunPreview(
       if (t.choiceType !== undefined) {
         before.choice_type = cur?.choice_type ?? null;
         after.choice_type = t.choiceType;
+      }
+      if (t.oxTruth !== undefined) {
+        before.ox_truth = cur?.ox_truth ?? null;
+        after.ox_truth = t.oxTruth;
+      }
+      if (t.oxIneligible !== undefined) {
+        before.ox_ineligible = cur?.ox_ineligible ? "true" : "false";
+        after.ox_ineligible = t.oxIneligible ? "true" : "false";
       }
       rows.push({
         target: t,
