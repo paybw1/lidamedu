@@ -92,7 +92,6 @@ export const ADMIN_NAV: NavCluster[] = [
       // 출제 흐름 순서대로 — AI 초안 → 강사 검토 → 직접 출제/목록 → 팩 → 통합 시험.
       { label: "AI 문제 초안 만들기", to: "/admin/problems/ai-gen" },
       { label: "검토 대기 문제", to: "/admin/problems/review" },
-      { label: "해설→조문·판례 연결", to: "/admin/problems/link-suggest" },
       { label: "문제 직접 만들기", to: "/admin/problems/new" },
       { label: "전체 문제 보기", to: "/admin/problems" },
       { label: "OX 검수", to: "/admin/problems/ox" },
