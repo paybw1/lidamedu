@@ -420,14 +420,17 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
         </CardContent>
       </Card>
 
-      {/* dry-run 미리보기 */}
+      {/* dry-run 미리보기 — 표 형태 */}
       {approveFetcher.data?.preview && (
         <Card>
           <CardContent className="space-y-1 py-3 text-xs">
-            <div className="mb-1 font-medium">변경 미리보기 ({(approveFetcher.data.preview as unknown[]).length}건)</div>
-            <pre className="max-h-48 overflow-y-auto rounded bg-muted p-2 text-[10px]">
-              {JSON.stringify(approveFetcher.data.preview, null, 2)}
-            </pre>
+            <div className="mb-2 font-medium">
+              변경 미리보기 ({(approveFetcher.data.preview as PreviewRow[]).length}건)
+            </div>
+            <PreviewTable
+              rows={approveFetcher.data.preview as PreviewRow[]}
+              suggestions={suggestions}
+            />
           </CardContent>
         </Card>
       )}
@@ -872,6 +875,90 @@ function ManualAddPanel(p: ManualAddPanelProps) {
               ))}
         </div>
       )}
+    </div>
+  );
+}
+
+interface PreviewRow {
+  target:
+    | { kind: "choice"; choiceId: string; articleId: string | null; caseId: string | null; choiceType?: ChoiceTypeVal }
+    | { kind: "box"; boxItemId: string; articleId: string | null; caseId: string | null; choiceType?: ChoiceTypeVal }
+    | { kind: "primary"; problemId: string; articleId: string }
+    | { kind: "problem-case"; problemId: string; caseId: string };
+  before: Record<string, string | null>;
+  after: Record<string, string | null>;
+  noChange: boolean;
+}
+
+function PreviewTable({ rows, suggestions }: { rows: PreviewRow[]; suggestions: LinkSuggestions }) {
+  // segment label 매핑 — UUID 만으로는 강사가 어디 변경되는지 알 수 없으니.
+  const choiceLabel = new Map(suggestions.perChoice.map((c) => [c.choiceId, `선지 ${c.choiceIndex}`]));
+  const boxLabel = new Map(suggestions.perBoxItem.map((b) => [b.boxItemId, `박스 ${b.marker}`]));
+  const articleLabel = new Map<string, string>();
+  for (const a of suggestions.perProblem.articles) articleLabel.set(a.articleId, a.displayLabel);
+  for (const c of suggestions.perChoice)
+    for (const a of c.articles) articleLabel.set(a.articleId, a.displayLabel);
+  for (const b of suggestions.perBoxItem)
+    for (const a of b.articles) articleLabel.set(a.articleId, a.displayLabel);
+  const caseLabel = new Map<string, string>();
+  for (const c of suggestions.perProblem.cases) caseLabel.set(c.caseId, c.caseNumber);
+  for (const c of suggestions.perChoice)
+    for (const cs of c.cases) caseLabel.set(cs.caseId, cs.caseNumber);
+  for (const b of suggestions.perBoxItem)
+    for (const cs of b.cases) caseLabel.set(cs.caseId, cs.caseNumber);
+
+  const fmt = (v: string | null, field: string): string => {
+    if (v === null || v === "") return "—";
+    if (field === "related_article_id" || field === "primary_article_id") return articleLabel.get(v) ?? v.slice(0, 8);
+    if (field === "related_case_id") return caseLabel.get(v) ?? v;
+    if (field === "choice_type") {
+      if (v === "statute") return "조문";
+      if (v === "precedent") return "판례";
+      if (v === "theory") return "이론";
+      return v;
+    }
+    return v;
+  };
+
+  const segmentLabel = (t: PreviewRow["target"]): string => {
+    if (t.kind === "choice") return choiceLabel.get(t.choiceId) ?? "선지";
+    if (t.kind === "box") return boxLabel.get(t.boxItemId) ?? "박스";
+    if (t.kind === "primary") return "문제 primary";
+    return "문제 판례";
+  };
+
+  if (rows.length === 0)
+    return <div className="text-[11px] text-muted-foreground">변경 없음</div>;
+
+  return (
+    <div className="space-y-1">
+      {rows.map((r, i) => {
+        const fields = Object.keys(r.after);
+        return (
+          <div key={i} className={cn("rounded border px-2 py-1", r.noChange && "opacity-50")}>
+            <div className="mb-1 flex items-center gap-1 text-[11px]">
+              <Badge variant="outline" className="text-[10px]">
+                {segmentLabel(r.target)}
+              </Badge>
+              {r.noChange && <span className="text-[10px] text-muted-foreground">변동 없음</span>}
+            </div>
+            {fields.length === 0 ? (
+              <div className="text-[10px] text-muted-foreground">변경 필드 없음</div>
+            ) : (
+              <ul className="text-[10px]">
+                {fields.map((f) => (
+                  <li key={f} className="flex items-center gap-1">
+                    <span className="text-muted-foreground">{f}:</span>
+                    <span className="text-rose-700">{fmt(r.before[f] ?? null, f)}</span>
+                    <span>→</span>
+                    <span className="font-medium text-emerald-700">{fmt(r.after[f], f)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

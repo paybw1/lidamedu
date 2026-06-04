@@ -105,7 +105,7 @@ async function dryRunPreview(
     if (t.kind === "choice") {
       const { data: cur } = await client
         .from("problem_choices")
-        .select("related_article_id, related_case_id")
+        .select("related_article_id, related_case_id, choice_type")
         .eq("choice_id", t.choiceId)
         .maybeSingle();
       const before: Record<string, string | null> = {};
@@ -118,17 +118,22 @@ async function dryRunPreview(
         before.related_case_id = cur?.related_case_id ?? null;
         after.related_case_id = t.caseId;
       }
+      if (t.choiceType !== undefined) {
+        before.choice_type = cur?.choice_type ?? null;
+        after.choice_type = t.choiceType;
+      }
       rows.push({
         target: t,
         before,
         after,
         noChange:
+          Object.keys(after).length > 0 &&
           Object.keys(after).every((k) => before[k] === after[k]),
       });
     } else if (t.kind === "box") {
       const { data: cur } = await client
         .from("problem_box_items")
-        .select("related_article_id, related_case_id")
+        .select("related_article_id, related_case_id, choice_type")
         .eq("box_item_id", t.boxItemId)
         .maybeSingle();
       const before: Record<string, string | null> = {};
@@ -141,11 +146,16 @@ async function dryRunPreview(
         before.related_case_id = cur?.related_case_id ?? null;
         after.related_case_id = t.caseId;
       }
+      if (t.choiceType !== undefined) {
+        before.choice_type = cur?.choice_type ?? null;
+        after.choice_type = t.choiceType;
+      }
       rows.push({
         target: t,
         before,
         after,
         noChange:
+          Object.keys(after).length > 0 &&
           Object.keys(after).every((k) => before[k] === after[k]),
       });
     } else if (t.kind === "primary") {
