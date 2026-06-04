@@ -115,8 +115,21 @@ export async function listProblemsWithMissingLinks(
 // ── 승인 적용 ────────────────────────────────────────────────────────────
 
 export type ApplyTarget =
-  | { kind: "choice"; choiceId: string; articleId: string | null; caseId: string | null }
-  | { kind: "box"; boxItemId: string; articleId: string | null; caseId: string | null }
+  | {
+      kind: "choice";
+      choiceId: string;
+      articleId: string | null;
+      caseId: string | null;
+      /** 분류 (선택) — statute/precedent/theory. */
+      choiceType?: "statute" | "precedent" | "theory" | null;
+    }
+  | {
+      kind: "box";
+      boxItemId: string;
+      articleId: string | null;
+      caseId: string | null;
+      choiceType?: "statute" | "precedent" | "theory" | null;
+    }
   | { kind: "primary"; problemId: string; articleId: string }
   | { kind: "problem-case"; problemId: string; caseId: string };
 
@@ -137,6 +150,7 @@ export async function applyLinkApprovals(
       const update: Record<string, unknown> = {};
       if (t.articleId !== null) update.related_article_id = t.articleId;
       if (t.caseId !== null) update.related_case_id = t.caseId;
+      if (t.choiceType !== undefined) update.choice_type = t.choiceType;
       if (Object.keys(update).length === 0) continue;
       const { error } = await client
         .from("problem_choices")
@@ -148,6 +162,7 @@ export async function applyLinkApprovals(
       const update: Record<string, unknown> = {};
       if (t.articleId !== null) update.related_article_id = t.articleId;
       if (t.caseId !== null) update.related_case_id = t.caseId;
+      if (t.choiceType !== undefined) update.choice_type = t.choiceType;
       if (Object.keys(update).length === 0) continue;
       const { error } = await client
         .from("problem_box_items")

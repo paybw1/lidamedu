@@ -289,6 +289,15 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
   const approveFetcher = useFetcher<{ ok?: boolean; applied?: number; errors?: string[]; preview?: unknown[]; error?: string }>();
   const busy = approveFetcher.state !== "idle";
   const [selected, setSelected] = useState<Map<string, { kind: "choice" | "box" | "primary" | "problem-case"; segmentId: string; articleId?: string | null; caseId?: string | null }>>(new Map());
+  // 분류 변경 — choice/box 별로 user 가 선택한 type (DB 값과 별개).
+  const [typeChanges, setTypeChanges] = useState<Map<string, ChoiceTypeVal>>(new Map());
+  const setChoiceType = (segmentKind: "choice" | "box", segmentId: string, t: ChoiceTypeVal) => {
+    setTypeChanges((cur) => {
+      const next = new Map(cur);
+      next.set(`${segmentKind}:${segmentId}`, t);
+      return next;
+    });
+  };
 
   const toggleArticleForSegment = (segmentKind: "choice" | "box", segmentId: string, articleId: string) => {
     const key = `${segmentKind}:${segmentId}:art`;
@@ -332,12 +341,49 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
   };
 
   const buildTargets = () => {
-    return [...selected.values()].map((v) => {
-      if (v.kind === "choice") return { kind: "choice" as const, choiceId: v.segmentId, articleId: v.articleId ?? null, caseId: v.caseId ?? null };
-      if (v.kind === "box") return { kind: "box" as const, boxItemId: v.segmentId, articleId: v.articleId ?? null, caseId: v.caseId ?? null };
-      if (v.kind === "primary") return { kind: "primary" as const, problemId: v.segmentId, articleId: v.articleId! };
-      return { kind: "problem-case" as const, problemId: v.segmentId, caseId: v.caseId! };
-    });
+    const out: unknown[] = [];
+    // 후보 선택 targets.
+    for (const v of selected.values()) {
+      if (v.kind === "choice") {
+        const t = typeChanges.get(`choice:${v.segmentId}`);
+        out.push({
+          kind: "choice" as const,
+          choiceId: v.segmentId,
+          articleId: v.articleId ?? null,
+          caseId: v.caseId ?? null,
+          choiceType: t === undefined ? undefined : t,
+        });
+      } else if (v.kind === "box") {
+        const t = typeChanges.get(`box:${v.segmentId}`);
+        out.push({
+          kind: "box" as const,
+          boxItemId: v.segmentId,
+          articleId: v.articleId ?? null,
+          caseId: v.caseId ?? null,
+          choiceType: t === undefined ? undefined : t,
+        });
+      } else if (v.kind === "primary") {
+        out.push({ kind: "primary" as const, problemId: v.segmentId, articleId: v.articleId! });
+      } else {
+        out.push({ kind: "problem-case" as const, problemId: v.segmentId, caseId: v.caseId! });
+      }
+    }
+    // 분류만 바뀌었고 chip 선택이 없는 segment 도 target 추가.
+    const selectedKeys = new Set<string>();
+    for (const v of selected.values()) {
+      if (v.kind === "choice") selectedKeys.add(`choice:${v.segmentId}`);
+      else if (v.kind === "box") selectedKeys.add(`box:${v.segmentId}`);
+    }
+    for (const [k, t] of typeChanges) {
+      if (selectedKeys.has(k)) continue;
+      const [kind, id] = k.split(":");
+      if (kind === "choice") {
+        out.push({ kind: "choice" as const, choiceId: id, articleId: null, caseId: null, choiceType: t });
+      } else if (kind === "box") {
+        out.push({ kind: "box" as const, boxItemId: id, articleId: null, caseId: null, choiceType: t });
+      }
+    }
+    return out;
   };
 
   const submit = (intent: "dry-run" | "apply") => {
@@ -349,7 +395,10 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
       action: "/api/admin/problem-link-approve",
       encType: "application/json",
     });
-    if (intent === "apply") setSelected(new Map());
+    if (intent === "apply") {
+      setSelected(new Map());
+      setTypeChanges(new Map());
+    }
   };
 
   return (
@@ -360,12 +409,12 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
           <Badge variant="outline">{ORIGIN_LABEL[item.origin]}</Badge>
           {item.lawCode && <Badge variant="secondary">{item.lawCode}</Badge>}
           <span className="ml-auto text-muted-foreground">
-            선택 {selected.size}건
+            선택 {selected.size}건 / 분류 변경 {typeChanges.size}건
           </span>
-          <Button size="sm" variant="outline" disabled={busy || selected.size === 0} onClick={() => submit("dry-run")}>
+          <Button size="sm" variant="outline" disabled={busy || (selected.size === 0 && typeChanges.size === 0)} onClick={() => submit("dry-run")}>
             미리보기
           </Button>
-          <Button size="sm" disabled={busy || selected.size === 0} onClick={() => submit("apply")}>
+          <Button size="sm" disabled={busy || (selected.size === 0 && typeChanges.size === 0)} onClick={() => submit("apply")}>
             {busy ? "적용 중…" : "승인 적용"}
           </Button>
         </CardContent>
@@ -439,6 +488,14 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   explanationMd={c.explanationMd}
                   isCorrect={c.isCorrect}
                   oxTruth={c.oxTruth}
+                  oxIneligible={c.oxIneligible}
+                  choiceType={c.choiceType as ChoiceTypeVal}
+                  selectedType={
+                    typeChanges.has(`choice:${c.choiceId}`)
+                      ? typeChanges.get(`choice:${c.choiceId}`)!
+                      : (c.choiceType as ChoiceTypeVal)
+                  }
+                  onChangeType={(t) => setChoiceType("choice", c.choiceId, t)}
                   lawCode={item.lawCode}
                   current={{ articleId: c.currentArticleId, caseId: c.currentCaseId }}
                   articles={c.articles}
@@ -474,6 +531,14 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
                   explanationMd={b.explanationMd}
                   isCorrect={false}
                   oxTruth={b.oxTruth}
+                  oxIneligible={b.oxIneligible}
+                  choiceType={b.choiceType as ChoiceTypeVal}
+                  selectedType={
+                    typeChanges.has(`box:${b.boxItemId}`)
+                      ? typeChanges.get(`box:${b.boxItemId}`)!
+                      : (b.choiceType as ChoiceTypeVal)
+                  }
+                  onChangeType={(t) => setChoiceType("box", b.boxItemId, t)}
                   lawCode={item.lawCode}
                   current={{ articleId: b.currentArticleId, caseId: b.currentCaseId }}
                   articles={b.articles}
@@ -496,6 +561,8 @@ function SuggestionPanel({ item, suggestions }: PanelProps) {
 
 // ── 후보 표시 — 단위(선지/박스) ─────────────────────────────────────────
 
+type ChoiceTypeVal = "statute" | "precedent" | "theory" | null;
+
 interface SegmentBlockProps {
   label: string;
   bodyMd: string;
@@ -504,12 +571,17 @@ interface SegmentBlockProps {
   isCorrect: boolean;
   /** OX 진리값 — 'true' | 'false' | null. */
   oxTruth: string | null;
+  oxIneligible: boolean;
+  /** 분류 — 현재 DB 값. 강사가 셀렉트로 변경 가능. */
+  choiceType: ChoiceTypeVal;
+  /** 분류 변경 시 호출 (apply 시 함께 전송). */
+  onChangeType: (next: ChoiceTypeVal) => void;
+  selectedType: ChoiceTypeVal;
   /** 직접 추가용 — 검색 시 lawCode 필터. */
   lawCode: string | null;
   current: { articleId: string | null; caseId: string | null };
   articles: ArticleCandidate[];
   cases: CaseCandidate[];
-  /** 문제 전체 단위 후보 (chunk·rag) — 선지별 후보가 비거나 보조 시. */
   fallbackArticles: ArticleCandidate[];
   fallbackCases: CaseCandidate[];
   selectedArticleId: string | null;
@@ -541,14 +613,38 @@ function SegmentBlock(p: SegmentBlockProps) {
       <Badge className="bg-red-600 text-[10px]">X</Badge>
     ) : null;
 
+  // 분류 effective — selectedType 가 있으면 그것, 없으면 DB 값.
+  const effectiveType: ChoiceTypeVal = p.selectedType ?? p.choiceType;
+  // 입력 영역 분기:
+  //   precedent → 조문(부) + 판례(주) 둘 다
+  //   statute / theory → 조문만
+  //   null (미분류) → 둘 다 (현행 디폴트 유지)
+  const showArticle = effectiveType !== "precedent" || true; // 판례여도 관련 조문 노출 OK
+  const showCase = effectiveType === "precedent" || effectiveType === null;
+  const isCase = effectiveType === "precedent";
+
   return (
     <div className="rounded border p-2">
       <div className="mb-1 flex flex-wrap items-center gap-1 text-xs">
         <Badge variant="outline">{p.label}</Badge>
         {p.isCorrect && <Badge className="bg-amber-500 text-[10px]">정답</Badge>}
         {oxBadge}
+        {p.oxIneligible && <Badge variant="outline" className="text-[10px] text-muted-foreground">OX 불가</Badge>}
         {p.current.articleId && <Badge className="bg-emerald-600 text-[10px]">조문 기연결</Badge>}
         {p.current.caseId && <Badge className="bg-violet-600 text-[10px]">판례 기연결</Badge>}
+        <select
+          value={effectiveType ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            p.onChangeType(v === "" ? null : (v as ChoiceTypeVal));
+          }}
+          className="ml-auto rounded border bg-background px-1 py-0.5 text-[10px]"
+        >
+          <option value="">미분류</option>
+          <option value="statute">조문</option>
+          <option value="precedent">판례</option>
+          <option value="theory">이론</option>
+        </select>
       </div>
       <div className="mb-1 text-xs text-foreground">{p.bodyMd}</div>
       {p.explanationMd && (
@@ -556,49 +652,16 @@ function SegmentBlock(p: SegmentBlockProps) {
           해설: {p.explanationMd}
         </div>
       )}
-      {articleMerged.length === 0 && caseMerged.length === 0 ? (
-        <div className="text-[11px] text-muted-foreground">후보 없음 — 직접 추가는 향후 구현</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          {/* ── 조문 ── */}
-          <div>
+      <div className={cn("grid grid-cols-1 gap-2", showArticle && showCase && "md:grid-cols-2")}>
+        {/* ── 판례 (분류=판례일 때 주, 미분류일 때 보조) ── */}
+        {showCase && (
+          <div className={cn(isCase && "order-first")}>
             <div className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase text-muted-foreground">
-              <span>조문</span>
-              {p.selectedArticleId && <Badge className="h-3 bg-primary/80 px-1 text-[9px]">선택됨</Badge>}
-            </div>
-            {articleMerged.length === 0 ? (
-              <div className="text-[10px] text-muted-foreground">후보 없음</div>
-            ) : (
-              <div className="flex flex-wrap gap-1">
-                {articleMerged.map((a) => {
-                  const active = p.selectedArticleId === a.articleId;
-                  return (
-                    <button
-                      key={a.articleId}
-                      onClick={() => p.onPickArticle(a.articleId)}
-                      className={cn(
-                        "rounded border px-2 py-1 text-[11px]",
-                        active ? "border-primary bg-primary/10" : "bg-muted hover:bg-muted/70",
-                      )}
-                    >
-                      {a.displayLabel}
-                      <span className="ml-1 text-[9px] text-muted-foreground">
-                        [{a.sources.join("·")}]
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          {/* ── 판례 ── */}
-          <div>
-            <div className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase text-muted-foreground">
-              <span>판례</span>
+              <span>판례{isCase && " (주)"}</span>
               {p.selectedCaseId && <Badge className="h-3 bg-primary/80 px-1 text-[9px]">선택됨</Badge>}
             </div>
             {caseMerged.length === 0 ? (
-              <div className="text-[10px] text-muted-foreground">후보 없음</div>
+              <div className="text-[10px] text-muted-foreground">후보 없음 — 아래 직접 추가</div>
             ) : (
               <div className="flex flex-wrap gap-1">
                 {caseMerged.map((c) => {
@@ -623,8 +686,41 @@ function SegmentBlock(p: SegmentBlockProps) {
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+        {/* ── 조문 (모든 분류에서 노출. 판례 분류에선 '관련 조문(부)') ── */}
+        {showArticle && (
+          <div>
+            <div className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase text-muted-foreground">
+              <span>조문{isCase ? " (부)" : effectiveType === "statute" || effectiveType === "theory" ? " (주)" : ""}</span>
+              {p.selectedArticleId && <Badge className="h-3 bg-primary/80 px-1 text-[9px]">선택됨</Badge>}
+            </div>
+            {articleMerged.length === 0 ? (
+              <div className="text-[10px] text-muted-foreground">후보 없음 — 아래 직접 추가</div>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {articleMerged.map((a) => {
+                  const active = p.selectedArticleId === a.articleId;
+                  return (
+                    <button
+                      key={a.articleId}
+                      onClick={() => p.onPickArticle(a.articleId)}
+                      className={cn(
+                        "rounded border px-2 py-1 text-[11px]",
+                        active ? "border-primary bg-primary/10" : "bg-muted hover:bg-muted/70",
+                      )}
+                    >
+                      {a.displayLabel}
+                      <span className="ml-1 text-[9px] text-muted-foreground">
+                        [{a.sources.join("·")}]
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       {/* 직접 추가 — 후보에 없는 조문·판례 검색 */}
       <ManualAddPanel
         lawCode={p.lawCode}

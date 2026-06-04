@@ -15,18 +15,22 @@ import {
 
 import type { Route } from "./+types/problem-link-approve";
 
+const choiceTypeSchema = z.enum(["statute", "precedent", "theory"]).nullable().optional();
+
 const targetSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("choice"),
     choiceId: z.string().uuid(),
     articleId: z.string().uuid().nullable(),
     caseId: z.string().uuid().nullable(),
+    choiceType: choiceTypeSchema,
   }),
   z.object({
     kind: z.literal("box"),
     boxItemId: z.string().uuid(),
     articleId: z.string().uuid().nullable(),
     caseId: z.string().uuid().nullable(),
+    choiceType: choiceTypeSchema,
   }),
   z.object({
     kind: z.literal("primary"),

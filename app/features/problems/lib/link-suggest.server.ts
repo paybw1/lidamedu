@@ -46,6 +46,10 @@ export interface ChoiceCandidates {
   isCorrect: boolean;
   /** OX 진리값 — 'true' | 'false' | null. */
   oxTruth: string | null;
+  /** OX 적용 불가 (fallback choice 등). */
+  oxIneligible: boolean;
+  /** 분류 — 'statute'|'precedent'|'theory'|null. */
+  choiceType: string | null;
   /** 이미 연결돼 있는 article (잠금 표시). */
   currentArticleId: string | null;
   currentCaseId: string | null;
@@ -58,8 +62,10 @@ export interface BoxCandidates {
   marker: string;
   bodyMd: string;
   explanationMd: string | null;
-  /** OX 진리값 — boxItem 도 ox_truth 보유. */
+  /** OX 진리값. */
   oxTruth: string | null;
+  oxIneligible: boolean;
+  choiceType: string | null;
   currentArticleId: string | null;
   currentCaseId: string | null;
   articles: ArticleCandidate[];
@@ -280,14 +286,14 @@ export async function suggestLinksForProblem(
 
   const { data: choicesRaw } = await client
     .from("problem_choices")
-    .select("choice_id, choice_index, body_md, explanation_md, related_article_id, related_case_id, is_correct, ox_truth")
+    .select("choice_id, choice_index, body_md, explanation_md, related_article_id, related_case_id, is_correct, ox_truth, ox_ineligible, choice_type")
     .eq("problem_id", problemId)
     .order("choice_index");
   const choices = choicesRaw ?? [];
 
   const { data: boxRaw } = await client
     .from("problem_box_items")
-    .select("box_item_id, marker, position_index, body_md, explanation_md, related_article_id, related_case_id, ox_truth")
+    .select("box_item_id, marker, position_index, body_md, explanation_md, related_article_id, related_case_id, ox_truth, ox_ineligible, choice_type")
     .eq("problem_id", problemId)
     .order("position_index");
   const boxes = boxRaw ?? [];
@@ -452,6 +458,8 @@ export async function suggestLinksForProblem(
       explanationMd: a.raw.explanation_md,
       isCorrect: a.raw.is_correct,
       oxTruth: a.raw.ox_truth,
+      oxIneligible: a.raw.ox_ineligible,
+      choiceType: a.raw.choice_type,
       currentArticleId: a.raw.related_article_id,
       currentCaseId: a.raw.related_case_id,
       articles: sortArticles([...a.art.map.values()]),
@@ -463,6 +471,8 @@ export async function suggestLinksForProblem(
       bodyMd: a.raw.body_md ?? "",
       explanationMd: a.raw.explanation_md,
       oxTruth: a.raw.ox_truth,
+      oxIneligible: a.raw.ox_ineligible,
+      choiceType: a.raw.choice_type,
       currentArticleId: a.raw.related_article_id,
       currentCaseId: a.raw.related_case_id,
       articles: sortArticles([...a.art.map.values()]),
