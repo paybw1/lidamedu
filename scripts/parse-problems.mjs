@@ -197,15 +197,45 @@ function parseProblems(paragraphs) {
       continue;
     }
 
-    // ── 박스 본문 추출 ──
-    // markdown table row (`| ... |`) 이고 박스 마커가 들어 있으면 직전 문제의 boxItems 채움.
-    if (problems.length > 0 && /^\|\s/.test(text)) {
+    // ── stem 연장 + 박스 본문 추출 ──
+    // 문제 헤더 등록 직후, 다음 ①/박스 마커가 오기 전 paragraph 는 stem 의 연장으로 본다.
+    //   예: "08甲은 다음과 같이 청구범위를…" → "| 1. 프로그램을 수행하는 장치 2. ... |"
+    //       → "乙은 동일한 프로그램을 앱으로…" → "| ㈎ 丙이… ㈏ … |" (여기서 박스 마커 매치)
+    // 박스 추출 실패한 markdown table 본문도 stem 으로 흡수.
+    if (problems.length > 0) {
       const last = problems[problems.length - 1];
-      // 이미 선지가 들어왔다면 박스 단계 종료된 것 — skip.
       if (last.choices.length === 0 && last.boxItems.length === 0) {
-        const items = extractBoxItems(text);
-        if (items.length >= 2) {
-          last.boxItems = items;
+        // markdown table row
+        if (/^\|\s/.test(text)) {
+          // separator skip — `| --- |`
+          if (/^\|\s*-+/.test(text)) continue;
+          // scope marker `| 단원 |` / `| 종합 |` — 이미 헤더 단계에서 처리됨.
+          if (SCOPE_MARKER_RE.test(text.split(/\n/)[0])) continue;
+          // 박스 추출 시도
+          const items = extractBoxItems(text);
+          if (items.length >= 2) {
+            last.boxItems = items;
+            continue;
+          }
+          // 박스 마커 없는 표 본문 → stem 연장.
+          const cleaned = text
+            .replace(/^\|/, "")
+            .replace(/\|/g, " ")
+            .replace(/-{3,}/g, " ") // markdown separator dashes 제거
+            .replace(/\n/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (cleaned) {
+            last.stem += "\n" + cleaned;
+            continue;
+          }
+        }
+        // 일반 텍스트 — 선지/박스 마커 시작 아니면 stem 연장.
+        if (
+          !/^[①②③④⑤]/.test(text) &&
+          !/^[㈎㈏㈐㈑㈒㈓㈔㈕㈖㈗㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩㉪㉫㉬㉭㉮㉯㉰㉱㉲㉳㉴㉵㉶㉷㉸㉹㈀㈁㈂㈃㈄㈅㈆㈇㈈㈉]/.test(text)
+        ) {
+          last.stem += "\n" + text;
           continue;
         }
       }
