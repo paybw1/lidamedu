@@ -97,7 +97,12 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const [problems, years, systematicNodes] = await Promise.all([
     // feat-10-002: 운영자 문제 관리 화면 — 미공개 mock 문제도 표시.
-    listProblemsBySubject(client, subject, filters, { includeHiddenMock: true }),
+    // 검토 미승인(draft/rejected) 도 운영자에게 노출해야 검토 작업 가능 — 학생
+    // 노출 게이트는 별도 경로에서 적용됨.
+    listProblemsBySubject(client, subject, filters, {
+      includeHiddenMock: true,
+      includeUnapproved: true,
+    }),
     listProblemYears(client, subject),
     listSystematicTopNodes(client, subject),
   ]);
