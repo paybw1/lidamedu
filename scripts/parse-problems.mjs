@@ -286,10 +286,22 @@ function extractBoxItems(rawText) {
       positions.push({ marker: m[0], idx: m.index });
     }
     if (positions.length < 2) continue;
+    // 단조성 가드 — splitChoices 와 동일. 보기 본문에 다른 보기 마커가 인용되면
+    // (예: ㈑ 본문의 "㈐에 의한 …") split 오인되어 ㈑ 가 잘리고 뒤가 가짜 항목이 되던
+    // 결함 차단. 첫 마커 이후 family-index 가 단조 증가하는 마커만 split point 로 채택.
+    const splits = [positions[0]];
+    let prevFi = fam.chars.indexOf(positions[0].marker);
+    for (let k = 1; k < positions.length; k++) {
+      const fi = fam.chars.indexOf(positions[k].marker);
+      if (fi > prevFi) {
+        splits.push(positions[k]);
+        prevFi = fi;
+      }
+    }
     const items = [];
-    for (let k = 0; k < positions.length; k++) {
-      const cur = positions[k];
-      const next = positions[k + 1];
+    for (let k = 0; k < splits.length; k++) {
+      const cur = splits[k];
+      const next = splits[k + 1];
       const bodyStart = cur.idx + cur.marker.length;
       const bodyEnd = next ? next.idx : text.length;
       const body = text.slice(bodyStart, bodyEnd).trim();
