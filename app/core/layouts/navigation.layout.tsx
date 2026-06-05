@@ -3,16 +3,17 @@ import type { Route } from "./+types/navigation.layout";
 import { Suspense } from "react";
 import { Await, Outlet, data } from "react-router";
 
+import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
+import { getStaffRole } from "~/features/laws/queries.server";
+import { getUnreadCount } from "~/features/notifications/queries.server";
+import { getActiveSubscription } from "~/features/subscriptions/queries.server";
+
 import Footer from "../components/footer";
 import { NavigationBar } from "../components/navigation-bar";
-import { StudentSidebar } from "../components/student-sidebar";
 import { StudentBottomBar } from "../components/student-bottombar";
-import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
-import { cn } from "../lib/utils";
+import { StudentSidebar } from "../components/student-sidebar";
 import makeServerClient from "../lib/supa-client.server";
-import { getUnreadCount } from "~/features/notifications/queries.server";
-import { getStaffRole } from "~/features/laws/queries.server";
-import { getActiveSubscription } from "~/features/subscriptions/queries.server";
+import { cn } from "../lib/utils";
 
 /**
  * cookie 에서 studentNavMode 읽기. "sidebar" | "topbar" | null.
@@ -36,8 +37,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     const {
       data: { user },
     } = await client.auth.getUser();
-    if (!user)
-      return { isStaff: false, unread: 0, features: [] as string[] };
+    if (!user) return { isStaff: false, unread: 0, features: [] as string[] };
     const role = await getStaffRole(client, user.id);
     const audience: "staff" | "student" = role ? "staff" : "student";
     const [unread, sub] = await Promise.all([
@@ -53,11 +53,11 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
   const { userPromise, inboxPromise, navMode } = loaderData;
   const isSidebar = navMode === "sidebar";
   return (
-    <div className="flex min-h-screen flex-col justify-between">
+    <div className="flex min-h-screen flex-col justify-between pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      {/* pb — 모바일 하단 탭바(StudentBottomBar, 약 3.5rem+safe-area)에 콘텐츠·푸터가
+          가리지 않도록 전역 회피 패딩. md+ 는 하단바 없음 → 패딩 제거. */}
       {/* 상단 NavigationBar — sidebar 모드에선 hideAll=true → null. 그 외는 정상 노출. */}
-      <Suspense
-        fallback={<NavigationBar loading={true} hideAll={isSidebar} />}
-      >
+      <Suspense fallback={<NavigationBar loading={true} hideAll={isSidebar} />}>
         <Await resolve={userPromise}>
           {({ data: { user } }) =>
             user === null ? (

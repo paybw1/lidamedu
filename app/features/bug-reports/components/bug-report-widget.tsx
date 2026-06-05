@@ -1,9 +1,8 @@
 // 가배포 테스터용 플로팅 오류 신고 위젯. 로그인 사용자에게만 노출(레이아웃에서 제어).
 // 현재 URL + userAgent 자동 첨부 → /api/bug-report.
+import { BugIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
-
-import { BugIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/core/components/ui/button";
@@ -54,7 +53,8 @@ export function BugReportWidget() {
         type="button"
         onClick={() => setOpen(true)}
         size="sm"
-        className="fixed right-4 bottom-4 z-50 gap-1.5 rounded-full shadow-lg"
+        // 모바일에선 하단 탭바와 겹쳐 숨김 — 데스크톱(md+)에서만 노출.
+        className="fixed right-4 bottom-4 z-50 hidden gap-1.5 rounded-full shadow-lg md:inline-flex"
       >
         <BugIcon className="size-4" /> 오류 신고
       </Button>

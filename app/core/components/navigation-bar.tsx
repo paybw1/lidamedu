@@ -12,8 +12,6 @@ import {
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
 
-import { openCommandPalette } from "./command-palette";
-
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -23,10 +21,10 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "~/core/components/ui/navigation-menu";
-
 import { SUBJECT_SECTIONS } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 
+import { openCommandPalette } from "./command-palette";
 import ThemeSwitcher from "./theme-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -40,6 +38,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Separator } from "./ui/separator";
 import {
+  Sheet,
   SheetClose,
   SheetContent,
   SheetFooter,
@@ -56,9 +55,7 @@ const CHIP_CLASS =
 // 상단 네비게이션 8개 top-level (좌→우):
 // 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습지원▾ · 학습정보▾ · 모의고사▾ · 커뮤니티▾ · 운영자(flat)
 
-const leadingFlats: SimpleLink[] = [
-  { label: "대시보드", to: "/dashboard" },
-];
+const leadingFlats: SimpleLink[] = [{ label: "대시보드", to: "/dashboard" }];
 
 // 학습관리 항목 — SRS/플래시카드 같은 학원 용어 대신 학생이 바로 이해할 수 있는 라벨로.
 // (URL slug 는 보존 — 북마크/공유 링크 호환성.)
@@ -108,9 +105,7 @@ const communityItems: SimpleLink[] = [
   { label: "합격 후기", to: "/community/review" },
 ];
 
-const trailingFlats: SimpleLink[] = [
-  { label: "운영관리", to: "/admin" },
-];
+const trailingFlats: SimpleLink[] = [{ label: "운영관리", to: "/admin" }];
 
 export function UserMenu({
   hideName = false,
@@ -214,15 +209,18 @@ function Actions({
 }) {
   const isVertical = orientation === "vertical";
   return (
-    <div className={cn("flex items-center", isVertical ? "flex-col gap-1" : "gap-1")}>
+    <div
+      className={cn(
+        "flex items-center",
+        isVertical ? "flex-col gap-1" : "gap-1",
+      )}
+    >
       <Button
         variant="ghost"
         size={isVertical ? "icon" : "sm"}
         className={cn(
           "text-muted-foreground",
-          isVertical
-            ? "size-9"
-            : "inline-flex h-8 items-center gap-1.5 px-2",
+          isVertical ? "size-9" : "inline-flex h-8 items-center gap-1.5 px-2",
         )}
         onClick={() => openCommandPalette()}
         aria-label="전역 검색 (⌘K)"
@@ -252,7 +250,7 @@ function Actions({
           <Link to={inboxHref}>
             <BellIcon className="size-4" />
             {inboxUnread > 0 ? (
-              <span className="bg-rose-600 text-white absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums">
+              <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white tabular-nums">
                 {inboxUnread > 99 ? "99+" : inboxUnread}
               </span>
             ) : null}
@@ -406,7 +404,7 @@ export function NavigationBar({
   const lockStudyMgmt = isLocked("area_study_mgmt");
   const lockMockExams = isLocked("area_mock_exams");
   return (
-    <nav className="dark:bg-background/85 sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6 dark:border-border">
+    <nav className="dark:bg-background/85 dark:border-border sticky top-0 z-50 mx-auto flex h-14 w-full items-center justify-between border-b border-black/[0.06] bg-white/80 px-4 backdrop-blur-lg backdrop-saturate-150 transition-opacity md:px-6">
       <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
         <Link to="/" aria-label="리담변리사학원 홈" className="shrink-0">
           {/* 로고 PNG 의 텍스트 부분이 검정이라 dark 모드에서 안 보임. invert + hue-rotate(180)
@@ -421,7 +419,12 @@ export function NavigationBar({
         </Link>
 
         {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}
-        <div className={cn("hidden h-full items-center md:flex", hideMenus && "md:hidden")}>
+        <div
+          className={cn(
+            "hidden h-full items-center md:flex",
+            hideMenus && "md:hidden",
+          )}
+        >
           <NavigationMenu viewport={false}>
             <NavigationMenuList>
               {leadingFlats.map((m) => (
@@ -452,7 +455,7 @@ export function NavigationBar({
                         key={section.exam}
                         className={cn(
                           si > 0 &&
-                            "border-t border-black/[0.06] pt-3 dark:border-border",
+                            "dark:border-border border-t border-black/[0.06] pt-3",
                         )}
                       >
                         {/* 1차 / 2차 섹션 헤더 */}
@@ -508,9 +511,7 @@ export function NavigationBar({
               <SimpleDropdown label="커뮤니티" items={communityItems} />
 
               {isStaff
-                ? trailingFlats.map((m) => (
-                    <FlatLink key={m.to} {...m} />
-                  ))
+                ? trailingFlats.map((m) => <FlatLink key={m.to} {...m} />)
                 : null}
             </NavigationMenuList>
           </NavigationMenu>
@@ -532,98 +533,127 @@ export function NavigationBar({
           )}
         </div>
 
-        {/* Mobile */}
-        <SheetTrigger className="ml-auto size-6 md:hidden">
-          <MenuIcon />
-        </SheetTrigger>
-        <SheetContent>
-          <SheetHeader>
-            <nav className="flex flex-col gap-1 text-sm">
-              {leadingFlats.map((m) => (
-                <SheetClose key={m.to} asChild>
-                  <Link
-                    to={m.to}
-                    className="hover:bg-accent rounded-md px-3 py-2"
-                  >
-                    {m.label}
-                  </Link>
-                </SheetClose>
-              ))}
-
-              <MobileGroup label="학습관리" items={studyItems} />
-
-              <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
-                학습과목
-              </p>
-              {SUBJECT_SECTIONS.map((section) => (
-                <Fragment key={section.exam}>
-                  <p className="text-primary px-3 pt-1.5 font-mono text-[11px] font-bold tracking-wide uppercase">
-                    {section.label}
-                  </p>
-                  {section.groups.flatMap((group) =>
-                    group.items.map((item) => (
-                      <SheetClose key={`${section.exam}-${item.href}`} asChild>
-                        <Link
-                          to={item.href}
-                          className="hover:bg-accent rounded-md px-3 py-2 pl-5"
-                        >
-                          {group.label === item.name
-                            ? item.name
-                            : `${group.label} · ${item.name}`}
-                        </Link>
-                      </SheetClose>
-                    )),
-                  )}
-                </Fragment>
-              ))}
-
-              <MobileGroup label="학습지원" items={studyAidItems} />
-              <MobileGroup label="학습정보" items={latestItems} />
-              <MobileGroup label="모의고사" items={mockExamItems} />
-              <MobileGroup label="커뮤니티" items={communityItems} />
-
-              {isStaff
-                ? trailingFlats.map((m) => (
+        {/* Mobile 우측 — 인증 사용자는 하단 탭바가 nav 를 담당하므로 상단엔
+            도구(검색·알림·테마)+계정만 노출(중복 메뉴 제거). 비인증은 하단 탭바가
+            없으므로 햄버거 시트로 전체 nav 제공. */}
+        {name ? (
+          <div className="ml-auto flex items-center gap-0.5 md:hidden">
+            <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
+            <UserMenu
+              hideName
+              name={name}
+              email={email}
+              avatarUrl={avatarUrl}
+            />
+          </div>
+        ) : (
+          <Sheet>
+            <SheetTrigger className="ml-auto size-6 md:hidden">
+              <MenuIcon />
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <nav className="flex flex-col gap-1 text-sm">
+                  {leadingFlats.map((m) => (
                     <SheetClose key={m.to} asChild>
                       <Link
                         to={m.to}
-                        className="hover:bg-accent mt-1 rounded-md px-3 py-2"
+                        className="hover:bg-accent rounded-md px-3 py-2"
                       >
                         {m.label}
                       </Link>
                     </SheetClose>
-                  ))
-                : null}
-            </nav>
-          </SheetHeader>
-          {loading ? (
-            <div className="flex items-center">
-              <div className="bg-muted-foreground h-4 w-24 animate-pulse rounded-full" />
-            </div>
-          ) : (
-            <SheetFooter>
-              {name ? (
-                <div className="grid grid-cols-3">
-                  <div className="col-span-2 flex w-full justify-between">
-                    <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
-                  </div>
-                  <div className="flex justify-end">
-                    <UserMenu name={name} email={email} avatarUrl={avatarUrl} />
-                  </div>
+                  ))}
+
+                  <MobileGroup label="학습관리" items={studyItems} />
+
+                  <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
+                    학습과목
+                  </p>
+                  {SUBJECT_SECTIONS.map((section) => (
+                    <Fragment key={section.exam}>
+                      <p className="text-primary px-3 pt-1.5 font-mono text-[11px] font-bold tracking-wide uppercase">
+                        {section.label}
+                      </p>
+                      {section.groups.flatMap((group) =>
+                        group.items.map((item) => (
+                          <SheetClose
+                            key={`${section.exam}-${item.href}`}
+                            asChild
+                          >
+                            <Link
+                              to={item.href}
+                              className="hover:bg-accent rounded-md px-3 py-2 pl-5"
+                            >
+                              {group.label === item.name
+                                ? item.name
+                                : `${group.label} · ${item.name}`}
+                            </Link>
+                          </SheetClose>
+                        )),
+                      )}
+                    </Fragment>
+                  ))}
+
+                  <MobileGroup label="학습지원" items={studyAidItems} />
+                  <MobileGroup label="학습정보" items={latestItems} />
+                  <MobileGroup label="모의고사" items={mockExamItems} />
+                  <MobileGroup label="커뮤니티" items={communityItems} />
+
+                  {isStaff
+                    ? trailingFlats.map((m) => (
+                        <SheetClose key={m.to} asChild>
+                          <Link
+                            to={m.to}
+                            className="hover:bg-accent mt-1 rounded-md px-3 py-2"
+                          >
+                            {m.label}
+                          </Link>
+                        </SheetClose>
+                      ))
+                    : null}
+                </nav>
+              </SheetHeader>
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="bg-muted-foreground h-4 w-24 animate-pulse rounded-full" />
                 </div>
               ) : (
-                <div className="flex flex-col gap-5">
-                  <div className="flex justify-between">
-                    <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <AuthButtons />
-                  </div>
-                </div>
+                <SheetFooter>
+                  {name ? (
+                    <div className="grid grid-cols-3">
+                      <div className="col-span-2 flex w-full justify-between">
+                        <Actions
+                          inboxUnread={inboxUnread}
+                          inboxHref={inboxHref}
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <UserMenu
+                          name={name}
+                          email={email}
+                          avatarUrl={avatarUrl}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-5">
+                      <div className="flex justify-between">
+                        <Actions
+                          inboxUnread={inboxUnread}
+                          inboxHref={inboxHref}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <AuthButtons />
+                      </div>
+                    </div>
+                  )}
+                </SheetFooter>
               )}
-            </SheetFooter>
-          )}
-        </SheetContent>
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </nav>
   );

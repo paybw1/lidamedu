@@ -1,6 +1,7 @@
 // 학생 GS 응시 화면 — 답안지를 페이지 슬롯에 업로드하고 페이지마다 어느 문항인지 매핑.
 // 좌: 문제 목록(읽기). 우: N슬롯 페이지 그리드. 슬롯 = 빈 상태 또는 (썸네일 + 문항 매핑 + 판독 확인).
 // 커뮤니티 셸 reskin — 키트 lidam-community/GsTakeScreen 디자인.
+import type { Route } from "./+types/gs-take";
 
 import {
   AlertCircleIcon,
@@ -21,7 +22,6 @@ import { data, redirect, useFetcher, useRevalidator } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import { Chip } from "~/features/community/components/community-ui";
 import {
   type GsPage,
@@ -34,9 +34,8 @@ import {
   listGsQuestions,
   listSubmissionPages,
 } from "~/features/gs/queries.server";
+import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
-
-import type { Route } from "./+types/gs-take";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
@@ -112,8 +111,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
   // 제출 활성화: 1페이지 이상 업로드 + expected_pages 이내 + 모든 업로드 페이지 판독 확인.
   // 미매핑 문항은 차단하지 않음(자동 채점에서 0점 처리 — 학생이 일부만 풀고 제출 가능).
   const withinPageLimit = pages.length <= round.expectedPages;
-  const allReady =
-    pages.length > 0 && allPagesConfirmed && withinPageLimit;
+  const allReady = pages.length > 0 && allPagesConfirmed && withinPageLimit;
   const unmappedCount = questions.filter(
     (q) => !mappedQuestionIds.has(q.questionId),
   ).length;
@@ -340,7 +338,8 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
           if (!confirm(`${warn}제출 후에는 수정할 수 없습니다. 제출할까요?`))
             e.preventDefault();
         }}
-        className="sticky bottom-4 mt-4"
+        // 모바일은 하단 탭바(~3.5rem) 위로 띄움 — 데스크톱은 bottom-4.
+        className="sticky bottom-[calc(3.5rem+1rem+env(safe-area-inset-bottom))] mt-4 md:bottom-4"
       >
         <input type="hidden" name="intent" value="submit" />
         <input type="hidden" name="roundId" value={round.roundId} />
@@ -503,7 +502,7 @@ function PageSlot({
   const submittingMap = mapFetcher.formData?.get("questionIds");
   const mappedIds =
     submittingMap == null
-      ? page?.questionIds ?? []
+      ? (page?.questionIds ?? [])
       : String(submittingMap)
           .split(",")
           .map((s) => s.trim())
@@ -511,7 +510,7 @@ function PageSlot({
   const submittingConfirm = confirmFetcher.formData?.get("confirmed");
   const confirmed =
     submittingConfirm == null
-      ? page?.legibilityConfirmed ?? false
+      ? (page?.legibilityConfirmed ?? false)
       : submittingConfirm === "true";
 
   useEffect(() => {
@@ -751,7 +750,7 @@ function PageSlot({
       onDrop={onDrop}
       className={cn(
         "bg-card flex min-h-[220px] flex-col overflow-hidden rounded-2xl border transition-colors",
-        empty && "border-border border-2 border-dashed bg-muted/30",
+        empty && "border-border bg-muted/30 border-2 border-dashed",
         page && !confirmed && "border-amber-400/70",
         page && confirmed && "border-emerald-400/70",
         dragOver && "ring-primary ring-2 ring-offset-1",
@@ -890,9 +889,7 @@ function PageSlot({
                   </button>
                 );
               })}
-              {mappedIds.length === 0 ? (
-                <Chip tone="coral">미매핑</Chip>
-              ) : null}
+              {mappedIds.length === 0 ? <Chip tone="coral">미매핑</Chip> : null}
             </div>
             {/* 판독 확인 체크박스 */}
             <label
