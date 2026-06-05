@@ -9,7 +9,7 @@
     "dev": "cross-env NODE_OPTIONS=\"--import ./instrument.server.mjs\" react-router dev",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
-    "db:typegen": "dotenv -e .env -- supabase gen types typescript --project-id nctokynztakhjwezkckn > database.types.ts.tmp && mv database.types.ts.tmp database.types.ts",
+    "db:typegen": "dotenv -e .env -- supabase gen types typescript --project-id mcgdoplovrjgklbxmozi > database.types.ts.tmp && mv database.types.ts.tmp database.types.ts",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "srs:seed": "dotenv -e .env -- tsx scripts/srs/seed-items.ts",

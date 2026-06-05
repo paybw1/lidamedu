@@ -2,8 +2,11 @@
 
 import {
   AlertTriangleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CheckCircleIcon,
   CircleSlashIcon,
+  ListIcon,
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -51,7 +54,14 @@ import {
   type ProblemPolarity,
   type ProblemScope,
 } from "~/features/problems/labels";
-import { getProblemById } from "~/features/problems/queries.server";
+import {
+  getProblemById,
+  listProblemsBySubject,
+} from "~/features/problems/queries.server";
+import {
+  LAW_SUBJECT_SLUGS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-problem-edit";
 
@@ -118,7 +128,84 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       title: r.mcq_packs.title,
       isPublished: r.mcq_packs.is_published,
     }));
-  return { problem, mcqPacks, role };
+
+  // prev/next 시퀀스 — admin-problems-list 와 같은 필터 컨텍스트로 형제 problemId 목록을 만든다.
+  // URL 의 subject 가 없으면 problem 의 law_id → law_code 로 도출.
+  const url = new URL(request.url);
+  const subjectParam = url.searchParams.get("subject");
+  let subject: LawSubjectSlug | null = null;
+  if (subjectParam && LAW_SUBJECT_SLUGS.includes(subjectParam as never)) {
+    subject = subjectParam as LawSubjectSlug;
+  } else {
+    const { data: probRow } = await client
+      .from("problems")
+      .select("laws(law_code)")
+      .eq("problem_id", problemId)
+      .maybeSingle();
+    const code = probRow?.laws?.law_code ?? null;
+    if (code && LAW_SUBJECT_SLUGS.includes(code as never)) {
+      subject = code as LawSubjectSlug;
+    }
+  }
+
+  let siblings: {
+    prevId: string | null;
+    nextId: string | null;
+    position: number;
+    total: number;
+  } = { prevId: null, nextId: null, position: 0, total: 0 };
+  if (subject) {
+    const reviewParam = url.searchParams.get("review");
+    const mediaParam = url.searchParams.get("media");
+    const filters = {
+      origin: (url.searchParams.get("origin") || undefined) as
+        | ProblemOrigin
+        | undefined,
+      format: (url.searchParams.get("format") || undefined) as
+        | ProblemFormat
+        | undefined,
+      polarity: (url.searchParams.get("polarity") || undefined) as
+        | ProblemPolarity
+        | undefined,
+      scope: (url.searchParams.get("scope") || undefined) as
+        | ProblemScope
+        | undefined,
+      year: url.searchParams.get("year")
+        ? Number(url.searchParams.get("year"))
+        : undefined,
+      hasUnclassified: url.searchParams.get("unclassified") === "1",
+      reviewStatus:
+        reviewParam === "reviewed" ||
+        reviewParam === "pending" ||
+        reviewParam === "mismatch"
+          ? (reviewParam as "reviewed" | "pending" | "mismatch")
+          : undefined,
+      mediaStatus:
+        mediaParam === "table" ||
+        mediaParam === "image" ||
+        mediaParam === "any" ||
+        mediaParam === "none"
+          ? (mediaParam as "table" | "image" | "any" | "none")
+          : undefined,
+    };
+    const list = await listProblemsBySubject(client, subject, filters, {
+      includeHiddenMock: true,
+      includeUnapproved: true,
+    });
+    const idx = list.findIndex((p) => p.problemId === problemId);
+    if (idx >= 0) {
+      siblings = {
+        prevId: idx > 0 ? list[idx - 1].problemId : null,
+        nextId: idx < list.length - 1 ? list[idx + 1].problemId : null,
+        position: idx + 1,
+        total: list.length,
+      };
+    } else {
+      siblings = { prevId: null, nextId: null, position: 0, total: list.length };
+    }
+  }
+
+  return { problem, mcqPacks, role, siblings };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -440,7 +527,7 @@ export default function AdminProblemEdit({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { problem, mcqPacks, role } = loaderData;
+  const { problem, mcqPacks, role, siblings } = loaderData;
   // 목록에서 편집 진입 시 따라오는 필터 쿼리를 보존해 ← 클릭 시 같은 필터 상태로 되돌린다.
   // viewer "수정" 진입은 ?returnTo=<viewer URL> 로 들어오는데, 이 경우 ← 가 그
   // viewer 로 복귀하도록 우선 적용 + form hidden 으로 carry 해 저장 후 redirect.
@@ -452,6 +539,16 @@ export default function AdminProblemEdit({
     : backQs
       ? `/admin/problems?${backQs}`
       : "/admin/problems";
+  // prev/next 링크 — 현재 필터 쿼리(returnTo 제외) 그대로 보존해 같은 컨텍스트로 이동.
+  const navQs = (() => {
+    const p = new URLSearchParams(editSearchParams);
+    p.delete("returnTo");
+    return p.toString();
+  })();
+  const buildSiblingTo = (id: string) =>
+    navQs ? `/admin/problems/${id}?${navQs}` : `/admin/problems/${id}`;
+  const prevTo = siblings.prevId ? buildSiblingTo(siblings.prevId) : null;
+  const nextTo = siblings.nextId ? buildSiblingTo(siblings.nextId) : null;
   // 메타 중 자식 (ChoiceEditor / BoxItemEditor) 의 자동 OX·기본 종류에 영향을 주는 값은 lift 해서
   // 저장 전에도 즉시 반영되게 한다. origin 은 showRound 토글에 사용.
   const [origin, setOrigin] = useState<ProblemOrigin>(problem.origin);
@@ -603,12 +700,44 @@ export default function AdminProblemEdit({
         </div>
       }
     >
-      <Link
-        to={backTo}
-        className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs"
-      >
-        ← 객관식 문제 목록
-      </Link>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <Link
+          to={backTo}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
+        >
+          <ListIcon className="size-3.5" />
+          {returnTo ? "이전 화면으로" : "객관식 문제 목록"}
+        </Link>
+        {siblings.total > 0 ? (
+          <div className="flex items-center gap-1.5">
+            {prevTo ? (
+              <Button asChild size="sm" variant="outline">
+                <Link to={prevTo} prefetch="intent" title="이전 문제 (같은 필터)">
+                  <ChevronLeftIcon className="size-4" /> 이전
+                </Link>
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" disabled>
+                <ChevronLeftIcon className="size-4" /> 이전
+              </Button>
+            )}
+            <span className="text-muted-foreground px-1 text-[11px] tabular-nums">
+              {siblings.position} / {siblings.total}
+            </span>
+            {nextTo ? (
+              <Button asChild size="sm" variant="outline">
+                <Link to={nextTo} prefetch="intent" title="다음 문제 (같은 필터)">
+                  다음 <ChevronRightIcon className="size-4" />
+                </Link>
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" disabled>
+                다음 <ChevronRightIcon className="size-4" />
+              </Button>
+            )}
+          </div>
+        ) : null}
+      </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {problem.mismatchFlaggedAt ? (
