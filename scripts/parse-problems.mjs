@@ -304,7 +304,8 @@ function extractBoxItems(rawText) {
       const next = splits[k + 1];
       const bodyStart = cur.idx + cur.marker.length;
       const bodyEnd = next ? next.idx : text.length;
-      const body = text.slice(bodyStart, bodyEnd).trim();
+      // 표 잔재 "|"(특히 마지막 보기의 닫는 pipe) 제거.
+      const body = text.slice(bodyStart, bodyEnd).replace(/\|/g, " ").replace(/\s+/g, " ").trim();
       if (body.length > 0) items.push({ marker: cur.marker, body });
     }
     if (items.length > best.count) best = { items, count: items.length };
