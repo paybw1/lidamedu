@@ -523,7 +523,20 @@ export async function action({ params, request }: Route.ActionArgs) {
   return { ok: true, kind: andReview ? "save_and_review" : "save" } as const;
 }
 
-export default function AdminProblemEdit({
+// prev/next 네비게이션 시 같은 라우트의 path param 만 바뀌면 React Router 는
+// 컴포넌트를 remount 하지 않는다 → 내부 useState 초기값·<Form> defaultValue 가
+// 옛 문제 그대로 남아 "화면이 안 넘어가는" 것처럼 보인다. 외곽 wrapper 의
+// `key={problemId}` 로 problemId 가 바뀔 때 inner 컴포넌트를 fresh mount 한다.
+export default function AdminProblemEdit(props: Route.ComponentProps) {
+  return (
+    <AdminProblemEditInner
+      key={props.loaderData.problem.problemId}
+      {...props}
+    />
+  );
+}
+
+function AdminProblemEditInner({
   loaderData,
   actionData,
 }: Route.ComponentProps) {

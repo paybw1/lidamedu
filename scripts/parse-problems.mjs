@@ -303,23 +303,39 @@ function extractBoxItems(rawText) {
 /**
  * `① a ② b ③ c` 처럼 한 줄에 묶인 선지를 분리.
  * 마커 위치 기준 split. 마커가 1개면 [{index, body}] 1개.
+ *
+ * 단조성 가드 — 본문에 다른 marker 가 등장해도 split 오인하지 않도록, 첫 marker N
+ * 이후의 marker 들은 N+1, N+2, … 순서로 단조 증가할 때에만 split point 로 채택한다.
+ * 예: "③ ②의 경우 …" → split = [③ at 0], ② 는 본문 일부. 본문이 누락되던 결함 차단.
  */
 function splitChoices(text) {
   const re = /([①②③④⑤])\s*/g;
+  const order = "①②③④⑤";
   const positions = [];
   let m;
   while ((m = re.exec(text)) !== null) {
     positions.push({ marker: m[1], idx: m.index, end: m.index + m[0].length });
   }
+  if (positions.length === 0) return [];
+  // 단조 증가 sequence 만 split point 로 채택.
+  const splits = [positions[0]];
+  let prev = order.indexOf(positions[0].marker);
+  for (let k = 1; k < positions.length; k++) {
+    const i = order.indexOf(positions[k].marker);
+    if (i === prev + 1) {
+      splits.push(positions[k]);
+      prev = i;
+    }
+  }
   const out = [];
-  for (let k = 0; k < positions.length; k++) {
-    const cur = positions[k];
-    const next = positions[k + 1];
+  for (let k = 0; k < splits.length; k++) {
+    const cur = splits[k];
+    const next = splits[k + 1];
     const bodyStart = cur.end;
     const bodyEnd = next ? next.idx : text.length;
     const body = text.slice(bodyStart, bodyEnd).trim();
     if (body.length === 0) continue;
-    const index = "①②③④⑤".indexOf(cur.marker) + 1;
+    const index = order.indexOf(cur.marker) + 1;
     out.push({ index, body });
   }
   return out;
