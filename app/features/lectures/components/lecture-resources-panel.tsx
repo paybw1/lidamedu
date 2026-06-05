@@ -211,6 +211,11 @@ function ResourceCard({
             {openFetcher.data.error}
           </p>
         ) : null}
+        {deleteFetcher.data && !deleteFetcher.data.ok ? (
+          <p className="text-destructive mt-1 text-xs">
+            {deleteFetcher.data.error}
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -6746,6 +6746,10 @@ export type Database = {
           score: number
         }[]
       }
+      soft_delete_lecture_resource: {
+        Args: { p_resource_id: string }
+        Returns: undefined
+      }
       srs_record_review: {
         Args: {
           p_elapsed_ms?: number

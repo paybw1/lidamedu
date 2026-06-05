@@ -300,11 +300,13 @@ export async function softDeleteLectureResource(
   client: SupabaseClient<Database>,
   resourceId: string,
 ): Promise<void> {
-  const { error } = await client
-    .from("lecture_resources")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("resource_id", resourceId)
-    .is("deleted_at", null);
+  // soft-delete 는 SECURITY DEFINER RPC 로 수행한다.
+  // SELECT 정책(deleted_at IS NULL)이 UPDATE 의 새 행(deleted_at 세팅)을 막아
+  // 직접 UPDATE 는 RLS 로 42501 실패한다(staff 라도). RPC 가 내부에서 staff 를
+  // 검사하고 definer 권한으로 UPDATE 한다.
+  const { error } = await client.rpc("soft_delete_lecture_resource", {
+    p_resource_id: resourceId,
+  });
   if (error) throw error;
 }
 
