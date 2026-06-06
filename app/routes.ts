@@ -110,6 +110,8 @@ export default [
     ...prefix("/admin", [
       route("/case", "features/admin/api/case.tsx"),
       route("/case-link", "features/admin/api/case-link.tsx"),
+      // feat-7-037 — 전문 PDF 수동 업로드 → 텍스트 추출·적재.
+      route("/case-official-pdf", "features/admin/api/case-official-pdf.tsx"),
       route("/case-citations", "features/admin/api/case-citations.tsx"),
       route("/problem-create", "features/admin/api/problem-create.tsx"),
       route("/case-reference", "features/admin/api/case-reference.tsx"),
@@ -529,6 +531,11 @@ export default [
       route(
         "/api/cron/promote-law-revisions",
         "features/cron/api/promote-law-revisions.tsx",
+      ),
+      // feat-7-037 — 판례 전문 자동 재확인·적재 cron.
+      route(
+        "/api/cron/recheck-precedents",
+        "features/cron/api/recheck-precedents.tsx",
       ),
       route(
         "/api/student/lecture-progress",

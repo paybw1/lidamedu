@@ -6,7 +6,7 @@
 // 액션: 학습 화면(/subjects/:subject/cases/:caseId) link 만 제공.
 
 import { ExternalLinkIcon, FileTextIcon } from "lucide-react";
-import { Form, Link, data, redirect, useNavigation } from "react-router";
+import { Form, Link, data, redirect, useFetcher, useNavigation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -56,7 +56,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   let q = client
     .from("cases")
     .select(
-      "case_id, case_number, case_title, court, decided_at, subject_laws, official_text_md, official_text_pdf_path",
+      "case_id, case_number, case_title, court, decided_at, subject_laws, official_text_md, official_text_pdf_path, official_text_checked_at, official_text_check_count, official_text_unavailable",
     )
     .is("official_text_pdf_path", null)
     .is("deleted_at", null);
@@ -172,6 +172,8 @@ export default function AdminCasePdfMissing({
               <th className="px-3 py-2 text-left">선고일</th>
               <th className="px-3 py-2 text-left">과목</th>
               <th className="px-3 py-2 text-left">텍스트</th>
+              <th className="px-3 py-2 text-left">재확인</th>
+              <th className="px-3 py-2 text-left">전문 PDF 업로드</th>
               <th className="px-3 py-2 text-left">학습 화면</th>
             </tr>
           </thead>
@@ -179,7 +181,7 @@ export default function AdminCasePdfMissing({
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={9}
                   className="text-muted-foreground p-6 text-center text-xs"
                 >
                   조건에 해당하는 판례가 없습니다.
@@ -229,6 +231,23 @@ export default function AdminCasePdfMissing({
                         <Chip tone="coral">없음</Chip>
                       )}
                     </td>
+                    <td className="px-3 py-2 text-xs">
+                      {r.official_text_unavailable ? (
+                        <Chip tone="coral">제외됨</Chip>
+                      ) : r.official_text_checked_at ? (
+                        <span className="text-muted-foreground">
+                          {r.official_text_checked_at.slice(0, 10)}
+                          {r.official_text_check_count
+                            ? ` (${r.official_text_check_count}회)`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">미확인</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <PdfUploadCell caseId={r.case_id} />
+                    </td>
                     <td className="px-3 py-2">
                       {subjectOfRow ? (
                         <Link
@@ -253,8 +272,11 @@ export default function AdminCasePdfMissing({
 
       <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
         💡 <b>완전 미적재</b> = 국가법령정보 OPEN API 에서 본문 매칭 실패 (인덱싱 누락,
-        사건번호 부분일치 등). 강사가 사건번호 정정 후 일괄 적재 스크립트 재실행으로
-        해결.
+        사건번호 부분일치 등). 대법원 최근 5년 판례는 매일 cron(<code>recheck-precedents</code>)이
+        자동 재확인하고, 그 외(특허법원·하급심)는 1회 시도 후 "제외됨" 처리됩니다.
+        <br />💡 <b>전문 PDF 업로드</b> = API 로 못 받는 판례는 staff 가 직접 찾은 PDF 를
+        올리면 텍스트를 추출해 적재 + 학습 인덱스(검색·AI Q&A)에 반영됩니다. (스캔 이미지
+        PDF 는 텍스트가 비어 OCR 본문이 별도 필요)
         <br />💡 <b>텍스트만 있음</b> = 텍스트는 적재됐으나 폰트가 못 그리는 글자(옛 한자,
         단위 기호 등)가 있어 PDF 생성 skip. 향후 폰트 교체(Noto Serif CJK KR 등) 시
         재생성.
@@ -286,6 +308,58 @@ function StatCard({
       <p className="text-foreground mt-1 text-2xl font-semibold tabular-nums">
         {value}
       </p>
+    </div>
+  );
+}
+
+interface PdfUploadResult {
+  ok?: boolean;
+  error?: string;
+  chars?: number;
+  indexed?: boolean;
+  warning?: string | null;
+}
+
+function PdfUploadCell({ caseId }: { caseId: string }) {
+  const fetcher = useFetcher<PdfUploadResult>();
+  const busy = fetcher.state !== "idle";
+  const res = fetcher.data;
+  return (
+    <div className="flex flex-col gap-1">
+      <fetcher.Form
+        method="post"
+        action="/api/admin/case-official-pdf"
+        encType="multipart/form-data"
+      >
+        <input type="hidden" name="intent" value="upload" />
+        <input type="hidden" name="caseId" value={caseId} />
+        <input
+          type="file"
+          name="file"
+          accept="application/pdf"
+          disabled={busy}
+          onChange={(e) => {
+            if (e.currentTarget.files?.length && e.currentTarget.form)
+              fetcher.submit(e.currentTarget.form);
+          }}
+          className="block w-44 text-[11px] file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-[11px]"
+        />
+      </fetcher.Form>
+      {busy && (
+        <span className="text-muted-foreground text-[11px]">업로드·분석 중…</span>
+      )}
+      {res?.error && (
+        <span className="text-[11px] text-rose-600">{res.error}</span>
+      )}
+      {res?.ok && (
+        <span
+          className={`text-[11px] ${res.indexed ? "text-emerald-600" : "text-amber-600"}`}
+        >
+          {res.indexed
+            ? `적재 완료 (${res.chars}자, 학습 인덱스 ✓)`
+            : res.warning}
+        </span>
+      )}
     </div>
   );
 }

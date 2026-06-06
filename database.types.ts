@@ -1563,8 +1563,11 @@ export type Database = {
           is_en_banc: boolean
           law_api_serial_id: string | null
           nickname: string | null
+          official_text_check_count: number
+          official_text_checked_at: string | null
           official_text_md: string | null
           official_text_pdf_path: string | null
+          official_text_unavailable: boolean
           primary_article_id: string | null
           primary_node_id: string | null
           reasoning_md: string | null
@@ -1596,8 +1599,11 @@ export type Database = {
           is_en_banc?: boolean
           law_api_serial_id?: string | null
           nickname?: string | null
+          official_text_check_count?: number
+          official_text_checked_at?: string | null
           official_text_md?: string | null
           official_text_pdf_path?: string | null
+          official_text_unavailable?: boolean
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
@@ -1629,8 +1635,11 @@ export type Database = {
           is_en_banc?: boolean
           law_api_serial_id?: string | null
           nickname?: string | null
+          official_text_check_count?: number
+          official_text_checked_at?: string | null
           official_text_md?: string | null
           official_text_pdf_path?: string | null
+          official_text_unavailable?: boolean
           primary_article_id?: string | null
           primary_node_id?: string | null
           reasoning_md?: string | null
