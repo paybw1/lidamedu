@@ -6746,10 +6746,20 @@ export type Database = {
           score: number
         }[]
       }
+      soft_delete_book_update: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_community_comment: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      soft_delete_community_post: { Args: { p_id: string }; Returns: undefined }
       soft_delete_lecture_resource: {
         Args: { p_resource_id: string }
         Returns: undefined
       }
+      soft_delete_mcq_exam: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_mcq_pack: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_paper: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_qna_thread: { Args: { p_id: string }; Returns: undefined }
       srs_record_review: {
         Args: {
           p_elapsed_ms?: number

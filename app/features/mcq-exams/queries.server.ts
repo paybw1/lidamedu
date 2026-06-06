@@ -217,10 +217,9 @@ export async function deleteExam(
   client: SupabaseClient<Database>,
   examId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await client
-    .from("mcq_exams")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("exam_id", examId);
+  // soft-delete 는 SECURITY DEFINER RPC 로 — SELECT 정책(deleted_at IS NULL)이
+  // UPDATE 새 행을 막아 직접 UPDATE 는 RLS(42501)로 실패. RPC 가 staff 검사 후 우회.
+  const { error } = await client.rpc("soft_delete_mcq_exam", { p_id: examId });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

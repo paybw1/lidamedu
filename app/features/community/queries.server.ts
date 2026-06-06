@@ -343,14 +343,13 @@ export async function softDeletePost(
   client: SupabaseClient<Database>,
   postId: string,
 ): Promise<MutationResult> {
-  const { data, error } = await client
-    .from("community_posts")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("post_id", postId)
-    .is("deleted_at", null)
-    .select("post_id");
+  // soft-delete 는 SECURITY DEFINER RPC 로 — SELECT 정책(deleted_at IS NULL)이
+  // UPDATE 새 행을 막아 직접 UPDATE 는 RLS(42501)로 실패. RPC 가 작성자/manager
+  // 검사 후 우회(미존재·타인 글이면 RPC 가 forbidden).
+  const { error } = await client.rpc("soft_delete_community_post", {
+    p_id: postId,
+  });
   if (error) return { ok: false, error: error.message };
-  if (!data || data.length === 0) return { ok: false, error: "not-found" };
   return { ok: true };
 }
 
@@ -412,13 +411,12 @@ export async function softDeleteComment(
   client: SupabaseClient<Database>,
   commentId: string,
 ): Promise<MutationResult> {
-  const { data, error } = await client
-    .from("community_post_comments")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("comment_id", commentId)
-    .is("deleted_at", null)
-    .select("comment_id");
+  // soft-delete 는 SECURITY DEFINER RPC 로 — SELECT 정책(deleted_at IS NULL)이
+  // UPDATE 새 행을 막아 직접 UPDATE 는 RLS(42501)로 실패. RPC 가 작성자/manager
+  // 검사 후 우회(미존재·타인 댓글이면 RPC 가 forbidden).
+  const { error } = await client.rpc("soft_delete_community_comment", {
+    p_id: commentId,
+  });
   if (error) return { ok: false, error: error.message };
-  if (!data || data.length === 0) return { ok: false, error: "not-found" };
   return { ok: true };
 }
