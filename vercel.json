@@ -2,8 +2,8 @@
   "regions": ["icn1"],
   "crons": [
     {
-      "path": "/api/cron/embed-chunks",
-      "schedule": "*/15 * * * *"
+      "path": "/api/cron/embed-chunks?limit=200",
+      "schedule": "0 17 * * *"
     },
     {
       "path": "/api/cron/ai-eval-run?limit=10",

@@ -1,5 +1,7 @@
 // feat-9-001 임베딩 cron — content_chunks 의 dirty(embedded_at IS NULL) 청크에 임베딩을 채운다.
-// 호출: 외부 cron 5~15분 주기, 또는 변경 발생 직후 runAfterResponse() best-effort.
+// 호출: Vercel cron 일1회(`0 17 * * *`, Hobby 플랜=일1회 제한 대응) + `?limit=200`.
+//   한 번에 200개 처리. 그 이상 밀리면 다음 날 cron 이 이어 처리하거나
+//   `scripts/diag/embed-pending-chunks.mjs --apply` 로 수동 드레인.
 // 인증: CRON_SECRET (weekly-reports 등 기존 패턴 동일).
 //
 // 모드:
