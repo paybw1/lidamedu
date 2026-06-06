@@ -90,7 +90,7 @@ const NAV_GROUP_POOL = {
       { label: "즐겨찾기", to: "/study/bookmarks" },
       { label: "포스트잇", to: "/study/notes" },
       { label: "메모", to: "/study/comments" },
-      { label: "AI Q&A (베타)", to: "/ai" },
+      { label: "AI Q&A", to: "/ai" },
     ],
   },
   manage: {

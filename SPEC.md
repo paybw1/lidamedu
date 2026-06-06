@@ -446,7 +446,7 @@
 
 ---
 
-## 5.6 메뉴: 커뮤니티 (`/community`) — Placeholder
+## 5.6 메뉴: 커뮤니티 (`/community`) — ✅ 구현 완료 (feat-6-001~008, 운영 동작 확인 2026-06-06)
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
@@ -565,7 +565,7 @@
 | feat-9-005 | 피드백 · eval · 품질 튜닝 — 👍/👎 + eval셋 + 지표 측정 | P2 | ✅ |
 | feat-9-006 | 구독 게이팅 · 레이트 리밋 — feat-8-018 결제 연계 + 일 한도 | P2 | 🟡 |
 
-**feat-9-001 진행 상황 (🟡)**: 마이그레이션 적용 완료(`content_chunks` 테이블 + 4종 인덱스 + RLS), `database.types.ts` 재생성, 청킹 로직(`app/features/ai-qna/lib/chunker.ts`) + reindex 헬퍼(`source-chunker.server.ts`) + 큐 API(`queries.server.ts`) + cron 라우트(`/api/cron/embed-chunks`, dry-run + Voyage live) + dirty hooks(법 개정 publish / 판례 저장·생성 / 문제 저장·생성) + 백필 스크립트(`scripts/backfill-content-chunks.mjs`) + Vercel cron 등록(`*/15 * * * *`) 완료. **잔여**: ① Vercel 환경변수 `VOYAGE_API_KEY` 설정 ② `node scripts/backfill-content-chunks.mjs --apply` 백필 실행 ③ 임베딩 cron 자동 호출 모니터링.
+**feat-9-001 진행 상황 (🟡)**: 마이그레이션 적용 완료(`content_chunks` 테이블 + 4종 인덱스 + RLS), `database.types.ts` 재생성, 청킹 로직(`app/features/ai-qna/lib/chunker.ts`) + reindex 헬퍼(`source-chunker.server.ts`) + 큐 API(`queries.server.ts`) + cron 라우트(`/api/cron/embed-chunks`, dry-run + Voyage live) + dirty hooks(법 개정 publish / 판례 저장·생성 / 문제 저장·생성) + 백필 스크립트(`scripts/backfill-content-chunks.mjs`) + Vercel cron 등록(`*/15 * * * *`) 완료. **상태 점검(2026-06-06)**: VOYAGE_API_KEY 유효 확인(로컬 직접 호출 200 OK), 운영 DB(mcgdoplo) content_chunks 6238행 중 6164 임베딩 완료 + 백로그 75 수동 임베딩 해소(dirty=0). **문제**: 정기 임베딩 cron 이 프로덕션에서 미가동 — 임베딩 시점이 06-01/06-02 에 뭉쳐 있고 06-05/06 생성 청크가 방치돼 있었음. `vercel.json` 에 `*/15` cron 등록은 정상. 유력 원인 = Vercel Hobby 플랜(cron 일1회 제한 → `*/15` 무시) 또는 CRON_SECRET 미설정. **잔여**: ① Vercel 요금제·cron 실행 로그 확인(Hobby 면 Pro 전환 또는 일1회 스케줄로 조정) ② CRON_SECRET 프로덕션 env 확인 ③ 운영 동안 dirty 누적 모니터링.
 
 **feat-9-002 진행 상황 (🟡)**: 의미 검색 RPC `match_content_chunks`(hnsw cosine, law_filter, embedded_at 필터, k≤100) 적용. 질문 파서(`query-parser.ts` — 과목·조문번호·사건번호 추출, 기존 `extract.ts` 패턴 재사용). 하이브리드 검색 코어(`hybrid-search.server.ts`) — 4 path(semantic Voyage query mode / keyword pg_trgm ILIKE OR / structured 조문·사건번호 직격 / graph 인접 청크) + RRF(k=60) 융합 + top-K. 검증 endpoint `/api/ai-qna/search-debug?q=...` (staff only) 추가. **잔여**: ① VOYAGE_API_KEY 설정 후 실제 질의로 4 path 정합성 점검 ② keyword path 점수를 trigram similarity 또는 ts_rank 로 정교화(v1.1) ③ structured 의 다중 과목 fallback 보강.
 
@@ -620,8 +620,8 @@
 
 ### M5+ — 확장
 - 5.5 온라인 GS 본격 ✅ (학생 응시·peer/AI/강사 채점·통계·우수답안·포인트 P1 항목 다 완료. 추가 폴리시는 운영 피드백 기반)
-- 5.6 커뮤니티 본격 🔲 (placeholder 만)
-- 5.9 AI 학습 Q&A (RAG) 🟡 — `feat-9-*`, §14 결정 6건 권장안 채택. feat-9-001(RAG 인프라) 골격 완료
+- 5.6 커뮤니티 본격 ✅ (feat-6-001~008 전부 완료 — 게시판 3종·댓글·좋아요·첨부·신고/모더레이션·인기글·알림/멘션·콘텐츠 인용·스터디 매칭. 운영 동작 확인 2026-06-06)
+- 5.9 AI 학습 Q&A (RAG) 🟡 — `feat-9-*`, §14 결정 6건 권장안 채택. **답변 파이프라인(feat-9-003/004) 운영 가동 중**(ANTHROPIC 키 설정·실사용 답변 성공). 잔여: 임베딩 cron(feat-9-001)이 프로덕션에서 정기 미가동 — Vercel 요금제(Hobby=일1회 제한)/CRON_SECRET 확인 필요. 백로그 75청크는 2026-06-06 수동 임베딩으로 해소
 - P2 잔여 항목: `feat-3-504` 논문 PDF Storage · `feat-7-014` 수강권/결제 · `feat-4-A-320` 주관식 색인(과목 hub)
 
 ---

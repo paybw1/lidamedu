@@ -86,8 +86,8 @@ const studyAidItems: SimpleLink[] = [
   { label: "즐겨찾기", to: "/study/bookmarks" },
   { label: "포스트잇", to: "/study/notes" },
   { label: "메모", to: "/study/comments" },
-  // feat-9-004 — 생성형 AI Q&A. 베타.
-  { label: "AI Q&A (베타)", to: "/ai" },
+  // feat-9-004 — 생성형 AI Q&A.
+  { label: "AI Q&A", to: "/ai" },
 ];
 
 // 1차 통합(3교시)·진도별은 /latest/mcq?kind=mock 한 색인에 함께 노출 — 한 항목으로 통합.

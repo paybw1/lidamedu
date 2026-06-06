@@ -30,7 +30,12 @@ const articleIdx = process.argv.indexOf("--article");
 const ONLY_ARTICLE = articleIdx >= 0 ? process.argv[articleIdx + 1] : null;
 const lawIdx = process.argv.indexOf("--law");
 const ONLY_LAW = lawIdx >= 0 ? process.argv[lawIdx + 1] : null;
-const STAFF_USER_ID = "8dbc9c0e-a32d-456e-bf53-bf89160669e0"; // bwyim@lidamip.com 임병웅
+const ownerIdx = process.argv.indexOf("--owner");
+// --owner 로 소유 계정 override 가능 (기본: 과거 admin 계정). 둘 다 임병웅 admin.
+const STAFF_USER_ID =
+  ownerIdx >= 0
+    ? process.argv[ownerIdx + 1]
+    : "8dbc9c0e-a32d-456e-bf53-bf89160669e0"; // bwyim@lidamip.com 임병웅
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
