@@ -467,7 +467,13 @@ export async function getSystematicSkeleton(
     caseDisplayLabel: n.case_display_label ?? null,
     caseOnly: n.case_only ?? false,
     ord: n.ord,
-    articles: articlesByNode.get(n.node_id) ?? [],
+    // 노드 내 조문 자연 정렬 — 81 → 81의2 → 81의3 → 82 (링크 테이블에 ord 없음,
+    // 삽입 순서라 나중 추가된 가지조가 끝에 붙는 문제 교정). 노드 상세(getSystematicNodeWithArticles)와 동일 규칙.
+    articles: [...(articlesByNode.get(n.node_id) ?? [])].sort((x, y) => {
+      const xn = naturalKey(x.articleNumber);
+      const yn = naturalKey(y.articleNumber);
+      return xn[0] !== yn[0] ? xn[0] - yn[0] : xn[1] - yn[1];
+    }),
   }));
 }
 
