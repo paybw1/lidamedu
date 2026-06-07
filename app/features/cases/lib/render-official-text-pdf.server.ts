@@ -6,8 +6,9 @@
 // 미커버 정책: 폰트가 렌더 못 하는 글자가 1자라도 있으면 PDF 생성 skip + 보고만.
 // 사용자 결정: "□ 로 조용히 내보내지 말 것" — Noto Serif CJK KR 등 대체 검토 위함.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, type PDFFont, type PDFPage, rgb } from "pdf-lib";
@@ -17,7 +18,20 @@ import { PDFDocument, type PDFFont, type PDFPage, rgb } from "pdf-lib";
 // ⚠️ 과거 NotoSerifCJKkr-Regular.otf(OTF/CFF)는 pdf-lib subset:true 에서 CFF outline 이
 //    깨져 뷰어가 CJK 글리프를 못 그렸다(영문·숫자만 표시 → 전문 PDF "깨짐"). TTF 로 교체해 해결.
 //    NanumMyeongjo(TTF)는 한자 미커버라 ~28% skip → Noto Serif KR 채택.
-const FONT_PATH = resolve(process.cwd(), "public/fonts/NotoSerifKR-Regular.ttf");
+//
+// 경로: 서버리스(Vercel) 함수 번들에 폰트가 포함되도록 import.meta.url 상대경로를
+// 1순위로 사용(Vercel nft 가 new URL(literal, import.meta.url) 를 추적해 번들에 동봉).
+// process.cwd() 폴백은 로컬 dev/스크립트용. (process.cwd() 만 쓰면 서버리스에서
+// public/ 가 함수에 없어 ENOENT 가능 — 정방향 PDF 렌더가 cron 에서 실패하던 잠재 원인)
+const FONT_URL = new URL(
+  "../../../../public/fonts/NotoSerifKR-Regular.ttf",
+  import.meta.url,
+);
+const FONT_PATH = (() => {
+  const traced = fileURLToPath(FONT_URL);
+  if (existsSync(traced)) return traced;
+  return resolve(process.cwd(), "public/fonts/NotoSerifKR-Regular.ttf");
+})();
 
 const A4_W = 595.28;
 const A4_H = 841.89;
