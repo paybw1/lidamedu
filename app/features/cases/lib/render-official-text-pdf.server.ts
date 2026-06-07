@@ -12,10 +12,12 @@ import { resolve } from "node:path";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, type PDFFont, type PDFPage, rgb } from "pdf-lib";
 
-// Noto Serif CJK KR — 한중일 통합. 옛 한자, 단위(℃ ㎝ ㎟), 그리스(α β Π),
-// 로마숫자(Ⅰ Ⅱ Ⅲ) 등 한국 옛 판례에 빈출하는 글자 모두 커버.
-// 나눔명조(NanumMyeongjo-Regular.ttf) 는 보존 — 향후 비교/롤백 가능.
-const FONT_PATH = resolve(process.cwd(), "public/fonts/NotoSerifCJKkr-Regular.otf");
+// Noto Serif KR (TTF/glyf) — 한글+한자+단위(℃㎎)+그리스(αβ)+로마숫자(ⅠⅡ) 전부 커버 +
+// pdf-lib 정상 서브셋·임베드.
+// ⚠️ 과거 NotoSerifCJKkr-Regular.otf(OTF/CFF)는 pdf-lib subset:true 에서 CFF outline 이
+//    깨져 뷰어가 CJK 글리프를 못 그렸다(영문·숫자만 표시 → 전문 PDF "깨짐"). TTF 로 교체해 해결.
+//    NanumMyeongjo(TTF)는 한자 미커버라 ~28% skip → Noto Serif KR 채택.
+const FONT_PATH = resolve(process.cwd(), "public/fonts/NotoSerifKR-Regular.ttf");
 
 const A4_W = 595.28;
 const A4_H = 841.89;
