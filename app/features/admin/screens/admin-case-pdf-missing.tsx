@@ -246,7 +246,7 @@ export default function AdminCasePdfMissing({
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <PdfUploadCell caseId={r.case_id} />
+                      <PdfUploadCell caseId={r.case_id} hasText={hasText} />
                     </td>
                     <td className="px-3 py-2">
                       {subjectOfRow ? (
@@ -320,12 +320,41 @@ interface PdfUploadResult {
   warning?: string | null;
 }
 
-function PdfUploadCell({ caseId }: { caseId: string }) {
+function PdfUploadCell({
+  caseId,
+  hasText,
+}: {
+  caseId: string;
+  hasText: boolean;
+}) {
   const fetcher = useFetcher<PdfUploadResult>();
+  const rerender = useFetcher<{ ok?: boolean; error?: string }>();
   const busy = fetcher.state !== "idle";
+  const rerendering = rerender.state !== "idle";
   const res = fetcher.data;
   return (
     <div className="flex flex-col gap-1">
+      {hasText ? (
+        <rerender.Form method="post" action="/api/admin/case-official-pdf">
+          <input type="hidden" name="intent" value="rerender" />
+          <input type="hidden" name="caseId" value={caseId} />
+          <button
+            type="submit"
+            disabled={rerendering}
+            className="inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-medium hover:bg-muted disabled:opacity-50"
+            title="기존 전문 텍스트로 PDF 재생성(새 폰트)"
+          >
+            {rerendering ? "생성 중…" : "PDF 재생성"}
+          </button>
+          {rerender.data?.ok ? (
+            <span className="ml-1 text-[11px] text-emerald-600">완료 ✓</span>
+          ) : rerender.data?.error ? (
+            <span className="ml-1 text-[11px] text-rose-600" title={rerender.data.error}>
+              실패
+            </span>
+          ) : null}
+        </rerender.Form>
+      ) : null}
       <fetcher.Form
         method="post"
         action="/api/admin/case-official-pdf"

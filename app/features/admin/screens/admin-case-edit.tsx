@@ -332,6 +332,9 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         {/* PDF */}
         {!isNew ? <FullTextPdfCard kase={kase} /> : <FullTextPdfNotice />}
 
+        {/* 공식 전문 PDF (official_text_md 자동 조판) — 재생성 */}
+        {!isNew ? <OfficialTextPdfCard kase={kase} /> : null}
+
         {/* 요지 · 이유 */}
         <Card>
           <CardHeader>
@@ -2049,6 +2052,91 @@ function FullTextPdfCard({
         <p className="text-muted-foreground text-[10px]">
           최대 30MB · application/pdf 만 허용.
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── OfficialTextPdfCard ─────────────────────────────────────────────── */
+// 공식 전문 PDF — official_text_md(국가법령정보 OPEN API 또는 staff 입력)를 pdf-lib 로
+// 자동 조판한 case-fulltext 버킷 PDF. full_text_pdf(외부 URL)와 별개. 폰트/본문 수정
+// 후 "재생성" 으로 다시 렌더(서버리스 폰트 번들 검증 겸용). 메인 Form 안이라 fetcher 사용.
+function OfficialTextPdfCard({
+  kase,
+}: {
+  kase: {
+    case_id: string;
+    official_text_md: string | null;
+    official_text_pdf_path: string | null;
+  };
+}) {
+  const fetcher = useFetcher<{
+    ok?: boolean;
+    error?: string;
+    pageCount?: number;
+  }>();
+  const revalidator = useRevalidator();
+  const busy = fetcher.state !== "idle";
+  const hasText = !!kase.official_text_md && kase.official_text_md.length > 0;
+  const handledRef = useRef<unknown>(null);
+
+  useEffect(() => {
+    const r = fetcher.data;
+    if (!r || r === handledRef.current) return;
+    handledRef.current = r;
+    if (r.ok) {
+      toast.success(`공식 전문 PDF 재생성 완료 (${r.pageCount ?? "?"}p)`);
+      revalidator.revalidate();
+    } else if (r.error) {
+      toast.error(r.error);
+    }
+  }, [fetcher.data, revalidator]);
+
+  function onRerender() {
+    const fd = new FormData();
+    fd.set("intent", "rerender");
+    fd.set("caseId", kase.case_id);
+    fetcher.submit(fd, { method: "post", action: "/api/admin/case-official-pdf" });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+          <FileTextIcon className="size-3.5" /> 공식 전문 PDF (자동 조판)
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-muted-foreground text-xs">
+          상태:{" "}
+          {kase.official_text_pdf_path ? (
+            <span className="font-medium text-emerald-700 dark:text-emerald-300">
+              적재됨
+            </span>
+          ) : (
+            <span className="font-medium text-rose-600">없음</span>
+          )}
+          {" · "}전문 텍스트 {hasText ? `${kase.official_text_md!.length}자` : "없음"}
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onRerender}
+          disabled={busy || !hasText}
+          title={
+            hasText
+              ? "official_text_md 로 전문 PDF 재생성"
+              : "전문 텍스트가 없어 재생성 불가"
+          }
+        >
+          {busy ? "재생성 중…" : "전문 PDF 재생성"}
+        </Button>
+        {!hasText ? (
+          <p className="text-muted-foreground text-[11px]">
+            전문 텍스트(official_text_md)가 있어야 재생성할 수 있습니다.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

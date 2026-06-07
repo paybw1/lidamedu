@@ -2,12 +2,16 @@
 // API 로 못 받는 판례(특허법원·하급심 등)를 staff 가 직접 찾은 PDF 로 채운다.
 //   intent=upload : multipart(caseId, file) → Storage 저장 + 텍스트 추출 + official_text_md 적재 + RAG 재인덱스
 //   intent=clear_unavailable : 오판정된 unavailable 해제(재확인 대상 복귀)
+//   intent=rerender : official_text_md 로 전문 PDF 재생성(폰트 교체·본문 수정 후) — 서버리스 렌더 검증 겸용
 
 import { data } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { CASE_FULLTEXT_BUCKET } from "~/features/cases/lib/precedent-import.server";
+import {
+  CASE_FULLTEXT_BUCKET,
+  renderAndStorePdf,
+} from "~/features/cases/lib/precedent-import.server";
 import { extractPdfText } from "~/features/cases/lib/pdf-extract.server";
 import { reindexCases } from "~/features/ai-qna/lib/source-chunker.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -39,6 +43,37 @@ export async function action({ request }: Route.ActionArgs) {
       .eq("case_id", caseId);
     if (error) return data({ error: error.message }, { status: 500 });
     return data({ ok: true, intent });
+  }
+
+  if (intent === "rerender") {
+    const { data: c, error: cErr } = await adminClient
+      .from("cases")
+      .select("case_number, case_title, court, decided_at, official_text_md")
+      .eq("case_id", caseId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (cErr) return data({ error: cErr.message }, { status: 500 });
+    if (!c?.official_text_md)
+      return data(
+        { error: "전문 텍스트(official_text_md)가 없어 재생성할 수 없습니다." },
+        { status: 400 },
+      );
+    const r = await renderAndStorePdf(adminClient, caseId, c.official_text_md, {
+      caseNumber: c.case_number,
+      caseTitle: c.case_title,
+      court: c.court,
+      decidedAt: c.decided_at,
+    });
+    if (r.status === "ok")
+      return data({ ok: true, intent, path: r.path, pageCount: r.pageCount });
+    if (r.status === "skipped_unrenderable")
+      return data(
+        {
+          error: `폰트 미커버 글자로 생성 skip: ${r.chars.slice(0, 10).join("")}`,
+        },
+        { status: 422 },
+      );
+    return data({ error: `렌더 실패: ${r.msg}` }, { status: 500 });
   }
 
   if (intent !== "upload") return data({ error: "Unknown intent" }, { status: 400 });

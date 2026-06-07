@@ -12,10 +12,11 @@ import {
   PlusIcon,
   ScaleIcon,
   SearchXIcon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react";
 import { Fragment, useState } from "react";
-import { Link, data } from "react-router";
+import { Link, data, useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
@@ -277,6 +278,12 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                               <PencilIcon className="size-3" /> 수정
                             </Link>
                           ) : null}
+                          {isStaff ? (
+                            <RevisionDeleteButton
+                              lawRevisionId={r.lawRevisionId}
+                              label={`${SUBJECT_CATEGORY_LABEL[r.lawCode as LawSubjectSlug] ?? r.lawCode} ${r.revisionNumber ?? ""}`}
+                            />
+                          ) : null}
                           <Link
                             to={`/subjects/${r.lawCode}`}
                             viewTransition
@@ -534,4 +541,49 @@ function toEmbedUrl(url: string): string | null {
     return null;
   }
   return null;
+}
+
+// 잘못 올라간 법 개정 항목 삭제(staff). /api/admin/law-revision intent=delete →
+// deleteDraftLawRevision: 연결 article_revisions + law_revision 삭제. 단 시행 중
+// 스냅샷은 immutability 트리거가 막아 실패(에러 표시) — 미반영/시행예정만 삭제됨.
+function RevisionDeleteButton({
+  lawRevisionId,
+  label,
+}: {
+  lawRevisionId: string;
+  label: string;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/law-revision"
+      className="contents"
+      onSubmit={(e) => {
+        if (
+          !window.confirm(
+            `'${label}' 법 개정 항목을 삭제할까요?\n연결된 조문 개정 스냅샷도 함께 삭제됩니다. 시행 중인 개정은 보호되어 삭제되지 않습니다.`,
+          )
+        )
+          e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="intent" value="delete" />
+      <input type="hidden" name="lawRevisionId" value={lawRevisionId} />
+      <button
+        type="submit"
+        disabled={busy}
+        title="이 법 개정 항목 삭제 (시행 중이면 보호되어 실패)"
+        className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-rose-600 hover:text-rose-700 disabled:opacity-50"
+      >
+        <Trash2Icon className="size-3" /> {busy ? "삭제 중…" : "삭제"}
+      </button>
+      {fetcher.data?.error ? (
+        <span className="text-[11px] text-rose-600" title={fetcher.data.error}>
+          삭제 실패(시행 중일 수 있음)
+        </span>
+      ) : null}
+    </fetcher.Form>
+  );
 }
