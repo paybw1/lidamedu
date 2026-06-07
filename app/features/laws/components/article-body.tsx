@@ -720,6 +720,8 @@ function InlineRun({ inline }: { inline: Inline[] }) {
             prevSuffix={carry}
             nextPrefix={nextPrefixes[i]}
             tokenOffset={tokenOffsets[i]}
+            prevIsAnnotation={inline[i - 1]?.type === "annotation"}
+            nextIsAnnotation={inline[i + 1]?.type === "annotation"}
           />
         );
       })}
@@ -942,12 +944,17 @@ function InlineNode({
   prevSuffix = "",
   nextPrefix = "",
   tokenOffset = 0,
+  prevIsAnnotation = false,
+  nextIsAnnotation = false,
 }: {
   node: Inline;
   prevSuffix?: string;
   nextPrefix?: string;
   // block cumulative text 안에서 이 토큰의 시작 offset. 사전 계산된 block hits 의 위치와 정합.
   tokenOffset?: number;
+  // 직전/직후 형제 토큰이 annotation 인지 — literal 대괄호 경계 스타일링용(feat-7-037 후속).
+  prevIsAnnotation?: boolean;
+  nextIsAnnotation?: boolean;
 }) {
   const { titleMap, insideSubArticle } = useContext(Ctx);
   const block = useContext(BlockCtx);
@@ -998,14 +1005,36 @@ function InlineNode({
     partHasBlankHit(0, tokenLength);
   switch (node.type) {
     case "text": {
-      const parts = splitInlineParts(node.text, prevSuffix, nextPrefix);
+      // feat-7-037 후속: annotation 양옆에 박힌 literal 대괄호([ / ])를 강조 chip 과 동일한
+      // 12px amber 로 칠해 크기 일치(예: 특허법 제62조). 괄호 char 는 textContent 에 그대로
+      // 남겨(시각 스타일만 부여) 하이라이트/빈칸 offset 을 깨지 않는다.
+      const raw = node.text;
+      const lead = prevIsAnnotation && raw.startsWith("]") ? "]" : "";
+      const trail = nextIsAnnotation && raw.endsWith("[") ? "[" : "";
+      const core = raw.slice(lead.length, raw.length - trail.length);
+      const coreOffset = lead.length;
+      const bracketCls =
+        "bg-amber-100 [box-decoration-break:clone] text-[12px] font-medium text-amber-900 [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200";
+      const wrap = (body: ReactNode) =>
+        lead || trail ? (
+          <>
+            {lead ? <span className={bracketCls}>{lead}</span> : null}
+            {body}
+            {trail ? <span className={bracketCls}>{trail}</span> : null}
+          </>
+        ) : (
+          body
+        );
+      const parts = splitInlineParts(core, prevSuffix, nextPrefix);
       if (parts.length === 1 && parts[0].type === "text") {
-        return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
+        return wrap(
+          <Fragment>{renderTextWithBlanks(core, coreOffset)}</Fragment>,
+        );
       }
       // splitInlineParts 의 parts 는 원문을 분할 — 각 part 의 텍스트/raw 길이가 곧 원문에서의 길이.
       // 토큰 안의 partOffset 누적해 renderTextWithBlanks 에 전달.
-      let partCursor = 0;
-      return (
+      let partCursor = coreOffset;
+      return wrap(
         <>
           {parts.map((p, i) => {
             const partStart = partCursor;
