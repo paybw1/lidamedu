@@ -1109,12 +1109,17 @@ function InlineNode({
       const alreadyWrapped =
         (t.startsWith("[") && t.endsWith("]")) ||
         (t.startsWith("(") && t.endsWith(")"));
+      // 인접 텍스트에 literal 대괄호가 이미 있는 import 패턴
+      // (…제25조[ + annotation"외국인의 권리능력" + ]·제29조…) 에서는
+      // 렌더러가 [...] 를 또 씌우면 [[ ]] 이중이 된다 → 그 경우 bare 출력.
+      const litWrapped =
+        prevSuffix.endsWith("[") && nextPrefix.startsWith("]");
       return (
         <span
           title="강사 보강 라벨"
           className="rounded bg-amber-100 [box-decoration-break:clone] px-1 text-[12px] font-medium text-amber-900 [-webkit-box-decoration-break:clone] dark:bg-amber-900/40 dark:text-amber-200"
         >
-          {alreadyWrapped ? t : `[${t}]`}
+          {alreadyWrapped || litWrapped ? t : `[${t}]`}
         </span>
       );
     }
