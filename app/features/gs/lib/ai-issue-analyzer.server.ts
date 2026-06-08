@@ -117,7 +117,7 @@ export async function analyzeIssueExtraction(
                   additionalProperties: false,
                   properties: {
                     issue_id: { type: "string" },
-                    evidence: { type: "string", maxLength: 200 },
+                    evidence: { type: "string" },
                   },
                   required: ["issue_id"],
                 },
@@ -136,9 +136,9 @@ export async function analyzeIssueExtraction(
               },
               extras: {
                 type: "array",
-                items: { type: "string", maxLength: 100 },
+                items: { type: "string" },
               },
-              reasoning: { type: "string", maxLength: 800 },
+              reasoning: { type: "string" },
             },
             required: ["hits", "missed", "extras"],
           },

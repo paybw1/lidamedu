@@ -88,15 +88,14 @@ export async function extractIssuesFromModelAnswer(
               issues: {
                 type: "array",
                 minItems: 1,
-                maxItems: 12,
                 items: {
                   type: "object",
                   additionalProperties: false,
                   properties: {
-                    label: { type: "string", minLength: 2, maxLength: 60 },
-                    description_md: { type: "string", maxLength: 600 },
+                    label: { type: "string" },
+                    description_md: { type: "string" },
                     importance: { type: "string", enum: ["core", "side"] },
-                    ref_hint: { type: "string", maxLength: 100 },
+                    ref_hint: { type: "string" },
                   },
                   required: ["label", "description_md", "importance"],
                 },

@@ -100,7 +100,7 @@ export async function analyzeCaseIssueExtraction(
                   additionalProperties: false,
                   properties: {
                     issue_id: { type: "string" },
-                    evidence: { type: "string", maxLength: 200 },
+                    evidence: { type: "string" },
                   },
                   required: ["issue_id"],
                 },
@@ -123,8 +123,8 @@ export async function analyzeCaseIssueExtraction(
                   type: "object",
                   additionalProperties: false,
                   properties: {
-                    text: { type: "string", maxLength: 200 },
-                    reason: { type: "string", maxLength: 300 },
+                    text: { type: "string" },
+                    reason: { type: "string" },
                   },
                   required: ["text"],
                 },

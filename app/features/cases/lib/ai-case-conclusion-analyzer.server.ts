@@ -121,7 +121,7 @@ export async function analyzeCaseConclusion(
                       type: "string",
                       enum: ["emphasis", "conclusion", "overall"],
                     },
-                    note: { type: "string", maxLength: 600 },
+                    note: { type: "string" },
                   },
                   required: ["kind", "note"],
                 },

@@ -104,9 +104,9 @@ export async function draftCaseConclusionsFromIssues(
                   additionalProperties: false,
                   properties: {
                     issue_id: { type: "string" },
-                    direction: { type: "string", minLength: 1, maxLength: 60 },
-                    rationale_md: { type: "string", maxLength: 600 },
-                    weight: { type: "integer", minimum: 0, maximum: 100 },
+                    direction: { type: "string" },
+                    rationale_md: { type: "string" },
+                    weight: { type: "integer" },
                   },
                   required: ["issue_id", "direction", "rationale_md"],
                 },
