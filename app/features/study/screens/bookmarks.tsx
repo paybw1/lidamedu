@@ -111,6 +111,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
       tabCounts={toTabCounts(aidCounts)}
       title="즐겨찾기"
       desc="별점을 매겨 둔 조문 · 판례 · 문제 · OX 모음. 별점 높은 순으로 정렬됩니다."
+      printHref="/study/bookmarks/print"
       summaryStats={[
         { label: "전체", value: counts.total, dotClass: "bg-primary" },
         { label: "조문", value: counts.article, dotClass: "bg-primary" },

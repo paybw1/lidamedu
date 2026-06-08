@@ -13,6 +13,21 @@ import {
   listWrongAttempts,
 } from "~/features/study/queries.server";
 
+// 워터마크용 학생 이름 + KST 날짜. profiles RLS(select-own-profile)로 본인 이름 조회 가능.
+export async function getPrintWatermark(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<{ name: string; date: string }> {
+  const { data } = await client
+    .from("profiles")
+    .select("name")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const date = `${kst.getUTCFullYear()}.${String(kst.getUTCMonth() + 1).padStart(2, "0")}.${String(kst.getUTCDate()).padStart(2, "0")}`;
+  return { name: data?.name ?? "수험생", date };
+}
+
 export interface PrintChoice {
   index: number;
   bodyMd: string;

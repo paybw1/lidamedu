@@ -251,8 +251,17 @@ export default [
           "features/study/screens/wrong-note-print.tsx",
         ),
         route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
+        route(
+          "/study/bookmarks/print",
+          "features/study/screens/bookmarks-print.tsx",
+        ),
         route("/study/notes", "features/study/screens/notes.tsx"),
+        route("/study/notes/print", "features/study/screens/notes-print.tsx"),
         route("/study/highlights", "features/study/screens/highlights.tsx"),
+        route(
+          "/study/highlights/print",
+          "features/study/screens/highlights-print.tsx",
+        ),
         route("/study/comments", "features/study/screens/comments.tsx"),
       ]),
       route("/inbox", "features/notifications/screens/student-inbox.tsx"),

@@ -174,6 +174,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
       tabCounts={toTabCounts(aidCounts)}
       title="하이라이트"
       desc="본문에 색칠한 발췌 모음. 최근 작성 순으로 정렬되며, 색상별로 좁혀 볼 수 있습니다."
+      printHref="/study/highlights/print"
       summaryStats={[
         { label: "전체", value: counts.total },
         { label: labelFor("yellow"), value: counts.yellow, dotClass: COLOR.yellow.dot },
