@@ -3,6 +3,7 @@
 
 import {
   BellIcon,
+  BugIcon,
   CheckCheckIcon,
   ClipboardCheckIcon,
   MessageCircleQuestionIcon,
@@ -49,6 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 const KIND_LABEL: Partial<Record<StaffNotificationKind, string>> = {
   subjective_review_request: "주관식 첨삭",
   qna_new_question: "Q&A 질문",
+  bug_report_created: "오류 신고",
 };
 
 const KIND_ICON: Partial<
@@ -56,6 +58,7 @@ const KIND_ICON: Partial<
 > = {
   subjective_review_request: ClipboardCheckIcon,
   qna_new_question: MessageCircleQuestionIcon,
+  bug_report_created: BugIcon,
 };
 
 function formatRelative(iso: string): string {

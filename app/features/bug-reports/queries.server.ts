@@ -11,15 +11,19 @@ export async function createBugReport(
   client: SupabaseClient<Database>,
   userId: string,
   input: { url: string; message: string; userAgent: string | null },
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await client.from("bug_reports").insert({
-    reporter_id: userId,
-    url: input.url.slice(0, 2000),
-    message: input.message,
-    user_agent: input.userAgent?.slice(0, 1000) ?? null,
-  });
+): Promise<{ ok: true; reportId: string } | { ok: false; error: string }> {
+  const { data, error } = await client
+    .from("bug_reports")
+    .insert({
+      reporter_id: userId,
+      url: input.url.slice(0, 2000),
+      message: input.message,
+      user_agent: input.userAgent?.slice(0, 1000) ?? null,
+    })
+    .select("report_id")
+    .single();
   if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  return { ok: true, reportId: data.report_id };
 }
 
 // staff 전용 — admin client. 신고자 이름은 profiles 별도 조회로 매핑.

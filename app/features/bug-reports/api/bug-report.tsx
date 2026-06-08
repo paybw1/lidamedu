@@ -2,6 +2,8 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { notifyStaffNewBugReport } from "~/features/bug-reports/notify.server";
 import { createBugReport } from "~/features/bug-reports/queries.server";
 
 import type { Route } from "./+types/bug-report";
@@ -38,5 +40,14 @@ export async function action({ request }: Route.ActionArgs) {
   if (!res.ok) {
     return data({ ok: false, error: res.error }, { status: 500, headers });
   }
+  // staff 인앱 알림 — 응답 후 백그라운드 fanout (접수 응답을 막지 않음).
+  runAfterResponse(
+    notifyStaffNewBugReport({
+      reportId: res.reportId,
+      url: parsed.data.url,
+      message: parsed.data.message,
+      reporterId: user.id,
+    }),
+  );
   return data({ ok: true }, { headers });
 }
