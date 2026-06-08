@@ -664,7 +664,7 @@ export type Database = {
           created_by: string | null
           effective_date: string | null
           expired_date: string | null
-          law_revision_id: string
+          law_revision_id: string | null
           revision_id: string
         }
         Insert: {
@@ -676,7 +676,7 @@ export type Database = {
           created_by?: string | null
           effective_date?: string | null
           expired_date?: string | null
-          law_revision_id: string
+          law_revision_id?: string | null
           revision_id?: string
         }
         Update: {
@@ -688,7 +688,7 @@ export type Database = {
           created_by?: string | null
           effective_date?: string | null
           expired_date?: string | null
-          law_revision_id?: string
+          law_revision_id?: string | null
           revision_id?: string
         }
         Relationships: [

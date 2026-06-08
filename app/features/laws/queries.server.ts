@@ -728,33 +728,23 @@ export interface SaveArticleRevisionInput {
 }
 
 // 빠른 편집(quick edit) 모드에서 호출.
-// 기존 article_revision 을 수정하지 않고(불변), 새 law_revision + article_revision 을 생성한 뒤
+// 기존 article_revision 을 수정하지 않고(불변), 새 article_revision 을 생성한 뒤
 // articles.current_revision_id 를 새 revision 으로 swap 한다.
-// 정식 개정 워크스페이스(feat-7-004) 가 만들어지면 이 quick-edit 흐름은 그쪽으로 합쳐질 수 있다.
+// ⚠️ 빠른편집은 "법 개정"이 아니라 staff 직접 정정이므로 **law_revision 을 만들지 않는다**
+//    (law_revision_id = null). 따라서 학습정보>법 개정 이력에 남지 않는다. 단 article_revision
+//    스냅샷은 그대로 생성돼 변경 audit·롤백 근거는 유지(불변성 정책 준수).
+//    정식 법 개정은 개정 워크스페이스(feat-7-004)로 — 그쪽은 law_revision 을 만든다.
 export async function saveArticleQuickEdit(
   adminClient: SupabaseClient<Database>,
   input: SaveArticleRevisionInput,
 ): Promise<{ ok: true; revisionId: string } | { ok: false; error: string }> {
   const today = new Date().toISOString().slice(0, 10);
-  const stamp = Date.now();
-
-  const { data: lawRev, error: lawRevErr } = await adminClient
-    .from("law_revisions")
-    .insert({
-      law_id: input.lawId,
-      revision_number: `quick-${stamp}`,
-      promulgated_at: today,
-      effective_date: today,
-    })
-    .select("law_revision_id")
-    .single();
-  if (lawRevErr) return { ok: false, error: lawRevErr.message };
 
   const { data: artRev, error: artRevErr } = await adminClient
     .from("article_revisions")
     .insert({
       article_id: input.articleId,
-      law_revision_id: lawRev.law_revision_id,
+      law_revision_id: null, // 직접편집 — 법 개정 이력 미생성
       body_json: input.bodyJson as Json,
       change_kind: "amended",
       effective_date: today,
