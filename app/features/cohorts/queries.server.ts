@@ -237,8 +237,11 @@ export async function addCohortMember(
   profileId: string,
   addedBy: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  // profile 존재 확인.
-  const { data: prof } = await client
+  // profile 존재 확인 — profiles RLS(select-own-profile)가 staff 에게도 "본인 프로필만"
+  // 허용하므로, 타 학생 조회는 adminClient(RLS 우회)로 해야 한다. RLS client 로 하면
+  // 항상 0행 → "사용자 미존재" 오판(검색은 adminClient 라 보이는데 추가만 실패).
+  // 호출 라우트(api/admin/cohort)에서 staff 권한·반 소유 검증을 마친 뒤 호출됨.
+  const { data: prof } = await adminClient
     .from("profiles")
     .select("profile_id")
     .eq("profile_id", profileId)
