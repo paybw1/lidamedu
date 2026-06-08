@@ -273,7 +273,14 @@ export async function listRecentLawRevisions(
       "law_revision_id, law_id, revision_kind, revision_number, promulgated_at, effective_date, reason_md, comparison_pdf, explanation_pdf, video_url, laws!inner(law_code, display_label, short_label)",
     )
     // 반영된 개정만 (시행일 set). 미반영 초안은 학습지원 목록에서 제외.
-    .not("effective_date", "is", null);
+    .not("effective_date", "is", null)
+    // 조문 편집 도구·정리 스크립트가 본문 수정을 적용하려고 자동 생성한 revision
+    // (revision_number 가 placeholder: quick-… / fix-… / "…조문정리…" 시드)은
+    // 실제 "법 개정"이 아니므로 학습정보 목록에서 제외. 이 revision 들은 현재 조문
+    // 본문(current)을 보유하므로 삭제하면 안 되고, 목록에서 숨기기만 한다.
+    .not("revision_number", "ilike", "quick-%")
+    .not("revision_number", "ilike", "fix-%")
+    .not("revision_number", "ilike", "%조문정리%");
   if (options.subject) q = q.eq("laws.law_code", options.subject);
   const trimmed = options.query?.trim();
   if (trimmed) {
