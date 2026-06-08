@@ -97,7 +97,7 @@ function metaLine(
   return parts.join(" · ");
 }
 
-const MD_TEXT = "text-neutral-900";
+const MD_TEXT = "text-neutral-800";
 
 export default function WrongNotePrint({ loaderData }: Route.ComponentProps) {
   const { mcq, ox, subjectName } = loaderData;
@@ -113,14 +113,28 @@ export default function WrongNotePrint({ loaderData }: Route.ComponentProps) {
   const empty = mcq.length === 0 && ox.length === 0;
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900">
+    <div className="min-h-screen bg-white text-neutral-800">
       <style>{`
+        .print-watermark { display: none; }
         @media print {
           .no-print { display: none !important; }
           @page { margin: 14mm; }
           .pb-avoid { break-inside: avoid; }
+          /* position:fixed 요소는 인쇄 시 모든 페이지에 반복 렌더된다 → 페이지별 워터마크. */
+          .print-watermark { display: flex !important; }
         }
       `}</style>
+
+      {/* 페이지별 워터마크 (인쇄 전용, 본문 뒤·연한 회색) */}
+      <div
+        aria-hidden
+        className="print-watermark pointer-events-none fixed inset-0 z-0 items-center justify-center overflow-hidden"
+        style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
+      >
+        <span className="rotate-[-30deg] text-[64px] font-extrabold tracking-[0.2em] text-neutral-300/60 select-none">
+          리담변리사학원
+        </span>
+      </div>
 
       {/* 화면에서만 보이는 툴바 (인쇄 제외) */}
       <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-5 py-3 backdrop-blur">
@@ -145,13 +159,13 @@ export default function WrongNotePrint({ loaderData }: Route.ComponentProps) {
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="relative z-10 mx-auto max-w-3xl px-8 py-8">
         {/* 표지 헤더 */}
-        <header className="mb-6 border-b-2 border-neutral-900 pb-3">
-          <h1 className="text-2xl font-extrabold tracking-tight">
+        <header className="mb-6 border-b border-neutral-300 pb-3">
+          <h1 className="text-2xl font-extrabold tracking-tight text-neutral-700">
             오답노트 복습 정리본
           </h1>
-          <p className="mt-1 text-sm text-neutral-600">
+          <p className="mt-1 text-sm text-neutral-500">
             {subjectName ? `${subjectName} · ` : "전체 과목 · "}
             객관식 오답 {mcq.length}개 · 정오문제(OX) 오답 {ox.length}개
           </p>
@@ -170,12 +184,12 @@ export default function WrongNotePrint({ loaderData }: Route.ComponentProps) {
         {/* 객관식 */}
         {mcq.length > 0 ? (
           <section className="mb-8">
-            <h2 className="mb-3 text-lg font-bold text-neutral-900">
+            <h2 className="mb-3 text-lg font-bold text-neutral-700">
               객관식 오답
             </h2>
             {mcqGroups.map((g) => (
               <div key={g.slug} className="mb-5">
-                <h3 className="mb-2 border-l-4 border-neutral-900 pl-2 text-base font-bold">
+                <h3 className="mb-2 border-l-2 border-neutral-400 pl-2 text-base font-bold text-neutral-700">
                   {g.name}{" "}
                   <span className="text-sm font-normal text-neutral-500">
                     ({g.items.length})
@@ -194,12 +208,12 @@ export default function WrongNotePrint({ loaderData }: Route.ComponentProps) {
         {/* OX */}
         {ox.length > 0 ? (
           <section>
-            <h2 className="mb-3 text-lg font-bold text-neutral-900">
+            <h2 className="mb-3 text-lg font-bold text-neutral-700">
               정오문제(OX) 오답
             </h2>
             {oxGroups.map((g) => (
               <div key={g.slug} className="mb-5">
-                <h3 className="mb-2 border-l-4 border-neutral-900 pl-2 text-base font-bold">
+                <h3 className="mb-2 border-l-2 border-neutral-400 pl-2 text-base font-bold text-neutral-700">
                   {g.name}{" "}
                   <span className="text-sm font-normal text-neutral-500">
                     ({g.items.length})
@@ -227,9 +241,9 @@ function McqBlock({
   ordinal: number;
 }) {
   return (
-    <article className="pb-avoid rounded-md border border-neutral-300 p-4">
+    <article className="pb-avoid rounded-md border border-neutral-200 p-4">
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <span className="text-sm font-bold text-neutral-900">
+        <span className="text-sm font-bold text-neutral-700">
           문제 {ordinal}
         </span>
         <span className="text-xs text-neutral-500">
@@ -245,10 +259,9 @@ function McqBlock({
               key={c.index}
               className={
                 c.isCorrect
-                  ? "flex gap-1.5 rounded border-l-4 border-emerald-600 bg-emerald-50 px-2 py-1"
+                  ? "flex gap-1.5 border-l-2 border-emerald-500 px-2 py-1"
                   : "flex gap-1.5 px-2 py-1"
               }
-              style={c.isCorrect ? { printColorAdjust: "exact" } : undefined}
             >
               <span className="shrink-0 font-semibold text-neutral-700">
                 {circled(i + 1)}
@@ -257,7 +270,7 @@ function McqBlock({
                 <MarkdownView text={stripMarker(c.bodyMd)} className={MD_TEXT} />
               </div>
               {c.isCorrect ? (
-                <span className="shrink-0 self-start rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                <span className="shrink-0 self-start rounded border border-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
                   정답
                 </span>
               ) : null}
@@ -267,7 +280,7 @@ function McqBlock({
       ) : null}
 
       {item.explanationMd ? (
-        <div className="mt-2 rounded bg-neutral-50 px-3 py-2">
+        <div className="mt-2 border-l-2 border-neutral-200 py-1 pl-3">
           <p className="mb-0.5 text-[11px] font-bold text-neutral-500">해설</p>
           <MarkdownView text={item.explanationMd} className={MD_TEXT} />
         </div>
@@ -284,9 +297,9 @@ function OxBlock({
   ordinal: number;
 }) {
   return (
-    <article className="pb-avoid rounded-md border border-neutral-300 p-4">
+    <article className="pb-avoid rounded-md border border-neutral-200 p-4">
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <span className="text-sm font-bold text-neutral-900">지문 {ordinal}</span>
+        <span className="text-sm font-bold text-neutral-700">지문 {ordinal}</span>
         <span className="text-xs text-neutral-500">
           {metaLine(item.articleLabel, item.year, item.problemNumber, item.attempts)}
         </span>
@@ -296,27 +309,21 @@ function OxBlock({
       <div className="mt-2 flex items-center gap-3 text-sm">
         <span className="flex items-center gap-1">
           <span className="text-[11px] font-semibold text-neutral-500">내 답</span>
-          <span
-            className="inline-flex size-6 items-center justify-center rounded bg-rose-100 font-extrabold text-rose-700"
-            style={{ printColorAdjust: "exact" }}
-          >
+          <span className="inline-flex size-6 items-center justify-center rounded border border-rose-400 font-extrabold text-rose-700">
             {item.myAnswer}
           </span>
         </span>
         <span className="text-xs text-neutral-400">vs</span>
         <span className="flex items-center gap-1">
           <span className="text-[11px] font-semibold text-neutral-500">정답</span>
-          <span
-            className="inline-flex size-6 items-center justify-center rounded bg-emerald-100 font-extrabold text-emerald-700"
-            style={{ printColorAdjust: "exact" }}
-          >
+          <span className="inline-flex size-6 items-center justify-center rounded border border-emerald-500 font-extrabold text-emerald-700">
             {item.oxTruth}
           </span>
         </span>
       </div>
 
       {item.explanationMd ? (
-        <div className="mt-2 rounded bg-neutral-50 px-3 py-2">
+        <div className="mt-2 border-l-2 border-neutral-200 py-1 pl-3">
           <p className="mb-0.5 text-[11px] font-bold text-neutral-500">해설</p>
           <MarkdownView text={item.explanationMd} className={MD_TEXT} />
         </div>
