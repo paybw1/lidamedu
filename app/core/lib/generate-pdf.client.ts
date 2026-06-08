@@ -6,7 +6,7 @@ export async function generatePOAClient({
   filename: string;
 }): Promise<File | null> {
   const { jsPDF } = await import("jspdf");
-  const html2canvas = (await import("html2canvas")).default;
+  const html2canvas = (await import("html2canvas-pro")).default;
 
   const element = document.getElementById(elementId);
   if (!element) {

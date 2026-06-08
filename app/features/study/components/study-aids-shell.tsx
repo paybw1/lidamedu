@@ -10,6 +10,8 @@ import {
   NotebookPenIcon,
   StickyNoteIcon,
 } from "lucide-react";
+import { toast } from "sonner";
+
 import { cn } from "~/core/lib/utils";
 import { SectionTabs } from "~/core/components/student";
 import type { StudyAidCounts } from "~/features/study/queries.server";
@@ -146,6 +148,9 @@ export function StudyAidsShell({
         "~/core/lib/pdf-export.client"
       );
       await downloadElementAsPdf(contentRef.current, `학습지원-${title}.pdf`);
+    } catch (err) {
+      console.error("[study-aids] PDF 내보내기 실패:", err);
+      toast.error("PDF 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setExporting(false);
     }
