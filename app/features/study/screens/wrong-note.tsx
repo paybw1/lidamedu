@@ -100,6 +100,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
       tabCounts={toTabCounts(aidCounts)}
       title="오답노트"
       desc="전체 과목 오답 모음 — 가장 최근 시도가 오답인 항목만 모입니다. 다시 풀어 정답이면 자동으로 빠집니다."
+      printHref="/study/wrong-note/print"
       summaryStats={[
         { label: "객관식 오답", value: items.length, dotClass: "bg-rose-500" },
         {

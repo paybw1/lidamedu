@@ -127,6 +127,7 @@ export function StudyAidsShell({
   title,
   desc,
   summaryStats,
+  printHref,
   children,
 }: {
   active: StudyAidTab;
@@ -134,6 +135,9 @@ export function StudyAidsShell({
   title: string;
   desc: string;
   summaryStats?: CountStat[];
+  // 제공 시: "복습 정리본" 인쇄 라우트를 새 탭으로 연다(콘텐츠 정리본 → PDF 저장).
+  // 미제공 시(아직 정리본 미구현 탭): 화면 캡처(html2canvas) 폴백.
+  printHref?: string;
   children: ReactNode;
 }) {
   const ActiveIcon = (TABS.find((t) => t.id === active) ?? TABS[0]).Icon;
@@ -172,16 +176,29 @@ export function StudyAidsShell({
               {desc}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={exporting}
-            data-pdf-exclude="true"
-            className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors disabled:opacity-60"
-          >
-            <DownloadIcon className="size-3.5" />
-            {exporting ? "PDF 생성 중…" : "PDF 저장"}
-          </button>
+          {printHref ? (
+            <a
+              href={printHref}
+              target="_blank"
+              rel="noreferrer"
+              data-pdf-exclude="true"
+              className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors"
+            >
+              <DownloadIcon className="size-3.5" />
+              PDF 저장
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={exporting}
+              data-pdf-exclude="true"
+              className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors disabled:opacity-60"
+            >
+              <DownloadIcon className="size-3.5" />
+              {exporting ? "PDF 생성 중…" : "PDF 저장"}
+            </button>
+          )}
         </header>
         <div className="mb-[18px]" data-pdf-exclude="true">
           <StudyAidsTabs active={active} counts={tabCounts} />

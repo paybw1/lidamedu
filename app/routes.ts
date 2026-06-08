@@ -246,6 +246,10 @@ export default [
       layout("features/study/layouts/study-aids.layout.tsx", [
         route("/study/blanks", "features/blanks/screens/blanks-stats.tsx"),
         route("/study/wrong-note", "features/study/screens/wrong-note.tsx"),
+        route(
+          "/study/wrong-note/print",
+          "features/study/screens/wrong-note-print.tsx",
+        ),
         route("/study/bookmarks", "features/study/screens/bookmarks.tsx"),
         route("/study/notes", "features/study/screens/notes.tsx"),
         route("/study/highlights", "features/study/screens/highlights.tsx"),
