@@ -37,6 +37,8 @@ const deleteSchema = z.object({
 
 const signedUrlSchema = z.object({
   pdfPath: z.string().min(1).max(500),
+  // 저장 시 파일명(한글 제목). 미지정이면 storage 키 basename 사용.
+  downloadName: z.string().trim().min(1).max(200).optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -56,7 +58,10 @@ export async function action({ request }: Route.ActionArgs) {
 
   // ── signed URL (학생도 호출 가능; RLS 가 read 허용) ──
   if (intent === "signed-url") {
-    const parsed = signedUrlSchema.safeParse({ pdfPath: fd.get("pdfPath") });
+    const parsed = signedUrlSchema.safeParse({
+      pdfPath: fd.get("pdfPath"),
+      downloadName: fd.get("downloadName") || undefined,
+    });
     if (!parsed.success) {
       return data(
         { ok: false, error: parsed.error.issues[0]?.message ?? "입력 오류" },
@@ -67,6 +72,7 @@ export async function action({ request }: Route.ActionArgs) {
       const signedUrl = await getLectureResourceSignedUrl(
         client,
         parsed.data.pdfPath,
+        parsed.data.downloadName,
       );
       return data({ ok: true, intent: "signed-url" as const, signedUrl });
     } catch (e) {

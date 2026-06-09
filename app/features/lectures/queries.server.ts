@@ -314,10 +314,16 @@ export async function softDeleteLectureResource(
 export async function getLectureResourceSignedUrl(
   client: SupabaseClient<Database>,
   pdfPath: string,
+  downloadName?: string,
 ): Promise<string> {
+  // downloadName 지정 시 Content-Disposition 파일명 = 강의노트 제목 (저장 시 한글 파일명).
   const { data, error } = await client.storage
     .from(LECTURE_NOTES_BUCKET)
-    .createSignedUrl(pdfPath, SIGNED_URL_EXPIRES_SEC);
+    .createSignedUrl(
+      pdfPath,
+      SIGNED_URL_EXPIRES_SEC,
+      downloadName ? { download: downloadName } : undefined,
+    );
   if (error) throw error;
   return data.signedUrl;
 }

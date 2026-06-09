@@ -143,6 +143,11 @@ function ResourceCard({
     const fd = new FormData();
     fd.set("intent", "signed-url");
     fd.set("pdfPath", resource.pdfUrl);
+    // 저장 시 파일명 = 제목.pdf (파일 시스템 금지문자만 치환, 한글 유지).
+    const downloadName =
+      resource.title.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim() +
+      ".pdf";
+    fd.set("downloadName", downloadName);
     openFetcher.submit(fd, {
       method: "post",
       action: "/api/lecture-resources",
