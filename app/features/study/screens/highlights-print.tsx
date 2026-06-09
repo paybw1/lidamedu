@@ -30,6 +30,15 @@ const BAR: Record<HighlightColor, string> = {
   underline: "border-neutral-400",
 };
 
+// 문맥 속 하이라이트 표시 — 하이라이트 부분만 옅은 색(작은 면적이라 잉크 부담 적음).
+const MARK: Record<HighlightColor, string> = {
+  yellow: "bg-amber-200/70",
+  green: "bg-emerald-200/70",
+  red: "bg-rose-200/70",
+  blue: "bg-sky-200/70",
+  underline: "underline decoration-2 underline-offset-2",
+};
+
 export const meta: Route.MetaFunction = () => [
   { title: "하이라이트 복습 정리본 | Lidam Patent Attorney Academy" },
 ];
@@ -101,10 +110,24 @@ function HighlightBlock({
         </p>
       ) : null}
       <div className={cn("mt-2 border-l-2 py-1 pl-3", BAR[item.color])}>
-        {item.excerpt ? (
-          <span className="text-sm leading-relaxed text-neutral-800">
-            &ldquo;{item.excerpt}&rdquo;
-          </span>
+        {item.excerpt || item.beforeCtx || item.afterCtx ? (
+          <p className="text-sm leading-relaxed text-neutral-700">
+            {item.beforeCtx ? (
+              <span className="text-neutral-400">…{item.beforeCtx}</span>
+            ) : null}
+            <mark
+              className={cn(
+                "rounded-sm px-0.5 font-semibold text-neutral-900",
+                MARK[item.color],
+              )}
+              style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
+            >
+              {item.excerpt || "(발췌 없음)"}
+            </mark>
+            {item.afterCtx ? (
+              <span className="text-neutral-400">{item.afterCtx}…</span>
+            ) : null}
+          </p>
         ) : (
           <span className="text-[13px] text-neutral-400 italic">
             (발췌 텍스트 없음)

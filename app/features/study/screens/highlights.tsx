@@ -307,10 +307,22 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
                     c.bar,
                   )}
                 >
-                  {h.excerpt ? (
-                    <span className="text-foreground/90 text-sm leading-relaxed">
-                      &ldquo;{h.excerpt}&rdquo;
-                    </span>
+                  {h.excerpt || h.beforeCtx || h.afterCtx ? (
+                    <p className="text-sm leading-relaxed">
+                      {h.beforeCtx ? (
+                        <span className="text-muted-foreground">
+                          …{h.beforeCtx}
+                        </span>
+                      ) : null}
+                      <span className="text-foreground font-semibold">
+                        {h.excerpt || "(발췌 없음)"}
+                      </span>
+                      {h.afterCtx ? (
+                        <span className="text-muted-foreground">
+                          {h.afterCtx}…
+                        </span>
+                      ) : null}
+                    </p>
                   ) : (
                     <span className="text-muted-foreground text-[13px] italic">
                       (발췌 텍스트 없음)

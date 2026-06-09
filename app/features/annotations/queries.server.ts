@@ -1044,6 +1044,9 @@ export interface HighlightListItem {
   targetId: string;
   color: HighlightColor;
   excerpt: string;
+  // 하이라이트 앞·뒤 문맥(±30자, 작성 시 캡처). 구 데이터는 null — 문맥 없이 발췌만 표시.
+  beforeCtx: string | null;
+  afterCtx: string | null;
   fieldPath: string;
   createdAt: string;
   lawCode: string | null;
@@ -1060,7 +1063,7 @@ export async function listAllHighlights(
   const { data: rows, error } = await client
     .from("user_highlights")
     .select(
-      "highlight_id, target_type, target_id, color, label, field_path, created_at",
+      "highlight_id, target_type, target_id, color, label, before_ctx, after_ctx, field_path, created_at",
     )
     .eq("user_id", userId)
     .is("deleted_at", null)
@@ -1194,6 +1197,8 @@ export async function listAllHighlights(
       targetId: r.target_id,
       color: r.color as HighlightColor,
       excerpt: r.label ?? "",
+      beforeCtx: r.before_ctx,
+      afterCtx: r.after_ctx,
       fieldPath: r.field_path,
       createdAt: r.created_at,
     };
