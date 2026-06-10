@@ -90,8 +90,8 @@ export function SubjectStudyStatus({
       {/* 마지막 학습 + 활동 통계(즐겨찾기·메모) 한 카드. 한 행에 inline 으로
           배치되며 폭이 부족하면 자동 wrap. 오답은 학습 허브의 "복습이 필요한
           문제" 와 중복이라 제외. */}
-      <div className="bg-card border-border mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border p-3.5">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div className="bg-card border-border mt-4 flex flex-col gap-3 rounded-xl border p-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-3">
+        <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-1">
           <span
             className="bg-primary/10 text-primary inline-flex size-9 shrink-0 items-center justify-center rounded-lg"
             aria-hidden="true"
