@@ -1262,7 +1262,13 @@ function PrevNextButton({
       className="border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors"
     >
       {direction === "prev" ? <Icon className="size-3.5 shrink-0" /> : null}
-      <span className="max-w-[140px] truncate">{target.displayLabel}</span>
+      {/* 모바일: 조문번호만 (제29조) / sm 이상: 전체 라벨 (제29조 발명의 정의) */}
+      <span className="sm:hidden">
+        {articleDisplayPrefix(target.articleNumber)}
+      </span>
+      <span className="hidden max-w-[140px] truncate sm:inline">
+        {target.displayLabel}
+      </span>
       {direction === "next" ? <Icon className="size-3.5 shrink-0" /> : null}
     </Link>
   );
