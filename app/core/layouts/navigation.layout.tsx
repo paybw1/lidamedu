@@ -1,6 +1,6 @@
 import type { Route } from "./+types/navigation.layout";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Await, Link, Outlet, data } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
@@ -52,10 +52,30 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
   const { userPromise, inboxPromise, navMode } = loaderData;
   const isSidebar = navMode === "sidebar";
+  // 하단 탭바 접기 상태 — 공부 화면 확대용. localStorage 로 유지.
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  useEffect(() => {
+    if (window.localStorage.getItem("bottomNavCollapsed") === "1") {
+      setNavCollapsed(true);
+    }
+  }, []);
+  const toggleNav = () =>
+    setNavCollapsed((c) => {
+      const next = !c;
+      window.localStorage.setItem("bottomNavCollapsed", next ? "1" : "0");
+      return next;
+    });
   return (
-    <div className="flex min-h-screen flex-col justify-between pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
-      {/* pb — 모바일 하단 탭바(StudentBottomBar, 약 3.5rem+safe-area)에 콘텐츠·푸터가
-          가리지 않도록 전역 회피 패딩. md+ 는 하단바 없음 → 패딩 제거. */}
+    <div
+      className={cn(
+        "flex min-h-screen flex-col justify-between md:pb-0",
+        // 모바일 하단 탭바에 콘텐츠·푸터가 가리지 않도록 회피 패딩. 접힘 상태면
+        // 핸들 높이만큼만 비운다. md+ 는 하단바 없음 → 패딩 제거.
+        navCollapsed
+          ? "pb-[calc(1.75rem+env(safe-area-inset-bottom))]"
+          : "pb-[calc(5rem+env(safe-area-inset-bottom))]",
+      )}
+    >
       {/* 상단 NavigationBar — sidebar 모드에선 hideAll=true → null. 그 외는 정상 노출. */}
       <Suspense fallback={<NavigationBar loading={true} hideAll={isSidebar} />}>
         <Await resolve={userPromise}>
@@ -160,6 +180,8 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                         email: user.email,
                         avatarUrl: user.user_metadata.avatar_url,
                       }}
+                      collapsed={navCollapsed}
+                      onToggleCollapse={toggleNav}
                     />
                   )}
                 </Await>

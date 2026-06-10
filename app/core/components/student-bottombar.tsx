@@ -9,6 +9,8 @@
 
 import {
   BellIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   HomeIcon,
   LogOutIcon,
   MoreHorizontalIcon,
@@ -46,12 +48,17 @@ export function StudentBottomBar({
   inboxUnread = 0,
   inboxHref = "/inbox",
   user,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   isStaff: boolean;
   // 상단 바를 모바일에서 숨기므로 알림/계정/검색/테마를 하단 더보기로 흡수.
   inboxUnread?: number;
   inboxHref?: string;
   user?: BottomBarUser;
+  // 공부 화면 확대용 — 접으면 탭을 숨기고 핸들만 남긴다(상태는 레이아웃 소유).
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const { core, secondary } = useNavLayout();
   const location = useLocation();
@@ -107,7 +114,29 @@ export function StudentBottomBar({
         data-testid="student-bottombar"
         className="border-border bg-card fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
       >
-        <div className="grid grid-cols-5">
+        {/* 접기/펴기 핸들 — 공부 화면 확대용. 접으면 탭이 숨고 이 핸들만 남는다. */}
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          aria-expanded={!collapsed}
+          className="text-muted-foreground hover:text-foreground relative flex h-7 w-full items-center justify-center gap-1"
+        >
+          {collapsed ? (
+            <>
+              <ChevronUpIcon className="size-4" />
+              <span className="text-[11px] font-medium">메뉴</span>
+              {inboxUnread > 0 ? (
+                <span className="ml-0.5 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white tabular-nums">
+                  {inboxUnread > 9 ? "9+" : inboxUnread}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <ChevronDownIcon className="size-4" />
+          )}
+        </button>
+        <div className={cn("grid grid-cols-5", collapsed && "hidden")}>
           {tabs.map((t) => {
             const Icon = t.Icon;
             const active = activeTabId === t.id;
