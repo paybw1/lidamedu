@@ -1,7 +1,7 @@
 import type { Route } from "./+types/navigation.layout";
 
 import { Suspense } from "react";
-import { Await, Outlet, data } from "react-router";
+import { Await, Link, Outlet, data } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -91,6 +91,26 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                 </Await>
               </Suspense>
             )
+          }
+        </Await>
+      </Suspense>
+      {/* 모바일 전용 얇은 브랜드 스트립 — 인증 사용자는 상단 바(및 모바일에서
+          숨는 사이드바)가 없으므로 로고/홈 바로가기를 보완. sticky 아님(스크롤하면
+          사라져 콘텐츠 영역 확보). md↑ 는 상단 바/사이드바가 로고 제공하므로 숨김. */}
+      <Suspense fallback={null}>
+        <Await resolve={userPromise}>
+          {({ data: { user } }) =>
+            user ? (
+              <div className="border-border bg-background flex h-11 items-center border-b px-4 md:hidden">
+                <Link to="/" aria-label="리담변리사학원 홈" className="shrink-0">
+                  <img
+                    src="/lidam-logo.png"
+                    alt="리담변리사학원"
+                    className="h-6 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
+                  />
+                </Link>
+              </div>
+            ) : null
           }
         </Await>
       </Suspense>
