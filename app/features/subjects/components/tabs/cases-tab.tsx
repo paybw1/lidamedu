@@ -7,6 +7,7 @@ import type { LawSubjectMeta } from "../../lib/subjects";
 import {
   ChevronDownIcon,
   GavelIcon,
+  ListTreeIcon,
   SearchIcon,
   StarIcon,
   XIcon,
@@ -23,6 +24,7 @@ import {
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
+import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -43,6 +45,7 @@ import type {
 } from "~/features/laws/queries.server";
 
 import { CasesTree } from "../cases-tree";
+import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { SortAxisToggle, useSortAxis } from "../sort-axis";
 import {
   SubjectStudyStatus,
@@ -188,31 +191,59 @@ export function CasesTab({
   else if (treeFilter?.kind === "node")
     baseHidden.push({ name: "case_node", value: treeFilter.nodeId });
 
+  // 트리 패널 — 데스크톱 사이드바 / 모바일 드로어에서 동일 마크업 재사용.
+  const treePanel = (
+    <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+      <div className="border-border flex items-center justify-end border-b px-4 py-3">
+        <SortAxisToggle
+          size="sm"
+          disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+        />
+      </div>
+      <div className="p-2">
+        <CasesTree
+          axis={axis}
+          articles={articles}
+          systematicNodes={systematicNodes}
+          caseTreeCounts={caseTreeCounts}
+          active={treeFilter}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-      {/* Left: tree panel — sticky 사이드바 + 트리 내부 스크롤 (긴 판례 표와 무관하게 항상 접근) */}
-      <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-        <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
-          <div className="border-border flex items-center justify-end border-b px-4 py-3">
-            <SortAxisToggle
-              size="sm"
-              disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-            />
-          </div>
-          <div className="p-2">
-            <CasesTree
-              axis={axis}
-              articles={articles}
-              systematicNodes={systematicNodes}
-              caseTreeCounts={caseTreeCounts}
-              active={treeFilter}
-            />
-          </div>
-        </div>
+      {/* Left: tree panel — 데스크톱만 sticky 사이드바. 모바일은 아래 드로어로. */}
+      <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        {treePanel}
       </aside>
 
       {/* Right: study status + KPIs + filter + table */}
       <section className="space-y-4">
+        {/* 모바일 트리 드로어 — 목록이 위로 오고, 트리는 버튼으로 연다 */}
+        <div className="lg:hidden">
+          <MobileNavDrawer
+            side="left"
+            contentClassName="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 rounded-full text-xs"
+                data-testid="open-tree-drawer"
+              >
+                <ListTreeIcon className="size-3.5" /> 판례 트리로 찾기
+              </Button>
+            }
+          >
+            <SheetHeader className="border-border border-b px-4 py-3">
+              <SheetTitle className="text-sm font-semibold">판례 트리</SheetTitle>
+            </SheetHeader>
+            <div className="px-3 py-3">{treePanel}</div>
+          </MobileNavDrawer>
+        </div>
+
         <SubjectStudyStatus {...studyStatus} />
 
         {/* KPI cards — 3 columns */}

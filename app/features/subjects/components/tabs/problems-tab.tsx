@@ -10,6 +10,7 @@ import {
   CircleCheckIcon,
   FilterXIcon,
   ListChecksIcon,
+  ListTreeIcon,
   NotebookPenIcon,
   PencilIcon,
   PlayIcon,
@@ -23,6 +24,7 @@ import { Form, Link, useSearchParams } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -55,6 +57,7 @@ import {
 import type { UserProblemStats } from "~/features/study/queries.server";
 
 import type { LawSubjectMeta } from "../../lib/subjects";
+import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { ProblemSystematicTree } from "../problem-systematic-tree";
 import {
   SubjectStudyStatus,
@@ -142,26 +145,54 @@ export function ProblemsTab({
       ? Math.round((correctCount / attemptedCount) * 100)
       : null;
 
+  // 체계별 풀이 트리 — 데스크톱 사이드바 / 모바일 드로어 공용 마크업.
+  const treePanel = (
+    <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+      <div className="border-border border-b px-4 py-3">
+        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
+          체계별 풀이
+        </p>
+      </div>
+      <div className="p-2">
+        <ProblemSystematicTree
+          nodes={systematicNodes}
+          nodeStats={nodeStats}
+          activeNodeId={nodeFilter?.nodeId}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-      {/* Left: tree panel — sticky 사이드바 + 트리 내부 스크롤 (긴 문제 표와 무관하게 항상 접근) */}
-      <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-        <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
-          <div className="border-border border-b px-4 py-3">
-            <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
-              체계별 풀이
-            </p>
-          </div>
-          <div className="p-2">
-            <ProblemSystematicTree
-              nodes={systematicNodes}
-              nodeStats={nodeStats}
-              activeNodeId={nodeFilter?.nodeId}
-            />
-          </div>
-        </div>
+      {/* Left: tree panel — 데스크톱만 sticky 사이드바. 모바일은 드로어. */}
+      <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        {treePanel}
       </aside>
       <section className="space-y-4">
+        {/* 모바일 트리 드로어 — 목록이 위로 오고, 트리는 버튼으로 연다 */}
+        <div className="lg:hidden">
+          <MobileNavDrawer
+            side="left"
+            contentClassName="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 rounded-full text-xs"
+                data-testid="open-tree-drawer"
+              >
+                <ListTreeIcon className="size-3.5" /> 체계별로 찾기
+              </Button>
+            }
+          >
+            <SheetHeader className="border-border border-b px-4 py-3">
+              <SheetTitle className="text-sm font-semibold">체계별 풀이</SheetTitle>
+            </SheetHeader>
+            <div className="px-3 py-3">{treePanel}</div>
+          </MobileNavDrawer>
+        </div>
+
         <SubjectStudyStatus {...studyStatus} />
 
         {/* KPI cards — 3 columns */}
