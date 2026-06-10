@@ -1,11 +1,13 @@
 import type { Route } from "./+types/systematic-node-viewer";
 
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   EyeIcon,
   EyeOffIcon,
   ListTreeIcon,
+  PanelRightIcon,
   PencilLineIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -781,8 +783,9 @@ function Inner({
                         </HighlightOverlay>
                       )}
                     </div>
-                    {/* 우측 패널 열 */}
+                    {/* 우측 패널 열 — 모바일: 접기(스크롤 단축) / lg↑: 항상 표시 */}
                     <div className="bg-muted/40 dark:bg-muted/20">
+                      <MobileCollapsiblePanel>
                       <ArticleRightPanel
                         target={{ type: "article", id: a.articleId }}
                         bookmark={bookmark}
@@ -803,6 +806,7 @@ function Inner({
                           lectureResourcesByArticle[a.articleId] ?? []
                         }
                       />
+                      </MobileCollapsiblePanel>
                     </div>
                   </div>
                 </Card>
@@ -812,6 +816,34 @@ function Inner({
         </main>
       </div>
     </div>
+  );
+}
+
+// ── 조문 카드 우측 패널 — 모바일 접기 ─────────────────────────
+// 체계도 노드는 한 화면에 여러 조문 카드를 쌓으므로, 모바일에선 카드마다 우측
+// 패널(학습 보조/관련 자료)이 본문 아래로 길게 누적된다. 모바일은 기본 접힘 +
+// 토글 버튼, lg↑ 는 grid 2열에서 항상 표시(버튼 숨김 · 내용 강제 표시).
+function MobileCollapsiblePanel({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="border-border text-foreground hover:bg-accent flex w-full items-center justify-between gap-2 border-t px-6 py-3 text-sm font-medium transition-colors lg:hidden"
+      >
+        <span className="flex items-center gap-1.5">
+          <PanelRightIcon className="size-4" aria-hidden="true" />
+          학습 보조 · 관련 자료
+        </span>
+        <ChevronDownIcon
+          className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        />
+      </button>
+      <div className={`lg:block ${open ? "block" : "hidden"}`}>{children}</div>
+    </>
   );
 }
 

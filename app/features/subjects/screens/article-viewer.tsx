@@ -711,8 +711,9 @@ function ArticleViewerInner({
 
               {/* ── Mode toolbar ───────────────────────────────────────── */}
               <div className="border-border bg-muted/50 mx-6 mb-5 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5">
-                {/* Pill-group segmented control */}
-                <div className="border-border bg-background inline-flex items-center gap-0.5 rounded-full border p-1">
+                {/* Pill-group segmented control — 모바일: 가로 스크롤(모든 모드 1탭 유지) */}
+                <div className="w-full min-w-0 overflow-x-auto sm:w-auto sm:overflow-visible">
+                  <div className="border-border bg-background inline-flex w-max items-center gap-0.5 rounded-full border p-1">
                   <ModeButton
                     active={activeMode === "normal"}
                     onClick={() => {
@@ -891,6 +892,7 @@ function ArticleViewerInner({
                       </ModeButton>
                     </form>
                   ) : null}
+                  </div>
                 </div>
 
                 {/* Ghost action buttons on the right */}
