@@ -38,7 +38,7 @@ import {
   type SubjectTab,
   subjectTabSchema,
 } from "../lib/subjects";
-import { SortAxisProvider, SortAxisToggle } from "./sort-axis";
+import { SortAxisProvider } from "./sort-axis";
 import { BOOKMARK_AXES, BookmarkTabInner } from "./subject-bookmark-rail";
 import type { SubjectStudyStatusProps } from "./subject-study-status";
 import { ArticlesTab } from "./tabs/articles-tab";
@@ -295,7 +295,7 @@ function SubjectHeader({ subject }: { subject: LawSubjectMeta }) {
             </p>
           ) : null}
         </div>
-        <SortAxisToggle />
+        {/* 체계도/조문 토글은 각 탭의 트리 패널 헤더에 있으므로 헤더 중복 제거 */}
       </div>
     </header>
   );

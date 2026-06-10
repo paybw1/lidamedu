@@ -193,31 +193,37 @@ export function ProblemsTab({
           </MobileNavDrawer>
         </div>
 
-        <SubjectStudyStatus {...studyStatus} />
+        {/* 체계도 노드 필터가 걸리면(문제 트리에서 노드 선택) 학습 현황·KPI 를
+            숨기고 결과 목록에 집중한다. */}
+        {!nodeFilter ? (
+          <>
+            <SubjectStudyStatus {...studyStatus} />
 
-        {/* KPI cards — 3 columns */}
-        <div className="grid gap-3 sm:grid-cols-3">
-          <ProblemsKpiCard
-            label="출제 문항"
-            value={problems.length.toLocaleString("ko-KR")}
-            sub="현재 등록된 전체"
-          />
-          <ProblemsKpiCard
-            label="내 풀이"
-            value={attemptedCount.toLocaleString("ko-KR")}
-            sub={`전체 시도 ${(stats?.totalAttempts ?? 0).toLocaleString("ko-KR")}회`}
-          />
-          <ProblemsKpiCard
-            label="정답률"
-            value={accuracyPct === null ? "—" : `${accuracyPct}%`}
-            sub={
-              attemptedCount > 0
-                ? `정답 ${correctCount} · 오답 ${wrongCount}`
-                : "한 문제도 풀지 않았습니다"
-            }
-            accent={accuracyPct !== null}
-          />
-        </div>
+            {/* KPI cards — 3 columns */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ProblemsKpiCard
+                label="출제 문항"
+                value={problems.length.toLocaleString("ko-KR")}
+                sub="현재 등록된 전체"
+              />
+              <ProblemsKpiCard
+                label="내 풀이"
+                value={attemptedCount.toLocaleString("ko-KR")}
+                sub={`전체 시도 ${(stats?.totalAttempts ?? 0).toLocaleString("ko-KR")}회`}
+              />
+              <ProblemsKpiCard
+                label="정답률"
+                value={accuracyPct === null ? "—" : `${accuracyPct}%`}
+                sub={
+                  attemptedCount > 0
+                    ? `정답 ${correctCount} · 오답 ${wrongCount}`
+                    : "한 문제도 풀지 않았습니다"
+                }
+                accent={accuracyPct !== null}
+              />
+            </div>
+          </>
+        ) : null}
 
         {/* 체계도 노드 필터 배너 */}
         {nodeFilter ? (

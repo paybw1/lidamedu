@@ -244,26 +244,32 @@ export function CasesTab({
           </MobileNavDrawer>
         </div>
 
-        <SubjectStudyStatus {...studyStatus} />
+        {/* 트리 필터가 걸리면(판례 트리에서 노드 선택) 학습 현황·KPI 를 숨기고
+            결과 목록에 집중한다. */}
+        {!treeFilter ? (
+          <>
+            <SubjectStudyStatus {...studyStatus} />
 
-        {/* KPI cards — 3 columns */}
-        <div className="grid gap-3 sm:grid-cols-3">
-          <CasesKpiCard
-            label="전체 판례"
-            value={casesTotal.toLocaleString("ko-KR")}
-            sub="모든 필터 무시"
-          />
-          <CasesKpiCard
-            label="중요 판례"
-            value={importantCount.toLocaleString("ko-KR")}
-            sub="★3 이상"
-          />
-          <CasesKpiCard
-            label="기출 보유"
-            value={examCount.toLocaleString("ko-KR")}
-            sub="1·2차 기출 보유"
-          />
-        </div>
+            {/* KPI cards — 3 columns */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <CasesKpiCard
+                label="전체 판례"
+                value={casesTotal.toLocaleString("ko-KR")}
+                sub="모든 필터 무시"
+              />
+              <CasesKpiCard
+                label="중요 판례"
+                value={importantCount.toLocaleString("ko-KR")}
+                sub="★3 이상"
+              />
+              <CasesKpiCard
+                label="기출 보유"
+                value={examCount.toLocaleString("ko-KR")}
+                sub="1·2차 기출 보유"
+              />
+            </div>
+          </>
+        ) : null}
 
         {/* Tree filter active banner — 검색어 동시 적용 시 결과 카운트가 트리 카운트와
             달라지는 혼란을 해소하기 위해 q 와 결과 건수를 함께 노출 + 검색어 단독 해제. */}
