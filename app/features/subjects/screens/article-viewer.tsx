@@ -24,13 +24,7 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
 import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "~/core/components/ui/sheet";
+import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
@@ -88,6 +82,7 @@ import {
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
@@ -514,8 +509,10 @@ function ArticleViewerInner({
           <main className="min-w-0 space-y-4">
             {/* Mobile drawer triggers */}
             <div className="flex flex-wrap gap-2 lg:hidden">
-              <Sheet>
-                <SheetTrigger asChild>
+              <MobileNavDrawer
+                side="left"
+                contentClassName="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+                trigger={
                   <Button
                     variant="outline"
                     size="sm"
@@ -524,11 +521,8 @@ function ArticleViewerInner({
                   >
                     <ListTreeIcon className="size-3.5" /> 조문 트리
                   </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="left"
-                  className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
-                >
+                }
+              >
                   <SheetHeader>
                     <SheetTitle>조문 트리</SheetTitle>
                   </SheetHeader>
@@ -568,10 +562,11 @@ function ArticleViewerInner({
                       </p>
                     ) : null}
                   </div>
-                </SheetContent>
-              </Sheet>
-              <Sheet>
-                <SheetTrigger asChild>
+              </MobileNavDrawer>
+              <MobileNavDrawer
+                side="right"
+                contentClassName="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
+                trigger={
                   <Button
                     variant="outline"
                     size="sm"
@@ -580,11 +575,8 @@ function ArticleViewerInner({
                   >
                     <PanelRightIcon className="size-3.5" /> 우측 패널
                   </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="right"
-                  className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
-                >
+                }
+              >
                   <SheetHeader>
                     <SheetTitle>학습 보조</SheetTitle>
                   </SheetHeader>
@@ -609,8 +601,7 @@ function ArticleViewerInner({
                       lectureResources={lectureResources}
                     />
                   </div>
-                </SheetContent>
-              </Sheet>
+              </MobileNavDrawer>
             </div>
 
             {/* ── Article header card ───────────────────────────────────── */}

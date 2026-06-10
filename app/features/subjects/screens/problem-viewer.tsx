@@ -18,13 +18,7 @@ import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Separator } from "~/core/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "~/core/components/ui/sheet";
+import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
@@ -81,6 +75,7 @@ import {
   recordStudySession,
 } from "~/features/study/queries.server";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
@@ -703,8 +698,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
           <main className="border-border min-w-0 border-r">
             {/* Mobile drawer triggers */}
             <div className="border-border flex flex-wrap gap-2 border-b px-4 py-2 lg:hidden">
-              <Sheet>
-                <SheetTrigger asChild>
+              <MobileNavDrawer
+                side="left"
+                contentClassName="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+                trigger={
                   <Button
                     variant="outline"
                     size="sm"
@@ -713,11 +710,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   >
                     <ListTreeIcon className="size-3.5" /> 체계도 트리
                   </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="left"
-                  className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
-                >
+                }
+              >
                   <SheetHeader className="border-border border-b px-4 py-3">
                     <SheetTitle className="text-sm font-semibold">
                       체계도 트리
@@ -738,10 +732,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       />
                     )}
                   </div>
-                </SheetContent>
-              </Sheet>
-              <Sheet>
-                <SheetTrigger asChild>
+              </MobileNavDrawer>
+              <MobileNavDrawer
+                side="right"
+                contentClassName="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
+                trigger={
                   <Button
                     variant="outline"
                     size="sm"
@@ -750,11 +745,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   >
                     <PanelRightIcon className="size-3.5" /> 학습 보조
                   </Button>
-                </SheetTrigger>
-                <SheetContent
-                  side="right"
-                  className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
-                >
+                }
+              >
                   <SheetHeader className="border-border border-b px-4 py-3">
                     <SheetTitle className="text-sm font-semibold">
                       학습 보조
@@ -788,8 +780,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       lectureResources={lectureResources}
                     />
                   </div>
-                </SheetContent>
-              </Sheet>
+              </MobileNavDrawer>
             </div>
 
             {/* Problem article — generous reading measure */}

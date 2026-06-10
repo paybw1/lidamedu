@@ -10,13 +10,7 @@ import { Link, data, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "~/core/components/ui/sheet";
+import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
@@ -59,6 +53,7 @@ import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { CasesTree } from "~/features/subjects/components/cases-tree";
+import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import {
   SortAxisProvider,
   SortAxisToggle,
@@ -406,8 +401,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             <main className="min-w-0 space-y-4">
               {/* 모바일 드로어 트리거 */}
               <div className="flex flex-wrap gap-2 lg:hidden">
-                <Sheet>
-                  <SheetTrigger asChild>
+                <MobileNavDrawer
+                  side="left"
+                  contentClassName="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+                  trigger={
                     <Button
                       variant="outline"
                       size="sm"
@@ -416,11 +413,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     >
                       <ListTreeIcon className="size-3.5" /> 판례 트리
                     </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="left"
-                    className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
-                  >
+                  }
+                >
                     <SheetHeader>
                       <SheetTitle>{subject.name} 판례 트리</SheetTitle>
                     </SheetHeader>
@@ -433,10 +427,11 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         activeFilter={activeCaseTreeFilter}
                       />
                     </div>
-                  </SheetContent>
-                </Sheet>
-                <Sheet>
-                  <SheetTrigger asChild>
+                </MobileNavDrawer>
+                <MobileNavDrawer
+                  side="right"
+                  contentClassName="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
+                  trigger={
                     <Button
                       variant="outline"
                       size="sm"
@@ -445,11 +440,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     >
                       <PanelRightIcon className="size-3.5" /> 학습 보조
                     </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="right"
-                    className="w-[340px] overflow-y-auto p-0 sm:max-w-[380px]"
-                  >
+                  }
+                >
                     <SheetHeader>
                       <SheetTitle>학습 보조</SheetTitle>
                     </SheetHeader>
@@ -470,8 +462,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         lectureResources={lectureResources}
                       />
                     </div>
-                  </SheetContent>
-                </Sheet>
+                </MobileNavDrawer>
               </div>
 
               {/* 관련 조문 chip 행 */}

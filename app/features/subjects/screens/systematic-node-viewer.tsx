@@ -16,13 +16,7 @@ import { Link, data } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "~/core/components/ui/sheet";
+import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
@@ -74,6 +68,7 @@ import {
 } from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
+import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
@@ -445,8 +440,10 @@ function Inner({
         <main className="space-y-5">
           {/* 모바일 트리 드로어 */}
           <div className="flex flex-wrap gap-2 lg:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
+            <MobileNavDrawer
+              side="left"
+              contentClassName="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
+              trigger={
                 <Button
                   variant="outline"
                   size="sm"
@@ -455,11 +452,8 @@ function Inner({
                 >
                   <ListTreeIcon className="size-3.5" /> 조문 트리
                 </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
-              >
+              }
+            >
                 <SheetHeader>
                   <SheetTitle>조문 트리</SheetTitle>
                 </SheetHeader>
@@ -494,8 +488,7 @@ function Inner({
                     />
                   )}
                 </div>
-              </SheetContent>
-            </Sheet>
+            </MobileNavDrawer>
           </div>
 
           {/* ── 체계도 노드 헤더 카드 ── */}
