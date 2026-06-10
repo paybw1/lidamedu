@@ -409,7 +409,7 @@ export function CasesTab({
                   <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     선고일
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-32 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:w-32">
                     사건번호
                   </TableHead>
                   <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">

@@ -450,10 +450,10 @@ export function ProblemsTab({
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="text-muted-foreground/70 w-12 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 w-10 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:w-12">
                     ★
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-16 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                  <TableHead className="text-muted-foreground/70 w-12 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:w-16">
                     No.
                   </TableHead>
                   <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
