@@ -8,15 +8,21 @@
 // 토글 데스크톱 사이드바와 별개 — 모바일은 통일.
 
 import {
+  BellIcon,
   HomeIcon,
+  LogOutIcon,
   MoreHorizontalIcon,
+  SearchIcon,
   SettingsIcon,
-  XIcon,
+  UserIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 
 import { Sheet, SheetContent, SheetTitle } from "~/core/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "~/core/components/ui/avatar";
+import { openCommandPalette } from "~/core/components/command-palette";
+import ThemeSwitcher from "~/core/components/theme-switcher";
 import { SUBJECT_SECTIONS } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 import {
@@ -29,7 +35,24 @@ import {
   useNavLayout,
 } from "~/core/lib/nav-groups";
 
-export function StudentBottomBar({ isStaff }: { isStaff: boolean }) {
+type BottomBarUser = {
+  name: string;
+  email?: string;
+  avatarUrl?: string | null;
+};
+
+export function StudentBottomBar({
+  isStaff,
+  inboxUnread = 0,
+  inboxHref = "/inbox",
+  user,
+}: {
+  isStaff: boolean;
+  // 상단 바를 모바일에서 숨기므로 알림/계정/검색/테마를 하단 더보기로 흡수.
+  inboxUnread?: number;
+  inboxHref?: string;
+  user?: BottomBarUser;
+}) {
   const { core, secondary } = useNavLayout();
   const location = useLocation();
   const path = location.pathname;
@@ -93,9 +116,18 @@ export function StudentBottomBar({ isStaff }: { isStaff: boolean }) {
             const isDirectLink = g && g.items.length === 1 && t.id !== "subjects";
             const directTo = isDirectLink ? g.items[0].to : null;
 
+            // 더보기 탭에 미읽음 알림 dot — 상단 알림 배지를 대체.
+            const showDot = t.id === "more" && inboxUnread > 0;
             const content = (
               <>
-                <Icon className="size-5" />
+                <span className="relative">
+                  <Icon className="size-5" />
+                  {showDot ? (
+                    <span className="absolute -top-1 -right-1.5 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white tabular-nums">
+                      {inboxUnread > 9 ? "9+" : inboxUnread}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="text-[10px]">{t.label}</span>
               </>
             );
@@ -150,6 +182,9 @@ export function StudentBottomBar({ isStaff }: { isStaff: boolean }) {
                 isStaff={isStaff}
                 onPick={close}
                 secondary={secondary}
+                inboxUnread={inboxUnread}
+                inboxHref={inboxHref}
+                user={user}
               />
             ) : sheetTab === "subjects" ? (
               <SubjectsSheet onPick={close} path={path} search={search} />
@@ -270,14 +305,52 @@ function MoreSheet({
   isStaff,
   onPick,
   secondary,
+  inboxUnread,
+  inboxHref,
+  user,
 }: {
   isStaff: boolean;
   onPick: () => void;
   secondary: ReturnType<typeof useNavLayout>["secondary"];
+  inboxUnread: number;
+  inboxHref: string;
+  user?: BottomBarUser;
 }) {
   return (
     <div>
       <p className="mb-2 text-sm font-bold">더보기</p>
+
+      {/* 상단 바에서 이전된 도구 — 검색 · 알림 · 테마 */}
+      <div className="mb-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            onPick();
+            openCommandPalette();
+          }}
+          className="border-border hover:bg-muted flex h-9 flex-1 items-center gap-2 rounded-lg border px-3 text-sm"
+        >
+          <SearchIcon className="size-4" /> 검색
+          <kbd className="bg-muted ml-auto rounded border px-1.5 py-0.5 font-mono text-[10px]">
+            ⌘K
+          </kbd>
+        </button>
+        <Link
+          to={inboxHref}
+          onClick={onPick}
+          aria-label={`알림 (미읽음 ${inboxUnread})`}
+          className="border-border hover:bg-muted relative inline-flex size-9 items-center justify-center rounded-lg border"
+        >
+          <BellIcon className="size-4" />
+          {inboxUnread > 0 ? (
+            <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white tabular-nums">
+              {inboxUnread > 99 ? "99+" : inboxUnread}
+            </span>
+          ) : null}
+        </Link>
+        <ThemeSwitcher />
+      </div>
+
       {secondary.map((g) => (
         <div key={g.id} className="mb-3">
           <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
@@ -320,6 +393,42 @@ function MoreSheet({
           </Link>
         ) : null}
       </div>
+
+      {/* 계정 — 상단 UserMenu 대체 */}
+      {user ? (
+        <div className="border-border mt-3 border-t pt-3">
+          <div className="mb-1.5 flex items-center gap-2 px-2">
+            <Avatar className="size-8 rounded-lg">
+              <AvatarImage src={user.avatarUrl ?? undefined} />
+              <AvatarFallback>
+                <UserIcon className="size-4" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{user.name}</p>
+              {user.email ? (
+                <p className="text-muted-foreground truncate text-xs">
+                  {user.email}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <Link
+            to="/account/edit"
+            onClick={onPick}
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+          >
+            <UserIcon className="size-4" /> 내 계정
+          </Link>
+          <Link
+            to="/logout"
+            onClick={onPick}
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+          >
+            <LogOutIcon className="size-4" /> 로그아웃
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

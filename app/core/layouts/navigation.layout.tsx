@@ -130,7 +130,18 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
             user ? (
               <Suspense fallback={null}>
                 <Await resolve={inboxPromise}>
-                  {(inbox) => <StudentBottomBar isStaff={inbox.isStaff} />}
+                  {(inbox) => (
+                    <StudentBottomBar
+                      isStaff={inbox.isStaff}
+                      inboxUnread={inbox.unread}
+                      inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
+                      user={{
+                        name: user.user_metadata.name || "Anonymous",
+                        email: user.email,
+                        avatarUrl: user.user_metadata.avatar_url,
+                      }}
+                    />
+                  )}
                 </Await>
               </Suspense>
             ) : null

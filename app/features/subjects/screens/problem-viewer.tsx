@@ -546,7 +546,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
 
       {/* Session top-bar — shown only when inside a session/runner nav */}
       {runnerNav ? (
-        <div className="border-border bg-card/80 sticky top-14 z-20 border-b backdrop-blur-sm">
+        <div className="border-border bg-card/80 sticky top-0 z-20 border-b backdrop-blur-sm md:top-14">
           <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-2 px-4 py-2 md:px-6">
             <Link
               to={runnerNav.backHref}
