@@ -225,11 +225,15 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40%]">문제</TableHead>
-                    <TableHead className="w-[10%]">과목</TableHead>
-                    <TableHead className="w-[10%] text-right">
+                    <TableHead className="hidden w-[10%] sm:table-cell">
+                      과목
+                    </TableHead>
+                    <TableHead className="hidden w-[10%] text-right sm:table-cell">
                       간격
                     </TableHead>
-                    <TableHead className="w-[10%] text-right">틀림</TableHead>
+                    <TableHead className="hidden w-[10%] text-right sm:table-cell">
+                      틀림
+                    </TableHead>
                     <TableHead className="w-[15%] text-right">예정일</TableHead>
                     <TableHead className="w-[15%]" />
                   </TableRow>
@@ -243,22 +247,26 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                           {it.bodySnippet.length === 100 ? "…" : ""}
                         </p>
                         {it.primaryArticleLabel ? (
-                          <p className="text-muted-foreground mt-1 font-mono text-[10px]">
+                          <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:text-[10px]">
                             {it.primaryArticleLabel}
                             {it.year ? ` · ${it.year}` : ""}
                             {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
                           </p>
                         ) : null}
+                        {/* 모바일 전용 — 숨긴 컬럼(과목·간격·틀림) 보조 표기 */}
+                        <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
+                          {it.lawCode} · {it.intervalDays}d · 틀림 {it.lapses}
+                        </p>
                       </TableCell>
-                      <TableCell className="font-mono text-[11px]">
+                      <TableCell className="hidden font-mono text-[11px] sm:table-cell">
                         {it.lawCode}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-xs tabular-nums">
+                      <TableCell className="hidden text-right font-mono text-xs tabular-nums sm:table-cell">
                         {it.intervalDays}d
                       </TableCell>
                       <TableCell
                         className={cn(
-                          "text-right font-mono text-xs tabular-nums",
+                          "hidden text-right font-mono text-xs tabular-nums sm:table-cell",
                           it.lapses > 2
                             ? "text-rose-700 dark:text-rose-300"
                             : "",
@@ -270,7 +278,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                         {fmtRelative(it.nextDueAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button asChild size="sm" variant="ghost">
+                        <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
                           <Link
                             to={`/subjects/${it.lawCode}/problems/${it.problemId}`}
                             viewTransition
@@ -646,9 +654,13 @@ function ArticleReviewTable({ items }: { items: DueArticleReviewItem[] }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[40%]">조문</TableHead>
-            <TableHead className="w-[10%]">과목</TableHead>
-            <TableHead className="w-[10%] text-right">방문</TableHead>
-            <TableHead className="w-[10%] text-right">간격</TableHead>
+            <TableHead className="hidden w-[10%] sm:table-cell">과목</TableHead>
+            <TableHead className="hidden w-[10%] text-right sm:table-cell">
+              방문
+            </TableHead>
+            <TableHead className="hidden w-[10%] text-right sm:table-cell">
+              간격
+            </TableHead>
             <TableHead className="w-[15%] text-right">마지막 방문</TableHead>
             <TableHead className="w-[15%]" />
           </TableRow>
@@ -660,24 +672,28 @@ function ArticleReviewTable({ items }: { items: DueArticleReviewItem[] }) {
                 <p className="text-foreground text-sm font-semibold">
                   {it.displayLabel}
                 </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-[10px]">
+                <p className="text-muted-foreground mt-0.5 font-mono text-[11px] sm:text-[10px]">
                   {it.articleNumber}
                 </p>
+                {/* 모바일 전용 — 숨긴 컬럼(과목·방문·간격) 보조 표기 */}
+                <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
+                  {it.lawCode} · 방문 {it.visitCount}회 · {it.intervalDays}d
+                </p>
               </TableCell>
-              <TableCell className="font-mono text-[11px]">
+              <TableCell className="hidden font-mono text-[11px] sm:table-cell">
                 {it.lawCode}
               </TableCell>
-              <TableCell className="text-right font-mono text-xs tabular-nums">
+              <TableCell className="hidden text-right font-mono text-xs tabular-nums sm:table-cell">
                 {it.visitCount}회
               </TableCell>
-              <TableCell className="text-right font-mono text-xs tabular-nums">
+              <TableCell className="hidden text-right font-mono text-xs tabular-nums sm:table-cell">
                 {it.intervalDays}d
               </TableCell>
               <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
                 {fmtRelative(it.lastVisitedAt)}
               </TableCell>
               <TableCell className="text-right">
-                <Button asChild size="sm" variant="ghost">
+                <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
                   <Link
                     to={`/subjects/${it.lawCode}/articles/${it.articleNumber}`}
                     viewTransition
@@ -701,9 +717,11 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[42%]">선택지·박스 항목</TableHead>
-            <TableHead className="w-[10%]">유형</TableHead>
-            <TableHead className="w-[10%]">과목</TableHead>
-            <TableHead className="w-[8%] text-right">틀림</TableHead>
+            <TableHead className="hidden w-[10%] sm:table-cell">유형</TableHead>
+            <TableHead className="hidden w-[10%] sm:table-cell">과목</TableHead>
+            <TableHead className="hidden w-[8%] text-right sm:table-cell">
+              틀림
+            </TableHead>
             <TableHead className="w-[15%] text-right">예정일</TableHead>
             <TableHead className="w-[15%]" />
           </TableRow>
@@ -716,20 +734,25 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
                   {it.refSnippet || "(본문 없음)"}
                 </p>
                 {it.year && it.problemNumber ? (
-                  <p className="text-muted-foreground mt-1 font-mono text-[10px]">
+                  <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:text-[10px]">
                     {it.year} · {it.problemNumber}번
                   </p>
                 ) : null}
+                {/* 모바일 전용 — 숨긴 컬럼(유형·과목·틀림) 보조 표기 */}
+                <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
+                  {it.refType === "choice" ? "선택지" : "박스"}
+                  {it.lawCode ? ` · ${it.lawCode}` : ""} · 틀림 {it.lapses}
+                </p>
               </TableCell>
-              <TableCell className="font-mono text-[11px]">
+              <TableCell className="hidden font-mono text-[11px] sm:table-cell">
                 {it.refType === "choice" ? "선택지" : "박스"}
               </TableCell>
-              <TableCell className="font-mono text-[11px]">
+              <TableCell className="hidden font-mono text-[11px] sm:table-cell">
                 {it.lawCode ?? "—"}
               </TableCell>
               <TableCell
                 className={cn(
-                  "text-right font-mono text-xs tabular-nums",
+                  "hidden text-right font-mono text-xs tabular-nums sm:table-cell",
                   it.lapses > 2 ? "text-rose-700 dark:text-rose-300" : "",
                 )}
               >
@@ -740,7 +763,7 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
               </TableCell>
               <TableCell className="text-right">
                 {it.lawCode && it.problemId ? (
-                  <Button asChild size="sm" variant="ghost">
+                  <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
                     <Link
                       to={`/subjects/${it.lawCode}/problems/${it.problemId}`}
                       viewTransition
@@ -767,9 +790,13 @@ function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[40%]">조문</TableHead>
-            <TableHead className="w-[10%]">과목</TableHead>
-            <TableHead className="w-[10%] text-right">오늘 풀 빈칸</TableHead>
-            <TableHead className="w-[10%] text-right">총 빈칸</TableHead>
+            <TableHead className="hidden w-[10%] sm:table-cell">과목</TableHead>
+            <TableHead className="hidden w-[10%] text-right sm:table-cell">
+              오늘 풀 빈칸
+            </TableHead>
+            <TableHead className="hidden w-[10%] text-right sm:table-cell">
+              총 빈칸
+            </TableHead>
             <TableHead className="w-[15%] text-right">예정일</TableHead>
             <TableHead className="w-[15%]" />
           </TableRow>
@@ -781,29 +808,34 @@ function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
                 <p className="text-foreground text-sm font-semibold">
                   {it.displayLabel}
                 </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-[10px]">
+                <p className="text-muted-foreground mt-0.5 font-mono text-[11px] sm:text-[10px]">
                   {it.articleNumber}
                 </p>
+                {/* 모바일 전용 — 숨긴 컬럼(과목·오늘 풀 빈칸·총 빈칸) 보조 표기 */}
+                <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
+                  {it.lawCode} · 오늘 {it.dueBlankCount} / 총{" "}
+                  {it.totalBlankSrsCount}
+                </p>
               </TableCell>
-              <TableCell className="font-mono text-[11px]">
+              <TableCell className="hidden font-mono text-[11px] sm:table-cell">
                 {it.lawCode}
               </TableCell>
               <TableCell
                 className={cn(
-                  "text-right font-mono text-xs tabular-nums",
+                  "hidden text-right font-mono text-xs tabular-nums sm:table-cell",
                   it.dueBlankCount > 3 ? "text-rose-700 dark:text-rose-300" : "",
                 )}
               >
                 {it.dueBlankCount}
               </TableCell>
-              <TableCell className="text-right font-mono text-xs tabular-nums">
+              <TableCell className="hidden text-right font-mono text-xs tabular-nums sm:table-cell">
                 {it.totalBlankSrsCount}
               </TableCell>
               <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
                 {fmtRelative(it.earliestDueAt)}
               </TableCell>
               <TableCell className="text-right">
-                <Button asChild size="sm" variant="ghost">
+                <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
                   <Link
                     to={`/subjects/${it.lawCode}/articles/${it.articleNumber}?blank=${it.setId}`}
                     viewTransition
