@@ -2,7 +2,8 @@
 // 회원2(area_subjects) 이상만 진입. staff(강사/관리자/원장)는 requireFeature 가 면제.
 // 미보유 시 /pricing?locked=area_subjects 로 redirect. UI 는 없음 — <Outlet/> 만.
 
-import { Outlet, data } from "react-router";
+import { useEffect } from "react";
+import { Outlet, data, useLocation } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
@@ -23,5 +24,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function SubjectsLayout() {
+  const location = useLocation();
+  // 모바일 트리/학습보조 Sheet(모달 Radix Dialog)가 열린 채 트리 링크로 다른
+  // 라우트(판례→조문/체계도, 문제→조문 등)로 전환되면, Sheet 이 cleanup 전에
+  // unmount 되어 <body> 에 건 pointer-events:none 가 남고 → 도착 화면이 클릭
+  // 불가(=전환 안 되는 것처럼 보임)가 된다. 이 레이아웃은 모든 조문/판례/문제/
+  // 체계도 뷰어를 가로질러 유지되므로, 전환마다 잔존 잠금을 해제한다.
+  useEffect(() => {
+    if (document.body.style.pointerEvents === "none") {
+      document.body.style.pointerEvents = "";
+    }
+  }, [location.pathname, location.search]);
+
   return <Outlet />;
 }
