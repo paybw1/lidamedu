@@ -238,6 +238,7 @@ function UploadForm({
   onCancel: () => void;
 }) {
   const fetcher = useFetcher<ActionResponse>();
+  const [title, setTitle] = useState("");
   const submitting =
     fetcher.state === "submitting" || fetcher.state === "loading";
 
@@ -248,6 +249,14 @@ function UploadForm({
       onCreated(d.resource);
     }
   }, [fetcher.data, onCreated]);
+
+  // 파일 선택 시 제목을 파일명(확장자 제외)으로 자동 채움. 이미 입력한 제목은 보존.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const stem = file.name.replace(/\.pdf$/i, "").trim();
+    if (stem) setTitle((prev) => (prev.trim() === "" ? stem : prev));
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -290,19 +299,22 @@ function UploadForm({
           name="file"
           type="file"
           accept="application/pdf"
+          onChange={handleFileChange}
           required
         />
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="lr-title" className="text-xs">
-          제목
+          제목 <span className="text-muted-foreground">(파일명 자동 입력)</span>
         </Label>
         <Input
           id="lr-title"
           name="title"
           type="text"
           maxLength={200}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="리담특허법 강의노트 (제10판)"
           required
         />
