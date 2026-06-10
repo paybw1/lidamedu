@@ -8,7 +8,6 @@ import {
   EyeIcon,
   EyeOffIcon,
   FileEditIcon,
-  HistoryIcon,
   ListTreeIcon,
   PanelRightIcon,
   PencilIcon,
@@ -708,26 +707,6 @@ function ArticleViewerInner({
                   </div>
                 </div>
               </div>
-
-              {/* ── Snapshot / revision banner ─────────────────────────── */}
-              {article.effectiveDate && !atDate && !compareDate ? (
-                <div className="border-primary/15 bg-primary/10 text-primary mx-6 mb-4 flex items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-xs">
-                  <HistoryIcon
-                    className="size-3.5 shrink-0"
-                    aria-hidden="true"
-                  />
-                  <span>
-                    <strong>최신 시행 ({article.effectiveDate})</strong>
-                    {" · "}현재 시행 중인 개정 스냅샷입니다.
-                  </span>
-                  <Link
-                    to="?at=prev"
-                    className="ml-auto shrink-0 font-semibold underline underline-offset-2"
-                  >
-                    이전 시점 보기 →
-                  </Link>
-                </div>
-              ) : null}
 
               {/* ── Mode toolbar ───────────────────────────────────────── */}
               <div className="border-border bg-muted/50 mx-6 mb-5 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5">
