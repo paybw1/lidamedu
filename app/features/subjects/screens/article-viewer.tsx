@@ -624,8 +624,9 @@ function ArticleViewerInner({
                     : ""}
                 </p>
 
-                {/* Title row: big article number + prev/next */}
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* Title row: big article number + prev/next.
+                    모바일: prev/next 위 · 제목 아래(full-width) / sm↑: 제목 좌 · prev/next 우 */}
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     {/* Law name chip + importance stars */}
                     <div className="mb-2.5 flex flex-wrap items-center gap-2">
@@ -692,8 +693,8 @@ function ArticleViewerInner({
                     ) : null}
                   </div>
 
-                  {/* Prev / Next buttons */}
-                  <div className="flex shrink-0 items-center gap-2">
+                  {/* Prev / Next buttons — 모바일 full-width 양끝 / sb↑ 우측 그룹 */}
+                  <div className="flex items-center justify-between gap-2 sm:shrink-0 sm:justify-end">
                     <PrevNextButton
                       direction="prev"
                       target={prev}
