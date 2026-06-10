@@ -18,7 +18,7 @@ import {
   SettingsIcon,
   UserIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 
 import { Sheet, SheetContent, SheetTitle } from "~/core/components/ui/sheet";
@@ -69,6 +69,27 @@ export function StudentBottomBar({
   const close = () => setSheetTab(null);
   const open = sheetTab !== null;
 
+  // 스크롤 내릴 때 자동으로 바를 미끄러뜨려 숨김(공부 화면 확대), 올릴 때 다시
+  // 노출. 최상단 부근·시트 열림 중에는 항상 노출. 수동 접기 상태와 독립.
+  const [autoHidden, setAutoHidden] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setAutoHidden(false);
+      return;
+    }
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+      if (Math.abs(delta) < 8) return; // 미세 흔들림 무시
+      if (y < 48) setAutoHidden(false); // 최상단 부근은 항상 노출
+      else setAutoHidden(delta > 0); // 내리면 숨김 · 올리면 노출
+      lastY = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [open]);
+
   const tabs = [
     ...core.map((g) => ({
       id: g.id,
@@ -112,7 +133,10 @@ export function StudentBottomBar({
     <>
       <nav
         data-testid="student-bottombar"
-        className="border-border bg-card fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
+        className={cn(
+          "border-border bg-card fixed inset-x-0 bottom-0 z-40 border-t transition-transform duration-300 ease-out md:hidden",
+          autoHidden && "translate-y-full",
+        )}
       >
         {/* 접기/펴기 핸들 — 공부 화면 확대용. 접으면 탭이 숨고 이 핸들만 남는다. */}
         <button
