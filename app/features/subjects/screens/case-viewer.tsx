@@ -411,7 +411,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-full text-xs"
+                      className="h-9 rounded-full text-xs"
                       data-testid="open-tree-drawer"
                     >
                       <ListTreeIcon className="size-3.5" /> 판례 트리
@@ -440,7 +440,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-full text-xs"
+                      className="h-9 rounded-full text-xs"
                       data-testid="open-right-drawer"
                     >
                       <PanelRightIcon className="size-3.5" /> 학습 보조

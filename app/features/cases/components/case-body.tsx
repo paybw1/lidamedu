@@ -247,7 +247,7 @@ export function CaseBody({
               asChild
               variant="outline"
               size="sm"
-              className="h-7 gap-1 text-xs"
+              className="h-9 gap-1 text-xs sm:h-7"
             >
               <a href={officialPdfUrl} target="_blank" rel="noopener noreferrer">
                 <FileTextIcon className="size-3" /> 전문 PDF
@@ -262,7 +262,7 @@ export function CaseBody({
                 asChild
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 text-xs"
+                className="h-9 gap-1 text-xs sm:h-7"
               >
                 <Link
                   to={`/admin/cases/edit/${kase.caseId}?returnTo=${encodeURIComponent(editReturnTo)}`}

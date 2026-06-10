@@ -40,7 +40,7 @@ export function AskAiButton({
       asChild
       size={size}
       variant={variant}
-      className={cn("h-7 gap-1.5 rounded-full px-3 text-xs", className)}
+      className={cn("h-9 gap-1.5 rounded-full px-3 text-xs sm:h-7", className)}
     >
       <Link to={href}>
         <SparklesIcon className="size-3" />

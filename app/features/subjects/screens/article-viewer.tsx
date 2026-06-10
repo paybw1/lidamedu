@@ -519,7 +519,7 @@ function ArticleViewerInner({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1.5 rounded-full text-xs"
+                    className="h-9 gap-1.5 rounded-full text-xs"
                     data-testid="open-tree-drawer"
                   >
                     <ListTreeIcon className="size-3.5" /> 조문 트리
@@ -575,7 +575,7 @@ function ArticleViewerInner({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1.5 rounded-full text-xs"
+                    className="h-9 gap-1.5 rounded-full text-xs"
                     data-testid="open-right-drawer"
                   >
                     <PanelRightIcon className="size-3.5" /> 우측 패널
@@ -744,7 +744,7 @@ function ArticleViewerInner({
                     >
                       <PencilLineIcon className="size-3" aria-hidden="true" />
                       내용 빈칸
-                      <span className="text-[10px] tabular-nums opacity-70">
+                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
                         {blankSet!.blanks.length}
                       </span>
                     </ModeButton>
@@ -766,7 +766,7 @@ function ArticleViewerInner({
                     >
                       <PencilLineIcon className="size-3" aria-hidden="true" />
                       주체 빈칸
-                      <span className="text-[10px] tabular-nums opacity-70">
+                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
                         {subjectBlanks.length}
                       </span>
                     </ModeButton>
@@ -788,7 +788,7 @@ function ArticleViewerInner({
                     >
                       <PencilLineIcon className="size-3" aria-hidden="true" />
                       기간 빈칸
-                      <span className="text-[10px] tabular-nums opacity-70">
+                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
                         {periodResult.blanks.length}
                         {periodResult.ambiguous.length > 0
                           ? `+${periodResult.ambiguous.length}?`
@@ -858,7 +858,7 @@ function ArticleViewerInner({
                     >
                       <ScrollTextIcon className="size-3" aria-hidden="true" />
                       해설
-                      <span className="text-[10px] tabular-nums opacity-70">
+                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
                         {articleComments.length}
                       </span>
                     </ModeButton>
@@ -914,7 +914,7 @@ function ArticleViewerInner({
                           }
                         }}
                         className={cn(
-                          "h-8 gap-1.5 rounded-full px-3.5 text-xs font-semibold",
+                          "h-9 gap-1.5 rounded-full px-3.5 text-xs font-semibold sm:h-8",
                           editMode
                             ? ""
                             : "border-amber-400/70 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60",
@@ -942,7 +942,7 @@ function ArticleViewerInner({
                           variant="ghost"
                           size="sm"
                           disabled={blankSetSubmitting}
-                          className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                          className="h-9 gap-1.5 rounded-full px-3 text-xs sm:h-7"
                           title={
                             blankSets.some((s) => s.ownerName !== null)
                               ? "내 빈칸 자료 편집 (없으면 자동 생성)"
@@ -1189,7 +1189,8 @@ function ModeButton({
       title={title}
       data-testid={dataTestId}
       className={[
-        "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] leading-none font-medium transition-colors duration-150",
+        // 모바일 터치 타깃 확대(min-h-9 ≈ 36px) · sm↑ 기존 컴팩트 복원
+        "inline-flex min-h-9 items-center gap-1 rounded-full px-3.5 py-2 text-[13px] leading-none font-medium transition-colors duration-150 sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-[12px]",
         "disabled:pointer-events-none disabled:opacity-40",
         active
           ? "bg-primary text-primary-foreground font-semibold shadow-sm"

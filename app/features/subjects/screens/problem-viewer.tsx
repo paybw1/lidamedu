@@ -600,7 +600,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   variant="outline"
                   size="sm"
                   disabled={!runnerNav.prevId}
-                  className="h-7 rounded-full text-xs"
+                  className="h-9 rounded-full text-xs sm:h-7"
                 >
                   {runnerNav.prevId ? (
                     <Link to={buildRunnerHref(runnerNav.prevId)} viewTransition>
@@ -617,7 +617,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   variant="outline"
                   size="sm"
                   disabled={!runnerNav.nextId}
-                  className="h-7 rounded-full text-xs"
+                  className="h-9 rounded-full text-xs sm:h-7"
                 >
                   {runnerNav.nextId ? (
                     <Link to={buildRunnerHref(runnerNav.nextId)} viewTransition>
@@ -708,7 +708,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-full text-xs"
+                    className="h-9 rounded-full text-xs"
                     data-testid="open-tree-drawer"
                   >
                     <ListTreeIcon className="size-3.5" /> 체계도 트리
@@ -745,7 +745,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-full text-xs"
+                    className="h-9 rounded-full text-xs"
                     data-testid="open-right-drawer"
                   >
                     <PanelRightIcon className="size-3.5" /> 학습 보조
