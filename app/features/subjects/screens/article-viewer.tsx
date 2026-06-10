@@ -672,10 +672,10 @@ function ArticleViewerInner({
                     </div>
 
                     {/* Article headline */}
-                    <h1 className="text-foreground text-[28px] leading-tight font-extrabold tracking-tight md:text-[30px]">
+                    <h1 className="text-foreground flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[28px] leading-tight font-extrabold tracking-tight md:text-[30px]">
                       <span className="text-primary">
                         {article.displayLabel.split(/\s+/)[0]}
-                      </span>{" "}
+                      </span>
                       <span>
                         {article.displayLabel.split(/\s+/).slice(1).join(" ")}
                       </span>
