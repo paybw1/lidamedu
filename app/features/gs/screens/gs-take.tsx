@@ -16,7 +16,7 @@ import {
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { data, redirect, useFetcher, useRevalidator } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -89,6 +89,15 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
   const { round, submission, questions, pages, paperUrl } = loaderData;
   const submitFetcher = useFetcher<{ error?: string; ok?: true }>();
   const revalidator = useRevalidator();
+  // 안정적인 onChange — 슬롯에 인라인 () => revalidator.revalidate() 를 넘기면
+  // 매 렌더 새 함수가 되어, 업로드 후 자식 effect(uploadFetcher.data 잔존)가
+  // 무한히 revalidate 를 호출해 화면이 멈췄다(특히 '교체' 시 슬롯이 remount 안 됨).
+  // ref 로 최신 revalidator 를 가리키되 콜백 자체는 불변으로 고정해 루프 차단.
+  const revalidatorRef = useRef(revalidator);
+  revalidatorRef.current = revalidator;
+  const handlePageChange = useCallback(() => {
+    revalidatorRef.current.revalidate();
+  }, []);
 
   const pageByNum = useMemo(() => {
     const m = new Map<number, GsPage>();
@@ -313,7 +322,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
                 pageNumber={n}
                 page={pageByNum.get(n) ?? null}
                 questions={questions}
-                onChange={() => revalidator.revalidate()}
+                onChange={handlePageChange}
                 onSwap={onSwap}
                 onInsertBefore={onInsertBefore}
               />
