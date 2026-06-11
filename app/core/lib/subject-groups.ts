@@ -58,18 +58,25 @@ const CIVIL_GROUP: SubjectGroup = {
   ],
 };
 
+// 자연과학 4과목 — nav 에는 단일 "자연과학" 진입점만 노출하고, 4과목은
+// /subjects/science 허브 화면에서 한꺼번에 보여준다(허브가 이 배열을 사용).
+export const SCIENCE_SUBJECTS: SubjectItem[] = [
+  { name: "물리", href: "/subjects/science/physics", meta: "문제 1.2k" },
+  { name: "화학", href: "/subjects/science/chemistry", meta: "문제 980" },
+  { name: "생물", href: "/subjects/science/biology", meta: "문제 1.1k" },
+  { name: "지구과학", href: "/subjects/science/earth-science", meta: "문제 740" },
+];
+
 const SCIENCE_GROUP: SubjectGroup = {
   id: "science",
   label: "자연과학",
   sub: "1차 필수 4과목 · 객관식",
+  // nav 는 4과목을 나열하지 않고 허브로 단일 진입 — 클릭 시 4과목 한 화면.
   items: [
-    { name: "물리", href: "/subjects/science/physics", meta: "문제 1.2k" },
-    { name: "화학", href: "/subjects/science/chemistry", meta: "문제 980" },
-    { name: "생물", href: "/subjects/science/biology", meta: "문제 1.1k" },
     {
-      name: "지구과학",
-      href: "/subjects/science/earth-science",
-      meta: "문제 740",
+      name: "전체 4과목",
+      href: "/subjects/science",
+      meta: "물리·화학·생물·지구과학",
     },
   ],
 };

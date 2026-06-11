@@ -352,6 +352,7 @@ export default [
           "features/subjects/screens/quiz-result.tsx",
         ),
         ...prefix("/science", [
+          index("features/subjects/screens/science/science-index.tsx"),
           route("/physics", "features/subjects/screens/science/physics.tsx"),
           route(
             "/chemistry",
