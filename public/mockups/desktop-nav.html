@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>데스크톱 상단 네비게이션 시안 비교 — 리담변리사학원</title>
+  <style>
+    :root {
+      --bg: #F6F7F9;
+      --surface: #FFFFFF;
+      --ink: #16202E;
+      --ink-soft: #5B6675;
+      --ink-mute: #8A95A4;
+      --line: rgba(22, 32, 46, 0.10);
+      --line-soft: rgba(22, 32, 46, 0.06);
+      --primary: #2D5BA8;
+      --primary-dark: #1E4789;
+      --primary-tint: #EAF1FB;
+      --amber: #B45309;
+      --amber-soft: #FEF3C7;
+      --shadow: 0 12px 32px rgba(22, 32, 46, 0.12);
+      --shadow-sm: 0 2px 8px rgba(22, 32, 46, 0.06);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard",
+        Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+    .page { max-width: 1240px; margin: 0 auto; padding: 32px 24px 96px; }
+    .page-head h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; }
+    .page-head p { color: var(--ink-soft); font-size: 14px; margin: 0 0 8px; }
+    .legend { font-size: 12px; color: var(--ink-mute); }
+
+    .variant { margin-top: 40px; }
+    .variant-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+    .variant-tag {
+      display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
+      border-radius: 999px; background: var(--primary); color: #fff;
+      font-size: 12px; font-weight: 800; letter-spacing: 0.02em;
+    }
+    .variant-head h2 { font-size: 17px; font-weight: 800; margin: 0; }
+    .variant-head .desc { color: var(--ink-soft); font-size: 13px; }
+
+    /* 데스크톱 미리보기 프레임 — 실제 폭 느낌 */
+    .frame {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 14px; box-shadow: var(--shadow-sm); overflow: visible;
+      position: relative;
+    }
+    .frame-body {
+      height: 240px; padding: 28px;
+      background:
+        linear-gradient(180deg, rgba(45,91,168,0.03), rgba(45,91,168,0)) ,
+        repeating-linear-gradient(135deg, transparent 0 18px, rgba(22,32,46,0.012) 18px 19px);
+      color: var(--ink-mute); font-size: 13px;
+    }
+    .frame-body .ph-line { height: 11px; border-radius: 6px; background: var(--line-soft); margin-bottom: 12px; }
+    .frame-body .ph-line.w1 { width: 38%; } .frame-body .ph-line.w2 { width: 72%; }
+    .frame-body .ph-line.w3 { width: 55%; } .frame-body .ph-line.w4 { width: 64%; }
+
+    /* ===== 공통 nav 요소 ===== */
+    .logo { font-weight: 900; letter-spacing: -0.02em; color: var(--primary); font-size: 18px; white-space: nowrap; }
+    .logo .li { color: var(--ink); }
+    .tools { display: flex; align-items: center; gap: 6px; }
+    .icon-btn {
+      width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--ink-soft); background: transparent; cursor: pointer; font-size: 16px;
+    }
+    .icon-btn:hover { background: var(--primary-tint); color: var(--primary); }
+    .search-pill {
+      display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px;
+      border: 1px solid var(--line); border-radius: 999px; color: var(--ink-mute);
+      font-size: 13px; background: #fff; cursor: text; min-width: 180px;
+    }
+    .search-pill kbd {
+      margin-left: auto; font: 600 11px/1 ui-monospace, monospace; color: var(--ink-mute);
+      border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; background: var(--bg);
+    }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 10px; background: var(--primary);
+      color: #fff; display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13px;
+    }
+    .badge-dot { position: relative; }
+    .badge-dot::after {
+      content: "3"; position: absolute; top: -2px; right: -2px;
+      min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+      background: #E11D48; color: #fff; font-size: 10px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+
+    .navlink {
+      position: relative; display: inline-flex; align-items: center; gap: 5px;
+      height: 38px; padding: 0 12px; border-radius: 9px; cursor: pointer;
+      color: var(--ink); font-size: 14px; font-weight: 600; white-space: nowrap;
+    }
+    .navlink:hover { background: var(--primary-tint); color: var(--primary-dark); }
+    .navlink .caret { font-size: 10px; color: var(--ink-mute); }
+    .navlink.active { color: var(--primary-dark); }
+    .navlink.active::after {
+      content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px;
+      background: var(--primary); border-radius: 2px;
+    }
+
+    /* dropdown 기본 (hover 로 열림 + .is-open 으로 고정) */
+    .menu { position: relative; }
+    .dropdown {
+      position: absolute; top: calc(100% + 8px); left: 0; z-index: 30;
+      background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: var(--shadow); padding: 10px; opacity: 0; transform: translateY(-6px);
+      pointer-events: none; transition: opacity .14s ease, transform .14s ease;
+    }
+    .menu:hover .dropdown, .menu.is-open .dropdown { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .dd-col { min-width: 220px; }
+    .dd-link {
+      display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px;
+      color: var(--ink); font-size: 13.5px; text-decoration: none; cursor: pointer;
+    }
+    .dd-link:hover { background: var(--primary-tint); color: var(--primary-dark); }
+    .dd-link .ic { width: 18px; text-align: center; color: var(--ink-mute); }
+    .dd-link:hover .ic { color: var(--primary); }
+    .dd-link .sub { color: var(--ink-mute); font-size: 11px; margin-left: auto; }
+    .dd-title { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute); padding: 8px 10px 4px; }
+
+    /* mega menu */
+    .mega { left: 0; right: auto; width: 720px; padding: 16px; }
+    .mega-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .mega-sec-title {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800;
+      letter-spacing: 0.06em; color: var(--primary); text-transform: uppercase; margin-bottom: 8px;
+    }
+    .subj-card {
+      display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px;
+      border: 1px solid var(--line-soft); text-decoration: none; color: var(--ink); margin-bottom: 6px;
+      background: #fff;
+    }
+    .subj-card:hover { border-color: var(--primary); background: var(--primary-tint); }
+    .subj-ic { width: 30px; height: 30px; border-radius: 8px; background: var(--primary-tint); color: var(--primary);
+      display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex: none; }
+    .subj-name { font-size: 13.5px; font-weight: 700; }
+    .subj-meta { font-size: 11px; color: var(--ink-mute); }
+
+    .note { margin-top: 10px; font-size: 12.5px; color: var(--ink-soft); }
+    .note b { color: var(--ink); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { display:inline-flex; align-items:center; height: 28px; padding: 0 11px; border-radius: 999px;
+      border: 1px solid var(--line); font-size: 12.5px; color: var(--ink); text-decoration:none; background:#fff;}
+    .chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-tint); }
+
+    /* ===== A. 메가메뉴 1단 ===== */
+    .navA { display: flex; align-items: center; gap: 14px; height: 60px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+    .navA .links { display: flex; align-items: center; gap: 2px; }
+    .navA .spacer { flex: 1; }
+
+    /* ===== B. 컴팩트 컬럼 ===== */
+    .navB { display: flex; align-items: center; gap: 14px; height: 58px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+    .navB .links { display: flex; align-items: center; gap: 2px; }
+    .navB .spacer { flex: 1; }
+
+    /* ===== C. 2단 ===== */
+    .navC-top { display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 20px; border-bottom: 1px solid var(--line-soft); }
+    .navC-top .grow { flex: 1; display: flex; justify-content: center; }
+    .navC-top .search-pill { min-width: 360px; }
+    .navC-bottom { display: flex; align-items: center; gap: 2px; height: 46px; padding: 0 20px; border-bottom: 1px solid var(--line); background: #fff; }
+    .navC-bottom .navlink { height: 32px; }
+
+    .foot { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-mute); font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-head">
+      <h1>데스크톱 상단 네비게이션 — 시안 비교</h1>
+      <p>실제 메뉴·과목 구성을 반영한 3가지 방향입니다. 각 시안의 대표 드롭다운은 펼쳐 둔 상태이며, 다른 메뉴에 <b>마우스를 올리면</b> 해당 드롭다운이 열립니다.</p>
+      <p class="legend">팔레트 = 리담 블루(#2D5BA8). 우측 도구: 검색 · 알림 · 테마 · 계정.</p>
+    </div>
+
+    <!-- ===================== A. 메가메뉴 ===================== -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">시안 A</span>
+        <h2>메가메뉴형 (1단 · 넓은 드롭다운)</h2>
+        <span class="desc">학습과목처럼 항목이 많은 메뉴를 카드형으로 한눈에. 교육·SaaS 사이트에서 가장 친숙.</span>
+      </div>
+      <div class="frame">
+        <div class="navA">
+          <span class="logo">리담<span class="li">변리사</span></span>
+          <div class="links">
+            <span class="navlink active">대시보드</span>
+            <div class="menu is-open">
+              <span class="navlink">학습과목 <span class="caret">▾</span></span>
+              <div class="dropdown mega">
+                <div class="mega-grid">
+                  <div>
+                    <div class="mega-sec-title">● 1차 · 객관식</div>
+                    <a class="subj-card"><span class="subj-ic">特</span><span><span class="subj-name">특허법</span><br><span class="subj-meta">조문 232 · 판례 1.8k</span></span></a>
+                    <a class="subj-card"><span class="subj-ic">商</span><span><span class="subj-name">상표법</span><br><span class="subj-meta">조문 99 · 판례 940</span></span></a>
+                    <a class="subj-card"><span class="subj-ic">意</span><span><span class="subj-name">디자인보호법</span><br><span class="subj-meta">조문 78 · 판례 410</span></span></a>
+                    <a class="subj-card"><span class="subj-ic">民</span><span><span class="subj-name">민법</span><br><span class="subj-meta">조문 1118 · 판례 4.2k</span></span></a>
+                  </div>
+                  <div>
+                    <div class="mega-sec-title">● 2차 · 주관식</div>
+                    <a class="subj-card"><span class="subj-ic">特</span><span><span class="subj-name">특허법</span><br><span class="subj-meta">사례·논점 중심</span></span></a>
+                    <a class="subj-card"><span class="subj-ic">商</span><span><span class="subj-name">상표법</span><br><span class="subj-meta">사례·논점 중심</span></span></a>
+                    <a class="subj-card"><span class="subj-ic">訴</span><span><span class="subj-name">민사소송법</span><br><span class="subj-meta">쟁점·판례 중심</span></span></a>
+                    <div class="mega-sec-title" style="margin-top:10px">● 1차 자연과학</div>
+                    <div class="pill-row">
+                      <a class="chip">물리</a><a class="chip">화학</a><a class="chip">생물</a><a class="chip">지구과학</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="menu"><span class="navlink">학습관리 <span class="caret">▾</span></span>
+              <div class="dropdown"><div class="dd-col">
+                <a class="dd-link"><span class="ic">◎</span>학습 목표 · 진도</a>
+                <a class="dd-link"><span class="ic">▤</span>학습 통계</a>
+                <a class="dd-link"><span class="ic">✎</span>과제</a>
+                <a class="dd-link"><span class="ic">↺</span>정오문제 응시 이력</a>
+              </div></div>
+            </div>
+            <div class="menu"><span class="navlink">학습지원 <span class="caret">▾</span></span>
+              <div class="dropdown"><div class="dd-col">
+                <a class="dd-link"><span class="ic">✗</span>오답노트</a>
+                <a class="dd-link"><span class="ic">∎</span>하이라이트</a>
+                <a class="dd-link"><span class="ic">♡</span>즐겨찾기</a>
+                <a class="dd-link"><span class="ic">▪</span>포스트잇</a>
+                <a class="dd-link"><span class="ic">✦</span>AI Q&amp;A</a>
+              </div></div>
+            </div>
+            <span class="navlink">모의고사 <span class="caret">▾</span></span>
+            <span class="navlink">커뮤니티 <span class="caret">▾</span></span>
+          </div>
+          <div class="spacer"></div>
+          <div class="tools">
+            <div class="search-pill">🔍 <span>검색</span><kbd>⌘K</kbd></div>
+            <button class="icon-btn badge-dot">🔔</button>
+            <button class="icon-btn">◐</button>
+            <div class="avatar">임</div>
+          </div>
+        </div>
+        <div class="frame-body">
+          <div class="ph-line w1"></div><div class="ph-line w2"></div><div class="ph-line w3"></div><div class="ph-line w4"></div>
+          학습 콘텐츠 영역
+        </div>
+      </div>
+      <p class="note"><b>장점</b> 과목·기출처럼 항목 많은 메뉴를 카드로 한눈에 · 가장 익숙. <b>고려</b> 드롭다운 폭이 넓어 화면을 크게 덮음.</p>
+    </section>
+
+    <!-- ===================== B. 컴팩트 컬럼 ===================== -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">시안 B</span>
+        <h2>컴팩트 컬럼형 (1단 · 좁은 목록 드롭다운)</h2>
+        <span class="desc">각 메뉴가 단정한 목록으로 열림. 군더더기 없고 빠른 클릭. (GitHub·Vercel 류)</span>
+      </div>
+      <div class="frame">
+        <div class="navB">
+          <span class="logo">리담<span class="li">변리사</span></span>
+          <div class="links">
+            <span class="navlink active">대시보드</span>
+            <span class="navlink">학습과목 <span class="caret">▾</span></span>
+            <div class="menu is-open"><span class="navlink">학습정보 <span class="caret">▾</span></span>
+              <div class="dropdown"><div class="dd-col">
+                <div class="dd-title">학습정보</div>
+                <a class="dd-link"><span class="ic">§</span>법 개정</a>
+                <a class="dd-link"><span class="ic">⚖</span>최근 판례</a>
+                <a class="dd-link"><span class="ic">①</span>1차 기출문제</a>
+                <a class="dd-link"><span class="ic">②</span>2차 기출문제</a>
+                <a class="dd-link"><span class="ic">▦</span>논문</a>
+                <a class="dd-link"><span class="ic">✚</span>추록·정오표</a>
+              </div></div>
+            </div>
+            <div class="menu"><span class="navlink">모의고사 <span class="caret">▾</span></span>
+              <div class="dropdown"><div class="dd-col">
+                <div class="dd-title">모의고사</div>
+                <a class="dd-link"><span class="ic">①</span>1차 모의고사</a>
+                <a class="dd-link"><span class="ic">②</span>2차 모의고사 (온라인 GS)</a>
+                <a class="dd-link"><span class="ic">◆</span>GS 논점추출</a>
+                <a class="dd-link"><span class="ic">⚖</span>판례 쟁점훈련</a>
+                <a class="dd-link"><span class="ic">▤</span>응시 결과</a>
+              </div></div>
+            </div>
+            <span class="navlink">학습관리 <span class="caret">▾</span></span>
+            <span class="navlink">학습지원 <span class="caret">▾</span></span>
+            <span class="navlink">커뮤니티 <span class="caret">▾</span></span>
+          </div>
+          <div class="spacer"></div>
+          <div class="tools">
+            <button class="icon-btn">🔍</button>
+            <button class="icon-btn badge-dot">🔔</button>
+            <button class="icon-btn">◐</button>
+            <div class="avatar">임</div>
+          </div>
+        </div>
+        <div class="frame-body">
+          <div class="ph-line w2"></div><div class="ph-line w1"></div><div class="ph-line w4"></div><div class="ph-line w3"></div>
+          학습 콘텐츠 영역
+        </div>
+      </div>
+      <p class="note"><b>장점</b> 가볍고 빠름 · 드롭다운이 작아 화면을 덜 가림 · 정보 밀도 높음. <b>고려</b> 과목같이 많은 항목은 한 컬럼이라 약간 길어짐.</p>
+    </section>
+
+    <!-- ===================== C. 2단 (글로벌 검색 강조) ===================== -->
+    <section class="variant">
+      <div class="variant-head">
+        <span class="variant-tag">시안 C</span>
+        <h2>2단형 (상단=브랜드·검색·계정 / 하단=메뉴 탭)</h2>
+        <span class="desc">검색을 가운데 크게. 메뉴 탭은 별도 줄에 고정. (LMS·Notion·Linear 류)</span>
+      </div>
+      <div class="frame">
+        <div class="navC-top">
+          <span class="logo">리담<span class="li">변리사</span></span>
+          <div class="grow"><div class="search-pill">🔍 <span>조문·판례·문제 검색</span><kbd>⌘K</kbd></div></div>
+          <div class="tools">
+            <button class="icon-btn badge-dot">🔔</button>
+            <button class="icon-btn">◐</button>
+            <div class="avatar">임</div>
+          </div>
+        </div>
+        <div class="navC-bottom">
+          <span class="navlink active">대시보드</span>
+          <div class="menu is-open"><span class="navlink">학습과목 <span class="caret">▾</span></span>
+            <div class="dropdown mega" style="width:640px">
+              <div class="mega-grid">
+                <div>
+                  <div class="mega-sec-title">● 1차 · 객관식</div>
+                  <div class="pill-row">
+                    <a class="chip">특허법</a><a class="chip">상표법</a><a class="chip">디자인보호법</a><a class="chip">민법</a>
+                    <a class="chip">물리</a><a class="chip">화학</a><a class="chip">생물</a><a class="chip">지구과학</a>
+                  </div>
+                </div>
+                <div>
+                  <div class="mega-sec-title">● 2차 · 주관식</div>
+                  <div class="pill-row">
+                    <a class="chip">특허법</a><a class="chip">상표법</a><a class="chip">디자인보호법</a><a class="chip">민사소송법</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="navlink">학습관리 <span class="caret">▾</span></span>
+          <span class="navlink">학습지원 <span class="caret">▾</span></span>
+          <span class="navlink">학습정보 <span class="caret">▾</span></span>
+          <span class="navlink">모의고사 <span class="caret">▾</span></span>
+          <span class="navlink">커뮤니티 <span class="caret">▾</span></span>
+        </div>
+        <div class="frame-body" style="height:200px">
+          <div class="ph-line w1"></div><div class="ph-line w3"></div><div class="ph-line w2"></div>
+          학습 콘텐츠 영역
+        </div>
+      </div>
+      <p class="note"><b>장점</b> 검색이 중심이라 "찾아서 학습"에 최적 · 메뉴 탭이 명확히 분리. <b>고려</b> 세로 약 100px 차지(상단 공간 ↑).</p>
+    </section>
+
+    <div class="foot">
+      미리보기 — 정적 HTML(클릭 동작 없음). 마음에 드는 방향을 고르시면 실제 컴포넌트(shadcn NavigationMenu)로 구현합니다.
+      세부(드롭다운 톤·아이콘·검색 위치·활성표시)는 선택 후 조정 가능합니다.
+    </div>
+  </div>
+</body>
+</html>
