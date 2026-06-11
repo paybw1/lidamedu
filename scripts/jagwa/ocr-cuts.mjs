@@ -8,6 +8,7 @@ import * as mupdf from "mupdf";
 const pdfPath = process.argv[2];
 const tag = process.argv[3];
 const EXPECT = Number(process.argv[4] ?? "40");
+const SKIP = Number(process.argv[5] ?? "0"); // 앞쪽 안내 페이지 건너뛰기
 if (!pdfPath || !tag) throw new Error("usage: ocr-cuts.mjs <pdfPath> <tag> [expect]");
 
 const OCR_SCALE = 2.5, CROP_SCALE = 2.2, k = CROP_SCALE / OCR_SCALE;
@@ -22,7 +23,7 @@ const nPages = doc.countPages();
 const worker = await createWorker("kor", 1, { logger: () => {} });
 
 const perPage = [];
-for (let i = 0; i < nPages; i++) {
+for (let i = SKIP; i < nPages; i++) {
   const page = doc.loadPage(i);
   const pix = page.toPixmap(mupdf.Matrix.scale(OCR_SCALE, OCR_SCALE), mupdf.ColorSpace.DeviceRGB, false, true);
   const png = Buffer.from(pix.asPNG());
@@ -41,7 +42,7 @@ for (let i = 0; i < nPages; i++) {
     .map((w) => ({ n: parseInt(w.t, 10), y22: Math.round(w.y0 * k), conf: Math.round(w.conf) }))
     .sort((a, b) => a.y22 - b.y22)
     .filter((c) => (seen.has(c.n) ? false : (seen.add(c.n), true)));
-  perPage.push({ page: i + 1, cands });
+  perPage.push({ page: i + 1 - SKIP, cands });
   pix.destroy?.(); page.destroy?.();
 }
 await worker.terminate();

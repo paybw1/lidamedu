@@ -1,8 +1,10 @@
-// 59회(2022) 자연과학 A형. cuts=OCR(.ocr/2022_59_A.json). ANSWERS=정답표 판독 후.
+// 59회(2022) 자연과학 A형. ★ 문제 PDF 1페이지가 시험 유의사항(번호 1~5)이라 OCR이
+// 이를 Q1~5로 오인 → pageOffset:1 로 1페이지 건너뛰고 재적재. cuts=OCR(skip=1).
 export const EXAM = {
   year: 2022, examRoundNo: 59, examRound: "first", form: "A", subjectLabel: "자연과학",
   problemPdf: "source/기출모음(2010~2026)/1차/문제/2022_59_1_자과A.pdf",
   answerPdf: "source/기출모음(2010~2026)/1차/정답/2022_59_1_정답.pdf",
+  pageOffset: 1,
 };
 export const ANSWERS = {
   1: [4], 2: [4], 3: [2], 4: [2], 5: [5],
