@@ -198,6 +198,7 @@ eng.traineddata
 # 콘텐츠 원본(hwp/hwpx) 및 paragraph 변환 산출물 — 운영 데이터, repo 비대화
 /source/*.hwp
 /source/*.hwpx
+/source/민법/
 /source/_converted/*.json
 
 # 테스트용 학생 30명 csv — 비밀번호 평문 노출
