@@ -530,7 +530,7 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
             <Field
               label="답안지 페이지 수"
               required
-              hint="학생 응시 화면의 슬롯 수 (변리사 표준 답안지: 20페이지)."
+              hint="학생 응시 화면의 슬롯 수 (변리사 표준 답안지: 25페이지)."
             >
               <input
                 type="number"
@@ -538,8 +538,8 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
                 required
                 min={1}
                 max={100}
-                defaultValue={round?.expectedPages ?? 20}
-                placeholder="20"
+                defaultValue={round?.expectedPages ?? 25}
+                placeholder="25"
                 className="border-input bg-background focus:border-primary h-9 w-full rounded-md border px-3 text-[13px] tabular-nums outline-none"
               />
             </Field>

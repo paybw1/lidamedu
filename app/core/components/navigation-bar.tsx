@@ -350,11 +350,15 @@ function SimpleDropdown({
         ) : null}
         {label}
       </NavigationMenuTrigger>
-      <NavigationMenuContent className="left-1/2 -translate-x-1/2">
-        <div className="flex w-[340px] flex-wrap gap-1.5 p-3">
+      <NavigationMenuContent>
+        {/* 가로 1줄 — 좌측 정렬(넓은 항목이 화면 밖으로 나가지 않게). 너무 길면 가로 스크롤. */}
+        <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
           {items.map((item) => (
             <NavigationMenuLink asChild key={item.to}>
-              <Link to={item.to} className={CHIP_CLASS}>
+              <Link
+                to={item.to}
+                className={cn(CHIP_CLASS, "whitespace-nowrap")}
+              >
                 {item.label}
               </Link>
             </NavigationMenuLink>
@@ -455,9 +459,9 @@ export function NavigationBar({
                   ) : null}
                   학습과목
                 </NavigationMenuTrigger>
-                <NavigationMenuContent className="left-1/2 -translate-x-1/2">
-                  {/* 1/2차 구분 없는 평면 6과목 — 가로 1줄 */}
-                  <div className="flex w-max items-center gap-1.5 p-3">
+                <NavigationMenuContent>
+                  {/* 1/2차 구분 없는 평면 6과목 — 가로 1줄(좌측 정렬) */}
+                  <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
                     {SUBJECT_NAV_ITEMS.map((item) => (
                       <NavigationMenuLink asChild key={item.href}>
                         <Link
