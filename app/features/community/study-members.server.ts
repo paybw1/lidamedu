@@ -3,6 +3,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
+
 export interface StudyMemberItem {
   profileId: string;
   name: string;
@@ -35,7 +37,10 @@ export async function getStudyMembership(
   const profileIds = [...new Set(rows.map((r) => r.profile_id))];
   const nameMap = new Map<string, string>();
   if (profileIds.length > 0) {
-    const { data: profs } = await client
+    // profiles RLS(`select-own-profile`)가 본인 행만 허용 → RLS client 로는 스터디
+    // 개설자가 다른 멤버(지원자) 이름을 못 읽어 전부 "(이름 없음)" 으로 표시된다.
+    // 멤버 표시용 이름만 adminClient(RLS 우회)로 조회. 멤버 목록 자체는 위 client 유지.
+    const { data: profs } = await adminClient
       .from("profiles")
       .select("profile_id, name")
       .in("profile_id", profileIds);
