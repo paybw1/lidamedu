@@ -361,9 +361,18 @@ export async function upsertItem(
     if (error) return { ok: false, error: error.message };
     return { ok: true, itemId: input.itemId };
   }
+  // 새 항목은 서버가 ord 를 소유한다 — 클라이언트 nextOrd(=items.length) 는 연속 추가 시
+  // stale 가능해 (week_id, ord) 충돌/오류를 유발한다. 주차 내 max(ord)+1 로 append.
+  const { data: maxRow } = await admin
+    .from("curriculum_items")
+    .select("ord")
+    .eq("week_id", input.weekId)
+    .order("ord", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   const { data, error } = await admin
     .from("curriculum_items")
-    .insert(base)
+    .insert({ ...base, ord: (maxRow?.ord ?? -1) + 1 })
     .select("item_id")
     .single();
   if (error) return { ok: false, error: error.message };

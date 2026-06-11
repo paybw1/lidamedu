@@ -8,13 +8,13 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
   data,
   useFetcher,
-  useLocation,
   useNavigate,
+  useRevalidator,
 } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -64,14 +64,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return { curriculum, role };
 }
 
+// 안정적(불변) reload 콜백. 매 렌더 새 함수를 반환하면, 제출 성공 후 fetcher.data 가
+// {ok:true} 로 남은 상태에서 자식 effect 의 deps(reload 식별자)가 매 렌더 바뀌어
+// revalidate(navigate) 가 무한 호출된다(항목 연속 추가 시 무한로딩). useRevalidator 를
+// ref 로 잡고 useCallback([]) 으로 고정해 루프를 차단한다. (cf. fix 5fab10c GS 동일 패턴)
 function useReload() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  return () =>
-    navigate(location.pathname + location.search, {
-      replace: true,
-      preventScrollReset: true,
-    });
+  const revalidator = useRevalidator();
+  const ref = useRef(revalidator);
+  ref.current = revalidator;
+  return useCallback(() => ref.current.revalidate(), []);
 }
 
 export default function AdminCurriculumEdit({ loaderData }: Route.ComponentProps) {
