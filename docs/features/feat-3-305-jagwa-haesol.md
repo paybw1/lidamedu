@@ -37,10 +37,13 @@ feat-3-304로 자연과학 1차 기출 **680문항(2010~2026)**을 image-first(�
 - UI: 문제 이미지 ↔ AI 해설 2단, 정답키·AI답 배지, 불일치 카드 강조. 승인 시 RPC로 `explanation_md` 복사 → pack-sheet "종합 해설"로 노출.
 - 네비: 운영자 사이드바 problems 클러스터 "기출 해설 검수".
 
-## 상태
+## 상태 (2026-06-12 기준)
 - ✅ 게이트(테이블·RLS·RPC) + 타입 + 검수 화면/액션/쿼리 (typecheck clean)
-- 🟡 670문항 생성 워크플로우 실행 → persist → 검수(승인) 진행
-- 파일럿 10건 pending 적재 완료(게이트 검증: explanation_md 여전히 null).
+- ✅ **생성 + persist 완료: 운영 DB(mcgdoplo) 680/680 전량 pending 적재** (정답키 일치 640 / 불일치 40, 모델 opus 단일). 파일럿 2010 물리 10/10 포함.
+- ✅ 게이트 검증: 자과 기출 680문항 `explanation_md` **0건 set → 학생 노출 0건 유지**.
+- ✅ 검수 화면 사용성: 진행률 KPI(승인/반려/대기/불일치) + 페이지네이션(20/page, 불일치 우선) — 680건 순회 검수 가능.
+- 🟡 **강사 검수(승인) 진행 중 — 현재 승인 0 / 680.** 불일치 40건이 1순위(화학 편중 15, 2019년 8). `/admin/problems/explanations` 에서 승인 시 `explanation_md` 복사 → pack-sheet "종합 해설" 노출.
+- ⏭ 후속: 승인분의 AI-Q&A 색인은 임베딩 cron 가동 여부에 의존(feat-9 참조).
 
 ## 주의
 - 마이그레이션·운영 쿼리는 **Supabase Management API / .env supabase-js(mcgdoplo ref 명시)** 로. 직접 pg 호스트 미해결, MCP/CLI는 stale 프로젝트 주의.

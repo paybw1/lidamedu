@@ -51,17 +51,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   const yearRaw = Number(url.searchParams.get("year"));
   const year = YEARS.includes(yearRaw) ? yearRaw : undefined;
   const mismatchOnly = url.searchParams.get("mismatch") === "1";
+  const pageRaw = Number(url.searchParams.get("page"));
+  const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
-  const { items, pendingTotal, mismatchTotal } = await listExplanationDrafts({
+  const result = await listExplanationDrafts({
     subject,
     year,
     mismatchOnly,
-    limit: 40,
+    page,
+    pageSize: 20,
   });
   return {
-    items,
-    pendingTotal,
-    mismatchTotal,
+    ...result,
     filters: { subject, year, mismatchOnly },
     role,
   };
@@ -70,15 +71,37 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function AdminExplanationReview({
   loaderData,
 }: Route.ComponentProps) {
-  const { items, pendingTotal, mismatchTotal, filters, role } = loaderData;
+  const {
+    items,
+    filteredTotal,
+    page,
+    pageSize,
+    pendingTotal,
+    mismatchTotal,
+    approvedTotal,
+    rejectedTotal,
+    filters,
+    role,
+  } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const bulkFetcher = useFetcher<{ ok?: boolean; error?: string; count?: number }>();
+
+  const grandTotal = pendingTotal + approvedTotal + rejectedTotal;
+  const reviewed = approvedTotal + rejectedTotal;
+  const pct = grandTotal > 0 ? Math.round((reviewed / grandTotal) * 100) : 0;
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
 
   const setFilter = (key: string, value: string | null) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
     else next.delete(key);
+    next.delete("page"); // 필터 변경 시 1페이지로 리셋
+    setSearchParams(next);
+  };
+  const goToPage = (p: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("page", String(p));
     setSearchParams(next);
   };
   const toggle = (id: string) =>
@@ -102,12 +125,30 @@ export default function AdminExplanationReview({
       role={role}
       width={1200}
     >
+      <div className="bg-card border-border mb-4 rounded-xl border p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-semibold">검수 진행률</span>
+          <span className="text-muted-foreground text-sm">
+            완료 {reviewed} / {grandTotal} ({pct}%)
+          </span>
+        </div>
+        <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full rounded-full transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <span>승인 {approvedTotal}</span>
+          <span>반려 {rejectedTotal}</span>
+          <span>대기 {pendingTotal}</span>
+          <span className={mismatchTotal > 0 ? "font-medium text-rose-600" : ""}>
+            불일치 대기 {mismatchTotal}
+          </span>
+        </div>
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">대기 {pendingTotal}</Badge>
-        <Badge variant={mismatchTotal > 0 ? "destructive" : "secondary"}>
-          불일치 {mismatchTotal}
-        </Badge>
-        <div className="grow" />
         <AdminSelect
           value={filters.subject ?? ""}
           onChange={(e) => setFilter("subject", e.target.value || null)}
@@ -177,6 +218,30 @@ export default function AdminExplanationReview({
           ))}
         </div>
       )}
+
+      {totalPages > 1 ? (
+        <div className="mt-6 flex items-center justify-center gap-3 text-sm">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => goToPage(page - 1)}
+          >
+            이전
+          </Button>
+          <span className="text-muted-foreground">
+            {page} / {totalPages} 페이지 · 총 {filteredTotal}건
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => goToPage(page + 1)}
+          >
+            다음
+          </Button>
+        </div>
+      ) : null}
     </AdminShell>
   );
 }

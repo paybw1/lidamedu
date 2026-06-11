@@ -1,4 +1,4 @@
-// feat-3-305 기출 해설 검수 — 대기(pending) 초안 목록 조회.
+// feat-3-305 기출 해설 검수 — 대기(pending) 초안 목록 조회 + 검수 진행률 집계.
 // 호출 loader 가 staff 권한을 검증했다고 가정하고 adminClient(RLS 우회)로 읽는다
 // (problems/problem_choices join — profiles 처럼 staff 교차읽기 안전을 위해 admin 사용).
 import type { Database } from "database.types";
@@ -14,6 +14,7 @@ const SUBJECT_KO: Record<string, string> = {
   biology: "생물",
   earth_science: "지구과학",
 };
+const DEFAULT_PAGE_SIZE = 20;
 
 export interface ExplanationDraftItem {
   draftId: string;
@@ -34,7 +35,21 @@ export interface ExplanationDraftListOpts {
   subject?: ScienceSubject;
   year?: number;
   mismatchOnly?: boolean;
-  limit?: number;
+  page?: number; // 1-based
+  pageSize?: number;
+}
+
+export interface ExplanationDraftListResult {
+  items: ExplanationDraftItem[];
+  /** 현재 필터(과목/연도/불일치)에 매칭되는 대기 초안 총수 — 페이지네이션 기준 */
+  filteredTotal: number;
+  page: number;
+  pageSize: number;
+  /** 전역 검수 진행률 KPI (필터 무관) */
+  pendingTotal: number;
+  mismatchTotal: number;
+  approvedTotal: number;
+  rejectedTotal: number;
 }
 
 interface RawDraftRow {
@@ -52,16 +67,19 @@ interface RawDraftRow {
   };
 }
 
-export async function listExplanationDrafts(opts: ExplanationDraftListOpts = {}): Promise<{
-  items: ExplanationDraftItem[];
-  pendingTotal: number;
-  mismatchTotal: number;
-}> {
-  const limit = opts.limit ?? 50;
+export async function listExplanationDrafts(
+  opts: ExplanationDraftListOpts = {},
+): Promise<ExplanationDraftListResult> {
+  const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
+  const page = Math.max(1, opts.page ?? 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   let q = adminClient
     .from("problem_explanation_drafts")
     .select(
       "draft_id, content_md, ai_answer, answer_match, created_at, problems!inner(problem_id, year, problem_number, science_subject, body_md)",
+      { count: "exact" },
     )
     .eq("status", "pending");
   if (opts.subject) q = q.eq("problems.science_subject", opts.subject);
@@ -70,9 +88,9 @@ export async function listExplanationDrafts(opts: ExplanationDraftListOpts = {})
   q = q
     .order("answer_match", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: true })
-    .limit(limit);
+    .range(from, to);
 
-  const { data, error } = await q;
+  const { data, error, count: filteredTotal } = await q;
   if (error) throw error;
   const rows = (data as unknown as RawDraftRow[] | null) ?? [];
 
@@ -103,7 +121,9 @@ export async function listExplanationDrafts(opts: ExplanationDraftListOpts = {})
       year: p.year,
       problemNumber: p.problem_number,
       scienceSubject: p.science_subject,
-      scienceSubjectKo: p.science_subject ? (SUBJECT_KO[p.science_subject] ?? p.science_subject) : "",
+      scienceSubjectKo: p.science_subject
+        ? (SUBJECT_KO[p.science_subject] ?? p.science_subject)
+        : "",
       bodyMd: p.body_md,
       aiAnswer: r.ai_answer,
       answerMatch: r.answer_match,
@@ -113,15 +133,27 @@ export async function listExplanationDrafts(opts: ExplanationDraftListOpts = {})
     };
   });
 
-  const { count: pendingTotal } = await adminClient
-    .from("problem_explanation_drafts")
-    .select("draft_id", { count: "exact", head: true })
-    .eq("status", "pending");
-  const { count: mismatchTotal } = await adminClient
-    .from("problem_explanation_drafts")
-    .select("draft_id", { count: "exact", head: true })
-    .eq("status", "pending")
-    .or("answer_match.is.null,answer_match.is.false");
+  // 전역 진행률 KPI (필터 무관) — 검수가 끝을 향해 가는지 가늠.
+  const countByStatus = (status: "pending" | "approved" | "rejected") =>
+    adminClient
+      .from("problem_explanation_drafts")
+      .select("draft_id", { count: "exact", head: true })
+      .eq("status", status);
+  const [pendingRes, mismatchRes, approvedRes, rejectedRes] = await Promise.all([
+    countByStatus("pending"),
+    countByStatus("pending").or("answer_match.is.null,answer_match.is.false"),
+    countByStatus("approved"),
+    countByStatus("rejected"),
+  ]);
 
-  return { items, pendingTotal: pendingTotal ?? 0, mismatchTotal: mismatchTotal ?? 0 };
+  return {
+    items,
+    filteredTotal: filteredTotal ?? 0,
+    page,
+    pageSize,
+    pendingTotal: pendingRes.count ?? 0,
+    mismatchTotal: mismatchRes.count ?? 0,
+    approvedTotal: approvedRes.count ?? 0,
+    rejectedTotal: rejectedRes.count ?? 0,
+  };
 }
