@@ -1,41 +1,13 @@
 import {
-  AwardIcon,
   BellIcon,
-  BookOpenIcon,
-  CalendarCheckIcon,
-  ChevronDownIcon,
-  ClipboardListIcon,
-  FileCheckIcon,
-  FilePlusIcon,
-  FileTextIcon,
-  GavelIcon,
-  HeartIcon,
-  HighlighterIcon,
-  HistoryIcon,
   HomeIcon,
-  LayersIcon,
-  ListChecksIcon,
   LockIcon,
   LogOutIcon,
-  type LucideIcon,
-  MegaphoneIcon,
   MenuIcon,
-  MessageSquareIcon,
-  NotebookPenIcon,
   PanelLeftOpenIcon,
   PanelTopOpenIcon,
-  PencilLineIcon,
-  PenLineIcon,
-  RotateCcwIcon,
-  ScrollTextIcon,
   SearchIcon,
-  SparklesIcon,
-  StickyNoteIcon,
-  TargetIcon,
-  TrendingUpIcon,
-  TrophyIcon,
   UserIcon,
-  UsersIcon,
 } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -74,7 +46,11 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 
-type SimpleLink = { label: string; to: string; icon?: LucideIcon };
+type SimpleLink = { label: string; to: string };
+
+// V5 nav dropdown chip — rest 는 #FAFAFA pill, hover/focus 시 brand blue.
+const CHIP_CLASS =
+  "inline-flex items-center rounded-full border border-black/[0.06] bg-[#FAFAFA] px-[13px] py-[7px] text-[13px] font-semibold leading-none tracking-[-0.01em] text-foreground no-underline outline-none transition-all duration-150 hover:border-transparent hover:bg-[#2D5BA8] hover:text-white focus-visible:border-transparent focus-visible:bg-[#2D5BA8] focus-visible:text-white dark:border-border dark:bg-muted";
 
 // 상단 네비게이션 8개 top-level (좌→우):
 // 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습지원▾ · 학습정보▾ · 모의고사▾ · 커뮤니티▾ · 운영자(flat)
@@ -85,63 +61,48 @@ const leadingFlats: SimpleLink[] = [{ label: "대시보드", to: "/dashboard" }]
 // (URL slug 는 보존 — 북마크/공유 링크 호환성.)
 // "알림" 은 상단 우측 종모양 벨(읽지 않은 수 배지 포함) 로 단일화 — 본 dropdown 에서 제거.
 const studyItems: SimpleLink[] = [
-  { label: "오늘 할 일", to: "/study/today", icon: CalendarCheckIcon },
-  { label: "복습", to: "/study/srs", icon: RotateCcwIcon },
-  { label: "카드 암기", to: "/srs", icon: LayersIcon },
-  { label: "학습 목표 · 진도", to: "/goals", icon: TargetIcon },
-  { label: "학습 통계", to: "/study/stats", icon: TrendingUpIcon },
-  { label: "과제", to: "/assignments", icon: ClipboardListIcon },
+  { label: "오늘 할 일", to: "/study/today" },
+  { label: "복습", to: "/study/srs" },
+  { label: "카드 암기", to: "/srs" },
+  { label: "학습 목표 · 진도", to: "/goals" },
+  { label: "학습 통계", to: "/study/stats" },
+  { label: "과제", to: "/assignments" },
   // feat-10-006 — 정오문제(OX) 이력은 오답·복습 결과 성격이라 학습관리에 둠.
-  { label: "정오문제 응시 이력", to: "/me/ox-sessions", icon: HistoryIcon },
+  { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
 ];
 
 const latestItems: SimpleLink[] = [
-  { label: "법 개정", to: "/latest/laws", icon: ScrollTextIcon },
-  { label: "최근 판례", to: "/latest/cases", icon: GavelIcon },
-  { label: "1차 기출문제", to: "/latest/mcq?kind=past_exam", icon: ListChecksIcon },
-  { label: "2차 기출문제", to: "/latest/essay", icon: PenLineIcon },
-  { label: "논문", to: "/latest/papers", icon: BookOpenIcon },
-  { label: "추록·정오표", to: "/latest/book-updates", icon: FilePlusIcon },
+  { label: "법 개정", to: "/latest/laws" },
+  { label: "최근 판례", to: "/latest/cases" },
+  { label: "1차 기출문제", to: "/latest/mcq?kind=past_exam" },
+  { label: "2차 기출문제", to: "/latest/essay" },
+  { label: "논문", to: "/latest/papers" },
+  { label: "추록·정오표", to: "/latest/book-updates" },
 ];
 
 const studyAidItems: SimpleLink[] = [
-  { label: "오답노트", to: "/study/wrong-note", icon: NotebookPenIcon },
-  { label: "하이라이트", to: "/study/highlights", icon: HighlighterIcon },
-  { label: "즐겨찾기", to: "/study/bookmarks", icon: HeartIcon },
-  { label: "포스트잇", to: "/study/notes", icon: StickyNoteIcon },
-  { label: "메모", to: "/study/comments", icon: PencilLineIcon },
+  { label: "오답노트", to: "/study/wrong-note" },
+  { label: "하이라이트", to: "/study/highlights" },
+  { label: "즐겨찾기", to: "/study/bookmarks" },
+  { label: "포스트잇", to: "/study/notes" },
+  { label: "메모", to: "/study/comments" },
   // feat-9-004 — 생성형 AI Q&A.
-  { label: "AI Q&A", to: "/ai", icon: SparklesIcon },
+  { label: "AI Q&A", to: "/ai" },
 ];
 
 // 1차 통합(3교시)·진도별은 /latest/mcq?kind=mock 한 색인에 함께 노출 — 한 항목으로 통합.
 const mockExamItems: SimpleLink[] = [
-  { label: "1차 모의고사", to: "/latest/mcq?kind=mock", icon: FileCheckIcon },
-  { label: "2차 모의고사 (온라인 GS)", to: "/gs", icon: FileTextIcon },
-  { label: "응시 결과", to: "/me/exam-results", icon: TrophyIcon },
+  { label: "1차 모의고사", to: "/latest/mcq?kind=mock" },
+  { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
+  { label: "응시 결과", to: "/me/exam-results" },
 ];
 
 const communityItems: SimpleLink[] = [
-  { label: "공지사항", to: "/announcements", icon: MegaphoneIcon },
-  { label: "자유게시판", to: "/community/free", icon: MessageSquareIcon },
-  { label: "스터디 모집", to: "/community/study", icon: UsersIcon },
-  { label: "Q&A", to: "/qna", icon: MessageSquareIcon },
-  { label: "합격 후기", to: "/community/review", icon: AwardIcon },
-];
-
-// 학습과목 — 1차/2차 구분 없이 과목 단위. 자연과학은 클릭 시 4과목 펼침.
-const SUBJECT_LINKS: { label: string; to: string; badge: string }[] = [
-  { label: "민법", to: "/subjects/civil", badge: "민" },
-  { label: "특허법", to: "/subjects/patent", badge: "특" },
-  { label: "상표법", to: "/subjects/trademark", badge: "상" },
-  { label: "디자인보호법", to: "/subjects/design", badge: "디" },
-  { label: "민사소송법", to: "/subjects/civil-procedure", badge: "소" },
-];
-const SCIENCE_LINKS: { label: string; to: string; badge: string }[] = [
-  { label: "물리", to: "/subjects/science/physics", badge: "물" },
-  { label: "화학", to: "/subjects/science/chemistry", badge: "화" },
-  { label: "생물", to: "/subjects/science/biology", badge: "생" },
-  { label: "지구과학", to: "/subjects/science/earth-science", badge: "지" },
+  { label: "공지사항", to: "/announcements" },
+  { label: "자유게시판", to: "/community/free" },
+  { label: "스터디 모집", to: "/community/study" },
+  { label: "Q&A", to: "/qna" },
+  { label: "합격 후기", to: "/community/review" },
 ];
 
 const trailingFlats: SimpleLink[] = [{ label: "운영관리", to: "/admin" }];
@@ -370,8 +331,7 @@ function FlatLink({ to, label }: SimpleLink) {
   );
 }
 
-// 컴팩트 컬럼 드롭다운(시안 B) — 칩 wrap 대신 세로 링크 목록. 학습관리/지원/정보/
-// 모의고사/커뮤니티 공용. 한 컬럼(좁고 빠른 클릭, 화면을 덜 가림).
+// 단순 SimpleLink 목록 드롭다운 (한 컬럼). 학습/학습 보조/커뮤니티/최신 정보 공용.
 function SimpleDropdown({
   label,
   items,
@@ -390,99 +350,16 @@ function SimpleDropdown({
         ) : null}
         {label}
       </NavigationMenuTrigger>
-      <NavigationMenuContent>
-        <ul className="flex w-[248px] flex-col gap-0.5">
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.to}>
-                <NavigationMenuLink asChild>
-                  <Link
-                    to={item.to}
-                    className="hover:bg-accent hover:text-accent-foreground flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium"
-                  >
-                    {Icon ? (
-                      <Icon className="text-muted-foreground size-4 flex-none" />
-                    ) : null}
-                    {item.label}
-                  </Link>
-                </NavigationMenuLink>
-              </li>
-            );
-          })}
-        </ul>
-      </NavigationMenuContent>
-    </NavigationMenuItem>
-  );
-}
-
-// 과목 단위 한 글자 배지(민/특/상/디/소/과 · 물/화/생/지).
-function SubjectBadge({ text }: { text: string }) {
-  return (
-    <span className="bg-primary/10 text-primary inline-flex size-5 flex-none items-center justify-center rounded text-[11px] font-bold">
-      {text}
-    </span>
-  );
-}
-
-// 학습과목 드롭다운 — 과목별 세로 목록. 자연과학은 클릭 시 4과목 인라인 펼침.
-function SubjectsDropdown({ locked }: { locked: boolean }) {
-  const [sciOpen, setSciOpen] = useState(false);
-  const rowClass =
-    "hover:bg-accent hover:text-accent-foreground flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium";
-  return (
-    <NavigationMenuItem>
-      <NavigationMenuTrigger>
-        {locked ? (
-          <LockIcon className="mr-1 size-3 opacity-60" aria-label="잠김" />
-        ) : null}
-        학습과목
-      </NavigationMenuTrigger>
-      <NavigationMenuContent>
-        <ul className="flex w-[248px] flex-col gap-0.5">
-          {SUBJECT_LINKS.map((s) => (
-            <li key={s.to}>
-              <NavigationMenuLink asChild>
-                <Link to={s.to} className={rowClass}>
-                  <SubjectBadge text={s.badge} />
-                  {s.label}
-                </Link>
-              </NavigationMenuLink>
-            </li>
+      <NavigationMenuContent className="left-1/2 -translate-x-1/2">
+        <div className="flex w-[340px] flex-wrap gap-1.5 p-3">
+          {items.map((item) => (
+            <NavigationMenuLink asChild key={item.to}>
+              <Link to={item.to} className={CHIP_CLASS}>
+                {item.label}
+              </Link>
+            </NavigationMenuLink>
           ))}
-          <li>
-            {/* 자연과학 — 링크가 아니라 토글. 클릭하면 4과목 펼침/접힘. */}
-            <button
-              type="button"
-              onClick={() => setSciOpen((v) => !v)}
-              aria-expanded={sciOpen}
-              className={cn(rowClass, "w-full")}
-            >
-              <SubjectBadge text="과" />
-              자연과학
-              <ChevronDownIcon
-                className={cn(
-                  "text-muted-foreground ml-auto size-4 transition-transform",
-                  sciOpen && "rotate-180",
-                )}
-              />
-            </button>
-            {sciOpen ? (
-              <ul className="border-border mt-0.5 ml-[22px] flex flex-col gap-0.5 border-l pl-1.5">
-                {SCIENCE_LINKS.map((s) => (
-                  <li key={s.to}>
-                    <NavigationMenuLink asChild>
-                      <Link to={s.to} className={rowClass}>
-                        <SubjectBadge text={s.badge} />
-                        {s.label}
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </li>
-        </ul>
+        </div>
       </NavigationMenuContent>
     </NavigationMenuItem>
   );
@@ -567,7 +444,65 @@ export function NavigationBar({
                 locked={lockStudyMgmt}
               />
 
-              <SubjectsDropdown locked={lockSubjects} />
+              {/* 학습과목 dropdown — V5 (카테고리 row + chip) */}
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>
+                  {lockSubjects ? (
+                    <LockIcon
+                      className="mr-1 size-3 opacity-60"
+                      aria-label="잠김"
+                    />
+                  ) : null}
+                  학습과목
+                </NavigationMenuTrigger>
+                <NavigationMenuContent className="left-1/2 -translate-x-1/2">
+                  <div className="flex w-[720px] flex-col gap-3 px-5 py-[18px]">
+                    {SUBJECT_SECTIONS.map((section, si) => (
+                      <div
+                        key={section.exam}
+                        className={cn(
+                          si > 0 &&
+                            "dark:border-border border-t border-black/[0.06] pt-3",
+                        )}
+                      >
+                        {/* 1차 / 2차 섹션 헤더 */}
+                        <div className="text-primary mb-2 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
+                          {section.label}
+                        </div>
+                        <div className="flex flex-col gap-2.5">
+                          {section.groups.map((group) => (
+                            <div
+                              key={group.id}
+                              className="grid grid-cols-[160px_1fr] items-baseline gap-[18px]"
+                            >
+                              <div>
+                                <div className="text-foreground mb-0.5 text-[14px] leading-[1.3] font-bold tracking-[-0.012em]">
+                                  {group.label}
+                                </div>
+                                <div className="dark:text-muted-foreground text-[11px] leading-[1.4] tracking-[-0.005em] text-black/40">
+                                  {group.sub}
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {group.items.map((item) => (
+                                  <NavigationMenuLink
+                                    asChild
+                                    key={`${section.exam}-${item.href}`}
+                                  >
+                                    <Link to={item.href} className={CHIP_CLASS}>
+                                      {item.name}
+                                    </Link>
+                                  </NavigationMenuLink>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
 
               <SimpleDropdown
                 label="학습지원"
