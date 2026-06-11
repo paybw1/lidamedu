@@ -4223,6 +4223,70 @@ export type Database = {
           },
         ]
       }
+      problem_explanation_drafts: {
+        Row: {
+          ai_answer: string | null
+          answer_match: boolean | null
+          content_md: string
+          created_at: string
+          draft_id: string
+          model: string | null
+          note: string | null
+          problem_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["explanation_draft_status"]
+        }
+        Insert: {
+          ai_answer?: string | null
+          answer_match?: boolean | null
+          content_md: string
+          created_at?: string
+          draft_id?: string
+          model?: string | null
+          note?: string | null
+          problem_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["explanation_draft_status"]
+        }
+        Update: {
+          ai_answer?: string | null
+          answer_match?: boolean | null
+          content_md?: string
+          created_at?: string
+          draft_id?: string
+          model?: string | null
+          note?: string | null
+          problem_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["explanation_draft_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_explanation_drafts_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: true
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "problem_explanation_drafts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problem_explanation_drafts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       problem_source_docs: {
         Row: {
           created_at: string
@@ -6452,6 +6516,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      approve_explanation_draft: {
+        Args: { p_draft_id: string }
+        Returns: undefined
+      }
       backfill_article_article_links_from_body: {
         Args: never
         Returns: {
@@ -6855,6 +6923,7 @@ export type Database = {
         | "document_submitted"
         | "verified"
         | "rejected"
+      explanation_draft_status: "pending" | "approved" | "rejected"
       gs_issue_importance: "core" | "side"
       gs_round_status: "draft" | "published" | "closed"
       law_change_kind: "created" | "amended" | "deleted"
@@ -7099,6 +7168,7 @@ export const Constants = {
         "verified",
         "rejected",
       ],
+      explanation_draft_status: ["pending", "approved", "rejected"],
       gs_issue_importance: ["core", "side"],
       gs_round_status: ["draft", "published", "closed"],
       law_change_kind: ["created", "amended", "deleted"],

@@ -565,6 +565,10 @@ export default [
         "features/admin/api/problem-review.tsx",
       ),
       route(
+        "/api/admin/explanation-review",
+        "features/admin/api/explanation-review.tsx",
+      ),
+      route(
         "/api/admin/ai-problem-gen",
         "features/admin/api/ai-problem-gen.tsx",
       ),
@@ -830,6 +834,10 @@ export default [
         index("features/problems/screens/admin-problems-list.tsx"),
         route("/new", "features/admin/screens/admin-problem-new.tsx"),
         route("/review", "features/admin/screens/admin-problem-review.tsx"),
+        route(
+          "/explanations",
+          "features/admin/screens/admin-explanation-review.tsx",
+        ),
         route("/ai-gen", "features/admin/screens/admin-ai-problem-gen.tsx"),
         route("/ox", "features/problems/screens/admin-ox-review.tsx"),
         route("/stats", "features/admin/screens/admin-problem-stats.tsx"),
