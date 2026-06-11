@@ -116,7 +116,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     kindRaw === "mock_progressive" ||
     kindRaw === "other"
       ? kindRaw
-      : undefined;
+      : kindGroup === "mock"
+        ? undefined
+        : "past_exam"; // 구분 필터 제거 — /latest/mcq 는 기출 기본(모의는 ?kind=mock 메뉴로)
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const yearRaw = url.searchParams.get("year");
   const year = yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined;
@@ -141,6 +143,9 @@ const COLUMNS = ["No", "과목", "구분", "명칭", "출제일", "문항"];
 export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   const { packs, filters, canEdit } = loaderData;
   const [showAdd, setShowAdd] = useState(false);
+  // 구분(기출/모의/기타) 필터·컬럼은 항상 숨김 — 전부 기출이라 무의미.
+  // kind 는 메뉴(URL: ?kind=past_exam / ?kind=mock)로 결정.
+  const hideKind = true;
   const filterActive =
     !!filters.subjectScope ||
     !!filters.kind ||
@@ -154,9 +159,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   const descParts = [`${packs.length.toLocaleString("ko-KR")}건`];
   if (filters.subjectScope)
     descParts.push(MCQ_PACK_SUBJECT_LABELS[filters.subjectScope]);
-  if (filters.kindGroup === "mock") descParts.push("모의(통합)");
-  else if (filters.kind)
-    descParts.push(filters.kind === "past_exam" ? "기출" : "모의");
+  // 구분(기출/모의) 라벨은 제거 — 제목이 이미 구분을 표기.
   if (filters.year) descParts.push(`${filters.year}년`);
   if (filters.q) descParts.push(`"${filters.q}" 검색`);
   const isMock =
@@ -178,7 +181,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
       isMock={isMock}
       width="index"
       title={title}
-      desc={`${descParts.join(" · ")} — 기출/모의 클릭 시 문제·해설·동영상·결과 통계로 진입합니다.`}
+      desc={`${descParts.join(" · ")} — 명칭 클릭 시 문제·해설·동영상·결과 통계로 진입합니다.`}
       headerRight={
         canEdit && !showAdd ? (
           <div className="flex gap-2">
@@ -207,7 +210,11 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
           defaultValue: filters.q,
         }}
         hasActive={filterActive}
-        resetTo="/latest/mcq"
+        resetTo={
+          filters.kind === "past_exam"
+            ? "/latest/mcq?kind=past_exam"
+            : "/latest/mcq"
+        }
       >
         <FilterSelect
           name="subject"
@@ -218,14 +225,12 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
             label: o.label,
           }))}
         />
-        <FilterSelect
+        {/* 구분(기출/모의/기타) 필터는 제거 — kind 는 메뉴(URL)로 결정. 다른 필터(과목·연도)
+            제출 시 현재 kind/kindGroup 을 유지하기 위해 hidden 으로만 고정. */}
+        <input
+          type="hidden"
           name="kind"
-          ariaLabel="구분"
-          defaultValue={filters.kindGroup ?? filters.kind ?? ""}
-          options={KINDS.map((o) => ({
-            value: o.value === "all" ? "" : o.value,
-            label: o.label,
-          }))}
+          value={filters.kindGroup ?? filters.kind ?? "past_exam"}
         />
         <FilterSelect
           name="year"
@@ -263,12 +268,18 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
           <table className="w-full min-w-[760px] border-collapse">
             <thead>
               <tr className="border-border bg-muted/60 border-b">
-                {COLUMNS.map((label, i) => (
+                {/* 기출(past_exam) 전용 페이지에선 구분 컬럼 제거(전부 기출이라 무의미) */}
+                {(hideKind
+                  ? COLUMNS.filter((c) => c !== "구분")
+                  : COLUMNS
+                ).map((label) => (
                   <th
                     key={label}
                     className={cn(
                       "text-muted-foreground px-3 py-3 font-mono text-[11px] font-semibold tracking-[0.04em] whitespace-nowrap uppercase",
-                      i === 0 || i === 5 ? "text-center" : "text-left",
+                      label === "No" || label === "문항"
+                        ? "text-center"
+                        : "text-left",
                     )}
                   >
                     {label}
@@ -284,6 +295,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
                   pack={p}
                   index={i + 1}
                   canEdit={canEdit}
+                  hideKind={hideKind}
                 />
               ))}
             </tbody>
@@ -381,10 +393,13 @@ function PackRow({
   pack,
   index,
   canEdit,
+  hideKind = false,
 }: {
   pack: McqPackItem;
   index: number;
   canEdit: boolean;
+  // 기출 전용 페이지에선 구분(기출/모의) 셀 숨김. 비공개 표시는 제목 옆으로.
+  hideKind?: boolean;
 }) {
   const detailHref = `/latest/mcq/${pack.packId}`;
   const mode = defaultStartMode(pack.kind);
@@ -397,12 +412,14 @@ function PackRow({
       <td className="px-3 py-3 text-[13px]">
         {MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}
       </td>
-      <td className="px-3 py-3">
-        <Pill tone={KIND_TONE[pack.kind]}>
-          {MCQ_PACK_KIND_SHORT[pack.kind]}
-          {!pack.isPublished ? " · 비공개" : ""}
-        </Pill>
-      </td>
+      {hideKind ? null : (
+        <td className="px-3 py-3">
+          <Pill tone={KIND_TONE[pack.kind]}>
+            {MCQ_PACK_KIND_SHORT[pack.kind]}
+            {!pack.isPublished ? " · 비공개" : ""}
+          </Pill>
+        </td>
+      )}
       <td className="px-3 py-3">
         {/* 팩 제목 = 응시 즉시 시작 폼 버튼. mode 는 팩 종류에 따라 자동 선택. */}
         <Form
@@ -438,6 +455,12 @@ function PackRow({
         >
           <InfoIcon className="size-2.5" /> 상세
         </Link>
+        {/* 구분 셀 숨김 시 비공개 표시는 제목 옆으로 (운영자 식별용). */}
+        {hideKind && !pack.isPublished ? (
+          <span className="text-muted-foreground border-border ml-2 inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px]">
+            비공개
+          </span>
+        ) : null}
         {pack.description ? (
           <p className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">
             {pack.description}
