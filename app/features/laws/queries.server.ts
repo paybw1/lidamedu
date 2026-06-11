@@ -47,27 +47,39 @@ export async function getArticleSkeleton(
   client: SupabaseClient<Database>,
   lawId: string,
 ): Promise<ArticleNode[]> {
-  const { data, error } = await client
-    .from("articles")
-    .select(
-      "article_id, parent_id, level, path, article_number, display_label, importance, current_revision_id",
-    )
-    .eq("law_id", lawId)
-    .is("deleted_at", null)
-    .order("path");
+  // PostgREST 는 응답을 기본 1000행으로 제한한다. 민법은 노드가 1300개를 넘어
+  // 페이지네이션 없이 한 번에 받으면 path 정렬 끝쪽(제5편 상속 등)이 잘린다.
+  // → 1000행씩 끝까지 받아 합친다(특허·상표 등 1000 미만 법령은 1회로 끝).
+  const PAGE = 1000;
+  const out: ArticleNode[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await client
+      .from("articles")
+      .select(
+        "article_id, parent_id, level, path, article_number, display_label, importance, current_revision_id",
+      )
+      .eq("law_id", lawId)
+      .is("deleted_at", null)
+      .order("path")
+      .range(from, from + PAGE - 1);
 
-  if (error) throw error;
-
-  return (data ?? []).map((row) => ({
-    articleId: row.article_id,
-    parentId: row.parent_id,
-    level: row.level,
-    path: typeof row.path === "string" ? row.path : String(row.path ?? ""),
-    articleNumber: row.article_number,
-    displayLabel: row.display_label,
-    importance: row.importance ?? 1,
-    hasBody: row.current_revision_id !== null,
-  }));
+    if (error) throw error;
+    const batch = data ?? [];
+    for (const row of batch) {
+      out.push({
+        articleId: row.article_id,
+        parentId: row.parent_id,
+        level: row.level,
+        path: typeof row.path === "string" ? row.path : String(row.path ?? ""),
+        articleNumber: row.article_number,
+        displayLabel: row.display_label,
+        importance: row.importance ?? 1,
+        hasBody: row.current_revision_id !== null,
+      });
+    }
+    if (batch.length < PAGE) break;
+  }
+  return out;
 }
 
 // 큰 법령 lazy-load 용 — 한 부모의 직속 자식만 가져옴.
