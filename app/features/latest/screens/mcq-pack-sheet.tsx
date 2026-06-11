@@ -39,6 +39,7 @@ import {
   isMockKind,
 } from "~/features/mcq-packs/labels";
 import { getPackById } from "~/features/mcq-packs/queries.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 import {
   getQuizSession,
@@ -49,6 +50,11 @@ import {
 } from "~/features/study/queries.server";
 
 import type { Route } from "./+types/mcq-pack-sheet";
+
+// 이미지 기반 문항(자연과학 기출 등)은 본문을 Markdown 이미지(![](url))로 저장한다.
+// 이미지 마크다운이 있을 때만 MarkdownView 로 렌더하고, 그 외 텍스트 문항은 기존
+// whitespace-pre-line 경로를 그대로 유지한다 (기존 텍스트 문항 렌더 회귀 방지).
+const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<img\b/i;
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack) return [{ title: "응시 | Lidam Patent Attorney Academy" }];
@@ -592,9 +598,13 @@ function ProblemBlock({
         </div>
       </div>
       <div className="space-y-4 px-4 py-4">
-        <p className="text-[15px] leading-relaxed font-medium whitespace-pre-line">
-          {problem.bodyMd}
-        </p>
+        {MD_IMAGE_RE.test(problem.bodyMd) ? (
+          <MarkdownView text={problem.bodyMd} className="text-[15px]" />
+        ) : (
+          <p className="text-[15px] leading-relaxed font-medium whitespace-pre-line">
+            {problem.bodyMd}
+          </p>
+        )}
 
         {problem.boxItems.length > 0 ? (
           <div className="border-foreground/30 bg-muted/40 rounded-xl border-2 px-4 py-3">
