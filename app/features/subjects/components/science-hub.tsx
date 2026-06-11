@@ -15,10 +15,13 @@ export default function ScienceHub({
   subject,
   sections,
   progress,
+  hideBackLink = false,
 }: {
   subject: ScienceSubjectSlug;
   sections: ScienceSectionStats[];
   progress: { attempted: number; correct: number; total: number };
+  // /subjects/science 허브에 탭으로 임베드될 때 "← 자연과학" 백링크 숨김(중복).
+  hideBackLink?: boolean;
 }) {
   const meta = SCIENCE_SUBJECTS[subject];
   const totalProblems = sections.reduce((s, x) => s + x.problemCount, 0);
@@ -35,12 +38,14 @@ export default function ScienceHub({
 
         {/* Page header */}
         <div className="mb-8">
-          <Link
-            to="/subjects/science"
-            className="text-muted-foreground mb-3 inline-flex items-center gap-1 text-xs hover:text-foreground transition-colors"
-          >
-            <ChevronRightIcon className="size-3 rotate-180" /> 자연과학
-          </Link>
+          {hideBackLink ? null : (
+            <Link
+              to="/subjects/science"
+              className="text-muted-foreground mb-3 inline-flex items-center gap-1 text-xs hover:text-foreground transition-colors"
+            >
+              <ChevronRightIcon className="size-3 rotate-180" /> 자연과학
+            </Link>
+          )}
           <p className="text-primary mb-1 font-mono text-[11px] font-bold uppercase tracking-widest">
             SCIENCE · 1차 필수
           </p>
