@@ -98,6 +98,12 @@ for (const [pageStr, nums] of Object.entries(PAGE_QUESTIONS)) {
     cuts = cands.slice(0, K - 1).map((c) => c.yc).sort((a, b) => a - b);
   }
 
+  // clamp cuts into (top,bot) + strictly increasing so a bad OCR cut never yields an
+  // inverted segment (negative height). Degenerate pages still produce crops to inspect.
+  cuts = cuts
+    .map((c) => Math.min(bot - 2, Math.max(top + 2, c)))
+    .sort((a, b) => a - b)
+    .filter((c, i, arr) => i === 0 || c > arr[i - 1] + 1);
   const bounds = [top, ...cuts, bot];
   const gapReport = blankRuns(rowDark, H)
     .filter((r) => r.y0 > top + 8 && r.y1 < bot - 8 && r.h >= CUT_GAP)
