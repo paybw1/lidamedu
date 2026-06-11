@@ -48,10 +48,6 @@ import {
 
 type SimpleLink = { label: string; to: string };
 
-// V5 nav dropdown chip — rest 는 #FAFAFA pill, hover/focus 시 brand blue.
-const CHIP_CLASS =
-  "inline-flex items-center rounded-full border border-black/[0.06] bg-[#FAFAFA] px-[13px] py-[7px] text-[13px] font-semibold leading-none tracking-[-0.01em] text-foreground no-underline outline-none transition-all duration-150 hover:border-transparent hover:bg-[#2D5BA8] hover:text-white focus-visible:border-transparent focus-visible:bg-[#2D5BA8] focus-visible:text-white dark:border-border dark:bg-muted";
-
 // 상단 네비게이션 8개 top-level (좌→우):
 // 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습지원▾ · 학습정보▾ · 모의고사▾ · 커뮤니티▾ · 운영자(flat)
 
@@ -331,7 +327,8 @@ function FlatLink({ to, label }: SimpleLink) {
   );
 }
 
-// 단순 SimpleLink 목록 드롭다운 (한 컬럼). 학습/학습 보조/커뮤니티/최신 정보 공용.
+// 컴팩트 컬럼 드롭다운(시안 B) — 칩 wrap 대신 세로 링크 목록. 학습관리/지원/정보/
+// 모의고사/커뮤니티 공용. 한 컬럼(좁고 빠른 클릭, 화면을 덜 가림).
 function SimpleDropdown({
   label,
   items,
@@ -350,16 +347,21 @@ function SimpleDropdown({
         ) : null}
         {label}
       </NavigationMenuTrigger>
-      <NavigationMenuContent className="left-1/2 -translate-x-1/2">
-        <div className="flex w-[340px] flex-wrap gap-1.5 p-3">
+      <NavigationMenuContent>
+        <ul className="flex w-[248px] flex-col gap-0.5">
           {items.map((item) => (
-            <NavigationMenuLink asChild key={item.to}>
-              <Link to={item.to} className={CHIP_CLASS}>
-                {item.label}
-              </Link>
-            </NavigationMenuLink>
+            <li key={item.to}>
+              <NavigationMenuLink asChild>
+                <Link
+                  to={item.to}
+                  className="hover:bg-accent hover:text-accent-foreground flex items-center rounded-md px-3 py-2 text-sm font-medium"
+                >
+                  {item.label}
+                </Link>
+              </NavigationMenuLink>
+            </li>
           ))}
-        </div>
+        </ul>
       </NavigationMenuContent>
     </NavigationMenuItem>
   );
@@ -455,49 +457,42 @@ export function NavigationBar({
                   ) : null}
                   학습과목
                 </NavigationMenuTrigger>
-                <NavigationMenuContent className="left-1/2 -translate-x-1/2">
-                  <div className="flex w-[720px] flex-col gap-3 px-5 py-[18px]">
-                    {SUBJECT_SECTIONS.map((section, si) => (
-                      <div
-                        key={section.exam}
-                        className={cn(
-                          si > 0 &&
-                            "dark:border-border border-t border-black/[0.06] pt-3",
-                        )}
-                      >
-                        {/* 1차 / 2차 섹션 헤더 */}
-                        <div className="text-primary mb-2 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
+                <NavigationMenuContent>
+                  {/* 시안 B 컴팩트 — 1차 / 2차 두 컬럼, 과목별 세로 링크 + 메타 */}
+                  <div className="grid w-[520px] grid-cols-2 gap-x-3">
+                    {SUBJECT_SECTIONS.map((section) => (
+                      <div key={section.exam}>
+                        <div className="text-primary px-3 pt-1.5 pb-1 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
                           {section.label}
                         </div>
-                        <div className="flex flex-col gap-2.5">
-                          {section.groups.map((group) => (
-                            <div
-                              key={group.id}
-                              className="grid grid-cols-[160px_1fr] items-baseline gap-[18px]"
-                            >
-                              <div>
-                                <div className="text-foreground mb-0.5 text-[14px] leading-[1.3] font-bold tracking-[-0.012em]">
-                                  {group.label}
-                                </div>
-                                <div className="dark:text-muted-foreground text-[11px] leading-[1.4] tracking-[-0.005em] text-black/40">
-                                  {group.sub}
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {group.items.map((item) => (
-                                  <NavigationMenuLink
-                                    asChild
-                                    key={`${section.exam}-${item.href}`}
-                                  >
-                                    <Link to={item.href} className={CHIP_CLASS}>
-                                      {item.name}
+                        {section.groups.map((group) => (
+                          <div key={group.id} className="mb-1">
+                            <div className="text-muted-foreground px-3 pt-1 pb-0.5 text-[10px] font-semibold">
+                              {group.label}
+                            </div>
+                            <ul className="flex flex-col gap-0.5">
+                              {group.items.map((item) => (
+                                <li key={`${section.exam}-${item.href}`}>
+                                  <NavigationMenuLink asChild>
+                                    <Link
+                                      to={item.href}
+                                      className="hover:bg-accent hover:text-accent-foreground flex items-center gap-2 rounded-md px-3 py-1.5 text-sm"
+                                    >
+                                      <span className="font-medium">
+                                        {item.name}
+                                      </span>
+                                      {item.meta ? (
+                                        <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
+                                          {item.meta}
+                                        </span>
+                                      ) : null}
                                     </Link>
                                   </NavigationMenuLink>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
