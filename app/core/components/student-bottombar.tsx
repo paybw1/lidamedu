@@ -25,7 +25,7 @@ import { Sheet, SheetContent, SheetTitle } from "~/core/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "~/core/components/ui/avatar";
 import { openCommandPalette } from "~/core/components/command-palette";
 import ThemeSwitcher from "~/core/components/theme-switcher";
-import { SUBJECT_SECTIONS } from "~/core/lib/subject-groups";
+import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 import {
   FLAT_ADMIN,
@@ -103,10 +103,8 @@ export function StudentBottomBar({
   let activeTabId: string | null = null;
   for (const g of core) {
     if (g.id === "subjects") {
-      const subjActive = SUBJECT_SECTIONS.some((s) =>
-        s.groups.some((gg) =>
-          gg.items.some((i) => isNavActive(i.href, path, search)),
-        ),
+      const subjActive = SUBJECT_NAV_ITEMS.some((i) =>
+        isNavActive(i.href, path, search),
       );
       if (subjActive) activeTabId = "subjects";
     } else if (g.items.some((i) => isNavActive(i.to, path, search))) {
@@ -314,42 +312,29 @@ function SubjectsSheet({
   return (
     <div>
       <p className="mb-3 text-sm font-bold">학습과목</p>
-      {SUBJECT_SECTIONS.map((section) => (
-        <div key={section.exam} className="mb-3">
-          <p className="text-primary mb-1.5 text-[10px] font-bold tracking-widest uppercase">
-            {section.label}
-          </p>
-          {section.groups.map((group) => (
-            <div key={`${section.exam}-${group.id}`} className="mb-2">
-              <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
-                {group.label}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {group.items.map((item) => {
-                  const active = isNavActive(item.href, path, search);
-                  return (
-                    <Link
-                      key={`${section.exam}-${group.id}-${item.href}`}
-                      to={item.href}
-                      viewTransition
-                      prefetch="intent"
-                      onClick={onPick}
-                      className={cn(
-                        "border-border rounded-md border px-2.5 py-1 text-xs",
-                        active
-                          ? "bg-primary/10 text-primary border-primary font-semibold"
-                          : "bg-muted/30 hover:border-primary hover:text-primary",
-                      )}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
+      {/* 1/2차 구분 없는 평면 6과목 */}
+      <div className="flex flex-wrap gap-1.5">
+        {SUBJECT_NAV_ITEMS.map((item) => {
+          const active = isNavActive(item.href, path, search);
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              viewTransition
+              prefetch="intent"
+              onClick={onPick}
+              className={cn(
+                "border-border rounded-md border px-2.5 py-1 text-xs",
+                active
+                  ? "bg-primary/10 text-primary border-primary font-semibold"
+                  : "bg-muted/30 hover:border-primary hover:text-primary",
+              )}
+            >
+              {item.name}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -95,6 +95,7 @@ const CIVILPROC_GROUP: SubjectGroup = {
 };
 
 // nav dropdown 은 1차 → 2차 두 섹션. 산업재산권법은 양쪽에 노출된다.
+// (active-detection 등 일부 로직에서 계속 사용)
 export const SUBJECT_SECTIONS: ReadonlyArray<ExamSection> = [
   {
     exam: "first",
@@ -105,5 +106,20 @@ export const SUBJECT_SECTIONS: ReadonlyArray<ExamSection> = [
     exam: "second",
     label: "2차 · 주관식",
     groups: [IP_GROUP, CIVILPROC_GROUP],
+  },
+] as const;
+
+// nav 학습과목 — 1/2차 구분 없는 평면 6과목 목록(표시 순서 고정).
+// 자연과학은 /subjects/science 허브 단일 진입. 메뉴 렌더는 이 목록을 쓴다.
+export const SUBJECT_NAV_ITEMS: ReadonlyArray<SubjectItem> = [
+  { name: "민법", href: "/subjects/civil", meta: "조문 1118 · 판례 4.2k" },
+  { name: "특허법", href: "/subjects/patent", meta: "조문 232 · 판례 1.8k" },
+  { name: "상표법", href: "/subjects/trademark", meta: "조문 99 · 판례 940" },
+  { name: "디자인보호법", href: "/subjects/design", meta: "조문 233 · 판례 612" },
+  { name: "자연과학", href: "/subjects/science", meta: "물리·화학·생물·지구과학" },
+  {
+    name: "민사소송법",
+    href: "/subjects/civil-procedure",
+    meta: "조문 502 · 판례 2.1k",
   },
 ] as const;

@@ -9,7 +9,7 @@ import {
   SearchIcon,
   UserIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import {
@@ -21,7 +21,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "~/core/components/ui/navigation-menu";
-import { SUBJECT_SECTIONS } from "~/core/lib/subject-groups";
+import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 
 import { openCommandPalette } from "./command-palette";
@@ -456,49 +456,17 @@ export function NavigationBar({
                   학습과목
                 </NavigationMenuTrigger>
                 <NavigationMenuContent className="left-1/2 -translate-x-1/2">
-                  <div className="flex w-[720px] flex-col gap-3 px-5 py-[18px]">
-                    {SUBJECT_SECTIONS.map((section, si) => (
-                      <div
-                        key={section.exam}
-                        className={cn(
-                          si > 0 &&
-                            "dark:border-border border-t border-black/[0.06] pt-3",
-                        )}
-                      >
-                        {/* 1차 / 2차 섹션 헤더 */}
-                        <div className="text-primary mb-2 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
-                          {section.label}
-                        </div>
-                        <div className="flex flex-col gap-2.5">
-                          {section.groups.map((group) => (
-                            <div
-                              key={group.id}
-                              className="grid grid-cols-[160px_1fr] items-baseline gap-[18px]"
-                            >
-                              <div>
-                                <div className="text-foreground mb-0.5 text-[14px] leading-[1.3] font-bold tracking-[-0.012em]">
-                                  {group.label}
-                                </div>
-                                <div className="dark:text-muted-foreground text-[11px] leading-[1.4] tracking-[-0.005em] text-black/40">
-                                  {group.sub}
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {group.items.map((item) => (
-                                  <NavigationMenuLink
-                                    asChild
-                                    key={`${section.exam}-${item.href}`}
-                                  >
-                                    <Link to={item.href} className={CHIP_CLASS}>
-                                      {item.name}
-                                    </Link>
-                                  </NavigationMenuLink>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                  {/* 1/2차 구분 없는 평면 6과목 — 가로 1줄 */}
+                  <div className="flex w-max items-center gap-1.5 p-3">
+                    {SUBJECT_NAV_ITEMS.map((item) => (
+                      <NavigationMenuLink asChild key={item.href}>
+                        <Link
+                          to={item.href}
+                          className={cn(CHIP_CLASS, "whitespace-nowrap")}
+                        >
+                          {item.name}
+                        </Link>
+                      </NavigationMenuLink>
                     ))}
                   </div>
                 </NavigationMenuContent>
@@ -577,29 +545,16 @@ export function NavigationBar({
                   <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
                     학습과목
                   </p>
-                  {SUBJECT_SECTIONS.map((section) => (
-                    <Fragment key={section.exam}>
-                      <p className="text-primary px-3 pt-1.5 font-mono text-[11px] font-bold tracking-wide uppercase">
-                        {section.label}
-                      </p>
-                      {section.groups.flatMap((group) =>
-                        group.items.map((item) => (
-                          <SheetClose
-                            key={`${section.exam}-${item.href}`}
-                            asChild
-                          >
-                            <Link
-                              to={item.href}
-                              className="hover:bg-accent rounded-md px-3 py-2 pl-5"
-                            >
-                              {group.label === item.name
-                                ? item.name
-                                : `${group.label} · ${item.name}`}
-                            </Link>
-                          </SheetClose>
-                        )),
-                      )}
-                    </Fragment>
+                  {/* 1/2차 구분 없는 평면 6과목 */}
+                  {SUBJECT_NAV_ITEMS.map((item) => (
+                    <SheetClose key={item.href} asChild>
+                      <Link
+                        to={item.href}
+                        className="hover:bg-accent rounded-md px-3 py-2 pl-5"
+                      >
+                        {item.name}
+                      </Link>
+                    </SheetClose>
                   ))}
 
                   <MobileGroup label="학습지원" items={studyAidItems} />

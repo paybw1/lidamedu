@@ -16,7 +16,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-import { SUBJECT_SECTIONS } from "~/core/lib/subject-groups";
+import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 import {
   FLAT_ADMIN,
@@ -536,43 +536,28 @@ function SubjectsFull({
         )}
       </button>
       {open ? (
-        <div className="border-border ml-6 mt-1 border-l pl-2">
-          {SUBJECT_SECTIONS.map((section) => (
-            <div key={section.exam} className="mb-2">
-              <p className="text-primary mt-1 mb-1 px-1 text-[9px] font-bold tracking-widest uppercase">
-                {section.label}
-              </p>
-              {section.groups.map((group) => (
-                <div key={`${section.exam}-${group.id}`} className="mb-1.5">
-                  <p className="text-muted-foreground px-1 text-[10px] font-semibold">
-                    {group.label}
-                  </p>
-                  <div className="flex flex-col gap-0.5 pl-2">
-                    {group.items.map((item) => {
-                      const active = isNavActive(item.href, path, search);
-                      return (
-                        <Link
-                          key={`${section.exam}-${group.id}-${item.href}`}
-                          to={item.href}
-                          viewTransition
-                          prefetch="intent"
-                          onClick={onPick}
-                          className={cn(
-                            "rounded-md px-1.5 py-0.5 text-xs transition-colors",
-                            active
-                              ? "bg-primary/10 text-primary font-semibold"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                          )}
-                        >
-                          {item.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
+        <div className="border-border ml-6 mt-1 flex flex-col gap-0.5 border-l pl-2">
+          {/* 1/2차 구분 없는 평면 6과목 */}
+          {SUBJECT_NAV_ITEMS.map((item) => {
+            const active = isNavActive(item.href, path, search);
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                viewTransition
+                prefetch="intent"
+                onClick={onPick}
+                className={cn(
+                  "rounded-md px-1.5 py-1 text-xs transition-colors",
+                  active
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {item.name}
+              </Link>
+            );
+          })}
         </div>
       ) : null}
     </div>
@@ -588,8 +573,8 @@ function SubjectsIcon({
   search: string;
   onExpand: () => void;
 }) {
-  const hasActive = SUBJECT_SECTIONS.some((s) =>
-    s.groups.some((g) => g.items.some((i) => isNavActive(i.href, path, search))),
+  const hasActive = SUBJECT_NAV_ITEMS.some((i) =>
+    isNavActive(i.href, path, search),
   );
   return (
     <div className="group relative">
