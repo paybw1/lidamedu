@@ -213,3 +213,15 @@ rag-lab/index/
 rag-lab/data/db_export/
 rag-lab/data/chunks/
 rag-lab/dist/
+
+# 자과 기출 적재 파이프라인(feat-3-304) 생성물 — 원본 PDF + data.mjs 에서 재생성
+/scripts/jagwa/.render/
+/scripts/jagwa/.crops/
+/scripts/jagwa/.shots/
+/scripts/jagwa/problems.json
+
+# 기출 원본 스캔 PDF — 대용량 바이너리(수십 MB), 운영 데이터(hwpx 원본과 동일 취급)
+/source/기출모음(2010~2026)/
+
+# db:typegen 임시 산출물
+/database.types.ts.tmp
