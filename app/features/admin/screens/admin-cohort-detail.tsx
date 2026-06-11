@@ -752,7 +752,9 @@ function FormField({
 // feat-8-014 위험 학생 자동 분류
 function AtRiskCard({ summary }: { summary: AtRiskSummary }) {
   if (summary.students.length === 0) return null;
-  const topRisk = summary.students.slice(0, 5);
+  // "상담 권장" = 위험(high)+주의(medium) 전원. 안정(low)은 제외, 상한 없음
+  // (top 5 고정 캡 때문에 6번째부터 안 보이던 버그 수정). 이미 riskScore 내림차순.
+  const topRisk = summary.students.filter((s) => s.riskLevel !== "low");
   const showBaseline = summary.baseline !== null && summary.baseline.sampleSize > 0;
   return (
     <Card className="border-rose-200 dark:border-rose-800">
