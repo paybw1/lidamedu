@@ -218,6 +218,7 @@ rag-lab/dist/
 /scripts/jagwa/.render/
 /scripts/jagwa/.crops/
 /scripts/jagwa/.shots/
+/scripts/jagwa/.ocr/
 /scripts/jagwa/problems.json
 
 # 기출 원본 스캔 PDF — 대용량 바이너리(수십 MB), 운영 데이터(hwpx 원본과 동일 취급)

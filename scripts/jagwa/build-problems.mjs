@@ -58,7 +58,7 @@ const out = {
   },
   problems,
 };
-const jsonPath = path.join(path.dirname(CROP_DIR), "problems.json");
+const jsonPath = path.join(CROP_DIR, "problems.json");
 fs.writeFileSync(jsonPath, JSON.stringify(out, null, 2));
 
 // summary table

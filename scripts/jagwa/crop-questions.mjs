@@ -131,7 +131,7 @@ for (let idx = 0; idx < crops.length; idx++) {
     .flatten({ background: "#ffffff" })
     .toBuffer({ resolveWithObject: true });
   layers.push({ input: thumb.data, left: cellX + 6 + Math.floor((TW - thumb.info.width) / 2), top: cellY + 28 });
-  const label = `Q${n}  ${q.scienceSubject.slice(0, 4)}  ${q.format}  ans:${q.answers.join(",")}`;
+  const label = `Q${n}  ${q.scienceSubject.slice(0, 4)}  ${q.format}  ans:${(q.answers ?? []).join(",")}`;
   const svg = Buffer.from(
     `<svg width="${CW}" height="26"><rect width="${CW}" height="26" fill="#eef"/>` +
     `<text x="6" y="18" font-family="sans-serif" font-size="15" fill="#003">${label}</text></svg>`,
