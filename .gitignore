@@ -245,3 +245,6 @@ rag-lab/dist/
 
 # 박스 해설 분할 전 백업(롤백용, 운영데이터)
 /scripts/.box-expl-backup.json
+
+# 박스 이관 전 body_md 백업(롤백용)
+/scripts/.civilbox-backup.json
