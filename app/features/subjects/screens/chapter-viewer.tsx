@@ -6,13 +6,15 @@
 import type { Route } from "./+types/chapter-viewer";
 
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   EyeIcon,
   EyeOffIcon,
   ListTreeIcon,
   PencilLineIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, data } from "react-router";
+import { Link, data, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -118,18 +120,28 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Unauthorized", { status: 401 });
   }
 
-  const chapter = await getChapterWithArticles(client, law.lawId, chapterId);
+  // 본문은 페이지 단위(150조)로 끝까지 열람. 대용량 편(채권 405조)도 다음 페이지로 전부 본다.
+  const PAGE_SIZE = 150;
+  const pageParam = Number(new URL(request.url).searchParams.get("page"));
+  const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
+
+  const chapter = await getChapterWithArticles(client, law.lawId, chapterId, {
+    offset: (page - 1) * PAGE_SIZE,
+    limit: PAGE_SIZE,
+  });
   if (!chapter) {
     throw data("Chapter not found", { status: 404 });
   }
+  const totalPages = Math.max(1, Math.ceil(chapter.totalArticles / PAGE_SIZE));
 
   // 편/큰 장처럼 자손 조문이 많으면 per-article apparatus(주석·Q&A·OX·빈칸·강의자료)
   // 팬아웃이 수백 쿼리가 되어 서버리스(Vercel) 타임아웃을 유발한다(민법 제5편 상속 127조 등).
-  // → 임계 초과 그룹은 본문만 표시하고 apparatus 조회를 건너뛴다.
+  // → 임계 초과 그룹은 본문만 표시하고 apparatus 조회를 건너뛴다(본문은 페이지로 끝까지 열람).
   // 임계 60: 기존 flat 법령 최대 장(특허 55조)을 무회귀로 유지하고, 민법/민소의
-  // 편·대형 장(자손 60+)만 건너뛴다(절·소형 장은 그대로 전체 기능).
+  // 편·대형 장(자손 60+)만 건너뛴다(절·소형 장은 그대로 전체 기능). totalArticles 기준이라
+  // 모든 페이지에서 일관 적용.
   const APPARATUS_LIMIT = 60;
-  const apparatusSkipped = chapter.articles.length > APPARATUS_LIMIT;
+  const apparatusSkipped = chapter.totalArticles > APPARATUS_LIMIT;
   const articleIds = apparatusSkipped
     ? []
     : chapter.articles.map((a) => a.articleId);
@@ -228,6 +240,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lawId: law.lawId,
     chapter,
     apparatusSkipped,
+    page,
+    totalPages,
+    pageSize: PAGE_SIZE,
     articles,
     systematicNodes,
     bookmarkLevels,
@@ -267,6 +282,8 @@ function Inner({
     lawId,
     chapter,
     apparatusSkipped,
+    page,
+    totalPages,
     articles,
     systematicNodes,
     bookmarkLevels,
@@ -569,16 +586,16 @@ function Inner({
             <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
           ) : null}
 
-          {/* 자손 조문이 많은 편/장 — apparatus 생략 + (초과 시) 본문 일부만 안내 */}
+          {/* 자손 조문이 많은 편/장 — apparatus 생략 안내 (본문은 페이지로 끝까지 열람) */}
           {apparatusSkipped ? (
             <Card className="mb-4 rounded-xl border-amber-300 bg-amber-50 shadow-sm dark:border-amber-700/50 dark:bg-amber-950/20">
               <CardContent className="py-3 text-sm text-amber-900 dark:text-amber-200">
                 이 {levelLabel}에는 조문이 <b>{chapter.totalArticles}개</b>로 많아{" "}
                 <b>본문만</b> 표시합니다
-                {chapter.totalArticles > chapter.articles.length ? (
+                {totalPages > 1 ? (
                   <>
                     {" "}
-                    (처음 <b>{chapter.articles.length}개</b>)
+                    (<b>{totalPages}페이지</b>로 끝까지 열람)
                   </>
                 ) : null}
                 . 즐겨찾기·포스트잇·관련 문제·빈칸 자료 등 전체 기능은 좌측 트리에서{" "}
@@ -586,6 +603,8 @@ function Inner({
               </CardContent>
             </Card>
           ) : null}
+
+          <ChapterPagination page={page} totalPages={totalPages} />
 
           {/* ── 조문 카드 목록 ── */}
           {chapter.articles.length === 0 ? (
@@ -750,8 +769,60 @@ function Inner({
               );
             })
           )}
+
+          <ChapterPagination page={page} totalPages={totalPages} />
         </main>
       </div>
     </div>
+  );
+}
+
+// 대용량 편/장 본문을 페이지 단위로 끝까지 열람. totalPages<=1 이면 표시 안 함.
+// 다른 쿼리 파라미터(blank-owner 등)는 보존하고 page 만 교체.
+function ChapterPagination({
+  page,
+  totalPages,
+}: {
+  page: number;
+  totalPages: number;
+}) {
+  const [searchParams] = useSearchParams();
+  if (totalPages <= 1) return null;
+  const hrefFor = (p: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("page", String(p));
+    return `?${next.toString()}`;
+  };
+  return (
+    <nav
+      className="mt-5 flex items-center justify-center gap-3 text-sm"
+      aria-label="조문 페이지"
+    >
+      {page > 1 ? (
+        <Button asChild variant="outline" size="sm">
+          <Link to={hrefFor(page - 1)} aria-label="이전 페이지">
+            <ChevronLeftIcon className="size-4" /> 이전
+          </Link>
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" disabled>
+          <ChevronLeftIcon className="size-4" /> 이전
+        </Button>
+      )}
+      <span className="text-muted-foreground tabular-nums">
+        {page} / {totalPages} 페이지
+      </span>
+      {page < totalPages ? (
+        <Button asChild variant="outline" size="sm">
+          <Link to={hrefFor(page + 1)} aria-label="다음 페이지">
+            다음 <ChevronRightIcon className="size-4" />
+          </Link>
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" disabled>
+          다음 <ChevronRightIcon className="size-4" />
+        </Button>
+      )}
+    </nav>
   );
 }

@@ -637,6 +637,7 @@ export async function getChapterWithArticles(
   client: SupabaseClient<Database>,
   lawId: string,
   chapterId: string,
+  opts: { offset?: number; limit?: number } = {},
 ): Promise<ChapterWithArticles | null> {
   // 1. 같은 law 의 모든 노드 fetch (chapter path 기준 자손 필터링용).
   //    PostgREST 기본 1000행 제한 — 민법(1300+ 노드)은 페이지네이션 필수.
@@ -689,10 +690,11 @@ export async function getChapterWithArticles(
       return ax[1] - bx[1];
     });
   // 한 화면에 너무 많은 본문을 렌더하면 클라이언트가 과부하(민법 제3편 채권 405조 등).
-  // 처음 RENDER_MAX 만 본문 렌더, 전체 수는 totalArticles 로 알린다(나머지는 장/절로 진입).
+  // offset/limit 으로 페이지 단위 본문 렌더, 전체 수는 totalArticles 로 알린다(끝까지 페이지로 열람).
   const totalArticles = allDescendants.length;
-  const RENDER_MAX = 150;
-  const descendantArticles = allDescendants.slice(0, RENDER_MAX);
+  const limit = opts.limit ?? 150;
+  const offset = Math.max(0, opts.offset ?? 0);
+  const descendantArticles = allDescendants.slice(offset, offset + limit);
 
   // 3. 본문 fetch
   const revIds = descendantArticles
