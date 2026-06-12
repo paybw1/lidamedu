@@ -3,6 +3,7 @@ import type { Route } from "./+types/private.layout";
 import { Outlet, data, redirect } from "react-router";
 
 import { CommandPalette } from "~/core/components/command-palette";
+import { requireServiceDataConsent } from "../lib/require-consent.server";
 import makeServerClient from "../lib/supa-client.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -17,6 +18,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) {
     throw redirect("/login", { headers });
   }
+
+  // feat-8-026 — 학습 데이터 활용 미동의 학생은 /consent 로. staff/동의자/allow-list 통과.
+  await requireServiceDataConsent(client, user, request, headers);
 
   return data({}, { headers });
 }

@@ -549,6 +549,7 @@
 | feat-8-024 | **기출문제 지문 기반 판례 연동** — 객관식 1차 기출문제(origin=past_exam·exam_round=first·format mc_*)의 지문(body_md+choices+box_items)에서 사건번호 토큰을 추출, `cases.case_number` 정확일치로 `problem_case_links` 자동 생성(`scan_exam_case_links()` plpgsql 함수). 판례 뷰어는 1차 기출을 문제별 칩으로 표시(클릭→문제). 미탐지 문제용 수동 매칭 staff 화면. 기존 1차 데이터 정리 — `cases.exam_1st_years` 비우기 + 1차 객관식 기존 링크 삭제 후 재스캔. 역방향 매칭(`case-exam-problems` 화면, bulk 문제↔판례 탭) 제거. 상세: `docs/features/feat-8-024-exam-case-linking.md` | P1 | ✅ |
 | feat-8-025 | **운영자·강사 중요도 별점** — 판례·조문 뷰어 오른쪽 패널의 "즐겨찾기" 탭을 staff(instructor/admin)에게는 중요도 ★ 별점 에디터로 분기(`ImportanceRating` + `/api/admin/importance`). 학생은 기존 개인 즐겨찾기 유지. `cases.importance`/`articles.importance` 직접 수정 — 별도 편집 화면 불필요. 판례 importance 는 기출횟수(1차 `problem_case_links` + 2차 `exam_2nd_years`) 기반 1회성 backfill(0~2회→★1·3회→★2·4회+→★3). `admin-case-edit` 중요도 입력란 제거. 상세: `docs/features/feat-8-025-staff-importance-rating.md` | P1 | ✅ |
 | feat-8-008 | **3-tier 가격 정책 + 영역 게이팅** — 무료(회원1)/정회원 ₩99,000·월(회원2)/종합반 상담(회원3). 메뉴 영역 단위 접근 제어 — `subscription_plans.features` 영역 플래그(`area_subjects`·`area_study_aids`·`area_study_mgmt`·`area_mock_exams`) + `requireFeature` 서버 가드 + 네비 잠금 UI. feat-8-018 결제 인프라 위에 게이팅. 회원3 = 활성 cohort 멤버. 선행: feat-3-205. 상세: `docs/features/feat-8-008-pricing-tiers.md`. | P2 | ✅ |
+| feat-8-026 | **학습 데이터 활용 필수 동의 (가입 전제)** — 학습 데이터 처리를 서비스 본질(PIPA 15①4 계약 이행)로 이용약관 편입해 가입의 전제 조건화. `profiles.service_data_consent_at`(필수, 기존 선택 `analytics_consent_at` 와 별개·기존 분석 로직 불변). `requireServiceDataConsent` 게이트(private/dashboard layout, 학생 한정·staff 면제, allow-list `/consent`·`/logout`·`/api`) → 미동의 학생 `/consent` 강제. `join.tsx` 필수 체크박스 2종 + 소셜은 게이트로 수렴. 이용약관·개인정보처리방침 한글 재작성(영문 stub 대체) + analytics-consent 선택 범위 명확화 + 온보딩 Step2 선택 표기. 상세: `docs/features/feat-8-026-mandatory-data-consent.md` | P0 | ✅ |
 
 상세 스펙: `docs/features/feat-8-001-exam-results.md` (작성 예정).
 
@@ -709,6 +710,7 @@
 | 합격 결과 운영 | `/admin/exam-results` | feat-8-003 |
 | 분석 활용 동의 약관 | `/legal/analytics-consent` | feat-8-004 |
 | 가입 후 Onboarding | `/onboarding/welcome` | feat-8-017 |
+| 학습 데이터 활용 동의 게이트 | `/consent` | feat-8-026 |
 | 요금제 | `/pricing` | feat-8-018 |
 | 내 구독 | `/me/subscription` | feat-8-018 |
 | 결제 주문 생성 API | `/api/payments/create-order` | feat-8-018 |

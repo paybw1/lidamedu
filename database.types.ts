@@ -4662,6 +4662,7 @@ export type Database = {
           profile_id: string
           recommendation_prefs: Json
           role: Database["public"]["Enums"]["user_role"]
+          service_data_consent_at: string | null
           updated_at: string
         }
         Insert: {
@@ -4680,6 +4681,7 @@ export type Database = {
           profile_id: string
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
+          service_data_consent_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -4698,6 +4700,7 @@ export type Database = {
           profile_id?: string
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
+          service_data_consent_at?: string | null
           updated_at?: string
         }
         Relationships: []

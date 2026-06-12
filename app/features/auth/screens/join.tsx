@@ -11,6 +11,7 @@ import { Form, Link, data, redirect, useNavigation } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { setServiceDataConsent } from "~/features/exam-results/queries.server";
 import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
 import { GoogleLogo } from "../components/logos/google";
@@ -26,6 +27,13 @@ const signupSchema = z.object({
   fullName: z.string().min(1, "이름을 입력해주세요.").max(40),
   email: z.string().email("올바른 이메일 주소를 입력해주세요."),
   password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
+  // 필수 동의 — 미체크 시 가입 거부 (feat-8-026).
+  agreeTos: z.literal("on", {
+    errorMap: () => ({ message: "이용약관·개인정보처리방침 동의가 필요합니다." }),
+  }),
+  agreeData: z.literal("on", {
+    errorMap: () => ({ message: "학습 데이터 활용 동의가 필요합니다." }),
+  }),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -34,6 +42,8 @@ export async function action({ request }: Route.ActionArgs) {
     fullName: fd.get("fullName"),
     email: fd.get("email"),
     password: fd.get("password"),
+    agreeTos: fd.get("agreeTos"),
+    agreeData: fd.get("agreeData"),
   });
   if (!parsed.success) {
     return data(
@@ -42,13 +52,17 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
   const [client, headers] = makeServerClient(request);
-  const { error } = await client.auth.signUp({
+  const { data: signUpData, error } = await client.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: { data: { full_name: parsed.data.fullName } },
   });
   if (error) {
     return data({ error: error.message }, { status: 400 });
+  }
+  // 필수 동의 기록 (feat-8-026) — best-effort. 세션 미확정 시 실패해도 /consent 게이트가 강제.
+  if (signUpData.user) {
+    await setServiceDataConsent(client, signUpData.user.id);
   }
   // 이메일 확인 정책에 따라 즉시 로그인 또는 확인 메일 발송. 가입 직후 대시보드로.
   return redirect("/dashboard", { headers });
@@ -290,6 +304,68 @@ export default function Join({ actionData }: Route.ComponentProps) {
                   background: PALETTE.base,
                 }}
               />
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                  marginBottom: 8,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  name="agreeTos"
+                  required
+                  style={{ marginTop: 3, accentColor: PALETTE.primary }}
+                />
+                <span style={{ font: `400 12px/1.5 ${FONT}`, color: PALETTE.inkSoft }}>
+                  <span style={{ color: PALETTE.primary, fontWeight: 700 }}>[필수]</span>{" "}
+                  <Link
+                    to="/legal/terms-of-service"
+                    target="_blank"
+                    style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}
+                  >
+                    이용약관
+                  </Link>{" "}
+                  및{" "}
+                  <Link
+                    to="/legal/privacy-policy"
+                    target="_blank"
+                    style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}
+                  >
+                    개인정보처리방침
+                  </Link>
+                  에 동의합니다.
+                </span>
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                  marginBottom: 14,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  name="agreeData"
+                  required
+                  style={{ marginTop: 3, accentColor: PALETTE.primary }}
+                />
+                <span style={{ font: `400 12px/1.5 ${FONT}`, color: PALETTE.inkSoft }}>
+                  <span style={{ color: PALETTE.primary, fontWeight: 700 }}>[필수]</span>{" "}
+                  <Link
+                    to="/legal/privacy-policy"
+                    target="_blank"
+                    style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}
+                  >
+                    학습 데이터 활용
+                  </Link>
+                  에 동의합니다. (서비스 제공·진단·가명처리 분석)
+                </span>
+              </label>
               {error ? (
                 <p
                   style={{
@@ -342,15 +418,15 @@ export default function Join({ actionData }: Route.ComponentProps) {
               margin: "20px 0 0",
             }}
           >
-            가입 시{" "}
+            카카오·구글로 가입 시{" "}
             <Link to="/legal/terms-of-service" style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}>
               이용약관
             </Link>
-            과{" "}
+            ·{" "}
             <Link to="/legal/privacy-policy" style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}>
               개인정보처리방침
-            </Link>
-            에 동의하게 됩니다.
+            </Link>{" "}
+            및 학습 데이터 활용에 동의하게 됩니다.
           </p>
         </div>
       </Reveal>

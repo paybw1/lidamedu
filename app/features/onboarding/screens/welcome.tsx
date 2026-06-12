@@ -313,11 +313,12 @@ function ConsentStep() {
       <CardHeader className="px-5 pb-2">
         <div className="flex items-center gap-2">
           <ShieldCheckIcon className="text-primary size-5" />
-          <p className="text-base font-semibold">학습 데이터 분석 활용 동의</p>
+          <p className="text-base font-semibold">합격자 비교 표본 포함 (선택)</p>
         </div>
         <p className="text-muted-foreground text-xs">
-          본인 학습 데이터를 익명·집계 형태로 활용하면, 합격자 평균 대비 비교
-          컨설팅을 받을 수 있습니다.
+          서비스 이용에 필요한 학습 데이터 처리는 가입 시 동의로 완료되었습니다.
+          아래는 <strong>합격자 표본 포함·후기 공개</strong> 등 추가 활용에 대한
+          선택 동의로, 거부하셔도 이용에 제한이 없습니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-3 px-5 pb-5">

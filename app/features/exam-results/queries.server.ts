@@ -173,6 +173,23 @@ export async function setAnalyticsConsent(
   return { ok: true };
 }
 
+/**
+ * 학습 데이터 활용 **필수** 동의 (feat-8-026). 가입/동의 게이트에서 set 한다.
+ * analytics_consent_at(선택) 와 별개 — 이쪽은 서비스 이용 전제 조건.
+ * 철회는 계정 해지/문의로만 — 여기서는 grant(set) 만 노출한다.
+ */
+export async function setServiceDataConsent(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await client
+    .from("profiles")
+    .update({ service_data_consent_at: new Date().toISOString() })
+    .eq("profile_id", userId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function setNextExamPlan(
   client: SupabaseClient<Database>,
   userId: string,

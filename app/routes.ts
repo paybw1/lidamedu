@@ -878,6 +878,8 @@ export default [
     layout("features/dashboard/layouts/dashboard.layout.tsx", [
       route("/dashboard", "features/dashboard/screens/dashboard.tsx"),
     ]),
+    // feat-8-026 — 학습 데이터 활용 필수 동의 게이트(자체 인증, private.layout 밖 = 루프 회피).
+    route("/consent", "features/onboarding/screens/consent.tsx"),
   ]),
 
   ...prefix("/legal", [route("/:slug", "features/legal/screens/policy.tsx")]),
