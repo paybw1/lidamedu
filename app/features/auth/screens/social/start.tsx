@@ -50,9 +50,17 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // Create Supabase client and get response headers for auth cookies
   const [client, headers] = makeServerClient(request);
 
-  // SITE_URL 의 끝 슬래시를 제거 — 안 그러면 redirectTo 가 `//auth/...` (슬래시 2개)가 돼
-  // Supabase Redirect 허용목록과 불일치 → 콜백 실패(bad_oauth_state)로 이어진다.
-  const siteUrl = (process.env.SITE_URL ?? "").replace(/\/+$/, "");
+  // dev(localhost)에서는 요청 origin 으로 콜백을 돌려보낸다 — SITE_URL(운영)로 고정하면
+  // localhost 에서 소셜 로그인 후 운영 사이트(lidamipedu.com)로 튕긴다. localhost 는 Supabase
+  // Redirect 허용목록(http://localhost:5173/**)에 등록돼 있어 콜백이 정상 수락된다.
+  // 운영에서는 기존대로 SITE_URL 사용. 끝 슬래시 제거 — 안 그러면 `//auth/...` 이중 슬래시로
+  // 허용목록과 불일치(bad_oauth_state)로 이어진다.
+  const reqUrl = new URL(request.url);
+  const isLocalhost =
+    reqUrl.hostname === "localhost" || reqUrl.hostname === "127.0.0.1";
+  const siteUrl = isLocalhost
+    ? reqUrl.origin
+    : (process.env.SITE_URL ?? reqUrl.origin).replace(/\/+$/, "");
 
   // Initialize OAuth flow with the specified provider
   const { data: signInData, error: signInError } =
