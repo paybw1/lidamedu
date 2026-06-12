@@ -563,11 +563,13 @@ export async function getSystematicNodeWithArticles(
     string,
     { body_json: unknown; effective_date: string | null }
   >();
-  if (revIds.length > 0) {
+  // .in() 의 id 가 많으면 URL 길이 초과(414/fetch failed) — 100개씩 청크로 분할.
+  const REV_CHUNK = 100;
+  for (let i = 0; i < revIds.length; i += REV_CHUNK) {
     const { data: revs, error: revErr } = await client
       .from("article_revisions")
       .select("revision_id, body_json, effective_date")
-      .in("revision_id", revIds);
+      .in("revision_id", revIds.slice(i, i + REV_CHUNK));
     if (revErr) throw revErr;
     for (const r of revs ?? []) {
       revMap.set(r.revision_id, {
@@ -619,6 +621,8 @@ export interface ChapterWithArticles {
   level: ArticleLevel;
   displayLabel: string;
   path: string;
+  /** 자손 조문 전체 수 (articles 는 RENDER_MAX 로 잘릴 수 있음) */
+  totalArticles: number;
   articles: Array<{
     articleId: string;
     articleNumber: string | null;
@@ -672,7 +676,7 @@ export async function getChapterWithArticles(
     typeof target.path === "string" ? target.path : String(target.path ?? "");
 
   // 2. 자손 article 만 추출 (자기 path prefix + level === 'article')
-  const descendantArticles = rows
+  const allDescendants = rows
     .filter((r) => {
       if (r.level !== "article") return false;
       const p = typeof r.path === "string" ? r.path : String(r.path ?? "");
@@ -684,6 +688,11 @@ export async function getChapterWithArticles(
       if (ax[0] !== bx[0]) return ax[0] - bx[0];
       return ax[1] - bx[1];
     });
+  // 한 화면에 너무 많은 본문을 렌더하면 클라이언트가 과부하(민법 제3편 채권 405조 등).
+  // 처음 RENDER_MAX 만 본문 렌더, 전체 수는 totalArticles 로 알린다(나머지는 장/절로 진입).
+  const totalArticles = allDescendants.length;
+  const RENDER_MAX = 150;
+  const descendantArticles = allDescendants.slice(0, RENDER_MAX);
 
   // 3. 본문 fetch
   const revIds = descendantArticles
@@ -693,11 +702,13 @@ export async function getChapterWithArticles(
     string,
     { body_json: unknown; effective_date: string | null }
   >();
-  if (revIds.length > 0) {
+  // .in() 의 id 가 많으면 URL 길이 초과(414/fetch failed) — 100개씩 청크로 분할.
+  const REV_CHUNK = 100;
+  for (let i = 0; i < revIds.length; i += REV_CHUNK) {
     const { data: revs, error: revErr } = await client
       .from("article_revisions")
       .select("revision_id, body_json, effective_date")
-      .in("revision_id", revIds);
+      .in("revision_id", revIds.slice(i, i + REV_CHUNK));
     if (revErr) throw revErr;
     for (const r of revs ?? []) {
       revMap.set(r.revision_id, {
@@ -712,6 +723,7 @@ export async function getChapterWithArticles(
     level: target.level,
     displayLabel: target.display_label,
     path: targetPath,
+    totalArticles,
     articles: descendantArticles.map((a) => {
       const rev = a.current_revision_id ? revMap.get(a.current_revision_id) : null;
       return {

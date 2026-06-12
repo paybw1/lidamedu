@@ -219,7 +219,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // 판례·문제 탭은 전체 색인으로 가는 링크라 과목 전체 수를 그대로 둔다.
   const axisCounts = {
     ...(await getSubjectAxisCounts(client, lawCode, law.lawId)),
-    articles: chapter.articles.length,
+    articles: chapter.totalArticles,
   };
 
   return {
@@ -569,13 +569,20 @@ function Inner({
             <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
           ) : null}
 
-          {/* 자손 조문이 많은 편/장 — apparatus 생략 안내 */}
+          {/* 자손 조문이 많은 편/장 — apparatus 생략 + (초과 시) 본문 일부만 안내 */}
           {apparatusSkipped ? (
             <Card className="mb-4 rounded-xl border-amber-300 bg-amber-50 shadow-sm dark:border-amber-700/50 dark:bg-amber-950/20">
               <CardContent className="py-3 text-sm text-amber-900 dark:text-amber-200">
-                이 {levelLabel}에는 조문이 <b>{chapter.articles.length}개</b>로 많아{" "}
-                <b>본문만</b> 표시합니다. 즐겨찾기·포스트잇·관련 문제·빈칸 자료 등은
-                좌측 트리에서 <b>장·절</b>로 좁혀 들어가면 사용할 수 있어요.
+                이 {levelLabel}에는 조문이 <b>{chapter.totalArticles}개</b>로 많아{" "}
+                <b>본문만</b> 표시합니다
+                {chapter.totalArticles > chapter.articles.length ? (
+                  <>
+                    {" "}
+                    (처음 <b>{chapter.articles.length}개</b>)
+                  </>
+                ) : null}
+                . 즐겨찾기·포스트잇·관련 문제·빈칸 자료 등 전체 기능은 좌측 트리에서{" "}
+                <b>장·절</b>로 좁혀 들어가면 사용할 수 있어요.
               </CardContent>
             </Card>
           ) : null}
