@@ -123,7 +123,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Chapter not found", { status: 404 });
   }
 
-  const articleIds = chapter.articles.map((a) => a.articleId);
+  // 편/큰 장처럼 자손 조문이 많으면 per-article apparatus(주석·Q&A·OX·빈칸·강의자료)
+  // 팬아웃이 수백 쿼리가 되어 서버리스(Vercel) 타임아웃을 유발한다(민법 제5편 상속 127조 등).
+  // → 임계 초과 그룹은 본문만 표시하고 apparatus 조회를 건너뛴다.
+  // 임계 60: 기존 flat 법령 최대 장(특허 55조)을 무회귀로 유지하고, 민법/민소의
+  // 편·대형 장(자손 60+)만 건너뛴다(절·소형 장은 그대로 전체 기능).
+  const APPARATUS_LIMIT = 60;
+  const apparatusSkipped = chapter.articles.length > APPARATUS_LIMIT;
+  const articleIds = apparatusSkipped
+    ? []
+    : chapter.articles.map((a) => a.articleId);
 
   const [
     articles,
@@ -218,6 +227,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     axisCounts,
     lawId: law.lawId,
     chapter,
+    apparatusSkipped,
     articles,
     systematicNodes,
     bookmarkLevels,
@@ -256,6 +266,7 @@ function Inner({
     subject,
     lawId,
     chapter,
+    apparatusSkipped,
     articles,
     systematicNodes,
     bookmarkLevels,
@@ -556,6 +567,17 @@ function Inner({
 
           {periodBlankMode && periodAmbiguousAll.length > 0 ? (
             <PeriodAmbiguousPanel cases={periodAmbiguousAll} />
+          ) : null}
+
+          {/* 자손 조문이 많은 편/장 — apparatus 생략 안내 */}
+          {apparatusSkipped ? (
+            <Card className="mb-4 rounded-xl border-amber-300 bg-amber-50 shadow-sm dark:border-amber-700/50 dark:bg-amber-950/20">
+              <CardContent className="py-3 text-sm text-amber-900 dark:text-amber-200">
+                이 {levelLabel}에는 조문이 <b>{chapter.articles.length}개</b>로 많아{" "}
+                <b>본문만</b> 표시합니다. 즐겨찾기·포스트잇·관련 문제·빈칸 자료 등은
+                좌측 트리에서 <b>장·절</b>로 좁혀 들어가면 사용할 수 있어요.
+              </CardContent>
+            </Card>
           ) : null}
 
           {/* ── 조문 카드 목록 ── */}
