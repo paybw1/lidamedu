@@ -11,7 +11,6 @@ import {
   HeartIcon,
   PencilIcon,
   PlayIcon,
-  StickyNoteIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
@@ -21,11 +20,9 @@ import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
-import { MemoList } from "~/features/annotations/components/memo-list";
-import {
-  getBookmark,
-  listMemos,
-} from "~/features/annotations/queries.server";
+import { getBookmark } from "~/features/annotations/queries.server";
+import { CommentsPanel } from "~/features/comments/components/comments-panel";
+import { listComments } from "~/features/comments/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
@@ -89,9 +86,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const role = await getStaffRole(client, user.id);
-  const [bookmark, memos] = await Promise.all([
+  const [bookmark, comments] = await Promise.all([
     getBookmark(client, user.id, "problem", problem.problemId),
-    listMemos(client, user.id, "problem", problem.problemId),
+    listComments(client, "problem", problem.problemId),
   ]);
 
   return {
@@ -102,8 +99,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     sessionMode,
     position,
     isStaff: role !== null,
+    currentUserId: user.id,
+    isAdmin: role === "admin",
     bookmark,
-    memos,
+    comments,
   };
 }
 
@@ -160,8 +159,10 @@ export default function ScienceProblemViewer({
     sessionMode,
     position,
     isStaff,
+    currentUserId,
+    isAdmin,
     bookmark,
-    memos,
+    comments,
   } = loaderData;
   const attemptFetcher = useFetcher<typeof action>();
   const [selected, setSelected] = useState<string | null>(null);
@@ -365,7 +366,7 @@ export default function ScienceProblemViewer({
           ) : null}
         </div>
 
-        {/* 즐겨찾기 · 포스트잇 메모 (polymorphic 주석, target_type='problem') */}
+        {/* 즐겨찾기 + 메모 — 본문이 이미지라 텍스트 선택형 포스트잇 대신 일반 메모(content_comments) 사용 */}
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <section className="bg-card rounded-xl border p-4 shadow-sm">
             <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
@@ -378,14 +379,13 @@ export default function ScienceProblemViewer({
             />
           </section>
           <section className="bg-card rounded-xl border p-4 shadow-sm">
-            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-              <StickyNoteIcon className="size-4 text-amber-500" /> 포스트잇 메모
-            </h2>
-            <MemoList
+            <CommentsPanel
               targetType="problem"
               targetId={problem.problemId}
-              initial={memos}
-              viewerIsStaff={isStaff}
+              comments={comments}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+              emptyHint="이 문제에 대한 메모를 남겨보세요."
             />
           </section>
         </div>

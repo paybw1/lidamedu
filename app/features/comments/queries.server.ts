@@ -4,6 +4,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import {
+  scienceProblemHref,
+  scienceSubjectName,
+} from "~/features/subjects/lib/science";
+
 export type CommentTargetType = "article" | "case" | "problem";
 
 export interface ContentComment {
@@ -156,7 +161,8 @@ export async function deleteComment(
 export interface CommentListItem {
   commentId: string;
   targetType: CommentTargetType;
-  lawCode: string;
+  /** 자연과학 문제는 law 가 없어 null. */
+  lawCode: string | null;
   /** 대상 콘텐츠 제목 (조문 라벨 / 판례명 / 문제 연도·번호). */
   primaryLabel: string;
   secondaryLabel: string | null;
@@ -245,13 +251,16 @@ export async function listAllComments(
       year: number | null;
       problemNumber: number | null;
       bodySnippet: string;
-      lawCode: string;
+      lawCode: string | null;
+      scienceSubject: string | null;
     }
   >();
   if (problemIds.length > 0) {
     const { data: ps } = await client
       .from("problems")
-      .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+      .select(
+        "problem_id, year, problem_number, body_md, science_subject, laws(law_code)",
+      )
       .in("problem_id", problemIds);
     for (const p of ps ?? []) {
       const body = p.body_md ?? "";
@@ -259,7 +268,8 @@ export async function listAllComments(
         year: p.year,
         problemNumber: p.problem_number,
         bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
-        lawCode: p.laws.law_code,
+        lawCode: p.laws?.law_code ?? null,
+        scienceSubject: p.science_subject,
       });
     }
   }
@@ -302,17 +312,21 @@ export async function listAllComments(
     if (r.target_type === "problem") {
       const p = problemMap.get(r.target_id);
       if (!p) return [];
+      const sci = p.scienceSubject;
+      if (!p.lawCode && !sci) return [];
       const yearLabel = p.year
         ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
         : "문제";
       return [
         {
           ...base,
-          lawCode: p.lawCode,
-          primaryLabel: yearLabel,
+          lawCode: sci ? null : p.lawCode,
+          primaryLabel: sci ? `${scienceSubjectName(sci)} ${yearLabel}` : yearLabel,
           secondaryLabel: null,
           bodySnippet: p.bodySnippet,
-          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+          href: sci
+            ? scienceProblemHref(sci, r.target_id)
+            : `/subjects/${p.lawCode}/problems/${r.target_id}`,
         },
       ];
     }
