@@ -315,6 +315,7 @@ export default function AdminProblemReview({
                   checked={selected.has(it.problemId)}
                   onToggle={() => toggleOne(it.problemId)}
                   isFocused={focusId === it.problemId}
+                  searchParams={searchParams}
                 />
               ))}
             </>
@@ -360,14 +361,19 @@ function ReviewListCard({
   checked,
   onToggle,
   isFocused,
+  searchParams,
 }: {
   item: import("~/features/problems/queries.server").ReviewQueueItem;
   checked: boolean;
   onToggle: () => void;
   isFocused: boolean;
+  searchParams: URLSearchParams;
 }) {
   const snippet =
     item.bodyMd.length > 140 ? `${item.bodyMd.slice(0, 140)}…` : item.bodyMd;
+  // 기존 필터(lawCode/format/origin/status)를 보존한 채 focus 만 교체 — 클릭 시 필터 유지.
+  const focusParams = new URLSearchParams(searchParams);
+  focusParams.set("focus", item.problemId);
   return (
     <Card
       className={cn(
@@ -416,7 +422,7 @@ function ReviewListCard({
             </span>
           </div>
           <Link
-            to={`?${new URLSearchParams({ focus: item.problemId }).toString()}`}
+            to={`?${focusParams.toString()}`}
             preventScrollReset
             className="block"
           >
