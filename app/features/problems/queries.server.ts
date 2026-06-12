@@ -910,10 +910,14 @@ export async function getOxQuestionsForArticle(
   const subtree = opts?.nodeSubtreeIds ?? null;
   // 노드 컨텍스트일 때, 이 지문이 현재 노드에 배치되는지.
   const placed = (
+    relatedNodeId: string | null,
     problemPrimaryArticleId: string | null,
     problemPrimaryNodeId: string | null,
   ): boolean => {
     if (!subtree) return true;
+    // feat-4-A-342 — 1) 지문 자체 소분류(related_node_id) 명시 시 그걸로.
+    if (relatedNodeId != null) return subtree.includes(relatedNodeId);
+    // 2) 없으면 부모 문제 배치 상속(feat-4-A-341).
     if (problemPrimaryArticleId !== articleId) return true; // 교차참조 지문 → 조문 단위 유지
     if (problemPrimaryNodeId == null) return true; // 미태깅 → scatter(현행)
     return subtree.includes(problemPrimaryNodeId);
@@ -923,7 +927,7 @@ export async function getOxQuestionsForArticle(
   const { data: choiceRows } = await client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
+      "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
     )
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
@@ -931,7 +935,13 @@ export async function getOxQuestionsForArticle(
     .limit(limit);
   for (const r of choiceRows ?? []) {
     if (r.problems.deleted_at) continue;
-    if (!placed(r.problems.primary_article_id, r.problems.primary_node_id))
+    if (
+      !placed(
+        r.related_node_id,
+        r.problems.primary_article_id,
+        r.problems.primary_node_id,
+      )
+    )
       continue;
     out.push({
       refType: "choice",
@@ -950,7 +960,7 @@ export async function getOxQuestionsForArticle(
   const { data: boxRows } = await client
     .from("problem_box_items")
     .select(
-      "box_item_id, problem_id, body_md, ox_truth, explanation_md, marker, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
+      "box_item_id, problem_id, body_md, ox_truth, explanation_md, marker, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
     )
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
@@ -958,7 +968,13 @@ export async function getOxQuestionsForArticle(
     .limit(limit);
   for (const r of boxRows ?? []) {
     if (r.problems.deleted_at) continue;
-    if (!placed(r.problems.primary_article_id, r.problems.primary_node_id))
+    if (
+      !placed(
+        r.related_node_id,
+        r.problems.primary_article_id,
+        r.problems.primary_node_id,
+      )
+    )
       continue;
     out.push({
       refType: "box",
@@ -1549,7 +1565,7 @@ export async function getProblemById(
   const { data: choices, error: cErr } = await client
     .from("problem_choices")
     .select(
-      "choice_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+      "choice_id, choice_index, body_md, is_correct, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, related_node_id, ox_ineligible, ox_truth",
     )
     .eq("problem_id", problemId)
     .order("choice_index");
@@ -1559,7 +1575,7 @@ export async function getProblemById(
   const { data: boxRows } = await client
     .from("problem_box_items")
     .select(
-      "box_item_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, ox_ineligible, ox_truth",
+      "box_item_id, position_index, marker, body_md, explanation_md, choice_type, related_article_id, related_article_number, related_case_id, related_case_number, related_node_id, ox_ineligible, ox_truth",
     )
     .eq("problem_id", problemId)
     .order("position_index");
@@ -1613,6 +1629,7 @@ export async function getProblemById(
       relatedArticleNumber: c.related_article_number,
       relatedCaseId: c.related_case_id,
       relatedCaseNumber: c.related_case_number,
+      relatedNodeId: c.related_node_id,
       oxIneligible: c.ox_ineligible,
       oxTruth: c.ox_truth,
     })),
@@ -1627,6 +1644,7 @@ export async function getProblemById(
       relatedArticleNumber: b.related_article_number,
       relatedCaseId: b.related_case_id,
       relatedCaseNumber: b.related_case_number,
+      relatedNodeId: b.related_node_id,
       oxIneligible: b.ox_ineligible,
       oxTruth: b.ox_truth,
     })),

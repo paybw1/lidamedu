@@ -32,6 +32,7 @@ export function ChoiceEditor({
   polarity = null,
   format,
   bulkOxSignal,
+  subNodeOptions,
 }: {
   choice: ProblemChoice;
   selectedAsCorrect: boolean;
@@ -42,6 +43,8 @@ export function ChoiceEditor({
   // 부모에서 "전체 OX 불가 체크/해제" 를 수행했을 때 사용하는 신호.
   // epoch 가 바뀔 때마다 ineligible 값을 자식 state 에 적용한다.
   bulkOxSignal?: { epoch: number; ineligible: boolean };
+  // feat-4-A-342 — 조문번호 → 체계도 소분류 옵션. 세분화 조문(제29조 등)일 때 select 노출.
+  subNodeOptions?: Record<string, { nodeId: string; label: string }[]>;
 }) {
   // 사례형(mc_case) 기본 종류는 "조문" — 사례 의존 지문은 조문 적용 판단이 보통.
   const initialType =
@@ -59,6 +62,8 @@ export function ChoiceEditor({
   const [caseNumber, setCaseNumber] = useState<string>(
     choice.relatedCaseNumber ?? "",
   );
+  // feat-4-A-342 — 지문 체계도 소분류 (관련 조문이 세분화된 경우 OX 정밀 배치).
+  const [nodeId, setNodeId] = useState<string>(choice.relatedNodeId ?? "");
   // 사례형(mc_case) 은 사례 의존이라 단독 OX 가 성립하지 않음 → 미설정 상태(persisted ineligible=false + ox_truth 없음)면 자동 체크.
   const [oxIneligible, setOxIneligible] = useState<boolean>(
     choice.oxIneligible ||
@@ -157,12 +162,47 @@ export function ChoiceEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [explanation, type]);
 
+  // 조문이 바뀌면 현재 소분류가 유효하지 않을 수 있으니 검증·해제.
+  useEffect(() => {
+    const opts = subNodeOptions?.[articleNumber.trim()] ?? [];
+    setNodeId((cur) => (cur && !opts.some((o) => o.nodeId === cur) ? "" : cur));
+  }, [articleNumber, subNodeOptions]);
+
   const cls = type
     ? CHOICE_TYPE_COLOR[type as ProblemChoiceType]
     : "bg-muted text-muted-foreground";
 
   const padCls = layout === "compact" ? "p-2 space-y-2" : "p-3 space-y-2";
   const fontCls = layout === "compact" ? "text-xs" : "text-sm";
+  // feat-4-A-342 — 현재 조문의 소분류 옵션. ≥1개면 select, 없으면 hidden(빈 값) 제출.
+  const subNodeOpts = subNodeOptions?.[articleNumber.trim()] ?? [];
+  const nodeField =
+    subNodeOpts.length > 0 ? (
+      <label className="flex flex-col gap-1">
+        <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+          체계도 소분류
+        </span>
+        <select
+          name={`choice_${choice.choiceIndex}_node_id`}
+          value={nodeId}
+          onChange={(e) => setNodeId(e.target.value)}
+          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+        >
+          <option value="">(자동 — 문제 기준)</option>
+          {subNodeOpts.map((o) => (
+            <option key={o.nodeId} value={o.nodeId}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : (
+      <input
+        type="hidden"
+        name={`choice_${choice.choiceIndex}_node_id`}
+        value={nodeId}
+      />
+    );
 
   return (
     <div className={cn("border-input rounded-md border", padCls)}>
@@ -301,6 +341,7 @@ export function ChoiceEditor({
         <>
           <input type="hidden" name={`choice_${choice.choiceIndex}_article_number`} value="" />
           <input type="hidden" name={`choice_${choice.choiceIndex}_case_number`} value="" />
+          {nodeField}
         </>
       ) : type === "precedent" ? (
         <div className="space-y-2">
@@ -330,6 +371,7 @@ export function ChoiceEditor({
               className="border-input bg-background h-8 rounded-md border px-2 text-xs"
             />
           </label>
+          {nodeField}
         </div>
       ) : (
         <>
@@ -346,6 +388,7 @@ export function ChoiceEditor({
               className="border-input bg-background h-8 rounded-md border px-2 text-xs"
             />
           </label>
+          {nodeField}
           {/* type 변경 시 case_number 보존을 위해 hidden input 으로 캐리. */}
           <input
             type="hidden"

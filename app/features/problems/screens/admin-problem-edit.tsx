@@ -495,6 +495,9 @@ export async function action({ params, request }: Route.ActionArgs) {
     const articleNumber = stringOrNull(fd.get(`choice_${i}_article_number`));
     const caseNumber = stringOrNull(fd.get(`choice_${i}_case_number`));
     const articleId = articleNumber ? articleIdByNumber.get(articleNumber) ?? null : null;
+    // feat-4-A-342 — 지문 체계도 소분류.
+    const cNodeIdRaw = stringOrNull(fd.get(`choice_${i}_node_id`));
+    const cNodeId = cNodeIdRaw && UUID_RE.test(cNodeIdRaw) ? cNodeIdRaw : null;
     const oxIneligibleSubmitted = fd.get(`choice_${i}_ox_ineligible`) === "1";
     const oxTruthRaw = stringOrNull(fd.get(`choice_${i}_ox_truth`));
     const oxTruth =
@@ -507,6 +510,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       // 조문 ref: 어떤 type 이든 articleNumber 가 채워져 있으면 저장 (판례도 관련 조문을 함께 보관).
       related_article_number: articleNumber,
       related_article_id: articleId,
+      related_node_id: cNodeId,
       // 판례번호는 precedent 일 때만 의미 있음.
       related_case_number: choiceType === "precedent" ? caseNumber : null,
       // OX 자동 연결 부적합 표기.
@@ -531,6 +535,8 @@ export async function action({ params, request }: Route.ActionArgs) {
       const bArticleNumber = stringOrNull(fd.get(`box_${id}_article_number`));
       const bCaseNumber = stringOrNull(fd.get(`box_${id}_case_number`));
       const bArticleId = bArticleNumber ? articleIdByNumber.get(bArticleNumber) ?? null : null;
+      const bNodeIdRaw = stringOrNull(fd.get(`box_${id}_node_id`));
+      const bNodeId = bNodeIdRaw && UUID_RE.test(bNodeIdRaw) ? bNodeIdRaw : null;
       const bOxIneligible = fd.get(`box_${id}_ox_ineligible`) === "1";
       const bOxTruthRaw = stringOrNull(fd.get(`box_${id}_ox_truth`));
       const bOxTruth = bOxIneligible
@@ -544,6 +550,7 @@ export async function action({ params, request }: Route.ActionArgs) {
         choice_type: bChoiceType,
         related_article_number: bArticleNumber,
         related_article_id: bArticleId,
+        related_node_id: bNodeId,
         related_case_number: bChoiceType === "precedent" ? bCaseNumber : null,
         ox_ineligible: bOxIneligible,
         ox_truth: bOxTruth,
@@ -1112,6 +1119,7 @@ function AdminProblemEditInner({
                     problem.choices.find((c) => c.choiceIndex === selectedCorrect)?.bodyMd ?? null
                   }
                   bulkOxSignal={bulkOxSignal}
+                  subNodeOptions={subNodeOptions}
                 />
               ))}
             </CardContent>
@@ -1159,6 +1167,7 @@ function AdminProblemEditInner({
                 polarity={polarity || null}
                 format={format}
                 bulkOxSignal={bulkOxSignal}
+                subNodeOptions={subNodeOptions}
               />
             ))}
           </CardContent>

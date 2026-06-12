@@ -4023,6 +4023,7 @@ export type Database = {
           related_article_number: string | null
           related_case_id: string | null
           related_case_number: string | null
+          related_node_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4042,6 +4043,7 @@ export type Database = {
           related_article_number?: string | null
           related_case_id?: string | null
           related_case_number?: string | null
+          related_node_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4061,6 +4063,7 @@ export type Database = {
           related_article_number?: string | null
           related_case_id?: string | null
           related_case_number?: string | null
+          related_node_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4084,6 +4087,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "problem_box_items_related_node_id_fkey"
+            columns: ["related_node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
           },
         ]
       }
@@ -4162,6 +4172,7 @@ export type Database = {
           related_article_number: string | null
           related_case_id: string | null
           related_case_number: string | null
+          related_node_id: string | null
         }
         Insert: {
           body_md: string
@@ -4180,6 +4191,7 @@ export type Database = {
           related_article_number?: string | null
           related_case_id?: string | null
           related_case_number?: string | null
+          related_node_id?: string | null
         }
         Update: {
           body_md?: string
@@ -4198,6 +4210,7 @@ export type Database = {
           related_article_number?: string | null
           related_case_id?: string | null
           related_case_number?: string | null
+          related_node_id?: string | null
         }
         Relationships: [
           {
@@ -4220,6 +4233,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "problem_choices_related_node_id_fkey"
+            columns: ["related_node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
           },
         ]
       }

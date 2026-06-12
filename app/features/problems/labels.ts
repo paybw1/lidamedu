@@ -166,6 +166,8 @@ export interface ProblemChoice {
   relatedArticleNumber: string | null;
   relatedCaseId: string | null;
   relatedCaseNumber: string | null;
+  // feat-4-A-342 — 지문 체계도 소분류(getProblemById 에서만 채움, 그 외 loader 는 undefined).
+  relatedNodeId?: string | null;
   oxIneligible: boolean;
   oxTruth: OxTruth | null;
 }
@@ -181,6 +183,8 @@ export interface ProblemBoxItem {
   relatedArticleNumber: string | null;
   relatedCaseId: string | null;
   relatedCaseNumber: string | null;
+  // feat-4-A-342 — 보기항목 체계도 소분류.
+  relatedNodeId?: string | null;
   oxIneligible: boolean;
   oxTruth: OxTruth | null;
 }

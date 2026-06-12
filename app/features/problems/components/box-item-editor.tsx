@@ -31,6 +31,7 @@ export function BoxItemEditor({
   format,
   correctChoiceBody = null,
   bulkOxSignal,
+  subNodeOptions,
 }: {
   item: ProblemBoxItem;
   layout?: "default" | "compact";
@@ -39,6 +40,8 @@ export function BoxItemEditor({
   correctChoiceBody?: string | null;
   // 부모에서 "전체 OX 불가 체크/해제" 일괄 토글 시 epoch 가 증가.
   bulkOxSignal?: { epoch: number; ineligible: boolean };
+  // feat-4-A-342 — 조문번호 → 체계도 소분류 옵션.
+  subNodeOptions?: Record<string, { nodeId: string; label: string }[]>;
 }) {
   // 사례형(mc_case) 기본 종류는 "조문".
   const initialType =
@@ -52,6 +55,8 @@ export function BoxItemEditor({
   const [explanation, setExplanation] = useState<string>(item.explanationMd ?? "");
   const [articleNumber, setArticleNumber] = useState<string>(item.relatedArticleNumber ?? "");
   const [caseNumber, setCaseNumber] = useState<string>(item.relatedCaseNumber ?? "");
+  // feat-4-A-342 — 보기항목 체계도 소분류.
+  const [nodeId, setNodeId] = useState<string>(item.relatedNodeId ?? "");
   // 사례형(mc_case) 은 사례 의존이라 단독 OX 가 성립하지 않음 → 미설정이면 자동 체크.
   const [oxIneligible, setOxIneligible] = useState<boolean>(
     item.oxIneligible ||
@@ -145,12 +150,42 @@ export function BoxItemEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [explanation, type]);
 
+  // feat-4-A-342 — 조문 변경 시 소분류 검증·해제.
+  useEffect(() => {
+    const opts = subNodeOptions?.[articleNumber.trim()] ?? [];
+    setNodeId((cur) => (cur && !opts.some((o) => o.nodeId === cur) ? "" : cur));
+  }, [articleNumber, subNodeOptions]);
+
   const cls = type
     ? CHOICE_TYPE_COLOR[type as ProblemChoiceType]
     : "bg-muted text-muted-foreground";
   const padCls = layout === "compact" ? "p-2 space-y-2" : "p-3 space-y-2";
   const fontCls = layout === "compact" ? "text-xs" : "text-sm";
   const prefix = `box_${item.boxItemId}`;
+  const subNodeOpts = subNodeOptions?.[articleNumber.trim()] ?? [];
+  const nodeField =
+    subNodeOpts.length > 0 ? (
+      <label className="flex flex-col gap-1">
+        <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+          체계도 소분류
+        </span>
+        <select
+          name={`${prefix}_node_id`}
+          value={nodeId}
+          onChange={(e) => setNodeId(e.target.value)}
+          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+        >
+          <option value="">(자동 — 문제 기준)</option>
+          {subNodeOpts.map((o) => (
+            <option key={o.nodeId} value={o.nodeId}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : (
+      <input type="hidden" name={`${prefix}_node_id`} value={nodeId} />
+    );
 
   return (
     <div className={cn("border-input border-l-2 border-l-blue-500 rounded-md border", padCls)}>
@@ -289,6 +324,7 @@ export function BoxItemEditor({
               className="border-input bg-background h-8 rounded-md border px-2 text-xs"
             />
           </label>
+          {nodeField}
         </div>
       ) : (
         <>
@@ -305,6 +341,7 @@ export function BoxItemEditor({
               className="border-input bg-background h-8 rounded-md border px-2 text-xs"
             />
           </label>
+          {nodeField}
           <input type="hidden" name={`${prefix}_case_number`} value="" />
         </>
       )}
