@@ -23,11 +23,21 @@ const supa = createClient(URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { 
 const APPLY = process.argv.includes("--apply");
 const yi = process.argv.indexOf("--year");
 const ONLY_YEAR = yi >= 0 ? Number(process.argv[yi + 1]) : null;
-// 2021: 2단컬럼 추출 데이터손실(선지 중복/누락)로 일부 문항 불안정 → 별도 처리(비전) 전까지 제외.
-const EXCLUDE_YEARS = new Set([2021]);
+// 2021은 2단컬럼이라 hwpx-to-text가 #39 발문을 누락 → civil-2021-manual.json 로 복구 병합(아래).
+// (#9는 원본 HWPX 자체가 선지5=선지4 중복인 소스결함, 정답4라 채점무관 → 그대로 둠)
+const EXCLUDE_YEARS = new Set();
 
 const { problems } = JSON.parse(readFileSync(resolve(ROOT, "source/_converted/civil-problems-parsed.json"), "utf8"));
 const answers = JSON.parse(readFileSync(resolve(ROOT, "source/_converted/civil-answers.json"), "utf8"));
+
+// 수동 복구본(2단컬럼 추출 누락분) 병합 — 같은 (year, problemNumber) 는 교체, 없으면 추가.
+try {
+  const manual = JSON.parse(readFileSync(resolve(ROOT, "source/_converted/civil-2021-manual.json"), "utf8"));
+  for (const mp of manual.problems ?? []) {
+    const i = problems.findIndex((p) => p.year === mp.year && p.problemNumber === mp.problemNumber);
+    if (i >= 0) problems[i] = mp; else problems.push(mp);
+  }
+} catch { /* 수동본 없으면 무시 */ }
 
 const SOURCE_FILE = "기출모음(2010~2026)/1차/민법";
 const SOURCE_LABEL = "변리사 1차 민법개론 기출 2010-2026";

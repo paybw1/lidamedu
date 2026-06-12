@@ -119,13 +119,8 @@ function parseFile(paragraphs, year, round) {
 // 마커리스+번호누락(2단컬럼 추출 등) 폴백: 발문(?종결)+선지5 단위로 그룹 분할.
 //   헤더 번호가 있으면 재동기화, 없으면 직전 문제가 선지 5개를 채우면 새 문제 시작.
 function parseGroups(paragraphs, year, round) {
-  const paras = [];
-  for (const p of paragraphs) {
-    const t = (p.text ?? "").trim();
-    const prev = paras[paras.length - 1];
-    if (p.kind !== "table" && prev && prev.kind !== "table" && (prev.text ?? "").trim() === t && t) continue;
-    paras.push(p);
-  }
+  // dedup 안 함: 2단컬럼 추출의 연속중복은 드물고, 제거 시 선지 5개 카운트가 깨져 다음 문제 stem 을 잠식.
+  const paras = paragraphs;
   const stemDone = (s) => /[?？]/.test(s ?? "");
   const out = [];
   let cur = null, num = 0;
