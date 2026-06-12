@@ -902,14 +902,28 @@ export async function getOxQuestionsForArticle(
   client: SupabaseClient<Database>,
   articleId: string,
   limit = 50,
+  // feat-4-A-341 — 체계도 노드 컨텍스트. 주면 지문을 부모 문제의 primary_node_id 로
+  // 정밀 배치(지문 related_article = 문제 primary_article 인 경우만). 없으면 조문 단위.
+  opts?: { nodeSubtreeIds?: readonly string[] },
 ): Promise<OxQuestionItem[]> {
   const out: OxQuestionItem[] = [];
+  const subtree = opts?.nodeSubtreeIds ?? null;
+  // 노드 컨텍스트일 때, 이 지문이 현재 노드에 배치되는지.
+  const placed = (
+    problemPrimaryArticleId: string | null,
+    problemPrimaryNodeId: string | null,
+  ): boolean => {
+    if (!subtree) return true;
+    if (problemPrimaryArticleId !== articleId) return true; // 교차참조 지문 → 조문 단위 유지
+    if (problemPrimaryNodeId == null) return true; // 미태깅 → scatter(현행)
+    return subtree.includes(problemPrimaryNodeId);
+  };
 
   // 1. problem_choices.
   const { data: choiceRows } = await client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+      "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
     )
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
@@ -917,6 +931,8 @@ export async function getOxQuestionsForArticle(
     .limit(limit);
   for (const r of choiceRows ?? []) {
     if (r.problems.deleted_at) continue;
+    if (!placed(r.problems.primary_article_id, r.problems.primary_node_id))
+      continue;
     out.push({
       refType: "choice",
       refId: r.choice_id,
@@ -934,7 +950,7 @@ export async function getOxQuestionsForArticle(
   const { data: boxRows } = await client
     .from("problem_box_items")
     .select(
-      "box_item_id, problem_id, body_md, ox_truth, explanation_md, marker, problems!inner(year, problem_number, origin, deleted_at)",
+      "box_item_id, problem_id, body_md, ox_truth, explanation_md, marker, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
     )
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
@@ -942,6 +958,8 @@ export async function getOxQuestionsForArticle(
     .limit(limit);
   for (const r of boxRows ?? []) {
     if (r.problems.deleted_at) continue;
+    if (!placed(r.problems.primary_article_id, r.problems.primary_node_id))
+      continue;
     out.push({
       refType: "box",
       refId: r.box_item_id,

@@ -121,6 +121,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const articleIds = node.articles.map((a) => a.articleId);
 
+  // feat-4-A-341 — 이 노드 subtree 의 node_id 들. OX 지문을 부모 문제 primary_node_id 로
+  // 정밀 배치(체계도 트리에서 제29조 OX 가 4개 소분류로 합쳐지던 문제 해결).
+  const { data: allNodeRows } = await client
+    .from("systematic_nodes")
+    .select("node_id, path")
+    .eq("law_code", lawCode);
+  const nodePath = String(node.path);
+  const subtreeNodeIds = (allNodeRows ?? [])
+    .filter((n) => {
+      const p = String(n.path);
+      return p === nodePath || p.startsWith(`${nodePath}.`);
+    })
+    .map((n) => n.node_id);
+
   const [
     articles,
     systematicNodes,
@@ -160,9 +174,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ).then((entries) => Object.fromEntries(entries)),
     Promise.all(
       articleIds.map((id) =>
-        getOxQuestionsForArticle(client, id, 50).then(
-          (items) => [id, items] as const,
-        ),
+        getOxQuestionsForArticle(client, id, 50, {
+          nodeSubtreeIds: subtreeNodeIds,
+        }).then((items) => [id, items] as const),
       ),
     ).then((entries) => Object.fromEntries(entries)),
     Promise.all(
