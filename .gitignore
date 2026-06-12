@@ -203,6 +203,11 @@ eng.traineddata
 /source/민법/
 /source/민사소송법/
 /source/_converted/*.json
+# 단, 민법 기출 파싱/정답 산출물은 원본(hwpx/정답PDF)이 gitignore라 재생성 불가 → 보존
+!/source/_converted/civil-problems-parsed.json
+!/source/_converted/civil-answers.json
+# 민법 hwpx 페이지 추출 중간물(파서가 재생성)
+/source/_converted/.civil-extract/
 
 # 테스트용 학생 30명 csv — 비밀번호 평문 노출
 /test-students-30.csv
@@ -227,6 +232,8 @@ rag-lab/dist/
 /scripts/jagwa/.txwork/
 /scripts/jagwa/.text/
 /scripts/jagwa/.recrop/
+/scripts/jagwa/.figonly/
+/scripts/jagwa/.text-approval-backup.json
 /scripts/jagwa/problems.json
 
 # 기출 원본 스캔 PDF — 대용량 바이너리(수십 MB), 운영 데이터(hwpx 원본과 동일 취급)
