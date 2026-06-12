@@ -569,6 +569,10 @@ export default [
         "features/admin/api/explanation-review.tsx",
       ),
       route(
+        "/api/admin/text-review",
+        "features/admin/api/text-review.tsx",
+      ),
+      route(
         "/api/admin/ai-problem-gen",
         "features/admin/api/ai-problem-gen.tsx",
       ),
@@ -837,6 +841,10 @@ export default [
         route(
           "/explanations",
           "features/admin/screens/admin-explanation-review.tsx",
+        ),
+        route(
+          "/text-conversion",
+          "features/admin/screens/admin-text-review.tsx",
         ),
         route("/ai-gen", "features/admin/screens/admin-ai-problem-gen.tsx"),
         route("/ox", "features/problems/screens/admin-ox-review.tsx"),

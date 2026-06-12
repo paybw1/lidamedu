@@ -93,6 +93,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "AI 문제 초안 만들기", to: "/admin/problems/ai-gen" },
       { label: "검토 대기 문제", to: "/admin/problems/review" },
       { label: "기출 해설 검수", to: "/admin/problems/explanations" },
+      { label: "지문 텍스트 검수", to: "/admin/problems/text-conversion" },
       { label: "문제 직접 만들기", to: "/admin/problems/new" },
       { label: "전체 문제 보기", to: "/admin/problems" },
       { label: "OX 검수", to: "/admin/problems/ox" },

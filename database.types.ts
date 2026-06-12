@@ -4331,6 +4331,76 @@ export type Database = {
           },
         ]
       }
+      problem_text_drafts: {
+        Row: {
+          choice_top_frac: number | null
+          choices: Json
+          created_at: string
+          draft_id: string
+          has_figure: boolean
+          model: string | null
+          note: string | null
+          problem_id: string
+          recrop_path: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["explanation_draft_status"]
+          stem_md: string
+        }
+        Insert: {
+          choice_top_frac?: number | null
+          choices: Json
+          created_at?: string
+          draft_id?: string
+          has_figure?: boolean
+          model?: string | null
+          note?: string | null
+          problem_id: string
+          recrop_path?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["explanation_draft_status"]
+          stem_md: string
+        }
+        Update: {
+          choice_top_frac?: number | null
+          choices?: Json
+          created_at?: string
+          draft_id?: string
+          has_figure?: boolean
+          model?: string | null
+          note?: string | null
+          problem_id?: string
+          recrop_path?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["explanation_draft_status"]
+          stem_md?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_text_drafts_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: true
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "problem_text_drafts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problem_text_drafts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       problems: {
         Row: {
           approved_at: string | null
@@ -6520,6 +6590,7 @@ export type Database = {
         Args: { p_draft_id: string }
         Returns: undefined
       }
+      approve_text_draft: { Args: { p_draft_id: string }; Returns: undefined }
       backfill_article_article_links_from_body: {
         Args: never
         Returns: {
