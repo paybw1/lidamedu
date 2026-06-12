@@ -19,6 +19,8 @@ import {
 import { useMemo, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 
+import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
+
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -602,6 +604,11 @@ function ArticleViewerInner({
                     />
                   </div>
               </MobileNavDrawer>
+            </div>
+
+            {/* 교차 이동(판례/문제→조문) 시 이전 화면으로 back. 트리 진입 시엔 숨김. */}
+            <div className="mb-3">
+              <ViewerBackButton />
             </div>
 
             {/* ── Article header card ───────────────────────────────────── */}

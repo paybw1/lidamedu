@@ -1,12 +1,9 @@
 import type { Route } from "./+types/case-viewer";
 
-import {
-  ArrowLeftIcon,
-  ListTreeIcon,
-  NetworkIcon,
-  PanelRightIcon,
-} from "lucide-react";
+import { ListTreeIcon, NetworkIcon, PanelRightIcon } from "lucide-react";
 import { Link, data, redirect, useSearchParams } from "react-router";
+
+import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -356,16 +353,9 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           </div>
         ) : null}
 
-        {/* 뒤로가기 링크 — prev/next 는 CaseBody 카드 헤더 안으로 이동 (조문 뷰어와 동일 위치). */}
+        {/* 뒤로가기 — 교차 이동(조문/문제→판례) 시 이전 화면으로, 없으면 판례 목록. */}
         <div className="mb-4">
-          <Link
-            to={listHref}
-            viewTransition
-            className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
-          >
-            <ArrowLeftIcon className="size-3.5" />
-            판례 목록으로
-          </Link>
+          <ViewerBackButton listHref={listHref} listLabel="판례 목록으로" />
         </div>
 
         {/* 책갈피 레일 + 3분할 그리드 — §5.1 */}

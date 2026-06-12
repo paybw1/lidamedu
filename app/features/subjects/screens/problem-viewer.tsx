@@ -16,6 +16,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 
+import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
+
 import { Button } from "~/core/components/ui/button";
 import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
@@ -643,14 +645,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
       ) : (
         /* No session: simple back link row */
         <div className="mx-auto flex max-w-screen-2xl items-center gap-2 px-4 py-3 md:px-6">
-          <Link
-            to={`/subjects/${subject.slug}?tab=problems`}
-            viewTransition
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium"
-          >
-            <ArrowLeftIcon className="size-3.5" />
-            {subject.name} 문제 색인
-          </Link>
+          <ViewerBackButton
+            listHref={`/subjects/${subject.slug}?tab=problems`}
+            listLabel={`${subject.name} 문제 색인`}
+          />
           {/* feat-9-004 — AI Q&A 진입 (세션 외 학습 모드). 시험 세션에선 산만함 방지로 숨김. */}
           <span className="ml-auto">
             <AskAiButton
