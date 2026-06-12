@@ -1,20 +1,19 @@
-// 민법(civil) 조문 적재 — 공식 법령 HWPX → articles + article_revisions.
+// 법령(민법·민사소송법 등) 조문 적재 — 공식 법령 HWPX → articles + article_revisions.
 //
-// 입력: source/민법/민법(법률)(제21454호)(20260317).hwpx (국가법령정보센터 공식)
-// 출력: source/_converted/parsed-articles-civil.json (중간 산출), 운영 DB(mcgdoplo) 적재.
-//
-// 기존 parse-*-articles.mjs 는 교재(리담 조문집) HTML 을 파싱하지만, 공식 HWPX 는
-// 형식이 달라(제N조(제목) 본문 + 편/장/절/관 계층) 전용 파서를 둔다. body_json 형태는
-// app/features/laws/components/article-body.tsx 의 렌더 계약과 동일하게 맞춘다
-// (block: clause/item/sub/para, inline: text/amendment_note — 조문 상호참조 "제N조제M항"·
-//  <개정...> 노트는 렌더러가 본문 text 에서 자동 인식하므로 평문 text 로 둔다).
+// 국가법령정보센터 공식 HWPX(제N조(제목) 본문 + 편/장/절/관 계층)를 파싱한다. 교재 파서
+// (parse-*-articles.mjs)와 형식이 다르므로 전용. body_json 은 article-body.tsx 렌더 계약과
+// 동일(block clause/item/sub/para, inline text/amendment_note — 제N조제M항 상호참조·<개정>
+// 노트는 렌더러가 본문 text 에서 자동 인식하므로 평문 text 로 둔다).
 //
 // 사용:
-//   node scripts/seed-civil-articles.mjs --parse   # DB 무변경. JSON 작성 + 통계 출력(검증용)
-//   node scripts/seed-civil-articles.mjs --seed     # 기존 civil 골격 wipe 후 전량 적재(파괴적)
+//   node scripts/seed-law-articles.mjs --law=civil-procedure --ltree=cprocedure \
+//     --hwpx="source/민사소송법/민사소송법(법률)(제19516호)(20250712).hwpx" \
+//     --effective=2025-07-12 --revnum="법률 제19516호" --parse   # 검증(DB 무변경)
+//   ... --seed                                                    # 적재(기존 wipe 후 재적재)
 //
 // 레벨: 편→part, 장→chapter, 절→section, 관→section(enum 에 subsection 없음, display_label 로 구분),
-//       조→article. 트리는 parent_id/path(ltree) 기반.
+//       조→article. 트리는 parent_id/path(ltree). importance 는 0(별 없음) — 강사가 추후 부여.
+// ltree 라벨은 [A-Za-z0-9_] 만 허용 → law_code 에 하이픈이 있으면(civil-procedure) --ltree 로 별도 지정.
 import "dotenv/config";
 
 import fs from "node:fs";
@@ -25,13 +24,24 @@ import * as cheerio from "cheerio";
 import { createClient } from "@supabase/supabase-js";
 
 const PROD_REF = "mcgdoplovrjgklbxmozi";
-const HWPX = "source/민법/민법(법률)(제21454호)(20260317).hwpx";
-const OUT_JSON = "source/_converted/parsed-articles-civil.json";
-const LAW_CODE = "civil";
-const EFFECTIVE = "2026-03-17";
-const PROMULGATED = "2026-03-17";
-const REVNUM = "법률 제21454호";
-const PUBLICATION = "[시행 2026. 3. 17.] [법률 제21454호, 2026. 3. 17., 일부개정]";
+
+const args = {};
+for (const a of process.argv.slice(2)) {
+  const m = a.match(/^--([^=]+)(?:=(.*))?$/);
+  if (m) args[m[1]] = m[2] ?? true;
+}
+const LAW_CODE = args.law;
+const HWPX = args.hwpx;
+const LTREE = args.ltree || LAW_CODE; // ltree 루트 라벨(하이픈 불가)
+const EFFECTIVE = args.effective || null;
+const PROMULGATED = args.promulgated || EFFECTIVE;
+const REVNUM = args.revnum || "seed";
+const PUBLICATION = args.publication || "";
+const MODE = args.seed ? "--seed" : args.parse ? "--parse" : null;
+
+if (!LAW_CODE || !HWPX) throw new Error("필수: --law=<code> --hwpx=<path>");
+if (!/^[A-Za-z0-9_]+$/.test(LTREE)) throw new Error(`ltree prefix '${LTREE}' 무효(영문/숫자/_ 만). --ltree 지정 필요`);
+const OUT_JSON = `source/_converted/parsed-articles-${LAW_CODE}.json`;
 
 // ---------- HWPX 추출 ----------
 function extractParagraphs(hwpxPath) {
@@ -57,16 +67,15 @@ function extractParagraphs(hwpxPath) {
 }
 
 // ---------- 파싱 ----------
-const CIRCLED_RE = /^([①-⑳])\s*(.*)$/; // 항 ①..⑳
-const ITEM_RE = /^(\d{1,3})\.\s+(.*)$/; // 호 1.
-const SUB_RE = /^([가-힣])\.\s+(.*)$/; // 목 가.
+const CIRCLED_RE = /^([①-⑳])\s*(.*)$/;
+const ITEM_RE = /^(\d{1,3})\.\s+(.*)$/;
+const SUB_RE = /^([가-힣])\.\s+(.*)$/;
 const PART_RE = /^제(\d+)편\s+(.+)$/;
 const CHAP_RE = /^제(\d+)장\s+(.+)$/;
 const SEC_RE = /^제(\d+)절\s+(.+)$/;
 const SUBSEC_RE = /^제(\d+)관\s+(.+)$/;
 const ART_RE = /^제(\d+)조(?:의(\d+))?\s*(?:\(([^)]*)\))?\s*(.*)$/;
 const BUCHIK_RE = /^부\s*칙/;
-// <개정 ...> / [전문개정 ...] 등 — 본문 안 개정 메타
 const AMEND_RE =
   /<[^<>]*(?:개정|신설|삭제|시행|전문개정|본조신설|제목개정|타법개정|대통령령|법률)[^<>]*>|\[[^[\]]*(?:개정|신설|삭제|전문개정|본조신설|제목개정|타법개정|법률\s*제)[^[\]]*\]/g;
 
@@ -85,7 +94,6 @@ function tokenizeInline(text) {
   return out.length ? out : [{ type: "text", text }];
 }
 
-// 한 조문의 본문 라인들 → block 트리
 function buildBlocks(lines) {
   const blocks = [];
   let clause = null;
@@ -96,43 +104,22 @@ function buildBlocks(lines) {
     if (!line) continue;
     let m;
     if ((m = CIRCLED_RE.exec(line))) {
-      clause = {
-        kind: "clause",
-        number: circledToNum(m[1]),
-        label: m[1],
-        inline: tokenizeInline(m[2]),
-        children: [],
-      };
+      clause = { kind: "clause", number: circledToNum(m[1]), label: m[1], inline: tokenizeInline(m[2]), children: [] };
       blocks.push(clause);
       item = null;
       leadPara = null;
     } else if ((m = ITEM_RE.exec(line))) {
-      item = {
-        kind: "item",
-        number: Number(m[1]),
-        label: `${m[1]}.`,
-        inline: tokenizeInline(m[2]),
-        children: [],
-      };
+      item = { kind: "item", number: Number(m[1]), label: `${m[1]}.`, inline: tokenizeInline(m[2]), children: [] };
       (clause ? clause.children : blocks).push(item);
       leadPara = null;
     } else if ((m = SUB_RE.exec(line)) && (item || clause)) {
-      const sub = {
-        kind: "sub",
-        letter: m[1],
-        label: `${m[1]}.`,
-        inline: tokenizeInline(m[2]),
-        children: [],
-      };
+      const sub = { kind: "sub", letter: m[1], label: `${m[1]}.`, inline: tokenizeInline(m[2]), children: [] };
       (item ? item.children : clause.children).push(sub);
     } else {
-      // 마커 없는 줄 — 직전 블록의 연속(append) 또는 조 본문 직속 para
       const target = item || clause;
-      if (target) {
-        target.inline.push(...tokenizeInline(` ${line}`));
-      } else if (leadPara) {
-        leadPara.inline.push(...tokenizeInline(` ${line}`));
-      } else {
+      if (target) target.inline.push(...tokenizeInline(` ${line}`));
+      else if (leadPara) leadPara.inline.push(...tokenizeInline(` ${line}`));
+      else {
         leadPara = { kind: "para", inline: tokenizeInline(line) };
         blocks.push(leadPara);
       }
@@ -142,16 +129,26 @@ function buildBlocks(lines) {
 }
 
 function parse(paragraphs) {
-  const groups = []; // {level, number, path, parentPath, display_label}
+  const groups = [];
   const seenGroupPath = new Set();
+  const seenArtPath = new Set();
   const articles = [];
   let part = null;
   let chapter = null;
   let section = null;
   let subsection = null;
-  let cur = null; // 현재 조문 {.., bodyLines:[]}
+  let cur = null;
+  // 공식 텍스트는 개정 조문을 "현행(먼저) + 시행예정([시행일: ...] 마커, 나중)"으로 병기한다.
+  // 현행만 적재한다 → 시행일 마커가 붙은 occurrence 와 path 중복(안전망)은 버린다.
   const flush = () => {
     if (!cur) return;
+    const fullText = cur.bodyLines.join("\n");
+    const isFuture = /\[\s*시행일\s*[:：]/.test(fullText);
+    if (isFuture || seenArtPath.has(cur.path)) {
+      cur = null;
+      return;
+    }
+    seenArtPath.add(cur.path);
     cur.blocks = buildBlocks(cur.bodyLines);
     delete cur.bodyLines;
     articles.push(cur);
@@ -166,35 +163,34 @@ function parse(paragraphs) {
   for (const raw of paragraphs) {
     const line = raw.trim();
     if (!line) continue;
-    if (BUCHIK_RE.test(line)) break; // 부칙 — 본조 파싱 종료
+    if (BUCHIK_RE.test(line)) break;
     let m;
     if ((m = PART_RE.exec(line))) {
       flush();
       const n = Number(m[1]);
-      part = { number: n, path: `${LAW_CODE}.pt${pad(n, 2)}` };
+      part = { number: n, path: `${LTREE}.pt${pad(n, 2)}` };
       chapter = section = subsection = null;
       addGroup({ level: "part", number: n, path: part.path, parentPath: null, display_label: line });
     } else if ((m = CHAP_RE.exec(line))) {
       flush();
       const n = Number(m[1]);
-      const base = part ? part.path : LAW_CODE;
+      const base = part ? part.path : LTREE;
       chapter = { number: n, path: `${base}.ch${pad(n, 2)}` };
       section = subsection = null;
       addGroup({ level: "chapter", number: n, path: chapter.path, parentPath: part ? part.path : null, display_label: line });
     } else if ((m = SEC_RE.exec(line))) {
       flush();
       const n = Number(m[1]);
-      const base = chapter ? chapter.path : part ? part.path : LAW_CODE;
+      const base = chapter ? chapter.path : part ? part.path : LTREE;
       section = { number: n, path: `${base}.s${pad(n, 2)}` };
       subsection = null;
-      addGroup({ level: "section", number: n, path: section.path, parentPath: base === LAW_CODE ? null : base, display_label: line });
+      addGroup({ level: "section", number: n, path: section.path, parentPath: base === LTREE ? null : base, display_label: line });
     } else if ((m = SUBSEC_RE.exec(line))) {
       flush();
       const n = Number(m[1]);
-      const base = section ? section.path : chapter ? chapter.path : part ? part.path : LAW_CODE;
+      const base = section ? section.path : chapter ? chapter.path : part ? part.path : LTREE;
       subsection = { number: n, path: `${base}.gw${pad(n, 2)}` };
-      // 관: enum 에 subsection 없음 → section 으로 적재(트리는 parent_id/path 기반, display_label 로 구분)
-      addGroup({ level: "section", number: n, path: subsection.path, parentPath: base === LAW_CODE ? null : base, display_label: line });
+      addGroup({ level: "section", number: n, path: subsection.path, parentPath: base === LTREE ? null : base, display_label: line });
     } else if ((m = ART_RE.exec(line))) {
       flush();
       const number = Number(m[1]);
@@ -204,11 +200,11 @@ function parse(paragraphs) {
       const parentGroup = subsection || section || chapter || part;
       const parentPath = parentGroup ? parentGroup.path : null;
       const seg = `a${pad(number, 4)}${branch ? `_${pad(branch, 2)}` : ""}`;
-      const apath = `${parentPath ?? LAW_CODE}.${seg}`;
+      const apath = `${parentPath ?? LTREE}.${seg}`;
       const deleted = /^삭제/.test(rest);
       const branchSuffix = branch ? `의${branch}` : "";
-      const articleNumber = `${number}${branchSuffix}`; // DB 필드: patent 규칙 "14의2"
-      const display_label = deleted // 표시: 제14조의2 (의M 은 조 뒤)
+      const articleNumber = `${number}${branchSuffix}`;
+      const display_label = deleted
         ? `제${number}조${branchSuffix} (삭제)`
         : `제${number}조${branchSuffix}${title ? ` ${title}` : ""}`;
       cur = {
@@ -216,7 +212,7 @@ function parse(paragraphs) {
         branch,
         title,
         deleted,
-        importance: 1,
+        importance: 0,
         article_number: articleNumber,
         path: apath,
         parentPath,
@@ -224,15 +220,13 @@ function parse(paragraphs) {
         bodyLines: rest ? [rest] : [],
       };
     } else if (cur) {
-      cur.bodyLines.push(line); // 조문 본문 연속 라인
+      cur.bodyLines.push(line);
     }
-    // (그 외: 편/장 앞 머리말·표 등은 무시)
   }
   flush();
   return { groups, articles };
 }
 
-// ---------- 통계 ----------
 function stats(parsed) {
   const g = parsed.groups;
   const a = parsed.articles;
@@ -244,15 +238,12 @@ function stats(parsed) {
     branchArticles: a.filter((x) => x.branch).length,
     deleted: a.filter((x) => x.deleted).length,
     withClauses: a.filter((x) => x.blocks.some((b) => b.kind === "clause")).length,
-    withItems: a.filter((x) =>
-      x.blocks.some((b) => b.kind === "item" || b.children?.some?.((c) => c.kind === "item")),
-    ).length,
     minNo: Math.min(...a.map((x) => x.number)),
     maxNo: Math.max(...a.map((x) => x.number)),
   };
 }
 
-// ---------- Management API (wipe + current_revision_id 조인 업데이트) ----------
+// ---------- DB ----------
 async function mgmtSql(query) {
   const tok = process.env.SUPABASE_ACCESS_TOKEN;
   if (!tok) throw new Error("missing SUPABASE_ACCESS_TOKEN");
@@ -277,8 +268,7 @@ function adminClient() {
 async function insertBatched(sb, table, rows, returning) {
   const out = [];
   for (let i = 0; i < rows.length; i += 500) {
-    const chunk = rows.slice(i, i + 500);
-    let q = sb.from(table).insert(chunk);
+    let q = sb.from(table).insert(rows.slice(i, i + 500));
     if (returning) q = q.select(returning);
     const { data, error } = await q;
     if (error) throw new Error(`${table} insert: ${error.message}`);
@@ -289,17 +279,11 @@ async function insertBatched(sb, table, rows, returning) {
 
 async function seed(parsed) {
   const sb = adminClient();
-  const { data: law, error: le } = await sb
-    .from("laws")
-    .select("law_id")
-    .eq("law_code", LAW_CODE)
-    .single();
-  if (le || !law) throw new Error(`law civil 없음: ${le?.message}`);
+  const { data: law, error: le } = await sb.from("laws").select("law_id").eq("law_code", LAW_CODE).single();
+  if (le || !law) throw new Error(`law ${LAW_CODE} 없음: ${le?.message}`);
   const lawId = law.law_id;
-  const esc = (s) => s.replace(/'/g, "''");
 
-  // 1. wipe (기존 골격) — 순환 FK 회피 위해 current_revision_id null → revisions → articles → law_revisions
-  console.log("wipe 기존 civil...");
+  console.log(`wipe 기존 ${LAW_CODE}...`);
   await mgmtSql(`
     update public.articles set current_revision_id=null where law_id='${lawId}';
     delete from public.article_revisions where article_id in (select article_id from public.articles where law_id='${lawId}');
@@ -307,7 +291,6 @@ async function seed(parsed) {
     delete from public.law_revisions where law_id='${lawId}';
   `);
 
-  // 2. law_revision
   const { data: rev, error: re } = await sb
     .from("law_revisions")
     .insert({
@@ -315,7 +298,7 @@ async function seed(parsed) {
       revision_number: REVNUM,
       promulgated_at: PROMULGATED,
       effective_date: EFFECTIVE,
-      reason_md: `민법 ${PUBLICATION} 조문 시드`,
+      reason_md: `${LAW_CODE} ${PUBLICATION} 조문 시드`,
       revision_kind: "act",
     })
     .select("law_revision_id")
@@ -323,22 +306,14 @@ async function seed(parsed) {
   if (re || !rev) throw new Error(`law_revision: ${re?.message}`);
   const lawRevisionId = rev.law_revision_id;
 
-  // 3. 그룹 노드(편/장/절/관) — 깊이 오름차순으로 부모 먼저 삽입
+  // 그룹 노드 — 깊이 오름차순(부모 먼저)
   const pathToId = new Map();
-  const byDepth = [...parsed.groups].sort(
-    (a, b) => a.path.split(".").length - b.path.split(".").length,
-  );
-  let depthCursor = 0;
-  while (depthCursor < byDepth.length) {
-    const depth = byDepth[depthCursor].path.split(".").length;
+  const byDepth = [...parsed.groups].sort((a, b) => a.path.split(".").length - b.path.split(".").length);
+  let i = 0;
+  while (i < byDepth.length) {
+    const depth = byDepth[i].path.split(".").length;
     const layer = [];
-    while (
-      depthCursor < byDepth.length &&
-      byDepth[depthCursor].path.split(".").length === depth
-    ) {
-      layer.push(byDepth[depthCursor]);
-      depthCursor++;
-    }
+    while (i < byDepth.length && byDepth[i].path.split(".").length === depth) layer.push(byDepth[i++]);
     const rows = layer.map((g) => ({
       law_id: lawId,
       parent_id: g.parentPath ? (pathToId.get(g.parentPath) ?? null) : null,
@@ -346,13 +321,13 @@ async function seed(parsed) {
       path: g.path,
       article_number: null,
       display_label: g.display_label,
-      importance: 1,
+      importance: 0,
     }));
     const ins = await insertBatched(sb, "articles", rows, "article_id, path");
     for (const r of ins) pathToId.set(r.path, r.article_id);
   }
 
-  // 4. 조문(article) 노드
+  // 조문 노드
   const artRows = parsed.articles.map((a) => ({
     law_id: lawId,
     parent_id: a.parentPath ? (pathToId.get(a.parentPath) ?? null) : null,
@@ -366,9 +341,7 @@ async function seed(parsed) {
   const artIns = await insertBatched(sb, "articles", artRows, "article_id, path");
   const artPathToId = new Map(artIns.map((r) => [r.path, r.article_id]));
 
-  // 5. article_revisions (본문 body_json)
-  // effective_date=NULL: protect_in_force 트리거(시행중 revision 삭제·수정 차단)를 피해
-  // staff 편집·재시드 가능 상태로 둔다(제네릭 시더 기본값과 동일). 렌더는 current_revision_id 로.
+  // article_revisions (effective_date=NULL → protect_in_force 트리거 회피, 편집·재시드 가능)
   const revRows = parsed.articles.map((a) => ({
     article_id: artPathToId.get(a.path),
     law_revision_id: lawRevisionId,
@@ -378,16 +351,13 @@ async function seed(parsed) {
   }));
   await insertBatched(sb, "article_revisions", revRows, null);
 
-  // 6. current_revision_id 채움 (조문당 revision 1개 → 조인 업데이트 1방)
   console.log("current_revision_id 연결...");
   await mgmtSql(`
-    update public.articles a
-    set current_revision_id = r.revision_id
+    update public.articles a set current_revision_id = r.revision_id
     from public.article_revisions r
     where r.article_id = a.article_id and a.law_id='${lawId}'
   `);
 
-  // 검증
   const { count: artCnt } = await sb
     .from("articles")
     .select("article_id", { count: "exact", head: true })
@@ -399,30 +369,25 @@ async function seed(parsed) {
     .eq("law_id", lawId)
     .eq("level", "article")
     .not("current_revision_id", "is", null);
-  console.log(`완료: article 노드 ${artCnt}, 본문 연결 ${revCnt}`);
+  console.log(`완료(${LAW_CODE}): article 노드 ${artCnt}, 본문 연결 ${revCnt}`);
 }
 
 // ---------- main ----------
-const mode = process.argv[2];
 const paragraphs = extractParagraphs(HWPX);
 const parsed = parse(paragraphs);
 const st = stats(parsed);
-console.log("파싱 통계:", JSON.stringify(st, null, 2));
+console.log(`[${LAW_CODE} / ltree=${LTREE}] 파싱 통계:`, JSON.stringify(st, null, 2));
 
-if (mode === "--parse") {
+if (MODE === "--parse") {
   fs.mkdirSync(path.dirname(OUT_JSON), { recursive: true });
   fs.writeFileSync(
     OUT_JSON,
-    JSON.stringify(
-      { generatedAt: new Date().toISOString(), source: HWPX, publication: PUBLICATION, stats: st, ...parsed },
-      null,
-      2,
-    ),
+    JSON.stringify({ generatedAt: new Date().toISOString(), law: LAW_CODE, ltree: LTREE, source: HWPX, publication: PUBLICATION, stats: st, ...parsed }, null, 2),
   );
-  console.log(`\n→ ${OUT_JSON} 작성 (DB 무변경). 샘플 검수 후 --seed 로 적재.`);
-} else if (mode === "--seed") {
+  console.log(`\n→ ${OUT_JSON} 작성(DB 무변경). 검수 후 --seed.`);
+} else if (MODE === "--seed") {
   await seed(parsed);
 } else {
-  console.log("\n사용: --parse (검증) | --seed (적재)");
+  console.log("\n사용: --law=<code> --hwpx=<path> [--ltree=<prefix>] [--effective=YYYY-MM-DD] [--revnum=..] (--parse | --seed)");
   process.exit(1);
 }
