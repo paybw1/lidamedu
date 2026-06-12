@@ -269,6 +269,34 @@ body {
     text-decoration: underline rgb(217, 119, 6) solid 2.5px; /* amber-600 */
     text-underline-offset: 3px;
   }
+
+  /* 다크 모드 — 밝은 파스텔 배경은 흰 글자(본문)를 가려 가독성이 떨어진다.
+     어둡게 깔리는 반투명 틴트(밝은 색 @ 낮은 알파)로 교체 — 어두운 배경 위에서
+     은은한 색 띠로 보이되 흰 글자는 그대로 읽힌다. 강사 하이라이트는 더 진하게. */
+  html.dark ::highlight(lidam-hl-yellow) {
+    background-color: rgba(250, 204, 21, 0.32); /* yellow-400 */
+  }
+  html.dark ::highlight(lidam-hl-green) {
+    background-color: rgba(52, 211, 153, 0.3); /* emerald-400 */
+  }
+  html.dark ::highlight(lidam-hl-red) {
+    background-color: rgba(251, 113, 133, 0.32); /* rose-400 */
+  }
+  html.dark ::highlight(lidam-hl-blue) {
+    background-color: rgba(56, 189, 248, 0.32); /* sky-400 */
+  }
+  html.dark ::highlight(lidam-hl-staff-yellow) {
+    background-color: rgba(250, 204, 21, 0.46); /* yellow-400 */
+  }
+  html.dark ::highlight(lidam-hl-staff-green) {
+    background-color: rgba(52, 211, 153, 0.44); /* emerald-400 */
+  }
+  html.dark ::highlight(lidam-hl-staff-red) {
+    background-color: rgba(251, 113, 133, 0.46); /* rose-400 */
+  }
+  html.dark ::highlight(lidam-hl-staff-blue) {
+    background-color: rgba(56, 189, 248, 0.46); /* sky-400 */
+  }
 }
 
 /* feat-7-005 — Prose 안 markdown 표 스타일 (InlineTable + dangerouslySetInnerHTML).
