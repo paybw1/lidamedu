@@ -634,17 +634,36 @@ export async function getChapterWithArticles(
   lawId: string,
   chapterId: string,
 ): Promise<ChapterWithArticles | null> {
-  // 1. 같은 law 의 모든 노드 fetch (chapter path 기준 자손 필터링용)
-  const { data: rows, error } = await client
-    .from("articles")
-    .select(
-      "article_id, level, path, article_number, display_label, importance, current_revision_id",
-    )
-    .eq("law_id", lawId)
-    .is("deleted_at", null);
-  if (error) throw error;
+  // 1. 같은 law 의 모든 노드 fetch (chapter path 기준 자손 필터링용).
+  //    PostgREST 기본 1000행 제한 — 민법(1300+ 노드)은 페이지네이션 필수.
+  //    누락 시 제5편 상속 등 path 끝쪽 그룹을 클릭하면 자손 조문이 비어 보인다.
+  const NODE_PAGE = 1000;
+  const rows: Array<{
+    article_id: string;
+    level: ArticleLevel;
+    path: unknown;
+    article_number: string | null;
+    display_label: string;
+    importance: number | null;
+    current_revision_id: string | null;
+  }> = [];
+  for (let from = 0; ; from += NODE_PAGE) {
+    const { data, error } = await client
+      .from("articles")
+      .select(
+        "article_id, level, path, article_number, display_label, importance, current_revision_id",
+      )
+      .eq("law_id", lawId)
+      .is("deleted_at", null)
+      .order("path")
+      .range(from, from + NODE_PAGE - 1);
+    if (error) throw error;
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < NODE_PAGE) break;
+  }
 
-  const target = rows?.find((r) => r.article_id === chapterId);
+  const target = rows.find((r) => r.article_id === chapterId);
   if (!target) return null;
   // article 자체는 chapter-viewer 대상이 아니다 — article-viewer 로 직접 가야 함.
   if (target.level === "article") return null;
@@ -653,7 +672,7 @@ export async function getChapterWithArticles(
     typeof target.path === "string" ? target.path : String(target.path ?? "");
 
   // 2. 자손 article 만 추출 (자기 path prefix + level === 'article')
-  const descendantArticles = (rows ?? [])
+  const descendantArticles = rows
     .filter((r) => {
       if (r.level !== "article") return false;
       const p = typeof r.path === "string" ? r.path : String(r.path ?? "");
