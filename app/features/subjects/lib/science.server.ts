@@ -27,6 +27,7 @@ export async function listScienceProblems(
   client: SupabaseClient<Database>,
   scienceSubject: ScienceSubjectSlug,
   sectionIds: string[] = [],
+  years: number[] = [],
 ): Promise<ScienceProblem[]> {
   let q = client
     .from("problems")
@@ -35,6 +36,7 @@ export async function listScienceProblems(
     .eq("science_subject", scienceSubject)
     .is("deleted_at", null);
   if (sectionIds.length > 0) q = q.in("science_section_id", sectionIds);
+  if (years.length > 0) q = q.in("year", years);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((r) => ({
@@ -51,6 +53,9 @@ export interface ScienceProblemDetail {
   problemId: string;
   scienceSubject: ScienceSubjectSlug;
   scienceSectionId: string | null;
+  year: number | null;
+  problemNumber: number | null;
+  examRound: string | null;
   bodyMd: string;
   totalPoints: number;
   choices: {
@@ -69,7 +74,7 @@ export async function getScienceProblem(
   const { data: p, error } = await client
     .from("problems")
     .select(
-      "problem_id, science_subject, science_section_id, body_md, total_points, subject_type",
+      "problem_id, science_subject, science_section_id, body_md, total_points, subject_type, year, problem_number, exam_round",
     )
     .eq("problem_id", problemId)
     .is("deleted_at", null)
@@ -88,6 +93,9 @@ export async function getScienceProblem(
     problemId: p.problem_id,
     scienceSubject: p.science_subject as ScienceSubjectSlug,
     scienceSectionId: p.science_section_id,
+    year: p.year,
+    problemNumber: p.problem_number,
+    examRound: p.exam_round,
     bodyMd: p.body_md,
     totalPoints: p.total_points ?? 1,
     choices: (cs ?? []).map((c) => ({
@@ -258,6 +266,29 @@ export async function listSectionsWithStats(
       attempted > 0 ? Math.round((correct / attempted) * 100) : null;
     return { ...s, attempted, correct, accuracyPct };
   });
+}
+
+// 한 과목의 출제 연도 목록 + 연도별 문제 수 (연도 내림차순). 연도 필터 옵션용.
+export async function listScienceYears(
+  client: SupabaseClient<Database>,
+  subject: ScienceSubjectSlug,
+): Promise<Array<{ year: number; count: number }>> {
+  const { data, error } = await client
+    .from("problems")
+    .select("year")
+    .eq("subject_type", "science")
+    .eq("science_subject", subject)
+    .is("deleted_at", null)
+    .not("year", "is", null);
+  if (error) throw error;
+  const counts = new Map<number, number>();
+  for (const r of data ?? []) {
+    if (r.year == null) continue;
+    counts.set(r.year, (counts.get(r.year) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([year, count]) => ({ year, count }))
+    .sort((a, b) => b.year - a.year);
 }
 
 // 한 과목의 단원 목록 + 단원별 문제 수.

@@ -236,6 +236,18 @@ export default function ScienceProblemViewer({
 
         {/* Problem card */}
         <div className="mb-4 rounded-xl border bg-card shadow-sm">
+          {/* 출제 정보 — 기출 연도·과목·번호 */}
+          {problem.year ? (
+            <div className="flex flex-wrap items-center gap-2 border-b px-6 py-2.5 text-xs">
+              <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 font-bold tabular-nums">
+                {problem.year}년{problem.examRound === "first" ? " 1차" : ""} 기출
+              </span>
+              <span className="text-muted-foreground">
+                {subjectMeta.name}
+                {problem.problemNumber ? ` · ${problem.problemNumber}번` : ""}
+              </span>
+            </div>
+          ) : null}
           {/* Problem body */}
           <div className="border-b px-6 py-5">
             <div className="flex items-start gap-3">

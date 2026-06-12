@@ -15,6 +15,7 @@ import {
 } from "~/features/subjects/lib/science";
 import {
   listScienceProblems,
+  listScienceYears,
   listSectionsWithCounts,
 } from "~/features/subjects/lib/science.server";
 
@@ -38,16 +39,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
-  const sections = await listSectionsWithCounts(client, subject);
+  const [sections, years] = await Promise.all([
+    listSectionsWithCounts(client, subject),
+    listScienceYears(client, subject),
+  ]);
   return {
     scienceSubject: subject,
     subjectMeta: SCIENCE_SUBJECTS[subject],
     sections,
+    years,
   };
 }
 
 const actionSchema = z.object({
   sectionIds: z.array(z.string().uuid()).optional(),
+  years: z.array(z.coerce.number().int()).optional(),
   count: z.coerce.number().int().min(1).max(200).default(20),
   mode: z.enum(["study", "exam"]).default("study"),
 });
@@ -64,8 +70,10 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   const form = await request.formData();
   const sectionIds = form.getAll("sectionIds").map(String).filter(Boolean);
+  const years = form.getAll("years").map(String).filter(Boolean);
   const parsed = actionSchema.safeParse({
     sectionIds,
+    years,
     count: form.get("count"),
     mode: form.get("mode"),
   });
@@ -77,6 +85,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     client,
     subject,
     parsed.data.sectionIds ?? [],
+    parsed.data.years ?? [],
   );
   if (candidates.length === 0) {
     return data(
@@ -101,6 +110,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     scopeType: "filter",
     scopePayload: {
       sectionIds: parsed.data.sectionIds ?? [],
+      years: parsed.data.years ?? [],
       requestedCount: parsed.data.count,
     },
     problemIds,
@@ -121,7 +131,7 @@ export default function ScienceQuizSetup({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { scienceSubject, subjectMeta, sections } = loaderData;
+  const { scienceSubject, subjectMeta, sections, years } = loaderData;
   const errorMsg =
     actionData && "error" in actionData ? actionData.error : null;
   const totalProblems = sections.reduce((s, x) => s + x.problemCount, 0);
@@ -195,6 +205,42 @@ export default function ScienceQuizSetup({
               )}
             </div>
           </div>
+
+          {/* Year filter card — 기출 연도별 분류 */}
+          {years.length > 0 ? (
+            <div className="rounded-xl border bg-card shadow-sm">
+              <div className="border-b px-6 py-4">
+                <h2 className="text-sm font-bold">출제 연도</h2>
+                <p className="text-muted-foreground mt-0.5 text-xs">
+                  선택하지 않으면 전체 연도에서 출제됩니다.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 px-6 py-4">
+                {years.map((y) => (
+                  <label key={y.year} className="cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="years"
+                      value={y.year}
+                      className="peer sr-only"
+                    />
+                    <span
+                      className={cn(
+                        "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-all",
+                        "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                        "peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary",
+                      )}
+                    >
+                      {y.year}년
+                      <span className="text-[11px] font-normal tabular-nums opacity-70">
+                        {y.count}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Count card */}
           <div className="rounded-xl border bg-card shadow-sm">
