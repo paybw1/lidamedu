@@ -4426,6 +4426,7 @@ export type Database = {
           origin: Database["public"]["Enums"]["problem_origin"]
           polarity: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id: string | null
+          primary_node_id: string | null
           problem_id: string
           problem_number: number | null
           rejected_reason: string | null
@@ -4473,6 +4474,7 @@ export type Database = {
           origin: Database["public"]["Enums"]["problem_origin"]
           polarity?: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id?: string | null
+          primary_node_id?: string | null
           problem_id?: string
           problem_number?: number | null
           rejected_reason?: string | null
@@ -4524,6 +4526,7 @@ export type Database = {
           origin?: Database["public"]["Enums"]["problem_origin"]
           polarity?: Database["public"]["Enums"]["problem_polarity"] | null
           primary_article_id?: string | null
+          primary_node_id?: string | null
           problem_id?: string
           problem_number?: number | null
           rejected_reason?: string | null
@@ -4607,6 +4610,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "articles"
             referencedColumns: ["article_id"]
+          },
+          {
+            foreignKeyName: "problems_primary_node_id_fkey"
+            columns: ["primary_node_id"]
+            isOneToOne: false
+            referencedRelation: "systematic_nodes"
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "problems_reviewed_by_fkey"

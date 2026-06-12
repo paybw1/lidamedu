@@ -10,7 +10,7 @@ import {
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 import {
   Form,
   Link,
@@ -36,7 +36,10 @@ import {
   Chip,
   Field,
 } from "~/features/admin/components/admin-ui";
-import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  getStaffRole,
+  getSystematicSkeleton,
+} from "~/features/laws/queries.server";
 import { BoxItemEditor } from "~/features/problems/components/box-item-editor";
 import { ChoiceEditor } from "~/features/problems/components/choice-editor";
 import { ExplanationEditor } from "~/features/problems/components/explanation-editor";
@@ -205,7 +208,36 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  return { problem, mcqPacks, role, siblings };
+  // feat-4-A-340 — 체계도 소분류 선택지. 한 조문이 (caseOnly 제외) ≥2 노드에 걸리면
+  // 그 노드들을 picker 로 제공해 문제를 정밀 배치한다.
+  const subNodeOptions: Record<string, { nodeId: string; label: string }[]> =
+    {};
+  let primaryNodeId: string | null = null;
+  if (subject) {
+    const skeleton = await getSystematicSkeleton(client, subject);
+    const map: Record<string, { nodeId: string; label: string }[]> = {};
+    for (const node of skeleton) {
+      if (node.caseOnly) continue;
+      for (const a of node.articles) {
+        if (!a.articleNumber) continue;
+        (map[a.articleNumber] ??= []).push({
+          nodeId: node.nodeId,
+          label: node.displayLabel,
+        });
+      }
+    }
+    for (const [num, opts] of Object.entries(map)) {
+      if (opts.length >= 2) subNodeOptions[num] = opts;
+    }
+    const { data: pn } = await client
+      .from("problems")
+      .select("primary_node_id")
+      .eq("problem_id", problemId)
+      .maybeSingle();
+    primaryNodeId = pn?.primary_node_id ?? null;
+  }
+
+  return { problem, mcqPacks, role, siblings, subNodeOptions, primaryNodeId };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -352,6 +384,18 @@ export async function action({ params, request }: Route.ActionArgs) {
     }
   }
 
+  // feat-4-A-340 — 체계도 소분류 단일 배치. uuid 아니면 null. 조문 미연결 시 노드도 해제.
+  let primaryNodeIdUpdate: { primary_node_id: string | null } | null = null;
+  if (fd.has("primaryNodeId")) {
+    const raw = stringOrNull(fd.get("primaryNodeId"));
+    primaryNodeIdUpdate = {
+      primary_node_id: raw && UUID_RE.test(raw) ? raw : null,
+    };
+  }
+  if (primaryArticleIdUpdate?.primary_article_id === null) {
+    primaryNodeIdUpdate = { primary_node_id: null };
+  }
+
   // 메타 + body 업데이트.
   // intent === "save_and_review" 인 경우 한 트랜잭션 안에서 검토 완료까지 같이 처리한다.
   const andReview = intent === "save_and_review";
@@ -408,6 +452,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     problem_number: numberOrNull(fd.get("problemNumber")),
     updated_at: new Date().toISOString(),
     ...(primaryArticleIdUpdate ?? {}),
+    ...(primaryNodeIdUpdate ?? {}),
     ...(andReview
       ? {
           reviewed_at: new Date().toISOString(),
@@ -540,7 +585,21 @@ function AdminProblemEditInner({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { problem, mcqPacks, role, siblings } = loaderData;
+  const { problem, mcqPacks, role, siblings, subNodeOptions, primaryNodeId } =
+    loaderData;
+  // feat-4-A-340 — 체계도 소분류 선택. 조문이 (caseOnly 제외) ≥2 노드에 걸릴 때만 노출.
+  const [articleNum, setArticleNum] = useState(
+    String(problem.primaryArticleNumber ?? ""),
+  );
+  const [primaryNode, setPrimaryNode] = useState(primaryNodeId ?? "");
+  const subNodeOpts = subNodeOptions[articleNum.trim()] ?? [];
+  useEffect(() => {
+    const opts = subNodeOptions[articleNum.trim()] ?? [];
+    // 조문이 바뀌어 현재 선택 노드가 더 이상 유효하지 않으면 해제.
+    setPrimaryNode((cur) =>
+      cur && !opts.some((o) => o.nodeId === cur) ? "" : cur,
+    );
+  }, [articleNum, subNodeOptions]);
   // 목록에서 편집 진입 시 따라오는 필터 쿼리를 보존해 ← 클릭 시 같은 필터 상태로 되돌린다.
   // viewer "수정" 진입은 ?returnTo=<viewer URL> 로 들어오는데, 이 경우 ← 가 그
   // viewer 로 복귀하도록 우선 적용 + form hidden 으로 carry 해 저장 후 redirect.
@@ -854,9 +913,27 @@ function AdminProblemEditInner({
             <FormInput
               name="articleNumber"
               label="조문"
-              defaultValue={problem.primaryArticleNumber ?? ""}
+              value={articleNum}
+              onChange={setArticleNum}
               placeholder="예: 29 / 28의2 (비우면 미연결)"
             />
+            {subNodeOpts.length > 0 ? (
+              <FormSelect
+                name="primaryNodeId"
+                label="체계도 소분류"
+                value={primaryNode}
+                onChange={setPrimaryNode}
+                options={[
+                  { value: "", label: "(자동 — 조문 전체)" },
+                  ...subNodeOpts.map((o) => ({
+                    value: o.nodeId,
+                    label: o.label,
+                  })),
+                ]}
+              />
+            ) : (
+              <input type="hidden" name="primaryNodeId" value={primaryNode} />
+            )}
           </CardContent>
         </Card>
 
@@ -1164,25 +1241,36 @@ function FormInput({
   label,
   type = "text",
   defaultValue,
+  value,
+  onChange,
   disabled,
   placeholder,
 }: {
   name: string;
   label: string;
   type?: string;
-  defaultValue: string | number;
+  defaultValue?: string | number;
+  value?: string;
+  onChange?: (v: string) => void;
   disabled?: boolean;
   placeholder?: string;
 }) {
+  const controlled = value !== undefined && onChange !== undefined;
   return (
     <Field label={label} htmlFor={name}>
       <Input
         id={name}
         type={type}
         name={name}
-        defaultValue={defaultValue}
         disabled={disabled}
         placeholder={placeholder}
+        {...(controlled
+          ? {
+              value,
+              onChange: (e: ChangeEvent<HTMLInputElement>) =>
+                onChange(e.target.value),
+            }
+          : { defaultValue })}
       />
     </Field>
   );

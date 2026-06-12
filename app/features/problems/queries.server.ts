@@ -1750,6 +1750,54 @@ export interface SystematicTopNode {
 }
 
 // 체계도 최상위 노드 (예: "01 총칙/보칙", "02 특허요건", ...) + 노드별 문제 수.
+// feat-4-A-340 — 노드 배치 우선순위. 한 노드 subtree 에 배치된 문제 행(중복 제거).
+//   1) primary_node_id ∈ subtreeNodeIds  (정확 배치)
+//   2) primary_node_id IS NULL AND primary_article_id ∈ articleIds  (조문 파생 fallback)
+// year DESC, problem_number ASC 정렬해 반환.
+interface PlacedProblemRow {
+  problem_id: string;
+  primary_article_id: string | null;
+  primary_node_id: string | null;
+  year: number | null;
+  problem_number: number | null;
+  importance: number | null;
+}
+async function fetchPlacedProblemRows(
+  client: SupabaseClient<Database>,
+  subtreeNodeIds: readonly string[],
+  articleIds: readonly string[],
+): Promise<PlacedProblemRow[]> {
+  const SEL =
+    "problem_id, primary_article_id, primary_node_id, year, problem_number, importance";
+  const CHUNK = 150;
+  const byId = new Map<string, PlacedProblemRow>();
+  for (let i = 0; i < subtreeNodeIds.length; i += CHUNK) {
+    const slice = subtreeNodeIds.slice(i, i + CHUNK);
+    if (slice.length === 0) continue;
+    const { data } = await client
+      .from("problems")
+      .select(SEL)
+      .in("primary_node_id", slice)
+      .is("deleted_at", null);
+    for (const r of data ?? []) byId.set(r.problem_id, r);
+  }
+  for (let i = 0; i < articleIds.length; i += CHUNK) {
+    const slice = articleIds.slice(i, i + CHUNK);
+    if (slice.length === 0) continue;
+    const { data } = await client
+      .from("problems")
+      .select(SEL)
+      .in("primary_article_id", slice)
+      .is("primary_node_id", null)
+      .is("deleted_at", null);
+    for (const r of data ?? []) byId.set(r.problem_id, r);
+  }
+  return [...byId.values()].sort((x, y) => {
+    if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
+    return (x.problem_number ?? 0) - (y.problem_number ?? 0);
+  });
+}
+
 export async function listSystematicTopNodes(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
@@ -1774,42 +1822,26 @@ export async function listSystematicTopNodes(
           String(n.path).startsWith(topPath + "."),
       )
       .map((n) => n.node_id);
-    if (subtreeNodeIds.length === 0) {
-      result.push({
-        nodeId: top.node_id,
-        path: topPath,
-        displayLabel: top.display_label,
-        ord: top.ord,
-        problemCount: 0,
-      });
-      continue;
+    let articleIds: string[] = [];
+    if (subtreeNodeIds.length > 0) {
+      const { data: links } = await client
+        .from("article_systematic_links")
+        .select("article_id")
+        .in("node_id", subtreeNodeIds);
+      articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
     }
-    const { data: links } = await client
-      .from("article_systematic_links")
-      .select("article_id")
-      .in("node_id", subtreeNodeIds);
-    const articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
-    if (articleIds.length === 0) {
-      result.push({
-        nodeId: top.node_id,
-        path: topPath,
-        displayLabel: top.display_label,
-        ord: top.ord,
-        problemCount: 0,
-      });
-      continue;
-    }
-    const { count } = await client
-      .from("problems")
-      .select("problem_id", { count: "exact", head: true })
-      .in("primary_article_id", articleIds)
-      .is("deleted_at", null);
+    // feat-4-A-340 — node-pinned + 조문 파생 합산.
+    const placed = await fetchPlacedProblemRows(
+      client,
+      subtreeNodeIds,
+      articleIds,
+    );
     result.push({
       nodeId: top.node_id,
       path: topPath,
       displayLabel: top.display_label,
       ord: top.ord,
-      problemCount: count ?? 0,
+      problemCount: placed.length,
     });
   }
   return result;
@@ -1886,13 +1918,16 @@ export async function getSystematicNodeProblems(
     compareArticlePath(String(a.path), String(b.path)),
   );
 
-  // 모든 문제 한번에 fetch.
+  // feat-4-A-340 — node-pinned 우선 + 조문 파생으로 배치된 문제만 fetch.
+  const placedIds = (
+    await fetchPlacedProblemRows(client, subtreeIds, articleIds)
+  ).map((p) => p.problem_id);
   const { data: problemRows } = await client
     .from("problems")
     .select(
       "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
-    .in("primary_article_id", articleIds)
+    .in("problem_id", placedIds)
     .is("deleted_at", null);
 
   const problemList = problemRows ?? [];
@@ -2108,12 +2143,8 @@ export async function getSystematicNodeProblemSequence(
     compareArticlePath(String(a.path), String(b.path)),
   );
 
-  const { data: problemRows } = await client
-    .from("problems")
-    .select("problem_id, primary_article_id, year, problem_number")
-    .in("primary_article_id", articleIds)
-    .is("deleted_at", null);
-  const list = problemRows ?? [];
+  // feat-4-A-340 — node-pinned 우선 + 조문 파생. primary_article_id 로 그룹.
+  const list = await fetchPlacedProblemRows(client, subtreeIds, articleIds);
 
   const problems: NodeProblemSequence["problems"] = [];
   for (const a of sortedArticles) {
@@ -2176,11 +2207,12 @@ export async function getSystematicNodeProblemStats(
     for (const r of data ?? []) links.push(r);
   }
 
-  // 2) 링크된 조문의 문제 (primary_article_id 기준).
+  // 2) 링크된 조문의 문제 (primary_article_id 기준) + primary_node_id 동반 fetch.
   const articleIds = [...new Set(links.map((l) => l.article_id))];
   const probRows: {
     problem_id: string;
     primary_article_id: string | null;
+    primary_node_id: string | null;
     year: number | null;
     problem_number: number | null;
     importance: number | null;
@@ -2189,32 +2221,47 @@ export async function getSystematicNodeProblemStats(
     const { data } = await client
       .from("problems")
       .select(
-        "problem_id, primary_article_id, year, problem_number, importance",
+        "problem_id, primary_article_id, primary_node_id, year, problem_number, importance",
       )
       .in("primary_article_id", articleIds.slice(i, i + 150))
       .is("deleted_at", null);
     for (const r of data ?? []) probRows.push(r);
   }
 
-  // 조문별 문제 — year DESC, problem_number ASC (getSystematicNodeProblemSequence 와 동일).
+  // year DESC, problem_number ASC.
   const sorted = [...probRows].sort((x, y) => {
     if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
     return (x.problem_number ?? 0) - (y.problem_number ?? 0);
   });
+  // feat-4-A-340 — node-pinned 은 노드별, 나머지는 조문별로 분리 집계.
+  const orderOf = new Map<string, number>();
   const problemsByArticle = new Map<string, string[]>();
   const starredByArticle = new Map<string, number>();
-  for (const p of sorted) {
-    if (!p.primary_article_id) continue;
-    const arr = problemsByArticle.get(p.primary_article_id) ?? [];
-    arr.push(p.problem_id);
-    problemsByArticle.set(p.primary_article_id, arr);
-    if ((p.importance ?? 0) >= 1) {
-      starredByArticle.set(
-        p.primary_article_id,
-        (starredByArticle.get(p.primary_article_id) ?? 0) + 1,
-      );
+  const problemsByNode = new Map<string, string[]>();
+  const starredByNode = new Map<string, number>();
+  sorted.forEach((p, idx) => {
+    orderOf.set(p.problem_id, idx);
+    const starred = (p.importance ?? 0) >= 1;
+    if (p.primary_node_id) {
+      const arr = problemsByNode.get(p.primary_node_id) ?? [];
+      arr.push(p.problem_id);
+      problemsByNode.set(p.primary_node_id, arr);
+      if (starred)
+        starredByNode.set(
+          p.primary_node_id,
+          (starredByNode.get(p.primary_node_id) ?? 0) + 1,
+        );
+    } else if (p.primary_article_id) {
+      const arr = problemsByArticle.get(p.primary_article_id) ?? [];
+      arr.push(p.problem_id);
+      problemsByArticle.set(p.primary_article_id, arr);
+      if (starred)
+        starredByArticle.set(
+          p.primary_article_id,
+          (starredByArticle.get(p.primary_article_id) ?? 0) + 1,
+        );
     }
-  }
+  });
   const articlesByNode = new Map<string, string[]>();
   for (const l of links) {
     const arr = articlesByNode.get(l.node_id) ?? [];
@@ -2222,14 +2269,16 @@ export async function getSystematicNodeProblemStats(
     articlesByNode.set(l.node_id, arr);
   }
 
-  // 3) 노드별 subtree(path prefix) 집계.
+  // 3) 노드별 subtree(path prefix) 집계 — node-pinned(노드별) + 조문 파생(조문별).
   const out: Record<string, SystematicNodeProblemStat> = {};
   for (const node of nodes) {
     const nodePath = String(node.path);
+    const subtreeNodeIds: string[] = [];
     const subtreeArticleIds = new Set<string>();
     for (const n of nodes) {
       const p = String(n.path);
       if (p === nodePath || p.startsWith(nodePath + ".")) {
+        subtreeNodeIds.push(n.node_id);
         for (const aid of articlesByNode.get(n.node_id) ?? []) {
           subtreeArticleIds.add(aid);
         }
@@ -2238,12 +2287,29 @@ export async function getSystematicNodeProblemStats(
     let count = 0;
     let starredCount = 0;
     let firstProblemId: string | null = null;
+    let firstOrder = Infinity;
+    const consider = (id: string | undefined) => {
+      if (!id) return;
+      const o = orderOf.get(id) ?? Infinity;
+      if (o < firstOrder) {
+        firstOrder = o;
+        firstProblemId = id;
+      }
+    };
+    for (const nid of subtreeNodeIds) {
+      const probs = problemsByNode.get(nid);
+      if (probs && probs.length > 0) {
+        count += probs.length;
+        starredCount += starredByNode.get(nid) ?? 0;
+        consider(probs[0]);
+      }
+    }
     for (const aid of subtreeArticleIds) {
-      const probs = problemsByArticle.get(aid) ?? [];
-      count += probs.length;
-      starredCount += starredByArticle.get(aid) ?? 0;
-      if (firstProblemId === null && probs.length > 0) {
-        firstProblemId = probs[0];
+      const probs = problemsByArticle.get(aid);
+      if (probs && probs.length > 0) {
+        count += probs.length;
+        starredCount += starredByArticle.get(aid) ?? 0;
+        consider(probs[0]);
       }
     }
     out[node.node_id] = { problemCount: count, firstProblemId, starredCount };

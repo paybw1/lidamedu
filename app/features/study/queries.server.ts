@@ -2621,7 +2621,7 @@ export async function getSessionWeakNodes(
       .order("attempted_at", { ascending: false }),
     client
       .from("problems")
-      .select("problem_id, primary_article_id")
+      .select("problem_id, primary_article_id, primary_node_id")
       .in("problem_id", pids),
   ]);
 
@@ -2635,8 +2635,10 @@ export async function getSessionWeakNodes(
   }
 
   const articleByProblem = new Map<string, string | null>();
+  const pinnedNodeByProblem = new Map<string, string | null>();
   for (const p of probsRes.data ?? []) {
     articleByProblem.set(p.problem_id, p.primary_article_id);
+    pinnedNodeByProblem.set(p.problem_id, p.primary_node_id);
   }
 
   // 2) article → node 매핑.
@@ -2657,8 +2659,25 @@ export async function getSessionWeakNodes(
     }
   }
 
+  // feat-4-A-340 — 문제별 최종 노드: primary_node_id 우선, 없으면 article→node.
+  const nodeByProblem = new Map<string, string | null>();
+  for (const pid of pids) {
+    const pinned = pinnedNodeByProblem.get(pid) ?? null;
+    if (pinned) {
+      nodeByProblem.set(pid, pinned);
+      continue;
+    }
+    const articleId = articleByProblem.get(pid) ?? null;
+    nodeByProblem.set(
+      pid,
+      articleId ? (nodeByArticle.get(articleId) ?? null) : null,
+    );
+  }
+
   // 3) node 라벨.
-  const nodeIds = [...new Set(nodeByArticle.values())];
+  const nodeIds = [
+    ...new Set([...nodeByProblem.values()].filter((v): v is string => !!v)),
+  ];
   const labelByNode = new Map<string, string>();
   if (nodeIds.length > 0) {
     const { data: nodes } = await client
@@ -2674,8 +2693,7 @@ export async function getSessionWeakNodes(
   for (const pid of pids) {
     const isCorrect = correctMap.get(pid);
     if (isCorrect === undefined) continue; // 미응답 skip
-    const articleId = articleByProblem.get(pid) ?? null;
-    const nodeId = articleId ? (nodeByArticle.get(articleId) ?? null) : null;
+    const nodeId = nodeByProblem.get(pid) ?? null;
     const key = nodeId;
     const cur = byNode.get(key) ?? { correct: 0, total: 0 };
     cur.total += 1;

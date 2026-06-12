@@ -359,6 +359,7 @@
 | feat-4-A-337 | 채점결과 통계 화면 → 5.5.3-301..303 admin-gs-round-stats / admin-gs-series-stats | P1 | ✅ |
 | feat-4-A-338 | 우수답안 노출 → 5.5.3-304 gs-distinguished + admin-gs-distinctions | P1 | ✅ |
 | feat-4-A-339 | 포인트 지급 시스템 (순위 백분위 기반) → 5.5.3-305 gs-points | P2 | ✅ |
+| feat-4-A-340 | **문제 체계도 소분류 배치** — 한 조문(제29조)이 여러 노드(산업상 이용가능성/신규성/진보성/확대된 선출원)에 걸려 문제가 4곳에 중복 노출되던 문제. `problems.primary_node_id`(nullable FK systematic_nodes) 추가 — 판례 `cases.primary_node_id` 모델 미러. 배치 우선순위 2단계(primary_node_id ∈ subtree → 없으면 primary_article_id 파생). 수정: `getSystematicNodeProblemStats`·`getSystematicNodeProblemSequence`·`getSystematicNodeProblems`·`listSystematicTopNodes`(공유 헬퍼 `fetchPlacedProblemRows`) + `getSessionWeakNodes`. staff 편집: admin-problem-edit 에 조문 ASL 노드 기반 "체계도 소분류" 제너릭 select(세분화 조문일 때만). 미태깅=현행(하위호환). node-progress 게이지는 후속. 상세: `docs/features/feat-4-A-340-problem-node-placement.md` | P1 | ✅ |
 
 ### 5.4.B — 자연과학 학습 허브 (문제만)
 
