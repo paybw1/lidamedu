@@ -498,7 +498,7 @@ function LabeledBlock({
       <p>
         <span className={labelClass}>{label}</span>
         {subtitle ? (
-          <span className="text-foreground mr-1.5 font-bold tracking-tight">
+          <span className="text-foreground dark:text-amber-300 mr-1.5 font-bold tracking-tight">
             ({subtitle})
           </span>
         ) : null}
@@ -1122,7 +1122,7 @@ function InlineNode({
       return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
     case "subtitle":
       return (
-        <span className="text-foreground mx-0.5 font-bold tracking-tight">
+        <span className="text-foreground dark:text-amber-300 mx-0.5 font-bold tracking-tight">
           ({renderTextWithBlanks(node.text, 0)})
         </span>
       );
