@@ -17,6 +17,7 @@ export interface ScienceProblem {
   problemId: string;
   scienceSubject: ScienceSubjectSlug;
   scienceSectionId: string | null;
+  problemNumber: number | null;
   bodyMd: string;
   totalPoints: number;
 }
@@ -31,7 +32,9 @@ export async function listScienceProblems(
 ): Promise<ScienceProblem[]> {
   let q = client
     .from("problems")
-    .select("problem_id, science_subject, science_section_id, body_md, total_points")
+    .select(
+      "problem_id, science_subject, science_section_id, problem_number, body_md, total_points",
+    )
     .eq("subject_type", "science")
     .eq("science_subject", scienceSubject)
     .is("deleted_at", null);
@@ -43,6 +46,7 @@ export async function listScienceProblems(
     problemId: r.problem_id,
     scienceSubject: r.science_subject as ScienceSubjectSlug,
     scienceSectionId: r.science_section_id,
+    problemNumber: r.problem_number,
     bodyMd: r.body_md,
     totalPoints: r.total_points ?? 1,
   }));

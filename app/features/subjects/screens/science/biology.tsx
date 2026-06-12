@@ -4,6 +4,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import ScienceHub from "~/features/subjects/components/science-hub";
 import {
   getScienceProgress,
+  listScienceYears,
   listSectionsWithStats,
 } from "~/features/subjects/lib/science.server";
 
@@ -14,13 +15,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const [sections, progress] = await Promise.all([
+  const [sections, years, progress] = await Promise.all([
     listSectionsWithStats(client, "biology", user?.id ?? null),
+    listScienceYears(client, "biology"),
     user
       ? getScienceProgress(client, user.id, "biology")
       : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),
   ]);
-  return { sections, progress };
+  return { sections, years, progress };
 }
 
 export default function SubjectBiology({ loaderData }: Route.ComponentProps) {
@@ -28,6 +30,7 @@ export default function SubjectBiology({ loaderData }: Route.ComponentProps) {
     <ScienceHub
       subject="biology"
       sections={loaderData.sections}
+      years={loaderData.years}
       progress={loaderData.progress}
     />
   );

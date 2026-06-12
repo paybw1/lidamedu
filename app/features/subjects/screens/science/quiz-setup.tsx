@@ -97,12 +97,21 @@ export async function action({ params, request }: Route.ActionArgs) {
     );
   }
 
-  const pool = candidates.map((p) => p.problemId);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+  // 연도별 "바로 풀기"(ordered) 는 번호 순서대로 전부, 그 외엔 무작위 + 문항수 제한.
+  const ordered = form.get("ordered") === "1";
+  let problemIds: string[];
+  if (ordered) {
+    problemIds = [...candidates]
+      .sort((a, b) => (a.problemNumber ?? 0) - (b.problemNumber ?? 0))
+      .map((p) => p.problemId);
+  } else {
+    const pool = candidates.map((p) => p.problemId);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    problemIds = pool.slice(0, Math.min(parsed.data.count, pool.length));
   }
-  const problemIds = pool.slice(0, Math.min(parsed.data.count, pool.length));
 
   const sessionId = await createQuizSession(client, user.id, {
     mode: parsed.data.mode,

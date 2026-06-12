@@ -2,7 +2,7 @@
 // 풀이 Runner / 색인 / 통계 등 5.4.A.3 의 객관식 자산을 추후 연결한다.
 
 import { ArrowRightIcon, ChevronRightIcon } from "lucide-react";
-import { Link } from "react-router";
+import { Form, Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 import {
@@ -14,11 +14,13 @@ import {
 export default function ScienceHub({
   subject,
   sections,
+  years,
   progress,
   hideBackLink = false,
 }: {
   subject: ScienceSubjectSlug;
   sections: ScienceSectionStats[];
+  years: { year: number; count: number }[];
   progress: { attempted: number; correct: number; total: number };
   // /subjects/science 허브에 탭으로 임베드될 때 "← 자연과학" 백링크 숨김(중복).
   hideBackLink?: boolean;
@@ -226,6 +228,46 @@ export default function ScienceHub({
             )}
           </div>
         </div>
+
+        {/* 연도별 기출 — 클릭 시 그 해 문제를 번호순으로 바로 풀기 */}
+        {years.length > 0 ? (
+          <div className="mt-6 rounded-xl border bg-card shadow-sm">
+            <div className="border-b px-6 py-4">
+              <h2 className="text-sm font-bold tracking-tight">
+                연도별 기출{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({years.length}개년)
+                </span>
+              </h2>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                연도를 누르면 그 해 {meta.name} 기출을 번호 순서대로 바로 풉니다.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 px-6 py-4">
+              {years.map((y) => (
+                <Form
+                  key={y.year}
+                  method="post"
+                  action={`/subjects/science/${sciencePath}/quiz/setup`}
+                >
+                  <input type="hidden" name="years" value={y.year} />
+                  <input type="hidden" name="ordered" value="1" />
+                  <input type="hidden" name="mode" value="study" />
+                  <input type="hidden" name="count" value={y.count} />
+                  <button
+                    type="submit"
+                    className="border-border hover:border-primary/50 hover:bg-primary/[0.04] inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-all"
+                  >
+                    {y.year}년
+                    <span className="text-muted-foreground text-[11px] font-normal tabular-nums">
+                      {y.count}
+                    </span>
+                  </button>
+                </Form>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {/* Info notice */}
         <div className="bg-primary/[0.06] mt-6 rounded-xl px-6 py-5">

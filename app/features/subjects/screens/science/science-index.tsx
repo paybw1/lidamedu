@@ -16,6 +16,7 @@ import {
 } from "~/features/subjects/lib/science";
 import {
   getScienceProgress,
+  listScienceYears,
   listSectionsWithStats,
 } from "~/features/subjects/lib/science.server";
 
@@ -39,17 +40,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const [sections, progress] = await Promise.all([
+  const [sections, years, progress] = await Promise.all([
     listSectionsWithStats(client, subject, user?.id ?? null),
+    listScienceYears(client, subject),
     user
       ? getScienceProgress(client, user.id, subject)
       : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),
   ]);
-  return { subject, sections, progress };
+  return { subject, sections, years, progress };
 }
 
 export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
-  const { subject, sections, progress } = loaderData;
+  const { subject, sections, years, progress } = loaderData;
   return (
     <div className="bg-background">
       {/* 과목 탭 — 클릭 시 같은 화면에서 내용만 교체(페이지 전환 아님). */}
@@ -87,6 +89,7 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
       <ScienceHubView
         subject={subject}
         sections={sections}
+        years={years}
         progress={progress}
         hideBackLink
       />
