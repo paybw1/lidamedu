@@ -242,3 +242,6 @@ rag-lab/dist/
 
 # db:typegen 임시 산출물
 /database.types.ts.tmp
+
+# 박스 해설 분할 전 백업(롤백용, 운영데이터)
+/scripts/.box-expl-backup.json

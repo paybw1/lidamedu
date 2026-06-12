@@ -96,6 +96,17 @@ function parseExplanationByMarkers(explanation, markers) {
 
   if (blocks.length === 0) return null;
 
+  // 마지막 블록 끝의 결론 라인("따라서 옳은 것은 …", "정답은 …")은 특정 보기 해설이 아니라
+  // 전체 결론이므로 postamble 로 분리해 overall(종합해설)에 보존.
+  const conclusionRe = /^\s*(따라서|정답은|정답\s*[:：]|옳은 것은|옳지 않은 것은|그러므로|∴)/;
+  const postamble = [];
+  const lastBlock = blocks[blocks.length - 1];
+  const ci = lastBlock.lines.findIndex((l) => conclusionRe.test(l));
+  if (ci >= 1) {
+    postamble.push(...lastBlock.lines.slice(ci));
+    lastBlock.lines = lastBlock.lines.slice(0, ci);
+  }
+
   const perMarker = new Map();
   for (const b of blocks) {
     const text = b.lines.join("\n").trim();
@@ -109,7 +120,7 @@ function parseExplanationByMarkers(explanation, markers) {
 
   return {
     perMarker,
-    overall: preamble.join("\n").trim() || null,
+    overall: [...preamble, ...postamble].join("\n").trim() || null,
   };
 }
 
