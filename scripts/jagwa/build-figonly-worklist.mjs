@@ -8,7 +8,8 @@ const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_R
 let drafts=[];
 for(let from=0;;from+=1000){
   const {data}=await sb.from("problem_text_drafts")
-    .select("problem_id,stem_md,has_figure,status").eq("has_figure",true).range(from,from+999);
+    .select("problem_id,stem_md,has_figure,status").eq("has_figure",true)
+    .eq("status","approved").range(from,from+999); // 반려 문항(그래프선지 등) 제외 — q37 같은 깨짐 방지
   drafts=drafts.concat(data); if(data.length<1000)break;
 }
 const pids=drafts.map(d=>d.problem_id);
