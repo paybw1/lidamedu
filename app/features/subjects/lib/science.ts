@@ -28,6 +28,22 @@ export const SCIENCE_SUBJECTS: Record<
   earth_science: { name: "지구과학", emoji: "🌍" },
 };
 
+// DB enum(underscore) → URL path(dash). 과학 라우트는 /earth-science 를 쓴다.
+export function scienceSubjectPath(slug: string): string {
+  return slug === "earth_science" ? "earth-science" : slug;
+}
+
+// 과학 과목명(없으면 "자연과학"). 집계 라벨용.
+export function scienceSubjectName(slug: string | null): string {
+  const s = slug ? normalizeScienceSlug(slug) : null;
+  return s ? SCIENCE_SUBJECTS[s].name : "자연과학";
+}
+
+// 과학 문제 viewer href.
+export function scienceProblemHref(slug: string, problemId: string): string {
+  return `/subjects/science/${scienceSubjectPath(slug)}/problems/${problemId}`;
+}
+
 export interface ScienceSection {
   sectionId: string;
   scienceSubject: ScienceSubjectSlug;

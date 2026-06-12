@@ -336,7 +336,7 @@
 | feat-4-A-305 | 문제 풀이 Runner — 주관식 (자기채점 + 첨삭 요청). problem-viewer subjective 분기 + 답안 textarea autosave (`/api/study/subjective-attempt`) + 자기채점 점수 입력 + 모범답안/채점기준 reveal + 첨삭 요청 액션 + 시간제한 응시(타이머 + 자동 제출). | P1 | ✅ |
 | feat-4-A-306 | 학습 모드 (즉시 해설) vs 시험 모드 (타이머 + 일괄 제출) | P0 | ✅ |
 | feat-4-A-307 | 풀이 결과 화면 + 오답 노트 자동 수집 | P0 | ✅ |
-| feat-4-A-308 | 문제 북마크·메모·하이라이트 (polymorphic 패널) | P0 | ✅ |
+| feat-4-A-308 | 문제 북마크·메모·하이라이트 (polymorphic 패널). **자연과학 문제 뷰어**(`subjects/screens/science/problem-viewer`)에도 즐겨찾기(BookmarkStars)+포스트잇(MemoList) 직접 연결(target_type='problem'). 과학 문제는 law 없어 `/study/bookmarks`·`/study/notes`·대시보드 집계(listAllBookmarks/listAllMemos/listTopBookmarks/listAllHighlights)에 과학 분기(href `/subjects/science/{path}/problems/{id}`) 추가. | P0 | ✅ |
 | feat-4-A-309 | 유사 문제 추천 (같은 primary_article) | P2 | ✅ |
 | feat-4-A-310 | 객관식 색인 화면 — 정렬·필터·난이도·본문 검색 | P0 | ✅ |
 | feat-4-A-311 | 분류 라벨 시스템 (기출/변형/예상/모의 × 단원/종합 × 단답/박스/사례 × 긍정/부정). problems 테이블 origin/scope/format/polarity 4 enum + 운영자 편집 폼 + 학생/운영자 색인 4축 필터 + 학생 색인 표에 4축 모두 노출. 시드 데이터 97.86% 라벨링 완료. | P0 | ✅ |

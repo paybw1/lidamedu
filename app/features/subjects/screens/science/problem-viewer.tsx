@@ -8,8 +8,10 @@ import {
   ChevronRightIcon,
   CircleCheckIcon,
   CircleXIcon,
+  HeartIcon,
   PencilIcon,
   PlayIcon,
+  StickyNoteIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
@@ -18,6 +20,12 @@ import { z } from "zod";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
+import { MemoList } from "~/features/annotations/components/memo-list";
+import {
+  getBookmark,
+  listMemos,
+} from "~/features/annotations/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
@@ -81,6 +89,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const role = await getStaffRole(client, user.id);
+  const [bookmark, memos] = await Promise.all([
+    getBookmark(client, user.id, "problem", problem.problemId),
+    listMemos(client, user.id, "problem", problem.problemId),
+  ]);
 
   return {
     scienceSubject: subject,
@@ -90,6 +102,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     sessionMode,
     position,
     isStaff: role !== null,
+    bookmark,
+    memos,
   };
 }
 
@@ -146,6 +160,8 @@ export default function ScienceProblemViewer({
     sessionMode,
     position,
     isStaff,
+    bookmark,
+    memos,
   } = loaderData;
   const attemptFetcher = useFetcher<typeof action>();
   const [selected, setSelected] = useState<string | null>(null);
@@ -347,6 +363,31 @@ export default function ScienceProblemViewer({
               </Link>
             </Button>
           ) : null}
+        </div>
+
+        {/* 즐겨찾기 · 포스트잇 메모 (polymorphic 주석, target_type='problem') */}
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <section className="bg-card rounded-xl border p-4 shadow-sm">
+            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+              <HeartIcon className="size-4 text-rose-500" /> 즐겨찾기
+            </h2>
+            <BookmarkStars
+              targetType="problem"
+              targetId={problem.problemId}
+              initial={bookmark}
+            />
+          </section>
+          <section className="bg-card rounded-xl border p-4 shadow-sm">
+            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+              <StickyNoteIcon className="size-4 text-amber-500" /> 포스트잇 메모
+            </h2>
+            <MemoList
+              targetType="problem"
+              targetId={problem.problemId}
+              initial={memos}
+              viewerIsStaff={isStaff}
+            />
+          </section>
         </div>
       </div>
     </div>

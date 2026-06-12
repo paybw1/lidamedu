@@ -11,6 +11,10 @@ import type {
 } from "./labels";
 
 import { articleDisplayPrefix } from "~/features/laws/lib/identifier";
+import {
+  scienceProblemHref,
+  scienceSubjectName,
+} from "~/features/subjects/lib/science";
 
 export type {
   AnnotationTargetType,
@@ -401,18 +405,24 @@ export async function listTopBookmarks(
 
   const problemMap = new Map<
     string,
-    { year: number | null; problemNumber: number | null; lawCode: string }
+    {
+      year: number | null;
+      problemNumber: number | null;
+      lawCode: string | null;
+      scienceSubject: string | null;
+    }
   >();
   if (problemIds.length > 0) {
     const { data: rs } = await client
       .from("problems")
-      .select("problem_id, year, problem_number, laws!inner(law_code)")
+      .select("problem_id, year, problem_number, science_subject, laws(law_code)")
       .in("problem_id", problemIds);
     for (const r of rs ?? []) {
       problemMap.set(r.problem_id, {
         year: r.year,
         problemNumber: r.problem_number,
-        lawCode: r.laws.law_code,
+        lawCode: r.laws?.law_code ?? null,
+        scienceSubject: r.science_subject,
       });
     }
   }
@@ -449,6 +459,8 @@ export async function listTopBookmarks(
     if (r.target_type === "problem") {
       const p = problemMap.get(r.target_id);
       if (!p) return [];
+      const sci = p.scienceSubject;
+      if (!p.lawCode && !sci) return [];
       const yearLabel = p.year
         ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
         : "문제";
@@ -457,9 +469,11 @@ export async function listTopBookmarks(
           targetType: "problem",
           targetId: r.target_id,
           starLevel: r.star_level,
-          label: yearLabel,
-          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
-          subject: p.lawCode,
+          label: sci ? `${scienceSubjectName(sci)} ${yearLabel}` : yearLabel,
+          href: sci
+            ? scienceProblemHref(sci, r.target_id)
+            : `/subjects/${p.lawCode}/problems/${r.target_id}`,
+          subject: sci ? "science" : p.lawCode,
         },
       ];
     }
@@ -614,7 +628,8 @@ export async function listAllBookmarks(
       year: number | null;
       problemNumber: number | null;
       bodySnippet: string;
-      lawCode: string;
+      lawCode: string | null;
+      scienceSubject: string | null;
     }
   >();
   const allProblemIds = new Set<string>(problemIds);
@@ -623,7 +638,9 @@ export async function listAllBookmarks(
   if (allProblemIds.size > 0) {
     const { data: ps } = await client
       .from("problems")
-      .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+      .select(
+        "problem_id, year, problem_number, body_md, science_subject, laws(law_code)",
+      )
       .in("problem_id", [...allProblemIds]);
     for (const p of ps ?? []) {
       const body = p.body_md ?? "";
@@ -631,7 +648,8 @@ export async function listAllBookmarks(
         year: p.year,
         problemNumber: p.problem_number,
         bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
-        lawCode: p.laws.law_code,
+        lawCode: p.laws?.law_code ?? null,
+        scienceSubject: p.science_subject,
       });
     }
   }
@@ -708,6 +726,8 @@ export async function listAllBookmarks(
     if (r.target_type === "problem") {
       const p = problemMap.get(r.target_id);
       if (!p) return [];
+      const sci = p.scienceSubject;
+      if (!p.lawCode && !sci) return [];
       const yearLabel = p.year
         ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
         : "문제";
@@ -719,11 +739,13 @@ export async function listAllBookmarks(
           starLevel: r.star_level,
           notePreview: preview,
           updatedAt: r.updated_at,
-          lawCode: p.lawCode,
+          lawCode: sci ? null : p.lawCode,
           primaryLabel: yearLabel,
-          secondaryLabel: null,
+          secondaryLabel: sci ? scienceSubjectName(sci) : null,
           bodySnippet: p.bodySnippet,
-          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+          href: sci
+            ? scienceProblemHref(sci, r.target_id)
+            : `/subjects/${p.lawCode}/problems/${r.target_id}`,
           oxTruth: null,
         },
       ];
@@ -914,7 +936,8 @@ export async function listAllMemos(
       year: number | null;
       problemNumber: number | null;
       bodySnippet: string;
-      lawCode: string;
+      lawCode: string | null;
+      scienceSubject: string | null;
     }
   >();
   const allProblemIds = new Set<string>(problemIds);
@@ -923,7 +946,9 @@ export async function listAllMemos(
   if (allProblemIds.size > 0) {
     const { data: ps } = await client
       .from("problems")
-      .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+      .select(
+        "problem_id, year, problem_number, body_md, science_subject, laws(law_code)",
+      )
       .in("problem_id", [...allProblemIds]);
     for (const p of ps ?? []) {
       const body = p.body_md ?? "";
@@ -931,7 +956,8 @@ export async function listAllMemos(
         year: p.year,
         problemNumber: p.problem_number,
         bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
-        lawCode: p.laws.law_code,
+        lawCode: p.laws?.law_code ?? null,
+        scienceSubject: p.science_subject,
       });
     }
   }
@@ -979,17 +1005,21 @@ export async function listAllMemos(
     if (r.target_type === "problem") {
       const p = problemMap.get(r.target_id);
       if (!p) return [];
+      const sci = p.scienceSubject;
+      if (!p.lawCode && !sci) return [];
       const yearLabel = p.year
         ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
         : "문제";
       return [
         {
           ...base,
-          lawCode: p.lawCode,
+          lawCode: sci ? null : p.lawCode,
           primaryLabel: yearLabel,
-          secondaryLabel: null,
+          secondaryLabel: sci ? scienceSubjectName(sci) : null,
           bodySnippet: p.bodySnippet,
-          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+          href: sci
+            ? scienceProblemHref(sci, r.target_id)
+            : `/subjects/${p.lawCode}/problems/${r.target_id}`,
         },
       ];
     }
@@ -1168,7 +1198,8 @@ export async function listAllHighlights(
       year: number | null;
       problemNumber: number | null;
       bodySnippet: string;
-      lawCode: string;
+      lawCode: string | null;
+      scienceSubject: string | null;
     }
   >();
   const allProblemIds = new Set<string>(problemIds);
@@ -1177,7 +1208,9 @@ export async function listAllHighlights(
   if (allProblemIds.size > 0) {
     const { data: ps } = await client
       .from("problems")
-      .select("problem_id, year, problem_number, body_md, laws!inner(law_code)")
+      .select(
+        "problem_id, year, problem_number, body_md, science_subject, laws(law_code)",
+      )
       .in("problem_id", [...allProblemIds]);
     for (const p of ps ?? []) {
       const body = p.body_md ?? "";
@@ -1185,7 +1218,8 @@ export async function listAllHighlights(
         year: p.year,
         problemNumber: p.problem_number,
         bodySnippet: body.length > 80 ? `${body.slice(0, 80)}…` : body,
-        lawCode: p.laws.law_code,
+        lawCode: p.laws?.law_code ?? null,
+        scienceSubject: p.science_subject,
       });
     }
   }
@@ -1235,17 +1269,21 @@ export async function listAllHighlights(
     if (r.target_type === "problem") {
       const p = problemMap.get(r.target_id);
       if (!p) return [];
+      const sci = p.scienceSubject;
+      if (!p.lawCode && !sci) return [];
       const yearLabel = p.year
         ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
         : "문제";
       return [
         {
           ...base,
-          lawCode: p.lawCode,
+          lawCode: sci ? null : p.lawCode,
           primaryLabel: yearLabel,
-          secondaryLabel: null,
+          secondaryLabel: sci ? scienceSubjectName(sci) : null,
           bodySnippet: p.bodySnippet,
-          href: `/subjects/${p.lawCode}/problems/${r.target_id}`,
+          href: sci
+            ? scienceProblemHref(sci, r.target_id)
+            : `/subjects/${p.lawCode}/problems/${r.target_id}`,
         },
       ];
     }
