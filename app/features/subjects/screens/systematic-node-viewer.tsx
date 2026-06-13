@@ -42,7 +42,6 @@ import {
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
-import { listLectureResourcesByArticleIds } from "~/features/lectures/queries.server";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
 import {
   getArticleSkeleton,
@@ -51,6 +50,7 @@ import {
   getSystematicNodeWithArticles,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import { listLectureResourcesByArticleIds } from "~/features/lectures/queries.server";
 import type { OxRefAnnotations } from "~/features/problems/labels";
 import {
   getOxAnnotationsForRefs,
@@ -60,6 +60,12 @@ import {
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
+import {
+  LeftPanelToggle,
+  leftOnlyGridCls,
+  useLeftPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
+import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { NodeMiniGraph } from "~/features/subjects/components/node-mini-graph";
 import {
   SortAxisProvider,
@@ -68,7 +74,6 @@ import {
 } from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
-import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
@@ -257,9 +262,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const sibIdx = siblings.findIndex((s) => s.nodeId === node.nodeId);
   const prevSibling = sibIdx > 0 ? siblings[sibIdx - 1] : null;
   const nextSibling =
-    sibIdx >= 0 && sibIdx < siblings.length - 1
-      ? siblings[sibIdx + 1]
-      : null;
+    sibIdx >= 0 && sibIdx < siblings.length - 1 ? siblings[sibIdx + 1] : null;
   const nodePrevNext = {
     idx: sibIdx,
     total: siblings.length,
@@ -342,6 +345,8 @@ function Inner({
     lectureResourcesByArticle,
   } = loaderData;
   const { axis } = useSortAxis();
+  const { collapsed: leftCollapsed, toggle: toggleLeft } =
+    useLeftPanelCollapse();
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
@@ -415,40 +420,52 @@ function Inner({
         counts={loaderData.axisCounts}
         className="lg:sticky lg:top-20"
       />
-      <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        {/* ── 좌측 트리 (데스크톱) ── */}
-        <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-          <Card className="rounded-xl border py-4 shadow-sm">
-            <CardHeader className="px-4 pb-3">
-              <div className="flex items-center justify-end gap-2">
-                <SortAxisToggle
-                  size="sm"
-                  disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="px-2 pb-2">
-              {renderSystematic ? (
-                <SystematicTree
-                  nodes={systematicNodes}
-                  activeArticleId={firstArticleId}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                  progressByArticle={progressByArticle}
-                />
-              ) : (
-                <ArticleTree
-                  nodes={articles}
-                  activeArticleId={firstArticleId}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                  lazyExpand={subject.slug === "civil" ? { lawId } : undefined}
-                />
-              )}
-            </CardContent>
-          </Card>
+      <div
+        className={`grid min-w-0 flex-1 gap-5 ${leftOnlyGridCls(leftCollapsed)}`}
+      >
+        {/* ── 좌측 트리 (데스크톱, 접기/펼치기) ── */}
+        <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
+          {leftCollapsed ? (
+            <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
+              <LeftPanelToggle collapsed onToggle={toggleLeft} />
+            </div>
+          ) : (
+            <Card className="rounded-xl border py-4 shadow-sm">
+              {/* 토글+정렬축 헤더 — 트리 스크롤해도 상단 고정(sticky top-0). */}
+              <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                  <SortAxisToggle
+                    size="sm"
+                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="px-2 pb-2">
+                {renderSystematic ? (
+                  <SystematicTree
+                    nodes={systematicNodes}
+                    activeArticleId={firstArticleId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                    progressByArticle={progressByArticle}
+                  />
+                ) : (
+                  <ArticleTree
+                    nodes={articles}
+                    activeArticleId={firstArticleId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                    lazyExpand={
+                      subject.slug === "civil" ? { lawId } : undefined
+                    }
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
         </aside>
 
         <main className="space-y-5">
@@ -468,40 +485,38 @@ function Inner({
                 </Button>
               }
             >
-                <SheetHeader>
-                  <SheetTitle>조문 트리</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-3 px-3 pb-4">
-                  <div className="flex justify-end">
-                    <SortAxisToggle
-                      size="sm"
-                      disabledAxes={
-                        systematicEmpty ? ["systematic"] : undefined
-                      }
-                    />
-                  </div>
-                  {renderSystematic ? (
-                    <SystematicTree
-                      nodes={systematicNodes}
-                      activeArticleId={firstArticleId}
-                      lawCode={subject.slug}
-                      bookmarkLevels={bookmarkLevels}
-                      annotationCounts={annotationCounts}
-                      progressByArticle={progressByArticle}
-                    />
-                  ) : (
-                    <ArticleTree
-                      nodes={articles}
-                      activeArticleId={firstArticleId}
-                      lawCode={subject.slug}
-                      bookmarkLevels={bookmarkLevels}
-                      annotationCounts={annotationCounts}
-                      lazyExpand={
-                        subject.slug === "civil" ? { lawId } : undefined
-                      }
-                    />
-                  )}
+              <SheetHeader>
+                <SheetTitle>조문 트리</SheetTitle>
+              </SheetHeader>
+              <div className="space-y-3 px-3 pb-4">
+                <div className="flex justify-end">
+                  <SortAxisToggle
+                    size="sm"
+                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                  />
                 </div>
+                {renderSystematic ? (
+                  <SystematicTree
+                    nodes={systematicNodes}
+                    activeArticleId={firstArticleId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                    progressByArticle={progressByArticle}
+                  />
+                ) : (
+                  <ArticleTree
+                    nodes={articles}
+                    activeArticleId={firstArticleId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                    lazyExpand={
+                      subject.slug === "civil" ? { lawId } : undefined
+                    }
+                  />
+                )}
+              </div>
             </MobileNavDrawer>
           </div>
 
@@ -513,7 +528,7 @@ function Inner({
                 <p className="text-primary text-[11px] font-bold tracking-widest uppercase">
                   {subject.name} · 체계도 노드{" "}
                   {nodePrevNext.total > 1 ? (
-                    <span className="text-muted-foreground ml-1 normal-case tracking-normal">
+                    <span className="text-muted-foreground ml-1 tracking-normal normal-case">
                       ({nodePrevNext.idx + 1} / {nodePrevNext.total})
                     </span>
                   ) : null}
@@ -793,26 +808,28 @@ function Inner({
                     {/* 우측 패널 열 — 모바일: 접기(스크롤 단축) / lg↑: 항상 표시 */}
                     <div className="bg-muted/40 dark:bg-muted/20">
                       <MobileCollapsiblePanel>
-                      <ArticleRightPanel
-                        target={{ type: "article", id: a.articleId }}
-                        bookmark={bookmark}
-                        memos={memos}
-                        highlights={highlights}
-                        qnaThreads={qnaThreads}
-                        oxQuestions={oxQuestionsByArticle[a.articleId] ?? []}
-                        oxAnnotationsByRef={oxAnnotationsByRef}
-                        relatedCases={relatedCasesByArticle[a.articleId] ?? []}
-                        subjectSlug={subject.slug}
-                        comments={commentsByArticle[a.articleId] ?? []}
-                        canEditComment={canEditComment}
-                        currentUserId={currentUserId}
-                        isAdmin={isAdmin}
-                        viewerIsStaff={canEditComment}
-                        importance={a.importance}
-                        lectureResources={
-                          lectureResourcesByArticle[a.articleId] ?? []
-                        }
-                      />
+                        <ArticleRightPanel
+                          target={{ type: "article", id: a.articleId }}
+                          bookmark={bookmark}
+                          memos={memos}
+                          highlights={highlights}
+                          qnaThreads={qnaThreads}
+                          oxQuestions={oxQuestionsByArticle[a.articleId] ?? []}
+                          oxAnnotationsByRef={oxAnnotationsByRef}
+                          relatedCases={
+                            relatedCasesByArticle[a.articleId] ?? []
+                          }
+                          subjectSlug={subject.slug}
+                          comments={commentsByArticle[a.articleId] ?? []}
+                          canEditComment={canEditComment}
+                          currentUserId={currentUserId}
+                          isAdmin={isAdmin}
+                          viewerIsStaff={canEditComment}
+                          importance={a.importance}
+                          lectureResources={
+                            lectureResourcesByArticle[a.articleId] ?? []
+                          }
+                        />
                       </MobileCollapsiblePanel>
                     </div>
                   </div>

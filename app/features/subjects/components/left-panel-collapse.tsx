@@ -55,6 +55,14 @@ export function panelGridCls(
   return "lg:grid-cols-[260px_minmax(0,1fr)_320px]";
 }
 
+// 좌측 트리만 접는 2-컬럼 그리드(체계도 노드/장 뷰어 — 우측 패널이 본문 카드 내부라
+// 별도 우측 트랙이 없음). 리터럴 분기로 Tailwind JIT 스캔 보장.
+export function leftOnlyGridCls(leftCollapsed: boolean): string {
+  return leftCollapsed
+    ? "lg:grid-cols-[2.5rem_minmax(0,1fr)]"
+    : "lg:grid-cols-[260px_minmax(0,1fr)]";
+}
+
 // bg-card 헤더 위에서도 또렷하게 보이도록 — muted 배경 + foreground 아이콘 + 그림자.
 // (이전 bg-card 버튼은 bg-card 헤더에 묻혀 "안 보인다"는 피드백)
 const BTN =

@@ -49,7 +49,6 @@ import {
   listBlankSetsByArticle,
 } from "~/features/blanks/queries.server";
 import { listCommentsBulk } from "~/features/comments/queries.server";
-import { listLectureResourcesByArticleIds } from "~/features/lectures/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
@@ -60,6 +59,7 @@ import {
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import { listLectureResourcesByArticleIds } from "~/features/lectures/queries.server";
 import type { OxRefAnnotations } from "~/features/problems/labels";
 import {
   getOxAnnotationsForRefs,
@@ -67,6 +67,11 @@ import {
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
+import {
+  LeftPanelToggle,
+  leftOnlyGridCls,
+  useLeftPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
 import {
   SortAxisProvider,
   SortAxisToggle,
@@ -304,6 +309,8 @@ function Inner({
     currentUserId,
   } = loaderData;
   const { axis } = useSortAxis();
+  const { collapsed: leftCollapsed, toggle: toggleLeft } =
+    useLeftPanelCollapse();
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
@@ -380,40 +387,52 @@ function Inner({
         counts={loaderData.axisCounts}
         className="lg:sticky lg:top-20"
       />
-      <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        {/* ── 좌측 트리 (데스크톱) ── */}
-        <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-          <Card className="rounded-xl border py-4 shadow-sm">
-            <CardHeader className="px-4 pb-3">
-              <div className="flex items-center justify-end gap-2">
-                <SortAxisToggle
-                  size="sm"
-                  disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="px-2 pb-2">
-              {renderSystematic ? (
-                <SystematicTree
-                  nodes={systematicNodes}
-                  activeArticleId={firstArticleId}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                />
-              ) : (
-                <ArticleTree
-                  nodes={articles}
-                  activeArticleId={firstArticleId}
-                  activeChapterId={chapter.chapterId}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                  lazyExpand={subject.slug === "civil" ? { lawId } : undefined}
-                />
-              )}
-            </CardContent>
-          </Card>
+      <div
+        className={`grid min-w-0 flex-1 gap-5 ${leftOnlyGridCls(leftCollapsed)}`}
+      >
+        {/* ── 좌측 트리 (데스크톱, 접기/펼치기) ── */}
+        <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
+          {leftCollapsed ? (
+            <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
+              <LeftPanelToggle collapsed onToggle={toggleLeft} />
+            </div>
+          ) : (
+            <Card className="rounded-xl border py-4 shadow-sm">
+              {/* 토글+정렬축 헤더 — 트리 스크롤해도 상단 고정(sticky top-0). */}
+              <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                  <SortAxisToggle
+                    size="sm"
+                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="px-2 pb-2">
+                {renderSystematic ? (
+                  <SystematicTree
+                    nodes={systematicNodes}
+                    activeArticleId={firstArticleId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                  />
+                ) : (
+                  <ArticleTree
+                    nodes={articles}
+                    activeArticleId={firstArticleId}
+                    activeChapterId={chapter.chapterId}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                    lazyExpand={
+                      subject.slug === "civil" ? { lawId } : undefined
+                    }
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
         </aside>
 
         <main className="space-y-5">
@@ -590,16 +609,16 @@ function Inner({
           {apparatusSkipped ? (
             <Card className="mb-4 rounded-xl border-amber-300 bg-amber-50 shadow-sm dark:border-amber-700/50 dark:bg-amber-950/20">
               <CardContent className="py-3 text-sm text-amber-900 dark:text-amber-200">
-                이 {levelLabel}에는 조문이 <b>{chapter.totalArticles}개</b>로 많아{" "}
-                <b>본문만</b> 표시합니다
+                이 {levelLabel}에는 조문이 <b>{chapter.totalArticles}개</b>로
+                많아 <b>본문만</b> 표시합니다
                 {totalPages > 1 ? (
                   <>
                     {" "}
                     (<b>{totalPages}페이지</b>로 끝까지 열람)
                   </>
                 ) : null}
-                . 즐겨찾기·포스트잇·관련 문제·빈칸 자료 등 전체 기능은 좌측 트리에서{" "}
-                <b>장·절</b>로 좁혀 들어가면 사용할 수 있어요.
+                . 즐겨찾기·포스트잇·관련 문제·빈칸 자료 등 전체 기능은 좌측
+                트리에서 <b>장·절</b>로 좁혀 들어가면 사용할 수 있어요.
               </CardContent>
             </Card>
           ) : null}
