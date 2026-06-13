@@ -19,21 +19,14 @@ import {
 import { useMemo, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 
-import {
-  LeftPanelToggle,
-  leftPanelGridCls,
-  useLeftPanelCollapse,
-} from "~/features/subjects/components/left-panel-collapse";
-import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
-
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Separator } from "~/core/components/ui/separator";
-import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
@@ -50,7 +43,6 @@ import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
 import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
 import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { listComments } from "~/features/comments/queries.server";
-import { listLectureResources } from "~/features/lectures/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
@@ -73,6 +65,7 @@ import {
   getUpcomingArticleRevision,
   listArticleRevisionHistory,
 } from "~/features/laws/queries.server";
+import { listLectureResources } from "~/features/lectures/queries.server";
 import {
   getOxAnnotationsForRefs,
   getOxQuestionsForArticle,
@@ -84,13 +77,21 @@ import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
+  LeftPanelToggle,
+  RightPanelToggle,
+  panelGridCls,
+  useLeftPanelCollapse,
+  useRightPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
+import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
+import {
   SortAxisProvider,
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
-import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
+import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
   LAW_SUBJECTS,
@@ -372,6 +373,8 @@ function ArticleViewerInner({
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
   const { collapsed: leftCollapsed, toggle: toggleLeft } =
     useLeftPanelCollapse();
+  const { collapsed: rightCollapsed, toggle: toggleRight } =
+    useRightPanelCollapse();
   const [blankMode, setBlankMode] = useState(false);
   const [subjectBlankMode, setSubjectBlankMode] = useState(
     initialBlankMode?.subject ?? false,
@@ -475,7 +478,7 @@ function ArticleViewerInner({
           className="lg:sticky lg:top-20"
         />
         <div
-          className={`grid min-w-0 flex-1 gap-5 ${leftPanelGridCls(leftCollapsed)}`}
+          className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
           {/* ── LEFT TREE (desktop sticky, 접기/펼치기) ─────────────────── */}
           <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
@@ -515,7 +518,8 @@ function ArticleViewerInner({
                   )}
                   {axis === "systematic" && systematicEmpty ? (
                     <p className="text-muted-foreground mt-2 px-2 text-xs">
-                      * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
+                      * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로
+                      표시
                     </p>
                   ) : null}
                 </div>
@@ -541,45 +545,45 @@ function ArticleViewerInner({
                   </Button>
                 }
               >
-                  <SheetHeader>
-                    <SheetTitle>조문 트리</SheetTitle>
-                  </SheetHeader>
-                  <div className="space-y-3 px-3 pb-4">
-                    <div className="flex justify-end">
-                      <SortAxisToggle
-                        size="sm"
-                        disabledAxes={
-                          systematicEmpty ? ["systematic"] : undefined
-                        }
-                      />
-                    </div>
-                    {renderSystematic ? (
-                      <SystematicTree
-                        nodes={systematicNodes}
-                        activeArticleId={article.articleId}
-                        lawCode={subject.slug}
-                        bookmarkLevels={bookmarkLevels}
-                        annotationCounts={annotationCounts}
-                      />
-                    ) : (
-                      <ArticleTree
-                        nodes={articles}
-                        activeArticleId={article.articleId}
-                        lawCode={subject.slug}
-                        bookmarkLevels={bookmarkLevels}
-                        annotationCounts={annotationCounts}
-                        lazyExpand={
-                          subject.slug === "civil" ? { lawId } : undefined
-                        }
-                      />
-                    )}
-                    {axis === "systematic" && systematicEmpty ? (
-                      <p className="text-muted-foreground mt-2 px-2 text-xs">
-                        * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로
-                        표시
-                      </p>
-                    ) : null}
+                <SheetHeader>
+                  <SheetTitle>조문 트리</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-3 px-3 pb-4">
+                  <div className="flex justify-end">
+                    <SortAxisToggle
+                      size="sm"
+                      disabledAxes={
+                        systematicEmpty ? ["systematic"] : undefined
+                      }
+                    />
                   </div>
+                  {renderSystematic ? (
+                    <SystematicTree
+                      nodes={systematicNodes}
+                      activeArticleId={article.articleId}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                    />
+                  ) : (
+                    <ArticleTree
+                      nodes={articles}
+                      activeArticleId={article.articleId}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                      lazyExpand={
+                        subject.slug === "civil" ? { lawId } : undefined
+                      }
+                    />
+                  )}
+                  {axis === "systematic" && systematicEmpty ? (
+                    <p className="text-muted-foreground mt-2 px-2 text-xs">
+                      * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로
+                      표시
+                    </p>
+                  ) : null}
+                </div>
               </MobileNavDrawer>
               <MobileNavDrawer
                 side="right"
@@ -595,30 +599,30 @@ function ArticleViewerInner({
                   </Button>
                 }
               >
-                  <SheetHeader>
-                    <SheetTitle>학습 보조</SheetTitle>
-                  </SheetHeader>
-                  <div className="px-3 pb-4">
-                    <ArticleRightPanel
-                      target={{ type: "article", id: article.articleId }}
-                      bookmark={bookmark}
-                      memos={memos}
-                      highlights={highlights}
-                      qnaThreads={qnaThreads}
-                      relatedCases={relatedCases}
-                      oxQuestions={oxQuestions}
-                      oxAnnotationsByRef={oxAnnotationsByRef}
-                      comments={articleComments}
-                      canEditComment={staffRole !== null}
-                      currentUserId={currentUserId}
-                      isAdmin={isAdmin}
-                      subjectSlug={subject.slug}
-                      revisions={revisions ?? undefined}
-                      viewerIsStaff={staffRole !== null}
-                      importance={article.importance}
-                      lectureResources={lectureResources}
-                    />
-                  </div>
+                <SheetHeader>
+                  <SheetTitle>학습 보조</SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-4">
+                  <ArticleRightPanel
+                    target={{ type: "article", id: article.articleId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedCases={relatedCases}
+                    oxQuestions={oxQuestions}
+                    oxAnnotationsByRef={oxAnnotationsByRef}
+                    comments={articleComments}
+                    canEditComment={staffRole !== null}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    subjectSlug={subject.slug}
+                    revisions={revisions ?? undefined}
+                    viewerIsStaff={staffRole !== null}
+                    importance={article.importance}
+                    lectureResources={lectureResources}
+                  />
+                </div>
               </MobileNavDrawer>
             </div>
 
@@ -728,184 +732,184 @@ function ArticleViewerInner({
                 {/* Pill-group segmented control — 모바일: 가로 스크롤(모든 모드 1탭 유지) */}
                 <div className="w-full min-w-0 overflow-x-auto sm:w-auto sm:overflow-visible">
                   <div className="border-border bg-background inline-flex w-max items-center gap-0.5 rounded-full border p-1">
-                  <ModeButton
-                    active={activeMode === "normal"}
-                    onClick={() => {
-                      setBlankMode(false);
-                      setSubjectBlankMode(false);
-                      setPeriodBlankMode(false);
-                      setRecitationMode(false);
-                      setSubtitlesOnly(false);
-                      setEditMode(false);
-                    }}
-                    disabled={false}
-                  >
-                    본문
-                  </ModeButton>
-                  {blankAvailable ? (
                     <ModeButton
-                      active={activeMode === "cloze"}
+                      active={activeMode === "normal"}
                       onClick={() => {
-                        setBlankMode((v) => !v);
-                        if (!blankMode) {
-                          setSubjectBlankMode(false);
-                          setPeriodBlankMode(false);
-                          setRecitationMode(false);
-                          setSubtitlesOnly(false);
-                          setEditMode(false);
-                        }
-                      }}
-                      disabled={editMode}
-                    >
-                      <PencilLineIcon className="size-3" aria-hidden="true" />
-                      내용 빈칸
-                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
-                        {blankSet!.blanks.length}
-                      </span>
-                    </ModeButton>
-                  ) : null}
-                  {subjectBlankAvailable ? (
-                    <ModeButton
-                      active={activeMode === "subject"}
-                      onClick={() => {
-                        setSubjectBlankMode((v) => !v);
-                        if (!subjectBlankMode) {
-                          setBlankMode(false);
-                          setPeriodBlankMode(false);
-                          setRecitationMode(false);
-                          setSubtitlesOnly(false);
-                          setEditMode(false);
-                        }
-                      }}
-                      disabled={editMode}
-                    >
-                      <PencilLineIcon className="size-3" aria-hidden="true" />
-                      주체 빈칸
-                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
-                        {subjectBlanks.length}
-                      </span>
-                    </ModeButton>
-                  ) : null}
-                  {periodBlankAvailable ? (
-                    <ModeButton
-                      active={activeMode === "period"}
-                      onClick={() => {
-                        setPeriodBlankMode((v) => !v);
-                        if (!periodBlankMode) {
-                          setBlankMode(false);
-                          setSubjectBlankMode(false);
-                          setRecitationMode(false);
-                          setSubtitlesOnly(false);
-                          setEditMode(false);
-                        }
-                      }}
-                      disabled={editMode}
-                    >
-                      <PencilLineIcon className="size-3" aria-hidden="true" />
-                      기간 빈칸
-                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
-                        {periodResult.blanks.length}
-                        {periodResult.ambiguous.length > 0
-                          ? `+${periodResult.ambiguous.length}?`
-                          : ""}
-                      </span>
-                    </ModeButton>
-                  ) : null}
-                  <ModeButton
-                    active={activeMode === "memorize"}
-                    onClick={() => {
-                      setRecitationMode((v) => !v);
-                      if (!recitationMode) {
                         setBlankMode(false);
                         setSubjectBlankMode(false);
                         setPeriodBlankMode(false);
+                        setRecitationMode(false);
                         setSubtitlesOnly(false);
                         setEditMode(false);
-                      }
-                    }}
-                    disabled={editMode}
-                    title={
-                      article.importance >= 2
-                        ? "암기 추천 — 별 2개 이상 중요 조문"
-                        : "조/항/호/목 골격만 두고 본문을 직접 입력해 암기"
-                    }
-                  >
-                    <BrainIcon className="size-3" aria-hidden="true" />
-                    암기
-                    {article.importance >= 2 ? (
-                      <span className="text-amber-500">★</span>
-                    ) : null}
-                  </ModeButton>
-                  <ModeButton
-                    active={activeMode === "outline"}
-                    onClick={() => {
-                      setSubtitlesOnly((v) => !v);
-                      if (!subtitlesOnly) {
-                        setEditMode(false);
-                      }
-                    }}
-                    disabled={
-                      blankMode ||
-                      subjectBlankMode ||
-                      periodBlankMode ||
-                      recitationMode ||
-                      editMode
-                    }
-                  >
-                    {subtitlesOnly ? (
-                      <EyeIcon className="size-3" aria-hidden="true" />
-                    ) : (
-                      <EyeOffIcon className="size-3" aria-hidden="true" />
-                    )}
-                    소제목만
-                  </ModeButton>
-                  {articleComments.length > 0 ? (
-                    <ModeButton
-                      active={false}
-                      onClick={() =>
-                        dispatchOpenCommentTab({
-                          targetType: "article",
-                          targetId: article.articleId,
-                        })
-                      }
+                      }}
                       disabled={false}
-                      data-testid="open-article-comment"
                     >
-                      <ScrollTextIcon className="size-3" aria-hidden="true" />
-                      해설
-                      <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
-                        {articleComments.length}
-                      </span>
+                      본문
                     </ModeButton>
-                  ) : null}
-                  {relatedCases.length > 0 && article.articleNumber ? (
-                    <form method="post" action="/api/study/start-flow">
-                      <input
-                        type="hidden"
-                        name="subject"
-                        value={subject.slug}
-                      />
-                      <input
-                        type="hidden"
-                        name="articleId"
-                        value={article.articleId}
-                      />
-                      <input
-                        type="hidden"
-                        name="articleNumber"
-                        value={article.articleNumber}
-                      />
+                    {blankAvailable ? (
+                      <ModeButton
+                        active={activeMode === "cloze"}
+                        onClick={() => {
+                          setBlankMode((v) => !v);
+                          if (!blankMode) {
+                            setSubjectBlankMode(false);
+                            setPeriodBlankMode(false);
+                            setRecitationMode(false);
+                            setSubtitlesOnly(false);
+                            setEditMode(false);
+                          }
+                        }}
+                        disabled={editMode}
+                      >
+                        <PencilLineIcon className="size-3" aria-hidden="true" />
+                        내용 빈칸
+                        <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
+                          {blankSet!.blanks.length}
+                        </span>
+                      </ModeButton>
+                    ) : null}
+                    {subjectBlankAvailable ? (
+                      <ModeButton
+                        active={activeMode === "subject"}
+                        onClick={() => {
+                          setSubjectBlankMode((v) => !v);
+                          if (!subjectBlankMode) {
+                            setBlankMode(false);
+                            setPeriodBlankMode(false);
+                            setRecitationMode(false);
+                            setSubtitlesOnly(false);
+                            setEditMode(false);
+                          }
+                        }}
+                        disabled={editMode}
+                      >
+                        <PencilLineIcon className="size-3" aria-hidden="true" />
+                        주체 빈칸
+                        <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
+                          {subjectBlanks.length}
+                        </span>
+                      </ModeButton>
+                    ) : null}
+                    {periodBlankAvailable ? (
+                      <ModeButton
+                        active={activeMode === "period"}
+                        onClick={() => {
+                          setPeriodBlankMode((v) => !v);
+                          if (!periodBlankMode) {
+                            setBlankMode(false);
+                            setSubjectBlankMode(false);
+                            setRecitationMode(false);
+                            setSubtitlesOnly(false);
+                            setEditMode(false);
+                          }
+                        }}
+                        disabled={editMode}
+                      >
+                        <PencilLineIcon className="size-3" aria-hidden="true" />
+                        기간 빈칸
+                        <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
+                          {periodResult.blanks.length}
+                          {periodResult.ambiguous.length > 0
+                            ? `+${periodResult.ambiguous.length}?`
+                            : ""}
+                        </span>
+                      </ModeButton>
+                    ) : null}
+                    <ModeButton
+                      active={activeMode === "memorize"}
+                      onClick={() => {
+                        setRecitationMode((v) => !v);
+                        if (!recitationMode) {
+                          setBlankMode(false);
+                          setSubjectBlankMode(false);
+                          setPeriodBlankMode(false);
+                          setSubtitlesOnly(false);
+                          setEditMode(false);
+                        }
+                      }}
+                      disabled={editMode}
+                      title={
+                        article.importance >= 2
+                          ? "암기 추천 — 별 2개 이상 중요 조문"
+                          : "조/항/호/목 골격만 두고 본문을 직접 입력해 암기"
+                      }
+                    >
+                      <BrainIcon className="size-3" aria-hidden="true" />
+                      암기
+                      {article.importance >= 2 ? (
+                        <span className="text-amber-500">★</span>
+                      ) : null}
+                    </ModeButton>
+                    <ModeButton
+                      active={activeMode === "outline"}
+                      onClick={() => {
+                        setSubtitlesOnly((v) => !v);
+                        if (!subtitlesOnly) {
+                          setEditMode(false);
+                        }
+                      }}
+                      disabled={
+                        blankMode ||
+                        subjectBlankMode ||
+                        periodBlankMode ||
+                        recitationMode ||
+                        editMode
+                      }
+                    >
+                      {subtitlesOnly ? (
+                        <EyeIcon className="size-3" aria-hidden="true" />
+                      ) : (
+                        <EyeOffIcon className="size-3" aria-hidden="true" />
+                      )}
+                      소제목만
+                    </ModeButton>
+                    {articleComments.length > 0 ? (
                       <ModeButton
                         active={false}
-                        asSubmit
+                        onClick={() =>
+                          dispatchOpenCommentTab({
+                            targetType: "article",
+                            targetId: article.articleId,
+                          })
+                        }
                         disabled={false}
-                        title="조문 → 관련 판례 → 그 판례를 다룬 문제 순회"
+                        data-testid="open-article-comment"
                       >
-                        <WorkflowIcon className="size-3" aria-hidden="true" />
-                        흐름 학습
+                        <ScrollTextIcon className="size-3" aria-hidden="true" />
+                        해설
+                        <span className="text-[11px] tabular-nums opacity-70 sm:text-[10px]">
+                          {articleComments.length}
+                        </span>
                       </ModeButton>
-                    </form>
-                  ) : null}
+                    ) : null}
+                    {relatedCases.length > 0 && article.articleNumber ? (
+                      <form method="post" action="/api/study/start-flow">
+                        <input
+                          type="hidden"
+                          name="subject"
+                          value={subject.slug}
+                        />
+                        <input
+                          type="hidden"
+                          name="articleId"
+                          value={article.articleId}
+                        />
+                        <input
+                          type="hidden"
+                          name="articleNumber"
+                          value={article.articleNumber}
+                        />
+                        <ModeButton
+                          active={false}
+                          asSubmit
+                          disabled={false}
+                          title="조문 → 관련 판례 → 그 판례를 다룬 문제 순회"
+                        >
+                          <WorkflowIcon className="size-3" aria-hidden="true" />
+                          흐름 학습
+                        </ModeButton>
+                      </form>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1112,7 +1116,7 @@ function ArticleViewerInner({
                               </p>
                             )}
                           </div>
-                          <div className="rounded-lg border border-amber-300/60 bg-amber-50/40 p-4 dark:border-amber-700/40 dark:bg-amber-950/15 md:border-0 md:border-l md:border-amber-300/60 md:bg-transparent md:p-0 md:pl-5 md:dark:bg-transparent">
+                          <div className="rounded-lg border border-amber-300/60 bg-amber-50/40 p-4 md:border-0 md:border-l md:border-amber-300/60 md:bg-transparent md:p-0 md:pl-5 dark:border-amber-700/40 dark:bg-amber-950/15 md:dark:bg-transparent">
                             <p className="mb-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-300">
                               🗓 {upcomingEffectiveDate} 시행 예정
                             </p>
@@ -1149,29 +1153,40 @@ function ArticleViewerInner({
             </div>
           </main>
 
-          {/* ── RIGHT PANEL (desktop sticky) ────────────────────────────── */}
+          {/* ── RIGHT PANEL (desktop sticky, 접기/펼치기) ───────────────── */}
           <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <div className="border-border bg-card rounded-xl border shadow-sm">
-              <ArticleRightPanel
-                target={{ type: "article", id: article.articleId }}
-                bookmark={bookmark}
-                memos={memos}
-                highlights={highlights}
-                qnaThreads={qnaThreads}
-                relatedCases={relatedCases}
-                oxQuestions={oxQuestions}
-                oxAnnotationsByRef={oxAnnotationsByRef}
-                comments={articleComments}
-                canEditComment={staffRole !== null}
-                currentUserId={currentUserId}
-                isAdmin={isAdmin}
-                subjectSlug={subject.slug}
-                revisions={revisions ?? undefined}
-                viewerIsStaff={staffRole !== null}
-                importance={article.importance}
-                lectureResources={lectureResources}
-              />
-            </div>
+            {rightCollapsed ? (
+              <div className="flex justify-center pt-1">
+                <RightPanelToggle collapsed onToggle={toggleRight} />
+              </div>
+            ) : (
+              <>
+                <div className="mb-2">
+                  <RightPanelToggle collapsed={false} onToggle={toggleRight} />
+                </div>
+                <div className="border-border bg-card rounded-xl border shadow-sm">
+                  <ArticleRightPanel
+                    target={{ type: "article", id: article.articleId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedCases={relatedCases}
+                    oxQuestions={oxQuestions}
+                    oxAnnotationsByRef={oxAnnotationsByRef}
+                    comments={articleComments}
+                    canEditComment={staffRole !== null}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    subjectSlug={subject.slug}
+                    revisions={revisions ?? undefined}
+                    viewerIsStaff={staffRole !== null}
+                    importance={article.importance}
+                    lectureResources={lectureResources}
+                  />
+                </div>
+              </>
+            )}
           </aside>
         </div>
       </div>

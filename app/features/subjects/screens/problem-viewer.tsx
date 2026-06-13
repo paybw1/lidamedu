@@ -16,13 +16,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 
-import {
-  LeftPanelToggle,
-  leftPanelGridCls,
-  useLeftPanelCollapse,
-} from "~/features/subjects/components/left-panel-collapse";
-import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
-
 import { Button } from "~/core/components/ui/button";
 import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
@@ -40,12 +33,12 @@ import {
 } from "~/features/annotations/queries.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
-import { listLectureResources } from "~/features/lectures/queries.server";
 import {
   getLawByCode,
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import { listLectureResources } from "~/features/lectures/queries.server";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
@@ -59,9 +52,9 @@ import {
 } from "~/features/problems/lib/auto-ox";
 import {
   type AdjacentProblem,
+  getAdjacentProblems,
   getCasesCitedByProblem,
   getChoiceLinkRefs,
-  getAdjacentProblems,
   getProblemById,
   getRelatedProblems,
   getSystematicNodeProblemSequence,
@@ -81,9 +74,17 @@ import {
   getSubjectiveAttempt,
   recordStudySession,
 } from "~/features/study/queries.server";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import {
+  LeftPanelToggle,
+  RightPanelToggle,
+  panelGridCls,
+  useLeftPanelCollapse,
+  useRightPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
+import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
   LAW_SUBJECTS,
@@ -418,6 +419,8 @@ function useExamTimer(
 export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
   const { collapsed: leftCollapsed, toggle: toggleLeft } =
     useLeftPanelCollapse();
+  const { collapsed: rightCollapsed, toggle: toggleRight } =
+    useRightPanelCollapse();
   const {
     subject,
     problem,
@@ -680,7 +683,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
           className="lg:sticky lg:top-[calc(3.5rem+41px)]"
         />
         <div
-          className={`grid min-w-0 flex-1 gap-0 ${leftPanelGridCls(leftCollapsed)}`}
+          className={`grid min-w-0 flex-1 gap-0 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
           {/* Left tree — desktop sticky, 접기/펼치기 */}
           <aside className="lg:border-border hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r">
@@ -728,26 +731,26 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   </Button>
                 }
               >
-                  <SheetHeader className="border-border border-b px-4 py-3">
-                    <SheetTitle className="text-sm font-semibold">
-                      체계도 트리
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="px-3 pb-4">
-                    {systematicEmpty ? (
-                      <p className="text-muted-foreground px-2 py-4 text-xs">
-                        체계도 데이터 미입력
-                      </p>
-                    ) : (
-                      <SystematicTree
-                        nodes={systematicNodes}
-                        activeArticleId={problem.primaryArticleId ?? undefined}
-                        lawCode={subject.slug}
-                        bookmarkLevels={bookmarkLevels}
-                        annotationCounts={annotationCounts}
-                      />
-                    )}
-                  </div>
+                <SheetHeader className="border-border border-b px-4 py-3">
+                  <SheetTitle className="text-sm font-semibold">
+                    체계도 트리
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-4">
+                  {systematicEmpty ? (
+                    <p className="text-muted-foreground px-2 py-4 text-xs">
+                      체계도 데이터 미입력
+                    </p>
+                  ) : (
+                    <SystematicTree
+                      nodes={systematicNodes}
+                      activeArticleId={problem.primaryArticleId ?? undefined}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                    />
+                  )}
+                </div>
               </MobileNavDrawer>
               <MobileNavDrawer
                 side="right"
@@ -763,39 +766,39 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   </Button>
                 }
               >
-                  <SheetHeader className="border-border border-b px-4 py-3">
-                    <SheetTitle className="text-sm font-semibold">
-                      학습 보조
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="px-3 pb-4">
-                    <ArticleRightPanel
-                      target={{ type: "problem", id: problem.problemId }}
-                      bookmark={bookmark}
-                      memos={memos}
-                      highlights={highlights}
-                      qnaThreads={qnaThreads}
-                      relatedProblems={relatedProblems}
-                      subjectSlug={subject.slug}
-                      relatedCases={citedCases.map((c) => ({
-                        caseId: c.caseId,
-                        caseNumber: c.caseNumber,
-                        caseTitle: c.caseTitle,
-                        summaryTitle: c.summaryTitle,
-                        decidedAt: c.decidedAt,
-                        importance: c.importance,
-                        relationType: PC_TO_AC[c.relationType] ?? "cites",
-                        note: null,
-                      }))}
-                      comments={problemComments}
-                      canEditComment={canEditComment}
-                      currentUserId={currentUserId}
-                      isAdmin={isAdmin}
-                      viewerIsStaff={canEditComment}
-                      importance={problem.importance}
-                      lectureResources={lectureResources}
-                    />
-                  </div>
+                <SheetHeader className="border-border border-b px-4 py-3">
+                  <SheetTitle className="text-sm font-semibold">
+                    학습 보조
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="px-3 pb-4">
+                  <ArticleRightPanel
+                    target={{ type: "problem", id: problem.problemId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedProblems={relatedProblems}
+                    subjectSlug={subject.slug}
+                    relatedCases={citedCases.map((c) => ({
+                      caseId: c.caseId,
+                      caseNumber: c.caseNumber,
+                      caseTitle: c.caseTitle,
+                      summaryTitle: c.summaryTitle,
+                      decidedAt: c.decidedAt,
+                      importance: c.importance,
+                      relationType: PC_TO_AC[c.relationType] ?? "cites",
+                      note: null,
+                    }))}
+                    comments={problemComments}
+                    canEditComment={canEditComment}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    viewerIsStaff={canEditComment}
+                    importance={problem.importance}
+                    lectureResources={lectureResources}
+                  />
+                </div>
               </MobileNavDrawer>
             </div>
 
@@ -1320,34 +1323,45 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             </article>
           </main>
 
-          {/* Right panel — desktop sticky */}
+          {/* Right panel — desktop sticky, 접기/펼치기 */}
           <aside className="hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
-            <ArticleRightPanel
-              target={{ type: "problem", id: problem.problemId }}
-              bookmark={bookmark}
-              memos={memos}
-              highlights={highlights}
-              qnaThreads={qnaThreads}
-              relatedProblems={relatedProblems}
-              subjectSlug={subject.slug}
-              relatedCases={citedCases.map((c) => ({
-                caseId: c.caseId,
-                caseNumber: c.caseNumber,
-                caseTitle: c.caseTitle,
-                summaryTitle: c.summaryTitle,
-                decidedAt: c.decidedAt,
-                importance: c.importance,
-                relationType: PC_TO_AC[c.relationType] ?? "cites",
-                note: null,
-              }))}
-              comments={problemComments}
-              canEditComment={canEditComment}
-              currentUserId={currentUserId}
-              lectureResources={lectureResources}
-              isAdmin={isAdmin}
-              viewerIsStaff={canEditComment}
-              importance={problem.importance}
-            />
+            {rightCollapsed ? (
+              <div className="flex justify-center pt-3">
+                <RightPanelToggle collapsed onToggle={toggleRight} />
+              </div>
+            ) : (
+              <>
+                <div className="px-3 pt-3">
+                  <RightPanelToggle collapsed={false} onToggle={toggleRight} />
+                </div>
+                <ArticleRightPanel
+                  target={{ type: "problem", id: problem.problemId }}
+                  bookmark={bookmark}
+                  memos={memos}
+                  highlights={highlights}
+                  qnaThreads={qnaThreads}
+                  relatedProblems={relatedProblems}
+                  subjectSlug={subject.slug}
+                  relatedCases={citedCases.map((c) => ({
+                    caseId: c.caseId,
+                    caseNumber: c.caseNumber,
+                    caseTitle: c.caseTitle,
+                    summaryTitle: c.summaryTitle,
+                    decidedAt: c.decidedAt,
+                    importance: c.importance,
+                    relationType: PC_TO_AC[c.relationType] ?? "cites",
+                    note: null,
+                  }))}
+                  comments={problemComments}
+                  canEditComment={canEditComment}
+                  currentUserId={currentUserId}
+                  lectureResources={lectureResources}
+                  isAdmin={isAdmin}
+                  viewerIsStaff={canEditComment}
+                  importance={problem.importance}
+                />
+              </>
+            )}
           </aside>
         </div>
       </div>

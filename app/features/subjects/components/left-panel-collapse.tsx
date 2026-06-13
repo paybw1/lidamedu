@@ -1,42 +1,62 @@
-// 학습과목 뷰어(조문/판례/문제) 좌측 트리 패널 접기/펼치기.
-//   데스크톱(lg+) 3컬럼 그리드의 좌측 트랙을 접힘 시 좁은 스트립(2.5rem)으로 줄이고
-//   트리 대신 펼치기 버튼만 보인다. 상태는 localStorage 로 화면 간 유지.
-import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+// 학습과목 뷰어(조문/판례/문제) 좌·우 패널 접기/펼치기.
+//   데스크톱(lg+) 3컬럼 그리드의 좌/우 트랙을 접힘 시 좁은 스트립(2.5rem)으로 줄이고
+//   콘텐츠 대신 펼치기 버튼만 보인다. 상태는 localStorage 로 화면 간 유지.
+//   (파일명은 left- 이지만 좌·우 양쪽을 다룬다.)
+import {
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  PanelRightCloseIcon,
+  PanelRightOpenIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { cn } from "~/core/lib/utils";
 
-const KEY = "subjects-left-collapsed";
-
-export function useLeftPanelCollapse() {
+function usePanelCollapse(key: string) {
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
     try {
-      setCollapsed(localStorage.getItem(KEY) === "1");
+      setCollapsed(localStorage.getItem(key) === "1");
     } catch {
-      // localStorage 접근 불가(프라이빗 모드 등) — 기본 펼침 유지.
+      // localStorage 불가(프라이빗 모드 등) — 기본 펼침.
     }
-  }, []);
+  }, [key]);
   const toggle = useCallback(() => {
     setCollapsed((c) => {
       const next = !c;
       try {
-        localStorage.setItem(KEY, next ? "1" : "0");
+        localStorage.setItem(key, next ? "1" : "0");
       } catch {
-        // 무시 — 메모리 상태만 변경.
+        // 무시 — 메모리 상태만.
       }
       return next;
     });
-  }, []);
+  }, [key]);
   return { collapsed, toggle };
 }
 
-// 그리드 컬럼 템플릿 — 접힘 시 좌측 트랙을 좁은 스트립으로.
-export function leftPanelGridCls(collapsed: boolean): string {
-  return collapsed
-    ? "lg:grid-cols-[2.5rem_minmax(0,1fr)_320px]"
-    : "lg:grid-cols-[260px_minmax(0,1fr)_320px]";
+export function useLeftPanelCollapse() {
+  return usePanelCollapse("subjects-left-collapsed");
 }
+export function useRightPanelCollapse() {
+  return usePanelCollapse("subjects-right-collapsed");
+}
+
+// 그리드 컬럼 템플릿 — 접힌 트랙은 좁은 스트립. Tailwind JIT 가 스캔하도록 리터럴 4분기
+// (동적 문자열 보간은 스캔 불가 → 빌드에서 클래스 누락).
+export function panelGridCls(
+  leftCollapsed: boolean,
+  rightCollapsed: boolean,
+): string {
+  if (leftCollapsed && rightCollapsed)
+    return "lg:grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]";
+  if (leftCollapsed) return "lg:grid-cols-[2.5rem_minmax(0,1fr)_320px]";
+  if (rightCollapsed) return "lg:grid-cols-[260px_minmax(0,1fr)_2.5rem]";
+  return "lg:grid-cols-[260px_minmax(0,1fr)_320px]";
+}
+
+const BTN =
+  "border-input bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md border transition-colors";
 
 export function LeftPanelToggle({
   collapsed,
@@ -53,15 +73,38 @@ export function LeftPanelToggle({
       onClick={onToggle}
       title={collapsed ? "트리 펼치기" : "트리 접기"}
       aria-label={collapsed ? "트리 펼치기" : "트리 접기"}
-      className={cn(
-        "border-input bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md border transition-colors",
-        className,
-      )}
+      className={cn(BTN, className)}
     >
       {collapsed ? (
         <PanelLeftOpenIcon className="size-4" />
       ) : (
         <PanelLeftCloseIcon className="size-4" />
+      )}
+    </button>
+  );
+}
+
+export function RightPanelToggle({
+  collapsed,
+  onToggle,
+  className,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={collapsed ? "패널 펼치기" : "패널 접기"}
+      aria-label={collapsed ? "패널 펼치기" : "패널 접기"}
+      className={cn(BTN, className)}
+    >
+      {collapsed ? (
+        <PanelRightOpenIcon className="size-4" />
+      ) : (
+        <PanelRightCloseIcon className="size-4" />
       )}
     </button>
   );

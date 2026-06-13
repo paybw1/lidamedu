@@ -3,13 +3,6 @@ import type { Route } from "./+types/case-viewer";
 import { ListTreeIcon, NetworkIcon, PanelRightIcon } from "lucide-react";
 import { Link, data, redirect, useSearchParams } from "react-router";
 
-import {
-  LeftPanelToggle,
-  leftPanelGridCls,
-  useLeftPanelCollapse,
-} from "~/features/subjects/components/left-panel-collapse";
-import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
-
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
@@ -26,13 +19,12 @@ import {
   findActiveCaseByDeletedId,
   getCaseById,
   getCaseIdsByArticleLinks,
-  getCaseSiblings,
   getCasePlacementMaps,
+  getCaseSiblings,
   getCasesByIds,
   listCaseReferences,
 } from "~/features/cases/queries.server";
 import { listComments } from "~/features/comments/queries.server";
-import { listLectureResources } from "~/features/lectures/queries.server";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import {
   RelatedArticlesChips,
@@ -46,6 +38,7 @@ import {
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import { listLectureResources } from "~/features/lectures/queries.server";
 import {
   getExamProblemsForCase,
   getRelatedProblemsByCase,
@@ -55,6 +48,13 @@ import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { CasesTree } from "~/features/subjects/components/cases-tree";
+import {
+  LeftPanelToggle,
+  RightPanelToggle,
+  panelGridCls,
+  useLeftPanelCollapse,
+  useRightPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
 import {
   SortAxisProvider,
@@ -62,6 +62,7 @@ import {
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   type CaseTreeCounts,
   type CaseTreeFilter,
@@ -106,13 +107,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Law not seeded", { status: 404 });
   }
 
-  const [kase, articles, systematicNodes, placementMaps] =
-    await Promise.all([
-      getCaseById(client, params.caseId),
-      getArticleSkeleton(client, law.lawId),
-      getSystematicSkeleton(client, lawCode),
-      getCasePlacementMaps(client, lawCode, law.lawId),
-    ]);
+  const [kase, articles, systematicNodes, placementMaps] = await Promise.all([
+    getCaseById(client, params.caseId),
+    getArticleSkeleton(client, law.lawId),
+    getSystematicSkeleton(client, lawCode),
+    getCasePlacementMaps(client, lawCode, law.lawId),
+  ]);
 
   if (!kase) {
     // soft-deleted case 진입 — 같은 사건번호의 활성 row 가 있으면 그쪽으로 redirect.
@@ -151,17 +151,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const backRaw = url.searchParams.get("back");
   const backParams = backRaw
-    ? new URLSearchParams(
-        backRaw.startsWith("?") ? backRaw.slice(1) : backRaw,
-      )
+    ? new URLSearchParams(backRaw.startsWith("?") ? backRaw.slice(1) : backRaw)
     : null;
   const ctxNodeId = backParams?.get("case_node")?.trim() || null;
   const ctxArticleId = backParams?.get("case_article")?.trim() || null;
 
-  const siblingsPromise: Promise<
-    | { kind: "node" | "article"; placementId: string; siblings: CaseSibling[] }
-    | null
-  > = (async () => {
+  const siblingsPromise: Promise<{
+    kind: "node" | "article";
+    placementId: string;
+    siblings: CaseSibling[];
+  } | null> = (async () => {
     if (ctxNodeId) {
       // 진입 컨텍스트의 노드 subtree 안 case set — placementMaps.caseSetByNodeId 의 union.
       // (체계도 axis: primary_node 직접 + primary_article→매핑 nodes + legacy ACL fallback)
@@ -297,6 +296,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const [searchParams] = useSearchParams();
   const { collapsed: leftCollapsed, toggle: toggleLeft } =
     useLeftPanelCollapse();
+  const { collapsed: rightCollapsed, toggle: toggleRight } =
+    useRightPanelCollapse();
   const replacedNotice = searchParams.get("from") === "replaced";
 
   // 좌측 판례 트리 active 필터 — 이 case 의 primary placement 위치를 자동
@@ -374,7 +375,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             className="lg:sticky lg:top-20"
           />
           <div
-            className={`grid min-w-0 flex-1 gap-5 ${leftPanelGridCls(leftCollapsed)}`}
+            className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
           >
             {/* ── 좌측 조문 트리 (데스크톱 sticky, 접기/펼치기) ── */}
             <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
@@ -389,7 +390,10 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                       <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
                         {subject.name} 판례 트리
                       </p>
-                      <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                      <LeftPanelToggle
+                        collapsed={false}
+                        onToggle={toggleLeft}
+                      />
                     </div>
                   </CardHeader>
                   <CardContent className="px-2 pb-2">
@@ -423,18 +427,18 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     </Button>
                   }
                 >
-                    <SheetHeader>
-                      <SheetTitle>{subject.name} 판례 트리</SheetTitle>
-                    </SheetHeader>
-                    <div className="px-3 pb-4">
-                      <CaseTreeSidebar
-                        subjectSlug={subject.slug}
-                        articles={articles}
-                        systematicNodes={systematicNodes}
-                        caseTreeCounts={caseTreeCounts}
-                        activeFilter={activeCaseTreeFilter}
-                      />
-                    </div>
+                  <SheetHeader>
+                    <SheetTitle>{subject.name} 판례 트리</SheetTitle>
+                  </SheetHeader>
+                  <div className="px-3 pb-4">
+                    <CaseTreeSidebar
+                      subjectSlug={subject.slug}
+                      articles={articles}
+                      systematicNodes={systematicNodes}
+                      caseTreeCounts={caseTreeCounts}
+                      activeFilter={activeCaseTreeFilter}
+                    />
+                  </div>
                 </MobileNavDrawer>
                 <MobileNavDrawer
                   side="right"
@@ -450,26 +454,26 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     </Button>
                   }
                 >
-                    <SheetHeader>
-                      <SheetTitle>학습 보조</SheetTitle>
-                    </SheetHeader>
-                    <div className="px-3 pb-4">
-                      <ArticleRightPanel
-                        target={{ type: "case", id: kase.caseId }}
-                        bookmark={bookmark}
-                        memos={memos}
-                        highlights={highlights}
-                        qnaThreads={qnaThreads}
-                        relatedProblems={relatedProblems}
-                        comments={caseComments}
-                        canEditComment={canEditComment}
-                        currentUserId={currentUserId}
-                        isAdmin={isAdmin}
-                        viewerIsStaff={canEditCase}
-                        importance={kase.importance}
-                        lectureResources={lectureResources}
-                      />
-                    </div>
+                  <SheetHeader>
+                    <SheetTitle>학습 보조</SheetTitle>
+                  </SheetHeader>
+                  <div className="px-3 pb-4">
+                    <ArticleRightPanel
+                      target={{ type: "case", id: kase.caseId }}
+                      bookmark={bookmark}
+                      memos={memos}
+                      highlights={highlights}
+                      qnaThreads={qnaThreads}
+                      relatedProblems={relatedProblems}
+                      comments={caseComments}
+                      canEditComment={canEditComment}
+                      currentUserId={currentUserId}
+                      isAdmin={isAdmin}
+                      viewerIsStaff={canEditCase}
+                      importance={kase.importance}
+                      lectureResources={lectureResources}
+                    />
+                  </div>
                 </MobileNavDrawer>
               </div>
 
@@ -504,27 +508,41 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               />
             </main>
 
-            {/* ── 우측 학습 패널 (데스크톱 sticky) ── */}
+            {/* ── 우측 학습 패널 (데스크톱 sticky, 접기/펼치기) ── */}
             <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-              <Card className="border-border h-full rounded-xl border shadow-sm">
-                <CardContent className="p-0">
-                  <ArticleRightPanel
-                    target={{ type: "case", id: kase.caseId }}
-                    bookmark={bookmark}
-                    memos={memos}
-                    highlights={highlights}
-                    qnaThreads={qnaThreads}
-                    relatedProblems={relatedProblems}
-                    comments={caseComments}
-                    canEditComment={canEditComment}
-                    currentUserId={currentUserId}
-                    isAdmin={isAdmin}
-                    viewerIsStaff={canEditCase}
-                    importance={kase.importance}
-                    lectureResources={lectureResources}
-                  />
-                </CardContent>
-              </Card>
+              {rightCollapsed ? (
+                <div className="flex justify-center pt-1">
+                  <RightPanelToggle collapsed onToggle={toggleRight} />
+                </div>
+              ) : (
+                <>
+                  <div className="mb-2">
+                    <RightPanelToggle
+                      collapsed={false}
+                      onToggle={toggleRight}
+                    />
+                  </div>
+                  <Card className="border-border h-full rounded-xl border shadow-sm">
+                    <CardContent className="p-0">
+                      <ArticleRightPanel
+                        target={{ type: "case", id: kase.caseId }}
+                        bookmark={bookmark}
+                        memos={memos}
+                        highlights={highlights}
+                        qnaThreads={qnaThreads}
+                        relatedProblems={relatedProblems}
+                        comments={caseComments}
+                        canEditComment={canEditComment}
+                        currentUserId={currentUserId}
+                        isAdmin={isAdmin}
+                        viewerIsStaff={canEditCase}
+                        importance={kase.importance}
+                        lectureResources={lectureResources}
+                      />
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </aside>
           </div>
         </div>
@@ -589,4 +607,3 @@ function CaseTreeSidebarInner({
     </div>
   );
 }
-
