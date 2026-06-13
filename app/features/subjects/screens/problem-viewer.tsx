@@ -686,16 +686,17 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
           className={`grid min-w-0 flex-1 gap-0 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
           {/* Left tree — desktop sticky, 접기/펼치기 */}
-          <aside className="lg:border-border hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r">
+          <aside className="lg:border-border relative hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:border-r">
+            {/* 펼치기/접기 토글 — 우측(안쪽) 가장자리 세로 중앙(스크롤 무관 고정). */}
+            <LeftPanelToggle
+              collapsed={leftCollapsed}
+              onToggle={toggleLeft}
+              className="absolute top-1/2 right-0 z-20 translate-x-1/2 -translate-y-1/2 shadow-md"
+            />
             {leftCollapsed ? (
-              <div className="flex justify-center pt-3">
-                <LeftPanelToggle collapsed onToggle={toggleLeft} />
-              </div>
+              <div className="bg-muted/20 h-[calc(100vh-3.5rem-41px)]" />
             ) : (
-              <div className="py-3">
-                <div className="flex justify-end px-3 pb-2">
-                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                </div>
+              <div className="max-h-[calc(100vh-3.5rem-41px)] overflow-y-auto py-3">
                 {systematicEmpty ? (
                   <p className="text-muted-foreground px-4 py-6 text-xs">
                     체계도 데이터 미입력
@@ -1324,16 +1325,16 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
           </main>
 
           {/* Right panel — desktop sticky, 접기/펼치기 */}
-          <aside className="hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
+          <aside className="relative hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block">
+            <RightPanelToggle
+              collapsed={rightCollapsed}
+              onToggle={toggleRight}
+              className="absolute top-1/2 left-0 z-20 -translate-x-1/2 -translate-y-1/2 shadow-md"
+            />
             {rightCollapsed ? (
-              <div className="flex justify-center pt-3">
-                <RightPanelToggle collapsed onToggle={toggleRight} />
-              </div>
+              <div className="bg-muted/20 h-[calc(100vh-3.5rem-41px)]" />
             ) : (
-              <>
-                <div className="px-3 pt-3">
-                  <RightPanelToggle collapsed={false} onToggle={toggleRight} />
-                </div>
+              <div className="max-h-[calc(100vh-3.5rem-41px)] overflow-y-auto">
                 <ArticleRightPanel
                   target={{ type: "problem", id: problem.problemId }}
                   bookmark={bookmark}
@@ -1360,7 +1361,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   viewerIsStaff={canEditComment}
                   importance={problem.importance}
                 />
-              </>
+              </div>
             )}
           </aside>
         </div>
