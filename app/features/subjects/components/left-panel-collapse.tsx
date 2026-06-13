@@ -55,8 +55,10 @@ export function panelGridCls(
   return "lg:grid-cols-[260px_minmax(0,1fr)_320px]";
 }
 
+// bg-card 헤더 위에서도 또렷하게 보이도록 — muted 배경 + foreground 아이콘 + 그림자.
+// (이전 bg-card 버튼은 bg-card 헤더에 묻혀 "안 보인다"는 피드백)
 const BTN =
-  "border-input bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md border transition-colors";
+  "border-border bg-muted text-foreground hover:bg-primary hover:text-primary-foreground inline-flex size-8 items-center justify-center rounded-md border shadow-sm transition-colors";
 
 export function LeftPanelToggle({
   collapsed,

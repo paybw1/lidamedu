@@ -194,6 +194,7 @@ eng.traineddata
 
 # 강의노트 PDF 원본 — 251 MB, GitHub 100 MB 제한 초과
 /source/리담특허법 강의노트(제10판).pdf
+/source/특허법 강의노트/*.pdf
 
 # 콘텐츠 원본(hwp/hwpx) 및 paragraph 변환 산출물 — 운영 데이터, repo 비대화
 /source/*.hwp
