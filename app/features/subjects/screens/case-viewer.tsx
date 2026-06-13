@@ -378,22 +378,23 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
           >
             {/* ── 좌측 조문 트리 (데스크톱 sticky, 접기/펼치기) ── */}
-            <aside className="relative hidden lg:sticky lg:top-20 lg:block">
-              {/* 펼치기/접기 토글 — 우측(안쪽) 가장자리 세로 중앙(스크롤 무관 고정). */}
-              <LeftPanelToggle
-                collapsed={leftCollapsed}
-                onToggle={toggleLeft}
-                className="absolute top-1/2 right-0 z-20 translate-x-1/2 -translate-y-1/2 shadow-md"
-              />
+            <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
               {leftCollapsed ? (
-                <div className="bg-muted/20 h-[calc(100vh-6rem)] rounded-xl" />
+                <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
+                  <LeftPanelToggle collapsed onToggle={toggleLeft} />
+                </div>
               ) : (
-                <Card className="border-border max-h-[calc(100vh-6rem)] overflow-auto rounded-xl border py-3 shadow-sm">
-                  <CardHeader className="px-4 pb-2">
+                <Card className="border-border rounded-xl border py-3 shadow-sm">
+                  {/* 토글 헤더 — 트리를 스크롤해도 상단 고정(sticky top-0). */}
+                  <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
                         {subject.name} 판례 트리
                       </p>
+                      <LeftPanelToggle
+                        collapsed={false}
+                        onToggle={toggleLeft}
+                      />
                     </div>
                   </CardHeader>
                   <CardContent className="px-2 pb-2">
@@ -509,34 +510,36 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             </main>
 
             {/* ── 우측 학습 패널 (데스크톱 sticky, 접기/펼치기) ── */}
-            <aside className="relative hidden lg:sticky lg:top-20 lg:block">
-              <RightPanelToggle
-                collapsed={rightCollapsed}
-                onToggle={toggleRight}
-                className="absolute top-1/2 left-0 z-20 -translate-x-1/2 -translate-y-1/2 shadow-md"
-              />
+            <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
               {rightCollapsed ? (
-                <div className="bg-muted/20 h-[calc(100vh-6rem)] rounded-xl" />
+                <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
+                  <RightPanelToggle collapsed onToggle={toggleRight} />
+                </div>
               ) : (
-                <Card className="border-border max-h-[calc(100vh-6rem)] overflow-auto rounded-xl border shadow-sm">
-                  <CardContent className="p-0">
-                    <ArticleRightPanel
-                      target={{ type: "case", id: kase.caseId }}
-                      bookmark={bookmark}
-                      memos={memos}
-                      highlights={highlights}
-                      qnaThreads={qnaThreads}
-                      relatedProblems={relatedProblems}
-                      comments={caseComments}
-                      canEditComment={canEditComment}
-                      currentUserId={currentUserId}
-                      isAdmin={isAdmin}
-                      viewerIsStaff={canEditCase}
-                      importance={kase.importance}
-                      lectureResources={lectureResources}
+                <div className="border-border bg-card rounded-xl border shadow-sm">
+                  {/* 토글 헤더 — 패널을 스크롤해도 상단 고정(sticky top-0). */}
+                  <div className="border-border bg-card sticky top-0 z-10 flex rounded-t-xl border-b px-3 py-2">
+                    <RightPanelToggle
+                      collapsed={false}
+                      onToggle={toggleRight}
                     />
-                  </CardContent>
-                </Card>
+                  </div>
+                  <ArticleRightPanel
+                    target={{ type: "case", id: kase.caseId }}
+                    bookmark={bookmark}
+                    memos={memos}
+                    highlights={highlights}
+                    qnaThreads={qnaThreads}
+                    relatedProblems={relatedProblems}
+                    comments={caseComments}
+                    canEditComment={canEditComment}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    viewerIsStaff={canEditCase}
+                    importance={kase.importance}
+                    lectureResources={lectureResources}
+                  />
+                </div>
               )}
             </aside>
           </div>

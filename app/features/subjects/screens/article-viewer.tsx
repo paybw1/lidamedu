@@ -481,19 +481,16 @@ function ArticleViewerInner({
           className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
           {/* ── LEFT TREE (desktop sticky, 접기/펼치기) ─────────────────── */}
-          <aside className="relative hidden lg:sticky lg:top-20 lg:block">
-            {/* 펼치기/접기 토글 — 우측(안쪽) 가장자리 세로 중앙. 스크롤해도 항상
-                보이도록 overflow 스크롤러 바깥(aside 직속)에 절대배치. */}
-            <LeftPanelToggle
-              collapsed={leftCollapsed}
-              onToggle={toggleLeft}
-              className="absolute top-1/2 right-0 z-20 translate-x-1/2 -translate-y-1/2 shadow-md"
-            />
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
             {leftCollapsed ? (
-              <div className="bg-muted/20 h-[calc(100vh-6rem)] rounded-xl" />
+              <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
+                <LeftPanelToggle collapsed onToggle={toggleLeft} />
+              </div>
             ) : (
-              <div className="border-border bg-card max-h-[calc(100vh-6rem)] overflow-auto rounded-xl border shadow-sm">
-                <div className="border-border flex items-center justify-end gap-2 border-b px-3 py-2.5">
+              <div className="border-border bg-card rounded-xl border shadow-sm">
+                {/* 토글+정렬축 헤더 — 트리를 스크롤해도 패널 상단 고정(sticky top-0). */}
+                <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-between gap-2 rounded-t-xl border-b px-3 py-2.5">
+                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
                   <SortAxisToggle
                     size="sm"
                     disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -1156,16 +1153,17 @@ function ArticleViewerInner({
           </main>
 
           {/* ── RIGHT PANEL (desktop sticky, 접기/펼치기) ───────────────── */}
-          <aside className="relative hidden lg:sticky lg:top-20 lg:block">
-            <RightPanelToggle
-              collapsed={rightCollapsed}
-              onToggle={toggleRight}
-              className="absolute top-1/2 left-0 z-20 -translate-x-1/2 -translate-y-1/2 shadow-md"
-            />
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
             {rightCollapsed ? (
-              <div className="bg-muted/20 h-[calc(100vh-6rem)] rounded-xl" />
+              <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
+                <RightPanelToggle collapsed onToggle={toggleRight} />
+              </div>
             ) : (
-              <div className="border-border bg-card max-h-[calc(100vh-6rem)] overflow-auto rounded-xl border shadow-sm">
+              <div className="border-border bg-card rounded-xl border shadow-sm">
+                {/* 토글 헤더 — 패널을 스크롤해도 상단 고정(sticky top-0). */}
+                <div className="border-border bg-card sticky top-0 z-10 flex rounded-t-xl border-b px-3 py-2">
+                  <RightPanelToggle collapsed={false} onToggle={toggleRight} />
+                </div>
                 <ArticleRightPanel
                   target={{ type: "article", id: article.articleId }}
                   bookmark={bookmark}
