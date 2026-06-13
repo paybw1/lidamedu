@@ -3295,6 +3295,44 @@ export type Database = {
         }
         Relationships: []
       }
+      lecture_pdf_locations: {
+        Row: {
+          created_at: string
+          label: string | null
+          location_id: string
+          page: number
+          source_pdf_id: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["resource_target_type"]
+        }
+        Insert: {
+          created_at?: string
+          label?: string | null
+          location_id?: string
+          page: number
+          source_pdf_id: string
+          target_id: string
+          target_type: Database["public"]["Enums"]["resource_target_type"]
+        }
+        Update: {
+          created_at?: string
+          label?: string | null
+          location_id?: string
+          page?: number
+          source_pdf_id?: string
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["resource_target_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_pdf_locations_source_pdf_id_fkey"
+            columns: ["source_pdf_id"]
+            isOneToOne: false
+            referencedRelation: "lecture_source_pdfs"
+            referencedColumns: ["source_pdf_id"]
+          },
+        ]
+      }
       lecture_resources: {
         Row: {
           created_at: string
@@ -3399,6 +3437,48 @@ export type Database = {
           pdf_url?: string
           resolved_at?: string | null
           slide_idx?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lecture_source_pdfs: {
+        Row: {
+          created_at: string
+          edition: string | null
+          slide_count: number | null
+          source_filename: string | null
+          source_pdf_id: string
+          storage_bucket: string
+          storage_path: string
+          subject_law: string
+          title: string
+          total_pages: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          edition?: string | null
+          slide_count?: number | null
+          source_filename?: string | null
+          source_pdf_id: string
+          storage_bucket?: string
+          storage_path: string
+          subject_law: string
+          title: string
+          total_pages: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          edition?: string | null
+          slide_count?: number | null
+          source_filename?: string | null
+          source_pdf_id?: string
+          storage_bucket?: string
+          storage_path?: string
+          subject_law?: string
+          title?: string
+          total_pages?: number
           updated_at?: string
         }
         Relationships: []

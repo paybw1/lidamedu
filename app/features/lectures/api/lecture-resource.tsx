@@ -5,7 +5,6 @@
 //
 // staff 권한 검사는 lecture_resources / storage.objects 의 RLS 가 강제한다.
 // docs/features/feat-4-A-117-lecture-resources.md §5.2
-
 import type { Route } from "./+types/lecture-resource";
 
 import { data } from "react-router";
@@ -14,10 +13,11 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   LECTURE_NOTES_BUCKET,
+  type LectureResourceListItem,
   createLectureResource,
   getLectureResourceSignedUrl,
+  getOriginalPdfSignedUrl,
   softDeleteLectureResource,
-  type LectureResourceListItem,
 } from "~/features/lectures/queries.server";
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB — Storage 버킷 file_size_limit 과 일치
@@ -68,12 +68,16 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
+    // inline=1 → 통합본 원본을 다운로드 강제 없이 inline 으로(브라우저 PDF 뷰어 + #page 점프).
+    const inline = fd.get("inline") === "1";
     try {
-      const signedUrl = await getLectureResourceSignedUrl(
-        client,
-        parsed.data.pdfPath,
-        parsed.data.downloadName,
-      );
+      const signedUrl = inline
+        ? await getOriginalPdfSignedUrl(client, parsed.data.pdfPath)
+        : await getLectureResourceSignedUrl(
+            client,
+            parsed.data.pdfPath,
+            parsed.data.downloadName,
+          );
       return data({ ok: true, intent: "signed-url" as const, signedUrl });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "서명된 URL 생성 실패";

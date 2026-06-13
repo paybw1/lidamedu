@@ -39,13 +39,16 @@ import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import type { ContentComment } from "~/features/comments/queries.server";
 import { RelatedCasesList } from "~/features/laws/components/related-chips";
 import { RevisionHistory } from "~/features/laws/components/revision-history";
-import { LectureResourcesPanel } from "~/features/lectures/components/lecture-resources-panel";
-import type { LectureResourceListItem } from "~/features/lectures/queries.server";
 import {
   OPEN_COMMENT_TAB_EVENT,
   type OpenCommentTabEventDetail,
 } from "~/features/laws/lib/comment-event";
 import type { RevisionHistoryEntry } from "~/features/laws/queries.server";
+import { LectureResourcesPanel } from "~/features/lectures/components/lecture-resources-panel";
+import type {
+  LectureResourceListItem,
+  PdfLocationItem,
+} from "~/features/lectures/queries.server";
 import { OxQuestionsPanel } from "~/features/problems/components/ox-questions-panel";
 import { RelatedProblemsList } from "~/features/problems/components/related-problems-list";
 import type {
@@ -179,6 +182,8 @@ export function ArticleRightPanel({
   viewerIsStaff = false,
   importance,
   lectureResources,
+  pdfLocations,
+  pdfLocationsEnabled,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
@@ -205,6 +210,9 @@ export function ArticleRightPanel({
   importance?: number;
   // feat-4-A-117 — 관련자료(강의노트). undefined = 탭 자체 미표시(article/case/problem 외 타겟).
   lectureResources?: LectureResourceListItem[];
+  // 통합본 PDF 위치 링크 + 학생 노출 여부(staff||플래그). 조각과 병존(fallback).
+  pdfLocations?: PdfLocationItem[];
+  pdfLocationsEnabled?: boolean;
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
@@ -495,6 +503,8 @@ export function ArticleRightPanel({
                   targetId={target.id}
                   initial={lectureResources ?? []}
                   canManage={viewerIsStaff}
+                  pdfLocations={pdfLocations}
+                  pdfLocationsEnabled={pdfLocationsEnabled}
                 />
               </TabsContent>
             ) : null}

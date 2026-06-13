@@ -65,7 +65,11 @@ import {
   getUpcomingArticleRevision,
   listArticleRevisionHistory,
 } from "~/features/laws/queries.server";
-import { listLectureResources } from "~/features/lectures/queries.server";
+import {
+  getPdfLocations,
+  listLectureResources,
+} from "~/features/lectures/queries.server";
+import { getPdfLocationsEnabled } from "~/features/lectures/settings.server";
 import {
   getOxAnnotationsForRefs,
   getOxQuestionsForArticle,
@@ -205,6 +209,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getSubjectAxisCounts(client, lawCode, law.lawId),
   ]);
 
+  // 통합본 PDF 위치 링크(조각과 병존). staff 는 항상 미리보기, 학생은 플래그 on 시.
+  const [pdfLocations, pdfFlag] = await Promise.all([
+    getPdfLocations(client, "article", article.articleId),
+    getPdfLocationsEnabled(client),
+  ]);
+  const pdfLocationsEnabled = staffRole !== null || pdfFlag;
+
   // 시행 예정 본문 — 현재 시점(at/compare 아님)일 때만, 다가오는 시행본을 함께 노출.
   const today = new Date().toISOString().slice(0, 10);
   const upcoming =
@@ -287,6 +298,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     oxAnnotationsByRef,
     articleComments,
     lectureResources,
+    pdfLocations,
+    pdfLocationsEnabled,
   };
 }
 
@@ -334,6 +347,8 @@ function ArticleViewerInner({
     oxAnnotationsByRef,
     articleComments,
     lectureResources,
+    pdfLocations,
+    pdfLocationsEnabled,
   } = loaderData;
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
@@ -622,6 +637,8 @@ function ArticleViewerInner({
                     viewerIsStaff={staffRole !== null}
                     importance={article.importance}
                     lectureResources={lectureResources}
+                    pdfLocations={pdfLocations}
+                    pdfLocationsEnabled={pdfLocationsEnabled}
                   />
                 </div>
               </MobileNavDrawer>
@@ -1182,6 +1199,8 @@ function ArticleViewerInner({
                   viewerIsStaff={staffRole !== null}
                   importance={article.importance}
                   lectureResources={lectureResources}
+                  pdfLocations={pdfLocations}
+                  pdfLocationsEnabled={pdfLocationsEnabled}
                 />
               </div>
             )}

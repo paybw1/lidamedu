@@ -38,7 +38,11 @@ import {
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
-import { listLectureResources } from "~/features/lectures/queries.server";
+import {
+  getPdfLocations,
+  listLectureResources,
+} from "~/features/lectures/queries.server";
+import { getPdfLocationsEnabled } from "~/features/lectures/settings.server";
 import {
   getExamProblemsForCase,
   getRelatedProblemsByCase,
@@ -219,6 +223,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getSubjectAxisCounts(client, lawCode, law.lawId),
   ]);
 
+  // 통합본 PDF 위치 링크(조각과 병존). staff 는 항상 미리보기, 학생은 플래그 on 시.
+  const [pdfLocations, pdfFlag] = await Promise.all([
+    getPdfLocations(client, "case", kase.caseId),
+    getPdfLocationsEnabled(client),
+  ]);
+  const pdfLocationsEnabled = staffRole !== null || pdfFlag;
+
   recordStudySession(client, user.id, {
     subject: lawCode,
     target_type: "case",
@@ -262,6 +273,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
     lectureResources,
+    pdfLocations,
+    pdfLocationsEnabled,
     siblings,
     officialPdfUrl,
   };
@@ -289,6 +302,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     isAdmin,
     currentUserId,
     lectureResources,
+    pdfLocations,
+    pdfLocationsEnabled,
     siblings,
   } = loaderData;
 
@@ -473,6 +488,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                       viewerIsStaff={canEditCase}
                       importance={kase.importance}
                       lectureResources={lectureResources}
+                      pdfLocations={pdfLocations}
+                      pdfLocationsEnabled={pdfLocationsEnabled}
                     />
                   </div>
                 </MobileNavDrawer>
@@ -538,6 +555,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     viewerIsStaff={canEditCase}
                     importance={kase.importance}
                     lectureResources={lectureResources}
+                    pdfLocations={pdfLocations}
+                    pdfLocationsEnabled={pdfLocationsEnabled}
                   />
                 </div>
               )}

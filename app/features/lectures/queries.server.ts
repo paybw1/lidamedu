@@ -1,6 +1,5 @@
 // 강의 시청 추적 (feat-7-029).
 // curriculum_items.kind='lecture' 항목에 대한 학생 시청 진행률 + 완료 기록.
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
@@ -75,9 +74,7 @@ export async function getMyLectureView(
   const admin = adminClient as SupabaseClient<Database>;
   const { data } = await admin
     .from("lecture_views")
-    .select(
-      "view_id, viewed_at, completed_at, last_position_sec, updated_at",
-    )
+    .select("view_id, viewed_at, completed_at, last_position_sec, updated_at")
     .eq("user_id", userId)
     .eq("item_id", itemId)
     .maybeSingle();
@@ -154,8 +151,7 @@ export async function updateLastPosition(
 export const LECTURE_NOTES_BUCKET = "lecture-notes";
 const SIGNED_URL_EXPIRES_SEC = 300; // 5 min — gs-papers 패턴
 
-export type LectureResourceKind =
-  Database["public"]["Enums"]["resource_kind"];
+export type LectureResourceKind = Database["public"]["Enums"]["resource_kind"];
 export type LectureResourceTargetType =
   Database["public"]["Enums"]["resource_target_type"];
 
@@ -328,6 +324,62 @@ export async function getLectureResourceSignedUrl(
   return data.signedUrl;
 }
 
+// 통합본 원본 PDF inline signed URL — download 옵션 미사용(브라우저 네이티브 뷰어 inline),
+// #page=N 점프 가능. 통PDF 장시간 열람 대비 기본 1h.
+export async function getOriginalPdfSignedUrl(
+  client: SupabaseClient<Database>,
+  pdfPath: string,
+  expiresSec = 3600,
+): Promise<string> {
+  const { data, error } = await client.storage
+    .from(LECTURE_NOTES_BUCKET)
+    .createSignedUrl(pdfPath, expiresSec);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+// 조문/판례 → 통합본 PDF 전역 페이지 위치 (lecture_pdf_locations). 조각과 병존.
+export interface PdfLocationItem {
+  page: number;
+  label: string | null;
+  storagePath: string;
+  totalPages: number;
+}
+
+export async function getPdfLocations(
+  client: SupabaseClient<Database>,
+  targetType: LectureResourceTargetType,
+  targetId: string,
+): Promise<PdfLocationItem[]> {
+  const { data: locs, error } = await client
+    .from("lecture_pdf_locations")
+    .select("page, label, source_pdf_id")
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .order("page", { ascending: true });
+  if (error) throw error;
+  if (!locs || locs.length === 0) return [];
+  const srcIds = [...new Set(locs.map((l) => l.source_pdf_id))];
+  const { data: srcs } = await client
+    .from("lecture_source_pdfs")
+    .select("source_pdf_id, storage_path, total_pages")
+    .in("source_pdf_id", srcIds);
+  const byId = new Map((srcs ?? []).map((s) => [s.source_pdf_id, s]));
+  return locs
+    .map((l) => {
+      const s = byId.get(l.source_pdf_id);
+      return s
+        ? {
+            page: l.page,
+            label: l.label,
+            storagePath: s.storage_path,
+            totalPages: s.total_pages,
+          }
+        : null;
+    })
+    .filter((x): x is PdfLocationItem => x !== null);
+}
+
 // ──────────────────────────────────────────────────────────
 // case-study 미매칭 슬라이드 검토 (운영자) — /admin/case-study-review
 // ──────────────────────────────────────────────────────────
@@ -352,7 +404,9 @@ export function getBookNameBySlug(slug: string): string {
 // import 스크립트의 deterministicUuid 와 동일 알고리즘 (책 이름 sha1 → UUID v5-like).
 async function deterministicSourcePdfId(bookSlug: string): Promise<string> {
   const { createHash } = await import("node:crypto");
-  const h = createHash("sha1").update(getBookNameBySlug(bookSlug)).digest("hex");
+  const h = createHash("sha1")
+    .update(getBookNameBySlug(bookSlug))
+    .digest("hex");
   return [
     h.slice(0, 8),
     h.slice(8, 12),
@@ -498,7 +552,8 @@ export async function linkCandidateToCase(
     .eq("pdf_url", args.pdfUrl)
     .is("deleted_at", null)
     .maybeSingle();
-  if (existing) return { resourceId: existing.resource_id, alreadyExists: true };
+  if (existing)
+    return { resourceId: existing.resource_id, alreadyExists: true };
 
   const sourcePdfId = await deterministicSourcePdfId(args.bookSlug);
   const title = `${getBookNameBySlug(args.bookSlug)} (슬라이드 ${args.slideIdx})`;
@@ -664,7 +719,11 @@ export async function importSystematicTree(
   let inserted = 0;
   let processedThisIter = true;
   const remaining = [...args.tree.nodes];
-  for (let safety = 0; safety < 30 && remaining.length > 0 && processedThisIter; safety++) {
+  for (
+    let safety = 0;
+    safety < 30 && remaining.length > 0 && processedThisIter;
+    safety++
+  ) {
     processedThisIter = false;
     for (let i = remaining.length - 1; i >= 0; i--) {
       const n = remaining[i];

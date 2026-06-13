@@ -1,6 +1,7 @@
 // feat-4-A-117 — 조문/판례/문제 우측 패널의 "관련자료(📎)" 탭 본체.
 // docs/features/feat-4-A-117-lecture-resources.md §5
-
+// 통합본 PDF 위치링크(pdfLocations) 가 켜져 있으면 조각 대신 "전체 PDF의 해당 페이지 열기"를
+// 보여준다(병존 — 없거나 꺼지면 기존 조각으로 폴백).
 import {
   ExternalLinkIcon,
   FileTextIcon,
@@ -18,6 +19,7 @@ import { Label } from "~/core/components/ui/label";
 import type {
   LectureResourceListItem,
   LectureResourceTargetType,
+  PdfLocationItem,
 } from "~/features/lectures/queries.server";
 
 interface Props {
@@ -25,6 +27,9 @@ interface Props {
   targetId: string;
   initial: LectureResourceListItem[];
   canManage: boolean;
+  // 통합본 PDF 위치 링크 (조문/판례). 활성+존재 시 조각 대신 이걸 노출.
+  pdfLocations?: PdfLocationItem[];
+  pdfLocationsEnabled?: boolean;
 }
 
 type ActionResponse =
@@ -38,6 +43,8 @@ export function LectureResourcesPanel({
   targetId,
   initial,
   canManage,
+  pdfLocations,
+  pdfLocationsEnabled,
 }: Props) {
   const [items, setItems] = useState(initial);
   const [showAdd, setShowAdd] = useState(false);
@@ -56,6 +63,10 @@ export function LectureResourcesPanel({
   function handleDeleted(resourceId: string) {
     setItems((prev) => prev.filter((r) => r.resourceId !== resourceId));
   }
+
+  // 통합본 위치가 활성+존재하면 전체 PDF 페이지 링크를 보여주고, 아니면 기존 조각 폴백.
+  const useLocations =
+    !!pdfLocationsEnabled && !!pdfLocations && pdfLocations.length > 0;
 
   return (
     <div className="space-y-3">
@@ -79,23 +90,105 @@ export function LectureResourcesPanel({
         />
       ) : null}
 
-      {items.length === 0 && !showAdd ? (
-        <p className="text-muted-foreground text-sm">
-          등록된 강의노트가 없습니다.
-        </p>
-      ) : null}
+      {useLocations ? (
+        <>
+          {canManage ? (
+            <p className="text-muted-foreground text-xs">
+              통합본 강의노트 위치 — 운영자 미리보기(학생 노출 전)
+            </p>
+          ) : null}
+          <ul className="space-y-2">
+            {pdfLocations!.map((loc, i) => (
+              <li key={`${loc.page}-${i}`}>
+                <LocationCard loc={loc} />
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <>
+          {items.length === 0 && !showAdd ? (
+            <p className="text-muted-foreground text-sm">
+              등록된 강의노트가 없습니다.
+            </p>
+          ) : null}
+          <ul className="space-y-2">
+            {items.map((r) => (
+              <li key={r.resourceId}>
+                <ResourceCard
+                  resource={r}
+                  canManage={canManage}
+                  onDeleted={handleDeleted}
+                />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
 
-      <ul className="space-y-2">
-        {items.map((r) => (
-          <li key={r.resourceId}>
-            <ResourceCard
-              resource={r}
-              canManage={canManage}
-              onDeleted={handleDeleted}
-            />
-          </li>
-        ))}
-      </ul>
+// 통합본 PDF의 특정 페이지를 새 탭에서 inline 으로 연다(#page=N 점프).
+function LocationCard({ loc }: { loc: PdfLocationItem }) {
+  const openFetcher = useFetcher<ActionResponse>();
+  const opening =
+    openFetcher.state === "submitting" || openFetcher.state === "loading";
+
+  useEffect(() => {
+    const d = openFetcher.data;
+    if (d && d.ok && d.intent === "signed-url") {
+      window.open(
+        `${d.signedUrl}#page=${loc.page}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
+  }, [openFetcher.data, loc.page]);
+
+  function handleOpen() {
+    const fd = new FormData();
+    fd.set("intent", "signed-url");
+    fd.set("pdfPath", loc.storagePath);
+    fd.set("inline", "1"); // 다운로드 강제 X → 브라우저 PDF 뷰어 + #page 점프
+    openFetcher.submit(fd, {
+      method: "post",
+      action: "/api/lecture-resources",
+    });
+  }
+
+  return (
+    <div className="bg-card hover:bg-muted/30 group flex items-start gap-2 rounded-md border p-2 transition-colors">
+      <FileTextIcon className="text-muted-foreground mt-0.5 size-4 flex-none" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">
+          {loc.label ?? "강의노트"}
+        </p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          통합본 p.{loc.page} / {loc.totalPages}
+        </p>
+        <div className="mt-1.5">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleOpen}
+            disabled={opening}
+            className="h-7"
+          >
+            {opening ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
+              <ExternalLinkIcon className="size-3.5" />
+            )}
+            열기
+          </Button>
+        </div>
+        {openFetcher.data && !openFetcher.data.ok ? (
+          <p className="text-destructive mt-1 text-xs">
+            {openFetcher.data.error}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -145,8 +238,10 @@ function ResourceCard({
     fd.set("pdfPath", resource.pdfUrl);
     // 저장 시 파일명 = 제목.pdf (파일 시스템 금지문자만 치환, 한글 유지).
     const downloadName =
-      resource.title.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim() +
-      ".pdf";
+      resource.title
+        .replace(/[\\/:*?"<>|]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim() + ".pdf";
     fd.set("downloadName", downloadName);
     openFetcher.submit(fd, {
       method: "post",
@@ -352,9 +447,7 @@ function UploadForm({
       ) : null}
 
       <Button type="submit" size="sm" disabled={submitting} className="w-full">
-        {submitting ? (
-          <Loader2Icon className="size-3.5 animate-spin" />
-        ) : null}
+        {submitting ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
         업로드
       </Button>
     </form>
