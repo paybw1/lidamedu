@@ -3,6 +3,11 @@ import type { Route } from "./+types/case-viewer";
 import { ListTreeIcon, NetworkIcon, PanelRightIcon } from "lucide-react";
 import { Link, data, redirect, useSearchParams } from "react-router";
 
+import {
+  LeftPanelToggle,
+  leftPanelGridCls,
+  useLeftPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 
 import { Button } from "~/core/components/ui/button";
@@ -290,6 +295,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 
   // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
   const [searchParams] = useSearchParams();
+  const { collapsed: leftCollapsed, toggle: toggleLeft } =
+    useLeftPanelCollapse();
   const replacedNotice = searchParams.get("from") === "replaced";
 
   // 좌측 판례 트리 active 필터 — 이 case 의 primary placement 위치를 자동
@@ -366,25 +373,36 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             counts={loaderData.axisCounts}
             className="lg:sticky lg:top-20"
           />
-          <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-            {/* ── 좌측 조문 트리 (데스크톱 sticky) ── */}
+          <div
+            className={`grid min-w-0 flex-1 gap-5 ${leftPanelGridCls(leftCollapsed)}`}
+          >
+            {/* ── 좌측 조문 트리 (데스크톱 sticky, 접기/펼치기) ── */}
             <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-              <Card className="border-border rounded-xl border py-3 shadow-sm">
-                <CardHeader className="px-4 pb-2">
-                  <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
-                    {subject.name} 판례 트리
-                  </p>
-                </CardHeader>
-                <CardContent className="px-2 pb-2">
-                  <CaseTreeSidebar
-                    subjectSlug={subject.slug}
-                    articles={articles}
-                    systematicNodes={systematicNodes}
-                    caseTreeCounts={caseTreeCounts}
-                    activeFilter={activeCaseTreeFilter}
-                  />
-                </CardContent>
-              </Card>
+              {leftCollapsed ? (
+                <div className="flex justify-center pt-1">
+                  <LeftPanelToggle collapsed onToggle={toggleLeft} />
+                </div>
+              ) : (
+                <Card className="border-border rounded-xl border py-3 shadow-sm">
+                  <CardHeader className="px-4 pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
+                        {subject.name} 판례 트리
+                      </p>
+                      <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-2 pb-2">
+                    <CaseTreeSidebar
+                      subjectSlug={subject.slug}
+                      articles={articles}
+                      systematicNodes={systematicNodes}
+                      caseTreeCounts={caseTreeCounts}
+                      activeFilter={activeCaseTreeFilter}
+                    />
+                  </CardContent>
+                </Card>
+              )}
             </aside>
 
             {/* ── 중앙 본문 ── */}

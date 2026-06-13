@@ -16,6 +16,11 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 
+import {
+  LeftPanelToggle,
+  leftPanelGridCls,
+  useLeftPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 
 import { Button } from "~/core/components/ui/button";
@@ -411,6 +416,8 @@ function useExamTimer(
 }
 
 export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
+  const { collapsed: leftCollapsed, toggle: toggleLeft } =
+    useLeftPanelCollapse();
   const {
     subject,
     problem,
@@ -672,24 +679,35 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
           counts={loaderData.axisCounts}
           className="lg:sticky lg:top-[calc(3.5rem+41px)]"
         />
-        <div className="grid min-w-0 flex-1 gap-0 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-          {/* Left tree — desktop sticky */}
+        <div
+          className={`grid min-w-0 flex-1 gap-0 ${leftPanelGridCls(leftCollapsed)}`}
+        >
+          {/* Left tree — desktop sticky, 접기/펼치기 */}
           <aside className="lg:border-border hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r">
-            <div className="py-3">
-              {systematicEmpty ? (
-                <p className="text-muted-foreground px-4 py-6 text-xs">
-                  체계도 데이터 미입력
-                </p>
-              ) : (
-                <SystematicTree
-                  nodes={systematicNodes}
-                  activeArticleId={problem.primaryArticleId ?? undefined}
-                  lawCode={subject.slug}
-                  bookmarkLevels={bookmarkLevels}
-                  annotationCounts={annotationCounts}
-                />
-              )}
-            </div>
+            {leftCollapsed ? (
+              <div className="flex justify-center pt-3">
+                <LeftPanelToggle collapsed onToggle={toggleLeft} />
+              </div>
+            ) : (
+              <div className="py-3">
+                <div className="flex justify-end px-3 pb-2">
+                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                </div>
+                {systematicEmpty ? (
+                  <p className="text-muted-foreground px-4 py-6 text-xs">
+                    체계도 데이터 미입력
+                  </p>
+                ) : (
+                  <SystematicTree
+                    nodes={systematicNodes}
+                    activeArticleId={problem.primaryArticleId ?? undefined}
+                    lawCode={subject.slug}
+                    bookmarkLevels={bookmarkLevels}
+                    annotationCounts={annotationCounts}
+                  />
+                )}
+              </div>
+            )}
           </aside>
 
           {/* Center body */}

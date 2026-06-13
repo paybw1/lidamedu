@@ -19,6 +19,11 @@ import {
 import { useMemo, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 
+import {
+  LeftPanelToggle,
+  leftPanelGridCls,
+  useLeftPanelCollapse,
+} from "~/features/subjects/components/left-panel-collapse";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -365,6 +370,8 @@ function ArticleViewerInner({
   }, [articles, article.articleId]);
 
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
+  const { collapsed: leftCollapsed, toggle: toggleLeft } =
+    useLeftPanelCollapse();
   const [blankMode, setBlankMode] = useState(false);
   const [subjectBlankMode, setSubjectBlankMode] = useState(
     initialBlankMode?.subject ?? false,
@@ -467,44 +474,53 @@ function ArticleViewerInner({
           counts={loaderData.axisCounts}
           className="lg:sticky lg:top-20"
         />
-        <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-          {/* ── LEFT TREE (desktop sticky) ─────────────────────────────── */}
+        <div
+          className={`grid min-w-0 flex-1 gap-5 ${leftPanelGridCls(leftCollapsed)}`}
+        >
+          {/* ── LEFT TREE (desktop sticky, 접기/펼치기) ─────────────────── */}
           <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
-            <div className="border-border bg-card rounded-xl border shadow-sm">
-              <div className="border-border flex items-center justify-end gap-2 border-b px-3 py-2.5">
-                <SortAxisToggle
-                  size="sm"
-                  disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-                />
+            {leftCollapsed ? (
+              <div className="flex justify-center pt-1">
+                <LeftPanelToggle collapsed onToggle={toggleLeft} />
               </div>
-              <div className="px-1.5 py-2">
-                {renderSystematic ? (
-                  <SystematicTree
-                    nodes={systematicNodes}
-                    activeArticleId={article.articleId}
-                    lawCode={subject.slug}
-                    bookmarkLevels={bookmarkLevels}
-                    annotationCounts={annotationCounts}
+            ) : (
+              <div className="border-border bg-card rounded-xl border shadow-sm">
+                <div className="border-border flex items-center justify-between gap-2 border-b px-3 py-2.5">
+                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                  <SortAxisToggle
+                    size="sm"
+                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
                   />
-                ) : (
-                  <ArticleTree
-                    nodes={articles}
-                    activeArticleId={article.articleId}
-                    lawCode={subject.slug}
-                    bookmarkLevels={bookmarkLevels}
-                    annotationCounts={annotationCounts}
-                    lazyExpand={
-                      subject.slug === "civil" ? { lawId } : undefined
-                    }
-                  />
-                )}
-                {axis === "systematic" && systematicEmpty ? (
-                  <p className="text-muted-foreground mt-2 px-2 text-xs">
-                    * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
-                  </p>
-                ) : null}
+                </div>
+                <div className="px-1.5 py-2">
+                  {renderSystematic ? (
+                    <SystematicTree
+                      nodes={systematicNodes}
+                      activeArticleId={article.articleId}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                    />
+                  ) : (
+                    <ArticleTree
+                      nodes={articles}
+                      activeArticleId={article.articleId}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                      lazyExpand={
+                        subject.slug === "civil" ? { lawId } : undefined
+                      }
+                    />
+                  )}
+                  {axis === "systematic" && systematicEmpty ? (
+                    <p className="text-muted-foreground mt-2 px-2 text-xs">
+                      * {subject.name} 테크 트리 데이터 미입력 — 조문 트리로 표시
+                    </p>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            )}
           </aside>
 
           {/* ── MAIN BODY ───────────────────────────────────────────────── */}
