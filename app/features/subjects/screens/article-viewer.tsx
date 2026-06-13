@@ -644,86 +644,84 @@ function ArticleViewerInner({
 
                 {/* Title row: big article number + prev/next.
                     모바일: prev/next 위 · 제목 아래(full-width) / sm↑: 제목 좌 · prev/next 우 */}
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    {/* Law name chip + importance stars */}
-                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                      <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
-                        {subject.name}
-                      </span>
-                      {article.importance >= 1 ? (
-                        <span className="inline-flex items-center gap-0.5">
-                          {Array.from({
-                            length: Math.min(3, article.importance),
-                          }).map((_, i) => (
-                            <svg
-                              key={i}
-                              width="13"
-                              height="13"
-                              viewBox="0 0 24 24"
-                              fill="#F7B500"
-                              stroke="#F7B500"
-                              strokeWidth={1.6}
-                              aria-hidden="true"
-                            >
-                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-                            </svg>
-                          ))}
-                          {Array.from({
-                            length: Math.max(0, 3 - article.importance),
-                          }).map((_, i) => (
-                            <svg
-                              key={`e-${i}`}
-                              width="13"
-                              height="13"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="#F7B500"
-                              strokeWidth={1.6}
-                              aria-hidden="true"
-                            >
-                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-                            </svg>
-                          ))}
-                        </span>
-                      ) : null}
-                    </div>
+                {/* Prev/Next — 상단 우측. 제목이 전체 폭을 쓰도록 위로 분리. */}
+                <div className="mb-3 flex items-center justify-between gap-2 sm:justify-end">
+                  <PrevNextButton
+                    direction="prev"
+                    target={prev}
+                    subjectSlug={subject.slug}
+                  />
+                  <PrevNextButton
+                    direction="next"
+                    target={next}
+                    subjectSlug={subject.slug}
+                  />
+                </div>
 
-                    {/* Article headline */}
-                    <h1 className="text-foreground flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[28px] leading-tight font-extrabold tracking-tight md:text-[30px]">
-                      <span className="text-primary">
-                        {article.displayLabel.split(/\s+/)[0]}
+                <div className="min-w-0">
+                  {/* Law name chip + importance stars */}
+                  <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                    <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                      {subject.name}
+                    </span>
+                    {article.importance >= 1 ? (
+                      <span className="inline-flex items-center gap-0.5">
+                        {Array.from({
+                          length: Math.min(3, article.importance),
+                        }).map((_, i) => (
+                          <svg
+                            key={i}
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="#F7B500"
+                            stroke="#F7B500"
+                            strokeWidth={1.6}
+                            aria-hidden="true"
+                          >
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+                          </svg>
+                        ))}
+                        {Array.from({
+                          length: Math.max(0, 3 - article.importance),
+                        }).map((_, i) => (
+                          <svg
+                            key={`e-${i}`}
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#F7B500"
+                            strokeWidth={1.6}
+                            aria-hidden="true"
+                          >
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+                          </svg>
+                        ))}
                       </span>
-                      <span>
-                        {article.displayLabel.split(/\s+/).slice(1).join(" ")}
-                      </span>
-                    </h1>
-
-                    {/* Sub-line: effective date + snapshot */}
-                    {article.effectiveDate ? (
-                      <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-[13px]">
-                        <ClockIcon
-                          className="size-3.5 shrink-0"
-                          aria-hidden="true"
-                        />
-                        시행 {article.effectiveDate}
-                      </p>
                     ) : null}
                   </div>
 
-                  {/* Prev / Next buttons — 모바일 full-width 양끝 / sb↑ 우측 그룹 */}
-                  <div className="flex items-center justify-between gap-2 sm:shrink-0 sm:justify-end">
-                    <PrevNextButton
-                      direction="prev"
-                      target={prev}
-                      subjectSlug={subject.slug}
-                    />
-                    <PrevNextButton
-                      direction="next"
-                      target={next}
-                      subjectSlug={subject.slug}
-                    />
-                  </div>
+                  {/* Article headline */}
+                  <h1 className="text-foreground flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[28px] leading-tight font-extrabold tracking-tight break-keep md:text-[30px]">
+                    <span className="text-primary">
+                      {article.displayLabel.split(/\s+/)[0]}
+                    </span>
+                    <span>
+                      {article.displayLabel.split(/\s+/).slice(1).join(" ")}
+                    </span>
+                  </h1>
+
+                  {/* Sub-line: effective date + snapshot */}
+                  {article.effectiveDate ? (
+                    <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-[13px]">
+                      <ClockIcon
+                        className="size-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      시행 {article.effectiveDate}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
