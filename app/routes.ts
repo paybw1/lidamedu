@@ -231,6 +231,8 @@ export default [
           route("/study/stats", "features/study/screens/stats.tsx"),
           route("/study/today", "features/study/screens/today.tsx"),
           route("/study/srs", "features/study/screens/srs.tsx"),
+          // feat-2-022 ⑨ OX SRS 복습 러너 (due ref 를 실제 O/X 로 재채점).
+          route("/study/srs/ox", "features/study/screens/srs-ox-review.tsx"),
           // feat-2-022 OX 약점 진단 (단원×지식종류 교차).
           route(
             "/study/ox-diagnosis",

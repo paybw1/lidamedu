@@ -856,6 +856,65 @@ export async function getOxQuestionsForPack(
   return out;
 }
 
+// feat-2-022 ⑨ — 특정 ref(choice/box_item) id 들로 OX 지문 빌드. OX SRS 복습 러너(/study/srs/ox)용.
+// getOxQuestionsForPack 과 동일 투영(ox_ineligible=false · ox_truth not null · 삭제 문제 제외).
+export async function getOxQuestionsForRefs(
+  client: SupabaseClient<Database>,
+  choiceIds: string[],
+  boxItemIds: string[],
+): Promise<OxQuestionItem[]> {
+  const out: OxQuestionItem[] = [];
+  if (choiceIds.length > 0) {
+    const { data: choiceRows } = await client
+      .from("problem_choices")
+      .select(
+        "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+      )
+      .in("choice_id", choiceIds)
+      .eq("ox_ineligible", false)
+      .not("ox_truth", "is", null);
+    for (const r of choiceRows ?? []) {
+      if (r.problems.deleted_at) continue;
+      out.push({
+        refType: "choice",
+        refId: r.choice_id,
+        problemId: r.problem_id,
+        bodyMd: r.body_md,
+        oxTruth: r.ox_truth as OxTruth,
+        explanationMd: r.explanation_md,
+        year: r.problems.year,
+        problemNumber: r.problems.problem_number,
+        origin: r.problems.origin,
+      });
+    }
+  }
+  if (boxItemIds.length > 0) {
+    const { data: boxRows } = await client
+      .from("problem_box_items")
+      .select(
+        "box_item_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at)",
+      )
+      .in("box_item_id", boxItemIds)
+      .eq("ox_ineligible", false)
+      .not("ox_truth", "is", null);
+    for (const r of boxRows ?? []) {
+      if (r.problems.deleted_at) continue;
+      out.push({
+        refType: "box",
+        refId: r.box_item_id,
+        problemId: r.problem_id,
+        bodyMd: r.body_md,
+        oxTruth: r.ox_truth as OxTruth,
+        explanationMd: r.explanation_md,
+        year: r.problems.year,
+        problemNumber: r.problems.problem_number,
+        origin: r.problems.origin,
+      });
+    }
+  }
+  return out;
+}
+
 // 과목 전체 OX 가능 지문 — /subjects/:subject/ox 풀이용. 셔플은 클라에서.
 export async function getOxQuestionsForSubject(
   client: SupabaseClient<Database>,

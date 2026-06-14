@@ -399,12 +399,22 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       ) : (
         <Card>
           <CardHeader className="pb-3">
-            <p className="text-foreground text-sm font-bold">
-              지금 풀어야 할 OX 항목 {oxItems.length}건
-            </p>
-            <p className="text-muted-foreground text-xs">
-              선택지·박스 항목 단위로 복습. 부모 문제로 들어가 O/X 다시 채점하세요.
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-foreground text-sm font-bold">
+                  지금 풀어야 할 OX 항목 {oxItems.length}건
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  선택지·박스 항목 단위로 O/X 를 다시 채점하면 복습 일정이
+                  갱신됩니다.
+                </p>
+              </div>
+              <Button size="sm" asChild className="rounded-full">
+                <Link to="/study/srs/ox" viewTransition>
+                  OX 복습 시작 <ArrowRightIcon className="size-3.5" />
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="pb-3">
             <OxSrsTable items={oxItems} />
@@ -762,18 +772,12 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
                 {fmtRelative(it.nextDueAt)}
               </TableCell>
               <TableCell className="text-right">
-                {it.lawCode && it.problemId ? (
-                  <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
-                    <Link
-                      to={`/subjects/${it.lawCode}/problems/${it.problemId}`}
-                      viewTransition
-                    >
-                      풀기 <ArrowRightIcon className="size-3.5" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <span className="text-muted-foreground text-[10px]">—</span>
-                )}
+                {/* feat-2-022 ⑨ — OX SRS 복습 러너로(이전: OX UI 없는 MCQ 뷰어 단절). */}
+                <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
+                  <Link to="/study/srs/ox" viewTransition>
+                    풀기 <ArrowRightIcon className="size-3.5" />
+                  </Link>
+                </Button>
               </TableCell>
             </TableRow>
           ))}

@@ -57,5 +57,5 @@ OX 지문(선지·박스 항목)의 **누적 정오**를 학생별로 집계해,
 
 ## 8. 보류 / 숙제
 - ✅ **단원 deep-link (완료, 2026-06-14)** — `computeOxDiagnosis` 노드 해석에 `systematic_nodes.law_code`(=과목 slug) 추가 → `OxNodeRow.lawCode` → 매트릭스 단원명이 `/subjects/:lawCode/systematic/:nodeId`(체계도 단원 학습) 링크. lawCode 없거나 기타(노드 null)면 **라벨만**(안전 폴백). 단위검산 포함. "약점→학습 잇기" 완성.
-- **⑨ SRS OX 재복습 단절** — `/study/srs` OX "풀기"가 OX UI 없는 일반 객관식 뷰어로 링크(`srs.tsx:766-771`) → ref 정오 재기록·SRS 갱신 안 됨. **OX SRS 정식화 시 같이 푼다**(별도 태스크). OX SRS는 ①~⑥ 경로에서만 갱신되므로 진단 데이터 자체엔 영향 없음.
+- ✅ **⑨ SRS OX 재복습 단절 해결 (완료, 2026-06-14)** — 신규 러너 `/study/srs/ox`(`srs-ox-review.tsx`)에서 due ref 를 실제 O/X 로 재채점. `/study/srs` OX 섹션 "OX 복습 시작"·"풀기" 가 (이전: OX UI 없는 MCQ 뷰어) 이 러너로 연결. 기록 `/api/problems/attempt`(mode='study') → `applyOxRefSrsUpdate` 로 `user_ox_ref_srs.next_due_at` 갱신 → 복습 후 due 에서 빠짐. ref→OxQuestionItem 투영 `getOxQuestionsForRefs`(problems/queries.server.ts). 다과목 혼재라 subject 비의존 카드. (부가: 이 기록이 OX 진단 데이터에도 반영.)
 - (향후) `getSessionWeakNodes` 의 노드귀속을 공용 헬퍼로 추출해 본 모듈과 공유(현재는 비회귀 위해 미러).
