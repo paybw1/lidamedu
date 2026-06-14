@@ -2,7 +2,9 @@
 // 같은 팩(mcq_packs.kind=mock_progressive)을 객관식이 아니라 OX 지문 시험으로 풀이.
 // 데이터 소스: 팩 문제들의 problem_choices · problem_box_items 중 OX 가능 지문.
 //
-// 모드 — ?mode=exam (기본, 이력 저장 + 일괄 제출 채점 + 타이머) vs ?mode=study (즉시 정답 표시 + 이력 미저장).
+// 모드 — ?mode=exam (기본, 회차 이력 저장 + 일괄 제출 채점 + 타이머) vs ?mode=study (즉시 정답 표시).
+//   study 모드도 지문별 정오를 분석 데이터로 기록한다(/api/problems/attempt, mode='study', 세션 미생성).
+//   응시 "회차"(quiz_sessions)는 exam 모드에서만 생성된다.
 // 셔플 — 화면 내 토글. 셔플 ON 이면 지문 무작위 순. 다시 풀기 시 같은 순서 유지.
 // 타이머 — exam 모드에서 pack.durationMin 이 있을 때 카운트다운. 0 도달 시 자동 제출.
 
@@ -18,7 +20,7 @@ import {
   ShuffleIcon,
   XCircleIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 import { z } from "zod";
 
@@ -257,7 +259,7 @@ export default function McqPackOxExam({ loaderData }: Route.ComponentProps) {
   const modeLabel = mode === "study" ? "학습" : "시험";
   const desc =
     mode === "study"
-      ? `팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 OX 지문. 답을 누르면 즉시 정답·해설이 표시됩니다. 응시 이력은 저장되지 않습니다.`
+      ? `팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 OX 지문. 답을 누르면 즉시 정답·해설이 표시됩니다. 회차 이력에는 남지 않지만, 지문별 정오는 학습 분석에 반영됩니다.`
       : `팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 OX 지문. 모두 풀고 제출하면 채점 결과를 표시하고 응시 이력에 저장합니다.`;
   return (
     <McqAreaShell
@@ -344,6 +346,9 @@ function ExamRunner({
   // exam 모드 — 일괄 제출 후 전체 채점
   const [submitted, setSubmitted] = useState(false);
   const [startedAtMs, setStartedAtMs] = useState(() => Date.now());
+  // ⑤' — study 모드 지문별 정오 기록. 카드가 동시에 보이므로(병렬 응답) 단일 fetcher 대신
+  // ref 단위 독립 fetch(베스트-에포트). 같은 ref 중복 기록 방지용 가드. handleRetry 시 초기화.
+  const recordedStudyRefs = useRef<Set<string>>(new Set());
 
   // 셔플
   const [shuffleOn, setShuffleOn] = useState(false);
@@ -438,6 +443,27 @@ function ExamRunner({
     }
   }, [timeUp, submitted, submitting, handleSubmit]);
 
+  // ⑤' — study 모드 1지문 응답을 분석 데이터로 기록. 패널(ox-questions-panel) 과 동일하게
+  // /api/problems/attempt(mode='study') 사용 → user_problem_attempts 1행 + OX SRS 갱신.
+  // quiz_sessions 는 만들지 않는다(회차 이력 미생성). 베스트-에포트(실패해도 풀이 흐름 방해 없음).
+  function recordStudyAttempt(it: OxQuestionItem | undefined, v: OxTruth) {
+    if (!it || recordedStudyRefs.current.has(it.refId)) return;
+    recordedStudyRefs.current.add(it.refId);
+    const fd = new FormData();
+    fd.set("problemId", it.problemId);
+    fd.set("oxAnswer", v);
+    fd.set("isCorrect", v === it.oxTruth ? "true" : "false");
+    fd.set("mode", "study");
+    if (it.refType === "choice") fd.set("selectedChoiceId", it.refId);
+    else fd.set("selectedBoxItemId", it.refId);
+    void fetch("/api/problems/attempt", { method: "POST", body: fd }).catch(
+      () => {
+        // 실패 시 재기록 허용 — 가드 해제.
+        recordedStudyRefs.current.delete(it.refId);
+      },
+    );
+  }
+
   function setAt(i: number, v: OxTruth) {
     if (isStudy) {
       if (revealed[i]) return; // study 모드: 한 번 답한 카드는 잠금
@@ -451,6 +477,7 @@ function ExamRunner({
         next[i] = true;
         return next;
       });
+      recordStudyAttempt(items[i], v);
       return;
     }
     if (submitted) return;
@@ -467,6 +494,7 @@ function ExamRunner({
     setSubmitted(false);
     setElapsedSec(0);
     setStartedAtMs(Date.now());
+    recordedStudyRefs.current.clear(); // 다시 풀기 → 재응답을 새 attempt 로 기록 허용
     // 셔플 ON 이면 새로 섞고, OFF 면 자연 순서로 리셋.
     setOrder(shuffleOn ? shuffleIndices(items.length) : items.map((_, i) => i));
     window.scrollTo({ top: 0, behavior: "smooth" });

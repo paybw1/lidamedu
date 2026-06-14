@@ -231,6 +231,11 @@ export default [
           route("/study/stats", "features/study/screens/stats.tsx"),
           route("/study/today", "features/study/screens/today.tsx"),
           route("/study/srs", "features/study/screens/srs.tsx"),
+          // feat-2-022 OX 약점 진단 (단원×지식종류 교차).
+          route(
+            "/study/ox-diagnosis",
+            "features/study/screens/ox-diagnosis.tsx",
+          ),
         ],
       ),
       // feat-8-008 학습보조 영역 게이트 — area_study_aids 미보유 시 /pricing redirect.

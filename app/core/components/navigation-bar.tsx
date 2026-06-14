@@ -66,6 +66,7 @@ const studyItems: SimpleLink[] = [
   { label: "카드 암기", to: "/srs" },
   { label: "학습 목표 · 진도", to: "/goals" },
   { label: "학습 통계", to: "/study/stats" },
+  { label: "OX 약점 진단", to: "/study/ox-diagnosis" },
   { label: "과제", to: "/assignments" },
   // feat-10-006 — 정오문제(OX) 이력은 오답·복습 결과 성격이라 학습관리에 둠.
   { label: "정오문제 응시 이력", to: "/me/ox-sessions" },

@@ -53,6 +53,8 @@ import {
   getUserPassPredictionTrend,
   type PassPredictionSnapshotItem,
 } from "~/features/study/queries.server";
+import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
+import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import {
   getStudentCohortComparisons,
   getStudentDetail,
@@ -113,6 +115,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     payments,
     plans,
     srsSummary,
+    oxDiagnosis,
+    oxPasser,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -129,6 +133,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? listSubscriptionPlans(client)
       : Promise.resolve([]),
     getStudentSrsSummary(params.profileId),
+    // feat-2-022 — 이 학생의 OX 약점 진단(adminClient = RLS 우회, 타 사용자 데이터).
+    computeOxDiagnosis(adminClient, params.profileId),
+    // 합격자 비교 게이트 — OFF(1년차) 시 placeholder 만. 학생 화면과 동일 처리.
+    (async () => {
+      const { isPasserBenchmarkEnabled } = await import(
+        "~/features/exam-results/passer-benchmark-gate.server"
+      );
+      const g = await isPasserBenchmarkEnabled();
+      return {
+        enabled: g.enabled,
+        sampleSize: g.realSampleSize,
+        minSample: g.minSample,
+      };
+    })(),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
   return {
@@ -140,6 +158,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     payments,
     plans,
     srsSummary,
+    oxDiagnosis,
+    oxPasser,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -166,6 +186,8 @@ export default function AdminStudentDetail({
     payments,
     plans,
     srsSummary,
+    oxDiagnosis,
+    oxPasser,
     currentUserId,
     isAdmin,
     role,
@@ -265,6 +287,18 @@ export default function AdminStudentDetail({
       {/* feat-2-017 학생별 SRS 큐 요약 */}
       <div className="mb-6">
         <StudentSrsCard summary={srsSummary} />
+      </div>
+
+      {/* feat-2-022 학생별 OX 약점 진단 (단원 × 지식종류) — 학생 화면과 동일 게이트·톤 */}
+      <div className="mb-6 space-y-3">
+        <h2 className="text-sm font-bold tracking-tight">
+          OX 약점 진단 (단원 × 지식종류)
+        </h2>
+        <OxDiagnosisView
+          diagnosis={oxDiagnosis}
+          passer={oxPasser}
+          audience="staff"
+        />
       </div>
 
       <div className="mb-6">
