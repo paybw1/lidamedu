@@ -16,7 +16,6 @@ import {
   type LectureResourceListItem,
   createLectureResource,
   getLectureResourceSignedUrl,
-  getOriginalPdfSignedUrl,
   softDeleteLectureResource,
 } from "~/features/lectures/queries.server";
 
@@ -68,16 +67,12 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    // inline=1 → 통합본 원본을 다운로드 강제 없이 inline 으로(브라우저 PDF 뷰어 + #page 점프).
-    const inline = fd.get("inline") === "1";
     try {
-      const signedUrl = inline
-        ? await getOriginalPdfSignedUrl(client, parsed.data.pdfPath)
-        : await getLectureResourceSignedUrl(
-            client,
-            parsed.data.pdfPath,
-            parsed.data.downloadName,
-          );
+      const signedUrl = await getLectureResourceSignedUrl(
+        client,
+        parsed.data.pdfPath,
+        parsed.data.downloadName,
+      );
       return data({ ok: true, intent: "signed-url" as const, signedUrl });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "서명된 URL 생성 실패";

@@ -52,18 +52,12 @@ export default [
       "/community/report-resolve",
       "features/community/api/report-resolve.tsx",
     ),
-    route(
-      "/community/study-join",
-      "features/community/api/study-join.tsx",
-    ),
+    route("/community/study-join", "features/community/api/study-join.tsx"),
     ...prefix("/annotations", [
       route("/bookmark", "features/annotations/api/bookmark.tsx"),
       route("/memo", "features/annotations/api/memo.tsx"),
       route("/highlight", "features/annotations/api/highlight.tsx"),
-      route(
-        "/highlight-alias",
-        "features/annotations/api/highlight-alias.tsx",
-      ),
+      route("/highlight-alias", "features/annotations/api/highlight-alias.tsx"),
     ]),
     ...prefix("/blanks", [
       route("/attempt", "features/blanks/api/attempt.tsx"),
@@ -206,10 +200,7 @@ export default [
     layout("core/layouts/public.layout.tsx", [
       route("/login", "features/auth/screens/login.tsx"),
       route("/join", "features/auth/screens/join.tsx"),
-      route(
-        "/forgot-password",
-        "features/auth/screens/forgot-password.tsx",
-      ),
+      route("/forgot-password", "features/auth/screens/forgot-password.tsx"),
       ...prefix("/auth", [
         ...prefix("/social", [
           route("/start/:provider", "features/auth/screens/social/start.tsx"),
@@ -314,65 +305,65 @@ export default [
       // feat-8-008 학습과목 영역 게이트 — area_subjects 미보유 시 /pricing redirect.
       layout("features/subjects/layouts/subjects.layout.tsx", [
         ...prefix("/subjects", [
-        route("/civil", "features/subjects/screens/civil.tsx"),
-        route("/patent", "features/subjects/screens/patent.tsx"),
-        route("/trademark", "features/subjects/screens/trademark.tsx"),
-        route("/design", "features/subjects/screens/design.tsx"),
-        route(
-          "/civil-procedure",
-          "features/subjects/screens/civil-procedure.tsx",
-        ),
-        route(
-          "/:subject/articles/:articlePath",
-          "features/subjects/screens/article-viewer.tsx",
-        ),
-        route(
-          "/:subject/chapters/:chapterId",
-          "features/subjects/screens/chapter-viewer.tsx",
-        ),
-        route(
-          "/:subject/systematic/:nodeId",
-          "features/subjects/screens/systematic-node-viewer.tsx",
-        ),
-        route(
-          "/:subject/cases/:caseId",
-          "features/subjects/screens/case-viewer.tsx",
-        ),
-        route(
-          "/:subject/problems/:problemId",
-          "features/subjects/screens/problem-viewer.tsx",
-        ),
-        route(
-          "/:subject/quiz/setup",
-          "features/subjects/screens/quiz-setup.tsx",
-        ),
-        route("/:subject/ox", "features/subjects/screens/subject-ox.tsx"),
-        route(
-          "/:subject/quiz/result/:sessionId",
-          "features/subjects/screens/quiz-result.tsx",
-        ),
-        ...prefix("/science", [
-          index("features/subjects/screens/science/science-index.tsx"),
-          route("/physics", "features/subjects/screens/science/physics.tsx"),
+          route("/civil", "features/subjects/screens/civil.tsx"),
+          route("/patent", "features/subjects/screens/patent.tsx"),
+          route("/trademark", "features/subjects/screens/trademark.tsx"),
+          route("/design", "features/subjects/screens/design.tsx"),
           route(
-            "/chemistry",
-            "features/subjects/screens/science/chemistry.tsx",
-          ),
-          route("/biology", "features/subjects/screens/science/biology.tsx"),
-          route(
-            "/earth-science",
-            "features/subjects/screens/science/earth-science.tsx",
+            "/civil-procedure",
+            "features/subjects/screens/civil-procedure.tsx",
           ),
           route(
-            "/:scienceSubject/quiz/setup",
-            "features/subjects/screens/science/quiz-setup.tsx",
+            "/:subject/articles/:articlePath",
+            "features/subjects/screens/article-viewer.tsx",
           ),
           route(
-            "/:scienceSubject/problems/:problemId",
-            "features/subjects/screens/science/problem-viewer.tsx",
+            "/:subject/chapters/:chapterId",
+            "features/subjects/screens/chapter-viewer.tsx",
           ),
+          route(
+            "/:subject/systematic/:nodeId",
+            "features/subjects/screens/systematic-node-viewer.tsx",
+          ),
+          route(
+            "/:subject/cases/:caseId",
+            "features/subjects/screens/case-viewer.tsx",
+          ),
+          route(
+            "/:subject/problems/:problemId",
+            "features/subjects/screens/problem-viewer.tsx",
+          ),
+          route(
+            "/:subject/quiz/setup",
+            "features/subjects/screens/quiz-setup.tsx",
+          ),
+          route("/:subject/ox", "features/subjects/screens/subject-ox.tsx"),
+          route(
+            "/:subject/quiz/result/:sessionId",
+            "features/subjects/screens/quiz-result.tsx",
+          ),
+          ...prefix("/science", [
+            index("features/subjects/screens/science/science-index.tsx"),
+            route("/physics", "features/subjects/screens/science/physics.tsx"),
+            route(
+              "/chemistry",
+              "features/subjects/screens/science/chemistry.tsx",
+            ),
+            route("/biology", "features/subjects/screens/science/biology.tsx"),
+            route(
+              "/earth-science",
+              "features/subjects/screens/science/earth-science.tsx",
+            ),
+            route(
+              "/:scienceSubject/quiz/setup",
+              "features/subjects/screens/science/quiz-setup.tsx",
+            ),
+            route(
+              "/:scienceSubject/problems/:problemId",
+              "features/subjects/screens/science/problem-viewer.tsx",
+            ),
+          ]),
         ]),
-      ]),
       ]),
 
       // feat-8-008 2차 모의(온라인 GS) 영역 게이트 — area_mock_exams.
@@ -532,15 +523,9 @@ export default [
         "features/cron/api/exam-result-reminder.tsx",
       ),
       // feat-9-001 — RAG 임베딩 cron (Voyage). dry-run 모드는 VOYAGE_API_KEY 미설정 시 자동.
-      route(
-        "/api/cron/embed-chunks",
-        "features/cron/api/embed-chunks.tsx",
-      ),
+      route("/api/cron/embed-chunks", "features/cron/api/embed-chunks.tsx"),
       // feat-9-005 v1.2 — eval 자동 평가 cron. ANTHROPIC/VOYAGE 키 미설정 시 dry-run.
-      route(
-        "/api/cron/ai-eval-run",
-        "features/cron/api/ai-eval-run.tsx",
-      ),
+      route("/api/cron/ai-eval-run", "features/cron/api/ai-eval-run.tsx"),
       // feat-7-004 — 시행일 도래 개정 자동 현행 전환 cron.
       route(
         "/api/cron/promote-law-revisions",
@@ -559,6 +544,11 @@ export default [
         "/lectures/:itemId",
         "features/lectures/screens/lecture-viewer.tsx",
       ),
+      // 인앱 강의노트 PDF 뷰어 — 위치 링크(?page=N)가 통합본의 해당 페이지를 연다.
+      route(
+        "/lecture-note/:sourcePdfId",
+        "features/lectures/screens/lecture-note-viewer.tsx",
+      ),
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
       route(
         "/api/admin/problem-review",
@@ -568,10 +558,7 @@ export default [
         "/api/admin/explanation-review",
         "features/admin/api/explanation-review.tsx",
       ),
-      route(
-        "/api/admin/text-review",
-        "features/admin/api/text-review.tsx",
-      ),
+      route("/api/admin/text-review", "features/admin/api/text-review.tsx"),
       route(
         "/api/admin/ai-problem-gen",
         "features/admin/api/ai-problem-gen.tsx",
@@ -732,10 +719,7 @@ export default [
         "/admin/relations/article/:lawCode/:articleNumber",
         "features/admin/screens/admin-article-relations.tsx",
       ),
-      route(
-        "/admin/laws",
-        "features/admin/screens/admin-laws-hub.tsx",
-      ),
+      route("/admin/laws", "features/admin/screens/admin-laws-hub.tsx"),
       route(
         "/admin/laws/health",
         "features/admin/screens/admin-law-health.tsx",
@@ -757,10 +741,7 @@ export default [
         "features/admin/screens/admin-law-completeness.tsx",
       ),
       // 판례 기반 쟁점추출 훈련 — 학생 응시.
-      route(
-        "/case-training",
-        "features/cases/screens/case-training-index.tsx",
-      ),
+      route("/case-training", "features/cases/screens/case-training-index.tsx"),
       route(
         "/case-training/:itemId",
         "features/cases/screens/case-training-take.tsx",
@@ -828,10 +809,7 @@ export default [
           "/:roundId/distinctions",
           "features/gs/screens/admin-gs-distinctions.tsx",
         ),
-        route(
-          "/:roundId/issues",
-          "features/gs/screens/admin-gs-issues.tsx",
-        ),
+        route("/:roundId/issues", "features/gs/screens/admin-gs-issues.tsx"),
         route("/points", "features/gs/screens/admin-gs-points.tsx"),
       ]),
       ...prefix("/admin/problems", [

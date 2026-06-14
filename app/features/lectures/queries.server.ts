@@ -344,6 +344,7 @@ export interface PdfLocationItem {
   label: string | null;
   storagePath: string;
   totalPages: number;
+  sourcePdfId: string;
 }
 
 export async function getPdfLocations(
@@ -374,6 +375,7 @@ export async function getPdfLocations(
             label: l.label,
             storagePath: s.storage_path,
             totalPages: s.total_pages,
+            sourcePdfId: l.source_pdf_id,
           }
         : null;
     })

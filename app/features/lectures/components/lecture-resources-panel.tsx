@@ -129,32 +129,15 @@ export function LectureResourcesPanel({
   );
 }
 
-// 통합본 PDF의 특정 페이지를 새 탭에서 inline 으로 연다(#page=N 점프).
+// 통합본 강의노트의 특정 페이지를 인앱 pdfjs 뷰어(/lecture-note)에서 연다.
+// pdfjs 가 직접 해당 페이지를 그리므로 데스크톱·모바일 모두 페이지 점프가 동작한다.
 function LocationCard({ loc }: { loc: PdfLocationItem }) {
-  const openFetcher = useFetcher<ActionResponse>();
-  const opening =
-    openFetcher.state === "submitting" || openFetcher.state === "loading";
-
-  useEffect(() => {
-    const d = openFetcher.data;
-    if (d && d.ok && d.intent === "signed-url") {
-      window.open(
-        `${d.signedUrl}#page=${loc.page}`,
-        "_blank",
-        "noopener,noreferrer",
-      );
-    }
-  }, [openFetcher.data, loc.page]);
-
   function handleOpen() {
-    const fd = new FormData();
-    fd.set("intent", "signed-url");
-    fd.set("pdfPath", loc.storagePath);
-    fd.set("inline", "1"); // 다운로드 강제 X → 브라우저 PDF 뷰어 + #page 점프
-    openFetcher.submit(fd, {
-      method: "post",
-      action: "/api/lecture-resources",
-    });
+    window.open(
+      `/lecture-note/${loc.sourcePdfId}?page=${loc.page}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   }
 
   return (
@@ -172,22 +155,12 @@ function LocationCard({ loc }: { loc: PdfLocationItem }) {
             size="sm"
             variant="secondary"
             onClick={handleOpen}
-            disabled={opening}
             className="h-7"
           >
-            {opening ? (
-              <Loader2Icon className="size-3.5 animate-spin" />
-            ) : (
-              <ExternalLinkIcon className="size-3.5" />
-            )}
+            <ExternalLinkIcon className="size-3.5" />
             열기
           </Button>
         </div>
-        {openFetcher.data && !openFetcher.data.ok ? (
-          <p className="text-destructive mt-1 text-xs">
-            {openFetcher.data.error}
-          </p>
-        ) : null}
       </div>
     </div>
   );
