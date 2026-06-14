@@ -59,7 +59,11 @@ import {
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
-import { listLectureResourcesByArticleIds } from "~/features/lectures/queries.server";
+import {
+  getPdfLocationsByTargetIds,
+  listLectureResourcesByArticleIds,
+} from "~/features/lectures/queries.server";
+import { getPdfLocationsEnabled } from "~/features/lectures/settings.server";
 import type { OxRefAnnotations } from "~/features/problems/labels";
 import {
   getOxAnnotationsForRefs,
@@ -165,6 +169,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     commentsByArticle,
     staffRole,
     lectureResourcesByArticle,
+    pdfLocationsByArticle,
+    pdfFlag,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
@@ -195,6 +201,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listCommentsBulk(client, "article", articleIds),
     getStaffRole(client, user.id),
     listLectureResourcesByArticleIds(client, articleIds),
+    getPdfLocationsByTargetIds(client, "article", articleIds),
+    getPdfLocationsEnabled(client),
   ]);
 
   const ownerParam = new URL(request.url).searchParams.get("blank-owner");
@@ -266,6 +274,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
     lectureResourcesByArticle,
+    pdfLocationsByArticle,
+    pdfLocationsEnabled: staffRole !== null || pdfFlag,
   };
 }
 
@@ -306,6 +316,8 @@ function Inner({
     canEditComment,
     isAdmin,
     lectureResourcesByArticle,
+    pdfLocationsByArticle,
+    pdfLocationsEnabled,
     currentUserId,
   } = loaderData;
   const { axis } = useSortAxis();
@@ -781,6 +793,8 @@ function Inner({
                         lectureResources={
                           lectureResourcesByArticle[a.articleId] ?? []
                         }
+                        pdfLocations={pdfLocationsByArticle[a.articleId] ?? []}
+                        pdfLocationsEnabled={pdfLocationsEnabled}
                       />
                     </div>
                   </div>

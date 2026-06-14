@@ -382,6 +382,43 @@ export async function getPdfLocations(
     .filter((x): x is PdfLocationItem => x !== null);
 }
 
+// 멀티 타깃 배치 — 여러 article/case 의 위치 링크를 한 번에 targetId→items 맵으로.
+// 체계도 노드/단원/문제 뷰어처럼 한 화면에 여러 조문·판례를 동시에 렌더할 때 N+1 방지.
+export async function getPdfLocationsByTargetIds(
+  client: SupabaseClient<Database>,
+  targetType: LectureResourceTargetType,
+  targetIds: string[],
+): Promise<Record<string, PdfLocationItem[]>> {
+  if (targetIds.length === 0) return {};
+  const { data: locs, error } = await client
+    .from("lecture_pdf_locations")
+    .select("target_id, page, label, source_pdf_id")
+    .eq("target_type", targetType)
+    .in("target_id", targetIds)
+    .order("page", { ascending: true });
+  if (error) throw error;
+  if (!locs || locs.length === 0) return {};
+  const srcIds = [...new Set(locs.map((l) => l.source_pdf_id))];
+  const { data: srcs } = await client
+    .from("lecture_source_pdfs")
+    .select("source_pdf_id, storage_path, total_pages")
+    .in("source_pdf_id", srcIds);
+  const byId = new Map((srcs ?? []).map((s) => [s.source_pdf_id, s]));
+  const out: Record<string, PdfLocationItem[]> = {};
+  for (const l of locs) {
+    const s = byId.get(l.source_pdf_id);
+    if (!s) continue;
+    (out[l.target_id] ??= []).push({
+      page: l.page,
+      label: l.label,
+      storagePath: s.storage_path,
+      totalPages: s.total_pages,
+      sourcePdfId: l.source_pdf_id,
+    });
+  }
+  return out;
+}
+
 // ──────────────────────────────────────────────────────────
 // case-study 미매칭 슬라이드 검토 (운영자) — /admin/case-study-review
 // ──────────────────────────────────────────────────────────
