@@ -34,6 +34,7 @@ import {
   normalizeScienceSlug,
 } from "~/features/subjects/lib/science";
 import { getScienceProblem } from "~/features/subjects/lib/science.server";
+import { parseScienceBody } from "~/features/subjects/lib/science-body";
 
 import type { Route } from "./+types/problem-viewer";
 
@@ -164,6 +165,8 @@ export default function ScienceProblemViewer({
     bookmark,
     comments,
   } = loaderData;
+  // 발문(stem) 과 <보기>(ㄱㄴㄷ) 분리 — 자연과학 보기는 bodyMd 텍스트라 박스·줄바꿈이 없음.
+  const { stem, bogi } = parseScienceBody(problem.bodyMd);
   const attemptFetcher = useFetcher<typeof action>();
   const [selected, setSelected] = useState<string | null>(null);
   const aiData = attemptFetcher.data;
@@ -253,7 +256,27 @@ export default function ScienceProblemViewer({
             <div className="flex items-start gap-3">
               <span className="mt-0.5 text-xl">{subjectMeta.emoji}</span>
               <div className="flex-1 text-base font-medium leading-relaxed">
-                <MarkdownView text={problem.bodyMd} className="text-base leading-relaxed" />
+                <MarkdownView text={stem} className="text-base leading-relaxed" />
+                {bogi.length > 0 ? (
+                  <div className="border-border/70 bg-muted/30 dark:bg-muted/10 mt-4 rounded-xl border-2 px-5 py-4">
+                    <p className="text-muted-foreground mb-2 text-xs font-bold tracking-wide">
+                      〈보기〉
+                    </p>
+                    <ul className="space-y-1.5">
+                      {bogi.map((item, i) => (
+                        <li
+                          key={i}
+                          className="text-foreground text-[15px] leading-[1.7]"
+                        >
+                          <MarkdownView
+                            text={item}
+                            className="text-[15px] leading-[1.7]"
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
