@@ -56,6 +56,6 @@ OX 지문(선지·박스 항목)의 **누적 정오**를 학생별로 집계해,
 - 라이브(데이터 유입 후) 매트릭스·게이트 표시는 사용자 확인 대기.
 
 ## 8. 보류 / 숙제
-- **단원 deep-link (우선 후속, 너무 미루지 말 것)** — 진단의 약점 단원/매트릭스 행에서 해당 단원 학습·관련 OX·조문으로 잇기. 현재 집계가 노드→과목(lawCode)을 안 들고 있어 라벨만 표시. `computeOxDiagnosis` 노드 해석에 lawCode 추가(systematic_nodes 과목/path) → `OxNodeRow.lawCode` → 뷰에서 `/subjects/:subject/systematic/:nodeId` 링크. "약점→학습 잇기" 완성용.
+- ✅ **단원 deep-link (완료, 2026-06-14)** — `computeOxDiagnosis` 노드 해석에 `systematic_nodes.law_code`(=과목 slug) 추가 → `OxNodeRow.lawCode` → 매트릭스 단원명이 `/subjects/:lawCode/systematic/:nodeId`(체계도 단원 학습) 링크. lawCode 없거나 기타(노드 null)면 **라벨만**(안전 폴백). 단위검산 포함. "약점→학습 잇기" 완성.
 - **⑨ SRS OX 재복습 단절** — `/study/srs` OX "풀기"가 OX UI 없는 일반 객관식 뷰어로 링크(`srs.tsx:766-771`) → ref 정오 재기록·SRS 갱신 안 됨. **OX SRS 정식화 시 같이 푼다**(별도 태스크). OX SRS는 ①~⑥ 경로에서만 갱신되므로 진단 데이터 자체엔 영향 없음.
 - (향후) `getSessionWeakNodes` 의 노드귀속을 공용 헬퍼로 추출해 본 모듈과 공유(현재는 비회귀 위해 미러).

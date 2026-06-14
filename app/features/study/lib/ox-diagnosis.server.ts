@@ -43,6 +43,8 @@ export interface OxNodeRow extends OxCell {
   /** null = 기타(노드 귀속 실패). */
   nodeId: string | null;
   label: string;
+  /** 과목 slug(systematic_nodes.law_code). null 이면 deep-link 불가 → 라벨만. */
+  lawCode: string | null;
   /** (100-정답률)*log10(시도+1). belowThreshold 면 0. weak-nodes 와 동일 공식. */
   weaknessScore: number;
 }
@@ -97,6 +99,8 @@ export interface OxRefMeta {
   nodeByProblem: Map<string, string | null>;
   /** nodeId → 표시 라벨. */
   labelByNode: Map<string, string>;
+  /** nodeId → 과목 slug(deep-link 용). 없으면 라벨만. */
+  lawCodeByNode: Map<string, string>;
 }
 
 const CHOICE_TYPE_ORDER: ProblemChoiceType[] = ["statute", "precedent", "theory"];
@@ -252,6 +256,7 @@ export function buildOxDiagnosis(
     byNode.push({
       nodeId,
       label: nodeId ? (meta.labelByNode.get(nodeId) ?? "(라벨 없음)") : "기타",
+      lawCode: nodeId ? (meta.lawCodeByNode.get(nodeId) ?? null) : null,
       weaknessScore,
       ...cell,
     });
@@ -303,6 +308,7 @@ export async function computeOxDiagnosis(
     ctByRef: new Map(),
     nodeByProblem: new Map(),
     labelByNode: new Map(),
+    lawCodeByNode: new Map(),
   };
 
   // 1) OX attempts.
@@ -409,22 +415,27 @@ export async function computeOxDiagnosis(
     nodeByProblem.set(pid, aid ? (nodeByArticle.get(aid) ?? null) : null);
   }
 
-  // node 라벨.
+  // node 라벨 + 과목(deep-link 용).
   const nodeIds = [
     ...new Set([...nodeByProblem.values()].filter((v): v is string => !!v)),
   ];
   const labelByNode = new Map<string, string>();
+  const lawCodeByNode = new Map<string, string>();
   for (let i = 0; i < nodeIds.length; i += CHUNK) {
     const slice = nodeIds.slice(i, i + CHUNK);
     const { data } = await client
       .from("systematic_nodes")
-      .select("node_id, display_label")
+      .select("node_id, display_label, law_code")
       .in("node_id", slice);
-    for (const n of data ?? []) labelByNode.set(n.node_id, n.display_label);
+    for (const n of data ?? []) {
+      labelByNode.set(n.node_id, n.display_label);
+      lawCodeByNode.set(n.node_id, n.law_code);
+    }
   }
 
-  return buildOxDiagnosis(rows, { ctByRef, nodeByProblem, labelByNode }, {
-    dedup,
-    minAttempts,
-  });
+  return buildOxDiagnosis(
+    rows,
+    { ctByRef, nodeByProblem, labelByNode, lawCodeByNode },
+    { dedup, minAttempts },
+  );
 }

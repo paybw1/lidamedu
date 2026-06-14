@@ -311,7 +311,7 @@ function CrossMatrix({ diagnosis }: { diagnosis: OxDiagnosis }) {
         </h2>
         <p className="text-muted-foreground text-xs">
           단원별 약한 지식종류. 셀 = 정답률 (시도수). 표본 N{diagnosis.minAttempts}건
-          미만은 회색(단정 제외).
+          미만은 회색(단정 제외). 단원명을 누르면 해당 단원 학습으로 이동합니다.
         </p>
       </CardHeader>
       <CardContent>
@@ -330,7 +330,19 @@ function CrossMatrix({ diagnosis }: { diagnosis: OxDiagnosis }) {
             <TableBody>
               {shown.map((node) => (
                 <TableRow key={node.nodeId ?? "null"}>
-                  <TableCell className="font-medium">{node.label}</TableCell>
+                  <TableCell className="font-medium">
+                    {node.lawCode && node.nodeId ? (
+                      <Link
+                        to={`/subjects/${node.lawCode}/systematic/${node.nodeId}`}
+                        className="text-primary hover:underline"
+                        viewTransition
+                      >
+                        {node.label}
+                      </Link>
+                    ) : (
+                      node.label
+                    )}
+                  </TableCell>
                   {MATRIX_TYPES.map((t) => (
                     <TableCell key={t} className="text-center">
                       <MatrixCell

@@ -60,13 +60,18 @@ function sampleMeta(): OxRefMeta {
     ["n1", "단원1"],
     ["n2", "단원2"],
   ]);
-  return { ctByRef, nodeByProblem, labelByNode };
+  const lawCodeByNode = new Map<string, string>([
+    ["n1", "patent"],
+    ["n2", "patent"],
+  ]);
+  return { ctByRef, nodeByProblem, labelByNode, lawCodeByNode };
 }
 
 const emptyMeta: OxRefMeta = {
   ctByRef: new Map(),
   nodeByProblem: new Map(),
   labelByNode: new Map(),
+  lawCodeByNode: new Map(),
 };
 
 describe("buildOxDiagnosis — totals", () => {
@@ -123,6 +128,7 @@ describe("buildOxDiagnosis — byNode (약점 점수 정렬)", () => {
       accuracyPct: 25,
       belowThreshold: false,
       label: "단원1",
+      lawCode: "patent", // deep-link 용 과목 slug
     });
     expect(n1!.weaknessScore).toBeGreaterThan(0);
     expect(n2).toMatchObject({ attempts: 6, accuracyPct: 100 });
@@ -167,6 +173,7 @@ describe("buildOxDiagnosis — 표본 게이트 경계", () => {
       ctByRef: new Map(),
       nodeByProblem: new Map([["p1", "n1"]]),
       labelByNode: new Map([["n1", "단원1"]]),
+      lawCodeByNode: new Map([["n1", "patent"]]),
     };
     expect(OX_DIAGNOSIS_MIN_ATTEMPTS).toBe(5);
     expect(buildOxDiagnosis(mk(4), meta).byNode[0]?.belowThreshold).toBe(true);
@@ -180,6 +187,7 @@ describe("buildOxDiagnosis — dedup", () => {
       ctByRef: new Map([["choice:cX", "statute"]]),
       nodeByProblem: new Map([["p1", "n1"]]),
       labelByNode: new Map([["n1", "단원1"]]),
+      lawCodeByNode: new Map([["n1", "patent"]]),
     };
     // 같은 ref: 과거 오답 → 최신 정답. 입력은 과거 먼저(정렬 검증).
     const rows: OxAttemptRow[] = [];
@@ -204,6 +212,7 @@ describe("buildOxDiagnosis — 미분류 / 기타 / 빈데이터", () => {
     expect(d.byChoiceType[0]?.choiceType).toBeNull(); // 미분류 버킷
     expect(d.byNode[0]?.nodeId).toBeNull();
     expect(d.byNode[0]?.label).toBe("기타");
+    expect(d.byNode[0]?.lawCode).toBeNull(); // 매핑 없음 → deep-link 불가(라벨만)
   });
 
   it("빈 입력은 0/빈 배열, 크래시 없음", () => {
