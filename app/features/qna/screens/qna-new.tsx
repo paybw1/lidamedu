@@ -1,6 +1,10 @@
-import { CheckCircle2Icon, SendIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  MessageCircleQuestionIcon,
+  SendIcon,
+} from "lucide-react";
 import { useState } from "react";
-import { Link, data, redirect, useFetcher } from "react-router";
+import { Link, redirect, useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
@@ -25,6 +29,8 @@ const TARGET_TONE: Record<QnaTargetType, "primary" | "violet" | "amber"> = {
   problem: "amber",
 };
 
+type TargetDisplay = Awaited<ReturnType<typeof resolveTargetDisplay>>;
+
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const [client] = makeServerClient(request);
@@ -39,31 +45,92 @@ export async function loader({ request }: Route.LoaderArgs) {
     url.searchParams.get("targetType"),
   );
   const targetIdRaw = url.searchParams.get("targetId");
-  const targetIdParse =
+  const targetId =
     targetIdRaw && /^[0-9a-f-]{36}$/i.test(targetIdRaw) ? targetIdRaw : null;
 
-  if (!targetTypeParse.success || !targetIdParse) {
-    throw data(
-      "targetType 과 targetId 가 필요합니다. 조문/판례/문제 우측 패널에서 진입하세요.",
-      { status: 400 },
-    );
+  // 대상(조문/판례/문제) 없이 진입한 경우 — 목록의 "새 질문" 버튼, AI 한도 폴백 "강사 Q&A" 등.
+  // 예전엔 400 을 throw 해 "오류" 페이지가 떴다. Q&A 는 대상 스코프 기능이므로,
+  // 에러 대신 "대상을 먼저 고르라"는 안내 화면을 렌더한다(어떤 경로로 와도 안 깨지게).
+  if (!targetTypeParse.success || !targetId) {
+    return { hasTarget: false as const };
   }
 
   const target = await resolveTargetDisplay(
     client,
     targetTypeParse.data,
-    targetIdParse,
+    targetId,
   );
 
   return {
+    hasTarget: true as const,
     targetType: targetTypeParse.data,
-    targetId: targetIdParse,
+    targetId,
     target,
   };
 }
 
 export default function QnaNew({ loaderData }: Route.ComponentProps) {
-  const { targetType, targetId, target } = loaderData;
+  if (!loaderData.hasTarget) {
+    return <NoTargetGuide />;
+  }
+  return (
+    <QnaForm
+      targetType={loaderData.targetType}
+      targetId={loaderData.targetId}
+      target={loaderData.target}
+    />
+  );
+}
+
+// 대상 없이 진입 시 안내 — Q&A 는 특정 조문/판례/문제에 대해서만 작성 가능.
+function NoTargetGuide() {
+  return (
+    <CommunityShell
+      category="qna"
+      title="새 질문"
+      backLink={{ to: "/qna", label: "Q&A 목록" }}
+      width="narrow"
+    >
+      <div className="border-border bg-card flex flex-col items-center gap-2.5 rounded-2xl border px-8 py-14 text-center shadow-sm">
+        <span className="text-primary mb-1 inline-flex size-14 items-center justify-center rounded-2xl bg-primary/10">
+          <MessageCircleQuestionIcon className="size-7" />
+        </span>
+        <div className="text-base font-bold tracking-tight">
+          질문할 대상을 먼저 선택하세요
+        </div>
+        <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+          Q&amp;A 질문은 특정{" "}
+          <strong className="text-foreground">조문 · 판례 · 문제</strong> 에 대해
+          작성합니다. 학습 중인 조문 / 판례 / 문제 상세 화면 우측의{" "}
+          <strong className="text-foreground">‘Q&amp;A’ 패널</strong> 에서
+          ‘질문하기’ 를 눌러 시작해 주세요.
+        </p>
+        <div className="mt-3 flex justify-center gap-2">
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <Link to="/qna" viewTransition>
+              Q&amp;A 목록
+            </Link>
+          </Button>
+          <Button asChild size="sm" className="rounded-full">
+            <Link to="/dashboard" viewTransition>
+              학습하러 가기
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </CommunityShell>
+  );
+}
+
+function QnaForm({
+  targetType,
+  targetId,
+  target,
+}: {
+  targetType: QnaTargetType;
+  targetId: string;
+  target: TargetDisplay;
+}) {
   const fetcher = useFetcher();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
