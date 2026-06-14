@@ -1,7 +1,6 @@
 // 운영자 영역 공통 셸 — 9클러스터 사이드바 + breadcrumb + 페이지 헤더.
 // 키트 lidam-admin/Shell.jsx 디자인. brief §5.2.
 // 모든 /admin/* 화면은 <AdminShell>로 감싸 일관된 네비게이션을 얻는다.
-
 import {
   AwardIcon,
   BellIcon,
@@ -18,11 +17,11 @@ import {
   TrendingUpIcon,
   UsersIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-import { cn } from "~/core/lib/utils";
 import { ROLE_LABEL, type UserRole } from "~/core/lib/roles";
+import { cn } from "~/core/lib/utils";
 
 export type AdminClusterId =
   | "hub"
@@ -66,6 +65,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "법령 허브", to: "/admin/laws" },
       { label: "콘텐츠 완성도", to: "/admin/laws/health" },
       { label: "단원 체계도", to: "/admin/systematic-tree" },
+      { label: "강의노트 위치 확인", to: "/admin/lecture-locations" },
       { label: "데이터 가져오기 점검", to: "/admin/seeds/preview" },
     ],
   },
@@ -470,11 +470,7 @@ export function AdminShell({
   const navCluster = clusterById(cluster);
   return (
     <div className="bg-background flex min-h-[calc(100vh-3.5rem)]">
-      <AdminSidebar
-        activeCluster={cluster}
-        pathname={pathname}
-        role={role}
-      />
+      <AdminSidebar activeCluster={cluster} pathname={pathname} role={role} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminBreadcrumb cluster={navCluster} title={title} />
         <main

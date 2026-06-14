@@ -3300,28 +3300,37 @@ export type Database = {
           created_at: string
           label: string | null
           location_id: string
+          needs_recheck_at: string | null
           page: number
           source_pdf_id: string
           target_id: string
           target_type: Database["public"]["Enums"]["resource_target_type"]
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           created_at?: string
           label?: string | null
           location_id?: string
+          needs_recheck_at?: string | null
           page: number
           source_pdf_id: string
           target_id: string
           target_type: Database["public"]["Enums"]["resource_target_type"]
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           created_at?: string
           label?: string | null
           location_id?: string
+          needs_recheck_at?: string | null
           page?: number
           source_pdf_id?: string
           target_id?: string
           target_type?: Database["public"]["Enums"]["resource_target_type"]
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {

@@ -175,15 +175,29 @@ async function main() {
   report("case");
 
   if (!APPLY) { console.log(`\n(dry-run — lecture_pdf_locations 무변경. 보고 확인 후 --apply)`); return; }
-  // ── --apply: source_pdf_id 행 전삭 후 재insert ──
-  await supa.from("lecture_pdf_locations").delete().eq("source_pdf_id", SOURCE_PDF_ID);
+  // ── --apply: (A) verified 행 보존 — 미확인(verified_at IS NULL) 만 전삭 후,
+  //    추출분을 upsert(ignoreDuplicates) 로 넣어 verified 와 같은 (target,page) 는 덮어쓰지 않음.
+  const { count: verifiedKept } = await supa
+    .from("lecture_pdf_locations")
+    .select("location_id", { count: "exact", head: true })
+    .eq("source_pdf_id", SOURCE_PDF_ID)
+    .not("verified_at", "is", null);
+  await supa
+    .from("lecture_pdf_locations")
+    .delete()
+    .eq("source_pdf_id", SOURCE_PDF_ID)
+    .is("verified_at", null);
   let ok = 0;
   for (let i = 0; i < extracted.length; i += 500) {
     const rows = extracted.slice(i, i + 500).map((l) => ({ target_type: l.target_type, target_id: l.target_id, source_pdf_id: SOURCE_PDF_ID, page: l.page, label: l.label }));
-    const { error } = await supa.from("lecture_pdf_locations").insert(rows);
+    // verified 행과 충돌(같은 target,page)하면 보존(DO NOTHING). 미확인은 방금 지웠으므로 신규 insert.
+    const { error } = await supa
+      .from("lecture_pdf_locations")
+      .upsert(rows, { onConflict: "target_type,target_id,source_pdf_id,page", ignoreDuplicates: true });
     if (error) throw new Error(`insert 실패: ${error.message}`);
     ok += rows.length;
   }
-  console.log(`\n[apply] lecture_pdf_locations 적재 ${ok}건 (source_pdf_id=${SOURCE_PDF_ID})`);
+  console.log(`\n[apply] verified 보존 ${verifiedKept ?? 0}건 · 미확인 재적재(추출 시도 ${ok}건, 충돌 보존). (source_pdf_id=${SOURCE_PDF_ID})`);
+  console.log(`주의: 재추출은 continuation 포함 원본 전량을 넣습니다 — 압축 유지하려면 이후 compress-pdf-locations.mjs 재실행(연속만 제거).`);
 }
 main().catch((e) => { console.error("[fatal]", e); process.exit(1); });

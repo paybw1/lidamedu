@@ -420,6 +420,208 @@ export async function getPdfLocationsByTargetIds(
 }
 
 // ──────────────────────────────────────────────────────────
+// PART2 — 강의노트 위치 강사 확인·교정 (/admin/lecture-locations)
+// lecture_pdf_locations 의 staff write(RLS for all)로 직접 CRUD.
+// ──────────────────────────────────────────────────────────
+
+export interface PdfLocationReviewItem {
+  locationId: string;
+  targetType: LectureResourceTargetType;
+  targetId: string;
+  sourcePdfId: string;
+  page: number;
+  label: string | null;
+  verifiedAt: string | null;
+  number: string; // 조문번호 또는 사건번호
+  subject: string; // law_code 또는 'case'
+}
+
+export interface PdfLocationReviewData {
+  items: PdfLocationReviewItem[];
+  totalPages: number; // 통합본 페이지수(viewer 범위)
+  storagePath: string; // 통합본 storage 경로(signed URL 발급용)
+  verifiedCount: number;
+}
+
+// 조문번호 자연정렬 키 ("132의2" → [132, 2]).
+function articleSortKey(n: string): [number, number] {
+  const m = n.match(/^(\d+)(?:의(\d+))?/);
+  return m ? [parseInt(m[1], 10), m[2] ? parseInt(m[2], 10) : 0] : [99999, 0];
+}
+
+export async function listPdfLocationsForReview(
+  client: SupabaseClient<Database>,
+): Promise<PdfLocationReviewData> {
+  const { data: locs, error } = await client
+    .from("lecture_pdf_locations")
+    .select(
+      "location_id, target_type, target_id, source_pdf_id, page, label, verified_at",
+    );
+  if (error) throw error;
+  const rows = locs ?? [];
+
+  const srcIds = [...new Set(rows.map((r) => r.source_pdf_id))];
+  const { data: srcs } = srcIds.length
+    ? await client
+        .from("lecture_source_pdfs")
+        .select("source_pdf_id, storage_path, total_pages")
+        .in("source_pdf_id", srcIds)
+    : { data: [] };
+
+  const artIds = [
+    ...new Set(
+      rows.filter((r) => r.target_type === "article").map((r) => r.target_id),
+    ),
+  ];
+  const caseIds = [
+    ...new Set(
+      rows.filter((r) => r.target_type === "case").map((r) => r.target_id),
+    ),
+  ];
+  const artInfo = new Map<string, { number: string; lawCode: string }>();
+  if (artIds.length) {
+    const { data } = await client
+      .from("articles")
+      .select("article_id, article_number, laws!inner(law_code)")
+      .in("article_id", artIds);
+    for (const a of data ?? [])
+      artInfo.set(a.article_id, {
+        number: a.article_number ?? "?",
+        lawCode: a.laws.law_code,
+      });
+  }
+  const caseInfo = new Map<string, string>();
+  if (caseIds.length) {
+    const { data } = await client
+      .from("cases")
+      .select("case_id, case_number")
+      .in("case_id", caseIds);
+    for (const c of data ?? []) caseInfo.set(c.case_id, c.case_number ?? "?");
+  }
+
+  const items: PdfLocationReviewItem[] = rows.map((r) => {
+    const art =
+      r.target_type === "article" ? artInfo.get(r.target_id) : undefined;
+    return {
+      locationId: r.location_id,
+      targetType: r.target_type,
+      targetId: r.target_id,
+      sourcePdfId: r.source_pdf_id,
+      page: r.page,
+      label: r.label,
+      verifiedAt: r.verified_at,
+      number:
+        r.target_type === "article"
+          ? (art?.number ?? "?")
+          : (caseInfo.get(r.target_id) ?? "?"),
+      subject: r.target_type === "article" ? (art?.lawCode ?? "?") : "case",
+    };
+  });
+
+  // 정렬: article(법령→조문 자연정렬) 먼저 → case(사건번호). 같은 target 은 page 오름차순.
+  items.sort((a, b) => {
+    if (a.targetType !== b.targetType)
+      return a.targetType === "article" ? -1 : 1;
+    if (a.targetType === "article") {
+      const c = a.subject.localeCompare(b.subject);
+      if (c) return c;
+      const ak = articleSortKey(a.number);
+      const bk = articleSortKey(b.number);
+      if (ak[0] !== bk[0]) return ak[0] - bk[0];
+      if (ak[1] !== bk[1]) return ak[1] - bk[1];
+    } else {
+      const c = a.number.localeCompare(b.number);
+      if (c) return c;
+    }
+    return a.page - b.page;
+  });
+
+  const firstSrc = (srcs ?? [])[0];
+  return {
+    items,
+    totalPages: firstSrc?.total_pages ?? 0,
+    storagePath: firstSrc?.storage_path ?? "",
+    verifiedCount: rows.filter((r) => r.verified_at !== null).length,
+  };
+}
+
+export async function setPdfLocationVerified(
+  client: SupabaseClient<Database>,
+  locationId: string,
+  userId: string,
+  verified: boolean,
+): Promise<void> {
+  const { error } = await client
+    .from("lecture_pdf_locations")
+    .update({
+      verified_at: verified ? new Date().toISOString() : null,
+      verified_by: verified ? userId : null,
+    })
+    .eq("location_id", locationId);
+  if (error) throw error;
+}
+
+export async function updatePdfLocationPage(
+  client: SupabaseClient<Database>,
+  locationId: string,
+  page: number,
+): Promise<void> {
+  const { error } = await client
+    .from("lecture_pdf_locations")
+    .update({ page })
+    .eq("location_id", locationId);
+  if (error) throw error;
+}
+
+export async function updatePdfLocationLabel(
+  client: SupabaseClient<Database>,
+  locationId: string,
+  label: string | null,
+): Promise<void> {
+  const { error } = await client
+    .from("lecture_pdf_locations")
+    .update({ label })
+    .eq("location_id", locationId);
+  if (error) throw error;
+}
+
+export async function deletePdfLocation(
+  client: SupabaseClient<Database>,
+  locationId: string,
+): Promise<void> {
+  const { error } = await client
+    .from("lecture_pdf_locations")
+    .delete()
+    .eq("location_id", locationId);
+  if (error) throw error;
+}
+
+export async function addPdfLocation(
+  client: SupabaseClient<Database>,
+  input: {
+    targetType: LectureResourceTargetType;
+    targetId: string;
+    sourcePdfId: string;
+    page: number;
+    label: string | null;
+  },
+): Promise<string> {
+  const { data, error } = await client
+    .from("lecture_pdf_locations")
+    .insert({
+      target_type: input.targetType,
+      target_id: input.targetId,
+      source_pdf_id: input.sourcePdfId,
+      page: input.page,
+      label: input.label,
+    })
+    .select("location_id")
+    .single();
+  if (error) throw error;
+  return data.location_id;
+}
+
+// ──────────────────────────────────────────────────────────
 // case-study 미매칭 슬라이드 검토 (운영자) — /admin/case-study-review
 // ──────────────────────────────────────────────────────────
 
