@@ -60,7 +60,11 @@ export interface ExamResultRow {
 }
 
 export interface ExamProfileFields {
+  // 현행(전환기 병행) — feat-8-026b A/B 분리 완료 후 제거 예정.
   analyticsConsentAt: string | null;
+  // A: 내 데이터로 내 분석 / B: 풀 기여↔비교 열람(대칭). null=미동의.
+  myAnalysisConsentAt: string | null;
+  poolConsentAt: string | null;
   nextExamYear: number | null;
   nextExamRound: ExamRound | null;
 }

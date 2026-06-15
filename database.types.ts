@@ -5041,12 +5041,14 @@ export type Database = {
           highlight_color_aliases: Json
           is_synthetic: boolean
           marketing_consent: boolean
+          my_analysis_consent_at: string | null
           name: string
           next_exam_round: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year: number | null
           notify_channels: string[]
           onboarded_at: string | null
           phone_e164: string | null
+          pool_consent_at: string | null
           profile_id: string
           recommendation_prefs: Json
           role: Database["public"]["Enums"]["user_role"]
@@ -5060,12 +5062,14 @@ export type Database = {
           highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
+          my_analysis_consent_at?: string | null
           name: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year?: number | null
           notify_channels?: string[]
           onboarded_at?: string | null
           phone_e164?: string | null
+          pool_consent_at?: string | null
           profile_id: string
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
@@ -5079,12 +5083,14 @@ export type Database = {
           highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
+          my_analysis_consent_at?: string | null
           name?: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year?: number | null
           notify_channels?: string[]
           onboarded_at?: string | null
           phone_e164?: string | null
+          pool_consent_at?: string | null
           profile_id?: string
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]

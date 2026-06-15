@@ -98,13 +98,17 @@ export async function getMyExamProfileFields(
 ): Promise<ExamProfileFields | null> {
   const { data, error } = await client
     .from("profiles")
-    .select("analytics_consent_at, next_exam_year, next_exam_round")
+    .select(
+      "analytics_consent_at, my_analysis_consent_at, pool_consent_at, next_exam_year, next_exam_round",
+    )
     .eq("profile_id", userId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
   return {
     analyticsConsentAt: data.analytics_consent_at,
+    myAnalysisConsentAt: data.my_analysis_consent_at,
+    poolConsentAt: data.pool_consent_at,
     nextExamYear: data.next_exam_year,
     nextExamRound: (data.next_exam_round as ExamRound | null) ?? null,
   };
@@ -167,6 +171,40 @@ export async function setAnalyticsConsent(
     .from("profiles")
     .update({
       analytics_consent_at: consented ? new Date().toISOString() : null,
+    })
+    .eq("profile_id", userId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// feat-8-026b A 동의 — 내 데이터로 내 분석(학습통계·OX진단·복습·암기). 토글 on/off.
+// 철회(false) 시 해당 기능 off (4단계에서 게이트 적용). 기본 ON 정책은 가입 플로우(5단계)에서.
+export async function setMyAnalysisConsent(
+  client: SupabaseClient<Database>,
+  userId: string,
+  consented: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await client
+    .from("profiles")
+    .update({
+      my_analysis_consent_at: consented ? new Date().toISOString() : null,
+    })
+    .eq("profile_id", userId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// feat-8-026b B 동의 — 풀 기여 ↔ 합격자·동료 비교 열람(대칭). 토글 on/off.
+// 철회 시 (1) 비교 열람 차단(viewer-B, 3단계) + (2) 풀 기여 제외(기여 필터, 2단계) 동시.
+export async function setPoolConsent(
+  client: SupabaseClient<Database>,
+  userId: string,
+  consented: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await client
+    .from("profiles")
+    .update({
+      pool_consent_at: consented ? new Date().toISOString() : null,
     })
     .eq("profile_id", userId);
   if (error) return { ok: false, error: error.message };
