@@ -97,10 +97,15 @@ export default [
       // feat-6 v2.2 — 첨부 upload/delete (multipart).
       route("/attachment", "features/community/api/attachment.tsx"),
     ]),
-    // feat-6-010 — 반별 게시판 글/댓글 액션.
+    // feat-6-010 — 반별 게시판 글/댓글/첨부 액션 + 첨부 signed URL.
     ...prefix("/cohort-board", [
       route("/post", "features/cohort-boards/api/post.tsx"),
       route("/comment", "features/cohort-boards/api/comment.tsx"),
+      route("/attachment", "features/cohort-boards/api/attachment.tsx"),
+      route(
+        "/attachment/signed-url",
+        "features/cohort-boards/api/attachment-signed-url.tsx",
+      ),
     ]),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),

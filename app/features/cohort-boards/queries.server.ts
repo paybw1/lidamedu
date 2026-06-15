@@ -10,6 +10,7 @@ import type { StaffRole } from "~/features/laws/queries.server";
 
 import type {
   BoardAuthor,
+  CohortBoardAttachment,
   CohortBoardComment,
   CohortBoardEdit,
   CohortBoardListItem,
@@ -517,6 +518,57 @@ export async function softDeleteBoardComment(
 ): Promise<MutationResult> {
   const { error } = await client.rpc("soft_delete_cohort_board_comment", {
     p_comment_id: commentId,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// ── ③b 첨부 + 고정(pin) ──────────────────────────────────────────────────────
+
+// 첨부 목록(RLS cbpa_read = 글 읽기권). storage path 는 반환하지 않음(노출 금지).
+export async function listBoardAttachments(
+  client: SupabaseClient<Database>,
+  postId: string,
+): Promise<CohortBoardAttachment[]> {
+  const { data, error } = await client
+    .from("cohort_board_post_attachments")
+    .select("attachment_id, post_id, kind, original_filename, size_bytes, mime, sort_order")
+    .eq("post_id", postId)
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((a) => ({
+    attachmentId: a.attachment_id,
+    postId: a.post_id,
+    kind: a.kind,
+    originalFilename: a.original_filename,
+    sizeBytes: a.size_bytes,
+    mime: a.mime,
+    sortOrder: a.sort_order,
+  }));
+}
+
+// 첨부 권한 probe(=cbpa_insert/delete 와 동일 함수). 업로드 버튼 노출·사전 가드용.
+export async function canAttachPost(
+  client: SupabaseClient<Database>,
+  postId: string,
+  userId: string,
+): Promise<boolean> {
+  const { data } = await client.rpc("user_can_attach_cohort_post", {
+    p_post_id: postId,
+    p_user_id: userId,
+  });
+  return data === true;
+}
+
+// 고정 토글 — manager 전용 RPC(+ 가드 트리거). 비관리자는 42501.
+export async function setBoardPostPinned(
+  client: SupabaseClient<Database>,
+  postId: string,
+  pinned: boolean,
+): Promise<MutationResult> {
+  const { error } = await client.rpc("set_cohort_board_post_pinned", {
+    p_post_id: postId,
+    p_pinned: pinned,
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true };

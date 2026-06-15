@@ -7,6 +7,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import {
   createBoardPost,
   getBoardPost,
+  setBoardPostPinned,
   softDeleteBoardPost,
   updateBoardPost,
 } from "../queries.server";
@@ -15,6 +16,8 @@ import type { Route } from "./+types/post";
 
 const titleField = z.string().trim().min(1).max(200);
 const bodyField = z.string().trim().min(1).max(20000);
+// 폼 boolean — z.coerce.boolean()은 "false"도 true가 되므로 명시 enum 으로.
+const boolField = z.enum(["true", "false"]).transform((v) => v === "true");
 
 const schema = z.discriminatedUnion("intent", [
   z.object({
@@ -33,6 +36,11 @@ const schema = z.discriminatedUnion("intent", [
     intent: z.literal("delete"),
     postId: z.string().uuid(),
     boardId: z.string().uuid(),
+  }),
+  z.object({
+    intent: z.literal("pin"),
+    postId: z.string().uuid(),
+    pinned: boolField,
   }),
 ]);
 
@@ -80,6 +88,14 @@ export async function action({ request }: Route.ActionArgs) {
     return redirect(`/cohort-boards/${post.boardId}/${post.postId}`, {
       headers,
     });
+  }
+
+  if (input.intent === "pin") {
+    // 고정 — manager 전용 RPC(+가드 트리거)가 차단. 비관리자는 실패.
+    const result = await setBoardPostPinned(client, input.postId, input.pinned);
+    if (!result.ok)
+      return data({ ok: false, error: result.error }, { status: 400, headers });
+    return data({ ok: true }, { headers });
   }
 
   // delete (soft) — RPC 가 작성자(쓰기권)/게시판 관리자만 허용, 그 외 42501.

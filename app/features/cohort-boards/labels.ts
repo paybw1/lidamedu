@@ -66,4 +66,17 @@ export interface CohortBoardComment {
   createdAt: string;
 }
 
+// ③b 첨부 (storage path 는 클라이언트에 노출하지 않음 — signed-url 라우트가 attachmentId 로 발급)
+export type CohortBoardAttachmentKind =
+  Database["public"]["Enums"]["cohort_board_attachment_kind"]; // 'image' | 'pdf' | 'file'
+export interface CohortBoardAttachment {
+  attachmentId: string;
+  postId: string;
+  kind: CohortBoardAttachmentKind;
+  originalFilename: string;
+  sizeBytes: number;
+  mime: string;
+  sortOrder: number;
+}
+
 export type MutationResult = { ok: true } | { ok: false; error: string };

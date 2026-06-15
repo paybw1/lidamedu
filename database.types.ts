@@ -1771,6 +1771,67 @@ export type Database = {
           },
         ]
       }
+      cohort_board_post_attachments: {
+        Row: {
+          attachment_id: string
+          created_at: string
+          kind: Database["public"]["Enums"]["cohort_board_attachment_kind"]
+          mime: string
+          original_filename: string
+          path: string
+          post_id: string
+          size_bytes: number
+          sort_order: number
+          uploaded_by: string | null
+        }
+        Insert: {
+          attachment_id?: string
+          created_at?: string
+          kind: Database["public"]["Enums"]["cohort_board_attachment_kind"]
+          mime: string
+          original_filename: string
+          path: string
+          post_id: string
+          size_bytes: number
+          sort_order?: number
+          uploaded_by?: string | null
+        }
+        Update: {
+          attachment_id?: string
+          created_at?: string
+          kind?: Database["public"]["Enums"]["cohort_board_attachment_kind"]
+          mime?: string
+          original_filename?: string
+          path?: string
+          post_id?: string
+          size_bytes?: number
+          sort_order?: number
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_board_post_attachments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_board_posts"
+            referencedColumns: ["post_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_post_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_post_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       cohort_board_posts: {
         Row: {
           author_id: string | null
@@ -7224,6 +7285,10 @@ export type Database = {
           score: number
         }[]
       }
+      set_cohort_board_post_pinned: {
+        Args: { p_pinned: boolean; p_post_id: string }
+        Returns: undefined
+      }
       soft_delete_book_update: { Args: { p_id: string }; Returns: undefined }
       soft_delete_cohort_board: {
         Args: { p_board_id: string }
@@ -7267,6 +7332,10 @@ export type Database = {
           p_source_type?: string
         }
         Returns: undefined
+      }
+      user_can_attach_cohort_post: {
+        Args: { p_post_id: string; p_user_id: string }
+        Returns: boolean
       }
       user_can_read_cohort_board: {
         Args: { p_board_id: string; p_user_id: string }
@@ -7341,6 +7410,7 @@ export type Database = {
         | "problem"
         | "textbook"
         | "practice"
+      cohort_board_attachment_kind: "image" | "pdf" | "file"
       cohort_board_write_scope: "staff" | "members"
       community_board: "free" | "study" | "review"
       community_post_attachment_kind: "image" | "pdf" | "file"
@@ -7585,6 +7655,7 @@ export const Constants = {
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
       chunk_source_type: ["article", "case", "problem", "textbook", "practice"],
+      cohort_board_attachment_kind: ["image", "pdf", "file"],
       cohort_board_write_scope: ["staff", "members"],
       community_board: ["free", "study", "review"],
       community_post_attachment_kind: ["image", "pdf", "file"],
