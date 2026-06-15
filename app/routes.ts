@@ -97,6 +97,11 @@ export default [
       // feat-6 v2.2 — 첨부 upload/delete (multipart).
       route("/attachment", "features/community/api/attachment.tsx"),
     ]),
+    // feat-6-010 — 반별 게시판 글/댓글 액션.
+    ...prefix("/cohort-board", [
+      route("/post", "features/cohort-boards/api/post.tsx"),
+      route("/comment", "features/cohort-boards/api/comment.tsx"),
+    ]),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
@@ -422,6 +427,28 @@ export default [
       route(
         "/community/attachment/signed-url",
         "features/community/api/attachment-signed-url.tsx",
+      ),
+      // feat-6-010 — 반별 게시판(학생·강사). 접근 통제는 RLS 가 DB 에서 강제.
+      route(
+        "/cohort-boards",
+        "features/cohort-boards/screens/cohort-board-list.tsx",
+      ),
+      route(
+        "/cohort-boards/:boardId",
+        "features/cohort-boards/screens/cohort-board-detail.tsx",
+      ),
+      route(
+        "/cohort-boards/:boardId/new",
+        "features/cohort-boards/screens/cohort-board-post-new.tsx",
+      ),
+      route(
+        "/cohort-boards/:boardId/:postId",
+        "features/cohort-boards/screens/cohort-board-post-detail.tsx",
+      ),
+      route(
+        "/cohort-boards/:boardId/:postId/edit",
+        "features/cohort-boards/screens/cohort-board-post-new.tsx",
+        { id: "cohort-board-post-edit" },
       ),
       route(
         "/announcements",

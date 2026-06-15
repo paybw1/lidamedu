@@ -102,6 +102,7 @@ const communityItems: SimpleLink[] = [
   { label: "공지사항", to: "/announcements" },
   { label: "자유게시판", to: "/community/free" },
   { label: "스터디 모집", to: "/community/study" },
+  { label: "반별 게시판", to: "/cohort-boards" },
   { label: "Q&A", to: "/qna" },
   { label: "합격 후기", to: "/community/review" },
 ];
