@@ -419,7 +419,7 @@ export async function getAdminExamResultPoolSize(): Promise<{
     admin
       .from("profiles")
       .select("profile_id", { head: true, count: "exact" })
-      .not("analytics_consent_at", "is", null),
+      .not("pool_consent_at", "is", null),
   ]);
   return {
     passedVerified: passedVerified ?? 0,

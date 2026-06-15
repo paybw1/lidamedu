@@ -47,14 +47,14 @@ export async function getPasserSrsBenchmark(
   const { data: passers } = await admin
     .from("exam_results")
     .select(
-      "user_id, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
+      "user_id, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic)",
     )
     .eq("status", "passed")
     .order("exam_year", { ascending: false })
     .limit(200);
   const consentedIds = new Set<string>();
   for (const p of passers ?? []) {
-    if (!p.profiles?.analytics_consent_at) continue;
+    if (!p.profiles?.pool_consent_at) continue;
     if (opts.excludeSynthetic && p.profiles?.is_synthetic) continue;
     consentedIds.add(p.user_id);
   }

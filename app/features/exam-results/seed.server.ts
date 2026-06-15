@@ -120,7 +120,9 @@ async function markProfile(
     .update({
       name: spec.displayName,
       is_synthetic: true,
-      analytics_consent_at: new Date().toISOString(),
+      // 데모 합격자 — 새 A/B 모델 기준(feat-8-026b). pool_consent_at 이 합격자 풀 포함을 좌우.
+      pool_consent_at: new Date().toISOString(),
+      my_analysis_consent_at: new Date().toISOString(),
       next_exam_year: spec.examYear,
       next_exam_round: spec.examRound,
     })

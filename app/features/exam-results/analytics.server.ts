@@ -24,7 +24,7 @@ export interface PasserCase {
   verificationStatus: ExamVerificationStatus;
   selfReportedTotalScore: number | null;
   studySummaryMd: string | null;
-  analyticsConsentAt: string | null;
+  poolConsentAt: string | null;
   // 학습 집계 — 동의 없으면 null
   aggregates: PasserAggregates | null;
 }
@@ -82,7 +82,7 @@ async function listExamCasesByStatus(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, profiles!exam_results_user_id_fkey(name, analytics_consent_at, is_synthetic)",
+      "result_id, user_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, profiles!exam_results_user_id_fkey(name, pool_consent_at, is_synthetic)",
     )
     .eq("status", status)
     .order("exam_year", { ascending: false })
@@ -107,11 +107,11 @@ async function listExamCasesByStatus(
         ? null
         : Number(r.self_reported_total_score),
     studySummaryMd: r.study_summary_md,
-    analyticsConsentAt: r.profiles?.analytics_consent_at ?? null,
+    poolConsentAt: r.profiles?.pool_consent_at ?? null,
     isSynthetic: r.profiles?.is_synthetic ?? false,
   }));
   if (filter.onlyConsented) {
-    list = list.filter((r) => r.analyticsConsentAt !== null);
+    list = list.filter((r) => r.poolConsentAt !== null);
   }
   // 합성 데이터 제외 — 학생 화면 default. 운영자 시연 화면만 false 로 호출.
   if (filter.excludeSynthetic) {
@@ -134,7 +134,7 @@ async function listExamCasesByStatus(
   }
 
   // 동의자만 집계 계산
-  const consented = list.filter((r) => r.analyticsConsentAt !== null);
+  const consented = list.filter((r) => r.poolConsentAt !== null);
   const aggByResult = new Map<string, PasserAggregates>();
   await Promise.all(
     consented.map(async (r) => {
@@ -154,7 +154,7 @@ async function listExamCasesByStatus(
     verificationStatus: r.verificationStatus,
     selfReportedTotalScore: r.selfReportedTotalScore,
     studySummaryMd: r.studySummaryMd,
-    analyticsConsentAt: r.analyticsConsentAt,
+    poolConsentAt: r.poolConsentAt,
     aggregates: aggByResult.get(r.resultId) ?? null,
   }));
 }
@@ -318,7 +318,7 @@ export async function getPasserPoolStats(
   const { data: rows } = await admin
     .from("exam_results")
     .select(
-      "user_id, exam_year, exam_round, verification_status, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
+      "user_id, exam_year, exam_round, verification_status, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic)",
     )
     .eq("status", "passed");
   let list = rows ?? [];
@@ -330,7 +330,7 @@ export async function getPasserPoolStats(
     (r) => r.verification_status === "verified",
   ).length;
   const consentedPasserCount = list.filter(
-    (r) => r.profiles?.analytics_consent_at !== null,
+    (r) => r.profiles?.pool_consent_at !== null,
   ).length;
   const groupMap = new Map<
     string,
@@ -438,7 +438,7 @@ function buildHist(
 export function computePasserAggregateStats(
   cases: PasserCase[],
 ): PasserAggregateStats {
-  const consented = cases.filter((c) => c.analyticsConsentAt !== null);
+  const consented = cases.filter((c) => c.poolConsentAt !== null);
   const totalPasserCount = cases.length;
   const sampleSize = consented.length;
   const scores: number[] = [];
@@ -1103,7 +1103,7 @@ export async function listPasserSummaries(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, created_at, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
+      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, created_at, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic)",
     )
     .eq("status", "passed")
     .not("study_summary_md", "is", null)
@@ -1116,7 +1116,7 @@ export async function listPasserSummaries(
   if (error) throw error;
   const list = (data ?? []).filter(
     (r) =>
-      r.profiles?.analytics_consent_at !== null &&
+      r.profiles?.pool_consent_at !== null &&
       (r.study_summary_md?.trim().length ?? 0) > 0 &&
       (!filter.excludeSynthetic || !r.profiles?.is_synthetic),
   );
@@ -1305,7 +1305,7 @@ export async function getPublicPlatformStats(
     admin
       .from("exam_results")
       .select(
-        "result_id, user_id, verification_status, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
+        "result_id, user_id, verification_status, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic)",
       )
       .eq("status", "passed")
       .limit(2000),
@@ -1334,7 +1334,7 @@ export async function getPublicPlatformStats(
   const consentedRowsRes = { data: allRows };
 
   const consentedUserIds = (consentedRowsRes.data ?? [])
-    .filter((r) => r.profiles?.analytics_consent_at !== null)
+    .filter((r) => r.profiles?.pool_consent_at !== null)
     .map((r) => r.user_id);
 
   let avgStudyHours: number | null = null;
@@ -1349,7 +1349,7 @@ export async function getPublicPlatformStats(
     const userYears = new Map<string, number>();
     const consentedRows = consentedRowsRes.data ?? [];
     for (const r of consentedRows) {
-      if (r.profiles?.analytics_consent_at === null) continue;
+      if (r.profiles?.pool_consent_at === null) continue;
       // 한 사용자가 같은 연도 1차/2차 모두 합격일 수 있음 — 가장 최근 연도.
     }
     // userYears 보강을 위해 exam_year 별도 fetch.

@@ -492,7 +492,7 @@ function SeedToolBox({ seedCount }: { seedCount: number }) {
 
 function PasserCard({ item }: { item: PasserCase }) {
   const verified = item.verificationStatus === "verified";
-  const consented = item.analyticsConsentAt !== null;
+  const consented = item.poolConsentAt !== null;
   const agg = item.aggregates;
   return (
     <div

@@ -48,7 +48,7 @@ export async function isPasserBenchmarkEnabled(
   let q = admin
     .from("exam_results")
     .select(
-      "user_id, profiles!exam_results_user_id_fkey(analytics_consent_at, is_synthetic)",
+      "user_id, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic)",
     )
     .eq("status", "passed");
   if (round) q = q.eq("exam_round", round);
@@ -68,7 +68,7 @@ export async function isPasserBenchmarkEnabled(
 
   const realSampleSize = (data ?? []).filter(
     (r) =>
-      r.profiles?.analytics_consent_at !== null &&
+      r.profiles?.pool_consent_at !== null &&
       r.profiles?.is_synthetic !== true,
   ).length;
 
