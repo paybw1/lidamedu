@@ -453,11 +453,11 @@
 
 ---
 
-## 5.6 메뉴: 커뮤니티 (`/community`) — ✅ 구현 완료 (feat-6-001~008, 운영 동작 확인 2026-06-06) · 반별 게시판 feat-6-010 🟡 라이브 통합검증 중
+## 5.6 메뉴: 커뮤니티 (`/community`) — ✅ 구현 완료 (feat-6-001~008, 운영 동작 확인 2026-06-06) · 반별 게시판 feat-6-010 ✅ 라이브 검증 완료 2026-06-15
 
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
-| feat-6-010 | **반별 게시판 (cohort 스코프 커뮤니티)** — 반(cohort)에 연결된 게시판. **공지형**(`staff`=강사만 작성)/**소통형**(`members`=소속 학생도 작성) `write_scope`. `cohort_boards`·`cohort_board_cohorts`(M:N)·`cohort_board_posts`·`cohort_board_comments`·`cohort_board_post_attachments` + private 버킷. **접근통제는 RLS 가 DB 에서 강제**(학생 경로 전부 RLS client, `user_can_read/write/manages/attach_cohort_*` SECURITY DEFINER 헬퍼 — 화면 가드 비의존). 운영자 `/admin/cohort-boards`(생성·접근반 지정), 학생·강사 `/cohort-boards`(목록→글→상세+댓글+첨부). pin=manager 전용 RPC+가드 트리거. 합성 RLS 검증 ① 13/13 · ③b 14/14. 상세: `docs/features/feat-6-010-cohort-boards.md`. | P2 | 🟡 |
+| feat-6-010 | **반별 게시판 (cohort 스코프 커뮤니티)** — 반(cohort)에 연결된 게시판. **공지형**(`staff`=강사만 작성)/**소통형**(`members`=소속 학생도 작성) `write_scope`. `cohort_boards`·`cohort_board_cohorts`(M:N)·`cohort_board_posts`·`cohort_board_comments`·`cohort_board_post_attachments` + private 버킷. **접근통제는 RLS 가 DB 에서 강제**(학생 경로 전부 RLS client, `user_can_read/write/manages/attach_cohort_*` SECURITY DEFINER 헬퍼 — 화면 가드 비의존). 운영자 `/admin/cohort-boards`(생성·접근반 지정), 학생·강사 `/cohort-boards`(목록→글→상세+댓글+첨부). pin=manager 전용 RPC+가드 트리거. 합성 RLS 검증 ① 13/13 · ③b 14/14, 라이브 통합검증 2026-06-15. 상세: `docs/features/feat-6-010-cohort-boards.md`. | P2 | ✅ |
 | feat-6-001 | 커뮤니티 메뉴 라벨 + Placeholder 화면 — `/community` ComingSoon 컴포넌트 사용. | P0 | ✅ |
 | feat-6-008 | **스터디 매칭 — join/leave 멤버 패널** — `community_study_members(post_id, profile_id PK + joined_at + left_at)` + RLS (인증 read, 본인 join/leave). `community_posts.max_members int` 컬럼 추가. `getStudyMembership` / `joinStudy` / `leaveStudy` (study-members.server.ts). POST `/api/community/study-join` (zod intent=join/leave) — closed 체크·정원 체크·과거 left_at 복귀 upsert. study 게시글 상세에 `StudyMembersPanel` (멤버 chip 리스트 + "참여하기/취소" 버튼, 정원 가득/마감 disable). | P2 | ✅ |
 | feat-6-007 | **모더레이션 패널** — manager+ 신고 큐 처리. `community_reports(report_id, target_type ∈ {post,comment}, target_id, reporter_id, reason, status ∈ {pending,resolved,dismissed}, resolved_at·resolved_by·action_note)` + RLS (본인 신고 + manager+ 전체) + unique(reporter, target). 인증 사용자 POST `/api/community/report` (zod 1~500자) — 중복은 409. 게시글 상세에 `ReportButton` (본인 글 제외, 펼침 form + 사유 입력). manager+ POST `/api/community/report-resolve` (status + 함께 삭제 옵션). `/admin/community/reports` 화면 — 상태 탭(대기/처리됨/기각/전체) + 카드 리스트(대상 컨텍스트 + 신고 사유 + 처리 form). 사이드바 cluster=comms 메뉴. | P2 | ✅ |
@@ -631,7 +631,7 @@
 ### M5+ — 확장
 - 5.5 온라인 GS 본격 ✅ (학생 응시·peer/AI/강사 채점·통계·우수답안·포인트 P1 항목 다 완료. 추가 폴리시는 운영 피드백 기반)
 - 5.6 커뮤니티 본격 ✅ (feat-6-001~008 전부 완료 — 게시판 3종·댓글·좋아요·첨부·신고/모더레이션·인기글·알림/멘션·콘텐츠 인용·스터디 매칭. 운영 동작 확인 2026-06-06)
-- 5.6 **반별 게시판 feat-6-010 🟡** — cohort 스코프 공지형/소통형 게시판 + 첨부 + pin. 구현·배포·RLS 합성 검증(① 13/13 · ③b 14/14) 완료, **라이브 통합검증 중**. 접근통제는 RLS 가 DB 에서 강제(학생 경로 RLS client, adminClient 는 운영 목록·storage 블롭만). 커밋 a412429·5275bfe·b198efd
+- 5.6 **반별 게시판 feat-6-010 ✅** — cohort 스코프 공지형/소통형 게시판 + 첨부 + pin. 구현·배포·RLS 합성 검증(① 13/13 · ③b 14/14)·**라이브 통합검증 완료(2026-06-15)**. 접근통제는 RLS 가 DB 에서 강제(학생 경로 RLS client, adminClient 는 운영 목록·storage 블롭만). 커밋 a412429·5275bfe·b198efd
 - 5.9 AI 학습 Q&A (RAG) 🟡 — `feat-9-*`, §14 결정 6건 권장안 채택. **답변 파이프라인(feat-9-003/004) 운영 가동 중**(ANTHROPIC 키 설정·실사용 답변 성공). 잔여: 임베딩 cron(feat-9-001)이 프로덕션에서 정기 미가동 — Vercel 요금제(Hobby=일1회 제한)/CRON_SECRET 확인 필요. 백로그 75청크는 2026-06-06 수동 임베딩으로 해소
 - P2 잔여 항목: `feat-3-504` 논문 PDF Storage · `feat-7-014` 수강권/결제 · `feat-4-A-320` 주관식 색인(과목 hub)
 

@@ -1,7 +1,7 @@
 # feat-6-010 — 반별 게시판 (cohort 스코프 커뮤니티)
 
 > SPEC.md 매핑: SPEC 5.6 커뮤니티. 기존 전체공개 게시판(feat-6-002)과 달리 **반(cohort) 단위로 접근이 제한되는** 게시판. 접근 통제는 **RLS 가 DB 에서 강제**(화면 가드 비의존)가 핵심 요구.
-> 상태: 🟡 구현·배포·RLS 합성 검증 완료, 라이브 통합검증 중. 커밋 `a412429`(①②)·`5275bfe`(③)·`b198efd`(③b).
+> 상태: ✅ 구현·배포·RLS 합성 검증·라이브 통합검증 완료(2026-06-15). 커밋 `a412429`(①②)·`5275bfe`(③)·`b198efd`(③b).
 
 ## 1. 목표
 
@@ -115,7 +115,7 @@ cohort_board_post_attachments (attachment_id PK, post_id, kind, path, original_f
 2. **② 운영자 관리 화면** — `/admin/cohort-boards`
 3. **③ 학생·강사 화면** — 목록→글→상세+댓글, 전부 RLS client
 4. **③b 첨부 + pin** — `cohort_board_post_attachments`+버킷+RLS, pin RPC+가드 트리거. 합성 RLS 검증 **14/14 PASS**(첨부 작성자/관리자만, 비작성자·비소속·공지형 학생 차단, 조회 소속만, 비관리자 pin 직접·RPC 차단, 정상 글수정 통과)
-5. **④ 통합 검증(라이브)** — 게시판 생성·격리·작성권한·첨부·pin (진행 중)
+5. **④ 통합 검증(라이브)** — 게시판 생성·격리·작성권한·첨부·pin ✅ (라이브 확인 2026-06-15)
 
 검증 SQL: `tmp/cohort-board/rls-verify.sql`(①), `tmp/cohort-board/attach-pin-verify.sql`(③b) — 합성 데이터 생성 → 역할별 `auth.uid()` 시뮬(`set local role authenticated` + jwt claims) → net-zero 정리.
 
