@@ -23,8 +23,9 @@ import {
   type ExamRound,
 } from "~/features/exam-results/labels";
 import {
-  setAnalyticsConsent,
+  setMyAnalysisConsent,
   setNextExamPlan,
+  setPoolConsent,
 } from "~/features/exam-results/queries.server";
 import { upsertStudyGoals } from "~/features/goals/queries.server";
 
@@ -67,9 +68,11 @@ const planSchema = z.object({
   nextExamRound: z.enum(["first", "second"]),
 });
 
+// 체크박스 — 체크 시에만 "true" 전송, 미체크면 키 자체가 없음(optional).
 const consentSchema = z.object({
   intent: z.literal("consent"),
-  consented: z.enum(["true", "false"]),
+  consentA: z.string().optional(),
+  consentB: z.string().optional(),
 });
 
 const goalsSchema = z.object({
@@ -124,9 +127,19 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "consent") {
     const parsed = consentSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success) return data({ error: "입력 오류" }, { status: 400 });
-    const consented = parsed.data.consented === "true";
-    const res = await setAnalyticsConsent(client, user.id, consented);
-    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    // A=내 학습 분석(기본 체크·opt-out), B=풀 기여+비교(opt-in·기본 미체크).
+    const aRes = await setMyAnalysisConsent(
+      client,
+      user.id,
+      parsed.data.consentA === "true",
+    );
+    if (!aRes.ok) return data({ error: aRes.error }, { status: 400 });
+    const bRes = await setPoolConsent(
+      client,
+      user.id,
+      parsed.data.consentB === "true",
+    );
+    if (!bRes.ok) return data({ error: bRes.error }, { status: 400 });
     throw redirect("/onboarding/welcome?step=3");
   }
 
@@ -313,23 +326,60 @@ function ConsentStep() {
       <CardHeader className="px-5 pb-2">
         <div className="flex items-center gap-2">
           <ShieldCheckIcon className="text-primary size-5" />
-          <p className="text-base font-semibold">합격자 비교 표본 포함 (선택)</p>
+          <p className="text-base font-semibold">학습 데이터 활용 (선택)</p>
         </div>
         <p className="text-muted-foreground text-xs">
           서비스 이용에 필요한 학습 데이터 처리는 가입 시 동의로 완료되었습니다.
-          아래는 <strong>합격자 표본 포함·후기 공개</strong> 등 추가 활용에 대한
-          선택 동의로, 거부하셔도 이용에 제한이 없습니다.
+          아래 두 가지는 선택이며, 끄셔도 이용에 제한이 없습니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-3 px-5 pb-5">
-        <div className="bg-muted/40 rounded-md border p-3 text-xs leading-relaxed">
-          <p className="font-semibold">분석에 활용되는 데이터</p>
-          <ul className="text-muted-foreground mt-1 list-inside list-disc space-y-0.5 text-[11px]">
-            <li>문제 풀이 결과, 조문/판례 열람 이력</li>
-            <li>빈칸·암기 시도, 강의 시청 진행률</li>
-            <li>본인 시험 결과 (입력한 경우)</li>
-          </ul>
-          <p className="text-muted-foreground mt-2 text-[11px]">
+        <Form method="post" className="space-y-2.5">
+          <input type="hidden" name="intent" value="consent" />
+
+          {/* A — 내 학습 분석: 기본 체크(opt-out 가능) */}
+          <label className="bg-muted/30 flex items-start gap-2.5 rounded-md border p-3">
+            <input
+              type="checkbox"
+              name="consentA"
+              value="true"
+              defaultChecked
+              className="mt-0.5 size-4 shrink-0"
+            />
+            <span className="space-y-0.5">
+              <span className="block text-xs font-semibold">
+                내 학습 분석 (A)
+              </span>
+              <span className="text-muted-foreground block text-[11px] leading-relaxed">
+                내 학습 기록으로 학습통계·OX 약점진단·복습·암기 기능을 제공합니다.
+                끄면 이 기능들이 비활성화됩니다(기존 기록은 보존되며 다시 켜면
+                복구).
+              </span>
+            </span>
+          </label>
+
+          {/* B — 풀 기여 + 비교: opt-in, 기본 미체크 (pre-check 금지) */}
+          <label className="bg-muted/30 flex items-start gap-2.5 rounded-md border p-3">
+            <input
+              type="checkbox"
+              name="consentB"
+              value="true"
+              className="mt-0.5 size-4 shrink-0"
+            />
+            <span className="space-y-0.5">
+              <span className="block text-xs font-semibold">
+                합격자·동료 비교 + 표본 기여 (B)
+              </span>
+              <span className="text-muted-foreground block text-[11px] leading-relaxed">
+                내 학습·시험 데이터를 익명·집계로 합격자 표본에 기여하고, 그 대가로
+                합격자·동료 대비 비교를 열람합니다.{" "}
+                <strong>비교를 보려면 동의가 필요</strong>하며, 끄면 비교가 보이지
+                않고 풀 집계에서도 제외됩니다.
+              </span>
+            </span>
+          </label>
+
+          <p className="text-muted-foreground bg-muted/40 rounded px-2 py-1.5 text-[11px]">
             모든 분석은 익명·가명처리 후 집계 형태로만 수행됩니다.
             <Link
               to="/legal/analytics-consent"
@@ -339,29 +389,13 @@ function ConsentStep() {
               상세 약관 →
             </Link>
           </p>
-        </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Form method="post">
-            <input type="hidden" name="intent" value="consent" />
-            <input type="hidden" name="consented" value="true" />
-            <Button type="submit" size="default" className="w-full">
-              동의하고 계속
+          <div className="flex justify-end">
+            <Button type="submit" size="default">
+              계속 <ChevronRightIcon className="size-3.5" />
             </Button>
-          </Form>
-          <Form method="post">
-            <input type="hidden" name="intent" value="consent" />
-            <input type="hidden" name="consented" value="false" />
-            <Button
-              type="submit"
-              size="default"
-              variant="outline"
-              className="w-full"
-            >
-              지금은 동의 안 함
-            </Button>
-          </Form>
-        </div>
+          </div>
+        </Form>
         <p className="text-muted-foreground text-center text-[10px]">
           나중에 `/me/exam-results` 페이지에서 언제든 변경 가능합니다.
         </p>
