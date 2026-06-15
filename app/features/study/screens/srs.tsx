@@ -23,6 +23,8 @@ import {
   TableRow,
 } from "~/core/components/ui/table";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
+import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { cn } from "~/core/lib/utils";
 import {
   type DueBlankSetItem,
@@ -63,6 +65,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/study/srs");
+  // feat-8-026b A 게이트 — 미동의/철회 시 복습 미표시(데이터는 보존, 재동의 시 복구).
+  if (!(await hasMyAnalysisConsent(client, user.id))) {
+    return { myAnalysisOff: true as const };
+  }
   const [
     items,
     counts,
@@ -100,6 +106,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     getSrsTrend(client, user.id, 30),
   ]);
   return {
+    myAnalysisOff: false as const,
     items,
     counts,
     blankItems,
@@ -124,6 +131,7 @@ function fmtRelative(iso: string): string {
 }
 
 export default function StudySrs({ loaderData }: Route.ComponentProps) {
+  if (loaderData.myAnalysisOff) return <MyAnalysisOffNotice feature="복습" />;
   const {
     items,
     counts,

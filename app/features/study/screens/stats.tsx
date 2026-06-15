@@ -38,6 +38,8 @@ import {
   TabsTrigger,
 } from "~/core/components/ui/tabs";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
+import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { cn } from "~/core/lib/utils";
 import { BlankStatsTabs } from "~/features/blanks/components/blank-stats-tabs";
 import {
@@ -158,6 +160,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
+  // feat-8-026b A 게이트 — 미동의/철회 시 통계 미표시(데이터는 보존, 재동의 시 복구).
+  if (!(await hasMyAnalysisConsent(client, user.id))) {
+    return { myAnalysisOff: true as const };
+  }
+
   const url = new URL(request.url);
   const rangeSel = parseRangeSelection(url.searchParams);
 
@@ -238,6 +245,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const passTrend = await getUserPassPredictionTrend(client, user.id, passOpts);
 
   return {
+    myAnalysisOff: false as const,
     rangeSel,
     overall,
     kpis,
@@ -261,7 +269,19 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
+// RR7 loaderData 의 on-branch(myAnalysisOff:false) — 하위 탭 컴포넌트 공용 타입.
+type StatsData = Extract<
+  Route.ComponentProps["loaderData"],
+  { myAnalysisOff: false }
+>;
+
 export default function StudyStats({ loaderData }: Route.ComponentProps) {
+  if (loaderData.myAnalysisOff)
+    return <MyAnalysisOffNotice feature="학습 통계" />;
+  return <StudyStatsInner loaderData={loaderData} />;
+}
+
+function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: TabValue = isTabValue(searchParams.get("tab"))
     ? (searchParams.get("tab") as TabValue)
@@ -390,7 +410,7 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
 
 // ─── 한눈에 ───
 
-function OverviewTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
+function OverviewTab({ data }: { data: StatsData }) {
   const {
     overall,
     kpis,
@@ -671,7 +691,7 @@ function isSecondExamSubject<T extends { lawCode: LawSubjectSlug }>(
 function ArticlesSection({
   rows,
 }: {
-  rows: Route.ComponentProps["loaderData"]["articleStats"]["bySubject"];
+  rows: StatsData["articleStats"]["bySubject"];
 }) {
   const summary = rows.reduce(
     (acc, r) => ({
@@ -753,7 +773,7 @@ function ArticlesSection({
 function CasesSection({
   rows,
 }: {
-  rows: Route.ComponentProps["loaderData"]["caseStats"]["bySubject"];
+  rows: StatsData["caseStats"]["bySubject"];
 }) {
   const summary = rows.reduce(
     (acc, r) => ({
@@ -818,7 +838,7 @@ function CasesSection({
 
 // ─── 1차 통계 (조문 + 판례 + 객관식) ───
 
-function FirstExamTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
+function FirstExamTab({ data }: { data: StatsData }) {
   const {
     subjectsProgress,
     scienceProgress,
@@ -1041,7 +1061,7 @@ function FirstExamTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
 
 // ─── 2차 통계 (조문 + 판례 + 주관식) ───
 
-function SecondExamTab({ data }: { data: Route.ComponentProps["loaderData"] }) {
+function SecondExamTab({ data }: { data: StatsData }) {
   const { subjectiveStats, articleStats, caseStats } = data;
   const secondLaw = subjectiveStats.bySubject.filter(isSecondExamSubject);
   const secondArticles = articleStats.bySubject.filter(isSecondExamSubject);

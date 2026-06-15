@@ -5,6 +5,8 @@ import { Link, data } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
+import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
 import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 
@@ -21,6 +23,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
+  // feat-8-026b A 게이트 — 미동의/철회 시 진단 미표시(데이터는 보존, 재동의 시 복구).
+  if (!(await hasMyAnalysisConsent(client, user.id))) {
+    return { myAnalysisOff: true as const };
+  }
+
   const diagnosis = await computeOxDiagnosis(client, user.id);
 
   // 합격자 비교 게이트 — 1년차 실 합격자 0명 → OFF. 지금은 구조만 자리(화면엔 안내만).
@@ -31,6 +38,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const gate = await isPasserBenchmarkEnabled();
 
   return {
+    myAnalysisOff: false as const,
     diagnosis,
     passer: {
       enabled: gate.enabled,
@@ -41,6 +49,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function OxDiagnosisScreen({ loaderData }: Route.ComponentProps) {
+  if (loaderData.myAnalysisOff)
+    return <MyAnalysisOffNotice feature="OX 약점 진단" />;
   const { diagnosis, passer } = loaderData;
 
   return (

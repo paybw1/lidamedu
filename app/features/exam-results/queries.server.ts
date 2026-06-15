@@ -132,6 +132,24 @@ export async function hasPoolConsent(
   return data.pool_consent_at !== null;
 }
 
+// feat-8-026b A 게이트 — 요청자가 "내 데이터로 내 분석"(A)에 동의했는지.
+// 학습통계·OX진단·복습·암기 화면의 표시 조건. 본인 row 읽기라 RLS client 로 충분.
+// NULL(미동의/철회) → false. "기본 ON" 은 가입 시 set(5단계)으로 실현(여기선 read 만).
+// off 는 읽기 게이트일 뿐 — 데이터는 보존되어 재동의 시 그대로 복구된다(soft).
+// 에러·row없음 → false(fail-closed: 철회 의사를 존중해 분석하지 않는 쪽이 안전).
+export async function hasMyAnalysisConsent(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("my_analysis_consent_at")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  if (error || !data) return false;
+  return data.my_analysis_consent_at !== null;
+}
+
 export interface UpsertExamResultInput {
   userId: string;
   examYear: number;

@@ -21,6 +21,8 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
+import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { getReviewQueue } from "~/features/srs/srs.server";
 import {
   LAW_SUBJECTS,
@@ -43,8 +45,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/srs");
+  // feat-8-026b A 게이트 — 미동의/철회 시 암기 미표시(데이터는 보존, 재동의 시 복구).
+  if (!(await hasMyAnalysisConsent(client, user.id))) {
+    return { myAnalysisOff: true as const };
+  }
   const queue = await getReviewQueue(client, user.id);
-  return queue;
+  return { myAnalysisOff: false as const, ...queue };
 }
 
 type Grade = 0 | 3 | 4 | 5;
@@ -84,8 +90,18 @@ const GRADES: GradeButtonSpec[] = [
 ];
 
 export default function SrsReview({ loaderData }: Route.ComponentProps) {
+  if (loaderData.myAnalysisOff)
+    return <MyAnalysisOffNotice feature="카드 암기" />;
+  return <SrsReviewInner data={loaderData} />;
+}
+
+function SrsReviewInner({
+  data,
+}: {
+  data: Extract<Route.ComponentProps["loaderData"], { myAnalysisOff: false }>;
+}) {
   const { today, items, dueCount, newCount, newIntroducedToday, settings } =
-    loaderData;
+    data;
   const [cursor, setCursor] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const shownAtRef = useRef<number>(Date.now());
@@ -253,7 +269,10 @@ function Counter({
   );
 }
 
-type Item = Route.ComponentProps["loaderData"]["items"][number];
+type Item = Extract<
+  Route.ComponentProps["loaderData"],
+  { myAnalysisOff: false }
+>["items"][number];
 
 function CardArea({
   item,
