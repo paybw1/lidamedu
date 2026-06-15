@@ -114,6 +114,24 @@ export async function getMyExamProfileFields(
   };
 }
 
+// feat-8-026b viewer-B 게이트 — 요청자가 풀(B)에 동의했는지.
+// 합격자·동료 "비교 열람"의 조건(기여와 대칭: 같은 pool_consent_at 컬럼이
+// 기여 필터[2단계]와 열람 게이트[3단계]를 동시에 좌우 → 철회 시 양쪽 동시 차단).
+// 본인 row 읽기라 RLS client 로 충분. 에러·row없음·미동의 → false(fail-closed:
+// 프라이버시 게이트는 막는 쪽이 안전).
+export async function hasPoolConsent(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await client
+    .from("profiles")
+    .select("pool_consent_at")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  if (error || !data) return false;
+  return data.pool_consent_at !== null;
+}
+
 export interface UpsertExamResultInput {
   userId: string;
   examYear: number;

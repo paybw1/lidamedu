@@ -44,6 +44,7 @@ import {
   type PasserBenchmark,
 } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
+import { hasPoolConsent } from "~/features/exam-results/queries.server";
 
 import type { Route } from "./+types/goals";
 
@@ -72,8 +73,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       ),
       getDailyStudyStats(client, user.id, { daysBack: 84 }),
       // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
-      isPasserBenchmarkEnabled().then((gate) =>
-        gate.enabled
+      // viewer-B 게이트(feat-8-026b) — 전역 게이트 ON + 요청자 풀(B) 동의 동시 충족 시만.
+      isPasserBenchmarkEnabled().then(async (gate) =>
+        gate.enabled && (await hasPoolConsent(client, user.id))
           ? getPasserBenchmarks(user.id, { excludeSynthetic: true })
           : null,
       ),

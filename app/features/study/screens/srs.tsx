@@ -88,10 +88,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       const { isPasserBenchmarkEnabled } = await import(
         "~/features/exam-results/passer-benchmark-gate.server"
       );
+      const { hasPoolConsent } = await import(
+        "~/features/exam-results/queries.server"
+      );
       const gate = await isPasserBenchmarkEnabled();
-      return gate.enabled
-        ? getPasserSrsBenchmark(user.id, { excludeSynthetic: true })
-        : null;
+      // viewer-B 게이트(feat-8-026b) — 전역 게이트 ON + 요청자 풀(B) 동의 동시 충족 시만.
+      if (!gate.enabled) return null;
+      if (!(await hasPoolConsent(client, user.id))) return null;
+      return getPasserSrsBenchmark(user.id, { excludeSynthetic: true });
     })(),
     getSrsTrend(client, user.id, 30),
   ]);

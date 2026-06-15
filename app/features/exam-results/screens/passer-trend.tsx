@@ -14,6 +14,7 @@ import {
   type WeeklyTrendPoint,
 } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
+import { hasPoolConsent } from "~/features/exam-results/queries.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 
 import type { Route } from "./+types/passer-trend";
@@ -29,8 +30,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
   // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
+  // viewer-B 게이트(feat-8-026b) — 전역 게이트 ON + 요청자 풀(B) 동의 동시 충족 시만 비교 노출.
   const gate = await isPasserBenchmarkEnabled();
-  const trend = gate.enabled
+  const canCompare = gate.enabled && (await hasPoolConsent(client, user.id));
+  const trend = canCompare
     ? await getPasserTrendData(user.id, { excludeSynthetic: true })
     : null;
   return { trend };

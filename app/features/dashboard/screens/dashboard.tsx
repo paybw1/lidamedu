@@ -40,6 +40,7 @@ import {
   listPasserSummaries,
 } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
+import { hasPoolConsent } from "~/features/exam-results/queries.server";
 import { generateRecommendedActions } from "~/features/exam-results/recommendations";
 import { predictPassScore } from "~/features/study/lib/pass-predict";
 
@@ -222,13 +223,26 @@ export async function loader({ request }: Route.LoaderArgs) {
           failerBaseline: null as Awaited<ReturnType<typeof getFailerBaseline>>,
         };
       }
-      const [benchmark, summaries, lawAverages, failerBaseline] =
-        await Promise.all([
-          getPasserBenchmarks(user.id, { excludeSynthetic: true }),
-          listPasserSummaries({ limit: 3, excludeSynthetic: true }),
-          getPasserLawAverages({ excludeSynthetic: true }),
-          getFailerBaseline({ excludeSynthetic: true }),
-        ]);
+      // viewer-B 게이트(feat-8-026b) — 개인 "비교"(합격자/실패자 평균 대비)는
+      // 요청자가 풀(B)에 동의했을 때만. 후기(summaries)는 익명·공개라 B 불요 → 항상 노출.
+      const [canCompare, summaries] = await Promise.all([
+        hasPoolConsent(client, user.id),
+        listPasserSummaries({ limit: 3, excludeSynthetic: true }),
+      ]);
+      if (!canCompare) {
+        return {
+          gate,
+          benchmark: null,
+          summaries,
+          lawAverages: {} as Awaited<ReturnType<typeof getPasserLawAverages>>,
+          failerBaseline: null as Awaited<ReturnType<typeof getFailerBaseline>>,
+        };
+      }
+      const [benchmark, lawAverages, failerBaseline] = await Promise.all([
+        getPasserBenchmarks(user.id, { excludeSynthetic: true }),
+        getPasserLawAverages({ excludeSynthetic: true }),
+        getFailerBaseline({ excludeSynthetic: true }),
+      ]);
       return { gate, benchmark, summaries, lawAverages, failerBaseline };
     }),
     // feat-10-006 — 대시보드 OX 카드용. 최신 10건 + 누적 응시 수 계산.
