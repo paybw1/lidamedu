@@ -62,6 +62,7 @@ import {
   listProblemsByArticleIds,
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
+import { getCaseIdsByPlacement } from "~/features/cases/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
@@ -162,6 +163,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     lectureResourcesByArticle,
     pdfLocationsByArticle,
     pdfFlag,
+    nodePlacedCaseIds,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
@@ -203,6 +205,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listLectureResourcesByArticleIds(client, articleIds),
     getPdfLocationsByTargetIds(client, "article", articleIds),
     getPdfLocationsEnabled(client),
+    // 이 노드(쟁점) subtree 에 배치된 판례 id — primary_node_id 우선 placement.
+    // cases-tab 의 체계도 필터와 동일 기준으로 노드별 판례를 정확히 한정한다.
+    getCaseIdsByPlacement(client, articleIds, subtreeNodeIds),
   ]);
 
   // ?blank-owner=<uuid> 로 모든 카드의 빈칸 set 일괄 owner 적용. 없으면 article별 첫 set.
@@ -280,6 +285,18 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     nextLabel: nextSibling?.displayLabel ?? null,
   };
 
+  // 체계도 노드 뷰어는 "이 노드(쟁점)에 분류된 판례"만 보여준다. 제29조처럼 한 조문이
+  // 여러 쟁점(산업상이용가능성/신규성/진보성/확대선출원)으로 나뉘면 article_case_links
+  // (조문 단위)는 모든 쟁점 노드에 같은 76건을 붙인다. primary_node_id placement 로
+  // 이 노드 subtree 에 배치된 case 만 남겨 cases-tab 과 일치시킨다.
+  const nodePlacedSet = new Set(nodePlacedCaseIds);
+  const relatedCasesByArticleScoped: typeof relatedCasesByArticle = {};
+  for (const aid of Object.keys(relatedCasesByArticle)) {
+    relatedCasesByArticleScoped[aid] = relatedCasesByArticle[aid].filter((c) =>
+      nodePlacedSet.has(c.caseId),
+    );
+  }
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
@@ -298,7 +315,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     blankOwners,
     oxQuestionsByArticle,
     oxAnnotationsByRef,
-    relatedCasesByArticle,
+    relatedCasesByArticle: relatedCasesByArticleScoped,
     problemsByArticle,
     progressByArticle,
     selectedBlankOwner: ownerParam,
