@@ -118,6 +118,7 @@ export default [
       route("/mcq-exam", "features/admin/api/mcq-exam.tsx"),
       route("/user-role", "features/admin/api/user-role.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
+      route("/cohort-board", "features/admin/api/cohort-board.tsx"),
       route("/law-revision", "features/admin/api/law-revision.tsx"),
       route("/announcement", "features/admin/api/announcement.tsx"),
       route(
@@ -476,6 +477,10 @@ export default [
         "features/admin/screens/admin-community-reports.tsx",
       ),
       route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),
+      route(
+        "/admin/cohort-boards",
+        "features/admin/screens/admin-cohort-boards.tsx",
+      ),
       route(
         "/admin/cohorts/at-risk",
         "features/admin/screens/admin-at-risk.tsx",

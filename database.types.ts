@@ -1669,6 +1669,214 @@ export type Database = {
           },
         ]
       }
+      cohort_board_cohorts: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          board_id: string
+          cohort_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          board_id: string
+          cohort_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          board_id?: string
+          cohort_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_board_cohorts_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_cohorts_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_cohorts_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_boards"
+            referencedColumns: ["board_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_cohorts_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+        ]
+      }
+      cohort_board_comments: {
+        Row: {
+          author_id: string | null
+          body_md: string
+          comment_id: string
+          created_at: string
+          deleted_at: string | null
+          post_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body_md: string
+          comment_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          post_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body_md?: string
+          comment_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          post_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_board_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_board_posts"
+            referencedColumns: ["post_id"]
+          },
+        ]
+      }
+      cohort_board_posts: {
+        Row: {
+          author_id: string | null
+          board_id: string
+          body_md: string
+          created_at: string
+          deleted_at: string | null
+          is_pinned: boolean
+          post_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          board_id: string
+          body_md: string
+          created_at?: string
+          deleted_at?: string | null
+          is_pinned?: boolean
+          post_id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          board_id?: string
+          body_md?: string
+          created_at?: string
+          deleted_at?: string | null
+          is_pinned?: boolean
+          post_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_board_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_board_posts_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_boards"
+            referencedColumns: ["board_id"]
+          },
+        ]
+      }
+      cohort_boards: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          title: string
+          updated_at: string
+          write_scope: Database["public"]["Enums"]["cohort_board_write_scope"]
+        }
+        Insert: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          title: string
+          updated_at?: string
+          write_scope?: Database["public"]["Enums"]["cohort_board_write_scope"]
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          title?: string
+          updated_at?: string
+          write_scope?: Database["public"]["Enums"]["cohort_board_write_scope"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_boards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_boards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       cohort_curricula: {
         Row: {
           assigned_at: string
@@ -7017,6 +7225,18 @@ export type Database = {
         }[]
       }
       soft_delete_book_update: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_cohort_board: {
+        Args: { p_board_id: string }
+        Returns: undefined
+      }
+      soft_delete_cohort_board_comment: {
+        Args: { p_comment_id: string }
+        Returns: undefined
+      }
+      soft_delete_cohort_board_post: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
       soft_delete_community_comment: {
         Args: { p_id: string }
         Returns: undefined
@@ -7048,8 +7268,32 @@ export type Database = {
         }
         Returns: undefined
       }
+      user_can_read_cohort_board: {
+        Args: { p_board_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_can_read_cohort_post: {
+        Args: { p_post_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_can_write_cohort_board: {
+        Args: { p_board_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_can_write_cohort_post: {
+        Args: { p_post_id: string; p_user_id: string }
+        Returns: boolean
+      }
       user_is_in_cohort: {
         Args: { p_cohort_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_manages_cohort_board: {
+        Args: { p_board_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_manages_cohort_post: {
+        Args: { p_post_id: string; p_user_id: string }
         Returns: boolean
       }
       user_owns_cohort: {
@@ -7097,6 +7341,7 @@ export type Database = {
         | "problem"
         | "textbook"
         | "practice"
+      cohort_board_write_scope: "staff" | "members"
       community_board: "free" | "study" | "review"
       community_post_attachment_kind: "image" | "pdf" | "file"
       community_report_status: "pending" | "resolved" | "dismissed"
@@ -7340,6 +7585,7 @@ export const Constants = {
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
       chunk_source_type: ["article", "case", "problem", "textbook", "practice"],
+      cohort_board_write_scope: ["staff", "members"],
       community_board: ["free", "study", "review"],
       community_post_attachment_kind: ["image", "pdf", "file"],
       community_report_status: ["pending", "resolved", "dismissed"],

@@ -141,6 +141,7 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: GraduationCapIcon,
     screens: [
       { label: "반 목록", to: "/admin/cohorts" },
+      { label: "반별 게시판", to: "/admin/cohort-boards" },
       { label: "커리큘럼 관리", to: "/admin/curricula" },
     ],
   },
