@@ -1390,6 +1390,7 @@ export async function listBookmarkedProblems(
 export async function listBookmarkedCaseIds(
   client: SupabaseClient<Database>,
   userId: string,
+  minStar = 1,
 ): Promise<string[]> {
   const { data, error } = await client
     .from("user_bookmarks")
@@ -1397,7 +1398,7 @@ export async function listBookmarkedCaseIds(
     .eq("user_id", userId)
     .eq("target_type", "case")
     .is("deleted_at", null)
-    .gt("star_level", 0);
+    .gte("star_level", minStar);
   if (error) throw error;
   return (data ?? []).map((r) => r.target_id);
 }

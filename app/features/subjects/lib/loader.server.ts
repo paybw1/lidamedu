@@ -73,8 +73,10 @@ export interface ProblemFiltersApplied {
   difficulty?: DifficultyBucket | "no_data";
   sort?: ProblemSort;
   search?: string;
-  // 즐겨찾기(별점>0)한 문제만 — ?p_bookmarked=1.
-  bookmarked?: boolean;
+  // 수험생 즐겨찾기 최소 별점 (1~5) — ?p_bookmarked=N.
+  bookmarkMin?: number;
+  // 강사 체크 중요도 최소 별 (1~3) — ?p_importance=N.
+  importanceMin?: number;
 }
 
 // 문제 탭 체계도 트리 필터 — 노드 클릭 시 그 노드 subtree 의 문제만 표시.
@@ -98,8 +100,10 @@ export interface CaseFiltersApplied {
   exam: CaseExamFilter;
   sort: CaseSubjectSort;
   tree?: CaseTreeFilter;
-  // 즐겨찾기(별점>0)한 판례만 — ?case_bookmarked=1.
-  bookmarked: boolean;
+  // 수험생 즐겨찾기 최소 별점 (0=전체, 1~5) — ?case_bookmarked=N.
+  bookmarkMin: number;
+  // 강사 체크 중요도 최소 별 (0=전체, 1~3) — ?case_importance=N.
+  importanceMin: number;
 }
 
 export interface CaseTreeCounts {
@@ -158,6 +162,12 @@ const CASE_EXAM_FILTERS: readonly CaseExamFilter[] = [
   "exam_both",
 ];
 
+// 단계 필터 파라미터 파싱 — 1..max 정수만 유효, 그 외(빈값/0/범위초과)는 0(=전체).
+function parseLevel(raw: string | null, max: number): number {
+  const n = Number(raw ?? "");
+  return Number.isInteger(n) && n >= 1 && n <= max ? n : 0;
+}
+
 function parseCaseFilters(url: URL): CaseFiltersApplied {
   const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
   const courtRaw = url.searchParams.get("case_court") ?? "all";
@@ -192,8 +202,9 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
   } else {
     sort = "decided_desc";
   }
-  const bookmarked = url.searchParams.get("case_bookmarked") === "1";
-  return { q, court, exam, sort, tree, bookmarked };
+  const bookmarkMin = parseLevel(url.searchParams.get("case_bookmarked"), 5);
+  const importanceMin = parseLevel(url.searchParams.get("case_importance"), 3);
+  return { q, court, exam, sort, tree, bookmarkMin, importanceMin };
 }
 
 // articles 트리에서 한 노드 + 모든 자손 article 의 articleId 목록.
@@ -443,7 +454,10 @@ function parseProblemFilters(url: URL): ProblemFiltersApplied {
   if (search && search.trim().length > 0) {
     f.search = search.trim().slice(0, 100); // 길이 제한.
   }
-  if (url.searchParams.get("p_bookmarked") === "1") f.bookmarked = true;
+  const bm = parseLevel(url.searchParams.get("p_bookmarked"), 5);
+  if (bm > 0) f.bookmarkMin = bm;
+  const im = parseLevel(url.searchParams.get("p_importance"), 3);
+  if (im > 0) f.importanceMin = im;
   return f;
 }
 
@@ -565,11 +579,11 @@ export async function loadSubjectHub(
         );
       }
     }
-    // 즐겨찾기만 — 트리 필터와 교집합(둘 다 활성이면), 단독이면 즐겨찾기 case 집합.
-    // 미로그인 / 즐겨찾기 0건이면 빈 배열 → listCasesBySubject 가 빈 결과 반환.
-    if (caseFilters.bookmarked) {
+    // 즐겨찾기 N+ — 트리 필터와 교집합(둘 다 활성이면), 단독이면 즐겨찾기 case 집합.
+    // 미로그인 / 해당 별점 0건이면 빈 배열 → listCasesBySubject 가 빈 결과 반환.
+    if (caseFilters.bookmarkMin > 0) {
       const bookmarkedIds = user
-        ? await listBookmarkedCaseIds(client, user.id)
+        ? await listBookmarkedCaseIds(client, user.id, caseFilters.bookmarkMin)
         : [];
       if (filterCaseIds === null) {
         filterCaseIds = bookmarkedIds;
@@ -595,6 +609,7 @@ export async function loadSubjectHub(
       court: caseFilters.court,
       examFilter: caseFilters.exam,
       filterCaseIds,
+      importanceMin: caseFilters.importanceMin || undefined,
     }),
     listProblemsBySubject(client, lawCode, problemFilters),
     getLatestPublishedRevisionDate(client, law.lawId),
@@ -684,14 +699,22 @@ export async function loadSubjectHub(
     });
   }
 
-  // 즐겨찾기만 — 별점>0 문제로 한정 (post-filter, 해당 과목 scope).
-  // 미로그인 / 즐겨찾기 0건이면 빈 집합 → 결과 0.
-  if (problemFilters.bookmarked) {
+  // 즐겨찾기 별점 N+ 문제로 한정 (post-filter, 해당 과목 scope).
+  // 미로그인 / 해당 별점 0건이면 빈 집합 → 결과 0.
+  if (problemFilters.bookmarkMin && problemFilters.bookmarkMin > 0) {
     const refs = user
-      ? await listBookmarkedProblems(client, user.id, { lawCode })
+      ? await listBookmarkedProblems(client, user.id, {
+          lawCode,
+          minStar: problemFilters.bookmarkMin,
+        })
       : [];
     const bset = new Set(refs.map((r) => r.problemId));
     displayedProblems = displayedProblems.filter((p) => bset.has(p.problemId));
+  }
+  // 중요도 N+ 문제로 한정 (강사 체크 별).
+  if (problemFilters.importanceMin && problemFilters.importanceMin > 0) {
+    const min = problemFilters.importanceMin;
+    displayedProblems = displayedProblems.filter((p) => p.importance >= min);
   }
 
   // 체계도 노드 필터 — 노드 subtree 의 문제만. (?node= 무효 시 problemNodeSeq=null → 무시)

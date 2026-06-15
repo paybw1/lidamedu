@@ -152,6 +152,8 @@ export interface ListCasesBySubjectOptions {
   // 판례 트리 필터 — 활성 시 이 case_id 들로만 제한. 빈 배열은 결과 0건.
   // undefined 또는 null = 트리 필터 비활성.
   filterCaseIds?: readonly string[] | null;
+  // 강사 체크 중요도 최소값 (importance >= N). undefined/0 = 비활성.
+  importanceMin?: number;
 }
 
 // 과목 판례 목록 — 페이지네이션 없이 전체 반환. total 은 KPI 표시용 카운트.
@@ -207,6 +209,9 @@ export async function listCasesBySubject(
   }
   if (options.court && options.court !== "all") {
     q = q.eq("court", options.court);
+  }
+  if (options.importanceMin && options.importanceMin > 0) {
+    q = q.gte("importance", options.importanceMin);
   }
   // 1차 기출(exam_1st/exam_both)은 위 restrictIds 로 이미 한정됨.
   // 2차 기출은 종전대로 exam_2nd_years 컬럼 기반.
