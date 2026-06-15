@@ -184,6 +184,7 @@ export function ArticleRightPanel({
   lectureResources,
   pdfLocations,
   pdfLocationsEnabled,
+  contentClassName,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
@@ -213,6 +214,9 @@ export function ArticleRightPanel({
   // 통합본 PDF 위치 링크 + 학생 노출 여부(staff||플래그). 조각과 병존(fallback).
   pdfLocations?: PdfLocationItem[];
   pdfLocationsEnabled?: boolean;
+  // 탭 콘텐츠 스크롤 영역에 덧붙일 클래스 — 체계도 노드 뷰어처럼 카드가 늘어나는
+  // 맥락에서 max-height 를 줘 내부 스크롤시키기 위함(조문 뷰어는 미전달 = 종전대로).
+  contentClassName?: string;
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
@@ -405,7 +409,7 @@ export function ArticleRightPanel({
             ) : null}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className={cn("flex-1 overflow-y-auto p-3", contentClassName)}>
             <TabsContent value="bookmark" className="mt-0">
               {staffImportanceMode ? (
                 <ImportanceRating

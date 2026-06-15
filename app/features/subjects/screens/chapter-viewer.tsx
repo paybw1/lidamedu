@@ -777,6 +777,7 @@ function Inner({
                     <div className="bg-muted/40 dark:bg-muted/20">
                       <ArticleRightPanel
                         target={{ type: "article", id: a.articleId }}
+                        contentClassName="lg:max-h-[32rem]"
                         bookmark={bookmark}
                         memos={memos}
                         highlights={highlights}

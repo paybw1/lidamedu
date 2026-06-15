@@ -822,6 +822,7 @@ function Inner({
                       <MobileCollapsiblePanel>
                         <ArticleRightPanel
                           target={{ type: "article", id: a.articleId }}
+                          contentClassName="lg:max-h-[32rem]"
                           bookmark={bookmark}
                           memos={memos}
                           highlights={highlights}
