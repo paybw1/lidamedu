@@ -86,7 +86,7 @@ export async function createNote(input: {
       entityId: data.note_id,
       title: "강사의 새 코멘트가 도착했습니다",
       body: preview,
-      href: "/inbox",
+      href: `/me/consult?note=${data.note_id}`,
     });
   }
   return { ok: true, noteId: data.note_id };
@@ -137,7 +137,7 @@ export async function updateNote(
       entityId: noteId,
       title: "강사의 새 코멘트가 도착했습니다",
       body: preview,
-      href: "/inbox",
+      href: `/me/consult?note=${noteId}`,
     });
   }
   return { ok: true };

@@ -274,6 +274,8 @@ export default [
         route("/study/comments", "features/study/screens/comments.tsx"),
       ]),
       route("/inbox", "features/notifications/screens/student-inbox.tsx"),
+      // feat-7-028 — 학생용 상담 코멘트(강사 공유) 열람. 알림 student_note_shared 의 목적지.
+      route("/me/consult", "features/student-notes/screens/student-consult.tsx"),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),

@@ -72,6 +72,7 @@ export const NAV_GROUP_POOL = {
       { label: "학습 목표 · 진도", to: "/goals" },
       { label: "학습 통계", to: "/study/stats" },
       { label: "과제", to: "/assignments" },
+      { label: "상담 코멘트", to: "/me/consult" },
       { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
     ],
   },
