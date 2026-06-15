@@ -1385,6 +1385,23 @@ export async function listBookmarkedProblems(
   return out;
 }
 
+// 즐겨찾기(별점>0) 판례 ID 목록 — 과목 판례 색인 "즐겨찾기만 보기" 필터용.
+// 과목 무관 전체 반환 — 호출부(listCasesBySubject filterCaseIds)가 과목으로 다시 한정.
+export async function listBookmarkedCaseIds(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("user_bookmarks")
+    .select("target_id")
+    .eq("user_id", userId)
+    .eq("target_type", "case")
+    .is("deleted_at", null)
+    .gt("star_level", 0);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.target_id);
+}
+
 export async function getBookmark(
   client: SupabaseClient<Database>,
   userId: string,

@@ -126,6 +126,7 @@ export function ProblemsTab({
     appliedFilters.difficulty != null ||
     (appliedFilters.sort != null && appliedFilters.sort !== "number") ||
     (appliedFilters.search != null && appliedFilters.search.length > 0) ||
+    appliedFilters.bookmarked === true ||
     nodeFilter != null;
 
   const [searchParams] = useSearchParams();
@@ -133,6 +134,14 @@ export function ProblemsTab({
   const clearNodeHref = (() => {
     const sp = new URLSearchParams(searchParams);
     sp.delete("node");
+    sp.set("tab", "problems");
+    return `?${sp.toString()}`;
+  })();
+  // 즐겨찾기만 보기 토글 — p_bookmarked 켜고/끄고, 나머지 필터 보존.
+  const bookmarkToggleHref = (() => {
+    const sp = new URLSearchParams(searchParams);
+    if (appliedFilters.bookmarked) sp.delete("p_bookmarked");
+    else sp.set("p_bookmarked", "1");
     sp.set("tab", "problems");
     return `?${sp.toString()}`;
   })();
@@ -195,7 +204,7 @@ export function ProblemsTab({
 
         {/* 체계도 노드 필터가 걸리면(문제 트리에서 노드 선택) 학습 현황·KPI 를
             숨기고 결과 목록에 집중한다. */}
-        {!nodeFilter ? (
+        {!nodeFilter && !appliedFilters.bookmarked ? (
           <>
             <SubjectStudyStatus {...studyStatus} />
 
@@ -256,6 +265,28 @@ export function ProblemsTab({
           </div>
         ) : null}
 
+        {/* 즐겨찾기만 보기 배너 */}
+        {appliedFilters.bookmarked && !nodeFilter ? (
+          <div className="border-border flex flex-wrap items-center gap-2 rounded-xl border bg-amber-500/[0.06] px-4 py-2.5 text-xs">
+            <StarIcon className="size-3.5 fill-amber-400 text-amber-500" />
+            <span className="text-muted-foreground">즐겨찾기한 문제만</span>
+            <span className="text-muted-foreground ml-1">
+              → 결과{" "}
+              <strong className="text-foreground">{problems.length}</strong>건
+            </span>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 px-2"
+            >
+              <Link to={bookmarkToggleHref} preventScrollReset>
+                <XIcon className="size-3" /> 전체 보기
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+
         {/* Wrong-note amber banner */}
         {wrongCount > 0 ? (
           <div className="flex flex-wrap items-center gap-3 rounded-xl bg-amber-500/[0.10] px-4 py-3.5 dark:bg-amber-500/[0.08]">
@@ -308,6 +339,9 @@ export function ProblemsTab({
             <input type="hidden" name="tab" value="problems" />
             {nodeFilter ? (
               <input type="hidden" name="node" value={nodeFilter.nodeId} />
+            ) : null}
+            {appliedFilters.bookmarked ? (
+              <input type="hidden" name="p_bookmarked" value="1" />
             ) : null}
             {/* Search chip-style input */}
             <div className="flex flex-col gap-0.5">
@@ -395,6 +429,22 @@ export function ProblemsTab({
               적용
             </Button>
           </Form>
+          <Button
+            asChild
+            size="sm"
+            variant={appliedFilters.bookmarked ? "default" : "outline"}
+            className="h-8 rounded-full"
+          >
+            <Link to={bookmarkToggleHref} preventScrollReset>
+              <StarIcon
+                className={cn(
+                  "size-3.5",
+                  appliedFilters.bookmarked && "fill-current",
+                )}
+              />{" "}
+              즐겨찾기만
+            </Link>
+          </Button>
           {filterActive ? (
             <Button
               asChild

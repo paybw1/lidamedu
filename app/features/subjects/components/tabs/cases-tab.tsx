@@ -24,6 +24,7 @@ import {
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
+import { cn } from "~/core/lib/utils";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import {
   Table,
@@ -79,6 +80,7 @@ const DEFAULT_FILTERS: CaseFiltersApplied = {
   court: "all",
   exam: "any",
   sort: "decided_desc",
+  bookmarked: false,
 };
 
 export function CasesTab({
@@ -150,6 +152,13 @@ export function CasesTab({
     sp.delete("q");
     return `?${sp.toString()}`;
   }, [searchParams]);
+  // 즐겨찾기만 보기 토글 href — case_bookmarked 켜고/끄고, 나머지 필터 보존.
+  const bookmarkToggleHref = useMemo(() => {
+    const sp = new URLSearchParams(searchParams);
+    if (filters.bookmarked) sp.delete("case_bookmarked");
+    else sp.set("case_bookmarked", "1");
+    return `?${sp.toString()}`;
+  }, [searchParams, filters.bookmarked]);
 
   const [draft, setDraft] = useState(filters.q);
   useEffect(() => {
@@ -178,6 +187,8 @@ export function CasesTab({
     hidden.push({ name: "case_chapter", value: treeFilter.chapterId });
   else if (treeFilter?.kind === "node")
     hidden.push({ name: "case_node", value: treeFilter.nodeId });
+  if (filters.bookmarked)
+    hidden.push({ name: "case_bookmarked", value: "1" });
 
   // FilterGroup 들의 hidden — 트리 필터·검색어 보존.
   const baseHidden: Array<{ name: string; value: string }> = [
@@ -190,6 +201,8 @@ export function CasesTab({
     baseHidden.push({ name: "case_chapter", value: treeFilter.chapterId });
   else if (treeFilter?.kind === "node")
     baseHidden.push({ name: "case_node", value: treeFilter.nodeId });
+  if (filters.bookmarked)
+    baseHidden.push({ name: "case_bookmarked", value: "1" });
 
   // 트리 패널 — 데스크톱 사이드바 / 모바일 드로어에서 동일 마크업 재사용.
   const treePanel = (
@@ -246,7 +259,7 @@ export function CasesTab({
 
         {/* 트리 필터가 걸리면(판례 트리에서 노드 선택) 학습 현황·KPI 를 숨기고
             결과 목록에 집중한다. */}
-        {!treeFilter ? (
+        {!treeFilter && !filters.bookmarked ? (
           <>
             <SubjectStudyStatus {...studyStatus} />
 
@@ -307,6 +320,28 @@ export function CasesTab({
             </span>
             <Button asChild variant="ghost" size="sm" className="h-6 px-2">
               <Link to={clearTreeHref} preventScrollReset>
+                <XIcon className="size-3" /> 전체 보기
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+
+        {/* 즐겨찾기만 보기 배너 (트리 필터와 동시면 트리 배너가 결과수 표시) */}
+        {filters.bookmarked && !treeFilter ? (
+          <div className="border-border flex flex-wrap items-center gap-2 rounded-xl border bg-amber-500/[0.06] px-4 py-2.5 text-xs">
+            <StarIcon className="size-3.5 fill-amber-400 text-amber-500" />
+            <span className="text-muted-foreground">즐겨찾기한 판례만</span>
+            <span className="text-muted-foreground ml-1">
+              → 결과 <strong className="text-foreground">{cases.length}</strong>
+              건
+            </span>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-6 px-2"
+            >
+              <Link to={bookmarkToggleHref} preventScrollReset>
                 <XIcon className="size-3" /> 전체 보기
               </Link>
             </Button>
@@ -376,6 +411,19 @@ export function CasesTab({
               { name: "case_exam", value: filters.exam },
             ]}
           />
+          <Button
+            asChild
+            size="sm"
+            variant={filters.bookmarked ? "default" : "outline"}
+            className="h-8 rounded-full"
+          >
+            <Link to={bookmarkToggleHref} preventScrollReset>
+              <StarIcon
+                className={cn("size-3.5", filters.bookmarked && "fill-current")}
+              />{" "}
+              즐겨찾기만
+            </Link>
+          </Button>
           <span className="text-muted-foreground ml-auto text-xs tabular-nums">
             {filters.q ? `"${filters.q}" · ` : ""}총{" "}
             {casesTotal.toLocaleString("ko-KR")}건
@@ -390,7 +438,9 @@ export function CasesTab({
               <p className="text-muted-foreground mt-3 text-sm">
                 {casesTotal === 0
                   ? `${subject.name} 판례가 아직 등록되지 않았습니다.`
-                  : "필터에 해당하는 판례가 없습니다."}
+                  : filters.bookmarked
+                    ? "즐겨찾기한 판례가 없습니다. 판례를 열어 별표(★)를 매겨보세요."
+                    : "필터에 해당하는 판례가 없습니다."}
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
                 정렬 기준: {axisLabel}

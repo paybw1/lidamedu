@@ -8,6 +8,8 @@ import {
   type ArticleAnnotationCounts,
   getUserArticleAnnotationCounts,
   getUserArticleBookmarkLevels,
+  listBookmarkedCaseIds,
+  listBookmarkedProblems,
 } from "~/features/annotations/queries.server";
 import {
   type CaseCourtFilter,
@@ -71,6 +73,8 @@ export interface ProblemFiltersApplied {
   difficulty?: DifficultyBucket | "no_data";
   sort?: ProblemSort;
   search?: string;
+  // 즐겨찾기(별점>0)한 문제만 — ?p_bookmarked=1.
+  bookmarked?: boolean;
 }
 
 // 문제 탭 체계도 트리 필터 — 노드 클릭 시 그 노드 subtree 의 문제만 표시.
@@ -94,6 +98,8 @@ export interface CaseFiltersApplied {
   exam: CaseExamFilter;
   sort: CaseSubjectSort;
   tree?: CaseTreeFilter;
+  // 즐겨찾기(별점>0)한 판례만 — ?case_bookmarked=1.
+  bookmarked: boolean;
 }
 
 export interface CaseTreeCounts {
@@ -186,7 +192,8 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
   } else {
     sort = "decided_desc";
   }
-  return { q, court, exam, sort, tree };
+  const bookmarked = url.searchParams.get("case_bookmarked") === "1";
+  return { q, court, exam, sort, tree, bookmarked };
 }
 
 // articles 트리에서 한 노드 + 모든 자손 article 의 articleId 목록.
@@ -436,6 +443,7 @@ function parseProblemFilters(url: URL): ProblemFiltersApplied {
   if (search && search.trim().length > 0) {
     f.search = search.trim().slice(0, 100); // 길이 제한.
   }
+  if (url.searchParams.get("p_bookmarked") === "1") f.bookmarked = true;
   return f;
 }
 
@@ -518,36 +526,57 @@ export async function loadSubjectHub(
   const totalCaseCount = totalCaseCountRes.count ?? 0;
   const totalProblemCount = totalProblemCountRes.count ?? 0;
 
+  // Phase A2 — authPromise 는 Stage 1 과 겹쳐 보통 이 시점에 완료. 즐겨찾기 필터가
+  // case 목록 쿼리(Stage 2)에 선행해야 하므로 user 를 여기서 확정한다.
+  const {
+    data: { user },
+  } = await authPromise;
+
   // 트리 필터 → case id 셋. 축에 따라 다른 정책:
   //   • article / chapter (조문 axis) → article_case_links many-to-many
   //     (한 case 가 여러 article 에 연결되어 있으면 각 위치에서 모두 잡힘).
   //   • node (체계도 axis) → primary placement (단일 배치).
   // 활성 탭이 cases 가 아니면 필터 무시 — 책갈피 cases 카운트는 전체 기준.
   let filterCaseIds: string[] | null = null;
-  if (activeTabIsCases && caseFilters.tree) {
-    if (caseFilters.tree.kind === "article") {
-      filterCaseIds = await getCaseIdsByArticleLinks(client, [
-        caseFilters.tree.articleId,
-      ]);
-    } else if (caseFilters.tree.kind === "chapter") {
-      filterCaseIds = await getCaseIdsByArticleLinks(
-        client,
-        descendantArticleIds(articles, caseFilters.tree.chapterId),
-      );
-    } else {
-      const targetArticleIds = systematicSubtreeArticleIds(
-        systematicNodes,
-        caseFilters.tree.nodeId,
-      );
-      const nodeIds = systematicSubtreeNodeIds(
-        systematicNodes,
-        caseFilters.tree.nodeId,
-      );
-      filterCaseIds = await getCaseIdsByPlacement(
-        client,
-        targetArticleIds,
-        nodeIds,
-      );
+  if (activeTabIsCases) {
+    if (caseFilters.tree) {
+      if (caseFilters.tree.kind === "article") {
+        filterCaseIds = await getCaseIdsByArticleLinks(client, [
+          caseFilters.tree.articleId,
+        ]);
+      } else if (caseFilters.tree.kind === "chapter") {
+        filterCaseIds = await getCaseIdsByArticleLinks(
+          client,
+          descendantArticleIds(articles, caseFilters.tree.chapterId),
+        );
+      } else {
+        const targetArticleIds = systematicSubtreeArticleIds(
+          systematicNodes,
+          caseFilters.tree.nodeId,
+        );
+        const nodeIds = systematicSubtreeNodeIds(
+          systematicNodes,
+          caseFilters.tree.nodeId,
+        );
+        filterCaseIds = await getCaseIdsByPlacement(
+          client,
+          targetArticleIds,
+          nodeIds,
+        );
+      }
+    }
+    // 즐겨찾기만 — 트리 필터와 교집합(둘 다 활성이면), 단독이면 즐겨찾기 case 집합.
+    // 미로그인 / 즐겨찾기 0건이면 빈 배열 → listCasesBySubject 가 빈 결과 반환.
+    if (caseFilters.bookmarked) {
+      const bookmarkedIds = user
+        ? await listBookmarkedCaseIds(client, user.id)
+        : [];
+      if (filterCaseIds === null) {
+        filterCaseIds = bookmarkedIds;
+      } else {
+        const bset = new Set(bookmarkedIds);
+        filterCaseIds = filterCaseIds.filter((id) => bset.has(id));
+      }
     }
   }
 
@@ -589,10 +618,7 @@ export async function loadSubjectHub(
     (a) => a.level === "article",
   ).length;
 
-  // Phase A2 — authPromise 는 처음에 시작돼 Stage 1+2 RTT 와 겹쳐 이 시점엔 보통 완료.
-  const {
-    data: { user },
-  } = await authPromise;
+  // user 는 위(Stage 1 직후)에서 이미 확정 — 즐겨찾기 case 필터가 Stage 2 에 선행해야 해서.
   const [
     progress,
     bookmarkLevels,
@@ -656,6 +682,16 @@ export async function loadSubjectHub(
       if (accB === null || accB === undefined) return -1;
       return sort === "hardest" ? accA - accB : accB - accA;
     });
+  }
+
+  // 즐겨찾기만 — 별점>0 문제로 한정 (post-filter, 해당 과목 scope).
+  // 미로그인 / 즐겨찾기 0건이면 빈 집합 → 결과 0.
+  if (problemFilters.bookmarked) {
+    const refs = user
+      ? await listBookmarkedProblems(client, user.id, { lawCode })
+      : [];
+    const bset = new Set(refs.map((r) => r.problemId));
+    displayedProblems = displayedProblems.filter((p) => bset.has(p.problemId));
   }
 
   // 체계도 노드 필터 — 노드 subtree 의 문제만. (?node= 무효 시 problemNodeSeq=null → 무시)
