@@ -774,10 +774,10 @@ function Inner({
                       )}
                     </div>
                     {/* 우측 패널 열 */}
-                    <div className="bg-muted/40 dark:bg-muted/20">
+                    <div className="bg-muted/40 dark:bg-muted/20 lg:relative lg:min-h-[26rem]">
                       <ArticleRightPanel
                         target={{ type: "article", id: a.articleId }}
-                        contentClassName="lg:max-h-[32rem]"
+                        className="lg:absolute lg:inset-0"
                         bookmark={bookmark}
                         memos={memos}
                         highlights={highlights}

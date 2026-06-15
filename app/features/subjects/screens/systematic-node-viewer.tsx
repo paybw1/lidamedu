@@ -817,12 +817,13 @@ function Inner({
                         </HighlightOverlay>
                       )}
                     </div>
-                    {/* 우측 패널 열 — 모바일: 접기(스크롤 단축) / lg↑: 항상 표시 */}
-                    <div className="bg-muted/40 dark:bg-muted/20">
+                    {/* 우측 패널 열 — 모바일: 접기(스크롤 단축) / lg↑: 본문 높이에 맞춰
+                        채우고(absolute) 넘치면 내부 스크롤. 짧은 조문 대비 최소 높이로 레일 보호. */}
+                    <div className="bg-muted/40 dark:bg-muted/20 lg:relative lg:min-h-[26rem]">
                       <MobileCollapsiblePanel>
                         <ArticleRightPanel
                           target={{ type: "article", id: a.articleId }}
-                          contentClassName="lg:max-h-[32rem]"
+                          className="lg:absolute lg:inset-0"
                           bookmark={bookmark}
                           memos={memos}
                           highlights={highlights}

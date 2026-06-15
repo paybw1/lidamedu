@@ -184,7 +184,7 @@ export function ArticleRightPanel({
   lectureResources,
   pdfLocations,
   pdfLocationsEnabled,
-  contentClassName,
+  className,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
@@ -214,9 +214,10 @@ export function ArticleRightPanel({
   // 통합본 PDF 위치 링크 + 학생 노출 여부(staff||플래그). 조각과 병존(fallback).
   pdfLocations?: PdfLocationItem[];
   pdfLocationsEnabled?: boolean;
-  // 탭 콘텐츠 스크롤 영역에 덧붙일 클래스 — 체계도 노드 뷰어처럼 카드가 늘어나는
-  // 맥락에서 max-height 를 줘 내부 스크롤시키기 위함(조문 뷰어는 미전달 = 종전대로).
-  contentClassName?: string;
+  // 루트에 덧붙일 클래스 — 체계도 노드/장 뷰어처럼 카드가 늘어나는 맥락에서
+  // `lg:absolute lg:inset-0` 로 본문(좌측 열) 높이에 맞춰 채우고 내부 스크롤시키기 위함.
+  // (조문·판례·문제 단일 뷰어는 미전달 = 종전 sticky aside 그대로.)
+  className?: string;
 }) {
   const qnaTargetType = toQnaTargetType(target.type);
   const showCases = relatedCases !== undefined && subjectSlug !== undefined;
@@ -331,7 +332,7 @@ export function ArticleRightPanel({
   const ActiveIcon = activeMeta.Icon;
 
   return (
-    <div className="flex h-full">
+    <div className={cn("flex h-full", className)}>
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as TabKey)}
@@ -409,7 +410,7 @@ export function ArticleRightPanel({
             ) : null}
           </div>
 
-          <div className={cn("flex-1 overflow-y-auto p-3", contentClassName)}>
+          <div className="flex-1 overflow-y-auto p-3 min-h-0">
             <TabsContent value="bookmark" className="mt-0">
               {staffImportanceMode ? (
                 <ImportanceRating
