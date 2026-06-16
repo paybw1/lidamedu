@@ -26,6 +26,8 @@ export type NavGroup = {
   label: string;
   Icon: typeof HomeIcon;
   items: NavLink[];
+  // feat — 영역 잠금(🔒) 대상 area. 미지정 = 잠금 없음. 서버 영역 게이트가 권위, nav 는 시각 힌트.
+  area?: string;
 };
 
 // 모든 nav 그룹 풀 — 핵심·가끔은 "어디 놓을지" 의 문제이고 그룹 정의는 여기 한 번.
@@ -35,6 +37,7 @@ export const NAV_GROUP_POOL = {
     label: "오늘 할 일",
     Icon: CalendarCheckIcon,
     items: [{ label: "오늘 할 일", to: "/study/today" }],
+    area: "area_study_mgmt",
   },
   review: {
     id: "review" as const,
@@ -44,12 +47,14 @@ export const NAV_GROUP_POOL = {
       { label: "복습", to: "/study/srs" },
       { label: "카드 암기", to: "/srs" },
     ],
+    area: "area_study_mgmt",
   },
   subjects: {
     id: "subjects" as const,
     label: "학습과목",
     Icon: BookOpenIcon,
-    items: [], // 특별 — SUBJECT_SECTIONS 로 별도 렌더
+    items: [], // 특별 — SUBJECT_NAV_ITEMS 로 별도 렌더
+    area: "area_subjects",
   },
   aids: {
     id: "aids" as const,
@@ -63,6 +68,7 @@ export const NAV_GROUP_POOL = {
       { label: "메모", to: "/study/comments" },
       { label: "AI Q&A", to: "/ai" },
     ],
+    area: "area_study_aids",
   },
   manage: {
     id: "manage" as const,
@@ -71,10 +77,13 @@ export const NAV_GROUP_POOL = {
     items: [
       { label: "학습 목표 · 진도", to: "/goals" },
       { label: "학습 통계", to: "/study/stats" },
+      // feat — OX 약점 진단(진입점 복구: 종전 상단바에만 있어 사이드바 모드 학생은 nav 도달 불가였음).
+      { label: "OX 약점 진단", to: "/study/ox-diagnosis" },
       { label: "과제", to: "/assignments" },
       { label: "상담 코멘트", to: "/me/consult" },
       { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
     ],
+    area: "area_study_mgmt",
   },
   info: {
     id: "info" as const,
@@ -100,6 +109,7 @@ export const NAV_GROUP_POOL = {
       { label: "판례 쟁점훈련", to: "/case-training" },
       { label: "응시 결과", to: "/me/exam-results" },
     ],
+    area: "area_mock_exams",
   },
   community: {
     id: "community" as const,
@@ -117,6 +127,57 @@ export const NAV_GROUP_POOL = {
 } satisfies Record<string, NavGroup>;
 
 export type NavGroupId = keyof typeof NAV_GROUP_POOL;
+
+// feat — 영역 잠금(🔒) 판정. 상단바·사이드바·하단탭 공용(표면 일관).
+//   staff 면제, features 미산정(undefined=로딩) 시 미표시(깜빡임 방지), area 없으면 잠금 없음.
+//   ★ 서버 영역 게이트 layout(study-management.layout 등)이 권위 — 이건 시각 힌트만.
+export function isAreaLocked(
+  area: string | undefined,
+  isStaff: boolean,
+  features: string[] | undefined,
+): boolean {
+  return (
+    !isStaff &&
+    features !== undefined &&
+    area !== undefined &&
+    !features.includes(area)
+  );
+}
+
+// feat-8-008 — 영역 잠금 시각 표시 = 흐림(dim)으로 통일(자물쇠 아이콘 폐기).
+//   상단바·사이드바·하단탭 공용 단일 소스. ★클릭 동작·서버 게이트는 그대로 —
+//   시각만 흐리게 해 "잠긴 입구가 보이되 거슬리지 않는" 수준(투명도 낮춤). 잠긴
+//   메뉴도 그대로 눌러 구독 안내로 진입(disabled 아님 — 구독 유도 기회 유지).
+export const LOCKED_DIM_CLASS = "opacity-50";
+// 흐림만으론 의미 전달이 약해 hover/focus 툴팁으로 보완(제거된 aria-label 대체).
+export const LOCKED_HINT = "구독 시 이용 가능";
+
+// 상단바 표면 매핑 — 6 드롭다운을 풀 그룹 조합으로 정의(SSOT 단일 소비).
+//   순서·구성은 현행 상단바와 동일. subjects 는 SUBJECT_NAV_ITEMS 로 별도 렌더.
+export const TOPBAR_DROPDOWNS: ReadonlyArray<{
+  label: string;
+  groupIds?: ReadonlyArray<NavGroupId>;
+  subjects?: boolean;
+  area?: string;
+}> = [
+  {
+    label: "학습관리",
+    groupIds: ["today", "review", "manage"],
+    area: "area_study_mgmt",
+  },
+  { label: "학습과목", subjects: true, area: "area_subjects" },
+  { label: "학습지원", groupIds: ["aids"], area: "area_study_aids" },
+  { label: "학습정보", groupIds: ["info"] },
+  { label: "모의고사", groupIds: ["mock"], area: "area_mock_exams" },
+  { label: "커뮤니티", groupIds: ["community"] },
+];
+
+// 상단바 드롭다운 항목 = 구성 그룹들의 items 평탄화(단일 소스 파생).
+export function topbarDropdownItems(
+  groupIds: ReadonlyArray<NavGroupId>,
+): NavLink[] {
+  return groupIds.flatMap((id) => NAV_GROUP_POOL[id].items);
+}
 
 // 디폴트 핵심 4탭 — user preference 가 없을 때 fallback.
 export const DEFAULT_CORE_TAB_IDS = [

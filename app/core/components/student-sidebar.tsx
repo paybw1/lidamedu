@@ -21,7 +21,10 @@ import { cn } from "~/core/lib/utils";
 import {
   FLAT_ADMIN,
   FLAT_HOME,
+  LOCKED_DIM_CLASS,
+  LOCKED_HINT,
   type NavGroup,
+  isAreaLocked,
   isNavActive,
   pickActiveLinkTo,
   useNavLayout,
@@ -40,6 +43,8 @@ interface StudentSidebarProps {
   };
   inboxUnread: number | null;
   inboxHref: string | null;
+  // feat-8-008 — 구독/cohort 영역 플래그. 잠금 흐림(dim) 시각표시용(상단바와 동일).
+  features?: string[];
 }
 
 export function StudentSidebar({
@@ -47,8 +52,11 @@ export function StudentSidebar({
   user,
   inboxUnread,
   inboxHref,
+  features,
 }: StudentSidebarProps) {
   const { core, secondary } = useNavLayout();
+  // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용(상단바와 동일 규칙). 서버 영역 게이트가 권위, 시각 힌트만.
+  const lockOf = (area?: string) => isAreaLocked(area, isStaff, features);
   const location = useLocation();
   const path = location.pathname;
   const search = location.search;
@@ -186,6 +194,7 @@ export function StudentSidebar({
                 path={path}
                 search={search}
                 onPick={collapseAfterPick}
+                locked={lockOf(g.area)}
               />
             );
           }
@@ -201,6 +210,7 @@ export function StudentSidebar({
                 path={path}
                 search={search}
                 onPick={collapseAfterPick}
+                locked={lockOf(g.area)}
               />
             );
           }
@@ -216,6 +226,7 @@ export function StudentSidebar({
               path={path}
               search={search}
               onPick={collapseAfterPick}
+              locked={lockOf(g.area)}
             />
           );
         })}
@@ -233,6 +244,7 @@ export function StudentSidebar({
             path={path}
             search={search}
             onPick={collapseAfterPick}
+            locked={lockOf(g.area)}
           />
         ))}
 
@@ -287,6 +299,8 @@ interface BaseRowProps {
   path: string;
   search: string;
   onPick: () => void;
+  // 영역 잠금 시각표시 = 흐림(dim). 펼침·접힘 아이콘 모드 모두 적용(표면 일관).
+  locked?: boolean;
 }
 interface FlatRowProps extends BaseRowProps {
   kind: "flat";
@@ -313,6 +327,7 @@ function Row(props: RowProps) {
         path={props.path}
         search={props.search}
         onPick={props.onPick}
+        locked={props.locked}
       />
     ) : (
       <GroupIcon
@@ -320,6 +335,7 @@ function Row(props: RowProps) {
         path={props.path}
         search={props.search}
         onExpand={props.onExpand}
+        locked={props.locked}
       />
     );
   }
@@ -337,6 +353,7 @@ function FlatFull({
   path,
   search,
   onPick,
+  locked,
 }: Omit<FlatRowProps, "kind" | "collapsed">) {
   const active = isNavActive(to, path, search);
   return (
@@ -345,11 +362,13 @@ function FlatFull({
       viewTransition
       prefetch="intent"
       onClick={onPick}
+      title={locked ? LOCKED_HINT : undefined}
       className={cn(
         "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
         active
           ? "bg-primary/10 text-primary font-semibold"
           : "text-foreground/80 hover:bg-muted",
+        locked && LOCKED_DIM_CLASS,
       )}
     >
       <Icon className="size-4" />
@@ -365,6 +384,7 @@ function GroupFull({
   path,
   search,
   onPick,
+  locked,
 }: Omit<GroupRowProps, "kind" | "collapsed">) {
   const Icon = group.Icon;
   const hasActive = group.items.some((i) => isNavActive(i.to, path, search));
@@ -374,9 +394,11 @@ function GroupFull({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
+        title={locked ? LOCKED_HINT : undefined}
         className={cn(
           "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted",
           hasActive ? "text-primary font-semibold" : "text-foreground/80",
+          locked && LOCKED_DIM_CLASS,
         )}
       >
         <Icon className="size-4" />
@@ -426,6 +448,7 @@ function FlatIcon({
   path,
   search,
   onPick,
+  locked,
 }: Omit<FlatRowProps, "kind" | "collapsed">) {
   const active = isNavActive(to, path, search);
   return (
@@ -440,6 +463,7 @@ function FlatIcon({
           active
             ? "bg-primary/10 text-primary"
             : "text-foreground/80 hover:bg-muted",
+          locked && LOCKED_DIM_CLASS,
         )}
         aria-label={label}
       >
@@ -455,11 +479,13 @@ function GroupIcon({
   path,
   search,
   onExpand,
+  locked,
 }: {
   group: NavGroup;
   path: string;
   search: string;
   onExpand: () => void;
+  locked?: boolean;
 }) {
   const Icon = group.Icon;
   const hasActive = group.items.some((i) => isNavActive(i.to, path, search));
@@ -472,6 +498,7 @@ function GroupIcon({
         className={cn(
           "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
           hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
+          locked && LOCKED_DIM_CLASS,
         )}
       >
         <Icon className="size-5" />
@@ -489,6 +516,7 @@ interface SubjectsRowProps {
   path: string;
   search: string;
   onPick: () => void;
+  locked?: boolean;
 }
 function SubjectsRow({
   collapsed,
@@ -498,9 +526,17 @@ function SubjectsRow({
   path,
   search,
   onPick,
+  locked,
 }: SubjectsRowProps) {
   if (collapsed)
-    return <SubjectsIcon path={path} search={search} onExpand={onExpand} />;
+    return (
+      <SubjectsIcon
+        path={path}
+        search={search}
+        onExpand={onExpand}
+        locked={locked}
+      />
+    );
   return (
     <SubjectsFull
       open={open}
@@ -508,6 +544,7 @@ function SubjectsRow({
       path={path}
       search={search}
       onPick={onPick}
+      locked={locked}
     />
   );
 }
@@ -518,6 +555,7 @@ function SubjectsFull({
   path,
   search,
   onPick,
+  locked,
 }: Omit<SubjectsRowProps, "collapsed" | "onExpand">) {
   return (
     <div>
@@ -525,7 +563,11 @@ function SubjectsFull({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted"
+        title={locked ? LOCKED_HINT : undefined}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted",
+          locked && LOCKED_DIM_CLASS,
+        )}
       >
         <SUBJECT_ICON className="size-4" />
         <span className="flex-1 text-left">학습과목</span>
@@ -568,10 +610,12 @@ function SubjectsIcon({
   path,
   search,
   onExpand,
+  locked,
 }: {
   path: string;
   search: string;
   onExpand: () => void;
+  locked?: boolean;
 }) {
   const hasActive = SUBJECT_NAV_ITEMS.some((i) =>
     isNavActive(i.href, path, search),
@@ -585,6 +629,7 @@ function SubjectsIcon({
         className={cn(
           "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
           hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
+          locked && LOCKED_DIM_CLASS,
         )}
       >
         <SUBJECT_ICON className="size-5" />

@@ -30,8 +30,11 @@ import { cn } from "~/core/lib/utils";
 import {
   FLAT_ADMIN,
   FLAT_HOME,
+  LOCKED_DIM_CLASS,
+  LOCKED_HINT,
   MOBILE_TAB_LABELS,
   type NavGroupId,
+  isAreaLocked,
   isNavActive,
   pickActiveLinkTo,
   useNavLayout,
@@ -50,6 +53,7 @@ export function StudentBottomBar({
   user,
   collapsed = false,
   onToggleCollapse,
+  features,
 }: {
   isStaff: boolean;
   // 상단 바를 모바일에서 숨기므로 알림/계정/검색/테마를 하단 더보기로 흡수.
@@ -59,8 +63,12 @@ export function StudentBottomBar({
   // 공부 화면 확대용 — 접으면 탭을 숨기고 핸들만 남긴다(상태는 레이아웃 소유).
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  // feat-8-008 — 구독/cohort 영역 플래그. 잠금 흐림(dim) 시각표시용(상단바·사이드바와 동일).
+  features?: string[];
 }) {
   const { core, secondary } = useNavLayout();
+  // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용. 서버 영역 게이트가 권위, 시각 힌트만.
+  const lockOf = (area?: string) => isAreaLocked(area, isStaff, features);
   const location = useLocation();
   const path = location.pathname;
   const search = location.search;
@@ -95,8 +103,9 @@ export function StudentBottomBar({
       id: g.id,
       label: MOBILE_TAB_LABELS[g.id as NavGroupId] ?? g.label,
       Icon: g.Icon,
+      locked: lockOf(g.area),
     })),
-    { id: "more", label: "더보기", Icon: MoreHorizontalIcon },
+    { id: "more", label: "더보기", Icon: MoreHorizontalIcon, locked: false },
   ];
 
   // active 탭 결정: 현재 path 가 어느 그룹에 속하는지.
@@ -179,7 +188,9 @@ export function StudentBottomBar({
                     </span>
                   ) : null}
                 </span>
-                <span className="text-[10px]">{t.label}</span>
+                <span className="inline-flex items-center gap-0.5 text-[10px]">
+                  {t.label}
+                </span>
               </>
             );
             const cls = cn(
@@ -187,6 +198,7 @@ export function StudentBottomBar({
               active
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground",
+              t.locked && LOCKED_DIM_CLASS,
             );
             return directTo ? (
               <Link
@@ -195,6 +207,7 @@ export function StudentBottomBar({
                 viewTransition
                 prefetch="intent"
                 className={cls}
+                title={t.locked ? LOCKED_HINT : undefined}
               >
                 {content}
               </Link>
@@ -204,6 +217,7 @@ export function StudentBottomBar({
                 type="button"
                 onClick={() => onTabClick(t.id)}
                 className={cls}
+                title={t.locked ? LOCKED_HINT : undefined}
               >
                 {content}
               </button>
@@ -236,9 +250,15 @@ export function StudentBottomBar({
                 inboxUnread={inboxUnread}
                 inboxHref={inboxHref}
                 user={user}
+                lockOf={lockOf}
               />
             ) : sheetTab === "subjects" ? (
-              <SubjectsSheet onPick={close} path={path} search={search} />
+              <SubjectsSheet
+                onPick={close}
+                path={path}
+                search={search}
+                locked={lockOf(core.find((g) => g.id === "subjects")?.area)}
+              />
             ) : sheetTab ? (
               <GroupSheet
                 tabId={sheetTab}
@@ -246,6 +266,7 @@ export function StudentBottomBar({
                 core={core}
                 path={path}
                 search={search}
+                lockOf={lockOf}
               />
             ) : null}
           </div>
@@ -261,18 +282,26 @@ function GroupSheet({
   core,
   path,
   search,
+  lockOf,
 }: {
   tabId: string;
   onPick: () => void;
   core: ReturnType<typeof useNavLayout>["core"];
   path: string;
   search: string;
+  lockOf: (area?: string) => boolean;
 }) {
   const g = core.find((x) => x.id === tabId);
   if (!g) return null;
+  const locked = lockOf(g.area);
   return (
     <div>
-      <p className="mb-2 text-sm font-bold">{g.label}</p>
+      <p
+        className={cn("mb-2 text-sm font-bold", locked && LOCKED_DIM_CLASS)}
+        title={locked ? LOCKED_HINT : undefined}
+      >
+        {g.label}
+      </p>
       <div className="flex flex-col gap-0.5">
         {(() => {
           const activeTo = pickActiveLinkTo(g.items, path, search);
@@ -304,14 +333,21 @@ function SubjectsSheet({
   onPick,
   path,
   search,
+  locked,
 }: {
   onPick: () => void;
   path: string;
   search: string;
+  locked?: boolean;
 }) {
   return (
     <div>
-      <p className="mb-3 text-sm font-bold">학습과목</p>
+      <p
+        className={cn("mb-3 text-sm font-bold", locked && LOCKED_DIM_CLASS)}
+        title={locked ? LOCKED_HINT : undefined}
+      >
+        학습과목
+      </p>
       {/* 1/2차 구분 없는 평면 6과목 */}
       <div className="flex flex-wrap gap-1.5">
         {SUBJECT_NAV_ITEMS.map((item) => {
@@ -346,6 +382,7 @@ function MoreSheet({
   inboxUnread,
   inboxHref,
   user,
+  lockOf,
 }: {
   isStaff: boolean;
   onPick: () => void;
@@ -353,6 +390,7 @@ function MoreSheet({
   inboxUnread: number;
   inboxHref: string;
   user?: BottomBarUser;
+  lockOf: (area?: string) => boolean;
 }) {
   return (
     <div>
@@ -389,9 +427,17 @@ function MoreSheet({
         <ThemeSwitcher />
       </div>
 
-      {secondary.map((g) => (
+      {secondary.map((g) => {
+        const locked = lockOf(g.area);
+        return (
         <div key={g.id} className="mb-3">
-          <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
+          <p
+            className={cn(
+              "text-muted-foreground mb-1 text-[11px] font-semibold",
+              locked && LOCKED_DIM_CLASS,
+            )}
+            title={locked ? LOCKED_HINT : undefined}
+          >
             {g.label}
           </p>
           <div className="flex flex-col gap-0.5">
@@ -409,7 +455,8 @@ function MoreSheet({
             ))}
           </div>
         </div>
-      ))}
+        );
+      })}
       <div className="border-border mt-3 border-t pt-3">
         <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
           바로가기

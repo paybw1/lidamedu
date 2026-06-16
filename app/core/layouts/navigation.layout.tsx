@@ -151,6 +151,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                         }}
                         inboxUnread={inbox.unread}
                         inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
+                        features={inbox.features}
                       />
                     ) : null
                   }
@@ -182,6 +183,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       }}
                       collapsed={navCollapsed}
                       onToggleCollapse={toggleNav}
+                      features={inbox.features}
                     />
                   )}
                 </Await>

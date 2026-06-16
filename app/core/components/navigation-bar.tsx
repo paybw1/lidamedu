@@ -1,7 +1,6 @@
 import {
   BellIcon,
   HomeIcon,
-  LockIcon,
   LogOutIcon,
   MenuIcon,
   PanelLeftOpenIcon,
@@ -21,6 +20,13 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "~/core/components/ui/navigation-menu";
+import {
+  LOCKED_DIM_CLASS,
+  LOCKED_HINT,
+  TOPBAR_DROPDOWNS,
+  isAreaLocked,
+  topbarDropdownItems,
+} from "~/core/lib/nav-groups";
 import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 
@@ -57,55 +63,9 @@ const CHIP_CLASS =
 
 const leadingFlats: SimpleLink[] = [{ label: "대시보드", to: "/dashboard" }];
 
-// 학습관리 항목 — SRS/플래시카드 같은 학원 용어 대신 학생이 바로 이해할 수 있는 라벨로.
-// (URL slug 는 보존 — 북마크/공유 링크 호환성.)
-// "알림" 은 상단 우측 종모양 벨(읽지 않은 수 배지 포함) 로 단일화 — 본 dropdown 에서 제거.
-const studyItems: SimpleLink[] = [
-  { label: "오늘 할 일", to: "/study/today" },
-  { label: "복습", to: "/study/srs" },
-  { label: "카드 암기", to: "/srs" },
-  { label: "학습 목표 · 진도", to: "/goals" },
-  { label: "학습 통계", to: "/study/stats" },
-  { label: "OX 약점 진단", to: "/study/ox-diagnosis" },
-  { label: "과제", to: "/assignments" },
-  // feat-10-006 — 정오문제(OX) 이력은 오답·복습 결과 성격이라 학습관리에 둠.
-  { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
-];
-
-const latestItems: SimpleLink[] = [
-  { label: "법 개정", to: "/latest/laws" },
-  { label: "최근 판례", to: "/latest/cases" },
-  { label: "1차 기출문제", to: "/latest/mcq?kind=past_exam" },
-  { label: "2차 기출문제", to: "/latest/essay" },
-  { label: "논문", to: "/latest/papers" },
-  { label: "추록·정오표", to: "/latest/book-updates" },
-];
-
-const studyAidItems: SimpleLink[] = [
-  { label: "오답노트", to: "/study/wrong-note" },
-  { label: "하이라이트", to: "/study/highlights" },
-  { label: "즐겨찾기", to: "/study/bookmarks" },
-  { label: "포스트잇", to: "/study/notes" },
-  { label: "메모", to: "/study/comments" },
-  // feat-9-004 — 생성형 AI Q&A.
-  { label: "AI Q&A", to: "/ai" },
-];
-
-// 1차 통합(3교시)·진도별은 /latest/mcq?kind=mock 한 색인에 함께 노출 — 한 항목으로 통합.
-const mockExamItems: SimpleLink[] = [
-  { label: "1차 모의고사", to: "/latest/mcq?kind=mock" },
-  { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
-  { label: "응시 결과", to: "/me/exam-results" },
-];
-
-const communityItems: SimpleLink[] = [
-  { label: "공지사항", to: "/announcements" },
-  { label: "자유게시판", to: "/community/free" },
-  { label: "스터디 모집", to: "/community/study" },
-  { label: "반별 게시판", to: "/cohort-boards" },
-  { label: "Q&A", to: "/qna" },
-  { label: "합격 후기", to: "/community/review" },
-];
+// 그룹 항목 정의는 SSOT(nav-groups.ts: NAV_GROUP_POOL + TOPBAR_DROPDOWNS)에서 파생 —
+// 상단바·사이드바·하단탭 단일 소스. 상단바 6 드롭다운 = 풀 그룹 조합(학습관리=today+review+manage 등).
+// "알림" 은 상단 우측 종모양 벨로 단일화(드롭다운에서 제거). URL slug 는 보존.
 
 const trailingFlats: SimpleLink[] = [{ label: "운영관리", to: "/admin" }];
 
@@ -341,15 +301,15 @@ function SimpleDropdown({
 }: {
   label: string;
   items: SimpleLink[];
-  /** feat-8-008 — true 면 트리거 라벨에 🔒 표시 (서버 게이트가 권위, 시각 힌트). */
+  /** feat-8-008 — true 면 트리거를 흐림(dim) 처리 (서버 게이트가 권위, 시각 힌트). */
   locked?: boolean;
 }) {
   return (
     <NavigationMenuItem>
-      <NavigationMenuTrigger>
-        {locked ? (
-          <LockIcon className="mr-1 size-3 opacity-60" aria-label="잠김" />
-        ) : null}
+      <NavigationMenuTrigger
+        className={cn(locked && LOCKED_DIM_CLASS)}
+        title={locked ? LOCKED_HINT : undefined}
+      >
         {label}
       </NavigationMenuTrigger>
       <NavigationMenuContent>
@@ -368,6 +328,56 @@ function SimpleDropdown({
         </div>
       </NavigationMenuContent>
     </NavigationMenuItem>
+  );
+}
+
+// 학습과목 드롭다운 — V5 (chip 가로 1줄). 항목 = SUBJECT_NAV_ITEMS (SSOT).
+function SubjectsDropdown({ locked }: { locked: boolean }) {
+  return (
+    <NavigationMenuItem>
+      <NavigationMenuTrigger
+        className={cn(locked && LOCKED_DIM_CLASS)}
+        title={locked ? LOCKED_HINT : undefined}
+      >
+        학습과목
+      </NavigationMenuTrigger>
+      <NavigationMenuContent>
+        {/* 1/2차 구분 없는 평면 6과목 — 가로 1줄(좌측 정렬) */}
+        <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
+          {SUBJECT_NAV_ITEMS.map((item) => (
+            <NavigationMenuLink asChild key={item.href}>
+              <Link
+                to={item.href}
+                className={cn(CHIP_CLASS, "whitespace-nowrap")}
+              >
+                {item.name}
+              </Link>
+            </NavigationMenuLink>
+          ))}
+        </div>
+      </NavigationMenuContent>
+    </NavigationMenuItem>
+  );
+}
+
+// 모바일 시트 — 학습과목 그룹(SUBJECT_NAV_ITEMS).
+function MobileSubjects() {
+  return (
+    <>
+      <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
+        학습과목
+      </p>
+      {SUBJECT_NAV_ITEMS.map((item) => (
+        <SheetClose key={item.href} asChild>
+          <Link
+            to={item.href}
+            className="hover:bg-accent rounded-md px-3 py-2 pl-5"
+          >
+            {item.name}
+          </Link>
+        </SheetClose>
+      ))}
+    </>
   );
 }
 
@@ -402,13 +412,8 @@ export function NavigationBar({
 }) {
   // 사이드바 모드 — 상단 nav 전체 미렌더. 사이드바가 로고·도구·유저메뉴 흡수.
   if (hideAll) return null;
-  // feat-8-008 — 영역 잠금. staff 면제. 미산정 상태에선 잠금 미표시(로딩 깜빡임 방지).
-  const isLocked = (area: string) =>
-    !isStaff && features !== undefined && !features.includes(area);
-  const lockSubjects = isLocked("area_subjects");
-  const lockStudyAids = isLocked("area_study_aids");
-  const lockStudyMgmt = isLocked("area_study_mgmt");
-  const lockMockExams = isLocked("area_mock_exams");
+  // feat-8-008 — 영역 잠금은 TOPBAR_DROPDOWNS 의 area 로 드롭다운별 판정(isAreaLocked) →
+  //   흐림(dim) 처리. staff 면제·미산정 시 미표시. 서버 영역 게이트가 권위(시각 힌트만).
   return (
     <nav
       className={cn(
@@ -443,53 +448,22 @@ export function NavigationBar({
               {leadingFlats.map((m) => (
                 <FlatLink key={m.to} {...m} />
               ))}
-
-              <SimpleDropdown
-                label="학습관리"
-                items={studyItems}
-                locked={lockStudyMgmt}
-              />
-
-              {/* 학습과목 dropdown — V5 (카테고리 row + chip) */}
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>
-                  {lockSubjects ? (
-                    <LockIcon
-                      className="mr-1 size-3 opacity-60"
-                      aria-label="잠김"
-                    />
-                  ) : null}
-                  학습과목
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  {/* 1/2차 구분 없는 평면 6과목 — 가로 1줄(좌측 정렬) */}
-                  <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
-                    {SUBJECT_NAV_ITEMS.map((item) => (
-                      <NavigationMenuLink asChild key={item.href}>
-                        <Link
-                          to={item.href}
-                          className={cn(CHIP_CLASS, "whitespace-nowrap")}
-                        >
-                          {item.name}
-                        </Link>
-                      </NavigationMenuLink>
-                    ))}
-                  </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-
-              <SimpleDropdown
-                label="학습지원"
-                items={studyAidItems}
-                locked={lockStudyAids}
-              />
-              <SimpleDropdown label="학습정보" items={latestItems} />
-              <SimpleDropdown
-                label="모의고사"
-                items={mockExamItems}
-                locked={lockMockExams}
-              />
-              <SimpleDropdown label="커뮤니티" items={communityItems} />
+              {/* SSOT 파생 — 현행 6 드롭다운 순서·구성 동일. 학습과목만 chip 렌더. */}
+              {TOPBAR_DROPDOWNS.map((d) =>
+                d.subjects ? (
+                  <SubjectsDropdown
+                    key={d.label}
+                    locked={isAreaLocked(d.area, isStaff, features)}
+                  />
+                ) : (
+                  <SimpleDropdown
+                    key={d.label}
+                    label={d.label}
+                    items={topbarDropdownItems(d.groupIds ?? [])}
+                    locked={isAreaLocked(d.area, isStaff, features)}
+                  />
+                ),
+              )}
 
               {isStaff
                 ? trailingFlats.map((m) => <FlatLink key={m.to} {...m} />)
@@ -546,27 +520,18 @@ export function NavigationBar({
                     </SheetClose>
                   ))}
 
-                  <MobileGroup label="학습관리" items={studyItems} />
-
-                  <p className="text-muted-foreground mt-3 px-3 text-xs font-semibold tracking-wide uppercase">
-                    학습과목
-                  </p>
-                  {/* 1/2차 구분 없는 평면 6과목 */}
-                  {SUBJECT_NAV_ITEMS.map((item) => (
-                    <SheetClose key={item.href} asChild>
-                      <Link
-                        to={item.href}
-                        className="hover:bg-accent rounded-md px-3 py-2 pl-5"
-                      >
-                        {item.name}
-                      </Link>
-                    </SheetClose>
-                  ))}
-
-                  <MobileGroup label="학습지원" items={studyAidItems} />
-                  <MobileGroup label="학습정보" items={latestItems} />
-                  <MobileGroup label="모의고사" items={mockExamItems} />
-                  <MobileGroup label="커뮤니티" items={communityItems} />
+                  {/* SSOT 파생 — 로그아웃 햄버거(잠금 N/A: 비인증=구독 없음). */}
+                  {TOPBAR_DROPDOWNS.map((d) =>
+                    d.subjects ? (
+                      <MobileSubjects key={d.label} />
+                    ) : (
+                      <MobileGroup
+                        key={d.label}
+                        label={d.label}
+                        items={topbarDropdownItems(d.groupIds ?? [])}
+                      />
+                    ),
+                  )}
 
                   {isStaff
                     ? trailingFlats.map((m) => (
