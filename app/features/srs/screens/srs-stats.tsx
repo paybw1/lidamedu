@@ -21,7 +21,7 @@ import { getStats } from "~/features/srs/srs.server";
 import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "카드 암기 통계 | 리담" },
+  { title: "암기 카드 통계 | 리담" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -46,10 +46,10 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
       <header className="mb-6 flex items-baseline justify-between">
         <div>
           <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-            <TrendingUpIcon className="size-3" /> 카드 암기 · 통계
+            <TrendingUpIcon className="size-3" /> 암기 카드 · 통계
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-            카드 암기 진척도
+            암기 카드 진척도
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -60,7 +60,7 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
           </Button>
           <Button asChild size="sm">
             <Link to="/srs">
-              카드 암기 시작 <ArrowRightIcon className="size-3.5" />
+              암기 카드 시작 <ArrowRightIcon className="size-3.5" />
             </Link>
           </Button>
         </div>

@@ -69,7 +69,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
         <header className="mb-6">
           <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
             <ShuffleIcon className="size-3.5" />
-            OX QUIZ
+            정오문제 퀴즈
           </p>
           <h1 className="text-[28px] font-extrabold tracking-tight text-foreground leading-tight">
             정오문제 무작위
@@ -77,14 +77,14 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
           <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
             {shuffled.length > 0 ? (
               <>
-                전체 OX 가능 지문{" "}
+                전체 정오문제 가능 지문{" "}
                 <span className="font-bold tabular-nums text-foreground">
                   {shuffled.length}
                 </span>
                 건 · 무작위 순서 · 학습 모드 (즉시 피드백)
               </>
             ) : (
-              "등록된 OX 지문이 없습니다."
+              "등록된 정오문제 지문이 없습니다."
             )}
           </p>
         </header>
@@ -93,7 +93,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20 text-center">
             <ShuffleIcon className="mb-3 size-10 text-muted-foreground/40" />
             <p className="text-sm font-medium text-muted-foreground">
-              등록된 OX 가능 지문이 없습니다.
+              등록된 정오문제 가능 지문이 없습니다.
             </p>
           </div>
         ) : (

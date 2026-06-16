@@ -53,7 +53,7 @@ const STATUS_OPTIONS: { value: OxReviewStatus; label: string; hint: string }[] =
   },
   {
     value: "ineligible",
-    label: "OX 불가",
+    label: "정오문제 불가",
     hint: "ox_ineligible=true",
   },
   {
@@ -139,7 +139,7 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
       title="정오문제 관리"
       desc={
         <>
-          객관식 보기와 박스형 사례 지문 중 OX(정오) 후보를 한 화면에서 검토합니다.
+          객관식 보기와 박스형 사례 지문 중 정오문제 후보를 한 화면에서 검토합니다.
           학생에게 노출되는 조건은{" "}
           <span className="font-semibold">노출 중</span> —{" "}
           <code className="bg-muted rounded px-1 text-[11px]">
@@ -221,7 +221,7 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
         <div className="border-border bg-card rounded-xl border py-16 text-center shadow-sm">
           <CheckCircle2Icon className="text-muted-foreground mx-auto mb-3 size-8" />
           <p className="text-muted-foreground text-sm">
-            조건에 맞는 OX 후보가 없습니다.
+            조건에 맞는 정오문제 후보가 없습니다.
           </p>
         </div>
       ) : (
@@ -233,7 +233,7 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
             { label: "지문" },
             { label: "조문", width: "11rem" },
             { label: "정답 OX", width: "9rem" },
-            { label: "OX 불가", width: "7rem" },
+            { label: "정오문제 불가", width: "7rem" },
             { label: "편집", width: "4rem", align: "center" },
           ]}
         >

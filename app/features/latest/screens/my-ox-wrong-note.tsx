@@ -35,7 +35,7 @@ import {
 import type { Route } from "./+types/my-ox-wrong-note";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "OX 오답 노트 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 오답 노트 | Lidam Patent Attorney Academy" },
 ];
 
 const submitItemSchema = z.object({
@@ -223,7 +223,7 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">OX 오답 노트</h1>
+        <h1 className="text-2xl font-bold tracking-tight">정오문제 오답 노트</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           정오문제 시험·풀이에서 마지막 응답이 오답이었던 지문만 모아 다시
           풀어볼 수 있습니다.
@@ -257,7 +257,7 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
           />
           <p className="text-muted-foreground mt-3 text-sm">
             {items.length === 0
-              ? "오답 노트가 비어있습니다. 모두 정답 처리되었거나 아직 OX 시험 응시 이력이 없습니다."
+              ? "오답 노트가 비어있습니다. 모두 정답 처리되었거나 아직 정오문제 시험 응시 이력이 없습니다."
               : "선택한 기간에 해당하는 오답 지문이 없습니다."}
           </p>
         </div>

@@ -64,7 +64,7 @@ export const FORMAT_LABEL: Record<ProblemFormat, string> = {
   mc_short: "단답형",
   mc_box: "박스형",
   mc_case: "사례형",
-  ox: "OX",
+  ox: "정오문제",
   blank: "빈칸",
   subjective: "주관식",
 };

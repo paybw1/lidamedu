@@ -365,9 +365,9 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </Card>
       )}
 
-      {/* ── OX 채점 섹션 ─────────────────────────────────────────── */}
+      {/* ── 정오문제 채점 섹션 ─────────────────────────────────────────── */}
       <p className="text-muted-foreground mt-8 mb-2 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-        OX 채점
+        정오문제 채점
       </p>
 
       <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -385,7 +385,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         />
         <KpiTile
           icon={<RepeatIcon className="size-3" />}
-          label="총 OX 항목"
+          label="총 정오문제 항목"
           value={oxCounts.total}
           tone="sky"
         />
@@ -403,8 +403,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <RepeatIcon className="mx-auto size-6 opacity-30" />
             <p>
               {oxCounts.total === 0
-                ? "아직 복습 일정에 들어간 OX 항목이 없습니다. OX 모드에서 선택지/박스를 풀면 자동으로 일정이 잡힙니다."
-                : `지금 풀 OX 항목이 없습니다. 7일 안 ${oxCounts.upcoming7d}건 예정.`}
+                ? "아직 복습 일정에 들어간 정오문제 항목이 없습니다. 정오문제 모드에서 선택지/박스를 풀면 자동으로 일정이 잡힙니다."
+                : `지금 풀 정오문제 항목이 없습니다. 7일 안 ${oxCounts.upcoming7d}건 예정.`}
             </p>
           </CardContent>
         </Card>
@@ -414,7 +414,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-foreground text-sm font-bold">
-                  지금 풀어야 할 OX 항목 {oxItems.length}건
+                  지금 풀어야 할 정오문제 항목 {oxItems.length}건
                 </p>
                 <p className="text-muted-foreground text-xs">
                   선택지·박스 항목 단위로 O/X 를 다시 채점하면 복습 일정이
@@ -423,7 +423,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
               </div>
               <Button size="sm" asChild className="rounded-full">
                 <Link to="/study/srs/ox" viewTransition>
-                  OX 복습 시작 <ArrowRightIcon className="size-3.5" />
+                  정오문제 복습 시작 <ArrowRightIcon className="size-3.5" />
                 </Link>
               </Button>
             </div>
@@ -503,7 +503,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       {/* 일정 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
         복습 일정: 맞히면 1 → 3 → 7 → 14 → 30 → 60일(최대 90일) 간격으로
-        벌어집니다. 틀리면 다음 날 다시 풀게 잡힙니다. 객관식·빈칸·OX 모두 같은
+        벌어집니다. 틀리면 다음 날 다시 풀게 잡힙니다. 객관식·빈칸·정오문제 모두 같은
         방식이고, 조문 정독은 방문 횟수에 따라 7·14·30·60일.
       </p>
     </StudentShell>
@@ -621,7 +621,7 @@ function PasserBenchmarkSection({
       <CardContent className="space-y-2 pb-4">
         <BenchmarkRow label="객관식 풀 것" metric={benchmark.problemDue} />
         <BenchmarkRow label="빈칸 풀 세트" metric={benchmark.blankDueSets} />
-        <BenchmarkRow label="OX 풀 항목" metric={benchmark.oxDue} />
+        <BenchmarkRow label="정오문제 풀 항목" metric={benchmark.oxDue} />
         <BenchmarkRow label="조문 다시 볼 것" metric={benchmark.articleDue} />
         <div className="border-border/40 mt-3 flex items-center justify-between gap-2 border-t pt-2 text-[11px]">
           <span className="text-muted-foreground">총 틀린 횟수</span>

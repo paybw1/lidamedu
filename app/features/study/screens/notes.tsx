@@ -74,7 +74,7 @@ const TYPE_OPTIONS = [
   ["article", "조문"],
   ["case", "판례"],
   ["problem", "문제"],
-  ["ox", "OX"],
+  ["ox", "정오문제"],
 ] as const;
 
 export default function Notes({ loaderData }: Route.ComponentProps) {
@@ -134,7 +134,7 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
         { label: "조문", value: counts.article, dotClass: "bg-primary" },
         { label: "판례", value: counts.case, dotClass: "bg-violet-500" },
         { label: "문제", value: counts.problem, dotClass: "bg-amber-500" },
-        { label: "OX", value: counts.ox, dotClass: "bg-rose-500" },
+        { label: "정오문제", value: counts.ox, dotClass: "bg-rose-500" },
       ]}
     >
       <FilterBar

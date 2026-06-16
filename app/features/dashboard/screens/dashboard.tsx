@@ -647,7 +647,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
              요약+버튼까지만 (지시서 §1-A 경계 규칙). 합격선 컨설팅 액션은 아래
              WEAK SPOTS 섹션에 합쳐 노출. */}
 
-          <SectionBand eyebrow="PASS FORECAST · 합격 진단" />
+          <SectionBand eyebrow="PASS FORECAST · 합격 예측" />
           <DashGrid>
             <SpanCol span={6}>
               <PassPredictionCard prediction={passPrediction} />

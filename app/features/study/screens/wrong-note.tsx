@@ -104,7 +104,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
       summaryStats={[
         { label: "객관식 오답", value: items.length, dotClass: "bg-rose-500" },
         {
-          label: "정오문제(OX) 오답",
+          label: "정오문제 오답",
           value: oxItems.length,
           dotClass: "bg-amber-500",
         },
@@ -206,13 +206,13 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section data-testid="ox-wrong-section">
-        <SectionTitle title="정오문제(OX) 오답" count={ox.length} />
+        <SectionTitle title="정오문제 오답" count={ox.length} />
         {ox.length === 0 ? (
           <EmptyState
             icon={CircleCheckIcon}
             tone="celebrate"
-            title="OX 오답이 없습니다"
-            body="OX 무작위 풀이에서 틀린 지문이 자동으로 모이는 곳입니다."
+            title="정오문제 오답이 없습니다"
+            body="정오문제 무작위 풀이에서 틀린 지문이 자동으로 모이는 곳입니다."
           />
         ) : (
           <ListStack>

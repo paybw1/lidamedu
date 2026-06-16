@@ -92,7 +92,7 @@ export function PassPredictionCard({
         }}
       >
         <div>
-          <Eyebrow style={{ marginBottom: 6 }}>합격 진단 점수</Eyebrow>
+          <Eyebrow style={{ marginBottom: 6 }}>합격 예측 점수</Eyebrow>
           <Title size={20}>합격까지 얼마나 왔는지</Title>
         </div>
         <Chip tone="blue">실시간</Chip>

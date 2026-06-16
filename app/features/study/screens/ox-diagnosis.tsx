@@ -13,7 +13,7 @@ import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import type { Route } from "./+types/ox-diagnosis";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "OX 약점 진단 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 약점 진단 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -50,7 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function OxDiagnosisScreen({ loaderData }: Route.ComponentProps) {
   if (loaderData.myAnalysisOff)
-    return <MyAnalysisOffNotice feature="OX 약점 진단" />;
+    return <MyAnalysisOffNotice feature="정오문제 약점 진단" />;
   const { diagnosis, passer } = loaderData;
 
   return (
@@ -61,9 +61,9 @@ export default function OxDiagnosisScreen({ loaderData }: Route.ComponentProps) 
         </p>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">OX 약점 진단</h1>
+            <h1 className="text-2xl font-bold tracking-tight">정오문제 약점 진단</h1>
             <p className="text-muted-foreground text-sm">
-              OX 지문을 단원 × 지식종류(조문 · 판례 · 이론)로 교차 분석합니다.
+              정오문제 지문을 단원 × 지식종류(조문 · 판례 · 이론)로 교차 분석합니다.
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>

@@ -300,7 +300,7 @@ export default function AdminCohortStats({
             />
           </div>
 
-          {/* feat-2-018 SRS 코호트 인사이트 */}
+          {/* feat-2-018 반 인사이트 */}
           <CohortSrsSection
             srs={srs}
             cohortName={cohort.name}
@@ -451,7 +451,7 @@ function RankCard({
   );
 }
 
-// ─── feat-2-018 SRS 코호트 인사이트 ───
+// ─── feat-2-018 반 인사이트 ───
 
 function CohortSrsSection({
   srs,
@@ -465,7 +465,7 @@ function CohortSrsSection({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-bold tracking-tight">SRS 코호트 인사이트</h2>
+          <h2 className="text-base font-bold tracking-tight">반 인사이트</h2>
           <p className="text-muted-foreground text-xs">
             반 멤버 {srs.memberCount}명 · 총 due {srs.totalDueAcrossAll.toLocaleString("ko-KR")}건
             <span className="ml-2">
@@ -486,7 +486,7 @@ function CohortSrsSection({
           </p>
         </div>
         <p className="text-muted-foreground text-xs">
-          {cohortName} 반의 4 종 SRS (객관식·빈칸·OX·조문) 평균 + 가장 정체된 학생.
+          {cohortName} 반의 4 종 복습 (객관식·빈칸·정오문제·조문) 평균 + 가장 정체된 학생.
         </p>
       </CardHeader>
       <CardContent className="space-y-4 pb-4">
@@ -494,7 +494,7 @@ function CohortSrsSection({
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           <SrsAvgTile label="객관식 평균 due" value={srs.avgProblemDue} />
           <SrsAvgTile label="빈칸 평균 due (세트)" value={srs.avgBlankDueSets} />
-          <SrsAvgTile label="OX 평균 due" value={srs.avgOxDue} />
+          <SrsAvgTile label="정오문제 평균 due" value={srs.avgOxDue} />
           <SrsAvgTile label="조문 평균 due" value={srs.avgArticleDue} />
         </div>
 
@@ -525,7 +525,7 @@ function CohortSrsSection({
                       빈칸
                     </th>
                     <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
-                      OX
+                      정오문제
                     </th>
                     <th className="text-muted-foreground hidden px-2 py-2 text-right font-mono text-[10px] font-semibold tracking-[0.04em] uppercase sm:table-cell">
                       조문
@@ -584,7 +584,7 @@ function CohortSrsSection({
           </div>
         )}
         <p className="text-muted-foreground text-[11px]">
-          누적 실패(객관식+빈칸+OX 합산): {srs.totalLapses.toLocaleString("ko-KR")}회.
+          누적 실패(객관식+빈칸+정오문제 합산): {srs.totalLapses.toLocaleString("ko-KR")}회.
         </p>
       </CardContent>
     </Card>

@@ -86,7 +86,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "problems",
-    label: "객관식 문제 · OX",
+    label: "객관식 문제 · 정오문제",
     Icon: ListChecksIcon,
     screens: [
       // 출제 흐름 순서대로 — AI 초안 → 강사 검토 → 직접 출제/목록 → 팩 → 통합 시험.
@@ -96,7 +96,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "지문 텍스트 검수", to: "/admin/problems/text-conversion" },
       { label: "문제 직접 만들기", to: "/admin/problems/new" },
       { label: "전체 문제 보기", to: "/admin/problems" },
-      { label: "OX 검수", to: "/admin/problems/ox" },
+      { label: "정오문제 검수", to: "/admin/problems/ox" },
       { label: "정답률·통계", to: "/admin/problems/stats" },
       // 학생용 라우트(/latest/mcq) — staff 진입 시 picker 노출.
       // ?kind=mock 은 가상 통합 필터 (mock_full + mock_progressive) — 한 화면.

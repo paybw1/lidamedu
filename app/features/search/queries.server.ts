@@ -438,7 +438,7 @@ async function resolveAnnotationHrefs(
           group,
           id: l.id,
           primaryLabel: l.primary,
-          secondaryLabel: `${l.targetType === "problem_choice" ? "OX 지문" : "OX 박스"} · ${p.label}`,
+          secondaryLabel: `${l.targetType === "problem_choice" ? "정오문제 지문" : "정오문제 박스"} · ${p.label}`,
           bodySnippet: snippet(l.body),
           href: `/subjects/${p.lawCode}/problems/${parentId}`,
           lawCode: p.lawCode,

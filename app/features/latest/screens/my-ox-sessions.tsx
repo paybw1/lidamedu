@@ -61,7 +61,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight">정오문제 응시 이력</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          1차 객관식 팩을 OX 시험 모드로 푼 이력. 정답률·미응답·소요 시간을 한
+          1차 객관식 팩을 정오문제 시험 모드로 푼 이력. 정답률·미응답·소요 시간을 한
           눈에 확인합니다.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -87,7 +87,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
           <p className="text-muted-foreground mt-3 text-sm">
             {sessions.length === 0 ? (
               <>
-                아직 OX 시험 응시 이력이 없습니다. 1차 모의고사 또는 기출 팩에서{" "}
+                아직 정오문제 시험 응시 이력이 없습니다. 1차 모의고사 또는 기출 팩에서{" "}
                 <strong>정오문제 시험</strong> 버튼으로 풀어보세요.
               </>
             ) : (

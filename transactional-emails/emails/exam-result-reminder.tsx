@@ -51,7 +51,7 @@ export default function ExamResultReminder({
                 가치를 받으실 수 있습니다.
               </Text>
               <Text className="m-0 mt-2 text-sm text-gray-700">
-                • <strong>합격 진단 점수</strong>가 더 정확해집니다 (휴리스틱 →
+                • <strong>합격 예측 점수</strong>가 더 정확해집니다 (휴리스틱 →
                 실측 합격자 기반 모델)
               </Text>
               <Text className="m-0 mt-1 text-sm text-gray-700">

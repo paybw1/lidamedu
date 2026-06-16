@@ -1,5 +1,5 @@
 // 모의고사 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 3 카테고리 탭 strip.
-// 1차 통합 모의고사 · 1차 진도별 모의고사 · 2차 모의고사(온라인 GS) 화면이 공유.
+// 1차 전체 모의고사 · 1차 진도별 모의고사 · 2차 모의고사(온라인 GS) 화면이 공유.
 // LatestShell(학습정보)·CommunityShell(커뮤니티)과 같은 패턴.
 
 import {
@@ -28,7 +28,7 @@ const CATEGORIES: CategoryDef[] = [
   {
     id: "full",
     to: "/latest/mcq/exams",
-    label: "1차 통합 모의고사",
+    label: "1차 전체 모의고사",
     dotClass: "bg-primary",
     Icon: LayersIcon,
   },

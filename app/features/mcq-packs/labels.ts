@@ -15,8 +15,8 @@ export const MCQ_PACK_KIND_LABELS: Record<McqPackKind, string> = {
 
 export const MCQ_PACK_KIND_SHORT: Record<McqPackKind, string> = {
   past_exam: "기출",
-  mock_full: "모의",
-  mock_progressive: "모의",
+  mock_full: "전체",
+  mock_progressive: "진도별",
   other: "기타",
 };
 

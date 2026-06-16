@@ -40,7 +40,7 @@ export function ChoiceEditor({
   layout?: "default" | "compact";
   polarity?: ProblemPolarity | null;
   format: ProblemFormat;
-  // 부모에서 "전체 OX 불가 체크/해제" 를 수행했을 때 사용하는 신호.
+  // 부모에서 "전체 정오문제 불가 체크/해제" 를 수행했을 때 사용하는 신호.
   // epoch 가 바뀔 때마다 ineligible 값을 자식 state 에 적용한다.
   bulkOxSignal?: { epoch: number; ineligible: boolean };
   // feat-4-A-342 — 조문번호 → 체계도 소분류 옵션. 세분화 조문(제29조 등)일 때 select 노출.
@@ -102,7 +102,7 @@ export function ChoiceEditor({
     setOxTruth((next ?? "") as OxTruth | "");
   }, [selectedAsCorrect, polarity, format, oxIneligible]);
 
-  // 부모에서 format 이 사례형(mc_case) 으로 변경되면 OX 불가 + 종류 조문 기본을 즉시 반영.
+  // 부모에서 format 이 사례형(mc_case) 으로 변경되면 정오문제 불가 + 종류 조문 기본을 즉시 반영.
   // 저장 전이라도 운영자가 메타를 바꿀 때 의미 있는 default 가 보이도록.
   const prevFormatRef = useRef<ProblemFormat>(format);
   useEffect(() => {
@@ -117,7 +117,7 @@ export function ChoiceEditor({
     }
   }, [format]);
 
-  // bulkOxSignal — 부모에서 전체 OX 불가 일괄 토글 시 epoch 가 증가. 그 때마다 적용.
+  // bulkOxSignal — 부모에서 전체 정오문제 불가 일괄 토글 시 epoch 가 증가. 그 때마다 적용.
   const lastBulkEpochRef = useRef<number | null>(null);
   useEffect(() => {
     if (!bulkOxSignal) return;
@@ -272,7 +272,7 @@ export function ChoiceEditor({
               ? "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
               : "text-muted-foreground",
           )}
-          title="단독 OX 문제로 분리할 수 없는 지문 (예: 보기묶음 ‘①, ④’, 사례 의존)"
+          title="단독 정오문제로 분리할 수 없는 지문 (예: 보기묶음 ‘①, ④’, 사례 의존)"
         >
           <input
             type="checkbox"
@@ -284,7 +284,7 @@ export function ChoiceEditor({
               if (e.target.checked) setOxTruth("");
             }}
           />
-          OX 불가
+          정오문제 불가
         </label>
         <div className="ml-auto">
           {/* 박스형(mc_box) 의 choice 는 보기묶음(예: "㉮㉯") 이라 분류·관련조문 불필요 → 셀렉트 숨기고 빈 값으로 hidden 제출. */}

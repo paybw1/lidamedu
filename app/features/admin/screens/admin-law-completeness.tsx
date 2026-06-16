@@ -147,7 +147,7 @@ export default function AdminLawCompleteness({
       role={role}
       width={960}
       title={`${subject.name} 완성도`}
-      desc={`실 조문(${EXAM_LABEL[subject.exam]} 시험) 기준 콘텐츠 갭 진단. 각 차원에서 미커버 항목을 채워 학습 자료를 완성하세요.`}
+      desc={`실 조문(${EXAM_LABEL[subject.exam]} 시험) 기준 콘텐츠 갭 점검. 각 차원에서 미커버 항목을 채워 학습 자료를 완성하세요.`}
       headerRight={
         <div className="flex flex-wrap gap-2">
           <aaFetcher.Form method="post">

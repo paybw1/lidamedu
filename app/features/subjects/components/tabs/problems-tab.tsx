@@ -298,8 +298,8 @@ export function ProblemsTab({
             />
             <ModeCard
               icon={<CheckSquareIcon className="size-[18px]" />}
-              title="정오문제 OX"
-              desc="OX 지문 무작위 빠른 풀이"
+              title="정오문제"
+              desc="정오문제 지문 무작위 빠른 풀이"
               href={`/subjects/${subject.slug}/ox`}
               cta="시작"
               ctaVariant="outline"

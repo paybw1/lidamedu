@@ -268,7 +268,7 @@ function ConsentCard({
         <ConsentToggle
           intent="consentA"
           title="내 학습 분석 (A)"
-          desc="내 학습 기록으로 학습통계·OX 약점진단·복습·암기 기능을 제공합니다. 끄면 이 기능들이 꺼집니다 — 기존 학습 기록은 삭제되지 않으며 다시 켜면 그대로 복구됩니다."
+          desc="내 학습 기록으로 학습 통계·정오문제 약점진단·복습·암기 기능을 제공합니다. 끄면 이 기능들이 꺼집니다 — 기존 학습 기록은 삭제되지 않으며 다시 켜면 그대로 복구됩니다."
           consentedAt={myAnalysisConsentedAt}
         />
         <ConsentToggle

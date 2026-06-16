@@ -479,7 +479,7 @@ function OverviewTab({ data }: { data: StatsData }) {
           icon={TrendingDownIcon}
           label="오답 큐"
           value={String(aidCounts.wrongMcq + aidCounts.wrongOx)}
-          subtle={`객관식 ${aidCounts.wrongMcq} · OX ${aidCounts.wrongOx}`}
+          subtle={`객관식 ${aidCounts.wrongMcq} · 정오문제 ${aidCounts.wrongOx}`}
           warn={aidCounts.wrongMcq + aidCounts.wrongOx > 0}
         />
         <KpiCard
@@ -869,7 +869,7 @@ function FirstExamTab({ data }: { data: StatsData }) {
           icon={TrendingDownIcon}
           label="오답 큐"
           value={String(aidCounts.wrongMcq + aidCounts.wrongOx)}
-          subtle={`객관식 ${aidCounts.wrongMcq} · OX ${aidCounts.wrongOx}`}
+          subtle={`객관식 ${aidCounts.wrongMcq} · 정오문제 ${aidCounts.wrongOx}`}
           warn={aidCounts.wrongMcq + aidCounts.wrongOx > 0}
         />
         <KpiCard
@@ -1209,7 +1209,7 @@ function accuracyTrendBgTone(pct: number | null): string {
   return "bg-rose-500/80";
 }
 
-// feat-7-027 — 합격 진단 점수 추이 (최근 30일)
+// feat-7-027 — 합격 예측 점수 추이 (최근 30일)
 function passScoreBgTone(score: number): string {
   if (score >= 80) return "bg-emerald-500/80";
   if (score >= 60) return "bg-lime-500/80";
@@ -1228,7 +1228,7 @@ function PassPredictionTrendCard({
       <Card>
         <CardHeader className="pb-2">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            합격 진단 점수 추이
+            합격 예측 점수 추이
           </p>
         </CardHeader>
         <CardContent>
@@ -1247,7 +1247,7 @@ function PassPredictionTrendCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            합격 진단 점수 추이 ({items.length}일)
+            합격 예측 점수 추이 ({items.length}일)
           </p>
           <Badge variant="outline" className="text-[10px]">
             현재 {latest.score} · 시작 {oldest.score} ·{" "}

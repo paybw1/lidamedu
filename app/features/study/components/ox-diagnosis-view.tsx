@@ -83,13 +83,13 @@ function EmptyState({ audience }: { audience: Audience }) {
         <BrainIcon className="text-muted-foreground/50 size-8" />
         <p className="text-foreground font-semibold">
           {audience === "self"
-            ? "아직 분석할 OX 데이터가 부족합니다"
-            : "이 학생의 OX 데이터가 아직 부족합니다"}
+            ? "아직 분석할 정오문제 데이터가 부족합니다"
+            : "이 학생의 정오문제 데이터가 아직 부족합니다"}
         </p>
         <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
           {audience === "self"
-            ? "조문 · 단원 페이지의 OX 패널이나 OX 시험에서 지문을 풀면, 단원별 · 지식종류별(조문/판례/이론) 약점 진단이 여기에 쌓입니다."
-            : "학생이 OX 지문을 풀면 단원별 · 지식종류별(조문/판례/이론) 약점 진단이 여기에 쌓입니다."}
+            ? "조문 · 단원 페이지의 정오문제 패널이나 정오문제 시험에서 지문을 풀면, 단원별 · 지식종류별(조문/판례/이론) 약점 진단이 여기에 쌓입니다."
+            : "학생이 정오문제 지문을 풀면 단원별 · 지식종류별(조문/판례/이론) 약점 진단이 여기에 쌓입니다."}
         </p>
         {audience === "self" ? (
           <Button size="sm" asChild className="mt-1">
@@ -108,7 +108,7 @@ function OverviewRow({ diagnosis }: { diagnosis: OxDiagnosis }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <StatTile
-        label="누적 OX 정답률"
+        label="누적 정오문제 정답률"
         value={totals.accuracyPct !== null ? `${totals.accuracyPct}%` : "—"}
         sub={`${totals.correct}/${totals.attempts}개 (최신 기준)`}
       />

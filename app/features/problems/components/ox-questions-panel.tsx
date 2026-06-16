@@ -73,7 +73,7 @@ export function OxQuestionsPanel({
   if (items.length === 0) {
     return (
       <p className="text-muted-foreground text-xs leading-relaxed">
-        이 조문에 OX 가능 지문이 아직 분류되지 않았습니다.
+        이 조문에 정오문제 가능 지문이 아직 분류되지 않았습니다.
       </p>
     );
   }

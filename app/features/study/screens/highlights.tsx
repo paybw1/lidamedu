@@ -96,7 +96,7 @@ const TYPE_OPTIONS = [
   ["article", "조문"],
   ["case", "판례"],
   ["problem", "문제"],
-  ["ox", "OX"],
+  ["ox", "정오문제"],
 ] as const;
 
 export async function loader({ request }: Route.LoaderArgs) {

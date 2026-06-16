@@ -446,9 +446,9 @@ function ProblemCard({ problem }: { problem: ProblemDetail }) {
                 size="sm"
                 className="h-7 px-2 text-[11px]"
                 onClick={() => triggerBulkOx(true)}
-                title="모든 지문/박스 항목의 OX 불가를 일괄 체크"
+                title="모든 지문/박스 항목의 정오문제 불가를 일괄 체크"
               >
-                전체 OX 불가
+                전체 정오문제 불가
               </Button>
               <Button
                 type="button"
@@ -456,7 +456,7 @@ function ProblemCard({ problem }: { problem: ProblemDetail }) {
                 size="sm"
                 className="h-7 px-2 text-[11px]"
                 onClick={() => triggerBulkOx(false)}
-                title="OX 불가 일괄 해제"
+                title="정오문제 불가 일괄 해제"
               >
                 해제
               </Button>

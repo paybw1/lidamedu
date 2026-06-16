@@ -25,7 +25,7 @@ import type { Route } from "./+types/srs-ox-review";
 type ReviewItem = OxQuestionItem & { lawCode: string | null };
 
 export const meta: Route.MetaFunction = () => [
-  { title: "OX 복습 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 복습 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -86,11 +86,11 @@ export default function SrsOxReview({ loaderData }: Route.ComponentProps) {
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            학습관리 · OX 복습
+            학습관리 · 정오문제 복습
           </p>
-          <h1 className="text-2xl font-bold tracking-tight">OX 복습</h1>
+          <h1 className="text-2xl font-bold tracking-tight">정오문제 복습</h1>
           <p className="text-muted-foreground text-sm">
-            오늘 복습할 OX 지문을 다시 채점합니다. 답하면 복습 일정이 자동
+            오늘 복습할 정오문제 지문을 다시 채점합니다. 답하면 복습 일정이 자동
             갱신됩니다.
           </p>
         </div>
@@ -105,7 +105,7 @@ export default function SrsOxReview({ loaderData }: Route.ComponentProps) {
         <Card className="border-dashed">
           <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-12 text-center text-sm">
             <RepeatIcon className="size-6 opacity-30" />
-            <p>지금 복습할 OX 항목이 없습니다.</p>
+            <p>지금 복습할 정오문제 항목이 없습니다.</p>
             <Button size="sm" asChild className="mt-1">
               <Link to="/study/srs" viewTransition>
                 복습 현황으로

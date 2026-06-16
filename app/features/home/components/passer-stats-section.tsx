@@ -42,7 +42,7 @@ const STATS: StatDef[] = [
     lbl: "평균 풀이",
     target: 2431,
     unit: "",
-    sub: "객관식·OX·주관식 합산",
+    sub: "객관식·정오문제·주관식 합산",
   },
   {
     fg: "#A77B3F",

@@ -141,7 +141,7 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
               borderTop: `1px dashed ${T.lineSoft}`,
               borderBottom: `1px dashed ${T.lineSoft}`,
             }}
-            aria-label="최근 OX 응시 정답률 추세"
+            aria-label="최근 정오문제 응시 정답률 추세"
           >
             {recent.map((r) => {
               const rate = rateOf(r);
@@ -195,7 +195,7 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
             }}
           >
             막대 = 최근 {recent.length}건의 정답률(좌→우 시간순). 클릭 시 해당
-            팩의 OX 시험 화면으로 이동.
+            팩의 정오문제 시험 화면으로 이동.
           </p>
         </>
       )}

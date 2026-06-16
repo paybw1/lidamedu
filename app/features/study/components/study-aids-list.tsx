@@ -39,7 +39,7 @@ const TYPE_META: Record<
     label: "문제",
     cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   },
-  ox: { label: "OX", cls: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
+  ox: { label: "정오문제", cls: "bg-rose-500/15 text-rose-600 dark:text-rose-400" },
 };
 
 function normalizeType(

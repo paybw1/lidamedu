@@ -93,7 +93,7 @@ export default function WrongNotePrint({ loaderData }: Route.ComponentProps) {
   return (
     <StudyPrintShell
       docTitle="오답노트 복습 정리본"
-      subtitle={`${subjectName ? `${subjectName} · ` : "전체 과목 · "}객관식 오답 ${mcq.length}개 · 정오문제(OX) 오답 ${ox.length}개`}
+      subtitle={`${subjectName ? `${subjectName} · ` : "전체 과목 · "}객관식 오답 ${mcq.length}개 · 정오문제 오답 ${ox.length}개`}
       watermark={watermark}
       empty={mcq.length === 0 && ox.length === 0}
       emptyText="오답이 없습니다. 🎉"
@@ -117,7 +117,7 @@ export default function WrongNotePrint({ loaderData }: Route.ComponentProps) {
       {ox.length > 0 ? (
         <section>
           <h2 className="mb-3 text-lg font-bold text-neutral-700">
-            정오문제(OX) 오답
+            정오문제 오답
           </h2>
           {oxGroups.map((g) => (
             <div key={g.key} className="mb-5">

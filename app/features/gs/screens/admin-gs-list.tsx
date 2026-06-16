@@ -97,7 +97,7 @@ export default function AdminGsList({ loaderData }: Route.ComponentProps) {
       cluster="gs"
       role={role}
       title="GS 회차 관리"
-      desc="정기 모의고사 회차를 만들고 문제를 등록합니다. 공개(published) 상태에서만 학생에게 노출됩니다."
+      desc="2차 모의고사 회차를 만들고 문제를 등록합니다. 공개(published) 상태에서만 학생에게 노출됩니다."
       headerRight={
         <Button asChild size="sm">
           <Link to="/admin/gs/new" viewTransition>

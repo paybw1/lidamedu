@@ -36,7 +36,7 @@ function subjectLabel(slug: string): string {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "카드 암기 | 리담" },
+  { title: "암기 카드 | 리담" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -91,7 +91,7 @@ const GRADES: GradeButtonSpec[] = [
 
 export default function SrsReview({ loaderData }: Route.ComponentProps) {
   if (loaderData.myAnalysisOff)
-    return <MyAnalysisOffNotice feature="카드 암기" />;
+    return <MyAnalysisOffNotice feature="암기 카드" />;
   return <SrsReviewInner data={loaderData} />;
 }
 
@@ -176,10 +176,10 @@ function SrsReviewInner({
         <div>
           <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
             <SparklesIcon className="size-3" />
-            카드 암기 · {today}
+            암기 카드 · {today}
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-            오늘의 카드
+            오늘의 암기 카드
           </h1>
         </div>
         <Link

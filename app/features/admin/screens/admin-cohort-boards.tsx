@@ -60,7 +60,7 @@ export default function AdminCohortBoards({ loaderData }: Route.ComponentProps) 
     <AdminShell
       cluster="cohorts"
       title="반별 게시판"
-      desc="반(코호트)에 연결된 게시판을 만들고 공지형/소통형·접근 반을 지정합니다. 학생은 소속 반 게시판만 보입니다."
+      desc="반에 연결된 게시판을 만들고 공지형/소통형·접근 반을 지정합니다. 학생은 소속 반 게시판만 보입니다."
       headerRight={
         <Button
           size="sm"

@@ -97,7 +97,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
   return (
     <MockExamShell
       category="gs"
-      title="정기 모의고사"
+      title="2차 모의고사"
       desc={
         <>
           공개된 회차에 응시해 답안을 작성하면 강사가 채점합니다. 진행 중{" "}

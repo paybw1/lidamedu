@@ -207,10 +207,10 @@ function AddPaperRow({
       <select
         name="packId"
         required
-        aria-label="교시로 추가할 모의 팩"
+        aria-label="교시로 추가할 모의고사 팩"
         className="border-input bg-background h-8 max-w-[280px] min-w-[180px] flex-1 rounded-md border px-2 text-xs"
       >
-        <option value="">교시로 추가할 모의 팩 …</option>
+        <option value="">교시로 추가할 모의고사 팩 …</option>
         {availablePacks.map((p) => (
           <option key={p.packId} value={p.packId}>
             {p.subjectLabel} · {p.title}

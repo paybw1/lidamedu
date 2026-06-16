@@ -34,7 +34,7 @@ export function ReducedDashboard({
         <Card className="mt-6 border-amber-300/60 bg-amber-50/30 dark:border-amber-700/50 dark:bg-amber-950/20">
           <CardContent className="space-y-3 px-5 py-5 text-sm leading-relaxed">
             <p>
-              🔒 합격 진단 점수·학습 통계·약점 분석·합격자 비교·과제 등{" "}
+              🔒 합격 예측 점수·학습 통계·약점 분석·합격자 비교·과제 등{" "}
               <strong>학습관리 분석</strong>은{" "}
               <strong>종합반</strong>에서 이용할 수 있습니다.
             </p>

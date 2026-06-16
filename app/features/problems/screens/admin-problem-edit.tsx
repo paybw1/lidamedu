@@ -635,7 +635,7 @@ function AdminProblemEditInner({
   const [polarity, setPolarity] = useState<ProblemPolarity | "">(
     problem.polarity ?? "",
   );
-  // 전체 OX 불가 일괄 체크/해제 — 자식 (ChoiceEditor / BoxItemEditor) 에 epoch 신호로 전파.
+  // 전체 정오문제 불가 일괄 체크/해제 — 자식 (ChoiceEditor / BoxItemEditor) 에 epoch 신호로 전파.
   const [bulkOxSignal, setBulkOxSignal] = useState<{
     epoch: number;
     ineligible: boolean;
@@ -1141,16 +1141,16 @@ function AdminProblemEditInner({
                   variant="outline"
                   size="sm"
                   onClick={() => triggerBulkOx(true)}
-                  title="모든 지문/박스 항목의 OX 불가를 일괄 체크"
+                  title="모든 지문/박스 항목의 정오문제 불가를 일괄 체크"
                 >
-                  전체 OX 불가
+                  전체 정오문제 불가
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => triggerBulkOx(false)}
-                  title="OX 불가 일괄 해제"
+                  title="정오문제 불가 일괄 해제"
                 >
                   해제
                 </Button>
@@ -1298,7 +1298,7 @@ function numberOrNull(v: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-// 출제 마무리 체크리스트 — 학생 노출 경로(과목 hub / 조문 OX 위젯 / 최신 정보 mcq pack)가
+// 출제 마무리 체크리스트 — 학생 노출 경로(과목 hub / 조문 정오문제 위젯 / 최신 정보 mcq pack)가
 // 모두 연결되어 있는지 한눈에 확인 + 부족한 부분을 한 번에 보강할 수 있는 액션 제공.
 function PublishChecklist({
   problem,
@@ -1371,7 +1371,7 @@ function PublishChecklist({
       <CardHeader className="pb-2">
         <h2 className="text-sm font-semibold">출제 마무리 체크리스트</h2>
         <p className="text-muted-foreground text-[11px]">
-          이 항목을 모두 채워야 학생 화면(과목 hub · 조문 OX 위젯 · 최신 정보 mcq)에 정상 노출됩니다.
+          이 항목을 모두 채워야 학생 화면(과목 hub · 조문 정오문제 위젯 · 최신 정보 mcq)에 정상 노출됩니다.
         </p>
       </CardHeader>
       <CardContent className="grid gap-1.5 text-xs">
@@ -1404,13 +1404,13 @@ function PublishChecklist({
                   ? "ok"
                   : "warn"
             }
-            label="조문 OX 위젯 노출"
+            label="조문 정오문제 위젯 노출"
             detail={
               oxCandidates.length === 0
-                ? "OX 후보 지문 없음 (모두 OX 불가로 처리됨)"
+                ? "정오문제 후보 지문 없음 (모두 정오문제 불가로 처리됨)"
                 : oxMissingArticleCount > 0 || oxMissingTruthCount > 0
                   ? `노출 가능 ${oxReadyCount}/${oxCandidates.length} · 미분류: 조문 ${oxMissingArticleCount}개 · 정오(O/X) ${oxMissingTruthCount}개`
-                  : `${oxCandidates.length}개 지문 모두 학생 OX 위젯에 노출 가능`
+                  : `${oxCandidates.length}개 지문 모두 학생 정오문제 위젯에 노출 가능`
             }
             action={
               hasPrimary && oxMissingArticleCount > 0 ? (

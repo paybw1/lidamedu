@@ -323,7 +323,7 @@ function SeedTable({
                       className="text-primary ml-2 text-[10.5px] font-medium hover:underline"
                       viewTransition
                     >
-                      완성도 진단 →
+                      완성도 점검 →
                     </Link>
                   </td>
                   {METRIC_KEYS.map((k) => {

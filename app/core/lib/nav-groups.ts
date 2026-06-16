@@ -45,7 +45,7 @@ export const NAV_GROUP_POOL = {
     Icon: RotateCcwIcon,
     items: [
       { label: "복습", to: "/study/srs" },
-      { label: "카드 암기", to: "/srs" },
+      { label: "암기 카드", to: "/srs" },
     ],
     area: "area_study_mgmt",
   },
@@ -78,7 +78,7 @@ export const NAV_GROUP_POOL = {
       { label: "학습 목표 · 진도", to: "/goals" },
       { label: "학습 통계", to: "/study/stats" },
       // feat — OX 약점 진단(진입점 복구: 종전 상단바에만 있어 사이드바 모드 학생은 nav 도달 불가였음).
-      { label: "OX 약점 진단", to: "/study/ox-diagnosis" },
+      { label: "정오문제 약점 진단", to: "/study/ox-diagnosis" },
       { label: "과제", to: "/assignments" },
       { label: "상담 코멘트", to: "/me/consult" },
       { label: "정오문제 응시 이력", to: "/me/ox-sessions" },

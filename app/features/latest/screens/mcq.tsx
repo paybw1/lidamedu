@@ -52,9 +52,20 @@ import { listPacks } from "~/features/mcq-packs/queries.server";
 
 import type { Route } from "./+types/mcq";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "1차 기출문제 | Lidam Patent Attorney Academy" },
-];
+export const meta: Route.MetaFunction = ({ data }) => {
+  // 화면 h1 과 동일 로직으로 kind 별 분기 — 모의 팩에서도 탭 제목이 "1차 기출문제"로
+  // 고정되던 버그 수정. data 미존재(에러 등) 시 기본 "1차 기출문제".
+  const f = data?.filters;
+  const title =
+    f?.kindGroup === "mock"
+      ? "1차 모의고사"
+      : f?.kind === "mock_full"
+        ? "1차 전체 모의고사"
+        : f?.kind === "mock_progressive"
+          ? "1차 진도별 모의고사"
+          : "1차 기출문제";
+  return [{ title: `${title} | Lidam Patent Attorney Academy` }];
+};
 
 // "mock" 은 mock_full + mock_progressive 통합 가상 옵션 — DB column 값이 아니다.
 type KindFilterValue = McqPackKind | "all" | "mock";
@@ -62,9 +73,9 @@ type KindFilterValue = McqPackKind | "all" | "mock";
 const KINDS: Array<{ value: KindFilterValue; label: string }> = [
   { value: "all", label: "전체" },
   { value: "past_exam", label: "기출" },
-  { value: "mock", label: "모의 (통합)" },
-  { value: "mock_full", label: " └ 전체 모의" },
-  { value: "mock_progressive", label: " └ 진도별 모의" },
+  { value: "mock", label: "모의 (전체)" },
+  { value: "mock_full", label: " └ 전체 모의고사" },
+  { value: "mock_progressive", label: " └ 진도별 모의고사" },
   { value: "other", label: "기타" },
 ];
 
@@ -169,7 +180,7 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
   // 모의 통합 화면 — 진도별/전체 모의 한 화면. mock_progressive 단독은 기존 제목 유지.
   const title =
     filters.kindGroup === "mock"
-      ? "1차 모의고사 (전체)"
+      ? "1차 모의고사"
       : filters.kind === "mock_full"
         ? "1차 전체 모의고사"
         : filters.kind === "mock_progressive"
@@ -616,7 +627,7 @@ function PackForm({
             maxLength={500}
             defaultValue={pack?.title ?? ""}
             className="h-8 text-xs"
-            placeholder="예: 2026년 63회 1차 기출 / 2026년 1월 전체 모의"
+            placeholder="예: 2026년 63회 1차 기출 / 2026년 1월 전체 모의고사"
           />
         </Field>
         <Field label="년도">

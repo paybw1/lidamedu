@@ -20,7 +20,7 @@ const FORMAT_LABEL: Record<string, string> = {
   mc_short: "객·단답",
   mc_box: "객·박스",
   mc_case: "객·사례",
-  ox: "OX",
+  ox: "정오문제",
   blank: "빈칸",
   subjective: "주관식",
 };

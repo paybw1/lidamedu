@@ -351,7 +351,7 @@ function ConsentStep() {
                 내 학습 분석 (A)
               </span>
               <span className="text-muted-foreground block text-[11px] leading-relaxed">
-                내 학습 기록으로 학습통계·OX 약점진단·복습·암기 기능을 제공합니다.
+                내 학습 기록으로 학습 통계·정오문제 약점진단·복습·암기 기능을 제공합니다.
                 끄면 이 기능들이 비활성화됩니다(기존 기록은 보존되며 다시 켜면
                 복구).
               </span>

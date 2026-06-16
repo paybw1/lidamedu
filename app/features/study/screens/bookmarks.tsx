@@ -69,7 +69,7 @@ const TYPE_OPTIONS = [
   ["article", "조문"],
   ["case", "판례"],
   ["problem", "문제"],
-  ["ox", "OX"],
+  ["ox", "정오문제"],
 ] as const;
 
 export default function Bookmarks({ loaderData }: Route.ComponentProps) {
@@ -110,14 +110,14 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
       active="bookmarks"
       tabCounts={toTabCounts(aidCounts)}
       title="즐겨찾기"
-      desc="별점을 매겨 둔 조문 · 판례 · 문제 · OX 모음. 별점 높은 순으로 정렬됩니다."
+      desc="별점을 매겨 둔 조문 · 판례 · 문제 · 정오문제 모음. 별점 높은 순으로 정렬됩니다."
       printHref="/study/bookmarks/print"
       summaryStats={[
         { label: "전체", value: counts.total, dotClass: "bg-primary" },
         { label: "조문", value: counts.article, dotClass: "bg-primary" },
         { label: "판례", value: counts.case, dotClass: "bg-violet-500" },
         { label: "문제", value: counts.problem, dotClass: "bg-amber-500" },
-        { label: "OX", value: counts.ox, dotClass: "bg-rose-500" },
+        { label: "정오문제", value: counts.ox, dotClass: "bg-rose-500" },
       ]}
     >
       <FilterBar hasActive={hasActive} onReset={reset}>

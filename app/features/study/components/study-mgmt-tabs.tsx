@@ -32,7 +32,7 @@ const ITEMS: SectionTabItem[] = [
   {
     id: "cards",
     to: "/srs",
-    label: "카드 암기",
+    label: "암기 카드",
     icon: LayersIcon,
     match: ["/srs", "/srs/stats"],
   },

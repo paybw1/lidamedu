@@ -765,7 +765,7 @@ export async function listAllBookmarks(
           notePreview: preview,
           updatedAt: r.updated_at,
           lawCode: p.lawCode,
-          primaryLabel: `OX 지문`,
+          primaryLabel: `정오문제 지문`,
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
@@ -791,7 +791,7 @@ export async function listAllBookmarks(
           notePreview: preview,
           updatedAt: r.updated_at,
           lawCode: p.lawCode,
-          primaryLabel: `OX 박스 항목`,
+          primaryLabel: `정오문제 박스 항목`,
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
@@ -1033,7 +1033,7 @@ export async function listAllMemos(
         {
           ...base,
           lawCode: p.lawCode,
-          primaryLabel: "OX 지문",
+          primaryLabel: "정오문제 지문",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
@@ -1053,7 +1053,7 @@ export async function listAllMemos(
         {
           ...base,
           lawCode: p.lawCode,
-          primaryLabel: "OX 박스 항목",
+          primaryLabel: "정오문제 박스 항목",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
@@ -1297,7 +1297,7 @@ export async function listAllHighlights(
         {
           ...base,
           lawCode: p.lawCode,
-          primaryLabel: "OX 지문",
+          primaryLabel: "정오문제 지문",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",
@@ -1317,7 +1317,7 @@ export async function listAllHighlights(
         {
           ...base,
           lawCode: p.lawCode,
-          primaryLabel: "OX 박스 항목",
+          primaryLabel: "정오문제 박스 항목",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
             : "문제",

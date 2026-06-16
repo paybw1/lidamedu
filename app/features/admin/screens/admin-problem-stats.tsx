@@ -83,7 +83,7 @@ export default function AdminProblemStats({
       role={role}
       width={1280}
       title="문제 통계"
-      desc="객관식 문제와 정오문제(OX) 풀이 시도를 집계합니다. 가장 어려운 문제(낮은 정답률) 위주로 노출되어 출제·해설 보강 우선순위를 파악할 수 있습니다."
+      desc="객관식 문제와 정오문제 풀이 시도를 집계합니다. 가장 어려운 문제(낮은 정답률) 위주로 노출되어 출제·해설 보강 우선순위를 파악할 수 있습니다."
     >
       {/* 필터 바 */}
       <div className="border-border bg-card mb-5 flex flex-wrap items-center gap-3 rounded-xl border p-3 shadow-sm">
@@ -282,7 +282,7 @@ export default function AdminProblemStats({
           </Chip>
         </div>
         {oxHardest.length === 0 ? (
-          <EmptyState text="집계 가능한 OX 시도가 부족합니다." />
+          <EmptyState text="집계 가능한 정오문제 시도가 부족합니다." />
         ) : (
           <IndexTable
             minWidth={680}

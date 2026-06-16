@@ -289,10 +289,10 @@ export default function AdminStudentDetail({
         <StudentSrsCard summary={srsSummary} />
       </div>
 
-      {/* feat-2-022 학생별 OX 약점 진단 (단원 × 지식종류) — 학생 화면과 동일 게이트·톤 */}
+      {/* feat-2-022 학생별 정오문제 약점 진단 (단원 × 지식종류) — 학생 화면과 동일 게이트·톤 */}
       <div className="mb-6 space-y-3">
         <h2 className="text-sm font-bold tracking-tight">
-          OX 약점 진단 (단원 × 지식종류)
+          정오문제 약점 진단 (단원 × 지식종류)
         </h2>
         <OxDiagnosisView
           diagnosis={oxDiagnosis}
@@ -667,7 +667,7 @@ function CompareChip({
   );
 }
 
-// ─── 합격 진단 점수 추이 (feat-7-027) ───
+// ─── 합격 예측 점수 추이 (feat-7-027) ───
 
 function PassTrendCard({ items }: { items: PassPredictionSnapshotItem[] }) {
   const latest = items[items.length - 1];
@@ -688,7 +688,7 @@ function PassTrendCard({ items }: { items: PassPredictionSnapshotItem[] }) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            합격 진단 점수 추이 ({items.length}일)
+            합격 예측 점수 추이 ({items.length}일)
           </p>
           <Badge variant="outline" className="text-[10px]">
             현재 {latest.score} · 시작 {oldest.score} ·{" "}
@@ -740,7 +740,7 @@ function StudentSrsCard({ summary }: { summary: StudentSrsSummary }) {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-bold tracking-tight">SRS 복습 큐</h2>
+          <h2 className="text-base font-bold tracking-tight">복습 큐</h2>
           <div className="text-xs font-mono">
             <span className="text-muted-foreground">총 due </span>
             <span
@@ -760,7 +760,7 @@ function StudentSrsCard({ summary }: { summary: StudentSrsSummary }) {
           </div>
         </div>
         <p className="text-muted-foreground text-xs">
-          객관식·빈칸·OX·조문 4 종 SRS 통합. 학생이 다음 학습 진입 시 자동 큐잉.
+          객관식·빈칸·정오문제·조문 4 종 복습 통합. 학생이 다음 학습 진입 시 자동 큐잉.
         </p>
       </CardHeader>
       <CardContent className="pb-4">
@@ -779,7 +779,7 @@ function StudentSrsCard({ summary }: { summary: StudentSrsSummary }) {
             note={`빈칸 ${summary.blankDueBlanks}개`}
           />
           <SrsTile
-            label="OX"
+            label="정오문제"
             due={summary.oxDue}
             total={summary.oxTotal}
             lapses={summary.oxLapses}
@@ -793,7 +793,7 @@ function StudentSrsCard({ summary }: { summary: StudentSrsSummary }) {
           />
         </div>
         <p className="text-muted-foreground mt-3 text-[11px]">
-          누적 실패 합산: {totalLapses.toLocaleString("ko-KR")}회 (객관식+빈칸+OX).
+          누적 실패 합산: {totalLapses.toLocaleString("ko-KR")}회 (객관식+빈칸+정오문제).
         </p>
       </CardContent>
     </Card>

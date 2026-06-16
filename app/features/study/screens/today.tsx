@@ -166,7 +166,7 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
           </h2>
           {hasV1 && hasV2 ? (
             <p className="text-ink-soft mt-1 text-xs leading-relaxed">
-              문제 복습 {review.problemDue}개 · 카드 암기{" "}
+              문제 복습 {review.problemDue}개 · 암기 카드{" "}
               {review.flashcardDue + review.flashcardNew}개
               <span className="bg-muted text-ink-faint ml-1.5 rounded px-1 py-0.5 text-[10px]">
                 베타
@@ -184,7 +184,7 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
         </Button>
         {hasV1 && hasV2 ? (
           <Button asChild size="sm" variant="outline">
-            <Link to="/srs">카드 암기 시작</Link>
+            <Link to="/srs">암기 카드 시작</Link>
           </Button>
         ) : null}
       </div>

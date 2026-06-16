@@ -42,7 +42,7 @@ export default function AdminMcqExams({ loaderData }: Route.ComponentProps) {
       cluster="problems"
       role={role}
       title="통합 모의고사 출제"
-      desc="여러 교시(과목별 모의 팩)를 한 시험으로 묶어 운영합니다. 시험을 추가한 뒤 편집 화면에서 교시를 구성하세요."
+      desc="여러 교시(과목별 모의고사 팩)를 한 시험으로 묶어 운영합니다. 시험을 추가한 뒤 편집 화면에서 교시를 구성하세요."
       headerRight={
         !showAdd ? (
           <Button size="sm" onClick={() => setShowAdd(true)}>

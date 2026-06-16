@@ -1,5 +1,5 @@
 // 박스형 문제(mc_box) 의 박스 항목(예: ㉠/㉡/㈎/㈏ ...) 편집 카드.
-// ChoiceEditor 와 같은 색인 컬럼(choice_type / 조문·판례 ref / OX truth / OX 불가)을
+// ChoiceEditor 와 같은 색인 컬럼(choice_type / 조문·판례 ref / OX truth / 정오문제 불가)을
 // 갖지만 정답 라디오는 없다 (박스 항목 자체는 정답 후보가 아님).
 // 정답 choice body 에 marker 가 포함되면 "정답 그룹" 으로 보고 polarity 규칙으로 OX 자동 도출.
 
@@ -38,7 +38,7 @@ export function BoxItemEditor({
   polarity?: ProblemPolarity | null;
   format: ProblemFormat;
   correctChoiceBody?: string | null;
-  // 부모에서 "전체 OX 불가 체크/해제" 일괄 토글 시 epoch 가 증가.
+  // 부모에서 "전체 정오문제 불가 체크/해제" 일괄 토글 시 epoch 가 증가.
   bulkOxSignal?: { epoch: number; ineligible: boolean };
   // feat-4-A-342 — 조문번호 → 체계도 소분류 옵션.
   subNodeOptions?: Record<string, { nodeId: string; label: string }[]>;
@@ -94,7 +94,7 @@ export function BoxItemEditor({
     setOxTruth((next ?? "") as OxTruth | "");
   }, [polarity, format, item.marker, correctChoiceBody, oxIneligible]);
 
-  // 부모 format → 사례형 변경 시 OX 불가 + 조문 기본 즉시 반영.
+  // 부모 format → 사례형 변경 시 정오문제 불가 + 조문 기본 즉시 반영.
   const prevFormatRef = useRef<ProblemFormat>(format);
   useEffect(() => {
     if (prevFormatRef.current === format) return;
@@ -108,7 +108,7 @@ export function BoxItemEditor({
     }
   }, [format]);
 
-  // bulkOxSignal — 부모에서 전체 OX 불가 일괄 토글 시 epoch 증가, 적용.
+  // bulkOxSignal — 부모에서 전체 정오문제 불가 일괄 토글 시 epoch 증가, 적용.
   const lastBulkEpochRef = useRef<number | null>(null);
   useEffect(() => {
     if (!bulkOxSignal) return;
@@ -255,7 +255,7 @@ export function BoxItemEditor({
               if (e.target.checked) setOxTruth("");
             }}
           />
-          OX 불가
+          정오문제 불가
         </label>
         <div className="ml-auto">
           <select
