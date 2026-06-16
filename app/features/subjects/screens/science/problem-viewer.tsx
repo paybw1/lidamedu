@@ -9,6 +9,7 @@ import {
   CircleCheckIcon,
   CircleXIcon,
   HeartIcon,
+  LightbulbIcon,
   PencilIcon,
   PlayIcon,
 } from "lucide-react";
@@ -400,6 +401,22 @@ export default function ScienceProblemViewer({
             </Button>
           ) : null}
         </div>
+
+        {/* 문제 해설 — study 모드 제출 후 노출(문제 단위 explanation_md). 시험 모드는 showResult=false 라 미노출 */}
+        {showResult && problem.explanationMd ? (
+          <div
+            className="mt-6 rounded-xl border bg-card p-5 shadow-sm"
+            data-testid="science-explanation"
+          >
+            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+              <LightbulbIcon className="size-4 text-amber-500" /> 해설
+            </h2>
+            <MarkdownView
+              text={problem.explanationMd}
+              className="text-sm leading-relaxed"
+            />
+          </div>
+        ) : null}
 
         {/* 즐겨찾기 + 메모 — 본문이 이미지라 텍스트 선택형 포스트잇 대신 일반 메모(content_comments) 사용 */}
         <div className="mt-8 grid gap-4 md:grid-cols-2">

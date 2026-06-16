@@ -37,6 +37,7 @@ export async function listScienceProblems(
     )
     .eq("subject_type", "science")
     .eq("science_subject", scienceSubject)
+    .eq("review_status", "approved")
     .is("deleted_at", null);
   if (sectionIds.length > 0) q = q.in("science_section_id", sectionIds);
   if (years.length > 0) q = q.in("year", years);
@@ -61,6 +62,7 @@ export interface ScienceProblemDetail {
   problemNumber: number | null;
   examRound: string | null;
   bodyMd: string;
+  explanationMd: string | null;
   totalPoints: number;
   choices: {
     choiceId: string;
@@ -78,9 +80,10 @@ export async function getScienceProblem(
   const { data: p, error } = await client
     .from("problems")
     .select(
-      "problem_id, science_subject, science_section_id, body_md, total_points, subject_type, year, problem_number, exam_round",
+      "problem_id, science_subject, science_section_id, body_md, total_points, subject_type, year, problem_number, exam_round, explanation_md",
     )
     .eq("problem_id", problemId)
+    .eq("review_status", "approved")
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw error;
@@ -101,6 +104,7 @@ export async function getScienceProblem(
     problemNumber: p.problem_number,
     examRound: p.exam_round,
     bodyMd: p.body_md,
+    explanationMd: p.explanation_md,
     totalPoints: p.total_points ?? 1,
     choices: (cs ?? []).map((c) => ({
       choiceId: c.choice_id,
@@ -133,6 +137,7 @@ export async function getAllScienceSubjectsProgress(
     .from("problems")
     .select("science_subject")
     .eq("subject_type", "science")
+    .eq("review_status", "approved")
     .is("deleted_at", null);
   const totalBySubject = new Map<string, number>();
   for (const r of totals ?? []) {
@@ -195,6 +200,7 @@ export async function getScienceProgress(
     .select("problem_id", { count: "exact", head: true })
     .eq("subject_type", "science")
     .eq("science_subject", scienceSubject)
+    .eq("review_status", "approved")
     .is("deleted_at", null);
 
   // 사용자 시도 — 같은 문제 여러 번 시도해도 distinct 로 세기.
@@ -282,6 +288,7 @@ export async function listScienceYears(
     .select("year")
     .eq("subject_type", "science")
     .eq("science_subject", subject)
+    .eq("review_status", "approved")
     .is("deleted_at", null)
     .not("year", "is", null);
   if (error) throw error;
@@ -315,6 +322,7 @@ export async function listSectionsWithCounts(
       .select("science_section_id")
       .eq("subject_type", "science")
       .eq("science_subject", subject)
+      .eq("review_status", "approved")
       .is("deleted_at", null)
       .in("science_section_id", sectionIds);
     for (const r of rows ?? []) {
