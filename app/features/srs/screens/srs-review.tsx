@@ -192,7 +192,7 @@ function SrsReviewInner({
 
       {/* 카드 카운터 */}
       <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Counter label="오늘 복습" value={dueCount} tone="rose" />
+        <Counter label="오늘 암기" value={dueCount} tone="rose" />
         <Counter
           label="새 카드"
           value={newCount}
@@ -391,7 +391,7 @@ function CompleteCard({ total }: { total: number }) {
     <Card className="border-emerald-300/60">
       <CardContent className="space-y-3 py-10 text-center">
         <CheckCircle2Icon className="mx-auto size-10 text-emerald-500" />
-        <p className="text-foreground text-lg font-bold">오늘 복습 완료</p>
+        <p className="text-foreground text-lg font-bold">오늘 암기 완료</p>
         <p className="text-muted-foreground text-sm">
           총 {total}건 처리. 통계에서 결과를 확인하세요.
         </p>
