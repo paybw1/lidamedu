@@ -1,6 +1,7 @@
 # feat-2-022 — OX 지문 기반 약점 진단 (단원 × 지식종류 교차)
 
-> 상태: 🟡 ①~⑥ 구현·단위검산 완료, 라이브 확인 대기 (2026-06-14) · 클러스터: 5.2 학습관리(`/study`, `/admin/students`)
+> 상태: 🟡 ①~⑥ 구현·단위검산 완료, 라이브 확인 대기 (2026-06-14) · 클러스터: 5.2 학습(학습 통계 탭 + `/admin/students`)
+> **갱신(2026-06-17)**: 학생 진입점을 독립 화면 → **`학습 통계`(`/study/stats`)의 "정오문제 약점" 탭**으로 흡수(통폐합). `/study/ox-diagnosis` 라우트는 보존하되 탭으로 리다이렉트. 집계·공용 뷰·게이트 로직은 무변경(진입점만 일원화). 자세히 §6·§8.
 > 선행 조사: `docs/survey/수험생진단-데이터현황.md` · 본 문서가 설계 SSOT.
 
 ## 1. 목표
@@ -46,8 +47,8 @@ OX 지문(선지·박스 항목)의 **누적 정오**를 학생별로 집계해,
 - **게이트**: `isPasserBenchmarkEnabled`(실 동의 합격자 ≥ `PASSER_BENCHMARK_MIN_SAMPLE=10` 자동 ON). 현재 0명 → OFF, 합격자 패널은 **빈 채로** 둠.
 - ⚠️ 지금은 비교 화면 **안 만든다**. `computeOxDiagnosis(userId, {since,until})` 시그니처가 코호트별·윈도우별 호출을 이미 허용 → 미래에 래퍼만 추가하면 됨.
 
-## 6. 화면 (④ 학생 · ⑤ 강사) — 다음 단계
-- **④ 학생**: 단원×지식종류 매트릭스(약한 셀 강조·N 표기), choice_type별(조문/판례/이론) 정답률, 노드별 약점(기존 재사용). 처방은 **신중**("판례 지문 정답률이 낮은 편입니다(N건). 판례 학습을 점검해보세요" 톤, 미달 셀 처방 안 함). 빈 상태 안내("아직 진단할 데이터가 부족합니다 — OX 지문을 풀면 분석이 시작됩니다").
+## 6. 화면 (④ 학생 · ⑤ 강사)
+- **④ 학생** — 홈: `학습 통계`(`/study/stats`)의 **"정오문제 약점" 탭**(2026-06-17 흡수; 종전 독립 화면 `/study/ox-diagnosis` 는 `?tab=ox_diagnosis` 로 리다이렉트). 표현은 공용 `<OxDiagnosisView audience="self">`: 단원×지식종류 매트릭스(약한 셀 강조·N 표기), choice_type별(조문/판례/이론) 정답률, 노드별 약점(기존 재사용). 처방은 **신중**("판례 지문 정답률이 낮은 편입니다(N건). 판례 학습을 점검해보세요" 톤, 미달 셀 처방 안 함). 빈 상태 안내("아직 진단할 데이터가 부족합니다 — OX 지문을 풀면 분석이 시작됩니다").
 - **⑤ 강사**: `/admin/students/:id` 확장 — 학생별 단원×지식종류 약점. cohort 비교는 기존 분위(quartile) 재사용. 게이트 동일 적용.
 
 ## 7. 검증 (⑥) — 완료
@@ -58,4 +59,6 @@ OX 지문(선지·박스 항목)의 **누적 정오**를 학생별로 집계해,
 ## 8. 보류 / 숙제
 - ✅ **단원 deep-link (완료, 2026-06-14)** — `computeOxDiagnosis` 노드 해석에 `systematic_nodes.law_code`(=과목 slug) 추가 → `OxNodeRow.lawCode` → 매트릭스 단원명이 `/subjects/:lawCode/systematic/:nodeId`(체계도 단원 학습) 링크. lawCode 없거나 기타(노드 null)면 **라벨만**(안전 폴백). 단위검산 포함. "약점→학습 잇기" 완성.
 - ✅ **⑨ SRS OX 재복습 단절 해결 (완료, 2026-06-14)** — 신규 러너 `/study/srs/ox`(`srs-ox-review.tsx`)에서 due ref 를 실제 O/X 로 재채점. `/study/srs` OX 섹션 "OX 복습 시작"·"풀기" 가 (이전: OX UI 없는 MCQ 뷰어) 이 러너로 연결. 기록 `/api/problems/attempt`(mode='study') → `applyOxRefSrsUpdate` 로 `user_ox_ref_srs.next_due_at` 갱신 → 복습 후 due 에서 빠짐. ref→OxQuestionItem 투영 `getOxQuestionsForRefs`(problems/queries.server.ts). 다과목 혼재라 subject 비의존 카드. (부가: 이 기록이 OX 진단 데이터에도 반영.)
+- ✅ **학습 통계 탭으로 흡수 (완료, 2026-06-17)** — 독립 화면이던 학생 진단을 `학습 통계`(`/study/stats`)의 5번째 탭 "정오문제 약점"으로 통합. stats loader 에 `computeOxDiagnosis`+`isPasserBenchmarkEnabled` 추가(A동의 게이트는 stats 와 동일), 공용 `OxDiagnosisView` 그대로 렌더. `/study/ox-diagnosis` 라우트 보존→`?tab=ox_diagnosis` 리다이렉트(링크·북마크 무효화 방지). nav SSOT(`nav-groups.ts`)에서 학습관리의 "정오문제 약점 진단" 항목 제거(진입점 통계로 일원화). 판단 근거: 진단은 본질이 *분석* → 같은 분석 화면(통계, 같은 feature·게이트·축)에 속함(DRY 게이트 3요건 충족). 강사 드릴다운(`/admin/students/:id`)은 같은 공용 뷰를 별도 경로로 써 무관. 커밋 `05cfd5c`.
+- (참고, 같은 통폐합 커밋) `정오문제 응시 이력`(`/me/ox-sessions`)은 진단이 아닌 *응시 기록* → "응시 결과"(`/me/exam-results`)의 형제로 보고 nav 를 **학습관리 → 모의고사** 그룹으로 이동(co-locate). 화면·라우트 무변경.
 - (향후) `getSessionWeakNodes` 의 노드귀속을 공용 헬퍼로 추출해 본 모듈과 공유(현재는 비회귀 위해 미러).
