@@ -6,6 +6,7 @@
 
 import {
   ArrowRightIcon,
+  CheckCircle2Icon,
   ClipboardListIcon,
   RepeatIcon,
   SparklesIcon,
@@ -25,7 +26,11 @@ export function TodayEntryCard({
   hideAssignmentChip?: boolean;
 }) {
   if (summary.isEmptyForNewUser) {
-    return <TodayEntryEmpty />;
+    return summary.hasStudiedBefore ? (
+      <TodayEntryAllDone />
+    ) : (
+      <TodayEntryEmpty />
+    );
   }
 
   const totalReview = summary.review.totalToday;
@@ -112,6 +117,22 @@ function TodayEntryEmpty() {
             <Link to="/goals">학습 목표 설정</Link>
           </Button>
         </>
+      }
+    />
+  );
+}
+
+// 학습 이력 있는 학생이 오늘 할 일을 다 끝낸 경우 — 신규 가이드 대신 완료 표시.
+function TodayEntryAllDone() {
+  return (
+    <EmptyState
+      icon={<CheckCircle2Icon className="size-7 text-emerald-500" />}
+      title="오늘 할 일 완료"
+      description="복습·추천·과제를 모두 처리했어요. 더 학습하려면 오늘 화면에서 새 학습을 골라보세요."
+      actions={
+        <Button asChild size="sm" variant="outline">
+          <Link to="/study/today">오늘 화면 열기</Link>
+        </Button>
       }
     />
   );

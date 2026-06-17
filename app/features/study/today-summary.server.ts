@@ -52,12 +52,23 @@ export interface TodayAssignmentSummary {
   }>;
 }
 
+/** 오늘 진행률 — 복습(문제 SRS) 기준. completed/total 로 진행 바 렌더.
+ *  추천은 "완료" 개념이 없어 제외, 암기 카드(v2)는 재활성화 단계에서 합산 예정. */
+export interface TodayProgress {
+  completed: number;
+  total: number;
+}
+
 export interface TodaySummary {
   date: string; // YYYY-MM-DD (KST)
   review: TodayReviewSummary;
   recommendations: DailyMenuItem[];
   assignments: TodayAssignmentSummary;
-  /** 신규 학생: 셋 다 비어 있음. UI 빈상태 가이드 분기. */
+  /** 오늘 복습 진행률(완료/전체). total=0 이면 진행 바 숨김. */
+  progress: TodayProgress;
+  /** 과거 학습 이력 유무 — 빈상태에서 신규(가이드) vs 완료(축하) 분기. */
+  hasStudiedBefore: boolean;
+  /** 할 일 없음(복습0·추천0·과제0). UI 빈상태 분기(+hasStudiedBefore). */
   isEmptyForNewUser: boolean;
 }
 
@@ -73,19 +84,63 @@ async function isCohortMember(
   return (count ?? 0) > 0;
 }
 
+/** 오늘(KST) 복습한 문제 SRS 수 — last_reviewed_at >= KST 자정. */
+async function countProblemsReviewedToday(
+  client: SupabaseClient<Database>,
+  userId: string,
+  date: string,
+): Promise<number> {
+  const kstMidnightIso = new Date(`${date}T00:00:00+09:00`).toISOString();
+  const { count } = await client
+    .from("user_problem_srs")
+    .select("problem_id", { head: true, count: "exact" })
+    .eq("user_id", userId)
+    .gte("last_reviewed_at", kstMidnightIso);
+  return count ?? 0;
+}
+
+/** 학습 이력 유무 — 조문/판례 열람(study_sessions)이나 문제 시도가 하나라도 있으면 true. */
+async function checkHasStudiedBefore(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<boolean> {
+  const [sess, att] = await Promise.all([
+    client
+      .from("study_sessions")
+      .select("user_id", { head: true, count: "exact" })
+      .eq("user_id", userId)
+      .limit(1),
+    client
+      .from("user_problem_attempts")
+      .select("user_id", { head: true, count: "exact" })
+      .eq("user_id", userId)
+      .limit(1),
+  ]);
+  return (sess.count ?? 0) > 0 || (att.count ?? 0) > 0;
+}
+
 export async function getTodaySummary(
   client: SupabaseClient<Database>,
   userId: string,
   date: string = kstToday(),
 ): Promise<TodaySummary> {
-  const [problemSrs, flashcardQueue, recommendations, assignments, cohortFlag] =
-    await Promise.all([
-      getProblemSrsCounts(client, userId),
-      getReviewQueue(client, userId),
-      getOrComposeDailyMenu(client, userId, date),
-      listStudentAssignments(userId),
-      isCohortMember(client, userId),
-    ]);
+  const [
+    problemSrs,
+    flashcardQueue,
+    recommendations,
+    assignments,
+    cohortFlag,
+    reviewedTodayProblem,
+    studiedBefore,
+  ] = await Promise.all([
+    getProblemSrsCounts(client, userId),
+    getReviewQueue(client, userId),
+    getOrComposeDailyMenu(client, userId, date),
+    listStudentAssignments(userId),
+    isCohortMember(client, userId),
+    countProblemsReviewedToday(client, userId, date),
+    checkHasStudiedBefore(client, userId),
+  ]);
 
   // v2 큐는 maxReviewsPerDay 상한 적용 후 items[] 반환. backlog 는 누적 due > 상한 응답 합계.
   const flashcardDue = flashcardQueue.dueCount;
@@ -141,11 +196,19 @@ export async function getTodaySummary(
     recommendations.length === 0 &&
     assignmentsSummary.pendingCount === 0;
 
+  // 진행률 — 오늘 복습(문제 SRS) 기준. 완료=오늘 복습 수, 전체=완료+남은 due.
+  const progress: TodayProgress = {
+    completed: reviewedTodayProblem,
+    total: reviewedTodayProblem + review.problemDue,
+  };
+
   return {
     date,
     review,
     recommendations,
     assignments: assignmentsSummary,
+    progress,
+    hasStudiedBefore: studiedBefore,
     isEmptyForNewUser,
   };
 }

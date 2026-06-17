@@ -4,6 +4,7 @@
 //
 // 디자인: 디자인 시스템 v1 (Notion·Linear 톤). 학생 공용 프리미티브만 사용.
 
+import { useState } from "react";
 import {
   ArrowRightIcon,
   BookOpenIcon,
@@ -15,10 +16,11 @@ import {
   PencilLineIcon,
   RepeatIcon,
   ScaleIcon,
+  SlidersHorizontalIcon,
   SparklesIcon,
   TargetIcon,
 } from "lucide-react";
-import { Link, redirect } from "react-router";
+import { Link, redirect, useFetcher } from "react-router";
 
 import type { Route } from "./+types/today";
 
@@ -43,6 +45,11 @@ import type {
   DailyMenuPriority,
 } from "~/features/study/lib/daily-menu";
 import {
+  ALL_DAILY_MENU_KINDS,
+  KIND_LABEL,
+  parseRecommendationPrefs,
+} from "~/features/study/lib/daily-menu";
+import {
   getTodaySummary,
   type TodaySummary,
 } from "~/features/study/today-summary.server";
@@ -59,12 +66,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw redirect("/login?next=/study/today");
 
   const today = kstToday();
-  const summary = await getTodaySummary(client, user.id, today);
+  const [summary, profileRes] = await Promise.all([
+    getTodaySummary(client, user.id, today),
+    client
+      .from("profiles")
+      .select("recommendation_prefs")
+      .eq("profile_id", user.id)
+      .maybeSingle(),
+  ]);
+  const recommendationPrefs = parseRecommendationPrefs(
+    profileRes.data?.recommendation_prefs,
+  );
 
   // 응답 후 viewed_at 마킹 — analytics 용.
   runAfterResponse(markDailyMenuViewed(client, user.id, today));
 
-  return { summary };
+  return { summary, recommendationPrefs };
 }
 
 /* ── 공통 ─────────────────────────────────────────────────────────── */
@@ -101,24 +118,16 @@ function formatKstDate(yyyymmdd: string): string {
 
 /* ── 진행률 한 줄 + 진행 바 ────────────────────────────────────────── */
 
-function totalTasks(summary: TodaySummary): number {
-  return (
-    summary.review.totalToday +
-    summary.recommendations.length +
-    summary.assignments.pendingCount
-  );
-}
-
 function ProgressBar({ summary }: { summary: TodaySummary }) {
-  const total = totalTasks(summary);
-  // 완수 카운트는 v1.x — 이번 단계에선 단순히 "0/N" 표기. 정밀 측정은 후속.
-  const completed = 0;
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const { completed, total } = summary.progress;
+  // 오늘 복습(문제 SRS) 진행률. 남은 due 없고 한 적도 없으면 바 자체를 숨긴다.
+  if (total === 0) return null;
+  const pct = Math.round((completed / total) * 100);
   return (
     <Surface tone="subtle" pad={4} className="mb-6">
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-semibold">
-          오늘 할 일 <span className="tabular-nums">{total}</span>개 중{" "}
+          오늘 복습 <span className="tabular-nums">{total}</span>개 중{" "}
           <span className="text-primary tabular-nums">{completed}</span>개 완료
         </p>
         <p className="text-ink-faint font-mono text-[11px] tabular-nums">
@@ -360,27 +369,129 @@ function EmptyStateCard() {
   );
 }
 
+/* ── 완료 상태 (학습 이력 있는 학생이 오늘 할 일을 다 끝냄) ────────── */
+
+function AllDoneCard() {
+  return (
+    <EmptyState
+      icon={<CheckCircle2Icon className="size-8 text-emerald-500" />}
+      title="오늘 할 일을 모두 끝냈어요"
+      description="복습·추천·과제를 다 처리했습니다. 더 학습하려면 새 문제를 풀거나 통계로 오늘을 돌아보세요."
+      actions={
+        <>
+          <Button asChild size="sm">
+            <Link to="/subjects/patent">새 문제 풀기</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/study/stats">학습 통계</Link>
+          </Button>
+          <Button asChild size="sm" variant="ghost">
+            <Link to="/srs">암기 카드</Link>
+          </Button>
+        </>
+      }
+    />
+  );
+}
+
+/* ── 추천 설정 (feat-2-021 — 7 슬롯 ON/OFF) ─────────────────────────── */
+
+function RecommendationPrefsPanel({
+  prefs,
+}: {
+  prefs: Record<DailyMenuKind, boolean>;
+}) {
+  return (
+    <Surface tone="subtle" pad={4} className="mb-6">
+      <p className="text-sm font-semibold">오늘의 학습 추천 설정</p>
+      <p className="text-ink-soft mt-0.5 text-xs leading-relaxed">
+        끄면 그 종류의 추천이 더는 나오지 않습니다. 변경은 내일(KST 자정)부터
+        반영됩니다.
+      </p>
+      <div className="mt-3 space-y-1.5">
+        {ALL_DAILY_MENU_KINDS.map((kind) => (
+          <PrefToggleRow key={kind} kind={kind} enabled={prefs[kind]} />
+        ))}
+      </div>
+    </Surface>
+  );
+}
+
+function PrefToggleRow({
+  kind,
+  enabled,
+}: {
+  kind: DailyMenuKind;
+  enabled: boolean;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean }>();
+  const submitting = fetcher.state !== "idle";
+  // optimistic — 제출 중에는 토글된 상태로 표시.
+  const shown = submitting ? !enabled : enabled;
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/study/recommendation-prefs"
+      className="bg-card border-border flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+    >
+      <input type="hidden" name="kind" value={kind} />
+      <input type="hidden" name="enabled" value={String(!enabled)} />
+      <span className="text-foreground text-sm">{KIND_LABEL[kind]}</span>
+      <Button
+        type="submit"
+        size="sm"
+        variant={shown ? "default" : "outline"}
+        disabled={submitting}
+        className="min-w-16"
+      >
+        {shown ? "켜짐" : "꺼짐"}
+      </Button>
+    </fetcher.Form>
+  );
+}
+
 /* ── 메인 ─────────────────────────────────────────────────────────── */
 
 export default function StudyToday({ loaderData }: Route.ComponentProps) {
-  const { summary } = loaderData;
+  const { summary, recommendationPrefs } = loaderData;
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   return (
     <StudentShell width="narrow">
-      <header className="mb-6">
-        <Eyebrow>
-          <CalendarIcon className="mr-1 inline size-3" />
-          {formatKstDate(summary.date)}
-        </Eyebrow>
-        <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
-          오늘 할 일
-        </h1>
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Eyebrow>
+            <CalendarIcon className="mr-1 inline size-3" />
+            {formatKstDate(summary.date)}
+          </Eyebrow>
+          <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+            오늘 할 일
+          </h1>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setPrefsOpen((v) => !v)}
+          aria-expanded={prefsOpen}
+          className="text-ink-soft shrink-0 gap-1.5"
+        >
+          <SlidersHorizontalIcon className="size-3.5" />
+          추천 설정
+        </Button>
       </header>
+
+      {prefsOpen ? (
+        <RecommendationPrefsPanel prefs={recommendationPrefs} />
+      ) : null}
 
       {!summary.isEmptyForNewUser ? <ProgressBar summary={summary} /> : null}
 
       {summary.isEmptyForNewUser ? (
-        <EmptyStateCard />
+        summary.hasStudiedBefore ? (
+          <AllDoneCard />
+        ) : (
+          <EmptyStateCard />
+        )
       ) : (
         <div className="space-y-4">
           <ReviewCard summary={summary} />
@@ -396,11 +507,7 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
           <Link to="/study/stats" className="text-foreground underline">
             학습 통계
           </Link>
-          에서 · 추천 슬롯 설정은{" "}
-          <Link to="/study/stats" className="text-foreground underline">
-            통계
-          </Link>{" "}
-          하단으로 이동했어요.
+          에서 확인하세요. 추천 종류는 위 “추천 설정”에서 켜고 끌 수 있어요.
         </p>
       </div>
     </StudentShell>

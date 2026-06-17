@@ -51,6 +51,8 @@ function makeCohortSummary(): TodaySummary {
         },
       ],
     },
+    progress: { completed: 5, total: 17 },
+    hasStudiedBefore: true,
     isEmptyForNewUser: false,
   };
 }
@@ -88,8 +90,15 @@ function makeEmptySummary(): TodaySummary {
       dueSoonCount: 0,
       topPending: [],
     },
+    progress: { completed: 0, total: 0 },
+    hasStudiedBefore: false,
     isEmptyForNewUser: true,
   };
+}
+
+/** 시나리오 (f) — 학습 이력 있는 학생이 오늘 할 일을 다 끝냄(빈상태지만 신규 아님). */
+function makeAllDoneSummary(): TodaySummary {
+  return { ...makeEmptySummary(), hasStudiedBefore: true };
 }
 
 /** 시나리오 (d) — 복습 폭발, hasBacklog=true. */
@@ -120,6 +129,9 @@ describe("(a) 종합반 학생 — 복습·추천·과제 3카드", () => {
   });
   it("빈상태 분기 아님", () => {
     expect(s.isEmptyForNewUser).toBe(false);
+  });
+  it("진행률 completed ≤ total (오늘 복습 기준)", () => {
+    expect(s.progress.completed).toBeLessThanOrEqual(s.progress.total);
   });
 });
 
@@ -159,6 +171,17 @@ describe("(d) 복습 폭발 — hasBacklog 가드", () => {
     expect(s.review.flashcardDue + s.review.flashcardNew).toBeGreaterThanOrEqual(
       s.review.maxPerDay,
     );
+  });
+});
+
+describe("(f) 완료 상태 — 이력 있는 학생의 빈상태", () => {
+  it("isEmptyForNewUser=true 이지만 hasStudiedBefore=true → 완료 분기", () => {
+    const s = makeAllDoneSummary();
+    expect(s.isEmptyForNewUser).toBe(true);
+    expect(s.hasStudiedBefore).toBe(true);
+  });
+  it("신규 학생은 hasStudiedBefore=false → 가이드 분기", () => {
+    expect(makeEmptySummary().hasStudiedBefore).toBe(false);
   });
 });
 
