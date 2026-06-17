@@ -76,12 +76,10 @@ export const NAV_GROUP_POOL = {
     Icon: BarChart3Icon,
     items: [
       { label: "학습 목표 · 진도", to: "/goals" },
+      // feat — OX 약점 진단은 "학습 통계 > 정오문제 약점" 탭으로 흡수(통폐합). 진입점 일원화.
       { label: "학습 통계", to: "/study/stats" },
-      // feat — OX 약점 진단(진입점 복구: 종전 상단바에만 있어 사이드바 모드 학생은 nav 도달 불가였음).
-      { label: "정오문제 약점 진단", to: "/study/ox-diagnosis" },
       { label: "과제", to: "/assignments" },
       { label: "상담 코멘트", to: "/me/consult" },
-      { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
     ],
     area: "area_study_mgmt",
   },
@@ -110,6 +108,8 @@ export const NAV_GROUP_POOL = {
       { label: "GS 논점추출", to: "/gs/issues" },
       { label: "판례 쟁점훈련", to: "/case-training" },
       { label: "응시 결과", to: "/me/exam-results" },
+      // feat — 정오문제 응시 이력: "응시 결과"의 형제(내 응시 기록) → 모의고사 그룹으로 통합.
+      { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
     ],
     area: "area_mock_exams",
   },

@@ -39,7 +39,10 @@ import {
 } from "~/core/components/ui/tabs";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
+import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
+import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
+import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import { cn } from "~/core/lib/utils";
 import { BlankStatsTabs } from "~/features/blanks/components/blank-stats-tabs";
 import {
@@ -76,7 +79,13 @@ import {
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
-const TAB_VALUES = ["overview", "first_exam", "second_exam", "blanks"] as const;
+const TAB_VALUES = [
+  "overview",
+  "first_exam",
+  "second_exam",
+  "blanks",
+  "ox_diagnosis",
+] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const DEFAULT_TAB: TabValue = "overview";
@@ -224,6 +233,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     recitation,
     accuracyTrend,
     heatmap,
+    oxDiagnosis,
+    oxGate,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -241,6 +252,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     getUserRecitationStats(client, user.id, since),
     getUserAccuracyTrend(client, user.id, trendOpts),
     getActivityHeatmap(client, user.id, 365),
+    computeOxDiagnosis(client, user.id),
+    isPasserBenchmarkEnabled(),
   ]);
   const passTrend = await getUserPassPredictionTrend(client, user.id, passOpts);
 
@@ -260,6 +273,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     accuracyTrend,
     passTrend,
     heatmap,
+    oxDiagnosis,
+    oxPasser: {
+      enabled: oxGate.enabled,
+      sampleSize: oxGate.realSampleSize,
+      minSample: oxGate.minSample,
+    },
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -384,6 +403,7 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
                 loaderData.blanks.recitation.totalAttempts}
             </span>
           </TabsTrigger>
+          <TabsTrigger value="ox_diagnosis">정오문제 약점</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -401,6 +421,13 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
             subject={loaderData.blanks.subject}
             period={loaderData.blanks.period}
             recitation={loaderData.blanks.recitation}
+          />
+        </TabsContent>
+        <TabsContent value="ox_diagnosis">
+          <OxDiagnosisView
+            diagnosis={loaderData.oxDiagnosis}
+            passer={loaderData.oxPasser}
+            audience="self"
           />
         </TabsContent>
       </Tabs>
