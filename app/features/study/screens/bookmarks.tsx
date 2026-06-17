@@ -78,18 +78,24 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
   const [type, setType] = useState<TypeFilter | null>(null);
   const [minStar, setMinStar] = useState(1);
   const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
+  // 텍스트 검색 — 연도·번호(primaryLabel)·과목명(secondaryLabel, 예 "물리")·본문·메모 매칭.
+  // 자연과학 문제는 lawCode=null 이라 과목 칩엔 안 걸리지만 이 검색으로 찾을 수 있다.
+  const [query, setQuery] = useState("");
   const hasActive =
     subject !== null ||
     type !== null ||
     minStar > 1 ||
+    query.trim() !== "" ||
     !isRangeSelectionAll(rangeSel);
   const reset = () => {
     setSubject(null);
     setType(null);
     setMinStar(1);
+    setQuery("");
     setRangeSel(ALL_RANGE_SELECTION);
   };
 
+  const q = query.trim().toLowerCase();
   const items = all.filter((b) => {
     if (subject && b.lawCode !== subject) return false;
     if (type === "ox") {
@@ -101,6 +107,13 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
     } else if (type && b.targetType !== type) return false;
     if (b.starLevel < minStar) return false;
     if (!inRangeSelection(b.updatedAt, rangeSel)) return false;
+    if (
+      q &&
+      ![b.primaryLabel, b.secondaryLabel, b.bodySnippet, b.notePreview].some(
+        (t) => t?.toLowerCase().includes(q),
+      )
+    )
+      return false;
     return true;
   });
   const problemCount = items.filter((b) => b.targetType === "problem").length;
@@ -121,6 +134,16 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
       ]}
     >
       <FilterBar hasActive={hasActive} onReset={reset}>
+        <FilterGroup label="검색">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="연도·번호·과목·본문·메모"
+            className="border-border focus:border-primary h-7 w-44 rounded-md border bg-transparent px-2 text-xs outline-none"
+          />
+        </FilterGroup>
+        <FilterDivider />
         <FilterGroup label="1차 과목">
           <FilterChip selected={!subject} onClick={() => setSubject(null)}>
             전체
