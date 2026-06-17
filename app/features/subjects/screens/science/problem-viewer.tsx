@@ -10,6 +10,7 @@ import {
   CircleXIcon,
   HeartIcon,
   LightbulbIcon,
+  MessageCircleQuestionIcon,
   PencilIcon,
   PlayIcon,
 } from "lucide-react";
@@ -26,6 +27,8 @@ import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import { listComments } from "~/features/comments/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { QnaPanel } from "~/features/qna/components/qna-panel";
+import { listThreadsForTarget } from "~/features/qna/queries.server";
 import {
   getQuizSession,
   recordProblemAttempt,
@@ -88,9 +91,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const role = await getStaffRole(client, user.id);
-  const [bookmark, comments] = await Promise.all([
+  const [bookmark, comments, qnaThreads] = await Promise.all([
     getBookmark(client, user.id, "problem", problem.problemId),
     listComments(client, "problem", problem.problemId),
+    listThreadsForTarget(client, "problem", problem.problemId),
   ]);
 
   return {
@@ -105,6 +109,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     isAdmin: role === "admin",
     bookmark,
     comments,
+    qnaThreads,
   };
 }
 
@@ -165,6 +170,7 @@ export default function ScienceProblemViewer({
     isAdmin,
     bookmark,
     comments,
+    qnaThreads,
   } = loaderData;
   // 발문(stem) 과 <보기>(ㄱㄴㄷ) 분리 — 자연과학 보기는 bodyMd 텍스트라 박스·줄바꿈이 없음.
   const { stem, bogi } = parseScienceBody(problem.bodyMd);
@@ -441,6 +447,18 @@ export default function ScienceProblemViewer({
             />
           </section>
         </div>
+
+        <section className="bg-card mt-4 rounded-xl border p-4 shadow-sm">
+          <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            <MessageCircleQuestionIcon className="text-primary size-4" />
+            강사 질의 (Q&A)
+          </h2>
+          <QnaPanel
+            threads={qnaThreads}
+            targetType="problem"
+            targetId={problem.problemId}
+          />
+        </section>
       </div>
     </div>
   );
