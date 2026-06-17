@@ -627,10 +627,38 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
           />
 
           {/* 최상단 — 오늘로 가는 입구. 통계가 아니라 오늘 할 일 요약 + 큰 진입 버튼.
-             ★ Notion·Linear 톤 시범 리디자인 — 학생 공용 프리미티브 사용. */}
-          <div className="mb-8">
-            <TodayEntryCard summary={todaySummary} />
-          </div>
+             ★ Notion·Linear 톤 시범 리디자인 — 학생 공용 프리미티브 사용.
+             종합반(cohort) + 임박 과제 있으면 과제를 오늘의 학습 오른쪽 별도 카드로 분리. */}
+          {todaySummary.assignments.isCohortMember &&
+          pendingAssignments.length > 0 ? (
+            <div className="mb-8">
+              <DashGrid>
+                <SpanCol span={4}>
+                  <TodayEntryCard summary={todaySummary} hideAssignmentChip />
+                </SpanCol>
+                <SpanCol span={2}>
+                  <PendingAssignmentsCard
+                    assignments={pendingAssignments.map((a) => ({
+                      assignmentId: a.assignmentId,
+                      title: a.title,
+                      dueAt: a.dueAt,
+                      itemCount: a.itemCount,
+                      submission: a.submission
+                        ? {
+                            completedItems: a.submission.completedItems,
+                            totalItems: a.submission.totalItems,
+                          }
+                        : null,
+                    }))}
+                  />
+                </SpanCol>
+              </DashGrid>
+            </div>
+          ) : (
+            <div className="mb-8">
+              <TodayEntryCard summary={todaySummary} />
+            </div>
+          )}
 
           {/* 그 아래 — 내 위치 조망 (누적·추세). KPI 부터 시작. */}
           <div className="mb-6">

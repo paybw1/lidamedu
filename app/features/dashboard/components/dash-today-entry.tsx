@@ -16,7 +16,14 @@ import { Button } from "~/core/components/ui/button";
 import { Chip, EmptyState, Eyebrow, Surface } from "~/core/components/student";
 import type { TodaySummary } from "~/features/study/today-summary.server";
 
-export function TodayEntryCard({ summary }: { summary: TodaySummary }) {
+export function TodayEntryCard({
+  summary,
+  hideAssignmentChip = false,
+}: {
+  summary: TodaySummary;
+  // 종합반 — 대시보드에서 과제를 별도 카드로 분리할 때 칩/요약에서 과제 숨김.
+  hideAssignmentChip?: boolean;
+}) {
   if (summary.isEmptyForNewUser) {
     return <TodayEntryEmpty />;
   }
@@ -30,7 +37,8 @@ export function TodayEntryCard({ summary }: { summary: TodaySummary }) {
   const parts: string[] = [];
   if (totalReview > 0) parts.push(`복습 ${totalReview}개`);
   if (totalRec > 0) parts.push(`추천 ${totalRec}개`);
-  if (isCohort && totalAssign > 0) parts.push(`과제 ${totalAssign}개`);
+  if (isCohort && totalAssign > 0 && !hideAssignmentChip)
+    parts.push(`과제 ${totalAssign}개`);
   const oneLine = parts.length > 0 ? parts.join(" · ") : "오늘 할 일 없음";
 
   return (
@@ -52,15 +60,14 @@ export function TodayEntryCard({ summary }: { summary: TodaySummary }) {
           추천 <span className="tabular-nums">{totalRec}</span>
         </Chip>
         {isCohort ? (
-          <Chip
-            tone="warn"
-            icon={<ClipboardListIcon className="size-3" />}
-          >
-            과제 <span className="tabular-nums">{totalAssign}</span>
-            {summary.assignments.dueSoonCount > 0
-              ? ` (D-${summary.assignments.dueSoonCount}건 임박)`
-              : ""}
-          </Chip>
+          hideAssignmentChip ? null : (
+            <Chip tone="warn" icon={<ClipboardListIcon className="size-3" />}>
+              과제 <span className="tabular-nums">{totalAssign}</span>
+              {summary.assignments.dueSoonCount > 0
+                ? ` (D-${summary.assignments.dueSoonCount}건 임박)`
+                : ""}
+            </Chip>
+          )
         ) : (
           // 비종합반 — 과제 카드가 보이지 않는 이유 자연스럽게 안내.
           <Chip tone="neutral">자기주도 모드 · 종합반 가입 시 과제 표시</Chip>
