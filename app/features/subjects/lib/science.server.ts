@@ -53,6 +53,60 @@ export async function listScienceProblems(
   }));
 }
 
+// 자연과학 즐겨찾기 문제 — 과목 한정 (C-3). annotations.listBookmarkedProblems 는
+// laws!inner 라 자과(law 없음)를 떨궈 재사용 불가 → 별도. 2단계 조회(북마크→problems).
+export interface ScienceBookmarkedProblem {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  bodySnippet: string;
+  starLevel: number;
+}
+
+export async function listScienceBookmarkedProblems(
+  client: SupabaseClient<Database>,
+  userId: string,
+  scienceSubject: ScienceSubjectSlug,
+): Promise<ScienceBookmarkedProblem[]> {
+  const { data: rows, error } = await client
+    .from("user_bookmarks")
+    .select("target_id, star_level")
+    .eq("user_id", userId)
+    .eq("target_type", "problem")
+    .is("deleted_at", null)
+    .gt("star_level", 0)
+    .limit(2000);
+  if (error) throw error;
+  const list = rows ?? [];
+  if (list.length === 0) return [];
+  const starById = new Map(list.map((r) => [r.target_id, r.star_level]));
+
+  const { data: ps, error: pErr } = await client
+    .from("problems")
+    .select(
+      "problem_id, subject_type, science_subject, year, problem_number, body_md, deleted_at",
+    )
+    .in(
+      "problem_id",
+      list.map((r) => r.target_id),
+    )
+    .eq("subject_type", "science")
+    .eq("science_subject", scienceSubject);
+  if (pErr) throw pErr;
+
+  const out: ScienceBookmarkedProblem[] = (ps ?? [])
+    .filter((p) => !p.deleted_at)
+    .map((p) => ({
+      problemId: p.problem_id,
+      year: p.year,
+      problemNumber: p.problem_number,
+      bodySnippet: (p.body_md ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
+      starLevel: starById.get(p.problem_id) ?? 0,
+    }));
+  out.sort((a, b) => b.starLevel - a.starLevel);
+  return out;
+}
+
 // 문제 + 선지 (viewer 용).
 export interface ScienceProblemDetail {
   problemId: string;

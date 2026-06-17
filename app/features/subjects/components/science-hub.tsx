@@ -1,6 +1,8 @@
 // 자연과학 4과목 공용 허브 UI — 단원 목록 + KPI placeholder.
 // 풀이 Runner / 색인 / 통계 등 5.4.A.3 의 객관식 자산을 추후 연결한다.
 
+import { useState } from "react";
+
 import { ArrowRightIcon, ChevronRightIcon } from "lucide-react";
 import { Form, Link } from "react-router";
 
@@ -11,17 +13,94 @@ import {
   type ScienceSubjectSlug,
 } from "~/features/subjects/lib/science";
 
+type ScienceBookmark = {
+  problemId: string;
+  year: number | null;
+  problemNumber: number | null;
+  bodySnippet: string;
+  starLevel: number;
+};
+
+// 자연과학 전용 즐겨찾기 검색 (C-3) — 이 과목에서 별점 매긴 문제를 연도·번호·본문으로 찾기.
+function ScienceBookmarkSearch({
+  subject,
+  items,
+}: {
+  subject: string; // URL path (earth-science 등)
+  items: ScienceBookmark[];
+}) {
+  const [q, setQ] = useState("");
+  const query = q.trim().toLowerCase();
+  const filtered = query
+    ? items.filter((b) =>
+        [
+          b.year ? `${b.year}년` : "",
+          b.problemNumber ? `${b.problemNumber}번` : "",
+          b.bodySnippet,
+        ].some((t) => t.toLowerCase().includes(query)),
+      )
+    : items;
+  return (
+    <div className="bg-card mb-6 rounded-xl border shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
+        <h2 className="text-sm font-bold tracking-tight">
+          내 즐겨찾기{" "}
+          <span className="text-muted-foreground font-normal">
+            ({items.length})
+          </span>
+        </h2>
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="연도·번호·본문"
+          className="border-border focus:border-primary h-8 w-40 rounded-md border bg-transparent px-2 text-xs outline-none"
+        />
+      </div>
+      <div className="divide-y">
+        {filtered.length === 0 ? (
+          <p className="text-muted-foreground px-6 py-6 text-center text-xs">
+            {query ? "검색 결과가 없습니다." : "즐겨찾기한 문제가 없습니다."}
+          </p>
+        ) : (
+          filtered.map((b) => (
+            <Link
+              key={b.problemId}
+              to={`/subjects/science/${subject}/problems/${b.problemId}`}
+              viewTransition
+              className="hover:bg-accent/50 flex items-center gap-3 px-6 py-3 transition-colors"
+            >
+              <span className="shrink-0 text-xs text-amber-500">
+                {"★".repeat(b.starLevel)}
+              </span>
+              <span className="shrink-0 text-xs font-medium tabular-nums">
+                {b.year ? `${b.year}년` : "—"}
+                {b.problemNumber ? ` ${b.problemNumber}번` : ""}
+              </span>
+              <span className="text-muted-foreground truncate text-xs">
+                {b.bodySnippet}
+              </span>
+            </Link>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ScienceHub({
   subject,
   sections,
   years,
   progress,
+  bookmarks = [],
   hideBackLink = false,
 }: {
   subject: ScienceSubjectSlug;
   sections: ScienceSectionStats[];
   years: { year: number; count: number }[];
   progress: { attempted: number; correct: number; total: number };
+  bookmarks?: ScienceBookmark[];
   // /subjects/science 허브에 탭으로 임베드될 때 "← 자연과학" 백링크 숨김(중복).
   hideBackLink?: boolean;
 }) {
@@ -103,6 +182,10 @@ export default function ScienceHub({
             </p>
           </div>
         </div>
+
+        {bookmarks.length > 0 ? (
+          <ScienceBookmarkSearch subject={sciencePath} items={bookmarks} />
+        ) : null}
 
         {/* Section list card */}
         <div className="rounded-xl border bg-card shadow-sm">

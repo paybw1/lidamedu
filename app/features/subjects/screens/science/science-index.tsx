@@ -16,6 +16,7 @@ import {
 } from "~/features/subjects/lib/science";
 import {
   getScienceProgress,
+  listScienceBookmarkedProblems,
   listScienceYears,
   listSectionsWithStats,
 } from "~/features/subjects/lib/science.server";
@@ -40,18 +41,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const [sections, years, progress] = await Promise.all([
+  const [sections, years, progress, bookmarks] = await Promise.all([
     listSectionsWithStats(client, subject, user?.id ?? null),
     listScienceYears(client, subject),
     user
       ? getScienceProgress(client, user.id, subject)
       : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),
+    user
+      ? listScienceBookmarkedProblems(client, user.id, subject)
+      : Promise.resolve([]),
   ]);
-  return { subject, sections, years, progress };
+  return { subject, sections, years, progress, bookmarks };
 }
 
 export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
-  const { subject, sections, years, progress } = loaderData;
+  const { subject, sections, years, progress, bookmarks } = loaderData;
   return (
     <div className="bg-background">
       {/* 과목 탭 — 클릭 시 같은 화면에서 내용만 교체(페이지 전환 아님). */}
@@ -91,6 +95,7 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
         sections={sections}
         years={years}
         progress={progress}
+        bookmarks={bookmarks}
         hideBackLink
       />
     </div>
