@@ -581,6 +581,8 @@ export default [
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",
       ),
+      // feat-8-026b — 학습 데이터 분석 동의(A/B) 토글 전용 action(대시보드 등 공용).
+      route("/api/consent", "features/exam-results/api/consent.tsx"),
       route(
         "/lectures/:itemId",
         "features/lectures/screens/lecture-viewer.tsx",

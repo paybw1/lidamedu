@@ -41,6 +41,7 @@ import {
 } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import { hasPoolConsent } from "~/features/exam-results/queries.server";
+import { ConsentSection } from "~/features/exam-results/components/consent-section";
 import { generateRecommendedActions } from "~/features/exam-results/recommendations";
 import { predictPassScore } from "~/features/study/lib/pass-predict";
 
@@ -143,7 +144,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   // pass-predict 차수 분기용 — next_exam_round 조회. null = 1차 default.
   const { data: predictProfile } = await client
     .from("profiles")
-    .select("next_exam_round")
+    .select("next_exam_round, my_analysis_consent_at, pool_consent_at")
     .eq("profile_id", user.id)
     .maybeSingle();
   const userExamRound = (predictProfile?.next_exam_round ?? null) as
@@ -333,6 +334,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     isStaff,
     hasMgmt,
     planCode,
+    // feat-8-026b — 선택 동의(A/B) 토글을 대시보드에서(응시 결과에서 이전).
+    myAnalysisConsentAt: predictProfile?.my_analysis_consent_at ?? null,
+    poolConsentAt: predictProfile?.pool_consent_at ?? null,
     weekTrack,
     todaySummary,
     passerGate,
@@ -767,6 +771,16 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                 <RecentRevisionsCard items={revisionRows} />
                 <RecentCasesCard items={caseRows} />
               </div>
+            </SpanCol>
+          </DashGrid>
+
+          <SectionBand eyebrow="DATA CONSENT · 데이터 활용 동의" />
+          <DashGrid>
+            <SpanCol span={6}>
+              <ConsentSection
+                myAnalysisConsentedAt={loaderData.myAnalysisConsentAt}
+                poolConsentedAt={loaderData.poolConsentAt}
+              />
             </SpanCol>
           </DashGrid>
         </main>
