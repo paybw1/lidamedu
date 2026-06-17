@@ -106,11 +106,13 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "blanks",
-    label: "빈칸 자료",
+    label: "암기 자료",
     Icon: PencilLineIcon,
     screens: [
       { label: "빈칸 자료 세트", to: "/admin/blanks" },
       { label: "빈칸 정답률", to: "/admin/blanks/stats" },
+      // feat-2-023 — 암기 카드(SRS v2) 조문·판례 생성.
+      { label: "암기 카드 생성", to: "/admin/srs-cards" },
     ],
   },
   {

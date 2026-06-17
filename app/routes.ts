@@ -607,6 +607,8 @@ export default [
         "features/admin/api/ai-problem-gen.tsx",
       ),
       route("/api/admin/importance", "features/admin/api/importance.tsx"),
+      // feat-2-023 암기 카드 생성(조문·판례 → srs_items, dry-run·멱등·소프트삭제).
+      route("/api/admin/srs-cards", "features/admin/api/srs-cards.tsx"),
       // feat-8-008 학습관리 영역 게이트 (과제).
       layout(
         "features/study/layouts/study-management.layout.tsx",
@@ -813,6 +815,8 @@ export default [
         route("/law/:lawCode", "features/blanks/screens/admin-blanks-all.tsx"),
         route("/:setId", "features/blanks/screens/admin-blanks-edit.tsx"),
       ]),
+      // feat-2-023 암기 카드(SRS v2) 생성 — 빈칸 클러스터(암기 자료군) 인접 배치.
+      route("/admin/srs-cards", "features/admin/screens/admin-srs-cards.tsx"),
       ...prefix("/admin/gs", [
         index("features/gs/screens/admin-gs-list.tsx"),
         // §3 GS 비용 가드 — AI/OCR 사용량 + cap 잔여 + 회차 top.
