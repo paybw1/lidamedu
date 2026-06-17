@@ -66,6 +66,12 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
         <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
           <BookOpenCheckIcon className="size-3.5" /> 2차 선택과목 가이드
         </p>
+        <Link
+          to="/study/passer-summaries"
+          className="text-primary inline-flex w-fit items-center gap-1 text-xs font-medium hover:underline"
+        >
+          ← 합격자 분석
+        </Link>
         <h1 className="text-2xl font-bold tracking-tight">
           2차 선택과목별 평균·과락
         </h1>

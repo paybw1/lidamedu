@@ -41,7 +41,7 @@ export const NAV_GROUP_POOL = {
   },
   review: {
     id: "review" as const,
-    label: "복습",
+    label: "복습·암기",
     Icon: RotateCcwIcon,
     items: [
       { label: "복습", to: "/study/srs" },
@@ -96,6 +96,8 @@ export const NAV_GROUP_POOL = {
       { label: "2차 기출문제", to: "/latest/essay" },
       { label: "논문", to: "/latest/papers" },
       { label: "추록·정오표", to: "/latest/book-updates" },
+      // feat — 합격자 분석(누구나 열람, 서버게이트 없음) → 흐림 없는 학습정보에 노출(진입점 복구).
+      { label: "합격자 분석", to: "/study/passer-summaries" },
     ],
   },
   mock: {

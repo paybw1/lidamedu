@@ -64,6 +64,21 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
         </p>
       </header>
 
+      <nav className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium">
+        <Link
+          to="/study/passer-trend"
+          className="text-primary inline-flex items-center gap-1 hover:underline"
+        >
+          합격자 추이 →
+        </Link>
+        <Link
+          to="/study/electives-guide"
+          className="text-primary inline-flex items-center gap-1 hover:underline"
+        >
+          선택과목 가이드 →
+        </Link>
+      </nav>
+
       <Card className="mb-4">
         <CardContent className="px-4 py-3">
           <Form method="get" className="grid grid-cols-2 gap-2 md:grid-cols-4">
