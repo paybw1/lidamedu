@@ -1,12 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-export type ExamType = "first" | "second";
-
+// 시험 차수(1차/2차)는 profiles.next_exam_round 로 일원화(feat-2-025) —
+// study_goals.exam_type 는 제거됨. 차수 읽기/쓰기는 exam-results/queries.server 의
+// getNextExamPlan/setNextExamPlan 을 사용한다.
 export interface StudyGoals {
   examDate: string | null; // YYYY-MM-DD
   weeklyGoalHours: number;
-  examType: ExamType;
   targetScore: number | null;
   notes: string | null;
   updatedAt: string | null;
@@ -15,7 +15,6 @@ export interface StudyGoals {
 export const DEFAULT_STUDY_GOALS: StudyGoals = {
   examDate: null,
   weeklyGoalHours: 25,
-  examType: "first",
   targetScore: null,
   notes: null,
   updatedAt: null,
@@ -27,9 +26,7 @@ export async function getStudyGoals(
 ): Promise<StudyGoals> {
   const { data, error } = await client
     .from("study_goals")
-    .select(
-      "exam_date, weekly_goal_hours, exam_type, target_score, notes, updated_at",
-    )
+    .select("exam_date, weekly_goal_hours, target_score, notes, updated_at")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;
@@ -37,7 +34,6 @@ export async function getStudyGoals(
   return {
     examDate: data.exam_date,
     weeklyGoalHours: data.weekly_goal_hours,
-    examType: data.exam_type as ExamType,
     targetScore: data.target_score,
     notes: data.notes,
     updatedAt: data.updated_at,
@@ -50,7 +46,6 @@ export async function upsertStudyGoals(
   input: {
     examDate: string | null;
     weeklyGoalHours: number;
-    examType: ExamType;
     targetScore: number | null;
     notes: string | null;
   },
@@ -59,7 +54,6 @@ export async function upsertStudyGoals(
     user_id: userId,
     exam_date: input.examDate,
     weekly_goal_hours: input.weeklyGoalHours,
-    exam_type: input.examType,
     target_score: input.targetScore,
     notes: input.notes,
   });

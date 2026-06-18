@@ -25,7 +25,6 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import {
   getStudyGoals,
   upsertStudyGoals,
-  type ExamType,
 } from "~/features/goals/queries.server";
 import {
   getAllSubjectsProgress,
@@ -44,7 +43,10 @@ import {
   type PasserBenchmark,
 } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
-import { hasPoolConsent } from "~/features/exam-results/queries.server";
+import {
+  hasPoolConsent,
+  setNextExamPlan,
+} from "~/features/exam-results/queries.server";
 
 import type { Route } from "./+types/goals";
 
@@ -59,7 +61,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
-  const [goals, overall, subjects, dailyStats, passerBenchmark] =
+  const [goals, overall, subjects, dailyStats, passerBenchmark, nextExamRound] =
     await Promise.all([
       getStudyGoals(client, user.id),
       getOverallProgress(client, user.id),
@@ -79,8 +81,22 @@ export async function loader({ request }: Route.LoaderArgs) {
           ? getPasserBenchmarks(user.id, { excludeSynthetic: true })
           : null,
       ),
+      // 차수 SSOT = profiles.next_exam_round (feat-2-025). 폼 기본값으로 사용.
+      client
+        .from("profiles")
+        .select("next_exam_round")
+        .eq("profile_id", user.id)
+        .maybeSingle()
+        .then((r) => r.data?.next_exam_round ?? null),
     ]);
-  return { goals, overall, subjects, dailyStats, passerBenchmark };
+  return {
+    goals,
+    overall,
+    subjects,
+    dailyStats,
+    passerBenchmark,
+    examRound: (nextExamRound ?? "first") as "first" | "second",
+  };
 }
 
 const schema = z.object({
@@ -94,7 +110,7 @@ const schema = z.object({
     .int()
     .min(0, "0 이상")
     .max(168, "주 168시간 이내"),
-  examType: z.enum(["first", "second"]),
+  examRound: z.enum(["first", "second"]),
   targetScore: z
     .union([
       z.coerce.number().int().min(0).max(1000),
@@ -115,7 +131,7 @@ export async function action({ request }: Route.ActionArgs) {
   const parsed = schema.safeParse({
     examDate: form.get("examDate") ?? "",
     weeklyGoalHours: form.get("weeklyGoalHours") ?? "0",
-    examType: form.get("examType") ?? "first",
+    examRound: form.get("examRound") ?? "first",
     targetScore: form.get("targetScore") ?? "",
     notes: form.get("notes") ?? "",
   });
@@ -124,10 +140,24 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: first?.message ?? "입력 오류" }, { status: 400 });
   }
 
+  // 차수는 profiles SSOT 로 일원화(feat-2-025) — 기존 next_exam_year 는 보존하고
+  // 차수만 갱신한다. 이 갱신으로 추천(gap_problems) 등이 즉시 선택을 반영.
+  const { data: profile } = await client
+    .from("profiles")
+    .select("next_exam_year")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  const planRes = await setNextExamPlan(client, user.id, {
+    nextExamYear: profile?.next_exam_year ?? null,
+    nextExamRound: parsed.data.examRound,
+  });
+  if (!planRes.ok) {
+    return data({ error: planRes.error }, { status: 400 });
+  }
+
   await upsertStudyGoals(client, user.id, {
     examDate: parsed.data.examDate ? parsed.data.examDate : null,
     weeklyGoalHours: parsed.data.weeklyGoalHours,
-    examType: parsed.data.examType as ExamType,
     targetScore:
       typeof parsed.data.targetScore === "number"
         ? parsed.data.targetScore
@@ -139,7 +169,8 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Goals({ loaderData, actionData }: Route.ComponentProps) {
-  const { goals, overall, subjects, dailyStats, passerBenchmark } = loaderData;
+  const { goals, overall, subjects, dailyStats, passerBenchmark, examRound } =
+    loaderData;
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
   const errorMsg =
@@ -462,15 +493,18 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
                 </p>
               ) : null}
             </Field>
-            <Field label="시험 유형">
+            <Field label="시험 차수">
               <select
-                name="examType"
-                defaultValue={goals.examType}
+                name="examRound"
+                defaultValue={examRound}
                 className="border-input bg-background h-9 rounded-md border px-2 text-sm"
               >
                 <option value="first">1차 (객관식)</option>
                 <option value="second">2차 (주관식)</option>
               </select>
+              <p className="text-muted-foreground mt-1 text-[11px]">
+                선택한 차수에 맞춰 추천 문제 과목이 자동 반영됩니다.
+              </p>
             </Field>
           </CardContent>
         </Card>

@@ -150,10 +150,11 @@ export async function action({ request }: Route.ActionArgs) {
         { error: parsed.error.issues[0]?.message ?? "입력 오류" },
         { status: 400 },
       );
+    // 차수(1차/2차)는 step1 의 setNextExamPlan(profiles.next_exam_round)이 SSOT —
+    // study_goals 에는 더 이상 차수를 쓰지 않는다(feat-2-025).
     await upsertStudyGoals(client, user.id, {
       examDate: parsed.data.examDate,
       weeklyGoalHours: parsed.data.weeklyGoalHours,
-      examType: "first", // onboarding 은 1차 디폴트, /goals 에서 수정 가능
       targetScore:
         parsed.data.targetScore === "" ||
         parsed.data.targetScore === undefined
