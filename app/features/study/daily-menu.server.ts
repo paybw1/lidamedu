@@ -363,18 +363,17 @@ async function pickGapProblems(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<DailyMenuItem | null> {
-  // 본인의 next_exam_round + next_exam_year 기반 과목.
   const { data: profile } = await client
     .from("profiles")
-    .select("next_exam_year, next_exam_round")
+    .select("next_exam_round")
     .eq("profile_id", userId)
     .maybeSingle();
-  const round = profile?.next_exam_round;
-  // 1차 = 산업재산권 3법 + 민법 / 2차 = 산업재산권 3법 + 민소법.
-  const laws: LawSubjectSlug[] =
-    round === "second"
-      ? ["patent", "trademark", "design", "civil-procedure"]
-      : ["patent", "trademark", "design", "civil"];
+  // 2차는 주관식/논술 — 객관식 진도 추천이 부적합하고, 플랫폼에 2차 객관식
+  // 콘텐츠도 없다(전 문항이 1차 객관식). 2차 수험생에겐 이 슬롯을 제공하지 않는다.
+  // (조문·판례·암기 SRS 추천은 다른 슬롯에서 계속 제공되어 빈 화면이 되지 않음.)
+  if (profile?.next_exam_round === "second") return null;
+  // 1차 = 산업재산권 3법 + 민법.
+  const laws: LawSubjectSlug[] = ["patent", "trademark", "design", "civil"];
 
   // 본인 시도 problem_id.
   const { data: attempted } = await client
