@@ -18,20 +18,22 @@ export interface DashHeaderData {
   userName: string;
   todayLabel: string;
   cohort: string;
-  examDateIso: string;
+  examDateIso: string | null;
   goalsConfigured: boolean;
   remainingHours: number;
 }
 
 export function DashHeader({ data }: { data: DashHeaderData }) {
   const [ref, inView] = useInView<HTMLDivElement>();
-  const dDay = Math.max(
-    0,
-    Math.ceil(
-      (new Date(data.examDateIso).getTime() - Date.now()) /
-        (24 * 60 * 60 * 1000),
-    ),
-  );
+  const dDay = data.examDateIso
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(data.examDateIso).getTime() - Date.now()) /
+            (24 * 60 * 60 * 1000),
+        ),
+      )
+    : 0;
   const counted = useCountUp(dDay, 1400, inView);
   const remainText =
     data.remainingHours > 0
@@ -87,37 +89,50 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
           border: `1px solid ${T.blueSoft}`,
         }}
       >
-        <div>
-          <Eyebrow color={T.blue} style={{ marginBottom: 4 }}>
-            변리사 1차
-          </Eyebrow>
-          <Num value={`D-${Math.round(counted)}`} size={36} color={T.blue} />
-        </div>
-        <div
-          style={{
-            font: "400 12px/1.5 Pretendard, sans-serif",
-            color: T.blue,
-            opacity: 0.7,
-            letterSpacing: "-0.005em",
-          }}
-        >
-          {data.goalsConfigured ? (
-            <>
-              시험일
-              <br />
-              {data.examDateIso}
-            </>
-          ) : (
-            <Link
-              to="/goals"
-              style={{ color: T.blue, textDecoration: "underline" }}
+        {data.goalsConfigured && data.examDateIso ? (
+          <>
+            <div>
+              <Eyebrow color={T.blue} style={{ marginBottom: 4 }}>
+                변리사 1차
+              </Eyebrow>
+              <Num
+                value={`D-${Math.round(counted)}`}
+                size={36}
+                color={T.blue}
+              />
+            </div>
+            <div
+              style={{
+                font: "400 12px/1.5 Pretendard, sans-serif",
+                color: T.blue,
+                opacity: 0.7,
+                letterSpacing: "-0.005em",
+              }}
             >
               시험일
               <br />
-              설정하기 →
+              {data.examDateIso}
+            </div>
+          </>
+        ) : (
+          // 시험일 미설정 — 가짜 D-day 대신 설정 안내(feat-2-025 Phase 3).
+          <div>
+            <Eyebrow color={T.blue} style={{ marginBottom: 4 }}>
+              시험 D-day
+            </Eyebrow>
+            <Link
+              to="/goals"
+              style={{
+                font: "700 15px/1.4 Pretendard, sans-serif",
+                color: T.blue,
+                textDecoration: "underline",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              시험일 설정하기 →
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

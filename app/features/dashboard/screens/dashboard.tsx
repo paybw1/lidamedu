@@ -401,7 +401,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 // ── 화면 유틸 ───────────────────────────────────────────────────────────────
 
-const EXAM_DATE_FALLBACK_ISO = "2026-07-23";
 const KOREAN_WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"];
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -498,7 +497,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
   } = loaderData;
 
   // ── 헤더 / KPI ──
-  const examDateIso = goals.examDate ?? EXAM_DATE_FALLBACK_ISO;
+  // 시험일 미설정이면 D-day 를 추정하지 않는다 — 가짜 D-day 대신 설정 안내(feat-2-025 Phase 3).
+  const examDateIso = goals.examDate;
   const dailyTargetHours = goals.weeklyGoalHours / 7;
   const todayMs = dailyStats.days[dailyStats.days.length - 1]?.timeMs ?? 0;
   const todayHours = todayMs / HOUR_MS;

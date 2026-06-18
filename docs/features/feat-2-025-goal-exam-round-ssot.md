@@ -1,6 +1,6 @@
 # feat-2-025 — 시험 차수 SSOT 일원화(profiles) + 목표→추천 연결 + D-day 폴백 제거
 
-> 상태: 🟡 Phase 1 + ① + Phase 2(DROP) 완료·운영 반영(2026-06-18) · Phase 3(D-day 폴백) 대기
+> 상태: ✅ Phase 1 + ① + Phase 2(DROP) + Phase 3(D-day 폴백) 완료·운영 반영(2026-06-18)
 > 결정(사용자): 1.(b) profiles로 차수 SSOT·`study_goals.exam_type` 제거 / 2. 차수 필터부터 / 3. D-day 폴백 제거 / 4. 진도 정의 현행 유지.
 > 추가 지시(2026-06-18): Phase 1 에 **① 신규 유저 next_exam_round 보장** 동봉 / Phase 2 dry-run 은 **② 발산 행** 기준 보고.
 > 핵심: 차수가 `study_goals.exam_type`(write-only)·`profiles.next_exam_round`(파이프라인) 이중 저장·미동기화 → **profiles 단일화**.
@@ -63,9 +63,11 @@ Phase 1 배포로 코드가 exam_type 을 더는 읽지/쓰지 않게 된 뒤:
 - **스키마**: `ALTER TABLE study_goals DROP COLUMN exam_type;` (마이그레이션) → `npm run db:typegen`.
 - ★ 엣지: 온보딩 'first' + /goals 'second' 였던 사용자는 backfill로 second 반영. 온보딩 'second' 인데 /goals 미변경(=exam_type 'first' 하드코딩)인 사용자는 **그대로 second 유지**(backfill 조건이 건드리지 않음).
 
-### Phase 3 — D-day 폴백 제거 (독립·소)
-- `dashboard.tsx:404,501` `EXAM_DATE_FALLBACK_ISO="2026-07-23"` 제거. `examDateIso = goals.examDate ?? FALLBACK` → **null 이면 D-day 비표시** + `DashHeader`가 `goalsConfigured===false`일 때 "시험일을 설정하세요" + `/goals` 링크(틀린 D-day보다 정직).
-- `/goals` KPI는 이미 examDate null 시 D-day 숨기고 안내(`goals.tsx:235-274`) — 변경 불필요.
+### Phase 3 — D-day 폴백 제거 ✅ 완료(2026-06-18)
+- `dashboard.tsx`: `EXAM_DATE_FALLBACK_ISO="2026-07-23"` 상수 제거, `examDateIso = goals.examDate`(이제 `string | null`).
+- `dash-header.tsx`: `DashHeaderData.examDateIso: string | null`, dDay 계산은 examDateIso 있을 때만(없으면 0). 배지 렌더 분기 — `goalsConfigured && examDateIso` 면 D-day+시험일(기존), 아니면 **가짜 D-day 숨기고 "시험 D-day / 시험일 설정하기 →"(/goals 링크)**. 틀린 D-day보다 정직.
+- `/goals` KPI는 이미 examDate null 시 D-day 숨기고 안내(`goals.tsx`) — 변경 불필요. typecheck 통과.
+- ★ **남은 하드코딩(이번 범위 밖, 플래그)**: 배지 eyebrow `"변리사 1차"`(dash-header.tsx)·`user.cohort:"27기 · 1차 준비"`(dashboard.tsx) 는 여전히 "1차" 고정 → 2차 수험생에 오표시. 차수(`next_exam_round`)·cohort 실데이터로 치환은 별도 소과제(round 를 loader return·DashHeader prop 까지 배선 필요).
 
 ### 범위 밖(이번)
 - #4 진도 정의(방문·시도 비율) 현행 유지.
