@@ -216,7 +216,17 @@ export default function AdminAssignmentEdit({
           ]}
         >
           {progress.map((m) => (
-            <ProgressRow key={m.profileId} m={m} />
+            <ProgressRow
+              key={m.profileId}
+              m={m}
+              late={
+                assignment.deadlinePolicy === "late_allowed" &&
+                m.status === "completed" &&
+                m.completedAt != null &&
+                new Date(m.completedAt).getTime() >
+                  new Date(assignment.dueAt).getTime()
+              }
+            />
           ))}
         </IndexTable>
       </section>
@@ -224,7 +234,13 @@ export default function AdminAssignmentEdit({
   );
 }
 
-function ProgressRow({ m }: { m: MemberAssignmentProgress }) {
+function ProgressRow({
+  m,
+  late,
+}: {
+  m: MemberAssignmentProgress;
+  late: boolean;
+}) {
   const statusMap: Record<AssignmentStatus, Parameters<typeof StatusChip>[0]["status"]> = {
     pending: "pending",
     partial: "warn",
@@ -245,10 +261,17 @@ function ProgressRow({ m }: { m: MemberAssignmentProgress }) {
         ) : null}
       </TD>
       <TD>
-        <StatusChip
-          status={statusMap[m.status]}
-          label={ASSIGNMENT_STATUS_LABEL[m.status]}
-        />
+        <span className="inline-flex flex-wrap items-center gap-1">
+          <StatusChip
+            status={statusMap[m.status]}
+            label={ASSIGNMENT_STATUS_LABEL[m.status]}
+          />
+          {late ? (
+            <span className="rounded border border-amber-300 px-1 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+              지각
+            </span>
+          ) : null}
+        </span>
       </TD>
       <TD align="right" mono>
         {m.completedItems}/{m.totalItems}
