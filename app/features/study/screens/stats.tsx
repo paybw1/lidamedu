@@ -1,5 +1,5 @@
 // feat-2-008 — 통합 학습 통계 페이지 (/study/stats)
-// 6 탭: 한눈에 / 조문 / 판례 / 객관식 / 주관식 / 빈칸·암기.
+// 5 탭: 한눈에 / 1차 통계 / 2차 통계 / 빈칸·암기 / 정오문제 약점.
 // 각 탭은 서버 loader 가 일괄 fetch 한 데이터에서 슬라이스만 렌더.
 import type { Route } from "./+types/stats";
 
@@ -449,6 +449,7 @@ function OverviewTab({ data }: { data: StatsData }) {
     accuracyTrend,
     passTrend,
     heatmap,
+    weakAreas,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const firstExamSubjects = subjectsProgress.filter(
@@ -485,6 +486,8 @@ function OverviewTab({ data }: { data: StatsData }) {
           subtle={`총 학습 ${totalHours}h · 활동일 ${daily.totalActiveDays}일`}
         />
       </div>
+
+      <WeakReviewCard weakAreas={weakAreas} />
 
       {/* feat-2-013 학습 활동 히트맵 */}
       <Card>
@@ -1080,6 +1083,11 @@ function FirstExamTab({ data }: { data: StatsData }) {
               </TableBody>
             </Table>
           )}
+          {weakAreas.length > 0 ? (
+            <div className="px-3 pt-3">
+              <ReflectedInTodayNote />
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
@@ -1223,6 +1231,91 @@ function EmptyMsg({ text }: { text: string }) {
     <p className="text-muted-foreground px-6 py-6 text-center text-sm">
       {text}
     </p>
+  );
+}
+
+// feat-2-008 #3 — 통계 약점이 추천(오늘 할 일)과 같은 소스(getWeakAreas)임을
+// 학생이 인지하도록 하는 경량 교차 안내. 행별 정확 매칭 아님(섹션 단위).
+function ReflectedInTodayNote() {
+  return (
+    <Link
+      to="/study/today"
+      viewTransition
+      className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-[11px]"
+    >
+      <ListChecksIcon className="size-3" />이 약점은 ‘오늘 할 일’ 추천에도
+      반영됩니다
+      <ArrowRightIcon className="size-3" />
+    </Link>
+  );
+}
+
+// feat-2-008 #1 — 한눈에 탭 상단 "약점 → 지금 복습" 카드.
+// 이미 loader 가 가진 weakAreas 재사용(새 쿼리 0). 복습 시작 = 오답노트(약점=오답
+// 정확히 일치·항상 내용 있음). 행별 "풀기" 는 그 문제로 직접 점프.
+function WeakReviewCard({
+  weakAreas,
+}: {
+  weakAreas: StatsData["weakAreas"];
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+              <TrendingDownIcon className="size-4 text-amber-600" />
+              약점 복습
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              최근 오답이면서 전체 정답률이 낮은 문제부터. 바로 풀어 보세요.
+            </p>
+          </div>
+          {weakAreas.length > 0 ? (
+            <Button size="sm" asChild>
+              <Link to="/study/wrong-note" viewTransition>
+                복습 시작 <ArrowRightIcon className="size-3" />
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {weakAreas.length === 0 ? (
+          <EmptyMsg text="아직 표시할 약점이 없습니다 — 문제를 풀면 자동 수집됩니다." />
+        ) : (
+          <>
+            <ul className="divide-y">
+              {weakAreas.slice(0, 3).map((w) => (
+                <li
+                  key={w.problemId}
+                  className="flex items-center justify-between gap-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">{w.bodySnippet}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {w.lawCode}
+                      {w.year ? ` · ${w.year}` : ""}
+                      {w.globalAccuracyPct !== null
+                        ? ` · 글로벌 ${w.globalAccuracyPct}%`
+                        : ""}
+                    </p>
+                  </div>
+                  <Link
+                    to={`/subjects/${w.lawCode}/problems/${w.problemId}`}
+                    viewTransition
+                    className="text-primary inline-flex shrink-0 items-center gap-1 text-xs hover:underline"
+                  >
+                    풀기 <ArrowRightIcon className="size-3" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <ReflectedInTodayNote />
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
