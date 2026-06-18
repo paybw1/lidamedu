@@ -10,7 +10,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import { listStudentAssignments } from "~/features/assignments/queries.server";
-import { getReviewQueue } from "~/features/srs/srs.server";
+import {
+  getDueCountsByType,
+  getReviewQueue,
+  isKindBacklogged,
+} from "~/features/srs/srs.server";
 import {
   getOrComposeDailyMenu,
   kstToday,
@@ -59,6 +63,14 @@ export interface TodayProgress {
   total: number;
 }
 
+// feat-2-024 — 암기 카드 종류별 밀림(임계 초과한 종류만). 오늘 할 일 경고용.
+export interface CardBacklogItem {
+  kind: "article" | "case";
+  label: string;
+  due: number;
+  oldestOverdueDays: number | null;
+}
+
 export interface TodaySummary {
   date: string; // YYYY-MM-DD (KST)
   review: TodayReviewSummary;
@@ -70,6 +82,8 @@ export interface TodaySummary {
   hasStudiedBefore: boolean;
   /** 할 일 없음(복습0·추천0·과제0). UI 빈상태 분기(+hasStudiedBefore). */
   isEmptyForNewUser: boolean;
+  /** 암기 카드 종류별 밀림(임계 초과한 종류만). 비면 경고 없음. */
+  cardBacklog: CardBacklogItem[];
 }
 
 /** 본인이 cohort 멤버인지 boolean. */
@@ -132,6 +146,7 @@ export async function getTodaySummary(
     cohortFlag,
     reviewedTodayProblem,
     studiedBefore,
+    dueByType,
   ] = await Promise.all([
     getProblemSrsCounts(client, userId),
     getReviewQueue(client, userId),
@@ -140,6 +155,7 @@ export async function getTodaySummary(
     isCohortMember(client, userId),
     countProblemsReviewedToday(client, userId, date),
     checkHasStudiedBefore(client, userId),
+    getDueCountsByType(client, userId),
   ]);
 
   // v2 큐는 maxReviewsPerDay 상한 적용 후 items[] 반환. backlog 는 누적 due > 상한 응답 합계.
@@ -202,6 +218,22 @@ export async function getTodaySummary(
     total: reviewedTodayProblem + review.problemDue,
   };
 
+  // 암기 카드 종류별 밀림 — 임계(개수/경과일) 초과한 종류만 경고로.
+  const cardBacklog: CardBacklogItem[] = [];
+  for (const k of [
+    { kind: "article" as const, label: "조문" },
+    { kind: "case" as const, label: "판례" },
+  ]) {
+    const s = dueByType[k.kind];
+    if (isKindBacklogged(s))
+      cardBacklog.push({
+        kind: k.kind,
+        label: k.label,
+        due: s.due,
+        oldestOverdueDays: s.oldestOverdueDays,
+      });
+  }
+
   return {
     date,
     review,
@@ -210,5 +242,6 @@ export async function getTodaySummary(
     progress,
     hasStudiedBefore: studiedBefore,
     isEmptyForNewUser,
+    cardBacklog,
   };
 }

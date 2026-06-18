@@ -12,7 +12,7 @@ import {
   RotateCcwIcon,
   SparklesIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, redirect, useFetcher } from "react-router";
 
 import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
@@ -23,9 +23,14 @@ import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
 import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
-import { getReviewQueue } from "~/features/srs/srs.server";
+import {
+  getDueCountsByType,
+  getReviewQueue,
+  isKindBacklogged,
+} from "~/features/srs/srs.server";
 import {
   LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
@@ -49,8 +54,36 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!(await hasMyAnalysisConsent(client, user.id))) {
     return { myAnalysisOff: true as const };
   }
-  const queue = await getReviewQueue(client, user.id);
-  return { myAnalysisOff: false as const, ...queue };
+  // feat-2-024 — 종류(조문/판례)·과목 필터 + 종류별 밀림 배지.
+  const url = new URL(request.url);
+  const typeParam = url.searchParams.get("type");
+  const subjectParam = url.searchParams.get("subject");
+  const sourceType =
+    typeParam === "article" || typeParam === "case" ? typeParam : null;
+  const subject =
+    subjectParam &&
+    (LAW_SUBJECT_SLUGS as readonly string[]).includes(subjectParam)
+      ? subjectParam
+      : null;
+  const [queue, dueByType] = await Promise.all([
+    getReviewQueue(client, user.id, { sourceType, subject }),
+    getDueCountsByType(client, user.id),
+  ]);
+  return {
+    myAnalysisOff: false as const,
+    ...queue,
+    filter: { sourceType, subject },
+    cardDue: {
+      article: {
+        due: dueByType.article.due,
+        backlogged: isKindBacklogged(dueByType.article),
+      },
+      case: {
+        due: dueByType.case.due,
+        backlogged: isKindBacklogged(dueByType.case),
+      },
+    },
+  };
 }
 
 type Grade = 0 | 3 | 4 | 5;
@@ -190,6 +223,8 @@ function SrsReviewInner({
         </Link>
       </header>
 
+      <ChipFilters filter={data.filter} cardDue={data.cardDue} />
+
       {/* 카드 카운터 */}
       <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <Counter label="오늘 암기" value={dueCount} tone="rose" />
@@ -234,6 +269,112 @@ function SrsReviewInner({
 }
 
 /* ── 부속 컴포넌트 ────────────────────────────────────────────────── */
+
+// feat-2-024 — 종류·과목 칩 필터(기본 전체) + 종류별 due 배지.
+function srsHref(type: string | null, subject: string | null): string {
+  const p = new URLSearchParams();
+  if (type) p.set("type", type);
+  if (subject) p.set("subject", subject);
+  const s = p.toString();
+  return s ? `/srs?${s}` : "/srs";
+}
+
+function FilterChip({
+  active,
+  to,
+  children,
+}: {
+  active: boolean;
+  to: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      preventScrollReset
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card hover:border-primary hover:text-primary",
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function DueBadge({ stat }: { stat: { due: number; backlogged: boolean } }) {
+  if (stat.due <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "rounded-full px-1.5 text-[10px] font-bold tabular-nums",
+        stat.backlogged
+          ? "bg-rose-500 text-white"
+          : "bg-muted text-muted-foreground",
+      )}
+    >
+      {stat.due}
+    </span>
+  );
+}
+
+function ChipFilters({
+  filter,
+  cardDue,
+}: {
+  filter: { sourceType: string | null; subject: string | null };
+  cardDue: {
+    article: { due: number; backlogged: boolean };
+    case: { due: number; backlogged: boolean };
+  };
+}) {
+  const { sourceType, subject } = filter;
+  return (
+    <div className="mb-5 space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground mr-1 text-[11px] font-semibold">
+          종류
+        </span>
+        <FilterChip active={sourceType === null} to={srsHref(null, subject)}>
+          전체
+        </FilterChip>
+        <FilterChip
+          active={sourceType === "article"}
+          to={srsHref("article", subject)}
+        >
+          조문
+          <DueBadge stat={cardDue.article} />
+        </FilterChip>
+        <FilterChip
+          active={sourceType === "case"}
+          to={srsHref("case", subject)}
+        >
+          판례
+          <DueBadge stat={cardDue.case} />
+        </FilterChip>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground mr-1 text-[11px] font-semibold">
+          과목
+        </span>
+        <FilterChip active={subject === null} to={srsHref(sourceType, null)}>
+          전체
+        </FilterChip>
+        {LAW_SUBJECT_SLUGS.map((slug) => (
+          <FilterChip
+            key={slug}
+            active={subject === slug}
+            to={srsHref(sourceType, slug)}
+          >
+            {subjectLabel(slug)}
+          </FilterChip>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Counter({
   label,

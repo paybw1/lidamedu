@@ -54,6 +54,7 @@ function makeCohortSummary(): TodaySummary {
     progress: { completed: 5, total: 17 },
     hasStudiedBefore: true,
     isEmptyForNewUser: false,
+    cardBacklog: [],
   };
 }
 
@@ -93,6 +94,7 @@ function makeEmptySummary(): TodaySummary {
     progress: { completed: 0, total: 0 },
     hasStudiedBefore: false,
     isEmptyForNewUser: true,
+    cardBacklog: [],
   };
 }
 

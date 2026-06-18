@@ -450,6 +450,30 @@ function PrefToggleRow({
   );
 }
 
+/* ── 암기 카드 밀림 경고 (feat-2-024) ─────────────────────────────── */
+
+function CardBacklogNotice({
+  items,
+}: {
+  items: TodaySummary["cardBacklog"];
+}) {
+  return (
+    <div className="mb-4 rounded-lg border border-amber-300/60 bg-amber-50/60 px-4 py-3 text-amber-800 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-200">
+      <p className="text-sm font-semibold">암기 카드 복습이 밀리고 있어요</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {items.map((it) => (
+          <Button key={it.kind} asChild size="sm" variant="outline">
+            <Link to={`/srs?type=${it.kind}`} viewTransition>
+              {it.label} {it.due}개 복습
+              {it.oldestOverdueDays ? ` · ${it.oldestOverdueDays}일 지남` : ""}
+            </Link>
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── 메인 ─────────────────────────────────────────────────────────── */
 
 export default function StudyToday({ loaderData }: Route.ComponentProps) {
@@ -485,6 +509,10 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       {!summary.isEmptyForNewUser ? <ProgressBar summary={summary} /> : null}
+
+      {summary.cardBacklog.length > 0 ? (
+        <CardBacklogNotice items={summary.cardBacklog} />
+      ) : null}
 
       {summary.isEmptyForNewUser ? (
         summary.hasStudiedBefore ? (

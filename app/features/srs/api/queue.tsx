@@ -14,6 +14,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) return data({ error: "unauthorized" }, { status: 401 });
-  const queue = await getReviewQueue(client, user.id);
+  const url = new URL(request.url);
+  const type = url.searchParams.get("type");
+  const subject = url.searchParams.get("subject");
+  const sourceType = type === "article" || type === "case" ? type : null;
+  const queue = await getReviewQueue(client, user.id, {
+    sourceType,
+    subject: subject || null,
+  });
   return data(queue);
 }

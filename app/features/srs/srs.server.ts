@@ -101,6 +101,16 @@ export interface QueueResult {
   settings: SrsSettings;
 }
 
+// feat-2-024 — 종류(조문/판례) = srs_items.source_type. (type 컬럼 qa/cloze 와 별개.)
+export type SrsSourceKind = "article" | "case";
+
+export interface ReviewQueueOptions {
+  /** 과목(law slug) 필터. 미지정 = 전체. */
+  subject?: string | null;
+  /** 종류 필터 — 조문/판례. 미지정 = 전체("전체"는 종류 인터리브). */
+  sourceType?: SrsSourceKind | null;
+}
+
 /**
  * 오늘의 복습 큐.
  *  - due 항목: review_states 의 due_date <= today, 오래된 것부터.
@@ -110,19 +120,27 @@ export interface QueueResult {
 export async function getReviewQueue(
   client: SupabaseClient<Database>,
   userId: string,
+  opts: ReviewQueueOptions = {},
 ): Promise<QueueResult> {
   const today = srsToday();
   const todayUtcIso = kstDateToUtcIso(today);
   const settings = await getUserSettings(client, userId);
+  const sourceType = opts.sourceType ?? null;
+  const subject = opts.subject ?? null;
 
-  // 1) due 항목 (review/relearning/learning) — due_date <= today.
-  const { data: dueRows } = await client
+  // 1) due 항목 (review/relearning/learning) — due_date <= today. 종류·과목 필터(임베디드).
+  //    ★ limit 전에 필터해야 정확(필터 후 상한 적용).
+  let dueQ = client
     .from("srs_review_states")
     .select(
       "item_id, due_date, state, interval_days, repetitions, ease_factor, srs_items!inner(item_id, subject, topic, type, front, back, law_ref, source_type, deleted_at)",
     )
     .eq("user_id", userId)
     .lte("due_date", today)
+    .is("srs_items.deleted_at", null);
+  if (sourceType) dueQ = dueQ.eq("srs_items.source_type", sourceType);
+  if (subject) dueQ = dueQ.eq("srs_items.subject", subject);
+  const { data: dueRows } = await dueQ
     .order("due_date", { ascending: true })
     .limit(settings.maxReviewsPerDay);
 
@@ -156,7 +174,7 @@ export async function getReviewQueue(
     .gte("created_at", todayUtcIso);
   const newIntroducedToday = introCount ?? 0;
 
-  // 3) new 슬롯 잔여.
+  // 3) new 슬롯 잔여 (신규 도입 예산 newPerDay 는 종류 무관 전역 공유).
   const newSlotsRemaining = Math.max(
     0,
     settings.newPerDay - newIntroducedToday,
@@ -167,42 +185,39 @@ export async function getReviewQueue(
   );
   const newPickCount = Math.min(newSlotsRemaining, totalSlotsRemaining);
 
-  // 4) new 항목 — review_states 없는 srs_items 중에서.
+  // 4) new 항목 — 본인 미학습 srs_items. 종류 선택 시 그 종류만,
+  //    "전체"면 종류(조문/판례)를 라운드로빈으로 섞어 한쪽(판례)이 묻히지 않게.
   let newItems: QueueItem[] = [];
   if (newPickCount > 0) {
-    // 이미 본 itemIds 일괄 조회.
     const { data: seen } = await client
       .from("srs_review_states")
       .select("item_id")
       .eq("user_id", userId);
     const seenSet = new Set((seen ?? []).map((r) => r.item_id));
+    const fetchLimit = newPickCount + seenSet.size + 50;
 
-    // 신규 후보 fetch — 적당히 넉넉히 가져와 클라 필터.
-    const { data: candidates } = await client
-      .from("srs_items")
-      .select("item_id, subject, topic, type, front, back, law_ref, source_type")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: true })
-      .limit(newPickCount + seenSet.size + 50);
-    newItems = (candidates ?? [])
-      .filter((it) => !seenSet.has(it.item_id))
-      .slice(0, newPickCount)
-      .map((it) => ({
-        itemId: it.item_id,
-        kind: "new" as const,
-        subject: it.subject,
-        topic: it.topic,
-        type: it.type,
-        front: it.front,
-        back: it.back,
-        lawRef: it.law_ref,
-        sourceType: it.source_type,
-        state: null,
-        dueDate: null,
-        intervalDays: null,
-        repetitions: null,
-        easeFactor: null,
-      }));
+    if (sourceType) {
+      const cands = await fetchNewCandidates(client, {
+        sourceType,
+        subject,
+        limit: fetchLimit,
+      });
+      newItems = cands
+        .filter((it) => !seenSet.has(it.itemId))
+        .slice(0, newPickCount);
+    } else {
+      const [arts, cases] = await Promise.all([
+        fetchNewCandidates(client, { sourceType: "article", subject, limit: fetchLimit }),
+        fetchNewCandidates(client, { sourceType: "case", subject, limit: fetchLimit }),
+      ]);
+      newItems = interleaveGroups(
+        [
+          arts.filter((it) => !seenSet.has(it.itemId)),
+          cases.filter((it) => !seenSet.has(it.itemId)),
+        ],
+        newPickCount,
+      );
+    }
   }
 
   // 5) 큐 합산 — due (오래된 순) 먼저, new 끝에. maxReviewsPerDay 한 번 더 trim.
@@ -215,6 +230,114 @@ export async function getReviewQueue(
     newCount: newItems.length,
     newIntroducedToday,
     settings,
+  };
+}
+
+/** 미학습 신규 후보 fetch(종류·과목 필터, created_at asc) → QueueItem(new). seen 필터는 호출처에서. */
+async function fetchNewCandidates(
+  client: SupabaseClient<Database>,
+  opts: { sourceType: SrsSourceKind; subject: string | null; limit: number },
+): Promise<QueueItem[]> {
+  let q = client
+    .from("srs_items")
+    .select("item_id, subject, topic, type, front, back, law_ref, source_type")
+    .is("deleted_at", null)
+    .eq("source_type", opts.sourceType);
+  if (opts.subject) q = q.eq("subject", opts.subject);
+  const { data } = await q
+    .order("created_at", { ascending: true })
+    .limit(opts.limit);
+  return (data ?? []).map((it) => ({
+    itemId: it.item_id,
+    kind: "new" as const,
+    subject: it.subject,
+    topic: it.topic,
+    type: it.type,
+    front: it.front,
+    back: it.back,
+    lawRef: it.law_ref,
+    sourceType: it.source_type,
+    state: null,
+    dueDate: null,
+    intervalDays: null,
+    repetitions: null,
+    easeFactor: null,
+  }));
+}
+
+/** 여러 그룹을 라운드로빈으로 섞어 최대 max 개. (조문/판례 균형 노출) */
+function interleaveGroups<T>(groups: T[][], max: number): T[] {
+  const out: T[] = [];
+  for (let i = 0; out.length < max; i++) {
+    let any = false;
+    for (const g of groups) {
+      if (i < g.length) {
+        out.push(g[i]);
+        any = true;
+        if (out.length >= max) break;
+      }
+    }
+    if (!any) break;
+  }
+  return out;
+}
+
+/* ── 종류별 밀림(due) 집계 + 임계 (밀림 안내용) ───────────────────── */
+
+export interface DueKindStat {
+  due: number;
+  /** 가장 오래된 due 의 경과일(0 이상). due 0 이면 null. */
+  oldestOverdueDays: number | null;
+}
+export interface DueByType {
+  article: DueKindStat;
+  case: DueKindStat;
+}
+
+// 밀림 안내 임계(시작값 — 라이브 체감 후 조정). 개수 OR 경과일.
+export const SRS_BACKLOG_DUE_THRESHOLD = 10;
+export const SRS_BACKLOG_OVERDUE_DAYS = 3;
+
+export function isKindBacklogged(s: DueKindStat): boolean {
+  return (
+    s.due >= SRS_BACKLOG_DUE_THRESHOLD ||
+    (s.oldestOverdueDays ?? 0) >= SRS_BACKLOG_OVERDUE_DAYS
+  );
+}
+
+/** 종류(조문/판례)별 due 개수 + 가장 오래된 due 경과일. */
+export async function getDueCountsByType(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<DueByType> {
+  const today = srsToday();
+  const { data } = await client
+    .from("srs_review_states")
+    .select("due_date, srs_items!inner(source_type, deleted_at)")
+    .eq("user_id", userId)
+    .lte("due_date", today)
+    .is("srs_items.deleted_at", null)
+    .limit(20000);
+
+  const acc: Record<SrsSourceKind, { due: number; oldest: string | null }> = {
+    article: { due: 0, oldest: null },
+    case: { due: 0, oldest: null },
+  };
+  for (const r of data ?? []) {
+    const st = r.srs_items.source_type;
+    if (st !== "article" && st !== "case") continue;
+    const cur = acc[st];
+    cur.due += 1;
+    if (cur.oldest === null || r.due_date < cur.oldest) cur.oldest = r.due_date;
+  }
+  const overdue = (oldest: string | null): number | null => {
+    if (!oldest) return null;
+    const ms = Date.parse(today) - Date.parse(oldest);
+    return Math.max(0, Math.floor(ms / 86_400_000));
+  };
+  return {
+    article: { due: acc.article.due, oldestOverdueDays: overdue(acc.article.oldest) },
+    case: { due: acc.case.due, oldestOverdueDays: overdue(acc.case.oldest) },
   };
 }
 
