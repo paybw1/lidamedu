@@ -1,13 +1,18 @@
-// feat-2-023 — 암기 카드(SRS v2) 인앱 생성 엔진.
-// 조문(articles)·판례(cases) → srs_items(type='qa') 전역 풀(공유). 운영자 1회 생성으로
-// 전 학생이 /srs 에서 사용. 멱등(소스 기준 skip) + dry-run(previewCards) + 소프트삭제.
+// feat-2-023 / feat-2-023b — 암기 카드(SRS v2) 인앱 생성 엔진.
+// 조문(articles)·판례(cases) → srs_items(type='qa') 전역 풀(공유). 멱등(소스 기준) +
+// dry-run(previewCards) + 소프트삭제 + in-place 갱신(updateExisting — item_id 보존).
 //
-// 경계(중복 회피): 조문 "핵심 문구 cloze 암기"는 빈칸 시스템(article_blank_sets)이 담당.
-// 본 카드(qa)는 조문 통독형(식별자→본문)·판례 이해형(사건/쟁점→요지)으로 차별화한다.
+// 판례 카드(feat-2-023b): front = 〔표준 인용(법원·선고일·번호·★사건유형)〕 + 〔쟁점 질문〕,
+// back = 그 쟁점의 결론·법리(요지, cap 1500). 경계: 조문 문구 cloze 는 빈칸 시스템 담당.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { buildCitation } from "~/features/cases/labels";
+import {
+  composeCaseFront,
+  composeCaseTopic,
+} from "~/features/srs/lib/case-card";
 import { flattenBodyForCard } from "~/features/srs/lib/srs-flatten";
 import { flattenMarkdownForCard } from "~/features/srs/lib/srs-markdown";
 import {
@@ -20,7 +25,9 @@ type Client = SupabaseClient<Database>;
 export type CardSourceType = "article" | "case";
 
 const ARTICLE_BACK_MAX = 600;
-const CASE_BACK_MAX = 600;
+// feat-2-023b — 요지 항목 보존. 실측 분포(특허 판례 119항목): median 350·최대 3693자,
+// >1500은 5장뿐. 한 쟁점 법리는 더 분할하면 잘리므로 4000으로 상향(현 전량 포함, 잘림 0).
+const CASE_BACK_MAX = 4000;
 
 export interface CardGenParams {
   subject: LawSubjectSlug;
@@ -44,12 +51,19 @@ interface CardRow {
   source_id: string;
 }
 
+interface ExistingCard {
+  itemId: string;
+  front: string;
+  back: string;
+}
+
 interface CardGenPlan {
   /** 소스 후보 수(조문/판례 엔티티). */
   candidateCount: number;
-  newRows: CardRow[];
-  /** 이미 있어 skip 한 카드 수. */
-  skipExisting: number;
+  /** 합성된 전체 카드(신규 + 기존). */
+  rows: CardRow[];
+  /** row.source → 기존 카드(갱신 매칭·진척 보존용 item_id). */
+  existing: Map<string, ExistingCard>;
 }
 
 export interface CardGenPreview {
@@ -58,14 +72,24 @@ export interface CardGenPreview {
   importanceMin: number;
   limit: number;
   candidateCount: number;
+  /** 신규 삽입될 카드 수. */
   wouldInsert: number;
+  /** 기존이지만 front/back 이 달라져 갱신될 카드 수(updateExisting 시). */
+  wouldUpdate: number;
+  /** 이미 있어 신규 삽입 대상이 아닌 카드 수. */
   skipExisting: number;
-  /** 생성될 카드 front 미리보기(최대 8). */
+  /** back 최대 길이 + 잘림(…) 카드 수 — cap 점검용. */
+  maxBackLen: number;
+  truncatedCount: number;
+  /** 신규 카드 front 미리보기(최대 8). */
   sample: string[];
+  /** 갱신 카드 before→after front(최대 5). */
+  updateSample: Array<{ before: string; after: string }>;
 }
 
 export interface CardGenResult {
   inserted: number;
+  updated: number;
   skipExisting: number;
 }
 
@@ -81,7 +105,7 @@ async function planArticleCards(
     .select("law_id")
     .eq("law_code", params.subject)
     .maybeSingle();
-  if (!law) return { candidateCount: 0, newRows: [], skipExisting: 0 };
+  if (!law) return { candidateCount: 0, rows: [], existing: new Map() };
 
   const { data: arts } = await client
     .from("articles")
@@ -97,26 +121,26 @@ async function planArticleCards(
     .limit(params.limit);
   const candidates = arts ?? [];
   if (candidates.length === 0)
-    return { candidateCount: 0, newRows: [], skipExisting: 0 };
+    return { candidateCount: 0, rows: [], existing: new Map() };
 
-  // 멱등 — 기존 article 카드(source_id=article_id) skip.
+  // 기존 article 카드(멱등 키 article:{id}) — 갱신 매칭용.
   const ids = candidates.map((a) => a.article_id);
-  const { data: existing } = await client
+  const { data: existRows } = await client
     .from("srs_items")
-    .select("source_id")
+    .select("item_id, source_id, front, back")
     .eq("source_type", "article")
     .in("source_id", ids);
-  const existingIds = new Set(
-    (existing ?? []).map((r) => r.source_id).filter(Boolean) as string[],
-  );
+  const existing = new Map<string, ExistingCard>();
+  for (const r of existRows ?? [])
+    if (r.source_id)
+      existing.set(`article:${r.source_id}`, {
+        itemId: r.item_id,
+        front: r.front,
+        back: r.back,
+      });
 
-  const fresh = candidates.filter((a) => !existingIds.has(a.article_id));
-  const skipExisting = candidates.length - fresh.length;
-  if (fresh.length === 0)
-    return { candidateCount: candidates.length, newRows: [], skipExisting };
-
-  // 본문 일괄 조회.
-  const revIds = fresh
+  // 본문 일괄 조회(전체 후보 — 신규·기존 모두 합성).
+  const revIds = candidates
     .map((a) => a.current_revision_id)
     .filter((x): x is string => x !== null);
   const { data: revs } = await client
@@ -126,7 +150,7 @@ async function planArticleCards(
   const bodyMap = new Map<string, string>();
   for (const r of revs ?? []) if (r.body_text) bodyMap.set(r.revision_id, r.body_text);
 
-  const newRows: CardRow[] = fresh.map((a) => {
+  const rows: CardRow[] = candidates.map((a) => {
     const label =
       a.display_label ??
       (a.article_number != null ? `제${a.article_number}조` : "조문");
@@ -144,18 +168,16 @@ async function planArticleCards(
       front: `${subjectName} ${label}`,
       back,
       law_ref:
-        a.article_number != null
-          ? `${params.subject}#${a.article_number}`
-          : null,
+        a.article_number != null ? `${params.subject}#${a.article_number}` : null,
       source: `article:${a.article_id}`,
       source_type: "article" as const,
       source_id: a.article_id,
     };
   });
-  return { candidateCount: candidates.length, newRows, skipExisting };
+  return { candidateCount: candidates.length, rows, existing };
 }
 
-/* ── 판례 카드 (쟁점=요지 항목당 1카드) ───────────────────────────── */
+/* ── 판례 카드 (쟁점=요지 항목당 1카드, front=인용+쟁점) ──────────── */
 
 interface LiteSummaryItem {
   title: string;
@@ -181,7 +203,7 @@ async function planCaseCards(
   const { data: cases } = await client
     .from("cases")
     .select(
-      "case_id, case_title, nickname, summary_items, summary_body_md, importance",
+      "case_id, court, decided_at, case_number, case_type, is_en_banc, case_title, nickname, summary_items, summary_body_md, importance",
     )
     .contains("subject_laws", [params.subject])
     .is("deleted_at", null)
@@ -191,31 +213,40 @@ async function planCaseCards(
     .limit(params.limit);
   const candidates = cases ?? [];
   if (candidates.length === 0)
-    return { candidateCount: 0, newRows: [], skipExisting: 0 };
+    return { candidateCount: 0, rows: [], existing: new Map() };
 
-  // 멱등 — 기존 case 카드의 source 키(case:{id}#{idx}) skip.
+  // 기존 case 카드(멱등 키 source=case:{id}#{idx}) — 갱신 매칭용.
   const caseIds = candidates.map((c) => c.case_id);
-  const { data: existing } = await client
+  const { data: existRows } = await client
     .from("srs_items")
-    .select("source")
+    .select("item_id, source, front, back")
     .eq("source_type", "case")
     .in("source_id", caseIds);
-  const existingKeys = new Set(
-    (existing ?? []).map((r) => r.source).filter(Boolean) as string[],
-  );
+  const existing = new Map<string, ExistingCard>();
+  for (const r of existRows ?? [])
+    if (r.source)
+      existing.set(r.source, {
+        itemId: r.item_id,
+        front: r.front,
+        back: r.back,
+      });
 
-  const newRows: CardRow[] = [];
-  let skipExisting = 0;
+  const rows: CardRow[] = [];
   for (const c of candidates) {
-    const title = c.case_title ?? c.nickname ?? "(제목 없음)";
+    const citation = buildCitation({
+      court: c.court,
+      decidedAt: c.decided_at,
+      caseNumber: c.case_number,
+      caseType: c.case_type,
+      isEnBanc: c.is_en_banc ?? false,
+    });
+    const titleSrc = c.case_title ?? c.nickname ?? null;
     const items = parseSummaryItemsLite(c.summary_items);
-    // summary_items 있으면 쟁점당 1카드, 없으면 summary_body_md 로 1카드 폴백.
-    const units: Array<{ key: string; topic: string; front: string; md: string }> =
+    const units: Array<{ key: string; topic: string; md: string }> =
       items.length > 0
         ? items.map((it, idx) => ({
             key: `case:${c.case_id}#${idx}`,
-            topic: it.title,
-            front: `${title} — ${it.title}`,
+            topic: composeCaseTopic(it.title, titleSrc, idx),
             md: it.body,
           }))
         : c.summary_body_md
@@ -223,23 +254,18 @@ async function planCaseCards(
               {
                 key: `case:${c.case_id}#full`,
                 topic: "판결요지",
-                front: `${title} — 판결요지`,
                 md: c.summary_body_md,
               },
             ]
           : [];
     for (const u of units) {
-      if (existingKeys.has(u.key)) {
-        skipExisting += 1;
-        continue;
-      }
       const back = flattenMarkdownForCard(u.md, CASE_BACK_MAX);
-      if (!back) continue; // 평탄화 후 빈 본문 — skip(무음 아님: candidateCount 로 드러남).
-      newRows.push({
+      if (!back) continue;
+      rows.push({
         subject: params.subject,
         topic: u.topic,
         type: "qa" as const,
-        front: u.front,
+        front: composeCaseFront(citation, u.topic),
         back,
         law_ref: null,
         source: u.key,
@@ -248,7 +274,7 @@ async function planCaseCards(
       });
     }
   }
-  return { candidateCount: candidates.length, newRows, skipExisting };
+  return { candidateCount: candidates.length, rows, existing };
 }
 
 /* ── 공용 (preview / generate) ─────────────────────────────────────── */
@@ -259,39 +285,83 @@ function planCards(client: Client, params: CardGenParams): Promise<CardGenPlan> 
     : planCaseCards(client, params);
 }
 
-/** dry-run — 생성하지 않고 몇 장 생성될지(+미리보기) 만 계산. */
+function isChanged(ex: ExistingCard, r: CardRow): boolean {
+  return ex.front !== r.front || ex.back !== r.back;
+}
+
+/** dry-run — 신규/갱신 수 + 잘림 점검 + before→after 샘플(미적용). */
 export async function previewCards(
   client: Client,
   params: CardGenParams,
 ): Promise<CardGenPreview> {
   const plan = await planCards(client, params);
+  const newRows = plan.rows.filter((r) => !plan.existing.has(r.source));
+  const updRows = plan.rows.filter((r) => {
+    const ex = plan.existing.get(r.source);
+    return ex && isChanged(ex, r);
+  });
+  const maxBackLen = plan.rows.reduce((m, r) => Math.max(m, r.back.length), 0);
+  const truncatedCount = plan.rows.filter((r) => r.back.endsWith("…")).length;
   return {
     subject: params.subject,
     sourceType: params.sourceType,
     importanceMin: params.importanceMin,
     limit: params.limit,
     candidateCount: plan.candidateCount,
-    wouldInsert: plan.newRows.length,
-    skipExisting: plan.skipExisting,
-    sample: plan.newRows.slice(0, 8).map((r) => r.front),
+    wouldInsert: newRows.length,
+    wouldUpdate: updRows.length,
+    skipExisting: plan.rows.length - newRows.length,
+    maxBackLen,
+    truncatedCount,
+    sample: newRows.slice(0, 8).map((r) => r.front),
+    updateSample: updRows.slice(0, 5).map((r) => ({
+      before: plan.existing.get(r.source)?.front ?? "",
+      after: r.front,
+    })),
   };
 }
 
-/** 실제 생성 — 신규 카드만 insert(멱등). created_by 기록. */
+/** 실제 생성 — 신규 insert + (updateExisting 시) 기존 in-place 갱신(item_id 보존). */
 export async function generateCards(
   client: Client,
   params: CardGenParams,
   createdBy: string,
+  updateExisting = false,
 ): Promise<CardGenResult> {
   const plan = await planCards(client, params);
-  if (plan.newRows.length === 0)
-    return { inserted: 0, skipExisting: plan.skipExisting };
-  const rows = plan.newRows.map((r) => ({ ...r, created_by: createdBy }));
-  const { error, count } = await client
-    .from("srs_items")
-    .insert(rows, { count: "exact" });
-  if (error) throw error;
-  return { inserted: count ?? rows.length, skipExisting: plan.skipExisting };
+  const newRows = plan.rows.filter((r) => !plan.existing.has(r.source));
+
+  let inserted = 0;
+  if (newRows.length > 0) {
+    const { error, count } = await client
+      .from("srs_items")
+      .insert(
+        newRows.map((r) => ({ ...r, created_by: createdBy })),
+        { count: "exact" },
+      );
+    if (error) throw error;
+    inserted = count ?? newRows.length;
+  }
+
+  let updated = 0;
+  if (updateExisting) {
+    for (const r of plan.rows) {
+      const ex = plan.existing.get(r.source);
+      if (!ex || !isChanged(ex, r)) continue;
+      const { error } = await client
+        .from("srs_items")
+        .update({ front: r.front, back: r.back, topic: r.topic, law_ref: r.law_ref })
+        .eq("item_id", ex.itemId);
+      if (error) throw error;
+      updated += 1;
+    }
+  }
+
+  return {
+    inserted,
+    updated,
+    skipExisting: updateExisting ? 0 : plan.rows.length - newRows.length,
+  };
 }
 
 /* ── 풀 현황 / 최근 카드 / 소프트삭제 ─────────────────────────────── */

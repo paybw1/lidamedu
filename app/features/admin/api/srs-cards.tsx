@@ -80,7 +80,13 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, preview });
   }
   if (intent === "generate") {
-    const result = await generateCards(adminClient, params, user.id);
+    const updateExisting = form.get("update") === "true";
+    const result = await generateCards(
+      adminClient,
+      params,
+      user.id,
+      updateExisting,
+    );
     return data({ ok: true, result });
   }
   return data({ ok: false, error: "알 수 없는 intent" }, { status: 400 });

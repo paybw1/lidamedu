@@ -6,26 +6,7 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
-import { COURT_LABELS, type CaseCourt } from "~/features/cases/labels";
-
-export function buildCitation(opts: {
-  court: CaseCourt;
-  decidedAt: string;
-  caseNumber: string;
-  caseType: string | null;
-  isEnBanc?: boolean;
-}): string {
-  const [y, m, d] = opts.decidedAt.split("-");
-  const dateStr = `${Number(y)}. ${Number(m)}. ${Number(d)}.`;
-  const courtName = COURT_LABELS[opts.court] ?? "법원";
-  const enBancStr = opts.isEnBanc ? "전원합의체 " : "";
-  const tail = opts.caseType ? ` 【${opts.caseType}】` : "";
-  // 결정/심결 등 사건유형 안에 표시. 기본은 "판결".
-  return `${courtName} ${enBancStr}${dateStr} 선고 ${opts.caseNumber} 판결${tail}`.replace(
-    /\s+/g,
-    " ",
-  );
-}
+import { buildCitation, type CaseCourt } from "~/features/cases/labels";
 
 export function CiteCopyButton({
   court,

@@ -12,6 +12,29 @@ export const COURT_LABELS: Record<CaseCourt, string> = {
   district_court: "지방법원",
 };
 
+/**
+ * 판례 표준 인용 한 줄. 예: "대법원 전원합의체 2015. 1. 22. 선고 2011후927 판결 【등록무효(특)】".
+ * 결측 필드(선고일·번호)는 생략하고 안전 조립. 인용 복사 버튼 + 암기 카드 front 식별자 공용.
+ * (클라/서버 공용 — labels.ts 에 둠.)
+ */
+export function buildCitation(opts: {
+  court: CaseCourt;
+  decidedAt: string | null;
+  caseNumber: string | null;
+  caseType: string | null;
+  isEnBanc?: boolean;
+}): string {
+  const parts: string[] = [COURT_LABELS[opts.court] ?? "법원"];
+  if (opts.isEnBanc) parts.push("전원합의체");
+  const m = (opts.decidedAt ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) parts.push(`${Number(m[1])}. ${Number(m[2])}. ${Number(m[3])}.`, "선고");
+  if (opts.caseNumber) parts.push(opts.caseNumber);
+  parts.push("판결");
+  let s = parts.join(" ");
+  if (opts.caseType) s += ` 【${opts.caseType}】`;
+  return s.replace(/\s+/g, " ").trim();
+}
+
 export interface CaseListItem {
   caseId: string;
   court: CaseCourt;

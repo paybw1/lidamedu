@@ -61,6 +61,8 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
   const [sourceType, setSourceType] = useState<"article" | "case">("article");
   const [importanceMin, setImportanceMin] = useState(2);
   const [limit, setLimit] = useState(50);
+  // feat-2-023b — 기존 카드 in-place 갱신(item_id 보존, 학생 진척 유지). 품질 재생성용.
+  const [updateExisting, setUpdateExisting] = useState(false);
 
   const fetcher = useFetcher<GenData>();
   const busy = fetcher.state !== "idle";
@@ -141,31 +143,47 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
             </Field>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button
-              type="submit"
-              name="intent"
-              value="preview"
-              variant="outline"
-              size="sm"
-              disabled={busy}
-            >
-              미리보기 (dry-run)
-            </Button>
-            {previewMatches && preview.wouldInsert > 0 ? (
+          <div className="mt-3 space-y-2">
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                name="update"
+                value="true"
+                checked={updateExisting}
+                onChange={(e) => setUpdateExisting(e.target.checked)}
+                className="size-3.5"
+              />
+              기존 카드도 갱신 (품질 개선 재생성 — item_id 보존, 학생 진척 유지)
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="submit"
                 name="intent"
-                value="generate"
+                value="preview"
+                variant="outline"
                 size="sm"
                 disabled={busy}
               >
-                {preview.wouldInsert}장 생성
+                미리보기 (dry-run)
               </Button>
-            ) : null}
-            <span className="text-muted-foreground text-xs">
-              ★ 미리보기로 생성 수를 확인한 뒤 생성하세요.
-            </span>
+              {previewMatches &&
+              (preview.wouldInsert > 0 ||
+                (updateExisting && preview.wouldUpdate > 0)) ? (
+                <Button
+                  type="submit"
+                  name="intent"
+                  value="generate"
+                  size="sm"
+                  disabled={busy}
+                >
+                  신규 {preview.wouldInsert}장
+                  {updateExisting ? ` · 갱신 ${preview.wouldUpdate}장` : ""} 적용
+                </Button>
+              ) : null}
+              <span className="text-muted-foreground text-xs">
+                ★ 미리보기로 확인한 뒤 적용하세요.
+              </span>
+            </div>
           </div>
         </fetcher.Form>
 
@@ -175,10 +193,16 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
 
         {result ? (
           <div className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-50 px-3 py-2 text-sm dark:bg-emerald-950/30">
-            ✅ <strong className="tabular-nums">{result.inserted}</strong>장
-            생성 완료
+            ✅ 신규 <strong className="tabular-nums">{result.inserted}</strong>장
+            {result.updated > 0 ? (
+              <>
+                {" "}
+                · 갱신{" "}
+                <strong className="tabular-nums">{result.updated}</strong>장
+              </>
+            ) : null}
             {result.skipExisting > 0
-              ? ` · 기존 ${result.skipExisting}장 skip(멱등)`
+              ? ` · 기존 ${result.skipExisting}장 유지(멱등)`
               : ""}
             .
           </div>
@@ -191,29 +215,57 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
               {SOURCE_LABEL[preview.sourceType]}
             </p>
             <p className="text-muted-foreground mt-1 text-xs tabular-nums">
-              소스 후보 {preview.candidateCount} · 생성 예정{" "}
+              소스 후보 {preview.candidateCount} · 신규{" "}
               <strong className="text-foreground">{preview.wouldInsert}</strong>{" "}
-              · 기존 skip {preview.skipExisting}
+              · 갱신 가능{" "}
+              <strong className="text-foreground">{preview.wouldUpdate}</strong>{" "}
+              · 기존 {preview.skipExisting} · back 최대 {preview.maxBackLen}자 ·{" "}
+              {preview.truncatedCount > 0
+                ? `★잘림 ${preview.truncatedCount}장`
+                : "잘림 0"}
             </p>
-            {preview.wouldInsert === 0 ? (
+            {preview.sample.length > 0 ? (
+              <>
+                <p className="text-muted-foreground mt-2 text-[11px] font-semibold">
+                  신규 샘플
+                </p>
+                <ul className="text-muted-foreground mt-1 space-y-1 text-xs">
+                  {preview.sample.map((f, i) => (
+                    <li
+                      key={i}
+                      className="border-border whitespace-pre-line border-l-2 pl-2"
+                    >
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {preview.updateSample.length > 0 ? (
+              <>
+                <p className="text-muted-foreground mt-2 text-[11px] font-semibold">
+                  갱신 before→after (front)
+                </p>
+                <ul className="mt-1 space-y-1.5 text-xs">
+                  {preview.updateSample.map((s, i) => (
+                    <li key={i} className="border-l-2 border-amber-400 pl-2">
+                      <span className="text-rose-600 line-through dark:text-rose-400">
+                        {s.before}
+                      </span>
+                      <br />
+                      <span className="whitespace-pre-line text-emerald-700 dark:text-emerald-300">
+                        {s.after}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {preview.wouldInsert === 0 && preview.wouldUpdate === 0 ? (
               <p className="text-muted-foreground mt-1 text-xs">
-                생성할 신규 카드가 없습니다(이미 생성됨 또는 조건에 맞는 소스
-                없음).
+                변경할 카드가 없습니다(이미 최신이거나 조건에 맞는 소스 없음).
               </p>
-            ) : (
-              <ul className="text-muted-foreground mt-2 space-y-0.5 text-xs">
-                {preview.sample.map((f, i) => (
-                  <li key={i} className="line-clamp-1">
-                    · {f}
-                  </li>
-                ))}
-                {preview.wouldInsert > preview.sample.length ? (
-                  <li className="text-[11px]">
-                    … 외 {preview.wouldInsert - preview.sample.length}장
-                  </li>
-                ) : null}
-              </ul>
-            )}
+            ) : null}
           </div>
         ) : null}
       </div>
