@@ -256,7 +256,7 @@ for (const tierMeta of TIERS) {
         user_id: userId,
         exam_date: examDate.toISOString().slice(0, 10),
         weekly_goal_hours: tierMeta.weeklyHours,
-        exam_type: "first",
+        // 차수는 profiles.next_exam_round 가 SSOT (feat-2-025) — study_goals 미사용.
         target_score: tierMeta.targetScore,
         notes: `(테스트) ${tierMeta.label}급 학습자 — ${idx}번`,
       },

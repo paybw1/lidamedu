@@ -1,6 +1,6 @@
 # feat-2-025 — 시험 차수 SSOT 일원화(profiles) + 목표→추천 연결 + D-day 폴백 제거
 
-> 상태: 🟡 Phase 1 + ① 완료(2026-06-18) · Phase 2(DROP)·Phase 3(폴백) 승인 대기
+> 상태: 🟡 Phase 1 + ① + Phase 2(DROP) 완료·운영 반영(2026-06-18) · Phase 3(D-day 폴백) 대기
 > 결정(사용자): 1.(b) profiles로 차수 SSOT·`study_goals.exam_type` 제거 / 2. 차수 필터부터 / 3. D-day 폴백 제거 / 4. 진도 정의 현행 유지.
 > 추가 지시(2026-06-18): Phase 1 에 **① 신규 유저 next_exam_round 보장** 동봉 / Phase 2 dry-run 은 **② 발산 행** 기준 보고.
 > 핵심: 차수가 `study_goals.exam_type`(write-only)·`profiles.next_exam_round`(파이프라인) 이중 저장·미동기화 → **profiles 단일화**.
@@ -38,7 +38,9 @@
 
 **Phase 1 완료 — 변경 파일**: `goals/queries.server.ts`(examType 전부 제거), `goals/screens/goals.tsx`(loader profiles 차수 조회·폼 `examRound`·action `setNextExamPlan`+year 보존), `onboarding/screens/welcome.tsx`(step3 examType 인자 제거), 마이그레이션 1건(① DEFAULT). typecheck 통과.
 
-### Phase 2 — 마이그레이션 (exam_type 컬럼 제거) ★dry-run·신중
+### Phase 2 — 마이그레이션 (exam_type 컬럼 제거) ✅ 완료(2026-06-18)
+- 적용: `scripts/sql/20260618_drop_study_goals_exam_type.sql`(+ rollback) → 운영 mcgdoplo `DROP COLUMN`. 검증: study_goals 컬럼 = user_id·exam_date·weekly_goal_hours·target_score·notes·updated_at(exam_type 제거). `npm run db:typegen` → database.types.ts 3줄 삭제(study_goals Row/Insert/Update)·드리프트 0. typecheck 통과.
+- 백필 UPDATE = **미실행**(dry-run 0행, no-op). 선행 조건 충족: Phase 1(465dbf7) 운영 배포로 서빙 코드가 exam_type 미참조(전수 grep 확인 — 잔여는 생성 타입·시드 스크립트뿐, 시드도 정정).
 
 > **dry-run 결과(2026-06-18, 운영 mcgdoplo · ② 발산 행 기준)** — study_goals 8행(orphan 0):
 > | exam_type | next_exam_round | 행 |
@@ -69,6 +71,10 @@ Phase 1 배포로 코드가 exam_type 을 더는 읽지/쓰지 않게 된 뒤:
 - #4 진도 정의(방문·시도 비율) 현행 유지.
 - 차수 필터를 discovery 슬롯(unread_case·weak_article)까지 확장 = 차수 작동 확인 후 단계적(§4 결정 3).
 - 시점(year) 중복(`study_goals.exam_date` vs `profiles.next_exam_year`) = 차수 범위 밖, 별도 논의(§4 결정 2).
+
+### 후속 발견 — 2차 객관식 추천 차단 ✅ (별도 커밋 c6f3fbd)
+차수→추천 연결을 검증하다 데이터로 확인: **운영 problems 전 2,893문항이 1차 객관식**(2차·주관식 0). 변리사 2차는 주관식/논술이라 2차 수험생에게 `gap_problems`(객관식)는 차수상으로도, 콘텐츠상으로도 이중 무의미. → `pickGapProblems`가 `next_exam_round='second'`면 **null 반환**(1차 동작 무변경, 2차도 조문·판례·암기 SRS 추천은 타 슬롯 유지). 차수→추천의 올바른 동작 = "2차는 객관식 슬롯 제거"(과목 필터가 아님).
+- **큰 별도 과제**: 2차(주관식) 연습 콘텐츠 부재 + 민소법 조문·문제 미적재 → 2차 수험생 학습/추천 경험 빈약. 2차 콘텐츠 구축은 독립 로드맵.
 
 ## 3. 영향 파일
 - `app/features/goals/screens/goals.tsx`(loader profiles 조회·select default·action setNextExamPlan), `goals/queries.server.ts`(examType 제거).

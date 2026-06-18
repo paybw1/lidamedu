@@ -5613,7 +5613,6 @@ export type Database = {
       study_goals: {
         Row: {
           exam_date: string | null
-          exam_type: string
           notes: string | null
           target_score: number | null
           updated_at: string
@@ -5622,7 +5621,6 @@ export type Database = {
         }
         Insert: {
           exam_date?: string | null
-          exam_type?: string
           notes?: string | null
           target_score?: number | null
           updated_at?: string
@@ -5631,7 +5629,6 @@ export type Database = {
         }
         Update: {
           exam_date?: string | null
-          exam_type?: string
           notes?: string | null
           target_score?: number | null
           updated_at?: string
