@@ -80,13 +80,12 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, preview });
   }
   if (intent === "generate") {
-    const updateExisting = form.get("update") === "true";
-    const result = await generateCards(
-      adminClient,
-      params,
-      user.id,
-      updateExisting,
-    );
+    // mode: new(신규만) · both(신규+갱신) · update(갱신만).
+    const mode = String(form.get("mode") ?? "new");
+    const result = await generateCards(adminClient, params, user.id, {
+      insertNew: mode === "new" || mode === "both",
+      updateExisting: mode === "both" || mode === "update",
+    });
     return data({ ok: true, result });
   }
   return data({ ok: false, error: "알 수 없는 intent" }, { status: 400 });

@@ -61,8 +61,8 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
   const [sourceType, setSourceType] = useState<"article" | "case">("article");
   const [importanceMin, setImportanceMin] = useState(2);
   const [limit, setLimit] = useState(50);
-  // feat-2-023b — 기존 카드 in-place 갱신(item_id 보존, 학생 진척 유지). 품질 재생성용.
-  const [updateExisting, setUpdateExisting] = useState(false);
+  // feat-2-023b — 동작 모드: 신규만 / 신규+갱신 / 갱신만(in-place, item_id 보존).
+  const [mode, setMode] = useState<"new" | "both" | "update">("new");
 
   const fetcher = useFetcher<GenData>();
   const busy = fetcher.state !== "idle";
@@ -80,6 +80,20 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
     preview.limit === limit;
 
   const totalCards = poolStats.reduce((s, r) => s + r.count, 0);
+  const wIns = preview?.wouldInsert ?? 0;
+  const wUpd = preview?.wouldUpdate ?? 0;
+  const canGenerate =
+    mode === "new"
+      ? wIns > 0
+      : mode === "update"
+        ? wUpd > 0
+        : wIns > 0 || wUpd > 0;
+  const genLabel =
+    mode === "new"
+      ? `신규 ${wIns}장 추가`
+      : mode === "update"
+        ? `기존 ${wUpd}장 갱신`
+        : `신규 ${wIns} · 갱신 ${wUpd} 적용`;
 
   return (
     <AdminShell
@@ -144,16 +158,23 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
           </div>
 
           <div className="mt-3 space-y-2">
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                name="update"
-                value="true"
-                checked={updateExisting}
-                onChange={(e) => setUpdateExisting(e.target.checked)}
-                className="size-3.5"
-              />
-              기존 카드도 갱신 (품질 개선 재생성 — item_id 보존, 학생 진척 유지)
+            <label className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-muted-foreground font-medium">동작</span>
+              <select
+                name="mode"
+                value={mode}
+                onChange={(e) =>
+                  setMode(e.target.value as "new" | "both" | "update")
+                }
+                className="border-border bg-background rounded-md border px-2 py-1 text-xs"
+              >
+                <option value="new">신규만 추가</option>
+                <option value="both">신규 추가 + 기존 갱신</option>
+                <option value="update">기존 갱신만 (신규 추가 안 함)</option>
+              </select>
+              <span className="text-muted-foreground">
+                갱신은 item_id 보존 — 학생 복습 진척 유지.
+              </span>
             </label>
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -166,9 +187,7 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
               >
                 미리보기 (dry-run)
               </Button>
-              {previewMatches &&
-              (preview.wouldInsert > 0 ||
-                (updateExisting && preview.wouldUpdate > 0)) ? (
+              {previewMatches && canGenerate ? (
                 <Button
                   type="submit"
                   name="intent"
@@ -176,8 +195,7 @@ export default function AdminSrsCards({ loaderData }: Route.ComponentProps) {
                   size="sm"
                   disabled={busy}
                 >
-                  신규 {preview.wouldInsert}장
-                  {updateExisting ? ` · 갱신 ${preview.wouldUpdate}장` : ""} 적용
+                  {genLabel}
                 </Button>
               ) : null}
               <span className="text-muted-foreground text-xs">

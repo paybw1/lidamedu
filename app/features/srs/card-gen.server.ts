@@ -321,18 +321,27 @@ export async function previewCards(
   };
 }
 
-/** 실제 생성 — 신규 insert + (updateExisting 시) 기존 in-place 갱신(item_id 보존). */
+export interface GenerateOptions {
+  /** 신규 카드 insert (기본 true). false = 기존 갱신만. */
+  insertNew?: boolean;
+  /** 기존 카드 in-place 갱신(item_id 보존, 기본 false). */
+  updateExisting?: boolean;
+}
+
+/** 실제 생성 — (insertNew) 신규 insert + (updateExisting) 기존 in-place 갱신(item_id 보존). */
 export async function generateCards(
   client: Client,
   params: CardGenParams,
   createdBy: string,
-  updateExisting = false,
+  opts: GenerateOptions = {},
 ): Promise<CardGenResult> {
+  const insertNew = opts.insertNew ?? true;
+  const updateExisting = opts.updateExisting ?? false;
   const plan = await planCards(client, params);
   const newRows = plan.rows.filter((r) => !plan.existing.has(r.source));
 
   let inserted = 0;
-  if (newRows.length > 0) {
+  if (insertNew && newRows.length > 0) {
     const { error, count } = await client
       .from("srs_items")
       .insert(
@@ -357,11 +366,9 @@ export async function generateCards(
     }
   }
 
-  return {
-    inserted,
-    updated,
-    skipExisting: updateExisting ? 0 : plan.rows.length - newRows.length,
-  };
+  // 기존인데 갱신하지 않은 카드 수(변경 없음 또는 update 모드 아님).
+  const existingCount = plan.rows.length - newRows.length;
+  return { inserted, updated, skipExisting: existingCount - updated };
 }
 
 /* ── 풀 현황 / 최근 카드 / 소프트삭제 ─────────────────────────────── */
