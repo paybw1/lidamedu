@@ -915,6 +915,48 @@ export async function getOxQuestionsForRefs(
   return out;
 }
 
+// 한 systematic 단원(node)의 OX 가능 지문 — /study/srs/ox?node= (단원 재드릴, due 무관).
+// 노드 귀속 = problems.primary_node_id 직접 + primary_article_id→article_systematic_links 간접
+// (computeOxDiagnosis 귀속 규칙 미러). eligibility(ox_truth/ineligible/deleted)는
+// getOxQuestionsForRefs 가 적용하므로 후보 ref 만 모아 넘긴다.
+export async function getOxQuestionsForNode(
+  client: SupabaseClient<Database>,
+  nodeId: string,
+): Promise<OxQuestionItem[]> {
+  const problemIds = new Set<string>();
+  const { data: pinned } = await client
+    .from("problems")
+    .select("problem_id")
+    .eq("primary_node_id", nodeId)
+    .is("deleted_at", null);
+  for (const p of pinned ?? []) problemIds.add(p.problem_id);
+
+  const { data: links } = await client
+    .from("article_systematic_links")
+    .select("article_id")
+    .eq("node_id", nodeId);
+  const articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
+  if (articleIds.length > 0) {
+    const { data: viaArticle } = await client
+      .from("problems")
+      .select("problem_id")
+      .in("primary_article_id", articleIds)
+      .is("deleted_at", null);
+    for (const p of viaArticle ?? []) problemIds.add(p.problem_id);
+  }
+  if (problemIds.size === 0) return [];
+
+  const pids = [...problemIds];
+  const [choicesRes, boxesRes] = await Promise.all([
+    client.from("problem_choices").select("choice_id").in("problem_id", pids),
+    client.from("problem_box_items").select("box_item_id").in("problem_id", pids),
+  ]);
+  const choiceIds = (choicesRes.data ?? []).map((c) => c.choice_id);
+  const boxItemIds = (boxesRes.data ?? []).map((b) => b.box_item_id);
+  if (choiceIds.length === 0 && boxItemIds.length === 0) return [];
+  return getOxQuestionsForRefs(client, choiceIds, boxItemIds);
+}
+
 // 과목 전체 OX 가능 지문 — /subjects/:subject/ox 풀이용. 셔플은 클라에서.
 export async function getOxQuestionsForSubject(
   client: SupabaseClient<Database>,

@@ -17,7 +17,10 @@ import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import type { OxQuestionItem, OxTruth } from "~/features/problems/labels";
-import { getOxQuestionsForRefs } from "~/features/problems/queries.server";
+import {
+  getOxQuestionsForNode,
+  getOxQuestionsForRefs,
+} from "~/features/problems/queries.server";
 import { getDueOxRefs } from "~/features/study/ox-srs.server";
 
 import type { Route } from "./+types/srs-ox-review";
@@ -34,6 +37,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
+
+  // feat-2-008 #2 — 단원 재드릴: ?node=&subject= 면 그 단원의 OX 전부(due 무관).
+  const url = new URL(request.url);
+  const node = url.searchParams.get("node");
+  const subject = url.searchParams.get("subject");
+  if (node) {
+    const built = await getOxQuestionsForNode(client, node);
+    const items: ReviewItem[] = built.map((it) => ({ ...it, lawCode: subject }));
+    return { items, mode: "node" as const };
+  }
 
   const due = await getDueOxRefs(client, user.id, 100);
   const choiceIds = due
@@ -53,11 +66,14 @@ export async function loader({ request }: Route.LoaderArgs) {
       (a, b) => (orderByRef.get(a.refId) ?? 0) - (orderByRef.get(b.refId) ?? 0),
     );
 
-  return { items };
+  return { items, mode: "due" as const };
 }
 
 export default function SrsOxReview({ loaderData }: Route.ComponentProps) {
-  const { items } = loaderData;
+  const { items, mode } = loaderData;
+  const backTo =
+    mode === "node" ? "/study/stats?tab=ox_diagnosis" : "/study/srs";
+  const backLabel = mode === "node" ? "약점 진단으로" : "복습으로";
   const [answered, setAnswered] = useState(0);
   const recorded = useRef<Set<string>>(new Set());
 
@@ -88,15 +104,18 @@ export default function SrsOxReview({ loaderData }: Route.ComponentProps) {
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
             학습관리 · 정오문제 복습
           </p>
-          <h1 className="text-2xl font-bold tracking-tight">정오문제 복습</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {mode === "node" ? "이 단원 정오문제 다시 풀기" : "정오문제 복습"}
+          </h1>
           <p className="text-muted-foreground text-sm">
-            오늘 복습할 정오문제 지문을 다시 채점합니다. 답하면 복습 일정이 자동
-            갱신됩니다.
+            {mode === "node"
+              ? "이 단원의 정오문제 지문을 다시 채점합니다. 답하면 복습 일정이 자동 갱신됩니다."
+              : "오늘 복습할 정오문제 지문을 다시 채점합니다. 답하면 복습 일정이 자동 갱신됩니다."}
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link to="/study/srs" viewTransition>
-            <ArrowLeftIcon className="size-3.5" /> 복습으로
+          <Link to={backTo} viewTransition>
+            <ArrowLeftIcon className="size-3.5" /> {backLabel}
           </Link>
         </Button>
       </header>
@@ -105,10 +124,14 @@ export default function SrsOxReview({ loaderData }: Route.ComponentProps) {
         <Card className="border-dashed">
           <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-12 text-center text-sm">
             <RepeatIcon className="size-6 opacity-30" />
-            <p>지금 복습할 정오문제 항목이 없습니다.</p>
+            <p>
+              {mode === "node"
+                ? "이 단원에 풀 정오문제가 없습니다."
+                : "지금 복습할 정오문제 항목이 없습니다."}
+            </p>
             <Button size="sm" asChild className="mt-1">
-              <Link to="/study/srs" viewTransition>
-                복습 현황으로
+              <Link to={backTo} viewTransition>
+                {mode === "node" ? "약점 진단으로" : "복습 현황으로"}
               </Link>
             </Button>
           </CardContent>
@@ -129,8 +152,8 @@ export default function SrsOxReview({ loaderData }: Route.ComponentProps) {
             </div>
             {answered >= items.length ? (
               <Button size="sm" asChild className="h-7 rounded-full">
-                <Link to="/study/srs" viewTransition>
-                  복습 마치기
+                <Link to={backTo} viewTransition>
+                  {mode === "node" ? "마치기" : "복습 마치기"}
                 </Link>
               </Button>
             ) : null}

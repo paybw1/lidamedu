@@ -68,7 +68,7 @@ export function OxDiagnosisView({
             overallPct={diagnosis.totals.accuracyPct}
             audience={audience}
           />
-          <CrossMatrix diagnosis={diagnosis} />
+          <CrossMatrix diagnosis={diagnosis} audience={audience} />
         </>
       )}
       <PasserPlaceholder passer={passer} />
@@ -294,7 +294,13 @@ function Prescription({
   );
 }
 
-function CrossMatrix({ diagnosis }: { diagnosis: OxDiagnosis }) {
+function CrossMatrix({
+  diagnosis,
+  audience,
+}: {
+  diagnosis: OxDiagnosis;
+  audience: Audience;
+}) {
   const cellByKey = new Map<string, OxCrossCell>();
   for (const c of diagnosis.cross) {
     cellByKey.set(`${c.nodeId ?? "null"}¦${c.choiceType ?? "null"}`, c);
@@ -332,13 +338,24 @@ function CrossMatrix({ diagnosis }: { diagnosis: OxDiagnosis }) {
                 <TableRow key={node.nodeId ?? "null"}>
                   <TableCell className="font-medium">
                     {node.lawCode && node.nodeId ? (
-                      <Link
-                        to={`/subjects/${node.lawCode}/systematic/${node.nodeId}`}
-                        className="text-primary hover:underline"
-                        viewTransition
-                      >
-                        {node.label}
-                      </Link>
+                      <div className="space-y-0.5">
+                        <Link
+                          to={`/subjects/${node.lawCode}/systematic/${node.nodeId}`}
+                          className="text-primary hover:underline"
+                          viewTransition
+                        >
+                          {node.label}
+                        </Link>
+                        {audience === "self" ? (
+                          <Link
+                            to={`/study/srs/ox?node=${node.nodeId}&subject=${node.lawCode}`}
+                            className="text-muted-foreground hover:text-primary block text-[11px]"
+                            viewTransition
+                          >
+                            ↻ 이 단원 다시 풀기
+                          </Link>
+                        ) : null}
+                      </div>
                     ) : (
                       node.label
                     )}
