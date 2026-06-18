@@ -67,7 +67,7 @@ Phase 1 배포로 코드가 exam_type 을 더는 읽지/쓰지 않게 된 뒤:
 - `dashboard.tsx`: `EXAM_DATE_FALLBACK_ISO="2026-07-23"` 상수 제거, `examDateIso = goals.examDate`(이제 `string | null`).
 - `dash-header.tsx`: `DashHeaderData.examDateIso: string | null`, dDay 계산은 examDateIso 있을 때만(없으면 0). 배지 렌더 분기 — `goalsConfigured && examDateIso` 면 D-day+시험일(기존), 아니면 **가짜 D-day 숨기고 "시험 D-day / 시험일 설정하기 →"(/goals 링크)**. 틀린 D-day보다 정직.
 - `/goals` KPI는 이미 examDate null 시 D-day 숨기고 안내(`goals.tsx`) — 변경 불필요. typecheck 통과.
-- ★ **남은 하드코딩(이번 범위 밖, 플래그)**: 배지 eyebrow `"변리사 1차"`(dash-header.tsx)·`user.cohort:"27기 · 1차 준비"`(dashboard.tsx) 는 여전히 "1차" 고정 → 2차 수험생에 오표시. 차수(`next_exam_round`)·cohort 실데이터로 치환은 별도 소과제(round 를 loader return·DashHeader prop 까지 배선 필요).
+- ✅ **라벨 하드코딩 정리**(2026-06-18, 후속): 배지 eyebrow·`user.cohort` 의 "1차" 고정 제거. `userExamRound`(profiles.next_exam_round)를 loader return → `DashHeader` prop 으로 배선 → 배지 = `변리사 {1·2차}`(string 비교, RR typegen 위장 회피). cohort 라벨 = 활성 트랙이면 `{cohortName} · {차수} 준비`, 없으면 `{차수} 준비`(가짜 "27기" 제거). 2차 수험생 오표시 해소.
 
 ### 범위 밖(이번)
 - #4 진도 정의(방문·시도 비율) 현행 유지.

@@ -19,6 +19,7 @@ export interface DashHeaderData {
   todayLabel: string;
   cohort: string;
   examDateIso: string | null;
+  examRound: string | null;
   goalsConfigured: boolean;
   remainingHours: number;
 }
@@ -35,6 +36,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
       )
     : 0;
   const counted = useCountUp(dDay, 1400, inView);
+  const roundLabel = `변리사 ${data.examRound === "second" ? "2차" : "1차"}`;
   const remainText =
     data.remainingHours > 0
       ? `오늘은 ${data.remainingHours.toFixed(1)}시간 더 학습하면 일 목표에 닿아요.`
@@ -93,7 +95,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
           <>
             <div>
               <Eyebrow color={T.blue} style={{ marginBottom: 4 }}>
-                변리사 1차
+                {roundLabel}
               </Eyebrow>
               <Num
                 value={`D-${Math.round(counted)}`}
@@ -118,7 +120,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
           // 시험일 미설정 — 가짜 D-day 대신 설정 안내(feat-2-025 Phase 3).
           <div>
             <Eyebrow color={T.blue} style={{ marginBottom: 4 }}>
-              시험 D-day
+              {roundLabel}
             </Eyebrow>
             <Link
               to="/goals"

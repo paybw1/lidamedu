@@ -41,6 +41,7 @@ import {
 } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import { hasPoolConsent } from "~/features/exam-results/queries.server";
+import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { ConsentSection } from "~/features/exam-results/components/consent-section";
 import { generateRecommendedActions } from "~/features/exam-results/recommendations";
 import { predictPassScore } from "~/features/study/lib/pass-predict";
@@ -348,8 +349,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     passPrediction,
     user: {
       name,
-      cohort: "27기 · 1차 준비",
+      // 차수는 profiles.next_exam_round 실데이터(feat-2-025); 기수는 활성 트랙 있을 때만.
+      cohort: weekTrack
+        ? `${weekTrack.cohortName} · ${EXAM_ROUND_LABEL[userExamRound ?? "first"]} 준비`
+        : `${EXAM_ROUND_LABEL[userExamRound ?? "first"]} 준비`,
     },
+    examRound: userExamRound,
     blankSummary: {
       content: summarize(content),
       subject: summarize(subject),
@@ -494,6 +499,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     passerSummaries,
     recommendedActions,
     todayLabel,
+    examRound,
   } = loaderData;
 
   // ── 헤더 / KPI ──
@@ -621,6 +627,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               todayLabel,
               cohort: user.cohort,
               examDateIso,
+              examRound,
               goalsConfigured: goals.examDate !== null,
               remainingHours: Math.max(0, dailyTargetHours - todayHours),
             }}
