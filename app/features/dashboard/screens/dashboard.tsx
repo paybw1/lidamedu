@@ -45,6 +45,9 @@ import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { ConsentSection } from "~/features/exam-results/components/consent-section";
 import { generateRecommendedActions } from "~/features/exam-results/recommendations";
 import { predictPassScore } from "~/features/study/lib/pass-predict";
+import { upsertPassPredictionSnapshot } from "~/features/study/pass-predict-snapshot.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 
 import type { Route } from "./+types/dashboard";
 import {
@@ -280,6 +283,17 @@ export async function loader({ request }: Route.LoaderArgs) {
     totalAssignmentsCount: studentAssignments.length,
     examRound: userExamRound,
   });
+
+  // feat-2-008 #6 — 합격예측 추이 크론 미가동 대안: 방문 시 오늘자 스냅샷을 비차단
+  // 기록(멱등 upsert). adminClient = 스냅샷 테이블 RLS 우회(크론과 동일 경로).
+  runAfterResponse(
+    upsertPassPredictionSnapshot(
+      adminClient,
+      user.id,
+      passPrediction,
+      gsAveragePct,
+    ),
+  );
 
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",

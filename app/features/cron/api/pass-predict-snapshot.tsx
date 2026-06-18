@@ -13,6 +13,7 @@ import {
   getOverallProgress,
   getUserGsAveragePct,
 } from "~/features/study/queries.server";
+import { upsertPassPredictionSnapshot } from "~/features/study/pass-predict-snapshot.server";
 
 import type { Route } from "./+types/pass-predict-snapshot";
 
@@ -53,17 +54,7 @@ async function snapshotForUser(userId: string): Promise<{
       ).length,
       totalAssignmentsCount: assignments.length,
     });
-    const { error } = await adminClient.from("pass_prediction_snapshots").upsert(
-      {
-        user_id: userId,
-        score: prediction.score,
-        rating: prediction.rating,
-        components: prediction.components as never,
-        gs_average_pct: gs,
-      },
-      { onConflict: "user_id,snapshot_date" },
-    );
-    if (error) return { status: "failed", reason: error.message };
+    await upsertPassPredictionSnapshot(adminClient, userId, prediction, gs);
     return { status: "ok" };
   } catch (e) {
     return {
