@@ -181,7 +181,11 @@ function ItemCard({
       )}
     >
       <CardContent className="flex items-center gap-3 px-4 py-3">
-        <CircleIcon className="text-muted-foreground size-4" />
+        {item.done ? (
+          <CheckCircle2Icon className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+        ) : (
+          <CircleIcon className="text-muted-foreground size-4 shrink-0" />
+        )}
         <Badge variant="outline" className="w-20 justify-center text-[10px]">
           {ASSIGNMENT_ITEM_KIND_LABEL[item.kind]}
         </Badge>

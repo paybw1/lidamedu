@@ -434,23 +434,39 @@ function rowToSubmission(r: {
   };
 }
 
+export interface RecomputeResult {
+  submission: AssignmentSubmission | null;
+  /** itemId → 완료 여부 (⑥ 항목별 완료 노출용 — 카운트와 동일 recompute 소스라 일치). */
+  doneByItem: Record<string, boolean>;
+}
+
 export async function recomputeSubmission(
   assignmentId: string,
   userId: string,
-): Promise<AssignmentSubmission | null> {
+): Promise<RecomputeResult> {
   const admin = adminClient as SupabaseClient<Database>;
 
   // 1) items
   const { data: items } = await admin
     .from("assignment_items")
     .select(
-      "kind, article_id, case_id, problem_id, blank_set_id, article_blank_sets(blanks)",
+      "item_id, kind, article_id, case_id, problem_id, blank_set_id, article_blank_sets(blanks)",
     )
     .eq("assignment_id", assignmentId);
   const itemList = items ?? [];
   const total = itemList.length;
   if (total === 0) {
-    return upsertSubmission(assignmentId, userId, "pending", 0, 0, null);
+    return {
+      submission: await upsertSubmission(
+        assignmentId,
+        userId,
+        "pending",
+        0,
+        0,
+        null,
+      ),
+      doneByItem: {},
+    };
   }
 
   // 2) 학생 활동 데이터 fetch
@@ -543,8 +559,9 @@ export async function recomputeSubmission(
     for (const r of data ?? []) completedRecitations.add(r.article_id);
   }
 
-  // 3) 매칭
+  // 3) 매칭 — 항목별 done 수집(⑥). 카운트(completed)와 동일 소스.
   let completed = 0;
+  const doneByItem: Record<string, boolean> = {};
   for (const item of itemList) {
     let done = false;
     if (item.kind === "problem" && item.problem_id) {
@@ -558,6 +575,7 @@ export async function recomputeSubmission(
     } else if (item.kind === "recitation" && item.article_id) {
       done = completedRecitations.has(item.article_id);
     }
+    doneByItem[item.item_id] = done;
     if (done) completed += 1;
   }
 
@@ -565,7 +583,17 @@ export async function recomputeSubmission(
     completed === 0 ? "pending" : completed < total ? "partial" : "completed";
   const completedAt = status === "completed" ? new Date().toISOString() : null;
 
-  return upsertSubmission(assignmentId, userId, status, completed, total, completedAt);
+  return {
+    submission: await upsertSubmission(
+      assignmentId,
+      userId,
+      status,
+      completed,
+      total,
+      completedAt,
+    ),
+    doneByItem,
+  };
 }
 
 async function upsertSubmission(
@@ -769,9 +797,16 @@ export async function getStudentAssignment(
     .maybeSingle();
   if (!member) return null;
 
-  // 자동 재계산
-  const submission = await recomputeSubmission(assignmentId, userId);
-  return { detail, submission };
+  // 자동 재계산 — submission 카운트 + 항목별 done(⑥) 머지.
+  const { submission, doneByItem } = await recomputeSubmission(
+    assignmentId,
+    userId,
+  );
+  const items = detail.items.map((it) => ({
+    ...it,
+    done: doneByItem[it.itemId] ?? false,
+  }));
+  return { detail: { ...detail, items }, submission };
 }
 
 // ─── 자동 변환: 커리큘럼 주차 → 과제 ───

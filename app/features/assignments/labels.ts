@@ -64,6 +64,9 @@ export interface AssignmentItem {
   entryUrl: string | null;
   targetQuantity: number | null;
   note: string | null;
+  // ⑥ 항목별 완료 — getStudentAssignment 가 recompute 의 doneByItem 으로 채운다.
+  // getAssignmentWithItems(운영자 화면 등)에서는 미설정(undefined).
+  done?: boolean;
 }
 
 export interface AssignmentDetail extends AssignmentListItem {
