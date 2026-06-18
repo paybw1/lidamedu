@@ -1,9 +1,14 @@
-// 과제 CRUD + 자동 변환 API (feat-7-021). staff 전용.
+// 과제 CRUD + 자동 변환 API (feat-7-021). staff 전용 + 반 소유권 게이트(feat-7-021b ①).
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "database.types";
 import { data } from "react-router";
 import { z } from "zod";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { roleAtLeast } from "~/core/lib/roles";
+import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   convertWeekToAssignment,
@@ -49,6 +54,55 @@ const itemSchema = z.object({
   note: z.string().trim().max(2000).nullable().optional(),
 });
 
+// ① 소유권 게이트(feat-7-021b) — write intent 가 다루는 대상의 cohort_id 를 확정한다.
+// adminClient 읽기(결정적). create/convert_week=폼 cohortId, update/delete/upsert_item
+// =assignmentId→cohort, delete_item=itemId→assignment→cohort(RLS 가 아닌 코드로 역추적).
+const OWNED_INTENTS = new Set([
+  "create",
+  "update",
+  "delete",
+  "upsert_item",
+  "delete_item",
+  "convert_week",
+]);
+
+async function resolveAssignmentCohortId(
+  admin: SupabaseClient<Database>,
+  intent: string,
+  fd: FormData,
+): Promise<string | null> {
+  if (intent === "create" || intent === "convert_week") {
+    return emptyToNull(fd.get("cohortId"), 100);
+  }
+  if (intent === "update" || intent === "delete" || intent === "upsert_item") {
+    const aid = String(fd.get("assignmentId") ?? "");
+    if (!aid) return null;
+    const { data: a } = await admin
+      .from("assignments")
+      .select("cohort_id")
+      .eq("assignment_id", aid)
+      .maybeSingle();
+    return a?.cohort_id ?? null;
+  }
+  if (intent === "delete_item") {
+    const iid = String(fd.get("itemId") ?? "");
+    if (!iid) return null;
+    const { data: item } = await admin
+      .from("assignment_items")
+      .select("assignment_id")
+      .eq("item_id", iid)
+      .maybeSingle();
+    if (!item) return null;
+    const { data: a } = await admin
+      .from("assignments")
+      .select("cohort_id")
+      .eq("assignment_id", item.assignment_id)
+      .maybeSingle();
+    return a?.cohort_id ?? null;
+  }
+  return null;
+}
+
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
     return data({ error: "Method not allowed" }, { status: 405 });
@@ -63,6 +117,22 @@ export async function action({ request }: Route.ActionArgs) {
 
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
+
+  // ① 반 소유권 게이트(feat-7-021b) — staff 여부만으론 강사간 수평 권한 상승 가능했음.
+  // 강사는 본인 소유 반만(원장/관리자=전체). 6개 write intent 공통 전치. 서버쿼리가
+  // adminClient(RLS 우회)라 RLS 백스톱이 없으므로 여기서 반드시 차단((나) RLS 전환은 후속).
+  if (OWNED_INTENTS.has(intent)) {
+    const cohortId = await resolveAssignmentCohortId(adminClient, intent, fd);
+    if (!cohortId) {
+      return data({ error: "대상을 찾을 수 없습니다" }, { status: 404 });
+    }
+    if (!roleAtLeast(role, "manager")) {
+      const cohort = await getCohortById(adminClient, cohortId);
+      if (!cohort || cohort.ownerId !== user.id) {
+        return data({ error: "본인 소유 반만 접근 가능합니다" }, { status: 403 });
+      }
+    }
+  }
 
   if (intent === "create") {
     const parsed = createSchema.safeParse({
