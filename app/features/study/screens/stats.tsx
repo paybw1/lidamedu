@@ -18,7 +18,12 @@ import {
   TargetIcon,
   TrendingDownIcon,
 } from "lucide-react";
-import { Link, data, useSearchParams } from "react-router";
+import {
+  Link,
+  data,
+  useSearchParams,
+  type ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -235,6 +240,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     heatmap,
     oxDiagnosis,
     oxGate,
+    passTrend,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -254,8 +260,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     getActivityHeatmap(client, user.id, 365),
     computeOxDiagnosis(client, user.id),
     isPasserBenchmarkEnabled(),
+    getUserPassPredictionTrend(client, user.id, passOpts),
   ]);
-  const passTrend = await getUserPassPredictionTrend(client, user.id, passOpts);
 
   return {
     myAnalysisOff: false as const,
@@ -286,6 +292,21 @@ export async function loader({ request }: Route.LoaderArgs) {
       recitation,
     },
   };
+}
+
+// 탭 전환(?tab=)은 클라 표시만 — loader 데이터는 tab 에 비의존이라 재fetch 불필요.
+// range/from/to(시계열·누적 윈도우) 변화에서만 재검증 → 탭 클릭마다 18쿼리 재실행 방지.
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs): boolean {
+  if (currentUrl.pathname !== nextUrl.pathname) return defaultShouldRevalidate;
+  const dataParams = ["range", "from", "to"];
+  const changed = dataParams.some(
+    (k) => currentUrl.searchParams.get(k) !== nextUrl.searchParams.get(k),
+  );
+  return changed ? defaultShouldRevalidate : false;
 }
 
 // RR7 loaderData 의 on-branch(myAnalysisOff:false) — 하위 탭 컴포넌트 공용 타입.
@@ -511,11 +532,13 @@ function OverviewTab({ data }: { data: StatsData }) {
           value={String(aidCounts.wrongMcq + aidCounts.wrongOx)}
           subtle={`객관식 ${aidCounts.wrongMcq} · 정오문제 ${aidCounts.wrongOx}`}
           warn={aidCounts.wrongMcq + aidCounts.wrongOx > 0}
+          to="/study/wrong-note"
         />
         <KpiCard
           icon={BookmarkIcon}
           label="즐겨찾기"
           value={String(aidCounts.bookmarks)}
+          to="/study/bookmarks"
         />
         <KpiCard
           icon={StickyNoteIcon}
@@ -526,6 +549,7 @@ function OverviewTab({ data }: { data: StatsData }) {
           icon={HighlighterIcon}
           label="하이라이트"
           value={String(aidCounts.highlights)}
+          to="/study/highlights"
         />
       </div>
 
@@ -901,6 +925,7 @@ function FirstExamTab({ data }: { data: StatsData }) {
           value={String(aidCounts.wrongMcq + aidCounts.wrongOx)}
           subtle={`객관식 ${aidCounts.wrongMcq} · 정오문제 ${aidCounts.wrongOx}`}
           warn={aidCounts.wrongMcq + aidCounts.wrongOx > 0}
+          to="/study/wrong-note"
         />
         <KpiCard
           icon={CalendarIcon}
@@ -1199,31 +1224,42 @@ function KpiCard({
   value,
   subtle,
   warn,
+  to,
 }: {
   icon?: typeof PencilLineIcon;
   label: string;
   value: string;
   subtle?: string;
   warn?: boolean;
+  /** 있으면 카드 전체가 해당 목록으로 가는 링크(#4 행동 연결). */
+  to?: string;
 }) {
-  return (
-    <Card>
-      <CardContent className="space-y-1 py-4">
-        <div className="flex items-center gap-2">
-          {Icon ? <Icon className="text-primary size-4" /> : null}
-          <p className="text-muted-foreground text-xs">{label}</p>
-        </div>
-        <p
-          className={`text-2xl font-bold tabular-nums ${warn ? "text-amber-600 dark:text-amber-400" : ""}`}
-        >
-          {value}
-        </p>
-        {subtle ? (
-          <p className="text-muted-foreground text-xs">{subtle}</p>
-        ) : null}
-      </CardContent>
-    </Card>
+  const body = (
+    <CardContent className="space-y-1 py-4">
+      <div className="flex items-center gap-2">
+        {Icon ? <Icon className="text-primary size-4" /> : null}
+        <p className="text-muted-foreground text-xs">{label}</p>
+      </div>
+      <p
+        className={`text-2xl font-bold tabular-nums ${warn ? "text-amber-600 dark:text-amber-400" : ""}`}
+      >
+        {value}
+      </p>
+      {subtle ? (
+        <p className="text-muted-foreground text-xs">{subtle}</p>
+      ) : null}
+    </CardContent>
   );
+  if (to) {
+    return (
+      <Card className="hover:border-primary/30 hover:bg-muted/40 transition-colors">
+        <Link to={to} viewTransition className="block">
+          {body}
+        </Link>
+      </Card>
+    );
+  }
+  return <Card>{body}</Card>;
 }
 
 function EmptyMsg({ text }: { text: string }) {
