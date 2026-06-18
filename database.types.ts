@@ -965,6 +965,7 @@ export type Database = {
           cohort_id: string
           created_at: string
           created_by: string
+          deadline_policy: Database["public"]["Enums"]["deadline_policy"]
           deleted_at: string | null
           description_md: string | null
           due_at: string
@@ -979,6 +980,7 @@ export type Database = {
           cohort_id: string
           created_at?: string
           created_by: string
+          deadline_policy?: Database["public"]["Enums"]["deadline_policy"]
           deleted_at?: string | null
           description_md?: string | null
           due_at: string
@@ -993,6 +995,7 @@ export type Database = {
           cohort_id?: string
           created_at?: string
           created_by?: string
+          deadline_policy?: Database["public"]["Enums"]["deadline_policy"]
           deleted_at?: string | null
           description_md?: string | null
           due_at?: string
@@ -7427,6 +7430,7 @@ export type Database = {
         | "blank_set"
         | "recitation"
         | "lecture"
+      deadline_policy: "recommended" | "late_allowed" | "strict"
       exam_result_status: "absent" | "pending" | "failed" | "passed"
       exam_round: "first" | "second"
       exam_verification_status:
@@ -7673,6 +7677,7 @@ export const Constants = {
         "recitation",
         "lecture",
       ],
+      deadline_policy: ["recommended", "late_allowed", "strict"],
       exam_result_status: ["absent", "pending", "failed", "passed"],
       exam_round: ["first", "second"],
       exam_verification_status: [

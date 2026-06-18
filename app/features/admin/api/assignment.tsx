@@ -30,17 +30,21 @@ function emptyToNull(raw: FormDataEntryValue | null, max = 2000): string | null 
   return s.slice(0, max);
 }
 
+const DEADLINE_POLICIES = ["recommended", "late_allowed", "strict"] as const;
+
 const createSchema = z.object({
   cohortId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
   descriptionMd: z.string().trim().max(4000).nullable().optional(),
   dueAt: z.string().min(1),
+  deadlinePolicy: z.enum(DEADLINE_POLICIES).optional(),
 });
 
 const updateSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   descriptionMd: z.string().trim().max(4000).nullable().optional(),
   dueAt: z.string().optional(),
+  deadlinePolicy: z.enum(DEADLINE_POLICIES).optional(),
 });
 
 const itemSchema = z.object({
@@ -140,6 +144,7 @@ export async function action({ request }: Route.ActionArgs) {
       title: fd.get("title"),
       descriptionMd: emptyToNull(fd.get("descriptionMd")),
       dueAt: fd.get("dueAt"),
+      deadlinePolicy: fd.get("deadlinePolicy") ?? undefined,
     });
     if (!parsed.success) {
       return data(
@@ -165,6 +170,9 @@ export async function action({ request }: Route.ActionArgs) {
           ? emptyToNull(fd.get("descriptionMd"))
           : undefined,
       dueAt: fd.get("dueAt") ? String(fd.get("dueAt")) : undefined,
+      deadlinePolicy: fd.get("deadlinePolicy")
+        ? String(fd.get("deadlinePolicy"))
+        : undefined,
     });
     if (!parsed.success) {
       return data(

@@ -14,6 +14,7 @@ import type {
   AssignmentListItem,
   AssignmentStatus,
   AssignmentSubmission,
+  DeadlinePolicy,
   MemberAssignmentProgress,
   StudentAssignmentRow,
 } from "./labels";
@@ -38,7 +39,7 @@ export async function listAssignmentsByCohort(
   const { data: rows, error } = await admin
     .from("assignments")
     .select(
-      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id",
+      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy",
     )
     .eq("cohort_id", cohortId)
     .is("deleted_at", null)
@@ -88,6 +89,7 @@ export async function listAssignmentsByCohort(
     createdBy: r.created_by,
     sourceCurriculumId: r.source_curriculum_id,
     sourceWeekId: r.source_week_id,
+    deadlinePolicy: r.deadline_policy,
     itemCount: itemByA.get(r.assignment_id) ?? 0,
     totalMembers: totalMembers ?? 0,
     completedMembers: completedByA.get(r.assignment_id) ?? 0,
@@ -103,7 +105,7 @@ export async function getAssignmentWithItems(
   const { data: a, error } = await admin
     .from("assignments")
     .select(
-      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id",
+      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy",
     )
     .eq("assignment_id", assignmentId)
     .is("deleted_at", null)
@@ -197,6 +199,7 @@ export async function getAssignmentWithItems(
     createdBy: a.created_by,
     sourceCurriculumId: a.source_curriculum_id,
     sourceWeekId: a.source_week_id,
+    deadlinePolicy: a.deadline_policy,
     itemCount: items.length,
     totalMembers: totalMembers ?? 0,
     completedMembers: completedMembers ?? 0,
@@ -214,6 +217,7 @@ export interface CreateAssignmentInput {
   createdBy: string;
   sourceCurriculumId?: string | null;
   sourceWeekId?: string | null;
+  deadlinePolicy?: DeadlinePolicy;
 }
 
 export async function createAssignment(
@@ -232,6 +236,7 @@ export async function createAssignment(
       created_by: input.createdBy,
       source_curriculum_id: input.sourceCurriculumId ?? null,
       source_week_id: input.sourceWeekId ?? null,
+      deadline_policy: input.deadlinePolicy ?? "recommended",
     })
     .select("assignment_id")
     .single();
@@ -314,13 +319,20 @@ async function postAssignmentAnnouncement(
 export async function updateAssignment(
   client: SupabaseClient<Database>,
   assignmentId: string,
-  patch: { title?: string; descriptionMd?: string | null; dueAt?: string },
+  patch: {
+    title?: string;
+    descriptionMd?: string | null;
+    dueAt?: string;
+    deadlinePolicy?: DeadlinePolicy;
+  },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = client;
   const u: Record<string, unknown> = {};
   if (patch.title !== undefined) u.title = patch.title;
   if (patch.descriptionMd !== undefined) u.description_md = patch.descriptionMd;
   if (patch.dueAt !== undefined) u.due_at = patch.dueAt;
+  if (patch.deadlinePolicy !== undefined)
+    u.deadline_policy = patch.deadlinePolicy;
   const { error } = await admin
     .from("assignments")
     .update(u)
@@ -579,9 +591,41 @@ export async function recomputeSubmission(
     if (done) completed += 1;
   }
 
-  const status: AssignmentStatus =
-    completed === 0 ? "pending" : completed < total ? "partial" : "completed";
-  const completedAt = status === "completed" ? new Date().toISOString() : null;
+  // 마감 정책 + completed_at 고정(feat-7-021b ④). 완료시각=최초 완료 1회 기록·이후 보존(표류 정지).
+  const { data: asg } = await admin
+    .from("assignments")
+    .select("due_at, deadline_policy")
+    .eq("assignment_id", assignmentId)
+    .maybeSingle();
+  const { data: prior } = await admin
+    .from("assignment_submissions")
+    .select("completed_at")
+    .eq("assignment_id", assignmentId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const dueAt = asg?.due_at ?? null;
+  const policy = asg?.deadline_policy ?? "recommended";
+
+  let status: AssignmentStatus;
+  let completedAt: string | null = null;
+  if (completed === total) {
+    // 전 항목 완료 — 완료시각은 기존값 보존(없으면 최초 관측 now()). 매 recompute now() 표류 제거.
+    const firstCompletedAt = prior?.completed_at ?? new Date().toISOString();
+    const isLate =
+      dueAt !== null &&
+      new Date(firstCompletedAt).getTime() > new Date(dueAt).getTime();
+    if (policy === "strict" && isLate) {
+      // 마감형: 마감 후 완료는 불인정 → 미완(partial) 유지. 학습 자체는 무차단.
+      status = "partial";
+      completedAt = null;
+    } else {
+      status = "completed";
+      completedAt = firstCompletedAt;
+    }
+  } else {
+    status = completed === 0 ? "pending" : "partial";
+    completedAt = null;
+  }
 
   return {
     submission: await upsertSubmission(
@@ -730,7 +774,7 @@ export async function listStudentAssignments(
   const { data: rows } = await admin
     .from("assignments")
     .select(
-      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id",
+      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy",
     )
     .in("cohort_id", cohortIds)
     .is("deleted_at", null)
@@ -775,6 +819,7 @@ export async function listStudentAssignments(
     createdBy: r.created_by,
     sourceCurriculumId: r.source_curriculum_id,
     sourceWeekId: r.source_week_id,
+    deadlinePolicy: r.deadline_policy,
     itemCount: itemByA.get(r.assignment_id) ?? 0,
     submission: subByA.get(r.assignment_id) ?? null,
   }));
@@ -852,6 +897,7 @@ export async function convertWeekToAssignment(
       created_by: input.createdBy,
       source_curriculum_id: week.curriculum_id,
       source_week_id: week.week_id,
+      deadline_policy: "recommended",
     })
     .select("assignment_id")
     .single();

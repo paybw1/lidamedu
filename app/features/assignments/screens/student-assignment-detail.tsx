@@ -61,6 +61,13 @@ export default function StudentAssignmentDetail({
       : 0;
   const overdue =
     new Date(detail.dueAt).getTime() < Date.now() && status !== "completed";
+  // ④ 지각 완료 — 지각인정형(late_allowed)에서 완료시각이 마감 이후일 때만 표시.
+  const lateCompleted =
+    status === "completed" &&
+    submission?.completedAt != null &&
+    new Date(submission.completedAt).getTime() >
+      new Date(detail.dueAt).getTime();
+  const showLate = detail.deadlinePolicy === "late_allowed" && lateCompleted;
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -77,19 +84,31 @@ export default function StudentAssignmentDetail({
         </p>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-bold tracking-tight">{detail.title}</h1>
-          <Badge
-            variant={
-              status === "completed"
-                ? "default"
-                : status === "partial"
-                  ? "secondary"
-                  : "outline"
-            }
-            className={cn("text-[10px]", STATUS_TONE[status])}
-          >
-            {status === "completed" ? <CheckCircle2Icon className="size-3" /> : null}
-            {ASSIGNMENT_STATUS_LABEL[status]}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant={
+                status === "completed"
+                  ? "default"
+                  : status === "partial"
+                    ? "secondary"
+                    : "outline"
+              }
+              className={cn("text-[10px]", STATUS_TONE[status])}
+            >
+              {status === "completed" ? (
+                <CheckCircle2Icon className="size-3" />
+              ) : null}
+              {ASSIGNMENT_STATUS_LABEL[status]}
+            </Badge>
+            {showLate ? (
+              <Badge
+                variant="outline"
+                className="border-amber-300 text-[10px] text-amber-700 dark:text-amber-400"
+              >
+                지각 완료
+              </Badge>
+            ) : null}
+          </div>
         </div>
         {detail.descriptionMd ? (
           <p className="text-muted-foreground text-sm whitespace-pre-line">

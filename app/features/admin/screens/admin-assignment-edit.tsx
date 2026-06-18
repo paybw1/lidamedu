@@ -323,6 +323,20 @@ function AssignmentMetaForm({ assignment }: { assignment: AssignmentDetail }) {
           className="border-input bg-background mt-1 w-full rounded-md border px-2 py-1 text-xs"
         />
       </div>
+      <div>
+        <Label className="text-muted-foreground text-[11px]">마감 정책</Label>
+        <select
+          name="deadlinePolicy"
+          defaultValue={assignment.deadlinePolicy}
+          className="border-input bg-background mt-1 h-8 w-full rounded-md border px-2 text-xs"
+        >
+          <option value="recommended">권장형 — 마감 후에도 완료 인정</option>
+          <option value="late_allowed">
+            지각 인정형 — 완료 인정 + 지각 완료 표시
+          </option>
+          <option value="strict">마감형 — 마감 후 완료 불인정(학습은 가능)</option>
+        </select>
+      </div>
       {fetcher.data && "error" in fetcher.data ? (
         <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
       ) : null}

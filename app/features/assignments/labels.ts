@@ -31,6 +31,15 @@ export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
   completed: "완수",
 };
 
+// feat-7-021b ④ — 과제별 마감 정책. 셋 다 학습은 무차단, recompute 완료 판정에서만 분기.
+export type DeadlinePolicy = "recommended" | "late_allowed" | "strict";
+
+export const DEADLINE_POLICY_LABEL: Record<DeadlinePolicy, string> = {
+  recommended: "권장형 — 마감 후에도 완료 인정",
+  late_allowed: "지각 인정형 — 완료 인정 + 지각 표시",
+  strict: "마감형 — 마감 후 완료 불인정(학습은 가능)",
+};
+
 export interface AssignmentListItem {
   assignmentId: string;
   cohortId: string;
@@ -42,6 +51,7 @@ export interface AssignmentListItem {
   sourceCurriculumId: string | null;
   sourceWeekId: string | null;
   itemCount: number;
+  deadlinePolicy: DeadlinePolicy;
   // 운영자 화면용 — 멤버 완수율
   totalMembers?: number;
   completedMembers?: number;
