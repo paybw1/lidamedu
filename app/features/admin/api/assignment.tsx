@@ -147,7 +147,10 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    const res = await createAssignment({ ...parsed.data, createdBy: user.id });
+    const res = await createAssignment(client, {
+      ...parsed.data,
+      createdBy: user.id,
+    });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true, assignmentId: res.assignmentId });
   }
@@ -169,7 +172,7 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    const res = await updateAssignment(assignmentId, parsed.data);
+    const res = await updateAssignment(client, assignmentId, parsed.data);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
   }
@@ -177,7 +180,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "delete") {
     const assignmentId = String(fd.get("assignmentId") ?? "");
     if (!assignmentId) return data({ error: "assignmentId 누락" }, { status: 400 });
-    const res = await deleteAssignment(assignmentId);
+    const res = await deleteAssignment(client, assignmentId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
   }
@@ -203,7 +206,11 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    const res = await upsertAssignmentItem({ itemId, assignmentId, ...parsed.data });
+    const res = await upsertAssignmentItem(client, {
+      itemId,
+      assignmentId,
+      ...parsed.data,
+    });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true, itemId: res.itemId });
   }
@@ -211,7 +218,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "delete_item") {
     const itemId = String(fd.get("itemId") ?? "");
     if (!itemId) return data({ error: "itemId 누락" }, { status: 400 });
-    const res = await deleteAssignmentItem(itemId);
+    const res = await deleteAssignmentItem(client, itemId);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
   }
@@ -224,7 +231,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (!weekId || !cohortId || !dueAt) {
       return data({ error: "weekId/cohortId/dueAt 누락" }, { status: 400 });
     }
-    const res = await convertWeekToAssignment({
+    const res = await convertWeekToAssignment(client, {
       weekId,
       cohortId,
       dueAt,

@@ -217,9 +217,11 @@ export interface CreateAssignmentInput {
 }
 
 export async function createAssignment(
+  client: SupabaseClient<Database>,
   input: CreateAssignmentInput,
 ): Promise<{ ok: true; assignmentId: string } | { ok: false; error: string }> {
-  const admin = adminClient as SupabaseClient<Database>;
+  // (나) feat-7-021b — 요청 클라이언트면 RLS(user_owns_cohort)가 소유권 강제. cron 은 adminClient 전달.
+  const admin = client;
   const { data, error } = await admin
     .from("assignments")
     .insert({
@@ -235,7 +237,7 @@ export async function createAssignment(
     .single();
   if (error) return { ok: false, error: error.message };
   // best-effort 알림 발송 — cohort fanout
-  await postAssignmentAnnouncement({
+  await postAssignmentAnnouncement(admin, {
     assignmentId: data.assignment_id,
     cohortId: input.cohortId,
     title: input.title,
@@ -250,15 +252,18 @@ export async function createAssignment(
 // announcements + announcement_audiences(cohort) 두 row insert.
 // 실패해도 assignment 생성 자체는 성공으로 처리 — 알림은 best-effort.
 
-async function postAssignmentAnnouncement(input: {
-  assignmentId: string;
-  cohortId: string;
-  title: string;
-  dueAt: string;
-  description: string | null;
-  authorId: string;
-}): Promise<void> {
-  const admin = adminClient as SupabaseClient<Database>;
+async function postAssignmentAnnouncement(
+  client: SupabaseClient<Database>,
+  input: {
+    assignmentId: string;
+    cohortId: string;
+    title: string;
+    dueAt: string;
+    description: string | null;
+    authorId: string;
+  },
+): Promise<void> {
+  const admin = client;
   try {
     const dueLabel = input.dueAt.slice(0, 16).replace("T", " ");
     const body = [
@@ -307,10 +312,11 @@ async function postAssignmentAnnouncement(input: {
 }
 
 export async function updateAssignment(
+  client: SupabaseClient<Database>,
   assignmentId: string,
   patch: { title?: string; descriptionMd?: string | null; dueAt?: string },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const admin = adminClient as SupabaseClient<Database>;
+  const admin = client;
   const u: Record<string, unknown> = {};
   if (patch.title !== undefined) u.title = patch.title;
   if (patch.descriptionMd !== undefined) u.description_md = patch.descriptionMd;
@@ -324,9 +330,10 @@ export async function updateAssignment(
 }
 
 export async function deleteAssignment(
+  client: SupabaseClient<Database>,
   assignmentId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const admin = adminClient as SupabaseClient<Database>;
+  const admin = client;
   const { error } = await admin
     .from("assignments")
     .update({ deleted_at: new Date().toISOString() })
@@ -349,9 +356,10 @@ export interface UpsertAssignmentItemInput {
 }
 
 export async function upsertAssignmentItem(
+  client: SupabaseClient<Database>,
   input: UpsertAssignmentItemInput,
 ): Promise<{ ok: true; itemId: string } | { ok: false; error: string }> {
-  const admin = adminClient as SupabaseClient<Database>;
+  const admin = client;
   const base = {
     assignment_id: input.assignmentId,
     ord: input.ord,
@@ -390,9 +398,10 @@ export async function upsertAssignmentItem(
 }
 
 export async function deleteAssignmentItem(
+  client: SupabaseClient<Database>,
   itemId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const admin = adminClient as SupabaseClient<Database>;
+  const admin = client;
   const { error } = await admin
     .from("assignment_items")
     .delete()
@@ -767,13 +776,17 @@ export async function getStudentAssignment(
 
 // ─── 자동 변환: 커리큘럼 주차 → 과제 ───
 
-export async function convertWeekToAssignment(input: {
-  weekId: string;
-  cohortId: string;
-  dueAt: string;
-  createdBy: string;
-}): Promise<{ ok: true; assignmentId: string } | { ok: false; error: string }> {
-  const admin = adminClient as SupabaseClient<Database>;
+export async function convertWeekToAssignment(
+  client: SupabaseClient<Database>,
+  input: {
+    weekId: string;
+    cohortId: string;
+    dueAt: string;
+    createdBy: string;
+  },
+): Promise<{ ok: true; assignmentId: string } | { ok: false; error: string }> {
+  // (나) — action=요청 클라이언트(RLS), cron(curriculum-weekly)=adminClient(시스템) 전달.
+  const admin = client;
 
   // 주차 + 항목
   const { data: week } = await admin
@@ -845,7 +858,7 @@ export async function convertWeekToAssignment(input: {
     }
   }
   // 알림 fanout
-  await postAssignmentAnnouncement({
+  await postAssignmentAnnouncement(admin, {
     assignmentId: a.assignment_id,
     cohortId: input.cohortId,
     title,

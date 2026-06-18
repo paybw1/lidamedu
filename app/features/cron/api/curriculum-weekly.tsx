@@ -143,8 +143,9 @@ async function run(request: Request) {
       continue;
     }
 
-    // 변환 실행 — owner_id 가 created_by
-    const res = await convertWeekToAssignment({
+    // 변환 실행 — owner_id 가 created_by. cron 은 세션이 없으므로 adminClient(시스템) 전달
+    // (feat-7-021b 나: action 은 요청 클라이언트로 RLS 강제, cron 은 시스템 권한).
+    const res = await convertWeekToAssignment(adminClient, {
       weekId: week.week_id,
       cohortId: r.cohort_id,
       dueAt: dueIso,
