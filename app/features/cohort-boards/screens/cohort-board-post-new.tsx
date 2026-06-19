@@ -1,7 +1,9 @@
 // feat-6-010 반별 게시판 — 글 작성/수정. /cohort-boards/:boardId/new · /cohort-boards/:boardId/:postId/edit.
-import { SendIcon } from "lucide-react";
-import { useState } from "react";
-import { Link, data, redirect, useFetcher } from "react-router";
+// 첨부파일은 글 작성 중에 선택해 두고, 등록 시 글 저장(deferRedirect 로 postId 회수) → 첨부 업로드
+// (기존 /api/cohort-board/attachment 재사용) → 상세로 이동. (이전: 등록 후 상세에서만 첨부 가능했음.)
+import { PaperclipIcon, SendIcon, XIcon } from "lucide-react";
+import { type FormEvent, useState } from "react";
+import { Link, data, redirect, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
@@ -12,6 +14,23 @@ import { CohortBoardShell } from "../components/cohort-board-shell";
 import { canWriteBoard, getBoardMeta, getBoardPost } from "../queries.server";
 
 import type { Route } from "./+types/cohort-board-post-new";
+
+// 서버(api/attachment.tsx)와 동일 제약 — 클라 사전 검증용(실차단은 서버 RLS+검증).
+const ATTACH_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,application/pdf";
+const ATTACH_ALLOWED = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+]);
+const ATTACH_MAX_SIZE = 10 * 1024 * 1024;
+
+function formatSize(n: number): string {
+  if (n < 1024) return `${n}B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)}KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)}MB`;
+}
 
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
@@ -50,21 +69,97 @@ export default function CohortBoardPostNew({
 }: Route.ComponentProps) {
   const { mode, board, post } = loaderData;
   const isEdit = mode === "edit";
-  const fetcher = useFetcher();
+  const navigate = useNavigate();
   const [title, setTitle] = useState(post?.title ?? "");
   const [body, setBody] = useState(post?.bodyMd ?? "");
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const isSubmitting = fetcher.state !== "idle";
-  const failed =
-    fetcher.state === "idle" &&
-    fetcher.data &&
-    typeof fetcher.data === "object" &&
-    "ok" in fetcher.data &&
-    fetcher.data.ok === false;
   const cancelHref =
     isEdit && post
       ? `/cohort-boards/${board.boardId}/${post.postId}`
       : `/cohort-boards/${board.boardId}`;
+
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+    for (const f of Array.from(list)) {
+      if (!ATTACH_ALLOWED.has(f.type)) rejected.push(`${f.name} (형식)`);
+      else if (f.size > ATTACH_MAX_SIZE) rejected.push(`${f.name} (10MB 초과)`);
+      else accepted.push(f);
+    }
+    setError(rejected.length ? `첨부 제외: ${rejected.join(", ")}` : null);
+    setFiles((prev) => [...prev, ...accepted]);
+  }
+
+  function removeFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || !body.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+
+    // 1) 글 저장 — deferRedirect 로 postId 를 JSON 으로 회수(첨부 업로드용).
+    const postFd = new FormData();
+    postFd.set("intent", isEdit ? "update" : "create");
+    postFd.set("title", title.trim());
+    postFd.set("bodyMd", body.trim());
+    postFd.set("deferRedirect", "true");
+    if (isEdit && post) postFd.set("postId", post.postId);
+    else postFd.set("boardId", board.boardId);
+
+    let saved: { ok?: boolean; postId?: string; boardId?: string };
+    try {
+      const res = await fetch("/api/cohort-board/post", {
+        method: "POST",
+        body: postFd,
+      });
+      saved = await res.json();
+      if (!res.ok || !saved.ok || !saved.postId) {
+        setError("글 저장에 실패했습니다. 입력 내용을 확인해 주세요.");
+        setBusy(false);
+        return;
+      }
+    } catch {
+      setError("글 저장 중 오류가 발생했습니다.");
+      setBusy(false);
+      return;
+    }
+
+    const postId = saved.postId;
+    const boardId = saved.boardId ?? board.boardId;
+
+    // 2) 첨부 업로드 — 기존 첨부 API(postId 필요) 재사용. 실패분이 있어도 글은 이미 저장됨.
+    const failed: string[] = [];
+    for (const f of files) {
+      const aFd = new FormData();
+      aFd.set("intent", "upload");
+      aFd.set("postId", postId);
+      aFd.set("file", f);
+      try {
+        const ar = await fetch("/api/cohort-board/attachment", {
+          method: "POST",
+          body: aFd,
+        });
+        if (!ar.ok) failed.push(f.name);
+      } catch {
+        failed.push(f.name);
+      }
+    }
+
+    // 3) 상세로 이동 — 실패한 첨부는 상세 화면에서 다시 추가할 수 있다.
+    navigate(`/cohort-boards/${boardId}/${postId}`, {
+      viewTransition: true,
+      state: failed.length
+        ? { attachWarning: `일부 첨부 업로드 실패: ${failed.join(", ")}` }
+        : undefined,
+    });
+  }
 
   return (
     <CohortBoardShell
@@ -74,18 +169,7 @@ export default function CohortBoardPostNew({
       width="narrow"
     >
       <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
-        <fetcher.Form method="post" action="/api/cohort-board/post">
-          <input
-            type="hidden"
-            name="intent"
-            value={isEdit ? "update" : "create"}
-          />
-          {isEdit && post ? (
-            <input type="hidden" name="postId" value={post.postId} />
-          ) : (
-            <input type="hidden" name="boardId" value={board.boardId} />
-          )}
-
+        <form onSubmit={handleSubmit}>
           <label className="block">
             <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
               제목
@@ -116,9 +200,53 @@ export default function CohortBoardPostNew({
             />
           </label>
 
-          {failed ? (
+          {/* 첨부파일 — 작성 중 선택, 등록 시 함께 업로드 */}
+          <div className="mt-4">
+            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              첨부파일
+            </span>
+            {files.length > 0 ? (
+              <ul className="mb-2 flex flex-col gap-1.5">
+                {files.map((f, i) => (
+                  <li
+                    key={`${f.name}-${i}`}
+                    className="border-border bg-muted/40 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px]"
+                  >
+                    <PaperclipIcon className="text-muted-foreground size-3.5 shrink-0" />
+                    <span className="truncate">{f.name}</span>
+                    <span className="text-muted-foreground ml-auto shrink-0 text-[11px] tabular-nums">
+                      {formatSize(f.size)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="text-muted-foreground hover:text-rose-600 shrink-0 dark:hover:text-rose-400"
+                      aria-label={`${f.name} 첨부 제거`}
+                    >
+                      <XIcon className="size-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <input
+              type="file"
+              accept={ATTACH_ACCEPT}
+              multiple
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = "";
+              }}
+              className="text-[13px]"
+            />
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              이미지(jpg·png·webp·gif) 또는 PDF, 개당 10MB 이하. 여러 개 선택 가능.
+            </p>
+          </div>
+
+          {error ? (
             <p className="mt-3 text-[13px] font-medium text-rose-600 dark:text-rose-400">
-              저장에 실패했습니다. 입력 내용을 확인해 주세요.
+              {error}
             </p>
           ) : null}
 
@@ -138,12 +266,13 @@ export default function CohortBoardPostNew({
               type="submit"
               size="sm"
               className="rounded-full"
-              disabled={isSubmitting || !title.trim() || !body.trim()}
+              disabled={busy || !title.trim() || !body.trim()}
             >
-              {isEdit ? "수정 완료" : "등록"} <SendIcon className="size-3.5" />
+              {busy ? "처리 중…" : isEdit ? "수정 완료" : "등록"}{" "}
+              <SendIcon className="size-3.5" />
             </Button>
           </div>
-        </fetcher.Form>
+        </form>
       </div>
     </CohortBoardShell>
   );

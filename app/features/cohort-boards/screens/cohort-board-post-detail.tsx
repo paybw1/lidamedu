@@ -10,7 +10,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, data, redirect, useFetcher } from "react-router";
+import { Link, data, redirect, useFetcher, useLocation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
@@ -83,6 +83,11 @@ export default function CohortBoardPostDetail({
     currentUserId,
   } = loaderData;
   const isAuthor = post.author?.profileId === currentUserId;
+  // 작성 화면에서 일부 첨부 업로드가 실패한 경우 전달되는 경고(글은 등록됨).
+  const location = useLocation();
+  const attachWarning =
+    (location.state as { attachWarning?: string } | null)?.attachWarning ?? null;
+  const [warnDismissed, setWarnDismissed] = useState(false);
 
   return (
     <CohortBoardShell
@@ -90,6 +95,21 @@ export default function CohortBoardPostDetail({
       backLink={{ to: `/cohort-boards/${board.boardId}`, label: board.title }}
       width="narrow"
     >
+      {attachWarning && !warnDismissed ? (
+        <div className="mb-3.5 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
+          <span className="flex-1">
+            {attachWarning} — 아래에서 다시 추가할 수 있습니다.
+          </span>
+          <button
+            type="button"
+            onClick={() => setWarnDismissed(true)}
+            className="shrink-0 hover:opacity-70"
+            aria-label="닫기"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
+      ) : null}
       <article className="border-border bg-card mb-3.5 rounded-2xl border p-5 shadow-sm md:p-6">
         {post.isPinned ? (
           <div className="mb-3">

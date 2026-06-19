@@ -55,7 +55,11 @@ export async function action({ request }: Route.ActionArgs) {
   if (!user)
     return data({ ok: false, error: "unauthorized" }, { status: 401, headers });
 
-  const parsed = schema.safeParse(Object.fromEntries(await request.formData()));
+  const fd = await request.formData();
+  // 작성 화면에서 첨부를 같이 올릴 때: 서버 redirect 대신 postId 를 JSON 으로 받아
+  // 클라가 첨부 업로드 후 직접 이동(글 작성 중 첨부). 플래그 없으면 기존 redirect 동작.
+  const deferRedirect = fd.get("deferRedirect") === "true";
+  const parsed = schema.safeParse(Object.fromEntries(fd));
   if (!parsed.success)
     return data({ ok: false, error: "invalid-input" }, { status: 400, headers });
   const input = parsed.data;
@@ -68,6 +72,11 @@ export async function action({ request }: Route.ActionArgs) {
     });
     if (!result.ok)
       return data({ ok: false, error: result.error }, { status: 400, headers });
+    if (deferRedirect)
+      return data(
+        { ok: true, postId: result.postId, boardId: input.boardId },
+        { headers },
+      );
     return redirect(`/cohort-boards/${input.boardId}/${result.postId}`, {
       headers,
     });
@@ -85,6 +94,11 @@ export async function action({ request }: Route.ActionArgs) {
     });
     if (!result.ok)
       return data({ ok: false, error: result.error }, { status: 400, headers });
+    if (deferRedirect)
+      return data(
+        { ok: true, postId: post.postId, boardId: post.boardId },
+        { headers },
+      );
     return redirect(`/cohort-boards/${post.boardId}/${post.postId}`, {
       headers,
     });
