@@ -390,30 +390,32 @@ export default [
       ]),
 
       // feat-8-008 2차 모의(온라인 GS) 영역 게이트 — area_mock_exams.
-      layout("features/gs/layouts/gs.layout.tsx", [
-        route("/gs", "features/gs/screens/gs.tsx"),
-        // 논점 추출 훈련 — 별도 색인 + 응시. :roundId 보다 먼저 선언 (정적 세그먼트 우선).
-        route("/gs/issues", "features/gs/screens/gs-issues.tsx"),
-        route(
-          "/gs/issues/:questionId",
-          "features/gs/screens/gs-issue-take.tsx",
-        ),
-        route("/gs/:roundId/take", "features/gs/screens/gs-take.tsx"),
-        route("/gs/:roundId/result", "features/gs/screens/gs-result.tsx"),
-        route(
-          "/gs/peer-review/:assignmentId",
-          "features/gs/screens/gs-peer-review.tsx",
-        ),
-        route(
-          "/gs/peer-review/round/:roundId",
-          "features/gs/screens/gs-peer-review-round.tsx",
-        ),
-        route("/gs/series/:seriesId", "features/gs/screens/gs-my-series.tsx"),
-        route(
-          "/gs/:roundId/distinguished",
-          "features/gs/screens/gs-distinguished.tsx",
-        ),
-        route("/gs/points", "features/gs/screens/gs-points.tsx"),
+      layout("features/gs/layouts/mock.layout.tsx", { id: "mock-area-gs" }, [
+        layout("features/gs/layouts/gs.layout.tsx", [
+          route("/gs", "features/gs/screens/gs.tsx"),
+          // 논점 추출 훈련 — 별도 색인 + 응시. :roundId 보다 먼저 선언 (정적 세그먼트 우선).
+          route("/gs/issues", "features/gs/screens/gs-issues.tsx"),
+          route(
+            "/gs/issues/:questionId",
+            "features/gs/screens/gs-issue-take.tsx",
+          ),
+          route("/gs/:roundId/take", "features/gs/screens/gs-take.tsx"),
+          route("/gs/:roundId/result", "features/gs/screens/gs-result.tsx"),
+          route(
+            "/gs/peer-review/:assignmentId",
+            "features/gs/screens/gs-peer-review.tsx",
+          ),
+          route(
+            "/gs/peer-review/round/:roundId",
+            "features/gs/screens/gs-peer-review-round.tsx",
+          ),
+          route("/gs/series/:seriesId", "features/gs/screens/gs-my-series.tsx"),
+          route(
+            "/gs/:roundId/distinguished",
+            "features/gs/screens/gs-distinguished.tsx",
+          ),
+          route("/gs/points", "features/gs/screens/gs-points.tsx"),
+        ]),
       ]),
       layout(
         "features/community/layouts/community.layout.tsx",
@@ -633,11 +635,13 @@ export default [
           ),
         ],
       ),
-      route(
-        "/me/exam-results",
-        "features/exam-results/screens/my-exam-results.tsx",
-      ),
-      route("/me/ox-sessions", "features/latest/screens/my-ox-sessions.tsx"),
+      layout("features/gs/layouts/mock.layout.tsx", { id: "mock-area-me" }, [
+        route(
+          "/me/exam-results",
+          "features/exam-results/screens/my-exam-results.tsx",
+        ),
+        route("/me/ox-sessions", "features/latest/screens/my-ox-sessions.tsx"),
+      ]),
       route(
         "/me/ox-wrong-note",
         "features/latest/screens/my-ox-wrong-note.tsx",
@@ -799,16 +803,21 @@ export default [
         "features/admin/screens/admin-law-completeness.tsx",
       ),
       // 판례 기반 쟁점추출 훈련 — 학생 응시.
-      route("/case-training", "features/cases/screens/case-training-index.tsx"),
-      route(
-        "/case-training/:itemId",
-        "features/cases/screens/case-training-take.tsx",
-      ),
-      // ③④ 결론·강약 학생 응시.
-      route(
-        "/case-training/:itemId/conclusion",
-        "features/cases/screens/case-training-conclusion.tsx",
-      ),
+      layout("features/gs/layouts/mock.layout.tsx", { id: "mock-area-case" }, [
+        route(
+          "/case-training",
+          "features/cases/screens/case-training-index.tsx",
+        ),
+        route(
+          "/case-training/:itemId",
+          "features/cases/screens/case-training-take.tsx",
+        ),
+        // ③④ 결론·강약 학생 응시.
+        route(
+          "/case-training/:itemId/conclusion",
+          "features/cases/screens/case-training-conclusion.tsx",
+        ),
+      ]),
       // 판례 기반 쟁점추출 훈련 — 강사 출제.
       ...prefix("/admin/case-training", [
         index("features/cases/screens/admin-case-training-list.tsx"),
