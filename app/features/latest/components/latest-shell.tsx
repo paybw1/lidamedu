@@ -1,5 +1,6 @@
 // 학습정보 9개 화면 공통 셸 — 헤더(eyebrow·제목·설명) + 6 카테고리 탭 strip.
 // 키트 lidam-latest/Shell.jsx 디자인. brief §5.1~5.3.
+import type { ComponentType, ReactNode } from "react";
 
 import {
   BookIcon,
@@ -9,12 +10,11 @@ import {
   PenLineIcon,
   ScaleIcon,
 } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 
-import { cn } from "~/core/lib/utils";
-import { SectionTabs, type SectionTabItem } from "~/core/components/student";
+import { AreaTabs, type SectionTabItem } from "~/core/components/student";
 import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
+import { cn } from "~/core/lib/utils";
 
 // 6 카테고리 — 랜딩 LatestSection 과 색 계열 일관 (brief §4.3).
 export type LatestCategory =
@@ -107,7 +107,7 @@ function LatestTabs({ active: _active }: { active: LatestCategory }) {
       };
     },
   );
-  return <SectionTabs ariaLabel="학습정보" sticky={false} items={items} />;
+  return <AreaTabs ariaLabel="학습정보" items={items} />;
 }
 
 // 페이지 폭 — 색인 테이블(넓게) / 피드 카드(중간) / 시험지(독서 폭).
@@ -140,40 +140,41 @@ export function LatestShell({
   const Icon = (CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0])
     .Icon;
   return (
-    <div
-      className={cn(
-        "mx-auto w-full px-5 py-7 md:px-8 md:py-9",
-        WIDTH_CLASS[width],
-      )}
-    >
-      {backLink ? (
-        <Link
-          to={backLink.to}
-          className="text-primary mb-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
-        >
-          <span aria-hidden>←</span>
-          {backLink.label}
-        </Link>
-      ) : null}
-      <header className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 space-y-1.5">
-          <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-            <Icon className="size-3" />
-            LATEST · 학습정보
-          </p>
-          <h1 className="text-[28px] font-extrabold tracking-tight">
-            {title}
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-            {desc}
-          </p>
-        </div>
-        {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
-      </header>
-      <div className="mb-[18px]">
-        <LatestTabs active={category} />
+    <>
+      {/* 토글 — 최상단 sticky(레이아웃 폭). 순서: 토글 → (backLink) → 헤더 → 내용. */}
+      <LatestTabs active={category} />
+      <div
+        className={cn(
+          "mx-auto w-full px-5 py-7 md:px-8 md:py-9",
+          WIDTH_CLASS[width],
+        )}
+      >
+        {backLink ? (
+          <Link
+            to={backLink.to}
+            className="text-primary mb-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+          >
+            <span aria-hidden>←</span>
+            {backLink.label}
+          </Link>
+        ) : null}
+        <header className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0 space-y-1.5">
+            <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <Icon className="size-3" />
+              LATEST · 학습정보
+            </p>
+            <h1 className="text-[28px] font-extrabold tracking-tight">
+              {title}
+            </h1>
+            <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+              {desc}
+            </p>
+          </div>
+          {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+        </header>
+        {children}
       </div>
-      {children}
-    </div>
+    </>
   );
 }
