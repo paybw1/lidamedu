@@ -14,6 +14,7 @@ import {
   MailIcon,
   MessageSquareIcon,
   MinusIcon,
+  PencilIcon,
   PinIcon,
   PlusIcon,
   Trash2Icon,
@@ -999,6 +1000,7 @@ function NoteRow({
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     if (
       fetcher.state === "idle" &&
@@ -1055,6 +1057,18 @@ function NoteRow({
           {note.authorName ?? "(작성자)"} · {note.createdAt.slice(0, 16).replace("T", " ")}
         </span>
         {canEdit ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-6"
+            onClick={() => setEditing((v) => !v)}
+            title="수정"
+          >
+            <PencilIcon className="size-3" />
+          </Button>
+        ) : null}
+        {canEdit ? (
           <fetcher.Form method="post" action="/api/admin/student-note">
             <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="noteId" value={note.noteId} />
@@ -1075,7 +1089,96 @@ function NoteRow({
           </fetcher.Form>
         ) : null}
       </div>
-      <MarkdownView text={note.bodyMd} trusted={false} className="text-sm" />
+      {editing ? (
+        <EditNoteForm note={note} onClose={() => setEditing(false)} />
+      ) : (
+        <MarkdownView text={note.bodyMd} trusted={false} className="text-sm" />
+      )}
     </li>
+  );
+}
+
+function EditNoteForm({
+  note,
+  onClose,
+}: {
+  note: StudentNote;
+  onClose: () => void;
+}) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      onClose();
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [fetcher.state, fetcher.data, onClose, navigate, location.pathname, location.search]);
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/student-note"
+      className="bg-muted/30 space-y-2 rounded-md border p-3"
+    >
+      <input type="hidden" name="intent" value="update" />
+      <input type="hidden" name="noteId" value={note.noteId} />
+      <textarea
+        name="bodyMd"
+        required
+        rows={3}
+        maxLength={4000}
+        defaultValue={note.bodyMd}
+        placeholder="코멘트… (마크다운 가능)"
+        className="border-input bg-background w-full rounded-md border px-2 py-1 text-xs"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="border-input flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+          <input
+            type="radio"
+            name="visibility"
+            value="staff_only"
+            defaultChecked={note.visibility === "staff_only"}
+          />
+          <EyeOffIcon className="size-3" /> 강사만
+        </label>
+        <label className="border-input flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+          <input
+            type="radio"
+            name="visibility"
+            value="share_with_student"
+            defaultChecked={note.visibility === "share_with_student"}
+          />
+          <EyeIcon className="size-3" /> 학생도 보기
+        </label>
+        <label className="border-input flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+          <input
+            type="checkbox"
+            name="isPinned"
+            value="1"
+            defaultChecked={note.isPinned}
+          />
+          <PinIcon className="size-3" /> 핀
+        </label>
+        <div className="ml-auto flex gap-2">
+          <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+            취소
+          </Button>
+          <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+            저장
+          </Button>
+        </div>
+      </div>
+      {fetcher.data && "error" in fetcher.data ? (
+        <p className="text-rose-600 text-xs">{fetcher.data.error}</p>
+      ) : null}
+    </fetcher.Form>
   );
 }
