@@ -4,7 +4,6 @@ import type { Route } from "./+types/goals";
 
 import {
   ArrowRightIcon,
-  AwardIcon,
   BookmarkIcon,
   CalendarIcon,
   CheckCircle2Icon,
@@ -35,10 +34,7 @@ import {
   getStudyGoals,
   upsertStudyGoals,
 } from "~/features/goals/queries.server";
-import {
-  getDailyStudyStats,
-  getOverallProgress,
-} from "~/features/study/queries.server";
+import { getOverallProgress } from "~/features/study/queries.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "학습목표 | Lidam Patent Attorney Academy" },
@@ -51,30 +47,27 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
-  const [goals, overall, dailyStats, passerBenchmark, nextExamRound] =
-    await Promise.all([
-      getStudyGoals(client, user.id),
-      getOverallProgress(client, user.id),
-      getDailyStudyStats(client, user.id, { daysBack: 84 }),
-      // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
-      // viewer-B 게이트(feat-8-026b) — 전역 게이트 ON + 요청자 풀(B) 동의 동시 충족 시만.
-      isPasserBenchmarkEnabled().then(async (gate) =>
-        gate.enabled && (await hasPoolConsent(client, user.id))
-          ? getPasserBenchmarks(user.id, { excludeSynthetic: true })
-          : null,
-      ),
-      // 차수 SSOT = profiles.next_exam_round (feat-2-025). 폼 기본값으로 사용.
-      client
-        .from("profiles")
-        .select("next_exam_round")
-        .eq("profile_id", user.id)
-        .maybeSingle()
-        .then((r) => r.data?.next_exam_round ?? null),
-    ]);
+  const [goals, overall, passerBenchmark, nextExamRound] = await Promise.all([
+    getStudyGoals(client, user.id),
+    getOverallProgress(client, user.id),
+    // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
+    // viewer-B 게이트(feat-8-026b) — 전역 게이트 ON + 요청자 풀(B) 동의 동시 충족 시만.
+    isPasserBenchmarkEnabled().then(async (gate) =>
+      gate.enabled && (await hasPoolConsent(client, user.id))
+        ? getPasserBenchmarks(user.id, { excludeSynthetic: true })
+        : null,
+    ),
+    // 차수 SSOT = profiles.next_exam_round (feat-2-025). 폼 기본값으로 사용.
+    client
+      .from("profiles")
+      .select("next_exam_round")
+      .eq("profile_id", user.id)
+      .maybeSingle()
+      .then((r) => r.data?.next_exam_round ?? null),
+  ]);
   return {
     goals,
     overall,
-    dailyStats,
     passerBenchmark,
     examRound: (nextExamRound ?? "first") as "first" | "second",
   };
@@ -150,7 +143,7 @@ export default function Goals({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { goals, overall, dailyStats, passerBenchmark, examRound } = loaderData;
+  const { goals, overall, passerBenchmark, examRound } = loaderData;
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
   const errorMsg =
@@ -185,47 +178,6 @@ export default function Goals({
     ? Math.ceil(remainingProblems / daysLeft)
     : null;
   const dailyHourTarget = (goals.weeklyGoalHours / 7).toFixed(1);
-
-  // 주별 학습 시간 (최근 12주, 가장 오래된 → 최근).
-  const WEEKS = 12;
-  const weeklyHours: number[] = [];
-  for (let w = WEEKS - 1; w >= 0; w -= 1) {
-    const end = dailyStats.days.length - w * 7;
-    const start = Math.max(0, end - 7);
-    const slice = dailyStats.days.slice(start, end);
-    const hours = slice.reduce((s, d) => s + d.timeMs, 0) / (60 * 60 * 1000);
-    weeklyHours.push(hours);
-  }
-  const maxWeek = Math.max(0.1, ...weeklyHours);
-  const lastWeekHours = weeklyHours[weeklyHours.length - 1] ?? 0;
-  const prevWeekHours = weeklyHours[weeklyHours.length - 2] ?? 0;
-  const weekDeltaPct =
-    prevWeekHours > 0
-      ? Math.round(((lastWeekHours - prevWeekHours) / prevWeekHours) * 100)
-      : null;
-
-  // 마일스톤 — 조문/문제 진척률 25/50/75/100% 별 뱃지.
-  const milestones: Array<{
-    label: string;
-    pct: number;
-    achievedAt: 25 | 50 | 75 | 100 | null;
-  }> = [
-    {
-      label: "조문 학습",
-      pct: overall.articles.pct,
-      achievedAt: latestMilestone(overall.articles.pct),
-    },
-    {
-      label: "판례 학습",
-      pct: overall.cases.pct,
-      achievedAt: latestMilestone(overall.cases.pct),
-    },
-    {
-      label: "문제 풀이",
-      pct: overall.problems.pct,
-      achievedAt: latestMilestone(overall.problems.pct),
-    },
-  ];
 
   return (
     <StudentShell width="narrow">
@@ -289,33 +241,6 @@ export default function Goals({
         />
       ) : null}
 
-      <section className="mb-6 space-y-3" data-testid="milestones">
-        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
-          <AwardIcon className="size-4" /> 마일스톤
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {milestones.map((m) => (
-            <Badge
-              key={m.label}
-              variant={m.achievedAt ? "default" : "outline"}
-              className={cn(
-                "gap-1 text-xs",
-                m.achievedAt === 100 && "bg-emerald-600 hover:bg-emerald-700",
-                m.achievedAt === 75 && "bg-amber-500 hover:bg-amber-600",
-                m.achievedAt === 50 && "bg-sky-500 hover:bg-sky-600",
-                m.achievedAt === 25 && "bg-stone-500 hover:bg-stone-600",
-              )}
-            >
-              {m.achievedAt ? MILESTONE_EMOJI[m.achievedAt] : ""}
-              {m.label} {m.pct}%
-              {m.achievedAt
-                ? ` · ${m.achievedAt}% 달성`
-                : ` · 다음 25% 까지 ${Math.max(0, 25 - m.pct)}%p`}
-            </Badge>
-          ))}
-        </div>
-      </section>
-
       <section className="mb-6 space-y-3" data-testid="subject-breakdown">
         <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
           <BookmarkIcon className="size-4" /> 과목별 진도
@@ -331,65 +256,6 @@ export default function Goals({
                 학습 통계 <ArrowRightIcon className="size-3" />
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="mb-6 space-y-3" data-testid="weekly-trend">
-        <div className="flex items-center justify-between">
-          <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
-            <TrendingUpIcon className="size-4" /> 주별 학습 시간 추이 (최근
-            12주)
-          </p>
-          {weekDeltaPct !== null ? (
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-xs tabular-nums",
-                weekDeltaPct > 0 && "border-emerald-300 text-emerald-700",
-                weekDeltaPct < 0 && "border-rose-300 text-rose-700",
-              )}
-            >
-              직전 주 대비 {weekDeltaPct > 0 ? "+" : ""}
-              {weekDeltaPct}%
-            </Badge>
-          ) : null}
-        </div>
-        <Card>
-          <CardContent className="px-4 py-3">
-            <div
-              className="flex h-24 items-end gap-1.5"
-              data-testid="weekly-trend-bars"
-            >
-              {weeklyHours.map((h, i) => {
-                const heightPct = (h / maxWeek) * 100;
-                const isLast = i === weeklyHours.length - 1;
-                return (
-                  <div
-                    key={i}
-                    className="flex flex-1 flex-col items-center gap-1"
-                    title={`${h.toFixed(1)}시간`}
-                  >
-                    <div
-                      className={cn(
-                        "w-full rounded-sm",
-                        isLast ? "bg-primary" : "bg-primary/40",
-                      )}
-                      style={{
-                        height: `${Math.max(heightPct, h > 0 ? 6 : 0)}%`,
-                        minHeight: h > 0 ? 4 : 0,
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-muted-foreground mt-2 text-xs">
-              가장 오른쪽 = 이번 주 ({lastWeekHours.toFixed(1)}h){" "}
-              {goals.weeklyGoalHours > 0
-                ? `/ 목표 ${goals.weeklyGoalHours}h`
-                : ""}
-            </p>
           </CardContent>
         </Card>
       </section>
@@ -497,21 +363,6 @@ export default function Goals({
     </StudentShell>
   );
 }
-
-function latestMilestone(pct: number): 25 | 50 | 75 | 100 | null {
-  if (pct >= 100) return 100;
-  if (pct >= 75) return 75;
-  if (pct >= 50) return 50;
-  if (pct >= 25) return 25;
-  return null;
-}
-
-const MILESTONE_EMOJI: Record<25 | 50 | 75 | 100, string> = {
-  25: "🥉",
-  50: "🥈",
-  75: "🥇",
-  100: "🏆",
-};
 
 function ProgressKpi({
   icon,

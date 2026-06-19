@@ -5,6 +5,7 @@ import type { Route } from "./+types/stats";
 
 import {
   ArrowRightIcon,
+  AwardIcon,
   BookOpenIcon,
   BookmarkIcon,
   BrainIcon,
@@ -17,6 +18,7 @@ import {
   StickyNoteIcon,
   TargetIcon,
   TrendingDownIcon,
+  TrendingUpIcon,
 } from "lucide-react";
 import {
   Link,
@@ -484,6 +486,147 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
 
 // ─── 한눈에 ───
 
+const MILESTONE_EMOJI: Record<25 | 50 | 75 | 100, string> = {
+  25: "🥉",
+  50: "🥈",
+  75: "🥇",
+  100: "🏆",
+};
+
+function latestMilestone(pct: number): 25 | 50 | 75 | 100 | null {
+  if (pct >= 100) return 100;
+  if (pct >= 75) return 75;
+  if (pct >= 50) return 50;
+  if (pct >= 25) return 25;
+  return null;
+}
+
+// feat-2-007 마일스톤 — 조문/판례/문제 진척 단계 뱃지(goals 에서 이관).
+function MilestonesCard({ overall }: { overall: StatsData["overall"] }) {
+  const milestones: Array<{
+    label: string;
+    pct: number;
+    achievedAt: 25 | 50 | 75 | 100 | null;
+  }> = [
+    {
+      label: "조문 학습",
+      pct: overall.articles.pct,
+      achievedAt: latestMilestone(overall.articles.pct),
+    },
+    {
+      label: "판례 학습",
+      pct: overall.cases.pct,
+      achievedAt: latestMilestone(overall.cases.pct),
+    },
+    {
+      label: "문제 풀이",
+      pct: overall.problems.pct,
+      achievedAt: latestMilestone(overall.problems.pct),
+    },
+  ];
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+          <AwardIcon className="size-4" /> 마일스톤
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          조문·판례·문제 진척률 25/50/75/100% 단계.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-2">
+          {milestones.map((m) => (
+            <Badge
+              key={m.label}
+              variant={m.achievedAt ? "default" : "outline"}
+              className={cn(
+                "gap-1 text-xs",
+                m.achievedAt === 100 && "bg-emerald-600 hover:bg-emerald-700",
+                m.achievedAt === 75 && "bg-amber-500 hover:bg-amber-600",
+                m.achievedAt === 50 && "bg-sky-500 hover:bg-sky-600",
+                m.achievedAt === 25 && "bg-stone-500 hover:bg-stone-600",
+              )}
+            >
+              {m.achievedAt ? MILESTONE_EMOJI[m.achievedAt] : ""}
+              {m.label} {m.pct}%
+              {m.achievedAt
+                ? ` · ${m.achievedAt}% 달성`
+                : ` · 다음 25% 까지 ${Math.max(0, 25 - m.pct)}%p`}
+            </Badge>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// 주별 학습시간 추이 — daily.days 주별 버킷(goals 에서 이관, range 연동).
+function StudyTimeTrendCard({
+  days,
+  weekCount,
+}: {
+  days: Array<{ timeMs: number }>;
+  weekCount: number;
+}) {
+  const n = Math.max(1, weekCount);
+  const weeklyHours: number[] = [];
+  for (let w = n - 1; w >= 0; w -= 1) {
+    const end = days.length - w * 7;
+    if (end <= 0) {
+      weeklyHours.push(0);
+      continue;
+    }
+    const start = Math.max(0, end - 7);
+    const hours =
+      days.slice(start, end).reduce((s, d) => s + d.timeMs, 0) / 3_600_000;
+    weeklyHours.push(hours);
+  }
+  const maxWeek = Math.max(0.1, ...weeklyHours);
+  const lastWeekHours = weeklyHours[weeklyHours.length - 1] ?? 0;
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+          <TrendingUpIcon className="size-4" /> 주별 학습시간
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          선택 기간 주별 문제 풀이 시간 · 가장 오른쪽 = 최근 주.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="flex h-24 items-end gap-1.5">
+          {weeklyHours.map((h, i) => {
+            const heightPct = (h / maxWeek) * 100;
+            const isLast = i === weeklyHours.length - 1;
+            return (
+              <div
+                key={i}
+                className="flex flex-1 flex-col items-center gap-1"
+                title={`${h.toFixed(1)}시간`}
+              >
+                <div
+                  className={cn(
+                    "w-full rounded-sm",
+                    isLast ? "bg-primary" : "bg-primary/40",
+                  )}
+                  style={{
+                    height: `${Math.max(heightPct, h > 0 ? 6 : 0)}%`,
+                    minHeight: h > 0 ? 4 : 0,
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          최근 주 {lastWeekHours.toFixed(1)}h
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function OverviewTab({ data }: { data: StatsData }) {
   const {
     overall,
@@ -539,6 +682,8 @@ function OverviewTab({ data }: { data: StatsData }) {
 
       <WeakReviewCard weakAreas={weakAreas} />
 
+      <MilestonesCard overall={overall} />
+
       {/* feat-2-013 학습 활동 히트맵 */}
       <Card>
         <CardHeader className="pb-3">
@@ -583,6 +728,10 @@ function OverviewTab({ data }: { data: StatsData }) {
       </div>
 
       <AccuracyTrendCard weeks={accuracyTrend.weeks} />
+      <StudyTimeTrendCard
+        days={daily.days}
+        weekCount={accuracyTrend.weeks.length}
+      />
       <PassPredictionTrendCard items={passTrend} />
 
       {showFirst ? (
