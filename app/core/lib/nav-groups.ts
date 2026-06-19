@@ -130,6 +130,17 @@ export const NAV_GROUP_POOL = {
 
 export type NavGroupId = keyof typeof NAV_GROUP_POOL;
 
+// 영역별 그룹 구성 — 상단바 드롭다운과 화면 내 토글(SectionTabs)이 공유하는 단일 소스.
+// 토글을 이 구성에서 파생하면(topbarDropdownItems) 드롭다운과 항상 일치 → 드리프트 불가.
+// (과거: 토글이 항목을 하드코딩해 드롭다운과 어긋남 — 학습관리 상담 코멘트·학습지원 AI Q&A·학습정보 합격자 분석 누락.)
+export const AREA_GROUP_IDS = {
+  manage: ["today", "review", "manage"],
+  aids: ["aids"],
+  info: ["info"],
+  mock: ["mock"],
+  community: ["community"],
+} as const satisfies Record<string, ReadonlyArray<NavGroupId>>;
+
 // feat — 영역 잠금(🔒) 판정. 상단바·사이드바·하단탭 공용(표면 일관).
 //   staff 면제, features 미산정(undefined=로딩) 시 미표시(깜빡임 방지), area 없으면 잠금 없음.
 //   ★ 서버 영역 게이트 layout(study-management.layout 등)이 권위 — 이건 시각 힌트만.
@@ -164,14 +175,14 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
 }> = [
   {
     label: "학습관리",
-    groupIds: ["today", "review", "manage"],
+    groupIds: AREA_GROUP_IDS.manage,
     area: "area_study_mgmt",
   },
   { label: "학습과목", subjects: true, area: "area_subjects" },
-  { label: "학습지원", groupIds: ["aids"], area: "area_study_aids" },
-  { label: "학습정보", groupIds: ["info"] },
-  { label: "모의고사", groupIds: ["mock"], area: "area_mock_exams" },
-  { label: "커뮤니티", groupIds: ["community"] },
+  { label: "학습지원", groupIds: AREA_GROUP_IDS.aids, area: "area_study_aids" },
+  { label: "학습정보", groupIds: AREA_GROUP_IDS.info },
+  { label: "모의고사", groupIds: AREA_GROUP_IDS.mock, area: "area_mock_exams" },
+  { label: "커뮤니티", groupIds: AREA_GROUP_IDS.community },
 ];
 
 // 상단바 드롭다운 항목 = 구성 그룹들의 items 평탄화(단일 소스 파생).

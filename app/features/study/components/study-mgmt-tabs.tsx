@@ -1,64 +1,47 @@
 // 학습관리 영역 공용 탭 — 항상 보이는 가로 네비.
-// 공용 `SectionTabs` 프리미티브 사용. 학습관리/지원/정보 3 영역과 동일 디자인 톤.
-// 라벨은 학생 친화 (SRS·플래시카드 같은 학원 용어 미사용).
-
+// ★항목 목록은 SSOT(nav-groups: AREA_GROUP_IDS.manage)에서 파생 — 상단바 드롭다운과 동일.
+//   토글=드롭다운 항상 일치(상담 코멘트 등 자동 포함, 하드코딩 드리프트 불가).
+//   아이콘·match(활성 매칭)만 to 로 매핑하는 표시 메타.
 import {
   ClipboardListIcon,
   LayersIcon,
   ListChecksIcon,
+  MessageSquareIcon,
   RepeatIcon,
   SparklesIcon,
   TargetIcon,
 } from "lucide-react";
+import type { ComponentType } from "react";
 
 import { SectionTabs, type SectionTabItem } from "~/core/components/student";
+import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 
-// "알림" 은 상단 우측 종모양 벨(읽지 않은 수 배지 포함) 로 단일화 — 본 탭에서 제외.
-const ITEMS: SectionTabItem[] = [
-  {
-    id: "today",
-    to: "/study/today",
-    label: "오늘 할 일",
-    icon: SparklesIcon,
-    match: ["/study/today"],
-  },
-  {
-    id: "review",
-    to: "/study/srs",
-    label: "복습",
-    icon: RepeatIcon,
-    match: ["/study/srs"],
-  },
-  {
-    id: "cards",
-    to: "/srs",
-    label: "암기 카드",
-    icon: LayersIcon,
-    match: ["/srs", "/srs/stats"],
-  },
-  {
-    id: "goals",
-    to: "/goals",
-    label: "목표 · 진도",
-    icon: TargetIcon,
-    match: ["/goals"],
-  },
-  {
-    id: "stats",
-    to: "/study/stats",
-    label: "학습 통계",
-    icon: ListChecksIcon,
-    match: ["/study/stats"],
-  },
-  {
-    id: "assignments",
-    to: "/assignments",
-    label: "과제",
-    icon: ClipboardListIcon,
-    match: ["/assignments"],
-  },
-];
+const ICON_BY_TO: Record<string, ComponentType<{ className?: string }>> = {
+  "/study/today": SparklesIcon,
+  "/study/srs": RepeatIcon,
+  "/srs": LayersIcon,
+  "/goals": TargetIcon,
+  "/study/stats": ListChecksIcon,
+  "/assignments": ClipboardListIcon,
+  "/me/consult": MessageSquareIcon,
+};
+// to 와 정확히 다른 활성 매칭(예: 암기 카드 = /srs + /srs/stats).
+const MATCH_BY_TO: Record<string, string[]> = {
+  "/srs": ["/srs", "/srs/stats"],
+};
 
 export function StudyMgmtTabs() {
-  return <SectionTabs ariaLabel="학습관리" items={ITEMS} />;
+  const items: SectionTabItem[] = topbarDropdownItems(AREA_GROUP_IDS.manage).map(
+    (link) => {
+      const path = link.to.split("?")[0];
+      return {
+        id: path,
+        to: link.to,
+        label: link.label,
+        icon: ICON_BY_TO[path],
+        match: MATCH_BY_TO[path] ?? [path],
+      };
+    },
+  );
+  return <SectionTabs ariaLabel="학습관리" items={items} />;
 }

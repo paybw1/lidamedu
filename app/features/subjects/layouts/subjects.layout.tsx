@@ -5,10 +5,21 @@
 import { useEffect } from "react";
 import { Outlet, data, useLocation } from "react-router";
 
+import { SectionTabs, type SectionTabItem } from "~/core/components/student";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 
 import type { Route } from "./+types/subjects.layout";
+
+// 학습과목 토글 — 6과목 SSOT(SUBJECT_NAV_ITEMS) 파생, 상단바 학습과목 드롭다운과 동일.
+// 다른 영역(학습관리·지원·정보)과 동일한 화면 내 가로 토글(SectionTabs)을 학습과목에도 제공.
+const SUBJECT_TAB_ITEMS: SectionTabItem[] = SUBJECT_NAV_ITEMS.map((s) => ({
+  id: s.href,
+  to: s.href,
+  label: s.name,
+  match: [s.href],
+}));
 
 export async function loader({ request }: Route.LoaderArgs) {
   // headers 전달 — supabase 갱신 cookie 누수 방지 (private.layout 와 동일 이유).
@@ -36,5 +47,10 @@ export default function SubjectsLayout() {
     }
   }, [location.pathname, location.search]);
 
-  return <Outlet />;
+  return (
+    <>
+      <SectionTabs ariaLabel="학습과목" items={SUBJECT_TAB_ITEMS} />
+      <Outlet />
+    </>
+  );
 }

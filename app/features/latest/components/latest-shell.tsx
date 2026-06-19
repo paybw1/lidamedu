@@ -13,7 +13,8 @@ import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
-import { SectionTabs } from "~/core/components/student";
+import { SectionTabs, type SectionTabItem } from "~/core/components/student";
+import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 
 // 6 카테고리 — 랜딩 LatestSection 과 색 계열 일관 (brief §4.3).
 export type LatestCategory =
@@ -79,24 +80,34 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-// 학습정보 탭 — 공용 `SectionTabs` 프리미티브 사용.
-// 학습관리/지원 3 영역과 동일 디자인 톤. 카테고리 dot 색은 SectionTabs 의 dotClass prop 으로.
-// `active` 인자는 호환성 유지 (SectionTabs 가 path 기반 자동 매칭).
+// 학습정보 탭 항목 = SSOT(AREA_GROUP_IDS.info) 파생 — 상단바 드롭다운과 동일(합격자 분석 포함).
+// dot 색은 to 로 매핑. (CATEGORIES 는 LatestShell 의 카테고리 Icon 룩업·타입에 계속 사용.)
+const INFO_DOT_BY_TO: Record<string, string> = {
+  "/latest/laws": "bg-emerald-500",
+  "/latest/cases": "bg-violet-500",
+  "/latest/mcq": "bg-amber-500",
+  "/latest/essay": "bg-rose-500",
+  "/latest/papers": "bg-sky-500",
+  "/latest/book-updates": "bg-[#8B5A2B]",
+  "/study/passer-summaries": "bg-teal-500",
+};
+
+// 학습정보 탭 — 공용 `SectionTabs` 프리미티브. 학습관리/지원 3 영역과 동일 디자인 톤.
+// SectionTabs 가 path 기반 자동 매칭(active 인자는 호환성 유지).
 function LatestTabs({ active: _active }: { active: LatestCategory }) {
-  return (
-    <SectionTabs
-      ariaLabel="학습정보"
-      sticky={false}
-      items={CATEGORIES.map((c) => ({
-        id: c.id,
-        to: c.to,
-        label: c.label,
-        dotClass: c.dotClass,
-        // mcq 는 ?kind=past_exam 쿼리가 to 에 들어 있어 path 매칭이 안 됨 — 명시 match.
-        match: c.id === "mcq" ? ["/latest/mcq"] : [c.to],
-      }))}
-    />
+  const items: SectionTabItem[] = topbarDropdownItems(AREA_GROUP_IDS.info).map(
+    (link) => {
+      const path = link.to.split("?")[0];
+      return {
+        id: path,
+        to: link.to,
+        label: link.label,
+        dotClass: INFO_DOT_BY_TO[path],
+        match: [path],
+      };
+    },
   );
+  return <SectionTabs ariaLabel="학습정보" sticky={false} items={items} />;
 }
 
 // 페이지 폭 — 색인 테이블(넓게) / 피드 카드(중간) / 시험지(독서 폭).

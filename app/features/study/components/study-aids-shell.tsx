@@ -8,12 +8,14 @@ import {
   HighlighterIcon,
   MessageSquareTextIcon,
   NotebookPenIcon,
+  SparklesIcon,
   StickyNoteIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "~/core/lib/utils";
-import { SectionTabs } from "~/core/components/student";
+import { SectionTabs, type SectionTabItem } from "~/core/components/student";
+import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 import type { StudyAidCounts } from "~/features/study/queries.server";
 
 export type StudyAidTab =
@@ -32,63 +34,53 @@ export interface StudyAidTabCounts {
   comments: number;
 }
 
-interface TabDef {
-  id: StudyAidTab;
-  to: string;
-  label: string;
-  Icon: ComponentType<{ className?: string }>;
-}
+// 학습지원 탭 항목 = SSOT(AREA_GROUP_IDS.aids) 파생 — 상단바 드롭다운과 동일(AI Q&A 포함).
+// 아이콘·카운트는 to 로 매핑(표시·데이터 메타). 카운트 없는 항목(AI Q&A)은 badge 생략.
+const AIDS_ICON_BY_TO: Record<string, ComponentType<{ className?: string }>> = {
+  "/study/wrong-note": NotebookPenIcon,
+  "/study/highlights": HighlighterIcon,
+  "/study/bookmarks": BookmarkIcon,
+  "/study/notes": StickyNoteIcon,
+  "/study/comments": MessageSquareTextIcon,
+  "/ai": SparklesIcon,
+};
+const AIDS_COUNT_KEY_BY_TO: Record<string, StudyAidTab> = {
+  "/study/wrong-note": "wrong",
+  "/study/highlights": "highlights",
+  "/study/bookmarks": "bookmarks",
+  "/study/notes": "notes",
+  "/study/comments": "comments",
+};
+// 헤더 아이콘 룩업 — active 탭(StudyAidTab)별. (AI Q&A 는 StudyAidsShell 미사용 화면.)
+const ICON_BY_TAB: Record<StudyAidTab, ComponentType<{ className?: string }>> = {
+  wrong: NotebookPenIcon,
+  highlights: HighlighterIcon,
+  bookmarks: BookmarkIcon,
+  notes: StickyNoteIcon,
+  comments: MessageSquareTextIcon,
+};
 
-const TABS: TabDef[] = [
-  {
-    id: "wrong",
-    to: "/study/wrong-note",
-    label: "오답노트",
-    Icon: NotebookPenIcon,
-  },
-  {
-    id: "highlights",
-    to: "/study/highlights",
-    label: "하이라이트",
-    Icon: HighlighterIcon,
-  },
-  {
-    id: "bookmarks",
-    to: "/study/bookmarks",
-    label: "즐겨찾기",
-    Icon: BookmarkIcon,
-  },
-  { id: "notes", to: "/study/notes", label: "포스트잇", Icon: StickyNoteIcon },
-  {
-    id: "comments",
-    to: "/study/comments",
-    label: "메모",
-    Icon: MessageSquareTextIcon,
-  },
-];
-
-// 학습지원 탭 — 공용 `SectionTabs` 프리미티브 사용.
-// 학습관리/정보 3 영역과 동일 디자인 톤. 카운트 badge 는 SectionTabs 의 count prop 으로.
-// `active` prop 은 호출처 호환성 유지(SectionTabs 가 path 기반 자동 매칭).
+// 학습지원 탭 — 공용 `SectionTabs` 프리미티브. 학습관리/정보 3 영역과 동일 디자인 톤.
 function StudyAidsTabs({
   counts,
 }: {
   active?: StudyAidTab;
   counts: StudyAidTabCounts;
 }) {
-  return (
-    <SectionTabs
-      ariaLabel="학습지원"
-      sticky={false}
-      items={TABS.map((t) => ({
-        id: t.id,
-        to: t.to,
-        label: t.label,
-        icon: t.Icon,
-        count: counts[t.id],
-      }))}
-    />
+  const items: SectionTabItem[] = topbarDropdownItems(AREA_GROUP_IDS.aids).map(
+    (link) => {
+      const path = link.to.split("?")[0];
+      const countKey = AIDS_COUNT_KEY_BY_TO[path];
+      return {
+        id: path,
+        to: link.to,
+        label: link.label,
+        icon: AIDS_ICON_BY_TO[path],
+        count: countKey ? counts[countKey] : undefined,
+      };
+    },
   );
+  return <SectionTabs ariaLabel="학습지원" sticky={false} items={items} />;
 }
 
 export interface CountStat {
@@ -140,7 +132,7 @@ export function StudyAidsShell({
   printHref?: string;
   children: ReactNode;
 }) {
-  const ActiveIcon = (TABS.find((t) => t.id === active) ?? TABS[0]).Icon;
+  const ActiveIcon = ICON_BY_TAB[active] ?? NotebookPenIcon;
   const contentRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
