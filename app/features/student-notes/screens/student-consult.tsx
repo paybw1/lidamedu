@@ -6,7 +6,12 @@ import { redirect } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { listNotesForStudent } from "~/features/student-notes/queries.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import {
+  listNotesForStudent,
+  markSharedNotesRead,
+} from "~/features/student-notes/queries.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import type { Route } from "./+types/student-consult";
 
@@ -32,6 +37,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw redirect("/login");
   // studentId 는 세션 사용자 본인으로 고정 — 본인에게 공유된 코멘트만 조회(권한 안전).
   const notes = await listNotesForStudent(user.id, { onlyShared: true });
+  // feat-7-025 B-1 — 본인 공유 코멘트 열람 → read_at 기록(응답 후 best-effort). 강사가 전달 여부를 안다.
+  runAfterResponse(markSharedNotesRead(user.id));
   const url = new URL(request.url);
   return { notes, highlight: url.searchParams.get("note") };
 }
@@ -90,9 +97,11 @@ export default function StudentConsult({ loaderData }: Route.ComponentProps) {
                   {formatDate(n.createdAt)}
                 </span>
               </div>
-              <div className="text-foreground/85 text-sm leading-relaxed break-words whitespace-pre-line">
-                {n.bodyMd}
-              </div>
+              <MarkdownView
+                text={n.bodyMd}
+                trusted={false}
+                className="text-foreground/85 text-sm break-words"
+              />
             </li>
           ))}
         </ul>

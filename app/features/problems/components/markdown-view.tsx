@@ -126,9 +126,14 @@ const components: Components = {
 export function MarkdownView({
   text,
   className,
+  trusted = true,
 }: {
   text: string;
   className?: string;
+  // trusted=false → 원시 HTML 파싱(rehype-raw)·allowDangerousHtml 비활성 = 저장형 XSS 차단.
+  // 사용자(강사 등)가 작성해 타인(학생)에게 보이는 콘텐츠(상담 코멘트 등)는 반드시 false.
+  // 신뢰 콘텐츠(운영자 해설·HWPX 적재 등 rowspan/colspan 표 포함)만 기본 true 유지.
+  trusted?: boolean;
 }) {
   return (
     <div
@@ -139,12 +144,12 @@ export function MarkdownView({
     >
       <ReactMarkdown
         // remarkMath — $inline$ / $$display$$ LaTeX 파싱.
-        // rehypeKatex — KaTeX HTML 렌더 (자연과학 수식).
+        // rehypeKatex — KaTeX HTML 렌더 (자연과학 수식). XSS 무관.
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeRaw, rehypeKatex]}
-        // raw HTML (예: rowspan/colspan 병합 표) 을 remark→rehype 변환 시 보존.
-        // 이게 없으면 rehype-raw 가 처리할 HTML 자체가 hast 트리에서 사라진다.
-        remarkRehypeOptions={{ allowDangerousHtml: true }}
+        // rehypeRaw — raw HTML(rowspan/colspan 병합 표) 보존. 신뢰 콘텐츠에서만.
+        // trusted=false 면 제외 → react-markdown 기본 동작(원시 HTML 미렌더)으로 XSS 안전.
+        rehypePlugins={trusted ? [rehypeRaw, rehypeKatex] : [rehypeKatex]}
+        remarkRehypeOptions={{ allowDangerousHtml: trusted }}
         components={components}
       >
         {text}

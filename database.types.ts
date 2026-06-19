@@ -5520,6 +5520,7 @@ export type Database = {
           deleted_at: string | null
           is_pinned: boolean
           note_id: string
+          read_at: string | null
           student_id: string
           updated_at: string
           visibility: Database["public"]["Enums"]["student_note_visibility"]
@@ -5531,6 +5532,7 @@ export type Database = {
           deleted_at?: string | null
           is_pinned?: boolean
           note_id?: string
+          read_at?: string | null
           student_id: string
           updated_at?: string
           visibility?: Database["public"]["Enums"]["student_note_visibility"]
@@ -5542,6 +5544,7 @@ export type Database = {
           deleted_at?: string | null
           is_pinned?: boolean
           note_id?: string
+          read_at?: string | null
           student_id?: string
           updated_at?: string
           visibility?: Database["public"]["Enums"]["student_note_visibility"]

@@ -4,6 +4,7 @@
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  CheckCheckIcon,
   ClockIcon,
   EyeIcon,
   EyeOffIcon,
@@ -68,6 +69,7 @@ import {
   listNotesForStudent,
   type StudentNote,
 } from "~/features/student-notes/queries.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   listPaymentsForUser,
   listUserSubscriptionHistory,
@@ -1034,6 +1036,21 @@ function NoteRow({
             </>
           )}
         </Badge>
+        {note.visibility === "share_with_student" ? (
+          note.readAt ? (
+            <Badge
+              variant="outline"
+              className="border-emerald-300 text-[10px] text-emerald-600 dark:border-emerald-800 dark:text-emerald-400"
+            >
+              <CheckCheckIcon className="size-3" /> 읽음 ·{" "}
+              {note.readAt.slice(5, 16).replace("T", " ")}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-muted-foreground text-[10px]">
+              안읽음
+            </Badge>
+          )
+        ) : null}
         <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
           {note.authorName ?? "(작성자)"} · {note.createdAt.slice(0, 16).replace("T", " ")}
         </span>
@@ -1058,7 +1075,7 @@ function NoteRow({
           </fetcher.Form>
         ) : null}
       </div>
-      <p className="text-sm whitespace-pre-line">{note.bodyMd}</p>
+      <MarkdownView text={note.bodyMd} trusted={false} className="text-sm" />
     </li>
   );
 }

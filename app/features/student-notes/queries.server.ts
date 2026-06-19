@@ -19,6 +19,7 @@ export interface StudentNote {
   isPinned: boolean;
   createdAt: string;
   updatedAt: string;
+  readAt: string | null;
 }
 
 export async function listNotesForStudent(
@@ -29,7 +30,7 @@ export async function listNotesForStudent(
   let q = admin
     .from("student_notes")
     .select(
-      "note_id, student_id, author_id, body_md, visibility, is_pinned, created_at, updated_at, profiles!author_id(name)",
+      "note_id, student_id, author_id, body_md, visibility, is_pinned, created_at, updated_at, read_at, profiles!author_id(name)",
     )
     .eq("student_id", studentId)
     .is("deleted_at", null)
@@ -50,7 +51,21 @@ export async function listNotesForStudent(
     isPinned: r.is_pinned,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    readAt: r.read_at,
   }));
+}
+
+// feat-7-025 B-1 — 학생이 /me/consult 에서 공유 코멘트를 열람하면 read_at 기록(최초 1회만).
+// service_role 필요: 학생은 student_notes 에 SELECT 만 가능(RLS student_notes_student_read), UPDATE 불가.
+export async function markSharedNotesRead(studentId: string): Promise<void> {
+  const admin = adminClient as SupabaseClient<Database>;
+  await admin
+    .from("student_notes")
+    .update({ read_at: new Date().toISOString() })
+    .eq("student_id", studentId)
+    .eq("visibility", "share_with_student")
+    .is("read_at", null)
+    .is("deleted_at", null);
 }
 
 export async function createNote(input: {
