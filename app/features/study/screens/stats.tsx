@@ -26,6 +26,7 @@ import {
   data,
   useSearchParams,
 } from "react-router";
+import { z } from "zod";
 
 import { AreaEyebrow } from "~/core/components/student";
 import { Badge } from "~/core/components/ui/badge";
@@ -52,13 +53,24 @@ import {
   getUserAutoBlankStats,
   getUserBlankStats,
 } from "~/features/blanks/queries.server";
+import { getPasserBenchmarks } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
-import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
+import {
+  hasMyAnalysisConsent,
+  hasPoolConsent,
+  setNextExamPlan,
+} from "~/features/exam-results/queries.server";
+import {
+  getStudyGoals,
+  upsertStudyGoals,
+} from "~/features/goals/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
 import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
 import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
+import { GoalSummaryBar } from "~/features/study/components/goal-summary-bar";
 import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
+import { PasserCalibrationCard } from "~/features/study/components/passer-calibration-card";
 import {
   ALL_RANGE_SELECTION,
   type RangeSelection,
@@ -240,6 +252,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     oxGate,
     passTrend,
     examRoundRow,
+    studyGoals,
+    passerBenchmark,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -267,6 +281,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       .select("next_exam_round")
       .eq("profile_id", user.id)
       .maybeSingle(),
+    getStudyGoals(client, user.id),
+    // 합격자 실측 보정(feat-8-019) — 게이트 ON + 풀(B) 동의 시만(goals 에서 이관).
+    isPasserBenchmarkEnabled().then(async (gate) =>
+      gate.enabled && (await hasPoolConsent(client, user.id))
+        ? getPasserBenchmarks(user.id, { excludeSynthetic: true })
+        : null,
+    ),
   ]);
 
   const erRaw = examRoundRow.data?.next_exam_round;
@@ -276,6 +297,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     myAnalysisOff: false as const,
     examRound,
+    studyGoals,
+    passerBenchmark,
     rangeSel,
     overall,
     kpis,
@@ -305,13 +328,83 @@ export async function loader({ request }: Route.LoaderArgs) {
   };
 }
 
+const goalSchema = z.object({
+  examDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "시험일은 YYYY-MM-DD 형식")
+    .optional()
+    .or(z.literal("")),
+  weeklyGoalHours: z.coerce
+    .number()
+    .int()
+    .min(0, "0 이상")
+    .max(168, "주 168시간 이내"),
+  examRound: z.enum(["first", "second"]),
+  targetScore: z
+    .union([z.coerce.number().int().min(0).max(1000), z.literal("")])
+    .optional(),
+  notes: z.string().max(500, "500자 이내").optional().or(z.literal("")),
+});
+
+// 학습 목표 폼(상단 띠 Sheet) — goals 에서 이관(통폐합 3a).
+// 차수=profiles SSOT(setNextExamPlan), 나머지=study_goals(upsertStudyGoals).
+export async function action({ request }: Route.ActionArgs) {
+  const [client] = makeServerClient(request);
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) throw data("Unauthorized", { status: 401 });
+
+  const form = await request.formData();
+  const parsed = goalSchema.safeParse({
+    examDate: form.get("examDate") ?? "",
+    weeklyGoalHours: form.get("weeklyGoalHours") ?? "0",
+    examRound: form.get("examRound") ?? "first",
+    targetScore: form.get("targetScore") ?? "",
+    notes: form.get("notes") ?? "",
+  });
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return data({ error: first?.message ?? "입력 오류" }, { status: 400 });
+  }
+
+  // 차수는 profiles SSOT(feat-2-025) — next_exam_year 보존, 차수만 갱신.
+  const { data: profile } = await client
+    .from("profiles")
+    .select("next_exam_year")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  const planRes = await setNextExamPlan(client, user.id, {
+    nextExamYear: profile?.next_exam_year ?? null,
+    nextExamRound: parsed.data.examRound,
+  });
+  if (!planRes.ok) {
+    return data({ error: planRes.error }, { status: 400 });
+  }
+
+  await upsertStudyGoals(client, user.id, {
+    examDate: parsed.data.examDate ? parsed.data.examDate : null,
+    weeklyGoalHours: parsed.data.weeklyGoalHours,
+    targetScore:
+      typeof parsed.data.targetScore === "number"
+        ? parsed.data.targetScore
+        : null,
+    notes: parsed.data.notes ? parsed.data.notes : null,
+  });
+
+  return { ok: true as const };
+}
+
 // 탭 전환(?tab=)은 클라 표시만 — loader 데이터는 tab 에 비의존이라 재fetch 불필요.
 // range/from/to(시계열·누적 윈도우) 변화에서만 재검증 → 탭 클릭마다 18쿼리 재실행 방지.
 export function shouldRevalidate({
   currentUrl,
   nextUrl,
+  formMethod,
   defaultShouldRevalidate,
 }: ShouldRevalidateFunctionArgs): boolean {
+  // 폼 제출(목표 저장) 후에는 재검증 — 저장 결과를 띠·진도에 반영.
+  if (formMethod && formMethod.toUpperCase() !== "GET") return true;
   if (currentUrl.pathname !== nextUrl.pathname) return defaultShouldRevalidate;
   const dataParams = ["range", "from", "to"];
   const changed = dataParams.some(
@@ -401,13 +494,13 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
                 대시보드
               </Link>
             </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/goals" viewTransition>
-                학습목표 ·진도
-              </Link>
-            </Button>
           </div>
         </div>
+
+        <GoalSummaryBar
+          goals={loaderData.studyGoals}
+          examRound={loaderData.examRound ?? "first"}
+        />
 
         {/* 기간 preset/custom — 정답률·시도수·약점 등 누적 통계와 시계열 차트에 적용.
             진도(% 완료) 와 학습한 조문·판례 수는 항상 전체 기준. */}
@@ -640,8 +733,20 @@ function OverviewTab({ data }: { data: StatsData }) {
     passTrend,
     heatmap,
     weakAreas,
+    passerBenchmark,
+    studyGoals,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
+  const goalDday = studyGoals.examDate
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(studyGoals.examDate).getTime() - Date.now()) /
+            (24 * 60 * 60 * 1000),
+        ),
+      )
+    : null;
+  const goalDailyHourTarget = studyGoals.weeklyGoalHours / 7;
   const firstExamSubjects = subjectsProgress.filter(
     (s) => LAW_SUBJECTS[s.lawCode].exam !== "second",
   );
@@ -683,6 +788,14 @@ function OverviewTab({ data }: { data: StatsData }) {
       <WeakReviewCard weakAreas={weakAreas} />
 
       <MilestonesCard overall={overall} />
+
+      {passerBenchmark ? (
+        <PasserCalibrationCard
+          benchmark={passerBenchmark}
+          dailyHourTarget={goalDailyHourTarget}
+          totalDaysLeft={goalDday}
+        />
+      ) : null}
 
       {/* feat-2-013 학습 활동 히트맵 */}
       <Card>

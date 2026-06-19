@@ -1,8 +1,6 @@
 // 학습 목표 저장 → 대시보드 D-day/주간 목표 반영 검증.
-
-import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
-
+import { createClient } from "@supabase/supabase-js";
 import { loginUser } from "e2e/utils/test-helpers";
 
 const TEST_EMAIL = process.env.GOALS_TEST_USER_EMAIL;
@@ -39,7 +37,11 @@ test.describe.serial("학습목표 → 대시보드", () => {
     if (data.user) {
       await admin
         .from("profiles")
-        .update({ onboarded_at: new Date().toISOString() })
+        .update({
+          onboarded_at: new Date().toISOString(),
+          // /goals→/study/stats 통합(3a): 통계 A-동의 게이트 통과 → 목표 띠·Sheet 노출.
+          my_analysis_consent_at: new Date().toISOString(),
+        })
         .eq("profile_id", data.user.id);
     }
   });
@@ -59,8 +61,12 @@ test.describe.serial("학습목표 → 대시보드", () => {
       page.getByRole("link", { name: /시험일.*설정하기/ }),
     ).toBeVisible();
 
-    // /goals 진입 → 시험일 30일 뒤 + 주간 35시간 입력.
+    // /goals 는 /study/stats 로 redirect(통폐합 3a) → 상단 목표 요약 띠 노출.
     await page.goto("/goals");
+    await page.waitForURL(/\/study\/stats/);
+    await expect(page.getByTestId("goal-summary-bar")).toBeVisible();
+    // "목표 설정" Sheet 열기 → 시험일 30일 뒤 + 주간 35시간 입력.
+    await page.getByRole("button", { name: "목표 설정" }).click();
     const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
@@ -74,9 +80,7 @@ test.describe.serial("학습목표 → 대시보드", () => {
     // 대시보드 재진입 → 새 시험일(DashHeader "시험일 {ISO}") + D-30 + 주간 목표 35h.
     await page.goto("/dashboard");
     // 설정 후 헤더가 시험일 ISO 를 노출 → 연도 포함.
-    await expect(
-      page.getByText(futureDate, { exact: false }),
-    ).toBeVisible();
+    await expect(page.getByText(futureDate, { exact: false })).toBeVisible();
     await expect(page.getByText("D-30")).toBeVisible();
     // 주간 목표는 오늘 진척도 카드에 "목표 35h" 로 노출(재스킨: 시간→h).
     await expect(page.getByText("목표 35h")).toBeVisible();
