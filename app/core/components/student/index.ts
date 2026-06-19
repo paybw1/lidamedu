@@ -9,3 +9,4 @@ export { Stat, type StatTone } from "./Stat";
 export { Surface } from "./Surface";
 export { StudentShell, StudentSection } from "./Shell";
 export { SectionTabs, type SectionTabItem } from "./SectionTabs";
+export { AreaTabs } from "./AreaTabs";

@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import { Outlet, data, useLocation } from "react-router";
 
-import { SectionTabs, type SectionTabItem } from "~/core/components/student";
+import { AreaTabs, type SectionTabItem } from "~/core/components/student";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
 import { requireFeature } from "~/features/subscriptions/queries.server";
@@ -49,7 +49,7 @@ export default function SubjectsLayout() {
 
   return (
     <>
-      <SectionTabs ariaLabel="학습과목" items={SUBJECT_TAB_ITEMS} />
+      <AreaTabs ariaLabel="학습과목" items={SUBJECT_TAB_ITEMS} />
       <Outlet />
     </>
   );

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 
-import { SectionTabs, type SectionTabItem } from "~/core/components/student";
+import { AreaTabs, type SectionTabItem } from "~/core/components/student";
 import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 
 const ICON_BY_TO: Record<string, ComponentType<{ className?: string }>> = {
@@ -43,5 +43,5 @@ export function StudyMgmtTabs() {
       };
     },
   );
-  return <SectionTabs ariaLabel="학습관리" items={items} />;
+  return <AreaTabs ariaLabel="학습관리" items={items} />;
 }
