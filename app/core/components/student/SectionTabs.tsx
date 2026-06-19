@@ -26,13 +26,18 @@ export interface SectionTabItem {
   badge?: ReactNode;
 }
 
-function isActive(pathname: string, item: SectionTabItem): boolean {
-  if (item.match && item.match.length > 0) {
-    return item.match.some(
-      (m) => pathname === m || pathname.startsWith(`${m}/`),
-    );
+// 한 항목의 매칭 길이 — match prefix(없으면 to) 중 현재 pathname 에 맞는 가장 긴 것의 길이.
+// 매칭 없으면 -1. (query 는 비교하지 않음 — pathname prefix 기준.)
+function activeMatchLen(pathname: string, item: SectionTabItem): number {
+  const targets =
+    item.match && item.match.length > 0 ? item.match : [item.to];
+  let best = -1;
+  for (const m of targets) {
+    if (pathname === m || pathname.startsWith(`${m}/`)) {
+      best = Math.max(best, m.length);
+    }
   }
-  return pathname === item.to || pathname.startsWith(`${item.to}/`);
+  return best;
 }
 
 /**
@@ -52,6 +57,17 @@ export function SectionTabs({
   sticky?: boolean;
 }) {
   const { pathname } = useLocation();
+  // 겹치는 prefix 항목(예: /gs vs /gs/issues, /latest/mcq vs /latest/mcq/exams)이
+  // 동시에 활성으로 표시되지 않도록 — 가장 긴 매칭 항목 하나만 활성.
+  let activeId: string | null = null;
+  let activeLen = -1;
+  for (const t of items) {
+    const len = activeMatchLen(pathname, t);
+    if (len > activeLen) {
+      activeLen = len;
+      activeId = t.id;
+    }
+  }
   return (
     <nav
       aria-label={ariaLabel}
@@ -62,7 +78,7 @@ export function SectionTabs({
     >
       <div className="mx-auto flex max-w-screen-xl gap-1 overflow-x-auto py-2">
         {items.map((t) => {
-          const active = isActive(pathname, t);
+          const active = t.id === activeId;
           const Icon = t.icon;
           return (
             <Link

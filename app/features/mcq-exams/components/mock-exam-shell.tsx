@@ -1,6 +1,7 @@
-// 모의고사 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 3 카테고리 탭 strip.
-// 1차 전체 모의고사 · 1차 진도별 모의고사 · 2차 모의고사(온라인 GS) 화면이 공유.
-// LatestShell(학습정보)·CommunityShell(커뮤니티)과 같은 패턴.
+// 모의고사 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 본문.
+// 영역 토글(탭)은 화면을 감싼 sticky AreaTabs 가 담당(여기서 중복 렌더하지 않음):
+//   · /gs·통합 모의 색인 등은 mock.layout 이, /latest/mcq 모의 분기는 McqAreaShell 이 얹는다.
+// (CATEGORIES 는 헤더 eyebrow 아이콘 룩업에 계속 사용.)
 
 import {
   ClipboardListIcon,
@@ -47,37 +48,6 @@ const CATEGORIES: CategoryDef[] = [
     Icon: PencilLineIcon,
   },
 ];
-
-// 3 카테고리 탭 strip.
-function MockExamTabs({ active }: { active: MockExamCategory }) {
-  return (
-    <nav
-      aria-label="모의고사"
-      className="border-border bg-muted/50 flex w-max max-w-full gap-1 overflow-x-auto rounded-full border p-1"
-    >
-      {CATEGORIES.map((c) => {
-        const isActive = c.id === active;
-        return (
-          <Link
-            key={c.id}
-            to={c.to}
-            viewTransition
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] whitespace-nowrap transition-colors",
-              isActive
-                ? "bg-background text-primary font-bold shadow-sm"
-                : "text-foreground/70 hover:text-foreground font-medium",
-            )}
-          >
-            <span aria-hidden className={cn("size-2 rounded-full", c.dotClass)} />
-            <span>{c.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
 
 // 페이지 폭 — 색인(넓게) / 피드(중간) / 시험지(독서 폭) / 매트릭스(최대).
 const WIDTH_CLASS: Record<"index" | "feed" | "narrow" | "wide", string> = {
@@ -142,9 +112,6 @@ export function MockExamShell({
         </div>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </header>
-      <div className="mb-[18px]">
-        <MockExamTabs active={category} />
-      </div>
       {children}
     </div>
   );

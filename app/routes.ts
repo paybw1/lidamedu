@@ -299,7 +299,18 @@ export default [
         // feat-8-008 모의고사(통합) 영역 게이트 — area_mock_exams 미보유 시 redirect.
         // feat-10-005 통합 모의고사 — :packId 보다 먼저 선언 (정적 세그먼트 우선).
         layout("features/latest/layouts/mcq-exam.layout.tsx", [
-          route("/mcq/exams", "features/latest/screens/mcq-exam-index.tsx"),
+          // 통합 모의 색인 — 모의고사 sticky 토글(mock.layout) 부착.
+          // 러너·결과는 응시 집중 화면이라 토글 제외(색인만 감싼다).
+          layout(
+            "features/gs/layouts/mock.layout.tsx",
+            { id: "mock-area-mcq-exams" },
+            [
+              route(
+                "/mcq/exams",
+                "features/latest/screens/mcq-exam-index.tsx",
+              ),
+            ],
+          ),
           route(
             "/mcq/exam/:examId",
             "features/latest/screens/mcq-exam-runner.tsx",

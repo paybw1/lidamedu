@@ -103,7 +103,9 @@ export const NAV_GROUP_POOL = {
     label: "모의고사",
     Icon: PenLineIcon,
     items: [
-      { label: "1차 모의고사", to: "/latest/mcq?kind=mock" },
+      // 1차 모의는 통합(여러 교시 묶음 = mcq_exams)과 진도별(과목별 mock 팩)로 구분 — 진입점 분리.
+      { label: "1차 통합 모의고사", to: "/latest/mcq/exams" },
+      { label: "1차 진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
       { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
       { label: "GS 논점추출", to: "/gs/issues" },
       { label: "판례 쟁점훈련", to: "/case-training" },
@@ -190,6 +192,19 @@ export function topbarDropdownItems(
   groupIds: ReadonlyArray<NavGroupId>,
 ): NavLink[] {
   return groupIds.flatMap((id) => NAV_GROUP_POOL[id].items);
+}
+
+// 화면 내 영역 토글(AreaTabs)용 항목 — 드롭다운 항목을 SectionTabItem 모양으로 변환.
+//   match 는 query 를 떼어낸 path(SectionTabs 활성 판정은 pathname 기준 + 최장 매칭).
+//   반환 타입은 plain 객체 — core/lib 가 components 의 SectionTabItem 타입에 의존(역방향 import)하지
+//   않도록. 구조상 SectionTabItem 에 그대로 대입 가능. mock.layout·McqAreaShell 가 공유(드리프트 방지).
+export function areaTabItems(
+  groupIds: ReadonlyArray<NavGroupId>,
+): Array<{ id: string; to: string; label: string; match: string[] }> {
+  return topbarDropdownItems(groupIds).map((link) => {
+    const path = link.to.split("?")[0];
+    return { id: path, to: link.to, label: link.label, match: [path] };
+  });
 }
 
 // 디폴트 핵심 4탭 — user preference 가 없을 때 fallback.
