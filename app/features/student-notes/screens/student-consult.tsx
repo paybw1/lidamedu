@@ -4,6 +4,13 @@ import { useEffect } from "react";
 import { MessageSquareTextIcon, PinIcon } from "lucide-react";
 import { redirect } from "react-router";
 
+import {
+  Chip,
+  EmptyState,
+  PageHeader,
+  StudentShell,
+  Surface,
+} from "~/core/components/student";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
@@ -54,46 +61,47 @@ export default function StudentConsult({ loaderData }: Route.ComponentProps) {
   }, [highlight]);
 
   return (
-    <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <MessageSquareTextIcon className="size-3.5" /> 학습관리
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">상담 코멘트</h1>
-        <p className="text-muted-foreground text-sm">
-          강사가 공유한 1:1 상담 코멘트입니다.
-        </p>
-      </header>
+    <StudentShell width="narrow">
+      <PageHeader
+        eyebrow={
+          <>
+            <MessageSquareTextIcon className="mr-1 inline size-3" /> 학습관리
+          </>
+        }
+        title="상담 코멘트"
+        description="강사가 공유한 1:1 상담 코멘트입니다."
+      />
 
       {notes.length === 0 ? (
-        <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
-          <p className="text-muted-foreground text-sm">
-            아직 받은 상담 코멘트가 없습니다.
-          </p>
-        </div>
+        <EmptyState
+          icon={<MessageSquareTextIcon className="size-6" />}
+          title="아직 받은 상담 코멘트가 없습니다"
+          description="강사가 1:1 상담 코멘트를 공유하면 여기에 표시됩니다."
+        />
       ) : (
-        <ul className="space-y-3">
+        <div className="space-y-3">
           {notes.map((n) => (
-            <li
+            <Surface
               key={n.noteId}
               id={`note-${n.noteId}`}
+              tone="default"
+              pad={4}
               className={cn(
-                "rounded-xl border p-4 shadow-sm transition-colors",
-                n.noteId === highlight
-                  ? "border-primary ring-primary/30 ring-2"
-                  : "border-border bg-card",
+                "scroll-mt-20",
+                n.noteId === highlight &&
+                  "border-primary ring-primary/30 ring-2",
               )}
             >
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 {n.isPinned ? (
-                  <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold">
-                    <PinIcon className="size-3" /> 고정
-                  </span>
+                  <Chip tone="primary" icon={<PinIcon className="size-3" />}>
+                    고정
+                  </Chip>
                 ) : null}
                 <span className="text-[13px] font-bold">
                   {n.authorName ?? "강사"}
                 </span>
-                <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+                <span className="text-ink-faint ml-auto text-[11px] tabular-nums">
                   {formatDate(n.createdAt)}
                 </span>
               </div>
@@ -102,10 +110,10 @@ export default function StudentConsult({ loaderData }: Route.ComponentProps) {
                 trusted={false}
                 className="text-foreground/85 text-sm break-words"
               />
-            </li>
+            </Surface>
           ))}
-        </ul>
+        </div>
       )}
-    </div>
+    </StudentShell>
   );
 }

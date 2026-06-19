@@ -4,6 +4,7 @@
 export { Chip, type ChipTone } from "./Chip";
 export { EmptyState } from "./EmptyState";
 export { Eyebrow } from "./Eyebrow";
+export { PageHeader } from "./PageHeader";
 export { Stat, type StatTone } from "./Stat";
 export { Surface } from "./Surface";
 export { StudentShell, StudentSection } from "./Shell";
