@@ -190,8 +190,25 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
 
   // feat-8-026b A 게이트 — 미동의/철회 시 통계 미표시(데이터는 보존, 재동의 시 복구).
+  // 단 목표 설정(띠+Sheet)은 분석이 아니라 기본 설정 → A-게이트와 무관하게 노출(통폐합 3a).
   if (!(await hasMyAnalysisConsent(client, user.id))) {
-    return { myAnalysisOff: true as const };
+    const [studyGoals, examRoundRow] = await Promise.all([
+      getStudyGoals(client, user.id),
+      client
+        .from("profiles")
+        .select("next_exam_round")
+        .eq("profile_id", user.id)
+        .maybeSingle(),
+    ]);
+    const er = examRoundRow.data?.next_exam_round;
+    return {
+      myAnalysisOff: true as const,
+      studyGoals,
+      examRound: (er === "first" || er === "second" ? er : null) as
+        | "first"
+        | "second"
+        | null,
+    };
   }
 
   const url = new URL(request.url);
@@ -421,7 +438,15 @@ type StatsData = Extract<
 
 export default function StudyStats({ loaderData }: Route.ComponentProps) {
   if (loaderData.myAnalysisOff)
-    return <MyAnalysisOffNotice feature="학습 통계" />;
+    return (
+      <div className="mx-auto w-full max-w-screen-xl space-y-4 px-5 py-6 md:px-10 md:py-8">
+        <GoalSummaryBar
+          goals={loaderData.studyGoals}
+          examRound={loaderData.examRound ?? "first"}
+        />
+        <MyAnalysisOffNotice feature="학습 통계" />
+      </div>
+    );
   return <StudyStatsInner loaderData={loaderData} />;
 }
 
