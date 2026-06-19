@@ -4,8 +4,6 @@
 // 향후 사용자 커스터마이징 시 getCoreTabIds() 만 user preference 로 교체.
 //
 // 위치 결정: 두 컴포넌트(StudentSidebar / 모바일 하단탭) 공유 — core/lib.
-
-import { useMemo } from "react";
 import {
   BarChart3Icon,
   BookOpenIcon,
@@ -18,6 +16,7 @@ import {
   SettingsIcon,
   UsersIcon,
 } from "lucide-react";
+import { useMemo } from "react";
 
 export type NavLink = { label: string; to: string; meta?: string };
 export type NavGroup = {
@@ -75,9 +74,9 @@ export const NAV_GROUP_POOL = {
     label: "학습관리",
     Icon: BarChart3Icon,
     items: [
-      { label: "학습 목표 · 진도", to: "/goals" },
-      // feat — OX 약점 진단은 "학습 통계 > 정오문제 약점" 탭으로 흡수(통폐합). 진입점 일원화.
-      { label: "학습 통계", to: "/study/stats" },
+      // feat — 학습 목표·진도 + 통계를 한 화면으로 통합(통폐합 3b). /goals 는 redirect.
+      // OX 약점 진단도 "학습현황 > 정오문제 약점" 탭으로 흡수. 진입점 일원화.
+      { label: "학습현황", to: "/study/stats" },
       { label: "과제", to: "/assignments" },
       { label: "상담 코멘트", to: "/me/consult" },
     ],

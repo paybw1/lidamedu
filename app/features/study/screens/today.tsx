@@ -379,7 +379,7 @@ function AllDoneCard() {
             <Link to="/subjects/patent">새 문제 풀기</Link>
           </Button>
           <Button asChild size="sm" variant="outline">
-            <Link to="/study/stats">학습 통계</Link>
+            <Link to="/study/stats">학습현황</Link>
           </Button>
           <Button asChild size="sm" variant="ghost">
             <Link to="/srs">암기 카드</Link>
@@ -525,7 +525,7 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
         <p>
           학습 추세·통계는{" "}
           <Link to="/study/stats" className="text-foreground underline">
-            학습 통계
+            학습현황
           </Link>
           에서 확인하세요. 추천 종류는 위 “추천 설정”에서 켜고 끌 수 있어요.
         </p>

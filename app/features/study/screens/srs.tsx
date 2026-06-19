@@ -204,7 +204,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                 <Link to="/study/today">오늘의 학습 메뉴</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link to="/study/stats">학습 통계</Link>
+                <Link to="/study/stats">학습현황</Link>
               </Button>
             </div>
           </CardContent>

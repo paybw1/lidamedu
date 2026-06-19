@@ -2,6 +2,11 @@
 // 순수 함수 — 이미 fetch 된 데이터 결합. priority 별 정렬, 최대 5개.
 // 합격자 데이터(PasserBenchmark/PasserLawAverage)가 있으면 컨설팅 강도 ↑,
 // 없으면 본인 약점/과제/streak 만 가지고 fallback recommendation 제공.
+import type {
+  GroupBaseline,
+  PasserBenchmark,
+  PasserLawAverage,
+} from "./analytics.server";
 
 import type { PassPrediction } from "~/features/study/lib/pass-predict";
 import type { WeakAreaItem } from "~/features/study/queries.server";
@@ -13,11 +18,6 @@ import {
   operativeTargetLabel,
   statutoryFloorLabel,
 } from "./pass-criteria";
-import type {
-  GroupBaseline,
-  PasserBenchmark,
-  PasserLawAverage,
-} from "./analytics.server";
 
 export type ActionPriority = "high" | "medium" | "low" | "celebrate";
 export type ActionIcon =
@@ -133,7 +133,7 @@ export function generateRecommendedActions(
           title: "학습 시간이 합격자 평균의 절반 미만",
           body: `합격자 평균 ${Math.round(b.studyHours.passerMean)}시간, 본인 ${Math.round(b.studyHours.user)}시간. 일일 학습 시간을 늘려 합격선에 다가가세요.`,
           ctaLabel: "학습 목표 설정",
-          ctaUrl: "/goals",
+          ctaUrl: "/study/stats",
           metric: `-${deltaH}h`,
         });
       } else if (ratio < 0.8 && deltaH > 30) {
@@ -144,17 +144,14 @@ export function generateRecommendedActions(
           title: "학습 시간 격차 좁히기",
           body: `합격자 평균 대비 ${Math.round((1 - ratio) * 100)}% 부족. +${deltaH}시간을 목표로 속도 조정 권장.`,
           ctaLabel: "학습 목표",
-          ctaUrl: "/goals",
+          ctaUrl: "/study/stats",
           metric: `-${deltaH}h`,
         });
       }
     }
 
     // 정답률 격차
-    if (
-      b.accuracyPct.user !== null &&
-      b.accuracyPct.passerMean !== null
-    ) {
+    if (b.accuracyPct.user !== null && b.accuracyPct.passerMean !== null) {
       const delta = b.accuracyPct.passerMean - b.accuracyPct.user;
       if (delta >= 10) {
         // 가장 약한 노드 url 찾기
@@ -321,7 +318,7 @@ export function generateRecommendedActions(
         title: "⚠️ 비합격자 패턴 위험 신호",
         body: `현재 학습 지표가 비합격자 평균(${fb.sampleSize}명)에도 못 미칩니다: ${dangerSignals.join(", ")}. 학습량/풀이 우선 늘리기 권장.`,
         ctaLabel: "학습 목표 재설정",
-        ctaUrl: "/goals",
+        ctaUrl: "/study/stats",
       });
     } else if (dangerSignals.length === 1) {
       actions.push({

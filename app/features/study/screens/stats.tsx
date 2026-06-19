@@ -179,7 +179,7 @@ function parseRangeSelection(params: URLSearchParams): RangeSelection {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "학습 통계 | Lidam Patent Attorney Academy" },
+  { title: "학습현황 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -508,7 +508,7 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
         <AreaEyebrow area="manage" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">학습 통계</h1>
+            <h1 className="text-2xl font-bold tracking-tight">학습현황</h1>
             <p className="text-muted-foreground text-sm">
               1차 · 2차 차수별로 조문 · 판례 · 문제까지 드릴다운
             </p>
