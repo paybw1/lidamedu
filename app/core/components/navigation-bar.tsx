@@ -313,8 +313,8 @@ function SimpleDropdown({
         {label}
       </NavigationMenuTrigger>
       <NavigationMenuContent>
-        {/* 줄바꿈(flex-wrap) — 항목이 많아도 가로 스크롤로 잘리지 않고 여러 줄로 모두 보인다. 전 드롭다운 동일. */}
-        <div className="flex max-w-[min(calc(100vw-2rem),42rem)] flex-wrap items-center gap-1.5 p-3">
+        {/* 가로 1줄 — 좌측 정렬(넓은 항목이 화면 밖으로 나가지 않게). 너무 길면 가로 스크롤. */}
+        <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
           {items.map((item) => (
             <NavigationMenuLink asChild key={item.to}>
               <Link
@@ -342,8 +342,8 @@ function SubjectsDropdown({ locked }: { locked: boolean }) {
         학습과목
       </NavigationMenuTrigger>
       <NavigationMenuContent>
-        {/* 1/2차 구분 없는 평면 6과목 — 줄바꿈(flex-wrap)으로 전 과목이 한 패널에 다 보인다. */}
-        <div className="flex max-w-[min(calc(100vw-2rem),42rem)] flex-wrap items-center gap-1.5 p-3">
+        {/* 1/2차 구분 없는 평면 6과목 — 가로 1줄(좌측 정렬) */}
+        <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
           {SUBJECT_NAV_ITEMS.map((item) => (
             <NavigationMenuLink asChild key={item.href}>
               <Link
