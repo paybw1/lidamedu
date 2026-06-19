@@ -275,7 +275,10 @@ export default [
       ]),
       route("/inbox", "features/notifications/screens/student-inbox.tsx"),
       // feat-7-028 — 학생용 상담 코멘트(강사 공유) 열람. 알림 student_note_shared 의 목적지.
-      route("/me/consult", "features/student-notes/screens/student-consult.tsx"),
+      route(
+        "/me/consult",
+        "features/student-notes/screens/student-consult.tsx",
+      ),
 
       ...prefix("/latest", [
         route("/laws", "features/latest/screens/laws.tsx"),
@@ -412,54 +415,60 @@ export default [
         ),
         route("/gs/points", "features/gs/screens/gs-points.tsx"),
       ]),
-      route("/community", "features/community/screens/community.tsx"),
-      route(
-        "/community/:board",
-        "features/community/screens/community-board.tsx",
-      ),
-      route(
-        "/community/:board/new",
-        "features/community/screens/community-post-new.tsx",
-      ),
-      route(
-        "/community/:board/:postId",
-        "features/community/screens/community-post-detail.tsx",
-      ),
-      route(
-        "/community/:board/:postId/edit",
-        "features/community/screens/community-post-new.tsx",
-        { id: "community-post-edit" },
-      ),
-      // feat-6 v2.2 — 첨부 signed URL (인증 사용자).
-      route(
-        "/community/attachment/signed-url",
-        "features/community/api/attachment-signed-url.tsx",
-      ),
-      // feat-6-010 — 반별 게시판(학생·강사). 접근 통제는 RLS 가 DB 에서 강제.
-      route(
-        "/cohort-boards",
-        "features/cohort-boards/screens/cohort-board-list.tsx",
-      ),
-      route(
-        "/cohort-boards/:boardId",
-        "features/cohort-boards/screens/cohort-board-detail.tsx",
-      ),
-      route(
-        "/cohort-boards/:boardId/new",
-        "features/cohort-boards/screens/cohort-board-post-new.tsx",
-      ),
-      route(
-        "/cohort-boards/:boardId/:postId",
-        "features/cohort-boards/screens/cohort-board-post-detail.tsx",
-      ),
-      route(
-        "/cohort-boards/:boardId/:postId/edit",
-        "features/cohort-boards/screens/cohort-board-post-new.tsx",
-        { id: "cohort-board-post-edit" },
-      ),
-      route(
-        "/announcements",
-        "features/announcements/screens/announcements-inbox.tsx",
+      layout(
+        "features/community/layouts/community.layout.tsx",
+        { id: "community-area" },
+        [
+          route("/community", "features/community/screens/community.tsx"),
+          route(
+            "/community/:board",
+            "features/community/screens/community-board.tsx",
+          ),
+          route(
+            "/community/:board/new",
+            "features/community/screens/community-post-new.tsx",
+          ),
+          route(
+            "/community/:board/:postId",
+            "features/community/screens/community-post-detail.tsx",
+          ),
+          route(
+            "/community/:board/:postId/edit",
+            "features/community/screens/community-post-new.tsx",
+            { id: "community-post-edit" },
+          ),
+          // feat-6 v2.2 — 첨부 signed URL (인증 사용자).
+          route(
+            "/community/attachment/signed-url",
+            "features/community/api/attachment-signed-url.tsx",
+          ),
+          // feat-6-010 — 반별 게시판(학생·강사). 접근 통제는 RLS 가 DB 에서 강제.
+          route(
+            "/cohort-boards",
+            "features/cohort-boards/screens/cohort-board-list.tsx",
+          ),
+          route(
+            "/cohort-boards/:boardId",
+            "features/cohort-boards/screens/cohort-board-detail.tsx",
+          ),
+          route(
+            "/cohort-boards/:boardId/new",
+            "features/cohort-boards/screens/cohort-board-post-new.tsx",
+          ),
+          route(
+            "/cohort-boards/:boardId/:postId",
+            "features/cohort-boards/screens/cohort-board-post-detail.tsx",
+          ),
+          route(
+            "/cohort-boards/:boardId/:postId/edit",
+            "features/cohort-boards/screens/cohort-board-post-new.tsx",
+            { id: "cohort-board-post-edit" },
+          ),
+          route(
+            "/announcements",
+            "features/announcements/screens/announcements-inbox.tsx",
+          ),
+        ],
       ),
       route("/admin", "features/admin/screens/admin.tsx"),
       route(
@@ -895,11 +904,17 @@ export default [
         "features/admin/screens/admin-mcq-exam-edit.tsx",
       ),
 
-      ...prefix("/qna", [
-        index("features/qna/screens/qna-list.tsx"),
-        route("/new", "features/qna/screens/qna-new.tsx"),
-        route("/:threadId", "features/qna/screens/qna-detail.tsx"),
-      ]),
+      layout(
+        "features/community/layouts/community.layout.tsx",
+        { id: "community-area-qna" },
+        [
+          ...prefix("/qna", [
+            index("features/qna/screens/qna-list.tsx"),
+            route("/new", "features/qna/screens/qna-new.tsx"),
+            route("/:threadId", "features/qna/screens/qna-detail.tsx"),
+          ]),
+        ],
+      ),
 
       route("/account/edit", "features/users/screens/account.tsx"),
     ]),
