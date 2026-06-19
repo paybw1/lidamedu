@@ -11,7 +11,6 @@ import {
   ListChecksIcon,
   TrendingUpIcon,
 } from "lucide-react";
-import { Fragment } from "react";
 import { Form, Link, data, useNavigation } from "react-router";
 import { z } from "zod";
 
@@ -37,16 +36,9 @@ import {
   upsertStudyGoals,
 } from "~/features/goals/queries.server";
 import {
-  getAllSubjectsProgress,
   getDailyStudyStats,
   getOverallProgress,
 } from "~/features/study/queries.server";
-import {
-  LAW_SUBJECTS,
-  LAW_SUBJECT_SLUGS,
-  isFirstExamSubject,
-  isSecondExamSubject,
-} from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
   { title: "학습목표 | Lidam Patent Attorney Academy" },
@@ -59,18 +51,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
-  const [goals, overall, subjects, dailyStats, passerBenchmark, nextExamRound] =
+  const [goals, overall, dailyStats, passerBenchmark, nextExamRound] =
     await Promise.all([
       getStudyGoals(client, user.id),
       getOverallProgress(client, user.id),
-      getAllSubjectsProgress(
-        client,
-        user.id,
-        LAW_SUBJECT_SLUGS.map((s) => ({
-          slug: s,
-          name: LAW_SUBJECTS[s].name,
-        })),
-      ),
       getDailyStudyStats(client, user.id, { daysBack: 84 }),
       // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
       // viewer-B 게이트(feat-8-026b) — 전역 게이트 ON + 요청자 풀(B) 동의 동시 충족 시만.
@@ -90,7 +74,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     goals,
     overall,
-    subjects,
     dailyStats,
     passerBenchmark,
     examRound: (nextExamRound ?? "first") as "first" | "second",
@@ -167,8 +150,7 @@ export default function Goals({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { goals, overall, subjects, dailyStats, passerBenchmark, examRound } =
-    loaderData;
+  const { goals, overall, dailyStats, passerBenchmark, examRound } = loaderData;
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
   const errorMsg =
@@ -339,77 +321,16 @@ export default function Goals({
           <BookmarkIcon className="size-4" /> 과목별 진도
         </p>
         <Card>
-          <CardContent className="px-0 py-2">
-            <table className="w-full text-sm">
-              <thead className="text-muted-foreground text-xs">
-                <tr>
-                  <th className="px-3 py-2 text-left">과목</th>
-                  <th className="px-3 py-2 text-right tabular-nums">조문</th>
-                  <th className="px-3 py-2 text-right tabular-nums">
-                    문제 시도
-                  </th>
-                  <th className="px-3 py-2 text-right tabular-nums">정답률</th>
-                  <th className="px-3 py-2 text-right">액션</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  {
-                    label: "1차 · 객관식",
-                    rows: subjects.filter((s) => isFirstExamSubject(s.lawCode)),
-                  },
-                  {
-                    label: "2차 · 주관식",
-                    rows: subjects.filter((s) =>
-                      isSecondExamSubject(s.lawCode),
-                    ),
-                  },
-                ].map((g) => (
-                  <Fragment key={g.label}>
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="text-primary bg-muted/40 px-3 py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
-                      >
-                        {g.label}
-                      </td>
-                    </tr>
-                    {g.rows.map((s) => (
-                      <tr
-                        key={s.lawCode}
-                        className="hover:bg-muted/50 border-t"
-                      >
-                        <td className="px-3 py-2 font-medium">{s.name}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {s.visitedCount} / {s.totalArticleCount}
-                          <span className="text-muted-foreground ml-1 text-xs">
-                            ({s.pctViewed}%)
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {s.problemsAttempted}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {s.accuracyPct === null ? "—" : `${s.accuracyPct}%`}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="ghost"
-                            className="h-7"
-                          >
-                            <Link to={`/subjects/${s.lawCode}`} viewTransition>
-                              학습 <ArrowRightIcon className="size-3" />
-                            </Link>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <p className="text-muted-foreground text-sm">
+              과목별 조문 진도·문제 정답률은 학습 통계에서 자세히 볼 수
+              있습니다.
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/study/stats" viewTransition>
+                학습 통계 <ArrowRightIcon className="size-3" />
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </section>
