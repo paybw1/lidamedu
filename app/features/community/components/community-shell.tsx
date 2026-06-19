@@ -1,5 +1,7 @@
-// 커뮤니티 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 5 카테고리 탭 strip.
+// 커뮤니티 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 본문.
 // 공지사항 · 자유게시판 · 스터디 모집 · Q&A · 합격 후기 화면이 공유한다.
+// 영역 토글(탭)은 community.layout 의 sticky AreaTabs 가 담당 — 여기서 중복 렌더하지 않는다.
+// (CATEGORIES 는 헤더 eyebrow 아이콘 룩업에 계속 사용.)
 
 import {
   GraduationCapIcon,
@@ -69,37 +71,6 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-// 5 카테고리 탭 strip — 형제 영역 단절 해소.
-function CommunityTabs({ active }: { active: CommunityCategory }) {
-  return (
-    <nav
-      aria-label="커뮤니티"
-      className="border-border bg-muted/50 flex w-max max-w-full gap-1 overflow-x-auto rounded-full border p-1"
-    >
-      {CATEGORIES.map((c) => {
-        const isActive = c.id === active;
-        return (
-          <Link
-            key={c.id}
-            to={c.to}
-            viewTransition
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] whitespace-nowrap transition-colors",
-              isActive
-                ? "bg-background text-primary font-bold shadow-sm"
-                : "text-foreground/70 hover:text-foreground font-medium",
-            )}
-          >
-            <span aria-hidden className={cn("size-2 rounded-full", c.dotClass)} />
-            <span>{c.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
 // 페이지 폭 — 허브·피드(중간) / 시험지(독서 폭) / 매트릭스(넓게).
 const WIDTH_CLASS: Record<"feed" | "narrow" | "wide", string> = {
   feed: "max-w-5xl",
@@ -162,9 +133,6 @@ export function CommunityShell({
         </div>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </header>
-      <div className="mb-[18px]">
-        <CommunityTabs active={category} />
-      </div>
       {children}
     </div>
   );
