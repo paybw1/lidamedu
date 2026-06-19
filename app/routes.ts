@@ -275,9 +275,16 @@ export default [
       ]),
       route("/inbox", "features/notifications/screens/student-inbox.tsx"),
       // feat-7-028 — 학생용 상담 코멘트(강사 공유) 열람. 알림 student_note_shared 의 목적지.
-      route(
-        "/me/consult",
-        "features/student-notes/screens/student-consult.tsx",
+      // 학습관리 토글을 얹되 게이트는 없는 bare 레이아웃으로 감쌈(알림 목적지라 비구독자 접근 유지).
+      layout(
+        "features/study/layouts/study-mgmt-tabs.layout.tsx",
+        { id: "study-mgmt-consult" },
+        [
+          route(
+            "/me/consult",
+            "features/student-notes/screens/student-consult.tsx",
+          ),
+        ],
       ),
 
       ...prefix("/latest", [
