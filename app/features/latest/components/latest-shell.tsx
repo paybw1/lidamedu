@@ -1,18 +1,14 @@
 // 학습정보 9개 화면 공통 셸 — 헤더(eyebrow·제목·설명) + 6 카테고리 탭 strip.
 // 키트 lidam-latest/Shell.jsx 디자인. brief §5.1~5.3.
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import {
-  BookIcon,
-  FileTextIcon,
-  GavelIcon,
-  ListChecksIcon,
-  PenLineIcon,
-  ScaleIcon,
-} from "lucide-react";
 import { Link } from "react-router";
 
-import { AreaTabs, type SectionTabItem } from "~/core/components/student";
+import {
+  AreaEyebrow,
+  AreaTabs,
+  type SectionTabItem,
+} from "~/core/components/student";
 import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 import { cn } from "~/core/lib/utils";
 
@@ -24,61 +20,6 @@ export type LatestCategory =
   | "essay"
   | "papers"
   | "books";
-
-interface CategoryDef {
-  id: LatestCategory;
-  to: string;
-  label: string;
-  /** 카테고리 색 dot — Tailwind 배경 클래스. */
-  dotClass: string;
-  Icon: ComponentType<{ className?: string }>;
-}
-
-// 탭 순서 고정 — brief §5.2.
-const CATEGORIES: CategoryDef[] = [
-  {
-    id: "laws",
-    to: "/latest/laws",
-    label: "법 개정",
-    dotClass: "bg-emerald-500",
-    Icon: ScaleIcon,
-  },
-  {
-    id: "cases",
-    to: "/latest/cases",
-    label: "최근 판례",
-    dotClass: "bg-violet-500",
-    Icon: GavelIcon,
-  },
-  {
-    id: "mcq",
-    to: "/latest/mcq?kind=past_exam",
-    label: "1차 기출문제",
-    dotClass: "bg-amber-500",
-    Icon: ListChecksIcon,
-  },
-  {
-    id: "essay",
-    to: "/latest/essay",
-    label: "2차 기출문제",
-    dotClass: "bg-rose-500",
-    Icon: PenLineIcon,
-  },
-  {
-    id: "papers",
-    to: "/latest/papers",
-    label: "논문",
-    dotClass: "bg-sky-500",
-    Icon: FileTextIcon,
-  },
-  {
-    id: "books",
-    to: "/latest/book-updates",
-    label: "추록·정오표",
-    dotClass: "bg-[#8B5A2B]",
-    Icon: BookIcon,
-  },
-];
 
 // 학습정보 탭 항목 = SSOT(AREA_GROUP_IDS.info) 파생 — 상단바 드롭다운과 동일(합격자 분석 포함).
 // dot 색은 to 로 매핑. (CATEGORIES 는 LatestShell 의 카테고리 Icon 룩업·타입에 계속 사용.)
@@ -137,8 +78,6 @@ export function LatestShell({
   width?: "index" | "feed" | "narrow";
   children: ReactNode;
 }) {
-  const Icon = (CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0])
-    .Icon;
   return (
     <>
       {/* 토글 — 최상단 sticky(레이아웃 폭). 순서: 토글 → (backLink) → 헤더 → 내용. */}
@@ -160,10 +99,7 @@ export function LatestShell({
         ) : null}
         <header className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 space-y-1.5">
-            <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-              <Icon className="size-3" />
-              LATEST · 학습정보
-            </p>
+            <AreaEyebrow area="info" />
             <h1 className="text-[28px] font-extrabold tracking-tight">
               {title}
             </h1>

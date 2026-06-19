@@ -1,6 +1,5 @@
 // SRS v2 ④ — /srs/stats 통계 화면.
 // retention · byDay(30일) · forecast(7일) · CSV 다운로드.
-
 import type { Route } from "./+types/srs-stats";
 
 import {
@@ -13,10 +12,11 @@ import {
 } from "lucide-react";
 import { Link, redirect } from "react-router";
 
+import { AreaEyebrow } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { getStats } from "~/features/srs/srs.server";
 import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
 
@@ -35,97 +35,108 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function SrsStats({ loaderData }: Route.ComponentProps) {
-  const { totalItems, totalReviewed, totalSuccess, retentionPct, byDay, forecast7d } =
-    loaderData;
+  const {
+    totalItems,
+    totalReviewed,
+    totalSuccess,
+    retentionPct,
+    byDay,
+    forecast7d,
+  } = loaderData;
   const recent7Reviewed = byDay.slice(-7).reduce((s, d) => s + d.reviewed, 0);
 
   return (
     <>
       <StudyMgmtTabs />
-    <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:py-12">
-      <header className="mb-6 flex items-baseline justify-between">
-        <div>
-          <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-            <TrendingUpIcon className="size-3" /> 암기 카드 · 통계
-          </p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-            암기 카드 진척도
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="outline">
-            <a href="/api/srs/export" download>
-              <DownloadIcon className="size-3.5" /> CSV
-            </a>
-          </Button>
-          <Button asChild size="sm">
-            <Link to="/srs">
-              암기 카드 시작 <ArrowRightIcon className="size-3.5" />
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:py-12">
+        <header className="mb-6 flex items-baseline justify-between">
+          <div>
+            <AreaEyebrow area="manage" />
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
+              암기 카드 진척도
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm" variant="outline">
+              <a href="/api/srs/export" download>
+                <DownloadIcon className="size-3.5" /> CSV
+              </a>
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/srs">
+                암기 카드 시작 <ArrowRightIcon className="size-3.5" />
+              </Link>
+            </Button>
+          </div>
+        </header>
 
-      {/* KPI */}
-      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Kpi
-          icon={<LayersIcon className="size-3" />}
-          label="총 카드"
-          value={totalItems}
-          tone="neutral"
-        />
-        <Kpi
-          icon={<RepeatIcon className="size-3" />}
-          label="누적 복습"
-          value={totalReviewed}
-          tone="sky"
-          hint={`최근 7일 ${recent7Reviewed}회`}
-        />
-        <Kpi
-          icon={<TrendingUpIcon className="size-3" />}
-          label="기억 유지율"
-          value={`${retentionPct}%`}
-          tone={retentionPct >= 80 ? "emerald" : retentionPct >= 60 ? "amber" : "rose"}
-          hint={`정답 ${totalSuccess}회 / 전체 ${totalReviewed}회`}
-        />
-        <Kpi
-          icon={<CalendarClockIcon className="size-3" />}
-          label="오늘 복습"
-          value={forecast7d[0]?.dueCount ?? 0}
-          tone={forecast7d[0]?.dueCount ? "rose" : "neutral"}
-        />
+        {/* KPI */}
+        <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <Kpi
+            icon={<LayersIcon className="size-3" />}
+            label="총 카드"
+            value={totalItems}
+            tone="neutral"
+          />
+          <Kpi
+            icon={<RepeatIcon className="size-3" />}
+            label="누적 복습"
+            value={totalReviewed}
+            tone="sky"
+            hint={`최근 7일 ${recent7Reviewed}회`}
+          />
+          <Kpi
+            icon={<TrendingUpIcon className="size-3" />}
+            label="기억 유지율"
+            value={`${retentionPct}%`}
+            tone={
+              retentionPct >= 80
+                ? "emerald"
+                : retentionPct >= 60
+                  ? "amber"
+                  : "rose"
+            }
+            hint={`정답 ${totalSuccess}회 / 전체 ${totalReviewed}회`}
+          />
+          <Kpi
+            icon={<CalendarClockIcon className="size-3" />}
+            label="오늘 복습"
+            value={forecast7d[0]?.dueCount ?? 0}
+            tone={forecast7d[0]?.dueCount ? "rose" : "neutral"}
+          />
+        </div>
+
+        {/* 일별 30일 — reviewed (회색) + success (에메랄드) */}
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <h2 className="text-foreground text-sm font-bold">
+              최근 30일 복습량
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              회색 = 전체 복습, 초록 = 잘 떠올린 카드(보통·쉬웠음).
+            </p>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <DayBars items={byDay} />
+          </CardContent>
+        </Card>
+
+        {/* 향후 7일 due 예측 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <h2 className="text-foreground text-sm font-bold">
+              향후 7일 복습 예정
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              날짜별로 복습이 잡혀 있는 카드 수. 하루에 몰리지 않는지
+              확인하세요.
+            </p>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <ForecastBars items={forecast7d} />
+          </CardContent>
+        </Card>
       </div>
-
-      {/* 일별 30일 — reviewed (회색) + success (에메랄드) */}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <h2 className="text-foreground text-sm font-bold">
-            최근 30일 복습량
-          </h2>
-          <p className="text-muted-foreground text-xs">
-            회색 = 전체 복습, 초록 = 잘 떠올린 카드(보통·쉬웠음).
-          </p>
-        </CardHeader>
-        <CardContent className="pb-4">
-          <DayBars items={byDay} />
-        </CardContent>
-      </Card>
-
-      {/* 향후 7일 due 예측 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <h2 className="text-foreground text-sm font-bold">
-            향후 7일 복습 예정
-          </h2>
-          <p className="text-muted-foreground text-xs">
-            날짜별로 복습이 잡혀 있는 카드 수. 하루에 몰리지 않는지 확인하세요.
-          </p>
-        </CardHeader>
-        <CardContent className="pb-4">
-          <ForecastBars items={forecast7d} />
-        </CardContent>
-      </Card>
-    </div>
     </>
   );
 }

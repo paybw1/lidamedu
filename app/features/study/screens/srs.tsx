@@ -1,6 +1,5 @@
 // feat-2-010 SRS 큐 화면 — /study/srs.
 // 본인 객관식 SRS due 항목 list + KPI.
-
 import type { Route } from "./+types/srs";
 
 import {
@@ -11,9 +10,9 @@ import {
 } from "lucide-react";
 import { Link, data, redirect } from "react-router";
 
+import { AreaEyebrow, StudentShell } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { Eyebrow, StudentShell } from "~/core/components/student";
 import {
   Table,
   TableBody,
@@ -23,19 +22,19 @@ import {
   TableRow,
 } from "~/core/components/ui/table";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
-import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { cn } from "~/core/lib/utils";
 import {
   type DueBlankSetItem,
   getBlankSrsCounts,
   getDueBlankSets,
 } from "~/features/blanks/srs.server";
+import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
 import {
   type DueArticleReviewItem,
   getArticleReviewCounts,
   getDueArticleReviews,
 } from "~/features/study/article-review.server";
+import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import {
   type DueOxRefItem,
   getDueOxRefs,
@@ -46,18 +45,10 @@ import {
   type SrsRowMetric,
   getPasserSrsBenchmark,
 } from "~/features/study/passer-srs-benchmark.server";
-import {
-  type SrsTrend,
-  getSrsTrend,
-} from "~/features/study/srs-trend.server";
-import {
-  getDueProblems,
-  getSrsCounts,
-} from "~/features/study/srs.server";
+import { type SrsTrend, getSrsTrend } from "~/features/study/srs-trend.server";
+import { getDueProblems, getSrsCounts } from "~/features/study/srs.server";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "오늘의 복습 | 리담" },
-];
+export const meta: Route.MetaFunction = () => [{ title: "오늘의 복습 | 리담" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -147,9 +138,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
   return (
     <StudentShell>
       <header className="mb-6">
-        <Eyebrow>
-          <RepeatIcon className="mr-1 inline size-3" /> 자동 일정 복습
-        </Eyebrow>
+        <AreaEyebrow area="manage" />
         <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
           복습
         </h1>
@@ -290,7 +279,12 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                         {fmtRelative(it.nextDueAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 sm:h-8"
+                        >
                           <Link
                             to={`/subjects/${it.lawCode}/problems/${it.problemId}`}
                             viewTransition
@@ -503,18 +497,15 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       {/* 일정 안내 */}
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
         복습 일정: 맞히면 1 → 3 → 7 → 14 → 30 → 60일(최대 90일) 간격으로
-        벌어집니다. 틀리면 다음 날 다시 풀게 잡힙니다. 객관식·빈칸·정오문제 모두 같은
-        방식이고, 조문 정독은 방문 횟수에 따라 7·14·30·60일.
+        벌어집니다. 틀리면 다음 날 다시 풀게 잡힙니다. 객관식·빈칸·정오문제 모두
+        같은 방식이고, 조문 정독은 방문 횟수에 따라 7·14·30·60일.
       </p>
     </StudentShell>
   );
 }
 
 function SrsTrendChart({ trend }: { trend: SrsTrend }) {
-  const max = trend.days.reduce(
-    (m, d) => Math.max(m, d.added + d.reviewed),
-    0,
-  );
+  const max = trend.days.reduce((m, d) => Math.max(m, d.added + d.reviewed), 0);
   if (max === 0) {
     return null;
   }
@@ -657,11 +648,11 @@ function BenchmarkRow({
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-mono tabular-nums">
         평균 {metric.passerAvg.toFixed(1)} · 본인{" "}
-        <span className="text-foreground font-bold">
-          {metric.userValue}
-        </span>
+        <span className="text-foreground font-bold">{metric.userValue}</span>
       </span>
-      <span className={cn("text-right font-mono font-bold tabular-nums", deltaTone)}>
+      <span
+        className={cn("text-right font-mono font-bold tabular-nums", deltaTone)}
+      >
         {deltaSign}
         {Math.abs(metric.delta).toFixed(1)}
       </span>
@@ -715,7 +706,12 @@ function ArticleReviewTable({ items }: { items: DueArticleReviewItem[] }) {
                 {fmtRelative(it.lastVisitedAt)}
               </TableCell>
               <TableCell className="text-right">
-                <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 sm:h-8"
+                >
                   <Link
                     to={`/subjects/${it.lawCode}/articles/${it.articleNumber}`}
                     viewTransition
@@ -785,7 +781,12 @@ function OxSrsTable({ items }: { items: DueOxRefItem[] }) {
               </TableCell>
               <TableCell className="text-right">
                 {/* feat-2-022 ⑨ — OX SRS 복습 러너로(이전: OX UI 없는 MCQ 뷰어 단절). */}
-                <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 sm:h-8"
+                >
                   <Link to="/study/srs/ox" viewTransition>
                     풀기 <ArrowRightIcon className="size-3.5" />
                   </Link>
@@ -839,7 +840,9 @@ function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
               <TableCell
                 className={cn(
                   "hidden text-right font-mono text-xs tabular-nums sm:table-cell",
-                  it.dueBlankCount > 3 ? "text-rose-700 dark:text-rose-300" : "",
+                  it.dueBlankCount > 3
+                    ? "text-rose-700 dark:text-rose-300"
+                    : "",
                 )}
               >
                 {it.dueBlankCount}
@@ -851,7 +854,12 @@ function BlankSrsTable({ items }: { items: DueBlankSetItem[] }) {
                 {fmtRelative(it.earliestDueAt)}
               </TableCell>
               <TableCell className="text-right">
-                <Button asChild size="sm" variant="ghost" className="h-9 sm:h-8">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 sm:h-8"
+                >
                   <Link
                     to={`/subjects/${it.lawCode}/articles/${it.articleNumber}?blank=${it.setId}`}
                     viewTransition

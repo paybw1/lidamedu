@@ -1,7 +1,6 @@
 // SRS v2 ④ — /srs 카드 복습 화면.
 // 앞면 표시 → "정답 보기" → 뒷면 + 4 grade 버튼 → 다음 카드.
 // elapsed_ms = 카드 표시 시점 ~ grade 클릭까지 ms.
-
 import type { Route } from "./+types/srs-review";
 
 import {
@@ -12,22 +11,22 @@ import {
   RotateCcwIcon,
   SparklesIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Link, redirect, useFetcher } from "react-router";
 
-import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
-
+import { AreaEyebrow } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
-import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import {
   getDueCountsByType,
   getReviewQueue,
   isKindBacklogged,
 } from "~/features/srs/srs.server";
+import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
+import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
@@ -35,14 +34,10 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 function subjectLabel(slug: string): string {
-  return (
-    LAW_SUBJECTS[slug as LawSubjectSlug]?.shortName ?? slug
-  );
+  return LAW_SUBJECTS[slug as LawSubjectSlug]?.shortName ?? slug;
 }
 
-export const meta: Route.MetaFunction = () => [
-  { title: "암기 카드 | 리담" },
-];
+export const meta: Route.MetaFunction = () => [{ title: "암기 카드 | 리담" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -203,67 +198,69 @@ function SrsReviewInner({
   return (
     <>
       <StudyMgmtTabs />
-    <div className="mx-auto w-full max-w-screen-md px-4 py-8 md:py-12">
-      {/* 헤더 */}
-      <header className="mb-5 flex items-baseline justify-between gap-3">
-        <div>
-          <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-            <SparklesIcon className="size-3" />
-            암기 카드 · {today}
-          </p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-            오늘의 암기 카드
-          </h1>
+      <div className="mx-auto w-full max-w-screen-md px-4 py-8 md:py-12">
+        {/* 헤더 */}
+        <header className="mb-5 flex items-baseline justify-between gap-3">
+          <div>
+            <AreaEyebrow area="manage" />
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
+              오늘의 암기 카드
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">{today}</p>
+          </div>
+          <Link
+            to="/srs/stats"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline"
+          >
+            통계
+          </Link>
+        </header>
+
+        <ChipFilters filter={data.filter} cardDue={data.cardDue} />
+
+        {/* 카드 카운터 */}
+        <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <Counter label="오늘 암기" value={dueCount} tone="rose" />
+          <Counter
+            label="새 카드"
+            value={newCount}
+            tone="sky"
+            hint={`오늘 ${newIntroducedToday}/${settings.newPerDay}`}
+          />
+          <Counter
+            label="진행"
+            value={`${progress.done}/${progress.total}`}
+            tone="neutral"
+          />
+          <Counter
+            label="남은 카드"
+            value={Math.max(0, progress.total - progress.done)}
+            tone="amber"
+          />
         </div>
-        <Link
-          to="/srs/stats"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline"
-        >
-          통계
-        </Link>
-      </header>
 
-      <ChipFilters filter={data.filter} cardDue={data.cardDue} />
+        {/* 본문 */}
+        {done ? (
+          <CompleteCard total={items.length} />
+        ) : current ? (
+          <CardArea
+            item={current}
+            flipped={flipped}
+            submitting={fetcher.state !== "idle"}
+            onFlip={() => setFlipped(true)}
+            onGrade={submit}
+          />
+        ) : (
+          <EmptyCard />
+        )}
 
-      {/* 카드 카운터 */}
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Counter label="오늘 암기" value={dueCount} tone="rose" />
-        <Counter
-          label="새 카드"
-          value={newCount}
-          tone="sky"
-          hint={`오늘 ${newIntroducedToday}/${settings.newPerDay}`}
-        />
-        <Counter label="진행" value={`${progress.done}/${progress.total}`} tone="neutral" />
-        <Counter
-          label="남은 카드"
-          value={Math.max(0, progress.total - progress.done)}
-          tone="amber"
-        />
+        {/* 알림 */}
+        {fetcher.data?.error ? (
+          <p className="mt-3 text-center text-xs text-rose-600 dark:text-rose-400">
+            ✗ {fetcher.data.error}
+          </p>
+        ) : null}
       </div>
-
-      {/* 본문 */}
-      {done ? (
-        <CompleteCard total={items.length} />
-      ) : current ? (
-        <CardArea
-          item={current}
-          flipped={flipped}
-          submitting={fetcher.state !== "idle"}
-          onFlip={() => setFlipped(true)}
-          onGrade={submit}
-        />
-      ) : (
-        <EmptyCard />
-      )}
-
-      {/* 알림 */}
-      {fetcher.data?.error ? (
-        <p className="mt-3 text-center text-xs text-rose-600 dark:text-rose-400">
-          ✗ {fetcher.data.error}
-        </p>
-      ) : null}
-    </div>
     </>
   );
 }
@@ -441,7 +438,7 @@ function CardArea({
             </span>
           ) : null}
           {item.kind === "new" ? (
-            <span className="ml-auto bg-sky-500/15 text-sky-700 dark:text-sky-300 inline-flex h-5 items-center rounded-full px-2 text-[10px] font-bold">
+            <span className="ml-auto inline-flex h-5 items-center rounded-full bg-sky-500/15 px-2 text-[10px] font-bold text-sky-700 dark:text-sky-300">
               새 카드
             </span>
           ) : (
@@ -483,12 +480,7 @@ function CardArea({
         {/* Action */}
         {!flipped ? (
           <div className="mt-4 flex justify-center">
-            <Button
-              type="button"
-              size="lg"
-              onClick={onFlip}
-              className="gap-2"
-            >
+            <Button type="button" size="lg" onClick={onFlip} className="gap-2">
               <EyeIcon className="size-4" />
               정답 보기
               <span className="text-primary-foreground/60 ml-1 font-mono text-[10px]">

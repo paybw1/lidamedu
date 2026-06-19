@@ -4,10 +4,12 @@ import type {
   ProblemFiltersApplied,
   ProblemNodeFilter,
 } from "../lib/loader.server";
+import type { SubjectStudyStatusProps } from "./subject-study-status";
 
 import { type ComponentType, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router";
 
+import { AreaEyebrow } from "~/core/components/student";
 import {
   Tabs,
   TabsContent,
@@ -40,7 +42,6 @@ import {
 } from "../lib/subjects";
 import { SortAxisProvider } from "./sort-axis";
 import { BOOKMARK_AXES, BookmarkTabInner } from "./subject-bookmark-rail";
-import type { SubjectStudyStatusProps } from "./subject-study-status";
 import { ArticlesTab } from "./tabs/articles-tab";
 import { CasesTab } from "./tabs/cases-tab";
 import { ProblemsTab } from "./tabs/problems-tab";
@@ -281,9 +282,7 @@ function BookmarkTab({
 function SubjectHeader({ subject }: { subject: LawSubjectMeta }) {
   return (
     <header className="space-y-4">
-      <p className="text-primary font-mono text-[11px] font-bold tracking-[0.10em] uppercase">
-        과목별 학습 · {subject.categoryLabel}
-      </p>
+      <AreaEyebrow area="subjects" />
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="min-w-0 space-y-1.5">
           <h1 className="text-foreground text-4xl font-extrabold tracking-tight">

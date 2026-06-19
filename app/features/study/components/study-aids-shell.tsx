@@ -12,7 +12,11 @@ import {
 import { type ComponentType, type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { AreaTabs, type SectionTabItem } from "~/core/components/student";
+import {
+  AreaEyebrow,
+  AreaTabs,
+  type SectionTabItem,
+} from "~/core/components/student";
 import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 import { cn } from "~/core/lib/utils";
 import type { StudyAidCounts } from "~/features/study/queries.server";
@@ -50,18 +54,6 @@ const AIDS_COUNT_KEY_BY_TO: Record<string, StudyAidTab> = {
   "/study/notes": "notes",
   "/study/comments": "comments",
 };
-// 헤더 아이콘 룩업 — active 탭(StudyAidTab)별. (AI Q&A 는 StudyAidsShell 미사용 화면.)
-const ICON_BY_TAB: Record<
-  StudyAidTab,
-  ComponentType<{ className?: string }>
-> = {
-  wrong: NotebookPenIcon,
-  highlights: HighlighterIcon,
-  bookmarks: BookmarkIcon,
-  notes: StickyNoteIcon,
-  comments: MessageSquareTextIcon,
-};
-
 // 학습지원 탭 — 공용 `SectionTabs` 프리미티브. 학습관리/정보 3 영역과 동일 디자인 톤.
 function StudyAidsTabs({
   counts,
@@ -134,7 +126,6 @@ export function StudyAidsShell({
   printHref?: string;
   children: ReactNode;
 }) {
-  const ActiveIcon = ICON_BY_TAB[active] ?? NotebookPenIcon;
   const contentRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -162,10 +153,7 @@ export function StudyAidsShell({
         <div ref={contentRef}>
           <header className="mb-[18px] flex items-start justify-between gap-3">
             <div className="space-y-1.5">
-              <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                <ActiveIcon className="size-3" />
-                STUDY AIDS · 학습지원
-              </p>
+              <AreaEyebrow area="aids" />
               <h1 className="text-[28px] font-extrabold tracking-tight">
                 {title}
               </h1>

@@ -20,11 +20,12 @@ import {
 } from "lucide-react";
 import {
   Link,
+  type ShouldRevalidateFunctionArgs,
   data,
   useSearchParams,
-  type ShouldRevalidateFunctionArgs,
 } from "react-router";
 
+import { AreaEyebrow } from "~/core/components/student";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -43,18 +44,25 @@ import {
   TabsTrigger,
 } from "~/core/components/ui/tabs";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
-import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
-import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
-import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
-import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import { cn } from "~/core/lib/utils";
 import { BlankStatsTabs } from "~/features/blanks/components/blank-stats-tabs";
 import {
   getUserAutoBlankStats,
   getUserBlankStats,
 } from "~/features/blanks/queries.server";
+import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
+import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
+import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
+import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
+import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
+import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
+import {
+  ALL_RANGE_SELECTION,
+  type RangeSelection,
+  RangeSelectionGroup,
+} from "~/features/study/components/study-aids-list";
+import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import {
   type PassPredictionSnapshotItem,
   type UserWeeklyAccuracyItem,
@@ -70,13 +78,6 @@ import {
   getUserSubjectiveStats,
   getWeakAreas,
 } from "~/features/study/queries.server";
-import {
-  ALL_RANGE_SELECTION,
-  RangeSelectionGroup,
-  type RangeSelection,
-} from "~/features/study/components/study-aids-list";
-import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
-import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
 import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
 import {
   LAW_SUBJECTS,
@@ -183,7 +184,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const rangeSel = parseRangeSelection(url.searchParams);
 
   // 시계열 차트 인자.
-  const tsKey: RangeValue = rangeSel.kind === "preset" ? rangeSel.preset : "all";
+  const tsKey: RangeValue =
+    rangeSel.kind === "preset" ? rangeSel.preset : "all";
   const { dailyDays, trendWeeks, passDays } = RANGE_QUERY_ARGS[tsKey];
 
   // since/until 계산 — preset 이면 since 만, custom 이면 둘 다.
@@ -204,17 +206,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   // 시계열 query 옵션: custom 이면 since/until, preset 이면 days/weeks.
   const dailyOpts =
-    rangeSel.kind === "custom"
-      ? { since, until }
-      : { daysBack: dailyDays };
+    rangeSel.kind === "custom" ? { since, until } : { daysBack: dailyDays };
   const trendOpts =
-    rangeSel.kind === "custom"
-      ? { since, until }
-      : { weekCount: trendWeeks };
+    rangeSel.kind === "custom" ? { since, until } : { weekCount: trendWeeks };
   const passOpts =
-    rangeSel.kind === "custom"
-      ? { since, until }
-      : { days: passDays };
+    rangeSel.kind === "custom" ? { since, until } : { days: passDays };
 
   const lawCodes = LAW_SUBJECT_SLUGS.map((s) => ({
     slug: s,
@@ -365,9 +361,7 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
   return (
     <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
       <header className="mb-6 space-y-2">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          학습관리
-        </p>
+        <AreaEyebrow area="manage" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">학습 통계</h1>
@@ -824,11 +818,7 @@ function ArticlesSection({
   );
 }
 
-function CasesSection({
-  rows,
-}: {
-  rows: StatsData["caseStats"]["bySubject"];
-}) {
+function CasesSection({ rows }: { rows: StatsData["caseStats"]["bySubject"] }) {
   const summary = rows.reduce(
     (acc, r) => ({
       visited: acc.visited + r.visited,
@@ -1289,11 +1279,7 @@ function ReflectedInTodayNote() {
 // feat-2-008 #1 — 한눈에 탭 상단 "약점 → 지금 복습" 카드.
 // 이미 loader 가 가진 weakAreas 재사용(새 쿼리 0). 복습 시작 = 오답노트(약점=오답
 // 정확히 일치·항상 내용 있음). 행별 "풀기" 는 그 문제로 직접 점프.
-function WeakReviewCard({
-  weakAreas,
-}: {
-  weakAreas: StatsData["weakAreas"];
-}) {
+function WeakReviewCard({ weakAreas }: { weakAreas: StatsData["weakAreas"] }) {
   return (
     <Card>
       <CardHeader className="pb-3">

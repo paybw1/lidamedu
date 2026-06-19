@@ -1,25 +1,19 @@
 // feat-7-021 — 학생 본인 과제 목록.
+import type { Route } from "./+types/student-assignments";
 
-import {
-  ArrowRightIcon,
-  CalendarIcon,
-  CheckCircle2Icon,
-  ClipboardListIcon,
-} from "lucide-react";
+import { ArrowRightIcon, CalendarIcon, CheckCircle2Icon } from "lucide-react";
 import { Link, data } from "react-router";
 
+import { AreaEyebrow, StudentShell } from "~/core/components/student";
 import { Badge } from "~/core/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { cn } from "~/core/lib/utils";
-import { Eyebrow, StudentShell } from "~/core/components/student";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { listStudentAssignments } from "~/features/assignments/queries.server";
+import { cn } from "~/core/lib/utils";
 import {
   ASSIGNMENT_STATUS_LABEL,
   type AssignmentStatus,
 } from "~/features/assignments/labels";
-
-import type { Route } from "./+types/student-assignments";
+import { listStudentAssignments } from "~/features/assignments/queries.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "과제 | Lidam Patent Attorney Academy" },
@@ -54,9 +48,7 @@ export default function StudentAssignments({
   return (
     <StudentShell>
       <header className="mb-6">
-        <Eyebrow>
-          <ClipboardListIcon className="mr-1 inline size-3" /> 과제
-        </Eyebrow>
+        <AreaEyebrow area="manage" />
         <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
           과제
         </h1>
@@ -70,7 +62,9 @@ export default function StudentAssignments({
           진행 중 ({pending.length})
         </h2>
         {pending.length === 0 ? (
-          <p className="text-muted-foreground text-xs">진행 중인 과제가 없습니다.</p>
+          <p className="text-muted-foreground text-xs">
+            진행 중인 과제가 없습니다.
+          </p>
         ) : (
           <div className="space-y-2">
             {pending.map((a) => (
@@ -133,7 +127,9 @@ function AssignmentCard({
               }
               className={cn("text-[10px]", STATUS_TONE[status])}
             >
-              {status === "completed" ? <CheckCircle2Icon className="size-3" /> : null}
+              {status === "completed" ? (
+                <CheckCircle2Icon className="size-3" />
+              ) : null}
               {ASSIGNMENT_STATUS_LABEL[status]}
             </Badge>
           </div>

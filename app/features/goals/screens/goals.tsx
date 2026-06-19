@@ -1,5 +1,6 @@
 // 학습 목표 — 시험일/주간 목표/시험 유형/목표 점수/메모.
 // 단일 row upsert (user_id PK).
+import type { Route } from "./+types/goals";
 
 import {
   ArrowRightIcon,
@@ -8,20 +9,29 @@ import {
   CalendarIcon,
   CheckCircle2Icon,
   ListChecksIcon,
-  TargetIcon,
   TrendingUpIcon,
 } from "lucide-react";
+import { Fragment } from "react";
 import { Form, Link, data, useNavigation } from "react-router";
 import { z } from "zod";
 
+import { AreaEyebrow, StudentShell } from "~/core/components/student";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
-import { cn } from "~/core/lib/utils";
-import { Eyebrow, StudentShell } from "~/core/components/student";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import {
+  type PasserBenchmark,
+  getPasserBenchmarks,
+} from "~/features/exam-results/analytics.server";
+import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
+import {
+  hasPoolConsent,
+  setNextExamPlan,
+} from "~/features/exam-results/queries.server";
 import {
   getStudyGoals,
   upsertStudyGoals,
@@ -31,24 +41,12 @@ import {
   getDailyStudyStats,
   getOverallProgress,
 } from "~/features/study/queries.server";
-import { Fragment } from "react";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
   isFirstExamSubject,
   isSecondExamSubject,
 } from "~/features/subjects/lib/subjects";
-import {
-  getPasserBenchmarks,
-  type PasserBenchmark,
-} from "~/features/exam-results/analytics.server";
-import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
-import {
-  hasPoolConsent,
-  setNextExamPlan,
-} from "~/features/exam-results/queries.server";
-
-import type { Route } from "./+types/goals";
 
 export const meta: Route.MetaFunction = () => [
   { title: "학습목표 | Lidam Patent Attorney Academy" },
@@ -112,10 +110,7 @@ const schema = z.object({
     .max(168, "주 168시간 이내"),
   examRound: z.enum(["first", "second"]),
   targetScore: z
-    .union([
-      z.coerce.number().int().min(0).max(1000),
-      z.literal(""),
-    ])
+    .union([z.coerce.number().int().min(0).max(1000), z.literal("")])
     .optional(),
   notes: z.string().max(500, "500자 이내").optional().or(z.literal("")),
 });
@@ -168,7 +163,10 @@ export async function action({ request }: Route.ActionArgs) {
   return { ok: true as const };
 }
 
-export default function Goals({ loaderData, actionData }: Route.ComponentProps) {
+export default function Goals({
+  loaderData,
+  actionData,
+}: Route.ComponentProps) {
   const { goals, overall, subjects, dailyStats, passerBenchmark, examRound } =
     loaderData;
   const navigation = useNavigation();
@@ -178,16 +176,15 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
   const saved =
     actionData && "ok" in actionData && actionData.ok ? true : false;
 
-  const dday =
-    goals.examDate
-      ? Math.max(
-          0,
-          Math.ceil(
-            (new Date(goals.examDate).getTime() - Date.now()) /
-              (24 * 60 * 60 * 1000),
-          ),
-        )
-      : null;
+  const dday = goals.examDate
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(goals.examDate).getTime() - Date.now()) /
+            (24 * 60 * 60 * 1000),
+        ),
+      )
+    : null;
 
   // 권장 일평균 진도 — D-day 가 있을 때만 의미.
   const daysLeft = dday !== null ? Math.max(1, dday) : null;
@@ -251,9 +248,7 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
   return (
     <StudentShell width="narrow">
       <header className="mb-6">
-        <Eyebrow>
-          <TargetIcon className="mr-1 inline size-3" /> 학습 목표
-        </Eyebrow>
+        <AreaEyebrow area="manage" />
         <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
           학습 목표 · 진도
         </h1>
@@ -313,7 +308,7 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
       ) : null}
 
       <section className="mb-6 space-y-3" data-testid="milestones">
-        <p className="text-sm font-semibold inline-flex items-center gap-1.5">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
           <AwardIcon className="size-4" /> 마일스톤
         </p>
         <div className="flex flex-wrap gap-2">
@@ -340,7 +335,7 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
       </section>
 
       <section className="mb-6 space-y-3" data-testid="subject-breakdown">
-        <p className="text-sm font-semibold inline-flex items-center gap-1.5">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
           <BookmarkIcon className="size-4" /> 과목별 진도
         </p>
         <Card>
@@ -350,7 +345,9 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
                 <tr>
                   <th className="px-3 py-2 text-left">과목</th>
                   <th className="px-3 py-2 text-right tabular-nums">조문</th>
-                  <th className="px-3 py-2 text-right tabular-nums">문제 시도</th>
+                  <th className="px-3 py-2 text-right tabular-nums">
+                    문제 시도
+                  </th>
                   <th className="px-3 py-2 text-right tabular-nums">정답률</th>
                   <th className="px-3 py-2 text-right">액션</th>
                 </tr>
@@ -419,8 +416,9 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
 
       <section className="mb-6 space-y-3" data-testid="weekly-trend">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold inline-flex items-center gap-1.5">
-            <TrendingUpIcon className="size-4" /> 주별 학습 시간 추이 (최근 12주)
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <TrendingUpIcon className="size-4" /> 주별 학습 시간 추이 (최근
+            12주)
           </p>
           {weekDeltaPct !== null ? (
             <Badge
@@ -431,7 +429,8 @@ export default function Goals({ loaderData, actionData }: Route.ComponentProps) 
                 weekDeltaPct < 0 && "border-rose-300 text-rose-700",
               )}
             >
-              직전 주 대비 {weekDeltaPct > 0 ? "+" : ""}{weekDeltaPct}%
+              직전 주 대비 {weekDeltaPct > 0 ? "+" : ""}
+              {weekDeltaPct}%
             </Badge>
           ) : null}
         </div>
@@ -670,15 +669,16 @@ function PasserCalibrationCard({
   }
   const targetGapPct =
     calibratedDailyHours !== null
-      ? Math.round(((calibratedDailyHours - dailyHourTarget) / Math.max(0.1, dailyHourTarget)) * 100)
+      ? Math.round(
+          ((calibratedDailyHours - dailyHourTarget) /
+            Math.max(0.1, dailyHourTarget)) *
+            100,
+        )
       : null;
 
   return (
-    <section
-      className="mb-6 space-y-3"
-      data-testid="passer-calibration"
-    >
-      <p className="text-sm font-semibold inline-flex items-center gap-1.5">
+    <section className="mb-6 space-y-3" data-testid="passer-calibration">
+      <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
         <TrendingUpIcon className="size-4" />
         합격자 실측 기반 보정
         <Badge variant="outline" className="ml-2 text-[10px]">
@@ -695,15 +695,9 @@ function PasserCalibrationCard({
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <MetricRow
               label="누적 학습 시간"
-              user={
-                userHours !== null
-                  ? `${Math.round(userHours)}h`
-                  : "—"
-              }
+              user={userHours !== null ? `${Math.round(userHours)}h` : "—"}
               passer={
-                passerHours !== null
-                  ? `${Math.round(passerHours)}h`
-                  : "—"
+                passerHours !== null ? `${Math.round(passerHours)}h` : "—"
               }
               delta={
                 gapHours !== null && gapHours > 0
@@ -740,14 +734,10 @@ function PasserCalibrationCard({
             <MetricRow
               label="정답률"
               user={
-                userAccuracy !== null
-                  ? `${Math.round(userAccuracy)}%`
-                  : "—"
+                userAccuracy !== null ? `${Math.round(userAccuracy)}%` : "—"
               }
               passer={
-                passerAccuracy !== null
-                  ? `${Math.round(passerAccuracy)}%`
-                  : "—"
+                passerAccuracy !== null ? `${Math.round(passerAccuracy)}%` : "—"
               }
               delta={
                 userAccuracy !== null && passerAccuracy !== null
@@ -768,8 +758,8 @@ function PasserCalibrationCard({
               className={cn(
                 "rounded-md p-3 text-xs",
                 calibratedDailyHours > dailyHourTarget
-                  ? "bg-rose-50 text-rose-900 border border-rose-200"
-                  : "bg-emerald-50 text-emerald-900 border border-emerald-200",
+                  ? "border border-rose-200 bg-rose-50 text-rose-900"
+                  : "border border-emerald-200 bg-emerald-50 text-emerald-900",
               )}
             >
               <strong className="text-[13px]">
@@ -821,7 +811,7 @@ function MetricRow({
   good: boolean;
 }) {
   return (
-    <div className="rounded-md border bg-muted/20 p-2">
+    <div className="bg-muted/20 rounded-md border p-2">
       <div className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
         {label}
       </div>

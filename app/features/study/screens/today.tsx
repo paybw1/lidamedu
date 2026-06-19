@@ -3,12 +3,11 @@
 // 통계·도구·추세는 본 화면에 두지 않는다 (→ /dashboard 또는 /study/stats).
 //
 // 디자인: 디자인 시스템 v1 (Notion·Linear 톤). 학생 공용 프리미티브만 사용.
+import type { Route } from "./+types/today";
 
-import { useState } from "react";
 import {
   ArrowRightIcon,
   BookOpenIcon,
-  CalendarIcon,
   CheckCircle2Icon,
   ClipboardListIcon,
   ClockIcon,
@@ -20,19 +19,18 @@ import {
   SparklesIcon,
   TargetIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { Link, redirect, useFetcher } from "react-router";
 
-import type { Route } from "./+types/today";
-
-import { Button } from "~/core/components/ui/button";
 import {
+  AreaEyebrow,
   Chip,
   type ChipTone,
   EmptyState,
-  Eyebrow,
   StudentShell,
   Surface,
 } from "~/core/components/student";
+import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import {
@@ -50,13 +48,11 @@ import {
   parseRecommendationPrefs,
 } from "~/features/study/lib/daily-menu";
 import {
-  getTodaySummary,
   type TodaySummary,
+  getTodaySummary,
 } from "~/features/study/today-summary.server";
 
-export const meta: Route.MetaFunction = () => [
-  { title: "오늘 할 일 | Lidam" },
-];
+export const meta: Route.MetaFunction = () => [{ title: "오늘 할 일 | Lidam" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -155,7 +151,7 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
   const primaryUrl = hasV1 ? "/study/srs" : "/srs";
 
   return (
-    <Surface tone="default" pad={6} className="ring-1 ring-primary/10">
+    <Surface tone="default" pad={6} className="ring-primary/10 ring-1">
       <div className="flex items-start gap-3">
         <span className="bg-primary/10 text-primary inline-flex size-10 shrink-0 items-center justify-center rounded-lg">
           <RepeatIcon className="size-5" />
@@ -170,8 +166,8 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
             ) : null}
           </div>
           <h2 className="text-foreground text-lg font-semibold tracking-tight md:text-xl">
-            오늘 복습{" "}
-            <span className="tabular-nums">{review.totalToday}</span>개
+            오늘 복습 <span className="tabular-nums">{review.totalToday}</span>
+            개
           </h2>
           {hasV1 && hasV2 ? (
             <p className="text-ink-soft mt-1 text-xs leading-relaxed">
@@ -252,7 +248,7 @@ function DailyMenuRow({ item }: { item: DailyMenuItem }) {
             {item.estimatedMinutes}분
           </span>
         </div>
-        <p className="text-foreground mt-1 text-sm font-semibold leading-tight">
+        <p className="text-foreground mt-1 text-sm leading-tight font-semibold">
           {item.title}
         </p>
         <p className="text-ink-soft mt-0.5 line-clamp-2 text-xs leading-relaxed">
@@ -285,7 +281,7 @@ function AssignmentsCard({ summary }: { summary: TodaySummary }) {
   return (
     <Surface tone="default" pad={6}>
       <div className="flex items-start gap-3">
-        <span className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 inline-flex size-10 shrink-0 items-center justify-center rounded-lg">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
           <ClipboardListIcon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -316,7 +312,7 @@ function AssignmentsCard({ summary }: { summary: TodaySummary }) {
               className="group border-border hover:border-primary hover:bg-surface-3 flex items-center gap-3 rounded-md border px-3 py-2 transition-colors"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-foreground text-sm font-semibold leading-tight">
+                <p className="text-foreground text-sm leading-tight font-semibold">
                   {p.title}
                 </p>
                 <p className="text-ink-faint mt-0.5 text-[11px]">
@@ -452,11 +448,7 @@ function PrefToggleRow({
 
 /* ── 암기 카드 밀림 경고 (feat-2-024) ─────────────────────────────── */
 
-function CardBacklogNotice({
-  items,
-}: {
-  items: TodaySummary["cardBacklog"];
-}) {
+function CardBacklogNotice({ items }: { items: TodaySummary["cardBacklog"] }) {
   return (
     <div className="mb-4 rounded-lg border border-amber-300/60 bg-amber-50/60 px-4 py-3 text-amber-800 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-200">
       <p className="text-sm font-semibold">암기 카드 복습이 밀리고 있어요</p>
@@ -484,13 +476,13 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
     <StudentShell width="narrow">
       <header className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Eyebrow>
-            <CalendarIcon className="mr-1 inline size-3" />
-            {formatKstDate(summary.date)}
-          </Eyebrow>
+          <AreaEyebrow area="manage" />
           <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
             오늘 할 일
           </h1>
+          <p className="text-ink-soft mt-2 text-sm">
+            {formatKstDate(summary.date)}
+          </p>
         </div>
         <Button
           variant="ghost"

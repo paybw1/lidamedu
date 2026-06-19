@@ -1,7 +1,9 @@
 // 학생용 상담 코멘트 — /me/consult. 강사가 공유(share_with_student)한 1:1 상담 코멘트 열람. feat-7-025/028.
 // 알림(student_note_shared) 클릭 시 이 화면으로 와서 세부 내용을 본다(?note=<id> 하이라이트).
-import { useEffect } from "react";
+import type { Route } from "./+types/student-consult";
+
 import { MessageSquareTextIcon, PinIcon } from "lucide-react";
+import { useEffect } from "react";
 import { redirect } from "react-router";
 
 import {
@@ -11,16 +13,14 @@ import {
   StudentShell,
   Surface,
 } from "~/core/components/student";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   listNotesForStudent,
   markSharedNotesRead,
 } from "~/features/student-notes/queries.server";
-import { MarkdownView } from "~/features/problems/components/markdown-view";
-
-import type { Route } from "./+types/student-consult";
 
 export const meta: Route.MetaFunction = () => [
   { title: "상담 코멘트 | Lidam Patent Attorney Academy" },
@@ -63,11 +63,7 @@ export default function StudentConsult({ loaderData }: Route.ComponentProps) {
   return (
     <StudentShell width="narrow">
       <PageHeader
-        eyebrow={
-          <>
-            <MessageSquareTextIcon className="mr-1 inline size-3" /> 학습관리
-          </>
-        }
+        area="manage"
         title="상담 코멘트"
         description="강사가 공유한 1:1 상담 코멘트입니다."
       />
