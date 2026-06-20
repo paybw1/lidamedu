@@ -5,7 +5,10 @@ import type {
 import type { LawSubjectMeta } from "../../lib/subjects";
 
 import {
+  ArrowDownIcon,
   ArrowRightIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
   CheckSquareIcon,
   ChevronDownIcon,
   CircleCheckIcon,
@@ -40,11 +43,14 @@ import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
   POLARITY_LABEL,
+  PROBLEM_SORT_DEFAULT_DIR,
   type ProblemFormat,
   type ProblemListItem,
   type ProblemOrigin,
   type ProblemPolarity,
   type ProblemScope,
+  type ProblemSortDir,
+  type ProblemSortKey,
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
 } from "~/features/problems/labels";
@@ -89,12 +95,6 @@ const DIFFICULTY_OPTS: Array<{
   { value: "very_hard", label: "매우 어려움" },
   { value: "no_data", label: "데이터 부족" },
 ];
-const SORT_OPTS = [
-  { value: "number", label: "기본 (문항순)" },
-  { value: "hardest", label: "어려움 순" },
-  { value: "easiest", label: "쉬움 순" },
-  { value: "newest", label: "최신순" },
-] as const;
 
 export function ProblemsTab({
   subject,
@@ -128,7 +128,7 @@ export function ProblemsTab({
     appliedFilters.polarity != null ||
     appliedFilters.scope != null ||
     appliedFilters.difficulty != null ||
-    (appliedFilters.sort != null && appliedFilters.sort !== "number") ||
+    appliedFilters.sort != null ||
     (appliedFilters.search != null && appliedFilters.search.length > 0) ||
     (appliedFilters.bookmarkMin ?? 0) > 0 ||
     (appliedFilters.importanceMin ?? 0) > 0 ||
@@ -342,6 +342,13 @@ export function ProblemsTab({
                 value={String(appliedFilters.importanceMin)}
               />
             ) : null}
+            {/* 정렬은 컬럼 헤더 클릭으로 설정 — 필터 적용(폼 제출) 시 잃지 않도록 보존. */}
+            {appliedFilters.sort ? (
+              <input type="hidden" name="p_sort" value={appliedFilters.sort} />
+            ) : null}
+            {appliedFilters.sortDir ? (
+              <input type="hidden" name="p_dir" value={appliedFilters.sortDir} />
+            ) : null}
             {/* Search chip-style input */}
             <div className="flex flex-col gap-0.5">
               <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
@@ -417,17 +424,6 @@ export function ProblemsTab({
                 label: d.label,
               }))}
             />
-            <FilterSelectChip
-              label="정렬"
-              name="p_sort"
-              value={appliedFilters.sort ?? ""}
-              options={SORT_OPTS.filter((s) => s.value !== "number").map(
-                (s) => ({
-                  value: s.value,
-                  label: s.label,
-                }),
-              )}
-            />
             <Button type="submit" size="sm" className="h-8 rounded-full">
               적용
             </Button>
@@ -497,30 +493,63 @@ export function ProblemsTab({
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="text-muted-foreground/70 w-10 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:w-12">
-                    ★
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-12 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:w-16">
-                    No.
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    출처
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    유형
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    극성
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-20 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    단원/종합
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    연도/회차
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    난이도
-                  </TableHead>
+                  <SortableHead
+                    label="★"
+                    sortKey="importance"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    align="center"
+                    className="w-10 text-center md:w-12"
+                  />
+                  <SortableHead
+                    label="No."
+                    sortKey="number"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="w-12 md:w-16"
+                  />
+                  <SortableHead
+                    label="출처"
+                    sortKey="origin"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="hidden w-20 md:table-cell"
+                  />
+                  <SortableHead
+                    label="유형"
+                    sortKey="format"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="hidden w-20 md:table-cell"
+                  />
+                  <SortableHead
+                    label="극성"
+                    sortKey="polarity"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="hidden w-20 md:table-cell"
+                  />
+                  <SortableHead
+                    label="단원/종합"
+                    sortKey="scope"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="hidden w-20 md:table-cell"
+                  />
+                  <SortableHead
+                    label="연도/회차"
+                    sortKey="year"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="hidden w-24 md:table-cell"
+                  />
+                  <SortableHead
+                    label="난이도"
+                    sortKey="accuracy"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="hidden w-28 md:table-cell"
+                  />
                   <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     본문
                   </TableHead>
@@ -755,6 +784,70 @@ function SubjectiveCard({
         </p>
       </div>
     </Link>
+  );
+}
+
+// 정렬 가능한 컬럼 헤더 — 클릭 시 그 색인 기준으로 정렬(asc/desc 토글). 서버 정렬
+//   (loader applyProblemListView)이라 GET 링크. 다른 필터·단원은 그대로 보존.
+function SortableHead({
+  label,
+  sortKey,
+  applied,
+  searchParams,
+  className,
+  align = "left",
+}: {
+  label: string;
+  sortKey: ProblemSortKey;
+  applied: ProblemFiltersApplied;
+  searchParams: URLSearchParams;
+  className?: string;
+  align?: "left" | "center";
+}) {
+  const active = applied.sort === sortKey;
+  const dir: ProblemSortDir | null = active
+    ? (applied.sortDir ?? PROBLEM_SORT_DEFAULT_DIR[sortKey])
+    : null;
+  const sp = new URLSearchParams(searchParams);
+  sp.set("tab", "problems");
+  sp.set("p_sort", sortKey);
+  // 활성 컬럼 재클릭 → 방향 토글, 비활성 → 기본 방향.
+  sp.set(
+    "p_dir",
+    active
+      ? dir === "asc"
+        ? "desc"
+        : "asc"
+      : PROBLEM_SORT_DEFAULT_DIR[sortKey],
+  );
+  return (
+    <TableHead
+      className={cn(
+        "text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase",
+        className,
+      )}
+    >
+      <Link
+        to={`?${sp.toString()}`}
+        preventScrollReset
+        className={cn(
+          "hover:text-foreground inline-flex items-center gap-1 transition-colors",
+          align === "center" && "justify-center",
+          active && "text-foreground",
+        )}
+      >
+        {label}
+        {active ? (
+          dir === "asc" ? (
+            <ArrowUpIcon className="size-3" />
+          ) : (
+            <ArrowDownIcon className="size-3" />
+          )
+        ) : (
+          <ArrowUpDownIcon className="size-3 opacity-30" />
+        )}
+      </Link>
+    </TableHead>
   );
 }
 

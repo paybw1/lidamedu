@@ -94,6 +94,69 @@ export const SCOPE_LABEL: Record<ProblemScope, string> = {
   comprehensive: "종합",
 };
 
+// ── 객관식 목록 컬럼 정렬 (학습과목 문제 탭) ──────────────────────────────
+// 컬럼(색인 기준) 헤더 클릭 → 그 기준으로 오름/내림 정렬. 클라(헤더 UI)·서버(정렬
+// 로직) 공용이라 여기(라벨 모듈)에 둔다. loader.server 의 ProblemSort = ProblemSortKey.
+export type ProblemSortKey =
+  | "number" // 문항 번호
+  | "year" // 연도/회차
+  | "accuracy" // 전체 정답률(난이도)
+  | "importance" // 강사 중요도(★)
+  | "origin" // 출처
+  | "format" // 유형
+  | "polarity" // 극성
+  | "scope"; // 단원/종합
+export type ProblemSortDir = "asc" | "desc";
+
+export const PROBLEM_SORT_KEYS: readonly ProblemSortKey[] = [
+  "number",
+  "year",
+  "accuracy",
+  "importance",
+  "origin",
+  "format",
+  "polarity",
+  "scope",
+];
+
+// 컬럼별 "처음 누를 때" 기본 방향. 번호·출처류는 오름차순, 연도·중요도는 내림차순,
+// 난이도(정답률)는 오름차순(=어려운 것 먼저)이 학습상 유용.
+export const PROBLEM_SORT_DEFAULT_DIR: Record<ProblemSortKey, ProblemSortDir> = {
+  number: "asc",
+  year: "desc",
+  accuracy: "asc",
+  importance: "desc",
+  origin: "asc",
+  format: "asc",
+  polarity: "asc",
+  scope: "asc",
+};
+
+// 범주형 컬럼 정렬용 순서(작을수록 앞). 기출/기출변형은 한 묶음(동일 순위).
+export const ORIGIN_SORT_ORDER: Record<ProblemOrigin, number> = {
+  past_exam: 0,
+  past_exam_variant: 0,
+  mock: 1,
+  expected: 2,
+  ai_draft: 3,
+};
+export const FORMAT_SORT_ORDER: Record<ProblemFormat, number> = {
+  mc_short: 0,
+  mc_box: 1,
+  mc_case: 2,
+  ox: 3,
+  blank: 4,
+  subjective: 5,
+};
+export const POLARITY_SORT_ORDER: Record<ProblemPolarity, number> = {
+  positive: 0,
+  negative: 1,
+};
+export const SCOPE_SORT_ORDER: Record<ProblemScope, number> = {
+  unit: 0,
+  comprehensive: 1,
+};
+
 export const CHOICE_TYPE_LABEL: Record<ProblemChoiceType, string> = {
   statute: "조문",
   precedent: "판례",

@@ -432,7 +432,7 @@ function AdminPageHeader({
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0 space-y-1.5">
-        <p className="text-primary inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        <p className="text-link inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
           <Icon className="size-3" />
           ADMIN · {cluster.label}
         </p>

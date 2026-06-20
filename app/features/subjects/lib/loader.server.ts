@@ -30,12 +30,20 @@ import {
   getLawByCode,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
-import type {
-  ProblemExamRound,
-  ProblemFormat,
-  ProblemOrigin,
-  ProblemPolarity,
-  ProblemScope,
+import {
+  FORMAT_SORT_ORDER,
+  ORIGIN_SORT_ORDER,
+  POLARITY_SORT_ORDER,
+  PROBLEM_SORT_DEFAULT_DIR,
+  PROBLEM_SORT_KEYS,
+  type ProblemExamRound,
+  type ProblemFormat,
+  type ProblemOrigin,
+  type ProblemPolarity,
+  type ProblemScope,
+  type ProblemSortDir,
+  type ProblemSortKey,
+  SCOPE_SORT_ORDER,
 } from "~/features/problems/labels";
 import {
   type ProblemListItem,
@@ -61,7 +69,8 @@ import {
 import type { NodeProgressByArticle } from "~/features/subjects/components/node-progress-gauge";
 import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
 
-export type ProblemSort = "number" | "hardest" | "easiest" | "newest";
+// 정렬 키 = 컬럼(색인 기준). 방향(asc/desc)은 sortDir 로 분리(컬럼 헤더 클릭 토글).
+export type ProblemSort = ProblemSortKey;
 
 export interface ProblemFiltersApplied {
   origin?: ProblemOrigin;
@@ -74,6 +83,7 @@ export interface ProblemFiltersApplied {
   scope?: ProblemScope;
   difficulty?: DifficultyBucket | "no_data";
   sort?: ProblemSort;
+  sortDir?: ProblemSortDir;
   search?: string;
   // 수험생 즐겨찾기 최소 별점 (1~5) — ?p_bookmarked=N.
   bookmarkMin?: number;
@@ -416,12 +426,7 @@ const DIFFICULTY_FILTER_VALUES = [
   "very_hard",
   "no_data",
 ] as const;
-const PROBLEM_SORTS: readonly ProblemSort[] = [
-  "number",
-  "hardest",
-  "easiest",
-  "newest",
-];
+const PROBLEM_SORTS: readonly ProblemSort[] = PROBLEM_SORT_KEYS;
 
 export function parseProblemFilters(url: URL): ProblemFiltersApplied {
   const f: ProblemFiltersApplied = {};
@@ -461,6 +466,8 @@ export function parseProblemFilters(url: URL): ProblemFiltersApplied {
   if (sort && (PROBLEM_SORTS as readonly string[]).includes(sort)) {
     f.sort = sort as ProblemSort;
   }
+  const dir = url.searchParams.get("p_dir");
+  if (dir === "asc" || dir === "desc") f.sortDir = dir;
   const search = url.searchParams.get("p_search");
   if (search && search.trim().length > 0) {
     f.search = search.trim().slice(0, 100); // 길이 제한.
@@ -489,21 +496,41 @@ export function applyProblemListView(
       return agg?.bucket === filters.difficulty;
     });
   }
-  const sort = filters.sort ?? "number";
-  if (sort !== "number") {
-    out = [...out].sort((a, b) => {
-      if (sort === "newest") {
-        const ya = a.year ?? 0;
-        const yb = b.year ?? 0;
-        if (ya !== yb) return yb - ya;
-        return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+  // 컬럼(색인 기준) 정렬 — 키 + 방향(asc/desc). 미지정이면 listProblemsBySubject 기본순(시드순).
+  if (filters.sort) {
+    const key = filters.sort;
+    const dir = filters.sortDir ?? PROBLEM_SORT_DEFAULT_DIR[key];
+    const mul = dir === "asc" ? 1 : -1;
+    const valOf = (p: ProblemListItem): number | null => {
+      switch (key) {
+        case "number":
+          return p.problemNumber;
+        case "year":
+          return p.year;
+        case "accuracy":
+          return aggStats[p.problemId]?.accuracyPct ?? null;
+        case "importance":
+          return p.importance;
+        case "origin":
+          return ORIGIN_SORT_ORDER[p.origin];
+        case "format":
+          return FORMAT_SORT_ORDER[p.format];
+        case "polarity":
+          return p.polarity ? POLARITY_SORT_ORDER[p.polarity] : null;
+        case "scope":
+          return p.scope ? SCOPE_SORT_ORDER[p.scope] : null;
       }
-      const accA = aggStats[a.problemId]?.accuracyPct;
-      const accB = aggStats[b.problemId]?.accuracyPct;
-      // null (데이터 없음) 은 항상 뒤로.
-      if (accA === null || accA === undefined) return 1;
-      if (accB === null || accB === undefined) return -1;
-      return sort === "hardest" ? accA - accB : accB - accA;
+    };
+    out = [...out].sort((a, b) => {
+      const va = valOf(a);
+      const vb = valOf(b);
+      // null(데이터 없음)은 방향 무관 항상 뒤로. 동순위는 번호 오름차순.
+      if (va === null && vb === null)
+        return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      if (va !== vb) return va < vb ? -mul : mul;
+      return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
     });
   }
   if (filters.bookmarkMin && filters.bookmarkMin > 0 && ctx.bookmarkedIds) {
@@ -534,9 +561,7 @@ export async function listDisplayedProblems(
   );
   // 난이도 필터·난이도 정렬에만 aggStats 필요 — 그 외엔 생략(쿼리 절약).
   const aggStats: Record<string, ProblemAggregateStats> = {};
-  const needsAgg =
-    filters.difficulty != null ||
-    (filters.sort != null && filters.sort !== "number");
+  const needsAgg = filters.difficulty != null || filters.sort === "accuracy";
   if (needsAgg) {
     const aggMap = await getProblemStatsBulk(
       client,
