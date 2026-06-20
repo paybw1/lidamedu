@@ -109,7 +109,7 @@ function ExamRow({
           <Link
             to={`/latest/mcq/exam/${exam.examId}`}
             viewTransition
-            className="hover:text-primary text-[13px] font-semibold"
+            className="hover:text-link text-[13px] font-semibold"
           >
             {exam.title}
           </Link>
@@ -120,7 +120,7 @@ function ExamRow({
             <Link
               to={`/admin/mcq-exams/${exam.examId}`}
               viewTransition
-              className="text-muted-foreground hover:text-primary ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
+              className="text-muted-foreground hover:text-link ml-auto inline-flex items-center gap-1 text-[11px] font-semibold"
             >
               <PencilIcon className="size-3" /> 수정
             </Link>

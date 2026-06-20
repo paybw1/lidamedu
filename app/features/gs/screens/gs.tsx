@@ -116,7 +116,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
           <PencilLineIcon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-primary font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          <p className="text-link font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
             논점 추출 훈련
           </p>
           <p className="text-foreground text-base font-bold tracking-tight">

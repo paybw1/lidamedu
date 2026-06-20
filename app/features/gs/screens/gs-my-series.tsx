@@ -159,7 +159,7 @@ export default function GsMySeries({ loaderData }: Route.ComponentProps) {
                       <td className="px-3.5 py-3">
                         <Link
                           to={`/gs/${p.roundId}/result`}
-                          className="hover:text-primary text-[13px] font-semibold hover:underline"
+                          className="hover:text-link text-[13px] font-semibold hover:underline"
                         >
                           {p.roundTitle}
                         </Link>
@@ -251,7 +251,7 @@ function ScoreBarPair({
   return (
     <div className="w-40 space-y-1">
       <div className="flex items-center gap-1.5">
-        <span className="text-primary w-7 shrink-0 font-mono text-[10px]">
+        <span className="text-link w-7 shrink-0 font-mono text-[10px]">
           본인
         </span>
         <Bar value={myTotal} max={max} tone="primary" className="flex-1" />

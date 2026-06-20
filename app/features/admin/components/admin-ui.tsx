@@ -20,7 +20,7 @@ type ChipTone =
 
 const CHIP_TONE: Record<ChipTone, string> = {
   neutral: "bg-muted text-foreground/80",
-  blue: "bg-primary/10 text-primary",
+  blue: "bg-primary/10 text-link",
   emerald: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   coral: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
   amber: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
@@ -143,7 +143,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={onReset}
-          className="text-primary ml-auto inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold"
+          className="text-link ml-auto inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold"
         >
           <RefreshCwIcon className="size-3" />
           초기화

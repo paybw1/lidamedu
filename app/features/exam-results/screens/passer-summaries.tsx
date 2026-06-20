@@ -57,7 +57,7 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
         <p className="text-muted-foreground text-sm">
           분석 활용에 동의한 합격자들이 직접 작성한 학습 후기입니다. 이름·이메일
           등 식별 정보는 표시되지 않습니다. 본인도 합격 후{" "}
-          <Link to="/me/exam-results" className="text-primary underline">
+          <Link to="/me/exam-results" className="text-link underline">
             결과 입력
           </Link>{" "}
           + 동의 시 후배에게 공유할 수 있습니다.
@@ -67,13 +67,13 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
       <nav className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium">
         <Link
           to="/study/passer-trend"
-          className="text-primary inline-flex items-center gap-1 hover:underline"
+          className="text-link inline-flex items-center gap-1 hover:underline"
         >
           합격자 추이 →
         </Link>
         <Link
           to="/study/electives-guide"
-          className="text-primary inline-flex items-center gap-1 hover:underline"
+          className="text-link inline-flex items-center gap-1 hover:underline"
         >
           선택과목 가이드 →
         </Link>

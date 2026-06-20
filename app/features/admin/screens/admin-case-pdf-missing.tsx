@@ -252,7 +252,7 @@ export default function AdminCasePdfMissing({
                       {subjectOfRow ? (
                         <Link
                           to={`/subjects/${subjectOfRow}/cases/${r.case_id}`}
-                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                          className="text-link inline-flex items-center gap-1 text-xs hover:underline"
                           target="_blank"
                           rel="noopener noreferrer"
                         >

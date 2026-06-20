@@ -203,7 +203,7 @@ function ViolationRow({
         ) : null}
         <Link
           to={`/admin/cases/edit/${v.caseId}`}
-          className="text-primary text-[11px] hover:underline"
+          className="text-link text-[11px] hover:underline"
         >
           개별 수정 →
         </Link>

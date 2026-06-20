@@ -78,7 +78,7 @@ export default function AdminAiProblemGen({
       desc={
         <span>
           범위·문항 수 지정 → AI 초안 일괄 생성. 생성된 문제는{" "}
-          <Link to="/admin/problems/review" className="text-primary hover:underline">
+          <Link to="/admin/problems/review" className="text-link hover:underline">
             검증 큐
           </Link>
           에서 강사 승인 후 모의고사 picker·학습과목에 노출됩니다.
@@ -229,7 +229,7 @@ function ReportPanel({ report }: { report: GenReport }) {
             <p className="text-xs">
               <Link
                 to="/admin/problems/review"
-                className="text-primary hover:underline"
+                className="text-link hover:underline"
               >
                 검증 큐에서 검토 →
               </Link>

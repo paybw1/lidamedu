@@ -343,7 +343,7 @@ export default function AdminBlanksList({ loaderData }: Route.ComponentProps) {
                       <span
                         className={
                           mine
-                            ? "text-primary font-semibold"
+                            ? "text-link font-semibold"
                             : "text-muted-foreground"
                         }
                       >
@@ -377,7 +377,7 @@ export default function AdminBlanksList({ loaderData }: Route.ComponentProps) {
                       <Link
                         to={`/admin/blanks/${s.setId}`}
                         viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                        className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                       >
                         {mine ? "편집" : "보기"}
                         <ArrowRightIcon className="size-3" />
@@ -464,7 +464,7 @@ function ChapterEditLink({
     <Link
       to={`/admin/blanks/law/${law}?chapter=${encodeURIComponent(chapterId)}`}
       viewTransition
-      className="bg-primary/10 text-primary border-primary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
+      className="bg-primary/10 text-link border-primary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
     >
       {children}
       <ArrowRightIcon className="size-3" />

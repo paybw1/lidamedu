@@ -71,7 +71,7 @@ export default function AdminArticleRelations({
         {/* 관련 판례 패널 */}
         <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <div className="border-border bg-muted/60 flex items-center gap-1.5 border-b px-4 py-3">
-            <GavelIcon className="text-primary size-4" />
+            <GavelIcon className="text-link size-4" />
             <h2 className="text-sm font-semibold">관련 판례</h2>
             <span className="text-muted-foreground ml-auto tabular-nums text-[11px]">
               {relations.cases.length}건
@@ -107,7 +107,7 @@ export default function AdminArticleRelations({
         {/* 관련 문제 패널 */}
         <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <div className="border-border bg-muted/60 flex items-center gap-1.5 border-b px-4 py-3">
-            <ListChecksIcon className="text-primary size-4" />
+            <ListChecksIcon className="text-link size-4" />
             <h2 className="text-sm font-semibold">관련 문제</h2>
             <span className="text-muted-foreground ml-auto tabular-nums text-[11px]">
               {relations.problems.length}건
@@ -204,7 +204,7 @@ function CaseRow({
       <Link
         to={`/subjects/${lawCode}/cases/${caseId}`}
         viewTransition
-        className="hover:text-primary flex-1 space-y-0.5"
+        className="hover:text-link flex-1 space-y-0.5"
       >
         <div className="flex items-center gap-1.5">
           <span className="font-medium tabular-nums">{caseNumber}</span>

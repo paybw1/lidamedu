@@ -226,7 +226,7 @@ function NextStepBox({
         </p>
         <Link
           to="/gs"
-          className="text-primary mt-2 inline-flex items-center gap-1 text-xs font-bold hover:underline"
+          className="text-link mt-2 inline-flex items-center gap-1 text-xs font-bold hover:underline"
         >
           GS 메인으로 <ArrowRightIcon className="size-3" />
         </Link>
@@ -243,7 +243,7 @@ function NextStepBox({
             <span className="text-muted-foreground">권장: </span>
             <Link
               to={`/case-training/${itemId}/conclusion`}
-              className="text-primary font-bold hover:underline"
+              className="text-link font-bold hover:underline"
             >
               ③④ 결론·강약 훈련으로 →
             </Link>{" "}
@@ -259,7 +259,7 @@ function NextStepBox({
             </span>
             <Link
               to={`/gs/${linkedGsRoundId}/take`}
-              className="text-primary font-bold hover:underline"
+              className="text-link font-bold hover:underline"
             >
               ⑤ 답안 작성으로 →
             </Link>{" "}

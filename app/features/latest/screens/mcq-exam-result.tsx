@@ -100,7 +100,7 @@ export default function McqExamResult({ loaderData }: Route.ComponentProps) {
           </span>
           <span
             data-testid="exam-average"
-            className="text-primary text-4xl font-extrabold tabular-nums"
+            className="text-link text-4xl font-extrabold tabular-nums"
           >
             {fmtScore(average)}
           </span>
@@ -121,9 +121,9 @@ export default function McqExamResult({ loaderData }: Route.ComponentProps) {
         {ranking ? (
           <div className="text-right">
             <p className="inline-flex items-center gap-1 text-lg font-bold tabular-nums">
-              <TrophyIcon className="text-primary size-4" />
+              <TrophyIcon className="text-link size-4" />
               전체 {ranking.totalTakers}명 중{" "}
-              <span className="text-primary">{ranking.rank}등</span>
+              <span className="text-link">{ranking.rank}등</span>
             </p>
             <p className="text-muted-foreground text-xs tabular-nums">
               백분위 {ranking.percentile} · 표준점수 z {ranking.zScore}
@@ -171,7 +171,7 @@ export default function McqExamResult({ loaderData }: Route.ComponentProps) {
                 <td className="px-3 py-3 text-[13px]">
                   <Link
                     to={`/latest/mcq/${p.packId}/result/${p.sessionId}`}
-                    className="hover:text-primary font-medium"
+                    className="hover:text-link font-medium"
                   >
                     {p.packTitle}
                   </Link>

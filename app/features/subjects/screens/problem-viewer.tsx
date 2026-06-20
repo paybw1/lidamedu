@@ -40,6 +40,10 @@ import {
 } from "~/features/laws/queries.server";
 import { listLectureResources } from "~/features/lectures/queries.server";
 import {
+  listDisplayedProblems,
+  parseProblemFilters,
+} from "~/features/subjects/lib/loader.server";
+import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
   POLARITY_LABEL,
@@ -115,6 +119,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const url = new URL(request.url);
   const nodeId = url.searchParams.get("node");
+  // ?list=1 — 학습과목 탭 목록에서 진입(색인 그룹 내 prev/next). 세션 러너가 아니라
+  //   "현재 보고 있던 필터·정렬·단원 목록 순서" 그대로 인접 문제를 계산한다.
+  const listMode = url.searchParams.get("list") === "1";
   const sessionIdParam = url.searchParams.get("session");
   const modeParam = url.searchParams.get("mode");
   const requestedMode: QuizMode = modeParam === "exam" ? "exam" : "study";
@@ -125,9 +132,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const problemPromise = getProblemById(client, params.problemId);
   const authPromise = client.auth.getUser();
   const lawPromise = getLawByCode(client, lawCode);
-  const nodeSeqPromise = nodeId
-    ? getSystematicNodeProblemSequence(client, nodeId)
-    : Promise.resolve(null);
+  // list 모드에선 노드 시퀀스(세션 러너용)를 만들지 않는다 — 세션 자동생성을 피하고
+  //   scoped adjacent(표시 목록 순서)로 prev/next 를 제공.
+  const nodeSeqPromise =
+    nodeId && !listMode
+      ? getSystematicNodeProblemSequence(client, nodeId)
+      : Promise.resolve(null);
 
   const problem = await problemPromise;
   if (!problem) {
@@ -202,7 +212,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getCasesCitedByProblem(client, problem.problemId),
     listComments(client, "problem", problem.problemId),
     getStaffRole(client, user.id),
-    getAdjacentProblems(client, problem.problemId),
+    listMode
+      ? Promise.resolve(null)
+      : getAdjacentProblems(client, problem.problemId),
     law
       ? getSubjectAxisCounts(client, lawCode, law.lawId)
       : Promise.resolve({ articles: 0, cases: 0, problems: 0 }),
@@ -346,6 +358,44 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? await getSubjectiveAttempt(client, user.id, problem.problemId)
       : null;
 
+  // 색인 그룹 내 prev/next — ?list=1 이면 학습과목 탭의 표시 목록(필터·정렬·단원)을
+  //   그대로 재현해 인접 문제를 계산(전역 기출순 getAdjacentProblems 대체).
+  let adjacentNav = adjacent;
+  let adjacentQuery = "";
+  if (listMode) {
+    const filters = parseProblemFilters(url);
+    const displayed = await listDisplayedProblems(client, lawCode, filters, {
+      userId: user.id,
+      nodeId,
+    });
+    // 학습과목 탭은 객관식(1차)·2차 주관식을 별 섹션으로 나눠 표시 → 같은 차수 안에서만 prev/next.
+    const cur = displayed.find((p) => p.problemId === problem.problemId);
+    const scoped = cur
+      ? displayed.filter((p) => p.examRound === cur.examRound)
+      : displayed;
+    const idx = scoped.findIndex((p) => p.problemId === problem.problemId);
+    const toAdj = (
+      p: (typeof scoped)[number] | undefined,
+    ): AdjacentProblem | null =>
+      p
+        ? {
+            problemId: p.problemId,
+            year: p.year,
+            problemNumber: p.problemNumber,
+            origin: p.origin,
+          }
+        : null;
+    adjacentNav =
+      idx >= 0
+        ? { prev: toAdj(scoped[idx - 1]), next: toAdj(scoped[idx + 1]) }
+        : { prev: null, next: null };
+    // prev/next 가 같은 색인 컨텍스트를 이어가도록 쿼리 보존(list + node + p_*).
+    const sp = new URLSearchParams(url.search);
+    sp.delete("session");
+    sp.delete("mode");
+    adjacentQuery = sp.toString() ? `?${sp.toString()}` : "";
+  }
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
@@ -369,7 +419,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     canEditComment: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
-    adjacent,
+    adjacent: adjacentNav,
+    adjacentQuery,
     lectureResources,
   };
 }
@@ -444,6 +495,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     isAdmin,
     currentUserId,
     adjacent,
+    adjacentQuery,
     lectureResources,
   } = loaderData;
   const [selected, setSelected] = useState<number | null>(null);
@@ -575,7 +627,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
                 isExam
                   ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                  : "bg-primary/10 text-primary",
+                  : "bg-primary/10 text-link",
               )}
             >
               {isExam ? "시험 모드" : "학습 모드"}
@@ -827,11 +879,13 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       direction="prev"
                       target={adjacent.prev}
                       subjectSlug={subject.slug}
+                      query={adjacentQuery}
                     />
                     <ProblemPrevNextButton
                       direction="next"
                       target={adjacent.next}
                       subjectSlug={subject.slug}
+                      query={adjacentQuery}
                     />
                   </div>
                 ) : null}
@@ -931,7 +985,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       href={problem.videoUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="border-border text-primary hover:bg-muted ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
+                      className="border-border text-link hover:bg-muted ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
                       data-testid="problem-video-link"
                       title="강사 풀이 동영상 (외부 링크)"
                     >
@@ -1269,7 +1323,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                             viewTransition
                                             prefetch="intent"
                                             data-testid="choice-related-article"
-                                            className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
+                                            className="border-primary/30 bg-primary/10 text-link hover:bg-primary/20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
                                           >
                                             조문 {articleRef.displayLabel}
                                           </Link>
@@ -1814,7 +1868,7 @@ function RubricChecklist({
           채점 체크리스트
         </p>
         <span className="text-xs tabular-nums">
-          <span className="text-primary font-bold">{got}</span>
+          <span className="text-link font-bold">{got}</span>
           <span className="text-muted-foreground"> / {total} 점</span>
           <span className="text-muted-foreground ml-2">({pct}%)</span>
         </span>
@@ -2117,10 +2171,13 @@ function ProblemPrevNextButton({
   direction,
   target,
   subjectSlug,
+  query = "",
 }: {
   direction: "prev" | "next";
   target: AdjacentProblem | null;
   subjectSlug: string;
+  // 색인 그룹 prev/next 가 컨텍스트(?list=1&...)를 이어가도록 붙이는 쿼리 suffix.
+  query?: string;
 }) {
   const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
   const ariaLabel = direction === "prev" ? "이전 문제" : "다음 문제";
@@ -2143,7 +2200,7 @@ function ProblemPrevNextButton({
     : `#${target.problemNumber ?? "?"}`;
   return (
     <Link
-      to={`/subjects/${subjectSlug}/problems/${target.problemId}`}
+      to={`/subjects/${subjectSlug}/problems/${target.problemId}${query}`}
       viewTransition
       prefetch="intent"
       aria-label={`${ariaLabel}: ${label}`}

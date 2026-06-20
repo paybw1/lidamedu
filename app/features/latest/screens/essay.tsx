@@ -234,7 +234,7 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
                 <Link
                   to={`/admin/problems/${p.problemId}`}
                   viewTransition
-                  className="text-muted-foreground hover:text-primary bg-card/80 absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm"
+                  className="text-muted-foreground hover:text-link bg-card/80 absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm"
                 >
                   <PencilIcon className="size-3.5" /> 수정
                 </Link>

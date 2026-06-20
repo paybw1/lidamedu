@@ -173,7 +173,7 @@ function PlanCard({
         <ul className="mb-4 space-y-1.5 text-xs">
           {plan.features.map((f) => (
             <li key={f} className="flex items-center gap-1.5">
-              <CheckIcon className="text-primary size-3.5 flex-shrink-0" />
+              <CheckIcon className="text-link size-3.5 flex-shrink-0" />
               <span>{FEATURE_LABEL[f] ?? f}</span>
             </li>
           ))}

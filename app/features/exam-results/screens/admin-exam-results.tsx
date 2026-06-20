@@ -169,7 +169,7 @@ function PoolCard({
     emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     amber: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
     coral: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-    blue: "bg-primary/10 text-primary",
+    blue: "bg-primary/10 text-link",
     violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
     neutral: "bg-muted text-foreground/80",
   };
@@ -317,7 +317,7 @@ export default function AdminExamResults({ loaderData }: Route.ComponentProps) {
               : "학생이 시험 결과를 입력하면 이곳에 표시됩니다."}
           </p>
           {hasFilter ? (
-            <Link to="/admin/exam-results" className="text-primary text-xs underline">
+            <Link to="/admin/exam-results" className="text-link text-xs underline">
               필터 초기화
             </Link>
           ) : null}
@@ -401,7 +401,7 @@ function ResultRow({
               variant="ghost"
               onClick={openCertificate}
               disabled={fetcher.state !== "idle"}
-              className="text-primary h-7 px-2 text-[11px]"
+              className="text-link h-7 px-2 text-[11px]"
             >
               <ExternalLinkIcon className="mr-1 size-3" />
               증빙 열기
@@ -411,7 +411,7 @@ function ResultRow({
                 href={certUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-primary block text-[11px] underline"
+                className="text-link block text-[11px] underline"
               >
                 서명 URL (5분)
               </a>

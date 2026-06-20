@@ -323,7 +323,7 @@ export default function AdminExamCaseLinks({
             <button
               type="button"
               onClick={() => patchParam("unlinked", null)}
-              className="text-primary mt-2 text-xs underline-offset-2 hover:underline"
+              className="text-link mt-2 text-xs underline-offset-2 hover:underline"
             >
               전체 보기
             </button>

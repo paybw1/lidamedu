@@ -196,7 +196,7 @@ export function StudentBottomBar({
             const cls = cn(
               "flex flex-col items-center gap-0.5 py-2 transition-colors",
               active
-                ? "text-primary"
+                ? "text-link"
                 : "text-muted-foreground hover:text-foreground",
               t.locked && LOCKED_DIM_CLASS,
             );
@@ -316,7 +316,7 @@ function GroupSheet({
               onClick={onPick}
               className={cn(
                 "rounded-md px-3 py-2 text-sm",
-                active ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted",
+                active ? "bg-primary/10 text-link font-semibold" : "hover:bg-muted",
               )}
             >
               {it.label}
@@ -362,8 +362,8 @@ function SubjectsSheet({
               className={cn(
                 "border-border rounded-md border px-2.5 py-1 text-xs",
                 active
-                  ? "bg-primary/10 text-primary border-primary font-semibold"
-                  : "bg-muted/30 hover:border-primary hover:text-primary",
+                  ? "bg-primary/10 text-link border-primary font-semibold"
+                  : "bg-muted/30 hover:border-primary hover:text-link",
               )}
             >
               {item.name}

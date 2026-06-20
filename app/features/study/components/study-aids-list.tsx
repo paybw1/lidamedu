@@ -30,7 +30,7 @@ const TYPE_META: Record<
   "article" | "case" | "problem" | "ox",
   { label: string; cls: string }
 > = {
-  article: { label: "조문", cls: "bg-primary/10 text-primary" },
+  article: { label: "조문", cls: "bg-primary/10 text-link" },
   case: {
     label: "판례",
     cls: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
@@ -107,7 +107,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={onReset}
-          className="text-primary ml-auto inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold"
+          className="text-link ml-auto inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold"
         >
           <RotateCcwIcon className="size-3" />
           초기화
@@ -571,7 +571,7 @@ export function CardHeaderRow({
 export function CardCta({ label }: { label: string }) {
   return (
     <div className="border-border/60 mt-2.5 flex justify-end border-t pt-2">
-      <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">
+      <span className="text-link inline-flex items-center gap-1 text-xs font-semibold">
         {label}
         <ArrowRightIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -650,7 +650,7 @@ export function EmptyState({
             ? "text-emerald-600 dark:text-emerald-400"
             : tone === "subdued"
               ? "text-muted-foreground"
-              : "text-primary",
+              : "text-link",
         )}
       >
         <Icon className="size-7" />

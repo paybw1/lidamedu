@@ -126,7 +126,7 @@ export default function AdminAiQnaFeedback({
             사용자가 👎 누른 답변 목록입니다. 사유·출처·질문을 함께 표시합니다.
             오답 패턴을 정리해 시스템 프롬프트 또는 콘텐츠 보강 작업으로
             연결하세요. 강사 Q&A 로 직접 답변하려면{" "}
-            <Link to="/qna" className="text-primary underline-offset-4 hover:underline">
+            <Link to="/qna" className="text-link underline-offset-4 hover:underline">
               Q&A 로 이동
             </Link>
             .
@@ -184,7 +184,7 @@ export default function AdminAiQnaFeedback({
                   <ReviewStatusBadge status={it.reviewStatus} />
                   <Link
                     to={`/admin/ai-qna/eval/new?fromMessage=${it.messageId}`}
-                    className="text-primary ml-auto inline-flex items-center gap-1 text-[11px] underline-offset-4 hover:underline"
+                    className="text-link ml-auto inline-flex items-center gap-1 text-[11px] underline-offset-4 hover:underline"
                   >
                     eval 로 승격 <ArrowRightIcon className="size-3" />
                   </Link>

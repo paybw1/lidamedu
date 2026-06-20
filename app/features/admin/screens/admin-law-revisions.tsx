@@ -226,7 +226,7 @@ function RevisionRow({
         <Link
           to={`/admin/laws/${lawCode}/revisions/${revision.lawRevisionId}`}
           viewTransition
-          className="text-primary inline-flex items-center gap-1 font-semibold hover:underline"
+          className="text-link inline-flex items-center gap-1 font-semibold hover:underline"
         >
           {revision.revisionNumber}
           <ChevronRightIcon className="text-muted-foreground size-3" />

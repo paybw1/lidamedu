@@ -178,7 +178,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
               key={s}
               to={`/admin/laws/${s}/revisions`}
               viewTransition
-              className="border-border hover:border-primary hover:text-primary rounded-full border bg-background px-2.5 py-1 text-[11px] font-medium transition-colors"
+              className="border-border hover:border-primary hover:text-link rounded-full border bg-background px-2.5 py-1 text-[11px] font-medium transition-colors"
             >
               {LAW_SUBJECTS[s].name}
             </Link>
@@ -253,7 +253,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                         <Link
                           to={`/subjects/${r.lawCode}`}
                           viewTransition
-                          className="hover:text-primary text-[13px] font-semibold"
+                          className="hover:text-link text-[13px] font-semibold"
                         >
                           {(LAW_SUBJECTS[r.lawCode as LawSubjectSlug]?.name ??
                             r.lawName) + KIND_SUFFIX[r.revisionKind]}
@@ -273,7 +273,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                             <Link
                               to={`/admin/laws/${r.lawCode}/revisions/${r.lawRevisionId}`}
                               viewTransition
-                              className="text-muted-foreground hover:text-primary ml-auto inline-flex items-center gap-0.5 text-[11px] font-semibold"
+                              className="text-muted-foreground hover:text-link ml-auto inline-flex items-center gap-0.5 text-[11px] font-semibold"
                             >
                               <PencilIcon className="size-3" /> 수정
                             </Link>
@@ -288,7 +288,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                             to={`/subjects/${r.lawCode}`}
                             viewTransition
                             className={cn(
-                              "text-primary text-[11px] font-semibold hover:underline",
+                              "text-link text-[11px] font-semibold hover:underline",
                               isStaff ? "" : "ml-auto",
                             )}
                           >
@@ -384,7 +384,7 @@ function AttachmentCell({
           "inline-flex h-7 min-w-[2.25rem] items-center justify-center gap-0.5 rounded-full px-2 text-[11px] font-bold transition-colors",
           expanded
             ? "bg-primary text-primary-foreground"
-            : "border-primary/40 text-primary hover:bg-primary/10 border",
+            : "border-primary/40 text-link hover:bg-primary/10 border",
         )}
       >
         O
@@ -467,7 +467,7 @@ function PdfView({ title, url }: { title: string; url: string | null }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+        className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
       >
         <ExternalLinkIcon className="size-3" /> 새 탭에서 열기
         <FileTextIcon className="size-3" /> PDF
@@ -494,7 +494,7 @@ function VideoView({ url }: { url: string | null }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+        className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
       >
         <PlayIcon className="size-3" /> 새 탭에서 열기 · {url}
       </a>

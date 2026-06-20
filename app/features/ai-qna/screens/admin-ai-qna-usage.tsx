@@ -131,7 +131,7 @@ export default function AdminAiQnaUsage({ loaderData }: Route.ComponentProps) {
         <header className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">
-              <UsersIcon className="text-primary size-5" /> 사용자별 월별 사용량
+              <UsersIcon className="text-link size-5" /> 사용자별 월별 사용량
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               `ai_messages.token_usage` 원본 기준. 향후 사용량 기반 청구에 그대로 활용.

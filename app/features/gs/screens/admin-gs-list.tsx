@@ -150,7 +150,7 @@ export default function AdminGsList({ loaderData }: Route.ComponentProps) {
         {filterActive ? (
           <Link
             to="/admin/gs"
-            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
+            className="text-link inline-flex items-center gap-1 px-1 text-xs font-semibold"
           >
             <RefreshCwIcon className="size-3" /> 초기화
           </Link>
@@ -185,7 +185,7 @@ export default function AdminGsList({ loaderData }: Route.ComponentProps) {
                 <Link
                   to={`/admin/gs/${r.roundId}`}
                   viewTransition
-                  className="text-primary hover:underline font-medium"
+                  className="text-link hover:underline font-medium"
                 >
                   {r.title}
                 </Link>
@@ -202,7 +202,7 @@ export default function AdminGsList({ loaderData }: Route.ComponentProps) {
               <TD align="right">
                 <Link
                   to={`/admin/gs/${r.roundId}`}
-                  className="text-primary text-xs font-semibold hover:underline"
+                  className="text-link text-xs font-semibold hover:underline"
                 >
                   편집
                 </Link>

@@ -392,7 +392,7 @@ export function CasesTree({
 
       {active ? (
         <div className="bg-accent/40 mx-2 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px]">
-          <GavelIcon className="text-primary size-3.5" />
+          <GavelIcon className="text-link size-3.5" />
           <span className="text-muted-foreground flex-1 truncate">
             트리 필터 활성
           </span>

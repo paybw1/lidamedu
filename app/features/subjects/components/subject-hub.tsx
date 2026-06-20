@@ -266,7 +266,7 @@ function BookmarkTab({
         "rounded-l-xl rounded-r-none border border-r-0 transition-all",
         // 비활성 기본
         "border-border bg-card text-muted-foreground",
-        "hover:bg-primary/[0.06] hover:text-primary hover:-translate-x-1.5",
+        "hover:bg-primary/[0.06] hover:text-link hover:-translate-x-1.5",
         // 활성(역상) — data-[state=active] 변형으로 기본값을 정확히 덮어쓴다 (light·dark).
         "data-[state=active]:border-primary data-[state=active]:z-10 data-[state=active]:translate-x-px",
         "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",

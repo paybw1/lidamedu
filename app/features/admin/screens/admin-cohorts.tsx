@@ -140,7 +140,7 @@ export default function AdminCohorts({ loaderData }: Route.ComponentProps) {
         {filterActive ? (
           <Link
             to="/admin/cohorts"
-            className="text-primary self-end inline-flex items-center gap-1 px-2 py-2 text-xs font-semibold"
+            className="text-link self-end inline-flex items-center gap-1 px-2 py-2 text-xs font-semibold"
           >
             <RefreshCwIcon className="size-3" />
             초기화
@@ -159,7 +159,7 @@ export default function AdminCohorts({ loaderData }: Route.ComponentProps) {
           {filterActive ? (
             <Link
               to="/admin/cohorts"
-              className="text-primary text-xs font-semibold hover:underline"
+              className="text-link text-xs font-semibold hover:underline"
             >
               필터 초기화
             </Link>
@@ -230,7 +230,7 @@ function CohortRow({ cohort }: { cohort: CohortListItem }) {
         <Link
           to={`/admin/cohorts/${cohort.cohortId}`}
           viewTransition
-          className="text-primary font-semibold hover:underline"
+          className="text-link font-semibold hover:underline"
         >
           {cohort.name}
         </Link>

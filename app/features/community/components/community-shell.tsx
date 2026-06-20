@@ -54,7 +54,7 @@ export function CommunityShell({
       {backLink ? (
         <Link
           to={backLink.to}
-          className="text-primary mb-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+          className="text-link mb-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
         >
           <span aria-hidden>←</span>
           {backLink.label}

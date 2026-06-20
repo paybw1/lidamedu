@@ -90,7 +90,7 @@ export default function AdminLawsHub({ loaderData }: Route.ComponentProps) {
 
       <div className="mt-6 rounded-xl border border-dashed border-border bg-muted/30 p-4">
         <p className="text-muted-foreground text-xs leading-relaxed">
-          체계도 트리는 <Link to="/admin/systematic-tree" className="text-primary underline">/admin/systematic-tree</Link> 에서
+          체계도 트리는 <Link to="/admin/systematic-tree" className="text-link underline">/admin/systematic-tree</Link> 에서
           JSON export / import 로 일괄 관리합니다.
         </p>
       </div>
@@ -117,7 +117,7 @@ function HubLink({
         {icon}
         {label}
       </span>
-      <ArrowRightIcon className="text-muted-foreground group-hover:text-primary size-3.5 transition-colors" />
+      <ArrowRightIcon className="text-muted-foreground group-hover:text-link size-3.5 transition-colors" />
     </Link>
   );
 }

@@ -218,7 +218,7 @@ function QuestionCard({ item }: { item: IssueIndexItem }) {
       </p>
       <div className="mt-2 flex items-center justify-between">
         {statusChip}
-        <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">
+        <span className="text-link inline-flex items-center gap-1 text-xs font-semibold">
           시작 <ArrowRightIcon className="size-3" />
         </span>
       </div>

@@ -364,7 +364,7 @@ function DistinguishedItem({
                     href={p.signedUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-primary ml-auto inline-flex items-center gap-0.5 font-semibold hover:underline"
+                    className="text-link ml-auto inline-flex items-center gap-0.5 font-semibold hover:underline"
                   >
                     <EyeIcon className="size-3" /> 풀사이즈
                   </a>

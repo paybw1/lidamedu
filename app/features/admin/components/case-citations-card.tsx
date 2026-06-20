@@ -233,7 +233,7 @@ export function CaseCitationsCard({
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <Link
                         to={`/admin/problems/${p.problemId}`}
-                        className="text-primary hover:underline inline-flex items-center gap-0.5"
+                        className="text-link hover:underline inline-flex items-center gap-0.5"
                       >
                         편집 <ArrowRightIcon className="size-3" />
                       </Link>

@@ -125,7 +125,7 @@ export default function AdminAnnouncements({
         {filterActive ? (
           <Link
             to="/admin/announcements"
-            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
+            className="text-link inline-flex items-center gap-1 px-1 text-xs font-semibold"
           >
             초기화
           </Link>

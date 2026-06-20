@@ -476,7 +476,7 @@ function ArticleViewerInner({
               href={
                 typeof window !== "undefined" ? window.location.pathname : "."
               }
-              className="text-primary ml-auto hover:underline"
+              className="text-link ml-auto hover:underline"
             >
               현재 시점으로 돌아가기 →
             </a>
@@ -679,7 +679,7 @@ function ArticleViewerInner({
                 <div className="min-w-0">
                   {/* Law name chip + importance stars */}
                   <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                    <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+                    <span className="bg-primary/10 text-link inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
                       {subject.name}
                     </span>
                     {article.importance >= 1 ? (
@@ -722,7 +722,7 @@ function ArticleViewerInner({
 
                   {/* Article headline */}
                   <h1 className="text-foreground flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-[28px] leading-tight font-extrabold tracking-tight break-keep md:text-[30px]">
-                    <span className="text-primary">
+                    <span className="text-link">
                       {article.displayLabel.split(/\s+/)[0]}
                     </span>
                     <span>

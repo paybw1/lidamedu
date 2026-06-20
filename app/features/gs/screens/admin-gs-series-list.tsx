@@ -101,7 +101,7 @@ export default function AdminGsSeriesList({
                 <TD>
                   <Link
                     to={`/admin/gs/series/${s.seriesId}`}
-                    className="text-primary hover:underline font-medium"
+                    className="text-link hover:underline font-medium"
                   >
                     {s.title}
                   </Link>
@@ -133,7 +133,7 @@ export default function AdminGsSeriesList({
                 <TD align="right">
                   <Link
                     to={`/admin/gs/series/${s.seriesId}/stats`}
-                    className="text-primary text-xs font-semibold hover:underline"
+                    className="text-link text-xs font-semibold hover:underline"
                   >
                     통계
                   </Link>

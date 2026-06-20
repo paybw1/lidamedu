@@ -220,7 +220,7 @@ function PaperCard({
             ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
             : status === "locked"
               ? "bg-muted text-muted-foreground"
-              : "bg-primary/10 text-primary",
+              : "bg-primary/10 text-link",
         )}
       >
         {index}

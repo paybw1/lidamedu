@@ -58,7 +58,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
           <Link
             to={`/subjects/${subject.slug}?tab=problems`}
             viewTransition
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-link hover:text-link/80 transition-colors"
           >
             <ArrowLeftIcon className="size-3.5" />
             {subject.name} 문제 색인
@@ -67,7 +67,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
 
         {/* Header */}
         <header className="mb-6">
-          <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
+          <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
             <ShuffleIcon className="size-3.5" />
             정오문제 퀴즈
           </p>

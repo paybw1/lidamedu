@@ -506,7 +506,7 @@ export default function AdminBlanksEdit({ loaderData }: Route.ComponentProps) {
                   <p className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
                     <MousePointerClickIcon className="size-3" />
                     드래그 →{" "}
-                    <span className="text-primary font-mono font-semibold">
+                    <span className="text-link font-mono font-semibold">
                       #{activeIdx ?? "?"}
                     </span>{" "}
                     에 채우기 또는 새 빈칸 추가

@@ -19,7 +19,7 @@ type ChipTone =
 
 const CHIP_TONE: Record<ChipTone, string> = {
   neutral: "bg-muted text-foreground/80",
-  primary: "bg-primary/10 text-primary",
+  primary: "bg-primary/10 text-link",
   emerald: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   coral: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
   amber: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
@@ -62,7 +62,7 @@ export function NewBadge({ children = "NEW" }: { children?: ReactNode }) {
 /* ── StatTile — KPI 타일 ──────────────────────────────────────────────── */
 
 const STAT_TONE: Record<string, string> = {
-  primary: "text-primary",
+  primary: "text-link",
   coral: "text-rose-600 dark:text-rose-400",
   emerald: "text-emerald-600 dark:text-emerald-400",
   amber: "text-amber-700 dark:text-amber-400",
@@ -195,7 +195,7 @@ export function EmptyState({
             ? "text-emerald-600 dark:text-emerald-400"
             : tone === "subdued"
               ? "text-muted-foreground"
-              : "text-primary",
+              : "text-link",
         )}
       >
         <Icon className="size-7" />

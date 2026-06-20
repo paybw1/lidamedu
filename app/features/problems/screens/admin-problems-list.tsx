@@ -149,7 +149,7 @@ export default function AdminProblemsList({
               key={n.nodeId}
               to={`/admin/problems/system/${n.nodeId}?subject=${subject}`}
               viewTransition
-              className="bg-primary/10 text-primary border-primary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
+              className="bg-primary/10 text-link border-primary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
               title={`${n.displayLabel} — 한 화면에서 일괄 편집`}
             >
               {n.displayLabel} ({n.problemCount})
@@ -271,7 +271,7 @@ export default function AdminProblemsList({
         {filterActive ? (
           <Link
             to={`/admin/problems?subject=${subject}`}
-            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
+            className="text-link inline-flex items-center gap-1 px-1 text-xs font-semibold"
           >
             <RefreshCwIcon className="size-3" /> 초기화
           </Link>
@@ -310,7 +310,7 @@ export default function AdminProblemsList({
               <TR key={p.problemId}>
                 <TD mono>
                   {p.primaryArticleNumber ? (
-                    <span className="text-primary">
+                    <span className="text-link">
                       제{p.primaryArticleNumber}조
                     </span>
                   ) : (
@@ -366,7 +366,7 @@ export default function AdminProblemsList({
                 <TD align="right">
                   <Link
                     to={editTo}
-                    className="text-primary text-xs font-semibold hover:underline"
+                    className="text-link text-xs font-semibold hover:underline"
                   >
                     편집
                   </Link>

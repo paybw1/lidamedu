@@ -322,7 +322,7 @@ export default function AdminProblemNew({
                     흐름을 탈 수 있습니다. 새 회차는{" "}
                     <Link
                       to="/admin/gs/new"
-                      className="text-primary hover:underline"
+                      className="text-link hover:underline"
                       target="_blank"
                     >
                       /admin/gs/new
@@ -378,7 +378,7 @@ export default function AdminProblemNew({
                     에서 학생이 풀이를 시작할 수 있습니다. 새 pack은{" "}
                     <Link
                       to="/latest/mcq"
-                      className="text-primary hover:underline"
+                      className="text-link hover:underline"
                       target="_blank"
                     >
                       /latest/mcq

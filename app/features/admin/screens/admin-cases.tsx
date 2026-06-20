@@ -289,7 +289,7 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
         {filterActive ? (
           <Link
             to={`/admin/cases?law=${lawCode}`}
-            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
+            className="text-link inline-flex items-center gap-1 px-1 text-xs font-semibold"
           >
             초기화
           </Link>
@@ -493,7 +493,7 @@ function CaseMapperCard({
           to={`/admin/cases/edit/${item.caseId}?returnTo=${encodeURIComponent(
             location.pathname + location.search,
           )}`}
-          className="text-primary hover:text-primary/80 ml-auto inline-flex items-center gap-1 text-xs font-semibold"
+          className="text-link hover:text-link/80 ml-auto inline-flex items-center gap-1 text-xs font-semibold"
         >
           <PencilIcon className="size-3" /> 수정
         </Link>
@@ -507,7 +507,7 @@ function CaseMapperCard({
         <Link
           to={`/subjects/${lawCode}/cases/${item.caseId}`}
           viewTransition
-          className="hover:text-primary block text-sm font-medium"
+          className="hover:text-link block text-sm font-medium"
         >
           {item.summaryFirstTitle ?? item.summaryTitle ?? item.caseTitle}
         </Link>
@@ -637,7 +637,7 @@ function ArticleChip({
       <Link
         to={`/subjects/${lawCode}/articles/${articleNumber}`}
         viewTransition
-        className="hover:text-primary"
+        className="hover:text-link"
       >
         제{articleNumber}조
       </Link>

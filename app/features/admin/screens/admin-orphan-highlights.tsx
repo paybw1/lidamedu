@@ -232,7 +232,7 @@ function OrphanRow({ item }: { item: OrphanHighlight }) {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-primary ml-1 hover:underline"
+            className="text-link ml-1 hover:underline"
           >
             {expanded ? "접기" : "펼치기"}
           </button>

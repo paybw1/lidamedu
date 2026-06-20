@@ -250,7 +250,7 @@ export default function AdminProblemStats({
                   {p.primaryArticleNumber ? (
                     <Link
                       to={`/subjects/${subject}/articles/${p.primaryArticleNumber}`}
-                      className="text-primary text-xs hover:underline"
+                      className="text-link text-xs hover:underline"
                     >
                       {p.primaryArticleLabel ?? p.primaryArticleNumber}
                     </Link>
@@ -336,7 +336,7 @@ export default function AdminProblemStats({
                   {it.relatedArticleNumber ? (
                     <Link
                       to={`/subjects/${subject}/articles/${it.relatedArticleNumber}`}
-                      className="text-primary text-xs hover:underline"
+                      className="text-link text-xs hover:underline"
                     >
                       {it.relatedArticleLabel ?? it.relatedArticleNumber}
                     </Link>

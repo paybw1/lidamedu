@@ -157,7 +157,7 @@ function SummaryCard({
 }) {
   const toneMap: Record<NonNullable<typeof tone>, string> = {
     emerald: "text-emerald-600 dark:text-emerald-400",
-    blue: "text-primary",
+    blue: "text-link",
     violet: "text-violet-700 dark:text-violet-300",
     amber: "text-amber-700 dark:text-amber-400",
   };
@@ -350,7 +350,7 @@ export default function AdminPasserCases({
           </p>
           <Link
             to="/admin/exam-results"
-            className="text-primary mt-1 text-xs underline"
+            className="text-link mt-1 text-xs underline"
           >
             합격 결과 운영 화면 →
           </Link>

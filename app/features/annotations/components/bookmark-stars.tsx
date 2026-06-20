@@ -189,7 +189,7 @@ function BookmarkStepRow({
                 setDraft(displayNote ?? "");
                 setEditing(true);
               }}
-              className="text-primary text-xs hover:underline"
+              className="text-link text-xs hover:underline"
             >
               {displayNote ? "수정" : "추가"}
             </button>

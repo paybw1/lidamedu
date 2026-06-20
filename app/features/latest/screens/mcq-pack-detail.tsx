@@ -114,7 +114,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
           <p className="inline-flex items-center gap-1.5 text-sm font-bold tracking-tight">
-            <PlayIcon className="text-primary size-4" /> 응시 시작
+            <PlayIcon className="text-link size-4" /> 응시 시작
           </p>
           <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
             {mockPack
@@ -267,7 +267,7 @@ function OxSessionsPanel({ sessions }: { sessions: OxSessionRow[] }) {
     <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border shadow-sm">
       <div className="border-border flex items-center justify-between border-b px-4 py-3">
         <p className="text-sm font-bold tracking-tight">
-          <CheckCircle2Icon className="text-primary mr-1.5 inline size-4" />
+          <CheckCircle2Icon className="text-link mr-1.5 inline size-4" />
           내 정오문제 응시 이력{" "}
           <span className="text-muted-foreground tabular-nums">
             {sessions.length}
@@ -275,7 +275,7 @@ function OxSessionsPanel({ sessions }: { sessions: OxSessionRow[] }) {
         </p>
         <Link
           to="/me/ox-sessions"
-          className="text-primary text-xs underline-offset-4 hover:underline"
+          className="text-link text-xs underline-offset-4 hover:underline"
         >
           전체 보기 →
         </Link>
@@ -358,7 +358,7 @@ function ProblemRow({
           <input type="hidden" name="startAt" value={problem.problemId} />
           <button
             type="submit"
-            className="hover:text-primary inline-flex w-full items-start gap-1 text-left text-[13px] leading-snug"
+            className="hover:text-link inline-flex w-full items-start gap-1 text-left text-[13px] leading-snug"
           >
             <span className="line-clamp-2">{problem.bodySnippet}</span>
             <ChevronRightIcon className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />

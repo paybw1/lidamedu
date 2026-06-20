@@ -67,7 +67,7 @@ export default function Consent({ loaderData, actionData }: Route.ComponentProps
         <Card>
           <CardHeader className="space-y-2 px-6 pt-6 pb-2">
             <div className="flex items-center gap-2">
-              <ShieldCheckIcon className="text-primary size-6" />
+              <ShieldCheckIcon className="text-link size-6" />
               <h1 className="text-xl font-bold tracking-tight">
                 학습 데이터 활용 동의
               </h1>
@@ -92,7 +92,7 @@ export default function Consent({ loaderData, actionData }: Route.ComponentProps
                 <Link
                   to="/legal/terms-of-service"
                   target="_blank"
-                  className="text-primary underline"
+                  className="text-link underline"
                 >
                   이용약관
                 </Link>
@@ -100,7 +100,7 @@ export default function Consent({ loaderData, actionData }: Route.ComponentProps
                 <Link
                   to="/legal/privacy-policy"
                   target="_blank"
-                  className="text-primary underline"
+                  className="text-link underline"
                 >
                   개인정보처리방침
                 </Link>
@@ -109,7 +109,7 @@ export default function Consent({ loaderData, actionData }: Route.ComponentProps
             </div>
 
             <div className="text-muted-foreground bg-primary/5 flex items-start gap-2 rounded-md p-3 text-[13px] leading-relaxed">
-              <CheckCircle2Icon className="text-primary mt-0.5 size-4 shrink-0" />
+              <CheckCircle2Icon className="text-link mt-0.5 size-4 shrink-0" />
               <span>
                 합격 결과 인증(합격증 제출)은 <strong>별개의 선택 사항</strong>
                 이며, 거부하셔도 서비스 이용에 제한이 없습니다.

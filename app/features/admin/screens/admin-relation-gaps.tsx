@@ -227,7 +227,7 @@ function GapSection({
     <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
       <div className="border-border bg-muted/60 flex items-center justify-between border-b px-4 py-3">
         <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
-          <Icon className="text-primary size-4" />
+          <Icon className="text-link size-4" />
           {title}
         </h2>
         <span

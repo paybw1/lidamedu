@@ -315,7 +315,7 @@ function AiAdvisorPanel({
     return (
       <div className="border-primary/20 bg-primary/[0.03] rounded-2xl border p-3">
         <div className="flex items-start gap-2">
-          <SparklesIcon className="text-primary mt-0.5 size-4 shrink-0" />
+          <SparklesIcon className="text-link mt-0.5 size-4 shrink-0" />
           <div className="flex-1 text-xs leading-relaxed">
             <p className="text-foreground font-bold">AI 의견 받기 (선택)</p>
             <p className="text-muted-foreground mt-0.5">

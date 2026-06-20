@@ -233,7 +233,7 @@ export default function AdminCohortDetail({
         <Card>
           <CardHeader className="px-4 pb-2">
             <p className="inline-flex items-center gap-1 text-sm font-semibold">
-              <PlusIcon className="text-primary size-4" /> 멤버 추가
+              <PlusIcon className="text-link size-4" /> 멤버 추가
             </p>
             <p className="text-muted-foreground text-xs">
               이름 또는 이메일로 학생을 검색해 추가하세요.
@@ -322,7 +322,7 @@ function MemberRow({
           <Link
             to={`/admin/students/${member.profileId}`}
             viewTransition
-            className="hover:text-primary text-sm font-medium"
+            className="hover:text-link text-sm font-medium"
           >
             {member.name}
           </Link>
@@ -448,7 +448,7 @@ function CurriculumSection({
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
-            <BookCheckIcon className="text-primary size-4" />
+            <BookCheckIcon className="text-link size-4" />
             커리큘럼 ({applied.length})
           </p>
           {candidates.length > 0 ? (
@@ -517,7 +517,7 @@ function CurriculumAppliedRow({ row }: { row: CohortCurriculumRow }) {
       <Link
         to={`/admin/curricula/${row.curriculumId}`}
         viewTransition
-        className="hover:text-primary min-w-0 flex-1 truncate text-sm font-medium"
+        className="hover:text-link min-w-0 flex-1 truncate text-sm font-medium"
       >
         {row.curriculumName}
       </Link>

@@ -240,7 +240,7 @@ function ReportCard({ item }: { item: ReportItem }) {
                   to={targetUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-primary text-[11px] hover:underline"
+                  className="text-link text-[11px] hover:underline"
                 >
                   대상 열기 ↗
                 </Link>

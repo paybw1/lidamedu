@@ -161,7 +161,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
     >
       {isGraded ? (
         <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center">
-          <span className="bg-primary/10 text-primary inline-flex size-14 shrink-0 items-center justify-center rounded-2xl">
+          <span className="bg-primary/10 text-link inline-flex size-14 shrink-0 items-center justify-center rounded-2xl">
             <AwardIcon className="size-7" />
           </span>
           <div className="min-w-0 flex-1">
@@ -277,7 +277,7 @@ function StatePanel({
         className={cn(
           "bg-background mb-1 inline-flex size-14 items-center justify-center rounded-2xl",
           tone === "primary"
-            ? "text-primary"
+            ? "text-link"
             : "text-amber-600 dark:text-amber-400",
         )}
       >
@@ -320,7 +320,7 @@ function ResultPageCard({
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="text-primary ml-auto inline-flex items-center gap-0.5 text-[11px] font-semibold hover:underline"
+            className="text-link ml-auto inline-flex items-center gap-0.5 text-[11px] font-semibold hover:underline"
           >
             <EyeIcon className="size-3" /> 풀사이즈
           </a>
@@ -347,7 +347,7 @@ function ResultPageCard({
             PDF 풀사이즈 열기
           </a>
         ) : (
-          <div className="bg-primary/[0.06] text-primary flex aspect-[3/4] items-center justify-center rounded-lg">
+          <div className="bg-primary/[0.06] text-link flex aspect-[3/4] items-center justify-center rounded-lg">
             <FileTextIcon className="size-6" />
           </div>
         )}

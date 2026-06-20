@@ -60,7 +60,7 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
     <div className="bg-background">
       {/* 과목 탭 — 클릭 시 같은 화면에서 내용만 교체(페이지 전환 아님). */}
       <div className="mx-auto w-full max-w-screen-lg px-5 pt-6 md:px-10">
-        <p className="text-primary mb-2 font-mono text-[11px] font-bold tracking-widest uppercase">
+        <p className="text-link mb-2 font-mono text-[11px] font-bold tracking-widest uppercase">
           자연과학 · 1차 필수
         </p>
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -78,7 +78,7 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
                   "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
                   active
                     ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-card hover:border-primary hover:text-primary",
+                    : "border-border bg-card hover:border-primary hover:text-link",
                 )}
               >
                 <span aria-hidden="true">{m.emoji}</span>

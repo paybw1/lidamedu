@@ -127,7 +127,7 @@ export default function AdminGsSeriesStats({
               <TD>
                 <Link
                   to={`/admin/gs/${r.roundId}/stats`}
-                  className="text-primary hover:underline font-medium"
+                  className="text-link hover:underline font-medium"
                 >
                   {r.title}
                 </Link>
@@ -150,7 +150,7 @@ export default function AdminGsSeriesStats({
               <TD align="right">
                 <Link
                   to={`/admin/gs/${r.roundId}/stats`}
-                  className="text-primary text-xs font-semibold hover:underline"
+                  className="text-link text-xs font-semibold hover:underline"
                 >
                   상세
                 </Link>

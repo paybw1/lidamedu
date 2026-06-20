@@ -371,7 +371,7 @@ export default function AdminStudentDetail({
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
                           <TableCell
                             colSpan={4}
-                            className="text-primary py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                            className="text-link py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
                           >
                             {g.label}
                           </TableCell>
@@ -456,7 +456,7 @@ export default function AdminStudentDetail({
         <Card>
           <CardHeader>
             <p className="inline-flex items-center gap-1 text-sm font-semibold">
-              <ClockIcon className="text-primary size-4" /> 최근 활동
+              <ClockIcon className="text-link size-4" /> 최근 활동
             </p>
             <p className="text-muted-foreground text-xs">최근 12건</p>
           </CardHeader>
@@ -550,7 +550,7 @@ function CohortComparisonCard({
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
-            <UsersIcon className="text-primary size-4" />
+            <UsersIcon className="text-link size-4" />
             반 평균 대비 — {c.cohortName}
           </p>
           <div className="flex items-center gap-2">
@@ -574,7 +574,7 @@ function CohortComparisonCard({
             )}
             <Link
               to={`/admin/cohorts/${c.cohortId}/stats`}
-              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+              className="text-link inline-flex items-center gap-1 text-xs hover:underline"
             >
               반 통계 <ArrowRightIcon className="size-3" />
             </Link>
@@ -864,7 +864,7 @@ function NotesSection({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
-            <MessageSquareIcon className="text-primary size-4" />
+            <MessageSquareIcon className="text-link size-4" />
             상담 코멘트 ({notes.length})
           </p>
           <Button

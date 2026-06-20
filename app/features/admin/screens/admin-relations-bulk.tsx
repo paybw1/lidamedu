@@ -240,7 +240,7 @@ export default function AdminRelationsBulk({
         <>
           조문 ↔ 판례 매핑을 TSV/CSV 로 붙여넣어 한번에 등록합니다. 먼저 검증으로 결과를
           확인한 뒤 적용하세요. 문제 ↔ 판례 매칭은{" "}
-          <Link to="/admin/relations/exam-cases" className="text-primary underline">
+          <Link to="/admin/relations/exam-cases" className="text-link underline">
             기출문제 판례 매칭
           </Link>{" "}
           화면을 이용하세요.
@@ -251,7 +251,7 @@ export default function AdminRelationsBulk({
       {/* 입력 패널 */}
       <div className="border-border bg-card mb-4 overflow-hidden rounded-xl border shadow-sm">
         <div className="border-border bg-muted/60 flex items-center gap-2 border-b px-4 py-3">
-          <Link2Icon className="text-primary size-4" />
+          <Link2Icon className="text-link size-4" />
           <span className="text-sm font-semibold">매핑 데이터 입력</span>
         </div>
         <div className="p-4">

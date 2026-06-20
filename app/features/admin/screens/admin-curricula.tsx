@@ -104,7 +104,7 @@ export default function AdminCurricula({ loaderData }: Route.ComponentProps) {
                 <Link
                   to={`/admin/curricula/${c.curriculumId}`}
                   viewTransition
-                  className="hover:text-primary text-[13px] font-medium"
+                  className="hover:text-link text-[13px] font-medium"
                 >
                   {c.name}
                 </Link>
@@ -152,7 +152,7 @@ export default function AdminCurricula({ loaderData }: Route.ComponentProps) {
                 <Link
                   to={`/admin/curricula/${c.curriculumId}`}
                   viewTransition
-                  className="text-primary text-xs font-semibold hover:underline"
+                  className="text-link text-xs font-semibold hover:underline"
                 >
                   편집
                 </Link>

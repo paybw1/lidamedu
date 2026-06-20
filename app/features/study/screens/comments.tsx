@@ -209,7 +209,7 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : null}
               <div className="border-primary bg-primary/[0.06] flex gap-2 rounded-lg border-l-[3px] px-3 py-2.5">
-                <MessageSquareTextIcon className="text-primary mt-0.5 size-3.5 shrink-0" />
+                <MessageSquareTextIcon className="text-link mt-0.5 size-3.5 shrink-0" />
                 <span className="text-foreground/90 text-[13.5px] leading-relaxed whitespace-pre-line">
                   {c.bodyMd}
                 </span>

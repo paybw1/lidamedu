@@ -198,7 +198,7 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
             value={Array.from(selected).join(",")}
           />
           <div className="mb-2 flex items-center gap-2">
-            <SendIcon className="text-primary size-4" aria-hidden />
+            <SendIcon className="text-link size-4" aria-hidden />
             <p className="text-sm font-bold">
               일괄 격려 메시지 — {selected.size}명 대상
             </p>

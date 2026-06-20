@@ -352,7 +352,7 @@ function OxReviewRow({
           <Link
             to={`/subjects/${subject}/articles/${item.relatedArticleNumber}`}
             viewTransition
-            className="text-primary text-xs hover:underline"
+            className="text-link text-xs hover:underline"
           >
             {item.relatedArticleLabel ?? item.relatedArticleNumber}
           </Link>

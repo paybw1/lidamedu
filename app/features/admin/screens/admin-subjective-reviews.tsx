@@ -284,7 +284,7 @@ function ReviewDetail({ item }: { item: PendingReviewItem }) {
         ) : null}
         <Link
           to={`/admin/problems/${item.problemId}`}
-          className="text-primary ml-auto inline-flex items-center gap-1 font-semibold hover:underline"
+          className="text-link ml-auto inline-flex items-center gap-1 font-semibold hover:underline"
         >
           <ExternalLinkIcon className="size-3" /> 원본 문제 열기
         </Link>

@@ -111,7 +111,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
             <Link
               to={target.href}
               viewTransition
-              className="text-primary ml-auto inline-flex items-center gap-1 text-[11px] font-semibold hover:underline"
+              className="text-link ml-auto inline-flex items-center gap-1 text-[11px] font-semibold hover:underline"
             >
               {target.label} <ExternalLinkIcon className="size-3" />
             </Link>

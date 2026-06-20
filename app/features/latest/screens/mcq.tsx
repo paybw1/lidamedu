@@ -443,7 +443,7 @@ function PackRow({
           <button
             type="submit"
             disabled={pack.problemCount === 0}
-            className="hover:text-primary inline-flex items-center gap-1 text-left text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className="hover:text-link inline-flex items-center gap-1 text-left text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             title={
               isMock
                 ? "모의고사 응시 — 타이머 기반"
@@ -451,9 +451,9 @@ function PackRow({
             }
           >
             {isMock ? (
-              <ClockIcon className="text-primary size-3.5 shrink-0" />
+              <ClockIcon className="text-link size-3.5 shrink-0" />
             ) : (
-              <PlayIcon className="text-primary size-3.5 shrink-0" />
+              <PlayIcon className="text-link size-3.5 shrink-0" />
             )}
             {pack.title}
           </button>

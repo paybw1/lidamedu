@@ -71,7 +71,7 @@ export function AdminSubscriptionPanel({
     <section className="border-border bg-card rounded-2xl border p-5 shadow-sm">
       <header className="mb-4 flex flex-wrap items-center gap-2">
         <h3 className="inline-flex items-center gap-2 text-base font-bold tracking-tight">
-          <CreditCardIcon className="text-primary size-4" /> 수강권·결제
+          <CreditCardIcon className="text-link size-4" /> 수강권·결제
         </h3>
         <Badge variant="outline" className="text-xs">
           누적 결제 {fmtKrw(totalPaid)}

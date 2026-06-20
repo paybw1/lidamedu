@@ -344,7 +344,7 @@ function PeerMatrix({
                   {columns.map((c) => (
                     <td
                       key={c.assignmentId}
-                      className="text-primary border-l px-3 py-2.5 text-right text-base font-extrabold tabular-nums"
+                      className="text-link border-l px-3 py-2.5 text-right text-base font-extrabold tabular-nums"
                     >
                       {totalsByCol[c.assignmentId]}
                     </td>
@@ -568,7 +568,7 @@ function QuestionMatrixCard({
                 {columns.map((c) => (
                   <td
                     key={c.assignmentId}
-                    className="text-primary border-l px-2 py-2 text-center tabular-nums"
+                    className="text-link border-l px-2 py-2 text-center tabular-nums"
                   >
                     {subtotalsByCol[c.assignmentId]?.[question.questionId] ?? 0}
                   </td>
@@ -643,7 +643,7 @@ function AnswerPagesPreview({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="text-primary hover:text-primary/80 inline-flex items-center gap-1 text-[11px]"
+        className="text-link hover:text-link/80 inline-flex items-center gap-1 text-[11px]"
       >
         <EyeIcon className="size-3" />
         페이지 {pages.length}개 {open ? "접기" : "펼치기"}
@@ -713,7 +713,7 @@ function PeerPageView({
             href={signedUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary font-semibold hover:underline"
+            className="text-link font-semibold hover:underline"
           >
             풀
           </a>

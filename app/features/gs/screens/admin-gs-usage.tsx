@@ -143,7 +143,7 @@ export default function AdminGsUsage({ loaderData }: Route.ComponentProps) {
                 className={cn(
                   "rounded-full px-2 py-0.5",
                   d === days
-                    ? "bg-primary/10 text-primary font-bold"
+                    ? "bg-primary/10 text-link font-bold"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -318,7 +318,7 @@ function TopRoundsTable({ rows }: { rows: RoundUsageRow[] }) {
           <TD>
             <Link
               to={`/admin/gs/${r.roundId}/stats`}
-              className="text-primary text-xs hover:underline"
+              className="text-link text-xs hover:underline"
             >
               회차 통계 →
             </Link>

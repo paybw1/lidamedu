@@ -179,7 +179,7 @@ function NotificationBody({ item }: { item: NotificationItem }) {
     <>
       <CardHeader className="px-4 pb-2">
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <Icon className="text-primary size-4 shrink-0" />
+          <Icon className="text-link size-4 shrink-0" />
           <Badge variant={isUnread ? "default" : "outline"}>{label}</Badge>
           {isUnread ? (
             <Badge variant="destructive" className="text-[10px]">

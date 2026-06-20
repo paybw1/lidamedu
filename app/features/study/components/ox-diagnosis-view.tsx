@@ -341,7 +341,7 @@ function CrossMatrix({
                       <div className="space-y-0.5">
                         <Link
                           to={`/subjects/${node.lawCode}/systematic/${node.nodeId}`}
-                          className="text-linkhover:underline"
+                          className="text-link hover:underline"
                           viewTransition
                         >
                           {node.label}
@@ -349,7 +349,7 @@ function CrossMatrix({
                         {audience === "self" ? (
                           <Link
                             to={`/study/srs/ox?node=${node.nodeId}&subject=${node.lawCode}`}
-                            className="text-muted-foreground hover:text-linkblock text-[11px]"
+                            className="text-muted-foreground hover:text-link block text-[11px]"
                             viewTransition
                           >
                             ↻ 이 단원 다시 풀기

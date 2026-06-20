@@ -554,7 +554,7 @@ function Inner({
             <CardHeader className="px-6 pt-5 pb-4">
               {/* eyebrow + 형제 노드 ←/→ — 같은 parent 안 ord 순. 조문 viewer 와 동일 위치. */}
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-primary text-[11px] font-bold tracking-widest uppercase">
+                <p className="text-link text-[11px] font-bold tracking-widest uppercase">
                   {subject.name} · 체계도 노드{" "}
                   {nodePrevNext.total > 1 ? (
                     <span className="text-muted-foreground ml-1 tracking-normal normal-case">
@@ -730,9 +730,9 @@ function Inner({
                         <Link
                           to={`/subjects/${subject.slug}/articles/${a.articleNumber}`}
                           viewTransition
-                          className="hover:text-primary group inline-flex items-baseline gap-0"
+                          className="hover:text-link group inline-flex items-baseline gap-0"
                         >
-                          <h2 className="text-foreground group-hover:text-primary text-[22px] leading-snug font-bold tracking-tight transition-colors">
+                          <h2 className="text-foreground group-hover:text-link text-[22px] leading-snug font-bold tracking-tight transition-colors">
                             {a.displayLabel}
                           </h2>
                         </Link>

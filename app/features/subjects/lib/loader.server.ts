@@ -423,7 +423,7 @@ const PROBLEM_SORTS: readonly ProblemSort[] = [
   "newest",
 ];
 
-function parseProblemFilters(url: URL): ProblemFiltersApplied {
+export function parseProblemFilters(url: URL): ProblemFiltersApplied {
   const f: ProblemFiltersApplied = {};
   const origin = url.searchParams.get("p_origin");
   if (origin && (PROBLEM_ORIGINS as readonly string[]).includes(origin)) {
@@ -470,6 +470,101 @@ function parseProblemFilters(url: URL): ProblemFiltersApplied {
   const im = parseLevel(url.searchParams.get("p_importance"), 3);
   if (im > 0) f.importanceMin = im;
   return f;
+}
+
+// 문제 목록 표시 파이프라인(순수) — 난이도 필터 → 정렬 → 즐겨찾기 → 중요도 → 단원.
+// 학습과목 탭(loadSubjectHub)과 문제 뷰어 prev/next(listDisplayedProblems)가 공유해
+// "표시 목록 순서 == prev/next 순서" 정합을 보장한다(feat: 색인 그룹 내 prev/next).
+export function applyProblemListView(
+  problems: ProblemListItem[],
+  aggStats: Record<string, ProblemAggregateStats>,
+  filters: ProblemFiltersApplied,
+  ctx: { bookmarkedIds: Set<string> | null; nodeProblemIds: Set<string> | null },
+): ProblemListItem[] {
+  let out = problems;
+  if (filters.difficulty) {
+    out = out.filter((p) => {
+      const agg = aggStats[p.problemId];
+      if (filters.difficulty === "no_data") return !agg || agg.bucket === null;
+      return agg?.bucket === filters.difficulty;
+    });
+  }
+  const sort = filters.sort ?? "number";
+  if (sort !== "number") {
+    out = [...out].sort((a, b) => {
+      if (sort === "newest") {
+        const ya = a.year ?? 0;
+        const yb = b.year ?? 0;
+        if (ya !== yb) return yb - ya;
+        return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
+      }
+      const accA = aggStats[a.problemId]?.accuracyPct;
+      const accB = aggStats[b.problemId]?.accuracyPct;
+      // null (데이터 없음) 은 항상 뒤로.
+      if (accA === null || accA === undefined) return 1;
+      if (accB === null || accB === undefined) return -1;
+      return sort === "hardest" ? accA - accB : accB - accA;
+    });
+  }
+  if (filters.bookmarkMin && filters.bookmarkMin > 0 && ctx.bookmarkedIds) {
+    out = out.filter((p) => ctx.bookmarkedIds!.has(p.problemId));
+  }
+  if (filters.importanceMin && filters.importanceMin > 0) {
+    const min = filters.importanceMin;
+    out = out.filter((p) => p.importance >= min);
+  }
+  if (ctx.nodeProblemIds) {
+    out = out.filter((p) => ctx.nodeProblemIds!.has(p.problemId));
+  }
+  return out;
+}
+
+// 문제 뷰어 prev/next 용 — 탭과 동일 조건(필터·정렬·단원)의 표시 목록을 그대로 재현.
+// 뷰어 loader 가 ?list=1 + 필터 컨텍스트로 호출 → 인접 문제 = "그 색인 그룹" 이웃.
+export async function listDisplayedProblems(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  filters: ProblemFiltersApplied,
+  opts: { userId: string | null; nodeId: string | null },
+): Promise<ProblemListItem[]> {
+  const problems = await listProblemsBySubject(
+    client,
+    lawCode,
+    groupPastExamOrigin(filters),
+  );
+  // 난이도 필터·난이도 정렬에만 aggStats 필요 — 그 외엔 생략(쿼리 절약).
+  const aggStats: Record<string, ProblemAggregateStats> = {};
+  const needsAgg =
+    filters.difficulty != null ||
+    (filters.sort != null && filters.sort !== "number");
+  if (needsAgg) {
+    const aggMap = await getProblemStatsBulk(
+      client,
+      problems.map((p) => p.problemId),
+    );
+    for (const [pid, s] of aggMap) aggStats[pid] = s;
+  }
+  let bookmarkedIds: Set<string> | null = null;
+  if (filters.bookmarkMin && filters.bookmarkMin > 0) {
+    const refs = opts.userId
+      ? await listBookmarkedProblems(client, opts.userId, {
+          lawCode,
+          minStar: filters.bookmarkMin,
+        })
+      : [];
+    bookmarkedIds = new Set(refs.map((r) => r.problemId));
+  }
+  let nodeProblemIds: Set<string> | null = null;
+  if (opts.nodeId) {
+    const seq = await getSystematicNodeProblemSequence(client, opts.nodeId);
+    nodeProblemIds = seq
+      ? new Set(seq.problems.map((p) => p.problemId))
+      : new Set();
+  }
+  return applyProblemListView(problems, aggStats, filters, {
+    bookmarkedIds,
+    nodeProblemIds,
+  });
 }
 
 export async function loadSubjectHub(
@@ -681,37 +776,9 @@ export async function loadSubjectHub(
   const problemAggStats: Record<string, ProblemAggregateStats> = {};
   for (const [pid, stats] of aggMap) problemAggStats[pid] = stats;
 
-  // 난이도 필터 + 정렬은 aggStats 조회 후 후처리.
-  let displayedProblems = problems;
-  if (problemFilters.difficulty) {
-    displayedProblems = displayedProblems.filter((p) => {
-      const agg = problemAggStats[p.problemId];
-      if (problemFilters.difficulty === "no_data") {
-        return !agg || agg.bucket === null;
-      }
-      return agg?.bucket === problemFilters.difficulty;
-    });
-  }
-  const sort = problemFilters.sort ?? "number";
-  if (sort !== "number") {
-    displayedProblems = [...displayedProblems].sort((a, b) => {
-      if (sort === "newest") {
-        const ya = a.year ?? 0;
-        const yb = b.year ?? 0;
-        if (ya !== yb) return yb - ya;
-        return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
-      }
-      const accA = problemAggStats[a.problemId]?.accuracyPct;
-      const accB = problemAggStats[b.problemId]?.accuracyPct;
-      // null (데이터 없음) 은 항상 뒤로.
-      if (accA === null || accA === undefined) return 1;
-      if (accB === null || accB === undefined) return -1;
-      return sort === "hardest" ? accA - accB : accB - accA;
-    });
-  }
-
-  // 즐겨찾기 별점 N+ 문제로 한정 (post-filter, 해당 과목 scope).
-  // 미로그인 / 해당 별점 0건이면 빈 집합 → 결과 0.
+  // 난이도/정렬/즐겨찾기/중요도/단원 표시 파이프라인 — applyProblemListView 공유
+  //   (문제 뷰어 prev/next 와 동일 순서 보장). 즐겨찾기 집합은 여기서 fetch.
+  let bookmarkedIds: Set<string> | null = null;
   if (problemFilters.bookmarkMin && problemFilters.bookmarkMin > 0) {
     const refs = user
       ? await listBookmarkedProblems(client, user.id, {
@@ -719,30 +786,26 @@ export async function loadSubjectHub(
           minStar: problemFilters.bookmarkMin,
         })
       : [];
-    const bset = new Set(refs.map((r) => r.problemId));
-    displayedProblems = displayedProblems.filter((p) => bset.has(p.problemId));
+    bookmarkedIds = new Set(refs.map((r) => r.problemId));
   }
-  // 중요도 N+ 문제로 한정 (강사 체크 별).
-  if (problemFilters.importanceMin && problemFilters.importanceMin > 0) {
-    const min = problemFilters.importanceMin;
-    displayedProblems = displayedProblems.filter((p) => p.importance >= min);
-  }
+  const nodeProblemIds = problemNodeSeq
+    ? new Set(problemNodeSeq.problems.map((p) => p.problemId))
+    : null;
+  const displayedProblems = applyProblemListView(
+    problems,
+    problemAggStats,
+    problemFilters,
+    { bookmarkedIds, nodeProblemIds },
+  );
 
-  // 체계도 노드 필터 — 노드 subtree 의 문제만. (?node= 무효 시 problemNodeSeq=null → 무시)
-  let problemNodeFilter: ProblemNodeFilter | null = null;
-  if (problemNodeSeq) {
-    const nodeProblemIds = new Set(
-      problemNodeSeq.problems.map((p) => p.problemId),
-    );
-    displayedProblems = displayedProblems.filter((p) =>
-      nodeProblemIds.has(p.problemId),
-    );
-    problemNodeFilter = {
-      nodeId: problemNodeSeq.node.nodeId,
-      label: problemNodeSeq.node.displayLabel,
-      firstProblemId: problemNodeSeq.problems[0]?.problemId ?? null,
-    };
-  }
+  // 체계도 노드 필터 배너 (?node= 무효 시 problemNodeSeq=null → 미적용).
+  const problemNodeFilter: ProblemNodeFilter | null = problemNodeSeq
+    ? {
+        nodeId: problemNodeSeq.node.nodeId,
+        label: problemNodeSeq.node.displayLabel,
+        firstProblemId: problemNodeSeq.problems[0]?.problemId ?? null,
+      }
+    : null;
 
   return {
     law,

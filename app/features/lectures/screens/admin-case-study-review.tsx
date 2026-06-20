@@ -123,7 +123,7 @@ export default function AdminCaseStudyReview({
           </Badge>
           <a
             href={showResolved ? "?" : "?resolved=1"}
-            className="text-primary text-xs underline-offset-4 hover:underline"
+            className="text-link text-xs underline-offset-4 hover:underline"
           >
             {showResolved ? "← 미해결만" : "처리됨 포함 →"}
           </a>
@@ -461,7 +461,7 @@ function LinkedList({
         {linkedCases.map((c) => (
           <li
             key={c.caseId}
-            className="bg-primary/5 text-primary flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+            className="bg-primary/5 text-link flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
           >
             <span className="font-mono text-[11px]">{c.caseNumber}</span>
             <span className="text-muted-foreground text-[10px]">

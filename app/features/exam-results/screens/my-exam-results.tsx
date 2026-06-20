@@ -174,7 +174,7 @@ export default function MyExamResults({ loaderData }: Route.ComponentProps) {
           학습 패턴 분석에 익명·집계 형태로 활용됩니다.
           <Link
             to="/legal/analytics-consent"
-            className="text-primary ml-1 underline"
+            className="text-link ml-1 underline"
           >
             상세 약관 →
           </Link>

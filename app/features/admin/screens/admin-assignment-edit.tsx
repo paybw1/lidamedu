@@ -252,7 +252,7 @@ function ProgressRow({
         <Link
           to={`/admin/students/${m.profileId}`}
           viewTransition
-          className="hover:text-primary text-[13px] font-medium"
+          className="hover:text-link text-[13px] font-medium"
         >
           {m.name}
         </Link>

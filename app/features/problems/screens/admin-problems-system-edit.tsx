@@ -347,7 +347,7 @@ function ProblemCard({ problem }: { problem: ProblemDetail }) {
             <button
               type="button"
               onClick={() => setCollapsed((v) => !v)}
-              className="text-primary text-xs font-semibold hover:underline"
+              className="text-link text-xs font-semibold hover:underline"
             >
               {collapsed ? "펼치기" : "접기"}
             </button>

@@ -198,7 +198,7 @@ export default function AdminProblemReview({
           <span>총 {items.length}건</span>
           <Link
             to="/admin/problems/new"
-            className="text-primary hover:underline"
+            className="text-link hover:underline"
           >
             + 수기 신규 등록
           </Link>
@@ -502,7 +502,7 @@ function DetailPanel({
             ) : null}
             <Link
               to={`/admin/problems/${detail.problemId}`}
-              className="ml-auto text-xs text-primary hover:underline"
+              className="ml-auto text-xs text-link hover:underline"
             >
               깊은 편집 화면 →
             </Link>

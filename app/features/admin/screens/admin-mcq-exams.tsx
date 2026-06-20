@@ -101,7 +101,7 @@ function ExamRow({ exam }: { exam: McqExamItem }) {
       <TD>
         <Link
           to={`/admin/mcq-exams/${exam.examId}`}
-          className="text-primary font-semibold hover:underline"
+          className="text-link font-semibold hover:underline"
         >
           {exam.title}
         </Link>

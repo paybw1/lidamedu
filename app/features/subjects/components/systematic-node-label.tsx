@@ -27,7 +27,7 @@ export function SystematicNumberBadge({
   }
   if (depth === 1) {
     return (
-      <span className="bg-primary/10 text-primary inline-flex h-[17px] min-w-[17px] flex-none items-center justify-center rounded px-1 text-[10px] font-bold tabular-nums">
+      <span className="bg-primary/10 text-link inline-flex h-[17px] min-w-[17px] flex-none items-center justify-center rounded px-1 text-[10px] font-bold tabular-nums">
         {ord}
       </span>
     );

@@ -126,14 +126,14 @@ export default function AdminAiQnaEval({ loaderData }: Route.ComponentProps) {
       <div className="mx-auto max-w-5xl space-y-4">
         <header className="space-y-1">
           <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">
-            <BookmarkIcon className="text-primary size-5" />
+            <BookmarkIcon className="text-link size-5" />
             eval 데이터셋
           </h1>
           <p className="text-muted-foreground text-sm">
             강사가 라벨링한 골드 정답 셋. 자동 평가 cron(v1.2) 의 입력.{" "}
             <Link
               to="/admin/ai-qna/feedback"
-              className="text-primary underline-offset-4 hover:underline"
+              className="text-link underline-offset-4 hover:underline"
             >
               부정 피드백 큐
             </Link>{" "}
@@ -268,7 +268,7 @@ export default function AdminAiQnaEval({ loaderData }: Route.ComponentProps) {
                     </span>
                     <Link
                       to={`/admin/ai-qna/eval/${it.evalItemId}/runs`}
-                      className="text-primary ml-auto underline-offset-4 hover:underline"
+                      className="text-link ml-auto underline-offset-4 hover:underline"
                     >
                       이력 →
                     </Link>

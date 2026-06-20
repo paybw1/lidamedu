@@ -455,7 +455,7 @@ function ArticleChip({ chip }: { chip: PaperRelatedArticleChip }) {
     <Link
       to={href}
       viewTransition
-      className="border-border bg-background hover:border-primary/40 hover:text-primary inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors"
+      className="border-border bg-background hover:border-primary/40 hover:text-link inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors"
     >
       {chip.displayLabel}
     </Link>

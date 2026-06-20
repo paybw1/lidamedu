@@ -284,11 +284,11 @@ export function RecitationView({ articleId, articleLabel, body }: Props) {
               className="space-y-1.5"
             >
               <div className="flex items-baseline gap-1.5">
-                <span className="text-primary text-sm font-semibold">
+                <span className="text-link text-sm font-semibold">
                   {rb.label}
                 </span>
                 {rb.subtitle ? (
-                  <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs font-semibold">
+                  <span className="bg-primary/10 text-link rounded px-1.5 py-0.5 text-xs font-semibold">
                     ({rb.subtitle})
                   </span>
                 ) : null}

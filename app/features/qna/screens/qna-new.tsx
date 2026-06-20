@@ -92,7 +92,7 @@ function NoTargetGuide() {
       width="narrow"
     >
       <div className="border-border bg-card flex flex-col items-center gap-2.5 rounded-2xl border px-8 py-14 text-center shadow-sm">
-        <span className="text-primary mb-1 inline-flex size-14 items-center justify-center rounded-2xl bg-primary/10">
+        <span className="text-link mb-1 inline-flex size-14 items-center justify-center rounded-2xl bg-primary/10">
           <MessageCircleQuestionIcon className="size-7" />
         </span>
         <div className="text-base font-bold tracking-tight">

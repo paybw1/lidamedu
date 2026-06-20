@@ -507,7 +507,7 @@ function Inner({
           <Card className="overflow-hidden rounded-xl border shadow-sm">
             <CardHeader className="px-6 pt-5 pb-4">
               {/* eyebrow */}
-              <p className="text-primary mb-2 text-[11px] font-bold tracking-widest uppercase">
+              <p className="text-link mb-2 text-[11px] font-bold tracking-widest uppercase">
                 {subject.name} · {levelLabel}
               </p>
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -669,9 +669,9 @@ function Inner({
                         <Link
                           to={`/subjects/${subject.slug}/articles/${a.articleNumber}`}
                           viewTransition
-                          className="hover:text-primary group inline-flex items-baseline gap-0"
+                          className="hover:text-link group inline-flex items-baseline gap-0"
                         >
-                          <h2 className="text-foreground group-hover:text-primary text-[22px] leading-snug font-bold tracking-tight transition-colors">
+                          <h2 className="text-foreground group-hover:text-link text-[22px] leading-snug font-bold tracking-tight transition-colors">
                             {a.displayLabel}
                           </h2>
                         </Link>

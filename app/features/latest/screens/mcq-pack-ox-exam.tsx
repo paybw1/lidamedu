@@ -534,7 +534,7 @@ function ExamRunner({
         </Badge>
         <Link
           to={`/latest/mcq/${packId}/ox-exam${isStudy ? "" : "?mode=study"}`}
-          className="text-primary hover:underline"
+          className="text-link hover:underline"
         >
           → {isStudy ? "시험 모드로 전환" : "학습 모드로 전환"}
         </Link>

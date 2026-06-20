@@ -87,7 +87,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
           <Link
             to={`/subjects/${subject.slug}?tab=problems`}
             viewTransition
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-link hover:text-link/80 transition-colors"
           >
             <ArrowLeftIcon className="size-3.5" />
             문제 탭으로
@@ -96,7 +96,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
 
         {/* Header */}
         <header className="mb-6">
-          <p className="mb-2 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-primary">
+          <p className="mb-2 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
             QUIZ RESULT
           </p>
           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -195,7 +195,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
 
                   {/* Year / number chip */}
                   {it.year ? (
-                    <span className="shrink-0 inline-flex h-[22px] items-center rounded-full bg-primary/10 px-2 font-mono text-[11px] font-semibold text-primary tabular-nums">
+                    <span className="shrink-0 inline-flex h-[22px] items-center rounded-full bg-primary/10 px-2 font-mono text-[11px] font-semibold text-link tabular-nums">
                       {it.year}
                       {it.problemNumber ? ` · ${it.problemNumber}번` : ""}
                     </span>
@@ -289,7 +289,7 @@ function KpiCard({
           tone === "coral"
             ? "text-rose-600 dark:text-rose-400"
             : highlight
-              ? "text-primary"
+              ? "text-link"
               : "text-foreground",
         )}
       >

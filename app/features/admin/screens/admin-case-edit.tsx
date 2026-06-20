@@ -2009,7 +2009,7 @@ function FullTextPdfCard({
               href={currentUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-primary inline-flex items-center gap-1 font-medium hover:underline"
+              className="text-link inline-flex items-center gap-1 font-medium hover:underline"
             >
               <ExternalLinkIcon className="size-3.5" /> 현재 PDF 열기
             </a>

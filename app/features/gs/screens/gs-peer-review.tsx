@@ -275,7 +275,7 @@ function PeerQuestionCard({
               {question.title}
             </h2>
           ) : null}
-          <span className="text-primary ml-auto text-lg font-extrabold tabular-nums">
+          <span className="text-link ml-auto text-lg font-extrabold tabular-nums">
             {score === "" ? "—" : score}
             <span className="text-muted-foreground text-xs font-semibold">
               {" "}
@@ -437,7 +437,7 @@ function PeerPageView({
             href={signedUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary inline-flex items-center gap-0.5 font-semibold hover:underline"
+            className="text-link inline-flex items-center gap-0.5 font-semibold hover:underline"
           >
             <EyeIcon className="size-3" /> 풀사이즈
           </a>

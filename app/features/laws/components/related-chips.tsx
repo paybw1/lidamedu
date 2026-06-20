@@ -136,7 +136,7 @@ export function RelatedSection({
   return (
     <section className="space-y-2">
       <div className="flex items-center gap-2">
-        <Icon className="text-primary size-4" />
+        <Icon className="text-link size-4" />
         <h3 className="text-sm font-semibold">{title}</h3>
         <Badge variant="outline" className="font-normal">
           {count}

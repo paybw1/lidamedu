@@ -234,7 +234,7 @@ function WriteStage({
   return (
     <section className="space-y-3">
       <div className="border-primary/20 bg-primary/[0.04] flex items-start gap-2 rounded-2xl border p-3 text-xs leading-relaxed">
-        <PencilLineIcon className="text-primary mt-0.5 size-4 shrink-0" />
+        <PencilLineIcon className="text-link mt-0.5 size-4 shrink-0" />
         <p className="text-foreground">
           <strong>한 줄에 한 논점</strong>씩 적는 걸 권장합니다 (자유 형식도 OK).
           예: "신규성 위반 여부 · 제29조". 모범답안은 제출 전에 절대 보지 마세요.
@@ -679,7 +679,7 @@ function DoneStage({
                           to={`/subjects/${link.article.lawCode}/articles/${link.article.articleNumber}`}
                           viewTransition
                           prefetch="intent"
-                          className="text-primary hover:underline text-xs font-semibold"
+                          className="text-link hover:underline text-xs font-semibold"
                         >
                           {link.article.displayLabel ??
                             `${link.article.lawCode} 제${link.article.articleNumber}조`}
@@ -690,7 +690,7 @@ function DoneStage({
                           to={`/subjects/${link.case.lawCode}/cases/${link.case.caseId}`}
                           viewTransition
                           prefetch="intent"
-                          className="text-primary hover:underline text-xs font-semibold"
+                          className="text-link hover:underline text-xs font-semibold"
                         >
                           {link.case.caseTitle ?? "판례"}
                         </Link>
@@ -700,7 +700,7 @@ function DoneStage({
                           href={casePdfUrls[link.case.caseId]}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline text-xs font-semibold"
+                          className="text-link hover:underline text-xs font-semibold"
                         >
                           📄 전문 PDF
                         </a>

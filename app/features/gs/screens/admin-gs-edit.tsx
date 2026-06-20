@@ -975,7 +975,7 @@ function PaperSlot({
             href={currentUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary ml-auto text-xs font-semibold hover:underline"
+            className="text-link ml-auto text-xs font-semibold hover:underline"
           >
             다운로드
           </a>
@@ -1200,7 +1200,7 @@ function PromotionPanel({
                         <Link
                           to={`/admin/problems/${problemId}`}
                           viewTransition
-                          className="text-primary text-xs font-semibold hover:underline"
+                          className="text-link text-xs font-semibold hover:underline"
                         >
                           등록됨 — 문제 편집 ↗
                         </Link>

@@ -93,7 +93,7 @@ export function SubjectStudyStatus({
       <div className="bg-card border-border mt-4 flex flex-col gap-3 rounded-xl border p-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-3">
         <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto sm:flex-1">
           <span
-            className="bg-primary/10 text-primary inline-flex size-9 shrink-0 items-center justify-center rounded-lg"
+            className="bg-primary/10 text-link inline-flex size-9 shrink-0 items-center justify-center rounded-lg"
             aria-hidden="true"
           >
             <BookOpenIcon className="size-4" />
@@ -120,7 +120,7 @@ export function SubjectStudyStatus({
             ·
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <PencilLineIcon className="text-primary size-3.5" />
+            <PencilLineIcon className="text-link size-3.5" />
             <span className="text-foreground font-extrabold tabular-nums">
               {annotationCount.toLocaleString("ko-KR")}
             </span>

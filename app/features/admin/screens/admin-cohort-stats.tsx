@@ -249,7 +249,7 @@ export default function AdminCohortStats({
                   <tr>
                     <td
                       colSpan={4}
-                      className="bg-muted/60 text-primary border-border/60 border-b px-3 py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
+                      className="bg-muted/60 text-link border-border/60 border-b px-3 py-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase"
                     >
                       {g.label}
                     </td>
@@ -431,7 +431,7 @@ function RankCard({
                 <Link
                   to={`/admin/students/${item.profileId}`}
                   viewTransition
-                  className="hover:text-primary min-w-0 flex-1 truncate text-sm font-medium"
+                  className="hover:text-link min-w-0 flex-1 truncate text-sm font-medium"
                 >
                   {item.name}
                 </Link>
@@ -570,7 +570,7 @@ function CohortSrsSection({
                       <td className="px-2 py-2 text-right">
                         <Link
                           to={`/admin/students/${s.profileId}`}
-                          className="text-primary inline-flex items-center gap-0.5 text-[11px] font-semibold hover:underline"
+                          className="text-link inline-flex items-center gap-0.5 text-[11px] font-semibold hover:underline"
                           viewTransition
                         >
                           상세 <ArrowRightIcon className="size-3" />

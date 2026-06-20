@@ -269,7 +269,7 @@ function PlanStep({
     <Card>
       <CardHeader className="px-5 pb-2">
         <div className="flex items-center gap-2">
-          <GraduationCapIcon className="text-primary size-5" />
+          <GraduationCapIcon className="text-link size-5" />
           <p className="text-base font-semibold">차기 응시 계획</p>
         </div>
         <p className="text-muted-foreground text-xs">
@@ -326,7 +326,7 @@ function ConsentStep() {
     <Card>
       <CardHeader className="px-5 pb-2">
         <div className="flex items-center gap-2">
-          <ShieldCheckIcon className="text-primary size-5" />
+          <ShieldCheckIcon className="text-link size-5" />
           <p className="text-base font-semibold">학습 데이터 활용 (선택)</p>
         </div>
         <p className="text-muted-foreground text-xs">
@@ -385,7 +385,7 @@ function ConsentStep() {
             <Link
               to="/legal/analytics-consent"
               target="_blank"
-              className="text-primary ml-1 underline"
+              className="text-link ml-1 underline"
             >
               상세 약관 →
             </Link>
@@ -411,7 +411,7 @@ function GoalsStep({ currentYear }: { currentYear: number }) {
     <Card>
       <CardHeader className="px-5 pb-2">
         <div className="flex items-center gap-2">
-          <TargetIcon className="text-primary size-5" />
+          <TargetIcon className="text-link size-5" />
           <p className="text-base font-semibold">학습 목표</p>
         </div>
         <p className="text-muted-foreground text-xs">

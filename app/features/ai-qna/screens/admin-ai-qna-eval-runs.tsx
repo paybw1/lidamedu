@@ -83,7 +83,7 @@ export default function AdminAiQnaEvalRuns({ loaderData }: Route.ComponentProps)
             </Link>
           </Button>
           <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">
-            <ClipboardListIcon className="text-primary size-5" /> eval 평가 이력
+            <ClipboardListIcon className="text-link size-5" /> eval 평가 이력
           </h1>
           <div className="border-border bg-muted/30 rounded-2xl border p-3 text-sm">
             <p className="text-foreground font-semibold leading-snug">

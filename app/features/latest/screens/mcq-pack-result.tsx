@@ -459,7 +459,7 @@ function WrongEvidenceCard({
                   viewTransition
                   prefetch="intent"
                   title={a.via}
-                  className="border-primary/30 bg-primary/[0.08] text-primary hover:bg-primary/[0.15] inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
+                  className="border-primary/30 bg-primary/[0.08] text-link hover:bg-primary/[0.15] inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
                 >
                   <ScrollTextIcon className="size-3" />
                   {a.displayLabel}
@@ -548,7 +548,7 @@ function ScoreSummary({
         <span className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
           점수
         </span>
-        <span className="text-primary text-4xl font-extrabold tabular-nums">
+        <span className="text-link text-4xl font-extrabold tabular-nums">
           {ranking.score}
         </span>
         <span className="text-muted-foreground text-sm">/ 100점</span>
@@ -591,7 +591,7 @@ function ScoreSummary({
       <div className="text-right">
         <p className="text-lg font-bold tabular-nums">
           전체 {ranking.totalTakers}명 중{" "}
-          <span className="text-primary">{ranking.rank}등</span>
+          <span className="text-link">{ranking.rank}등</span>
         </p>
         <p className="text-muted-foreground text-xs tabular-nums">
           백분위 {ranking.percentile} · 표준점수 z {ranking.zScore}
@@ -648,7 +648,7 @@ function WeakNodesPanel({
                     to={`/subjects/${lawCode}/systematic/${n.nodeId}`}
                     viewTransition
                     prefetch="intent"
-                    className="hover:text-primary text-sm font-medium"
+                    className="hover:text-link text-sm font-medium"
                   >
                     {n.label}
                   </Link>
@@ -792,7 +792,7 @@ function KpiCard({
       <p
         className={cn(
           "mt-1.5 text-2xl font-extrabold tracking-tight tabular-nums",
-          tone === "primary" && "text-primary",
+          tone === "primary" && "text-link",
         )}
       >
         {value}

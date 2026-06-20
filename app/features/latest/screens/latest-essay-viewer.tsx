@@ -54,7 +54,7 @@ export default function LatestEssayViewer({
           <Link
             to="/latest/essay"
             viewTransition
-            className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+            className="text-link hover:text-link/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
           >
             <ArrowLeftIcon className="size-3.5" />
             2차 기출문제 목록으로
@@ -63,7 +63,7 @@ export default function LatestEssayViewer({
             <Link
               to={`/admin/problems/${problem.problemId}`}
               viewTransition
-              className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs font-semibold"
+              className="text-muted-foreground hover:text-link inline-flex items-center gap-1 text-xs font-semibold"
             >
               <PencilIcon className="size-3.5" /> 수정
             </Link>
@@ -113,7 +113,7 @@ export default function LatestEssayViewer({
           {/* 본문 + 모범답안/채점기준 */}
           <div className="space-y-6 px-6 py-6">
             <section className="space-y-2">
-              <h2 className="text-primary font-mono text-[11px] font-bold tracking-widest uppercase">
+              <h2 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
                 문제
               </h2>
               <div className="border-border/60 border-t" />
@@ -131,7 +131,7 @@ export default function LatestEssayViewer({
                 <div className="space-y-5 border-t border-border/60 px-4 py-4">
                   {problem.explanationMd ? (
                     <section className="space-y-2">
-                      <h3 className="text-primary font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
                         해설
                       </h3>
                       <MarkdownView
@@ -142,7 +142,7 @@ export default function LatestEssayViewer({
                   ) : null}
                   {problem.modelAnswerMd ? (
                     <section className="space-y-2">
-                      <h3 className="text-primary font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
                         모범답안
                       </h3>
                       <MarkdownView
@@ -153,7 +153,7 @@ export default function LatestEssayViewer({
                   ) : null}
                   {problem.gradingRubricMd ? (
                     <section className="space-y-2">
-                      <h3 className="text-primary font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
                         채점기준
                       </h3>
                       <MarkdownView
@@ -164,7 +164,7 @@ export default function LatestEssayViewer({
                   ) : null}
                   {problem.rubricItems && problem.rubricItems.length > 0 ? (
                     <section className="space-y-1.5">
-                      <h3 className="text-primary font-mono text-[11px] font-bold tracking-widest uppercase">
+                      <h3 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
                         배점
                       </h3>
                       <ul className="space-y-1">

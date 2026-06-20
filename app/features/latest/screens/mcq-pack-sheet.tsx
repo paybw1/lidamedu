@@ -657,7 +657,7 @@ function ProblemBlock({
                     className={cn(
                       "inline-flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums",
                       isSelected && !locked
-                        ? "border-primary text-primary"
+                        ? "border-primary text-link"
                         : "border-border text-muted-foreground",
                     )}
                   >

@@ -51,7 +51,7 @@ export function LatestFilterForm({
           type="button"
           size="sm"
           variant="ghost"
-          className="text-primary ml-auto h-9 rounded-full"
+          className="text-link ml-auto h-9 rounded-full"
         >
           <Link to={resetTo}>
             <RotateCcwIcon className="size-3" />
@@ -237,7 +237,7 @@ export function NewBadge() {
 export function CardCta({ label }: { label: string }) {
   return (
     <div className="border-border/60 mt-2.5 flex justify-end border-t pt-2">
-      <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">
+      <span className="text-link inline-flex items-center gap-1 text-xs font-semibold">
         {label}
         <ArrowRightIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -345,7 +345,7 @@ export function LatestEmpty({
       <span
         className={cn(
           "bg-background mb-1 inline-flex size-14 items-center justify-center rounded-2xl",
-          tone === "subdued" ? "text-muted-foreground" : "text-primary",
+          tone === "subdued" ? "text-muted-foreground" : "text-link",
         )}
       >
         <Icon className="size-7" />

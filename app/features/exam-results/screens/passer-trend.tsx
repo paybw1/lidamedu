@@ -131,7 +131,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
       <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-xs">
         <Link
           to="/study/passer-summaries"
-          className="text-primary inline-flex items-center gap-1 underline"
+          className="text-link inline-flex items-center gap-1 underline"
         >
           <GraduationCapIcon className="size-3" /> 합격자 학습 후기 보기
         </Link>

@@ -258,7 +258,7 @@ export default function AdminGsDisputes({ loaderData }: Route.ComponentProps) {
               <TD>
                 <Link
                   to={`/admin/gs/${round.roundId}/grade/${r.submissionId}#question-${r.questionId}`}
-                  className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                  className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                 >
                   검토 <ArrowRightIcon className="size-3" />
                 </Link>

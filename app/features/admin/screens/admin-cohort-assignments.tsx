@@ -180,7 +180,7 @@ export default function AdminCohortAssignments({
                   <Link
                     to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
                     viewTransition
-                    className="hover:text-primary text-[13px] font-medium"
+                    className="hover:text-link text-[13px] font-medium"
                   >
                     {a.title}
                   </Link>
@@ -219,7 +219,7 @@ export default function AdminCohortAssignments({
                   <Link
                     to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
                     viewTransition
-                    className="text-primary text-xs font-semibold hover:underline"
+                    className="text-link text-xs font-semibold hover:underline"
                   >
                     편집
                   </Link>

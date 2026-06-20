@@ -68,7 +68,7 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
         </p>
         <Link
           to="/study/passer-summaries"
-          className="text-primary inline-flex w-fit items-center gap-1 text-xs font-medium hover:underline"
+          className="text-link inline-flex w-fit items-center gap-1 text-xs font-medium hover:underline"
         >
           ← 합격자 분석
         </Link>
@@ -154,11 +154,11 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
       </Card>
 
       <p className="text-muted-foreground mt-4 text-xs">
-        <Link to="/study/stats" className="text-primary underline">
+        <Link to="/study/stats" className="text-link underline">
           내 학습 통계
         </Link>{" "}
         ·{" "}
-        <Link to="/me/exam-results" className="text-primary underline">
+        <Link to="/me/exam-results" className="text-link underline">
           내 응시 계획
         </Link>
       </p>

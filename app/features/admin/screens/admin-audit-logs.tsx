@@ -116,7 +116,7 @@ export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
     >
       {/* 원장 전용 배지 */}
       <div className="mb-4 flex items-center gap-1.5">
-        <ShieldCheckIcon className="text-primary size-4" aria-hidden />
+        <ShieldCheckIcon className="text-link size-4" aria-hidden />
         <Chip tone="blue">원장 전용</Chip>
       </div>
 
@@ -155,7 +155,7 @@ export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
         {filterActive ? (
           <Link
             to="/admin/audit-logs"
-            className="text-primary inline-flex items-center gap-1 px-1 text-xs font-semibold"
+            className="text-link inline-flex items-center gap-1 px-1 text-xs font-semibold"
           >
             <RefreshCwIcon className="size-3" /> 초기화
           </Link>

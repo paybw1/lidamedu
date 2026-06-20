@@ -222,7 +222,7 @@ function ItemCard({
           </Badge>
         ) : null}
         {item.entryUrl ? (
-          <span className="text-primary inline-flex items-center gap-1 text-xs">
+          <span className="text-link inline-flex items-center gap-1 text-xs">
             학습하러 가기 <ArrowRightIcon className="size-3" />
           </span>
         ) : null}

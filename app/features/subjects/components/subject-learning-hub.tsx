@@ -28,7 +28,7 @@ import type { LawSubjectMeta } from "../lib/subjects";
 type Accent = "primary" | "violet" | "emerald" | "amber";
 
 const ACCENT: Record<Accent, string> = {
-  primary: "bg-primary/10 text-primary",
+  primary: "bg-primary/10 text-link",
   violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
   emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -73,7 +73,7 @@ export function SubjectLearningHub({
           "마지막 학습 조문" 카드와 중복이라 제거함. */}
       <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
         <p className="text-muted-foreground mb-1 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.08em] uppercase">
-          <SparklesIcon className="text-primary size-3.5" /> 오늘의 학습 추천
+          <SparklesIcon className="text-link size-3.5" /> 오늘의 학습 추천
         </p>
         <div className="divide-border divide-y">
           <RecRow icon={BookmarkIcon} accent="primary" label="아직 안 본 중요 조문">
@@ -89,7 +89,7 @@ export function SubjectLearningHub({
                       viewTransition
                       prefetch="intent"
                       title={a.displayLabel}
-                      className="border-border bg-primary/[0.06] text-primary hover:border-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
+                      className="border-border bg-primary/[0.06] text-link hover:border-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
                     >
                       {a.importance >= 2 ? (
                         <StarIcon className="size-3 fill-current" />
@@ -189,7 +189,7 @@ function AxisCard({
           </span>
           <span className="text-sm font-extrabold">{name}</span>
         </span>
-        <span className="text-primary inline-flex items-center gap-0.5 text-[11px] font-bold">
+        <span className="text-link inline-flex items-center gap-0.5 text-[11px] font-bold">
           {cta}
           <ArrowRightIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
         </span>

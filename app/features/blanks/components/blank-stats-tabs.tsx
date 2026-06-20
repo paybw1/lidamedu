@@ -191,7 +191,7 @@ function ContentStatsView({ stats }: { stats: UserBlankStats }) {
                           <Link
                             to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?blank=${r.setId}`}
                             viewTransition
-                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            className="text-link inline-flex items-center gap-1 text-xs hover:underline"
                           >
                             계속 <ArrowRightIcon className="size-3" />
                           </Link>
@@ -258,7 +258,7 @@ function ContentStatsView({ stats }: { stats: UserBlankStats }) {
                           <Link
                             to={`/subjects/${w.lawCode}/articles/${w.articleNumber}?blank=${w.setId}`}
                             viewTransition
-                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            className="text-link inline-flex items-center gap-1 text-xs hover:underline"
                           >
                             도전 <ArrowRightIcon className="size-3" />
                           </Link>
@@ -343,7 +343,7 @@ function AutoStatsView({
                             <Link
                               to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?${modeQuery}`}
                               viewTransition
-                              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                              className="text-link inline-flex items-center gap-1 text-xs hover:underline"
                             >
                               계속 <ArrowRightIcon className="size-3" />
                             </Link>
@@ -406,7 +406,7 @@ function AutoStatsView({
                           <Link
                             to={`/subjects/${w.lawCode}/articles/${w.articleNumber}?${modeQuery}`}
                             viewTransition
-                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            className="text-link inline-flex items-center gap-1 text-xs hover:underline"
                           >
                             도전 <ArrowRightIcon className="size-3" />
                           </Link>
@@ -509,7 +509,7 @@ function RecitationStatsView({ stats }: { stats: UserRecitationStats }) {
                           <Link
                             to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?recitation=1`}
                             viewTransition
-                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            className="text-link inline-flex items-center gap-1 text-xs hover:underline"
                           >
                             계속 <ArrowRightIcon className="size-3" />
                           </Link>
@@ -572,7 +572,7 @@ function RecitationStatsView({ stats }: { stats: UserRecitationStats }) {
                           <Link
                             to={`/subjects/${w.lawCode}/articles/${w.articleNumber}?recitation=1`}
                             viewTransition
-                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            className="text-link inline-flex items-center gap-1 text-xs hover:underline"
                           >
                             도전 <ArrowRightIcon className="size-3" />
                           </Link>
@@ -615,7 +615,7 @@ function KpiCard({
     <Card>
       <CardContent className="space-y-1 py-4">
         <div className="flex items-center gap-2">
-          {Icon ? <Icon className="text-primary size-4" /> : null}
+          {Icon ? <Icon className="text-link size-4" /> : null}
           <p className="text-muted-foreground text-xs">{label}</p>
         </div>
         <p

@@ -340,7 +340,7 @@ function ProgressRow({
         <Link
           to={`/admin/students/${m.profileId}`}
           viewTransition
-          className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+          className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
         >
           상세 <ArrowRightIcon className="size-3" />
         </Link>

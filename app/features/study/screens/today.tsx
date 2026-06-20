@@ -124,7 +124,7 @@ function ProgressBar({ summary }: { summary: TodaySummary }) {
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-semibold">
           오늘 복습 <span className="tabular-nums">{total}</span>개 중{" "}
-          <span className="text-primary tabular-nums">{completed}</span>개 완료
+          <span className="text-link tabular-nums">{completed}</span>개 완료
         </p>
         <p className="text-ink-faint font-mono text-[11px] tabular-nums">
           {pct}%
@@ -153,7 +153,7 @@ function ReviewCard({ summary }: { summary: TodaySummary }) {
   return (
     <Surface tone="default" pad={6} className="ring-primary/10 ring-1">
       <div className="flex items-start gap-3">
-        <span className="bg-primary/10 text-primary inline-flex size-10 shrink-0 items-center justify-center rounded-lg">
+        <span className="bg-primary/10 text-link inline-flex size-10 shrink-0 items-center justify-center rounded-lg">
           <RepeatIcon className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -236,7 +236,7 @@ function DailyMenuRow({ item }: { item: DailyMenuItem }) {
       viewTransition
       className="group border-border hover:border-primary hover:bg-surface-3 flex items-start gap-3 rounded-md border px-3 py-2.5 transition-colors"
     >
-      <span className="bg-muted text-ink-soft group-hover:text-primary inline-flex size-7 shrink-0 items-center justify-center rounded-md">
+      <span className="bg-muted text-ink-soft group-hover:text-link inline-flex size-7 shrink-0 items-center justify-center rounded-md">
         <Icon className="size-3.5" />
       </span>
       <div className="min-w-0 flex-1">
@@ -255,7 +255,7 @@ function DailyMenuRow({ item }: { item: DailyMenuItem }) {
           {item.body}
         </p>
       </div>
-      <ArrowRightIcon className="text-ink-faint group-hover:text-primary mt-1 size-3.5 shrink-0" />
+      <ArrowRightIcon className="text-ink-faint group-hover:text-link mt-1 size-3.5 shrink-0" />
     </Link>
   );
 }
@@ -320,7 +320,7 @@ function AssignmentsCard({ summary }: { summary: TodaySummary }) {
                   {daysLeft >= 0 ? `-${daysLeft}` : `+${-daysLeft}`}
                 </p>
               </div>
-              <ArrowRightIcon className="text-ink-faint group-hover:text-primary size-3.5" />
+              <ArrowRightIcon className="text-ink-faint group-hover:text-link size-3.5" />
             </Link>
           );
         })}

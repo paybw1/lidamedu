@@ -118,7 +118,7 @@ export function SubjectBookmarkRail({
                 ? "border-primary bg-primary text-primary-foreground z-10 translate-x-px shadow-[-4px_6px_18px_rgba(45,91,168,0.26)]"
                 : // 비활성 탭은 bg-muted — 뷰어 트리 패널이 bg-card 라 같은 색이면
                   // 레일이 패널에 묻힌다. muted 로 페이지·패널 양쪽과 대비를 준다.
-                  "border-border bg-muted text-muted-foreground hover:bg-primary/[0.06] hover:text-primary hover:-translate-x-1.5",
+                  "border-border bg-muted text-muted-foreground hover:bg-primary/[0.06] hover:text-link hover:-translate-x-1.5",
             )}
           >
             <BookmarkTabInner

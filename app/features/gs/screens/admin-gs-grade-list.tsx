@@ -187,7 +187,7 @@ export default function AdminGsGradeList({ loaderData }: Route.ComponentProps) {
                   <Link
                     to={`/admin/gs/${round.roundId}/grade/${t.submission.submissionId}`}
                     data-testid={`grade-link-${t.submission.submissionId}`}
-                    className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                    className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                   >
                     채점 <ArrowRightIcon className="size-3" />
                   </Link>

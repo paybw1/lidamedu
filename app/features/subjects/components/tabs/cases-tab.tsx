@@ -298,7 +298,7 @@ export function CasesTab({
             달라지는 혼란을 해소하기 위해 q 와 결과 건수를 함께 노출 + 검색어 단독 해제. */}
         {treeFilter ? (
           <div className="border-border bg-primary/[0.04] flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-xs">
-            <GavelIcon className="text-primary size-3.5" />
+            <GavelIcon className="text-link size-3.5" />
             <span className="text-muted-foreground">트리 필터:</span>
             <Badge variant="secondary" className="max-w-[260px] truncate">
               {treeFilterLabel}
@@ -566,7 +566,7 @@ function CaseRow({
         ) : null}
       </TableCell>
       <TableCell className="hidden md:table-cell">
-        <span className="text-primary text-xs font-semibold">
+        <span className="text-link text-xs font-semibold">
           {COURT_LABELS[item.court]}
         </span>
       </TableCell>
@@ -580,7 +580,7 @@ function CaseRow({
           to={detailHref}
           viewTransition
           prefetch="intent"
-          className="text-foreground hover:text-primary"
+          className="text-foreground hover:text-link"
         >
           {item.caseNumber}
         </Link>
@@ -606,7 +606,7 @@ function CaseRow({
           to={detailHref}
           viewTransition
           prefetch="intent"
-          className="hover:text-primary block text-sm font-medium break-words"
+          className="hover:text-link block text-sm font-medium break-words"
         >
           {item.caseTitle}
         </Link>
@@ -627,7 +627,7 @@ function CaseRow({
       </TableCell>
       <TableCell className="hidden text-center md:table-cell">
         {item.isEnBanc ? (
-          <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
+          <span className="bg-primary/10 text-link inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
             전합
           </span>
         ) : null}

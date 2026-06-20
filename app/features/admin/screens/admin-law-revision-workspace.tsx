@@ -177,7 +177,7 @@ export default function AdminLawRevisionWorkspace({
           {/* 조문에 반영 */}
           <Card>
             <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3.5">
-              <p className="text-primary font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              <p className="text-link font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
                 조문에 반영
               </p>
               <div className="flex flex-wrap items-center gap-2">
@@ -542,7 +542,7 @@ function ArticleCard({
           </Badge>
           <button
             type="button"
-            className="hover:text-primary inline-flex items-center gap-1 text-sm font-medium"
+            className="hover:text-link inline-flex items-center gap-1 text-sm font-medium"
             onClick={() => setOpen((v) => !v)}
           >
             {open ? (
@@ -1098,7 +1098,7 @@ function AddArticleCard({
       <CardHeader className="px-4 pb-2">
         <div className="flex items-center justify-between">
           <p className="inline-flex items-center gap-1 text-sm font-semibold">
-            <PlusIcon className="text-primary size-4" /> 조문 추가
+            <PlusIcon className="text-link size-4" /> 조문 추가
           </p>
           <div className="inline-flex overflow-hidden rounded-md border text-[10.5px]">
             <button
@@ -1593,7 +1593,7 @@ function PdfUploadSlot({
             href={currentUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary inline-flex items-center gap-1 truncate hover:underline"
+            className="text-link inline-flex items-center gap-1 truncate hover:underline"
             title={currentUrl}
           >
             현재 파일 열기 ↗

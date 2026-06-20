@@ -231,7 +231,7 @@ function BlockBody({ block, depth }: { block: Block; depth: number }) {
           children={block.children}
           depth={depth}
           id={`clause-${block.number}`}
-          labelClass="text-primary dark:text-blue-300 mr-1.5 font-semibold"
+          labelClass="text-link dark:text-blue-300 mr-1.5 font-semibold"
         />
       );
     case "item":
@@ -932,7 +932,7 @@ function KoreanRefLink({
       viewTransition
       prefetch="intent"
       title={targetTitle ?? undefined}
-      className="text-primary dark:text-blue-300 hover:bg-primary/10 underline decoration-dotted underline-offset-2 hover:decoration-solid"
+      className="text-link dark:text-blue-300 hover:bg-primary/10 underline decoration-dotted underline-offset-2 hover:decoration-solid"
     >
       {raw}
     </Link>
@@ -1212,7 +1212,7 @@ function InlineNode({
           to={target}
           viewTransition
           title={targetTitle ?? undefined}
-          className="text-primary dark:text-blue-300 hover:bg-primary/10 underline decoration-dotted underline-offset-2 hover:decoration-solid"
+          className="text-link dark:text-blue-300 hover:bg-primary/10 underline decoration-dotted underline-offset-2 hover:decoration-solid"
         >
           {node.raw}
         </Link>
@@ -1226,7 +1226,7 @@ function InlineNode({
         <Link
           to={`/subjects/${node.lawCode}`}
           viewTransition
-          className="text-primary dark:text-blue-300 underline-offset-2 hover:underline"
+          className="text-link dark:text-blue-300 underline-offset-2 hover:underline"
         >
           {node.raw}
         </Link>
@@ -1241,7 +1241,7 @@ function InlineNode({
         </span>
       );
     case "footnote":
-      return <sup className="text-primary dark:text-blue-300 ml-0.5 text-[10px]">{node.n}</sup>;
+      return <sup className="text-link dark:text-blue-300 ml-0.5 text-[10px]">{node.n}</sup>;
   }
 }
 

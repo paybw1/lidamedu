@@ -151,7 +151,7 @@ export default function AdminAiQnaEmbedStatus({
         <header className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">
-              <CpuIcon className="text-primary size-5" /> 임베딩 상태
+              <CpuIcon className="text-link size-5" /> 임베딩 상태
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               <code className="text-foreground">content_chunks</code> 의 임베딩
@@ -344,7 +344,7 @@ function Stat({
         : accent === "emerald"
           ? "text-emerald-700 dark:text-emerald-300"
           : accent === "blue"
-            ? "text-primary"
+            ? "text-link"
             : "text-foreground";
   return (
     <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">

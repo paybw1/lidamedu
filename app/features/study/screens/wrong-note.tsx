@@ -213,7 +213,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
             <Link
               to="/me/ox-wrong-note"
               prefetch="intent"
-              className="text-primary inline-flex items-center gap-1 text-xs font-medium hover:underline"
+              className="text-link inline-flex items-center gap-1 text-xs font-medium hover:underline"
             >
               정오문제 오답 다시 풀기 →
             </Link>

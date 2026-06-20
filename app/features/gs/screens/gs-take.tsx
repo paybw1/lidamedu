@@ -220,7 +220,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
 
       {/* 안내 배너 */}
       <div className="border-primary/15 bg-primary/[0.05] mb-3 flex flex-col gap-2.5 rounded-2xl border p-4 sm:flex-row sm:items-center">
-        <FileTextIcon className="text-primary size-5 shrink-0" />
+        <FileTextIcon className="text-link size-5 shrink-0" />
         <p className="text-foreground min-w-0 flex-1 text-[13px] leading-relaxed">
           오프라인 답안지에 작성한 후 페이지별로 사진(JPG/PNG/WebP) 또는 PDF 를
           업로드합니다. 각 페이지를 칩으로 문항에 매핑하고 페이지마다{" "}
@@ -433,7 +433,7 @@ function Countdown({ deadlineMs }: { deadlineMs: number }) {
           ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
           : warn
             ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-            : "bg-primary/10 text-primary",
+            : "bg-primary/10 text-link",
       )}
     >
       <TimerIcon className="size-3.5" />

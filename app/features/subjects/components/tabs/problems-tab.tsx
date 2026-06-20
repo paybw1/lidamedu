@@ -142,6 +142,15 @@ export function ProblemsTab({
     sp.set("tab", "problems");
     return `?${sp.toString()}`;
   })();
+  // 문제 클릭 시 현재 색인 컨텍스트(필터·정렬·단원)를 실어 보낸다 → 뷰어가 이 목록
+  //   순서대로 prev/next(list 모드, 같은 차수 섹션 내). tab 제외, list=1 표식 추가.
+  const problemLinkQuery = (() => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("tab");
+    sp.set("list", "1");
+    const s = sp.toString();
+    return s ? `?${s}` : "";
+  })();
 
   const attemptedCount = stats?.attemptedCount ?? 0;
   const correctCount = stats?.correctCount ?? 0;
@@ -238,7 +247,7 @@ export function ProblemsTab({
         {/* 체계도 노드 필터 배너 */}
         {nodeFilter ? (
           <div className="border-border bg-primary/[0.04] flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 text-xs">
-            <ListChecksIcon className="text-primary size-3.5 shrink-0" />
+            <ListChecksIcon className="text-link size-3.5 shrink-0" />
             <span className="text-muted-foreground">체계도 필터</span>
             <Badge variant="secondary" className="max-w-[260px] truncate">
               {stripSystematicNumber(nodeFilter.label)}
@@ -373,13 +382,13 @@ export function ProblemsTab({
               }))}
             />
             <FilterSelectChip
-              label="시험"
-              name="p_round"
-              value={appliedFilters.examRound ?? ""}
-              options={[
-                { value: "first", label: "1차" },
-                { value: "second", label: "2차" },
-              ]}
+              label="단원/종합"
+              name="p_scope"
+              value={appliedFilters.scope ?? ""}
+              options={SCOPE_OPTS.map((s) => ({
+                value: s,
+                label: SCOPE_LABEL[s],
+              }))}
             />
             <FilterSelectChip
               label="유형"
@@ -456,7 +465,7 @@ export function ProblemsTab({
           {/* Section header */}
           <div className="border-border bg-muted/30 flex items-center justify-between border-b px-4 py-3">
             <div className="flex items-center gap-2">
-              <CircleCheckIcon className="text-primary size-4" />
+              <CircleCheckIcon className="text-link size-4" />
               <h3 className="text-sm font-semibold">객관식</h3>
             </div>
             <span className="border-border bg-background text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
@@ -525,6 +534,7 @@ export function ProblemsTab({
                     item={p}
                     agg={aggStats[p.problemId]}
                     searchQuery={appliedFilters.search ?? null}
+                    linkQuery={problemLinkQuery}
                   />
                 ))}
               </TableBody>
@@ -537,7 +547,7 @@ export function ProblemsTab({
           <div className="border-border overflow-hidden rounded-xl border shadow-sm">
             <div className="border-border bg-muted/30 flex items-center justify-between border-b px-4 py-3">
               <div className="flex items-center gap-2">
-                <PencilIcon className="text-primary size-4" />
+                <PencilIcon className="text-link size-4" />
                 <h3 className="text-sm font-semibold">2차 주관식</h3>
               </div>
               <span className="border-border bg-background text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
@@ -560,6 +570,7 @@ export function ProblemsTab({
                       key={p.problemId}
                       subjectSlug={subject.slug}
                       item={p}
+                      linkQuery={problemLinkQuery}
                     />
                   ))}
                 </div>
@@ -591,7 +602,7 @@ function ProblemsKpiCard({
       <p
         className={cn(
           "mt-1.5 text-[26px] leading-none font-extrabold tracking-tight tabular-nums",
-          accent ? "text-primary" : "text-foreground",
+          accent ? "text-link" : "text-foreground",
         )}
       >
         {value}
@@ -622,7 +633,7 @@ function ModeCard({
 }) {
   return (
     <div className="border-border bg-card flex items-start gap-3 rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md">
-      <span className="bg-primary/10 text-primary inline-flex size-9 shrink-0 items-center justify-center rounded-[10px]">
+      <span className="bg-primary/10 text-link inline-flex size-9 shrink-0 items-center justify-center rounded-[10px]">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
@@ -685,15 +696,17 @@ function FilterSelectChip({
 function SubjectiveCard({
   subjectSlug,
   item,
+  linkQuery,
 }: {
   subjectSlug: LawSubjectMeta["slug"];
   item: ProblemListItem;
+  linkQuery: string;
 }) {
   const snippet =
     item.bodyMd.length > 160 ? `${item.bodyMd.slice(0, 160)}…` : item.bodyMd;
   return (
     <Link
-      to={`/subjects/${subjectSlug}/problems/${item.problemId}`}
+      to={`/subjects/${subjectSlug}/problems/${item.problemId}${linkQuery}`}
       viewTransition
       prefetch="intent"
       className="group block"
@@ -737,7 +750,7 @@ function SubjectiveCard({
           </p>
         ) : null}
         <p className="line-clamp-2 text-sm leading-snug">{snippet}</p>
-        <p className="text-primary mt-2 inline-flex items-center gap-1 text-xs">
+        <p className="text-link mt-2 inline-flex items-center gap-1 text-xs">
           지금 풀어보기 <ArrowRightIcon className="size-3" />
         </p>
       </div>
@@ -750,11 +763,14 @@ function ProblemRow({
   item,
   agg,
   searchQuery,
+  linkQuery,
 }: {
   subject: LawSubjectMeta;
   item: ProblemListItem;
   agg: ProblemAggregateStats | undefined;
   searchQuery: string | null;
+  // 현재 색인 컨텍스트(?list=1&...) — 뷰어 prev/next 가 이 목록을 따르게.
+  linkQuery: string;
 }) {
   const yearLabel =
     item.year && item.examRoundNo
@@ -807,10 +823,10 @@ function ProblemRow({
       </TableCell>
       <TableCell className="whitespace-normal">
         <Link
-          to={`/subjects/${subject.slug}/problems/${item.problemId}`}
+          to={`/subjects/${subject.slug}/problems/${item.problemId}${linkQuery}`}
           viewTransition
           prefetch="intent"
-          className="hover:text-primary block text-sm break-words"
+          className="hover:text-link block text-sm break-words"
         >
           {renderBodySnippet(item.bodyMd, searchQuery)}
         </Link>

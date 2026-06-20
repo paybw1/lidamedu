@@ -255,7 +255,7 @@ function ContentBlanksTable({
                 <Link
                   to={`/admin/blanks/${r.setId}?focus=${r.blankIdx}`}
                   viewTransition
-                  className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                  className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                 >
                   편집 <ArrowRightIcon className="size-3" />
                 </Link>
@@ -357,7 +357,7 @@ function AutoBlanksTable({
                   <Link
                     to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?${modeQuery}`}
                     viewTransition
-                    className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                    className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                   >
                     보기 <ArrowRightIcon className="size-3" />
                   </Link>
@@ -455,7 +455,7 @@ function RecitationArticlesTable({
                   <Link
                     to={`/subjects/${r.lawCode}/articles/${r.articleNumber}?recitation=1`}
                     viewTransition
-                    className="text-primary inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                    className="text-link inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                   >
                     보기 <ArrowRightIcon className="size-3" />
                   </Link>

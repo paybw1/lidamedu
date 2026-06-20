@@ -226,7 +226,7 @@ export default function ScienceProblemViewer({
               <Link
                 to={`/admin/problems/${problem.problemId}`}
                 viewTransition
-                className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs font-semibold"
+                className="text-muted-foreground hover:text-link inline-flex items-center gap-1 text-xs font-semibold"
               >
                 <PencilIcon className="size-3.5" /> 수정
               </Link>
@@ -236,7 +236,7 @@ export default function ScienceProblemViewer({
                 "inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide",
                 sessionMode === "exam"
                   ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                  : "bg-primary/10 text-primary",
+                  : "bg-primary/10 text-link",
               )}
             >
               {sessionMode === "exam" ? "시험 모드" : "학습 모드"}
@@ -249,7 +249,7 @@ export default function ScienceProblemViewer({
           {/* 출제 정보 — 기출 연도·과목·번호 */}
           {problem.year ? (
             <div className="flex flex-wrap items-center gap-2 border-b px-6 py-2.5 text-xs">
-              <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 font-bold tabular-nums">
+              <span className="bg-primary/10 text-link inline-flex items-center rounded-full px-2.5 py-0.5 font-bold tabular-nums">
                 {problem.year}년{problem.examRound === "first" ? " 1차" : ""} 기출
               </span>
               <span className="text-muted-foreground">
@@ -450,7 +450,7 @@ export default function ScienceProblemViewer({
 
         <section className="bg-card mt-4 rounded-xl border p-4 shadow-sm">
           <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-            <MessageCircleQuestionIcon className="text-primary size-4" />
+            <MessageCircleQuestionIcon className="text-link size-4" />
             강사 질의 (Q&A)
           </h2>
           <QnaPanel

@@ -937,7 +937,7 @@ function PageView({
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="text-primary inline-flex items-center gap-0.5 hover:underline"
+            className="text-link inline-flex items-center gap-0.5 hover:underline"
           >
             <EyeIcon className="size-3" /> 풀사이즈
           </a>

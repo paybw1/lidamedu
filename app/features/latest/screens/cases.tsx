@@ -345,7 +345,7 @@ export default function LatestCases({ loaderData }: Route.ComponentProps) {
                   <Link
                     to={`/admin/cases/edit/${c.caseId}`}
                     viewTransition
-                    className="text-muted-foreground hover:text-primary bg-card/80 absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm"
+                    className="text-muted-foreground hover:text-link bg-card/80 absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold backdrop-blur-sm"
                   >
                     <PencilIcon className="size-3.5" /> 수정
                   </Link>
@@ -419,7 +419,7 @@ function RecencyPanel({ recencyMonths }: { recencyMonths: number }) {
   return (
     <div className="border-border bg-muted/30 mb-3 rounded-xl border border-dashed p-3.5">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <CalendarClockIcon className="text-primary size-4 shrink-0" />
+        <CalendarClockIcon className="text-link size-4 shrink-0" />
         <span className="text-sm font-bold tracking-tight">
           수험생 노출 기간
           <span className="text-muted-foreground ml-1.5 text-xs font-normal">
@@ -457,7 +457,7 @@ function RecencyPanel({ recencyMonths }: { recencyMonths: number }) {
           ? `이 페이지에서는 수험생·운영자 모두 선고일이 최근 ${recencyMonths}개월 이내인 판례만 봅니다. 0 으로 저장하면 제한이 풀립니다.`
           : "현재 기간 제한이 없어 전체 판례가 노출됩니다. 1 이상으로 저장하면 최근 판례만 노출됩니다."}{" "}
         전체 판례 관리는{" "}
-        <Link to="/admin/cases" className="text-primary font-semibold">
+        <Link to="/admin/cases" className="text-link font-semibold">
           운영자 판례 관리
         </Link>
         에서 합니다.

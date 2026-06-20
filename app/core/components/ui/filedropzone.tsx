@@ -105,7 +105,7 @@ export const FileDropzone = ({ onFileSelect }: FileDropzoneProps) => {
         or click to browse (Max {MAX_FILE_SIZE_MB}MB)
       </p>
 
-      <label className="mt-2 inline-block cursor-pointer text-sm text-blue-600 underline">
+      <label className="text-link mt-2 inline-block cursor-pointer text-sm underline">
         Select a file
         <input
           type="file"

@@ -66,7 +66,7 @@ export default function LatestCaseViewer({
           <Link
             to="/latest/cases"
             viewTransition
-            className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+            className="text-link hover:text-link/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
           >
             <ArrowLeftIcon className="size-3.5" />
             최근 판례 목록으로

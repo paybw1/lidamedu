@@ -58,7 +58,7 @@ export function CaseReferencesPanel({
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="inline-flex items-center gap-2 text-base font-semibold">
-          <NewspaperIcon className="text-primary size-4" />
+          <NewspaperIcon className="text-link size-4" />
           관련 논문 · 기사
           {references.length > 0 ? (
             <span className="text-muted-foreground text-xs tabular-nums">

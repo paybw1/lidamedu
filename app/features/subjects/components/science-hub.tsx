@@ -127,7 +127,7 @@ export default function ScienceHub({
               <ChevronRightIcon className="size-3 rotate-180" /> 자연과학
             </Link>
           )}
-          <p className="text-primary mb-1 font-mono text-[11px] font-bold uppercase tracking-widest">
+          <p className="text-link mb-1 font-mono text-[11px] font-bold uppercase tracking-widest">
             SCIENCE · 1차 필수
           </p>
           <h1 className="mb-1.5 text-3xl font-extrabold tracking-tight md:text-4xl">
@@ -354,7 +354,7 @@ export default function ScienceHub({
 
         {/* Info notice */}
         <div className="bg-primary/[0.06] mt-6 rounded-xl px-6 py-5">
-          <p className="text-primary mb-1 font-mono text-[10px] font-bold uppercase tracking-widest">
+          <p className="text-link mb-1 font-mono text-[10px] font-bold uppercase tracking-widest">
             안내
           </p>
           <p className="text-foreground text-sm leading-relaxed">

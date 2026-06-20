@@ -602,7 +602,7 @@ function BodySection({
   return (
     <section className="space-y-3">
       <div className="flex items-baseline gap-3">
-        <h2 className="text-primary font-mono text-[11px] font-bold tracking-widest uppercase">
+        <h2 className="text-link font-mono text-[11px] font-bold tracking-widest uppercase">
           {title}
         </h2>
         {meta ? (

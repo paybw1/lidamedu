@@ -94,7 +94,7 @@ export default function LectureViewer({ loaderData }: Route.ComponentProps) {
               <Link
                 to="/admin/systematic-tree"
                 viewTransition
-                className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs font-semibold"
+                className="text-muted-foreground hover:text-link inline-flex items-center gap-1 text-xs font-semibold"
               >
                 <PencilIcon className="size-3.5" /> 수정
               </Link>
@@ -109,7 +109,7 @@ export default function LectureViewer({ loaderData }: Route.ComponentProps) {
             href={item.lectureUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-primary inline-flex items-center gap-1 hover:underline"
+            className="text-link inline-flex items-center gap-1 hover:underline"
           >
             <ExternalLinkIcon className="size-3" /> 외부에서 열기
           </a>

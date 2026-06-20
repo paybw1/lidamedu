@@ -132,7 +132,7 @@ function CommentRow({
           {comment.authorIsStaff ? (
             <Badge
               variant="outline"
-              className="border-primary/30 bg-primary/10 text-primary text-[10px]"
+              className="border-primary/30 bg-primary/10 text-link text-[10px]"
             >
               강사
             </Badge>

@@ -295,7 +295,7 @@ function DraftCard({
             <ol className="mt-2 space-y-1">
               {item.choices.map((c, i) => (
                 <li key={i} className="flex gap-1.5 text-sm">
-                  <span className="text-primary shrink-0 font-semibold">
+                  <span className="text-link shrink-0 font-semibold">
                     {CIRCLED[i] ?? `${i + 1}.`}
                   </span>
                   <span>{c}</span>

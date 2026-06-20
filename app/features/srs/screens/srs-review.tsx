@@ -289,7 +289,7 @@ function FilterChip({
         "inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
         active
           ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card hover:border-primary hover:text-primary",
+          : "border-border bg-card hover:border-primary hover:text-link",
       )}
     >
       {children}
@@ -425,7 +425,7 @@ function CardArea({
     <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="bg-primary/10 text-primary inline-flex h-5 items-center rounded-full px-2 font-mono text-[10px] font-bold tracking-[0.04em] uppercase">
+          <span className="bg-primary/10 text-link inline-flex h-5 items-center rounded-full px-2 font-mono text-[10px] font-bold tracking-[0.04em] uppercase">
             {subjectLabel(item.subject)}
           </span>
           {item.topic ? (
@@ -464,7 +464,7 @@ function CardArea({
         {/* Back (flipped) */}
         {flipped ? (
           <div className="border-primary/30 bg-primary/5 mt-3 rounded-lg border p-5">
-            <p className="text-primary mb-2 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
+            <p className="text-link mb-2 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
               뒷면 (정답)
             </p>
             <p className="text-foreground text-[15px] leading-relaxed whitespace-pre-line">

@@ -320,7 +320,7 @@ function SeedTable({
                     </Link>
                     <Link
                       to={`/admin/laws/${r.lawCode}/completeness`}
-                      className="text-primary ml-2 text-[10.5px] font-medium hover:underline"
+                      className="text-link ml-2 text-[10.5px] font-medium hover:underline"
                       viewTransition
                     >
                       완성도 점검 →
@@ -386,7 +386,7 @@ function ClusterGrid() {
               <Card className="hover:border-primary h-full transition-colors">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2.5">
-                    <span className="bg-primary/10 text-primary inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
+                    <span className="bg-primary/10 text-link inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
                       <Icon className="size-4" />
                     </span>
                     <h3 className="flex-1 text-sm font-bold tracking-tight">
@@ -441,7 +441,7 @@ function StudentGuidance() {
                 <Link
                   to="/dashboard"
                   viewTransition
-                  className="text-primary hover:underline"
+                  className="text-link hover:underline"
                 >
                   대시보드
                 </Link>
@@ -451,7 +451,7 @@ function StudentGuidance() {
                 <Link
                   to="/subjects/patent"
                   viewTransition
-                  className="text-primary hover:underline"
+                  className="text-link hover:underline"
                 >
                   특허법 학습
                 </Link>{" "}
@@ -459,7 +459,7 @@ function StudentGuidance() {
                 <Link
                   to="/subjects/civil"
                   viewTransition
-                  className="text-primary hover:underline"
+                  className="text-link hover:underline"
                 >
                   민법 학습
                 </Link>{" "}
@@ -469,7 +469,7 @@ function StudentGuidance() {
                 <Link
                   to="/latest/laws"
                   viewTransition
-                  className="text-primary hover:underline"
+                  className="text-link hover:underline"
                 >
                   최신 정보 (법 개정 / 판례 / 문제 / 논문 / 도서 추록)
                 </Link>{" "}
@@ -479,7 +479,7 @@ function StudentGuidance() {
                 <Link
                   to="/goals"
                   viewTransition
-                  className="text-primary hover:underline"
+                  className="text-link hover:underline"
                 >
                   학습 목표
                 </Link>{" "}

@@ -100,7 +100,7 @@ export function WriteStage({
   return (
     <section className="space-y-3">
       <div className="border-primary/20 bg-primary/[0.04] flex items-start gap-2 rounded-2xl border p-3 text-xs leading-relaxed">
-        <PencilLineIcon className="text-primary mt-0.5 size-4 shrink-0" />
+        <PencilLineIcon className="text-link mt-0.5 size-4 shrink-0" />
         <p className="text-foreground">
           {hint ?? (
             <>

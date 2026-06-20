@@ -104,7 +104,7 @@ const components: Components = {
   hr: (props) => <hr className="border-border my-3" {...props} />,
   a: (props) => (
     <a
-      className="text-primary underline-offset-2 hover:underline"
+      className="text-link underline-offset-2 hover:underline"
       target="_blank"
       rel="noreferrer"
       {...props}

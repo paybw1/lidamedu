@@ -427,7 +427,7 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
         {/* 메인 영역 */}
         <main className="flex min-w-0 flex-1 flex-col">
           <header className="border-border flex items-center gap-2 border-b px-4 py-3">
-            <MessageSquareIcon className="text-primary size-4" />
+            <MessageSquareIcon className="text-link size-4" />
             <h1 className="text-sm font-bold tracking-tight">
               {active
                 ? (active.conversation.title ?? "(제목 없음)")
@@ -846,7 +846,7 @@ function QuotaBanner({
       </div>
       <Link
         to="/qna/new"
-        className="text-primary text-xs underline-offset-4 hover:underline"
+        className="text-link text-xs underline-offset-4 hover:underline"
       >
         강사 Q&A →
       </Link>

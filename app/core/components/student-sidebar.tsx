@@ -366,7 +366,7 @@ function FlatFull({
       className={cn(
         "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors",
         active
-          ? "bg-primary/10 text-primary font-semibold"
+          ? "bg-primary/10 text-link font-semibold"
           : "text-foreground/80 hover:bg-muted",
         locked && LOCKED_DIM_CLASS,
       )}
@@ -397,7 +397,7 @@ function GroupFull({
         title={locked ? LOCKED_HINT : undefined}
         className={cn(
           "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted",
-          hasActive ? "text-primary font-semibold" : "text-foreground/80",
+          hasActive ? "text-link font-semibold" : "text-foreground/80",
           locked && LOCKED_DIM_CLASS,
         )}
       >
@@ -426,7 +426,7 @@ function GroupFull({
                 className={cn(
                   "rounded-md px-2 py-1 text-xs transition-colors",
                   active
-                    ? "bg-primary/10 text-primary font-semibold"
+                    ? "bg-primary/10 text-link font-semibold"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
@@ -461,7 +461,7 @@ function FlatIcon({
         className={cn(
           "flex h-8 items-center justify-center rounded-lg transition-colors",
           active
-            ? "bg-primary/10 text-primary"
+            ? "bg-primary/10 text-link"
             : "text-foreground/80 hover:bg-muted",
           locked && LOCKED_DIM_CLASS,
         )}
@@ -497,7 +497,7 @@ function GroupIcon({
         aria-label={group.label}
         className={cn(
           "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
-          hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
+          hasActive ? "bg-primary/10 text-link" : "text-foreground/80",
           locked && LOCKED_DIM_CLASS,
         )}
       >
@@ -592,7 +592,7 @@ function SubjectsFull({
                 className={cn(
                   "rounded-md px-1.5 py-1 text-xs transition-colors",
                   active
-                    ? "bg-primary/10 text-primary font-semibold"
+                    ? "bg-primary/10 text-link font-semibold"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
@@ -628,7 +628,7 @@ function SubjectsIcon({
         aria-label="학습과목"
         className={cn(
           "flex h-8 w-full items-center justify-center rounded-lg transition-colors hover:bg-muted",
-          hasActive ? "bg-primary/10 text-primary" : "text-foreground/80",
+          hasActive ? "bg-primary/10 text-link" : "text-foreground/80",
           locked && LOCKED_DIM_CLASS,
         )}
       >

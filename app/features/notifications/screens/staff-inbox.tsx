@@ -185,7 +185,7 @@ function InboxRow({ item }: { item: StaffNotificationItem }) {
           <Icon
             className={cn(
               "size-3.5 shrink-0",
-              isUnread ? "text-primary" : "text-muted-foreground",
+              isUnread ? "text-link" : "text-muted-foreground",
             )}
           />
           <Chip tone={isUnread ? "blue" : "neutral"}>{kindLabel}</Chip>

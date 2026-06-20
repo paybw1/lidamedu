@@ -111,7 +111,7 @@ export default function AdminSubscriptions({ loaderData }: Route.ComponentProps)
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">
-              <CreditCardIcon className="text-primary size-5" /> 수강권 / 결제 관리
+              <CreditCardIcon className="text-link size-5" /> 수강권 / 결제 관리
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               feat-8-018 결제 인프라(`subscription_plans` / `payments` /
