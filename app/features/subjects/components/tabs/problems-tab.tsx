@@ -2,6 +2,7 @@ import type {
   ProblemFiltersApplied,
   ProblemNodeFilter,
 } from "../../lib/loader.server";
+import type { LawSubjectMeta } from "../../lib/subjects";
 
 import {
   ArrowRightIcon,
@@ -56,7 +57,6 @@ import {
 } from "~/features/study/lib/difficulty";
 import type { UserProblemStats } from "~/features/study/queries.server";
 
-import type { LawSubjectMeta } from "../../lib/subjects";
 import { LevelChipFilter } from "../level-chip-filter";
 import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { ProblemSystematicTree } from "../problem-systematic-tree";
@@ -66,12 +66,15 @@ import {
 } from "../subject-study-status";
 import { stripSystematicNumber } from "../systematic-node-label";
 
-const ORIGIN_OPTS: ProblemOrigin[] = [
-  "past_exam",
-  "past_exam_variant",
-  "mock",
-  "expected",
-];
+// 학습과목 문제탭: "기출"은 기출 + 기출변형을 한 묶음으로(필터·칩 모두). 출처 옵션에서 변형 제외.
+const ORIGIN_OPTS: ProblemOrigin[] = ["past_exam", "mock", "expected"];
+
+// 출처 표시 — 기출변형도 "기출"로 묶어 노출(필터와 일관). 전역 ORIGIN_LABEL 은 불변(admin·essay 유지).
+function mergedOriginLabel(origin: ProblemOrigin): string {
+  return origin === "past_exam_variant"
+    ? ORIGIN_LABEL.past_exam
+    : ORIGIN_LABEL[origin];
+}
 const FORMAT_OPTS: ProblemFormat[] = ["mc_short", "mc_box", "mc_case"];
 const POLARITY_OPTS: ProblemPolarity[] = ["positive", "negative"];
 const SCOPE_OPTS: ProblemScope[] = ["unit", "comprehensive"];
@@ -190,7 +193,9 @@ export function ProblemsTab({
             }
           >
             <SheetHeader className="border-border border-b px-4 py-3">
-              <SheetTitle className="text-sm font-semibold">체계별 풀이</SheetTitle>
+              <SheetTitle className="text-sm font-semibold">
+                체계별 풀이
+              </SheetTitle>
             </SheetHeader>
             <div className="px-3 py-3">{treePanel}</div>
           </MobileNavDrawer>
@@ -346,7 +351,11 @@ export function ProblemsTab({
             <FilterSelectChip
               label="출처"
               name="p_origin"
-              value={appliedFilters.origin ?? ""}
+              value={
+                appliedFilters.origin === "past_exam_variant"
+                  ? "past_exam"
+                  : (appliedFilters.origin ?? "")
+              }
               options={ORIGIN_OPTS.map((o) => ({
                 value: o,
                 label: ORIGIN_LABEL[o],
@@ -703,7 +712,7 @@ function SubjectiveCard({
             </Badge>
           ) : null}
           <Badge variant="secondary" className="text-xs">
-            {ORIGIN_LABEL[item.origin] ?? item.origin}
+            {mergedOriginLabel(item.origin)}
           </Badge>
           {item.year ? (
             <Badge variant="outline" className="text-xs tabular-nums">
@@ -775,7 +784,7 @@ function ProblemRow({
       <TableCell className="hidden md:table-cell">
         {/* origin chip */}
         <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium">
-          {ORIGIN_LABEL[item.origin]}
+          {mergedOriginLabel(item.origin)}
         </span>
       </TableCell>
       <TableCell className="hidden md:table-cell">

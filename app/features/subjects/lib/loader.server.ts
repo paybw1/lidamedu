@@ -65,6 +65,8 @@ export type ProblemSort = "number" | "hardest" | "easiest" | "newest";
 
 export interface ProblemFiltersApplied {
   origin?: ProblemOrigin;
+  // "기출" 선택 시 기출+기출변형 한 묶음 조회용(과목 뷰 한정). UI 는 origin 만 사용.
+  origins?: ProblemOrigin[];
   year?: number;
   examRound?: ProblemExamRound;
   format?: ProblemFormat;
@@ -224,7 +226,6 @@ function descendantArticleIds(
   }
   return out;
 }
-
 
 // systematic 부분트리에 속하는 모든 article id (중복 제거).
 // case-viewer 의 prev/next 형제 계산에서도 재사용 — cases-tab 의 노드 필터와
@@ -387,6 +388,16 @@ const PROBLEM_ORIGINS: readonly ProblemOrigin[] = [
   "mock",
   "expected",
 ];
+
+// 학습과목 문제탭: "기출"은 기출 + 기출변형을 한 묶음으로(과목 뷰 한정).
+//   admin·맞춤퀴즈는 listProblemsBySubject 를 origin(exact) 으로 그대로 호출 — 여기서만 그룹 확장.
+const PAST_EXAM_GROUP: ProblemOrigin[] = ["past_exam", "past_exam_variant"];
+function groupPastExamOrigin(f: ProblemFiltersApplied): ProblemFiltersApplied {
+  if (f.origin === "past_exam" || f.origin === "past_exam_variant") {
+    return { ...f, origin: undefined, origins: PAST_EXAM_GROUP };
+  }
+  return f;
+}
 const PROBLEM_FORMATS: readonly ProblemFormat[] = [
   "mc_short",
   "mc_box",
@@ -611,7 +622,7 @@ export async function loadSubjectHub(
       filterCaseIds,
       importanceMin: caseFilters.importanceMin || undefined,
     }),
-    listProblemsBySubject(client, lawCode, problemFilters),
+    listProblemsBySubject(client, lawCode, groupPastExamOrigin(problemFilters)),
     getLatestPublishedRevisionDate(client, law.lawId),
     listProblemYears(client, lawCode),
     getSystematicNodeProblemStats(client, lawCode),

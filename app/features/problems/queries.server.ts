@@ -57,6 +57,9 @@ export {
 
 export interface ListProblemsFilters {
   origin?: ProblemOrigin;
+  // 여러 출처를 한 묶음으로 조회(.in) — 학습과목 문제탭 "기출"=기출+기출변형 그룹.
+  //   설정 시 origin(.eq) 보다 우선. admin·맞춤퀴즈는 origin(exact) 그대로 사용.
+  origins?: ProblemOrigin[];
   format?: ProblemFormat;
   polarity?: ProblemPolarity;
   scope?: ProblemScope;
@@ -111,7 +114,11 @@ export async function listProblemsBySubject(
     query = query.eq("review_status", "approved");
   }
 
-  if (filters.origin) query = query.eq("origin", filters.origin);
+  if (filters.origins && filters.origins.length > 0) {
+    query = query.in("origin", filters.origins);
+  } else if (filters.origin) {
+    query = query.eq("origin", filters.origin);
+  }
   if (filters.format) query = query.eq("format", filters.format);
   if (filters.polarity) query = query.eq("polarity", filters.polarity);
   if (filters.scope) query = query.eq("scope", filters.scope);
@@ -949,7 +956,10 @@ export async function getOxQuestionsForNode(
   const pids = [...problemIds];
   const [choicesRes, boxesRes] = await Promise.all([
     client.from("problem_choices").select("choice_id").in("problem_id", pids),
-    client.from("problem_box_items").select("box_item_id").in("problem_id", pids),
+    client
+      .from("problem_box_items")
+      .select("box_item_id")
+      .in("problem_id", pids),
   ]);
   const choiceIds = (choicesRes.data ?? []).map((c) => c.choice_id);
   const boxItemIds = (boxesRes.data ?? []).map((b) => b.box_item_id);
@@ -2507,7 +2517,9 @@ export async function getAdjacentProblems(
   if (!rows) return { prev: null, next: null };
   const idx = rows.findIndex((r) => r.problem_id === problemId);
   if (idx < 0) return { prev: null, next: null };
-  const toAdj = (r: (typeof rows)[number] | undefined): AdjacentProblem | null =>
+  const toAdj = (
+    r: (typeof rows)[number] | undefined,
+  ): AdjacentProblem | null =>
     r
       ? {
           problemId: r.problem_id,
@@ -2658,9 +2670,7 @@ export async function getProblemForReview(
   const [choicesRes, boxRes] = await Promise.all([
     client
       .from("problem_choices")
-      .select(
-        "choice_id, choice_index, body_md, is_correct, explanation_md",
-      )
+      .select("choice_id, choice_index, body_md, is_correct, explanation_md")
       .eq("problem_id", problemId)
       .order("choice_index", { ascending: true }),
     client
