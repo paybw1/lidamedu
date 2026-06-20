@@ -28,7 +28,7 @@ import {
 } from "react-router";
 import { z } from "zod";
 
-import { AreaEyebrow } from "~/core/components/student";
+import { PageHeader, StudentShell } from "~/core/components/student";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -439,13 +439,13 @@ type StatsData = Extract<
 export default function StudyStats({ loaderData }: Route.ComponentProps) {
   if (loaderData.myAnalysisOff)
     return (
-      <div className="mx-auto w-full max-w-screen-xl space-y-4 px-5 py-6 md:px-10 md:py-8">
+      <StudentShell width="wide" className="space-y-4">
         <GoalSummaryBar
           goals={loaderData.studyGoals}
           examRound={loaderData.examRound ?? "first"}
         />
         <MyAnalysisOffNotice feature="학습 통계" />
-      </div>
+      </StudentShell>
     );
   return <StudyStatsInner loaderData={loaderData} />;
 }
@@ -503,40 +503,36 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-2">
-        <AreaEyebrow area="manage" />
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">학습현황</h1>
-            <p className="text-muted-foreground text-sm">
-              1차 · 2차 차수별로 조문 · 판례 · 문제까지 드릴다운
-            </p>
-          </div>
-          <div className="flex gap-2 text-xs">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/dashboard" viewTransition>
-                대시보드
-              </Link>
-            </Button>
-          </div>
-        </div>
+    <StudentShell width="wide">
+      <PageHeader
+        area="manage"
+        title="학습현황"
+        description="1차 · 2차 차수별로 조문 · 판례 · 문제까지 드릴다운"
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/dashboard" viewTransition>
+              대시보드
+            </Link>
+          </Button>
+        }
+      />
 
+      {/* 목표 요약 띠 — PageHeader 형제 밴드(풀폭, 헤더 슬롯 아님). */}
+      <div className="mb-4">
         <GoalSummaryBar
           goals={loaderData.studyGoals}
           examRound={loaderData.examRound ?? "first"}
         />
+      </div>
 
-        {/* 기간 preset/custom — 정답률·시도수·약점 등 누적 통계와 시계열 차트에 적용.
-            진도(% 완료) 와 학습한 조문·판례 수는 항상 전체 기준. */}
-        <div className="border-border bg-muted/30 mt-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
-          <RangeSelectionGroup value={rangeSel} onChange={setRange} />
-          <p className="text-muted-foreground ml-auto text-[11px] leading-relaxed">
-            기간 안 학습 활동·시도·약점 모두 반영. 진도(% 완료) 만 누적 기준
-            유지.
-          </p>
-        </div>
-      </header>
+      {/* 기간 preset/custom — 정답률·시도수·약점 등 누적 통계와 시계열 차트에 적용.
+          진도(% 완료) 와 학습한 조문·판례 수는 항상 전체 기준. */}
+      <div className="border-border bg-muted/30 mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+        <RangeSelectionGroup value={rangeSel} onChange={setRange} />
+        <p className="text-muted-foreground ml-auto text-[11px] leading-relaxed">
+          기간 안 학습 활동·시도·약점 모두 반영. 진도(% 완료) 만 누적 기준 유지.
+        </p>
+      </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="flex-wrap">
@@ -598,7 +594,7 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </StudentShell>
   );
 }
 
