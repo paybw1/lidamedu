@@ -607,7 +607,7 @@ function MilestonesCard({ overall }: { overall: StatsData["overall"] }) {
     },
   ];
   return (
-    <Surface pad={0}>
+    <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-3">
         <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
           <AwardIcon className="size-4" /> 마일스톤
@@ -667,7 +667,7 @@ function StudyTimeTrendCard({
   const maxWeek = Math.max(0.1, ...weeklyHours);
   const lastWeekHours = weeklyHours[weeklyHours.length - 1] ?? 0;
   return (
-    <Surface pad={0}>
+    <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-3">
         <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
           <TrendingUpIcon className="size-4" /> 주별 학습시간
@@ -775,7 +775,7 @@ function OverviewTab({ data }: { data: StatsData }) {
       ) : null}
 
       {/* feat-2-013 학습 활동 히트맵 */}
-      <Surface pad={0}>
+      <Surface pad={0} tone="subtle">
         <div className="px-6 pt-6 pb-3">
           <h2 className="text-base font-bold tracking-tight">
             학습 활동 히트맵
@@ -1529,6 +1529,7 @@ function KpiCard({
     return (
       <Surface
         pad={0}
+        tone="subtle"
         className="hover:border-primary/30 hover:bg-muted/40 transition-colors"
       >
         <Link to={to} viewTransition className="block px-5 py-4">
@@ -1538,7 +1539,7 @@ function KpiCard({
     );
   }
   return (
-    <Surface pad={0} className="px-5 py-4">
+    <Surface pad={0} tone="subtle" className="px-5 py-4">
       {body}
     </Surface>
   );
@@ -1573,7 +1574,7 @@ function ReflectedInTodayNote() {
 // 정확히 일치·항상 내용 있음). 행별 "풀기" 는 그 문제로 직접 점프.
 function WeakReviewCard({ weakAreas }: { weakAreas: StatsData["weakAreas"] }) {
   return (
-    <Surface pad={0}>
+    <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -1659,7 +1660,7 @@ function PassPredictionTrendCard({
 }) {
   if (items.length === 0) {
     return (
-      <Surface pad={0}>
+      <Surface pad={0} tone="subtle">
         <div className="px-6 pt-6 pb-2">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
             합격 예측 점수 추이
@@ -1677,7 +1678,7 @@ function PassPredictionTrendCard({
   const oldest = items[0];
   const delta = latest.score - oldest.score;
   return (
-    <Surface pad={0}>
+    <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-2">
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
@@ -1729,7 +1730,7 @@ function AccuracyTrendCard({ weeks }: { weeks: UserWeeklyAccuracyItem[] }) {
   if (weeks.length === 0) return null;
   const allEmpty = weeks.every((w) => w.totalAttempts === 0);
   return (
-    <Surface pad={0}>
+    <Surface pad={0} tone="subtle">
       <div className="px-6 pt-6 pb-2">
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">

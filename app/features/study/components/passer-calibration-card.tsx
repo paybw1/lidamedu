@@ -52,7 +52,7 @@ export function PasserCalibrationCard({
           표본 {benchmark.sampleSize}
         </Badge>
       </p>
-      <Surface pad={0} className="space-y-3 px-4 py-3">
+      <Surface pad={0} tone="subtle" className="space-y-3 px-4 py-3">
         {benchmark.fallbackReason ? (
           <p className="rounded border border-amber-200 bg-amber-50/60 px-2 py-1 text-[11px] text-amber-900">
             ⚠️ {benchmark.fallbackReason}
