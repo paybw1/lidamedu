@@ -1,8 +1,8 @@
 // 학습관리·학습지원·학습정보 등 세 영역에서 공유하는 가로 탭바.
 // 디자인 시스템 v1 — Notion·Linear 톤. sticky top, border-b, primary 활성.
 // count badge / color dot 같은 부가 정보는 옵션으로 지원.
-
 import type { ComponentType, ReactNode } from "react";
+
 import { Link, useLocation } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -29,8 +29,7 @@ export interface SectionTabItem {
 // 한 항목의 매칭 길이 — match prefix(없으면 to) 중 현재 pathname 에 맞는 가장 긴 것의 길이.
 // 매칭 없으면 -1. (query 는 비교하지 않음 — pathname prefix 기준.)
 function activeMatchLen(pathname: string, item: SectionTabItem): number {
-  const targets =
-    item.match && item.match.length > 0 ? item.match : [item.to];
+  const targets = item.match && item.match.length > 0 ? item.match : [item.to];
   let best = -1;
   for (const m of targets) {
     if (pathname === m || pathname.startsWith(`${m}/`)) {
@@ -72,8 +71,11 @@ export function SectionTabs({
     <nav
       aria-label={ariaLabel}
       className={cn(
-        "bg-card border-b border-border -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8",
-        sticky && "sticky top-0 z-10",
+        "bg-card border-border -mx-4 border-b px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8",
+        // 모바일: 항상 top-0(인증 사용자는 상단 navbar 가 hidden). md+: navigation.layout
+        //   이 설정한 --area-sticky-top(topbar=navbar 높이 3.5rem / sidebar=0)만큼 내려
+        //   navbar 아래에 고정 — navbar(sticky top-0 z-50)에 가려지지 않게.
+        sticky && "sticky top-0 z-10 md:top-[var(--area-sticky-top)]",
       )}
     >
       <div className="mx-auto flex max-w-screen-xl gap-1 overflow-x-auto py-2">

@@ -1,6 +1,6 @@
 import type { Route } from "./+types/navigation.layout";
 
-import { Suspense, useEffect, useState } from "react";
+import { type CSSProperties, Suspense, useEffect, useState } from "react";
 import { Await, Link, Outlet, data } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
@@ -75,6 +75,14 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
           ? "pb-[calc(1.75rem+env(safe-area-inset-bottom))]"
           : "pb-[calc(5rem+env(safe-area-inset-bottom))]",
       )}
+      // 영역 토글(AreaTabs/SectionTabs) sticky 오프셋 — md+ 기준. topbar 모드는 상단
+      //   navbar(h-14=3.5rem) 아래에 붙도록, sidebar 모드는 navbar 가 없어 0. 모바일은
+      //   SectionTabs 가 항상 top-0(navbar 가 모바일에서 hidden).
+      style={
+        {
+          "--area-sticky-top": isSidebar ? "0px" : "3.5rem",
+        } as CSSProperties
+      }
     >
       {/* 상단 NavigationBar — sidebar 모드에선 hideAll=true → null. 그 외는 정상 노출. */}
       <Suspense fallback={<NavigationBar loading={true} hideAll={isSidebar} />}>
@@ -122,7 +130,11 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
           {({ data: { user } }) =>
             user ? (
               <div className="border-border bg-background flex h-11 items-center border-b px-4 md:hidden">
-                <Link to="/" aria-label="리담변리사학원 홈" className="shrink-0">
+                <Link
+                  to="/"
+                  aria-label="리담변리사학원 홈"
+                  className="shrink-0"
+                >
                   <img
                     src="/lidam-logo.png"
                     alt="리담변리사학원"

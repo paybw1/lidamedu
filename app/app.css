@@ -27,6 +27,10 @@ body {
 :root {
   --radius: 0.65rem;
 
+  /* 영역 토글(AreaTabs/SectionTabs) sticky 오프셋 기본값(0). navigation.layout 이
+     topbar 모드(md+)에서 navbar 높이(3.5rem)로 덮어쓴다. 토글이 navbar 아래 고정되게. */
+  --area-sticky-top: 0px;
+
   --background: #ffffff;
   --foreground: #252525;
 
