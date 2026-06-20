@@ -1,5 +1,6 @@
-// feat-2-008 — 통합 학습 통계 페이지 (/study/stats)
-// 5 탭: 한눈에 / 1차 통계 / 2차 통계 / 빈칸·암기 / 정오문제 약점.
+// feat-2-008 — 통합 학습현황 페이지 (/study/stats)
+// 5 탭(학습 종류 기준): 한눈에 / 진도 / 정답률 / 암기 / 약점.
+//   차수(1차/2차)는 탭이 아니라 진도·정답률 탭 섹션 안에서 필터(feat-2-025 보존).
 // 각 탭은 서버 loader 가 일괄 fetch 한 데이터에서 슬라이스만 렌더.
 import type { Route } from "./+types/stats";
 
@@ -99,10 +100,13 @@ import {
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
+// 탭 = 학습 종류 기준(한눈에·진도·정답률·암기·약점). 차수(1차/2차)는 탭이 아니라
+//   진도·정답률 탭 섹션 안에서 필터(feat-2-025 보존). blanks·ox_diagnosis 값은
+//   외부 redirect 딥링크(/study/blanks·/study/ox-diagnosis) 보존 위해 유지, 라벨만 암기·약점.
 const TAB_VALUES = [
   "overview",
-  "first_exam",
-  "second_exam",
+  "progress",
+  "accuracy",
   "blanks",
   "ox_diagnosis",
 ] as const;
@@ -454,19 +458,11 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const rangeSel: RangeSelection = loaderData.rangeSel;
 
-  // 차수 필터(feat-2-025) — 학습목표 시험정보에서 고른 차수의 통계만 노출(미선택=둘 다).
-  const showFirst = loaderData.examRound !== "second";
-  const showSecond = loaderData.examRound !== "first";
-
-  const rawTab: TabValue = isTabValue(searchParams.get("tab"))
+  // 탭은 학습 종류 기준 — 차수 필터는 각 탭 섹션 안에서 적용(feat-2-025 보존).
+  //   구 차수 탭 URL(?tab=first_exam 등)은 isTabValue 불일치 → 기본 탭(한눈에)으로 폴백.
+  const tab: TabValue = isTabValue(searchParams.get("tab"))
     ? (searchParams.get("tab") as TabValue)
     : DEFAULT_TAB;
-  // 숨긴 차수 탭으로의 직접 진입(URL ?tab=)은 기본 탭으로 폴백.
-  const tab: TabValue =
-    (rawTab === "first_exam" && !showFirst) ||
-    (rawTab === "second_exam" && !showSecond)
-      ? DEFAULT_TAB
-      : rawTab;
 
   const setTab = (next: string) => {
     setSearchParams(
@@ -531,24 +527,10 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">한눈에</TabsTrigger>
-          {showFirst ? (
-            <TabsTrigger value="first_exam">
-              1차 통계{" "}
-              <span className="text-muted-foreground ml-1 tabular-nums">
-                {loaderData.kpis.totalProblemsAttempted}
-              </span>
-            </TabsTrigger>
-          ) : null}
-          {showSecond ? (
-            <TabsTrigger value="second_exam">
-              2차 통계{" "}
-              <span className="text-muted-foreground ml-1 tabular-nums">
-                {loaderData.subjectiveStats.totalAttempts}
-              </span>
-            </TabsTrigger>
-          ) : null}
+          <TabsTrigger value="progress">진도</TabsTrigger>
+          <TabsTrigger value="accuracy">정답률</TabsTrigger>
           <TabsTrigger value="blanks">
-            빈칸·암기{" "}
+            암기{" "}
             <span className="text-muted-foreground ml-1 tabular-nums">
               {loaderData.blanks.content.totalAttempts +
                 loaderData.blanks.subject.totalAttempts +
@@ -556,22 +538,18 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
                 loaderData.blanks.recitation.totalAttempts}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="ox_diagnosis">정오문제 약점</TabsTrigger>
+          <TabsTrigger value="ox_diagnosis">약점</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <OverviewTab data={loaderData} />
         </TabsContent>
-        {showFirst ? (
-          <TabsContent value="first_exam">
-            <FirstExamTab data={loaderData} />
-          </TabsContent>
-        ) : null}
-        {showSecond ? (
-          <TabsContent value="second_exam">
-            <SecondExamTab data={loaderData} />
-          </TabsContent>
-        ) : null}
+        <TabsContent value="progress">
+          <ProgressTab data={loaderData} />
+        </TabsContent>
+        <TabsContent value="accuracy">
+          <AccuracyTab data={loaderData} />
+        </TabsContent>
         <TabsContent value="blanks">
           <BlankStatsTabs
             content={loaderData.blanks.content}
@@ -581,11 +559,7 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
           />
         </TabsContent>
         <TabsContent value="ox_diagnosis">
-          <OxDiagnosisView
-            diagnosis={loaderData.oxDiagnosis}
-            passer={loaderData.oxPasser}
-            audience="self"
-          />
+          <WeaknessTab data={loaderData} />
         </TabsContent>
       </Tabs>
     </StudentShell>
@@ -740,10 +714,7 @@ function OverviewTab({ data }: { data: StatsData }) {
     overall,
     kpis,
     aidCounts,
-    subjectsProgress,
-    subjectiveStats,
     daily,
-    scienceProgress,
     accuracyTrend,
     passTrend,
     heatmap,
@@ -762,15 +733,6 @@ function OverviewTab({ data }: { data: StatsData }) {
       )
     : null;
   const goalDailyHourTarget = studyGoals.weeklyGoalHours / 7;
-  const firstExamSubjects = subjectsProgress.filter(
-    (s) => LAW_SUBJECTS[s.lawCode].exam !== "second",
-  );
-  const secondExamSubjects = subjectiveStats.bySubject.filter(
-    (s) => LAW_SUBJECTS[s.lawCode].exam !== "first",
-  );
-  // 차수 필터(feat-2-025) — 선택된 차수의 통계 카드만 노출(미선택=둘 다).
-  const showFirst = data.examRound !== "second";
-  const showSecond = data.examRound !== "first";
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -861,185 +823,6 @@ function OverviewTab({ data }: { data: StatsData }) {
         weekCount={accuracyTrend.weeks.length}
       />
       <PassPredictionTrendCard items={passTrend} />
-
-      {showFirst ? (
-        <>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  1차 통계 — 법률 {firstExamSubjects.length}과목
-                </p>
-                <Badge variant="outline" className="text-[10px]">
-                  객관식 · 조문 열람 + 정답률
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="w-24 text-right">조문 열람</TableHead>
-                    <TableHead className="w-20 text-right">문제</TableHead>
-                    <TableHead className="w-20 text-right">정답률</TableHead>
-                    <TableHead className="w-16"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {firstExamSubjects.map((row) => (
-                    <TableRow key={row.lawCode}>
-                      <TableCell className="text-sm font-medium">
-                        {row.name}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.pctViewed}%{" "}
-                        <span className="text-muted-foreground text-xs">
-                          ({row.visitedCount}/{row.totalArticleCount})
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.problemsAttempted}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.accuracyPct === null ? "—" : `${row.accuracyPct}%`}
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          to={`/subjects/${row.lawCode}`}
-                          viewTransition
-                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                        >
-                          가기 <ArrowRightIcon className="size-3" />
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  1차 통계 — 자연과학 4과목
-                </p>
-                <Badge variant="outline" className="text-[10px]">
-                  객관식 · 풀이 + 정답률
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="w-24 text-right">풀이</TableHead>
-                    <TableHead className="w-24 text-right">정답률</TableHead>
-                    <TableHead className="w-16"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scienceProgress.map((row) => {
-                    const slugUrl =
-                      row.slug === "earth_science" ? "earth-science" : row.slug;
-                    return (
-                      <TableRow
-                        key={row.slug}
-                        className={row.total === 0 ? "opacity-50" : ""}
-                      >
-                        <TableCell className="text-sm font-medium">
-                          <span className="mr-1">{row.emoji}</span>
-                          {row.name}
-                        </TableCell>
-                        <TableCell className="text-right text-sm tabular-nums">
-                          {row.attempted}{" "}
-                          <span className="text-muted-foreground text-xs">
-                            / {row.total}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right text-sm tabular-nums">
-                          {row.accuracyPct === null
-                            ? "—"
-                            : `${row.accuracyPct}%`}
-                        </TableCell>
-                        <TableCell>
-                          {row.total > 0 ? (
-                            <Link
-                              to={`/subjects/science/${slugUrl}`}
-                              viewTransition
-                              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                            >
-                              가기 <ArrowRightIcon className="size-3" />
-                            </Link>
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
-      ) : null}
-
-      {showSecond ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                2차 통계 — 법률 {secondExamSubjects.length}과목
-              </p>
-              <Badge variant="outline" className="text-[10px]">
-                주관식 · 답안 + 자기채점
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="px-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>과목</TableHead>
-                  <TableHead className="w-24 text-right">답안</TableHead>
-                  <TableHead className="w-28 text-right">
-                    평균 자기채점
-                  </TableHead>
-                  <TableHead className="w-16"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {secondExamSubjects.map((row) => (
-                  <TableRow key={row.lawCode}>
-                    <TableCell className="text-sm font-medium">
-                      {row.name}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {row.attempts}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {row.avgSelfScore === null
-                        ? "—"
-                        : `${row.avgSelfScore}점`}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/subjects/${row.lawCode}?tab=problems`}
-                        viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        가기 <ArrowRightIcon className="size-3" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }
@@ -1204,35 +987,422 @@ function CasesSection({ rows }: { rows: StatsData["caseStats"]["bySubject"] }) {
   );
 }
 
-// ─── 1차 통계 (조문 + 판례 + 객관식) ───
+// ─── 진도 (조문·판례 열람 + 문제 풀이 진척) ───
 
-function FirstExamTab({ data }: { data: StatsData }) {
+function ProgressTab({ data }: { data: StatsData }) {
   const {
     subjectsProgress,
     scienceProgress,
-    weakAreas,
-    kpis,
-    aidCounts,
+    subjectiveStats,
     articleStats,
     caseStats,
   } = data;
+  const showFirst = data.examRound !== "second";
+  const showSecond = data.examRound !== "first";
   const firstLaw = subjectsProgress.filter(isFirstExamSubject);
-  const firstArticles = articleStats.bySubject.filter(isFirstExamSubject);
-  const firstCases = caseStats.bySubject.filter(isFirstExamSubject);
+  const secondLaw = subjectiveStats.bySubject.filter(isSecondExamSubject);
+  const articleRows = articleStats.bySubject.filter(
+    (r) =>
+      (showFirst && isFirstExamSubject(r)) ||
+      (showSecond && isSecondExamSubject(r)),
+  );
+  const caseRows = caseStats.bySubject.filter(
+    (r) =>
+      (showFirst && isFirstExamSubject(r)) ||
+      (showSecond && isSecondExamSubject(r)),
+  );
+  return (
+    <div className="space-y-4">
+      {showFirst ? (
+        <>
+          <Card>
+            <CardHeader>
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                법률 객관식 — 조문 열람 + 문제 풀이
+              </p>
+            </CardHeader>
+            <CardContent className="px-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>과목</TableHead>
+                    <TableHead className="w-28 text-right">조문 열람</TableHead>
+                    <TableHead className="w-20 text-right">문제 시도</TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {firstLaw.map((row) => (
+                    <TableRow key={row.lawCode}>
+                      <TableCell className="text-sm font-medium">
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.pctViewed}%{" "}
+                        <span className="text-muted-foreground text-xs">
+                          ({row.visitedCount}/{row.totalArticleCount})
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.problemsAttempted}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          to={`/subjects/${row.lawCode}`}
+                          viewTransition
+                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                        >
+                          가기 <ArrowRightIcon className="size-3" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                자연과학 — 풀이 진척
+              </p>
+            </CardHeader>
+            <CardContent className="px-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>과목</TableHead>
+                    <TableHead className="w-24 text-right">풀이</TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {scienceProgress.map((row) => {
+                    const slugUrl =
+                      row.slug === "earth_science" ? "earth-science" : row.slug;
+                    return (
+                      <TableRow
+                        key={row.slug}
+                        className={row.total === 0 ? "opacity-50" : ""}
+                      >
+                        <TableCell className="text-sm font-medium">
+                          <span className="mr-1">{row.emoji}</span>
+                          {row.name}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {row.attempted}{" "}
+                          <span className="text-muted-foreground text-xs">
+                            / {row.total}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {row.total > 0 ? (
+                            <Link
+                              to={`/subjects/science/${slugUrl}`}
+                              viewTransition
+                              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            >
+                              가기 <ArrowRightIcon className="size-3" />
+                            </Link>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+
+      {showSecond ? (
+        <Card>
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              법률 주관식 — 답안 작성
+            </p>
+          </CardHeader>
+          <CardContent className="px-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>과목</TableHead>
+                  <TableHead className="w-24 text-right">답안</TableHead>
+                  <TableHead className="w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {secondLaw.map((row) => (
+                  <TableRow key={row.lawCode}>
+                    <TableCell className="text-sm font-medium">
+                      {row.name}
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {row.attempts}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        to={`/subjects/${row.lawCode}?tab=problems`}
+                        viewTransition
+                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                      >
+                        가기 <ArrowRightIcon className="size-3" />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <ArticlesSection rows={articleRows} />
+      <CasesSection rows={caseRows} />
+    </div>
+  );
+}
+
+// ─── 정답률 (객관식 정답률 + 주관식 자기채점) ───
+
+function AccuracyTab({ data }: { data: StatsData }) {
+  const { subjectsProgress, scienceProgress, subjectiveStats, kpis } = data;
+  const showFirst = data.examRound !== "second";
+  const showSecond = data.examRound !== "first";
+  const firstLaw = subjectsProgress.filter(isFirstExamSubject);
+  const secondLaw = subjectiveStats.bySubject.filter(isSecondExamSubject);
+  return (
+    <div className="space-y-4">
+      {showFirst ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <KpiCard
+              icon={ListChecksIcon}
+              label="시도 문제"
+              value={String(kpis.totalProblemsAttempted)}
+              subtle={`최근 7일 ${kpis.last7d.totalProblemsAttempted}건`}
+            />
+            <KpiCard
+              icon={TargetIcon}
+              label="정답률"
+              value={`${kpis.overallAccuracyPct}%`}
+            />
+            <KpiCard
+              icon={CalendarIcon}
+              label="누적 풀이 시간"
+              value={`${Math.round(kpis.totalProblemTimeMs / 1000 / 3600)}h`}
+            />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  법률 객관식 — 정답률
+                </p>
+                <Link
+                  to="/study/wrong-note"
+                  viewTransition
+                  className="text-primary text-xs hover:underline"
+                >
+                  오답노트 →
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="px-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>과목</TableHead>
+                    <TableHead className="w-24 text-right">시도</TableHead>
+                    <TableHead className="w-24 text-right">정답률</TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {firstLaw.map((row) => (
+                    <TableRow key={row.lawCode}>
+                      <TableCell className="text-sm font-medium">
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.problemsAttempted}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.accuracyPct === null ? "—" : `${row.accuracyPct}%`}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          to={`/subjects/${row.lawCode}?tab=problems`}
+                          viewTransition
+                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                        >
+                          풀기 <ArrowRightIcon className="size-3" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                자연과학 — 정답률
+              </p>
+            </CardHeader>
+            <CardContent className="px-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>과목</TableHead>
+                    <TableHead className="w-24 text-right">정답률</TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {scienceProgress.map((row) => {
+                    const slugUrl =
+                      row.slug === "earth_science" ? "earth-science" : row.slug;
+                    return (
+                      <TableRow
+                        key={row.slug}
+                        className={row.total === 0 ? "opacity-50" : ""}
+                      >
+                        <TableCell className="text-sm font-medium">
+                          <span className="mr-1">{row.emoji}</span>
+                          {row.name}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {row.accuracyPct === null
+                            ? "—"
+                            : `${row.accuracyPct}%`}
+                        </TableCell>
+                        <TableCell>
+                          {row.total > 0 ? (
+                            <Link
+                              to={`/subjects/science/${slugUrl}`}
+                              viewTransition
+                              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            >
+                              가기 <ArrowRightIcon className="size-3" />
+                            </Link>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+
+      {showSecond ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
+              icon={PencilLineIcon}
+              label="총 답안"
+              value={String(subjectiveStats.totalAttempts)}
+              subtle={`제출 ${subjectiveStats.submittedAttempts}`}
+            />
+            <KpiCard
+              icon={TargetIcon}
+              label="평균 자기채점"
+              value={
+                subjectiveStats.avgSelfScore === null
+                  ? "—"
+                  : `${subjectiveStats.avgSelfScore}점`
+              }
+            />
+            <KpiCard
+              icon={FlaskConicalIcon}
+              label="첨삭 대기"
+              value={String(subjectiveStats.reviewRequested)}
+              warn={subjectiveStats.reviewRequested > 0}
+            />
+            <KpiCard
+              icon={TargetIcon}
+              label="첨삭 완료"
+              value={String(subjectiveStats.reviewCompleted)}
+            />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  법률 주관식 — 자기채점
+                </p>
+                <Link
+                  to="/latest/essay"
+                  viewTransition
+                  className="text-primary text-xs hover:underline"
+                >
+                  주관식 색인 →
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="px-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>과목</TableHead>
+                    <TableHead className="w-24 text-right">답안</TableHead>
+                    <TableHead className="w-28 text-right">
+                      평균 자기채점
+                    </TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {secondLaw.map((row) => (
+                    <TableRow key={row.lawCode}>
+                      <TableCell className="text-sm font-medium">
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.attempts}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.avgSelfScore === null
+                          ? "—"
+                          : `${row.avgSelfScore}점`}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          to={`/subjects/${row.lawCode}?tab=problems`}
+                          viewTransition
+                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                        >
+                          가기 <ArrowRightIcon className="size-3" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ─── 약점 (내 오답 + 정오문제 약점 진단) ───
+
+function WeaknessTab({ data }: { data: StatsData }) {
+  const { weakAreas, aidCounts, oxDiagnosis, oxPasser } = data;
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          icon={ListChecksIcon}
-          label="시도 문제"
-          value={String(kpis.totalProblemsAttempted)}
-          subtle={`최근 7일 ${kpis.last7d.totalProblemsAttempted}건`}
-        />
-        <KpiCard
-          icon={TargetIcon}
-          label="정답률"
-          value={`${kpis.overallAccuracyPct}%`}
-        />
         <KpiCard
           icon={TrendingDownIcon}
           label="오답 큐"
@@ -1241,125 +1411,7 @@ function FirstExamTab({ data }: { data: StatsData }) {
           warn={aidCounts.wrongMcq + aidCounts.wrongOx > 0}
           to="/study/wrong-note"
         />
-        <KpiCard
-          icon={CalendarIcon}
-          label="누적 풀이 시간"
-          value={`${Math.round(kpis.totalProblemTimeMs / 1000 / 3600)}h`}
-        />
       </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              법률 객관식 — {firstLaw.length}과목
-            </p>
-            <Link
-              to="/study/wrong-note"
-              viewTransition
-              className="text-primary text-xs hover:underline"
-            >
-              오답노트 →
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>과목</TableHead>
-                <TableHead className="w-24 text-right">시도</TableHead>
-                <TableHead className="w-24 text-right">정답률</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {firstLaw.map((row) => (
-                <TableRow key={row.lawCode}>
-                  <TableCell className="text-sm font-medium">
-                    {row.name}
-                  </TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">
-                    {row.problemsAttempted}
-                  </TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">
-                    {row.accuracyPct === null ? "—" : `${row.accuracyPct}%`}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/subjects/${row.lawCode}?tab=problems`}
-                      viewTransition
-                      className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                    >
-                      풀기 <ArrowRightIcon className="size-3" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            자연과학 객관식 — 4과목
-          </p>
-        </CardHeader>
-        <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>과목</TableHead>
-                <TableHead className="w-24 text-right">풀이</TableHead>
-                <TableHead className="w-24 text-right">정답률</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {scienceProgress.map((row) => {
-                const slugUrl =
-                  row.slug === "earth_science" ? "earth-science" : row.slug;
-                return (
-                  <TableRow
-                    key={row.slug}
-                    className={row.total === 0 ? "opacity-50" : ""}
-                  >
-                    <TableCell className="text-sm font-medium">
-                      <span className="mr-1">{row.emoji}</span>
-                      {row.name}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {row.attempted}{" "}
-                      <span className="text-muted-foreground text-xs">
-                        / {row.total}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {row.accuracyPct === null ? "—" : `${row.accuracyPct}%`}
-                    </TableCell>
-                    <TableCell>
-                      {row.total > 0 ? (
-                        <Link
-                          to={`/subjects/science/${slugUrl}`}
-                          viewTransition
-                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                        >
-                          가기 <ArrowRightIcon className="size-3" />
-                        </Link>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <ArticlesSection rows={firstArticles} />
-      <CasesSection rows={firstCases} />
 
       <Card>
         <CardHeader>
@@ -1429,103 +1481,12 @@ function FirstExamTab({ data }: { data: StatsData }) {
           ) : null}
         </CardContent>
       </Card>
-    </div>
-  );
-}
 
-// ─── 2차 통계 (조문 + 판례 + 주관식) ───
-
-function SecondExamTab({ data }: { data: StatsData }) {
-  const { subjectiveStats, articleStats, caseStats } = data;
-  const secondLaw = subjectiveStats.bySubject.filter(isSecondExamSubject);
-  const secondArticles = articleStats.bySubject.filter(isSecondExamSubject);
-  const secondCases = caseStats.bySubject.filter(isSecondExamSubject);
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          icon={PencilLineIcon}
-          label="총 답안"
-          value={String(subjectiveStats.totalAttempts)}
-          subtle={`제출 ${subjectiveStats.submittedAttempts}`}
-        />
-        <KpiCard
-          icon={TargetIcon}
-          label="평균 자기채점"
-          value={
-            subjectiveStats.avgSelfScore === null
-              ? "—"
-              : `${subjectiveStats.avgSelfScore}점`
-          }
-        />
-        <KpiCard
-          icon={FlaskConicalIcon}
-          label="첨삭 대기"
-          value={String(subjectiveStats.reviewRequested)}
-          warn={subjectiveStats.reviewRequested > 0}
-        />
-        <KpiCard
-          icon={TargetIcon}
-          label="첨삭 완료"
-          value={String(subjectiveStats.reviewCompleted)}
-        />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              법률 주관식 — {secondLaw.length}과목
-            </p>
-            <Link
-              to="/latest/essay"
-              viewTransition
-              className="text-primary text-xs hover:underline"
-            >
-              주관식 색인 →
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>과목</TableHead>
-                <TableHead className="w-24 text-right">답안</TableHead>
-                <TableHead className="w-28 text-right">평균 자기채점</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {secondLaw.map((row) => (
-                <TableRow key={row.lawCode}>
-                  <TableCell className="text-sm font-medium">
-                    {row.name}
-                  </TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">
-                    {row.attempts}
-                  </TableCell>
-                  <TableCell className="text-right text-sm tabular-nums">
-                    {row.avgSelfScore === null ? "—" : `${row.avgSelfScore}점`}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      to={`/subjects/${row.lawCode}?tab=problems`}
-                      viewTransition
-                      className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                    >
-                      가기 <ArrowRightIcon className="size-3" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <ArticlesSection rows={secondArticles} />
-      <CasesSection rows={secondCases} />
+      <OxDiagnosisView
+        diagnosis={oxDiagnosis}
+        passer={oxPasser}
+        audience="self"
+      />
     </div>
   );
 }
