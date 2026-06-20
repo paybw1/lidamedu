@@ -48,13 +48,14 @@ export const T = {
   ease: "cubic-bezier(0.22, 1, 0.36, 1)",
 } as const;
 
-// 히트맵·도넛·막대용 블루 5단계 명도.
+// 히트맵·도넛·막대용 블루 5단계 명도 — primary(파랑) 기반 color-mix 로 light/dark 자동 적응.
+// 활동·볼륨 차트 공통 hue(docs/survey/색정합성-점검.md ③ A안: 활동=primary 단색).
 export const BLUE_SCALE = [
-  "rgba(0,0,0,0.04)",
-  "rgba(45,91,168,0.15)",
-  "rgba(45,91,168,0.35)",
-  "rgba(45,91,168,0.6)",
-  "#2D5BA8",
+  "color-mix(in oklch, var(--foreground) 6%, transparent)", // empty — 옅은 회색/다크 옅은 흰
+  "color-mix(in oklch, var(--primary) 25%, transparent)",
+  "color-mix(in oklch, var(--primary) 45%, transparent)",
+  "color-mix(in oklch, var(--primary) 70%, transparent)",
+  "var(--primary)",
 ] as const;
 
 export function useInView<E extends Element>(threshold = 0.15) {

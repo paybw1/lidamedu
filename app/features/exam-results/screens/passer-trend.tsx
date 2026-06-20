@@ -79,12 +79,12 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
           축 어느 지점에 있는지 함께 표시합니다.
         </p>
         {trend.fallbackReason ? (
-          <p className="rounded border border-amber-200 bg-amber-50/60 px-2 py-1 text-[11px] text-amber-900">
+          <p className="rounded border border-amber-200 bg-amber-50/60 px-2 py-1 text-[11px] text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
             ⚠️ {trend.fallbackReason}
           </p>
         ) : null}
         {!trend.hasPlan ? (
-          <p className="rounded border border-blue-200 bg-blue-50/60 px-2 py-1 text-[11px] text-blue-900">
+          <p className="rounded border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] text-foreground">
             ℹ️ 차기 응시 계획(연도/차수)을 설정하시면 본인 곡선이 활성화됩니다.
             <Link to="/me/exam-results" className="ml-1 underline">
               설정하러 가기
@@ -105,7 +105,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
           series={trend.studyHours}
           unit="h"
           decimals={1}
-          color="#7c3aed"
+          color="var(--primary)"
           currentWeek={trend.userCurrentWeek}
         />
         <TrendChartCard
@@ -114,7 +114,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
           series={trend.problemAttempts}
           unit="회"
           decimals={0}
-          color="#0284c7"
+          color="var(--primary)"
           currentWeek={trend.userCurrentWeek}
         />
         <TrendChartCard
@@ -123,7 +123,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
           series={trend.accuracyPct}
           unit="%"
           decimals={0}
-          color="#16a34a"
+          color="var(--primary)"
           currentWeek={trend.userCurrentWeek}
         />
       </div>
@@ -257,7 +257,7 @@ function TrendChartCard({
                   x2={width - padding.right}
                   y1={y}
                   y2={y}
-                  stroke="#E5E7EB"
+                  stroke="var(--border)"
                   strokeDasharray={i === 0 ? "0" : "2 3"}
                 />
                 <text
@@ -266,7 +266,7 @@ function TrendChartCard({
                   textAnchor="end"
                   dominantBaseline="middle"
                   fontSize="10"
-                  fill="#6B7280"
+                  fill="var(--muted-foreground)"
                 >
                   {decimals === 0
                     ? Math.round(v).toLocaleString("ko-KR")
@@ -287,14 +287,14 @@ function TrendChartCard({
                   x2={x}
                   y1={padding.top + chartH}
                   y2={padding.top + chartH + 4}
-                  stroke="#9CA3AF"
+                  stroke="var(--border)"
                 />
                 <text
                   x={x}
                   y={padding.top + chartH + 16}
                   textAnchor="middle"
                   fontSize="10"
-                  fill="#6B7280"
+                  fill="var(--muted-foreground)"
                 >
                   D{p.weeksToExam === 0 ? "-0" : p.weeksToExam}주
                 </text>
@@ -310,7 +310,7 @@ function TrendChartCard({
                 x2={xFor(currentWeek)}
                 y1={padding.top}
                 y2={padding.top + chartH}
-                stroke="#DC2626"
+                stroke="var(--destructive)"
                 strokeDasharray="4 3"
                 strokeWidth={1}
               />
@@ -319,7 +319,7 @@ function TrendChartCard({
                 y={padding.top - 4}
                 textAnchor="middle"
                 fontSize="10"
-                fill="#DC2626"
+                fill="var(--destructive)"
                 fontWeight={700}
               >
                 지금
@@ -356,7 +356,7 @@ function TrendChartCard({
             <path
               d={userPath}
               fill="none"
-              stroke="#111827"
+              stroke="var(--foreground)"
               strokeWidth={2}
               strokeDasharray="4 3"
               strokeLinecap="round"
@@ -371,16 +371,16 @@ function TrendChartCard({
                 cx={xFor(p.weeksToExam)}
                 cy={yFor(p.user!)}
                 r={2.5}
-                fill="#111827"
+                fill="var(--foreground)"
               />
             ))}
         </svg>
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px]">
           <Legend swatchColor={color} label={`합격자 평균`} dashed={false} />
-          <Legend swatchColor="#111827" label="본인" dashed />
+          <Legend swatchColor="var(--foreground)" label="본인" dashed />
           {currentWeek !== null ? (
-            <Legend swatchColor="#DC2626" label="현재 주차" dashed />
+            <Legend swatchColor="var(--destructive)" label="현재 주차" dashed />
           ) : null}
         </div>
       </CardContent>

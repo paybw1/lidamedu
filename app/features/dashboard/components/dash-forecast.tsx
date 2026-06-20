@@ -146,7 +146,7 @@ export function PassPredictionCard({
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke="rgba(0,0,0,0.2)"
+                  stroke="var(--border)"
                   strokeWidth={1}
                 />
               );
@@ -577,10 +577,10 @@ function CutLineSparkline({ round }: { round: ExamRound }) {
             title={`${r.year}: ${r.cut_line}점`}
           >
             <div
-              className="w-4 rounded-sm bg-sky-400/80"
+              className="w-4 rounded-sm bg-primary/70"
               style={{ height: `${h}px` }}
             />
-            <span className="text-[9px] text-zinc-500 tabular-nums">
+            <span className="text-[9px] text-muted-foreground tabular-nums">
               {String(r.year).slice(-2)}
             </span>
           </div>
@@ -601,18 +601,18 @@ function RoundBlock({
   const target: OperativeTarget = getOperativeTarget(round);
   const roundLabel = round === "first" ? "1차" : "2차";
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-50/60 p-3">
-      <div className="text-xs font-medium text-zinc-500">
+    <div className="rounded-lg border border-border bg-muted/40 p-3">
+      <div className="text-xs font-medium text-muted-foreground">
         {roundLabel} 시험 합격 기준
       </div>
       {/* 실측 합격선 — operative target */}
       <div className="mt-1">
         {target.recentCutLine !== null ? (
           <>
-            <div className="text-sm font-semibold text-zinc-900 tabular-nums">
+            <div className="text-sm font-semibold text-foreground tabular-nums">
               실측 합격선 ≈ {target.recentCutLine}점
             </div>
-            <div className="text-[11px] text-zinc-500">
+            <div className="text-[11px] text-muted-foreground">
               한국산업인력공단 {target.yearRange!.min}~{target.yearRange!.max}년 평균
               ({target.sampleYears}개년 · 최근 {target.latestYear}년{" "}
               {target.latestCutLine}점)
@@ -620,18 +620,18 @@ function RoundBlock({
             <CutLineSparkline round={round} />
           </>
         ) : (
-          <div className="text-[11px] text-zinc-500">
+          <div className="text-[11px] text-muted-foreground">
             {target.unavailableReason ?? "실측 합격선 데이터 없음"}
           </div>
         )}
       </div>
       {/* 법정 기준 — statutory floor */}
-      <div className="mt-2 border-t border-zinc-200 pt-2 text-[11px] text-zinc-500">
+      <div className="mt-2 border-t border-border pt-2 text-[11px] text-muted-foreground">
         법정 자격선 — 과목 {floor.subjectFloor}점 미만 과락 · 평균{" "}
         {floor.averagePass}점 이상
       </div>
       {electiveNote ? (
-        <div className="mt-1 text-[11px] text-zinc-500">{electiveNote}</div>
+        <div className="mt-1 text-[11px] text-muted-foreground">{electiveNote}</div>
       ) : null}
     </div>
   );
@@ -660,13 +660,13 @@ export function PassCriterionAnnouncementCard({
           electiveNote="선택과목 Pass/Fail (50점 이상 통과·총점 미산입)"
         />
       </div>
-      <div className="mt-3 text-[11px] text-zinc-500">
+      <div className="mt-3 text-[11px] text-muted-foreground">
         실측 합격선은 한국산업인력공단(큐넷) 공개 채점통계 — 1차 cut_line 은
         평균 60점보다 훨씬 높고(상대 3배수 선발), 2차는 60점보다 낮습니다(최소인원
         보정). 합격자 학습 패턴 비교는 실 합격자{" "}
-        <span className="font-medium text-zinc-700">{gate.minSample}명</span>{" "}
+        <span className="font-medium text-foreground">{gate.minSample}명</span>{" "}
         이상 누적 시 자동 활성화 (현재{" "}
-        <span className="font-medium text-zinc-700">
+        <span className="font-medium text-foreground">
           {gate.realSampleSize}/{gate.minSample}
         </span>
         ).

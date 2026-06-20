@@ -11,12 +11,12 @@ const DOW_LABEL = ["일", "월", "화", "수", "목", "금", "토"];
 
 function intensityClass(count: number, max: number): string {
   if (count === 0) return "fill-muted";
-  if (max <= 0) return "fill-emerald-300";
+  if (max <= 0) return "fill-blue-300";
   const ratio = count / max;
-  if (ratio >= 0.75) return "fill-emerald-700 dark:fill-emerald-500";
-  if (ratio >= 0.5) return "fill-emerald-500 dark:fill-emerald-400";
-  if (ratio >= 0.25) return "fill-emerald-400 dark:fill-emerald-600";
-  return "fill-emerald-200 dark:fill-emerald-800";
+  if (ratio >= 0.75) return "fill-blue-700 dark:fill-blue-500";
+  if (ratio >= 0.5) return "fill-blue-500 dark:fill-blue-400";
+  if (ratio >= 0.25) return "fill-blue-400 dark:fill-blue-600";
+  return "fill-blue-200 dark:fill-blue-800";
 }
 
 export function ActivityHeatmap({ data }: { data: ActivityHeatmapData }) {
@@ -175,7 +175,7 @@ function DowBars({ data }: { data: ActivityHeatmapData }) {
             </span>
             <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
               <div
-                className="h-full rounded-full bg-emerald-500"
+                className="h-full rounded-full bg-primary"
                 style={{ width: `${(b.totalCount / max) * 100}%` }}
               />
             </div>
@@ -209,7 +209,7 @@ function HourBars({ data }: { data: ActivityHeatmapData }) {
               className="bg-muted relative h-20 flex-1 rounded-sm"
             >
               <div
-                className="absolute right-0 bottom-0 left-0 rounded-sm bg-emerald-500"
+                className="absolute right-0 bottom-0 left-0 rounded-sm bg-primary"
                 style={{ height: `${Math.max(pct, 2)}%` }}
               />
             </div>

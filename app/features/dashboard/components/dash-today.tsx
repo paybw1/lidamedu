@@ -123,7 +123,7 @@ function TrackRow({
           width: 20,
           height: 20,
           borderRadius: 6,
-          background: item.isDone ? T.blue : "#fff",
+          background: item.isDone ? T.blue : T.paper,
           border: item.isDone ? 0 : `1.5px solid ${T.line}`,
           display: "inline-flex",
           alignItems: "center",
@@ -376,7 +376,7 @@ export function RecommendedActionsCard({
                   gap: 12,
                   padding: "12px 14px",
                   borderRadius: 12,
-                  background: "#fff",
+                  background: T.paper,
                   border: `1px solid ${T.lineSoft}`,
                   textDecoration: "none",
                 }}

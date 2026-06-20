@@ -48,6 +48,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "~/core/components/ui/tabs";
+import { scoreBgTone } from "~/core/lib/chart-colors";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { BlankStatsTabs } from "~/features/blanks/components/blank-stats-tabs";
@@ -1624,24 +1625,7 @@ function WeakReviewCard({ weakAreas }: { weakAreas: StatsData["weakAreas"] }) {
   );
 }
 
-// feat-7-024 정밀화 — 본인 주별 정답률 추이
-function accuracyTrendBgTone(pct: number | null): string {
-  if (pct === null) return "bg-muted-foreground/30";
-  if (pct >= 80) return "bg-emerald-500/80";
-  if (pct >= 60) return "bg-lime-500/80";
-  if (pct >= 40) return "bg-amber-500/80";
-  if (pct >= 20) return "bg-orange-500/80";
-  return "bg-rose-500/80";
-}
-
-// feat-7-027 — 합격 예측 점수 추이 (최근 30일)
-function passScoreBgTone(score: number): string {
-  if (score >= 80) return "bg-emerald-500/80";
-  if (score >= 60) return "bg-lime-500/80";
-  if (score >= 40) return "bg-amber-500/80";
-  if (score >= 20) return "bg-orange-500/80";
-  return "bg-rose-500/80";
-}
+// 성과 막대 색(정답률 추이·합격예측 추이)은 scoreBgTone(~/core/lib/chart-colors) 공유 — SSOT.
 
 function PassPredictionTrendCard({
   items,
@@ -1703,7 +1687,7 @@ function PassPredictionTrendCard({
                 <div
                   className={cn(
                     "w-full transition-all",
-                    passScoreBgTone(it.score),
+                    scoreBgTone(it.score),
                   )}
                   style={{ height: `${Math.max(2, it.score)}%` }}
                 />
@@ -1750,7 +1734,7 @@ function AccuracyTrendCard({ weeks }: { weeks: UserWeeklyAccuracyItem[] }) {
                     <div
                       className={cn(
                         "w-full transition-all",
-                        accuracyTrendBgTone(w.accuracyPct),
+                        scoreBgTone(w.accuracyPct),
                       )}
                       style={{ height: `${Math.max(2, height)}%` }}
                     />

@@ -49,7 +49,7 @@ export function DashSidebar({
       style={{
         width: 240,
         flexShrink: 0,
-        background: "#fff",
+        background: "var(--sidebar)",
         borderRight: `1px solid ${T.line}`,
         position: "sticky",
         top: 0,
@@ -206,7 +206,7 @@ export function DashTopbar({
             alignItems: "center",
             gap: 2,
             padding: "2px 6px",
-            background: "#fff",
+            background: T.paper,
             border: `1px solid ${T.line}`,
             borderRadius: 4,
             font: "600 10px/1 Pretendard, sans-serif",
@@ -249,7 +249,7 @@ export function DashTopbar({
               height: 7,
               borderRadius: "50%",
               background: T.coral,
-              border: "1.5px solid #fff",
+              border: `1.5px solid ${T.paper}`,
             }}
           />
         </Link>

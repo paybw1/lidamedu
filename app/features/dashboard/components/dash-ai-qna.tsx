@@ -203,7 +203,7 @@ export function AiQnaRecentCard({
               font: "600 12px/1 Pretendard, sans-serif",
               color: T.ink,
               textDecoration: "none",
-              background: "#fff",
+              background: T.paper,
             }}
           >
             <PlusIcon size={12} strokeWidth={2.4} />
