@@ -517,21 +517,18 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
         }
       />
 
-      {/* 목표 요약 띠 — PageHeader 형제 밴드(풀폭, 헤더 슬롯 아님). */}
-      <div className="mb-4">
+      {/* 목표 요약 띠 + 기간 선택 — 한 행(좌: 목표 요약 / 우: 기간), 좁으면 줄바꿈. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <GoalSummaryBar
           goals={loaderData.studyGoals}
           examRound={loaderData.examRound ?? "first"}
         />
-      </div>
-
-      {/* 기간 preset/custom — 정답률·시도수·약점 등 누적 통계와 시계열 차트에 적용.
-          진도(% 완료) 와 학습한 조문·판례 수는 항상 전체 기준. */}
-      <div className="border-border bg-muted/30 mb-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
-        <RangeSelectionGroup value={rangeSel} onChange={setRange} />
-        <p className="text-muted-foreground ml-auto text-[11px] leading-relaxed">
-          기간 안 학습 활동·시도·약점 모두 반영. 진도(% 완료) 만 누적 기준 유지.
-        </p>
+        <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+          <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            기간
+          </span>
+          <RangeSelectionGroup value={rangeSel} onChange={setRange} />
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
