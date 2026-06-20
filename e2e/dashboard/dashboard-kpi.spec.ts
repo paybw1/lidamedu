@@ -37,10 +37,16 @@ test.describe.serial("대시보드 실데이터", () => {
     });
     if (error) throw error;
     // onboarding(feat-8-017) 우회 — onboarded_at 이 null 이면 /dashboard 가 wizard 로 redirect.
+    // next_exam_round 는 DB DEFAULT 가 'first' 라(feat-2-025 ①) 신규 유저가 1차로 잡힌다.
+    //   이 테스트는 "차수 미설정(null)" 기준 — 대시보드 법률 과목 진도가 1차/2차 두 그룹을
+    //   모두 노출하는 상태 — 이므로 명시적으로 null 로 덮어쓴다.
     if (data.user) {
       await admin
         .from("profiles")
-        .update({ onboarded_at: new Date().toISOString() })
+        .update({
+          onboarded_at: new Date().toISOString(),
+          next_exam_round: null,
+        })
         .eq("profile_id", data.user.id);
     }
   });
@@ -63,8 +69,9 @@ test.describe.serial("대시보드 실데이터", () => {
     await expect(page.getByText("푼 문제 수")).toBeVisible();
     await expect(page.getByText("평균 정답률")).toBeVisible();
 
-    // 과목별 진도 카드(SubjectsProgressCard) — 1차(객관식)/2차(주관식) 그룹으로 분리.
-    // 산업재산권법(특허/상표/디자인)은 양쪽 그룹에 노출되므로 .first() 사용.
+    // 과목별 진도 카드(SubjectsProgressCard) — 차수 미설정(beforeAll 에서 next_exam_round=null)
+    //   이라 1차(객관식)/2차(주관식) 두 그룹 모두 노출. 목표 차수를 정하면 그 차수 그룹만 보인다.
+    //   산업재산권법(특허/상표/디자인)은 양쪽 그룹에 노출되므로 .first() 사용.
     await expect(page.getByText("법률 과목 진도")).toBeVisible();
     await expect(page.getByText("1차 · 객관식", { exact: true })).toBeVisible();
     await expect(page.getByText("2차 · 주관식", { exact: true })).toBeVisible();
