@@ -21,7 +21,9 @@ import {
   TrendingDownIcon,
   TrendingUpIcon,
 } from "lucide-react";
+import { Suspense } from "react";
 import {
+  Await,
   Link,
   type ShouldRevalidateFunctionArgs,
   data,
@@ -251,6 +253,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     name: LAW_SUBJECTS[s].name,
   }));
 
+  // ox_diagnosis 매트릭스 = 가장 무거운 헬퍼(약점 탭 전용·TabsList 배지 없음).
+  //   초기 응답 차단에서 분리(streaming defer) — 병렬 시작만 하고 await 하지 않는다.
+  //   약점 탭에서 <Await> 로 스트리밍(?tab=ox_diagnosis 직접 진입도 로딩 후 동작).
+  const oxDiagnosisPromise = computeOxDiagnosis(client, user.id);
+
   const [
     overall,
     kpis,
@@ -268,7 +275,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     recitation,
     accuracyTrend,
     heatmap,
-    oxDiagnosis,
     oxGate,
     passTrend,
     examRoundRow,
@@ -291,7 +297,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     getUserRecitationStats(client, user.id, since),
     getUserAccuracyTrend(client, user.id, trendOpts),
     getActivityHeatmap(client, user.id, 365),
-    computeOxDiagnosis(client, user.id),
     isPasserBenchmarkEnabled(),
     getUserPassPredictionTrend(client, user.id, passOpts),
     // 차수 SSOT(feat-2-025) — 학습목표 시험정보에서 고른 차수의 통계만 노출.
@@ -333,7 +338,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     accuracyTrend,
     passTrend,
     heatmap,
-    oxDiagnosis,
+    oxDiagnosis: oxDiagnosisPromise,
     oxPasser: {
       enabled: oxGate.enabled,
       sampleSize: oxGate.realSampleSize,
@@ -1457,12 +1462,30 @@ function WeaknessTab({ data }: { data: StatsData }) {
         ) : null}
       </Surface>
 
-      <OxDiagnosisView
-        diagnosis={oxDiagnosis}
-        passer={oxPasser}
-        audience="self"
-      />
+      {/* ox_diagnosis 매트릭스는 streaming defer — 약점 탭에서 스트리밍·로딩 표시.
+          ?tab=ox_diagnosis 직접 진입도 로딩 후 동일 내용. */}
+      <Suspense fallback={<OxDiagnosisLoading />}>
+        <Await resolve={oxDiagnosis}>
+          {(diag) => (
+            <OxDiagnosisView
+              diagnosis={diag}
+              passer={oxPasser}
+              audience="self"
+            />
+          )}
+        </Await>
+      </Suspense>
     </div>
+  );
+}
+
+function OxDiagnosisLoading() {
+  return (
+    <Surface pad={0} tone="subtle" className="px-6 py-12">
+      <p className="text-muted-foreground text-center text-sm">
+        정오문제 약점 분석을 불러오는 중…
+      </p>
+    </Surface>
   );
 }
 
