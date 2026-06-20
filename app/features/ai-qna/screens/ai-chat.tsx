@@ -12,6 +12,7 @@
 //   - 신규 대화는 응답 첫 이벤트(conversation)에서 conversationId 받아 URL 갱신(navigate).
 //
 // 단일 페이지 + searchParams 분기. revalidate 는 메시지 저장 직후 가벼운 useRevalidator() 호출.
+import type { Route } from "./+types/ai-chat";
 
 import {
   ArrowUpIcon,
@@ -37,30 +38,33 @@ import {
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { cn } from "~/core/lib/utils";
 import {
+  type ConversationMessage,
+  type ConversationSummary,
   getConversationWithMessages,
   listMyConversations,
   setMessageFeedback,
   softDeleteConversation,
-  type ConversationMessage,
-  type ConversationSummary,
 } from "~/features/ai-qna/conversations.server";
-import { getStaffRole } from "~/features/laws/queries.server";
 import type { Citation } from "~/features/ai-qna/lib/citations";
 import {
-  getQuotaState,
   type QuotaState,
+  getQuotaState,
 } from "~/features/ai-qna/settings.server";
+import { getStaffRole } from "~/features/laws/queries.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   RANGE_PRESETS,
-  inRangePreset,
   type RangePreset,
+  inRangePreset,
 } from "~/features/study/components/study-aids-list";
-
-import type { Route } from "./+types/ai-chat";
+import {
+  StudyAidsTabs,
+  toTabCounts,
+} from "~/features/study/components/study-aids-shell";
+import { getStudyAidCounts } from "~/features/study/queries.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "AI Q&A | Lidam Patent Attorney Academy" },
@@ -86,9 +90,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const activeId = url.searchParams.get("c");
 
-  const [conversations, quota] = await Promise.all([
+  const [conversations, quota, aidCounts] = await Promise.all([
     listMyConversations(client, user.id, 50),
     getQuotaState(client, user.id),
+    // 학습지원 토글 건수 — 형제 화면(오답노트 등)과 동일 배지.
+    getStudyAidCounts(client, user.id),
   ]);
 
   let active: {
@@ -99,7 +105,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     active = await getConversationWithMessages(client, activeId);
   }
 
-  return { conversations, active, quota };
+  return { conversations, active, quota, aidCounts };
 }
 
 // ── action — delete / feedback ────────────────────────────────────────────
@@ -130,8 +136,7 @@ export async function action({ request }: Route.ActionArgs) {
       typeof noteRaw === "string" && noteRaw.trim().length > 0
         ? noteRaw.trim().slice(0, 1000)
         : null;
-    if (!messageId)
-      return data({ error: "messageId 필수" }, { status: 400 });
+    if (!messageId) return data({ error: "messageId 필수" }, { status: 400 });
     if (value !== 1 && value !== -1 && value !== 0)
       return data({ error: "feedback 은 -1/0/1" }, { status: 400 });
     await setMessageFeedback(client, messageId, value as 1 | -1 | 0, note);
@@ -180,7 +185,7 @@ const INITIAL_STREAM: StreamingState = {
 };
 
 export default function AiChat({ loaderData }: Route.ComponentProps) {
-  const { conversations, active, quota } = loaderData;
+  const { conversations, active, quota, aidCounts } = loaderData;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
@@ -301,7 +306,10 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
   function handleEvent(payload: Record<string, unknown>) {
     const type = payload.type;
     if (type === "conversation") {
-      const cid = typeof payload.conversationId === "string" ? payload.conversationId : null;
+      const cid =
+        typeof payload.conversationId === "string"
+          ? payload.conversationId
+          : null;
       setStream((s) => ({ ...s, conversationId: cid }));
     } else if (type === "search") {
       const hits = Array.isArray(payload.hits)
@@ -317,7 +325,8 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
         : [];
       setStream((s) => ({ ...s, citations, done: true }));
     } else if (type === "error") {
-      const message = typeof payload.message === "string" ? payload.message : "오류";
+      const message =
+        typeof payload.message === "string" ? payload.message : "오류";
       setStream((s) => ({ ...s, error: message, done: true }));
     }
   }
@@ -339,118 +348,129 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
   }, [stream.done, sending]);
 
   return (
-    <div className="bg-background flex h-[calc(100vh-3.5rem)]">
-      {/* 사이드바 */}
-      <aside className="border-border bg-card hidden w-64 shrink-0 flex-col border-r md:flex">
-        <div className="border-border flex items-center justify-between border-b px-3 py-3">
-          <p className="text-sm font-bold tracking-tight">AI 대화</p>
-          <Button asChild size="sm" variant="default" className="h-7 rounded-full px-2.5">
-            <Link to="/ai">
-              <PlusIcon className="size-3" /> 새 대화
-            </Link>
-          </Button>
-        </div>
-        {/* 기간 필터 — KST 자정 기준. 좁은 사이드바라 그리드로 한 줄. */}
-        <div className="border-border grid grid-cols-4 gap-1 border-b px-2 py-2">
-          {RANGE_PRESETS.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => setConvRange(p.value)}
-              aria-pressed={convRange === p.value}
-              className={cn(
-                "rounded-md px-1 py-1 text-[11px] font-semibold transition-colors",
-                convRange === p.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+      {/* 학습지원 영역 토글 — 형제 화면(오답노트 등)과 동일. 채팅은 아래 flex-1 로 높이 양보. */}
+      <StudyAidsTabs counts={toTabCounts(aidCounts)} />
+      <div className="bg-background flex min-h-0 flex-1">
+        {/* 사이드바 */}
+        <aside className="border-border bg-card hidden w-64 shrink-0 flex-col border-r md:flex">
+          <div className="border-border flex items-center justify-between border-b px-3 py-3">
+            <p className="text-sm font-bold tracking-tight">AI 대화</p>
+            <Button
+              asChild
+              size="sm"
+              variant="default"
+              className="h-7 rounded-full px-2.5"
             >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 overflow-y-auto p-2">
-          {visibleConversations.length === 0 ? (
-            <p className="text-muted-foreground p-3 text-center text-xs">
-              {conversations.length === 0
-                ? "아직 대화가 없습니다."
-                : "선택한 기간에 대화가 없습니다."}
-            </p>
-          ) : (
-            <ul className="space-y-0.5">
-              {visibleConversations.map((c) => (
-                <li key={c.conversationId}>
-                  <Link
-                    to={`/ai?c=${c.conversationId}`}
-                    className={cn(
-                      "hover:bg-muted block rounded-md px-2 py-2 text-xs transition-colors",
-                      c.conversationId === activeId &&
-                        "bg-muted text-foreground font-semibold",
-                    )}
-                  >
-                    <p className="line-clamp-1 text-foreground">
-                      {c.title ?? "(제목 없음)"}
-                    </p>
-                    {c.lastSnippet ? (
-                      <p className="text-muted-foreground mt-0.5 line-clamp-1">
-                        {c.lastSnippet}
+              <Link to="/ai">
+                <PlusIcon className="size-3" /> 새 대화
+              </Link>
+            </Button>
+          </div>
+          {/* 기간 필터 — KST 자정 기준. 좁은 사이드바라 그리드로 한 줄. */}
+          <div className="border-border grid grid-cols-4 gap-1 border-b px-2 py-2">
+            {RANGE_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setConvRange(p.value)}
+                aria-pressed={convRange === p.value}
+                className={cn(
+                  "rounded-md px-1 py-1 text-[11px] font-semibold transition-colors",
+                  convRange === p.value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {visibleConversations.length === 0 ? (
+              <p className="text-muted-foreground p-3 text-center text-xs">
+                {conversations.length === 0
+                  ? "아직 대화가 없습니다."
+                  : "선택한 기간에 대화가 없습니다."}
+              </p>
+            ) : (
+              <ul className="space-y-0.5">
+                {visibleConversations.map((c) => (
+                  <li key={c.conversationId}>
+                    <Link
+                      to={`/ai?c=${c.conversationId}`}
+                      className={cn(
+                        "hover:bg-muted block rounded-md px-2 py-2 text-xs transition-colors",
+                        c.conversationId === activeId &&
+                          "bg-muted text-foreground font-semibold",
+                      )}
+                    >
+                      <p className="text-foreground line-clamp-1">
+                        {c.title ?? "(제목 없음)"}
                       </p>
-                    ) : null}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </aside>
+                      {c.lastSnippet ? (
+                        <p className="text-muted-foreground mt-0.5 line-clamp-1">
+                          {c.lastSnippet}
+                        </p>
+                      ) : null}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </aside>
 
-      {/* 메인 영역 */}
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border flex items-center gap-2 border-b px-4 py-3">
-          <MessageSquareIcon className="text-primary size-4" />
-          <h1 className="text-sm font-bold tracking-tight">
-            {active ? active.conversation.title ?? "(제목 없음)" : "새 대화"}
-          </h1>
-          {active?.conversation.anchor ? (
-            <Badge variant="outline" className="ml-2 text-[11px]">
-              앵커: {active.conversation.anchor.sourceType} ·{" "}
-              {active.conversation.anchor.sourceId.slice(0, 8)}
-            </Badge>
-          ) : null}
-          {/* feat-9-006 한도 표시 — staff/회원3 = tier1, 그 외 = free */}
-          <QuotaBadge quota={quota} />
-          {active ? (
-            <DeleteConversationButton
-              conversationId={active.conversation.conversationId}
-            />
-          ) : null}
-        </header>
+        {/* 메인 영역 */}
+        <main className="flex min-w-0 flex-1 flex-col">
+          <header className="border-border flex items-center gap-2 border-b px-4 py-3">
+            <MessageSquareIcon className="text-primary size-4" />
+            <h1 className="text-sm font-bold tracking-tight">
+              {active
+                ? (active.conversation.title ?? "(제목 없음)")
+                : "새 대화"}
+            </h1>
+            {active?.conversation.anchor ? (
+              <Badge variant="outline" className="ml-2 text-[11px]">
+                앵커: {active.conversation.anchor.sourceType} ·{" "}
+                {active.conversation.anchor.sourceId.slice(0, 8)}
+              </Badge>
+            ) : null}
+            {/* feat-9-006 한도 표시 — staff/회원3 = tier1, 그 외 = free */}
+            <QuotaBadge quota={quota} />
+            {active ? (
+              <DeleteConversationButton
+                conversationId={active.conversation.conversationId}
+              />
+            ) : null}
+          </header>
 
-        {quotaBlock ? <QuotaBanner block={quotaBlock} /> : null}
+          {quotaBlock ? <QuotaBanner block={quotaBlock} /> : null}
 
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          {!active && stream.assistantText === "" && !sending ? (
-            <EmptyState onPick={(q) => void send(q)} />
-          ) : (
-            <div className="mx-auto max-w-3xl space-y-5">
-              {active?.messages.map((m) => (
-                <MessageBubble key={m.messageId} message={m} />
-              ))}
-              {(sending || stream.assistantText) && (
-                <StreamingBubble stream={stream} sending={sending} />
-              )}
-            </div>
-          )}
-        </div>
+          <div className="flex-1 overflow-y-auto px-4 py-6">
+            {!active && stream.assistantText === "" && !sending ? (
+              <EmptyState onPick={(q) => void send(q)} />
+            ) : (
+              <div className="mx-auto max-w-3xl space-y-5">
+                {active?.messages.map((m) => (
+                  <MessageBubble key={m.messageId} message={m} />
+                ))}
+                {(sending || stream.assistantText) && (
+                  <StreamingBubble stream={stream} sending={sending} />
+                )}
+              </div>
+            )}
+          </div>
 
-        <Composer
-          ref={composerRef}
-          value={input}
-          sending={sending}
-          onChange={setInput}
-          onSubmit={handleComposerSubmit}
-        />
-      </main>
+          <Composer
+            ref={composerRef}
+            value={input}
+            sending={sending}
+            onChange={setInput}
+            onSubmit={handleComposerSubmit}
+          />
+        </main>
+      </div>
     </div>
   );
 }
@@ -472,7 +492,10 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
         {isUser ? (
           message.bodyMd
         ) : (
-          <MarkdownView text={message.bodyMd} className="text-sm leading-relaxed" />
+          <MarkdownView
+            text={message.bodyMd}
+            className="text-sm leading-relaxed"
+          />
         )}
         {!isUser && message.citations.length > 0 ? (
           <CitationsRow citations={message.citations} />
@@ -510,7 +533,7 @@ function StreamingBubble({
           </p>
         ) : null}
         {stream.hits.length > 0 ? (
-          <div className="text-muted-foreground mt-3 flex flex-wrap gap-1 border-t border-border/60 pt-2 text-[11px]">
+          <div className="text-muted-foreground border-border/60 mt-3 flex flex-wrap gap-1 border-t pt-2 text-[11px]">
             {stream.hits.slice(0, 6).map((h) => (
               <Badge key={h.chunkId} variant="outline" className="font-normal">
                 [{h.label}] {h.headingPath ?? h.sourceType}
@@ -808,10 +831,11 @@ function QuotaBanner({
   };
 }) {
   return (
-    <div className="border-rose-500/30 bg-rose-500/[0.05] flex items-start gap-3 border-b px-4 py-3 text-sm">
+    <div className="flex items-start gap-3 border-b border-rose-500/30 bg-rose-500/[0.05] px-4 py-3 text-sm">
       <div className="min-w-0 flex-1">
-        <p className="text-rose-700 font-semibold dark:text-rose-300">
-          오늘의 AI 사용 한도에 도달했습니다 ({block.usedToday}/{block.dailyLimit})
+        <p className="font-semibold text-rose-700 dark:text-rose-300">
+          오늘의 AI 사용 한도에 도달했습니다 ({block.usedToday}/
+          {block.dailyLimit})
         </p>
         <p className="text-foreground/80 mt-1 text-xs leading-relaxed">
           {block.message}
@@ -838,7 +862,8 @@ function DeleteConversationButton({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!confirm("이 대화를 삭제하시겠습니까? (휴지통 보관 — 복구 가능)")) return;
+    if (!confirm("이 대화를 삭제하시겠습니까? (휴지통 보관 — 복구 가능)"))
+      return;
     const fd = new FormData();
     fd.set("intent", "delete_conversation");
     fd.set("conversationId", conversationId);

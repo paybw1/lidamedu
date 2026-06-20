@@ -56,7 +56,8 @@ const AIDS_COUNT_KEY_BY_TO: Record<string, StudyAidTab> = {
   "/study/comments": "comments",
 };
 // 학습지원 탭 — 공용 `SectionTabs` 프리미티브. 학습관리/정보 3 영역과 동일 디자인 톤.
-function StudyAidsTabs({
+//   export: AI Q&A 채팅 화면(고정 높이 앱 레이아웃이라 StudyAidsShell 못 씀)이 토글만 붙일 때 재사용.
+export function StudyAidsTabs({
   counts,
 }: {
   active?: StudyAidTab;
