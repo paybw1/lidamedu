@@ -861,8 +861,8 @@ function ArticlesSection({
   const pct =
     summary.total > 0 ? Math.round((summary.visited / summary.total) * 100) : 0;
   return (
-    <Card>
-      <CardHeader>
+    <Surface pad={0} tone="subtle" className="overflow-hidden">
+      <div className="px-6 pt-6 pb-3">
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
             조문 학습
@@ -873,55 +873,51 @@ function ArticlesSection({
             {summary.highlights}
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="px-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>과목</TableHead>
-              <TableHead className="w-24 text-right">열람</TableHead>
-              <TableHead className="w-20 text-right">즐겨찾기</TableHead>
-              <TableHead className="w-20 text-right">포스트잇</TableHead>
-              <TableHead className="w-20 text-right">하이라이트</TableHead>
-              <TableHead className="w-16"></TableHead>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>과목</TableHead>
+            <TableHead className="w-24 text-right">열람</TableHead>
+            <TableHead className="w-20 text-right">즐겨찾기</TableHead>
+            <TableHead className="w-20 text-right">포스트잇</TableHead>
+            <TableHead className="w-20 text-right">하이라이트</TableHead>
+            <TableHead className="w-16"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.lawCode}>
+              <TableCell className="text-sm font-medium">{row.name}</TableCell>
+              <TableCell className="text-right text-sm tabular-nums">
+                {row.visited}{" "}
+                <span className="text-muted-foreground text-xs">
+                  / {row.total}
+                </span>
+              </TableCell>
+              <TableCell className="text-right text-sm tabular-nums">
+                {row.bookmarks}
+              </TableCell>
+              <TableCell className="text-right text-sm tabular-nums">
+                {row.memos}
+              </TableCell>
+              <TableCell className="text-right text-sm tabular-nums">
+                {row.highlights}
+              </TableCell>
+              <TableCell>
+                <Link
+                  to={`/subjects/${row.lawCode}`}
+                  viewTransition
+                  className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                >
+                  가기 <ArrowRightIcon className="size-3" />
+                </Link>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.lawCode}>
-                <TableCell className="text-sm font-medium">
-                  {row.name}
-                </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
-                  {row.visited}{" "}
-                  <span className="text-muted-foreground text-xs">
-                    / {row.total}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
-                  {row.bookmarks}
-                </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
-                  {row.memos}
-                </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
-                  {row.highlights}
-                </TableCell>
-                <TableCell>
-                  <Link
-                    to={`/subjects/${row.lawCode}`}
-                    viewTransition
-                    className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                  >
-                    가기 <ArrowRightIcon className="size-3" />
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          ))}
+        </TableBody>
+      </Table>
+    </Surface>
   );
 }
 
@@ -936,8 +932,8 @@ function CasesSection({ rows }: { rows: StatsData["caseStats"]["bySubject"] }) {
   const pct =
     summary.total > 0 ? Math.round((summary.visited / summary.total) * 100) : 0;
   return (
-    <Card>
-      <CardHeader>
+    <Surface pad={0} tone="subtle" className="overflow-hidden">
+      <div className="px-6 pt-6 pb-3">
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
             판례 학습
@@ -946,44 +942,40 @@ function CasesSection({ rows }: { rows: StatsData["caseStats"]["bySubject"] }) {
             열람 {summary.visited} / {summary.total} ({pct}%)
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="px-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>과목</TableHead>
-              <TableHead className="w-24 text-right">열람</TableHead>
-              <TableHead className="w-24 text-right">전체</TableHead>
-              <TableHead className="w-16"></TableHead>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>과목</TableHead>
+            <TableHead className="w-24 text-right">열람</TableHead>
+            <TableHead className="w-24 text-right">전체</TableHead>
+            <TableHead className="w-16"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.lawCode}>
+              <TableCell className="text-sm font-medium">{row.name}</TableCell>
+              <TableCell className="text-right text-sm tabular-nums">
+                {row.visited}
+              </TableCell>
+              <TableCell className="text-right text-sm tabular-nums">
+                {row.total}
+              </TableCell>
+              <TableCell>
+                <Link
+                  to={`/subjects/${row.lawCode}?tab=cases`}
+                  viewTransition
+                  className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                >
+                  가기 <ArrowRightIcon className="size-3" />
+                </Link>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.lawCode}>
-                <TableCell className="text-sm font-medium">
-                  {row.name}
-                </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
-                  {row.visited}
-                </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
-                  {row.total}
-                </TableCell>
-                <TableCell>
-                  <Link
-                    to={`/subjects/${row.lawCode}?tab=cases`}
-                    viewTransition
-                    className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                  >
-                    가기 <ArrowRightIcon className="size-3" />
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          ))}
+        </TableBody>
+      </Table>
+    </Surface>
   );
 }
 
@@ -1015,136 +1007,39 @@ function ProgressTab({ data }: { data: StatsData }) {
     <div className="space-y-4">
       {showFirst ? (
         <>
-          <Card>
-            <CardHeader>
+          <Surface pad={0} tone="subtle" className="overflow-hidden">
+            <div className="px-6 pt-6 pb-3">
               <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                 법률 객관식 — 조문 열람 + 문제 풀이
               </p>
-            </CardHeader>
-            <CardContent className="px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="w-28 text-right">조문 열람</TableHead>
-                    <TableHead className="w-20 text-right">문제 시도</TableHead>
-                    <TableHead className="w-16"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {firstLaw.map((row) => (
-                    <TableRow key={row.lawCode}>
-                      <TableCell className="text-sm font-medium">
-                        {row.name}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.pctViewed}%{" "}
-                        <span className="text-muted-foreground text-xs">
-                          ({row.visitedCount}/{row.totalArticleCount})
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.problemsAttempted}
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          to={`/subjects/${row.lawCode}`}
-                          viewTransition
-                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                        >
-                          가기 <ArrowRightIcon className="size-3" />
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                자연과학 — 풀이 진척
-              </p>
-            </CardHeader>
-            <CardContent className="px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="w-24 text-right">풀이</TableHead>
-                    <TableHead className="w-16"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scienceProgress.map((row) => {
-                    const slugUrl =
-                      row.slug === "earth_science" ? "earth-science" : row.slug;
-                    return (
-                      <TableRow
-                        key={row.slug}
-                        className={row.total === 0 ? "opacity-50" : ""}
-                      >
-                        <TableCell className="text-sm font-medium">
-                          <span className="mr-1">{row.emoji}</span>
-                          {row.name}
-                        </TableCell>
-                        <TableCell className="text-right text-sm tabular-nums">
-                          {row.attempted}{" "}
-                          <span className="text-muted-foreground text-xs">
-                            / {row.total}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {row.total > 0 ? (
-                            <Link
-                              to={`/subjects/science/${slugUrl}`}
-                              viewTransition
-                              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                            >
-                              가기 <ArrowRightIcon className="size-3" />
-                            </Link>
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
-      ) : null}
-
-      {showSecond ? (
-        <Card>
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              법률 주관식 — 답안 작성
-            </p>
-          </CardHeader>
-          <CardContent className="px-0">
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>과목</TableHead>
-                  <TableHead className="w-24 text-right">답안</TableHead>
+                  <TableHead className="w-28 text-right">조문 열람</TableHead>
+                  <TableHead className="w-20 text-right">문제 시도</TableHead>
                   <TableHead className="w-16"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {secondLaw.map((row) => (
+                {firstLaw.map((row) => (
                   <TableRow key={row.lawCode}>
                     <TableCell className="text-sm font-medium">
                       {row.name}
                     </TableCell>
                     <TableCell className="text-right text-sm tabular-nums">
-                      {row.attempts}
+                      {row.pctViewed}%{" "}
+                      <span className="text-muted-foreground text-xs">
+                        ({row.visitedCount}/{row.totalArticleCount})
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {row.problemsAttempted}
                     </TableCell>
                     <TableCell>
                       <Link
-                        to={`/subjects/${row.lawCode}?tab=problems`}
+                        to={`/subjects/${row.lawCode}`}
                         viewTransition
                         className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
                       >
@@ -1155,8 +1050,99 @@ function ProgressTab({ data }: { data: StatsData }) {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          </Surface>
+
+          <Surface pad={0} tone="subtle" className="overflow-hidden">
+            <div className="px-6 pt-6 pb-3">
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                자연과학 — 풀이 진척
+              </p>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>과목</TableHead>
+                  <TableHead className="w-24 text-right">풀이</TableHead>
+                  <TableHead className="w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scienceProgress.map((row) => {
+                  const slugUrl =
+                    row.slug === "earth_science" ? "earth-science" : row.slug;
+                  return (
+                    <TableRow
+                      key={row.slug}
+                      className={row.total === 0 ? "opacity-50" : ""}
+                    >
+                      <TableCell className="text-sm font-medium">
+                        <span className="mr-1">{row.emoji}</span>
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {row.attempted}{" "}
+                        <span className="text-muted-foreground text-xs">
+                          / {row.total}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {row.total > 0 ? (
+                          <Link
+                            to={`/subjects/science/${slugUrl}`}
+                            viewTransition
+                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                          >
+                            가기 <ArrowRightIcon className="size-3" />
+                          </Link>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Surface>
+        </>
+      ) : null}
+
+      {showSecond ? (
+        <Surface pad={0} tone="subtle" className="overflow-hidden">
+          <div className="px-6 pt-6 pb-3">
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              법률 주관식 — 답안 작성
+            </p>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>과목</TableHead>
+                <TableHead className="w-24 text-right">답안</TableHead>
+                <TableHead className="w-16"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {secondLaw.map((row) => (
+                <TableRow key={row.lawCode}>
+                  <TableCell className="text-sm font-medium">
+                    {row.name}
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums">
+                    {row.attempts}
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      to={`/subjects/${row.lawCode}?tab=problems`}
+                      viewTransition
+                      className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                    >
+                      가기 <ArrowRightIcon className="size-3" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Surface>
       ) : null}
 
       <ArticlesSection rows={articleRows} />
