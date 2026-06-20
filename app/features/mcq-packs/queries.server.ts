@@ -573,6 +573,11 @@ export async function regeneratePastExamPacks(
       .is("deleted_at", null)
       .not("year", "is", null)
       .order("problem_number", { ascending: true, nullsFirst: false })
+      // ★ problem_id 타이브레이커 필수 — problem_number 는 distinct 40개뿐(과목·연도마다
+      //   1~40 반복)이라 비유일 정렬 위 range() 페이징은 페이지 경계에서 행이 중복·누락된다.
+      //   PK=(pack_id,problem_id) 라 중복이 mcq_pack_problems insert 를 throw → 재생성 전체
+      //   실패(성공 이력 0의 원인). 유일 정렬키 추가로 안정·완전 페이징.
+      .order("problem_id", { ascending: true })
       .range(from, from + PAGE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
@@ -604,6 +609,8 @@ export async function regeneratePastExamPacks(
   // 각 그룹 upsert.
   const summary: RegeneratePastExamResult["groups"] = [];
   for (const g of groups.values()) {
+    // 방어적 중복 제거 — 혹시 모를 중복 문제로 PK(pack_id,problem_id) 위반 방지.
+    const problemIds = [...new Set(g.problemIds)];
     const title = `${g.year}년 1차 기출`;
     const { data: existing } = await client
       .from("mcq_packs")
@@ -645,8 +652,8 @@ export async function regeneratePastExamPacks(
       .delete()
       .eq("pack_id", packId);
     if (delErr) throw delErr;
-    if (g.problemIds.length > 0) {
-      const rows = g.problemIds.map((pid, i) => ({
+    if (problemIds.length > 0) {
+      const rows = problemIds.map((pid, i) => ({
         pack_id: packId,
         problem_id: pid,
         ord: i,
@@ -664,7 +671,7 @@ export async function regeneratePastExamPacks(
     summary.push({
       subjectScope: g.scope,
       year: g.year,
-      problemCount: g.problemIds.length,
+      problemCount: problemIds.length,
     });
   }
 

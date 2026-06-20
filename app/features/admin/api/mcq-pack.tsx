@@ -187,7 +187,16 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (intent === "regen_past_exam") {
-    const result = await regeneratePastExamPacks(client, user.id);
+    let result;
+    try {
+      result = await regeneratePastExamPacks(client, user.id);
+    } catch (e) {
+      // 무음 500 대신 사유를 UI(err)로 노출.
+      return data(
+        { error: e instanceof Error ? e.message : "기출 자동 재생성 실패" },
+        { status: 500 },
+      );
+    }
     void logAuditEvent({
       actorId: user.id,
       actorRole: role,
