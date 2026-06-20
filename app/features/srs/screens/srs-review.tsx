@@ -14,9 +14,8 @@ import {
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Link, redirect, useFetcher } from "react-router";
 
-import { AreaEyebrow } from "~/core/components/student";
+import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
@@ -198,23 +197,20 @@ function SrsReviewInner({
   return (
     <>
       <StudyMgmtTabs />
-      <div className="mx-auto w-full max-w-screen-md px-4 py-8 md:py-12">
-        {/* 헤더 */}
-        <header className="mb-5 flex items-baseline justify-between gap-3">
-          <div>
-            <AreaEyebrow area="manage" />
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-              오늘의 암기 카드
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">{today}</p>
-          </div>
-          <Link
-            to="/srs/stats"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline"
-          >
-            통계
-          </Link>
-        </header>
+      <StudentShell width="narrow">
+        <PageHeader
+          area="manage"
+          title="오늘의 암기 카드"
+          description={today}
+          actions={
+            <Link
+              to="/srs/stats"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline"
+            >
+              통계
+            </Link>
+          }
+        />
 
         <ChipFilters filter={data.filter} cardDue={data.cardDue} />
 
@@ -260,7 +256,7 @@ function SrsReviewInner({
             ✗ {fetcher.data.error}
           </p>
         ) : null}
-      </div>
+      </StudentShell>
     </>
   );
 }
@@ -426,8 +422,8 @@ function CardArea({
   onGrade: (g: Grade) => void;
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Surface pad={0} tone="subtle">
+      <div className="px-6 pt-6 pb-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="bg-primary/10 text-primary inline-flex h-5 items-center rounded-full px-2 font-mono text-[10px] font-bold tracking-[0.04em] uppercase">
             {subjectLabel(item.subject)}
@@ -448,8 +444,8 @@ function CardArea({
             </span>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="px-6 pb-6">
         {/* Front */}
         <div className="border-border bg-muted/30 rounded-lg border p-5">
           <p className="text-muted-foreground mb-2 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
@@ -514,15 +510,15 @@ function CardArea({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }
 
 function CompleteCard({ total }: { total: number }) {
   return (
-    <Card className="border-emerald-300/60">
-      <CardContent className="space-y-3 py-10 text-center">
+    <Surface pad={0} tone="subtle" className="border-emerald-300/60">
+      <div className="space-y-3 px-6 py-10 text-center">
         <CheckCircle2Icon className="mx-auto size-10 text-emerald-500" />
         <p className="text-foreground text-lg font-bold">오늘 암기 완료</p>
         <p className="text-muted-foreground text-sm">
@@ -540,22 +536,22 @@ function CompleteCard({ total }: { total: number }) {
             </Link>
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }
 
 function EmptyCard() {
   return (
-    <Card className="border-dashed">
-      <CardContent className="text-muted-foreground space-y-2 py-10 text-center text-sm">
+    <Surface pad={0} tone="dashed">
+      <div className="text-muted-foreground space-y-2 px-6 py-10 text-center text-sm">
         <SparklesIcon className="mx-auto size-8 opacity-30" />
         <p>오늘 외울 카드가 없습니다.</p>
         <p className="text-xs">
           내일 다시 들어오면 일정에 따라 새 카드와 복습 카드가 자동으로
           올라옵니다.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </Surface>
   );
 }

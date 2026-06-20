@@ -12,9 +12,8 @@ import {
 } from "lucide-react";
 import { Link, redirect } from "react-router";
 
-import { AreaEyebrow } from "~/core/components/student";
+import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { getStats } from "~/features/srs/srs.server";
@@ -48,27 +47,25 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <StudyMgmtTabs />
-      <div className="mx-auto w-full max-w-screen-lg px-4 py-8 md:py-12">
-        <header className="mb-6 flex items-baseline justify-between">
-          <div>
-            <AreaEyebrow area="manage" />
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight md:text-3xl">
-              암기 카드 진척도
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button asChild size="sm" variant="outline">
-              <a href="/api/srs/export" download>
-                <DownloadIcon className="size-3.5" /> CSV
-              </a>
-            </Button>
-            <Button asChild size="sm">
-              <Link to="/srs">
-                암기 카드 시작 <ArrowRightIcon className="size-3.5" />
-              </Link>
-            </Button>
-          </div>
-        </header>
+      <StudentShell>
+        <PageHeader
+          area="manage"
+          title="암기 카드 진척도"
+          actions={
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" variant="outline">
+                <a href="/api/srs/export" download>
+                  <DownloadIcon className="size-3.5" /> CSV
+                </a>
+              </Button>
+              <Button asChild size="sm">
+                <Link to="/srs">
+                  암기 카드 시작 <ArrowRightIcon className="size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          }
+        />
 
         {/* KPI */}
         <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -107,23 +104,23 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
         </div>
 
         {/* 일별 30일 — reviewed (회색) + success (에메랄드) */}
-        <Card className="mb-4">
-          <CardHeader className="pb-3">
+        <Surface pad={0} tone="subtle" className="mb-4">
+          <div className="px-6 pt-6 pb-3">
             <h2 className="text-foreground text-sm font-bold">
               최근 30일 복습량
             </h2>
             <p className="text-muted-foreground text-xs">
               회색 = 전체 복습, 초록 = 잘 떠올린 카드(보통·쉬웠음).
             </p>
-          </CardHeader>
-          <CardContent className="pb-4">
+          </div>
+          <div className="px-6 pb-5">
             <DayBars items={byDay} />
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
 
         {/* 향후 7일 due 예측 */}
-        <Card>
-          <CardHeader className="pb-3">
+        <Surface pad={0} tone="subtle">
+          <div className="px-6 pt-6 pb-3">
             <h2 className="text-foreground text-sm font-bold">
               향후 7일 복습 예정
             </h2>
@@ -131,12 +128,12 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
               날짜별로 복습이 잡혀 있는 카드 수. 하루에 몰리지 않는지
               확인하세요.
             </p>
-          </CardHeader>
-          <CardContent className="pb-4">
+          </div>
+          <div className="px-6 pb-5">
             <ForecastBars items={forecast7d} />
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </Surface>
+      </StudentShell>
     </>
   );
 }
