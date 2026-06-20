@@ -524,9 +524,6 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
           examRound={loaderData.examRound ?? "first"}
         />
         <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
-          <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            기간
-          </span>
           <RangeSelectionGroup value={rangeSel} onChange={setRange} />
         </div>
       </div>
