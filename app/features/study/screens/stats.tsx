@@ -533,15 +533,7 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
           <TabsTrigger value="overview">한눈에</TabsTrigger>
           <TabsTrigger value="progress">진도</TabsTrigger>
           <TabsTrigger value="accuracy">정답률</TabsTrigger>
-          <TabsTrigger value="blanks">
-            암기{" "}
-            <span className="text-muted-foreground ml-1 tabular-nums">
-              {loaderData.blanks.content.totalAttempts +
-                loaderData.blanks.subject.totalAttempts +
-                loaderData.blanks.period.totalAttempts +
-                loaderData.blanks.recitation.totalAttempts}
-            </span>
-          </TabsTrigger>
+          <TabsTrigger value="blanks">암기</TabsTrigger>
           <TabsTrigger value="ox_diagnosis">약점</TabsTrigger>
         </TabsList>
 
