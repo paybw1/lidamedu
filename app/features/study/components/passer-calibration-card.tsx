@@ -1,8 +1,8 @@
 // 합격자 실측 기반 권장 진도 보정 (feat-8-019) — goals 에서 이관(통폐합 3a).
 import { TrendingUpIcon } from "lucide-react";
 
+import { Surface } from "~/core/components/student";
 import { Badge } from "~/core/components/ui/badge";
-import { Card, CardContent } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import type { PasserBenchmark } from "~/features/exam-results/analytics.server";
 
@@ -52,113 +52,107 @@ export function PasserCalibrationCard({
           표본 {benchmark.sampleSize}
         </Badge>
       </p>
-      <Card>
-        <CardContent className="space-y-3 px-4 py-3">
-          {benchmark.fallbackReason ? (
-            <p className="rounded border border-amber-200 bg-amber-50/60 px-2 py-1 text-[11px] text-amber-900">
-              ⚠️ {benchmark.fallbackReason}
-            </p>
-          ) : null}
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <MetricRow
-              label="누적 학습 시간"
-              user={userHours !== null ? `${Math.round(userHours)}h` : "—"}
-              passer={
-                passerHours !== null ? `${Math.round(passerHours)}h` : "—"
-              }
-              delta={
-                gapHours !== null && gapHours > 0
-                  ? `+${Math.round(gapHours)}h 필요`
-                  : "달성"
-              }
-              good={gapHours !== null && gapHours === 0}
-            />
-            <MetricRow
-              label="총 문제 풀이"
-              user={
-                userAttempts !== null
-                  ? `${Math.round(userAttempts).toLocaleString("ko-KR")}회`
-                  : "—"
-              }
-              passer={
-                passerAttempts !== null
-                  ? `${Math.round(passerAttempts).toLocaleString("ko-KR")}회`
-                  : "—"
-              }
-              delta={
-                userAttempts !== null && passerAttempts !== null
-                  ? userAttempts >= passerAttempts
-                    ? "달성"
-                    : `+${Math.round(passerAttempts - userAttempts).toLocaleString("ko-KR")}회 필요`
-                  : "—"
-              }
-              good={
-                userAttempts !== null &&
-                passerAttempts !== null &&
-                userAttempts >= passerAttempts
-              }
-            />
-            <MetricRow
-              label="정답률"
-              user={
-                userAccuracy !== null ? `${Math.round(userAccuracy)}%` : "—"
-              }
-              passer={
-                passerAccuracy !== null ? `${Math.round(passerAccuracy)}%` : "—"
-              }
-              delta={
-                userAccuracy !== null && passerAccuracy !== null
-                  ? userAccuracy >= passerAccuracy
-                    ? "달성"
-                    : `+${Math.round(passerAccuracy - userAccuracy)}%p 필요`
-                  : "—"
-              }
-              good={
-                userAccuracy !== null &&
-                passerAccuracy !== null &&
-                userAccuracy >= passerAccuracy
-              }
-            />
-          </div>
-          {calibratedDailyHours !== null && totalDaysLeft !== null ? (
-            <div
-              className={cn(
-                "rounded-md p-3 text-xs",
-                calibratedDailyHours > dailyHourTarget
-                  ? "border border-rose-200 bg-rose-50 text-rose-900"
-                  : "border border-emerald-200 bg-emerald-50 text-emerald-900",
-              )}
-            >
-              <strong className="text-[13px]">
-                실측 권장 일평균 학습 시간:{" "}
-                <span className="tabular-nums">
-                  {calibratedDailyHours < 0.1
-                    ? "이미 합격자 평균"
-                    : `${calibratedDailyHours.toFixed(1)}h`}
+      <Surface pad={0} className="space-y-3 px-4 py-3">
+        {benchmark.fallbackReason ? (
+          <p className="rounded border border-amber-200 bg-amber-50/60 px-2 py-1 text-[11px] text-amber-900">
+            ⚠️ {benchmark.fallbackReason}
+          </p>
+        ) : null}
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <MetricRow
+            label="누적 학습 시간"
+            user={userHours !== null ? `${Math.round(userHours)}h` : "—"}
+            passer={passerHours !== null ? `${Math.round(passerHours)}h` : "—"}
+            delta={
+              gapHours !== null && gapHours > 0
+                ? `+${Math.round(gapHours)}h 필요`
+                : "달성"
+            }
+            good={gapHours !== null && gapHours === 0}
+          />
+          <MetricRow
+            label="총 문제 풀이"
+            user={
+              userAttempts !== null
+                ? `${Math.round(userAttempts).toLocaleString("ko-KR")}회`
+                : "—"
+            }
+            passer={
+              passerAttempts !== null
+                ? `${Math.round(passerAttempts).toLocaleString("ko-KR")}회`
+                : "—"
+            }
+            delta={
+              userAttempts !== null && passerAttempts !== null
+                ? userAttempts >= passerAttempts
+                  ? "달성"
+                  : `+${Math.round(passerAttempts - userAttempts).toLocaleString("ko-KR")}회 필요`
+                : "—"
+            }
+            good={
+              userAttempts !== null &&
+              passerAttempts !== null &&
+              userAttempts >= passerAttempts
+            }
+          />
+          <MetricRow
+            label="정답률"
+            user={userAccuracy !== null ? `${Math.round(userAccuracy)}%` : "—"}
+            passer={
+              passerAccuracy !== null ? `${Math.round(passerAccuracy)}%` : "—"
+            }
+            delta={
+              userAccuracy !== null && passerAccuracy !== null
+                ? userAccuracy >= passerAccuracy
+                  ? "달성"
+                  : `+${Math.round(passerAccuracy - userAccuracy)}%p 필요`
+                : "—"
+            }
+            good={
+              userAccuracy !== null &&
+              passerAccuracy !== null &&
+              userAccuracy >= passerAccuracy
+            }
+          />
+        </div>
+        {calibratedDailyHours !== null && totalDaysLeft !== null ? (
+          <div
+            className={cn(
+              "rounded-md p-3 text-xs",
+              calibratedDailyHours > dailyHourTarget
+                ? "border border-rose-200 bg-rose-50 text-rose-900"
+                : "border border-emerald-200 bg-emerald-50 text-emerald-900",
+            )}
+          >
+            <strong className="text-[13px]">
+              실측 권장 일평균 학습 시간:{" "}
+              <span className="tabular-nums">
+                {calibratedDailyHours < 0.1
+                  ? "이미 합격자 평균"
+                  : `${calibratedDailyHours.toFixed(1)}h`}
+              </span>
+            </strong>
+            <div className="mt-1 opacity-80">
+              남은 {totalDaysLeft}일 동안 합격자 평균(
+              {passerHours !== null ? `${Math.round(passerHours)}h` : "—"}) 까지
+              따라잡으려면 매일{" "}
+              <strong className="tabular-nums">
+                {calibratedDailyHours.toFixed(1)}h
+              </strong>{" "}
+              학습 필요.{" "}
+              {targetGapPct !== null && targetGapPct !== 0 ? (
+                <span>
+                  현재 목표({dailyHourTarget}h){" "}
+                  <strong>
+                    {Math.abs(targetGapPct)}%{" "}
+                    {targetGapPct > 0 ? "더 늘려" : "여유 있음"}
+                  </strong>
                 </span>
-              </strong>
-              <div className="mt-1 opacity-80">
-                남은 {totalDaysLeft}일 동안 합격자 평균(
-                {passerHours !== null ? `${Math.round(passerHours)}h` : "—"})
-                까지 따라잡으려면 매일{" "}
-                <strong className="tabular-nums">
-                  {calibratedDailyHours.toFixed(1)}h
-                </strong>{" "}
-                학습 필요.{" "}
-                {targetGapPct !== null && targetGapPct !== 0 ? (
-                  <span>
-                    현재 목표({dailyHourTarget}h){" "}
-                    <strong>
-                      {Math.abs(targetGapPct)}%{" "}
-                      {targetGapPct > 0 ? "더 늘려" : "여유 있음"}
-                    </strong>
-                  </span>
-                ) : null}
-              </div>
+              ) : null}
             </div>
-          ) : null}
-        </CardContent>
-      </Card>
+          </div>
+        ) : null}
+      </Surface>
     </section>
   );
 }
