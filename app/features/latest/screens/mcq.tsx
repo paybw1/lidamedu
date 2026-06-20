@@ -86,7 +86,7 @@ const SCOPES: Array<{ value: McqPackSubjectScope | "all"; label: string }> = [
   { value: "design", label: MCQ_PACK_SUBJECT_LABELS.design },
   { value: "industrial", label: MCQ_PACK_SUBJECT_LABELS.industrial },
   { value: "civil", label: MCQ_PACK_SUBJECT_LABELS.civil },
-  { value: "civil_procedure", label: MCQ_PACK_SUBJECT_LABELS.civil_procedure },
+  // 민사소송법(civil_procedure)은 2차 주관식 — 1차 객관식 모의/기출 영역엔 노출하지 않는다.
   { value: "science", label: MCQ_PACK_SUBJECT_LABELS.science },
 ];
 
@@ -115,7 +115,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     subjectScopeRaw === "design" ||
     subjectScopeRaw === "industrial" ||
     subjectScopeRaw === "civil" ||
-    subjectScopeRaw === "civil_procedure" ||
     subjectScopeRaw === "science"
       ? subjectScopeRaw
       : undefined;
@@ -135,16 +134,19 @@ export async function loader({ request }: Route.LoaderArgs) {
   const year = yearRaw && /^\d{4}$/.test(yearRaw) ? Number(yearRaw) : undefined;
   const filters: Filters = { q, subjectScope, kind, kindGroup, year };
 
-  const packs = await listPacks(client, {
-    query: filters.q || undefined,
-    subjectScope: filters.subjectScope,
-    kind: filters.kind,
-    kinds:
-      filters.kindGroup === "mock"
-        ? ["mock_full", "mock_progressive"]
-        : undefined,
-    year: filters.year,
-  });
+  // 이 화면은 1차 객관식 모의/기출 영역 — 민사소송법(2차 주관식) 팩은 노출하지 않는다.
+  const packs = (
+    await listPacks(client, {
+      query: filters.q || undefined,
+      subjectScope: filters.subjectScope,
+      kind: filters.kind,
+      kinds:
+        filters.kindGroup === "mock"
+          ? ["mock_full", "mock_progressive"]
+          : undefined,
+      year: filters.year,
+    })
+  ).filter((p) => p.subjectScope !== "civil_procedure");
 
   return { packs, filters, canEdit: role !== null };
 }
