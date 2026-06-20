@@ -271,7 +271,7 @@ export function CasesTab({
             결과 목록에 집중한다. */}
         {!treeFilter && !filters.bookmarkMin && !filters.importanceMin ? (
           <>
-            <SubjectStudyStatus {...studyStatus} />
+            <SubjectStudyStatus {...studyStatus} kind="case" />
 
             {/* KPI cards — 3 columns */}
             <div className="grid gap-3 sm:grid-cols-3">

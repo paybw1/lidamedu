@@ -224,7 +224,7 @@ export function ProblemsTab({
         !appliedFilters.bookmarkMin &&
         !appliedFilters.importanceMin ? (
           <>
-            <SubjectStudyStatus {...studyStatus} />
+            <SubjectStudyStatus {...studyStatus} kind="problem" />
 
             {/* KPI cards — 3 columns */}
             <div className="grid gap-3 sm:grid-cols-3">

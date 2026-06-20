@@ -9,6 +9,8 @@
 import {
   ArrowRightIcon,
   BookOpenIcon,
+  CircleCheckIcon,
+  GavelIcon,
   PencilLineIcon,
   StarIcon,
 } from "lucide-react";
@@ -37,7 +39,11 @@ export function SubjectStudyStatus({
   problemTotal,
   bookmarkCount,
   annotationCount,
-}: SubjectStudyStatusProps) {
+  kind = "article",
+}: SubjectStudyStatusProps & {
+  // 어느 탭의 "마지막 학습"인지 — 조문/판례/문제. 데이터(progress)는 공유.
+  kind?: "article" | "case" | "problem";
+}) {
   const articlePct = clampPct(progress?.pctViewed);
   const casesPct = clampPct(progress?.pctCasesViewed);
   const visitedArticles = progress?.visitedArticleIds.size ?? 0;
@@ -48,7 +54,35 @@ export function SubjectStudyStatus({
   const correct = problemStats?.correctCount ?? 0;
   const accuracyPct =
     attempted > 0 ? Math.round((correct / attempted) * 100) : null;
-  const lastVisited = progress?.lastVisited ?? null;
+  // 탭 종류별 "마지막 학습" — 조문/판례/문제. 라벨·표시·이어서 링크를 분기.
+  const StudyIcon =
+    kind === "case"
+      ? GavelIcon
+      : kind === "problem"
+        ? CircleCheckIcon
+        : BookOpenIcon;
+  let lastLabel: string;
+  let lastDisplay: string | null;
+  let continueHref: string | null;
+  if (kind === "case") {
+    lastLabel = "마지막 학습 판례";
+    lastDisplay = progress?.lastCase?.displayLabel ?? null;
+    continueHref = progress?.lastCase
+      ? `/subjects/${subject.slug}/cases/${progress.lastCase.caseId}`
+      : null;
+  } else if (kind === "problem") {
+    lastLabel = "마지막 학습 문제";
+    lastDisplay = progress?.lastProblem?.displayLabel ?? null;
+    continueHref = progress?.lastProblem
+      ? `/subjects/${subject.slug}/problems/${progress.lastProblem.problemId}`
+      : null;
+  } else {
+    lastLabel = "마지막 학습 조문";
+    lastDisplay = progress?.lastVisited?.displayLabel ?? null;
+    continueHref = progress?.lastVisited?.articleNumber
+      ? `/subjects/${subject.slug}/articles/${progress.lastVisited.articleNumber}`
+      : null;
+  }
 
   return (
     <section
@@ -96,14 +130,14 @@ export function SubjectStudyStatus({
             className="bg-primary/10 text-link inline-flex size-9 shrink-0 items-center justify-center rounded-lg"
             aria-hidden="true"
           >
-            <BookOpenIcon className="size-4" />
+            <StudyIcon className="size-4" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
-              마지막 학습 조문
+              {lastLabel}
             </p>
             <p className="text-foreground mt-0.5 truncate text-[15px] font-extrabold leading-tight">
-              {lastVisited?.displayLabel ?? "아직 학습 시작 전"}
+              {lastDisplay ?? "아직 학습 시작 전"}
             </p>
           </div>
         </div>
@@ -128,9 +162,9 @@ export function SubjectStudyStatus({
           </span>
         </div>
 
-        {lastVisited?.articleNumber ? (
+        {continueHref ? (
           <Link
-            to={`/subjects/${subject.slug}/articles/${lastVisited.articleNumber}`}
+            to={continueHref}
             viewTransition
             prefetch="intent"
             className="bg-primary text-primary-foreground inline-flex shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 text-[12px] font-bold shadow-sm transition-opacity hover:opacity-90"

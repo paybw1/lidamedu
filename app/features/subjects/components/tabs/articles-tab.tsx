@@ -141,7 +141,7 @@ export function ArticlesTab({
           </MobileNavDrawer>
         </div>
 
-        <SubjectStudyStatus {...studyStatus} />
+        <SubjectStudyStatus {...studyStatus} kind="article" />
         <SubjectLearningHub
           subject={subject}
           articleCount={articleCount}

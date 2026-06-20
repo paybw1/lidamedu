@@ -42,6 +42,17 @@ export interface SubjectProgress {
     displayLabel: string;
     visitedAt: string;
   } | null;
+  // 마지막 학습 판례·문제 — 판례/문제 탭의 "이어서 보기" 대상(같은 study_sessions 집계).
+  lastCase: {
+    caseId: string;
+    displayLabel: string;
+    visitedAt: string;
+  } | null;
+  lastProblem: {
+    problemId: string;
+    displayLabel: string;
+    visitedAt: string;
+  } | null;
 }
 
 export async function getSubjectProgress(
@@ -64,6 +75,8 @@ export async function getSubjectProgress(
   const visited = new Set<string>();
   const visitedCases = new Set<string>();
   let last: SubjectProgress["lastVisited"] = null;
+  let lastCase: SubjectProgress["lastCase"] = null;
+  let lastProblem: SubjectProgress["lastProblem"] = null;
   for (const row of data ?? []) {
     const scope = row.scope as Partial<StudyScope> | null;
     if (!scope || scope.subject !== lawCode || !scope.target_id) continue;
@@ -79,10 +92,26 @@ export async function getSubjectProgress(
       }
     } else if (scope.target_type === "case") {
       visitedCases.add(scope.target_id);
+      // 정렬이 started_at DESC 라 첫 case 가 가장 최근.
+      if (!lastCase) {
+        lastCase = {
+          caseId: scope.target_id,
+          displayLabel: "",
+          visitedAt: row.started_at,
+        };
+      }
+    } else if (scope.target_type === "problem") {
+      if (!lastProblem) {
+        lastProblem = {
+          problemId: scope.target_id,
+          displayLabel: "",
+          visitedAt: row.started_at,
+        };
+      }
     }
   }
 
-  // last visited 의 displayLabel 채우기 (article 만 — "이어서 학습"의 대상).
+  // 마지막 학습 조문/판례/문제의 표시 라벨 채우기 (각 탭 "이어서 보기" 대상).
   if (last) {
     const { data: a } = await client
       .from("articles")
@@ -92,6 +121,31 @@ export async function getSubjectProgress(
     if (a) {
       last.articleNumber = a.article_number;
       last.displayLabel = a.display_label;
+    }
+  }
+  if (lastCase) {
+    const { data: c } = await client
+      .from("cases")
+      .select("case_title, case_number")
+      .eq("case_id", lastCase.caseId)
+      .maybeSingle();
+    if (c) lastCase.displayLabel = c.case_title || c.case_number || "판례";
+  }
+  if (lastProblem) {
+    const { data: p } = await client
+      .from("problems")
+      .select("body_md, year, problem_number")
+      .eq("problem_id", lastProblem.problemId)
+      .maybeSingle();
+    if (p) {
+      const body = (p.body_md ?? "").replace(/\s+/g, " ").trim();
+      lastProblem.displayLabel = body
+        ? body.length > 30
+          ? `${body.slice(0, 30)}…`
+          : body
+        : p.year
+          ? `${p.year}년 ${p.problem_number ?? ""}번`
+          : "문제";
     }
   }
 
@@ -112,6 +166,8 @@ export async function getSubjectProgress(
     totalCaseCount,
     pctCasesViewed: pctCases,
     lastVisited: last,
+    lastCase,
+    lastProblem,
   };
 }
 
