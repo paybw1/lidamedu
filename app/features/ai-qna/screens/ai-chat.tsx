@@ -349,8 +349,11 @@ export default function AiChat({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      {/* 학습지원 영역 토글 — 형제 화면(오답노트 등)과 동일. 채팅은 아래 flex-1 로 높이 양보. */}
-      <StudyAidsTabs counts={toTabCounts(aidCounts)} />
+      {/* 학습지원 영역 토글 — 형제 화면(오답노트 등)과 동일. shrink-0 로 고유 높이 유지
+          (없으면 모바일에서 flex 축소로 토글이 사라짐). 채팅은 아래 flex-1 로 나머지 높이. */}
+      <div className="shrink-0">
+        <StudyAidsTabs counts={toTabCounts(aidCounts)} />
+      </div>
       <div className="bg-background flex min-h-0 flex-1">
         {/* 사이드바 */}
         <aside className="border-border bg-card hidden w-64 shrink-0 flex-col border-r md:flex">
