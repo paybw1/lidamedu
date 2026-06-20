@@ -743,12 +743,18 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                 }}
               />
             </SpanCol>
-            <SpanCol span={3}>
-              <SubjectsProgressCard subjects={subjectsProgress} />
+            <SpanCol span={examRound === "second" ? 6 : 3}>
+              <SubjectsProgressCard
+                subjects={subjectsProgress}
+                examRound={examRound}
+              />
             </SpanCol>
-            <SpanCol span={3}>
-              <ScienceProgressCard science={scienceProgress} />
-            </SpanCol>
+            {/* 자연과학은 1차 전용 — 2차 목표면 숨기고 법률 카드가 행을 채운다. */}
+            {examRound !== "second" ? (
+              <SpanCol span={3}>
+                <ScienceProgressCard science={scienceProgress} />
+              </SpanCol>
+            ) : null}
           </DashGrid>
 
           {hasWeak || recommendedActions.length > 0 ? (

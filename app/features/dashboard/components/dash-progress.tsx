@@ -265,20 +265,29 @@ export interface SubjectProgressData {
 }
 
 // 법률 과목 진도 — 1차(객관식)/2차(주관식)로 분리. 산업재산권법은 양쪽에 노출.
+// 목표 차수(profiles.next_exam_round)가 정해져 있으면 그 차수 그룹만 — 미설정(null)이면 둘 다.
 export function SubjectsProgressCard({
   subjects,
+  examRound,
 }: {
   subjects: ReadonlyArray<SubjectProgressData>;
+  examRound: "first" | "second" | null;
 }) {
   const first = subjects.filter((s) => isFirstExamSubject(s.lawCode));
   const second = subjects.filter((s) => isSecondExamSubject(s.lawCode));
+  const showFirst = examRound !== "second";
+  const showSecond = examRound !== "first";
   return (
     <Card padding={20}>
       <Eyebrow style={{ marginBottom: 14 }}>법률 과목 진도</Eyebrow>
-      <SubjectExamGroup label="1차 · 객관식" subjects={first} />
-      <div style={{ marginTop: 16 }}>
-        <SubjectExamGroup label="2차 · 주관식" subjects={second} />
-      </div>
+      {showFirst ? (
+        <SubjectExamGroup label="1차 · 객관식" subjects={first} />
+      ) : null}
+      {showSecond ? (
+        <div style={showFirst ? { marginTop: 16 } : undefined}>
+          <SubjectExamGroup label="2차 · 주관식" subjects={second} />
+        </div>
+      ) : null}
     </Card>
   );
 }
