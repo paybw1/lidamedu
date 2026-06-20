@@ -32,7 +32,6 @@ import { z } from "zod";
 import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import {
   Table,
   TableBody,
@@ -1182,8 +1181,8 @@ function AccuracyTab({ data }: { data: StatsData }) {
             />
           </div>
 
-          <Card>
-            <CardHeader>
+          <Surface pad={0} tone="subtle" className="overflow-hidden">
+            <div className="px-6 pt-6 pb-3">
               <div className="flex items-center justify-between">
                 <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                   법률 객관식 — 정답률
@@ -1196,96 +1195,90 @@ function AccuracyTab({ data }: { data: StatsData }) {
                   오답노트 →
                 </Link>
               </div>
-            </CardHeader>
-            <CardContent className="px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="w-24 text-right">시도</TableHead>
-                    <TableHead className="w-24 text-right">정답률</TableHead>
-                    <TableHead className="w-16"></TableHead>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>과목</TableHead>
+                  <TableHead className="w-24 text-right">시도</TableHead>
+                  <TableHead className="w-24 text-right">정답률</TableHead>
+                  <TableHead className="w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {firstLaw.map((row) => (
+                  <TableRow key={row.lawCode}>
+                    <TableCell className="text-sm font-medium">
+                      {row.name}
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {row.problemsAttempted}
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {row.accuracyPct === null ? "—" : `${row.accuracyPct}%`}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        to={`/subjects/${row.lawCode}?tab=problems`}
+                        viewTransition
+                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                      >
+                        풀기 <ArrowRightIcon className="size-3" />
+                      </Link>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {firstLaw.map((row) => (
-                    <TableRow key={row.lawCode}>
+                ))}
+              </TableBody>
+            </Table>
+          </Surface>
+
+          <Surface pad={0} tone="subtle" className="overflow-hidden">
+            <div className="px-6 pt-6 pb-3">
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                자연과학 — 정답률
+              </p>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>과목</TableHead>
+                  <TableHead className="w-24 text-right">정답률</TableHead>
+                  <TableHead className="w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scienceProgress.map((row) => {
+                  const slugUrl =
+                    row.slug === "earth_science" ? "earth-science" : row.slug;
+                  return (
+                    <TableRow
+                      key={row.slug}
+                      className={row.total === 0 ? "opacity-50" : ""}
+                    >
                       <TableCell className="text-sm font-medium">
+                        <span className="mr-1">{row.emoji}</span>
                         {row.name}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.problemsAttempted}
                       </TableCell>
                       <TableCell className="text-right text-sm tabular-nums">
                         {row.accuracyPct === null ? "—" : `${row.accuracyPct}%`}
                       </TableCell>
                       <TableCell>
-                        <Link
-                          to={`/subjects/${row.lawCode}?tab=problems`}
-                          viewTransition
-                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                        >
-                          풀기 <ArrowRightIcon className="size-3" />
-                        </Link>
+                        {row.total > 0 ? (
+                          <Link
+                            to={`/subjects/science/${slugUrl}`}
+                            viewTransition
+                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                          >
+                            가기 <ArrowRightIcon className="size-3" />
+                          </Link>
+                        ) : null}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                자연과학 — 정답률
-              </p>
-            </CardHeader>
-            <CardContent className="px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="w-24 text-right">정답률</TableHead>
-                    <TableHead className="w-16"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scienceProgress.map((row) => {
-                    const slugUrl =
-                      row.slug === "earth_science" ? "earth-science" : row.slug;
-                    return (
-                      <TableRow
-                        key={row.slug}
-                        className={row.total === 0 ? "opacity-50" : ""}
-                      >
-                        <TableCell className="text-sm font-medium">
-                          <span className="mr-1">{row.emoji}</span>
-                          {row.name}
-                        </TableCell>
-                        <TableCell className="text-right text-sm tabular-nums">
-                          {row.accuracyPct === null
-                            ? "—"
-                            : `${row.accuracyPct}%`}
-                        </TableCell>
-                        <TableCell>
-                          {row.total > 0 ? (
-                            <Link
-                              to={`/subjects/science/${slugUrl}`}
-                              viewTransition
-                              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                            >
-                              가기 <ArrowRightIcon className="size-3" />
-                            </Link>
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Surface>
         </>
       ) : null}
 
@@ -1320,8 +1313,8 @@ function AccuracyTab({ data }: { data: StatsData }) {
             />
           </div>
 
-          <Card>
-            <CardHeader>
+          <Surface pad={0} tone="subtle" className="overflow-hidden">
+            <div className="px-6 pt-6 pb-3">
               <div className="flex items-center justify-between">
                 <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                   법률 주관식 — 자기채점
@@ -1334,48 +1327,46 @@ function AccuracyTab({ data }: { data: StatsData }) {
                   주관식 색인 →
                 </Link>
               </div>
-            </CardHeader>
-            <CardContent className="px-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead className="w-24 text-right">답안</TableHead>
-                    <TableHead className="w-28 text-right">
-                      평균 자기채점
-                    </TableHead>
-                    <TableHead className="w-16"></TableHead>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>과목</TableHead>
+                  <TableHead className="w-24 text-right">답안</TableHead>
+                  <TableHead className="w-28 text-right">
+                    평균 자기채점
+                  </TableHead>
+                  <TableHead className="w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {secondLaw.map((row) => (
+                  <TableRow key={row.lawCode}>
+                    <TableCell className="text-sm font-medium">
+                      {row.name}
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {row.attempts}
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {row.avgSelfScore === null
+                        ? "—"
+                        : `${row.avgSelfScore}점`}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        to={`/subjects/${row.lawCode}?tab=problems`}
+                        viewTransition
+                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                      >
+                        가기 <ArrowRightIcon className="size-3" />
+                      </Link>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {secondLaw.map((row) => (
-                    <TableRow key={row.lawCode}>
-                      <TableCell className="text-sm font-medium">
-                        {row.name}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.attempts}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {row.avgSelfScore === null
-                          ? "—"
-                          : `${row.avgSelfScore}점`}
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          to={`/subjects/${row.lawCode}?tab=problems`}
-                          viewTransition
-                          className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                        >
-                          가기 <ArrowRightIcon className="size-3" />
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </Surface>
         </>
       ) : null}
     </div>
@@ -1399,8 +1390,8 @@ function WeaknessTab({ data }: { data: StatsData }) {
         />
       </div>
 
-      <Card>
-        <CardHeader>
+      <Surface pad={0} tone="subtle" className="overflow-hidden">
+        <div className="px-6 pt-6 pb-3">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
               약점 — 어려운 글로벌 + 내 오답
@@ -1409,64 +1400,62 @@ function WeaknessTab({ data }: { data: StatsData }) {
               상위 5건
             </Badge>
           </div>
-        </CardHeader>
-        <CardContent className="px-0">
-          {weakAreas.length === 0 ? (
-            <EmptyMsg text="아직 표시할 약점이 없습니다 — 문제를 풀면 자동 수집됩니다." />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>문제</TableHead>
-                  <TableHead className="w-20 text-xs">조문</TableHead>
-                  <TableHead className="w-20 text-right">글로벌</TableHead>
-                  <TableHead className="w-20 text-right">내 시도</TableHead>
-                  <TableHead className="w-16"></TableHead>
+        </div>
+        {weakAreas.length === 0 ? (
+          <EmptyMsg text="아직 표시할 약점이 없습니다 — 문제를 풀면 자동 수집됩니다." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>문제</TableHead>
+                <TableHead className="w-20 text-xs">조문</TableHead>
+                <TableHead className="w-20 text-right">글로벌</TableHead>
+                <TableHead className="w-20 text-right">내 시도</TableHead>
+                <TableHead className="w-16"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {weakAreas.map((w) => (
+                <TableRow key={w.problemId}>
+                  <TableCell>
+                    <p className="text-sm">{w.bodySnippet}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {w.lawCode}
+                      {w.year ? ` · ${w.year}` : ""}
+                      {w.problemNumber ? ` · ${w.problemNumber}번` : ""}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {w.primaryArticleLabel ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums">
+                    {w.globalAccuracyPct === null
+                      ? "—"
+                      : `${w.globalAccuracyPct}%`}
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums">
+                    {w.myAttempts}
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      to={`/subjects/${w.lawCode}/problems/${w.problemId}`}
+                      viewTransition
+                      className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                    >
+                      풀기 <ArrowRightIcon className="size-3" />
+                    </Link>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {weakAreas.map((w) => (
-                  <TableRow key={w.problemId}>
-                    <TableCell>
-                      <p className="text-sm">{w.bodySnippet}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {w.lawCode}
-                        {w.year ? ` · ${w.year}` : ""}
-                        {w.problemNumber ? ` · ${w.problemNumber}번` : ""}
-                      </p>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {w.primaryArticleLabel ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {w.globalAccuracyPct === null
-                        ? "—"
-                        : `${w.globalAccuracyPct}%`}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {w.myAttempts}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        to={`/subjects/${w.lawCode}/problems/${w.problemId}`}
-                        viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                      >
-                        풀기 <ArrowRightIcon className="size-3" />
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {weakAreas.length > 0 ? (
-            <div className="px-3 pt-3">
-              <ReflectedInTodayNote />
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        {weakAreas.length > 0 ? (
+          <div className="px-6 pt-3 pb-4">
+            <ReflectedInTodayNote />
+          </div>
+        ) : null}
+      </Surface>
 
       <OxDiagnosisView
         diagnosis={oxDiagnosis}
