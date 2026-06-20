@@ -13,9 +13,10 @@ import { type ComponentType, type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  AreaEyebrow,
   AreaTabs,
+  PageHeader,
   type SectionTabItem,
+  StudentShell,
 } from "~/core/components/student";
 import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 import { cn } from "~/core/lib/utils";
@@ -149,46 +150,42 @@ export function StudyAidsShell({
     <>
       {/* 토글 — 최상단 sticky(레이아웃 폭, 헤더 위). 4영역 동일: 토글 → 헤더 → 내용. */}
       <StudyAidsTabs active={active} counts={tabCounts} />
-      <div className="mx-auto w-full max-w-5xl px-5 py-7 md:px-8 md:py-9">
+      <StudentShell>
         <div ref={contentRef}>
-          <header className="mb-[18px] flex items-start justify-between gap-3">
-            <div className="space-y-1.5">
-              <AreaEyebrow area="aids" />
-              <h1 className="text-[28px] font-extrabold tracking-tight">
-                {title}
-              </h1>
-              <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-                {desc}
-              </p>
-            </div>
-            {printHref ? (
-              <a
-                href={printHref}
-                target="_blank"
-                rel="noreferrer"
-                data-pdf-exclude="true"
-                className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors"
-              >
-                <DownloadIcon className="size-3.5" />
-                PDF 저장
-              </a>
-            ) : (
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                disabled={exporting}
-                data-pdf-exclude="true"
-                className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors disabled:opacity-60"
-              >
-                <DownloadIcon className="size-3.5" />
-                {exporting ? "PDF 생성 중…" : "PDF 저장"}
-              </button>
-            )}
-          </header>
+          <PageHeader
+            area="aids"
+            title={title}
+            description={desc}
+            actions={
+              printHref ? (
+                <a
+                  href={printHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-pdf-exclude="true"
+                  className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors"
+                >
+                  <DownloadIcon className="size-3.5" />
+                  PDF 저장
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  disabled={exporting}
+                  data-pdf-exclude="true"
+                  className="border-border bg-card text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap transition-colors disabled:opacity-60"
+                >
+                  <DownloadIcon className="size-3.5" />
+                  {exporting ? "PDF 생성 중…" : "PDF 저장"}
+                </button>
+              )
+            }
+          />
           {summaryStats ? <CountStrip stats={summaryStats} /> : null}
           {children}
         </div>
-      </div>
+      </StudentShell>
     </>
   );
 }

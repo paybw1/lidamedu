@@ -5,12 +5,12 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import {
-  AreaEyebrow,
   AreaTabs,
+  PageHeader,
   type SectionTabItem,
+  StudentShell,
 } from "~/core/components/student";
 import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
-import { cn } from "~/core/lib/utils";
 
 // 6 카테고리 — 랜딩 LatestSection 과 색 계열 일관 (brief §4.3).
 export type LatestCategory =
@@ -51,11 +51,14 @@ function LatestTabs({ active: _active }: { active: LatestCategory }) {
   return <AreaTabs ariaLabel="학습정보" items={items} />;
 }
 
-// 페이지 폭 — 색인 테이블(넓게) / 피드 카드(중간) / 시험지(독서 폭).
-const WIDTH_CLASS: Record<"index" | "feed" | "narrow", string> = {
-  index: "max-w-screen-xl",
-  feed: "max-w-5xl",
-  narrow: "max-w-3xl",
+// 페이지 폭 — 색인(넓게) / 피드(기본) / 시험지(독서 폭) → 공용 StudentShell width 매핑.
+const SHELL_WIDTH: Record<
+  "index" | "feed" | "narrow",
+  "wide" | "default" | "narrow"
+> = {
+  index: "wide",
+  feed: "default",
+  narrow: "narrow",
 };
 
 // 학습정보 9개 화면 공통 셸.
@@ -82,12 +85,7 @@ export function LatestShell({
     <>
       {/* 토글 — 최상단 sticky(레이아웃 폭). 순서: 토글 → (backLink) → 헤더 → 내용. */}
       <LatestTabs active={category} />
-      <div
-        className={cn(
-          "mx-auto w-full px-5 py-7 md:px-8 md:py-9",
-          WIDTH_CLASS[width],
-        )}
-      >
+      <StudentShell width={SHELL_WIDTH[width]}>
         {backLink ? (
           <Link
             to={backLink.to}
@@ -97,20 +95,14 @@ export function LatestShell({
             {backLink.label}
           </Link>
         ) : null}
-        <header className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0 space-y-1.5">
-            <AreaEyebrow area="info" />
-            <h1 className="text-[28px] font-extrabold tracking-tight">
-              {title}
-            </h1>
-            <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-              {desc}
-            </p>
-          </div>
-          {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
-        </header>
+        <PageHeader
+          area="info"
+          title={title}
+          description={desc}
+          actions={headerRight}
+        />
         {children}
-      </div>
+      </StudentShell>
     </>
   );
 }
