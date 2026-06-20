@@ -20,7 +20,8 @@ export const T = {
   line: "var(--border)",
   lineSoft: "color-mix(in oklch, var(--border) 50%, transparent)",
 
-  blue: "#2D5BA8",
+  blue: "var(--primary)", // 다크 자동 적응(#3B6FC4) — 아이콘·CTA 배경
+  link: "var(--link)", // 링크 텍스트 — 다크에서 밝은 파랑(blue-400)으로 가독성 확보
   blueStrong: "#1E4789",
   blueDeep: "#3B6FC4",
   blueSoft: "rgba(45, 91, 168, 0.12)",

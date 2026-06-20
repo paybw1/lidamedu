@@ -157,7 +157,7 @@ export function RecentRevisionsCard({
           to="/latest/laws"
           style={{
             font: "600 12px/1 Pretendard, sans-serif",
-            color: T.blue,
+            color: T.link,
             textDecoration: "none",
           }}
         >
@@ -216,7 +216,7 @@ export function RecentRevisionsCard({
                   <span
                     style={{
                       font: "600 11px/1 Pretendard, sans-serif",
-                      color: T.blue,
+                      color: T.link,
                       padding: "2px 6px",
                       background: T.blueSoft,
                       borderRadius: 4,
@@ -265,7 +265,7 @@ export function RecentCasesCard({
           to="/latest/cases"
           style={{
             font: "600 12px/1 Pretendard, sans-serif",
-            color: T.blue,
+            color: T.link,
             textDecoration: "none",
           }}
         >

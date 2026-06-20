@@ -905,7 +905,7 @@ function ArticlesSection({
                 <Link
                   to={`/subjects/${row.lawCode}`}
                   viewTransition
-                  className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                  className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                 >
                   가기 <ArrowRightIcon className="size-3" />
                 </Link>
@@ -963,7 +963,7 @@ function CasesSection({ rows }: { rows: StatsData["caseStats"]["bySubject"] }) {
                 <Link
                   to={`/subjects/${row.lawCode}?tab=cases`}
                   viewTransition
-                  className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                  className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                 >
                   가기 <ArrowRightIcon className="size-3" />
                 </Link>
@@ -1038,7 +1038,7 @@ function ProgressTab({ data }: { data: StatsData }) {
                       <Link
                         to={`/subjects/${row.lawCode}`}
                         viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                        className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                       >
                         가기 <ArrowRightIcon className="size-3" />
                       </Link>
@@ -1087,7 +1087,7 @@ function ProgressTab({ data }: { data: StatsData }) {
                           <Link
                             to={`/subjects/science/${slugUrl}`}
                             viewTransition
-                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                           >
                             가기 <ArrowRightIcon className="size-3" />
                           </Link>
@@ -1130,7 +1130,7 @@ function ProgressTab({ data }: { data: StatsData }) {
                     <Link
                       to={`/subjects/${row.lawCode}?tab=problems`}
                       viewTransition
-                      className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                      className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                     >
                       가기 <ArrowRightIcon className="size-3" />
                     </Link>
@@ -1188,7 +1188,7 @@ function AccuracyTab({ data }: { data: StatsData }) {
                 <Link
                   to="/study/wrong-note"
                   viewTransition
-                  className="text-primary text-xs hover:underline"
+                  className="text-linktext-xs hover:underline"
                 >
                   오답노트 →
                 </Link>
@@ -1219,7 +1219,7 @@ function AccuracyTab({ data }: { data: StatsData }) {
                       <Link
                         to={`/subjects/${row.lawCode}?tab=problems`}
                         viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                        className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                       >
                         풀기 <ArrowRightIcon className="size-3" />
                       </Link>
@@ -1265,7 +1265,7 @@ function AccuracyTab({ data }: { data: StatsData }) {
                           <Link
                             to={`/subjects/science/${slugUrl}`}
                             viewTransition
-                            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                            className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                           >
                             가기 <ArrowRightIcon className="size-3" />
                           </Link>
@@ -1320,7 +1320,7 @@ function AccuracyTab({ data }: { data: StatsData }) {
                 <Link
                   to="/latest/essay"
                   viewTransition
-                  className="text-primary text-xs hover:underline"
+                  className="text-linktext-xs hover:underline"
                 >
                   주관식 색인 →
                 </Link>
@@ -1355,7 +1355,7 @@ function AccuracyTab({ data }: { data: StatsData }) {
                       <Link
                         to={`/subjects/${row.lawCode}?tab=problems`}
                         viewTransition
-                        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                        className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                       >
                         가기 <ArrowRightIcon className="size-3" />
                       </Link>
@@ -1438,7 +1438,7 @@ function WeaknessTab({ data }: { data: StatsData }) {
                     <Link
                       to={`/subjects/${w.lawCode}/problems/${w.problemId}`}
                       viewTransition
-                      className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                      className="text-linkinline-flex items-center gap-1 text-xs hover:underline"
                     >
                       풀기 <ArrowRightIcon className="size-3" />
                     </Link>
@@ -1503,7 +1503,7 @@ function KpiCard({
   const body = (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        {Icon ? <Icon className="text-primary size-4" /> : null}
+        {Icon ? <Icon className="text-linksize-4" /> : null}
         <p className="text-muted-foreground text-xs">{label}</p>
       </div>
       <p
@@ -1551,7 +1551,7 @@ function ReflectedInTodayNote() {
     <Link
       to="/study/today"
       viewTransition
-      className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-[11px]"
+      className="text-muted-foreground hover:text-linkinline-flex items-center gap-1 text-[11px]"
     >
       <ListChecksIcon className="size-3" />이 약점은 ‘오늘 할 일’ 추천에도
       반영됩니다
@@ -1610,7 +1610,7 @@ function WeakReviewCard({ weakAreas }: { weakAreas: StatsData["weakAreas"] }) {
                   <Link
                     to={`/subjects/${w.lawCode}/problems/${w.problemId}`}
                     viewTransition
-                    className="text-primary inline-flex shrink-0 items-center gap-1 text-xs hover:underline"
+                    className="text-linkinline-flex shrink-0 items-center gap-1 text-xs hover:underline"
                   >
                     풀기 <ArrowRightIcon className="size-3" />
                   </Link>

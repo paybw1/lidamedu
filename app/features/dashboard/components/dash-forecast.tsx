@@ -345,7 +345,7 @@ export function PasserBenchmarkCard({
           to="/study/passer-trend"
           style={{
             font: "600 12px/1 Pretendard, sans-serif",
-            color: T.blue,
+            color: T.link,
             textDecoration: "none",
           }}
         >
@@ -468,7 +468,7 @@ export function PasserSummariesCard({
           to="/study/passer-summaries"
           style={{
             font: "600 12px/1 Pretendard, sans-serif",
-            color: T.blue,
+            color: T.link,
             textDecoration: "none",
           }}
         >

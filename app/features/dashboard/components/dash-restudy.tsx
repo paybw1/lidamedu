@@ -90,7 +90,7 @@ export function ReentryChipsCard({
                   height: 32,
                   borderRadius: 8,
                   background: T.blueSoft,
-                  color: T.blue,
+                  color: T.link,
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -163,7 +163,7 @@ export function BookmarksQuickCard({
           to="/study/bookmarks"
           style={{
             font: "600 12px/1 Pretendard, sans-serif",
-            color: T.blue,
+            color: T.link,
             textDecoration: "none",
           }}
         >

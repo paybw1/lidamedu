@@ -223,7 +223,7 @@ export function WeekBarsCard({ bars }: { bars: ReadonlyArray<WeekBar> }) {
                         left: "50%",
                         transform: "translateX(-50%)",
                         font: "700 11px/1 Pretendard, sans-serif",
-                        color: T.blue,
+                        color: T.link,
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >

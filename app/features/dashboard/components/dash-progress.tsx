@@ -297,7 +297,7 @@ function SubjectExamGroup({
           font: "700 11px/1 Pretendard, sans-serif",
           letterSpacing: "0.08em",
           textTransform: "uppercase",
-          color: T.blue,
+          color: T.link,
           marginBottom: 8,
         }}
       >

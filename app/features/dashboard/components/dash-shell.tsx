@@ -138,7 +138,7 @@ export function DashSidebar({
             style={{
               display: "block",
               marginTop: 8,
-              color: T.blue,
+              color: T.link,
               font: "600 12px/1 Pretendard, sans-serif",
               textDecoration: "none",
             }}

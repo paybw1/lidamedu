@@ -58,6 +58,9 @@ body {
   --input: #e5e9ef;
   --ring: #2d5ba8;
 
+  /* 링크/인터랙티브 텍스트 색 — light=primary(navy). dark 는 .dark 에서 밝게(가독성). */
+  --link: #2d5ba8;
+
   /* 차트 팔레트 — primary 블루 중심, 모든 모드 동일 hue 순서(light/dark 정합). */
   --chart-1: #2d5ba8; /* primary 블루 */
   --chart-2: #4084d6; /* 밝은 블루 */
@@ -114,6 +117,9 @@ body {
   --input: rgba(255, 255, 255, 0.15);
   --ring: #3b6fc4;
 
+  /* 링크 텍스트 — 어두운 표면에서 읽히도록 blue-400(primary 보다 밝음, 버튼 배경과 분리). */
+  --link: #60a5fa;
+
   /* 차트 팔레트 — light 와 동일 hue, 다크 표면용 명도 상향. */
   --chart-1: #3b6fc4; /* primary 블루 */
   --chart-2: #60a5fa; /* 밝은 블루 */
@@ -163,6 +169,7 @@ body {
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-link: var(--link);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

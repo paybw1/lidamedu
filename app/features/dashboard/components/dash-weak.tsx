@@ -45,7 +45,7 @@ export function WeakReviewCard({
           to="/study/wrong-note"
           style={{
             font: "600 11px/1 Pretendard, sans-serif",
-            color: T.blue,
+            color: T.link,
             textDecoration: "none",
           }}
         >

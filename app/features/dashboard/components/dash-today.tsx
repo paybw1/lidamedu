@@ -199,7 +199,7 @@ export function PendingAssignmentsCard({
           to="/assignments"
           style={{
             font: "600 12px/1 Pretendard, sans-serif",
-            color: T.blue,
+            color: T.link,
             textDecoration: "none",
           }}
         >

@@ -85,28 +85,28 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
           alignItems: "baseline",
           gap: 14,
           padding: "14px 22px",
-          background: T.blueSoft,
-          color: T.blue,
+          background: "var(--secondary)",
+          color: "var(--secondary-foreground)",
           borderRadius: 16,
-          border: `1px solid ${T.blueSoft}`,
+          border: "1px solid var(--border)",
         }}
       >
         {data.goalsConfigured && data.examDateIso ? (
           <>
             <div>
-              <Eyebrow color={T.blue} style={{ marginBottom: 4 }}>
+              <Eyebrow color="var(--secondary-foreground)" style={{ marginBottom: 4 }}>
                 {roundLabel}
               </Eyebrow>
               <Num
                 value={`D-${Math.round(counted)}`}
                 size={36}
-                color={T.blue}
+                color="var(--secondary-foreground)"
               />
             </div>
             <div
               style={{
                 font: "400 12px/1.5 Pretendard, sans-serif",
-                color: T.blue,
+                color: "var(--secondary-foreground)",
                 opacity: 0.7,
                 letterSpacing: "-0.005em",
               }}
@@ -119,14 +119,14 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
         ) : (
           // 시험일 미설정 — 가짜 D-day 대신 설정 안내(feat-2-025 Phase 3).
           <div>
-            <Eyebrow color={T.blue} style={{ marginBottom: 4 }}>
+            <Eyebrow color="var(--secondary-foreground)" style={{ marginBottom: 4 }}>
               {roundLabel}
             </Eyebrow>
             <Link
               to="/goals"
               style={{
                 font: "700 15px/1.4 Pretendard, sans-serif",
-                color: T.blue,
+                color: "var(--secondary-foreground)",
                 textDecoration: "underline",
                 letterSpacing: "-0.01em",
               }}
