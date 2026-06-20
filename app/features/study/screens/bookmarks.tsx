@@ -1,5 +1,6 @@
 // 즐겨찾기 — ♡ 별점을 매긴 조문·판례·문제·OX 모음. 별점 높은 순.
 // 키트 lidam-study-aids/BookmarksScreen 디자인.
+import type { Route } from "./+types/bookmarks";
 
 import { BookmarkIcon, SearchIcon, StickyNoteIcon } from "lucide-react";
 import { useState } from "react";
@@ -17,6 +18,7 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  type RangeSelection,
   RangeSelectionGroup,
   ResultCard,
   SessionBanner,
@@ -25,7 +27,6 @@ import {
   inRangeSelection,
   isRangeSelectionAll,
   subjectName,
-  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -38,9 +39,9 @@ import {
   SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
 
-import type { Route } from "./+types/bookmarks";
-
-export const meta: Route.MetaFunction = () => [{ title: "즐겨찾기 | Lidam Patent Attorney Academy" }];
+export const meta: Route.MetaFunction = () => [
+  { title: "즐겨찾기 | Lidam Patent Attorney Academy" },
+];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -53,7 +54,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     listAllBookmarks(client, user.id),
     getStudyAidCounts(client, user.id),
   ]);
-  const counts = { total: items.length, article: 0, case: 0, problem: 0, ox: 0 };
+  const counts = {
+    total: items.length,
+    article: 0,
+    case: 0,
+    problem: 0,
+    ox: 0,
+  };
   for (const b of items) {
     if (b.targetType === "article") counts.article += 1;
     else if (b.targetType === "case") counts.case += 1;
@@ -176,7 +183,11 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
             전체
           </FilterChip>
           {TYPE_OPTIONS.map(([k, label]) => (
-            <FilterChip key={k} selected={type === k} onClick={() => setType(k)}>
+            <FilterChip
+              key={k}
+              selected={type === k}
+              onClick={() => setType(k)}
+            >
               {label}
             </FilterChip>
           ))}
@@ -265,7 +276,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
                 </p>
               ) : null}
               {b.notePreview ? (
-                <div className="bg-violet-500/10 mt-2 flex items-start gap-1.5 rounded-lg px-2.5 py-2 text-[12px] leading-relaxed">
+                <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-violet-500/10 px-2.5 py-2 text-[12px] leading-relaxed">
                   <StickyNoteIcon className="mt-0.5 size-3 shrink-0 text-violet-600 dark:text-violet-300" />
                   <span>
                     <strong className="mr-1 font-bold text-violet-600 dark:text-violet-300">
@@ -275,7 +286,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
                   </span>
                 </div>
               ) : null}
-              <CardCta label="다시 학습 →" />
+              <CardCta label="다시 학습" />
             </ResultCard>
           ))}
         </ListStack>

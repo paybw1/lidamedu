@@ -1,5 +1,6 @@
 // 오답노트 — 가장 최근 시도가 오답인 문제 큐. 객관식 + 정오문제(OX) 2섹션.
 // 키트 lidam-study-aids/WrongNoteScreen 디자인.
+import type { Route } from "./+types/wrong-note";
 
 import { CircleCheckIcon, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
@@ -16,6 +17,7 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  type RangeSelection,
   RangeSelectionGroup,
   ResultCard,
   SectionTitle,
@@ -23,7 +25,6 @@ import {
   inRangeSelection,
   isRangeSelectionAll,
   subjectName,
-  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -40,9 +41,9 @@ import {
   SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
 
-import type { Route } from "./+types/wrong-note";
-
-export const meta: Route.MetaFunction = () => [{ title: "오답노트 | Lidam Patent Attorney Academy" }];
+export const meta: Route.MetaFunction = () => [
+  { title: "오답노트 | Lidam Patent Attorney Academy" },
+];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -71,7 +72,7 @@ function metaLine(
 
 function AttemptChip({ count }: { count: number }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-[11px] font-semibold text-rose-600 tabular-nums dark:text-rose-400">
       <TriangleAlertIcon className="size-3" />
       시도 {count}회
     </span>
@@ -198,7 +199,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
                 <p className="text-foreground/90 mt-1 text-sm leading-relaxed">
                   {p.bodySnippet}
                 </p>
-                <CardCta label="다시 풀기 →" />
+                <CardCta label="다시 풀기" />
               </ResultCard>
             ))}
           </ListStack>
@@ -208,7 +209,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
       <section data-testid="ox-wrong-section">
         <SectionTitle title="정오문제 오답" count={ox.length} />
         {ox.length > 0 ? (
-          <div className="mb-3 -mt-1">
+          <div className="-mt-1 mb-3">
             <Link
               to="/me/ox-wrong-note"
               prefetch="intent"
@@ -260,9 +261,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
                   <OxPill label="정답" value={o.oxTruth} kind="correct" />
                 </div>
                 <CardCta
-                  label={
-                    o.articleNumber ? "조문에서 다시 풀기 →" : "원문제 보기 →"
-                  }
+                  label={o.articleNumber ? "조문에서 다시 풀기" : "원문제 보기"}
                 />
               </ResultCard>
             ))}

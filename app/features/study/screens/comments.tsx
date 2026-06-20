@@ -18,13 +18,13 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  type RangeSelection,
   RangeSelectionGroup,
   ResultCard,
   formatRelative,
   inRangeSelection,
   isRangeSelectionAll,
   subjectName,
-  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -214,7 +214,7 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
                   {c.bodyMd}
                 </span>
               </div>
-              <CardCta label="원문에서 보기 →" />
+              <CardCta label="원문에서 보기" />
             </ResultCard>
           ))}
         </ListStack>

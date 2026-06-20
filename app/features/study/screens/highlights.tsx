@@ -1,5 +1,6 @@
 // 하이라이트 — 본문에 색칠한 발췌 모아보기. 최근 작성 순.
 // 키트 lidam-study-aids/HighlightsScreen 디자인.
+import type { Route } from "./+types/highlights";
 
 import { HighlighterIcon, SearchIcon } from "lucide-react";
 import { useState } from "react";
@@ -10,8 +11,8 @@ import { cn } from "~/core/lib/utils";
 import { HighlightColorAliasEditor } from "~/features/annotations/components/highlight-color-alias-editor";
 import {
   HIGHLIGHT_COLORS,
-  highlightColorLabel,
   type HighlightColor,
+  highlightColorLabel,
 } from "~/features/annotations/labels";
 import {
   getHighlightColorAliases,
@@ -27,13 +28,13 @@ import {
   FilterDivider,
   FilterGroup,
   ListStack,
+  type RangeSelection,
   RangeSelectionGroup,
   ResultCard,
   formatRelative,
   inRangeSelection,
   isRangeSelectionAll,
   subjectName,
-  type RangeSelection,
 } from "~/features/study/components/study-aids-list";
 import {
   StudyAidsShell,
@@ -45,8 +46,6 @@ import {
   LAW_SUBJECTS,
   SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
-
-import type { Route } from "./+types/highlights";
 
 export const meta: Route.MetaFunction = () => [
   { title: "하이라이트 | Lidam Patent Attorney Academy" },
@@ -177,18 +176,38 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
       printHref="/study/highlights/print"
       summaryStats={[
         { label: "전체", value: counts.total },
-        { label: labelFor("yellow"), value: counts.yellow, dotClass: COLOR.yellow.dot },
-        { label: labelFor("green"), value: counts.green, dotClass: COLOR.green.dot },
+        {
+          label: labelFor("yellow"),
+          value: counts.yellow,
+          dotClass: COLOR.yellow.dot,
+        },
+        {
+          label: labelFor("green"),
+          value: counts.green,
+          dotClass: COLOR.green.dot,
+        },
         { label: labelFor("red"), value: counts.red, dotClass: COLOR.red.dot },
-        { label: labelFor("blue"), value: counts.blue, dotClass: COLOR.blue.dot },
-        { label: labelFor("underline"), value: counts.underline, dotClass: COLOR.underline.dot },
+        {
+          label: labelFor("blue"),
+          value: counts.blue,
+          dotClass: COLOR.blue.dot,
+        },
+        {
+          label: labelFor("underline"),
+          value: counts.underline,
+          dotClass: COLOR.underline.dot,
+        },
       ]}
     >
       <HighlightColorAliasEditor initial={aliases} />
       <FilterBar
         hasActive={hasActive}
         onReset={reset}
-        search={{ value: q, onChange: setQ, placeholder: "하이라이트 발췌 검색" }}
+        search={{
+          value: q,
+          onChange: setQ,
+          placeholder: "하이라이트 발췌 검색",
+        }}
       >
         <FilterGroup label="1차 과목">
           <FilterChip selected={!subject} onClick={() => setSubject(null)}>
@@ -222,7 +241,11 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
             전체
           </FilterChip>
           {TYPE_OPTIONS.map(([k, label]) => (
-            <FilterChip key={k} selected={type === k} onClick={() => setType(k)}>
+            <FilterChip
+              key={k}
+              selected={type === k}
+              onClick={() => setType(k)}
+            >
               {label}
             </FilterChip>
           ))}
@@ -329,7 +352,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
                     </span>
                   )}
                 </div>
-                <CardCta label="원문에서 보기 →" />
+                <CardCta label="원문에서 보기" />
               </ResultCard>
             );
           })}
