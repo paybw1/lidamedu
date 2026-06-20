@@ -151,6 +151,14 @@ export function ProblemsTab({
     const s = sp.toString();
     return s ? `?${s}` : "";
   })();
+  // 정렬만 해제 — 필터·단원은 유지하고 p_sort/p_dir 만 제거(원래 순서로 복귀).
+  const clearSortHref = (() => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("p_sort");
+    sp.delete("p_dir");
+    sp.set("tab", "problems");
+    return `?${sp.toString()}`;
+  })();
 
   const attemptedCount = stats?.attemptedCount ?? 0;
   const correctCount = stats?.correctCount ?? 0;
@@ -438,6 +446,19 @@ export function ProblemsTab({
             paramName="p_bookmarked"
             value={appliedFilters.bookmarkMin ?? 0}
           />
+          {appliedFilters.sort ? (
+            <Button
+              asChild
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 rounded-full"
+            >
+              <Link to={clearSortHref} preventScrollReset>
+                <ArrowUpDownIcon className="size-3.5" /> 정렬 해제
+              </Link>
+            </Button>
+          ) : null}
           {filterActive ? (
             <Button
               asChild
@@ -808,18 +829,19 @@ function SortableHead({
   const dir: ProblemSortDir | null = active
     ? (applied.sortDir ?? PROBLEM_SORT_DEFAULT_DIR[sortKey])
     : null;
+  const def = PROBLEM_SORT_DEFAULT_DIR[sortKey];
+  const opp: ProblemSortDir = def === "asc" ? "desc" : "asc";
+  const willClear = active && dir === opp;
   const sp = new URLSearchParams(searchParams);
   sp.set("tab", "problems");
-  sp.set("p_sort", sortKey);
-  // 활성 컬럼 재클릭 → 방향 토글, 비활성 → 기본 방향.
-  sp.set(
-    "p_dir",
-    active
-      ? dir === "asc"
-        ? "desc"
-        : "asc"
-      : PROBLEM_SORT_DEFAULT_DIR[sortKey],
-  );
+  // 3단 순환: 비활성 → 기본방향 → 반대방향 → 해제(원래 순서로 복귀).
+  if (willClear) {
+    sp.delete("p_sort");
+    sp.delete("p_dir");
+  } else {
+    sp.set("p_sort", sortKey);
+    sp.set("p_dir", active ? opp : def);
+  }
   return (
     <TableHead
       className={cn(
@@ -830,6 +852,13 @@ function SortableHead({
       <Link
         to={`?${sp.toString()}`}
         preventScrollReset
+        title={
+          willClear
+            ? "정렬 해제 (원래 순서)"
+            : active
+              ? "정렬 방향 전환"
+              : "이 기준으로 정렬"
+        }
         className={cn(
           "hover:text-foreground inline-flex items-center gap-1 transition-colors",
           align === "center" && "justify-center",
