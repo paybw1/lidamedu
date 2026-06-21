@@ -87,6 +87,10 @@ import {
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
+import {
+  SortAxisProvider,
+  SortAxisToggle,
+} from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
@@ -742,33 +746,37 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         <div
           className={`grid min-w-0 flex-1 gap-0 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
-          {/* Left tree — desktop sticky, 접기/펼치기 */}
+          {/* Left tree — desktop sticky, 접기/펼치기. 문제는 체계도 고정
+              (SortAxisProvider forced — 조문 leaf 로 이동해도 조문 뷰어가 체계도 유지). */}
           <aside className="lg:border-border hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r">
-            {leftCollapsed ? (
-              <div className="flex justify-center py-3">
-                <LeftPanelToggle collapsed onToggle={toggleLeft} />
-              </div>
-            ) : (
-              <>
-                {/* 토글 — 트리를 스크롤해도 패널 상단 고정(sticky top-0). */}
-                <div className="bg-background sticky top-0 z-10 flex justify-end px-3 py-2">
-                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+            <SortAxisProvider forced="systematic">
+              {leftCollapsed ? (
+                <div className="flex justify-center py-3">
+                  <LeftPanelToggle collapsed onToggle={toggleLeft} />
                 </div>
-                {systematicEmpty ? (
-                  <p className="text-muted-foreground px-4 py-6 text-xs">
-                    체계도 데이터 미입력
-                  </p>
-                ) : (
-                  <SystematicTree
-                    nodes={systematicNodes}
-                    activeArticleId={problem.primaryArticleId ?? undefined}
-                    lawCode={subject.slug}
-                    bookmarkLevels={bookmarkLevels}
-                    annotationCounts={annotationCounts}
-                  />
-                )}
-              </>
-            )}
+              ) : (
+                <>
+                  {/* 토글 행 — [접기][체계도/조문(조문 비활성)]. 스크롤해도 상단 고정. */}
+                  <div className="bg-background sticky top-0 z-10 flex items-center justify-between gap-2 px-3 py-2">
+                    <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                    <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
+                  </div>
+                  {systematicEmpty ? (
+                    <p className="text-muted-foreground px-4 py-6 text-xs">
+                      체계도 데이터 미입력
+                    </p>
+                  ) : (
+                    <SystematicTree
+                      nodes={systematicNodes}
+                      activeArticleId={problem.primaryArticleId ?? undefined}
+                      lawCode={subject.slug}
+                      bookmarkLevels={bookmarkLevels}
+                      annotationCounts={annotationCounts}
+                    />
+                  )}
+                </>
+              )}
+            </SortAxisProvider>
           </aside>
 
           {/* Center body */}

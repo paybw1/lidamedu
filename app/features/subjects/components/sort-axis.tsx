@@ -31,21 +31,38 @@ interface SortAxisContextValue {
 
 const SortAxisContext = createContext<SortAxisContextValue | null>(null);
 
-export function SortAxisProvider({ children }: { children: ReactNode }) {
-  const [axis, setAxisState] = useState<SortAxis>(DEFAULT_AXIS);
+export function SortAxisProvider({
+  children,
+  forced,
+}: {
+  children: ReactNode;
+  // 지정 시 축을 그 값으로 잠그고(toggle 무시) localStorage 에도 반영해
+  // 다른 화면(조문 뷰어 등)도 그 축을 따라오게 한다. (문제 학습 흐름 = 체계도 고정용)
+  forced?: SortAxis;
+}) {
+  const [axis, setAxisState] = useState<SortAxis>(forced ?? DEFAULT_AXIS);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (forced) {
+      window.localStorage.setItem(STORAGE_KEY, forced);
+      setAxisState(forced);
+      return;
+    }
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (isSortAxis(stored)) setAxisState(stored);
-  }, []);
+  }, [forced]);
 
-  const setAxis = useCallback((next: SortAxis) => {
-    setAxisState(next);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    }
-  }, []);
+  const setAxis = useCallback(
+    (next: SortAxis) => {
+      if (forced) return; // 잠금 상태에선 변경 무시.
+      setAxisState(next);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, next);
+      }
+    },
+    [forced],
+  );
 
   return (
     <SortAxisContext.Provider value={{ axis, setAxis }}>
