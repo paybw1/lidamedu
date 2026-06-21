@@ -1237,7 +1237,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                             </p>
                           </div>
                           {MD_IMAGE_RE.test(problem.explanationMd) ? (
-                            <div className="px-5 py-4 text-sm leading-relaxed">
+                            <div className="px-5 py-4 text-sm leading-relaxed dark:[&_img]:brightness-[.8]">
                               <MarkdownView text={problem.explanationMd} />
                             </div>
                           ) : (
@@ -1264,17 +1264,17 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                   problem.choices.find((c) => c.isCorrect)
                                     ?.bodyMd ?? null;
                                 return problem.boxItems.map((bi) => {
+                                  // oxIneligible(조문 OX드릴 부적합 표시)는 MCQ 해설 O/X 표시엔
+                                  // 무시 — 풀이 학습에 도움. (OX 드릴 쿼리는 계속 oxIneligible 존중)
                                   const truth: "O" | "X" | null =
-                                    bi.oxIneligible
-                                      ? null
-                                      : (bi.oxTruth ??
-                                        deriveBoxItemOxTruth({
-                                          polarity: problem.polarity,
-                                          format: problem.format,
-                                          marker: bi.marker,
-                                          correctChoiceBody,
-                                          oxIneligible: bi.oxIneligible,
-                                        }));
+                                    bi.oxTruth ??
+                                    deriveBoxItemOxTruth({
+                                      polarity: problem.polarity,
+                                      format: problem.format,
+                                      marker: bi.marker,
+                                      correctChoiceBody,
+                                      oxIneligible: false,
+                                    });
                                   return (
                                     <div
                                       key={bi.boxItemId}
@@ -1309,15 +1309,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                 });
                               })()
                             : null}
-                          {problem.boxItems.length > 0 &&
-                          problem.choices.length > 0 ? (
-                            <div className="px-5 py-2">
-                              <p className="text-muted-foreground text-[11px] font-semibold tracking-widest uppercase">
-                                정답 보기
-                              </p>
-                            </div>
-                          ) : null}
-                          {problem.choices.map((c) => {
+                          {/* 박스형(사례박스 포함)은 verdict("정답 N번")·박스 O/X 로 충분 →
+                              중복되는 '정답 보기' 선지 목록 생략. 비박스만 선지별 O/X·해설 노출. */}
+                          {problem.boxItems.length === 0 &&
+                            problem.choices.map((c) => {
                             // mc_box: 보기는 박스 묶음이라 per-choice OX 의미 없음 → 정답만 표시.
                             // mc_short(긍정/부정형 단답): 헬퍼로 polarity 반영해 O/X 산출.
                             // 그 외(mc_case 등): 정답 여부만 표시.
@@ -1328,7 +1323,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                     polarity: problem.polarity,
                                     format: problem.format,
                                     isCorrect: c.isCorrect,
-                                    oxIneligible: c.oxIneligible,
+                                    // oxIneligible 은 MCQ 해설 O/X 표시엔 무시(OX드릴만 존중).
+                                    oxIneligible: false,
                                   }))
                                 : null;
                             const label =
