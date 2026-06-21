@@ -1,12 +1,15 @@
+import type { ReactNode } from "react";
+
 import type { Route } from "./+types/case-viewer";
 
 import { ListTreeIcon, NetworkIcon, PanelRightIcon } from "lucide-react";
 import { Link, data, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import { Card, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
   getBookmark,
@@ -399,29 +402,22 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   <LeftPanelToggle collapsed onToggle={toggleLeft} />
                 </div>
               ) : (
-                <Card className="border-border rounded-xl border py-3 shadow-sm">
-                  {/* 토글 헤더 — 트리를 스크롤해도 상단 고정(sticky top-0). */}
-                  <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
-                        {subject.name} 판례 트리
-                      </p>
+                <div className="border-border bg-card rounded-xl border shadow-sm">
+                  {/* 조문 뷰어와 동일 — [접기][체계도/조문] sticky 헤더, 텍스트 라벨 없음. */}
+                  <CaseTreeSidebar
+                    subjectSlug={subject.slug}
+                    articles={articles}
+                    systematicNodes={systematicNodes}
+                    caseTreeCounts={caseTreeCounts}
+                    activeFilter={activeCaseTreeFilter}
+                    leftSlot={
                       <LeftPanelToggle
                         collapsed={false}
                         onToggle={toggleLeft}
                       />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-2 pb-2">
-                    <CaseTreeSidebar
-                      subjectSlug={subject.slug}
-                      articles={articles}
-                      systematicNodes={systematicNodes}
-                      caseTreeCounts={caseTreeCounts}
-                      activeFilter={activeCaseTreeFilter}
-                    />
-                  </CardContent>
-                </Card>
+                    }
+                  />
+                </div>
               )}
             </aside>
 
@@ -582,6 +578,8 @@ function CaseTreeSidebar(props: {
   systematicNodes: SystematicNode[];
   caseTreeCounts: CaseTreeCounts;
   activeFilter: CaseTreeFilter | null;
+  // 데스크톱 패널 헤더에 끼워 넣을 접기 토글(정렬축 토글 왼쪽). 모바일 드로어는 미지정.
+  leftSlot?: ReactNode;
 }) {
   return (
     <SortAxisProvider>
@@ -596,31 +594,45 @@ function CaseTreeSidebarInner({
   systematicNodes,
   caseTreeCounts,
   activeFilter,
+  leftSlot,
 }: {
   subjectSlug: string;
   articles: ArticleNode[];
   systematicNodes: SystematicNode[];
   caseTreeCounts: CaseTreeCounts;
   activeFilter: CaseTreeFilter | null;
+  leftSlot?: ReactNode;
 }) {
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
+    <div>
+      {/* 토글 행 — 데스크톱(leftSlot 주입): [접기][체계도/조문] sticky 헤더.
+          모바일 드로어(leftSlot 없음): 정렬축 토글만 우측 정렬(기존 동작). */}
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          leftSlot
+            ? "border-border bg-card sticky top-0 z-10 justify-between rounded-t-xl border-b px-3 py-2.5"
+            : "justify-end pb-2",
+        )}
+      >
+        {leftSlot}
         <SortAxisToggle
           size="sm"
           disabledAxes={systematicEmpty ? ["systematic"] : undefined}
         />
       </div>
-      <CasesTree
-        axis={axis}
-        articles={articles}
-        systematicNodes={systematicNodes}
-        caseTreeCounts={caseTreeCounts}
-        active={activeFilter}
-        linkBase={`/subjects/${subjectSlug}`}
-      />
+      <div className={leftSlot ? "px-1.5 py-2" : ""}>
+        <CasesTree
+          axis={axis}
+          articles={articles}
+          systematicNodes={systematicNodes}
+          caseTreeCounts={caseTreeCounts}
+          active={activeFilter}
+          linkBase={`/subjects/${subjectSlug}`}
+        />
+      </div>
     </div>
   );
 }
