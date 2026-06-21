@@ -782,7 +782,11 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
           <p className="text-muted-foreground mb-1 font-mono font-semibold tracking-[0.06em] uppercase">
             종합 해설
           </p>
-          <p className="whitespace-pre-line">{problem.explanationMd}</p>
+          {MD_IMAGE_RE.test(problem.explanationMd) ? (
+            <MarkdownView text={problem.explanationMd} />
+          ) : (
+            <p className="whitespace-pre-line">{problem.explanationMd}</p>
+          )}
         </div>
       ) : null}
     </div>

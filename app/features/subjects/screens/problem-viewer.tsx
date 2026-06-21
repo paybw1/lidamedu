@@ -50,6 +50,7 @@ import {
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
 } from "~/features/problems/labels";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   deriveBoxItemOxTruth,
   deriveChoiceOxTruth,
@@ -94,6 +95,10 @@ import {
   LAW_SUBJECTS,
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
+
+// 발문·해설에 markdown 이미지(![](url))나 <img> 가 있으면 MarkdownView 로 렌더(이미지·표·수식).
+// 없으면 plain whitespace-pre-line (mcq-pack-sheet 와 동일 규칙).
+const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<img\b/i;
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "문제 | Lidam Patent Attorney Academy" }];
@@ -1231,9 +1236,15 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                               종합 해설
                             </p>
                           </div>
-                          <div className="px-5 py-4 text-sm leading-relaxed whitespace-pre-line">
-                            {problem.explanationMd}
-                          </div>
+                          {MD_IMAGE_RE.test(problem.explanationMd) ? (
+                            <div className="px-5 py-4 text-sm leading-relaxed">
+                              <MarkdownView text={problem.explanationMd} />
+                            </div>
+                          ) : (
+                            <div className="px-5 py-4 text-sm leading-relaxed whitespace-pre-line">
+                              {problem.explanationMd}
+                            </div>
+                          )}
                         </div>
                       ) : null}
 
