@@ -1195,6 +1195,21 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                         );
                       })()}
 
+                      {/* 종합 해설 — 문제 전체 해설(problem.explanationMd). 지문별 O/X 위에 노출.
+                          (mcq-pack-sheet ExplanationBlock 과 동일 필드 — 학습과목 MCQ 뷰어에 누락돼 있었음) */}
+                      {problem.explanationMd ? (
+                        <div className="border-border bg-card rounded-xl border shadow-sm">
+                          <div className="border-border border-b px-5 py-3">
+                            <p className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
+                              종합 해설
+                            </p>
+                          </div>
+                          <div className="px-5 py-4 text-sm leading-relaxed whitespace-pre-line">
+                            {problem.explanationMd}
+                          </div>
+                        </div>
+                      ) : null}
+
                       {/* Per-choice explanation cards */}
                       <div className="border-border bg-card rounded-xl border shadow-sm">
                         <div className="border-border border-b px-5 py-3">

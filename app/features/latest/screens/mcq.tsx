@@ -188,6 +188,16 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
         : filters.kind === "mock_progressive"
           ? "1차 진도별 모의고사"
           : "1차 기출문제";
+  // 문제집 추가 폼 기본 "구분" = 현재 화면 맥락. 모의 화면에서 추가하면 모의 팩이
+  // 그 화면에 남도록(기출 화면=past_exam, 진도별/통합 모의=mock_progressive).
+  const currentKind: McqPackKind =
+    filters.kind === "mock_full"
+      ? "mock_full"
+      : filters.kind === "mock_progressive" || filters.kindGroup === "mock"
+        ? "mock_progressive"
+        : filters.kind === "other"
+          ? "other"
+          : "past_exam";
 
   return (
     <McqAreaShell
@@ -198,7 +208,9 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
       headerRight={
         canEdit && !showAdd ? (
           <div className="flex gap-2">
-            <RegenPastExamButton />
+            {/* 기출 자동 재생성은 기출(past_exam) 전용 작업 — 모의 화면에선 숨긴다.
+                (모의 화면에서 눌러도 결과 팩은 기출문제 화면에만 생겨 혼란을 줌) */}
+            {!isMock ? <RegenPastExamButton /> : null}
             <Button
               size="sm"
               className="h-9 rounded-full"
@@ -212,7 +224,11 @@ export default function LatestMcq({ loaderData }: Route.ComponentProps) {
     >
       {canEdit && showAdd ? (
         <div className="mb-3.5">
-          <PackForm mode="create" onClose={() => setShowAdd(false)} />
+          <PackForm
+            mode="create"
+            defaultKind={currentKind}
+            onClose={() => setShowAdd(false)}
+          />
         </div>
       ) : null}
 
@@ -559,10 +575,13 @@ function PackRowActions({ pack }: { pack: McqPackItem }) {
 function PackForm({
   mode,
   pack,
+  defaultKind = "past_exam",
   onClose,
 }: {
   mode: "create" | "update";
   pack?: McqPackItem;
+  /** create 모드 기본 구분 — 현재 화면 맥락(기출/모의)에 맞춘다. update 는 pack.kind 사용. */
+  defaultKind?: McqPackKind;
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -599,7 +618,7 @@ function PackForm({
         <Field label="구분 *">
           <select
             name="kind"
-            defaultValue={pack?.kind ?? "past_exam"}
+            defaultValue={pack?.kind ?? defaultKind}
             className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
           >
             {KINDS.filter((k) => k.value !== "all").map((k) => (
