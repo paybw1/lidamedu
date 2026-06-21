@@ -1005,7 +1005,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 highlights={highlights}
                 viewerIsStaff={canEditComment}
               >
-                <p className="text-foreground mb-7 text-[17px] leading-[1.8] font-medium tracking-[-0.01em]">
+                <p className="text-foreground mb-7 text-[17px] leading-[1.8] font-medium tracking-[-0.01em] whitespace-pre-line">
                   {problem.bodyMd}
                 </p>
               </HighlightOverlay>
@@ -1021,7 +1021,9 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                         <span className="text-foreground/70 shrink-0 font-semibold">
                           {bi.marker}
                         </span>
-                        <span className="flex-1">{bi.bodyMd}</span>
+                        <span className="flex-1 whitespace-pre-line">
+                          {bi.bodyMd}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -1050,16 +1052,33 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       const locked = revealed && !isExam;
                       return (
                         <li key={c.choiceId}>
-                          <button
-                            type="button"
+                          <div
+                            role="button"
+                            tabIndex={locked ? -1 : 0}
                             data-testid={`problem-choice-${c.choiceIndex}`}
-                            onClick={() =>
-                              !locked && setSelected(c.choiceIndex)
-                            }
-                            disabled={locked}
                             aria-pressed={isSelected}
+                            aria-disabled={locked}
+                            onClick={() => {
+                              if (locked) return;
+                              // 선지 텍스트를 드래그 선택(하이라이트) 중이면 답 선택하지 않음.
+                              const sel = window.getSelection();
+                              if (
+                                sel &&
+                                !sel.isCollapsed &&
+                                sel.toString().trim()
+                              )
+                                return;
+                              setSelected(c.choiceIndex);
+                            }}
+                            onKeyDown={(e) => {
+                              if (locked) return;
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setSelected(c.choiceIndex);
+                              }
+                            }}
                             className={cn(
-                              "flex w-full items-start gap-3 rounded-[10px] border px-4 py-3.5 text-left transition-all duration-150",
+                              "flex w-full items-start gap-3 rounded-[10px] border px-4 py-3.5 text-left transition-all duration-150 focus-visible:ring-primary/40 focus-visible:ring-2 focus-visible:outline-none",
                               locked
                                 ? "cursor-default"
                                 : "hover:border-primary/40 hover:bg-primary/5 cursor-pointer",
@@ -1087,16 +1106,24 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                             >
                               {c.choiceIndex}
                             </span>
-                            <span className="text-foreground flex-1 text-[15px] leading-[1.65] tracking-[-0.005em]">
+                            {/* 선지 텍스트 — 조문/판례 본문처럼 하이라이트 가능. 선지별 fieldPath. */}
+                            <HighlightOverlay
+                              className="text-foreground min-w-0 flex-1 text-[15px] leading-[1.65] tracking-[-0.005em] whitespace-pre-line"
+                              fieldPath={`problem.choice.${c.choiceIndex}`}
+                              targetType="problem"
+                              targetId={problem.problemId}
+                              highlights={highlights}
+                              viewerIsStaff={canEditComment}
+                            >
                               {c.bodyMd}
-                            </span>
+                            </HighlightOverlay>
                             {showCorrect ? (
                               <CircleCheckIcon className="mt-0.5 size-5 shrink-0 text-emerald-500" />
                             ) : null}
                             {showWrong ? (
                               <CircleXIcon className="mt-0.5 size-5 shrink-0 text-rose-500" />
                             ) : null}
-                          </button>
+                          </div>
                         </li>
                       );
                     })}

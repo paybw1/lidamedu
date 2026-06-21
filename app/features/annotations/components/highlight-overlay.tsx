@@ -92,6 +92,7 @@ export function HighlightOverlay({
   targetType,
   targetId,
   viewerIsStaff = false,
+  className,
   children,
 }: {
   highlights: HighlightRecord[];
@@ -101,6 +102,8 @@ export function HighlightOverlay({
   targetId?: string;
   // 보는 사람이 강사·원장인지 — 본인 하이라이트도 강사 스타일로 표시한다.
   viewerIsStaff?: boolean;
+  // 컨테이너 div 에 적용할 클래스 — 선지처럼 flex item 으로 쓸 때 레이아웃/타이포 주입.
+  className?: string;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
