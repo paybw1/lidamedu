@@ -243,8 +243,7 @@ function parseProblemChapter(lines, range, fallbackName) {
 
 // "①㈎, ㈐② ㈎, ㈒③ ㈏, ㈐" → [{1, "㈎, ㈐"}, {2, "㈎, ㈒"}, {3, "㈏, ㈐"}]
 function splitChoiceLine(text) {
-  const out = [];
-  // 모든 ①-⑤ 위치를 찾아 그 사이 구간을 body 로.
+  // 모든 ①-⑤ 위치 수집.
   const re = /[①②③④⑤]/g;
   const positions = [];
   let m;
@@ -252,16 +251,28 @@ function splitChoiceLine(text) {
     positions.push({ idx: m.index, ch: m[0] });
   }
   if (positions.length === 0) return [];
-  for (let k = 0; k < positions.length; k++) {
-    const start = positions[k].idx + 1;
-    const end = k + 1 < positions.length ? positions[k + 1].idx : text.length;
-    const body = text.slice(start, end).trim();
-    if (body) {
-      out.push({ index: "①②③④⑤".indexOf(positions[k].ch) + 1, body });
-    }
-  }
   // 첫 마커 앞에 텍스트가 있으면 (① 시작이 아닌 경우) 무효 — choice 가 아닌 일반 문장.
   if (positions[0].idx > 0) return [];
+  // ★ 순차 마커(직전+1)만 분할점으로 인정. 본문 중 비순차 인라인 원문자
+  //   (예: 선지 ③ = "②의 경우…")는 그 선지 본문의 일부로 유지 → 선지 소실 방지.
+  const splitPts = [positions[0]];
+  let expected = "①②③④⑤".indexOf(positions[0].ch) + 1;
+  for (let k = 1; k < positions.length; k++) {
+    const idx = "①②③④⑤".indexOf(positions[k].ch) + 1;
+    if (idx === expected + 1) {
+      splitPts.push(positions[k]);
+      expected = idx;
+    }
+  }
+  const out = [];
+  for (let k = 0; k < splitPts.length; k++) {
+    const start = splitPts[k].idx + 1;
+    const end = k + 1 < splitPts.length ? splitPts[k + 1].idx : text.length;
+    const body = text.slice(start, end).trim();
+    if (body) {
+      out.push({ index: "①②③④⑤".indexOf(splitPts[k].ch) + 1, body });
+    }
+  }
   return out;
 }
 
