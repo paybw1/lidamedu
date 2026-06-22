@@ -1,12 +1,90 @@
+import type { Route } from "./+types/dashboard";
+
 import { ArrowRightIcon, SparklesIcon } from "lucide-react";
 import { Link, redirect } from "react-router";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { listMyConversations } from "~/features/ai-qna/conversations.server";
+import { listTopBookmarks } from "~/features/annotations/queries.server";
+import { listStudentAssignments } from "~/features/assignments/queries.server";
 import {
   getUserAutoBlankStats,
   getUserBlankStats,
 } from "~/features/blanks/queries.server";
+import { listRecentCases } from "~/features/cases/queries.server";
+import { getCurrentWeekTrack } from "~/features/curricula/queries.server";
+import {
+  HeatmapCard,
+  WeekBarsCard,
+} from "~/features/dashboard/components/dash-activity";
+import { AiQnaRecentCard } from "~/features/dashboard/components/dash-ai-qna";
+import {
+  RecentActivityCard,
+  RecentCasesCard,
+  RecentRevisionsCard,
+} from "~/features/dashboard/components/dash-feed";
+import {
+  PassCriterionAnnouncementCard,
+  PassPredictionCard,
+  PasserBenchmarkCard,
+  PasserSummariesCard,
+} from "~/features/dashboard/components/dash-forecast";
+import {
+  DashHeader,
+  DashKpiStrip,
+} from "~/features/dashboard/components/dash-header";
+import { DashKpiStripV2 } from "~/features/dashboard/components/dash-kpi-strip-v2";
+import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
+import {
+  OverallProgressCard,
+  ScienceProgressCard,
+  SubjectsProgressCard,
+  TodayProgressCard,
+} from "~/features/dashboard/components/dash-progress";
+import {
+  BookmarksQuickCard,
+  ReentryChipsCard,
+} from "~/features/dashboard/components/dash-restudy";
+import {
+  PendingAssignmentsCard,
+  RecommendedActionsCard,
+  WeekTrackCard,
+} from "~/features/dashboard/components/dash-today";
+import { TodayEntryCard } from "~/features/dashboard/components/dash-today-entry";
+import {
+  WeakNodesCard,
+  WeakReviewCard,
+} from "~/features/dashboard/components/dash-weak";
+import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
+import { StudentInputHub } from "~/features/dashboard/components/student-input-hub";
+import {
+  DashGrid,
+  SectionBand,
+  SpanCol,
+  T,
+} from "~/features/dashboard/lib/dash";
+import {
+  getFailerBaseline,
+  getPasserBenchmarks,
+  getPasserLawAverages,
+  listPasserSummaries,
+} from "~/features/exam-results/analytics.server";
+import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
+import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
+import { hasPoolConsent } from "~/features/exam-results/queries.server";
+import { generateRecommendedActions } from "~/features/exam-results/recommendations";
+import { getStudyGoals } from "~/features/goals/queries.server";
+import {
+  getStaffRole,
+  listRecentLawRevisions,
+} from "~/features/laws/queries.server";
+import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
+import { countMyOxWrongNoteItems } from "~/features/problems/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
+import { predictPassScore } from "~/features/study/lib/pass-predict";
+import { upsertPassPredictionSnapshot } from "~/features/study/pass-predict-snapshot.server";
 import {
   getAllSubjectsProgress,
   getDailyStudyStats,
@@ -17,94 +95,18 @@ import {
   getUserGsAveragePct,
   getWeakAreas,
 } from "~/features/study/queries.server";
-import { getStudyGoals } from "~/features/goals/queries.server";
-import { listRecentCases } from "~/features/cases/queries.server";
-import {
-  getStaffRole,
-  listRecentLawRevisions,
-} from "~/features/laws/queries.server";
-import { getActiveSubscription } from "~/features/subscriptions/queries.server";
-import { listTopBookmarks } from "~/features/annotations/queries.server";
-import {
-  LAW_SUBJECT_SLUGS,
-  LAW_SUBJECTS,
-} from "~/features/subjects/lib/subjects";
-import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
-import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
-import { listStudentAssignments } from "~/features/assignments/queries.server";
-import { getCurrentWeekTrack } from "~/features/curricula/queries.server";
-import {
-  getFailerBaseline,
-  getPasserBenchmarks,
-  getPasserLawAverages,
-  listPasserSummaries,
-} from "~/features/exam-results/analytics.server";
-import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
-import { hasPoolConsent } from "~/features/exam-results/queries.server";
-import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
-import { ConsentSection } from "~/features/exam-results/components/consent-section";
-import { generateRecommendedActions } from "~/features/exam-results/recommendations";
-import { predictPassScore } from "~/features/study/lib/pass-predict";
-import { upsertPassPredictionSnapshot } from "~/features/study/pass-predict-snapshot.server";
-import adminClient from "~/core/lib/supa-admin-client.server";
-import { runAfterResponse } from "~/core/lib/wait-until.server";
-
-import type { Route } from "./+types/dashboard";
-import {
-  DashGrid,
-  SectionBand,
-  SpanCol,
-  T,
-} from "~/features/dashboard/lib/dash";
-import {
-  DashHeader,
-  DashKpiStrip,
-} from "~/features/dashboard/components/dash-header";
-import { DashKpiStripV2 } from "~/features/dashboard/components/dash-kpi-strip-v2";
-import {
-  PendingAssignmentsCard,
-  RecommendedActionsCard,
-  WeekTrackCard,
-} from "~/features/dashboard/components/dash-today";
-import {
-  PassCriterionAnnouncementCard,
-  PasserBenchmarkCard,
-  PasserSummariesCard,
-  PassPredictionCard,
-} from "~/features/dashboard/components/dash-forecast";
-import {
-  OverallProgressCard,
-  ScienceProgressCard,
-  SubjectsProgressCard,
-  TodayProgressCard,
-} from "~/features/dashboard/components/dash-progress";
-import {
-  WeakNodesCard,
-  WeakReviewCard,
-} from "~/features/dashboard/components/dash-weak";
-import {
-  HeatmapCard,
-  WeekBarsCard,
-} from "~/features/dashboard/components/dash-activity";
-import {
-  BookmarksQuickCard,
-  ReentryChipsCard,
-} from "~/features/dashboard/components/dash-restudy";
-import {
-  RecentActivityCard,
-  RecentCasesCard,
-  RecentRevisionsCard,
-} from "~/features/dashboard/components/dash-feed";
-import { AiQnaRecentCard } from "~/features/dashboard/components/dash-ai-qna";
-import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
-import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
-import { TodayEntryCard } from "~/features/dashboard/components/dash-today-entry";
 import { getTodaySummary } from "~/features/study/today-summary.server";
-import { listMyConversations } from "~/features/ai-qna/conversations.server";
-import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
-import { countMyOxWrongNoteItems } from "~/features/problems/queries.server";
+import { getAllScienceSubjectsProgress } from "~/features/subjects/lib/science.server";
+import {
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+} from "~/features/subjects/lib/subjects";
+import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
+import { getActiveSubscription } from "~/features/subscriptions/queries.server";
 
-export const meta: Route.MetaFunction = () => [{ title: "대시보드 | Lidam Patent Attorney Academy" }];
+export const meta: Route.MetaFunction = () => [
+  { title: "대시보드 | Lidam Patent Attorney Academy" },
+];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -465,9 +467,7 @@ function relTime(iso: string): string {
 }
 
 // DifficultyBucket → 3단계
-function bucketToDifficulty(
-  bucket: string | null,
-): "easy" | "medium" | "hard" {
+function bucketToDifficulty(bucket: string | null): "easy" | "medium" | "hard" {
   if (bucket === "very_easy" || bucket === "easy") return "easy";
   if (bucket === "hard" || bucket === "very_hard") return "hard";
   return "medium";
@@ -531,8 +531,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     hours: weekSlice[i] ? weekSlice[i].timeMs / HOUR_MS : 0,
     today: i === todayKstIdx,
   }));
-  const weekTotalHours =
-    weekSlice.reduce((s, d) => s + d.timeMs, 0) / HOUR_MS;
+  const weekTotalHours = weekSlice.reduce((s, d) => s + d.timeMs, 0) / HOUR_MS;
 
   // ── 히트맵 ──
   const heatmapDays = dailyStats.days.map((d) => ({
@@ -646,6 +645,18 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               remainingHours: Math.max(0, dailyTargetHours - todayHours),
             }}
           />
+
+          {/* 내 정보 설정 허브 — 목표·시험결과·동의를 한 Sheet 3블록으로(각 독립 저장).
+             차수·목표 모두 미설정이면 첫 진입에 자동 오픈(온보딩성 넛지). */}
+          <div className="-mt-2 mb-6 flex justify-end">
+            <StudentInputHub
+              goals={goals}
+              examRound={examRound}
+              myAnalysisConsentAt={loaderData.myAnalysisConsentAt}
+              poolConsentAt={loaderData.poolConsentAt}
+              autoOpen={examRound === null && !goals.examDate}
+            />
+          </div>
 
           {/* 최상단 — 오늘로 가는 입구. 통계가 아니라 오늘 할 일 요약 + 큰 진입 버튼.
              ★ Notion·Linear 톤 시범 리디자인 — 학생 공용 프리미티브 사용.
@@ -826,16 +837,6 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                 <RecentRevisionsCard items={revisionRows} />
                 <RecentCasesCard items={caseRows} />
               </div>
-            </SpanCol>
-          </DashGrid>
-
-          <SectionBand eyebrow="DATA CONSENT · 데이터 활용 동의" />
-          <DashGrid>
-            <SpanCol span={6}>
-              <ConsentSection
-                myAnalysisConsentedAt={loaderData.myAnalysisConsentAt}
-                poolConsentedAt={loaderData.poolConsentAt}
-              />
             </SpanCol>
           </DashGrid>
         </main>
