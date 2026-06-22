@@ -13,6 +13,7 @@ import {
 } from "~/features/exam-results/labels";
 import {
   FIRST_ROUND_SUBJECTS,
+  SECOND_ROUND_REQUIRED_SUBJECTS,
   judgeFirstRoundResult,
 } from "~/features/exam-results/pass-criteria";
 
@@ -64,13 +65,128 @@ export function FirstRoundVerdict({
   const j = judgeFirstRoundResult(scores);
   const tone =
     j.verdict === "floor_fail" || j.verdict === "average_fail"
-      ? "text-rose-700"
+      ? "text-rose-600 dark:text-rose-400"
       : j.verdict === "estimated_pass"
-        ? "text-emerald-700"
+        ? "text-emerald-600 dark:text-emerald-400"
         : j.verdict === "estimated_below"
-          ? "text-amber-700"
+          ? "text-amber-600 dark:text-amber-400"
           : "text-muted-foreground";
   return <p className={cn("text-xs font-medium", tone)}>· {j.label}</p>;
+}
+
+// 2차 과목별 점수 입력(차수 second 일 때만). 필수 3과목(특허법·상표법·민사소송법)은
+// 점수만, 선택과목은 과목명+점수. 신규·수정 폼 공용.
+// subjectScore0/1/2 = SECOND_ROUND_REQUIRED_SUBJECTS 순서(1차와 동일 필드명, 차수로 매핑 분기).
+// 선택과목은 응시자가 고른 과목명이 self_reported_subject_scores 의 키가 됨(필수 3과목 외 키).
+export function SecondRoundSubjectFields({
+  initial,
+}: {
+  initial?: Record<string, number> | null;
+}) {
+  const electiveEntry = initial
+    ? Object.entries(initial).find(
+        ([k]) => !SECOND_ROUND_REQUIRED_SUBJECTS.includes(k),
+      )
+    : undefined;
+  // 이름 없이 저장된 경우 "선택과목" 키를 placeholder 로 되돌림.
+  const electiveName =
+    electiveEntry && electiveEntry[0] !== "선택과목" ? electiveEntry[0] : "";
+  const electiveScore = electiveEntry ? electiveEntry[1] : "";
+  return (
+    <div className="space-y-2">
+      <Label className="text-[11px]">2차 과목별 점수 (선택)</Label>
+      <div className="grid grid-cols-3 gap-2">
+        {SECOND_ROUND_REQUIRED_SUBJECTS.map((subj, i) => (
+          <div key={subj}>
+            <Label className="text-muted-foreground text-[10px]">{subj}</Label>
+            <Input
+              type="number"
+              step={0.01}
+              min={0}
+              max={100}
+              name={`subjectScore${i}`}
+              defaultValue={initial?.[subj] ?? ""}
+              placeholder="0~100"
+              className="h-8 text-xs"
+            />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-muted-foreground text-[10px]">
+            선택과목 명
+          </Label>
+          <Input
+            type="text"
+            name="electiveSubjectName"
+            defaultValue={electiveName}
+            maxLength={40}
+            placeholder="예: 디자인보호법"
+            className="h-8 text-xs"
+          />
+        </div>
+        <div>
+          <Label className="text-muted-foreground text-[10px]">
+            선택과목 점수
+          </Label>
+          <Input
+            type="number"
+            step={0.01}
+            min={0}
+            max={100}
+            name="electiveSubjectScore"
+            defaultValue={electiveScore}
+            placeholder="0~100"
+            className="h-8 text-xs"
+          />
+        </div>
+      </div>
+      <p className="text-muted-foreground text-[10px]">
+        필수 3과목(특허법·상표법·민사소송법) 각 40점 미만 = 과락. 선택과목은
+        P/F(50점)이며 평균에 미산입.
+      </p>
+    </div>
+  );
+}
+
+// 차수별 과목 입력 분기 — 1차/2차. 신규·수정 폼 공용(분기 단일 진입점).
+export function SubjectScoreFieldsByRound({
+  round,
+  initial,
+}: {
+  round: ExamRound;
+  initial?: Record<string, number> | null;
+}) {
+  return round === "first" ? (
+    <SubjectScoreFields round="first" initial={initial} />
+  ) : (
+    <SecondRoundSubjectFields initial={initial} />
+  );
+}
+
+// 2차 과목별 점수 표시(읽기). 필수 3과목 + 선택과목(있는 것만).
+export function SecondRoundScores({
+  scores,
+}: {
+  scores: Record<string, number>;
+}) {
+  const required = SECOND_ROUND_REQUIRED_SUBJECTS.filter(
+    (s) => typeof scores[s] === "number",
+  );
+  const elective = Object.entries(scores).find(
+    ([k]) => !SECOND_ROUND_REQUIRED_SUBJECTS.includes(k),
+  );
+  if (required.length === 0 && !elective) return null;
+  const parts = [
+    ...required.map((s) => `${s} ${scores[s]}`),
+    ...(elective ? [`${elective[0]} ${elective[1]}`] : []),
+  ];
+  return (
+    <p className="text-muted-foreground text-xs">
+      과목별 <span className="tabular-nums">{parts.join(" · ")}</span>
+    </p>
+  );
 }
 
 // 시험 결과 신규 입력 필드 묶음(연도·차수·상태·점수·과목별·요약). 폼은 호출처 소유.
@@ -137,7 +253,7 @@ export function ResultFields({
           />
         </div>
       </div>
-      <SubjectScoreFields round={round} />
+      <SubjectScoreFieldsByRound round={round} />
       <div>
         <Label className="text-[11px]">학습 요약 (선택)</Label>
         <Textarea

@@ -18,7 +18,8 @@ import { cn } from "~/core/lib/utils";
 import {
   FirstRoundVerdict,
   ResultFields,
-  SubjectScoreFields,
+  SecondRoundScores,
+  SubjectScoreFieldsByRound,
 } from "~/features/exam-results/components/result-fields";
 import {
   EXAM_RESULT_STATUSES,
@@ -28,7 +29,10 @@ import {
   type ExamResultStatus,
   type ExamRound,
 } from "~/features/exam-results/labels";
-import { FIRST_ROUND_SUBJECTS } from "~/features/exam-results/pass-criteria";
+import {
+  FIRST_ROUND_SUBJECTS,
+  SECOND_ROUND_REQUIRED_SUBJECTS,
+} from "~/features/exam-results/pass-criteria";
 import {
   attachCertificate,
   deleteMyExamResult,
@@ -50,7 +54,8 @@ const upsertSchema = z.object({
   selfReportedTotalScore: z
     .union([z.coerce.number().min(0).max(200), z.literal("")])
     .optional(),
-  // 1차 과목별 점수(선택) — index 0/1/2 = FIRST_ROUND_SUBJECTS 순서. 과락·합격 추정용.
+  // 과목별 점수(선택) — index 0/1/2 = 차수별 과목 순서(1차 FIRST_ROUND_SUBJECTS /
+  // 2차 SECOND_ROUND_REQUIRED_SUBJECTS). 과락·합격 추정용.
   subjectScore0: z
     .union([z.coerce.number().min(0).max(100), z.literal("")])
     .optional(),
@@ -58,6 +63,11 @@ const upsertSchema = z.object({
     .union([z.coerce.number().min(0).max(100), z.literal("")])
     .optional(),
   subjectScore2: z
+    .union([z.coerce.number().min(0).max(100), z.literal("")])
+    .optional(),
+  // 2차 선택과목(P/F·평균 미산입) — 과목명 + 점수. 과목명이 subject_scores 의 키가 됨.
+  electiveSubjectName: z.string().max(40).optional(),
+  electiveSubjectScore: z
     .union([z.coerce.number().min(0).max(100), z.literal("")])
     .optional(),
   studySummaryMd: z.string().max(8000).optional().nullable(),
@@ -121,7 +131,7 @@ export async function action({ request }: Route.ActionArgs) {
       parsed.data.selfReportedTotalScore === undefined
         ? null
         : Number(parsed.data.selfReportedTotalScore);
-    // 1차만 과목별 점수 수집(index→과목명). 2차는 과목 입력 없음.
+    // 차수별 과목 점수 수집(index→과목명). 2차는 필수 3과목 + 선택과목(명+점수).
     const subjRaw = [
       parsed.data.subjectScore0,
       parsed.data.subjectScore1,
@@ -133,6 +143,18 @@ export async function action({ request }: Route.ActionArgs) {
         const v = subjRaw[i];
         if (typeof v === "number") subjectScores[subj] = v;
       });
+    } else {
+      SECOND_ROUND_REQUIRED_SUBJECTS.forEach((subj, i) => {
+        const v = subjRaw[i];
+        if (typeof v === "number") subjectScores[subj] = v;
+      });
+      // 선택과목 — 응시자가 고른 과목명을 키로(미입력 시 "선택과목").
+      const electiveScore = parsed.data.electiveSubjectScore;
+      if (typeof electiveScore === "number") {
+        const name =
+          (parsed.data.electiveSubjectName ?? "").trim() || "선택과목";
+        subjectScores[name] = electiveScore;
+      }
     }
     const res = await upsertMyExamResult(client, {
       userId: user.id,
@@ -196,15 +218,24 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 const STATUS_TONE: Record<ExamResultStatus, string> = {
-  passed: "text-emerald-700 bg-emerald-50 border-emerald-200",
-  failed: "text-rose-700 bg-rose-50 border-rose-200",
-  pending: "text-amber-700 bg-amber-50 border-amber-200",
+  passed:
+    "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-900",
+  failed:
+    "text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/40 dark:border-rose-900",
+  pending:
+    "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/40 dark:border-amber-900",
   absent: "text-muted-foreground bg-muted/40 border-muted-foreground/20",
 };
 
 export default function MyExamResults({ loaderData }: Route.ComponentProps) {
   const { results, profile } = loaderData;
   const currentYear = new Date().getFullYear();
+  // 결과 기록 보기 필터 — 차수(전체/1차/2차). 보기 전용 인터랙션 상태(저장 안 함).
+  const [roundFilter, setRoundFilter] = useState<ExamRound | "all">("all");
+  const filteredResults =
+    roundFilter === "all"
+      ? results
+      : results.filter((r) => r.examRound === roundFilter);
 
   return (
     <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
@@ -236,21 +267,28 @@ export default function MyExamResults({ loaderData }: Route.ComponentProps) {
       {/* 차기 응시 의향 */}
       <PlanCard profile={profile} currentYear={currentYear} />
 
-      {/* 결과 일람 */}
+      {/* 결과 일람 — 차수 보기 필터(전체/1차/2차) */}
       <section className="mb-6">
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">결과 기록</h2>
-          <span className="text-muted-foreground text-xs">
-            {results.length}건
-          </span>
+          <div className="flex items-center gap-2">
+            <RoundFilterToggle value={roundFilter} onChange={setRoundFilter} />
+            <span className="text-muted-foreground text-xs whitespace-nowrap">
+              {filteredResults.length}건
+            </span>
+          </div>
         </div>
         {results.length === 0 ? (
           <p className="text-muted-foreground text-xs">
             아직 기록된 결과가 없습니다. 아래에서 추가하세요.
           </p>
+        ) : filteredResults.length === 0 ? (
+          <p className="text-muted-foreground text-xs">
+            {roundFilter === "second" ? "2차" : "1차"} 결과가 없습니다.
+          </p>
         ) : (
           <div className="space-y-2">
-            {results.map((r) => (
+            {filteredResults.map((r) => (
               <ResultCard key={r.resultId} result={r} />
             ))}
           </div>
@@ -259,6 +297,40 @@ export default function MyExamResults({ loaderData }: Route.ComponentProps) {
 
       {/* 신규 입력 폼 */}
       <NewResultCard currentYear={currentYear} />
+    </div>
+  );
+}
+
+// 결과 기록 차수 보기 필터 — 전체/1차/2차. 보기 전용(FE 인터랙션 상태, 저장 안 함).
+function RoundFilterToggle({
+  value,
+  onChange,
+}: {
+  value: ExamRound | "all";
+  onChange: (v: ExamRound | "all") => void;
+}) {
+  const opts: { key: ExamRound | "all"; label: string }[] = [
+    { key: "all", label: "전체" },
+    { key: "first", label: "1차" },
+    { key: "second", label: "2차" },
+  ];
+  return (
+    <div className="border-input inline-flex overflow-hidden rounded-md border">
+      {opts.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          onClick={() => onChange(o.key)}
+          className={cn(
+            "px-2 py-1 text-[11px] transition-colors",
+            value === o.key
+              ? "bg-primary text-primary-foreground"
+              : "bg-background text-muted-foreground hover:bg-muted",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -368,13 +440,16 @@ function ResultCard({
         {result.examRound === "first" && result.selfReportedSubjectScores ? (
           <FirstRoundVerdict scores={result.selfReportedSubjectScores} />
         ) : null}
+        {result.examRound === "second" && result.selfReportedSubjectScores ? (
+          <SecondRoundScores scores={result.selfReportedSubjectScores} />
+        ) : null}
         {result.studySummaryMd ? (
           <p className="text-muted-foreground text-xs whitespace-pre-line">
             {result.studySummaryMd}
           </p>
         ) : null}
         {result.rejectionReason ? (
-          <p className="text-xs text-rose-700">
+          <p className="text-xs text-rose-600 dark:text-rose-400">
             반려 사유: {result.rejectionReason}
           </p>
         ) : null}
@@ -414,7 +489,7 @@ function ResultCard({
                 />
               </div>
             </div>
-            <SubjectScoreFields
+            <SubjectScoreFieldsByRound
               round={result.examRound}
               initial={result.selfReportedSubjectScores}
             />
@@ -470,7 +545,7 @@ function ResultCard({
                   type="submit"
                   size="sm"
                   variant="ghost"
-                  className="text-rose-600 hover:text-rose-700"
+                  className="text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
                   disabled={
                     deleteFetcher.state !== "idle" ||
                     result.verificationStatus === "verified"
@@ -570,7 +645,9 @@ function CertificateUploader({
         <span className="text-muted-foreground text-[10px]">업로드 중…</span>
       ) : null}
       {errorMsg ? (
-        <span className="text-[10px] text-rose-600">{errorMsg}</span>
+        <span className="text-[10px] text-rose-600 dark:text-rose-400">
+          {errorMsg}
+        </span>
       ) : null}
     </div>
   );
@@ -595,7 +672,9 @@ function NewResultCard({ currentYear }: { currentYear: number }) {
             </Button>
           </div>
           {fetcher.data?.error ? (
-            <p className="text-xs text-rose-600">{fetcher.data.error}</p>
+            <p className="text-xs text-rose-600 dark:text-rose-400">
+              {fetcher.data.error}
+            </p>
           ) : null}
         </fetcher.Form>
       </CardContent>

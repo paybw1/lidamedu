@@ -226,6 +226,13 @@ export function getDefaultPredictionThresholds(): PredictionThresholds {
 export const FIRST_ROUND_SUBJECTS: readonly string[] =
   OFFICIAL_EXAM_STATS.round1.statutory_criteria.subjects;
 
+/**
+ * 2차 필수 과목 SSOT — official-exam-stats.json round2.statutory_criteria.required_subjects
+ * (특허법·상표법·민사소송법). 선택과목 1개는 응시자가 과목명+점수를 직접 입력(P/F·평균 미산입).
+ */
+export const SECOND_ROUND_REQUIRED_SUBJECTS: readonly string[] =
+  OFFICIAL_EXAM_STATS.round2.statutory_criteria.required_subjects;
+
 export type FirstRoundVerdict =
   | "floor_fail" // 과락 — 불합격 확정
   | "average_fail" // 평균 미달 — 불합격 확정
