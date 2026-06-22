@@ -1,5 +1,6 @@
 // feat-8-002 학생 본인 합격 결과 입력 화면.
 // /me/exam-results — 본인 결과 연도별 1차/2차 카드 + 동의 토글 + 차기 응시 의향 입력.
+import type { Route } from "./+types/my-exam-results";
 
 import { TrophyIcon, UploadIcon } from "lucide-react";
 import { useState } from "react";
@@ -12,8 +13,20 @@ import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { Textarea } from "~/core/components/ui/textarea";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import {
+  EXAM_RESULT_STATUSES,
+  EXAM_RESULT_STATUS_LABEL,
+  EXAM_ROUND_LABEL,
+  EXAM_VERIFICATION_STATUS_LABEL,
+  type ExamResultStatus,
+  type ExamRound,
+} from "~/features/exam-results/labels";
+import {
+  FIRST_ROUND_SUBJECTS,
+  judgeFirstRoundResult,
+} from "~/features/exam-results/pass-criteria";
 import {
   attachCertificate,
   deleteMyExamResult,
@@ -22,16 +35,6 @@ import {
   setNextExamPlan,
   upsertMyExamResult,
 } from "~/features/exam-results/queries.server";
-import {
-  EXAM_RESULT_STATUS_LABEL,
-  EXAM_RESULT_STATUSES,
-  EXAM_ROUND_LABEL,
-  EXAM_VERIFICATION_STATUS_LABEL,
-  type ExamResultStatus,
-  type ExamRound,
-} from "~/features/exam-results/labels";
-
-import type { Route } from "./+types/my-exam-results";
 
 export const meta: Route.MetaFunction = () => [
   { title: "합격 결과 | Lidam Patent Attorney Academy" },
@@ -45,12 +48,25 @@ const upsertSchema = z.object({
   selfReportedTotalScore: z
     .union([z.coerce.number().min(0).max(200), z.literal("")])
     .optional(),
+  // 1차 과목별 점수(선택) — index 0/1/2 = FIRST_ROUND_SUBJECTS 순서. 과락·합격 추정용.
+  subjectScore0: z
+    .union([z.coerce.number().min(0).max(100), z.literal("")])
+    .optional(),
+  subjectScore1: z
+    .union([z.coerce.number().min(0).max(100), z.literal("")])
+    .optional(),
+  subjectScore2: z
+    .union([z.coerce.number().min(0).max(100), z.literal("")])
+    .optional(),
   studySummaryMd: z.string().max(8000).optional().nullable(),
 });
 
 const planSchema = z.object({
   intent: z.literal("plan"),
-  nextExamYear: z.union([z.coerce.number().int().min(2000).max(2100), z.literal("")]),
+  nextExamYear: z.union([
+    z.coerce.number().int().min(2000).max(2100),
+    z.literal(""),
+  ]),
   nextExamRound: z.union([z.enum(["first", "second"]), z.literal("")]),
 });
 
@@ -94,18 +110,36 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "upsert") {
     const parsed = upsertSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
-      return data({ error: parsed.error.issues[0]?.message ?? "입력 오류" }, { status: 400 });
+      return data(
+        { error: parsed.error.issues[0]?.message ?? "입력 오류" },
+        { status: 400 },
+      );
     const totalScore =
       parsed.data.selfReportedTotalScore === "" ||
       parsed.data.selfReportedTotalScore === undefined
         ? null
         : Number(parsed.data.selfReportedTotalScore);
+    // 1차만 과목별 점수 수집(index→과목명). 2차는 과목 입력 없음.
+    const subjRaw = [
+      parsed.data.subjectScore0,
+      parsed.data.subjectScore1,
+      parsed.data.subjectScore2,
+    ];
+    const subjectScores: Record<string, number> = {};
+    if (parsed.data.examRound === "first") {
+      FIRST_ROUND_SUBJECTS.forEach((subj, i) => {
+        const v = subjRaw[i];
+        if (typeof v === "number") subjectScores[subj] = v;
+      });
+    }
     const res = await upsertMyExamResult(client, {
       userId: user.id,
       examYear: parsed.data.examYear,
       examRound: parsed.data.examRound,
       status: parsed.data.status,
       selfReportedTotalScore: totalScore,
+      selfReportedSubjectScores:
+        Object.keys(subjectScores).length > 0 ? subjectScores : null,
       studySummaryMd: parsed.data.studySummaryMd || null,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
@@ -115,11 +149,19 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "plan") {
     const parsed = planSchema.safeParse(Object.fromEntries(fd));
     if (!parsed.success)
-      return data({ error: parsed.error.issues[0]?.message ?? "입력 오류" }, { status: 400 });
+      return data(
+        { error: parsed.error.issues[0]?.message ?? "입력 오류" },
+        { status: 400 },
+      );
     const res = await setNextExamPlan(client, user.id, {
-      nextExamYear: parsed.data.nextExamYear === "" ? null : Number(parsed.data.nextExamYear),
+      nextExamYear:
+        parsed.data.nextExamYear === ""
+          ? null
+          : Number(parsed.data.nextExamYear),
       nextExamRound:
-        parsed.data.nextExamRound === "" ? null : (parsed.data.nextExamRound as ExamRound),
+        parsed.data.nextExamRound === ""
+          ? null
+          : (parsed.data.nextExamRound as ExamRound),
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
@@ -215,7 +257,10 @@ function PlanCard({
   profile,
   currentYear,
 }: {
-  profile: { nextExamYear: number | null; nextExamRound: ExamRound | null } | null;
+  profile: {
+    nextExamYear: number | null;
+    nextExamRound: ExamRound | null;
+  } | null;
   currentYear: number;
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
@@ -260,7 +305,7 @@ function PlanCard({
               <option value="second">2차</option>
             </select>
           </div>
-          <p className="text-muted-foreground col-span-2 rounded bg-muted/40 px-2 py-1 text-[10px]">
+          <p className="text-muted-foreground bg-muted/40 col-span-2 rounded px-2 py-1 text-[10px]">
             ℹ️ 1차 자연과학은 물리·화학·생물·지구과학 4과목 모두 필수입니다.
           </p>
           <div className="col-span-2 flex justify-end">
@@ -301,11 +346,17 @@ function ResultCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-3 space-y-2">
+      <CardContent className="space-y-2 px-4 pb-3">
         {result.selfReportedTotalScore !== null ? (
           <p className="text-muted-foreground text-xs">
-            자가 신고 점수: <span className="font-semibold tabular-nums">{result.selfReportedTotalScore}</span>
+            자가 신고 점수:{" "}
+            <span className="font-semibold tabular-nums">
+              {result.selfReportedTotalScore}
+            </span>
           </p>
+        ) : null}
+        {result.examRound === "first" && result.selfReportedSubjectScores ? (
+          <FirstRoundVerdict scores={result.selfReportedSubjectScores} />
         ) : null}
         {result.studySummaryMd ? (
           <p className="text-muted-foreground text-xs whitespace-pre-line">
@@ -313,7 +364,7 @@ function ResultCard({
           </p>
         ) : null}
         {result.rejectionReason ? (
-          <p className="text-rose-700 text-xs">
+          <p className="text-xs text-rose-700">
             반려 사유: {result.rejectionReason}
           </p>
         ) : null}
@@ -321,7 +372,7 @@ function ResultCard({
         {editing ? (
           <editFetcher.Form
             method="post"
-            className="space-y-2 rounded border-l-2 border-primary/40 bg-muted/30 p-3"
+            className="border-primary/40 bg-muted/30 space-y-2 rounded border-l-2 p-3"
             onSubmit={() => setTimeout(() => setEditing(false), 100)}
           >
             <input type="hidden" name="intent" value="upsert" />
@@ -353,6 +404,10 @@ function ResultCard({
                 />
               </div>
             </div>
+            <SubjectScoreFields
+              round={result.examRound}
+              initial={result.selfReportedSubjectScores}
+            />
             <div>
               <Label className="text-[11px]">학습 요약 (선택)</Label>
               <Textarea
@@ -372,7 +427,11 @@ function ResultCard({
               >
                 취소
               </Button>
-              <Button type="submit" size="sm" disabled={editFetcher.state !== "idle"}>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={editFetcher.state !== "idle"}
+              >
                 저장
               </Button>
             </div>
@@ -407,7 +466,8 @@ function ResultCard({
                     result.verificationStatus === "verified"
                   }
                   onClick={(e) => {
-                    if (!confirm("이 기록을 삭제하시겠습니까?")) e.preventDefault();
+                    if (!confirm("이 기록을 삭제하시겠습니까?"))
+                      e.preventDefault();
                   }}
                 >
                   삭제
@@ -506,8 +566,62 @@ function CertificateUploader({
   );
 }
 
+// 1차 과목별 점수 입력(차수 first 일 때만). 신규·수정 폼 공용.
+function SubjectScoreFields({
+  round,
+  initial,
+}: {
+  round: ExamRound;
+  initial?: Record<string, number> | null;
+}) {
+  if (round !== "first") return null;
+  return (
+    <div className="space-y-1">
+      <Label className="text-[11px]">
+        1차 과목별 점수 (선택 · 과락/합격 추정용)
+      </Label>
+      <div className="grid grid-cols-3 gap-2">
+        {FIRST_ROUND_SUBJECTS.map((subj, i) => (
+          <div key={subj}>
+            <Label className="text-muted-foreground text-[10px]">{subj}</Label>
+            <Input
+              type="number"
+              step={0.01}
+              min={0}
+              max={100}
+              name={`subjectScore${i}`}
+              defaultValue={initial?.[subj] ?? ""}
+              placeholder="0~100"
+              className="h-8 text-xs"
+            />
+          </div>
+        ))}
+      </div>
+      <p className="text-muted-foreground text-[10px]">
+        과목 40점 미만 = 과락(불합격 확정). 합격은 상대선발이라 커트라인 사후
+        추정.
+      </p>
+    </div>
+  );
+}
+
+// 1차 과목별 점수 → 판정 한 줄(과락/평균미달=확정, 합격=추정, 대기).
+function FirstRoundVerdict({ scores }: { scores: Record<string, number> }) {
+  const j = judgeFirstRoundResult(scores);
+  const tone =
+    j.verdict === "floor_fail" || j.verdict === "average_fail"
+      ? "text-rose-700"
+      : j.verdict === "estimated_pass"
+        ? "text-emerald-700"
+        : j.verdict === "estimated_below"
+          ? "text-amber-700"
+          : "text-muted-foreground";
+  return <p className={cn("text-xs font-medium", tone)}>· {j.label}</p>;
+}
+
 function NewResultCard({ currentYear }: { currentYear: number }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const [round, setRound] = useState<ExamRound>("first");
   return (
     <Card>
       <CardHeader className="px-4 pb-2">
@@ -535,7 +649,8 @@ function NewResultCard({ currentYear }: { currentYear: number }) {
               <Label className="text-[11px]">차수</Label>
               <select
                 name="examRound"
-                defaultValue="first"
+                value={round}
+                onChange={(e) => setRound(e.target.value as ExamRound)}
                 className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
               >
                 <option value="first">1차</option>
@@ -569,6 +684,7 @@ function NewResultCard({ currentYear }: { currentYear: number }) {
               />
             </div>
           </div>
+          <SubjectScoreFields round={round} />
           <div>
             <Label className="text-[11px]">학습 요약 (선택)</Label>
             <Textarea
