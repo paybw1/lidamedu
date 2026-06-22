@@ -223,6 +223,14 @@ export default function MyExamResults({ loaderData }: Route.ComponentProps) {
             상세 약관 →
           </Link>
         </p>
+        <p className="text-muted-foreground text-xs">
+          전체 이력·합격증 업로드·검증을 관리하는 화면입니다. 점수 한두 건 빠른
+          입력은{" "}
+          <Link to="/" className="text-link underline">
+            대시보드 ‘내 정보 설정’
+          </Link>
+          에서도 할 수 있어요.
+        </p>
       </header>
 
       {/* 차기 응시 의향 */}
