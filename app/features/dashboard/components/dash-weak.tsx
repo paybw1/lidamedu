@@ -1,9 +1,15 @@
 // WEAK SPOTS 그룹 — 약점 우선 복습 · 약점 단원.
-
 import { ChevronRightIcon, TrendingUpIcon } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useFetcher } from "react-router";
 
-import { Card, Chip, Eyebrow, Num, Sub, T } from "~/features/dashboard/lib/dash";
+import {
+  Card,
+  Chip,
+  Eyebrow,
+  Num,
+  Sub,
+  T,
+} from "~/features/dashboard/lib/dash";
 
 // ── 약점 우선 복습 ──────────────────────────────────────────────────────────
 
@@ -135,7 +141,12 @@ export function WeakReviewCard({
                       ? "—"
                       : `${Math.round(w.globalAccuracyPct)}%`}
                   </div>
-                  <Sub style={{ font: "500 10px/1 Pretendard, sans-serif", marginTop: 2 }}>
+                  <Sub
+                    style={{
+                      font: "500 10px/1 Pretendard, sans-serif",
+                      marginTop: 2,
+                    }}
+                  >
                     전역 정답률
                   </Sub>
                 </div>
@@ -167,6 +178,9 @@ export function WeakNodesCard({
 }: {
   nodes: ReadonlyArray<WeakNodeRow>;
 }) {
+  // 약점 단원 기반 셀프 세션("D") — getWeakNodes→pickProblemsFromWeakNodes→quiz_session.
+  const fetcher = useFetcher<{ error?: string }>();
+  const busy = fetcher.state !== "idle";
   return (
     <Card padding={20} hover={false}>
       <div
@@ -255,7 +269,11 @@ export function WeakNodesCard({
                       gap: 6,
                     }}
                   >
-                    <TrendingUpIcon size={11} color={T.blue} strokeWidth={2.5} />
+                    <TrendingUpIcon
+                      size={11}
+                      color={T.blue}
+                      strokeWidth={2.5}
+                    />
                     <span>
                       합격자 평균{" "}
                       <strong
@@ -280,6 +298,42 @@ export function WeakNodesCard({
           );
         })}
       </ul>
+      <fetcher.Form
+        method="post"
+        action="/api/study/session-from-weakness"
+        style={{ marginTop: 14 }}
+      >
+        <input type="hidden" name="mode" value="study" />
+        <input type="hidden" name="n" value="20" />
+        <button
+          type="submit"
+          disabled={busy}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: `1px solid ${T.lineSoft}`,
+            background: T.subtle,
+            color: T.link,
+            font: "600 12px/1 Pretendard, sans-serif",
+            cursor: busy ? "default" : "pointer",
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          {busy ? "문제 준비 중…" : "약점 단원 20문항 한 번에 풀기 →"}
+        </button>
+      </fetcher.Form>
+      {fetcher.data?.error ? (
+        <div
+          style={{
+            marginTop: 8,
+            font: "500 11px/1.4 Pretendard, sans-serif",
+            color: T.coral,
+          }}
+        >
+          {fetcher.data.error}
+        </div>
+      ) : null}
     </Card>
   );
 }

@@ -157,6 +157,10 @@ export default [
       route("/subjective-review", "features/study/api/subjective-review.tsx"),
       route("/session-from-wrong", "features/study/api/session-from-wrong.tsx"),
       route(
+        "/session-from-weakness",
+        "features/study/api/session-from-weakness.tsx",
+      ),
+      route(
         "/session-from-bookmarks",
         "features/study/api/session-from-bookmarks.tsx",
       ),
