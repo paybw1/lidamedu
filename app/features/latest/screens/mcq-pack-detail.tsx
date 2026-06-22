@@ -1,6 +1,7 @@
 // MCQ 팩 상세 (feat-3-302). 기출/모의 공통 페이지.
 // 헤더 + 응시 시작 / 참고 자료 2카드 + 문제 목록.
 // 키트 lidam-latest/McqPackDetailScreen 디자인.
+import type { Route } from "./+types/mcq-pack-detail";
 
 import {
   CheckCircle2Icon,
@@ -22,30 +23,29 @@ import {
 } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
-import { Pill } from "~/features/latest/components/latest-list";
-import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { Pill } from "~/features/latest/components/latest-list";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import { MockPackProblemPicker } from "~/features/mcq-packs/components/mock-pack-problem-picker";
 import {
   MCQ_PACK_KIND_LABELS,
   MCQ_PACK_SUBJECT_LABELS,
-  isMockKind,
   type McqPackProblemItem,
   type McqPackSubjectScope,
+  isMockKind,
 } from "~/features/mcq-packs/labels";
 import {
+  type OxSessionRow,
   getPackById,
   listMyOxSessions,
   listPackProblems,
-  type OxSessionRow,
 } from "~/features/mcq-packs/queries.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 
-import type { Route } from "./+types/mcq-pack-detail";
-
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.pack) return [{ title: "문제집 | Lidam Patent Attorney Academy" }];
+  if (!d || !d.pack)
+    return [{ title: "문제집 | Lidam Patent Attorney Academy" }];
   return [{ title: `${d.pack.title} | Lidam Patent Attorney Academy` }];
 };
 
@@ -81,7 +81,9 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
   const mockPack = isMockKind(pack.kind);
 
   const metaParts: string[] = [];
-  metaParts.push(pack.publishedAt ? `출제일 ${pack.publishedAt}` : "출제일 미지정");
+  metaParts.push(
+    pack.publishedAt ? `출제일 ${pack.publishedAt}` : "출제일 미지정",
+  );
   if (pack.year) metaParts.push(`${pack.year}년`);
   if (pack.examRoundNo) metaParts.push(`${pack.examRoundNo}회`);
   metaParts.push(`문항 ${pack.problemCount}`);
@@ -96,9 +98,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
       desc={metaParts.join(" · ")}
     >
       <div className="mb-3.5 flex flex-wrap items-center gap-1.5">
-        <Pill tone="outline">
-          {MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}
-        </Pill>
+        <Pill tone="outline">{MCQ_PACK_SUBJECT_LABELS[pack.subjectScope]}</Pill>
         <Pill tone={mockPack ? "amber" : "primary"}>
           {MCQ_PACK_KIND_LABELS[pack.kind]}
         </Pill>
@@ -227,6 +227,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
             <MockPackProblemPicker
               packId={pack.packId}
               lawCode={SCOPE_LAW_CODE[pack.subjectScope] ?? null}
+              existingIds={new Set(problems.map((p) => p.problemId))}
             />
           </div>
         ) : null}
@@ -251,9 +252,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
         )}
       </div>
 
-      {oxSessions.length > 0 ? (
-        <OxSessionsPanel sessions={oxSessions} />
-      ) : null}
+      {oxSessions.length > 0 ? <OxSessionsPanel sessions={oxSessions} /> : null}
 
       {canEdit && mockPack ? (
         <ReleasePanel packId={pack.packId} problems={problems} />
@@ -267,8 +266,8 @@ function OxSessionsPanel({ sessions }: { sessions: OxSessionRow[] }) {
     <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border shadow-sm">
       <div className="border-border flex items-center justify-between border-b px-4 py-3">
         <p className="text-sm font-bold tracking-tight">
-          <CheckCircle2Icon className="text-link mr-1.5 inline size-4" />
-          내 정오문제 응시 이력{" "}
+          <CheckCircle2Icon className="text-link mr-1.5 inline size-4" />내
+          정오문제 응시 이력{" "}
           <span className="text-muted-foreground tabular-nums">
             {sessions.length}
           </span>
@@ -285,14 +284,18 @@ function OxSessionsPanel({ sessions }: { sessions: OxSessionRow[] }) {
           const answered = s.correct + s.wrong;
           const rate =
             answered > 0 ? Math.round((s.correct / answered) * 100) : 0;
-          const when = (s.completedAt ?? s.startedAt).slice(0, 16).replace("T", " ");
+          const when = (s.completedAt ?? s.startedAt)
+            .slice(0, 16)
+            .replace("T", " ");
           return (
             <li
               key={s.sessionId}
               className="hover:bg-muted/40 flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm transition-colors"
             >
               <span className="text-muted-foreground tabular-nums">{when}</span>
-              <Pill tone={rate >= 80 ? "primary" : rate >= 60 ? "amber" : "outline"}>
+              <Pill
+                tone={rate >= 80 ? "primary" : rate >= 60 ? "amber" : "outline"}
+              >
                 정답률 {rate}%
               </Pill>
               <Pill tone="outline">
@@ -333,7 +336,13 @@ function ProblemRow({
         preventScrollReset: true,
       });
     }
-  }, [delFetcher.state, delFetcher.data, navigate, location.pathname, location.search]);
+  }, [
+    delFetcher.state,
+    delFetcher.data,
+    navigate,
+    location.pathname,
+    location.search,
+  ]);
 
   return (
     <li className="hover:bg-muted/40 flex items-start gap-3 px-4 py-3 transition-colors">
@@ -427,7 +436,13 @@ function ReleasePanel({
         preventScrollReset: true,
       });
     }
-  }, [fetcher.state, fetcher.data, navigate, location.pathname, location.search]);
+  }, [
+    fetcher.state,
+    fetcher.data,
+    navigate,
+    location.pathname,
+    location.search,
+  ]);
 
   const mockProblems = problems.filter((p) => p.origin === "mock");
   const releasedCount = mockProblems.filter((p) => p.releasedAt).length;
@@ -454,11 +469,7 @@ function ReleasePanel({
           </Pill>
           {pending > 0 ? (
             <fetcher.Form method="post" action="/api/admin/mcq-pack">
-              <input
-                type="hidden"
-                name="intent"
-                value="release_to_subjects"
-              />
+              <input type="hidden" name="intent" value="release_to_subjects" />
               <input type="hidden" name="packId" value={packId} />
               <Button
                 type="submit"

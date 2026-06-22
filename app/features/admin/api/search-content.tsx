@@ -1,14 +1,13 @@
 // 운영자 검색 API — 커리큘럼/과제 항목 reference 선택용.
 // kind: article | case | problem | blank_set
 // 응답: { items: Array<{ id, label, secondary?: string }> }
+import type { Route } from "./+types/search-content";
 
 import { data } from "react-router";
 
-import makeServerClient from "~/core/lib/supa-client.server";
 import adminClient from "~/core/lib/supa-admin-client.server";
+import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-
-import type { Route } from "./+types/search-content";
 
 const LIMIT = 20;
 const MIN_QUERY = 2;
@@ -17,6 +16,8 @@ interface SearchResult {
   id: string;
   label: string;
   secondary?: string;
+  /** 미리보기용 — 문제 발문 전체(problem kind 만 채움). */
+  preview?: string;
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -119,7 +120,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     if (originRaw && ALLOWED_ORIGINS.includes(originRaw)) {
       pq = pq.eq(
         "origin",
-        originRaw as "past_exam" | "past_exam_variant" | "expected" | "mock" | "ai_draft",
+        originRaw as
+          | "past_exam"
+          | "past_exam_variant"
+          | "expected"
+          | "mock"
+          | "ai_draft",
       );
     }
     const ALLOWED_FORMATS = [
@@ -133,7 +139,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     if (formatRaw && ALLOWED_FORMATS.includes(formatRaw)) {
       pq = pq.eq(
         "format",
-        formatRaw as "mc_short" | "mc_box" | "mc_case" | "ox" | "blank" | "subjective",
+        formatRaw as
+          | "mc_short"
+          | "mc_box"
+          | "mc_case"
+          | "ox"
+          | "blank"
+          | "subjective",
       );
     }
     if (yearRaw && /^\d{4}$/.test(yearRaw)) {
@@ -143,13 +155,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     pq = pq.order("created_at", { ascending: false });
     const { data: rows } = await pq.limit(LIMIT);
     const items: SearchResult[] = (rows ?? []).map((r) => {
-      const body = (r.body_md ?? "").slice(0, 80);
+      const full = r.body_md ?? "";
+      const body = full.slice(0, 80);
       return {
         id: r.problem_id,
-        label: `${r.year ?? "?"}${r.problem_number ? ` ${r.problem_number}번` : ""} — ${body}${(r.body_md ?? "").length > 80 ? "…" : ""}`,
+        label: `${r.year ?? "?"}${r.problem_number ? ` ${r.problem_number}번` : ""} — ${body}${full.length > 80 ? "…" : ""}`,
         secondary: [r.laws?.law_code, r.exam_round, r.origin, r.format]
           .filter(Boolean)
           .join(" · "),
+        // 미리보기 — 발문 전체(최대 2000자). 선지·이미지 렌더는 후속 단계.
+        preview: full ? full.slice(0, 2000) : undefined,
       };
     });
     return { items };
@@ -169,10 +184,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       return {
         id: r.set_id,
         label: `${r.display_name ?? "(이름없음)"} · ${blankCount}칸`,
-        secondary: [
-          r.articles?.laws?.law_code,
-          r.articles?.display_label,
-        ]
+        secondary: [r.articles?.laws?.law_code, r.articles?.display_label]
           .filter(Boolean)
           .join(" · "),
       };

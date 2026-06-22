@@ -1,7 +1,7 @@
 // 모의고사 팩 문제 picker — 검색 + 다중 선택 일괄 추가. feat-10-002.
 // staff 전용 — mcq-pack-detail 의 운영자 영역에서 사용.
 // 필터: 키워드 + 출처 + 형식 + 연도. 필터 단독 검색도 허용(키워드 0).
-import { CheckIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { CheckIcon, EyeIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useFetcher, useLocation, useNavigate } from "react-router";
 
@@ -13,6 +13,8 @@ interface SearchResult {
   id: string;
   label: string;
   secondary?: string;
+  /** 미리보기용 발문 전체 — search-content(problem) 가 채움. */
+  preview?: string;
 }
 
 const ORIGIN_OPTIONS: Array<{ value: string; label: string }> = [
@@ -34,10 +36,13 @@ const FORMAT_OPTIONS: Array<{ value: string; label: string }> = [
 export function MockPackProblemPicker({
   packId,
   lawCode,
+  existingIds,
 }: {
   packId: string;
   /** 팩 과목의 law_code — 검색 범위 좁힘. 합본/자연과학 팩은 null. */
   lawCode: string | null;
+  /** 이미 이 팩에 담긴 problem_id — 중복 배지·추가 비활성용. */
+  existingIds?: Set<string>;
 }) {
   const searchFetcher = useFetcher<{ items: SearchResult[] }>();
   const addFetcher = useFetcher<{
@@ -53,6 +58,7 @@ export function MockPackProblemPicker({
   const [selected, setSelected] = useState<Map<string, SearchResult>>(
     new Map(),
   );
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -61,8 +67,7 @@ export function MockPackProblemPicker({
     return Array.from({ length: 13 }, (_, i) => currentYear - i);
   }, []);
 
-  const hasFilter =
-    query.trim().length >= 2 || !!origin || !!format || !!year;
+  const hasFilter = query.trim().length >= 2 || !!origin || !!format || !!year;
 
   // debounce 검색 — 키워드(≥2자) 또는 필터(출처/형식/연도) 하나라도 있으면 발동.
   useEffect(() => {
@@ -119,9 +124,20 @@ export function MockPackProblemPicker({
     });
   };
 
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const items = searchFetcher.data?.items ?? [];
   const addError =
-    addFetcher.data && "error" in addFetcher.data ? addFetcher.data.error : null;
+    addFetcher.data && "error" in addFetcher.data
+      ? addFetcher.data.error
+      : null;
 
   return (
     <div className="border-border bg-muted/30 rounded-xl border p-3">
@@ -201,37 +217,82 @@ export function MockPackProblemPicker({
           ) : (
             items.map((item) => {
               const isSel = selected.has(item.id);
+              const inPack = existingIds?.has(item.id) ?? false;
+              const isExpanded = expanded.has(item.id);
               return (
                 <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => toggle(item)}
+                  <div
                     className={cn(
-                      "flex w-full items-start gap-2 px-3 py-2 text-left text-xs transition-colors",
-                      isSel ? "bg-primary/10" : "hover:bg-muted/60",
+                      "flex items-start gap-2 px-3 py-2 text-xs transition-colors",
+                      isSel
+                        ? "bg-primary/10"
+                        : inPack
+                          ? ""
+                          : "hover:bg-muted/60",
+                      inPack && "opacity-60",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border",
-                        isSel
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-input",
-                      )}
+                    <button
+                      type="button"
+                      onClick={() => !inPack && toggle(item)}
+                      disabled={inPack}
+                      className="flex min-w-0 flex-1 items-start gap-2 text-left disabled:cursor-default"
                     >
-                      {isSel ? <CheckIcon className="size-3" /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">
-                        {item.label}
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border",
+                          inPack
+                            ? "border-muted-foreground/40 bg-muted text-muted-foreground"
+                            : isSel
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-input",
+                        )}
+                      >
+                        {inPack || isSel ? (
+                          <CheckIcon className="size-3" />
+                        ) : null}
                       </span>
-                      {item.secondary ? (
-                        <span className="text-muted-foreground block truncate text-[10px]">
-                          {item.secondary}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5">
+                          <span className="min-w-0 truncate font-medium">
+                            {item.label}
+                          </span>
+                          {inPack ? (
+                            <span className="border-border text-muted-foreground shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold">
+                              이미 포함
+                            </span>
+                          ) : null}
                         </span>
-                      ) : null}
-                    </span>
-                  </button>
+                        {item.secondary ? (
+                          <span className="text-muted-foreground block truncate text-[10px]">
+                            {item.secondary}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                    {item.preview ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(item.id)}
+                        aria-expanded={isExpanded}
+                        aria-label="미리보기"
+                        title="미리보기"
+                        className={cn(
+                          "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded transition-colors",
+                          isExpanded
+                            ? "text-foreground"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <EyeIcon className="size-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
+                  {isExpanded && item.preview ? (
+                    <div className="border-border bg-muted/40 text-muted-foreground border-t px-3 py-2 text-[11px] leading-relaxed whitespace-pre-line">
+                      {item.preview}
+                    </div>
+                  ) : null}
                 </li>
               );
             })
