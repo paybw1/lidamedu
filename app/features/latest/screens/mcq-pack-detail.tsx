@@ -23,12 +23,15 @@ import {
 } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { listCohorts } from "~/features/cohorts/queries.server";
 import { Pill } from "~/features/latest/components/latest-list";
 import {
   getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import { CohortWeaknessSource } from "~/features/mcq-packs/components/cohort-weakness-source";
 import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import { MockPackProblemPicker } from "~/features/mcq-packs/components/mock-pack-problem-picker";
 import {
@@ -92,17 +95,40 @@ export async function loader({ params, request }: Route.LoaderArgs) {
             depth: Math.max(0, String(n.path).split(".").length - 1),
           }))
       : [];
+  // 반 공통 약점 출제용 반 목록 — 강사=본인 소유, 매니저/원장=전체. adminClient:
+  //   멤버 수 집계가 profiles/cohort_members RLS 우회 필요(메모 profiles-rls-staff-cross-read).
+  const cohorts =
+    role !== null
+      ? await listCohorts(
+          adminClient,
+          role === "instructor" ? { ownerId: user.id } : {},
+        )
+      : [];
   return {
     pack,
     problems,
     canEdit: role !== null,
     oxSessions,
     systematicNodes,
+    cohorts: cohorts.map((c) => ({
+      cohortId: c.cohortId,
+      name: c.name,
+      memberCount: c.memberCount,
+    })),
+    cohortLawCode: nodeSlug.success ? nodeSlug.data : null,
   };
 }
 
 export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
-  const { pack, problems, canEdit, oxSessions, systematicNodes } = loaderData;
+  const {
+    pack,
+    problems,
+    canEdit,
+    oxSessions,
+    systematicNodes,
+    cohorts,
+    cohortLawCode,
+  } = loaderData;
   const mockPack = isMockKind(pack.kind);
 
   const metaParts: string[] = [];
@@ -254,6 +280,15 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
               lawCode={SCOPE_LAW_CODE[pack.subjectScope] ?? null}
               existingIds={new Set(problems.map((p) => p.problemId))}
               nodeOptions={systematicNodes}
+            />
+          </div>
+        ) : null}
+        {canEdit && cohortLawCode && cohorts.length > 0 ? (
+          <div className="border-border border-b p-3">
+            <CohortWeaknessSource
+              packId={pack.packId}
+              lawCode={cohortLawCode}
+              cohorts={cohorts}
             />
           </div>
         ) : null}

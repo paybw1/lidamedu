@@ -129,6 +129,10 @@ export default [
       route("/user-role", "features/admin/api/user-role.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
       route("/cohort-board", "features/admin/api/cohort-board.tsx"),
+      route(
+        "/cohort-weak-problems",
+        "features/admin/api/cohort-weak-problems.tsx",
+      ),
       route("/law-revision", "features/admin/api/law-revision.tsx"),
       route("/announcement", "features/admin/api/announcement.tsx"),
       route(
@@ -304,12 +308,7 @@ export default [
           layout(
             "features/gs/layouts/mock.layout.tsx",
             { id: "mock-area-mcq-exams" },
-            [
-              route(
-                "/mcq/exams",
-                "features/latest/screens/mcq-exam-index.tsx",
-              ),
-            ],
+            [route("/mcq/exams", "features/latest/screens/mcq-exam-index.tsx")],
           ),
           route(
             "/mcq/exam/:examId",

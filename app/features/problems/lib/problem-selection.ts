@@ -48,3 +48,83 @@ export function pickProblemsByDifficulty(
   });
   return eligible.slice(0, topN).map((c) => c.problemId);
 }
+
+export interface WeakNodeRef {
+  nodeId: string;
+  /** 약점 강도(클수록 약함). getWeakNodes(개인)·getCohortWeakNodes(반) 공통 shape. */
+  weaknessScore: number;
+}
+
+/**
+ * 약점 노드 → 문제 N개 선택 (가중 배분). 강사 출제(B)·학생 세션(D) 공용 규칙.
+ * - weaknessScore 비례 배분(약한 단원에 더 많이) — 최고평균(score/(take+1)) 방식.
+ * - 한 단원 상한 = ceil(totalN × perNodeCapRatio)(기본 0.4) — 쏠림 방지.
+ * - totalN 여유 시 각 노드 최소 1문항(점수 높은 노드 우선).
+ * - problemsByNode: nodeId → 후보 problem_id 배열(정렬·approved 필터는 호출부 책임).
+ * - excludeIds(이미 팩에 든 문제 등) 제외.
+ */
+export function pickProblemsFromWeakNodes(
+  weakNodes: readonly WeakNodeRef[],
+  problemsByNode: ReadonlyMap<string, readonly string[]>,
+  opts: {
+    totalN: number;
+    perNodeCapRatio?: number;
+    excludeIds?: ReadonlySet<string>;
+  },
+): string[] {
+  const { totalN, perNodeCapRatio = 0.4, excludeIds } = opts;
+  if (totalN <= 0) return [];
+  const cap = Math.max(1, Math.ceil(totalN * perNodeCapRatio));
+
+  const nodes = weakNodes
+    .map((wn) => ({
+      nodeId: wn.nodeId,
+      score: Math.max(0, wn.weaknessScore),
+      pool: (problemsByNode.get(wn.nodeId) ?? []).filter(
+        (id) => !(excludeIds?.has(id) ?? false),
+      ),
+      take: 0,
+    }))
+    .filter((n) => n.pool.length > 0);
+  if (nodes.length === 0) return [];
+
+  const capacityOf = (n: (typeof nodes)[number]) =>
+    Math.min(cap, n.pool.length);
+  const totalCapacity = nodes.reduce((s, n) => s + capacityOf(n), 0);
+  let left = Math.min(totalN, totalCapacity);
+
+  // 1) 최소 1 보장 — 점수 높은 노드부터(여유 있는 만큼).
+  const byScore = [...nodes].sort((a, b) => b.score - a.score);
+  for (const n of byScore) {
+    if (left <= 0) break;
+    if (capacityOf(n) > 0) {
+      n.take = 1;
+      left--;
+    }
+  }
+  // 2) 나머지는 점수 비례(최고평균: score/(take+1) 큰 노드부터) — 캡 한도.
+  while (left > 0) {
+    let best: (typeof nodes)[number] | null = null;
+    let bestVal = -Infinity;
+    for (const n of nodes) {
+      if (n.take >= capacityOf(n)) continue;
+      const val = n.score / (n.take + 1);
+      if (val > bestVal) {
+        bestVal = val;
+        best = n;
+      }
+    }
+    if (!best) break;
+    best.take++;
+    left--;
+  }
+
+  // 3) 수집 — 점수 높은 노드부터 take 만큼 pool 앞에서.
+  const picked: string[] = [];
+  for (const n of byScore) {
+    for (let i = 0; i < n.take && i < n.pool.length; i++) {
+      picked.push(n.pool[i]);
+    }
+  }
+  return picked;
+}
