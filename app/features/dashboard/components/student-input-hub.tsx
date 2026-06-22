@@ -91,12 +91,15 @@ function GoalBlock({
       <fetcher.Form method="post" action="/study/stats" className="space-y-3">
         <GoalFields goals={goals} examRound={examRound} />
         {errorMsg ? (
-          <p className="text-sm text-rose-600" role="alert">
+          <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
             {errorMsg}
           </p>
         ) : null}
         {saved ? (
-          <p className="text-sm text-emerald-600" role="status">
+          <p
+            className="text-sm text-emerald-600 dark:text-emerald-400"
+            role="status"
+          >
             저장되었습니다.
           </p>
         ) : null}
@@ -138,10 +141,14 @@ function ResultBlock({
       >
         <ResultFields currentYear={currentYear} defaultRound={defaultRound} />
         {fetcher.data?.error ? (
-          <p className="text-xs text-rose-600">{fetcher.data.error}</p>
+          <p className="text-xs text-rose-600 dark:text-rose-400">
+            {fetcher.data.error}
+          </p>
         ) : null}
         {saved ? (
-          <p className="text-xs text-emerald-600">저장되었습니다.</p>
+          <p className="text-xs text-emerald-600 dark:text-emerald-400">
+            저장되었습니다.
+          </p>
         ) : null}
         <Button
           type="submit"

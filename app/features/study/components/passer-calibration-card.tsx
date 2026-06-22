@@ -54,7 +54,7 @@ export function PasserCalibrationCard({
       </p>
       <Surface pad={0} tone="subtle" className="space-y-3 px-4 py-3">
         {benchmark.fallbackReason ? (
-          <p className="rounded border border-amber-200 bg-amber-50/60 px-2 py-1 text-[11px] text-amber-900">
+          <p className="rounded border border-amber-200 bg-amber-50/60 px-2 py-1 text-[11px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
             ⚠️ {benchmark.fallbackReason}
           </p>
         ) : null}
@@ -120,8 +120,8 @@ export function PasserCalibrationCard({
             className={cn(
               "rounded-md p-3 text-xs",
               calibratedDailyHours > dailyHourTarget
-                ? "border border-rose-200 bg-rose-50 text-rose-900"
-                : "border border-emerald-200 bg-emerald-50 text-emerald-900",
+                ? "border border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-200"
+                : "border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200",
             )}
           >
             <strong className="text-[13px]">
@@ -184,7 +184,9 @@ function MetricRow({
       <div
         className={cn(
           "mt-1 text-[10px] font-semibold",
-          good ? "text-emerald-700" : "text-rose-700",
+          good
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-rose-600 dark:text-rose-400",
         )}
       >
         {delta}

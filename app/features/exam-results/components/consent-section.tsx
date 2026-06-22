@@ -127,7 +127,7 @@ function ConsentToggle({
       </div>
       <p className="mt-2 text-[11px]">
         {consented ? (
-          <span className="inline-flex items-center gap-1 text-emerald-700">
+          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
             <CheckCircle2Icon className="size-3" />
             동의함{consentedAt ? ` · ${consentedAt.slice(0, 10)}` : ""}
           </span>

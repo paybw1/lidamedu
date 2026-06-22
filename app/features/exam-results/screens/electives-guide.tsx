@@ -1,6 +1,7 @@
 // 2차 선택과목 가이드 — 한국산업인력공단 공식 통계 기반.
 // 선택과목은 P/F (50점 이상 통과, 총점 미산입). "합격률" 지표는 필수과목 실력에
 // 좌우되므로 평가에 부적합 → **평균 / 과락(50 미만) 응시규모** 중심으로 안내.
+import type { Route } from "./+types/electives-guide";
 
 import { BookOpenCheckIcon, InfoIcon } from "lucide-react";
 import { Link, redirect } from "react-router";
@@ -8,8 +9,6 @@ import { Link, redirect } from "react-router";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { OFFICIAL_EXAM_STATS } from "~/features/exam-results/official-stats";
-
-import type { Route } from "./+types/electives-guide";
 
 export const meta: Route.MetaFunction = () => [
   { title: "2차 선택과목 가이드 | Lidam Patent Attorney Academy" },
@@ -76,15 +75,17 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
           2차 선택과목별 평균·과락
         </h1>
         <p className="text-muted-foreground text-sm">
-          출처: 한국산업인력공단(큐넷) 공식 채점통계. 선택과목은 50점 이상 Pass /
-          미만 Fail (총점 미산입). <span className="font-medium">합격률 지표는
-          필수과목 실력에 좌우</span>되므로 평가하지 않습니다 — 평균·과락(50미만)
-          응시규모만 보세요.
+          출처: 한국산업인력공단(큐넷) 공식 채점통계. 선택과목은 50점 이상 Pass
+          / 미만 Fail (총점 미산입).{" "}
+          <span className="font-medium">
+            합격률 지표는 필수과목 실력에 좌우
+          </span>
+          되므로 평가하지 않습니다 — 평균·과락(50미만) 응시규모만 보세요.
         </p>
       </header>
 
-      <Card className="mb-4 border-amber-200 bg-amber-50/60">
-        <CardContent className="px-4 py-3 text-xs text-amber-900">
+      <Card className="mb-4 border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20">
+        <CardContent className="px-4 py-3 text-xs text-amber-900 dark:text-amber-300">
           <InfoIcon className="mr-1 inline size-3.5" /> {note}
         </CardContent>
       </Card>
@@ -98,7 +99,7 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
         <CardContent className="px-3 pb-4">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-zinc-500">
+              <tr className="text-muted-foreground">
                 <th className="px-2 py-1.5 text-left font-medium">과목</th>
                 <th className="px-2 py-1.5 text-right font-medium">
                   연평균 응시자
@@ -114,19 +115,19 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
               {rows.map((r) => {
                 const tone =
                   r.failRateUnder50Pct >= 40
-                    ? "text-rose-600"
+                    ? "text-rose-600 dark:text-rose-400"
                     : r.failRateUnder50Pct >= 25
-                      ? "text-amber-600"
-                      : "text-emerald-600";
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400";
                 return (
                   <tr
                     key={r.subject}
-                    className="border-t border-zinc-100 align-baseline"
+                    className="border-border border-t align-baseline"
                   >
-                    <td className="px-2 py-1.5 font-medium text-zinc-900">
+                    <td className="text-foreground px-2 py-1.5 font-medium">
                       {r.subject}
                       {r.smallSample ? (
-                        <span className="ml-1.5 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500">
+                        <span className="bg-muted text-muted-foreground ml-1.5 rounded px-1.5 py-0.5 text-[10px]">
                           표본 적음
                         </span>
                       ) : null}
@@ -142,7 +143,7 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
                     >
                       {r.failRateUnder50Pct}%
                     </td>
-                    <td className="px-2 py-1.5 text-right text-zinc-500 tabular-nums">
+                    <td className="text-muted-foreground px-2 py-1.5 text-right tabular-nums">
                       {r.sampleYears}개년
                     </td>
                   </tr>

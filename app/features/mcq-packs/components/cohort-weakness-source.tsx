@@ -210,7 +210,9 @@ export function CohortWeaknessSource({
               </Button>
             </addFetcher.Form>
             {addError ? (
-              <span className="text-xs text-rose-600">{addError}</span>
+              <span className="text-xs text-rose-600 dark:text-rose-400">
+                {addError}
+              </span>
             ) : null}
           </div>
         </>

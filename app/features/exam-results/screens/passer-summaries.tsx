@@ -1,6 +1,7 @@
 // 합격자 학습 후기 모음 (anonymized).
 // /study/passer-summaries — 학생 누구나 접근 가능 (인증된 사용자).
 // 표시 정보: 연도·차수·점수 버킷·인증 여부·자가 학습 요약 markdown.
+import type { Route } from "./+types/passer-summaries";
 
 import { GraduationCapIcon, ShieldCheckIcon, SparklesIcon } from "lucide-react";
 import { Form, Link, data, redirect } from "react-router";
@@ -10,12 +11,13 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { listPasserSummaries } from "~/features/exam-results/analytics.server";
-import { EXAM_ROUND_LABEL, type ExamRound } from "~/features/exam-results/labels";
-
-import type { Route } from "./+types/passer-summaries";
+import {
+  EXAM_ROUND_LABEL,
+  type ExamRound,
+} from "~/features/exam-results/labels";
 
 export const meta: Route.MetaFunction = () => [
   { title: "합격자 학습 후기 | Lidam Patent Attorney Academy" },
@@ -135,7 +137,12 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {summaries.map((s) => (
-            <Card key={s.resultId} className={cn(s.verified && "border-emerald-200")}>
+            <Card
+              key={s.resultId}
+              className={cn(
+                s.verified && "border-emerald-200 dark:border-emerald-900",
+              )}
+            >
               <CardHeader className="px-4 pb-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-semibold tabular-nums">
@@ -149,7 +156,7 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
                   {s.verified ? (
                     <Badge
                       variant="default"
-                      className="bg-emerald-100 text-emerald-800 text-[10px] hover:bg-emerald-100"
+                      className="bg-emerald-100 text-[10px] text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
                     >
                       <ShieldCheckIcon className="mr-1 size-3" />
                       인증
