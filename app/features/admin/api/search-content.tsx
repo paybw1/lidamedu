@@ -13,6 +13,8 @@ import { getProblemStatsBulk } from "~/features/study/queries.server";
 
 const LIMIT = 20;
 const MIN_QUERY = 2;
+// 난이도 정렬 모드는 "난이도 상위 N" 일괄선택 용으로 더 넓게 보여준다.
+const DIFFICULTY_DISPLAY = 40;
 
 interface SearchResult {
   id: string;
@@ -20,6 +22,9 @@ interface SearchResult {
   secondary?: string;
   /** 미리보기용 — 문제 발문 전체(problem kind 만 채움). */
   preview?: string;
+  /** 난이도 정렬 모드에서만 — 전역 정답률(%)·시도 수(클라이언트 일괄선택 규칙용). */
+  accuracyPct?: number | null;
+  attempts?: number;
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -193,7 +198,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         if (ba === null) return -1;
         return sortRaw === "hard" ? aa - ba : ba - aa;
       });
-      ordered = ordered.slice(0, LIMIT);
+      ordered = ordered.slice(0, DIFFICULTY_DISPLAY);
     }
 
     const items: SearchResult[] = ordered.map((r) => {
@@ -219,6 +224,8 @@ export async function loader({ request }: Route.LoaderArgs) {
           .join(" · "),
         // 미리보기 — 발문 전체(최대 2000자). 선지·이미지 렌더는 후속 단계.
         preview: full ? full.slice(0, 2000) : undefined,
+        accuracyPct: stat ? stat.accuracyPct : undefined,
+        attempts: stat ? stat.attempts : undefined,
       };
     });
     return { items };

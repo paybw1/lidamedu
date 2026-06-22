@@ -8,6 +8,7 @@ import { useFetcher, useLocation, useNavigate } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { cn } from "~/core/lib/utils";
+import { pickProblemsByDifficulty } from "~/features/problems/lib/problem-selection";
 
 interface SearchResult {
   id: string;
@@ -15,6 +16,9 @@ interface SearchResult {
   secondary?: string;
   /** 미리보기용 발문 전체 — search-content(problem) 가 채움. */
   preview?: string;
+  /** 난이도 정렬 모드에서만 — 전역 정답률·시도 수(일괄선택 규칙용). */
+  accuracyPct?: number | null;
+  attempts?: number;
 }
 
 const ORIGIN_OPTIONS: Array<{ value: string; label: string }> = [
@@ -64,6 +68,7 @@ export function MockPackProblemPicker({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [node, setNode] = useState("");
   const [sort, setSort] = useState(""); // "" | "hard" | "easy"
+  const [bulkN, setBulkN] = useState(10);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -148,6 +153,33 @@ export function MockPackProblemPicker({
     addFetcher.data && "error" in addFetcher.data
       ? addFetcher.data.error
       : null;
+
+  // "난이도 상위 N" 일괄선택 — 현재 난이도순 결과에서 순수 규칙으로 top N 골라 선택에 추가.
+  //   (이미 팩에 든 문제·이미 선택된 문제 제외. 선택 후 강사가 검토·가감하고 추가.)
+  const selectTopByDifficulty = () => {
+    const order = sort === "easy" ? "easy" : "hard";
+    const exclude = new Set<string>([
+      ...(existingIds ?? []),
+      ...selected.keys(),
+    ]);
+    const ids = pickProblemsByDifficulty(
+      items.map((it) => ({
+        problemId: it.id,
+        accuracyPct: it.accuracyPct ?? null,
+        attempts: it.attempts ?? 0,
+      })),
+      { topN: bulkN, order, excludeIds: exclude },
+    );
+    if (ids.length === 0) return;
+    setSelected((prev) => {
+      const next = new Map(prev);
+      for (const id of ids) {
+        const it = items.find((x) => x.id === id);
+        if (it) next.set(id, it);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="border-border bg-muted/30 rounded-xl border p-3">
@@ -246,6 +278,38 @@ export function MockPackProblemPicker({
           <option value="easy">쉬운 순(정답률↑)</option>
         </select>
       </div>
+
+      {(sort === "hard" || sort === "easy") && items.length > 0 ? (
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <span className="text-muted-foreground text-[11px]">
+            {sort === "hard" ? "어려운" : "쉬운"} 순 상위
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={40}
+            value={bulkN}
+            onChange={(e) =>
+              setBulkN(Math.max(1, Math.min(40, Number(e.target.value) || 1)))
+            }
+            aria-label="자동선택 개수"
+            className="border-input bg-background h-7 w-14 rounded-md border px-2 text-[11px]"
+          />
+          <span className="text-muted-foreground text-[11px]">개</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={selectTopByDifficulty}
+            className="h-7 rounded-full text-[11px]"
+          >
+            자동 선택
+          </Button>
+          <span className="text-muted-foreground text-[10px]">
+            (표본 부족 문제 제외 · 선택 후 검토)
+          </span>
+        </div>
+      ) : null}
 
       {hasFilter ? (
         <ul className="border-border bg-background mt-2 max-h-64 divide-y overflow-auto rounded-md border">
