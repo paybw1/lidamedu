@@ -60,19 +60,20 @@ export function ProblemSystematicTree({
   nodeStats,
   activeNodeId,
   emptyHint,
+  linkBase = "",
 }: {
   nodes: SystematicNode[];
   nodeStats: Record<string, SystematicNodeProblemStat>;
   activeNodeId?: string;
   emptyHint?: string;
+  // 지정 시 노드 링크를 절대 경로(`{linkBase}?tab=problems&node=`)로 — 문제 뷰어 등
+  // 다른 화면에서 허브 문제 탭으로 이동할 때. 미지정(허브 내부)이면 현재 파라미터 보존.
+  linkBase?: string;
 }) {
   const [searchParams] = useSearchParams();
   // 문제 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
   // 세부 분기(예: 신규성일반/동일성)는 문제 화면에 등장하지 않는다.
-  const visibleNodes = useMemo(
-    () => nodes.filter((n) => !n.caseOnly),
-    [nodes],
-  );
+  const visibleNodes = useMemo(() => nodes.filter((n) => !n.caseOnly), [nodes]);
   const tree = useMemo(() => buildTree(visibleNodes), [visibleNodes]);
   // 활성 노드 + 그 조상은 펼친 상태로 시작.
   const forceOpen = useMemo(() => {
@@ -99,6 +100,7 @@ export function ProblemSystematicTree({
           activeNodeId={activeNodeId}
           forceOpen={forceOpen}
           searchParams={searchParams}
+          linkBase={linkBase}
         />
       ))}
     </ul>
@@ -112,6 +114,7 @@ function NodeItem({
   activeNodeId,
   forceOpen,
   searchParams,
+  linkBase,
 }: {
   node: TreeNode;
   depth: number;
@@ -119,6 +122,7 @@ function NodeItem({
   activeNodeId: string | undefined;
   forceOpen: Set<string>;
   searchParams: URLSearchParams;
+  linkBase: string;
 }) {
   const [open, setOpen] = useState(forceOpen.has(node.nodeId) || depth === 0);
   // forceOpen 이 (활성 노드 변경 등으로) 갱신되면 마운트된 노드도 펼침.
@@ -135,6 +139,9 @@ function NodeItem({
   // 노드 클릭 → 같은 페이지에서 ?tab=problems&node= 로 문제 목록 필터.
   // 다른 검색·필터(p_*)는 보존.
   const href = (() => {
+    // linkBase 지정(문제 뷰어 등 → 허브 문제 탭) 시 절대 경로 + 깨끗한 파라미터만.
+    if (linkBase) return `${linkBase}?tab=problems&node=${node.nodeId}`;
+    // 같은 페이지(허브) — 기존 검색·필터(p_*) 보존하며 tab/node 만 갱신.
     const next = new URLSearchParams(searchParams);
     next.set("tab", "problems");
     next.set("node", node.nodeId);
@@ -205,7 +212,7 @@ function NodeItem({
               "inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums transition-colors",
               isActive
                 ? "bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 font-bold"
-                : "text-muted-foreground group-hover:text-current group-hover:font-semibold",
+                : "text-muted-foreground group-hover:font-semibold group-hover:text-current",
             )}
           >
             <ListChecksIcon className="size-3" />
@@ -224,6 +231,7 @@ function NodeItem({
               activeNodeId={activeNodeId}
               forceOpen={forceOpen}
               searchParams={searchParams}
+              linkBase={linkBase}
             />
           ))}
         </ul>

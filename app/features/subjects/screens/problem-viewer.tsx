@@ -39,10 +39,7 @@ import {
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
 import { listLectureResources } from "~/features/lectures/queries.server";
-import {
-  listDisplayedProblems,
-  parseProblemFilters,
-} from "~/features/subjects/lib/loader.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
@@ -50,19 +47,20 @@ import {
   SCOPE_LABEL,
   SUBJECTIVE_KIND_LABEL,
 } from "~/features/problems/labels";
-import { MarkdownView } from "~/features/problems/components/markdown-view";
 import {
   deriveBoxItemOxTruth,
   deriveChoiceOxTruth,
 } from "~/features/problems/lib/auto-ox";
 import {
   type AdjacentProblem,
+  type SystematicNodeProblemStat,
   getAdjacentProblems,
   getCasesCitedByProblem,
   getChoiceLinkRefs,
   getProblemById,
   getRelatedProblems,
   getSystematicNodeProblemSequence,
+  getSystematicNodeProblemStats,
 } from "~/features/problems/queries.server";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { FlowNav } from "~/features/study/components/flow-nav";
@@ -87,13 +85,17 @@ import {
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
+import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
 import {
   SortAxisProvider,
   SortAxisToggle,
 } from "~/features/subjects/components/sort-axis";
 import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
-import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
+import {
+  listDisplayedProblems,
+  parseProblemFilters,
+} from "~/features/subjects/lib/loader.server";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
   LAW_SUBJECTS,
@@ -208,6 +210,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     adjacent,
     axisCounts,
     lectureResources,
+    problemNodeStats,
   ] = await Promise.all([
     law ? getSystematicSkeleton(client, lawCode) : Promise.resolve([]),
     getBookmark(client, user.id, "problem", problem.problemId),
@@ -228,6 +231,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ? getSubjectAxisCounts(client, lawCode, law.lawId)
       : Promise.resolve({ articles: 0, cases: 0, problems: 0 }),
     listLectureResources(client, "problem", problem.problemId),
+    law
+      ? getSystematicNodeProblemStats(client, lawCode)
+      : Promise.resolve<Record<string, SystematicNodeProblemStat>>({}),
   ]);
 
   // 해설 지문별 "관련 조문/판례" 링크용 reference 한 번에 lookup.
@@ -431,6 +437,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     adjacent: adjacentNav,
     adjacentQuery,
     lectureResources,
+    problemNodeStats,
+    activeNodeId: nodeId,
   };
 }
 
@@ -486,6 +494,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     problem,
     qnaThreads,
     systematicNodes,
+    problemNodeStats,
+    activeNodeId,
     bookmark,
     memos,
     highlights,
@@ -766,12 +776,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       체계도 데이터 미입력
                     </p>
                   ) : (
-                    <SystematicTree
+                    <ProblemSystematicTree
                       nodes={systematicNodes}
-                      activeArticleId={problem.primaryArticleId ?? undefined}
-                      lawCode={subject.slug}
-                      bookmarkLevels={bookmarkLevels}
-                      annotationCounts={annotationCounts}
+                      nodeStats={problemNodeStats}
+                      activeNodeId={activeNodeId ?? undefined}
+                      linkBase={`/subjects/${subject.slug}`}
                     />
                   )}
                 </>
@@ -808,12 +817,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       체계도 데이터 미입력
                     </p>
                   ) : (
-                    <SystematicTree
+                    <ProblemSystematicTree
                       nodes={systematicNodes}
-                      activeArticleId={problem.primaryArticleId ?? undefined}
-                      lawCode={subject.slug}
-                      bookmarkLevels={bookmarkLevels}
-                      annotationCounts={annotationCounts}
+                      nodeStats={problemNodeStats}
+                      activeNodeId={activeNodeId ?? undefined}
+                      linkBase={`/subjects/${subject.slug}`}
                     />
                   )}
                 </div>
@@ -1091,7 +1099,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                               }
                             }}
                             className={cn(
-                              "flex w-full items-start gap-3 rounded-[10px] border px-4 py-3.5 text-left transition-all duration-150 focus-visible:ring-primary/40 focus-visible:ring-2 focus-visible:outline-none",
+                              "focus-visible:ring-primary/40 flex w-full items-start gap-3 rounded-[10px] border px-4 py-3.5 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:outline-none",
                               locked
                                 ? "cursor-default"
                                 : "hover:border-primary/40 hover:bg-primary/5 cursor-pointer",
@@ -1321,111 +1329,114 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                               중복되는 '정답 보기' 선지 목록 생략. 비박스만 선지별 O/X·해설 노출. */}
                           {problem.boxItems.length === 0 &&
                             problem.choices.map((c) => {
-                            // mc_box: 보기는 박스 묶음이라 per-choice OX 의미 없음 → 정답만 표시.
-                            // mc_short(긍정/부정형 단답): 헬퍼로 polarity 반영해 O/X 산출.
-                            // 그 외(mc_case 등): 정답 여부만 표시.
-                            const derivedOx =
-                              problem.format === "mc_short"
-                                ? (c.oxTruth ??
-                                  deriveChoiceOxTruth({
-                                    polarity: problem.polarity,
-                                    format: problem.format,
-                                    isCorrect: c.isCorrect,
-                                    // oxIneligible 은 MCQ 해설 O/X 표시엔 무시(OX드릴만 존중).
-                                    oxIneligible: false,
-                                  }))
-                                : null;
-                            const label =
-                              problem.format === "mc_box"
-                                ? c.isCorrect
-                                  ? "정답"
-                                  : ""
-                                : (derivedOx ?? (c.isCorrect ? "정답" : ""));
-                            const tone = c.isCorrect
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
-                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200";
-                            return (
-                              <div
-                                key={c.choiceId}
-                                className="flex items-start gap-3 px-5 py-3 text-sm"
-                              >
-                                <span
-                                  className={cn(
-                                    "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
-                                    tone,
-                                  )}
+                              // mc_box: 보기는 박스 묶음이라 per-choice OX 의미 없음 → 정답만 표시.
+                              // mc_short(긍정/부정형 단답): 헬퍼로 polarity 반영해 O/X 산출.
+                              // 그 외(mc_case 등): 정답 여부만 표시.
+                              const derivedOx =
+                                problem.format === "mc_short"
+                                  ? (c.oxTruth ??
+                                    deriveChoiceOxTruth({
+                                      polarity: problem.polarity,
+                                      format: problem.format,
+                                      isCorrect: c.isCorrect,
+                                      // oxIneligible 은 MCQ 해설 O/X 표시엔 무시(OX드릴만 존중).
+                                      oxIneligible: false,
+                                    }))
+                                  : null;
+                              const label =
+                                problem.format === "mc_box"
+                                  ? c.isCorrect
+                                    ? "정답"
+                                    : ""
+                                  : (derivedOx ?? (c.isCorrect ? "정답" : ""));
+                              const tone = c.isCorrect
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                                : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200";
+                              return (
+                                <div
+                                  key={c.choiceId}
+                                  className="flex items-start gap-3 px-5 py-3 text-sm"
                                 >
-                                  {c.choiceIndex}
-                                </span>
-                                <div className="flex-1 space-y-1 leading-relaxed">
-                                  <p>
-                                    <span className="font-semibold">
-                                      {label || "—"}
-                                    </span>
-                                    {c.explanationMd ? (
-                                      <span className="text-muted-foreground ml-2">
-                                        {c.explanationMd}
+                                  <span
+                                    className={cn(
+                                      "inline-flex size-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
+                                      tone,
+                                    )}
+                                  >
+                                    {c.choiceIndex}
+                                  </span>
+                                  <div className="flex-1 space-y-1 leading-relaxed">
+                                    <p>
+                                      <span className="font-semibold">
+                                        {label || "—"}
                                       </span>
-                                    ) : null}
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {(() => {
-                                      const articleRef = c.relatedArticleId
-                                        ? choiceArticleRefs[c.relatedArticleId]
-                                        : null;
-                                      if (articleRef) {
-                                        return (
-                                          <Link
-                                            to={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
-                                            viewTransition
-                                            prefetch="intent"
-                                            data-testid="choice-related-article"
-                                            className="border-primary/30 bg-primary/10 text-link hover:bg-primary/20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
-                                          >
-                                            조문 {articleRef.displayLabel}
-                                          </Link>
-                                        );
-                                      }
-                                      if (c.relatedArticleId) {
-                                        return (
-                                          <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
-                                            조문 {c.relatedArticleNumber ?? "—"}
-                                          </span>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
-                                    {(() => {
-                                      const caseRef = c.relatedCaseId
-                                        ? choiceCaseRefs[c.relatedCaseId]
-                                        : null;
-                                      if (caseRef) {
-                                        return (
-                                          <Link
-                                            to={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
-                                            viewTransition
-                                            prefetch="intent"
-                                            data-testid="choice-related-case"
-                                            className="inline-flex items-center gap-1 rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
-                                          >
-                                            판례 {caseRef.caseNumber}
-                                          </Link>
-                                        );
-                                      }
-                                      if (c.relatedCaseId) {
-                                        return (
-                                          <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
-                                            판례 {c.relatedCaseNumber ?? "—"}
-                                          </span>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
+                                      {c.explanationMd ? (
+                                        <span className="text-muted-foreground ml-2">
+                                          {c.explanationMd}
+                                        </span>
+                                      ) : null}
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {(() => {
+                                        const articleRef = c.relatedArticleId
+                                          ? choiceArticleRefs[
+                                              c.relatedArticleId
+                                            ]
+                                          : null;
+                                        if (articleRef) {
+                                          return (
+                                            <Link
+                                              to={`/subjects/${articleRef.lawCode}/articles/${articleRef.pathSlug}`}
+                                              viewTransition
+                                              prefetch="intent"
+                                              data-testid="choice-related-article"
+                                              className="border-primary/30 bg-primary/10 text-link hover:bg-primary/20 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs"
+                                            >
+                                              조문 {articleRef.displayLabel}
+                                            </Link>
+                                          );
+                                        }
+                                        if (c.relatedArticleId) {
+                                          return (
+                                            <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
+                                              조문{" "}
+                                              {c.relatedArticleNumber ?? "—"}
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                      {(() => {
+                                        const caseRef = c.relatedCaseId
+                                          ? choiceCaseRefs[c.relatedCaseId]
+                                          : null;
+                                        if (caseRef) {
+                                          return (
+                                            <Link
+                                              to={`/subjects/${caseRef.lawCode}/cases/${c.relatedCaseId}`}
+                                              viewTransition
+                                              prefetch="intent"
+                                              data-testid="choice-related-case"
+                                              className="inline-flex items-center gap-1 rounded-full border border-violet-300/50 bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 hover:bg-violet-100 dark:border-violet-700/40 dark:bg-violet-950/30 dark:text-violet-300"
+                                            >
+                                              판례 {caseRef.caseNumber}
+                                            </Link>
+                                          );
+                                        }
+                                        if (c.relatedCaseId) {
+                                          return (
+                                            <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs">
+                                              판례 {c.relatedCaseNumber ?? "—"}
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                         </div>
                       </div>
                     </div>
