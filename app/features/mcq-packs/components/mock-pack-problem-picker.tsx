@@ -37,12 +37,15 @@ export function MockPackProblemPicker({
   packId,
   lawCode,
   existingIds,
+  nodeOptions = [],
 }: {
   packId: string;
   /** 팩 과목의 law_code — 검색 범위 좁힘. 합본/자연과학 팩은 null. */
   lawCode: string | null;
   /** 이미 이 팩에 담긴 problem_id — 중복 배지·추가 비활성용. */
   existingIds?: Set<string>;
+  /** 단원(체계도 노드) 필터 옵션 — 단일 법 과목 팩만. depth 로 들여쓰기. */
+  nodeOptions?: Array<{ nodeId: string; label: string; depth: number }>;
 }) {
   const searchFetcher = useFetcher<{ items: SearchResult[] }>();
   const addFetcher = useFetcher<{
@@ -59,6 +62,8 @@ export function MockPackProblemPicker({
     new Map(),
   );
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [node, setNode] = useState("");
+  const [sort, setSort] = useState(""); // "" | "hard" | "easy"
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -67,7 +72,8 @@ export function MockPackProblemPicker({
     return Array.from({ length: 13 }, (_, i) => currentYear - i);
   }, []);
 
-  const hasFilter = query.trim().length >= 2 || !!origin || !!format || !!year;
+  const hasFilter =
+    query.trim().length >= 2 || !!origin || !!format || !!year || !!node;
 
   // debounce 검색 — 키워드(≥2자) 또는 필터(출처/형식/연도) 하나라도 있으면 발동.
   useEffect(() => {
@@ -82,19 +88,23 @@ export function MockPackProblemPicker({
       if (origin) params.set("origin", origin);
       if (format) params.set("format", format);
       if (year) params.set("year", year);
+      if (node) params.set("nodeId", node);
+      if (sort) params.set("sort", sort);
       if (lawCode) params.set("lawCode", lawCode);
       searchFetcher.load(`/api/admin/search-content?${params.toString()}`);
     }, 250);
     return () => clearTimeout(handle);
     // searchFetcher 는 stable 하지 않을 수 있어 의도적으로 의존성에서 제외.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, origin, format, year, lawCode, hasFilter]);
+  }, [query, origin, format, year, node, sort, lawCode, hasFilter]);
 
   const resetFilters = () => {
     setQuery("");
     setOrigin("");
     setFormat("");
     setYear("");
+    setNode("");
+    setSort("");
   };
 
   // 추가 성공 → 선택 비우고 목록 새로고침.
@@ -201,6 +211,39 @@ export function MockPackProblemPicker({
               {y}년
             </option>
           ))}
+        </select>
+      </div>
+
+      <div
+        className={cn(
+          "mt-1.5 grid gap-1.5",
+          nodeOptions.length > 0 ? "grid-cols-2" : "grid-cols-1",
+        )}
+      >
+        {nodeOptions.length > 0 ? (
+          <select
+            value={node}
+            onChange={(e) => setNode(e.target.value)}
+            aria-label="단원"
+            className="border-input bg-background h-8 rounded-md border px-2 text-[11px]"
+          >
+            <option value="">전체 단원</option>
+            {nodeOptions.map((n) => (
+              <option key={n.nodeId} value={n.nodeId}>
+                {"  ".repeat(n.depth) + n.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          aria-label="난이도 정렬"
+          className="border-input bg-background h-8 rounded-md border px-2 text-[11px]"
+        >
+          <option value="">기본(최신순)</option>
+          <option value="hard">어려운 순(정답률↓)</option>
+          <option value="easy">쉬운 순(정답률↑)</option>
         </select>
       </div>
 

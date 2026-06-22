@@ -8,6 +8,8 @@ import { data } from "react-router";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { getSystematicNodeProblemSequence } from "~/features/problems/queries.server";
+import { getProblemStatsBulk } from "~/features/study/queries.server";
 
 const LIMIT = 20;
 const MIN_QUERY = 2;
@@ -40,7 +42,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     (url.searchParams.get("origin") ||
       url.searchParams.get("format") ||
       url.searchParams.get("year") ||
-      url.searchParams.get("lawCode"));
+      url.searchParams.get("lawCode") ||
+      url.searchParams.get("nodeId"));
   if (q.length < MIN_QUERY && !hasProblemFilter) {
     return { items: [] as SearchResult[] };
   }
@@ -90,6 +93,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     const originRaw = url.searchParams.get("origin")?.trim() || null;
     const formatRaw = url.searchParams.get("format")?.trim() || null;
     const yearRaw = url.searchParams.get("year")?.trim() || null;
+    const nodeIdRaw = url.searchParams.get("nodeId")?.trim() || null;
+    const sortRaw = url.searchParams.get("sort")?.trim() || null;
 
     let pq = adminClient
       .from("problems")
@@ -151,16 +156,65 @@ export async function loader({ request }: Route.LoaderArgs) {
     if (yearRaw && /^\d{4}$/.test(yearRaw)) {
       pq = pq.eq("year", Number(yearRaw));
     }
+    // 단원(체계도 노드) 필터 — node subtree 의 problem_id 로 한정. 빈 노드는 sentinel 로 무매칭.
+    if (nodeIdRaw) {
+      const seq = await getSystematicNodeProblemSequence(
+        adminClient,
+        nodeIdRaw,
+      );
+      const nodeProblemIds = seq?.problems.map((p) => p.problemId) ?? [];
+      pq = pq.in(
+        "problem_id",
+        nodeProblemIds.length
+          ? nodeProblemIds
+          : ["00000000-0000-0000-0000-000000000000"],
+      );
+    }
     // 필터 우선 검색은 최근 생성순(연도 정보 없는 AI 초안/예상문제 대응).
     pq = pq.order("created_at", { ascending: false });
-    const { data: rows } = await pq.limit(LIMIT);
-    const items: SearchResult[] = (rows ?? []).map((r) => {
+    // 난이도 정렬(어려운/쉬운 순)은 전역 정답률 기준 — 후보를 더 넓게 받아 정렬 후 LIMIT.
+    const wantDifficulty = sortRaw === "hard" || sortRaw === "easy";
+    const { data: rows } = await pq.limit(wantDifficulty ? 100 : LIMIT);
+
+    let ordered = rows ?? [];
+    let statsMap: Awaited<ReturnType<typeof getProblemStatsBulk>> | null = null;
+    if (wantDifficulty && ordered.length > 0) {
+      statsMap = await getProblemStatsBulk(
+        adminClient,
+        ordered.map((r) => r.problem_id),
+      );
+      const acc = (id: string) => statsMap?.get(id)?.accuracyPct ?? null;
+      ordered = [...ordered].sort((a, b) => {
+        const aa = acc(a.problem_id);
+        const ba = acc(b.problem_id);
+        // 표본 부족(null)은 항상 뒤로.
+        if (aa === null && ba === null) return 0;
+        if (aa === null) return 1;
+        if (ba === null) return -1;
+        return sortRaw === "hard" ? aa - ba : ba - aa;
+      });
+      ordered = ordered.slice(0, LIMIT);
+    }
+
+    const items: SearchResult[] = ordered.map((r) => {
       const full = r.body_md ?? "";
       const body = full.slice(0, 80);
+      const stat = statsMap?.get(r.problem_id);
+      const diffLabel = wantDifficulty
+        ? stat && stat.accuracyPct !== null
+          ? `정답률 ${stat.accuracyPct}%`
+          : "표본 부족"
+        : null;
       return {
         id: r.problem_id,
         label: `${r.year ?? "?"}${r.problem_number ? ` ${r.problem_number}번` : ""} — ${body}${full.length > 80 ? "…" : ""}`,
-        secondary: [r.laws?.law_code, r.exam_round, r.origin, r.format]
+        secondary: [
+          r.laws?.law_code,
+          r.exam_round,
+          r.origin,
+          r.format,
+          diffLabel,
+        ]
           .filter(Boolean)
           .join(" · "),
         // 미리보기 — 발문 전체(최대 2000자). 선지·이미지 렌더는 후속 단계.

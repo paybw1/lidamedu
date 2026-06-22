@@ -25,7 +25,10 @@ import {
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { Pill } from "~/features/latest/components/latest-list";
-import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  getStaffRole,
+  getSystematicSkeleton,
+} from "~/features/laws/queries.server";
 import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import { MockPackProblemPicker } from "~/features/mcq-packs/components/mock-pack-problem-picker";
 import {
@@ -41,6 +44,7 @@ import {
   listMyOxSessions,
   listPackProblems,
 } from "~/features/mcq-packs/queries.server";
+import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
@@ -73,11 +77,32 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     limit: 5,
     packId: params.packId,
   });
-  return { pack, problems, canEdit: role !== null, oxSessions };
+  // 단원 필터용 체계도 노드 — staff(picker 전용) + 단일 법 과목(특허/상표/디자인/민법) 팩만.
+  //   합본(산업재산권)·자연과학·민소법은 단일 체계도가 없어 노드 필터 미제공.
+  const nodeSlug = lawSubjectSlugSchema.safeParse(
+    SCOPE_LAW_CODE[pack.subjectScope],
+  );
+  const systematicNodes =
+    role !== null && nodeSlug.success
+      ? (await getSystematicSkeleton(client, nodeSlug.data))
+          .filter((n) => !n.caseOnly)
+          .map((n) => ({
+            nodeId: n.nodeId,
+            label: n.displayLabel,
+            depth: Math.max(0, String(n.path).split(".").length - 1),
+          }))
+      : [];
+  return {
+    pack,
+    problems,
+    canEdit: role !== null,
+    oxSessions,
+    systematicNodes,
+  };
 }
 
 export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
-  const { pack, problems, canEdit, oxSessions } = loaderData;
+  const { pack, problems, canEdit, oxSessions, systematicNodes } = loaderData;
   const mockPack = isMockKind(pack.kind);
 
   const metaParts: string[] = [];
@@ -228,6 +253,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
               packId={pack.packId}
               lawCode={SCOPE_LAW_CODE[pack.subjectScope] ?? null}
               existingIds={new Set(problems.map((p) => p.problemId))}
+              nodeOptions={systematicNodes}
             />
           </div>
         ) : null}
