@@ -249,3 +249,12 @@ rag-lab/dist/
 
 # 박스 이관 전 body_md 백업(롤백용)
 /scripts/.civilbox-backup.json
+
+# 자과 정답키 감사 PNG 렌더(파생물 — 원본 정답 PDF 에서 재생성, ~32MB)
+/.haesol-audit/
+
+# 1차 해설모음 — 강사 해설 PDF/hwp/hwpx 원본(저작물·대용량 ~66MB, 운영 데이터)
+/source/1차 해설모음/
+
+# 작업 중 스크린샷(루트) — 커밋 대상 아님
+스크린샷*.png
