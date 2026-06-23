@@ -1,6 +1,5 @@
 // MCQ 팩(pack) 서버 쿼리. 색인 + CRUD + 문제 매핑 + mock 세션 시작.
 // RLS: 학생은 published pack 만 read, staff 는 모든 pack read/write.
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
@@ -10,6 +9,9 @@ import type {
   McqPackProblemItem,
   McqPackSubjectScope,
 } from "./labels";
+
+import type { OxQuestionItem, OxTruth } from "~/features/problems/labels";
+import { getOxQuestionsForPack } from "~/features/problems/queries.server";
 
 export type {
   McqPackItem,
@@ -102,12 +104,10 @@ export async function listPacks(
   client: SupabaseClient<Database>,
   options: ListPacksOptions = {},
 ): Promise<McqPackItem[]> {
-  let q = client
-    .from("mcq_packs")
-    .select(LIST_COLUMNS)
-    .is("deleted_at", null);
+  let q = client.from("mcq_packs").select(LIST_COLUMNS).is("deleted_at", null);
   if (options.subjectScope) q = q.eq("subject_scope", options.subjectScope);
-  if (options.kinds && options.kinds.length > 0) q = q.in("kind", options.kinds);
+  if (options.kinds && options.kinds.length > 0)
+    q = q.in("kind", options.kinds);
   else if (options.kind) q = q.eq("kind", options.kind);
   if (options.year !== undefined) q = q.eq("year", options.year);
   const trimmed = options.query?.trim();
@@ -231,9 +231,11 @@ export async function listMyOxSessions(
             ),
           )
         : null;
-    const mp = s.mcq_packs as unknown as
-      | { title: string; kind: string; subject_scope: string }
-      | null;
+    const mp = s.mcq_packs as unknown as {
+      title: string;
+      kind: string;
+      subject_scope: string;
+    } | null;
     return {
       sessionId: s.session_id,
       packId: s.pack_id,
@@ -249,6 +251,116 @@ export async function listMyOxSessions(
       durationSec,
     };
   });
+}
+
+// feat-10-006 단계2 — 한 OX 회차의 상세(지문별 정오/미응답 + 본문·정답·해설).
+// 본문·정답은 채점·러너와 동일 단일 소스(getOxQuestionsForPack)로 복원 → refId 매칭.
+// (팩 편집 시 지문셋 드리프트 가능 — 백로그.) 점수는 attempts 의 저장된 is_correct 기준.
+export interface OxSessionItemResult extends OxQuestionItem {
+  userAnswer: OxTruth | null;
+  isCorrect: boolean | null; // 미응답 = null
+}
+export interface OxSessionDetail {
+  sessionId: string;
+  packId: string | null;
+  packTitle: string | null;
+  packKind: string | null;
+  packSubjectScope: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  durationSec: number | null;
+  total: number;
+  correct: number;
+  wrong: number;
+  blank: number;
+  items: OxSessionItemResult[];
+}
+
+export async function getOxSessionResult(
+  client: SupabaseClient<Database>,
+  userId: string,
+  sessionId: string,
+): Promise<OxSessionDetail | null> {
+  const { data: sess } = await client
+    .from("quiz_sessions")
+    .select(
+      "session_id, pack_id, started_at, completed_at, scope_payload, mcq_packs:pack_id(title, kind, subject_scope)",
+    )
+    .eq("session_id", sessionId)
+    .eq("user_id", userId)
+    .filter("scope_payload->>exam_kind", "eq", "ox")
+    .maybeSingle();
+  if (!sess) return null;
+
+  const { data: attempts } = await client
+    .from("user_problem_attempts")
+    .select("selected_choice_id, selected_box_item_id, ox_answer, is_correct")
+    .eq("session_id", sessionId);
+  const attemptMap = new Map<
+    string,
+    { userAnswer: OxTruth; isCorrect: boolean }
+  >();
+  for (const a of attempts ?? []) {
+    const refId = a.selected_choice_id ?? a.selected_box_item_id;
+    if (!refId || !a.ox_answer) continue;
+    attemptMap.set(refId, {
+      userAnswer: a.ox_answer as OxTruth,
+      isCorrect: !!a.is_correct,
+    });
+  }
+
+  const oxItems = sess.pack_id
+    ? await getOxQuestionsForPack(client, sess.pack_id)
+    : [];
+  const items: OxSessionItemResult[] = oxItems.map((it) => {
+    const at = attemptMap.get(it.refId);
+    return {
+      ...it,
+      userAnswer: at?.userAnswer ?? null,
+      isCorrect: at ? at.isCorrect : null,
+    };
+  });
+
+  const total =
+    (sess.scope_payload as { ref_count?: number } | null)?.ref_count ??
+    items.length;
+  const correct = items.filter((i) => i.isCorrect === true).length;
+  const wrong = items.filter(
+    (i) => i.userAnswer !== null && i.isCorrect === false,
+  ).length;
+  const blank = Math.max(0, total - correct - wrong);
+  const durationSec =
+    sess.completed_at && sess.started_at
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(sess.completed_at).getTime() -
+              new Date(sess.started_at).getTime()) /
+              1000,
+          ),
+        )
+      : null;
+  const mp = sess.mcq_packs as unknown as {
+    title: string;
+    kind: string;
+    subject_scope: string;
+  } | null;
+
+  return {
+    sessionId: sess.session_id,
+    packId: sess.pack_id,
+    packTitle: mp?.title ?? null,
+    packKind: mp?.kind ?? null,
+    packSubjectScope: mp?.subject_scope ?? null,
+    startedAt: sess.started_at,
+    completedAt: sess.completed_at,
+    durationSec,
+    total,
+    correct,
+    wrong,
+    blank,
+    items,
+  };
 }
 
 export async function listPackProblems(
@@ -374,9 +486,7 @@ export async function addPackProblem(
   client: SupabaseClient<Database>,
   packId: string,
   problemId: string,
-): Promise<
-  { ok: true } | { ok: false; error: string; unapproved?: true }
-> {
+): Promise<{ ok: true } | { ok: false; error: string; unapproved?: true }> {
   // feat — 강사 검증 게이트. 단건 호출도 미승인 차단.
   const { data: prob, error: revErr } = await client
     .from("problems")
@@ -387,7 +497,11 @@ export async function addPackProblem(
   if (revErr) return { ok: false, error: revErr.message };
   if (!prob) return { ok: false, error: "Problem not found" };
   if (prob.review_status !== "approved") {
-    return { ok: false, error: "검증 미승인 문제는 팩에 추가할 수 없습니다.", unapproved: true };
+    return {
+      ok: false,
+      error: "검증 미승인 문제는 팩에 추가할 수 없습니다.",
+      unapproved: true,
+    };
   }
   const { data: maxRow } = await client
     .from("mcq_pack_problems")
@@ -749,7 +863,7 @@ export async function getPackResultStats(
     f.total += 1;
     if (a.is_correct) f.correct += 1;
     const choiceType = a.selected_choice_id
-      ? choiceTypeById.get(a.selected_choice_id) ?? null
+      ? (choiceTypeById.get(a.selected_choice_id) ?? null)
       : null;
     if (choiceType) {
       const c = (sessionUserStats.byChoiceType[choiceType] ??= {
@@ -783,9 +897,7 @@ export async function getPackResultStats(
       // 누락된 choice_type 추가 fetch.
       const newIds = data
         .map((a) => a.selected_choice_id)
-        .filter(
-          (x): x is string => x != null && !choiceTypeById.has(x),
-        );
+        .filter((x): x is string => x != null && !choiceTypeById.has(x));
       if (newIds.length > 0) {
         const { data: rows } = await client
           .from("problem_choices")
@@ -801,7 +913,7 @@ export async function getPackResultStats(
         f.total += 1;
         if (a.is_correct) f.correct += 1;
         const choiceType = a.selected_choice_id
-          ? choiceTypeById.get(a.selected_choice_id) ?? null
+          ? (choiceTypeById.get(a.selected_choice_id) ?? null)
           : null;
         if (choiceType) {
           const c = (sessionAggStats.byChoiceType[choiceType] ??= {

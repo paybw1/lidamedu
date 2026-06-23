@@ -21,11 +21,11 @@
 - **서버 재채점**: 액션이 `getOxQuestionsForPack`로 `truthMap`(`refType:refId → ox_truth`) 구성 → `is_correct`를 **서버가 재계산**. 클라가 보낸 `isCorrect`/`oxTruth`는 폐기(스키마·payload에서 제거). truthMap에 없는 ref(팩 편집 등)는 채점 불가 → 미저장·미집계(미응답 흡수). → 약점진단·SRS·이력 데이터 무결성.
 - **과목 식별 픽스(블로커)**: 기존 OX 액션은 `subject_scope→law_code` 불완전 맵(`industrial/civil/civil_procedure/science`만)을 써서 **`patent`·`design`·`trademark` 누락 → "과목 식별 실패"로 특허/디자인/상표 기출 90팩 OX 저장 실패**였음. → 일반 객관식 응시(`mcq-packs/api/start`)와 동일하게 **첫 문제의 실제 `laws(law_code)`로 결정**(SSOT). 맵 삭제.
 
-### 🔲 단계 2 — 회차 결과 뷰 + 이력 relink + 정답률 통일
-- `QuestionCard`+`OxButton` → `problems/components/`로 추출(러너·결과 뷰 공용).
-- 새 라우트 `/me/ox-sessions/:sessionId` + 결과 뷰: 세션·attempts·`getOxQuestionsForPack` 매칭 → 지문별 정답/오답/미응답 + 사용자 답 + 정답 + 해설(읽기 전용 `QuestionCard` 재사용).
-- 이력 행 클릭 = **결과 보기**(재시작은 별도 버튼). 러너 "이력 저장됨" → "결과 보기" 링크.
-- **정답률 `correct/total`로 통일**(현재 러너 `correct/total` vs 이력 `correct/answered` 불일치 — 같은 회차 다른 % 표시).
+### ✅ 단계 2 — 회차 결과 뷰 + 이력 relink + 정답률 통일
+- `QuestionCard`+`OxButton` → `problems/components/ox-question-card.tsx` 추출(러너·결과 뷰 공용, 드리프트 0).
+- 새 라우트 `/me/ox-sessions/:sessionId` + `my-ox-session-result.tsx`: `getOxSessionResult`(세션·attempts·`getOxQuestionsForPack` refId 매칭) → 지문별 정답/오답/미응답 + 사용자 답 + 정답 + 해설(읽기 전용 `QuestionCard`). 본인 세션만(RLS+user_id), 아니면 404.
+- 이력 행 클릭 = **결과 보기**(재시작은 우측 "다시 풀기" 별도). 러너 "이력 저장됨" → "결과 보기" 링크.
+- **정답률 `correct/total`로 통일**(러너·이력·결과 뷰 동일 — 미응답 분모 포함).
 
 ## 백로그 (후속, 4~7)
 - per-item 시간 균등분배(가짜)·미응답 무기록 — 실측 또는 미노출.

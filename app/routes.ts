@@ -662,6 +662,10 @@ export default [
           "features/exam-results/screens/my-exam-results.tsx",
         ),
         route("/me/ox-sessions", "features/latest/screens/my-ox-sessions.tsx"),
+        route(
+          "/me/ox-sessions/:sessionId",
+          "features/latest/screens/my-ox-session-result.tsx",
+        ),
       ]),
       route(
         "/me/ox-wrong-note",
