@@ -7,6 +7,7 @@
 //   응시 "회차"(quiz_sessions)는 exam 모드에서만 생성된다.
 // 셔플 — 화면 내 토글. 셔플 ON 이면 지문 무작위 순. 다시 풀기 시 같은 순서 유지.
 // 타이머 — exam 모드에서 pack.durationMin 이 있을 때 카운트다운. 0 도달 시 자동 제출.
+import type { Route } from "./+types/mcq-pack-ox-exam";
 
 import {
   ArrowLeftIcon,
@@ -26,27 +27,22 @@ import { z } from "zod";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import { isMockKind } from "~/features/mcq-packs/labels";
 import { getPackById } from "~/features/mcq-packs/queries.server";
-import type {
-  OxQuestionItem,
-  OxTruth,
-} from "~/features/problems/labels";
+import type { OxQuestionItem, OxTruth } from "~/features/problems/labels";
 import { getOxQuestionsForPack } from "~/features/problems/queries.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
 
-import type { Route } from "./+types/mcq-pack-ox-exam";
-
+// 클라는 응답만 보낸다(refType/refId/problemId/userAnswer). 정오 채점은 서버가
+// 팩의 실제 ox_truth 로 재계산 — 클라가 보낸 정답/정오는 신뢰하지 않는다(서버 권위).
 const submitItemSchema = z.object({
   refType: z.enum(["choice", "box"]),
   refId: z.string().uuid(),
   problemId: z.string().uuid(),
   userAnswer: z.enum(["O", "X"]).nullable(),
-  oxTruth: z.enum(["O", "X"]),
-  isCorrect: z.boolean(),
 });
 const submitSchema = z.object({
   intent: z.literal("submit"),
@@ -65,18 +61,17 @@ type SubmitResponse =
     }
   | { ok: false; error: string };
 
-const SCOPE_TO_LAW_CODE: Record<string, string | null> = {
-  industrial: "patent", // 산업재산권법 — 1차 모의고사 기본 과목
-  civil: "civil",
-  civil_procedure: "civil-procedure",
-  science: null,
-};
-
 export async function action({ params, request }: Route.ActionArgs) {
   if (!params.packId)
-    return data({ ok: false as const, error: "Missing packId" }, { status: 400 });
+    return data(
+      { ok: false as const, error: "Missing packId" },
+      { status: 400 },
+    );
   if (request.method !== "POST")
-    return data({ ok: false as const, error: "Method not allowed" }, { status: 405 });
+    return data(
+      { ok: false as const, error: "Method not allowed" },
+      { status: 405 },
+    );
 
   const [client] = makeServerClient(request);
   const {
@@ -89,7 +84,10 @@ export async function action({ params, request }: Route.ActionArgs) {
   const parsed = submitSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) {
     return data(
-      { ok: false as const, error: parsed.error.issues[0]?.message ?? "입력 오류" },
+      {
+        ok: false as const,
+        error: parsed.error.issues[0]?.message ?? "입력 오류",
+      },
       { status: 400 },
     );
   }
@@ -100,43 +98,68 @@ export async function action({ params, request }: Route.ActionArgs) {
     items = raw.map((r) => submitItemSchema.parse(r));
   } catch (e) {
     return data(
-      { ok: false as const, error: e instanceof Error ? e.message : "items 파싱 실패" },
+      {
+        ok: false as const,
+        error: e instanceof Error ? e.message : "items 파싱 실패",
+      },
       { status: 400 },
     );
   }
   if (items.length === 0) {
-    return data({ ok: false as const, error: "응시 항목 없음" }, { status: 400 });
+    return data(
+      { ok: false as const, error: "응시 항목 없음" },
+      { status: 400 },
+    );
   }
 
   // pack 조회 — law_code 결정
   const pack = await getPackById(client, params.packId);
   if (!pack)
-    return data({ ok: false as const, error: "Pack not found" }, { status: 404 });
-  // OX 시험은 객관식 보기에서 추출되므로 모든 객관식 팩(mock_*, past_exam)에서 허용
-  // quiz_sessions.subject_xor: law_code OR science_subject 중 하나 NOT NULL.
-  // 자연과학 팩은 첫 문제의 science_subject 를 채워서 만족시킨다.
-  const lawCode = SCOPE_TO_LAW_CODE[pack.subjectScope] ?? null;
+    return data(
+      { ok: false as const, error: "Pack not found" },
+      { status: 404 },
+    );
+
+  // 서버 권위 채점 — 팩의 실제 OX 정답(getOxQuestionsForPack, 러너 로더·결과 뷰와
+  // 동일한 단일 소스)으로 재채점. truthMap 에 없는 ref(팩 편집·삭제 등)는 채점 불가 →
+  // 저장·집계에서 제외(미응답처럼 흡수). 클라가 보낸 정오는 쓰지 않는다.
+  const oxItems = await getOxQuestionsForPack(client, params.packId);
+  const truthMap = new Map(
+    oxItems.map((it) => [`${it.refType}:${it.refId}`, it.oxTruth] as const),
+  );
+  const graded = items.map((i) => {
+    const truth = truthMap.get(`${i.refType}:${i.refId}`);
+    return {
+      ...i,
+      gradeable: truth !== undefined,
+      isCorrect:
+        i.userAnswer !== null && truth !== undefined && i.userAnswer === truth,
+    };
+  });
+
+  // session law_code/science_subject — 일반 객관식 응시(mcq-packs/api/start)와 동일하게
+  // 팩 문제의 실제 law 로 결정(subject_scope 매핑 대신 — patent/design/trademark 누락
+  // 버그 방지). quiz_sessions.subject_xor: law_code OR science_subject 중 하나 NOT NULL.
   const distinctProblemIds = [...new Set(items.map((i) => i.problemId))];
-  let scienceSubject:
-    | "physics"
-    | "chemistry"
-    | "biology"
-    | "earth_science"
-    | null = null;
-  if (pack.subjectScope === "science") {
-    const { data: firstSci } = await client
-      .from("problems")
-      .select("science_subject")
-      .in("problem_id", distinctProblemIds)
-      .not("science_subject", "is", null)
-      .limit(1)
-      .maybeSingle();
-    scienceSubject =
-      (firstSci?.science_subject as typeof scienceSubject) ?? null;
-  }
+  const { data: firstRow } = await client
+    .from("problems")
+    .select("science_subject, laws(law_code)")
+    .eq("problem_id", distinctProblemIds[0])
+    .maybeSingle();
+  const lawCode = firstRow?.laws?.law_code ?? null;
+  const scienceSubject =
+    (firstRow?.science_subject as
+      | "physics"
+      | "chemistry"
+      | "biology"
+      | "earth_science"
+      | null) ?? null;
   if (!lawCode && !scienceSubject) {
     return data(
-      { ok: false as const, error: "과목 식별 실패 (law_code/science_subject 모두 null)" },
+      {
+        ok: false as const,
+        error: "과목 식별 실패 (law_code/science_subject 모두 null)",
+      },
       { status: 400 },
     );
   }
@@ -172,19 +195,19 @@ export async function action({ params, request }: Route.ActionArgs) {
     );
   }
 
-  // 2) user_problem_attempts bulk
+  // 2) user_problem_attempts bulk — 응답 + 채점가능 ref 만, 서버 재채점 is_correct 저장.
   const perItemMs = Math.floor(
     parsed.data.durationMs / Math.max(items.length, 1),
   );
-  const attempts = items
-    .filter((i) => i.userAnswer !== null) // 미응답은 attempt 저장 안 함
+  const attempts = graded
+    .filter((i) => i.userAnswer !== null && i.gradeable) // 미응답·채점불가 미저장
     .map((i) => ({
       user_id: user.id,
       problem_id: i.problemId,
       selected_choice_id: i.refType === "choice" ? i.refId : null,
       selected_box_item_id: i.refType === "box" ? i.refId : null,
       ox_answer: i.userAnswer as OxTruth,
-      is_correct: i.isCorrect,
+      is_correct: i.isCorrect, // 서버 재채점 결과
       mode: "exam",
       session_id: sess.session_id,
       time_spent_ms: perItemMs,
@@ -206,9 +229,12 @@ export async function action({ params, request }: Route.ActionArgs) {
     }
   }
 
-  const correct = items.filter((i) => i.userAnswer !== null && i.isCorrect).length;
-  const wrong = items.filter((i) => i.userAnswer !== null && !i.isCorrect).length;
-  const blank = items.filter((i) => i.userAnswer === null).length;
+  // 집계도 서버 채점 기준. 채점불가 응답은 정/오 어디에도 안 들어가 blank 로 흡수.
+  const correct = graded.filter((i) => i.isCorrect).length;
+  const wrong = graded.filter(
+    (i) => i.gradeable && i.userAnswer !== null && !i.isCorrect,
+  ).length;
+  const blank = items.length - correct - wrong;
   return data({
     ok: true as const,
     sessionId: sess.session_id,
@@ -223,7 +249,9 @@ export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack)
     return [{ title: "정오문제 시험 | Lidam Patent Attorney Academy" }];
   return [
-    { title: `${d.pack.title} — 정오문제 시험 | Lidam Patent Attorney Academy` },
+    {
+      title: `${d.pack.title} — 정오문제 시험 | Lidam Patent Attorney Academy`,
+    },
   ];
 };
 
@@ -293,8 +321,8 @@ function EmptyState({ packId }: { packId: string }) {
         이 팩에 시험 가능한 정오문제 지문이 없습니다
       </p>
       <p className="text-muted-foreground mt-2 text-sm">
-        팩 문제의 보기·박스 항목에 정답이 설정되어 있지 않거나, 모두 정오문제 평가
-        부적합으로 표시되어 있습니다.
+        팩 문제의 보기·박스 항목에 정답이 설정되어 있지 않거나, 모두 정오문제
+        평가 부적합으로 표시되어 있습니다.
       </p>
       <Button asChild size="sm" className="mt-4">
         <Link to={`/latest/mcq/pack/${packId}`}>
@@ -352,9 +380,7 @@ function ExamRunner({
 
   // 셔플
   const [shuffleOn, setShuffleOn] = useState(false);
-  const [order, setOrder] = useState<number[]>(() =>
-    items.map((_, i) => i),
-  );
+  const [order, setOrder] = useState<number[]>(() => items.map((_, i) => i));
 
   // exam 타이머
   const timeLimitSec =
@@ -410,13 +436,12 @@ function ExamRunner({
       if (!ok) return;
     }
     setSubmitted(true);
+    // 서버가 재채점하므로 클라는 응답만 전송(oxTruth/isCorrect 미전송).
     const payload = items.map((it, i) => ({
       refType: it.refType,
       refId: it.refId,
       problemId: it.problemId,
       userAnswer: answers[i],
-      oxTruth: it.oxTruth,
-      isCorrect: answers[i] === it.oxTruth,
     }));
     const fd = new FormData();
     fd.set("intent", "submit");
@@ -553,7 +578,7 @@ function ExamRunner({
         {timeLimitSec !== null && !submitted ? (
           <span
             className={cn(
-              "ml-auto inline-flex items-center gap-1 tabular-nums font-mono font-bold",
+              "ml-auto inline-flex items-center gap-1 font-mono font-bold tabular-nums",
               timerCrit
                 ? "text-rose-600"
                 : timerWarn
@@ -570,7 +595,7 @@ function ExamRunner({
       {/* 진행 상태 / 결과 카드 */}
       <header
         className={cn(
-          "border-border sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-2xl border bg-card/95 px-4 py-3 shadow-sm backdrop-blur",
+          "border-border bg-card/95 sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 shadow-sm backdrop-blur",
         )}
       >
         {isStudy ? (
@@ -776,7 +801,10 @@ function QuestionCard({
               {item.refType === "choice" ? "보기" : "박스"}
             </Badge>
             {submitted && correct === true && (
-              <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">
+              <Badge
+                variant="default"
+                className="bg-emerald-600 hover:bg-emerald-600"
+              >
                 정답
               </Badge>
             )}
