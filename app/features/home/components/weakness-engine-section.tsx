@@ -1,5 +1,5 @@
 import { ArrowRightIcon } from "lucide-react";
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 
 import { SectionHeader } from "~/features/home/components/section-header";
 import {
@@ -25,6 +25,15 @@ const CELL_LABEL = ["약함", "보통", "강함"];
 
 export function WeaknessEngineSection() {
   const [ref, inView] = useInView<HTMLElement>(0.2);
+  // #2는 hero 바로 아래(above the fold) — inView가 로드 즉시 true가 되어 스태거가
+  // 사용자가 인지하기 전에 끝난다. 스크롤 진입에만 의존하지 말고, 빈 상태를 한 박자
+  // (짧은 지연) 보장한 뒤 채워서 로드 시에도 빈→채움 스태거가 재생되게 한다.
+  const [filled, setFilled] = useState(false);
+  useEffect(() => {
+    if (filled || !inView) return;
+    const t = window.setTimeout(() => setFilled(true), 200);
+    return () => window.clearTimeout(t);
+  }, [inView, filled]);
   return (
     <section
       ref={ref}
@@ -106,8 +115,8 @@ export function WeaknessEngineSection() {
                     style={{
                       height: 36,
                       borderRadius: 8,
-                      background: inView ? CELL_TONE[v] : "rgba(0,0,0,0.05)",
-                      transition: `background 360ms ${EASE_REVEAL} ${(r * 3 + c) * 40}ms`,
+                      background: filled ? CELL_TONE[v] : "rgba(0,0,0,0.05)",
+                      transition: `background 400ms ${EASE_REVEAL} ${(r * 3 + c) * 50}ms`,
                     }}
                   />
                 ))}
