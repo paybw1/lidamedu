@@ -98,6 +98,7 @@ body {
   --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.06);
   --lp-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.1);
   --lp-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --lp-wash: rgba(45, 91, 168, 0.05); /* hero 상단 방사형 wash (primary 5%) */
 }
 
 .dark {
@@ -164,6 +165,7 @@ body {
   --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.45);
   --lp-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
   --lp-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --lp-wash: rgba(96, 165, 250, 0.07); /* hero wash (다크: 밝은 블루 7%) */
 }
 
 @theme inline {

@@ -24,16 +24,29 @@ export function SectionHeader({
       }}
     >
       <Reveal>
-        <div
-          style={{
-            font: `600 14px/1 ${FONT.display}`,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: PALETTE.link,
-            marginBottom: 14,
-          }}
-        >
-          {eyebrow}
+        <div style={{ marginBottom: 14 }}>
+          <div
+            aria-hidden="true"
+            style={{
+              width: 24,
+              height: 2,
+              borderRadius: 2,
+              background: PALETTE.link,
+              marginBottom: 10,
+              marginLeft: align === "center" ? "auto" : 0,
+              marginRight: align === "center" ? "auto" : 0,
+            }}
+          />
+          <div
+            style={{
+              font: `600 14px/1 ${FONT.display}`,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: PALETTE.link,
+            }}
+          >
+            {eyebrow}
+          </div>
         </div>
       </Reveal>
       <Reveal delay={80}>

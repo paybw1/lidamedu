@@ -33,12 +33,25 @@ export function Hero() {
       }}
     >
       <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(circle at 72% -10%, var(--lp-wash), transparent 60%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      <div
         className="hero-grid"
         style={{
           display: "grid",
           gap: 48,
           gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)",
           alignItems: "center",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         <div style={{ minWidth: 0 }}>

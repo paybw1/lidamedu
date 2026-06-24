@@ -17,6 +17,7 @@ import { PreviewSection } from "~/features/home/components/preview-section";
 import { PricingTeaserSection } from "~/features/home/components/pricing-teaser-section";
 import { SubjectsSection } from "~/features/home/components/subjects-section";
 import { WeaknessEngineSection } from "~/features/home/components/weakness-engine-section";
+import { Band } from "~/features/home/lib/landing";
 
 export const meta: Route.MetaFunction = ({ data }) => [
   {
@@ -69,15 +70,25 @@ export default function Home() {
       }}
     >
       <Hero />
-      <WeaknessEngineSection />
+      <Band tone="shelf">
+        <WeaknessEngineSection />
+      </Band>
       <PreviewSection />
-      <FeaturesSection />
+      <Band tone="shelf">
+        <FeaturesSection />
+      </Band>
       <IntegratedFlowSection />
-      <SubjectsSection />
+      <Band tone="shelf">
+        <SubjectsSection />
+      </Band>
       <PasserStatsSection />
-      <LatestSection />
+      <Band tone="shelf">
+        <LatestSection />
+      </Band>
       <PricingTeaserSection />
-      <FlowSection />
+      <Band tone="shelf">
+        <FlowSection />
+      </Band>
       <FaqSection />
       <FinalCta />
     </div>

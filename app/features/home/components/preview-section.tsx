@@ -40,6 +40,16 @@ export function PreviewSection() {
       >
         <div>
           <div
+            aria-hidden="true"
+            style={{
+              width: 24,
+              height: 2,
+              borderRadius: 2,
+              background: PALETTE.link,
+              marginBottom: 10,
+            }}
+          />
+          <div
             style={{
               font: `600 14px/1 ${FONT.display}`,
               letterSpacing: "0.12em",

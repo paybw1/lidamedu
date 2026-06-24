@@ -169,6 +169,27 @@ export function Reveal({
 }
 
 // ============================================================================
+// Band — 랜딩 섹션 배경 교대(full-bleed shelf). 섹션 파일은 무수정, home.tsx 에서 감싼다.
+// tone="shelf" → --surface-2(라이트 #f8fafc·다크 #2a2a2a, 색차 2~3%). 기본=투명(--background 노출).
+// ============================================================================
+
+export function Band({
+  tone,
+  children,
+}: {
+  tone?: "shelf";
+  children: ReactNode;
+}) {
+  return (
+    <div
+      style={tone === "shelf" ? { background: "var(--surface-2)" } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ============================================================================
 // LandingButton — Wantedly pill 버튼 (R100, two-layer shadow).
 // ============================================================================
 
