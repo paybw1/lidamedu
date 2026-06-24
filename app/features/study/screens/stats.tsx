@@ -67,6 +67,7 @@ import {
   getStudyGoals,
   upsertStudyGoals,
 } from "~/features/goals/queries.server";
+import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
 import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
 import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
@@ -281,6 +282,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     examRoundRow,
     studyGoals,
     passerBenchmark,
+    oxSessions,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -314,6 +316,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? getPasserBenchmarks(user.id, { excludeSynthetic: true })
         : null,
     ),
+    // 약점 탭 정오문제 응시 이력 compact 섹션(최근 5, 전체는 /me/ox-sessions). 경량 1쿼리.
+    listMyOxSessions(client, user.id, { limit: 5 }),
   ]);
 
   const erRaw = examRoundRow.data?.next_exam_round;
@@ -345,6 +349,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       sampleSize: oxGate.realSampleSize,
       minSample: oxGate.minSample,
     },
+    oxSessions,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -1374,7 +1379,7 @@ function AccuracyTab({ data }: { data: StatsData }) {
 // ─── 약점 (내 오답 + 정오문제 약점 진단) ───
 
 function WeaknessTab({ data }: { data: StatsData }) {
-  const { weakAreas, aidCounts, oxDiagnosis, oxPasser } = data;
+  const { weakAreas, aidCounts, oxDiagnosis, oxPasser, oxSessions } = data;
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1468,7 +1473,56 @@ function WeaknessTab({ data }: { data: StatsData }) {
           )}
         </Await>
       </Suspense>
+
+      {/* 정오문제 응시 이력 — compact(최근 3 + 전체 링크). 전체·필터·결과뷰는 /me/ox-sessions
+          유지(자산 보존). OX 진단 매트릭스와 한 묶음(둘 다 정오문제). */}
+      <OxHistoryCompact sessions={oxSessions} />
     </div>
+  );
+}
+
+// 정오문제 응시 이력 compact — 약점 탭 편입(모의고사 nav "정오문제 응시 이력" 흡수).
+function OxHistoryCompact({ sessions }: { sessions: StatsData["oxSessions"] }) {
+  if (sessions.length === 0) return null;
+  return (
+    <Surface pad={0} tone="subtle">
+      <div className="flex items-center justify-between px-6 pt-5 pb-2">
+        <h2 className="text-sm font-bold tracking-tight">정오문제 응시 이력</h2>
+        <Link
+          to="/me/ox-sessions"
+          className="text-link inline-flex items-center gap-1 text-xs hover:underline"
+        >
+          전체 이력 <ArrowRightIcon className="size-3" />
+        </Link>
+      </div>
+      <ul className="divide-y px-6 pb-4">
+        {sessions.slice(0, 3).map((s) => {
+          const rate =
+            s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+          return (
+            <li key={s.sessionId}>
+              <Link
+                to={`/me/ox-sessions/${s.sessionId}`}
+                viewTransition
+                className="flex items-center justify-between gap-3 py-2"
+              >
+                <span className="text-foreground min-w-0 flex-1 truncate text-sm">
+                  {s.packTitle ?? "(팩 삭제됨)"}
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="text-muted-foreground text-[11px] tabular-nums">
+                    {(s.completedAt ?? s.startedAt).slice(0, 10)}
+                  </span>
+                  <Badge variant="outline" className="tabular-nums">
+                    {rate}%
+                  </Badge>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </Surface>
   );
 }
 
@@ -1685,10 +1739,7 @@ function PassPredictionTrendCard({
             >
               <div className="bg-muted/40 relative flex h-20 items-end overflow-hidden rounded">
                 <div
-                  className={cn(
-                    "w-full transition-all",
-                    scoreBgTone(it.score),
-                  )}
+                  className={cn("w-full transition-all", scoreBgTone(it.score))}
                   style={{ height: `${Math.max(2, it.score)}%` }}
                 />
               </div>

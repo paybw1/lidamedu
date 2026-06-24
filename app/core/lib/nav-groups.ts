@@ -109,8 +109,8 @@ export const NAV_GROUP_POOL = {
       { label: "GS 논점추출", to: "/gs/issues" },
       { label: "판례 쟁점훈련", to: "/case-training" },
       { label: "응시 결과", to: "/me/exam-results" },
-      // feat — 정오문제 응시 이력: "응시 결과"의 형제(내 응시 기록) → 모의고사 그룹으로 통합.
-      { label: "정오문제 응시 이력", to: "/me/ox-sessions" },
+      // 정오문제 응시 이력은 학습현황 약점 탭(/study/stats?tab=ox_diagnosis)으로 편입.
+      //   /me/ox-sessions 라우트·결과뷰는 유지(약점 탭·대시보드 OxRecentCard에서 진입).
     ],
     area: "area_mock_exams",
   },
