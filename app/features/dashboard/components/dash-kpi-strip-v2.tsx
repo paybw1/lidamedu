@@ -27,7 +27,7 @@ export function DashKpiStripV2({ data }: { data: DashKpiData }) {
       </Surface>
       <Surface tone="default" pad={4}>
         <Stat
-          label="푼 문제 수"
+          label="푼 문항 수"
           value={Math.round(data.problems).toLocaleString("ko-KR")}
           delta={data.deltaProblems > 0 ? `+${data.deltaProblems}` : null}
           tone={data.deltaProblems > 0 ? "positive" : "neutral"}

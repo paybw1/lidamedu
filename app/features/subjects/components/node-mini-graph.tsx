@@ -113,7 +113,7 @@ export function NodeMiniGraph({
             연관 자료 미니맵
           </p>
           <p className="text-muted-foreground text-[11px] tabular-nums">
-            조문 {articles.length} · 판례 {totalCases} · 문제 {totalProblems}
+            조문 {articles.length} · 판례 {totalCases} · 문항 {totalProblems}
           </p>
         </div>
       </CardHeader>

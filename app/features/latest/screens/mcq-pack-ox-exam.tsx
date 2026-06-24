@@ -292,8 +292,8 @@ export default function McqPackOxExam({ loaderData }: Route.ComponentProps) {
   const modeLabel = mode === "study" ? "학습" : "시험";
   const desc =
     mode === "study"
-      ? `문제집의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 정오문제 지문. 답을 누르면 즉시 정답·해설이 표시됩니다. 응시 이력에는 남지 않지만, 지문별 정오는 학습 분석에 반영됩니다.`
-      : `문제집의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 정오문제 지문. 모두 풀고 제출하면 채점 결과를 표시하고 응시 이력에 저장합니다.`;
+      ? `문제집의 ${pack.problemCount}개 문항에서 추출된 ${items.length}개 정오문제 지문. 답을 누르면 즉시 정답·해설이 표시됩니다. 응시 이력에는 남지 않지만, 지문별 정오는 학습 분석에 반영됩니다.`
+      : `문제집의 ${pack.problemCount}개 문항에서 추출된 ${items.length}개 정오문제 지문. 모두 풀고 제출하면 채점 결과를 표시하고 응시 이력에 저장합니다.`;
   return (
     <McqAreaShell
       isMock

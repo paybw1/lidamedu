@@ -324,7 +324,7 @@ export default function McqPackSheet({ loaderData }: Route.ComponentProps) {
               data-testid="sheet-flag-count"
             >
               <BookmarkIcon className="size-3 fill-current" />
-              다시 볼 문제 {flagged.size}
+              다시 볼 문항 {flagged.size}
             </span>
           ) : null}
           {graded && !isExam ? (

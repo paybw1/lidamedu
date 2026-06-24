@@ -55,7 +55,7 @@ export function PasserAggView({
         <MiniStat
           label="문제 풀이"
           value={`${agg.totalProblemAttempts.toLocaleString("ko-KR")}회`}
-          sub={`${agg.distinctProblems}문제`}
+          sub={`${agg.distinctProblems}문항`}
         />
         <MiniStat
           label="정답률"

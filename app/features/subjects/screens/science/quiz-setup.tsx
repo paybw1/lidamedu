@@ -168,7 +168,7 @@ export default function ScienceQuizSetup({
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed">
             단원·문항 수·모드를 선택해 문제 풀이를 시작합니다.
-            총 등록된 문제: <span className="tabular-nums font-semibold">{totalProblems}</span>.
+            총 등록된 문항: <span className="tabular-nums font-semibold">{totalProblems}</span>.
           </p>
         </header>
 
@@ -207,7 +207,7 @@ export default function ScienceQuizSetup({
                     />
                     <span className="flex-1">{s.label}</span>
                     <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
-                      {s.problemCount}문제
+                      {s.problemCount}문항
                     </span>
                   </label>
                 ))
@@ -273,7 +273,7 @@ export default function ScienceQuizSetup({
                       "peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-link",
                     )}
                   >
-                    {n}문제
+                    {n}문항
                   </span>
                 </label>
               ))}

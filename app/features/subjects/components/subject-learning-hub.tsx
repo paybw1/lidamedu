@@ -139,7 +139,7 @@ export function SubjectLearningHub({
                 viewTransition
                 className="mt-1 inline-flex items-center gap-1.5 text-[13px] font-bold text-amber-700 dark:text-amber-400"
               >
-                오답 {wrong.toLocaleString("ko-KR")}문제 다시 풀기
+                오답 {wrong.toLocaleString("ko-KR")}문항 다시 풀기
                 <ArrowRightIcon className="size-3.5" />
               </Link>
             </RecRow>

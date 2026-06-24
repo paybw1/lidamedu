@@ -164,7 +164,7 @@ export function DashKpiStrip({ data }: { data: DashKpiData }) {
       hint: `지난주 +${data.deltaHours.toFixed(1)}h`,
     },
     {
-      label: "푼 문제 수",
+      label: "푼 문항 수",
       value: Math.round(p).toLocaleString("ko-KR"),
       unit: "",
       delta: data.deltaProblems > 0 ? `+${data.deltaProblems}` : null,

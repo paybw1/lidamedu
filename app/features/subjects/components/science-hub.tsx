@@ -143,7 +143,7 @@ export default function ScienceHub({
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border bg-card px-5 py-4 shadow-sm">
             <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold uppercase tracking-widest">
-              총 문제
+              총 문항
             </p>
             <p className="text-3xl font-extrabold tabular-nums tracking-tight">
               {totalProblems.toLocaleString("ko-KR")}
@@ -359,7 +359,7 @@ export default function ScienceHub({
           </p>
           <p className="text-foreground text-sm leading-relaxed">
             자연과학은 4과목(물리·화학·생물·지구과학)을 <strong>모두 응시</strong>하는 1차
-            필수 과목입니다. 총 40문제 중 과목별 10문제씩 출제되므로, 네 과목을 고르게 학습하세요.
+            필수 과목입니다. 총 40문항 중 과목별 10문항씩 출제되므로, 네 과목을 고르게 학습하세요.
           </p>
         </div>
 
