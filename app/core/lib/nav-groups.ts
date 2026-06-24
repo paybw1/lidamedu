@@ -108,9 +108,9 @@ export const NAV_GROUP_POOL = {
       { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
       { label: "GS 논점추출", to: "/gs/issues" },
       { label: "판례 쟁점훈련", to: "/case-training" },
-      { label: "응시 결과", to: "/me/exam-results" },
-      // 정오문제 응시 이력은 학습현황 약점 탭(/study/stats?tab=ox_diagnosis)으로 편입.
-      //   /me/ox-sessions 라우트·결과뷰는 유지(약점 탭·대시보드 OxRecentCard에서 진입).
+      // 모의고사 그룹 = "시험 보기·훈련"만. 내 결과/기록은 다른 곳으로 편입(라우트·CTA 유지):
+      //   응시 결과(실제 시험) → 대시보드 입력 허브 + /me/exam-results 전체관리.
+      //   정오문제 응시 이력 → 학습현황 약점 탭(/study/stats?tab=ox_diagnosis) + /me/ox-sessions.
     ],
     area: "area_mock_exams",
   },
