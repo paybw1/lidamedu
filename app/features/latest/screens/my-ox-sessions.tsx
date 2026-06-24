@@ -14,13 +14,17 @@ import { Link, data, useNavigate } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
+import { scoreBgTone } from "~/core/lib/chart-colors";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import {
   MCQ_PACK_KIND_LABELS,
   MCQ_PACK_SUBJECT_LABELS,
 } from "~/features/mcq-packs/labels";
-import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
+import {
+  type OxSessionRow,
+  listMyOxSessions,
+} from "~/features/mcq-packs/queries.server";
 import {
   ALL_RANGE_SELECTION,
   type RangeSelection,
@@ -62,6 +66,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
   const [subjectSel, setSubjectSel] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"recent" | "byPack">("recent");
   // 이력에 등장한 과목(subject_scope)만 필터 후보로.
   const availableSubjects = [
     ...new Set(
@@ -133,6 +138,21 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
             ))}
           </div>
         ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-[11px]">보기</span>
+          <SubjectChip
+            active={viewMode === "recent"}
+            onClick={() => setViewMode("recent")}
+          >
+            회차순
+          </SubjectChip>
+          <SubjectChip
+            active={viewMode === "byPack"}
+            onClick={() => setViewMode("byPack")}
+          >
+            팩별 추이
+          </SubjectChip>
+        </div>
       </header>
 
       {visible.length === 0 ? (
@@ -149,6 +169,8 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
             )}
           </p>
         </div>
+      ) : viewMode === "byPack" ? (
+        <PackTrendView sessions={visible} />
       ) : (
         <ul className="space-y-2">
           {visible.map((s) => (
@@ -185,6 +207,145 @@ function SubjectChip({
     >
       {children}
     </button>
+  );
+}
+
+// ── 팩별 추이(같은 팩 반복 응시 정답률 변화) ──────────────────────────────
+interface PackGroup {
+  packId: string | null;
+  packTitle: string | null;
+  packKind: string | null;
+  packSubjectScope: string | null;
+  attempts: OxSessionRow[]; // 오래된 → 최신
+  latestKey: string;
+}
+
+// 입력은 최신순(loader completed_at desc). 팩별로 묶고 각 그룹은 오래된→최신으로 뒤집는다.
+// packId 없는(삭제된) 팩은 묶지 않고 회차별 단독 그룹.
+function groupSessionsByPack(sessions: OxSessionRow[]): PackGroup[] {
+  const map = new Map<string, OxSessionRow[]>();
+  for (const s of sessions) {
+    const key = s.packId ?? `__del__:${s.sessionId}`;
+    const arr = map.get(key) ?? [];
+    arr.push(s);
+    map.set(key, arr);
+  }
+  return [...map.values()]
+    .map((arr) => ({
+      packId: arr[0].packId,
+      packTitle: arr[0].packTitle,
+      packKind: arr[0].packKind,
+      packSubjectScope: arr[0].packSubjectScope,
+      attempts: [...arr].reverse(),
+      latestKey: arr[0].completedAt ?? arr[0].startedAt,
+    }))
+    .sort((a, b) => (a.latestKey < b.latestKey ? 1 : -1));
+}
+
+function PackTrendView({ sessions }: { sessions: OxSessionRow[] }) {
+  const groups = groupSessionsByPack(sessions);
+  return (
+    <div className="space-y-2">
+      {groups.map((g) => (
+        <PackTrendCard key={g.packId ?? g.attempts[0].sessionId} group={g} />
+      ))}
+    </div>
+  );
+}
+
+function PackTrendCard({ group }: { group: PackGroup }) {
+  const attempts = group.attempts.map((s) => ({
+    sessionId: s.sessionId,
+    rate: s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0,
+    date: (s.completedAt ?? s.startedAt).slice(0, 10),
+  }));
+  const first = attempts[0].rate;
+  const latest = attempts[attempts.length - 1].rate;
+  const delta = latest - first;
+  const multi = attempts.length >= 2;
+  return (
+    <div className="bg-card rounded-xl border p-3.5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground truncate text-sm font-semibold">
+            {group.packTitle ?? "(팩 삭제됨)"}
+          </p>
+          <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+            {group.packKind && (
+              <Badge variant="outline" className="font-normal">
+                {MCQ_PACK_KIND_LABELS[
+                  group.packKind as keyof typeof MCQ_PACK_KIND_LABELS
+                ] ?? group.packKind}
+              </Badge>
+            )}
+            {group.packSubjectScope && (
+              <Badge variant="outline" className="font-normal">
+                {MCQ_PACK_SUBJECT_LABELS[
+                  group.packSubjectScope as keyof typeof MCQ_PACK_SUBJECT_LABELS
+                ] ?? group.packSubjectScope}
+              </Badge>
+            )}
+            <span className="tabular-nums">{attempts.length}회 응시</span>
+          </div>
+        </div>
+        <div className="shrink-0 text-right text-xs tabular-nums">
+          {multi ? (
+            <span
+              className={cn(
+                "font-semibold",
+                delta > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : delta < 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-muted-foreground",
+              )}
+            >
+              {first}% → {latest}%
+              {delta !== 0
+                ? ` (${delta > 0 ? "▲" : "▼"}${Math.abs(delta)})`
+                : ""}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">최근 {latest}%</span>
+          )}
+        </div>
+      </div>
+      <div className="mt-2">
+        <Sparkline attempts={attempts} />
+      </div>
+      {group.packId && group.packTitle ? (
+        <Link
+          to={`/latest/mcq/${group.packId}/ox-exam`}
+          className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-0.5 text-[11px]"
+        >
+          <RotateCcwIcon className="size-3" /> 다시 풀기
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+// 정답률 스파크라인 — 막대 높이=정답률, 색=scoreBgTone(성과 SSOT·다크 안전). 막대 클릭=회차 결과.
+function Sparkline({
+  attempts,
+}: {
+  attempts: { sessionId: string; rate: number; date: string }[];
+}) {
+  return (
+    <div className="flex h-9 items-end gap-1">
+      {attempts.map((a) => (
+        <Link
+          key={a.sessionId}
+          to={`/me/ox-sessions/${a.sessionId}`}
+          title={`${a.date} · 정답률 ${a.rate}%`}
+          className={cn(
+            "w-4 rounded-sm transition-opacity hover:opacity-80",
+            scoreBgTone(a.rate),
+          )}
+          style={{ height: `${Math.max(12, a.rate)}%` }}
+        />
+      ))}
+    </div>
   );
 }
 

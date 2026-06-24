@@ -33,4 +33,4 @@
 - ✅ **과목 필터**: 이력에 등장한 subject_scope 칩 필터(전체+과목) — RangeSelection과 AND.
 - ✅ **진입 동선**: 이력 헤더 "정오문제 풀러 가기" CTA(→ `/latest/mcq?kind=past_exam`, OX 지문 풍부한 기출).
 - ⏸ **의도(미변경)**: per-item `time_spent_ms` 균등분배 — OX는 지문별 시간 미노출 + **합계는 정확**(KPI 총학습시간) → 실측 미구축(YAGNI). **미응답 무기록** — 무응답=데이터 아님(약점진단·SRS 오염 방지), 미응답은 회차 결과 뷰에 표시됨.
-- 🔲 **팩별 그룹/추이(trend)**: 같은 팩 반복 응시 향상 시각화 — 별도 설계(데이터 누적 후). 현재는 결과 뷰로 회차별 리뷰 가능.
+- ✅ **팩별 추이(trend)**: `/me/ox-sessions` "보기: 회차순/팩별 추이" 토글. 같은 팩 회차를 묶어 first%→latest% delta(▲/▼) + **정답률 스파크라인**(`scoreBgTone` chart-colors SSOT·다크 안전, 막대 클릭=회차 결과뷰) + 다시 풀기. range·과목 필터와 함께 동작. **로더 변경 0**(기존 sessions 그룹핑). 표본=최근 100회차(limit).
