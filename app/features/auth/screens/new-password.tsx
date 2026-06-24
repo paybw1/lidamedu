@@ -19,7 +19,7 @@ import { PALETTE, Reveal } from "~/features/home/lib/landing";
 const FONT = "Pretendard, sans-serif";
 
 export const meta: Route.MetaFunction = () => [
-  { title: `새 비밀번호 | ${import.meta.env.VITE_APP_NAME}` },
+  { title: `새 비밀번호 | 리담변리사학원` },
 ];
 
 const schema = z

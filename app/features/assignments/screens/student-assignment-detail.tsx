@@ -26,8 +26,8 @@ import {
 import type { Route } from "./+types/student-assignment-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d) return [{ title: "과제 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.detail.title} | Lidam Patent Attorney Academy` }];
+  if (!d) return [{ title: "과제 | 리담변리사학원" }];
+  return [{ title: `${d.detail.title} | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

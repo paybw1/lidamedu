@@ -35,8 +35,8 @@ const TARGET_TONE: Record<QnaTargetType, "primary" | "violet" | "amber"> = {
 };
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "Q&A | Lidam Patent Attorney Academy" }];
-  return [{ title: `${loaderData.thread.title} | Q&A | Lidam Patent Attorney Academy` }];
+  if (!loaderData) return [{ title: "Q&A | 리담변리사학원" }];
+  return [{ title: `${loaderData.thread.title} | Q&A | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

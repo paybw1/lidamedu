@@ -43,10 +43,10 @@ import { parseScienceBody } from "~/features/subjects/lib/science-body";
 import type { Route } from "./+types/problem-viewer";
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "자연과학 문제 | Lidam Patent Attorney Academy" }];
+  if (!ld) return [{ title: "자연과학 문제 | 리담변리사학원" }];
   return [
     {
-      title: `${ld.subjectMeta.name} 문제${ld.position ? ` ${ld.position.cur}/${ld.position.total}` : ""} | Lidam Patent Attorney Academy`,
+      title: `${ld.subjectMeta.name} 문제${ld.position ? ` ${ld.position.cur}/${ld.position.total}` : ""} | 리담변리사학원`,
     },
   ];
 };

@@ -36,7 +36,7 @@ import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 import type { Route } from "./+types/gs";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "온라인 GS | Lidam Patent Attorney Academy" },
+  { title: "온라인 GS | 리담변리사학원" },
 ];
 
 interface RoundView {

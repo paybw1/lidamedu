@@ -19,7 +19,7 @@ import { resolveTargetDisplay } from "../lib/target-display.server";
 import type { Route } from "./+types/qna-new";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "새 Q&A 질문 | Lidam Patent Attorney Academy" },
+  { title: "새 Q&A 질문 | 리담변리사학원" },
 ];
 
 // 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).

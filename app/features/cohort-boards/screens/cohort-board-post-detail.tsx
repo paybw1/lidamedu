@@ -31,7 +31,7 @@ import {
 import type { Route } from "./+types/cohort-board-post-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => [
-  { title: `${d?.post.title ?? "글"} | Lidam Patent Attorney Academy` },
+  { title: `${d?.post.title ?? "글"} | 리담변리사학원` },
 ];
 
 export async function loader({ request, params }: Route.LoaderArgs) {

@@ -29,7 +29,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "조문·판례 일괄 편집 | Lidam Patent Attorney Academy" },
+  { title: "조문·판례 일괄 편집 | 리담변리사학원" },
 ];
 
 interface RowResult {

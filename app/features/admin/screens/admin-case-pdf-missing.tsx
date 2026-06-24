@@ -23,7 +23,7 @@ import {
 import type { Route } from "./+types/admin-case-pdf-missing";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "전문 PDF 미적재 판례 | Lidam Patent Attorney Academy" },
+  { title: "전문 PDF 미적재 판례 | 리담변리사학원" },
 ];
 
 const FILTER_OPTIONS = ["all", "no_text", "text_only"] as const;

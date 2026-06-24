@@ -20,7 +20,7 @@ import { listExams } from "~/features/mcq-exams/queries.server";
 import type { Route } from "./+types/mcq-exam-index";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "1차 통합 모의고사 | Lidam Patent Attorney Academy" },
+  { title: "1차 통합 모의고사 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

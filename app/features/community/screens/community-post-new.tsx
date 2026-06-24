@@ -16,7 +16,7 @@ import type { Route } from "./+types/community-post-new";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
-    title: `${loaderData?.mode === "edit" ? "글 수정" : "새 글 작성"} | Lidam Patent Attorney Academy`,
+    title: `${loaderData?.mode === "edit" ? "글 수정" : "새 글 작성"} | 리담변리사학원`,
   },
 ];
 

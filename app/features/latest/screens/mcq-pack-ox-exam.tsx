@@ -252,10 +252,10 @@ export async function action({ params, request }: Route.ActionArgs) {
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack)
-    return [{ title: "정오문제 시험 | Lidam Patent Attorney Academy" }];
+    return [{ title: "정오문제 시험 | 리담변리사학원" }];
   return [
     {
-      title: `${d.pack.title} — 정오문제 시험 | Lidam Patent Attorney Academy`,
+      title: `${d.pack.title} — 정오문제 시험 | 리담변리사학원`,
     },
   ];
 };

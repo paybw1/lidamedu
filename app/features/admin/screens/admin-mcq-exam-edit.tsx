@@ -22,8 +22,8 @@ import type { Route } from "./+types/admin-mcq-exam-edit";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.exam
-      ? `${d.exam.title} 편집 | Lidam Patent Attorney Academy`
-      : "통합 모의고사 편집 | Lidam Patent Attorney Academy",
+      ? `${d.exam.title} 편집 | 리담변리사학원`
+      : "통합 모의고사 편집 | 리담변리사학원",
   },
 ];
 

@@ -31,7 +31,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "기출문제 판례 매칭 | Lidam Patent Attorney Academy" },
+  { title: "기출문제 판례 매칭 | 리담변리사학원" },
 ];
 
 // 사건번호 토큰 — "대법원 2019. 5. 9. 선고 2019후11541 판결" 같은 입력에서도 추출.

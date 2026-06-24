@@ -44,7 +44,7 @@ const TARGET_TONE: Record<QnaTargetType, "primary" | "violet" | "amber"> = {
   problem: "amber",
 };
 
-export const meta: Route.MetaFunction = () => [{ title: "Q&A | Lidam Patent Attorney Academy" }];
+export const meta: Route.MetaFunction = () => [{ title: "Q&A | 리담변리사학원" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);

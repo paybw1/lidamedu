@@ -69,10 +69,10 @@ import {
 import type { Route } from "./+types/admin-problem-edit";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "문제 편집 | Lidam Patent Attorney Academy" }];
+  if (!loaderData) return [{ title: "문제 편집 | 리담변리사학원" }];
   return [
     {
-      title: `문제 #${loaderData.problem.problemNumber ?? "?"} 편집 | Lidam Patent Attorney Academy`,
+      title: `문제 #${loaderData.problem.problemNumber ?? "?"} 편집 | 리담변리사학원`,
     },
   ];
 };

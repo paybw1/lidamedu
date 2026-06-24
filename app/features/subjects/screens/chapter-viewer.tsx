@@ -97,10 +97,10 @@ const LEVEL_KOREAN: Record<string, string> = {
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData)
-    return [{ title: "조문 그룹 | Lidam Patent Attorney Academy" }];
+    return [{ title: "조문 그룹 | 리담변리사학원" }];
   return [
     {
-      title: `${loaderData.subject.name} ${loaderData.chapter.displayLabel} | Lidam Patent Attorney Academy`,
+      title: `${loaderData.subject.name} ${loaderData.chapter.displayLabel} | 리담변리사학원`,
     },
   ];
 };

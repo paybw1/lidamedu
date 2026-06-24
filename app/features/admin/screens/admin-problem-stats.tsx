@@ -36,7 +36,7 @@ import {
 import type { Route } from "./+types/admin-problem-stats";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "문제 통계 | Lidam Patent Attorney Academy" },
+  { title: "문제 통계 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

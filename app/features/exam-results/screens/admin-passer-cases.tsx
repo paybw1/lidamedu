@@ -55,7 +55,7 @@ import {
 import type { Route } from "./+types/admin-passer-cases";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격자 분석 | Lidam Patent Attorney Academy" },
+  { title: "합격자 분석 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

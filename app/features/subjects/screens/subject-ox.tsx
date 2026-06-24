@@ -16,8 +16,8 @@ import {
 import type { Route } from "./+types/subject-ox";
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "정오문제 풀이 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${ld.subject.name} 정오문제 | Lidam Patent Attorney Academy` }];
+  if (!ld) return [{ title: "정오문제 풀이 | 리담변리사학원" }];
+  return [{ title: `${ld.subject.name} 정오문제 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

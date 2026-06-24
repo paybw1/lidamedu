@@ -24,7 +24,7 @@ import {
 import type { Route } from "./+types/admin-relation-gaps";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "미배정 자료 | Lidam Patent Attorney Academy" },
+  { title: "미배정 자료 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

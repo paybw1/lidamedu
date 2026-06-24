@@ -24,7 +24,7 @@ import {
 import type { Route } from "./+types/science-index";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "자연과학 | Lidam Patent Attorney Academy" },
+  { title: "자연과학 | 리담변리사학원" },
 ];
 
 // earth_science 만 URL 표기가 다름(earth-science). 그 외는 동일.

@@ -64,7 +64,7 @@ export const meta: Route.MetaFunction = ({ data }) => {
         : f?.kind === "mock_progressive"
           ? "1차 진도별 모의고사"
           : "1차 기출문제";
-  return [{ title: `${title} | Lidam Patent Attorney Academy` }];
+  return [{ title: `${title} | 리담변리사학원` }];
 };
 
 // "mock" 은 mock_full + mock_progressive 통합 가상 옵션 — DB column 값이 아니다.

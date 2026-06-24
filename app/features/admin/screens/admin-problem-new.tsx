@@ -37,7 +37,7 @@ function lawCodeToPackScope(slug: string): string {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "문제 신규 출제 | Lidam Patent Attorney Academy" },
+  { title: "문제 신규 출제 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

@@ -38,7 +38,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "포스트잇 | Lidam Patent Attorney Academy" },
+  { title: "포스트잇 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

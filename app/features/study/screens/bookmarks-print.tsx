@@ -16,7 +16,7 @@ import type { Route } from "./+types/bookmarks-print";
 type BookmarkItem = Awaited<ReturnType<typeof listAllBookmarks>>[number];
 
 export const meta: Route.MetaFunction = () => [
-  { title: "즐겨찾기 복습 정리본 | Lidam Patent Attorney Academy" },
+  { title: "즐겨찾기 복습 정리본 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

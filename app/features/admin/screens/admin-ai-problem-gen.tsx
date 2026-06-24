@@ -22,7 +22,7 @@ import {
 import type { Route } from "./+types/admin-ai-problem-gen";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "AI 문제 초안 생성 | Lidam Patent Attorney Academy" },
+  { title: "AI 문제 초안 생성 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

@@ -28,7 +28,7 @@ import type { Route } from "./+types/srs-ox-review";
 type ReviewItem = OxQuestionItem & { lawCode: string | null };
 
 export const meta: Route.MetaFunction = () => [
-  { title: "정오문제 복습 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 복습 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

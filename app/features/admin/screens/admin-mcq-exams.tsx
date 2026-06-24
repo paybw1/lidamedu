@@ -17,7 +17,7 @@ import { listExams } from "~/features/mcq-exams/queries.server";
 import type { Route } from "./+types/admin-mcq-exams";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "통합 모의고사 출제 | Lidam Patent Attorney Academy" },
+  { title: "통합 모의고사 출제 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

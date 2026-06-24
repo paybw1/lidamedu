@@ -23,7 +23,7 @@ import type { Route } from "./+types/cohort-board-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
-    title: `${d?.board.title ?? "반별 게시판"} | Lidam Patent Attorney Academy`,
+    title: `${d?.board.title ?? "반별 게시판"} | 리담변리사학원`,
   },
 ];
 

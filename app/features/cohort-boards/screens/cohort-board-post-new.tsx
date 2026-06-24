@@ -34,7 +34,7 @@ function formatSize(n: number): string {
 
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
-    title: `${d?.mode === "edit" ? "글 수정" : "새 글 작성"} | Lidam Patent Attorney Academy`,
+    title: `${d?.mode === "edit" ? "글 수정" : "새 글 작성"} | 리담변리사학원`,
   },
 ];
 

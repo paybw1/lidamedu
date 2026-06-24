@@ -36,8 +36,8 @@ import type { Route } from "./+types/gs-peer-review";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 동료 채점 | Lidam Patent Attorney Academy`
-      : "동료 채점 | Lidam Patent Attorney Academy",
+      ? `${loaderData.round.title} 동료 채점 | 리담변리사학원`
+      : "동료 채점 | 리담변리사학원",
   },
 ];
 

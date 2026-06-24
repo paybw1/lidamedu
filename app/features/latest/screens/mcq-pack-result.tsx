@@ -47,8 +47,8 @@ import {
 import type { Route } from "./+types/mcq-pack-result";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.pack) return [{ title: "응시 결과 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.pack.title} 응시 결과 | Lidam Patent Attorney Academy` }];
+  if (!d || !d.pack) return [{ title: "응시 결과 | 리담변리사학원" }];
+  return [{ title: `${d.pack.title} 응시 결과 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

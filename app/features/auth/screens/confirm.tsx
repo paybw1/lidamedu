@@ -28,7 +28,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 export const meta: Route.MetaFunction = () => {
   return [
     {
-      title: `이메일 인증 | ${import.meta.env.VITE_APP_NAME}`,
+      title: `이메일 인증 | 리담변리사학원`,
     },
   ];
 };
@@ -123,7 +123,7 @@ export default function Confirm({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-2.5">
       {/* Display error heading */}
-      <h1 className="text-2xl font-semibold">Confirmation failed</h1>
+      <h1 className="text-2xl font-semibold">인증에 실패했습니다</h1>
       {/* Display specific error message from Supabase */}
       <p className="text-muted-foreground">{loaderData.error}</p>
     </div>

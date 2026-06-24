@@ -22,8 +22,8 @@ import type { Route } from "./+types/latest-case-viewer";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.kase
-      ? `${d.kase.caseNumber} | Lidam Patent Attorney Academy`
-      : "판례 | Lidam Patent Attorney Academy",
+      ? `${d.kase.caseNumber} | 리담변리사학원`
+      : "판례 | 리담변리사학원",
   },
 ];
 

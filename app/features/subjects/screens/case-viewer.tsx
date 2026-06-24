@@ -83,11 +83,11 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "판례 | Lidam Patent Attorney Academy" }];
+  if (!loaderData) return [{ title: "판례 | 리담변리사학원" }];
   const c = loaderData.kase;
   return [
     {
-      title: `${loaderData.subject.name} ${c.caseNumber} | Lidam Patent Attorney Academy`,
+      title: `${loaderData.subject.name} ${c.caseNumber} | 리담변리사학원`,
     },
   ];
 };

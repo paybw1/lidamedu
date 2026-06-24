@@ -35,7 +35,7 @@ import {
 import type { Route } from "./+types/my-ox-wrong-note";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "정오문제 오답 노트 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 오답 노트 | 리담변리사학원" },
 ];
 
 const submitItemSchema = z.object({

@@ -30,7 +30,7 @@ import {
 import type { Route } from "./+types/admin-gs-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "온라인 GS 관리 | Lidam Patent Attorney Academy" },
+  { title: "온라인 GS 관리 | 리담변리사학원" },
 ];
 
 const STATUS_LABEL: Record<GsRoundStatus, string> = {

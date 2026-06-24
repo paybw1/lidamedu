@@ -41,7 +41,7 @@ import {
 import type { Route } from "./+types/admin-ox-review";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "정오문제 관리 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 관리 | 리담변리사학원" },
 ];
 
 const STATUS_OPTIONS: { value: OxReviewStatus; label: string; hint: string }[] = [

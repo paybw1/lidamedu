@@ -9,7 +9,7 @@ import {
 } from "~/features/subjects/lib/science.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "지구과학 | Lidam Patent Attorney Academy" },
+  { title: "지구과학 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

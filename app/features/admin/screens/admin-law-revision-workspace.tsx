@@ -56,10 +56,10 @@ import {
 import type { Route } from "./+types/admin-law-revision-workspace";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.revision) return [{ title: "법 개정 | Lidam Patent Attorney Academy" }];
+  if (!d || !d.revision) return [{ title: "법 개정 | 리담변리사학원" }];
   return [
     {
-      title: `${d.subjectName} ${d.revision.revisionNumber} | Lidam Patent Attorney Academy`,
+      title: `${d.subjectName} ${d.revision.revisionNumber} | 리담변리사학원`,
     },
   ];
 };

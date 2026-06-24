@@ -38,8 +38,8 @@ import { roleAtLeast } from "~/core/lib/roles";
 import type { Route } from "./+types/admin-cohort-assignments";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.cohort) return [{ title: "과제 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.cohort.name} 과제 | Lidam Patent Attorney Academy` }];
+  if (!d || !d.cohort) return [{ title: "과제 | 리담변리사학원" }];
+  return [{ title: `${d.cohort.name} 과제 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

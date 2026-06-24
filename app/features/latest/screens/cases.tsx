@@ -50,7 +50,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "최근 판례 | Lidam Patent Attorney Academy" },
+  { title: "최근 판례 | 리담변리사학원" },
 ];
 
 const LIST_COLUMNS =

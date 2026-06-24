@@ -26,8 +26,8 @@ import type { Route } from "./+types/admin-gs-series-stats";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.series
-      ? `${loaderData.series.title} 통계 | Lidam Patent Attorney Academy`
-      : "시리즈 통계 | Lidam Patent Attorney Academy",
+      ? `${loaderData.series.title} 통계 | 리담변리사학원`
+      : "시리즈 통계 | 리담변리사학원",
   },
 ];
 

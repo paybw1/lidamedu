@@ -18,7 +18,7 @@ import { getOxSessionResult } from "~/features/mcq-packs/queries.server";
 import { QuestionCard } from "~/features/problems/components/ox-question-card";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "정오문제 회차 결과 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 회차 결과 | 리담변리사학원" },
 ];
 
 export async function loader({ params, request }: Route.LoaderArgs) {

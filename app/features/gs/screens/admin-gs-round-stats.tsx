@@ -30,8 +30,8 @@ import type { Route } from "./+types/admin-gs-round-stats";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 통계 | Lidam Patent Attorney Academy`
-      : "회차 통계 | Lidam Patent Attorney Academy",
+      ? `${loaderData.round.title} 통계 | 리담변리사학원`
+      : "회차 통계 | 리담변리사학원",
   },
 ];
 

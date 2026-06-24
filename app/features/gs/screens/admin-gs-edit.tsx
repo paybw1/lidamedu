@@ -61,8 +61,8 @@ import type { Route } from "./+types/admin-gs-edit";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 편집 | Lidam Patent Attorney Academy`
-      : "새 GS 회차 | Lidam Patent Attorney Academy",
+      ? `${loaderData.round.title} 편집 | 리담변리사학원`
+      : "새 GS 회차 | 리담변리사학원",
   },
 ];
 

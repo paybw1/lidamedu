@@ -29,7 +29,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "운영관리 | Lidam Patent Attorney Academy" },
+  { title: "운영관리 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

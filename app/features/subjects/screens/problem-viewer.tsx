@@ -107,10 +107,10 @@ import {
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<img\b/i;
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "문제 | Lidam Patent Attorney Academy" }];
+  if (!loaderData) return [{ title: "문제 | 리담변리사학원" }];
   return [
     {
-      title: `${loaderData.subject.name} 객관식 #${loaderData.problem.problemNumber ?? "?"} | Lidam Patent Attorney Academy`,
+      title: `${loaderData.subject.name} 객관식 #${loaderData.problem.problemNumber ?? "?"} | 리담변리사학원`,
     },
   ];
 };

@@ -26,7 +26,7 @@ import {
 import type { Route } from "./+types/gs-issues";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "논점 추출 훈련 | Lidam Patent Attorney Academy" },
+  { title: "논점 추출 훈련 | 리담변리사학원" },
 ];
 
 const SUBJECT_OPTIONS: Array<{ value: LawSubjectSlug | "all"; label: string }> = [

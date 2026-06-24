@@ -103,10 +103,10 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "조문 | Lidam Patent Attorney Academy" }];
+  if (!loaderData) return [{ title: "조문 | 리담변리사학원" }];
   return [
     {
-      title: `${loaderData.subject.name} ${loaderData.article.displayLabel} | Lidam Patent Attorney Academy`,
+      title: `${loaderData.subject.name} ${loaderData.article.displayLabel} | 리담변리사학원`,
     },
   ];
 };

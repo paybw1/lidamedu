@@ -130,9 +130,9 @@ function captureRangeContext(
 }
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "빈칸 자료 (전체) | Lidam Patent Attorney Academy" }];
+  if (!loaderData) return [{ title: "빈칸 자료 (전체) | 리담변리사학원" }];
   return [
-    { title: `${loaderData.lawCode} 빈칸 자료 (전체) | Lidam Patent Attorney Academy` },
+    { title: `${loaderData.lawCode} 빈칸 자료 (전체) | 리담변리사학원` },
   ];
 };
 

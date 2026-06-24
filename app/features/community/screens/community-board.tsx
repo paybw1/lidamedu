@@ -31,7 +31,7 @@ import type { Route } from "./+types/community-board";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
-    title: `${loaderData ? BOARD_LABEL[loaderData.board] : "커뮤니티"} | Lidam Patent Attorney Academy`,
+    title: `${loaderData ? BOARD_LABEL[loaderData.board] : "커뮤니티"} | 리담변리사학원`,
   },
 ];
 

@@ -16,7 +16,7 @@ import {
 import { listStudentAssignments } from "~/features/assignments/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "과제 | Lidam Patent Attorney Academy" },
+  { title: "과제 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

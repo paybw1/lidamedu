@@ -39,7 +39,7 @@ import type { Route } from "./+types/community-post-detail";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
-    title: `${loaderData ? loaderData.post.title : "커뮤니티"} | Lidam Patent Attorney Academy`,
+    title: `${loaderData ? loaderData.post.title : "커뮤니티"} | 리담변리사학원`,
   },
 ];
 

@@ -23,7 +23,7 @@ import {
 } from "~/features/student-notes/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "상담 코멘트 | Lidam Patent Attorney Academy" },
+  { title: "상담 코멘트 | 리담변리사학원" },
 ];
 
 function formatDate(iso: string): string {

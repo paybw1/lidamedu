@@ -43,7 +43,7 @@ import {
 } from "~/features/exam-results/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격 결과 | Lidam Patent Attorney Academy" },
+  { title: "합격 결과 | 리담변리사학원" },
 ];
 
 const upsertSchema = z.object({

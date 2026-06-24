@@ -47,7 +47,7 @@ import {
 import type { Route } from "./+types/admin-problem-review";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "문제 검증·승인 큐 | Lidam Patent Attorney Academy" },
+  { title: "문제 검증·승인 큐 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

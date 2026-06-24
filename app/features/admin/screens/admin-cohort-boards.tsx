@@ -25,7 +25,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-cohort-boards";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "반별 게시판 | Lidam Patent Attorney Academy" },
+  { title: "반별 게시판 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

@@ -31,8 +31,8 @@ const SCALE_STEP = 0.25;
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   const t = d?.title
-    ? `${d.title} | Lidam Patent Attorney Academy`
-    : "강의노트 | Lidam Patent Attorney Academy";
+    ? `${d.title} | 리담변리사학원`
+    : "강의노트 | 리담변리사학원";
   return [{ title: t }];
 };
 

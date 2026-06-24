@@ -25,8 +25,8 @@ const COUNT_OPTS = [10, 20, 30, 50] as const;
 const PER_PROBLEM_LIMIT_SEC = 60;
 
 export const meta: Route.MetaFunction = ({ data: ld }) => {
-  if (!ld) return [{ title: "자연과학 맞춤 퀴즈 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${ld.subjectMeta.name} 맞춤 퀴즈 | Lidam Patent Attorney Academy` }];
+  if (!ld) return [{ title: "자연과학 맞춤 퀴즈 | 리담변리사학원" }];
+  return [{ title: `${ld.subjectMeta.name} 맞춤 퀴즈 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

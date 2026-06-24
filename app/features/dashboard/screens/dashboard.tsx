@@ -105,7 +105,7 @@ import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
 import { getActiveSubscription } from "~/features/subscriptions/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "대시보드 | Lidam Patent Attorney Academy" },
+  { title: "대시보드 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

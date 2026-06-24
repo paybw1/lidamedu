@@ -45,7 +45,7 @@ import {
 import type { Route } from "./+types/admin-cases";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "판례 매핑 관리 | Lidam Patent Attorney Academy" },
+  { title: "판례 매핑 관리 | 리담변리사학원" },
 ];
 
 const MIN_YEAR = 1900;

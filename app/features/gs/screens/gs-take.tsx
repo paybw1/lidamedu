@@ -40,8 +40,8 @@ import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} | Lidam Patent Attorney Academy`
-      : "GS 응시 | Lidam Patent Attorney Academy",
+      ? `${loaderData.round.title} | 리담변리사학원`
+      : "GS 응시 | 리담변리사학원",
   },
 ];
 

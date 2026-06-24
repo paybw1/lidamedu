@@ -32,7 +32,7 @@ import {
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   const name = d && "subject" in d ? d.subject.name : "법령";
-  return [{ title: `${name} 완성도 | Lidam Patent Attorney Academy` }];
+  return [{ title: `${name} 완성도 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

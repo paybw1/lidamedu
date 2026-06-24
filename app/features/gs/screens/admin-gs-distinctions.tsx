@@ -43,8 +43,8 @@ import type { Route } from "./+types/admin-gs-distinctions";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 우수 답안 | Lidam Patent Attorney Academy`
-      : "우수 답안 선정 | Lidam Patent Attorney Academy",
+      ? `${loaderData.round.title} 우수 답안 | 리담변리사학원`
+      : "우수 답안 선정 | 리담변리사학원",
   },
 ];
 

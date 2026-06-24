@@ -47,7 +47,7 @@ import {
 import type { Route } from "./+types/laws";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "법 개정 | Lidam Patent Attorney Academy" },
+  { title: "법 개정 | 리담변리사학원" },
 ];
 
 interface Filters {

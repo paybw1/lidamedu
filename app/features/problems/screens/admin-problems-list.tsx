@@ -33,7 +33,7 @@ import {
 import type { Route } from "./+types/admin-problems-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "객관식 문제 관리 | Lidam Patent Attorney Academy" },
+  { title: "객관식 문제 관리 | 리담변리사학원" },
 ];
 
 const ORIGINS: ProblemOrigin[] = [

@@ -186,7 +186,7 @@ function parseRangeSelection(params: URLSearchParams): RangeSelection {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "학습현황 | Lidam Patent Attorney Academy" },
+  { title: "학습현황 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

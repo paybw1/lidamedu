@@ -58,7 +58,7 @@ import {
 import type { Route } from "./+types/book-updates";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "추록·정오표 | Lidam Patent Attorney Academy" },
+  { title: "추록·정오표 | 리담변리사학원" },
 ];
 
 const KIND_OPTIONS: Array<{ value: BookUpdateKind | "all"; label: string }> = [

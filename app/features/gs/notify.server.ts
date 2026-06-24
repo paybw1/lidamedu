@@ -122,7 +122,7 @@ async function sendEmail(
     await resendClient.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: `[Lidam Patent Attorney Academy] 동료 채점 ${assignedCount}건 배정 — ${round.title}`,
+      subject: `[리담변리사학원] 동료 채점 ${assignedCount}건 배정 — ${round.title}`,
       html,
     });
   } catch (err) {

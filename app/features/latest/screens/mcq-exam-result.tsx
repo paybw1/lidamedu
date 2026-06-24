@@ -22,11 +22,11 @@ import type { Route } from "./+types/mcq-exam-result";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d?.breakdown) {
-    return [{ title: "응시 결과 | Lidam Patent Attorney Academy" }];
+    return [{ title: "응시 결과 | 리담변리사학원" }];
   }
   return [
     {
-      title: `${d.breakdown.examTitle} 응시 결과 | Lidam Patent Attorney Academy`,
+      title: `${d.breakdown.examTitle} 응시 결과 | 리담변리사학원`,
     },
   ];
 };

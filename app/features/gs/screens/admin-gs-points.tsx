@@ -18,7 +18,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-gs-points";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "GS 포인트 관리 | Lidam Patent Attorney Academy" },
+  { title: "GS 포인트 관리 | 리담변리사학원" },
 ];
 
 const grantSchema = z.object({

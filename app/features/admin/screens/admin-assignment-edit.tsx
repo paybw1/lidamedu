@@ -53,8 +53,8 @@ import { roleAtLeast } from "~/core/lib/roles";
 import type { Route } from "./+types/admin-assignment-edit";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.assignment) return [{ title: "과제 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.assignment.title} | Lidam Patent Attorney Academy` }];
+  if (!d || !d.assignment) return [{ title: "과제 | 리담변리사학원" }];
+  return [{ title: `${d.assignment.title} | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

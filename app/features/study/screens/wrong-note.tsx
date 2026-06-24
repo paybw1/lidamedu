@@ -42,7 +42,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "오답노트 | Lidam Patent Attorney Academy" },
+  { title: "오답노트 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

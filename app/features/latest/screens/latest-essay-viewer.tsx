@@ -17,8 +17,8 @@ import type { Route } from "./+types/latest-essay-viewer";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.problem
-      ? `2차 기출문제 ${d.problem.year ?? ""} | Lidam Patent Attorney Academy`
-      : "2차 기출문제 | Lidam Patent Attorney Academy",
+      ? `2차 기출문제 ${d.problem.year ?? ""} | 리담변리사학원`
+      : "2차 기출문제 | 리담변리사학원",
   },
 ];
 

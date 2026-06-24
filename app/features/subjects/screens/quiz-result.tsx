@@ -27,8 +27,8 @@ import {
 import type { Route } from "./+types/quiz-result";
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
-  if (!loaderData) return [{ title: "퀴즈 결과 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${loaderData.subject.name} 퀴즈 결과 | Lidam Patent Attorney Academy` }];
+  if (!loaderData) return [{ title: "퀴즈 결과 | 리담변리사학원" }];
+  return [{ title: `${loaderData.subject.name} 퀴즈 결과 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

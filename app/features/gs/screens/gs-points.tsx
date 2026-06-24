@@ -20,7 +20,7 @@ import {
 import type { Route } from "./+types/gs-points";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "GS 포인트 | Lidam Patent Attorney Academy" },
+  { title: "GS 포인트 | 리담변리사학원" },
 ];
 
 const SOURCE_LABEL: Record<string, string> = {

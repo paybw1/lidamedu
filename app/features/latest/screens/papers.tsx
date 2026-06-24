@@ -59,7 +59,7 @@ import {
 
 import type { Route } from "./+types/papers";
 
-export const meta: Route.MetaFunction = () => [{ title: "논문 | Lidam Patent Attorney Academy" }];
+export const meta: Route.MetaFunction = () => [{ title: "논문 | 리담변리사학원" }];
 
 interface PaperFilters {
   q: string;

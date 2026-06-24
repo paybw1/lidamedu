@@ -37,7 +37,7 @@ import {
 import type { Route } from "./+types/essay";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "2차 기출문제 | Lidam Patent Attorney Academy" },
+  { title: "2차 기출문제 | 리담변리사학원" },
 ];
 
 interface Filters {

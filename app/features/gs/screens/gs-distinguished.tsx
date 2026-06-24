@@ -29,8 +29,8 @@ import type { Route } from "./+types/gs-distinguished";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.round
-      ? `${loaderData.round.title} 우수 답안 | Lidam Patent Attorney Academy`
-      : "우수 답안 | Lidam Patent Attorney Academy",
+      ? `${loaderData.round.title} 우수 답안 | 리담변리사학원`
+      : "우수 답안 | 리담변리사학원",
   },
 ];
 

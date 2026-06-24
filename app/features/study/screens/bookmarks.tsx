@@ -40,7 +40,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "즐겨찾기 | Lidam Patent Attorney Academy" },
+  { title: "즐겨찾기 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

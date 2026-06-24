@@ -27,7 +27,7 @@ import {
 import type { Route } from "./+types/admin-srs-cards";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "암기 카드 생성 | Lidam Patent Attorney Academy" },
+  { title: "암기 카드 생성 | 리담변리사학원" },
 ];
 
 const SOURCE_LABEL: Record<"article" | "case", string> = {

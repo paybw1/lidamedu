@@ -24,7 +24,7 @@ import {
 import type { Route } from "./+types/wrong-note-print";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "오답노트 복습 정리본 | Lidam Patent Attorney Academy" },
+  { title: "오답노트 복습 정리본 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

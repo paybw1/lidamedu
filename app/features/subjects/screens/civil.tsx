@@ -4,7 +4,7 @@ import { SubjectHub } from "../components/subject-hub";
 import { loadSubjectHub } from "../lib/loader.server";
 import { LAW_SUBJECTS } from "../lib/subjects";
 
-export const meta: Route.MetaFunction = () => [{ title: "민법 | Lidam Patent Attorney Academy" }];
+export const meta: Route.MetaFunction = () => [{ title: "민법 | 리담변리사학원" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   return loadSubjectHub(request, "civil");

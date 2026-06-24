@@ -31,7 +31,7 @@ import {
 import { upsertStudyGoals } from "~/features/goals/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "환영합니다 | Lidam Patent Attorney Academy" },
+  { title: "환영합니다 | 리담변리사학원" },
 ];
 
 const TOTAL_STEPS = 3;

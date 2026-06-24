@@ -37,8 +37,8 @@ import type { Route } from "./+types/admin-gs-series-edit";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.series
-      ? `${loaderData.series.title} | Lidam Patent Attorney Academy`
-      : "새 시리즈 | Lidam Patent Attorney Academy",
+      ? `${loaderData.series.title} | 리담변리사학원`
+      : "새 시리즈 | 리담변리사학원",
   },
 ];
 

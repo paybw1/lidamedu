@@ -67,7 +67,7 @@ import {
 import { getStudyAidCounts } from "~/features/study/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "AI Q&A | Lidam Patent Attorney Academy" },
+  { title: "AI Q&A | 리담변리사학원" },
 ];
 
 // ── loader ────────────────────────────────────────────────────────────────

@@ -30,7 +30,7 @@ import { Button } from "~/core/components/ui/button";
 export const meta: Route.MetaFunction = () => {
   return [
     {
-      title: `Sentry Test | ${import.meta.env.VITE_APP_NAME}`,
+      title: `Sentry Test | 리담변리사학원`,
     },
   ];
 };

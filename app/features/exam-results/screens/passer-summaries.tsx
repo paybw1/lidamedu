@@ -20,7 +20,7 @@ import {
 } from "~/features/exam-results/labels";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "합격자 학습 후기 | Lidam Patent Attorney Academy" },
+  { title: "합격자 학습 후기 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

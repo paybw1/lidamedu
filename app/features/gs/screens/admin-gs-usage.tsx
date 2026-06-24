@@ -19,7 +19,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-gs-usage";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "GS AI·OCR 사용량 | Lidam Patent Attorney Academy" },
+  { title: "GS AI·OCR 사용량 | 리담변리사학원" },
 ];
 
 interface CapConfig {

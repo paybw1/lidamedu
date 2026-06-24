@@ -52,8 +52,8 @@ import { requireFeature } from "~/features/subscriptions/queries.server";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack)
-    return [{ title: "문제집 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.pack.title} | Lidam Patent Attorney Academy` }];
+    return [{ title: "문제집 | 리담변리사학원" }];
+  return [{ title: `${d.pack.title} | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

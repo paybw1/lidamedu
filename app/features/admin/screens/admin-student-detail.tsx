@@ -81,8 +81,8 @@ import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
 import type { Route } from "./+types/admin-student-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.student) return [{ title: "학생 상세 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.student.name} 학생 진도 | Lidam Patent Attorney Academy` }];
+  if (!d || !d.student) return [{ title: "학생 상세 | 리담변리사학원" }];
+  return [{ title: `${d.student.name} 학생 진도 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

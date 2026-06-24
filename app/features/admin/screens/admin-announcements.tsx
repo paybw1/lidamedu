@@ -20,7 +20,7 @@ import { AnnouncementForm, AnnouncementRow } from "./announcement-form";
 import type { Route } from "./+types/admin-announcements";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "공지사항 | Lidam Patent Attorney Academy" },
+  { title: "공지사항 | 리담변리사학원" },
 ];
 
 interface Filters {

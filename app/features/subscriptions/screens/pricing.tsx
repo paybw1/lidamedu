@@ -18,7 +18,7 @@ import {
 } from "~/features/subscriptions/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "요금제 | Lidam Patent Attorney Academy" },
+  { title: "요금제 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

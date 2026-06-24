@@ -42,8 +42,8 @@ import type { Route } from "./+types/admin-gs-grade";
 export const meta: Route.MetaFunction = ({ data: loaderData }) => [
   {
     title: loaderData?.detail
-      ? `${loaderData.detail.studentName ?? "학생"} 채점 | Lidam Patent Attorney Academy`
-      : "GS 채점 | Lidam Patent Attorney Academy",
+      ? `${loaderData.detail.studentName ?? "학생"} 채점 | 리담변리사학원`
+      : "GS 채점 | 리담변리사학원",
   },
 ];
 

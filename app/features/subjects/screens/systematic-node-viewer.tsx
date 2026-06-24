@@ -92,10 +92,10 @@ const SHOW_NODE_MINI_GRAPH = false;
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData)
-    return [{ title: "체계도 그룹 | Lidam Patent Attorney Academy" }];
+    return [{ title: "체계도 그룹 | 리담변리사학원" }];
   return [
     {
-      title: `${loaderData.subject.name} ${stripSystematicNumber(loaderData.node.displayLabel)} | Lidam Patent Attorney Academy`,
+      title: `${loaderData.subject.name} ${stripSystematicNumber(loaderData.node.displayLabel)} | 리담변리사학원`,
     },
   ];
 };

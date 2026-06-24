@@ -48,7 +48,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "하이라이트 | Lidam Patent Attorney Academy" },
+  { title: "하이라이트 | 리담변리사학원" },
 ];
 
 // 4색 + 밑줄 — 사용자 데이터이므로 다색 유지 (brief §4.3). 밑줄(underline) 은

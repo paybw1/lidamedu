@@ -32,7 +32,7 @@ import trackEvent from "~/core/lib/analytics.client";
 export const meta: Route.MetaFunction = () => {
   return [
     {
-      title: `Google Tag Test | ${import.meta.env.VITE_APP_NAME}`,
+      title: `Google Tag Test | 리담변리사학원`,
     },
   ];
 };

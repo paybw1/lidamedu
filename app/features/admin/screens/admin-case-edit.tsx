@@ -68,9 +68,9 @@ import type { Route } from "./+types/admin-case-edit";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d?.kase)
-    return [{ title: "판례 등록 | Lidam Patent Attorney Academy" }];
+    return [{ title: "판례 등록 | 리담변리사학원" }];
   return [
-    { title: `${d.kase.case_number} 편집 | Lidam Patent Attorney Academy` },
+    { title: `${d.kase.case_number} 편집 | 리담변리사학원` },
   ];
 };
 

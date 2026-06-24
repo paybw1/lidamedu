@@ -34,7 +34,7 @@ import {
 } from "~/features/subscriptions/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "내 구독 | Lidam Patent Attorney Academy" },
+  { title: "내 구독 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

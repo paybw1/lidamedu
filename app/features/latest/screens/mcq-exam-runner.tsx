@@ -31,10 +31,10 @@ import type { Route } from "./+types/mcq-exam-runner";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d?.runner) {
-    return [{ title: "통합 모의고사 | Lidam Patent Attorney Academy" }];
+    return [{ title: "통합 모의고사 | 리담변리사학원" }];
   }
   return [
-    { title: `${d.runner.exam.title} | Lidam Patent Attorney Academy` },
+    { title: `${d.runner.exam.title} | 리담변리사학원` },
   ];
 };
 

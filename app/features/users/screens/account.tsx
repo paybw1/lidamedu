@@ -13,7 +13,7 @@ import EditProfileForm from "../components/forms/edit-profile-form";
 import { getUserProfile } from "../queries";
 
 export const meta: Route.MetaFunction = () => {
-  return [{ title: `내 계정 | ${import.meta.env.VITE_APP_NAME}` }];
+  return [{ title: `내 계정 | 리담변리사학원` }];
 };
 
 export async function loader({ request }: Route.LoaderArgs) {

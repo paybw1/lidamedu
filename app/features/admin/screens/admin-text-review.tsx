@@ -24,7 +24,7 @@ import { MarkdownView } from "~/features/problems/components/markdown-view";
 import type { Route } from "./+types/admin-text-review";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "지문 텍스트 검수 | Lidam Patent Attorney Academy" },
+  { title: "지문 텍스트 검수 | 리담변리사학원" },
 ];
 
 const SUBJECTS: { value: ScienceSubject; label: string }[] = [

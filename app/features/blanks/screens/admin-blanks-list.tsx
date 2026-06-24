@@ -26,7 +26,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-blanks-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "빈칸 자료 관리 | Lidam Patent Attorney Academy" },
+  { title: "빈칸 자료 관리 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

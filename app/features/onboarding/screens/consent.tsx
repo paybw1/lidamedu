@@ -15,7 +15,7 @@ import { setServiceDataConsent } from "~/features/exam-results/queries.server";
 import type { Route } from "./+types/consent";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "학습 데이터 활용 동의 | Lidam Patent Attorney Academy" },
+  { title: "학습 데이터 활용 동의 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

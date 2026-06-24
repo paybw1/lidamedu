@@ -54,7 +54,7 @@ export const meta: Route.MetaFunction = ({ data }) => {
   if (!data) {
     return [
       {
-        title: `404 Page Not Found | ${import.meta.env.VITE_APP_NAME}`,
+        title: `페이지를 찾을 수 없습니다 | 리담변리사학원`,
       },
     ];
   }
@@ -62,7 +62,7 @@ export const meta: Route.MetaFunction = ({ data }) => {
   // For valid policy documents, use frontmatter for metadata
   return [
     {
-      title: `${data.frontmatter.title} | ${import.meta.env.VITE_APP_NAME}`,
+      title: `${data.frontmatter.title} | 리담변리사학원`,
     },
     {
       name: "description",

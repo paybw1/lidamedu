@@ -36,8 +36,8 @@ import type { Route } from "./+types/admin-gs-issues";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.round
-      ? `${d.round.title} 논점 관리 | Lidam Patent Attorney Academy`
-      : "GS 논점 관리 | Lidam Patent Attorney Academy",
+      ? `${d.round.title} 논점 관리 | 리담변리사학원`
+      : "GS 논점 관리 | 리담변리사학원",
   },
 ];
 

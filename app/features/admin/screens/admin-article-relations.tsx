@@ -26,10 +26,10 @@ import {
 import type { Route } from "./+types/admin-article-relations";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d) return [{ title: "연관관계 편집 | Lidam Patent Attorney Academy" }];
+  if (!d) return [{ title: "연관관계 편집 | 리담변리사학원" }];
   return [
     {
-      title: `${d.relations?.article.displayLabel ?? "조문"} 연관관계 | Lidam Patent Attorney Academy`,
+      title: `${d.relations?.article.displayLabel ?? "조문"} 연관관계 | 리담변리사학원`,
     },
   ];
 };

@@ -20,7 +20,7 @@ import { KakaoLogo } from "../components/logos/kakao";
 const FONT = "Pretendard, sans-serif";
 
 export const meta: Route.MetaFunction = () => [
-  { title: `회원가입 | ${import.meta.env.VITE_APP_NAME}` },
+  { title: `회원가입 | 리담변리사학원` },
 ];
 
 const signupSchema = z.object({

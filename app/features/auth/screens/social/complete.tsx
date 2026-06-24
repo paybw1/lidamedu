@@ -26,7 +26,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 export const meta: Route.MetaFunction = () => {
   return [
     {
-      title: `로그인 | ${import.meta.env.VITE_APP_NAME}`,
+      title: `로그인 | 리담변리사학원`,
     },
   ];
 };

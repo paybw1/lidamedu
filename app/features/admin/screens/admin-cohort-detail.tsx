@@ -58,8 +58,8 @@ import { Chip } from "~/features/admin/components/admin-ui";
 import type { Route } from "./+types/admin-cohort-detail";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.cohort) return [{ title: "반 상세 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.cohort.name} | Lidam Patent Attorney Academy` }];
+  if (!d || !d.cohort) return [{ title: "반 상세 | 리담변리사학원" }];
+  return [{ title: `${d.cohort.name} | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

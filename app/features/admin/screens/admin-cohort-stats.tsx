@@ -42,8 +42,8 @@ import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import type { Route } from "./+types/admin-cohort-stats";
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
-  if (!d || !d.cohort) return [{ title: "반 통계 | Lidam Patent Attorney Academy" }];
-  return [{ title: `${d.cohort.name} 통계 | Lidam Patent Attorney Academy` }];
+  if (!d || !d.cohort) return [{ title: "반 통계 | 리담변리사학원" }];
+  return [{ title: `${d.cohort.name} 통계 | 리담변리사학원` }];
 };
 
 export async function loader({ params, request }: Route.LoaderArgs) {

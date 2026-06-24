@@ -34,7 +34,7 @@ import {
 } from "~/features/study/components/study-aids-list";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "정오문제 응시 이력 | Lidam Patent Attorney Academy" },
+  { title: "정오문제 응시 이력 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

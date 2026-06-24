@@ -26,7 +26,7 @@ import { roleAtLeast } from "~/core/lib/roles";
 import type { Route } from "./+types/admin-audit-logs";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "감사 로그 | Lidam Patent Attorney Academy" },
+  { title: "감사 로그 | 리담변리사학원" },
 ];
 
 const PAGE_SIZE = 50;

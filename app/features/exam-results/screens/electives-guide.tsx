@@ -11,7 +11,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { OFFICIAL_EXAM_STATS } from "~/features/exam-results/official-stats";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "2차 선택과목 가이드 | Lidam Patent Attorney Academy" },
+  { title: "2차 선택과목 가이드 | 리담변리사학원" },
 ];
 
 const SMALL_SAMPLE_THRESHOLD = 60; // 응시 sat 미만이면 표본 부족 경고

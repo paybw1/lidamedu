@@ -43,7 +43,7 @@ import {
 import type { Route } from "./+types/admin-cohorts";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "반 관리 | Lidam Patent Attorney Academy" },
+  { title: "반 관리 | 리담변리사학원" },
 ];
 
 interface Filters {
