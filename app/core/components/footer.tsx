@@ -28,16 +28,16 @@ export default function Footer() {
       <div className="mx-auto flex h-full w-full max-w-screen-2xl flex-col items-center justify-between gap-2.5 md:order-none md:flex-row md:gap-0">
         {/* Copyright notice - appears second on mobile, first on desktop */}
         <div className="order-2 md:order-none">
-          <p>Copyright (c) 리담지식재산교육원 주식회사 All Rights Reserved.</p>
+          <p>© 리담지식재산교육원 주식회사. 모든 권리 보유.</p>
         </div>
         
         {/* Legal links - appears first on mobile, second on desktop */}
         <div className="order-1 flex gap-10 *:underline md:order-none">
           <Link to="/legal/privacy-policy" viewTransition>
-            Privacy Policy
+            개인정보처리방침
           </Link>
           <Link to="/legal/terms-of-service" viewTransition>
-            Terms of Service
+            이용약관
           </Link>
         </div>
       </div>

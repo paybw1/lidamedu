@@ -94,7 +94,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
               <Suspense
                 fallback={
                   <NavigationBar
-                    name={user.user_metadata.name || "Anonymous"}
+                    name={user.user_metadata.name || "학습자"}
                     email={user.email}
                     avatarUrl={user.user_metadata.avatar_url}
                     loading={false}
@@ -105,7 +105,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                 <Await resolve={inboxPromise}>
                   {(inbox) => (
                     <NavigationBar
-                      name={user.user_metadata.name || "Anonymous"}
+                      name={user.user_metadata.name || "학습자"}
                       email={user.email}
                       avatarUrl={user.user_metadata.avatar_url}
                       loading={false}
@@ -157,7 +157,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       <StudentSidebar
                         isStaff={inbox.isStaff}
                         user={{
-                          name: user.user_metadata.name || "Anonymous",
+                          name: user.user_metadata.name || "학습자",
                           email: user.email,
                           avatarUrl: user.user_metadata.avatar_url,
                         }}
@@ -189,7 +189,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       inboxUnread={inbox.unread}
                       inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
                       user={{
-                        name: user.user_metadata.name || "Anonymous",
+                        name: user.user_metadata.name || "학습자",
                         email: user.email,
                         avatarUrl: user.user_metadata.avatar_url,
                       }}

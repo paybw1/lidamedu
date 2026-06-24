@@ -43,12 +43,12 @@ export default function ChangePasswordForm({
       <Card className="justify-between">
         <CardHeader>
           <CardTitle>
-            {hasPassword ? "Change password" : "Add password"}
+            {hasPassword ? "비밀번호 변경" : "비밀번호 추가"}
           </CardTitle>
           <CardDescription>
             {hasPassword
-              ? "Change your password."
-              : "Add a password to your account."}
+              ? "비밀번호를 변경합니다."
+              : "계정에 비밀번호를 추가합니다."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -58,7 +58,7 @@ export default function ChangePasswordForm({
                 htmlFor="password"
                 className="flex flex-col items-start gap-1"
               >
-                New password
+                새 비밀번호
               </Label>
               <Input id="password" name="password" required type="password" />
               {fetcher.data &&
@@ -72,7 +72,7 @@ export default function ChangePasswordForm({
                 htmlFor="confirmPassword"
                 className="flex flex-col items-start gap-1"
               >
-                Confirm new password
+                새 비밀번호 확인
               </Label>
               <Input
                 id="confirmPassword"
@@ -92,12 +92,12 @@ export default function ChangePasswordForm({
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <FetcherFormButton
-            label={hasPassword ? "Change password" : "Add password"}
+            label={hasPassword ? "비밀번호 변경" : "비밀번호 추가"}
             className="w-full"
             submitting={fetcher.state === "submitting"}
           />
           {fetcher.data && "success" in fetcher.data && fetcher.data.success ? (
-            <FormSuccess message="Password updated" />
+            <FormSuccess message="비밀번호가 변경되었습니다" />
           ) : null}
           {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
             <FormErrors errors={[fetcher.data.error]} />

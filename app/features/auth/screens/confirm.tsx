@@ -28,7 +28,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 export const meta: Route.MetaFunction = () => {
   return [
     {
-      title: `Confirm | ${import.meta.env.VITE_APP_NAME}`,
+      title: `이메일 인증 | ${import.meta.env.VITE_APP_NAME}`,
     },
   ];
 };
@@ -75,7 +75,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Return error if parameters are invalid
   if (!success) {
-    return data({ error: "Invalid confirmation code" }, { status: 400 });
+    return data({ error: "유효하지 않은 인증 링크입니다." }, { status: 400 });
   }
 
   // Create Supabase client and get response headers for auth cookies
@@ -88,14 +88,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Return error if verification fails
   if (error) {
-    return data({ error: error.message }, { status: 400 });
+    return data(
+      { error: "인증에 실패했습니다. 링크가 만료되었을 수 있습니다." },
+      { status: 400 },
+    );
   }
 
   // Special handling for email change confirmations
   if (validData.type === "email_change") {
     return redirect(
       // @ts-ignore - Supabase returns a message in the user object for email changes
-      `${validData.next}?message=${encodeURIComponent(verifyOtpData.user.msg ?? "Your email has been updated")}`,
+      `${validData.next}?message=${encodeURIComponent(verifyOtpData.user.msg ?? "이메일이 변경되었습니다")}`,
       { headers },
     );
   }

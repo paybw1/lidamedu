@@ -39,11 +39,11 @@ export default function ChangeEmailForm({ email }: { email: string }) {
     >
       <Card className="justify-between">
         <CardHeader>
-          <CardTitle>{email ? "Change email" : "Add email"}</CardTitle>
+          <CardTitle>{email ? "이메일 변경" : "이메일 추가"}</CardTitle>
           <CardDescription>
             {email
-              ? "Change your email address."
-              : "Add an email address to your account."}
+              ? "이메일 주소를 변경합니다."
+              : "계정에 이메일 주소를 추가합니다."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,7 +53,7 @@ export default function ChangeEmailForm({ email }: { email: string }) {
                 htmlFor="currentEmail"
                 className="flex flex-col items-start gap-1"
               >
-                Current email
+                현재 이메일
               </Label>
               <Input
                 id="currentEmail"
@@ -69,7 +69,7 @@ export default function ChangeEmailForm({ email }: { email: string }) {
                 htmlFor="email"
                 className="flex flex-col items-start gap-1"
               >
-                New email
+                새 이메일
               </Label>
               <Input id="email" name="email" required type="email" />
             </div>
@@ -77,13 +77,13 @@ export default function ChangeEmailForm({ email }: { email: string }) {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <FetcherFormButton
-            label={email ? "Change email" : "Add email"}
+            label={email ? "이메일 변경" : "이메일 추가"}
             className="w-full"
             submitting={fetcher.state === "submitting"}
             disabled={fetcher.state === "submitting"}
           />
           {fetcher.data && "success" in fetcher.data && fetcher.data.success ? (
-            <FormSuccess message="Email update process started. Please check your old email for a verification link." />
+            <FormSuccess message="이메일 변경 절차를 시작했습니다. 기존 이메일함에서 인증 링크를 확인해 주세요." />
           ) : null}
           {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
             <FormErrors errors={[fetcher.data.error]} />

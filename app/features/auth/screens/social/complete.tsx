@@ -26,7 +26,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 export const meta: Route.MetaFunction = () => {
   return [
     {
-      title: `Confirm | ${import.meta.env.VITE_APP_NAME}`,
+      title: `로그인 | ${import.meta.env.VITE_APP_NAME}`,
     },
   ];
 };
@@ -76,17 +76,20 @@ export async function loader({ request }: Route.LoaderArgs) {
   
   // If not a successful callback, check if it's an error callback
   if (!success) {
-    const { data: errorData, success: errorSuccess } = errorSchema.safeParse(
+    const { success: errorSuccess } = errorSchema.safeParse(
       Object.fromEntries(searchParams),
     );
     
     // If neither a successful nor error callback, return generic error
     if (!errorSuccess) {
-      return data({ error: "Invalid code" }, { status: 400 });
+      return data({ error: "유효하지 않은 접근입니다." }, { status: 400 });
     }
-    
-    // Return the error description from the provider
-    return data({ error: errorData.error_description }, { status: 400 });
+
+    // 제공자 측 거부·만료 — 학생에게는 한국어 안내(원문 영어 메시지 비노출)
+    return data(
+      { error: "로그인이 취소되었거나 만료되었습니다. 다시 시도해 주세요." },
+      { status: 400 },
+    );
   }
 
   // Create Supabase client and get response headers for auth cookies
@@ -97,7 +100,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Return error if session exchange fails
   if (error) {
-    return data({ error: error.message }, { status: 400 });
+    return data(
+      { error: "로그인을 완료하지 못했습니다. 다시 시도해 주세요." },
+      { status: 400 },
+    );
   }
 
   // Redirect to home page with auth cookies in headers
@@ -120,7 +126,7 @@ export default function Confirm({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-2.5">
       {/* Display error heading */}
-      <h1 className="text-2xl font-semibold">Login failed</h1>
+      <h1 className="text-2xl font-semibold">로그인에 실패했습니다</h1>
       {/* Display specific error message from the provider or Supabase */}
       <p className="text-muted-foreground">{loaderData.error}</p>
     </div>

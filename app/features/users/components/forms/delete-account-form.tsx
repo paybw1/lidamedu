@@ -19,7 +19,7 @@ export default function DeleteAccountForm() {
   return (
     <Card className="w-full max-w-screen-md bg-red-100 dark:bg-red-900/40">
       <CardHeader>
-        <CardTitle>Danger Zone</CardTitle>
+        <CardTitle>회원 탈퇴</CardTitle>
       </CardHeader>
       <CardContent>
         <fetcher.Form method="delete" className="space-y-4" action="/api/users">
@@ -30,7 +30,7 @@ export default function DeleteAccountForm() {
               required
               className="border-black dark:border-white"
             />
-            I confirm that I want to delete my account.
+            계정을 삭제(회원 탈퇴)하겠습니다.
           </Label>
           <Label>
             <Checkbox
@@ -39,7 +39,7 @@ export default function DeleteAccountForm() {
               required
               className="border-black dark:border-white"
             />
-            I understand that this action is irreversible.
+            이 작업은 되돌릴 수 없음을 이해합니다.
           </Label>
           <Button
             variant={"destructive"}
@@ -49,7 +49,7 @@ export default function DeleteAccountForm() {
             {fetcher.state === "submitting" ? (
               <Loader2Icon className="ml-2 size-4 animate-spin" />
             ) : (
-              "Delete account"
+              "회원 탈퇴"
             )}
           </Button>
           {fetcher.data?.error ? (

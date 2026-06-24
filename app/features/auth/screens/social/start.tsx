@@ -44,7 +44,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // Validate the provider parameter
   const { error, success, data: parsedParams } = paramsSchema.safeParse(params);
   if (!success) {
-    return data({ error: "Invalid provider" }, { status: 400 });
+    return data({ error: "지원하지 않는 로그인 방식입니다." }, { status: 400 });
   }
 
   // Create Supabase client and get response headers for auth cookies
@@ -76,7 +76,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // Return error if OAuth initialization fails
   if (signInError) {
-    return data({ error: signInError.message }, { status: 400 });
+    return data(
+      { error: "로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 400 },
+    );
   }
 
   // Redirect to the provider's authentication page with auth headers
@@ -103,7 +106,7 @@ export default function StartSocialLogin({ loaderData }: Route.ComponentProps) {
     <div className="flex flex-col items-center justify-center gap-2.5">
       {/* Display error message */}
       <h1 className="text-2xl font-semibold">{error}</h1>
-      <p className="text-muted-foreground">Please try again.</p>
+      <p className="text-muted-foreground">잠시 후 다시 시도해 주세요.</p>
     </div>
   );
 }
