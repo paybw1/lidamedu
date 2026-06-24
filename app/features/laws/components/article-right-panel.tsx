@@ -106,7 +106,7 @@ const PLACEHOLDER_TABS: PlaceholderTab[] = [
   {
     value: "comment",
     featId: "feat-4-A-115",
-    hint: "수험생·강사가 본문에 남기는 코멘트. 강사 코멘트는 모두에게, 수험생 코멘트는 본인에게만 보입니다.",
+    hint: "학생·강사가 본문에 남기는 코멘트. 강사 코멘트는 모두에게, 학생 코멘트는 본인에게만 보입니다.",
   },
 ];
 

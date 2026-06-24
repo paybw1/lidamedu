@@ -265,7 +265,7 @@ function CloseButton({ threadId }: { threadId: string }) {
       <input type="hidden" name="threadId" value={threadId} />
       <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
       <p className="text-muted-foreground min-w-[12rem] flex-1 text-[13px] leading-relaxed">
-        충분히 답변되었나요? 종료하면 다른 수험생에게 닫힌 스레드로 표시됩니다.
+        충분히 답변되었나요? 종료하면 다른 학생에게 닫힌 스레드로 표시됩니다.
       </p>
       <Button
         type="submit"
