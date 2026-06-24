@@ -1507,7 +1507,7 @@ function OxHistoryCompact({ sessions }: { sessions: StatsData["oxSessions"] }) {
                 className="flex items-center justify-between gap-3 py-2"
               >
                 <span className="text-foreground min-w-0 flex-1 truncate text-sm">
-                  {s.packTitle ?? "(팩 삭제됨)"}
+                  {s.packTitle ?? "(문제집 삭제됨)"}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="text-muted-foreground text-[11px] tabular-nums">

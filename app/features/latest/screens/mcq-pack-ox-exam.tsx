@@ -292,15 +292,15 @@ export default function McqPackOxExam({ loaderData }: Route.ComponentProps) {
   const modeLabel = mode === "study" ? "학습" : "시험";
   const desc =
     mode === "study"
-      ? `팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 정오문제 지문. 답을 누르면 즉시 정답·해설이 표시됩니다. 회차 이력에는 남지 않지만, 지문별 정오는 학습 분석에 반영됩니다.`
-      : `팩의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 정오문제 지문. 모두 풀고 제출하면 채점 결과를 표시하고 응시 이력에 저장합니다.`;
+      ? `문제집의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 정오문제 지문. 답을 누르면 즉시 정답·해설이 표시됩니다. 회차 이력에는 남지 않지만, 지문별 정오는 학습 분석에 반영됩니다.`
+      : `문제집의 ${pack.problemCount}개 문제에서 추출된 ${items.length}개 정오문제 지문. 모두 풀고 제출하면 채점 결과를 표시하고 응시 이력에 저장합니다.`;
   return (
     <McqAreaShell
       isMock
       width="feed"
       backLink={{
         to: `/latest/mcq/${pack.packId}`,
-        label: "팩 상세로",
+        label: "문제집 상세로",
       }}
       title={`${pack.title} — 정오문제 ${modeLabel}`}
       desc={desc}
@@ -323,15 +323,15 @@ function EmptyState({ packId }: { packId: string }) {
   return (
     <div className="border-border bg-card rounded-2xl border p-8 text-center shadow-sm">
       <p className="text-foreground font-semibold">
-        이 팩에 시험 가능한 정오문제 지문이 없습니다
+        이 문제집에 시험 가능한 정오문제 지문이 없습니다
       </p>
       <p className="text-muted-foreground mt-2 text-sm">
-        팩 문제의 보기·박스 항목에 정답이 설정되어 있지 않거나, 모두 정오문제
+        문제집 문제의 보기·박스 항목에 정답이 설정되어 있지 않거나, 모두 정오문제
         평가 부적합으로 표시되어 있습니다.
       </p>
       <Button asChild size="sm" className="mt-4">
         <Link to={`/latest/mcq/pack/${packId}`}>
-          <ArrowLeftIcon className="size-3.5" /> 팩 상세로
+          <ArrowLeftIcon className="size-3.5" /> 문제집 상세로
         </Link>
       </Button>
     </div>

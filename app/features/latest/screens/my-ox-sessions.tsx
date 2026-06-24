@@ -93,7 +93,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
           정오문제 응시 이력
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          1차 객관식 팩을 정오문제 시험 모드로 푼 이력. 정답률·미응답·소요
+          1차 객관식 문제집을 정오문제 시험 모드로 푼 이력. 정답률·미응답·소요
           시간을 한 눈에 확인합니다.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -150,7 +150,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
             active={viewMode === "byPack"}
             onClick={() => setViewMode("byPack")}
           >
-            팩별 추이
+            문제집별 추이
           </SubjectChip>
         </div>
       </header>
@@ -162,7 +162,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
             {sessions.length === 0 ? (
               <>
                 아직 정오문제 시험 응시 이력이 없습니다. 1차 모의고사 또는 기출
-                팩에서 <strong>정오문제 시험</strong> 버튼으로 풀어보세요.
+                문제집에서 <strong>정오문제 시험</strong> 버튼으로 풀어보세요.
               </>
             ) : (
               "선택한 기간에 해당하는 응시 이력이 없습니다."
@@ -268,7 +268,7 @@ function PackTrendCard({ group }: { group: PackGroup }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-foreground truncate text-sm font-semibold">
-            {group.packTitle ?? "(팩 삭제됨)"}
+            {group.packTitle ?? "(문제집 삭제됨)"}
           </p>
           <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
             {group.packKind && (
@@ -362,7 +362,7 @@ function SessionRow({
         {/* 클릭 = 회차 결과 보기. 재시작은 우측 "다시 풀기" 별도 버튼. */}
         <Link to={`/me/ox-sessions/${s.sessionId}`} className="min-w-0 flex-1">
           <p className="text-foreground line-clamp-2 text-sm font-semibold">
-            {s.packTitle ?? "(팩 삭제됨)"}
+            {s.packTitle ?? "(문제집 삭제됨)"}
           </p>
           <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
             {s.packKind && (

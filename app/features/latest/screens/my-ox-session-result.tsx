@@ -75,7 +75,7 @@ export default function MyOxSessionResult({
           </Link>
         </div>
         <h1 className="mt-2 text-xl font-bold tracking-tight">
-          {detail.packTitle ?? "(팩 삭제됨)"}
+          {detail.packTitle ?? "(문제집 삭제됨)"}
         </h1>
         <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
           {detail.packKind && (
@@ -140,7 +140,7 @@ export default function MyOxSessionResult({
 
       {detail.items.length === 0 ? (
         <p className="text-muted-foreground rounded-2xl border border-dashed py-10 text-center text-sm">
-          이 회차의 지문을 복원할 수 없습니다(팩이 변경·삭제되었을 수 있음).
+          이 회차의 지문을 복원할 수 없습니다(문제집이 변경·삭제되었을 수 있음).
         </p>
       ) : (
         <ol className="space-y-2.5">

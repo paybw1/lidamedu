@@ -55,7 +55,7 @@ export async function action({ request }: Route.ActionArgs) {
   // 단, exam 모드는 모의 pack 만.
   if (mode === "exam" && !isMockKind(pack.kind)) {
     return data(
-      { error: "이 팩은 모의고사 모드를 지원하지 않습니다." },
+      { error: "이 문제집은 모의고사 모드를 지원하지 않습니다." },
       { status: 400 },
     );
   }
@@ -78,7 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   const problemIds = await getPackProblemIds(client, packId);
   if (problemIds.length === 0) {
-    return data({ error: "팩에 문제가 없습니다." }, { status: 400 });
+    return data({ error: "문제집에 문제가 없습니다." }, { status: 400 });
   }
 
   // session 생성 시 law_code / science_subject 둘 중 하나가 필수 (DB check).
