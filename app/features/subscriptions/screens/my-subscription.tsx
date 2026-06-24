@@ -1,4 +1,5 @@
 // /me/subscription — 본인 구독 상태 + 결제 이력.
+import type { Route } from "./+types/my-subscription";
 
 import {
   CheckCircle2Icon,
@@ -19,20 +20,18 @@ import {
   TableHeader,
   TableRow,
 } from "~/core/components/ui/table";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import {
+  FEATURE_LABEL,
+  PAYMENT_STATUS_LABEL,
+  type PaymentStatus,
+  SUBSCRIPTION_STATUS_LABEL,
+} from "~/features/subscriptions/labels";
 import {
   getActiveSubscription,
   listMyPayments,
 } from "~/features/subscriptions/queries.server";
-import {
-  FEATURE_LABEL,
-  PAYMENT_STATUS_LABEL,
-  SUBSCRIPTION_STATUS_LABEL,
-  type PaymentStatus,
-} from "~/features/subscriptions/labels";
-
-import type { Route } from "./+types/my-subscription";
 
 export const meta: Route.MetaFunction = () => [
   { title: "내 구독 | Lidam Patent Attorney Academy" },
@@ -126,7 +125,7 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
                 {active.features.map((f) => (
                   <li
                     key={f}
-                    className="inline-flex items-center gap-1 text-xs mr-3"
+                    className="mr-3 inline-flex items-center gap-1 text-xs"
                   >
                     <CheckCircle2Icon className="size-3 text-emerald-600" />
                     {FEATURE_LABEL[f] ?? f}
@@ -144,7 +143,8 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
               </p>
               <p className="text-muted-foreground text-xs">
                 기본 학습은 무료로 계속 사용 가능하며, 합격자 컨설팅 기능을 모두
-                풀어 보려면 자기주도 구독을 추천합니다.
+                풀어 보려면 자기주도 구독을 추천합니다. (합격자 비교는 실 합격자
+                데이터가 누적되면 활성화됩니다.)
               </p>
               <Button asChild size="sm">
                 <Link to="/pricing">구독 시작하기 →</Link>

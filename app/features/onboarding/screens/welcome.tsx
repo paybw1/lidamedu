@@ -1,6 +1,7 @@
 // feat-8-017 Onboarding wizard — 가입 후 첫 화면.
 // 3 steps: 응시 계획 / 분석 동의 / 학습 목표. 각 step submit 시 데이터 저장 + 진행.
 // 어느 step 에서든 "건너뛰기" 가능. 완료 또는 skip 시 profile.onboarded_at 설정.
+import type { Route } from "./+types/welcome";
 
 import {
   CheckCircle2Icon,
@@ -16,8 +17,8 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import {
   EXAM_ROUND_LABEL,
   type ExamRound,
@@ -28,8 +29,6 @@ import {
   setPoolConsent,
 } from "~/features/exam-results/queries.server";
 import { upsertStudyGoals } from "~/features/goals/queries.server";
-
-import type { Route } from "./+types/welcome";
 
 export const meta: Route.MetaFunction = () => [
   { title: "환영합니다 | Lidam Patent Attorney Academy" },
@@ -156,8 +155,7 @@ export async function action({ request }: Route.ActionArgs) {
       examDate: parsed.data.examDate,
       weeklyGoalHours: parsed.data.weeklyGoalHours,
       targetScore:
-        parsed.data.targetScore === "" ||
-        parsed.data.targetScore === undefined
+        parsed.data.targetScore === "" || parsed.data.targetScore === undefined
           ? null
           : Number(parsed.data.targetScore),
       notes: null,
@@ -194,8 +192,8 @@ export default function OnboardingWelcome({
             {name}님, 환영합니다
           </h1>
           <p className="text-muted-foreground text-sm">
-            1분이면 충분합니다. 세 가지를 알려주시면 합격자 비교 컨설팅이 즉시
-            활성화됩니다.
+            1분이면 충분합니다. 세 가지를 알려주시면 합격자 데이터가 누적되는
+            대로 비교 컨설팅을 받아볼 수 있습니다.
           </p>
         </header>
 
@@ -273,8 +271,8 @@ function PlanStep({
           <p className="text-base font-semibold">차기 응시 계획</p>
         </div>
         <p className="text-muted-foreground text-xs">
-          다음에 응시할 시험 정보를 알려주세요. 같은 연도·차수 합격자 데이터로
-          비교 컨설팅이 활성화됩니다.
+          다음에 응시할 시험 정보를 알려주세요. 같은 연도·차수 합격자 데이터가
+          쌓이면 비교 컨설팅이 활성화됩니다.
         </p>
       </CardHeader>
       <CardContent className="px-5 pb-5">
@@ -288,9 +286,7 @@ function PlanStep({
                 name="nextExamYear"
                 min={currentYear}
                 max={currentYear + 5}
-                defaultValue={
-                  profile?.next_exam_year ?? currentYear + 1
-                }
+                defaultValue={profile?.next_exam_year ?? currentYear + 1}
                 className="h-9"
                 required
               />
@@ -307,8 +303,9 @@ function PlanStep({
               </select>
             </div>
           </div>
-          <p className="text-muted-foreground rounded bg-muted/40 px-2 py-1.5 text-[11px]">
-            ℹ️ 1차 자연과학은 4과목(물리·화학·생물·지구과학) 모두 필수 응시입니다.
+          <p className="text-muted-foreground bg-muted/40 rounded px-2 py-1.5 text-[11px]">
+            ℹ️ 1차 자연과학은 4과목(물리·화학·생물·지구과학) 모두 필수
+            응시입니다.
           </p>
           <div className="flex justify-end">
             <Button type="submit" size="sm">
@@ -352,9 +349,9 @@ function ConsentStep() {
                 내 학습 분석 (A)
               </span>
               <span className="text-muted-foreground block text-[11px] leading-relaxed">
-                내 학습 기록으로 학습 통계·정오문제 약점진단·복습·암기 기능을 제공합니다.
-                끄면 이 기능들이 비활성화됩니다(기존 기록은 보존되며 다시 켜면
-                복구).
+                내 학습 기록으로 학습 통계·정오문제 약점진단·복습·암기 기능을
+                제공합니다. 끄면 이 기능들이 비활성화됩니다(기존 기록은 보존되며
+                다시 켜면 복구).
               </span>
             </span>
           </label>
@@ -372,10 +369,10 @@ function ConsentStep() {
                 합격자·동료 비교 + 표본 기여 (B)
               </span>
               <span className="text-muted-foreground block text-[11px] leading-relaxed">
-                내 학습·시험 데이터를 익명·집계로 합격자 표본에 기여하고, 그 대가로
-                합격자·동료 대비 비교를 열람합니다.{" "}
-                <strong>비교를 보려면 동의가 필요</strong>하며, 끄면 비교가 보이지
-                않고 풀 집계에서도 제외됩니다.
+                내 학습·시험 데이터를 익명·집계로 합격자 표본에 기여하고, 그
+                대가로 합격자·동료 대비 비교를 열람합니다.{" "}
+                <strong>비교를 보려면 동의가 필요</strong>하며, 끄면 비교가
+                보이지 않고 풀 집계에서도 제외됩니다.
               </span>
             </span>
           </label>

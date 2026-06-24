@@ -1,6 +1,5 @@
 // feat-8-008 — 대시보드 축소판. 회원1·2(area_study_mgmt 없음)는 전체 분석 대신 이 화면을 본다.
 // 학습관리(합격 진단·진도·통계·과제·합격자 비교 등)는 종합반(회원3)·staff 전용.
-
 import { Link } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -35,8 +34,12 @@ export function ReducedDashboard({
           <CardContent className="space-y-3 px-5 py-5 text-sm leading-relaxed">
             <p>
               🔒 합격 예측 점수·학습 통계·약점 분석·합격자 비교·과제 등{" "}
-              <strong>학습관리 분석</strong>은{" "}
-              <strong>종합반</strong>에서 이용할 수 있습니다.
+              <strong>학습관리 분석</strong>은 <strong>종합반</strong>에서
+              이용할 수 있습니다.
+            </p>
+            <p className="text-muted-foreground text-xs">
+              ※ 합격자 비교는 실 합격자 데이터가 일정 수 이상 누적되면
+              활성화됩니다.
             </p>
             <p className="text-muted-foreground">
               상단 메뉴에서 현재 이용 가능한 영역으로 바로 진입할 수 있습니다 —{" "}

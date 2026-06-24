@@ -1,5 +1,6 @@
 // /pricing 공개 가격표 페이지.
 // 비로그인도 접근 가능. 로그인 사용자는 "구독 시작" 클릭 시 결제 흐름 진입.
+import type { Route } from "./+types/pricing";
 
 import { CheckIcon, SparklesIcon } from "lucide-react";
 import { Link, data, redirect, useFetcher } from "react-router";
@@ -7,16 +8,14 @@ import { Link, data, redirect, useFetcher } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
-import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
+import { FEATURE_LABEL } from "~/features/subscriptions/labels";
 import {
+  type SubscriptionPlan,
   getActiveSubscription,
   listSubscriptionPlans,
-  type SubscriptionPlan,
 } from "~/features/subscriptions/queries.server";
-import { FEATURE_LABEL } from "~/features/subscriptions/labels";
-
-import type { Route } from "./+types/pricing";
 
 export const meta: Route.MetaFunction = () => [
   { title: "요금제 | Lidam Patent Attorney Academy" },
@@ -62,7 +61,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
           </h1>
           <p className="text-muted-foreground mx-auto mt-2 max-w-xl text-sm">
             기본 학습은 무료, 합격자 비교 컨설팅·자동 추천·12주 곡선·후기 모음은
-            자기주도 구독에서 풀로 이용 가능합니다.
+            자기주도 구독에서 풀로 열립니다. 합격자 비교는 실 합격자 데이터가
+            누적되면 활성화됩니다.
           </p>
         </header>
 
@@ -100,8 +100,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
         </div>
 
         <p className="text-muted-foreground mt-6 text-center text-[11px]">
-          모든 결제는 토스페이먼츠를 통해 안전하게 처리됩니다. 종합반은 학원 직접
-          상담을 권장합니다.
+          모든 결제는 토스페이먼츠를 통해 안전하게 처리됩니다. 종합반은 학원
+          직접 상담을 권장합니다.
         </p>
       </div>
     </div>
@@ -145,7 +145,7 @@ function PlanCard({
           {isActive ? (
             <Badge
               variant="outline"
-              className="bg-emerald-50 text-emerald-800 text-[10px]"
+              className="bg-emerald-50 text-[10px] text-emerald-800"
             >
               현재 플랜
             </Badge>
@@ -254,7 +254,9 @@ function SubscribeButton({
     }
     // 2) 토스 SDK 호출
     try {
-      const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+      const { loadTossPayments } = await import(
+        "@tosspayments/tosspayments-sdk"
+      );
       const tossPayments = await loadTossPayments(tossClientKey!);
       const payment = tossPayments.payment({ customerKey: plan.planId });
       await payment.requestPayment({
