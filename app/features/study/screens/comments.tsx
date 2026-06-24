@@ -1,4 +1,4 @@
-// 메모 — 조문·판례·문제 뷰어에서 작성한 메모(content_comments) 모아보기. 최근 수정 순.
+// 코멘트 — 조문·판례·문제 뷰어에서 작성한 코멘트(content_comments) 모아보기. 최근 수정 순.
 // 포스트잇(/study/notes)과 형제 화면 — StudyAidsShell 공유.
 import type { Route } from "./+types/comments";
 
@@ -38,7 +38,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "메모 | Lidam Patent Attorney Academy" },
+  { title: "코멘트 | Lidam Patent Attorney Academy" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -106,8 +106,8 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
     <StudyAidsShell
       active="comments"
       tabCounts={toTabCounts(aidCounts)}
-      title="메모"
-      desc="조문 · 판례 · 문제 뷰어에서 작성한 메모. 최근 수정 순으로 정렬됩니다."
+      title="코멘트"
+      desc="조문 · 판례 · 문제 뷰어에서 작성한 코멘트. 최근 수정 순으로 정렬됩니다."
       summaryStats={[
         { label: "전체", value: counts.total, dotClass: "bg-primary" },
         { label: "조문", value: counts.article, dotClass: "bg-primary" },
@@ -121,7 +121,7 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
         search={{
           value: q,
           onChange: setQ,
-          placeholder: "메모 본문 검색",
+          placeholder: "코멘트 본문 검색",
         }}
       >
         <FilterGroup label="1차 과목">
@@ -174,15 +174,15 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
           <EmptyState
             icon={MessageSquareTextIcon}
             tone="neutral"
-            title="아직 메모가 없습니다"
-            body="조문·판례·문제 뷰어에서 메모를 남겨 보세요. 모은 메모는 이 화면에서 한 번에 검색할 수 있습니다."
+            title="아직 코멘트가 없습니다"
+            body="조문·판례·문제 뷰어에서 코멘트를 남겨 보세요. 모은 코멘트는 이 화면에서 한 번에 검색할 수 있습니다."
             cta={{ label: "학습 시작", to: "/dashboard" }}
           />
         ) : (
           <EmptyState
             icon={SearchIcon}
             tone="subdued"
-            title="검색·필터에 해당하는 메모가 없습니다"
+            title="검색·필터에 해당하는 코멘트가 없습니다"
             body="검색어를 줄이거나 필터를 풀어 보세요."
           />
         )

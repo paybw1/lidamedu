@@ -64,7 +64,7 @@ export const NAV_GROUP_POOL = {
       { label: "하이라이트", to: "/study/highlights" },
       { label: "즐겨찾기", to: "/study/bookmarks" },
       { label: "포스트잇", to: "/study/notes" },
-      { label: "메모", to: "/study/comments" },
+      { label: "코멘트", to: "/study/comments" },
       { label: "AI Q&A", to: "/ai" },
     ],
     area: "area_study_aids",

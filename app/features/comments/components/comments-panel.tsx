@@ -1,5 +1,5 @@
-// 통합 메모 패널 — 조문/판례/문제 공용.
-// feat-8-023: 강사·수험생 모두 작성. 강사 메모는 전체 공개, 수험생 메모는 본인 전용 (RLS).
+// 통합 코멘트 패널 — 조문/판례/문제 공용.
+// feat-8-023: 강사·수험생 모두 작성. 강사 코멘트는 전체 공개, 수험생 코멘트는 본인 전용 (RLS).
 //   목록 각 행에 작성자 역할 배지("강사" / "나만 보기")를 표시한다.
 import {
   EditIcon,
@@ -26,9 +26,9 @@ interface CommentsPanelProps {
   targetType: CommentTargetType;
   targetId: string;
   comments: ContentComment[];
-  /** 현재 사용자 id — 자기 메모 수정/삭제 권한 및 작성 가능 여부 판정 */
+  /** 현재 사용자 id — 자기 코멘트 수정/삭제 권한 및 작성 가능 여부 판정 */
   currentUserId: string | null;
-  /** admin 인지 — 모든 메모 수정/삭제 가능 */
+  /** admin 인지 — 모든 코멘트 수정/삭제 가능 */
   isAdmin: boolean;
   /** 빈 상태 안내 텍스트 */
   emptyHint?: string;
@@ -40,7 +40,7 @@ export function CommentsPanel({
   comments,
   currentUserId,
   isAdmin,
-  emptyHint = "아직 등록된 메모가 없습니다",
+  emptyHint = "아직 등록된 코멘트가 없습니다",
 }: CommentsPanelProps) {
   const [creating, setCreating] = useState(false);
   const canWrite = currentUserId !== null;
@@ -51,7 +51,7 @@ export function CommentsPanel({
     >
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          메모 ({comments.length})
+          코멘트 ({comments.length})
         </p>
         {canWrite ? (
           <Button
@@ -62,7 +62,7 @@ export function CommentsPanel({
             onClick={() => setCreating((c) => !c)}
           >
             <MessageSquarePlusIcon className="size-3" />
-            {creating ? "취소" : "메모 추가"}
+            {creating ? "취소" : "코멘트 추가"}
           </Button>
         ) : null}
       </div>
@@ -210,7 +210,7 @@ function CommentRow({
                 className="h-6 px-1.5 text-[10px] text-rose-600 hover:text-rose-700"
                 disabled={submitting}
                 onClick={(e) => {
-                  if (!confirm("이 메모를 삭제하시겠습니까?")) {
+                  if (!confirm("이 코멘트를 삭제하시겠습니까?")) {
                     e.preventDefault();
                   }
                 }}
@@ -302,7 +302,7 @@ function CommentForm({
         required
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="메모를 입력하세요. (Markdown 지원)"
+        placeholder="코멘트를 입력하세요. (Markdown 지원)"
         className={cn("font-mono text-sm", previewing && "hidden")}
       />
       {previewing ? (

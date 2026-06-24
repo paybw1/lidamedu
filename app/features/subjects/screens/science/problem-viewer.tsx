@@ -443,7 +443,7 @@ export default function ScienceProblemViewer({
               comments={comments}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
-              emptyHint="이 문제에 대한 메모를 남겨보세요."
+              emptyHint="이 문제에 대한 코멘트를 남겨보세요."
             />
           </section>
         </div>

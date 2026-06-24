@@ -87,7 +87,7 @@ const TAB_META: Record<TabKey, PanelTabMeta> = {
   qna: { label: "Q&A", Icon: MessageCircleQuestionIcon },
   revisions: { label: "개정이력", Icon: HistoryIcon },
   ox: { label: "정오문제", Icon: CheckSquareIcon },
-  comment: { label: "메모", Icon: ScrollTextIcon },
+  comment: { label: "코멘트", Icon: ScrollTextIcon },
   materials: { label: "관련자료", Icon: PaperclipIcon },
 };
 
@@ -106,7 +106,7 @@ const PLACEHOLDER_TABS: PlaceholderTab[] = [
   {
     value: "comment",
     featId: "feat-4-A-115",
-    hint: "수험생·강사가 본문에 남기는 메모. 강사 메모는 모두에게, 수험생 메모는 본인에게만 보입니다.",
+    hint: "수험생·강사가 본문에 남기는 코멘트. 강사 코멘트는 모두에게, 수험생 코멘트는 본인에게만 보입니다.",
   },
 ];
 
