@@ -224,7 +224,7 @@ export default function QuizSetup({
                   ))}
                 </FieldSelect>
               </FilterRow>
-              <FilterRow label="범위">
+              <FilterRow label="단원/종합">
                 <FieldSelect name="scope" placeholder="전체">
                   {SCOPE_OPTS.map((s) => (
                     <option key={s} value={s}>
