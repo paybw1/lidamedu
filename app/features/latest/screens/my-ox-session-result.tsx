@@ -18,7 +18,7 @@ import { getOxSessionResult } from "~/features/mcq-packs/queries.server";
 import { QuestionCard } from "~/features/problems/components/ox-question-card";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "정오문제 회차 결과 | 리담변리사학원" },
+  { title: "정오문제 응시 결과 | 리담변리사학원" },
 ];
 
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -140,7 +140,7 @@ export default function MyOxSessionResult({
 
       {detail.items.length === 0 ? (
         <p className="text-muted-foreground rounded-2xl border border-dashed py-10 text-center text-sm">
-          이 회차의 지문을 복원할 수 없습니다(문제집이 변경·삭제되었을 수 있음).
+          이 응시의 지문을 복원할 수 없습니다(문제집이 변경·삭제되었을 수 있음).
         </p>
       ) : (
         <ol className="space-y-2.5">

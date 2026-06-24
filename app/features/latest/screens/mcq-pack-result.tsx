@@ -276,7 +276,7 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
               오답 {wrongCount}문항 묶어 다시 풀기
             </p>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              이번 회차 오답만 모아 새 회차로. 같은 문제·같은 순서.
+              이번 응시 오답만 모아 새 응시로. 같은 문제·같은 순서.
             </p>
           </div>
           <Form
@@ -583,7 +583,7 @@ function ScoreSummary({
                   : "bg-muted text-muted-foreground",
             )}
           >
-            지난 회차 {diffPrev > 0 ? "+" : ""}
+            지난 응시 {diffPrev > 0 ? "+" : ""}
             {diffPrev}점
           </span>
         ) : null}

@@ -78,7 +78,7 @@ export async function action({ request }: Route.ActionArgs) {
   const ordered = sourceSession.problemIds.filter((pid) => wrongIds.includes(pid));
   if (ordered.length === 0) {
     return data(
-      { error: "이 회차에 오답이 없습니다." },
+      { error: "이 응시에 오답이 없습니다." },
       { status: 400 },
     );
   }
@@ -100,7 +100,7 @@ export async function action({ request }: Route.ActionArgs) {
     scopePayload: {
       sourceSessionId: parsed.data.sourceSessionId,
       sourceExamAttemptId: sourceSession.examAttemptId ?? null,
-      originLabel: "이번 회차 오답",
+      originLabel: "이번 응시 오답",
     },
     problemIds: ordered,
     timeLimitSec:

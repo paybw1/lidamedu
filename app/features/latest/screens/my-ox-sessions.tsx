@@ -144,7 +144,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
             active={viewMode === "recent"}
             onClick={() => setViewMode("recent")}
           >
-            회차순
+            응시순
           </SubjectChip>
           <SubjectChip
             active={viewMode === "byPack"}
