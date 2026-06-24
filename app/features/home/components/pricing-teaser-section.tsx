@@ -1,13 +1,13 @@
 import { ArrowRightIcon, CheckIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { SectionHeader } from "~/features/home/components/section-header";
 import {
   type ButtonVariant,
   LandingButton,
   PALETTE,
   Reveal,
 } from "~/features/home/lib/landing";
-import { SectionHeader } from "~/features/home/components/section-header";
 
 interface Tier {
   label: string;
@@ -103,7 +103,7 @@ export function PricingTeaserSection() {
             as="article"
             style={{
               padding: 24,
-              background: "#fff",
+              background: "var(--card)",
               borderRadius: 16,
               border: t.recommended
                 ? `2px solid ${PALETTE.primary}`

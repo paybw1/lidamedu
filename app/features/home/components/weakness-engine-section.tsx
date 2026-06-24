@@ -60,7 +60,7 @@ export function WeaknessEngineSection() {
         <Reveal
           style={{
             padding: 22,
-            background: "#fff",
+            background: "var(--card)",
             borderRadius: 16,
             border: `1px solid ${PALETTE.line}`,
             display: "flex",
@@ -115,7 +115,7 @@ export function WeaknessEngineSection() {
                     style={{
                       height: 36,
                       borderRadius: 8,
-                      background: filled ? CELL_TONE[v] : "rgba(0,0,0,0.05)",
+                      background: filled ? CELL_TONE[v] : "var(--surface-3)",
                       transition: `background 400ms ${EASE_REVEAL} ${(r * 3 + c) * 50}ms`,
                     }}
                   />
@@ -192,7 +192,7 @@ export function WeaknessEngineSection() {
             delay={240}
             style={{
               padding: 20,
-              background: "#fff",
+              background: "var(--card)",
               borderRadius: 16,
               border: `1px solid ${PALETTE.line}`,
               flex: 1,

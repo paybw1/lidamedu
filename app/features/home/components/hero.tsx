@@ -154,9 +154,9 @@ function HeroPreviewCard() {
     <div
       ref={ref}
       style={{
-        background: "#fff",
+        background: "var(--card)",
         borderRadius: 16,
-        border: `1px solid rgba(0,0,0,0.08)`,
+        border: `1px solid var(--border)`,
         boxShadow: "0 16px 48px rgba(0,0,0,0.10)",
         padding: 24,
         position: "relative",
@@ -232,7 +232,7 @@ function HeroPreviewCard() {
               padding: "10px 12px",
               background: PALETTE.base,
               borderRadius: 12,
-              border: `1px solid rgba(0,0,0,0.06)`,
+              border: `1px solid var(--border)`,
             }}
           >
             <div
@@ -334,7 +334,7 @@ function HeroPreviewCard() {
         style={{
           marginTop: 16,
           paddingTop: 14,
-          borderTop: `1px solid rgba(0,0,0,0.06)`,
+          borderTop: `1px solid var(--border)`,
           display: "flex",
           alignItems: "center",
           gap: 8,

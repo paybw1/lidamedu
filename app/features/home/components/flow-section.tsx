@@ -1,7 +1,12 @@
 import { Fragment } from "react";
 
-import { EASE_REVEAL, PALETTE, Reveal, useInView } from "~/features/home/lib/landing";
 import { SectionHeader } from "~/features/home/components/section-header";
+import {
+  EASE_REVEAL,
+  PALETTE,
+  Reveal,
+  useInView,
+} from "~/features/home/lib/landing";
 
 const STEPS = [
   {
@@ -55,9 +60,9 @@ export function FlowSection() {
               as="article"
               style={{
                 padding: 24,
-                background: "#fff",
+                background: "var(--card)",
                 borderRadius: 8,
-                border: `1px solid rgba(0,0,0,0.08)`,
+                border: `1px solid var(--border)`,
                 position: "relative",
                 zIndex: 2,
               }}

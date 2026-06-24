@@ -1,7 +1,7 @@
 import type { MouseEventHandler } from "react";
 
-import { PALETTE, Reveal } from "~/features/home/lib/landing";
 import { SectionHeader } from "~/features/home/components/section-header";
+import { PALETTE, Reveal } from "~/features/home/lib/landing";
 
 const CARDS = [
   {
@@ -67,9 +67,9 @@ export function FeaturesSection() {
             onMouseLeave={onLeave}
             style={{
               padding: 20,
-              background: "#fff",
+              background: "var(--card)",
               borderRadius: 8,
-              border: `1px solid rgba(0,0,0,0.08)`,
+              border: `1px solid var(--border)`,
               transition:
                 "transform 200ms cubic-bezier(0.22,1,0.36,1), box-shadow 200ms cubic-bezier(0.22,1,0.36,1)",
               cursor: "default",

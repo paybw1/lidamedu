@@ -69,7 +69,7 @@ const FEATURES = [
 
 const panelStyle: CSSProperties = {
   padding: 20,
-  background: "#fff",
+  background: "var(--card)",
   borderRadius: 16,
   border: `1px solid ${PALETTE.line}`,
   display: "flex",
@@ -84,7 +84,7 @@ export function PasserStatsSection() {
     >
       <div
         style={{
-          background: "#fff",
+          background: "var(--card)",
           borderRadius: 16,
           border: `1px solid ${PALETTE.line}`,
           boxShadow: "0 8px 24px rgba(0,0,0,0.06)",

@@ -1,6 +1,5 @@
 // 랜딩 페이지 공용 — Wantedly UI Components 기반 디자인 토큰 + 모션 훅 + 공용 Button.
 // design system: lidam-design-system (Wantedly blue + Pretendard).
-
 import {
   type CSSProperties,
   type MouseEventHandler,
@@ -12,23 +11,27 @@ import {
 } from "react";
 import { Link } from "react-router";
 
+// 랜딩 색 SSOT — 인앱 app.css 토큰(:root/.dark)을 var()로 참조해 다크 대응.
+// 인라인 스타일이 var()를 그대로 받으므로, 이 객체만 바꾸면 전 섹션에 전파된다.
+// accent(#7B61FF 보라)만 C1-4 하드코딩 단계에서 브랜드/토큰으로 교체 예정.
 export const PALETTE = {
-  primary: "#2D5BA8",
-  primaryStrong: "#1E4789",
-  primaryDeep: "#3B6FC4",
+  primary: "var(--primary)",
+  primaryStrong: "var(--lp-grad-to)",
+  primaryDeep: "var(--primary)",
   accent: "#7B61FF",
-  ink: "rgba(0, 0, 0, 0.84)",
-  inkSoft: "rgba(0, 0, 0, 0.56)",
-  inkMute: "rgba(0, 0, 0, 0.4)",
-  line: "rgba(0, 0, 0, 0.12)",
-  soft: "rgba(45, 91, 168, 0.12)",
-  tint: "rgba(45, 91, 168, 0.06)",
-  base: "#FFFFFF",
-  subtle: "rgb(250, 250, 250)",
-  muted: "rgb(238, 238, 238)",
+  ink: "var(--foreground)",
+  inkSoft: "var(--ink-soft)",
+  inkMute: "var(--ink-faint)",
+  line: "var(--border)",
+  soft: "var(--secondary)",
+  tint: "var(--secondary)",
+  base: "var(--card)",
+  subtle: "var(--surface-2)",
+  muted: "var(--surface-3)",
   gradientPeople:
-    "linear-gradient(180deg, rgba(59,111,196,0.92) 0%, rgba(30,71,137,0.92) 100%), #1E4789",
-  gradientVisit: "linear-gradient(180deg, #2D5BA8 0%, #1E4789 100%)",
+    "linear-gradient(180deg, var(--primary) 0%, var(--lp-grad-to) 100%)",
+  gradientVisit:
+    "linear-gradient(180deg, var(--primary) 0%, var(--lp-grad-to) 100%)",
 } as const;
 
 export const EASE_REVEAL = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -62,7 +65,9 @@ export function useCountUp(target: number, duration = 1200, start = false) {
       setValue(target);
       return;
     }
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     if (reduce) {
       setValue(target);
       return;

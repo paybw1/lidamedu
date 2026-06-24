@@ -1,8 +1,8 @@
 import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 
-import { PALETTE, Reveal } from "~/features/home/lib/landing";
 import { SectionHeader } from "~/features/home/components/section-header";
+import { PALETTE, Reveal } from "~/features/home/lib/landing";
 
 const ITEMS = [
   {
@@ -87,8 +87,7 @@ export function FaqSection() {
                     width: 24,
                     height: 24,
                     flexShrink: 0,
-                    transition:
-                      "transform 240ms cubic-bezier(0.22,1,0.36,1)",
+                    transition: "transform 240ms cubic-bezier(0.22,1,0.36,1)",
                     transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
                     color: PALETTE.primary,
                     display: "inline-flex",

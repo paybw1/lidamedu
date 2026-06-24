@@ -1,5 +1,6 @@
-import { ArrowRightIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
+
+import { ArrowRightIcon } from "lucide-react";
 
 import {
   EASE_REVEAL,
@@ -134,8 +135,8 @@ function tile(): CSSProperties {
   return {
     padding: 16,
     borderRadius: 16,
-    background: "#fff",
-    border: `1px solid rgba(0,0,0,0.08)`,
+    background: "var(--card)",
+    border: `1px solid var(--border)`,
   };
 }
 
@@ -175,7 +176,9 @@ function Num({
     >
       {value}
       {unit ? (
-        <span style={{ fontSize: 14, opacity: 0.7, marginLeft: 2 }}>{unit}</span>
+        <span style={{ fontSize: 14, opacity: 0.7, marginLeft: 2 }}>
+          {unit}
+        </span>
       ) : null}
     </div>
   );

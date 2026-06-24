@@ -87,6 +87,12 @@ body {
   --surface-3: #f1f5f9; /* 빈상태·강조 hover */
 
   --line-strong: #d1d5db; /* 더 진한 경계 — 표·구분선 */
+
+  /* 랜딩(/) 전용 — landing.tsx PALETTE 가 var()로 참조(다크 대응). 라이트=현행 동일. */
+  --lp-grad-to: #1e4789; /* 브랜드 그라데이션 어두운 stop (primary→이 색) */
+  --lp-weak: #e26a53; /* 약점 viz 약함(코랄) */
+  --lp-mid: #e0a43b; /* 보통(앰버) */
+  --lp-strong: #4e9e78; /* 강함(에메랄드) */
 }
 
 .dark {
@@ -144,6 +150,12 @@ body {
   --surface-3: #404040;
 
   --line-strong: rgba(255, 255, 255, 0.16);
+
+  /* 랜딩 전용 — 다크 표면용 명도 상향. */
+  --lp-grad-to: #24508f;
+  --lp-weak: #f08a74;
+  --lp-mid: #e8bc63;
+  --lp-strong: #62b991;
 }
 
 @theme inline {

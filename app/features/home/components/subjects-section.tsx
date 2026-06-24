@@ -1,5 +1,5 @@
-import { PALETTE, Reveal } from "~/features/home/lib/landing";
 import { SectionHeader } from "~/features/home/components/section-header";
+import { PALETTE, Reveal } from "~/features/home/lib/landing";
 
 // 1차(객관식) 법 과목 — 산업재산권법 3법 + 민법.
 const LEGAL_FIRST = ["특허법", "상표법", "디자인보호법", "민법"];
@@ -34,7 +34,7 @@ export function SubjectsSection() {
           as="article"
           style={{
             padding: 28,
-            background: "#fff",
+            background: "var(--card)",
             borderRadius: 16,
             border: `1px solid ${PALETTE.line}`,
           }}

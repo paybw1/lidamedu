@@ -1,9 +1,10 @@
-import { ArrowRightIcon } from "lucide-react";
 import type { MouseEventHandler } from "react";
+
+import { ArrowRightIcon } from "lucide-react";
 import { Link } from "react-router";
 
-import { PALETTE, Reveal } from "~/features/home/lib/landing";
 import { SectionHeader } from "~/features/home/components/section-header";
+import { PALETTE, Reveal } from "~/features/home/lib/landing";
 
 const ITEMS = [
   {
@@ -101,9 +102,9 @@ export function LatestSection() {
               onMouseLeave={onLeave}
               style={{
                 padding: 18,
-                background: "#fff",
+                background: "var(--card)",
                 borderRadius: 16,
-                border: `1px solid rgba(0,0,0,0.08)`,
+                border: `1px solid var(--border)`,
                 display: "flex",
                 flexDirection: "column",
                 gap: 8,

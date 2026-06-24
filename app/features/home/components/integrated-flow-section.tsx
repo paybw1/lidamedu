@@ -1,7 +1,18 @@
-import { Fragment, type MouseEventHandler, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type MouseEventHandler,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { EASE_REVEAL, PALETTE, Reveal, useInView } from "~/features/home/lib/landing";
 import { SectionHeader } from "~/features/home/components/section-header";
+import {
+  EASE_REVEAL,
+  PALETTE,
+  Reveal,
+  useInView,
+} from "~/features/home/lib/landing";
 
 const CARDS = [
   {
@@ -72,9 +83,9 @@ export function IntegratedFlowSection() {
               onMouseLeave={onLeave}
               style={{
                 padding: 18,
-                background: "#fff",
+                background: "var(--card)",
                 borderRadius: 8,
-                border: `1px solid rgba(0,0,0,0.08)`,
+                border: `1px solid var(--border)`,
                 display: "flex",
                 flexDirection: "column",
                 gap: 8,
@@ -154,8 +165,8 @@ export function IntegratedFlowSection() {
             letterSpacing: "-0.01em",
           }}
         >
-          메모 · 즐겨찾기 · 하이라이트 — 조문·판례·문제 어느 화면에서든
-          본인의 노트가 그대로 따라옵니다.
+          메모 · 즐겨찾기 · 하이라이트 — 조문·판례·문제 어느 화면에서든 본인의
+          노트가 그대로 따라옵니다.
         </p>
       </Reveal>
 

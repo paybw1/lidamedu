@@ -61,9 +61,9 @@ export default function Home() {
     <div
       data-screen-label="lidam-landing"
       style={{
-        background: "#ffffff",
+        background: "var(--background)",
         minHeight: "100vh",
-        color: "rgba(0, 0, 0, 0.84)",
+        color: "var(--foreground)",
         fontFamily:
           'Pretendard, "Pretendard Variable", -apple-system, system-ui, sans-serif',
       }}
