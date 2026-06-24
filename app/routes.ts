@@ -656,17 +656,17 @@ export default [
           ),
         ],
       ),
-      layout("features/gs/layouts/mock.layout.tsx", { id: "mock-area-me" }, [
-        route(
-          "/me/exam-results",
-          "features/exam-results/screens/my-exam-results.tsx",
-        ),
-        route("/me/ox-sessions", "features/latest/screens/my-ox-sessions.tsx"),
-        route(
-          "/me/ox-sessions/:sessionId",
-          "features/latest/screens/my-ox-session-result.tsx",
-        ),
-      ]),
+      // 응시 결과·정오문제 이력은 모의고사 그룹에서 편입 제외(허브·약점 탭) → 모의고사
+      // area 토글(mock.layout) 미부착. 평범한 leaf 라우트(화면이 자체 "뒤로" 제공).
+      route(
+        "/me/exam-results",
+        "features/exam-results/screens/my-exam-results.tsx",
+      ),
+      route("/me/ox-sessions", "features/latest/screens/my-ox-sessions.tsx"),
+      route(
+        "/me/ox-sessions/:sessionId",
+        "features/latest/screens/my-ox-session-result.tsx",
+      ),
       route(
         "/me/ox-wrong-note",
         "features/latest/screens/my-ox-wrong-note.tsx",

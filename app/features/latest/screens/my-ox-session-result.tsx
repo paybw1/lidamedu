@@ -4,7 +4,7 @@
 import type { Route } from "./+types/my-ox-session-result";
 
 import { ArrowLeftIcon, ClockIcon, RotateCcwIcon } from "lucide-react";
-import { Link, data } from "react-router";
+import { Link, data, useNavigate } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -51,6 +51,7 @@ export default function MyOxSessionResult({
   loaderData,
 }: Route.ComponentProps) {
   const { detail } = loaderData;
+  const navigate = useNavigate();
   // 정답률은 전체(total) 기준으로 통일 — 미응답을 분모에 포함(시험 의미).
   const rate =
     detail.total > 0 ? Math.round((detail.correct / detail.total) * 100) : 0;
@@ -58,12 +59,21 @@ export default function MyOxSessionResult({
   return (
     <div className="container mx-auto max-w-3xl px-4 py-6">
       <header className="mb-5">
-        <Link
-          to="/me/ox-sessions"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
-        >
-          <ArrowLeftIcon className="size-3.5" /> 정오문제 응시 이력
-        </Link>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
+          >
+            <ArrowLeftIcon className="size-3.5" /> 뒤로
+          </button>
+          <Link
+            to="/me/ox-sessions"
+            className="text-link text-xs hover:underline"
+          >
+            전체 이력 →
+          </Link>
+        </div>
         <h1 className="mt-2 text-xl font-bold tracking-tight">
           {detail.packTitle ?? "(팩 삭제됨)"}
         </h1>

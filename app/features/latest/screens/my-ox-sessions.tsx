@@ -3,13 +3,14 @@
 import type { Route } from "./+types/my-ox-sessions";
 
 import {
+  ArrowLeftIcon,
   ArrowRightIcon,
   CheckCircle2Icon,
   ClockIcon,
   RotateCcwIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, data } from "react-router";
+import { Link, data, useNavigate } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -58,6 +59,7 @@ function fmtDate(iso: string | null): string {
 
 export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
   const { sessions } = loaderData;
+  const navigate = useNavigate();
   const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
   const [subjectSel, setSubjectSel] = useState<string>("all");
   // 이력에 등장한 과목(subject_scope)만 필터 후보로.
@@ -75,6 +77,13 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">
       <header className="mb-6">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="text-muted-foreground hover:text-foreground mb-2 inline-flex items-center gap-1 text-xs"
+        >
+          <ArrowLeftIcon className="size-3.5" /> 뒤로
+        </button>
         <h1 className="text-2xl font-bold tracking-tight">
           정오문제 응시 이력
         </h1>

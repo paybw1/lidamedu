@@ -2,9 +2,9 @@
 // /me/exam-results — 본인 결과 연도별 1차/2차 카드 + 동의 토글 + 차기 응시 의향 입력.
 import type { Route } from "./+types/my-exam-results";
 
-import { TrophyIcon, UploadIcon } from "lucide-react";
+import { ArrowLeftIcon, TrophyIcon, UploadIcon } from "lucide-react";
 import { useState } from "react";
-import { Link, data, redirect, useFetcher } from "react-router";
+import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
 import { z } from "zod";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -229,6 +229,7 @@ const STATUS_TONE: Record<ExamResultStatus, string> = {
 
 export default function MyExamResults({ loaderData }: Route.ComponentProps) {
   const { results, profile } = loaderData;
+  const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
   // 결과 기록 보기 필터 — 차수(전체/1차/2차). 보기 전용 인터랙션 상태(저장 안 함).
   const [roundFilter, setRoundFilter] = useState<ExamRound | "all">("all");
@@ -240,6 +241,13 @@ export default function MyExamResults({ loaderData }: Route.ComponentProps) {
   return (
     <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
       <header className="mb-6 space-y-1">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="text-muted-foreground hover:text-foreground mb-1 inline-flex items-center gap-1 text-xs"
+        >
+          <ArrowLeftIcon className="size-3.5" /> 뒤로
+        </button>
         <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
           <TrophyIcon className="size-3.5" /> 합격 데이터
         </p>
