@@ -142,7 +142,7 @@ export function PricingTeaserSection() {
                   font: "600 12px/1 Pretendard, sans-serif",
                   letterSpacing: "0.1em",
                   textTransform: "uppercase",
-                  color: PALETTE.primary,
+                  color: PALETTE.link,
                   marginBottom: 10,
                 }}
               >
@@ -196,7 +196,7 @@ export function PricingTeaserSection() {
                 >
                   <span
                     style={{
-                      color: PALETTE.primary,
+                      color: PALETTE.link,
                       flexShrink: 0,
                       display: "inline-flex",
                     }}

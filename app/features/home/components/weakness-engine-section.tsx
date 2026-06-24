@@ -284,7 +284,7 @@ function CardLabel({
         font: "600 11px/1 Pretendard, sans-serif",
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        color: dark ? "rgba(255,255,255,0.72)" : PALETTE.primary,
+        color: dark ? "rgba(255,255,255,0.72)" : PALETTE.link,
         display: "flex",
         alignItems: "center",
         gap: 8,
@@ -300,7 +300,7 @@ function Tag({ children }: { children: ReactNode }) {
     <span
       style={{
         background: PALETTE.tint,
-        color: PALETTE.primary,
+        color: PALETTE.link,
         padding: "2px 7px",
         borderRadius: 6,
         font: "600 10px/1.4 Pretendard, sans-serif",

@@ -1,4 +1,4 @@
-import { PALETTE, Reveal } from "~/features/home/lib/landing";
+import { FONT, PALETTE, Reveal } from "~/features/home/lib/landing";
 
 interface SectionHeaderProps {
   eyebrow: string;
@@ -26,10 +26,10 @@ export function SectionHeader({
       <Reveal>
         <div
           style={{
-            font: "600 12px/1 Pretendard, sans-serif",
+            font: `600 14px/1 ${FONT.display}`,
             letterSpacing: "0.12em",
             textTransform: "uppercase",
-            color: PALETTE.primary,
+            color: PALETTE.link,
             marginBottom: 14,
           }}
         >
@@ -39,9 +39,9 @@ export function SectionHeader({
       <Reveal delay={80}>
         <h2
           style={{
-            font: "800 clamp(24px, 3.4vw, 34px)/1.25 Pretendard, sans-serif",
+            font: `700 clamp(24px, 3.4vw, 34px)/1.25 ${FONT.display}`,
             color: PALETTE.ink,
-            letterSpacing: "-0.022em",
+            letterSpacing: "-0.01em",
             margin: 0,
             whiteSpace: "pre-line",
           }}

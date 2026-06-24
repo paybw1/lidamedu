@@ -4,6 +4,7 @@ import { ArrowRightIcon } from "lucide-react";
 
 import {
   EASE_REVEAL,
+  FONT,
   LandingButton,
   PALETTE,
   Reveal,
@@ -40,10 +41,10 @@ export function PreviewSection() {
         <div>
           <div
             style={{
-              font: "600 12px/1 Pretendard, sans-serif",
+              font: `600 14px/1 ${FONT.display}`,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: PALETTE.primary,
+              color: PALETTE.link,
               marginBottom: 16,
             }}
           >
@@ -51,9 +52,9 @@ export function PreviewSection() {
           </div>
           <h2
             style={{
-              font: "800 clamp(24px, 3.4vw, 34px)/1.25 Pretendard, sans-serif",
+              font: `700 clamp(24px, 3.4vw, 34px)/1.25 ${FONT.display}`,
               color: PALETTE.ink,
-              letterSpacing: "-0.022em",
+              letterSpacing: "-0.01em",
               margin: "0 0 16px",
               whiteSpace: "pre-line",
             }}
@@ -147,7 +148,7 @@ function Lbl({ children, dark }: { children: ReactNode; dark?: boolean }) {
         font: "600 11px/1 Pretendard, sans-serif",
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        color: dark ? "rgba(255,255,255,0.7)" : PALETTE.primary,
+        color: dark ? "rgba(255,255,255,0.7)" : PALETTE.link,
         marginBottom: 8,
       }}
     >

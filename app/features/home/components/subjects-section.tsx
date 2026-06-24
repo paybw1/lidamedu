@@ -44,7 +44,7 @@ export function SubjectsSection() {
               font: "600 12px/1 Pretendard, sans-serif",
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: PALETTE.primary,
+              color: PALETTE.link,
               marginBottom: 14,
             }}
           >
@@ -95,7 +95,7 @@ export function SubjectsSection() {
                       display: "inline-flex",
                       alignItems: "center",
                       background: PALETTE.tint,
-                      color: PALETTE.primary,
+                      color: PALETTE.link,
                       padding: "6px 12px",
                       borderRadius: 9999,
                       font: "500 13px/1 Pretendard, sans-serif",

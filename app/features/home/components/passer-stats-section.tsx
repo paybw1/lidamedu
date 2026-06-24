@@ -128,7 +128,7 @@ export function PasserStatsSection() {
                   alignItems: "center",
                   gap: 6,
                   background: PALETTE.tint,
-                  color: PALETTE.primary,
+                  color: PALETTE.link,
                   padding: "4px 10px",
                   borderRadius: 9999,
                   font: "700 11px/1 Pretendard, sans-serif",
@@ -232,7 +232,7 @@ export function PasserStatsSection() {
               <span
                 style={{
                   background: PALETTE.tint,
-                  color: PALETTE.primary,
+                  color: PALETTE.link,
                   padding: "3px 9px",
                   borderRadius: 9999,
                   font: "700 10px/1.4 Pretendard, sans-serif",
@@ -416,7 +416,7 @@ function PanelLabel({ children }: { children: ReactNode }) {
         font: "600 11px/1 Pretendard, sans-serif",
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        color: PALETTE.primary,
+        color: PALETTE.link,
         display: "flex",
         alignItems: "center",
         gap: 8,
@@ -432,7 +432,7 @@ function Tag({ children }: { children: ReactNode }) {
     <span
       style={{
         background: PALETTE.tint,
-        color: PALETTE.primary,
+        color: PALETTE.link,
         padding: "2px 7px",
         borderRadius: 6,
         font: "600 10px/1.4 Pretendard, sans-serif",

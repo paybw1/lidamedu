@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import {
   EASE_REVEAL,
+  FONT,
   LandingButton,
   PALETTE,
   Reveal,
@@ -44,9 +45,9 @@ export function Hero() {
           <h1
             id="hero-h1"
             style={{
-              font: "800 clamp(34px, 5vw, 56px)/1.15 Pretendard, sans-serif",
+              font: `700 clamp(34px, 5vw, 56px)/1.15 ${FONT.display}`,
               color: PALETTE.ink,
-              letterSpacing: "-0.025em",
+              letterSpacing: "-0.01em",
               margin: "0 0 20px",
               whiteSpace: "pre-line",
             }}
@@ -172,7 +173,7 @@ function HeroPreviewCard() {
           alignItems: "center",
           gap: 6,
           background: PALETTE.tint,
-          color: PALETTE.primary,
+          color: PALETTE.link,
           padding: "4px 10px",
           borderRadius: 9999,
           font: "600 10px/1 Pretendard, sans-serif",
@@ -200,7 +201,7 @@ function HeroPreviewCard() {
             font: "800 56px/1 Pretendard, sans-serif",
             letterSpacing: "-0.03em",
             fontVariantNumeric: "tabular-nums",
-            color: PALETTE.primary,
+            color: PALETTE.link,
           }}
         >
           D-{Math.round(dDay)}

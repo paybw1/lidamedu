@@ -84,7 +84,7 @@ export function FeaturesSection() {
                 height: 36,
                 borderRadius: 10,
                 background: PALETTE.tint,
-                color: PALETTE.primary,
+                color: PALETTE.link,
                 font: "700 13px/1 Pretendard, sans-serif",
                 letterSpacing: "0.04em",
                 marginBottom: 16,

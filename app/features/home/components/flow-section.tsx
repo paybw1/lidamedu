@@ -71,7 +71,7 @@ export function FlowSection() {
                 style={{
                   font: "700 11px/1 Pretendard, sans-serif",
                   letterSpacing: "0.12em",
-                  color: PALETTE.primary,
+                  color: PALETTE.link,
                   marginBottom: 14,
                 }}
               >

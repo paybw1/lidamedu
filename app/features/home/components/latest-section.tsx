@@ -51,7 +51,7 @@ const onEnter: MouseEventHandler<HTMLElement> = (e) => {
   const arrow = e.currentTarget.querySelector(".latest-arrow");
   const cat = e.currentTarget.querySelector(".latest-cat");
   if (arrow instanceof HTMLElement) arrow.style.transform = "translateX(3px)";
-  if (cat instanceof HTMLElement) cat.style.color = PALETTE.primary;
+  if (cat instanceof HTMLElement) cat.style.color = PALETTE.link;
 };
 const onLeave: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(0)";

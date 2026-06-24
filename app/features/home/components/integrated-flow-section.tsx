@@ -98,7 +98,7 @@ export function IntegratedFlowSection() {
                   font: "600 11px/1 Pretendard, sans-serif",
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
-                  color: PALETTE.primary,
+                  color: PALETTE.link,
                 }}
               >
                 {c.kind}
@@ -137,7 +137,7 @@ export function IntegratedFlowSection() {
                       display: "inline-flex",
                       alignItems: "center",
                       background: PALETTE.tint,
-                      color: PALETTE.primary,
+                      color: PALETTE.link,
                       padding: "4px 10px",
                       borderRadius: 9999,
                       font: "500 11px/1 Pretendard, sans-serif",

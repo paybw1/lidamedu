@@ -1,6 +1,11 @@
 import { ArrowRightIcon } from "lucide-react";
 
-import { LandingButton, PALETTE, Reveal } from "~/features/home/lib/landing";
+import {
+  FONT,
+  LandingButton,
+  PALETTE,
+  Reveal,
+} from "~/features/home/lib/landing";
 
 export function FinalCta() {
   return (
@@ -54,8 +59,8 @@ export function FinalCta() {
         <h2
           id="finalcta-h2"
           style={{
-            font: "800 clamp(28px, 4vw, 40px)/1.25 Pretendard, sans-serif",
-            letterSpacing: "-0.022em",
+            font: `700 clamp(28px, 4vw, 40px)/1.25 ${FONT.display}`,
+            letterSpacing: "-0.01em",
             margin: "0 0 12px",
             position: "relative",
             color: "#fff",

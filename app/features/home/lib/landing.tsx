@@ -16,6 +16,7 @@ import { Link } from "react-router";
 // accent: 보라(#7B61FF, frontend-design 경계색) → var(--chart-4) 앰버로 교체(C1-4).
 export const PALETTE = {
   primary: "var(--primary)",
+  link: "var(--link)", // 파란 "텍스트" 전용(다크 밝게). 채움/배경은 primary.
   primaryStrong: "var(--lp-grad-to)",
   primaryDeep: "var(--primary)",
   accent: "var(--chart-4)",
@@ -32,6 +33,13 @@ export const PALETTE = {
     "linear-gradient(180deg, var(--primary) 0%, var(--lp-grad-to) 100%)",
   gradientVisit:
     "linear-gradient(180deg, var(--primary) 0%, var(--lp-grad-to) 100%)",
+} as const;
+
+// 랜딩 타이포 SSOT — 제목=명조(--font-display=Noto Serif KR), 본문=Pretendard.
+// 제목류 font 숏핸드에서 FONT.display 참조(PALETTE 와 같은 SSOT 패턴). 본문/UI는 그대로 Pretendard.
+export const FONT = {
+  display: "var(--font-display)",
+  body: "Pretendard, sans-serif",
 } as const;
 
 export const EASE_REVEAL = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -181,8 +189,8 @@ const VARIANT_STYLE: Record<ButtonVariant, CSSProperties> = {
   },
   outline: {
     background: "transparent",
-    color: PALETTE.primary,
-    boxShadow: `inset 0 0 0 1px ${PALETTE.primary}`,
+    color: PALETTE.link,
+    boxShadow: `inset 0 0 0 1px ${PALETTE.link}`,
   },
   ghost: {
     background: "transparent",

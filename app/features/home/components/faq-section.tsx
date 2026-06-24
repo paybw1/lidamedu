@@ -89,7 +89,7 @@ export function FaqSection() {
                     flexShrink: 0,
                     transition: "transform 240ms cubic-bezier(0.22,1,0.36,1)",
                     transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                    color: PALETTE.primary,
+                    color: PALETTE.link,
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
