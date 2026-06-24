@@ -119,7 +119,7 @@ export default function MyOxSessionResult({
         <span className="text-muted-foreground text-xs tabular-nums">
           / 전체 {detail.total}
         </span>
-        {detail.packId ? (
+        {detail.packId && detail.packTitle ? (
           <Button asChild size="sm" variant="outline" className="ml-auto">
             <Link to={`/latest/mcq/${detail.packId}/ox-exam`}>
               <RotateCcwIcon className="size-3.5" /> 다시 풀기

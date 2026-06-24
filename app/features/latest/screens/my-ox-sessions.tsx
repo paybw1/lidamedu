@@ -59,8 +59,17 @@ function fmtDate(iso: string | null): string {
 export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
   const { sessions } = loaderData;
   const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
-  const visible = sessions.filter((s) =>
-    inRangeSelection(s.completedAt ?? s.startedAt, rangeSel),
+  const [subjectSel, setSubjectSel] = useState<string>("all");
+  // 이력에 등장한 과목(subject_scope)만 필터 후보로.
+  const availableSubjects = [
+    ...new Set(
+      sessions.map((s) => s.packSubjectScope).filter((v): v is string => !!v),
+    ),
+  ];
+  const visible = sessions.filter(
+    (s) =>
+      inRangeSelection(s.completedAt ?? s.startedAt, rangeSel) &&
+      (subjectSel === "all" || s.packSubjectScope === subjectSel),
   );
 
   return (
@@ -75,19 +84,46 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="tabular-nums">
-            {isRangeSelectionAll(rangeSel)
+            {isRangeSelectionAll(rangeSel) && subjectSel === "all"
               ? `총 ${sessions.length} 회`
               : `${visible.length} / ${sessions.length} 회`}
           </Badge>
-          <Button asChild size="sm" variant="outline" className="ml-auto">
-            <Link to="/me/ox-wrong-note">
-              오답 노트 <ArrowRightIcon className="size-3.5" />
-            </Link>
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button asChild size="sm">
+              <Link to="/latest/mcq?kind=past_exam">정오문제 풀러 가기</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/me/ox-wrong-note">
+                오답 노트 <ArrowRightIcon className="size-3.5" />
+              </Link>
+            </Button>
+          </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <RangeSelectionGroup value={rangeSel} onChange={setRangeSel} />
         </div>
+        {availableSubjects.length > 1 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-muted-foreground text-[11px]">과목</span>
+            <SubjectChip
+              active={subjectSel === "all"}
+              onClick={() => setSubjectSel("all")}
+            >
+              전체
+            </SubjectChip>
+            {availableSubjects.map((sc) => (
+              <SubjectChip
+                key={sc}
+                active={subjectSel === sc}
+                onClick={() => setSubjectSel(sc)}
+              >
+                {MCQ_PACK_SUBJECT_LABELS[
+                  sc as keyof typeof MCQ_PACK_SUBJECT_LABELS
+                ] ?? sc}
+              </SubjectChip>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       {visible.length === 0 ? (
@@ -114,6 +150,32 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
         </ul>
       )}
     </div>
+  );
+}
+
+// 과목 보기 필터 칩(전체/과목들). 보기 전용 FE 상태. 토큰만 사용(다크 안전).
+function SubjectChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-input bg-background text-muted-foreground hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -176,7 +238,7 @@ function SessionRow({
               {s.blank > 0 ? ` · 미응답 ${s.blank}` : ""}
             </Badge>
           </div>
-          {s.packId ? (
+          {s.packId && s.packTitle ? (
             <Link
               to={`/latest/mcq/${s.packId}/ox-exam`}
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-[11px]"

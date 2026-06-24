@@ -52,6 +52,10 @@ const submitSchema = z.object({
   itemsJson: z.string().min(2),
 });
 
+// 소요시간은 클라 역산(startedAt = now - durationMs)이라 비권위(표시용). 탭을 오래
+// 열어두면 비정상적으로 커질 수 있어 상한으로 클램프(6시간) — started_at 폭주 방지.
+const MAX_OX_DURATION_MS = 6 * 60 * 60 * 1000;
+
 type SubmitResponse =
   | {
       ok: true;
@@ -168,7 +172,8 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   // quiz_sessions.scope_type check: 'node|filter|wrong-note|free|pack' 만 허용
   // → 'pack' 재사용 + scope_payload.exam_kind='ox' 로 OX 구분
-  const startedAt = new Date(Date.now() - parsed.data.durationMs).toISOString();
+  const durationMs = Math.min(parsed.data.durationMs, MAX_OX_DURATION_MS);
+  const startedAt = new Date(Date.now() - durationMs).toISOString();
   const completedAt = new Date().toISOString();
   const { data: sess, error: sErr } = await client
     .from("quiz_sessions")
@@ -198,9 +203,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   // 2) user_problem_attempts bulk — 응답 + 채점가능 ref 만, 서버 재채점 is_correct 저장.
-  const perItemMs = Math.floor(
-    parsed.data.durationMs / Math.max(items.length, 1),
-  );
+  const perItemMs = Math.floor(durationMs / Math.max(items.length, 1));
   const attempts = graded
     .filter((i) => i.userAnswer !== null && i.gradeable) // 미응답·채점불가 미저장
     .map((i) => ({
