@@ -800,7 +800,7 @@ function SubmitColumnButton({
           method="post"
           action="/api/gs/peer"
           onSubmit={(e) => {
-            if (!confirm(`${label} 채점을 제출합니다. 진행할까요?`))
+            if (!confirm(`${label} 채점을 제출하시겠습니까?`))
               e.preventDefault();
           }}
         >

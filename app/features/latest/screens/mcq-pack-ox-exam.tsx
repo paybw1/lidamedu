@@ -434,7 +434,7 @@ function ExamRunner({
     if (submitting || submitted) return;
     if (answered < items.length) {
       const ok = window.confirm(
-        `${items.length - answered}개 미응답 지문이 있습니다. 그대로 제출할까요?`,
+        `${items.length - answered}개 미응답 지문이 있습니다. 그대로 제출하시겠습니까?`,
       );
       if (!ok) return;
     }

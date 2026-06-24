@@ -344,7 +344,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
             unmappedCount > 0
               ? `미매핑 문항 ${unmappedCount}건은 자동 채점에서 0점 처리됩니다.\n`
               : "";
-          if (!confirm(`${warn}제출 후에는 수정할 수 없습니다. 제출할까요?`))
+          if (!confirm(`${warn}제출 후에는 수정할 수 없습니다. 제출하시겠습니까?`))
             e.preventDefault();
         }}
         // 모바일은 하단 탭바(~3.5rem) 위로 띄움 — 데스크톱은 bottom-4.

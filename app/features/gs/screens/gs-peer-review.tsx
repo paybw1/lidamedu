@@ -172,7 +172,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
                   method="post"
                   action="/api/gs/peer"
                   onSubmit={(e) => {
-                    if (!confirm("채점을 제출합니다. 진행할까요?"))
+                    if (!confirm("채점을 제출하시겠습니까?"))
                       e.preventDefault();
                   }}
                 >
