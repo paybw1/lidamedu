@@ -330,6 +330,33 @@ function HeroPreviewCard() {
           </li>
         ))}
       </ul>
+      <div
+        style={{
+          marginTop: 16,
+          paddingTop: 14,
+          borderTop: `1px solid rgba(0,0,0,0.06)`,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          font: "500 12px/1.4 Pretendard, sans-serif",
+          color: PALETTE.inkSoft,
+          letterSpacing: "-0.01em",
+        }}
+      >
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: "#E26A53",
+            flexShrink: 0,
+          }}
+        />
+        이번 주 약점{" "}
+        <strong style={{ color: PALETTE.ink, fontWeight: 700 }}>
+          진보성 · 판례
+        </strong>
+      </div>
       <style>{`@keyframes landing-slide-in { to { opacity: 1; transform: translateX(0); } }`}</style>
     </div>
   );

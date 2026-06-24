@@ -1,9 +1,10 @@
+import type { Route } from "./+types/home";
+
 import i18next from "~/core/lib/i18next.server";
 import {
-  getPublicPlatformStats,
   type PublicPlatformStats,
+  getPublicPlatformStats,
 } from "~/features/exam-results/analytics.server";
-
 import { FaqSection } from "~/features/home/components/faq-section";
 import { FeaturesSection } from "~/features/home/components/features-section";
 import { FinalCta } from "~/features/home/components/final-cta";
@@ -15,11 +16,14 @@ import { PasserStatsSection } from "~/features/home/components/passer-stats-sect
 import { PreviewSection } from "~/features/home/components/preview-section";
 import { PricingTeaserSection } from "~/features/home/components/pricing-teaser-section";
 import { SubjectsSection } from "~/features/home/components/subjects-section";
-
-import type { Route } from "./+types/home";
+import { WeaknessEngineSection } from "~/features/home/components/weakness-engine-section";
 
 export const meta: Route.MetaFunction = ({ data }) => [
-  { title: data?.title ?? "리담변리사학원 — 변리사 시험, 이 곳에서 합격까지 함께 해요" },
+  {
+    title:
+      data?.title ??
+      "리담변리사학원 — 변리사 시험, 이 곳에서 합격까지 함께 해요",
+  },
   {
     name: "description",
     content:
@@ -65,11 +69,12 @@ export default function Home() {
       }}
     >
       <Hero />
-      <PasserStatsSection />
+      <WeaknessEngineSection />
+      <PreviewSection />
       <FeaturesSection />
       <IntegratedFlowSection />
       <SubjectsSection />
-      <PreviewSection />
+      <PasserStatsSection />
       <LatestSection />
       <PricingTeaserSection />
       <FlowSection />
