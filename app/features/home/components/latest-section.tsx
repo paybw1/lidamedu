@@ -47,7 +47,7 @@ const ITEMS = [
 
 const onEnter: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(-2px)";
-  e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,0.10)";
+  e.currentTarget.style.boxShadow = "var(--lp-shadow-hover)";
   const arrow = e.currentTarget.querySelector(".latest-arrow");
   const cat = e.currentTarget.querySelector(".latest-cat");
   if (arrow instanceof HTMLElement) arrow.style.transform = "translateX(3px)";

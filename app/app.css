@@ -93,6 +93,9 @@ body {
   --lp-weak: #e26a53; /* 약점 viz 약함(코랄) */
   --lp-mid: #e0a43b; /* 보통(앰버) */
   --lp-strong: #4e9e78; /* 강함(에메랄드) */
+  --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --lp-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.1);
+  --lp-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.1);
 }
 
 .dark {
@@ -156,6 +159,9 @@ body {
   --lp-weak: #f08a74;
   --lp-mid: #e8bc63;
   --lp-strong: #62b991;
+  --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --lp-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --lp-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {

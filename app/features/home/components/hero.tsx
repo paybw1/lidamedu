@@ -157,7 +157,7 @@ function HeroPreviewCard() {
         background: "var(--card)",
         borderRadius: 16,
         border: `1px solid var(--border)`,
-        boxShadow: "0 16px 48px rgba(0,0,0,0.10)",
+        boxShadow: "var(--lp-shadow-lg)",
         padding: 24,
         position: "relative",
         overflow: "hidden",
@@ -348,7 +348,7 @@ function HeroPreviewCard() {
             width: 7,
             height: 7,
             borderRadius: "50%",
-            background: "#E26A53",
+            background: "var(--lp-weak)",
             flexShrink: 0,
           }}
         />

@@ -205,7 +205,7 @@ function Bar({ value, dark }: { value: number; dark?: boolean }) {
       style={{
         height: 5,
         marginTop: 10,
-        background: dark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)",
+        background: dark ? "rgba(255,255,255,0.2)" : "var(--surface-3)",
         borderRadius: 9999,
         overflow: "hidden",
       }}
@@ -225,7 +225,7 @@ function Bar({ value, dark }: { value: number; dark?: boolean }) {
 
 function MiniHeatmap({ inView }: { inView: boolean }) {
   const tones = [
-    "rgba(0,0,0,0.04)",
+    "var(--surface-3)",
     "rgba(45, 91, 168, 0.15)",
     "rgba(45, 91, 168, 0.35)",
     "rgba(45, 91, 168, 0.6)",

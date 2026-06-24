@@ -20,7 +20,7 @@ const MATRIX: number[][] = [
   [2, 2, 0],
   [1, 2, 2],
 ];
-const CELL_TONE = ["#E26A53", "#E0A43B", "#4E9E78"]; // 약함 / 보통 / 강함
+const CELL_TONE = ["var(--lp-weak)", "var(--lp-mid)", "var(--lp-strong)"]; // 약함 / 보통 / 강함
 const CELL_LABEL = ["약함", "보통", "강함"];
 
 export function WeaknessEngineSection() {

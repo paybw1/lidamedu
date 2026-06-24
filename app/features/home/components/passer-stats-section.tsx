@@ -87,7 +87,7 @@ export function PasserStatsSection() {
           background: "var(--card)",
           borderRadius: 16,
           border: `1px solid ${PALETTE.line}`,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+          boxShadow: "var(--lp-shadow-sm)",
           padding: "clamp(28px, 4vw, 48px)",
         }}
       >
@@ -356,8 +356,8 @@ function DistributionPreview() {
     >
       <defs>
         <linearGradient id="passer-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(45,91,168,0.22)" />
-          <stop offset="100%" stopColor="rgba(45,91,168,0.02)" />
+          <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.04" />
         </linearGradient>
       </defs>
       <path
@@ -376,7 +376,7 @@ function DistributionPreview() {
         y1="120"
         x2="326"
         y2="120"
-        stroke="rgba(0,0,0,0.12)"
+        stroke="var(--border)"
         strokeWidth="1"
       />
       <line
@@ -393,7 +393,7 @@ function DistributionPreview() {
         cy="68"
         r="5"
         fill={PALETTE.primary}
-        stroke="#fff"
+        stroke="var(--card)"
         strokeWidth="2"
       />
       <text

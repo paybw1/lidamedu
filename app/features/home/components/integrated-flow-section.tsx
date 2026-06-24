@@ -37,7 +37,7 @@ const CARDS = [
 
 const onEnter: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(-2px)";
-  e.currentTarget.style.boxShadow = "0 10px 28px rgba(0,0,0,0.10)";
+  e.currentTarget.style.boxShadow = "var(--lp-shadow-hover)";
 };
 const onLeave: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(0)";

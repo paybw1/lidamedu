@@ -13,12 +13,12 @@ import { Link } from "react-router";
 
 // 랜딩 색 SSOT — 인앱 app.css 토큰(:root/.dark)을 var()로 참조해 다크 대응.
 // 인라인 스타일이 var()를 그대로 받으므로, 이 객체만 바꾸면 전 섹션에 전파된다.
-// accent(#7B61FF 보라)만 C1-4 하드코딩 단계에서 브랜드/토큰으로 교체 예정.
+// accent: 보라(#7B61FF, frontend-design 경계색) → var(--chart-4) 앰버로 교체(C1-4).
 export const PALETTE = {
   primary: "var(--primary)",
   primaryStrong: "var(--lp-grad-to)",
   primaryDeep: "var(--primary)",
-  accent: "#7B61FF",
+  accent: "var(--chart-4)",
   ink: "var(--foreground)",
   inkSoft: "var(--ink-soft)",
   inkMute: "var(--ink-faint)",
