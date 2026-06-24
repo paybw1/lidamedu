@@ -315,10 +315,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         : session.scopeType === "filter"
           ? "맞춤 퀴즈"
           : session.scopeType === "wrong-note"
-            ? "오답노트 회차"
+            ? "오답노트 풀이"
             : session.scopeType === "bookmark"
-              ? "즐겨찾기 회차"
-              : "퀴즈 회차"
+              ? "즐겨찾기 풀이"
+              : "퀴즈 풀이"
     : nodeSequence
       ? `체계: ${nodeSequence.node.displayLabel}`
       : null;

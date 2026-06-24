@@ -240,7 +240,7 @@ export default function QuizSetup({
           <div className="rounded-xl border bg-card shadow-sm">
             <div className="px-6 pt-5 pb-1">
               <p className="font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
-                학습 회차
+                풀이 설정
               </p>
             </div>
             <div className="divide-y divide-border/60 px-6 pb-4">
