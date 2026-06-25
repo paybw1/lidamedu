@@ -1071,7 +1071,7 @@ export async function getOxQuestionsForArticle(
   const { data: boxRows } = await client
     .from("problem_box_items")
     .select(
-      "box_item_id, problem_id, body_md, ox_truth, explanation_md, marker, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
+      "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
     )
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
@@ -1091,7 +1091,9 @@ export async function getOxQuestionsForArticle(
       refType: "box",
       refId: r.box_item_id,
       problemId: r.problem_id,
-      bodyMd: r.marker ? `[${r.marker}] ${r.body_md}` : r.body_md,
+      // 정오문제 패널은 지문 하나를 단독 O/X 로 묻는다 → 박스 식별자([㉠] 등)는 노이즈라
+      // 붙이지 않는다(원래 marker prefix 를 제거; OxQuestionsPanel 의 stripLeadingMarker 와도 정합).
+      bodyMd: r.body_md,
       oxTruth: r.ox_truth as OxTruth,
       explanationMd: r.explanation_md,
       year: r.problems.year,
