@@ -9,7 +9,7 @@ import {
   PencilIcon,
   RefreshCcwIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -34,6 +34,66 @@ function stripLeadingMarker(text: string): string {
   return s;
 }
 
+// 출처 구분 토글 — 전체 / 기출 / 기타(그 외). 학생이 기출을 먼저 풀고 예상 등은 선택적으로.
+// 기출 = past_exam + past_exam_variant(기출변형도 기출로 분류). 기타 = 예상·모의·AI초안 등.
+type OxOriginFilter = "all" | "past_exam" | "other";
+
+// "기출" 분류 = 실제 기출 + 기출변형.
+function isPastExamOrigin(origin: string): boolean {
+  return origin === "past_exam" || origin === "past_exam_variant";
+}
+
+const OX_ORIGIN_OPTIONS: { value: OxOriginFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "past_exam", label: "기출" },
+  { value: "other", label: "기타" },
+];
+
+function OxOriginToggle({
+  value,
+  onChange,
+  counts,
+}: {
+  value: OxOriginFilter;
+  onChange: (v: OxOriginFilter) => void;
+  counts: Record<OxOriginFilter, number>;
+}) {
+  return (
+    <div
+      className="bg-muted text-muted-foreground inline-flex h-7 items-center rounded-lg p-[3px]"
+      role="group"
+      aria-label="정오문제 출처 구분"
+      data-testid="ox-origin-toggle"
+    >
+      {OX_ORIGIN_OPTIONS.map(({ value: v, label }) => {
+        const active = value === v;
+        const n = counts[v];
+        const disabled = v !== "all" && n === 0;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(v)}
+            disabled={disabled}
+            aria-pressed={active}
+            className={cn(
+              "inline-flex h-full items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors",
+              active
+                ? "bg-background text-[#2D5BA8] shadow-sm dark:text-[#8FB4E3]"
+                : "hover:text-foreground",
+              disabled &&
+                "cursor-not-allowed opacity-40 hover:text-muted-foreground",
+            )}
+          >
+            {label}
+            <span className="tabular-nums opacity-70">{n}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function OxQuestionsPanel({
   items,
   subject,
@@ -50,12 +110,31 @@ export function OxQuestionsPanel({
   const [revealed, setRevealed] = useState(false);
   // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'memo' | null.
   const [annoOpen, setAnnoOpen] = useState<"bookmark" | "memo" | null>(null);
+  const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
   const attemptFetcher = useFetcher();
   const startedAtRef = useRef<number>(Date.now());
   // 한 지문당 1회만 기록 (다시 풀기 → 동일 지문 재기록 방지). refId 단위.
   const recordedRefIdRef = useRef<string | null>(null);
 
-  // items 가 "내용상" 바뀌면 처음으로 (다른 조문/장으로 이동 등).
+  // 출처별 개수(토글 라벨) + 현재 토글로 거른 목록.
+  const counts = useMemo<Record<OxOriginFilter, number>>(() => {
+    let past = 0;
+    for (const it of items) if (isPastExamOrigin(it.origin)) past += 1;
+    return { all: items.length, past_exam: past, other: items.length - past };
+  }, [items]);
+  const filteredItems = useMemo(
+    () =>
+      originFilter === "all"
+        ? items
+        : items.filter((it) =>
+            originFilter === "past_exam"
+              ? isPastExamOrigin(it.origin)
+              : !isPastExamOrigin(it.origin),
+          ),
+    [items, originFilter],
+  );
+
+  // items 가 "내용상" 바뀌면(또는 출처 토글 변경 시) 처음으로 (다른 조문/장 이동 등).
   // 단순히 items 참조만 비교하면 fetcher.submit 의 loader revalidate 로 새 배열이
   // 내려올 때마다 idx/picked/revealed 가 리셋되어 정답 확인 박스가 접힘.
   // refId 시퀀스 시그니처로 비교해 실제 변경된 경우에만 리셋.
@@ -68,7 +147,7 @@ export function OxQuestionsPanel({
     startedAtRef.current = Date.now();
     recordedRefIdRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemsKey]);
+  }, [itemsKey, originFilter]);
 
   if (items.length === 0) {
     return (
@@ -78,7 +157,29 @@ export function OxQuestionsPanel({
     );
   }
 
-  const cur = items[idx];
+  const toggleEl = (
+    <div className="flex justify-end">
+      <OxOriginToggle
+        value={originFilter}
+        onChange={setOriginFilter}
+        counts={counts}
+      />
+    </div>
+  );
+
+  if (filteredItems.length === 0) {
+    return (
+      <div className="space-y-3" data-testid="ox-panel">
+        {toggleEl}
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          이 분류에 해당하는 정오문제가 없습니다.
+        </p>
+      </div>
+    );
+  }
+
+  const pos = Math.min(idx, filteredItems.length - 1);
+  const cur = filteredItems[pos];
   const isCorrect = picked !== null && picked === cur.oxTruth;
   const isWrong = picked !== null && picked !== cur.oxTruth;
 
@@ -110,7 +211,7 @@ export function OxQuestionsPanel({
   };
 
   const goNext = () => {
-    setIdx((i) => (i + 1) % items.length);
+    setIdx((i) => (i + 1) % filteredItems.length);
     setPicked(null);
     setRevealed(false);
     setAnnoOpen(null);
@@ -132,6 +233,7 @@ export function OxQuestionsPanel({
 
   return (
     <div className="space-y-3" data-testid="ox-panel">
+      {toggleEl}
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge variant="secondary" className="text-[10px]">
           {ORIGIN_LABEL[cur.origin as ProblemOrigin] ?? cur.origin}
@@ -143,7 +245,7 @@ export function OxQuestionsPanel({
           </Badge>
         ) : null}
         <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
-          {idx + 1} / {items.length}
+          {pos + 1} / {filteredItems.length}
         </span>
       </div>
 
