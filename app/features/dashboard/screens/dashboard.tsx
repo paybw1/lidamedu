@@ -772,21 +772,27 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             <>
               <SectionBand eyebrow="WEAK SPOTS · 약점 → 행동 다리" />
               <DashGrid>
-                {weakRows.length > 0 ? (
-                  <SpanCol span={2}>
+                {[
+                  weakRows.length > 0 ? (
                     <WeakReviewCard areas={weakRows} />
-                  </SpanCol>
-                ) : null}
-                {weakNodeRows.length > 0 ? (
-                  <SpanCol span={2}>
+                  ) : null,
+                  weakNodeRows.length > 0 ? (
                     <WeakNodesCard nodes={weakNodeRows} />
-                  </SpanCol>
-                ) : null}
-                {recommendedActions.length > 0 ? (
-                  <SpanCol span={2}>
+                  ) : null,
+                  recommendedActions.length > 0 ? (
                     <RecommendedActionsCard actions={recommendedActions} />
-                  </SpanCol>
-                ) : null}
+                  ) : null,
+                ]
+                  .filter(Boolean)
+                  // 표시되는 카드 수에 맞춰 span 분배 → 항상 6칸(풀 너비) 채움(1=6·2=3·3=2).
+                  .map((card, i, arr) => (
+                    <SpanCol
+                      key={i}
+                      span={arr.length === 1 ? 6 : arr.length === 2 ? 3 : 2}
+                    >
+                      {card}
+                    </SpanCol>
+                  ))}
               </DashGrid>
             </>
           ) : null}

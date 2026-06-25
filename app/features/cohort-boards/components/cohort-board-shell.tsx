@@ -23,8 +23,9 @@ export function CohortBoardShell({
   return (
     <div
       className={cn(
-        "mx-auto w-full px-4 py-6 md:py-8",
-        width === "narrow" ? "max-w-2xl" : "max-w-3xl",
+        // 자유게시판·스터디모집(community-shell)과 가로 너비·패딩 통일.
+        "mx-auto w-full px-5 py-7 md:px-8 md:py-9",
+        width === "narrow" ? "max-w-3xl" : "max-w-5xl",
       )}
     >
       {backLink ? (

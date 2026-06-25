@@ -92,9 +92,9 @@ body {
 
   /* 랜딩(/) 전용 — landing.tsx PALETTE 가 var()로 참조(다크 대응). 라이트=현행 동일. */
   --lp-grad-to: #1e4789; /* 브랜드 그라데이션 어두운 stop (primary→이 색) */
-  --lp-weak: #e26a53; /* 약점 viz 약함(코랄) */
-  --lp-mid: #e0a43b; /* 보통(앰버) */
-  --lp-strong: #4e9e78; /* 강함(에메랄드) */
+  --lp-weak: #2d5ba8; /* 약점 viz 약함 — 블루 테마 정합(딥 프라이머리, 약점 강조) */
+  --lp-mid: #86abdb; /* 보통(미드 블루) */
+  --lp-strong: #d6e5f6; /* 강함(페일 블루) */
   --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.06);
   --lp-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.1);
   --lp-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.1);
@@ -159,9 +159,9 @@ body {
 
   /* 랜딩 전용 — 다크 표면용 명도 상향. */
   --lp-grad-to: #24508f;
-  --lp-weak: #f08a74;
-  --lp-mid: #e8bc63;
-  --lp-strong: #62b991;
+  --lp-weak: #6ea8e6; /* 약함(브라이트 블루 — 다크 강조) */
+  --lp-mid: #3f6cb0; /* 보통 */
+  --lp-strong: #2c3a55; /* 강함(서브틀 블루) */
   --lp-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.45);
   --lp-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
   --lp-shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.5);
