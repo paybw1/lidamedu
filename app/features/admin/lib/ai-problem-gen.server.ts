@@ -32,12 +32,24 @@ import {
 } from "~/features/ai-qna/lib/usage-tracker.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
+/**
+ * 출제 지식 유형 — 사용자 요청의 2분할(판례 : 조문/이론).
+ * precedent = 판례 법리(case-seeded), statute_theory = 조문·이론(article-seeded).
+ * (OX 진단의 3분할 statute/precedent/theory 와 달리 조문+이론을 한 묶음으로 본다.)
+ */
+export type KnowledgeType = "precedent" | "statute_theory";
+
 export interface GenerateOptions {
   lawCode: LawSubjectSlug;
   /** 비어 있으면 lawCode 의 article level 에서 무작위 sampling. */
   primaryArticleIds?: string[];
   /** mc_short / mc_box 합산 = total. */
   formatMix: { mc_short: number; mc_box: number };
+  /**
+   * 0~100. 판례(precedent) 문항 비율. 나머지는 조문/이론(statute_theory). default 50.
+   * 실제 1차 시험 출제 비중(판례:조문이론 ≈ 50:50)을 기본값으로.
+   */
+  precedentRatio?: number;
   /** 생성 모델 — default sonnet 4.6 (Q&A 와 별개 설정). */
   model?: string;
   /** 한 article 당 RAG top-K. default 8. */
@@ -50,10 +62,18 @@ export interface GenerateReport {
   totalRequested: number;
   totalGenerated: number;
   totalSkippedNoEvidence: number;
+  /** 판례 슬롯인데 과목에 색인된 판례가 없어 생성 불가한 수. */
+  totalSkippedNoCases: number;
   totalStructureWarnings: number;
   totalDuplicateSuspected: number;
+  /** 지식 유형별 실제 생성 수. */
+  byKnowledge: { precedent: number; statute_theory: number };
   generatedProblemIds: string[];
-  perArticleErrors: Array<{ articleId: string; reason: string }>;
+  perTargetErrors: Array<{
+    targetId: string;
+    targetKind: "article" | "case";
+    reason: string;
+  }>;
   tokenUsage: { input: number; output: number };
   costUsd: number;
 }
@@ -96,7 +116,8 @@ const SYSTEM_PROMPT = [
   "3. **단답형(mc_short)** — 정확히 5개 선지. 정답 정확히 1개. 매력적인 오답 4개. 각 선지의 정오 사유를 explanation_md 에.",
   "4. **박스형(mc_box)** — 보기(box_items) ㄱㄴㄷㄹㅁ 4~5개 + 각 보기의 ox_truth(true/false). 선지는 '참인 보기 조합'(예: ① ㄱ,ㄷ). 정답 선지 = 실제 참 보기들의 조합과 정확히 일치.",
   "5. **본문 톤** — 변리사 시험 톤, 법령 용어 정확, 간결.",
-  "6. **응답 형식** — 아래 JSON 스키마 그대로. 추가 설명 없이 JSON 만:",
+  "6. **출제 유형** — 사용자 프롬프트의 [출제 유형](판례 / 조문·이론)에 맞춰 출제하세요. 판례는 판시사항·결론·법리를, 조문·이론은 요건·효과·해석을 검증합니다.",
+  "7. **응답 형식** — 아래 JSON 스키마 그대로. 추가 설명 없이 JSON 만:",
   "",
   '{ "problem": {',
   '  "format": "mc_short" | "mc_box",',
@@ -116,12 +137,24 @@ interface ContextChunkRef {
 
 function buildUserPrompt(
   format: "mc_short" | "mc_box",
+  knowledge: KnowledgeType,
   contextChunks: ContextChunkRef[],
-  primaryArticleLabel: string | null,
+  primaryLabel: string | null,
 ): string {
   const lines: string[] = [];
   lines.push(`형식: ${format === "mc_short" ? "단답형(mc_short, 5지선다)" : "박스형(mc_box, ㄱㄴㄷㄹㅁ + 조합 선지)"}`);
-  if (primaryArticleLabel) lines.push(`주요 조문: ${primaryArticleLabel}`);
+  // 출제 유형 — 판례 법리 vs 조문·이론. RAG 근거의 성격과 일치시킨다.
+  if (knowledge === "precedent") {
+    lines.push("[출제 유형: 판례]");
+    lines.push("- 제시된 판례 근거의 판시사항·판결요지·결론(법리)만 사용해 출제하세요.");
+    lines.push("- 본문에 사건의 쟁점을 간결히 제시하고, 선지로 법리의 정오를 판단하게 하세요.");
+    lines.push("- 근거 밖 사건·연도·인명·법리는 절대 만들지 마세요.");
+    if (primaryLabel) lines.push(`대상 판례: ${primaryLabel}`);
+  } else {
+    lines.push("[출제 유형: 조문·이론]");
+    lines.push("- 제시된 조문·이론 근거의 요건·효과·해석으로 정오가 직접 검증되게 하세요.");
+    if (primaryLabel) lines.push(`주요 조문: ${primaryLabel}`);
+  }
   lines.push("");
   lines.push("[근거 청크]");
   for (let i = 0; i < contextChunks.length; i++) {
@@ -237,19 +270,38 @@ interface ArticleTarget {
   articleNumber: string | null;
 }
 
-async function pickArticleTargets(
+interface CaseTarget {
+  caseId: string;
+  caseNumber: string;
+  caseTitle: string;
+  summaryTitle: string | null;
+  primaryNodeId: string | null;
+  primaryArticleId: string | null;
+}
+
+async function resolveLawId(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
-  primaryArticleIds: string[] | undefined,
-  totalCount: number,
-): Promise<{ targets: ArticleTarget[]; lawId: string | null }> {
-  const { data: law } = await client
+): Promise<string | null> {
+  const { data } = await client
     .from("laws")
     .select("law_id")
     .eq("law_code", lawCode)
     .maybeSingle();
-  if (!law) return { targets: [], lawId: null };
+  return data?.law_id ?? null;
+}
 
+// 조문/이론 대상 — primaryArticleIds 있으면 그 안에서, 없으면 과목 전체 article level 에서
+// 무작위 sampling. count 만큼 (pool 보다 많이 요청하면 라운드 배분으로 반복).
+async function pickArticleTargets(
+  client: SupabaseClient<Database>,
+  lawId: string,
+  primaryArticleIds: string[] | undefined,
+  count: number,
+): Promise<ArticleTarget[]> {
+  if (count <= 0) return [];
+
+  let pool: ArticleTarget[];
   if (primaryArticleIds && primaryArticleIds.length > 0) {
     const { data } = await client
       .from("articles")
@@ -257,39 +309,96 @@ async function pickArticleTargets(
       .in("article_id", primaryArticleIds)
       .eq("level", "article")
       .is("deleted_at", null);
-    const list = (data ?? []).map((r) => ({
+    pool = (data ?? []).map((r) => ({
       articleId: r.article_id,
       displayLabel: r.display_label,
       articleNumber: r.article_number,
     }));
-    // totalCount 만큼 라운드 배분 — 같은 article 이 여러 번 들어갈 수 있다.
-    const targets: ArticleTarget[] = [];
-    for (let i = 0; i < totalCount && list.length > 0; i++) {
-      targets.push(list[i % list.length]);
-    }
-    return { targets, lawId: law.law_id };
+  } else {
+    const { data } = await client
+      .from("articles")
+      .select("article_id, display_label, article_number")
+      .eq("law_id", lawId)
+      .eq("level", "article")
+      .is("deleted_at", null)
+      .limit(500);
+    pool = (data ?? [])
+      .map((r) => ({
+        articleId: r.article_id,
+        displayLabel: r.display_label,
+        articleNumber: r.article_number,
+      }))
+      .sort(() => Math.random() - 0.5);
   }
+  if (pool.length === 0) return [];
+  const targets: ArticleTarget[] = [];
+  for (let i = 0; i < count; i++) targets.push(pool[i % pool.length]);
+  return targets;
+}
 
-  // primaryArticleIds 없으면 lawCode 전체 article level 에서 무작위 sampling.
+// 판례 대상 — 과목(subject_laws)에 색인된 판례에서 무작위 sampling. 없으면 빈 배열
+// (호출부가 '판례 미색인 과목' skip 처리). 현재 판례 색인은 특허법만 존재.
+async function pickCaseTargets(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  count: number,
+): Promise<CaseTarget[]> {
+  if (count <= 0) return [];
   const { data } = await client
-    .from("articles")
-    .select("article_id, display_label, article_number")
-    .eq("law_id", law.law_id)
-    .eq("level", "article")
+    .from("cases")
+    .select(
+      "case_id, case_number, case_title, summary_title, primary_node_id, primary_article_id",
+    )
+    .contains("subject_laws", [lawCode])
     .is("deleted_at", null)
     .limit(500);
-  const pool = (data ?? []).map((r) => ({
-    articleId: r.article_id,
-    displayLabel: r.display_label,
-    articleNumber: r.article_number,
-  }));
-  if (pool.length === 0) return { targets: [], lawId: law.law_id };
-  const targets: ArticleTarget[] = [];
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  for (let i = 0; i < totalCount; i++) {
-    targets.push(shuffled[i % shuffled.length]);
+  const pool: CaseTarget[] = (data ?? [])
+    .map((r) => ({
+      caseId: r.case_id,
+      caseNumber: r.case_number,
+      caseTitle: r.case_title,
+      summaryTitle: r.summary_title,
+      primaryNodeId: r.primary_node_id,
+      primaryArticleId: r.primary_article_id,
+    }))
+    .sort(() => Math.random() - 0.5);
+  if (pool.length === 0) return [];
+  const targets: CaseTarget[] = [];
+  for (let i = 0; i < count; i++) targets.push(pool[i % pool.length]);
+  return targets;
+}
+
+interface Slot {
+  format: "mc_short" | "mc_box";
+  knowledge: KnowledgeType;
+}
+
+// N개 슬롯에 (형식 × 지식유형) 배정. 형식은 formatMix 개수대로, 지식유형은 precedentCount
+// 를 균등 분산(Bresenham — 정확히 precedentCount 개가 고르게 흩어진다). 마지막에 셔플해
+// 형식↔지식유형이 위치로 묶이지 않게(예: 박스형이 전부 판례로 쏠리는 것 방지).
+function planSlots(
+  formatMix: { mc_short: number; mc_box: number },
+  precedentCount: number,
+): Slot[] {
+  const total = formatMix.mc_short + formatMix.mc_box;
+  if (total === 0) return [];
+  const formats: Array<"mc_short" | "mc_box"> = [];
+  for (let i = 0; i < formatMix.mc_short; i++) formats.push("mc_short");
+  for (let i = 0; i < formatMix.mc_box; i++) formats.push("mc_box");
+  const slots: Slot[] = [];
+  for (let i = 0; i < total; i++) {
+    const before = Math.floor((i * precedentCount) / total);
+    const after = Math.floor(((i + 1) * precedentCount) / total);
+    slots.push({
+      format: formats[i] ?? "mc_short",
+      knowledge: after > before ? "precedent" : "statute_theory",
+    });
   }
-  return { targets, lawId: law.law_id };
+  for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  return slots;
 }
 
 export async function generateAiDraftProblems(
@@ -302,18 +411,25 @@ export async function generateAiDraftProblems(
   const topK = opts.topK ?? 8;
   const minChunkThreshold = opts.minChunkThreshold ?? 2;
   const totalCount = opts.formatMix.mc_short + opts.formatMix.mc_box;
+  const precedentRatio = Math.min(100, Math.max(0, opts.precedentRatio ?? 50));
+  const precedentCount = Math.round((totalCount * precedentRatio) / 100);
+  const statuteCount = totalCount - precedentCount;
 
   const report: GenerateReport = {
     totalRequested: totalCount,
     totalGenerated: 0,
     totalSkippedNoEvidence: 0,
+    totalSkippedNoCases: 0,
     totalStructureWarnings: 0,
     totalDuplicateSuspected: 0,
+    byKnowledge: { precedent: 0, statute_theory: 0 },
     generatedProblemIds: [],
-    perArticleErrors: [],
+    perTargetErrors: [],
     tokenUsage: { input: 0, output: 0 },
     costUsd: 0,
   };
+
+  if (totalCount === 0) return report;
 
   // 사전 cap 체크.
   const capBefore = await checkGlobalCap(adminClient);
@@ -321,39 +437,81 @@ export async function generateAiDraftProblems(
     throw new Error(`[GLOBAL CAP BLOCKED] ${capBlockedMessage(capBefore)}`);
   }
 
-  const { targets, lawId } = await pickArticleTargets(
-    client,
-    opts.lawCode,
-    opts.primaryArticleIds,
-    totalCount,
-  );
-  if (targets.length === 0) {
-    return report;
-  }
+  const lawId = await resolveLawId(client, opts.lawCode);
+  if (!lawId) return report;
 
-  // 형식 분배 — 앞쪽 mc_short, 뒤쪽 mc_box.
-  const formats: Array<"mc_short" | "mc_box"> = [];
-  for (let i = 0; i < opts.formatMix.mc_short; i++) formats.push("mc_short");
-  for (let i = 0; i < opts.formatMix.mc_box; i++) formats.push("mc_box");
+  // 슬롯 계획(형식 × 지식유형) + 유형별 대상 풀.
+  const slots = planSlots(opts.formatMix, precedentCount);
+  const articleTargets = await pickArticleTargets(
+    client,
+    lawId,
+    opts.primaryArticleIds,
+    statuteCount,
+  );
+  const caseTargets = await pickCaseTargets(client, opts.lawCode, precedentCount);
 
   const anthropic = getAnthropic();
+  let aCursor = 0;
+  let cCursor = 0;
 
-  for (let idx = 0; idx < targets.length; idx++) {
-    const article = targets[idx];
-    const format = formats[idx] ?? "mc_short";
+  for (const slot of slots) {
+    const targetKind: "article" | "case" =
+      slot.knowledge === "precedent" ? "case" : "article";
 
-    // 매 article 마다 cap 재확인.
+    // 매 슬롯마다 cap 재확인.
     const cap = await checkGlobalCap(adminClient);
     if (cap.blocked) {
-      report.perArticleErrors.push({
-        articleId: article.articleId,
+      report.perTargetErrors.push({
+        targetId: "-",
+        targetKind,
         reason: capBlockedMessage(cap),
       });
       break;
     }
 
-    // RAG 근거 검색 — article.displayLabel 을 질문처럼 사용.
-    const queryText = article.displayLabel ?? article.articleNumber ?? "";
+    // 슬롯별 대상·질의 결정. 판례 = case-seeded(case_number 직격 + graph 확장),
+    // 조문/이론 = article-seeded(기존 흐름).
+    let queryText = "";
+    let minChunk = minChunkThreshold;
+    let primaryLabel: string | null = null;
+    let article: ArticleTarget | null = null;
+    let caseT: CaseTarget | null = null;
+
+    if (slot.knowledge === "precedent") {
+      caseT = caseTargets[cCursor++] ?? null;
+      if (!caseT) {
+        // 과목에 색인된 판례가 없음 → 판례 문항 생성 불가(현재 특허법만 색인).
+        report.totalSkippedNoCases += 1;
+        report.perTargetErrors.push({
+          targetId: "-",
+          targetKind: "case",
+          reason: "과목에 색인된 판례가 없어 판례 문항을 생성할 수 없습니다",
+        });
+        continue;
+      }
+      // case_number 를 질의에 포함 → structured 경로가 해당 판례 청크를 직격 + graph 로
+      //   관련 조문 확장. 판례 1청크(판시사항)만으로도 출제 충분 → 임계 1.
+      queryText = `${caseT.caseNumber} ${caseT.caseTitle}`;
+      minChunk = 1;
+      primaryLabel = caseT.summaryTitle ?? caseT.caseTitle;
+    } else {
+      article = articleTargets[aCursor++] ?? null;
+      if (!article) {
+        report.totalSkippedNoEvidence += 1;
+        report.perTargetErrors.push({
+          targetId: "-",
+          targetKind: "article",
+          reason: "조문 대상이 없습니다",
+        });
+        continue;
+      }
+      queryText = article.displayLabel ?? article.articleNumber ?? "";
+      primaryLabel = article.displayLabel;
+    }
+
+    const targetId = caseT?.caseId ?? article?.articleId ?? "-";
+
+    // RAG 근거 검색.
     let hits: ContextChunkRef[] = [];
     try {
       const search = await hybridSearch(client, queryText, {
@@ -367,17 +525,19 @@ export async function generateAiDraftProblems(
         bodyText: h.bodyText,
       }));
     } catch (e) {
-      report.perArticleErrors.push({
-        articleId: article.articleId,
+      report.perTargetErrors.push({
+        targetId,
+        targetKind,
         reason: e instanceof Error ? e.message : String(e),
       });
       continue;
     }
 
-    if (hits.length < minChunkThreshold) {
+    if (hits.length < minChunk) {
       report.totalSkippedNoEvidence += 1;
-      report.perArticleErrors.push({
-        articleId: article.articleId,
+      report.perTargetErrors.push({
+        targetId,
+        targetKind,
         reason: `근거 부족 (hits=${hits.length})`,
       });
       continue;
@@ -388,7 +548,12 @@ export async function generateAiDraftProblems(
     let inputTokens = 0;
     let outputTokens = 0;
     try {
-      const userPrompt = buildUserPrompt(format, hits, article.displayLabel);
+      const userPrompt = buildUserPrompt(
+        slot.format,
+        slot.knowledge,
+        hits,
+        primaryLabel,
+      );
       const resp = await anthropic.messages.create({
         model,
         max_tokens: 2048,
@@ -410,8 +575,9 @@ export async function generateAiDraftProblems(
       }
       parsedItem = parsed.data.problem;
     } catch (e) {
-      report.perArticleErrors.push({
-        articleId: article.articleId,
+      report.perTargetErrors.push({
+        targetId,
+        targetKind,
         reason: e instanceof Error ? e.message : String(e),
       });
       // 토큰 사용량은 일부 발생했을 수 있어 누적.
@@ -444,12 +610,19 @@ export async function generateAiDraftProblems(
     const sourceChunkIds = hits.map((h) => h.chunkId);
     const genRange: Record<string, unknown> = {
       lawCode: opts.lawCode,
-      requestedFormat: format,
-      primaryArticleId: article.articleId,
+      requestedFormat: slot.format,
+      knowledgeType: slot.knowledge,
       structureWarning: structureWarning ?? null,
       duplicateSuspectedOf: duplicates,
       modelUsed: model,
     };
+    if (caseT) {
+      genRange.primaryCaseId = caseT.caseId;
+      genRange.primaryCaseNumber = caseT.caseNumber;
+    }
+    if (article) {
+      genRange.primaryArticleId = article.articleId;
+    }
 
     const { data: prob, error: pErr } = await client
       .from("problems")
@@ -461,7 +634,11 @@ export async function generateAiDraftProblems(
         format: parsedItem.format,
         body_md: parsedItem.body_md,
         explanation_md: parsedItem.explanation_md || null,
-        primary_article_id: article.articleId,
+        // 판례 문항은 조문이 없을 수 있어 case 의 노드를 단원 앵커로 사용.
+        primary_article_id: caseT
+          ? caseT.primaryArticleId
+          : (article?.articleId ?? null),
+        primary_node_id: caseT ? caseT.primaryNodeId : null,
         created_by: userId,
         review_status: "draft",
         generated_by: model,
@@ -472,11 +649,29 @@ export async function generateAiDraftProblems(
       .select("problem_id")
       .single();
     if (pErr || !prob) {
-      report.perArticleErrors.push({
-        articleId: article.articleId,
+      report.perTargetErrors.push({
+        targetId,
+        targetKind,
         reason: pErr?.message ?? "insert failed",
       });
       continue;
+    }
+
+    // 판례 출처 링크 — relations 그래프(problem ↔ case). cited.
+    if (caseT) {
+      const { error: lErr } = await client.from("problem_case_links").insert({
+        problem_id: prob.problem_id,
+        case_id: caseT.caseId,
+        relation_type: "cited",
+        created_by: userId,
+      });
+      if (lErr) {
+        report.perTargetErrors.push({
+          targetId,
+          targetKind,
+          reason: `case link fail: ${lErr.message}`,
+        });
+      }
     }
 
     // 선지.
@@ -492,8 +687,9 @@ export async function generateAiDraftProblems(
         .from("problem_choices")
         .insert(choiceRows);
       if (cErr) {
-        report.perArticleErrors.push({
-          articleId: article.articleId,
+        report.perTargetErrors.push({
+          targetId,
+          targetKind,
           reason: `choice insert fail: ${cErr.message}`,
         });
       }
@@ -518,14 +714,16 @@ export async function generateAiDraftProblems(
         .from("problem_box_items")
         .insert(boxRows);
       if (bErr) {
-        report.perArticleErrors.push({
-          articleId: article.articleId,
+        report.perTargetErrors.push({
+          targetId,
+          targetKind,
           reason: `box insert fail: ${bErr.message}`,
         });
       }
     }
 
     report.totalGenerated += 1;
+    report.byKnowledge[slot.knowledge] += 1;
     report.generatedProblemIds.push(prob.problem_id);
   }
 

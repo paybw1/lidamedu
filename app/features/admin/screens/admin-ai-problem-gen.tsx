@@ -40,10 +40,16 @@ interface GenReport {
   totalRequested: number;
   totalGenerated: number;
   totalSkippedNoEvidence: number;
+  totalSkippedNoCases: number;
   totalStructureWarnings: number;
   totalDuplicateSuspected: number;
+  byKnowledge: { precedent: number; statute_theory: number };
   generatedProblemIds: string[];
-  perArticleErrors: Array<{ articleId: string; reason: string }>;
+  perTargetErrors: Array<{
+    targetId: string;
+    targetKind: "article" | "case";
+    reason: string;
+  }>;
   tokenUsage: { input: number; output: number };
   costUsd: number;
 }
@@ -58,8 +64,14 @@ export default function AdminAiProblemGen({
   const [articleIds, setArticleIds] = useState<string>("");
   const [mcShort, setMcShort] = useState<number>(3);
   const [mcBox, setMcBox] = useState<number>(2);
+  const [precedentRatio, setPrecedentRatio] = useState<number>(50);
   const [model, setModel] = useState<string>("claude-sonnet-4-6");
   const total = mcShort + mcBox;
+  // 미리보기 — 실제 슬롯 배분과 동일 식(round).
+  const precedentSlots = Math.round((total * precedentRatio) / 100);
+  const statuteSlots = total - precedentSlots;
+  // 판례 색인은 현재 특허법만 → 다른 과목은 판례 슬롯이 skip 된다(안내).
+  const casesAvailable = lawCode === "patent";
 
   const submit = () => {
     const fd = new FormData();
@@ -67,6 +79,7 @@ export default function AdminAiProblemGen({
     if (articleIds.trim().length > 0) fd.set("primaryArticleIds", articleIds.trim());
     fd.set("mcShortCount", String(mcShort));
     fd.set("mcBoxCount", String(mcBox));
+    fd.set("precedentRatio", String(precedentRatio));
     fd.set("model", model);
     fetcher.submit(fd, { method: "post", action: "/api/admin/ai-problem-gen" });
   };
@@ -148,8 +161,44 @@ export default function AdminAiProblemGen({
             </Field>
           </div>
 
+          <Field
+            label="지식 유형 비율 (판례 : 조문·이론)"
+            hint="실제 1차 시험 출제 비중에 맞춰 기본 50:50. 판례 문항은 색인된 판례가 있는 과목에서만 생성됩니다(현재 특허법)."
+          >
+            <div className="space-y-2">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={10}
+                value={precedentRatio}
+                onChange={(e) => setPrecedentRatio(Number(e.target.value))}
+                className="w-full accent-violet-500"
+                aria-label="판례 비율"
+              />
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-violet-700 dark:text-violet-300">
+                  판례 {precedentRatio}%
+                </span>
+                <span className="text-muted-foreground tabular-nums">
+                  ≈ 판례 {precedentSlots} : 조문·이론 {statuteSlots}문항
+                </span>
+                <span className="font-semibold text-sky-700 dark:text-sky-300">
+                  조문·이론 {100 - precedentRatio}%
+                </span>
+              </div>
+              {!casesAvailable && precedentSlots > 0 ? (
+                <p className="text-amber-700 dark:text-amber-400">
+                  ⚠ 현재 과목은 색인된 판례가 없어 판례 {precedentSlots}문항은 생성되지
+                  않고 건너뜁니다. 판례 비율을 0%로 두거나 특허법을 선택하세요.
+                </p>
+              ) : null}
+            </div>
+          </Field>
+
           <div className="text-muted-foreground text-xs">
-            합계 {total}문항 (최대 30). 한 article 당 1문항. 근거 부족 article 은 자동 skip.
+            합계 {total}문항 (최대 30). 조문/이론은 조문 1개, 판례는 판례 1건당 1문항.
+            근거 부족 대상은 자동 skip.
           </div>
 
           <div className="flex items-center gap-3 pt-2">
@@ -193,8 +242,23 @@ function ReportPanel({ report }: { report: GenReport }) {
           <Stat label="요청" value={report.totalRequested} />
           <Stat label="성공 생성" value={report.totalGenerated} emerald />
           <Stat
+            label="판례 생성"
+            value={report.byKnowledge.precedent}
+            emerald
+          />
+          <Stat
+            label="조문·이론 생성"
+            value={report.byKnowledge.statute_theory}
+            emerald
+          />
+          <Stat
             label="근거 부족 skip"
             value={report.totalSkippedNoEvidence}
+            amber
+          />
+          <Stat
+            label="판례 미색인 skip"
+            value={report.totalSkippedNoCases}
             amber
           />
           <Stat
@@ -249,16 +313,17 @@ function ReportPanel({ report }: { report: GenReport }) {
           </div>
         ) : null}
 
-        {report.perArticleErrors.length > 0 ? (
+        {report.perTargetErrors.length > 0 ? (
           <div>
             <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-wide uppercase">
-              오류·skip ({report.perArticleErrors.length})
+              오류·skip ({report.perTargetErrors.length})
             </p>
             <ul className="max-h-40 overflow-auto rounded border border-border bg-muted/30 p-2 text-[11px] font-mono">
-              {report.perArticleErrors.map((e, i) => (
+              {report.perTargetErrors.map((e, i) => (
                 <li key={i}>
                   <span className="text-muted-foreground">
-                    {e.articleId.slice(0, 8)}
+                    [{e.targetKind === "case" ? "판례" : "조문"}]{" "}
+                    {e.targetId === "-" ? "" : e.targetId.slice(0, 8)}
                   </span>{" "}
                   — {e.reason}
                 </li>

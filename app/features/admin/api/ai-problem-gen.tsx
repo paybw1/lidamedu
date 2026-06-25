@@ -20,6 +20,8 @@ const inputSchema = z.object({
   primaryArticleIds: z.array(z.string().uuid()).optional(),
   mcShortCount: z.number().int().min(0).max(50),
   mcBoxCount: z.number().int().min(0).max(50),
+  /** 판례 비율(%). 나머지는 조문/이론. default 50. */
+  precedentRatio: z.number().int().min(0).max(100).optional(),
   model: z.string().optional(),
 });
 
@@ -47,6 +49,10 @@ export async function action({ request }: Route.ActionArgs) {
     primaryArticleIds: articleIds.length > 0 ? articleIds : undefined,
     mcShortCount: Number(fd.get("mcShortCount") ?? 0),
     mcBoxCount: Number(fd.get("mcBoxCount") ?? 0),
+    precedentRatio:
+      fd.get("precedentRatio") != null
+        ? Number(fd.get("precedentRatio"))
+        : undefined,
     model: fd.get("model") ? String(fd.get("model")) : undefined,
   });
   if (!parsed.success) {
@@ -75,6 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
         mc_short: input.mcShortCount,
         mc_box: input.mcBoxCount,
       },
+      precedentRatio: input.precedentRatio,
       model: input.model,
     });
     return data({ ok: true, report });
