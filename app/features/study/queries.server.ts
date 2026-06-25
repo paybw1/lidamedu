@@ -2000,7 +2000,6 @@ export async function listOxWrongAttempts(
     string,
     {
       bodyMd: string | null;
-      marker: string | null;
       articleId: string | null;
       problemId: string;
     }
@@ -2008,12 +2007,11 @@ export async function listOxWrongAttempts(
   if (boxIds.length > 0) {
     const { data: bRows } = await client
       .from("problem_box_items")
-      .select("box_item_id, body_md, marker, related_article_id, problem_id")
+      .select("box_item_id, body_md, related_article_id, problem_id")
       .in("box_item_id", boxIds);
     for (const b of bRows ?? []) {
       boxMap.set(b.box_item_id, {
         bodyMd: b.body_md,
-        marker: b.marker,
         articleId: b.related_article_id,
         problemId: b.problem_id,
       });
@@ -2119,8 +2117,8 @@ export async function listOxWrongAttempts(
       const truth = boxTruthMap.get(w.row.selected_box_item_id);
       if (!truth) continue;
       if (lawCode && prob.lawCode !== lawCode) continue;
-      const rawBody = b.bodyMd ?? "";
-      const body = b.marker ? `[${b.marker}] ${rawBody}` : rawBody;
+      // 정오문제 오답노트 스니펫 — 박스 식별자([㉠] 등)는 노이즈라 붙이지 않는다.
+      const body = b.bodyMd ?? "";
       const art = b.articleId ? articleMap.get(b.articleId) : null;
       out.push({
         refType: "box",
