@@ -594,6 +594,11 @@ function AdminProblemEditInner({
 }: Route.ComponentProps) {
   const { problem, mcqPacks, role, siblings, subNodeOptions, primaryNodeId } =
     loaderData;
+  // prev/next 는 진입 시점의 목록 순서로 고정한다(mount-time snapshot). 조문을 바꿔 저장하면
+  // 목록이 조문순으로 재정렬돼 형제가 달라지지만, 같은 problemId 동안엔 외곽 key 가 그대로라
+  // remount 가 없어 이 snapshot 이 저장 후에도 유지된다. prev/next 로 다른 문제로 이동하면
+  // key 변경 → remount → 새 문제 기준으로 재캡처. (저장마다 위치를 다시 찾는 불편 해소)
+  const [frozenSiblings] = useState(siblings);
   // feat-4-A-340 — 체계도 소분류 선택. 조문이 (caseOnly 제외) ≥2 노드에 걸릴 때만 노출.
   const [articleNum, setArticleNum] = useState(
     String(problem.primaryArticleNumber ?? ""),
@@ -626,8 +631,12 @@ function AdminProblemEditInner({
   })();
   const buildSiblingTo = (id: string) =>
     navQs ? `/admin/problems/${id}?${navQs}` : `/admin/problems/${id}`;
-  const prevTo = siblings.prevId ? buildSiblingTo(siblings.prevId) : null;
-  const nextTo = siblings.nextId ? buildSiblingTo(siblings.nextId) : null;
+  const prevTo = frozenSiblings.prevId
+    ? buildSiblingTo(frozenSiblings.prevId)
+    : null;
+  const nextTo = frozenSiblings.nextId
+    ? buildSiblingTo(frozenSiblings.nextId)
+    : null;
   // 메타 중 자식 (ChoiceEditor / BoxItemEditor) 의 자동 OX·기본 종류에 영향을 주는 값은 lift 해서
   // 저장 전에도 즉시 반영되게 한다. origin 은 showRound 토글에 사용.
   const [origin, setOrigin] = useState<ProblemOrigin>(problem.origin);
@@ -787,7 +796,7 @@ function AdminProblemEditInner({
           <ListIcon className="size-3.5" />
           {returnTo ? "이전 화면으로" : "객관식 문제 목록"}
         </Link>
-        {siblings.total > 0 ? (
+        {frozenSiblings.total > 0 ? (
           <div className="flex items-center gap-1.5">
             {prevTo ? (
               <Button asChild size="sm" variant="outline">
@@ -801,7 +810,7 @@ function AdminProblemEditInner({
               </Button>
             )}
             <span className="text-muted-foreground px-1 text-[11px] tabular-nums">
-              {siblings.position} / {siblings.total}
+              {frozenSiblings.position} / {frozenSiblings.total}
             </span>
             {nextTo ? (
               <Button asChild size="sm" variant="outline">
