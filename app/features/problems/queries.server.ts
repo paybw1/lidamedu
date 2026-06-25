@@ -972,6 +972,8 @@ export async function getOxQuestionsForSubject(
   client: SupabaseClient<Database>,
   lawCode: LawSubjectSlug,
   limit = 200,
+  // 학생 = 승인 문제만(검토 게이트). staff = 초안 포함.
+  opts?: { includeUnapproved?: boolean },
 ): Promise<OxQuestionItem[]> {
   const { data: law } = await client
     .from("laws")
@@ -982,7 +984,7 @@ export async function getOxQuestionsForSubject(
 
   const out: OxQuestionItem[] = [];
 
-  const { data: choiceRows } = await client
+  let choiceQuery = client
     .from("problem_choices")
     .select(
       "choice_id, problem_id, body_md, ox_truth, explanation_md, problems!inner(year, problem_number, origin, deleted_at, law_id)",
@@ -990,7 +992,12 @@ export async function getOxQuestionsForSubject(
     .eq("problems.law_id", law.law_id)
     .eq("ox_ineligible", false)
     .not("ox_truth", "is", null)
-    .limit(limit);
+    // 삭제 문제 제외는 SQL 에서(루프 skip + limit 만으로는 staff 화면이 삭제 행에 굶는다).
+    .is("problems.deleted_at", null);
+  if (!opts?.includeUnapproved) {
+    choiceQuery = choiceQuery.eq("problems.review_status", "approved");
+  }
+  const { data: choiceRows } = await choiceQuery.limit(limit);
   for (const r of choiceRows ?? []) {
     if (r.problems.deleted_at) continue;
     out.push({
@@ -1015,10 +1022,12 @@ export async function getOxQuestionsForArticle(
   limit = 50,
   // feat-4-A-341 — 체계도 노드 컨텍스트. 주면 지문을 부모 문제의 primary_node_id 로
   // 정밀 배치(지문 related_article = 문제 primary_article 인 경우만). 없으면 조문 단위.
-  opts?: { nodeSubtreeIds?: readonly string[] },
+  // includeUnapproved: 학생=false(승인 문제만, 검토 게이트) / staff=true(초안 포함).
+  opts?: { nodeSubtreeIds?: readonly string[]; includeUnapproved?: boolean },
 ): Promise<OxQuestionItem[]> {
   const out: OxQuestionItem[] = [];
   const subtree = opts?.nodeSubtreeIds ?? null;
+  const includeUnapproved = opts?.includeUnapproved ?? false;
   // 노드 컨텍스트일 때, 이 지문이 현재 노드에 배치되는지.
   const placed = (
     relatedNodeId: string | null,
@@ -1035,7 +1044,7 @@ export async function getOxQuestionsForArticle(
   };
 
   // 1. problem_choices.
-  const { data: choiceRows } = await client
+  let choiceQuery = client
     .from("problem_choices")
     .select(
       "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
@@ -1046,8 +1055,11 @@ export async function getOxQuestionsForArticle(
     // 삭제된 문제 제외를 SQL 에서(루프 skip 만으로는 limit 이 삭제 행으로 채워져 staff 화면이
     // 굶는다 — staff RLS 는 deleted 도 읽으므로). 중복 재import 로 삭제된 구버전 지문이 limit 을
     // 점유하던 버그.
-    .is("problems.deleted_at", null)
-    .limit(limit);
+    .is("problems.deleted_at", null);
+  if (!includeUnapproved) {
+    choiceQuery = choiceQuery.eq("problems.review_status", "approved");
+  }
+  const { data: choiceRows } = await choiceQuery.limit(limit);
   for (const r of choiceRows ?? []) {
     if (r.problems.deleted_at) continue;
     if (
@@ -1072,7 +1084,7 @@ export async function getOxQuestionsForArticle(
   }
 
   // 2. problem_box_items (박스형 사례 지문).
-  const { data: boxRows } = await client
+  let boxQuery = client
     .from("problem_box_items")
     .select(
       "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
@@ -1081,8 +1093,11 @@ export async function getOxQuestionsForArticle(
     .eq("ox_ineligible", false)
     .not("ox_truth", "is", null)
     // 삭제된 문제 제외 (choices 와 동일 — limit 이 삭제 행으로 채워지지 않도록 SQL 필터).
-    .is("problems.deleted_at", null)
-    .limit(limit);
+    .is("problems.deleted_at", null);
+  if (!includeUnapproved) {
+    boxQuery = boxQuery.eq("problems.review_status", "approved");
+  }
+  const { data: boxRows } = await boxQuery.limit(limit);
   for (const r of boxRows ?? []) {
     if (r.problems.deleted_at) continue;
     if (

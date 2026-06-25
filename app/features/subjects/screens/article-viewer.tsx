@@ -178,6 +178,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Unauthorized", { status: 401 });
   }
 
+  // OX 검토 게이트 — staff 는 초안 포함, 학생은 승인분만. OX 쿼리에 넘겨야 해 먼저 조회.
+  const viewerStaffRole = await getStaffRole(client, user.id);
+
   // Phase A2 — getSubjectAxisCounts 를 12 병렬에 합쳐 별도 RTT 1단 제거.
   const [
     relatedCases,
@@ -202,8 +205,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getUserArticleAnnotationCounts(client, user.id),
     listThreadsForTarget(client, "article", article.articleId, 20),
     listBlankSetsByArticle(client, article.articleId),
-    getStaffRole(client, user.id),
-    getOxQuestionsForArticle(client, article.articleId, 50),
+    Promise.resolve(viewerStaffRole),
+    getOxQuestionsForArticle(client, article.articleId, 50, {
+      includeUnapproved: viewerStaffRole !== null,
+    }),
     listComments(client, "article", article.articleId),
     listLectureResources(client, "article", article.articleId),
     getSubjectAxisCounts(client, lawCode, law.lawId),

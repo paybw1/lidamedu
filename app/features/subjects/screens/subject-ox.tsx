@@ -32,7 +32,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
 
   const role = await getStaffRole(client, user.id);
-  const items = await getOxQuestionsForSubject(client, lawCode, 200);
+  const items = await getOxQuestionsForSubject(client, lawCode, 200, {
+    includeUnapproved: role !== null,
+  });
   return { subject: LAW_SUBJECTS[lawCode], items, isStaff: role !== null };
 }
 

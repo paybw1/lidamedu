@@ -155,6 +155,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ? []
     : chapter.articles.map((a) => a.articleId);
 
+  // OX 검토 게이트 — staff 는 초안 포함, 학생은 승인분만. OX 쿼리에 넘겨야 해 먼저 조회.
+  const viewerStaffRole = await getStaffRole(client, user.id);
+
   const [
     articles,
     systematicNodes,
@@ -193,13 +196,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ).then((entries) => Object.fromEntries(entries)),
     Promise.all(
       articleIds.map((id) =>
-        getOxQuestionsForArticle(client, id, 50).then(
-          (items) => [id, items] as const,
-        ),
+        getOxQuestionsForArticle(client, id, 50, {
+          includeUnapproved: viewerStaffRole !== null,
+        }).then((items) => [id, items] as const),
       ),
     ).then((entries) => Object.fromEntries(entries)),
     listCommentsBulk(client, "article", articleIds),
-    getStaffRole(client, user.id),
+    Promise.resolve(viewerStaffRole),
     listLectureResourcesByArticleIds(client, articleIds),
     getPdfLocationsByTargetIds(client, "article", articleIds),
     getPdfLocationsEnabled(client),
