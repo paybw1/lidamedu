@@ -5113,7 +5113,8 @@ export type Database = {
           quality_grade: Database["public"]["Enums"]["qna_quality_grade"] | null
           question_md: string
           status: Database["public"]["Enums"]["qna_status"]
-          target_id: string
+          subject: string | null
+          target_id: string | null
           target_type: Database["public"]["Enums"]["qna_target_type"]
           thread_id: string
           title: string
@@ -5131,7 +5132,8 @@ export type Database = {
             | null
           question_md: string
           status?: Database["public"]["Enums"]["qna_status"]
-          target_id: string
+          subject?: string | null
+          target_id?: string | null
           target_type: Database["public"]["Enums"]["qna_target_type"]
           thread_id?: string
           title: string
@@ -5149,7 +5151,8 @@ export type Database = {
             | null
           question_md?: string
           status?: Database["public"]["Enums"]["qna_status"]
-          target_id?: string
+          subject?: string | null
+          target_id?: string | null
           target_type?: Database["public"]["Enums"]["qna_target_type"]
           thread_id?: string
           title?: string
@@ -7471,7 +7474,7 @@ export type Database = {
       problem_subject_type: "law" | "science"
       qna_quality_grade: "high" | "mid" | "low"
       qna_status: "open" | "answered" | "closed"
-      qna_target_type: "article" | "case" | "problem"
+      qna_target_type: "article" | "case" | "problem" | "study_method"
       resource_kind:
         | "lecture_note"
         | "lecture_video"
@@ -7721,7 +7724,7 @@ export const Constants = {
       problem_subject_type: ["law", "science"],
       qna_quality_grade: ["high", "mid", "low"],
       qna_status: ["open", "answered", "closed"],
-      qna_target_type: ["article", "case", "problem"],
+      qna_target_type: ["article", "case", "problem", "study_method"],
       resource_kind: [
         "lecture_note",
         "lecture_video",

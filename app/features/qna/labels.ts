@@ -18,6 +18,7 @@ export const QNA_TARGET_LABEL: Record<QnaTargetType, string> = {
   article: "조문",
   case: "판례",
   problem: "문제",
+  study_method: "공부방법",
 };
 
 export const QNA_STATUS_LABEL: Record<QnaStatus, string> = {

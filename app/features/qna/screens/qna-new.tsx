@@ -23,10 +23,14 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 // 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).
-const TARGET_TONE: Record<QnaTargetType, "primary" | "violet" | "amber"> = {
+const TARGET_TONE: Record<
+  QnaTargetType,
+  "primary" | "violet" | "amber" | "emerald"
+> = {
   article: "primary",
   case: "violet",
   problem: "amber",
+  study_method: "emerald",
 };
 
 type TargetDisplay = Awaited<ReturnType<typeof resolveTargetDisplay>>;
