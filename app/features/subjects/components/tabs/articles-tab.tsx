@@ -69,10 +69,7 @@ export function ArticlesTab({
   const treePanel = (
     <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
       {/* Outline header */}
-      <div className="border-border flex items-center justify-between border-b px-4 py-3">
-        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.10em] uppercase">
-          장별 목차
-        </p>
+      <div className="border-border flex items-center justify-end border-b px-3 py-2">
         <SortAxisToggle
           size="sm"
           disabledAxes={systematicEmpty ? ["systematic"] : undefined}

@@ -172,9 +172,21 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
             </Await>
           </Suspense>
         ) : null}
-        <div className={cn("w-full", !isSidebar && "mx-auto")}>
-          <Outlet />
-        </div>
+        {isSidebar ? (
+          // sidebar 모드: Footer 를 콘텐츠 컬럼 안에 둔다. 사이드바가 h-screen 이라
+          // Footer 가 행 바깥 형제이면 콘텐츠가 짧아도 100vh+푸터 만큼 불필요 스크롤이
+          // 생긴다 → 컬럼을 flex-col 로 만들고 Outlet 을 flex-1 로 채워 Footer 를 하단 고정.
+          <div className="flex w-full min-w-0 flex-col">
+            <div className="flex-1">
+              <Outlet />
+            </div>
+            <Footer />
+          </div>
+        ) : (
+          <div className="mx-auto w-full">
+            <Outlet />
+          </div>
+        )}
       </div>
       {/* 모바일 하단탭 — md 미만에서만. 모든 인증 사용자에게 노출. */}
       <Suspense fallback={null}>
@@ -204,7 +216,8 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
           }
         </Await>
       </Suspense>
-      <Footer />
+      {/* topbar 모드는 표준 하단 Footer. sidebar 모드는 위 콘텐츠 컬럼 안에서 렌더. */}
+      {!isSidebar ? <Footer /> : null}
       <Suspense fallback={null}>
         <Await resolve={userPromise}>
           {({ data: { user } }) => (user ? <BugReportWidget /> : null)}

@@ -78,7 +78,7 @@ export const NAV_GROUP_POOL = {
       // OX 약점 진단도 "학습현황 > 정오문제 약점" 탭으로 흡수. 진입점 일원화.
       { label: "학습현황", to: "/study/stats" },
       { label: "과제", to: "/assignments" },
-      { label: "상담 코멘트", to: "/me/consult" },
+      { label: "상담", to: "/me/consult" },
     ],
     area: "area_study_mgmt",
   },

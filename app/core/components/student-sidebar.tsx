@@ -148,7 +148,7 @@ export function StudentSidebar({
             <img
               src="/lidam-logo.png"
               alt="리담변리사학원"
-              className="h-7 w-auto max-h-7 object-contain dark:[filter:invert(1)_hue-rotate(180deg)]"
+              className="h-auto max-h-7 w-auto max-w-full object-contain dark:[filter:invert(1)_hue-rotate(180deg)]"
             />
           )}
         </button>

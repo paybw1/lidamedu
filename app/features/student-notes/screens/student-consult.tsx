@@ -23,7 +23,7 @@ import {
 } from "~/features/student-notes/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "상담 코멘트 | 리담변리사학원" },
+  { title: "상담 | 리담변리사학원" },
 ];
 
 function formatDate(iso: string): string {
@@ -64,15 +64,15 @@ export default function StudentConsult({ loaderData }: Route.ComponentProps) {
     <StudentShell width="narrow">
       <PageHeader
         area="manage"
-        title="상담 코멘트"
-        description="강사가 공유한 1:1 상담 코멘트입니다."
+        title="상담"
+        description="강사가 공유한 1:1 상담 내용입니다."
       />
 
       {notes.length === 0 ? (
         <EmptyState
           icon={<MessageSquareTextIcon className="size-6" />}
-          title="아직 받은 상담 코멘트가 없습니다"
-          description="강사가 1:1 상담 코멘트를 공유하면 여기에 표시됩니다."
+          title="아직 받은 상담이 없습니다"
+          description="강사가 1:1 상담 내용을 공유하면 여기에 표시됩니다."
         />
       ) : (
         <div className="space-y-3">

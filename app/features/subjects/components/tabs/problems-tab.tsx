@@ -30,6 +30,10 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import {
+  SortAxisProvider,
+  SortAxisToggle,
+} from "~/features/subjects/components/sort-axis";
+import {
   Table,
   TableBody,
   TableCell,
@@ -168,22 +172,23 @@ export function ProblemsTab({
       ? Math.round((correctCount / attemptedCount) * 100)
       : null;
 
-  // 체계별 풀이 트리 — 데스크톱 사이드바 / 모바일 드로어 공용 마크업.
+  // 체계도 트리 — 데스크톱 사이드바 / 모바일 드로어 공용 마크업.
+  // 헤더는 체계도/조문 토글(문제는 체계도 고정 → 조문 비활성, 조문 뷰어와 동일 UX).
   const treePanel = (
-    <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
-      <div className="border-border border-b px-4 py-3">
-        <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-widest uppercase">
-          체계별 풀이
-        </p>
+    <SortAxisProvider forced="systematic">
+      <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+        <div className="border-border flex items-center justify-end border-b px-3 py-2">
+          <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
+        </div>
+        <div className="p-2">
+          <ProblemSystematicTree
+            nodes={systematicNodes}
+            nodeStats={nodeStats}
+            activeNodeId={nodeFilter?.nodeId}
+          />
+        </div>
       </div>
-      <div className="p-2">
-        <ProblemSystematicTree
-          nodes={systematicNodes}
-          nodeStats={nodeStats}
-          activeNodeId={nodeFilter?.nodeId}
-        />
-      </div>
-    </div>
+    </SortAxisProvider>
   );
 
   return (
@@ -210,9 +215,7 @@ export function ProblemsTab({
             }
           >
             <SheetHeader className="border-border border-b px-4 py-3">
-              <SheetTitle className="text-sm font-semibold">
-                체계별 풀이
-              </SheetTitle>
+              <SheetTitle className="text-sm font-semibold">체계도</SheetTitle>
             </SheetHeader>
             <div className="px-3 py-3">{treePanel}</div>
           </MobileNavDrawer>
