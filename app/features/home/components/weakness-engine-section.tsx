@@ -12,7 +12,7 @@ import {
 
 // 예시(미리보기) 진단 — 단원 × 지식종류 교차 정답률. 0 약함 / 1 보통 / 2 강함.
 // 실제 라이브 기능: feat-2-022 OX 약점 진단 매트릭스 + feat-10-006 OX SRS.
-const UNITS = ["신규성", "진보성", "명세서", "거절·무효"];
+const UNITS = ["신규성", "진보성", "명세서", "분할출원"];
 const KINDS = ["조문", "판례", "이론"];
 const MATRIX: number[][] = [
   [2, 0, 2],
@@ -167,7 +167,7 @@ export function WeaknessEngineSection() {
               gap: 6,
             }}
           >
-            <CardLabel dark>자동 복습 큐 · SRS</CardLabel>
+            <CardLabel dark>자동 복습 큐</CardLabel>
             <div
               style={{
                 font: "700 19px/1.35 Pretendard, sans-serif",
