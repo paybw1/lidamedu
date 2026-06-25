@@ -3,7 +3,7 @@
 //   목표 → /study/stats · 시험결과 → /me/exam-results · 동의 → /api/consent(ConsentSection 내부).
 // 차수·목표 모두 미설정이면 autoOpen 으로 첫 진입에 펼침(온보딩성 넛지, 설정되면 자동 오픈 안 함).
 import { SettingsIcon } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Link, useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -85,30 +85,61 @@ function GoalBlock({
 
   return (
     <section>
-      <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
-        학습 목표
-      </p>
+      <BlockHeader
+        title="학습 목표"
+        action={
+          <Link to="/study/stats" className="text-link text-xs hover:underline">
+            학습현황 →
+          </Link>
+        }
+      />
       <fetcher.Form method="post" action="/study/stats" className="space-y-3">
         <GoalFields goals={goals} examRound={examRound} />
-        {errorMsg ? (
-          <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
-            {errorMsg}
-          </p>
-        ) : null}
-        {saved ? (
-          <p
-            className="text-sm text-emerald-600 dark:text-emerald-400"
-            role="status"
-          >
-            저장되었습니다.
-          </p>
-        ) : null}
+        <BlockMessage error={errorMsg ?? null} saved={saved} />
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? "저장 중…" : "목표 저장"}
         </Button>
       </fetcher.Form>
     </section>
   );
+}
+
+// 블록 공용 헤더 — 라벨(대문자 트래킹) + 우측 액션 링크. 3블록 양식 통일.
+function BlockHeader({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        {title}
+      </h3>
+      {action}
+    </div>
+  );
+}
+
+// 블록 공용 저장 피드백 — 에러/완료 한 줄(텍스트 크기 통일).
+function BlockMessage({
+  error,
+  saved,
+}: {
+  error: string | null;
+  saved: boolean;
+}) {
+  if (error)
+    return (
+      <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">
+        {error}
+      </p>
+    );
+  if (saved)
+    return (
+      <p
+        className="text-sm text-emerald-600 dark:text-emerald-400"
+        role="status"
+      >
+        저장되었습니다.
+      </p>
+    );
+  return null;
 }
 
 // 블록 2 — 실제 시험 결과(빠른 입력). /me/exam-results action(upsert)으로 독립 제출.
@@ -126,36 +157,29 @@ function ResultBlock({
 
   return (
     <section className="border-t pt-5">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          실제 시험 결과
-        </p>
-        <Link to="/me/exam-results" className="text-link text-xs underline">
-          전체 관리 →
-        </Link>
-      </div>
+      <BlockHeader
+        title="실제 시험 결과"
+        action={
+          <Link
+            to="/me/exam-results"
+            className="text-link text-xs hover:underline"
+          >
+            전체 관리 →
+          </Link>
+        }
+      />
       <fetcher.Form
         method="post"
         action="/me/exam-results"
-        className="space-y-2"
+        className="space-y-3"
       >
-        <ResultFields currentYear={currentYear} defaultRound={defaultRound} />
-        {fetcher.data?.error ? (
-          <p className="text-xs text-rose-600 dark:text-rose-400">
-            {fetcher.data.error}
-          </p>
-        ) : null}
-        {saved ? (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400">
-            저장되었습니다.
-          </p>
-        ) : null}
-        <Button
-          type="submit"
-          size="sm"
-          disabled={submitting}
-          className="w-full"
-        >
+        <ResultFields
+          currentYear={currentYear}
+          defaultRound={defaultRound}
+          showSummary={false}
+        />
+        <BlockMessage error={fetcher.data?.error ?? null} saved={saved} />
+        <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? "저장 중…" : "시험 결과 저장"}
         </Button>
       </fetcher.Form>

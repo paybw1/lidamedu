@@ -6,13 +6,11 @@ import {
   CheckCircle2Icon,
   ChevronDownIcon,
   ChevronUpIcon,
-  ClipboardCheckIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
-import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 
 export function ConsentSection({
   myAnalysisConsentedAt,
@@ -28,42 +26,39 @@ export function ConsentSection({
 
   if (bothConsented && !open) {
     return (
-      <Card className="mb-4">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="hover:bg-muted/40 flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors"
-        >
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium">
-            <CheckCircle2Icon className="size-4 text-emerald-600" />
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="hover:bg-muted/40 -mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left transition-colors"
+      >
+        <span className="inline-flex items-center gap-2">
+          <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
             학습 데이터 활용 동의
-            <span className="text-muted-foreground text-xs font-normal">
-              · A·B 모두 동의됨
-            </span>
           </span>
-          <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
-            관리
-            <ChevronDownIcon className="size-3.5" />
+          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2Icon className="size-3.5" /> 모두 동의됨
           </span>
-        </button>
-      </Card>
+        </span>
+        <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
+          관리
+          <ChevronDownIcon className="size-3.5" />
+        </span>
+      </button>
     );
   }
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="px-4 pb-2">
-        <p className="text-sm font-semibold">
-          <ClipboardCheckIcon className="mr-1 inline size-3.5" />
-          학습 데이터 활용 동의 (선택)
-        </p>
-        <p className="text-muted-foreground text-xs leading-relaxed">
+    <div className="space-y-2.5">
+      <div>
+        <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          학습 데이터 활용 동의
+        </h3>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
           서비스 이용에 필요한 데이터 처리는 가입 시 동의로 별도 완료되어
           있습니다. 아래 두 항목은 선택이며, 끄셔도 이용에 제한이 없습니다.
         </p>
-      </CardHeader>
-      <CardContent className="space-y-2.5 px-4 pb-3">
-        <ConsentToggle
+      </div>
+      <ConsentToggle
           intent="consentA"
           title="내 학습 분석 (A)"
           desc="내 학습 기록으로 학습 통계·정오문제 약점진단·복습·암기 기능을 제공합니다. 끄면 이 기능들이 꺼집니다 — 기존 학습 기록은 삭제되지 않으며 다시 켜면 그대로 복구됩니다."
@@ -85,8 +80,7 @@ export function ConsentSection({
             접기
           </button>
         ) : null}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 

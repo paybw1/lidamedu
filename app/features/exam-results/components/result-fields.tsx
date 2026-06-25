@@ -194,9 +194,12 @@ export function SecondRoundScores({
 export function ResultFields({
   currentYear,
   defaultRound = "first",
+  showSummary = true,
 }: {
   currentYear: number;
   defaultRound?: ExamRound;
+  // 대시보드 빠른 입력(허브)에서는 학습 요약을 숨긴다(전체 관리 화면에서만 입력).
+  showSummary?: boolean;
 }) {
   const [round, setRound] = useState<ExamRound>(defaultRound);
   return (
@@ -254,15 +257,17 @@ export function ResultFields({
         </div>
       </div>
       <SubjectScoreFieldsByRound round={round} />
-      <div>
-        <Label className="text-[11px]">학습 요약 (선택)</Label>
-        <Textarea
-          name="studySummaryMd"
-          rows={3}
-          className="text-xs"
-          placeholder="이번 차수를 준비하면서 가장 중요했던 학습 방법·시간 배분 등"
-        />
-      </div>
+      {showSummary ? (
+        <div>
+          <Label className="text-[11px]">학습 요약 (선택)</Label>
+          <Textarea
+            name="studySummaryMd"
+            rows={3}
+            className="text-xs"
+            placeholder="이번 차수를 준비하면서 가장 중요했던 학습 방법·시간 배분 등"
+          />
+        </div>
+      ) : null}
     </>
   );
 }
