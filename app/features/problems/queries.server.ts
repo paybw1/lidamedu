@@ -1043,6 +1043,10 @@ export async function getOxQuestionsForArticle(
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
     .not("ox_truth", "is", null)
+    // 삭제된 문제 제외를 SQL 에서(루프 skip 만으로는 limit 이 삭제 행으로 채워져 staff 화면이
+    // 굶는다 — staff RLS 는 deleted 도 읽으므로). 중복 재import 로 삭제된 구버전 지문이 limit 을
+    // 점유하던 버그.
+    .is("problems.deleted_at", null)
     .limit(limit);
   for (const r of choiceRows ?? []) {
     if (r.problems.deleted_at) continue;
@@ -1076,6 +1080,8 @@ export async function getOxQuestionsForArticle(
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
     .not("ox_truth", "is", null)
+    // 삭제된 문제 제외 (choices 와 동일 — limit 이 삭제 행으로 채워지지 않도록 SQL 필터).
+    .is("problems.deleted_at", null)
     .limit(limit);
   for (const r of boxRows ?? []) {
     if (r.problems.deleted_at) continue;
