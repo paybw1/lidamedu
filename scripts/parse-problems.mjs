@@ -217,6 +217,12 @@ function parseProblems(paragraphs) {
             last.boxItems = items;
             continue;
           }
+          // char 마커가 없으면 라벨형 박스(청구항·ⓐ·[N]) 시도.
+          const labelItems = extractLabelBox(text);
+          if (labelItems.length >= 2) {
+            last.boxItems = labelItems;
+            continue;
+          }
           // 박스 마커 없는 표 본문 → stem 연장.
           const cleaned = text
             .replace(/^\|/, "")
@@ -306,11 +312,47 @@ function extractBoxItems(rawText) {
       const bodyEnd = next ? next.idx : text.length;
       // 표 잔재 "|"(특히 마지막 보기의 닫는 pipe) 제거.
       const body = text.slice(bodyStart, bodyEnd).replace(/\|/g, " ").replace(/\s+/g, " ").trim();
-      if (body.length > 0) items.push({ marker: cur.marker, body });
+      if (body.length > 0)
+        items.push({ position: items.length + 1, marker: cur.marker, body });
     }
     if (items.length > best.count) best = { items, count: items.length };
   }
   return best.items;
+}
+
+// 라벨형 본문 박스 — char 마커(ㄱㄴㄷ/㉠/㉮/㈎)가 아닌 청구항·ⓐ·[N] 라벨로 항목을 나눈다.
+// 마커 없는 본문 표(청구범위·명세서 지문 등)가 stem 으로 평문화되던 결함을 차단한다.
+// ★선지 마커 ①②③④⑤ 는 포함하지 않는다 — 그건 선지이지 박스가 아니므로 표-선지 문제 오인 방지.
+const LABEL_BOX_FAMILIES = [
+  /【청구항\s*\d+】/g,
+  /\[청구항\s*\d+\]/g,
+  /청구항\s*\d+\s*\./g,
+  /\[\d+\]/g,
+  /[ⓐ-ⓩ]/g,
+];
+function extractLabelBox(rawText) {
+  const text = rawText
+    .split(/\n/)
+    .filter((l) => !/^\s*\|[\s|:\-]+\|?\s*$/.test(l)) // separator 행 제거
+    .map((l) => l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").replace(/\|/g, " "))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  let best = null;
+  for (const re of LABEL_BOX_FAMILIES) {
+    const ms = [...text.matchAll(re)];
+    if (ms.length >= 2 && (!best || ms.length > best.ms.length)) best = { ms };
+  }
+  if (!best) return [];
+  const items = [];
+  for (let k = 0; k < best.ms.length; k++) {
+    const m = best.ms[k];
+    const end = k + 1 < best.ms.length ? best.ms[k + 1].index : text.length;
+    const body = text.slice(m.index + m[0].length, end).replace(/\s+/g, " ").trim();
+    // 지문 박스이므로 OX 부적격(보기 ㄱㄴㄷ 와 달리 평가 대상 아님).
+    if (body) items.push({ position: items.length + 1, marker: m[0].trim(), body, oxIneligible: true });
+  }
+  return items;
 }
 
 /**

@@ -209,6 +209,7 @@ for (const p of problems) {
       explanation_md: bi.explanation,
       ox_truth: bi.oxTruth,
       choice_type: bi.choiceType,
+      ox_ineligible: bi.oxIneligible ?? false,
     }));
     const { error: bErr } = await supa.from("problem_box_items").insert(boxRows);
     if (bErr) {
