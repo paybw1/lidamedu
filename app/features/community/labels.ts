@@ -19,9 +19,9 @@ export const BOARD_LABEL: Record<CommunityBoard, string> = {
 };
 
 export const BOARD_DESC: Record<CommunityBoard, string> = {
-  free: "수험 정보와 일상을 나누는 공간",
-  study: "함께 공부할 스터디원을 찾는 공간",
-  review: "합격자의 학습 전략과 경험담",
+  free: "수험 정보와 일상을 나누는 공간입니다.",
+  study: "함께 공부할 스터디원을 찾는 공간입니다.",
+  review: "합격자의 학습 전략과 경험담을 나누는 공간입니다.",
 };
 
 /** 작성자 표시 정보 — public_profiles 뷰 경유. id 만 있고 이름이 없으면 탈퇴/조회 실패. */
