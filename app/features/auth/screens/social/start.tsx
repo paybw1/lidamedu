@@ -62,12 +62,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ? reqUrl.origin
     : (process.env.SITE_URL ?? reqUrl.origin).replace(/\/+$/, "");
 
-  // 카카오 동의항목(검수 대상) — 회원가입 동의 화면에 6개 항목을 모두 노출하기 위해
-  // scope 로 명시 요청한다: 닉네임·프로필 사진·카카오계정(이메일)에 더해 이름·전화번호·
-  // 배송지(주소). 이름·전화번호·배송지는 비즈니스 앱 전환 + 동의항목 검수 승인이 전제이며,
-  // 카카오 콘솔에서 각 항목을 동의항목으로 설정(필수)해야 화면에 노출된다.
-  const kakaoScopes =
-    "profile_nickname profile_image account_email name phone_number shipping_address";
+  // 카카오 동의항목 — 이름·전화번호·배송지(주소)는 비즈니스 앱 동의항목 "검수 승인" 전에는
+  // 일반 사용자 로그인이 거부되므로, 검수 완료 전까지는 기존 승인된 3개만 요청해 로그인을
+  // 보장한다. ★ 검수 완료 후 아래 주석의 FULL 스코프로 교체할 것.
+  //   (메모리: kakao-consent-review-pending / privacy-policy 는 이미 6개 항목 기재)
+  const kakaoScopes = "profile_nickname profile_image account_email";
+  // ↓ 검수 완료 후 복원 (이름·전화번호·배송지 추가):
+  // const kakaoScopes =
+  //   "profile_nickname profile_image account_email name phone_number shipping_address";
 
   // Initialize OAuth flow with the specified provider
   const { data: signInData, error: signInError } =

@@ -1,5 +1,5 @@
 /**
- * Join Screen — Kakao / Google OAuth + 이메일·비밀번호 회원가입.
+ * Join Screen — Kakao OAuth + 이메일·비밀번호 회원가입.
  *
  * OAuth 진입은 /login 과 동일 (신규/기존 동일 흐름).
  * 이메일·비밀번호는 Supabase signUp — 프로젝트 설정의 이메일 확인 정책을 따른다.
@@ -14,7 +14,6 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { setServiceDataConsent } from "~/features/exam-results/queries.server";
 import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
-import { GoogleLogo } from "../components/logos/google";
 import { KakaoLogo } from "../components/logos/kakao";
 
 const FONT = "Pretendard, sans-serif";
@@ -144,7 +143,7 @@ export default function Join({ actionData }: Route.ComponentProps) {
               margin: "0 0 28px",
             }}
           >
-            카카오·구글·이메일 중 편한 방식으로 가입하세요.
+            카카오·이메일 중 편한 방식으로 가입하세요.
           </p>
 
           <Link
@@ -174,29 +173,6 @@ export default function Join({ actionData }: Route.ComponentProps) {
             카카오로 가입
           </Link>
 
-          <Link
-            to="/auth/social/start/google"
-            viewTransition
-            style={{
-              display: "flex",
-              width: "100%",
-              height: 52,
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              borderRadius: 12,
-              background: "#fff",
-              color: "#1f1f1f",
-              font: `600 15px/1 ${FONT}`,
-              letterSpacing: "-0.01em",
-              textDecoration: "none",
-              border: `1px solid ${PALETTE.line}`,
-              marginBottom: 18,
-            }}
-          >
-            <GoogleLogo style={{ width: 18, height: 18 }} />
-            구글로 가입
-          </Link>
 
           {!showEmail ? (
             <button
@@ -418,7 +394,7 @@ export default function Join({ actionData }: Route.ComponentProps) {
               margin: "20px 0 0",
             }}
           >
-            카카오·구글로 가입 시{" "}
+            카카오로 가입 시{" "}
             <Link to="/legal/terms-of-service" style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}>
               이용약관
             </Link>

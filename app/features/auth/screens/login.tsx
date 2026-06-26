@@ -1,12 +1,11 @@
 /**
- * Login Screen — Kakao / Google OAuth + 이메일·비밀번호.
+ * Login Screen — Kakao OAuth + 이메일·비밀번호.
  *
- * 진입 방식 3가지:
+ * 진입 방식 2가지:
  *  1) 카카오 OAuth (기본)
- *  2) 구글 OAuth
- *  3) 이메일 + 비밀번호 (Supabase email/password auth)
+ *  2) 이메일 + 비밀번호 (Supabase email/password auth)
  *
- * 가입 화면(/join)도 동일 세 가지 진입. 디자인 토큰은 랜딩(lidam-design-system)을 따른다.
+ * 가입 화면(/join)도 동일 진입. 디자인 토큰은 랜딩(lidam-design-system)을 따른다.
  */
 import type { Route } from "./+types/login";
 
@@ -17,7 +16,6 @@ import { z } from "zod";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
-import { GoogleLogo } from "../components/logos/google";
 import { KakaoLogo } from "../components/logos/kakao";
 
 const FONT = "Pretendard, sans-serif";
@@ -130,7 +128,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
               margin: "0 0 28px",
             }}
           >
-            카카오·구글·이메일 중 편한 방식으로 시작하세요.
+            카카오·이메일 중 편한 방식으로 시작하세요.
           </p>
 
           {/* 1) Kakao OAuth */}
@@ -159,31 +157,6 @@ export default function Login({ actionData }: Route.ComponentProps) {
           >
             <KakaoLogo style={{ width: 20, height: 20 }} />
             카카오로 시작하기
-          </Link>
-
-          {/* 2) Google OAuth */}
-          <Link
-            to="/auth/social/start/google"
-            viewTransition
-            style={{
-              display: "flex",
-              width: "100%",
-              height: 52,
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              borderRadius: 12,
-              background: "#fff",
-              color: "#1f1f1f",
-              font: `600 15px/1 ${FONT}`,
-              letterSpacing: "-0.01em",
-              textDecoration: "none",
-              border: `1px solid ${PALETTE.line}`,
-              marginBottom: 18,
-            }}
-          >
-            <GoogleLogo style={{ width: 18, height: 18 }} />
-            구글로 시작하기
           </Link>
 
           {/* 3) Email + Password */}
