@@ -71,6 +71,17 @@ const components: Components = {
     </td>
   ),
   p: (props) => <p className="my-1 leading-relaxed" {...props} />,
+  // 사실관계 등 박스 처리 — 본문에 <div class="case-box">…</div> 로 감싸면 테두리 박스로 렌더.
+  // 그 외 div 는 원래 className 그대로 통과.
+  div: ({ className, ...props }) =>
+    typeof className === "string" && className.includes("case-box") ? (
+      <div
+        className="border-border bg-muted/40 text-foreground my-3 rounded-lg border px-4 py-3 leading-relaxed"
+        {...props}
+      />
+    ) : (
+      <div className={className} {...props} />
+    ),
   ul: (props) => <ul className="my-1 list-disc pl-5" {...props} />,
   ol: (props) => <ol className="my-1 list-decimal pl-5" {...props} />,
   li: (props) => <li className="my-0" {...props} />,
