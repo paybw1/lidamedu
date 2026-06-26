@@ -60,7 +60,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
             합격 데이터 기반 컨설팅
           </h1>
           <p className="text-muted-foreground mx-auto mt-2 max-w-xl text-sm">
-            기본 학습은 무료, 합격자 비교 컨설팅·자동 추천·12주 곡선·후기 모음은
+            기본 학습은 무료, 합격자 비교 컨설팅·자동 추천·12주 곡선·수기 모음은
             자기주도 구독에서 풀로 열립니다. 합격자 비교는 실 합격자 데이터가
             누적되면 활성화됩니다.
           </p>

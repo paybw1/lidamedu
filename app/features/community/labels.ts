@@ -15,7 +15,7 @@ export const communityBoardSchema = z.enum(["free", "study", "review"]);
 export const BOARD_LABEL: Record<CommunityBoard, string> = {
   free: "자유게시판",
   study: "스터디 모집",
-  review: "합격 후기",
+  review: "합격 수기",
 };
 
 export const BOARD_DESC: Record<CommunityBoard, string> = {

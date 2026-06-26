@@ -1,4 +1,4 @@
-// PASS FORECAST 그룹 — 합격 진단 점수(hero) · 합격자 벤치마크 · 합격자 후기.
+// PASS FORECAST 그룹 — 합격 진단 점수(hero) · 합격자 벤치마크 · 합격자 수기.
 
 import { ArrowDownIcon, ArrowUpIcon, TrendingUpIcon } from "lucide-react";
 import { Link } from "react-router";
@@ -439,7 +439,7 @@ export function PasserBenchmarkCard({
   );
 }
 
-// ── 합격자 후기 ─────────────────────────────────────────────────────────────
+// ── 합격자 수기 ─────────────────────────────────────────────────────────────
 
 export interface PasserSummaryData {
   examYear: number;
@@ -463,7 +463,7 @@ export function PasserSummariesCard({
           marginBottom: 14,
         }}
       >
-        <Eyebrow>합격자 후기</Eyebrow>
+        <Eyebrow>합격자 수기</Eyebrow>
         <Link
           to="/study/passer-summaries"
           style={{
@@ -472,7 +472,7 @@ export function PasserSummariesCard({
             textDecoration: "none",
           }}
         >
-          모든 후기 →
+          모든 수기 →
         </Link>
       </div>
       <ul

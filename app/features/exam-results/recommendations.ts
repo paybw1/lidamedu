@@ -219,7 +219,7 @@ export function generateRecommendedActions(
         icon: "trophy",
         title: "✨ 합격자 평균 모든 지표 상회",
         body: "현재 속도를 유지하시면 충분합니다. 시험 직전엔 새 자료보다 익숙한 자료를 반복하세요.",
-        ctaLabel: "합격자 후기 보기",
+        ctaLabel: "합격자 수기 보기",
         ctaUrl: "/study/passer-summaries",
       });
     }

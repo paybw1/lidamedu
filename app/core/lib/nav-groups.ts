@@ -124,7 +124,7 @@ export const NAV_GROUP_POOL = {
       { label: "스터디 모집", to: "/community/study" },
       { label: "반별 게시판", to: "/cohort-boards" },
       { label: "Q&A", to: "/qna" },
-      { label: "합격 후기", to: "/community/review" },
+      { label: "합격 수기", to: "/community/review" },
     ],
   },
 } satisfies Record<string, NavGroup>;

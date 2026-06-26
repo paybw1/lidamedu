@@ -70,7 +70,7 @@ export const FEATURE_LABEL: Record<string, string> = {
   passer_benchmarks: "합격자 평균 대비 비교",
   recommended_actions: "자동 추천 액션",
   passer_trend: "12주 학습 곡선 비교",
-  passer_summaries: "합격자 후기 모음",
+  passer_summaries: "합격자 수기 모음",
   weak_node_guide: "약점 단원 합격자 가이드",
   cohort_curriculum: "커리큘럼 / 과제",
   instructor_review: "강사 첨삭",

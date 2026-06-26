@@ -51,7 +51,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const query = url.searchParams.get("q") ?? "";
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
 
-  // feat-6-006 — review 보드는 합격 후기 필터 추가.
+  // feat-6-006 — review 보드는 합격 수기 필터 추가.
   const yearRaw = url.searchParams.get("year");
   const roundRaw = url.searchParams.get("round");
   const yearFilter =
@@ -73,7 +73,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           year: yearFilter,
           round: roundFilter,
           limit: 20,
-          // 학생/일반 사용자 화면 — 합성 후기 노출 금지.
+          // 학생/일반 사용자 화면 — 합성 수기 노출 금지.
           excludeSynthetic: true,
         })
       : Promise.resolve([] as PasserSummary[]),
@@ -122,7 +122,7 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
-      {/* feat-6-006 — review 보드: 합격자 후기 섹션 */}
+      {/* feat-6-006 — review 보드: 합격자 수기 섹션 */}
       {board === "review" ? (
         <PasserSummariesSection
           items={passerSummaries}
@@ -244,7 +244,7 @@ export default function CommunityBoard({ loaderData }: Route.ComponentProps) {
   );
 }
 
-// ─── feat-6-006 합격자 후기 통합 ───
+// ─── feat-6-006 합격자 수기 통합 ───
 
 function PasserSummariesSection({
   items,
@@ -259,7 +259,7 @@ function PasserSummariesSection({
     <section className="mb-3.5">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-muted-foreground font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-          공식 합격자 후기
+          공식 합격자 수기
         </p>
         <Form method="get" className="flex items-center gap-2 text-[11px]">
           <select
@@ -290,7 +290,7 @@ function PasserSummariesSection({
       </div>
       {items.length === 0 ? (
         <div className="border-border bg-muted/30 text-muted-foreground rounded-xl border border-dashed py-6 text-center text-xs">
-          조건에 맞는 공식 합격 후기가 없습니다.
+          조건에 맞는 공식 합격 수기가 없습니다.
         </div>
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2">

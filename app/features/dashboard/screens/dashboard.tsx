@@ -231,7 +231,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         };
       }
       // viewer-B 게이트(feat-8-026b) — 개인 "비교"(합격자/실패자 평균 대비)는
-      // 요청자가 풀(B)에 동의했을 때만. 후기(summaries)는 익명·공개라 B 불요 → 항상 노출.
+      // 요청자가 풀(B)에 동의했을 때만. 수기(summaries)는 익명·공개라 B 불요 → 항상 노출.
       const [canCompare, summaries] = await Promise.all([
         hasPoolConsent(client, user.id),
         listPasserSummaries({ limit: 3, excludeSynthetic: true }),

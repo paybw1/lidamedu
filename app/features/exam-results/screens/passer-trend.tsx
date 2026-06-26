@@ -133,7 +133,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
           to="/study/passer-summaries"
           className="text-link inline-flex items-center gap-1 underline"
         >
-          <GraduationCapIcon className="size-3" /> 합격자 학습 후기 보기
+          <GraduationCapIcon className="size-3" /> 합격자 학습 수기 보기
         </Link>
         <Link to="/dashboard" className="text-muted-foreground underline">
           대시보드 →

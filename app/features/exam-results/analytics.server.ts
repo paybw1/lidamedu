@@ -1092,7 +1092,7 @@ export interface ListPasserSummariesFilter {
   year?: number | null;
   round?: ExamRound | null;
   limit?: number;
-  /** 합성 합격자 후기 제외 — 학생 화면 default true. */
+  /** 합성 합격자 수기 제외 — 학생 화면 default true. */
   excludeSynthetic?: boolean;
 }
 
@@ -1292,7 +1292,7 @@ export interface PublicPlatformStats {
   avgAccuracyPct: number | null;
   avgProblemAttempts: number | null;
   avgActiveDays: number | null;
-  totalSummaries: number; // 후기 작성 합격자 수
+  totalSummaries: number; // 수기 작성 합격자 수
 }
 
 export async function getPublicPlatformStats(

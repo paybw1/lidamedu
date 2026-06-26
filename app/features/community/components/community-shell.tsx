@@ -1,5 +1,5 @@
 // 커뮤니티 영역 공통 셸 — 헤더(eyebrow·제목·설명) + 본문.
-// 공지사항 · 자유게시판 · 스터디 모집 · Q&A · 합격 후기 화면이 공유한다.
+// 공지사항 · 자유게시판 · 스터디 모집 · Q&A · 합격 수기 화면이 공유한다.
 // 영역 토글(탭)은 community.layout 의 sticky AreaTabs 가 담당 — 여기서 중복 렌더하지 않는다.
 // eyebrow 는 공용 AreaEyebrow(아이콘 + 영역명) — 전 영역 동일 표준(영어 캡션·카테고리 아이콘 폐지).
 import type { ReactNode } from "react";
@@ -9,7 +9,7 @@ import { Link } from "react-router";
 import { AreaEyebrow } from "~/core/components/student";
 import { cn } from "~/core/lib/utils";
 
-// 공지사항·Q&A + 게시판 3종(자유·스터디·합격후기) 평탄 구조 — 별도 서브탭 없음.
+// 공지사항·Q&A + 게시판 3종(자유·스터디·합격수기) 평탄 구조 — 별도 서브탭 없음.
 export type CommunityCategory =
   | "announce"
   | "free"
