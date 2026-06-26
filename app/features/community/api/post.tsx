@@ -93,7 +93,10 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: false, error: "unauthorized" }, { status: 401, headers });
   }
 
-  const parsed = schema.safeParse(Object.fromEntries(await request.formData()));
+  const formData = await request.formData();
+  // 작성기가 글 저장 후 첨부 이미지를 이어 올리도록 redirect 대신 postId JSON 을 요청.
+  const wantJson = formData.get("returnJson") === "1";
+  const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return data(
       { ok: false, error: "invalid-input", issues: parsed.error.issues },
@@ -124,6 +127,12 @@ export async function action({ request }: Route.ActionArgs) {
         kind: "post",
       }),
     );
+    if (wantJson) {
+      return data(
+        { ok: true, postId: result.postId, board: input.board },
+        { headers },
+      );
+    }
     return redirect(`/community/${input.board}/${result.postId}`, { headers });
   }
 
@@ -173,6 +182,12 @@ export async function action({ request }: Route.ActionArgs) {
     });
     if (!result.ok) {
       return data({ ok: false, error: result.error }, { status: 400, headers });
+    }
+    if (wantJson) {
+      return data(
+        { ok: true, postId: post.postId, board: post.board },
+        { headers },
+      );
     }
     return redirect(`/community/${post.board}/${post.postId}`, { headers });
   }

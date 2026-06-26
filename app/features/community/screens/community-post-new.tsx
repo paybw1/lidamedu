@@ -1,7 +1,9 @@
 // 커뮤니티 글 작성/수정 — `/community/:board/new` · `/community/:board/:postId/edit`. feat-6-002.
-import { SendIcon } from "lucide-react";
-import { useState } from "react";
-import { Link, data, redirect, useFetcher } from "react-router";
+// 이미지 붙여넣기(Ctrl+V)·파일 추가 지원 — 글 저장 후 첨부(community-attachments)로 업로드.
+//   합격증/점수 캡처 등 개인정보라 인라인 public 이 아닌 private 첨부(서명 URL)로 보존.
+import { ImagePlusIcon, Loader2Icon, SendIcon, XIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, data, redirect, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
@@ -19,6 +21,16 @@ export const meta: Route.MetaFunction = ({ data: loaderData }) => [
     title: `${loaderData?.mode === "edit" ? "글 수정" : "새 글 작성"} | 리담변리사학원`,
   },
 ];
+
+// 첨부 업로드 제약 — /api/community/attachment 와 동일.
+const MAX_IMAGES = 8;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+interface PendingImage {
+  id: string;
+  file: File;
+  url: string;
+}
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const boardParse = communityBoardSchema.safeParse(params.board);
@@ -50,21 +62,135 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
   const { mode, board, post } = loaderData;
   const isEdit = mode === "edit";
-  const fetcher = useFetcher();
+  const navigate = useNavigate();
   const [title, setTitle] = useState(post?.title ?? "");
   const [body, setBody] = useState(post?.bodyMd ?? "");
+  const [images, setImages] = useState<PendingImage[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [warn, setWarn] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isSubmitting = fetcher.state !== "idle";
-  const failed =
-    fetcher.state === "idle" &&
-    fetcher.data &&
-    typeof fetcher.data === "object" &&
-    "ok" in fetcher.data &&
-    fetcher.data.ok === false;
+  // unmount 시 미리보기 objectURL 정리(메모리 누수 방지).
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
+  useEffect(
+    () => () => imagesRef.current.forEach((p) => URL.revokeObjectURL(p.url)),
+    [],
+  );
+
   const cancelHref =
     isEdit && post
       ? `/community/${board}/${post.postId}`
       : `/community/${board}`;
+
+  function addFiles(files: File[]) {
+    const valid: File[] = [];
+    let rejected = false;
+    for (const f of files) {
+      if (!f.type.startsWith("image/")) continue;
+      if (f.size > MAX_IMAGE_BYTES) {
+        rejected = true;
+        continue;
+      }
+      valid.push(f);
+    }
+    setImages((prev) => {
+      const room = Math.max(0, MAX_IMAGES - prev.length);
+      if (valid.length > room) rejected = true;
+      const toAdd = valid.slice(0, room).map((f) => ({
+        id: crypto.randomUUID(),
+        file: f,
+        url: URL.createObjectURL(f),
+      }));
+      return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+    });
+    setWarn(
+      rejected
+        ? `이미지는 최대 ${MAX_IMAGES}장, 장당 10MB 까지 첨부할 수 있어요.`
+        : null,
+    );
+  }
+
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (const it of Array.from(items)) {
+      if (it.kind === "file" && it.type.startsWith("image/")) {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault(); // 이미지 붙여넣기는 본문 텍스트 삽입을 막는다.
+      addFiles(files);
+    }
+  }
+
+  function onPickFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) addFiles(Array.from(e.target.files));
+    e.target.value = ""; // 같은 파일 재선택 허용.
+  }
+
+  function removeImage(id: string) {
+    setImages((prev) => {
+      const found = prev.find((p) => p.id === id);
+      if (found) URL.revokeObjectURL(found.url);
+      return prev.filter((p) => p.id !== id);
+    });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || !body.trim() || busy) return;
+    setBusy(true);
+    setFailed(false);
+
+    try {
+      // 1) 글 저장 — postId 를 받기 위해 returnJson.
+      const fd = new FormData();
+      fd.set("intent", isEdit ? "update" : "create");
+      if (isEdit && post) fd.set("postId", post.postId);
+      else fd.set("board", board);
+      fd.set("title", title);
+      fd.set("bodyMd", body);
+      fd.set("returnJson", "1");
+      const res = await fetch("/api/community/post", {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json()) as { ok?: boolean; postId?: string };
+      if (!json.ok || !json.postId) {
+        setFailed(true);
+        setBusy(false);
+        return;
+      }
+      const targetPostId = json.postId;
+
+      // 2) 첨부 이미지 업로드(순차). 부분 실패는 허용 — 글은 이미 저장됨.
+      for (const img of images) {
+        const afd = new FormData();
+        afd.set("intent", "upload");
+        afd.set("postId", targetPostId);
+        afd.set("file", img.file);
+        try {
+          await fetch("/api/community/attachment", {
+            method: "POST",
+            body: afd,
+          });
+        } catch {
+          // 무시 — 상세 화면에서 재첨부 가능.
+        }
+      }
+
+      // 3) 상세로 이동.
+      navigate(`/community/${board}/${targetPostId}`);
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
+  }
 
   return (
     <CommunityShell
@@ -75,18 +201,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
       width="narrow"
     >
       <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
-        <fetcher.Form method="post" action="/api/community/post">
-          <input
-            type="hidden"
-            name="intent"
-            value={isEdit ? "update" : "create"}
-          />
-          {isEdit && post ? (
-            <input type="hidden" name="postId" value={post.postId} />
-          ) : (
-            <input type="hidden" name="board" value={board} />
-          )}
-
+        <form onSubmit={handleSubmit}>
           <label className="block">
             <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
               제목
@@ -109,13 +224,73 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
               name="bodyMd"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="내용을 입력하세요"
+              onPaste={onPaste}
+              placeholder="내용을 입력하세요. 이미지는 붙여넣기(Ctrl+V)하거나 아래 ‘이미지 추가’로 첨부할 수 있어요."
               rows={12}
               maxLength={20000}
               className="text-sm leading-relaxed"
               required
             />
           </label>
+
+          {/* 이미지 첨부 — 붙여넣기 또는 파일 선택. 저장 시 첨부로 업로드. */}
+          <div className="mt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy || images.length >= MAX_IMAGES}
+              >
+                <ImagePlusIcon className="size-3.5" /> 이미지 추가
+              </Button>
+              <span className="text-muted-foreground text-[11px]">
+                본문에 붙여넣기(Ctrl+V)도 됩니다 · 최대 {MAX_IMAGES}장
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                hidden
+                onChange={onPickFiles}
+              />
+            </div>
+
+            {warn ? (
+              <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">
+                {warn}
+              </p>
+            ) : null}
+
+            {images.length > 0 ? (
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {images.map((img) => (
+                  <li
+                    key={img.id}
+                    className="border-border bg-muted/30 relative overflow-hidden rounded-xl border"
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.file.name}
+                      className="block h-24 w-24 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img.id)}
+                      disabled={busy}
+                      aria-label="이미지 제거"
+                      className="absolute top-1 right-1 inline-flex size-5 items-center justify-center rounded-full bg-black/60 text-white"
+                    >
+                      <XIcon className="size-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
 
           {failed ? (
             <p className="mt-3 text-[13px] font-medium text-rose-600 dark:text-rose-400">
@@ -139,12 +314,17 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
               type="submit"
               size="sm"
               className="rounded-full"
-              disabled={isSubmitting || !title.trim() || !body.trim()}
+              disabled={busy || !title.trim() || !body.trim()}
             >
-              {isEdit ? "수정 완료" : "등록"} <SendIcon className="size-3.5" />
+              {busy ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <SendIcon className="size-3.5" />
+              )}
+              {isEdit ? "수정 완료" : "등록"}
             </Button>
           </div>
-        </fetcher.Form>
+        </form>
       </div>
     </CommunityShell>
   );
