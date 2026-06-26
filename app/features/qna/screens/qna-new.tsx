@@ -130,7 +130,7 @@ function NoTargetGuide() {
           <strong className="text-foreground">조문 · 판례 · 문제</strong> 에 대한
           질문은 해당 상세 화면 우측 <strong className="text-foreground">‘Q&amp;A’</strong>{" "}
           패널에서, <strong className="text-foreground">공부방법</strong> 질문은
-          아래 버튼으로 바로 작성할 수 있습니다. 답변은 강사가 답니다.
+          아래 버튼으로 바로 작성할 수 있습니다. AI/강사가 답변을 합니다.
         </p>
         <div className="mt-3 flex justify-center gap-2">
           <Button asChild size="sm" className="rounded-full">
