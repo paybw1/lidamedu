@@ -128,7 +128,7 @@ export default function ScienceHub({
             </Link>
           )}
           <p className="text-link mb-1 font-mono text-[11px] font-bold uppercase tracking-widest">
-            SCIENCE · 1차 필수
+            자연과학 · 1차 필수
           </p>
           <h1 className="mb-1.5 text-3xl font-extrabold tracking-tight md:text-4xl">
             <span className="mr-2 text-2xl">{meta.emoji}</span>
@@ -364,8 +364,7 @@ export default function ScienceHub({
         </div>
 
         <p className="text-muted-foreground mt-4 text-xs">
-          ※ 자연과학 풀이 Runner 는 5.4.A 의 객관식 Runner(`feat-4-A-304`) 를 재사용할
-          예정입니다. 현재는 단원/문제 시드 단계.
+          ※ 연도별 기출과 단원별 문제로 학습할 수 있습니다.
         </p>
       </div>
     </div>

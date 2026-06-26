@@ -97,7 +97,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
         {/* Header */}
         <header className="mb-6">
           <p className="mb-2 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
-            QUIZ RESULT
+            퀴즈 결과
           </p>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{subject.name}</Badge>
@@ -155,7 +155,7 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
           <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-amber-50/80 px-[18px] py-3.5 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40">
             <TriangleAlertIcon className="size-[18px] shrink-0 text-amber-600 dark:text-amber-400" />
             <p className="flex-1 text-[14px] font-medium leading-[1.4] text-foreground">
-              오답 <span className="font-semibold">{wrongCount}건</span>이 오답노트에 저장됐어요
+              오답 <span className="font-semibold">{wrongCount}건</span>이 오답노트에 저장됐습니다.
             </p>
             <div className="flex shrink-0 gap-2">
               <Button asChild size="sm" variant="outline" className="h-8 rounded-full px-3.5 text-[12px] font-semibold">

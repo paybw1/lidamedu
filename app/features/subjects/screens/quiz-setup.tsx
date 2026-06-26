@@ -169,7 +169,7 @@ export default function QuizSetup({
         <header className="mb-6">
           <p className="mb-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold tracking-[0.10em] uppercase text-link">
             <SlidersHorizontalIcon className="size-3.5" />
-            QUIZ SETUP
+            맞춤 퀴즈 설정
           </p>
           <h1 className="text-[28px] font-extrabold tracking-tight text-foreground leading-tight">
             맞춤 퀴즈 만들기
@@ -306,7 +306,7 @@ export default function QuizSetup({
                 필터 설정 완료
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                퀴즈 시작 버튼을 눌러 바로 시작하세요
+                퀴즈 시작 버튼을 눌러 바로 시작하세요.
               </p>
             </div>
             <button

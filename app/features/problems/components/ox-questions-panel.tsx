@@ -314,7 +314,7 @@ export function OxQuestionsPanel({
             </p>
           ) : (
             <p className="text-muted-foreground text-xs italic">
-              해설 미입력.
+              해설이 아직 등록되지 않았습니다.
             </p>
           )}
           <div className="flex flex-wrap items-center gap-1 pt-1">

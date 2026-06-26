@@ -167,8 +167,8 @@ export default function ScienceQuizSetup({
             {subjectMeta.name}
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            단원·문항 수·모드를 선택해 문제 풀이를 시작합니다.
-            총 등록된 문항: <span className="tabular-nums font-semibold">{totalProblems}</span>.
+            단원·문항 수·모드를 선택해 문제 풀이를 시작합니다. 현재 등록된 문항은{" "}
+            <span className="tabular-nums font-semibold">{totalProblems}</span>개입니다.
           </p>
         </header>
 
@@ -345,8 +345,7 @@ export default function ScienceQuizSetup({
         </Form>
 
         <p className="text-muted-foreground mt-8 text-[11px]">
-          ⓘ 자연과학 풀이 화면(viewer) 은 5.4.A 객관식 자산을 재사용/분기해 별도
-          구현 예정. 현재는 풀이 시작까지 동작합니다.
+          ⓘ 단원·연도·문항 수를 선택하면 바로 풀이를 시작합니다.
         </p>
       </div>
     </div>
