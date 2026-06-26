@@ -45,12 +45,13 @@ const SCOPE_VALUES: Scope[] = ["all", "asked-by-me", "answered-by-me", "open"];
 // 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).
 const TARGET_TONE: Record<
   QnaTargetType,
-  "primary" | "violet" | "amber" | "emerald"
+  "primary" | "violet" | "amber" | "emerald" | "neutral"
 > = {
   article: "primary",
   case: "violet",
   problem: "amber",
   study_method: "emerald",
+  general: "neutral",
 };
 
 export const meta: Route.MetaFunction = () => [{ title: "Q&A | 리담변리사학원" }];

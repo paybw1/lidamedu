@@ -5102,6 +5102,86 @@ export type Database = {
         }
         Relationships: []
       }
+      qna_messages: {
+        Row: {
+          author_id: string | null
+          body_md: string
+          citations: Json | null
+          created_at: string
+          deleted_at: string | null
+          feedback: number | null
+          message_id: string
+          refusal_kind: string | null
+          retrieval_meta: Json | null
+          role: Database["public"]["Enums"]["qna_message_role"]
+          thread_id: string
+          token_usage: Json | null
+          updated_at: string
+          verifies_message_id: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          body_md: string
+          citations?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          feedback?: number | null
+          message_id?: string
+          refusal_kind?: string | null
+          retrieval_meta?: Json | null
+          role: Database["public"]["Enums"]["qna_message_role"]
+          thread_id: string
+          token_usage?: Json | null
+          updated_at?: string
+          verifies_message_id?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          body_md?: string
+          citations?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          feedback?: number | null
+          message_id?: string
+          refusal_kind?: string | null
+          retrieval_meta?: Json | null
+          role?: Database["public"]["Enums"]["qna_message_role"]
+          thread_id?: string
+          token_usage?: Json | null
+          updated_at?: string
+          verifies_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qna_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_messages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "qna_threads"
+            referencedColumns: ["thread_id"]
+          },
+          {
+            foreignKeyName: "qna_messages_verifies_message_id_fkey"
+            columns: ["verifies_message_id"]
+            isOneToOne: false
+            referencedRelation: "qna_messages"
+            referencedColumns: ["message_id"]
+          },
+        ]
+      }
       qna_threads: {
         Row: {
           answer_md: string | null
@@ -7326,6 +7406,7 @@ export type Database = {
       soft_delete_mcq_exam: { Args: { p_id: string }; Returns: undefined }
       soft_delete_mcq_pack: { Args: { p_id: string }; Returns: undefined }
       soft_delete_paper: { Args: { p_id: string }; Returns: undefined }
+      soft_delete_qna_message: { Args: { p_id: string }; Returns: undefined }
       soft_delete_qna_thread: { Args: { p_id: string }; Returns: undefined }
       srs_record_review: {
         Args: {
@@ -7472,9 +7553,15 @@ export type Database = {
       problem_scope: "unit" | "comprehensive"
       problem_source_doc_kind: "problem" | "answer"
       problem_subject_type: "law" | "science"
+      qna_message_role: "student" | "ai" | "instructor"
       qna_quality_grade: "high" | "mid" | "low"
-      qna_status: "open" | "answered" | "closed"
-      qna_target_type: "article" | "case" | "problem" | "study_method"
+      qna_status: "open" | "answered" | "closed" | "ai_answered" | "verified"
+      qna_target_type:
+        | "article"
+        | "case"
+        | "problem"
+        | "study_method"
+        | "general"
       resource_kind:
         | "lecture_note"
         | "lecture_video"
@@ -7722,9 +7809,16 @@ export const Constants = {
       problem_scope: ["unit", "comprehensive"],
       problem_source_doc_kind: ["problem", "answer"],
       problem_subject_type: ["law", "science"],
+      qna_message_role: ["student", "ai", "instructor"],
       qna_quality_grade: ["high", "mid", "low"],
-      qna_status: ["open", "answered", "closed"],
-      qna_target_type: ["article", "case", "problem", "study_method"],
+      qna_status: ["open", "answered", "closed", "ai_answered", "verified"],
+      qna_target_type: [
+        "article",
+        "case",
+        "problem",
+        "study_method",
+        "general",
+      ],
       resource_kind: [
         "lecture_note",
         "lecture_video",

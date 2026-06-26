@@ -31,12 +31,13 @@ import type { Route } from "./+types/qna-detail";
 // 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).
 const TARGET_TONE: Record<
   QnaTargetType,
-  "primary" | "violet" | "amber" | "emerald"
+  "primary" | "violet" | "amber" | "emerald" | "neutral"
 > = {
   article: "primary",
   case: "violet",
   problem: "amber",
   study_method: "emerald",
+  general: "neutral",
 };
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {

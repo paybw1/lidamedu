@@ -55,12 +55,15 @@ export const QNA_TARGET_LABEL: Record<QnaTargetType, string> = {
   case: "판례",
   problem: "문제",
   study_method: "공부방법",
+  general: "일반",
 };
 
 export const QNA_STATUS_LABEL: Record<QnaStatus, string> = {
   open: "답변 대기",
   answered: "답변 완료",
   closed: "종료",
+  ai_answered: "AI 답변",
+  verified: "강사 확인",
 };
 
 export const QNA_QUALITY_LABEL: Record<QnaQualityGrade, string> = {
