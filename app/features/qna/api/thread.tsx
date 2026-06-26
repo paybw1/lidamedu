@@ -4,6 +4,7 @@ import { z } from "zod";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 
 import {
   generateInstantAnswer,
@@ -20,6 +21,7 @@ import {
   closeThread,
   createThread,
   getThreadDetail,
+  setAiVerdict,
   softDeleteThread,
 } from "../queries.server";
 
@@ -53,11 +55,20 @@ const deleteSchema = z.object({
   threadId: z.string().uuid(),
 });
 
+// 강사의 AI 답변 정오 평가 — 시험 대비라 binary(정확/부정확).
+const verdictSchema = z.object({
+  intent: z.literal("verdict"),
+  threadId: z.string().uuid(),
+  messageId: z.string().uuid(),
+  verdict: z.enum(["correct", "incorrect"]),
+});
+
 const schema = z.discriminatedUnion("intent", [
   createSchema,
   answerSchema,
   closeSchema,
   deleteSchema,
+  verdictSchema,
 ]);
 
 export async function action({ request }: Route.ActionArgs) {
@@ -162,6 +173,20 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ ok: false, error: "not-found" }, { status: 404, headers });
     }
     await closeThread(client, parsed.data.threadId);
+    return data({ ok: true }, { headers });
+  }
+
+  if (parsed.data.intent === "verdict") {
+    // 강사 전용 — RLS(staff)가 1차 방어지만 액션 게이트로 명시(역할 체크는 서버에서).
+    const role = await getStaffRole(client, user.id);
+    if (!role) {
+      return data({ ok: false, error: "forbidden" }, { status: 403, headers });
+    }
+    await setAiVerdict(client, user.id, {
+      threadId: parsed.data.threadId,
+      messageId: parsed.data.messageId,
+      verdict: parsed.data.verdict,
+    });
     return data({ ok: true }, { headers });
   }
 

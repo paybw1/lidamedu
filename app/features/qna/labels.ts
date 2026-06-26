@@ -98,6 +98,13 @@ export interface QnaThreadDetail extends QnaThreadSummary {
 
 export type QnaMessageRole = Database["public"]["Enums"]["qna_message_role"];
 
+/** 강사의 AI 답변 정오 평가 — 시험 대비라 binary(정확/부정확). null=미평가. */
+export type QnaVerdict = "correct" | "incorrect";
+export const QNA_VERDICT_LABEL: Record<QnaVerdict, string> = {
+  correct: "정확",
+  incorrect: "부정확",
+};
+
 /** AI 답변 출처칩 — 렌더용 최소 형태(클라이언트 안전). */
 export interface QnaCitation {
   label: number;
@@ -117,6 +124,10 @@ export interface QnaMessage {
   citations: QnaCitation[];
   /** 강사가 ✓확인/정정한 대상 AI 메시지(있으면). */
   verifiesMessageId: string | null;
+  /** 강사 정오 평가(AI 메시지 한정). null=미평가. */
+  verdict: QnaVerdict | null;
+  verifiedByName: string | null;
+  verifiedAt: string | null;
   feedback: number | null;
   createdAt: string;
 }

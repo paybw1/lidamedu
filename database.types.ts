@@ -5117,6 +5117,9 @@ export type Database = {
           thread_id: string
           token_usage: Json | null
           updated_at: string
+          verdict: string | null
+          verified_at: string | null
+          verified_by: string | null
           verifies_message_id: string | null
         }
         Insert: {
@@ -5133,6 +5136,9 @@ export type Database = {
           thread_id: string
           token_usage?: Json | null
           updated_at?: string
+          verdict?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           verifies_message_id?: string | null
         }
         Update: {
@@ -5149,6 +5155,9 @@ export type Database = {
           thread_id?: string
           token_usage?: Json | null
           updated_at?: string
+          verdict?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           verifies_message_id?: string | null
         }
         Relationships: [
@@ -5172,6 +5181,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "qna_threads"
             referencedColumns: ["thread_id"]
+          },
+          {
+            foreignKeyName: "qna_messages_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_messages_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "qna_messages_verifies_message_id_fkey"

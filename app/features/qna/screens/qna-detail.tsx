@@ -4,6 +4,7 @@ import {
   ExternalLinkIcon,
   SparklesIcon,
   UserIcon,
+  XIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, data, useFetcher } from "react-router";
@@ -24,6 +25,7 @@ import {
   type QnaMessage,
   type QnaQualityGrade,
   type QnaTargetType,
+  type QnaVerdict,
   subjectLabel,
 } from "../labels";
 import { getThreadDetail, listThreadMessages } from "../queries.server";
@@ -170,7 +172,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
 
       {/* AI 즉답 카드 — 질문 직후 자동 생성분. 강사 정식답변과 공존. */}
       {aiMessages.map((m) => (
-        <AiAnswerCard key={m.messageId} message={m} />
+        <AiAnswerCard key={m.messageId} message={m} isStaff={isStaff} />
       ))}
 
       {/* 답변 카드 — 에메랄드 좌측 보더 */}
@@ -223,17 +225,33 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
   );
 }
 
-// AI 즉답 카드 — 강사 답변(에메랄드)과 구분되는 인디고 톤 + AI 배지 + 출처칩.
-function AiAnswerCard({ message }: { message: QnaMessage }) {
+// AI 즉답 카드 — 강사 답변(에메랄드)과 구분되는 인디고 톤 + AI 배지 + 출처칩 + 강사 정오 평가.
+function AiAnswerCard({
+  message,
+  isStaff,
+}: {
+  message: QnaMessage;
+  isStaff: boolean;
+}) {
   return (
     <article className="bg-card mb-3.5 rounded-2xl rounded-l-md border border-l-4 border-indigo-500 p-5 shadow-sm md:p-6">
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <Chip tone="violet">
           <SparklesIcon className="size-2.5" /> AI 답변
         </Chip>
-        <span className="text-muted-foreground text-[11px]">
-          강사 확인 전 자동 생성 — 참고용
-        </span>
+        {message.verdict === "correct" ? (
+          <Chip tone="emerald">
+            <CheckIcon className="size-2.5" /> 강사 확인 · 정확
+          </Chip>
+        ) : message.verdict === "incorrect" ? (
+          <Chip tone="coral">
+            <XIcon className="size-2.5" /> 강사 평가 · 부정확
+          </Chip>
+        ) : (
+          <span className="text-muted-foreground text-[11px]">
+            강사 확인 전 자동 생성 — 참고용
+          </span>
+        )}
         <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
           {new Date(message.createdAt).toLocaleString("ko-KR")}
         </span>
@@ -244,7 +262,72 @@ function AiAnswerCard({ message }: { message: QnaMessage }) {
       {message.citations.length > 0 ? (
         <CitationList citations={message.citations} />
       ) : null}
+      {message.verdict === "incorrect" && !isStaff ? (
+        <p className="mt-3 rounded-lg bg-rose-500/[0.08] px-3 py-2 text-[12px] leading-relaxed text-rose-700 dark:text-rose-300">
+          이 AI 답변은 강사가 <strong>부정확</strong> 으로 평가했습니다. 아래 강사
+          답변을 확인하세요.
+        </p>
+      ) : null}
+      {isStaff ? <VerdictControl message={message} /> : null}
     </article>
+  );
+}
+
+// 강사 전용 — AI 답변 정오 평가(정확/부정확). 클릭 시 자동 재검증으로 배지·상태 갱신.
+function VerdictControl({ message }: { message: QnaMessage }) {
+  const fetcher = useFetcher();
+  const isSubmitting = fetcher.state !== "idle";
+  const options: { value: QnaVerdict; label: string; icon: typeof CheckIcon }[] =
+    [
+      { value: "correct", label: "정확", icon: CheckIcon },
+      { value: "incorrect", label: "부정확", icon: XIcon },
+    ];
+  return (
+    <div className="border-border/60 mt-4 flex flex-wrap items-center gap-2 border-t pt-3">
+      <span className="text-muted-foreground text-xs font-semibold">
+        AI 답변 평가
+      </span>
+      <fetcher.Form
+        method="post"
+        action="/api/qna/thread"
+        className="flex flex-wrap items-center gap-1.5"
+      >
+        <input type="hidden" name="intent" value="verdict" />
+        <input type="hidden" name="threadId" value={message.threadId} />
+        <input type="hidden" name="messageId" value={message.messageId} />
+        {options.map((o) => {
+          const active = message.verdict === o.value;
+          const Icon = o.icon;
+          return (
+            <button
+              key={o.value}
+              type="submit"
+              name="verdict"
+              value={o.value}
+              disabled={isSubmitting}
+              className={cn(
+                "inline-flex h-[26px] items-center gap-1 rounded-full px-3 text-[12px] font-semibold transition-colors disabled:opacity-50",
+                active
+                  ? o.value === "correct"
+                    ? "bg-emerald-500 text-white"
+                    : "bg-rose-500 text-white"
+                  : "bg-muted text-foreground/80 hover:bg-muted/70",
+              )}
+            >
+              <Icon className="size-3" /> {o.label}
+            </button>
+          );
+        })}
+      </fetcher.Form>
+      {message.verifiedByName && message.verdict ? (
+        <span className="text-muted-foreground text-[11px]">
+          {message.verifiedByName} 평가
+          {message.verifiedAt
+            ? ` · ${new Date(message.verifiedAt).toLocaleDateString("ko-KR")}`
+            : ""}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

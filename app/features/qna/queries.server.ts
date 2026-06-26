@@ -185,9 +185,12 @@ type RawMessageRow = {
   body_md: string;
   citations: unknown;
   verifies_message_id: string | null;
+  verdict: string | null;
+  verified_at: string | null;
   feedback: number | null;
   created_at: string;
   author: { profile_id: string; name: string } | null;
+  verifier: { profile_id: string; name: string } | null;
 };
 
 export async function listThreadMessages(
@@ -198,8 +201,9 @@ export async function listThreadMessages(
     .from("qna_messages")
     .select(
       `message_id, thread_id, role, author_id, body_md, citations,
-       verifies_message_id, feedback, created_at,
-       author:profiles!qna_messages_author_id_fkey ( profile_id, name )`,
+       verifies_message_id, verdict, verified_at, feedback, created_at,
+       author:profiles!qna_messages_author_id_fkey ( profile_id, name ),
+       verifier:profiles!qna_messages_verified_by_fkey ( profile_id, name )`,
     )
     .eq("thread_id", threadId)
     .is("deleted_at", null)
@@ -214,9 +218,55 @@ export async function listThreadMessages(
     bodyMd: r.body_md,
     citations: parseCitations(r.citations),
     verifiesMessageId: r.verifies_message_id,
+    verdict: r.verdict === "correct" || r.verdict === "incorrect" ? r.verdict : null,
+    verifiedByName: r.verifier?.name ?? null,
+    verifiedAt: r.verified_at,
     feedback: r.feedback,
     createdAt: r.created_at,
   }));
+}
+
+/**
+ * 강사의 AI 답변 정오 평가. staff 만(RLS + 액션 게이트). AI 메시지에 verdict 부착하고
+ * 스레드 상태를 조정한다 — 정확→verified, 부정확→ai_answered(강사 정정답변 폼 재노출).
+ * 그 사이 강사 정식답변(answer_md)으로 answered/closed 된 스레드는 상태를 건드리지 않음.
+ */
+export async function setAiVerdict(
+  client: SupabaseClient<Database>,
+  verifierId: string,
+  input: { threadId: string; messageId: string; verdict: "correct" | "incorrect" },
+): Promise<void> {
+  const { error: msgError } = await client
+    .from("qna_messages")
+    .update({
+      verdict: input.verdict,
+      verified_by: verifierId,
+      verified_at: new Date().toISOString(),
+    })
+    .eq("message_id", input.messageId)
+    .eq("thread_id", input.threadId)
+    .eq("role", "ai")
+    .is("deleted_at", null);
+  if (msgError) throw msgError;
+
+  if (input.verdict === "correct") {
+    const { error } = await client
+      .from("qna_threads")
+      .update({ status: "verified" })
+      .eq("thread_id", input.threadId)
+      .is("deleted_at", null)
+      .in("status", ["ai_answered", "verified"]);
+    if (error) throw error;
+  } else {
+    // 부정확 — verified 였다면 ai_answered 로 되돌려 강사 정정답변 폼을 다시 띄운다.
+    const { error } = await client
+      .from("qna_threads")
+      .update({ status: "ai_answered" })
+      .eq("thread_id", input.threadId)
+      .is("deleted_at", null)
+      .eq("status", "verified");
+    if (error) throw error;
+  }
 }
 
 export async function getThreadDetail(
