@@ -960,11 +960,11 @@ function AdminProblemEditInner({
             </p>
           </CardHeader>
           <CardContent>
-            <Textarea
+            <ExplanationEditor
               name="bodyMd"
               defaultValue={problem.bodyMd}
               rows={4}
-              className="font-mono text-sm"
+              placeholder="문제 발문 — markdown 표·이미지·수식 가능. 미리보기로 표/이미지 렌더를 확인하세요."
             />
           </CardContent>
         </Card>
