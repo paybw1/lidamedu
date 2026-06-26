@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import type {
+  QnaCitation,
+  QnaMessage,
   QnaQualityGrade,
   QnaStatus,
   QnaTargetType,
@@ -10,6 +12,8 @@ import type {
 } from "./labels";
 
 export type {
+  QnaCitation,
+  QnaMessage,
   QnaQualityGrade,
   QnaStatus,
   QnaTargetType,
@@ -148,6 +152,71 @@ export async function listThreads(
   const { data, error } = await q;
   if (error) throw error;
   return (data as unknown as RawSummaryRow[] | null ?? []).map(toSummary);
+}
+
+// 스레드 타임라인 메시지(AI 즉답·강사·학생 후속). 공개 읽기(RLS), soft-delete 제외.
+function parseCitations(raw: unknown): QnaCitation[] {
+  if (!Array.isArray(raw)) return [];
+  const out: QnaCitation[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const c = item as Record<string, unknown>;
+    if (
+      typeof c.label === "number" &&
+      typeof c.sourceType === "string" &&
+      typeof c.sourceId === "string"
+    ) {
+      out.push({
+        label: c.label,
+        sourceType: c.sourceType,
+        sourceId: c.sourceId,
+        headingPath: typeof c.headingPath === "string" ? c.headingPath : "",
+      });
+    }
+  }
+  return out;
+}
+
+type RawMessageRow = {
+  message_id: string;
+  thread_id: string;
+  role: QnaMessage["role"];
+  author_id: string | null;
+  body_md: string;
+  citations: unknown;
+  verifies_message_id: string | null;
+  feedback: number | null;
+  created_at: string;
+  author: { profile_id: string; name: string } | null;
+};
+
+export async function listThreadMessages(
+  client: SupabaseClient<Database>,
+  threadId: string,
+): Promise<QnaMessage[]> {
+  const { data, error } = await client
+    .from("qna_messages")
+    .select(
+      `message_id, thread_id, role, author_id, body_md, citations,
+       verifies_message_id, feedback, created_at,
+       author:profiles!qna_messages_author_id_fkey ( profile_id, name )`,
+    )
+    .eq("thread_id", threadId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return ((data as unknown as RawMessageRow[] | null) ?? []).map((r) => ({
+    messageId: r.message_id,
+    threadId: r.thread_id,
+    role: r.role,
+    authorId: r.author_id,
+    authorName: r.author?.name ?? null,
+    bodyMd: r.body_md,
+    citations: parseCitations(r.citations),
+    verifiesMessageId: r.verifies_message_id,
+    feedback: r.feedback,
+    createdAt: r.created_at,
+  }));
 }
 
 export async function getThreadDetail(

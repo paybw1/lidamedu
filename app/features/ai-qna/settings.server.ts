@@ -114,6 +114,31 @@ export async function countAssistantMessagesToday(
 }
 
 /**
+ * 통합 Q&A 의 AI 즉답(qna_messages.role='ai') 중 본인 스레드 + 오늘(KST) 건수.
+ * 일일 쿼터는 구 /ai 챗(ai_messages)과 통합 Q&A 가 같은 풀을 공유하므로 둘을 합산한다.
+ * soft-deleted 메시지·스레드 제외.
+ */
+export async function countQnaAiMessagesToday(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<number> {
+  const sinceUtc = kstMidnightUtcIso();
+  const { count, error } = await client
+    .from("qna_messages")
+    .select(
+      "message_id, qna_threads!inner(asker_id, deleted_at)",
+      { count: "exact", head: true },
+    )
+    .eq("role", "ai")
+    .gte("created_at", sinceUtc)
+    .eq("qna_threads.asker_id", userId)
+    .is("deleted_at", null)
+    .is("qna_threads.deleted_at", null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
  * 오늘 KST 자정의 UTC 시각(ISO). created_at >= 이 값으로 비교.
  */
 function kstMidnightUtcIso(): string {
@@ -145,11 +170,14 @@ export async function getQuotaState(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<QuotaState> {
-  const [quotas, tier, used] = await Promise.all([
+  const [quotas, tier, usedChat, usedQna] = await Promise.all([
     getAiQuotas(client),
     getUserAiTier(client, userId),
     countAssistantMessagesToday(client, userId),
+    countQnaAiMessagesToday(client, userId),
   ]);
+  // 구 /ai 챗 + 통합 Q&A 의 AI 답변을 합산 — 같은 일일 한도 풀.
+  const used = usedChat + usedQna;
   const dailyLimit = tierDailyLimit(tier, quotas);
   return {
     tier,

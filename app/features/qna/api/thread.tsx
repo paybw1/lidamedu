@@ -1,9 +1,14 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 
+import {
+  generateInstantAnswer,
+  shouldAnswerInstantly,
+} from "../ai-answer.server";
 import {
   qnaQualityGradeSchema,
   qnaSubjectSchema,
@@ -113,7 +118,21 @@ export async function action({ request }: Route.ActionArgs) {
     );
     runAfterResponse(notifyTask);
 
-    return data({ ok: true, thread }, { headers });
+    // 통합 Q&A 즉답 — 등급 토글/쿼터/캡 통과 시 Haiku RAG 답변을 background 로 생성.
+    //   결정은 동기(요청 client 로 본인 쿼터 확인), 생성은 응답 후 background(adminClient).
+    //   미통과(토글 OFF·쿼터/캡 초과)면 AI 없이 강사 대기 — 질문은 이미 정상 등록됨.
+    const decision = await shouldAnswerInstantly(client, adminClient, user.id);
+    if (decision.ok) {
+      runAfterResponse(
+        generateInstantAnswer(adminClient, {
+          threadId: thread.threadId,
+          questionMd: thread.questionMd,
+          subject: thread.subject,
+        }),
+      );
+    }
+
+    return data({ ok: true, thread, aiPending: decision.ok }, { headers });
   }
 
   if (parsed.data.intent === "answer") {

@@ -174,6 +174,11 @@ function QnaForm({
     "threadId" in fetcher.data.thread
       ? String(fetcher.data.thread.threadId)
       : null;
+  const aiPending =
+    fetcher.data &&
+    typeof fetcher.data === "object" &&
+    "aiPending" in fetcher.data &&
+    fetcher.data.aiPending === true;
 
   if (submitted && newThreadId) {
     return (
@@ -191,7 +196,9 @@ function QnaForm({
             질문이 등록되었습니다
           </div>
           <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-            답변자에게 알림 메일이 발송됩니다. 답변이 등록되면 메일로 알려드려요.
+            {aiPending
+              ? "AI가 즉시 답변을 작성하고 있어요. 잠시 후 ‘내 질문 보기’에서 확인하세요. 강사가 확인 후 보완합니다."
+              : "답변자에게 알림 메일이 발송됩니다. 답변이 등록되면 메일로 알려드려요."}
           </p>
           <div className="mt-3 flex justify-center gap-2">
             <Button asChild variant="outline" size="sm" className="rounded-full">

@@ -95,3 +95,28 @@ export interface QnaThreadDetail extends QnaThreadSummary {
   questionMd: string;
   answerMd: string | null;
 }
+
+export type QnaMessageRole = Database["public"]["Enums"]["qna_message_role"];
+
+/** AI 답변 출처칩 — 렌더용 최소 형태(클라이언트 안전). */
+export interface QnaCitation {
+  label: number;
+  sourceType: string;
+  sourceId: string;
+  headingPath: string;
+}
+
+/** 스레드 타임라인 메시지(질문 후속 / AI 즉답 / 강사). */
+export interface QnaMessage {
+  messageId: string;
+  threadId: string;
+  role: QnaMessageRole;
+  authorId: string | null;
+  authorName: string | null;
+  bodyMd: string;
+  citations: QnaCitation[];
+  /** 강사가 ✓확인/정정한 대상 AI 메시지(있으면). */
+  verifiesMessageId: string | null;
+  feedback: number | null;
+  createdAt: string;
+}

@@ -1,6 +1,6 @@
 # 통합 Q&A 설계 — 강사 + AI 답변 (학생 접근 최우선)
 
-> 상태: **구현 중 — Phase 1(모델/스키마) 완료(210fd68).** Phase 2~ 대기. 기존 두 시스템(학습지원 AI Q&A + 커뮤니티 Q&A)을 하나로 합쳐, **학생이 한 곳에서 질문하면 AI가 즉시 답하고 강사가 확인·보완**하는 구조.
+> 상태: **구현 중 — Phase 1(모델/스키마) 완료(210fd68) · Phase 2(AI 즉답 배선) 완료.** Phase 3~ 대기. 기존 두 시스템(학습지원 AI Q&A + 커뮤니티 Q&A)을 하나로 합쳐, **학생이 한 곳에서 질문하면 AI가 즉시 답하고 강사가 확인·보완**하는 구조.
 
 ## 0. 확정 결정 (2026-06-26)
 - **모델 A** (스레드 + 메시지 통합).
@@ -84,7 +84,7 @@
 
 ## 8. 구현 단계 (하드 스톱 = 단계마다 검토)
 1. **모델 + 마이그**: `qna_messages` 신설(role/body/citations/retrieval_meta/token_usage/verifies_message_id/feedback…) + `qna_threads` 확장(`general` 대상, status += `ai_answered`/`verified`) + `app_settings.qna_ai_instant`. **이관**: `qna_threads.answer_md`→instructor 메시지, `ai_conversations/ai_messages`→`qna_threads`+`qna_messages`(anchor→target, 전부 공개). RLS. typegen.
-2. **AI 즉답 배선**: 질문 생성 → tier 토글/쿼터/캡 확인 → **Haiku** RAG 스트리밍 메시지(기존 ask 로직 일반화). 폴백=강사 대기.
+2. ✅ **AI 즉답 배선**(완료): 질문 생성 → `shouldAnswerInstantly`(tier 토글 `qna_ai_instant`/쿼터/글로벌 캡) → 통과 시 `runAfterResponse(generateInstantAnswer)` 가 **Haiku**(`QNA_INSTANT_MODEL`) RAG 답변을 `qna_messages(role='ai')` 에 저장 + 스레드 `ai_answered` 전환. 게이트 차단·모델 거절·미통과는 AI 없이 강사 대기(open). 쿼터는 `getQuotaState` 가 `ai_messages`+`qna_messages` 합산(같은 풀). 상세는 `listThreadMessages` 로 AI 카드 최소 렌더(출처칩 포함) — 멀티턴 입력·피드백·강사 ✓는 Phase 3~4. 모듈 `app/features/qna/ai-answer.server.ts`.
 3. **스레드 UI**: 메시지 타임라인(질문/AI/강사 구분) + 출처칩 + 후속질문 + 👍/👎.
 4. **강사 도구**: ✓확인·보완답변·미답/근거부족 큐.
 5. **진입 통합**: nav "Q&A" 단일(학습지원 AI Q&A 제거/redirect), `AskAiButton`→통합 작성, `/ai`·`/api/ai-qna/ask` redirect/폐지.

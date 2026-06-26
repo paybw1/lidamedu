@@ -2,6 +2,7 @@ import {
   CheckCircle2Icon,
   CheckIcon,
   ExternalLinkIcon,
+  SparklesIcon,
   UserIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -19,14 +20,25 @@ import {
   QNA_QUALITY_LABEL,
   QNA_STATUS_LABEL,
   QNA_TARGET_LABEL,
+  type QnaCitation,
+  type QnaMessage,
   type QnaQualityGrade,
   type QnaTargetType,
   subjectLabel,
 } from "../labels";
-import { getThreadDetail } from "../queries.server";
+import { getThreadDetail, listThreadMessages } from "../queries.server";
 import { resolveTargetDisplay } from "../lib/target-display.server";
 
 import type { Route } from "./+types/qna-detail";
+
+// AI 출처칩 sourceType → 한글 라벨.
+const CITATION_SOURCE_LABEL: Record<string, string> = {
+  article: "법령",
+  case: "판례",
+  problem: "문제",
+  textbook: "기본서",
+  practice: "실무서",
+};
 
 // 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).
 const TARGET_TONE: Record<
@@ -76,8 +88,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ? await resolveTargetDisplay(client, thread.targetType, thread.targetId)
     : null;
 
+  // 타임라인 메시지(AI 즉답 등). 강사 정식답변은 thread.answerMd 로 별도 표시.
+  const messages = await listThreadMessages(client, params.threadId);
+
   return {
     thread,
+    messages,
     currentUserId: user.id,
     isStaff,
     target,
@@ -85,11 +101,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export default function QnaDetail({ loaderData }: Route.ComponentProps) {
-  const { thread, currentUserId, isStaff, target } = loaderData;
+  const { thread, messages, currentUserId, isStaff, target } = loaderData;
   const isAsker = thread.askerId === currentUserId;
+  // ai_answered 도 강사 정식답변이 없는 상태 — 강사가 보완/정정 답변을 달 수 있다.
   const canAnswer =
-    thread.status === "open" && isStaff && thread.answererId === null;
+    (thread.status === "open" || thread.status === "ai_answered") &&
+    isStaff &&
+    thread.answererId === null;
   const isWaiting = thread.status === "open";
+  const aiMessages = messages.filter((m) => m.role === "ai");
 
   return (
     <CommunityShell
@@ -148,6 +168,11 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </p>
       </article>
 
+      {/* AI 즉답 카드 — 질문 직후 자동 생성분. 강사 정식답변과 공존. */}
+      {aiMessages.map((m) => (
+        <AiAnswerCard key={m.messageId} message={m} />
+      ))}
+
       {/* 답변 카드 — 에메랄드 좌측 보더 */}
       {thread.answerMd ? (
         <article className="bg-card mb-3.5 rounded-2xl rounded-l-md border border-l-4 border-emerald-500 p-5 shadow-sm md:p-6">
@@ -195,6 +220,57 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
     </CommunityShell>
+  );
+}
+
+// AI 즉답 카드 — 강사 답변(에메랄드)과 구분되는 인디고 톤 + AI 배지 + 출처칩.
+function AiAnswerCard({ message }: { message: QnaMessage }) {
+  return (
+    <article className="bg-card mb-3.5 rounded-2xl rounded-l-md border border-l-4 border-indigo-500 p-5 shadow-sm md:p-6">
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <Chip tone="violet">
+          <SparklesIcon className="size-2.5" /> AI 답변
+        </Chip>
+        <span className="text-muted-foreground text-[11px]">
+          강사 확인 전 자동 생성 — 참고용
+        </span>
+        <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+          {new Date(message.createdAt).toLocaleString("ko-KR")}
+        </span>
+      </div>
+      <p className="text-foreground/85 text-[15px] leading-[1.85] whitespace-pre-line">
+        {message.bodyMd}
+      </p>
+      {message.citations.length > 0 ? (
+        <CitationList citations={message.citations} />
+      ) : null}
+    </article>
+  );
+}
+
+function CitationList({ citations }: { citations: QnaCitation[] }) {
+  return (
+    <div className="border-border/60 mt-4 border-t pt-3">
+      <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
+        출처
+      </p>
+      <ul className="flex flex-col gap-1">
+        {citations.map((c) => (
+          <li
+            key={`${c.label}-${c.sourceId}`}
+            className="text-muted-foreground flex items-start gap-1.5 text-[12px] leading-relaxed"
+          >
+            <span className="text-foreground/70 font-bold tabular-nums">
+              [{c.label}]
+            </span>
+            <Chip tone="neutral">
+              {CITATION_SOURCE_LABEL[c.sourceType] ?? c.sourceType}
+            </Chip>
+            {c.headingPath ? <span>{c.headingPath}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
