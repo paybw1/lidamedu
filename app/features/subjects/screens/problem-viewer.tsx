@@ -102,9 +102,10 @@ import {
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
 
-// 발문·해설에 markdown 이미지(![](url))·<img>·HTML <table> 가 있으면 MarkdownView 로
-// 렌더(이미지·표·수식). 없으면 plain whitespace-pre-line (mcq-pack-sheet 와 동일 규칙).
-const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table)\b/i;
+// 발문·해설에 markdown 이미지(![](url))·<img>·표(HTML <table> 또는 GFM 파이프표)가
+// 있으면 MarkdownView 로 렌더(이미지·표·수식). 없으면 plain whitespace-pre-line.
+// 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}). mcq-pack-sheet 와 동일 규칙.
+const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table)\b|\|[\s:]*-{3,}/i;
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "문제 | 리담변리사학원" }];

@@ -52,9 +52,10 @@ import {
 import type { Route } from "./+types/mcq-pack-sheet";
 
 // 이미지 기반 문항(자연과학 기출 등)은 본문을 Markdown 이미지(![](url))로, 표 기반
-// 문항은 HTML <table> 로 저장한다. 이미지/표 마크업이 있을 때만 MarkdownView 로
-// 렌더하고, 그 외 텍스트 문항은 기존 whitespace-pre-line 경로를 유지한다.
-const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table)\b/i;
+// 문항은 HTML <table> 또는 GFM 파이프표로 저장한다. 이미지/표 마크업이 있을 때만
+// MarkdownView 로 렌더하고, 그 외 텍스트 문항은 whitespace-pre-line 경로를 유지한다.
+// 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}).
+const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table)\b|\|[\s:]*-{3,}/i;
 
 export const meta: Route.MetaFunction = ({ data: d }) => {
   if (!d || !d.pack) return [{ title: "응시 | 리담변리사학원" }];
