@@ -35,10 +35,10 @@ export const PALETTE = {
     "linear-gradient(180deg, var(--primary) 0%, var(--lp-grad-to) 100%)",
 } as const;
 
-// 랜딩 타이포 SSOT — 제목=명조(--font-display=Noto Serif KR), 본문=Pretendard.
-// 제목류 font 숏핸드에서 FONT.display 참조(PALETTE 와 같은 SSOT 패턴). 본문/UI는 그대로 Pretendard.
+// 랜딩 타이포 SSOT — 제목·본문 모두 Pretendard(사용자 요청으로 명조 환원).
+// 제목류 font 숏핸드에서 FONT.display 참조(PALETTE 와 같은 SSOT 패턴) — 값은 Pretendard.
 export const FONT = {
-  display: "var(--font-display)",
+  display: "Pretendard, sans-serif",
   body: "Pretendard, sans-serif",
 } as const;
 

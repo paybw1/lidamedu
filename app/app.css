@@ -17,8 +17,6 @@
   --font-serif:
     "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", system-ui,
     "Noto Sans KR", sans-serif;
-  /* 랜딩 제목 전용 디스플레이 — Noto Serif KR(명조). 제목만 명조, 본문은 --font-sans(Pretendard). */
-  --font-display: "Noto Serif KR", "Apple SD Gothic Neo", serif;
 }
 
 html,
