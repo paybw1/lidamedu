@@ -44,8 +44,8 @@ import type { Route } from "./+types/gs-issue-take";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.question?.title
-      ? `${d.question.title} — 논점 추출 | Lidam`
-      : "논점 추출 훈련 | Lidam",
+      ? `${d.question.title} — 논점 추출 | 리담변리사학원`
+      : "논점 추출 훈련 | 리담변리사학원",
   },
 ];
 
@@ -236,7 +236,7 @@ function WriteStage({
       <div className="border-primary/20 bg-primary/[0.04] flex items-start gap-2 rounded-2xl border p-3 text-xs leading-relaxed">
         <PencilLineIcon className="text-link mt-0.5 size-4 shrink-0" />
         <p className="text-foreground">
-          <strong>한 줄에 한 논점</strong>씩 적는 걸 권장합니다 (자유 형식도 OK).
+          <strong>한 줄에 한 논점</strong>씩 적는 걸 권장합니다 (자유 형식도 괜찮습니다).
           예: "신규성 위반 여부 · 제29조". 모범답안은 제출 전에 절대 보지 마세요.
         </p>
       </div>

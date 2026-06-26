@@ -53,7 +53,7 @@ export default function StudentAssignments({
           과제
         </h1>
         <p className="text-ink-soft mt-2 text-sm">
-          반에서 받은 과제 — 마감 가까운 순. 완수는 자동 판정됩니다.
+          마감이 가까운 과제부터 보여드립니다. 완수는 자동으로 판정됩니다.
         </p>
       </header>
 

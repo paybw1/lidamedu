@@ -779,7 +779,7 @@ function StudyMembersPanel({
         </p>
       ) : errCode ? (
         <p className="text-rose-600 dark:text-rose-400 mt-2 text-[11px]">
-          ✗ {errCode}
+          ✗ 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.
         </p>
       ) : null}
     </section>
@@ -830,7 +830,7 @@ function ReportButton({
       <input type="hidden" name="targetId" value={targetId} />
       {success ? (
         <p className="text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
-          ✓ 신고 접수됨. 모더레이션 큐로 전달됩니다.
+          ✓ 신고가 접수되었습니다. 운영진이 확인합니다.
         </p>
       ) : (
         <>
@@ -874,7 +874,7 @@ function ReportButton({
           ) : null}
           {fetcher.data?.error && !dup ? (
             <p className="text-rose-600 dark:text-rose-400 mt-1 text-[11px]">
-              ✗ {fetcher.data.error}
+              ✗ 신고 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.
             </p>
           ) : null}
         </>

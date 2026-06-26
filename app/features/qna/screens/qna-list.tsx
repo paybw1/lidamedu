@@ -162,7 +162,7 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
           <strong className="text-foreground">조문·판례·문제</strong>에 대한 질문은
           해당 <strong className="text-foreground">상세 화면의 ‘Q&amp;A’ 패널</strong>
           에서 남겨 주세요. 질문이 그 내용에 자동으로 연결돼 더 정확한 답변을 받을 수
-          있어요. <strong className="text-foreground">공부방법</strong> 등 일반 질문은
+          있습니다. <strong className="text-foreground">공부방법</strong> 등 일반 질문은
           여기서 <strong className="text-foreground">‘공부방법 질문’</strong> 으로
           작성하시면 됩니다.
         </p>
