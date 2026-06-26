@@ -79,11 +79,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     targetId,
   );
 
+  // 뷰어 '질문하기'가 넘긴 초안(옵션) — 본문에 프리필(자동 전송 X).
+  const seedRaw = url.searchParams.get("seed") ?? "";
+  const seed = seedRaw.slice(0, 1000);
+
   return {
     mode: "content" as const,
     targetType: targetTypeParse.data,
     targetId,
     target,
+    seed,
   };
 }
 
@@ -100,6 +105,7 @@ export default function QnaNew({ loaderData }: Route.ComponentProps) {
       targetType={loaderData.targetType}
       targetId={loaderData.targetId}
       target={loaderData.target}
+      seed={loaderData.seed}
     />
   );
 }
@@ -148,15 +154,17 @@ function QnaForm({
   targetType,
   targetId,
   target,
+  seed,
 }: {
   mode: "content" | "study_method";
   targetType: QnaTargetType;
   targetId?: string;
   target?: TargetDisplay;
+  seed?: string;
 }) {
   const fetcher = useFetcher();
   const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(seed ?? "");
   const [subject, setSubject] = useState("");
   const isSubmitting = fetcher.state !== "idle";
   const submitted =

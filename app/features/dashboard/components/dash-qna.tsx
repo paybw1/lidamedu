@@ -1,17 +1,17 @@
-// feat-9-004 잔여 ② — 대시보드 "최근 AI 대화" 카드.
-// last 3 대화 (제목 + 미리보기 + 시간) + "새 대화" CTA + 빈 상태.
+// 대시보드 "최근 Q&A" 카드 — 내가 올린 질문 last 3 (제목 + 상태 + 시간) + 질문하기 CTA + 빈 상태.
+// (Phase 5 진입 통합) 구 "최근 AI 대화"(/ai) 카드를 통합 Q&A(/qna)로 전환.
 
-import { ArrowRightIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import { ArrowRightIcon, MessageCircleQuestionIcon, PlusIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { Card, Eyebrow, T } from "~/features/dashboard/lib/dash";
+import { QNA_STATUS_LABEL, type QnaStatus } from "~/features/qna/labels";
 
-export interface AiQnaConversationItem {
-  conversationId: string;
-  title: string | null;
-  lastSnippet: string | null;
-  updatedAt: string;
-  messageCount: number;
+export interface QnaRecentItem {
+  threadId: string;
+  title: string;
+  status: QnaStatus;
+  createdAt: string;
 }
 
 function relTime(iso: string): string {
@@ -30,10 +30,10 @@ function relTime(iso: string): string {
   }).format(new Date(iso));
 }
 
-export function AiQnaRecentCard({
-  conversations,
+export function QnaRecentCard({
+  threads,
 }: {
-  conversations: ReadonlyArray<AiQnaConversationItem>;
+  threads: ReadonlyArray<QnaRecentItem>;
 }) {
   return (
     <Card padding={20}>
@@ -46,16 +46,16 @@ export function AiQnaRecentCard({
         }}
       >
         <Eyebrow style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <SparklesIcon
+          <MessageCircleQuestionIcon
             size={11}
             color={T.blue}
             strokeWidth={2.2}
             style={{ display: "inline-block" }}
           />
-          AI Q&A
+          Q&A
         </Eyebrow>
         <Link
-          to="/ai"
+          to="/qna"
           style={{
             font: "600 12px/1 Pretendard, sans-serif",
             color: T.link,
@@ -69,7 +69,7 @@ export function AiQnaRecentCard({
         </Link>
       </div>
 
-      {conversations.length === 0 ? (
+      {threads.length === 0 ? (
         <div
           style={{
             display: "flex",
@@ -81,7 +81,7 @@ export function AiQnaRecentCard({
             textAlign: "center",
           }}
         >
-          <SparklesIcon size={24} color={T.inkSoft} strokeWidth={1.5} />
+          <MessageCircleQuestionIcon size={24} color={T.inkSoft} strokeWidth={1.5} />
           <p
             style={{
               font: "400 12px/1.5 Pretendard, sans-serif",
@@ -89,12 +89,12 @@ export function AiQnaRecentCard({
               margin: 0,
             }}
           >
-            조문·판례·문제를 색인한 AI 가
+            궁금한 점을 질문하면 AI 가 즉시
             <br />
-            출처를 인용해 즉답합니다.
+            답하고, 강사가 확인·보완합니다.
           </p>
           <Link
-            to="/ai"
+            to="/qna/new?targetType=study_method"
             style={{
               marginTop: 4,
               padding: "8px 14px",
@@ -109,7 +109,7 @@ export function AiQnaRecentCard({
             }}
           >
             <PlusIcon size={12} strokeWidth={2.4} />
-            대화 시작
+            질문하기
           </Link>
         </div>
       ) : (
@@ -124,10 +124,10 @@ export function AiQnaRecentCard({
               gap: 6,
             }}
           >
-            {conversations.slice(0, 3).map((c) => (
-              <li key={c.conversationId}>
+            {threads.slice(0, 3).map((t) => (
+              <li key={t.threadId}>
                 <Link
-                  to={`/ai?c=${c.conversationId}`}
+                  to={`/qna/${t.threadId}`}
                   style={{
                     display: "block",
                     padding: "10px 12px",
@@ -157,7 +157,7 @@ export function AiQnaRecentCard({
                         flex: 1,
                       }}
                     >
-                      {c.title ?? "(제목 없음)"}
+                      {t.title}
                     </p>
                     <span
                       style={{
@@ -167,29 +167,25 @@ export function AiQnaRecentCard({
                         tabSize: "tabular-nums",
                       }}
                     >
-                      {relTime(c.updatedAt)}
+                      {relTime(t.createdAt)}
                     </span>
                   </div>
-                  {c.lastSnippet ? (
-                    <p
-                      style={{
-                        font: "400 11px/1.4 Pretendard, sans-serif",
-                        color: T.inkSoft,
-                        margin: "4px 0 0",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {c.lastSnippet}
-                    </p>
-                  ) : null}
+                  <span
+                    style={{
+                      font: "500 11px/1 Pretendard, sans-serif",
+                      color: T.inkSoft,
+                      margin: "4px 0 0",
+                      display: "inline-block",
+                    }}
+                  >
+                    {QNA_STATUS_LABEL[t.status]}
+                  </span>
                 </Link>
               </li>
             ))}
           </ul>
           <Link
-            to="/ai"
+            to="/qna/new?targetType=study_method"
             style={{
               marginTop: 10,
               padding: "8px 0",
@@ -207,7 +203,7 @@ export function AiQnaRecentCard({
             }}
           >
             <PlusIcon size={12} strokeWidth={2.4} />
-            새 대화
+            질문하기
           </Link>
         </>
       )}

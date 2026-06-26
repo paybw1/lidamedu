@@ -6,7 +6,6 @@ import {
   HighlighterIcon,
   MessageSquareTextIcon,
   NotebookPenIcon,
-  SparklesIcon,
   StickyNoteIcon,
 } from "lucide-react";
 import { type ComponentType, type ReactNode, useRef, useState } from "react";
@@ -38,15 +37,14 @@ export interface StudyAidTabCounts {
   comments: number;
 }
 
-// 학습지원 탭 항목 = SSOT(AREA_GROUP_IDS.aids) 파생 — 상단바 드롭다운과 동일(AI Q&A 포함).
-// 아이콘·카운트는 to 로 매핑(표시·데이터 메타). 카운트 없는 항목(AI Q&A)은 badge 생략.
+// 학습지원 탭 항목 = SSOT(AREA_GROUP_IDS.aids) 파생 — 상단바 드롭다운과 동일.
+// 아이콘·카운트는 to 로 매핑(표시·데이터 메타).
 const AIDS_ICON_BY_TO: Record<string, ComponentType<{ className?: string }>> = {
   "/study/wrong-note": NotebookPenIcon,
   "/study/highlights": HighlighterIcon,
   "/study/bookmarks": BookmarkIcon,
   "/study/notes": StickyNoteIcon,
   "/study/comments": MessageSquareTextIcon,
-  "/ai": SparklesIcon,
 };
 const AIDS_COUNT_KEY_BY_TO: Record<string, StudyAidTab> = {
   "/study/wrong-note": "wrong",
@@ -56,7 +54,7 @@ const AIDS_COUNT_KEY_BY_TO: Record<string, StudyAidTab> = {
   "/study/comments": "comments",
 };
 // 학습지원 탭 — 공용 `SectionTabs` 프리미티브. 학습관리/정보 3 영역과 동일 디자인 톤.
-//   export: AI Q&A 채팅 화면(고정 높이 앱 레이아웃이라 StudyAidsShell 못 씀)이 토글만 붙일 때 재사용.
+//   export: 셸 전체(StudyAidsShell)를 못 쓰는 화면이 탭 strip 만 붙일 때 재사용.
 export function StudyAidsTabs({
   counts,
 }: {

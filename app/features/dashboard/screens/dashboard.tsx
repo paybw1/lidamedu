@@ -6,7 +6,7 @@ import { Link, redirect } from "react-router";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
-import { listMyConversations } from "~/features/ai-qna/conversations.server";
+import { listThreads } from "~/features/qna/queries.server";
 import { listTopBookmarks } from "~/features/annotations/queries.server";
 import { listStudentAssignments } from "~/features/assignments/queries.server";
 import {
@@ -19,7 +19,7 @@ import {
   HeatmapCard,
   WeekBarsCard,
 } from "~/features/dashboard/components/dash-activity";
-import { AiQnaRecentCard } from "~/features/dashboard/components/dash-ai-qna";
+import { QnaRecentCard } from "~/features/dashboard/components/dash-qna";
 import {
   RecentActivityCard,
   RecentCasesCard,
@@ -203,7 +203,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     passerBundle,
     oxRecentSessions,
     oxWrongCount,
-    aiConversations,
+    recentQnaThreads,
   ] = await Promise.all([
     listRecentLawRevisions(client, 5, user.id),
     listRecentCases(client, 5),
@@ -255,8 +255,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     // feat-10-006 — 대시보드 OX 카드용. 최신 10건 + 누적 응시 수 계산.
     listMyOxSessions(client, user.id, { limit: 50 }),
     countMyOxWrongNoteItems(client, user.id),
-    // feat-9-004 — 대시보드 AI Q&A 카드용. last 3 대화.
-    listMyConversations(client, user.id, 3),
+    // 대시보드 "최근 Q&A" 카드용 — 내가 올린 질문 last 3.
+    listThreads(client, user.id, { scope: "asked-by-me", limit: 3 }),
   ]);
   // A3 게이트 — 합격자 비교 OFF 시 4종 값 모두 null/[]. 컴포넌트 단에서 합격 기준 안내 카드로 대체.
   const passerGate = passerBundle.gate;
@@ -410,12 +410,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       totalSessions: oxRecentSessions.length,
       wrongCount: oxWrongCount,
     },
-    aiConversations: aiConversations.map((c) => ({
-      conversationId: c.conversationId,
-      title: c.title,
-      lastSnippet: c.lastSnippet,
-      updatedAt: c.updatedAt,
-      messageCount: c.messageCount,
+    recentQna: recentQnaThreads.map((t) => ({
+      threadId: t.threadId,
+      title: t.title,
+      status: t.status,
+      createdAt: t.createdAt,
     })),
   };
 }
@@ -823,7 +822,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               <OxRecentCard data={loaderData.oxRecent} />
             </SpanCol>
             <SpanCol span={3}>
-              <AiQnaRecentCard conversations={loaderData.aiConversations} />
+              <QnaRecentCard threads={loaderData.recentQna} />
             </SpanCol>
           </DashGrid>
 

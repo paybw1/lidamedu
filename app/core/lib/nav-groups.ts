@@ -65,7 +65,7 @@ export const NAV_GROUP_POOL = {
       { label: "즐겨찾기", to: "/study/bookmarks" },
       { label: "포스트잇", to: "/study/notes" },
       { label: "코멘트", to: "/study/comments" },
-      { label: "AI Q&A", to: "/ai" },
+      // (Phase 5 진입 통합) AI Q&A 는 커뮤니티 "Q&A"(/qna)로 흡수 — AI 즉답+강사 확인.
     ],
     area: "area_study_aids",
   },
