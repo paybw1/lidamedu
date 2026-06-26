@@ -62,10 +62,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ? reqUrl.origin
     : (process.env.SITE_URL ?? reqUrl.origin).replace(/\/+$/, "");
 
-  // 카카오 동의항목 — 검수 승인 완료(2026-06). 회원가입 시 6개 항목을 모두 요청·수집:
-  //   닉네임·프로필 사진·카카오계정(이메일)·이름·전화번호·배송지(주소).
-  const kakaoScopes =
-    "profile_nickname profile_image account_email name phone_number shipping_address";
+  // 카카오 동의항목 — 기본 3종(닉네임·프로필 사진·카카오계정 이메일)만 요청한다.
+  //   ★ 이름·전화번호·배송지(name·phone_number·shipping_address)는 비즈니스 앱
+  //   "추가 동의항목"이라, 카카오 콘솔에서 검수 승인 + 사용 ON 상태여야만 요청할 수 있다.
+  //   이 상태가 아닌데 함께 요청하면 카카오 authorize 가 거부돼 로그인 자체가 막힌다.
+  //   → 콘솔에서 3종 "사용함" 확인 후, 아래 6항목 줄로 교체해 복원할 것.
+  // const kakaoScopes =
+  //   "profile_nickname profile_image account_email name phone_number shipping_address";
+  const kakaoScopes = "profile_nickname profile_image account_email";
 
   // Initialize OAuth flow with the specified provider
   const { data: signInData, error: signInError } =
@@ -73,9 +77,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       provider: parsedParams.provider,
       options: {
         redirectTo: `${siteUrl}/auth/social/complete/${parsedParams.provider}`,
-        ...(parsedParams.provider === "kakao"
-          ? { scopes: kakaoScopes }
-          : {}),
+        ...(parsedParams.provider === "kakao" ? { scopes: kakaoScopes } : {}),
       },
     });
 
