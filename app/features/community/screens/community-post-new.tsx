@@ -23,7 +23,7 @@ export const meta: Route.MetaFunction = ({ data: loaderData }) => [
 ];
 
 // 첨부 업로드 제약 — /api/community/attachment 와 동일.
-const MAX_IMAGES = 8;
+const MAX_IMAGES = 20;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 interface PendingImage {
