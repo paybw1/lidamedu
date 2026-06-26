@@ -16,6 +16,7 @@ import type { Route } from "./+types/complete";
 import { data, redirect } from "react-router";
 import { z } from "zod";
 
+import { claimSession } from "~/core/lib/single-session.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 
 /**
@@ -104,6 +105,15 @@ export async function loader({ request }: Route.LoaderArgs) {
       { error: "로그인을 완료하지 못했습니다. 다시 시도해 주세요." },
       { status: 400 },
     );
+  }
+
+  // 단일 세션(feat-000-016): 이 로그인을 현재 유효 세션으로 등록(이전 기기 자동 무효화)
+  // 하고 lidam_sid 쿠키를 발급한다. 카카오 OAuth 가 유일한 실로그인 경로.
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (user) {
+    await claimSession(client, request, headers);
   }
 
   // Redirect to home page with auth cookies in headers

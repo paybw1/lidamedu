@@ -161,6 +161,7 @@
 | feat-000-013 | 5종 연관관계 스키마 + RLS | P0 | ✅ |
 | feat-000-014 | 학습 진도 자동 기록 미들웨어 (loader hook) | P0 | ✅ |
 | feat-000-015 | `daily_study_stat` 일별 집계 배치 (읽기 시점 GROUP BY; Workers Cron 보류) | P1 | ✅ |
+| feat-000-016 | **단일 세션 강제(중복 로그인 차단)** — 계정당 현재 유효 세션 1개(`profiles.active_session_id`), 새 로그인이 갈아치움(last-login-wins). 학생 한정. `lidam_sid` httpOnly 쿠키 vs DB 비교를 `private.layout`에서 매 요청 강제, 불일치 시 이 기기만 `signOut(local)` + `/login?reason=other-device`. SECURITY DEFINER RPC(`claim_session`/`release_session`). 무중단 롤아웃(컬럼 nullable=기존 사용자 다음 로그인부터). 상세: `docs/features/feat-000-016-single-session.md` | P1 | 🟡 |
 
 상세 스펙: `docs/architecture.md`, `docs/db-schema.md`, `docs/spec-detail-foundation.md` (작성 예정).
 

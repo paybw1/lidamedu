@@ -19,6 +19,12 @@ export const meta: Route.MetaFunction = () => [
   { title: `로그인 | 리담변리사학원` },
 ];
 
+// feat-000-016 — 다른 기기 로그인으로 추방된 경우 안내 배너를 띄운다.
+export function loader({ request }: Route.LoaderArgs) {
+  const reason = new URL(request.url).searchParams.get("reason");
+  return { otherDevice: reason === "other-device" };
+}
+
 const liftKakao: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(-1px)";
   e.currentTarget.style.boxShadow = "0 12px 28px rgba(254, 229, 0, 0.45)";
@@ -28,7 +34,7 @@ const liftKakaoLeave: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.boxShadow = "0 8px 22px rgba(254, 229, 0, 0.35)";
 };
 
-export default function Login() {
+export default function Login({ loaderData }: Route.ComponentProps) {
   return (
     <section
       style={{
@@ -53,6 +59,25 @@ export default function Login() {
             textAlign: "center",
           }}
         >
+          {loaderData.otherDevice ? (
+            <div
+              style={{
+                marginBottom: 20,
+                padding: "12px 14px",
+                borderRadius: 12,
+                background: PALETTE.tint,
+                border: `1px solid ${PALETTE.line}`,
+                color: PALETTE.ink,
+                font: `500 13px/1.6 ${FONT}`,
+                letterSpacing: "-0.01em",
+                textAlign: "left",
+              }}
+            >
+              다른 기기에서 로그인되어 이 기기에서는 자동 로그아웃되었습니다. 본인이
+              맞다면 다시 로그인해 주세요.
+            </div>
+          ) : null}
+
           <div
             style={{
               display: "inline-flex",

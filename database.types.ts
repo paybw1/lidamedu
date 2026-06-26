@@ -5041,6 +5041,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_session_at: string | null
+          active_session_device: string | null
+          active_session_id: string | null
           address: string | null
           analytics_consent_at: string | null
           avatar_url: string | null
@@ -5064,6 +5067,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_session_at?: string | null
+          active_session_device?: string | null
+          active_session_id?: string | null
           address?: string | null
           analytics_consent_at?: string | null
           avatar_url?: string | null
@@ -5087,6 +5093,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_session_at?: string | null
+          active_session_device?: string | null
+          active_session_id?: string | null
           address?: string | null
           analytics_consent_at?: string | null
           avatar_url?: string | null
@@ -7120,6 +7129,10 @@ export type Database = {
           total_existing_count: number
         }[]
       }
+      claim_session: {
+        Args: { p_device: string; p_sid: string }
+        Returns: undefined
+      }
       community_increment_view: {
         Args: { p_post_id: string }
         Returns: undefined
@@ -7387,6 +7400,7 @@ export type Database = {
         }[]
       }
       promote_effective_revisions: { Args: never; Returns: string[] }
+      release_session: { Args: never; Returns: undefined }
       scan_exam_case_links: { Args: never; Returns: number }
       search_articles_ranked: {
         Args: { lim?: number; q: string }
