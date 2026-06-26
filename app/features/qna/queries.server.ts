@@ -109,7 +109,8 @@ export async function listThreadsForTarget(
 }
 
 export interface ListFilter {
-  scope: "all" | "asked-by-me" | "answered-by-me" | "open";
+  // review = 강사 검토 큐(미답 open + AI 미검토 ai_answered 모아보기).
+  scope: "all" | "asked-by-me" | "answered-by-me" | "open" | "review";
   query?: string;
   targetType?: QnaTargetType;
   /** 과목 분류 필터(law_code 류). */
@@ -137,6 +138,9 @@ export async function listThreads(
     q = q.eq("answerer_id", userId);
   } else if (filter.scope === "open") {
     q = q.eq("status", "open");
+  } else if (filter.scope === "review") {
+    // 강사 검토 큐 — 미답 + AI 미검토(평가/정정 대기).
+    q = q.in("status", ["open", "ai_answered"]);
   }
 
   if (filter.query && filter.query.trim().length > 0) {
@@ -147,11 +151,26 @@ export async function listThreads(
     );
   }
 
-  q = q.order("created_at", { ascending: false }).limit(filter.limit ?? 50);
+  // 검토 큐는 오래된 것부터(FIFO — 묵은 질문이 밀리지 않게), 그 외는 최신순.
+  const ascending = filter.scope === "review";
+  q = q.order("created_at", { ascending }).limit(filter.limit ?? 50);
 
   const { data, error } = await q;
   if (error) throw error;
   return (data as unknown as RawSummaryRow[] | null ?? []).map(toSummary);
+}
+
+/** 강사 검토 큐 전역 건수 — 미답(open) + AI 미검토(ai_answered). 카운트 배지용. */
+export async function countReviewQueue(
+  client: SupabaseClient<Database>,
+): Promise<number> {
+  const { count, error } = await client
+    .from("qna_threads")
+    .select("thread_id", { count: "exact", head: true })
+    .is("deleted_at", null)
+    .in("status", ["open", "ai_answered"]);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // 스레드 타임라인 메시지(AI 즉답·강사·학생 후속). 공개 읽기(RLS), soft-delete 제외.

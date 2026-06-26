@@ -27,7 +27,9 @@ import {
   type QnaTargetType,
   subjectLabel,
 } from "../labels";
-import { listThreads, type ListFilter } from "../queries.server";
+import { getStaffRole } from "~/features/laws/queries.server";
+
+import { countReviewQueue, listThreads, type ListFilter } from "../queries.server";
 
 import type { Route } from "./+types/qna-list";
 
@@ -38,9 +40,13 @@ const SCOPE_LABELS: Record<Scope, string> = {
   "asked-by-me": "내 질문",
   "answered-by-me": "내 답변",
   open: "답변 대기",
+  review: "검토 필요",
 };
 
+// 공통 분류 칩(전원). review 는 강사 전용이라 별도 렌더.
 const SCOPE_VALUES: Scope[] = ["all", "asked-by-me", "answered-by-me", "open"];
+// URL ?scope= 검증용 — review 포함.
+const VALID_SCOPES: Scope[] = [...SCOPE_VALUES, "review"];
 
 // 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).
 const TARGET_TONE: Record<
@@ -67,7 +73,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const rawScope = url.searchParams.get("scope") ?? "all";
-  const scope: Scope = SCOPE_VALUES.includes(rawScope as Scope)
+  const scope: Scope = VALID_SCOPES.includes(rawScope as Scope)
     ? (rawScope as Scope)
     : "all";
 
@@ -85,19 +91,37 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const query = url.searchParams.get("q") ?? "";
 
-  const threads = await listThreads(client, user.id, {
+  const role = await getStaffRole(client, user.id);
+  const isStaff = role !== null;
+
+  const [threads, reviewCount] = await Promise.all([
+    listThreads(client, user.id, { scope, targetType, subject, query }),
+    isStaff ? countReviewQueue(client) : Promise.resolve(0),
+  ]);
+
+  return {
+    threads,
     scope,
     targetType,
     subject,
     query,
-  });
-
-  return { threads, scope, targetType, subject, query, currentUserId: user.id };
+    currentUserId: user.id,
+    isStaff,
+    reviewCount,
+  };
 }
 
 export default function QnaList({ loaderData }: Route.ComponentProps) {
-  const { threads, scope, targetType, subject, query, currentUserId } =
-    loaderData;
+  const {
+    threads,
+    scope,
+    targetType,
+    subject,
+    query,
+    currentUserId,
+    isStaff,
+    reviewCount,
+  } = loaderData;
   const [searchParams] = useSearchParams();
 
   const buildHref = (overrides: Record<string, string | null>) => {
@@ -114,7 +138,8 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
     scope !== "all" || !!targetType || !!subject || query !== "";
 
   const descParts = [`총 ${threads.length}건`];
-  if (waitingCount > 0) descParts.push(`답변 대기 ${waitingCount}건`);
+  if (isStaff && reviewCount > 0) descParts.push(`검토 필요 ${reviewCount}건`);
+  else if (waitingCount > 0) descParts.push(`답변 대기 ${waitingCount}건`);
 
   return (
     <CommunityShell
@@ -183,6 +208,18 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
             </Link>
           );
         })}
+        {/* 강사 전용 검토 큐 — 미답 + AI 미검토 모아보기. */}
+        {isStaff ? (
+          <Link to={buildHref({ scope: "review" })}>
+            <Chip
+              tone={scope === "review" ? "solid" : "primary"}
+              className="transition-colors hover:opacity-85"
+            >
+              {SCOPE_LABELS.review}
+              {reviewCount > 0 ? ` ${reviewCount}` : ""}
+            </Chip>
+          </Link>
+        ) : null}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
@@ -239,20 +276,29 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
       </div>
 
       {threads.length === 0 ? (
-        <EmptyState
-          icon={filterActive ? SearchXIcon : MessageCircleQuestionIcon}
-          tone={filterActive ? "subdued" : "neutral"}
-          title={
-            filterActive
-              ? "조건에 맞는 질문이 없습니다"
-              : "아직 등록된 질문이 없습니다"
-          }
-          body={
-            filterActive
-              ? "검색어나 분류·대상·과목 필터를 바꿔 다시 찾아보세요."
-              : "조문·판례·문제 상세 화면, 또는 ‘공부방법 질문’ 으로 질문할 수 있습니다. 답변은 강사가 답니다."
-          }
-        />
+        scope === "review" ? (
+          <EmptyState
+            icon={MessageCircleQuestionIcon}
+            tone="neutral"
+            title="검토할 질문이 없습니다"
+            body="미답 질문과 AI 미검토 답변이 모두 처리되었습니다."
+          />
+        ) : (
+          <EmptyState
+            icon={filterActive ? SearchXIcon : MessageCircleQuestionIcon}
+            tone={filterActive ? "subdued" : "neutral"}
+            title={
+              filterActive
+                ? "조건에 맞는 질문이 없습니다"
+                : "아직 등록된 질문이 없습니다"
+            }
+            body={
+              filterActive
+                ? "검색어나 분류·대상·과목 필터를 바꿔 다시 찾아보세요."
+                : "조문·판례·문제 상세 화면, 또는 ‘공부방법 질문’ 으로 질문할 수 있습니다. 답변은 강사가 답니다."
+            }
+          />
+        )
       ) : (
         <ul className="flex flex-col gap-2">
           {threads.map((t) => {
