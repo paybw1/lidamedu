@@ -24,8 +24,8 @@ import type { Route } from "./+types/case-training-conclusion";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.itemBundle?.caseRef.caseTitle
-      ? `${d.itemBundle.caseRef.caseTitle} — 결론·강약 | Lidam`
-      : "결론·강약 훈련 | Lidam",
+      ? `${d.itemBundle.caseRef.caseTitle} — 결론·강약 | 리담변리사학원`
+      : "결론·강약 훈련 | 리담변리사학원",
   },
 ];
 

@@ -102,7 +102,7 @@ export function BookmarkStars({
         </ul>
       ) : (
         <p className="text-muted-foreground text-xs">
-          하트를 눌러 평점을 매기면 단계별 메모를 추가할 수 있어요.
+          하트를 눌러 평점을 매기면 단계별 메모를 추가할 수 있습니다.
         </p>
       )}
     </div>

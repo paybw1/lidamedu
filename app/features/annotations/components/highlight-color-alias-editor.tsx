@@ -49,7 +49,7 @@ export function HighlightColorAliasEditor({
           <PaletteIcon className="text-muted-foreground size-4" aria-hidden />
           <h2 className="text-sm font-semibold">색상 닉네임</h2>
           <p className="text-muted-foreground hidden text-xs sm:block">
-            색마다 어떤 목적으로 쓰는지 라벨링하면 toolbar·목록에 그 라벨이 보입니다.
+            색마다 어떤 목적으로 쓰는지 라벨링하면 툴바·목록에 그 라벨이 보입니다.
           </p>
         </div>
         <Button

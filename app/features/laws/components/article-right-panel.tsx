@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { type ComponentType, useEffect, useState } from "react";
 
-import { Badge } from "~/core/components/ui/badge";
 import {
   Tabs,
   TabsContent,
@@ -93,20 +92,17 @@ const TAB_META: Record<TabKey, PanelTabMeta> = {
 
 interface PlaceholderTab {
   value: TabKey;
-  featId: string;
   hint: string;
 }
 
 const PLACEHOLDER_TABS: PlaceholderTab[] = [
   {
     value: "ox",
-    featId: "feat-4-A-114",
-    hint: "이 조문이 출제된 객관식 지문(O/X) 자동 연동 + 별도 업로드 정오문제. 답 체크 시 정답·해설 즉시 공개.",
+    hint: "이 조문이 출제된 객관식 지문(OX)과 별도로 등록된 정오문제를 모아 보여드립니다. 답을 체크하면 정답과 해설이 바로 공개됩니다.",
   },
   {
     value: "comment",
-    featId: "feat-4-A-115",
-    hint: "학생·강사가 본문에 남기는 코멘트. 강사 코멘트는 모두에게, 학생 코멘트는 본인에게만 보입니다.",
+    hint: "학생과 강사가 본문에 남기는 코멘트입니다. 강사 코멘트는 모두에게, 학생 코멘트는 본인에게만 보입니다.",
   },
 ];
 
@@ -520,15 +516,12 @@ export function ArticleRightPanel({
                 value={t.value}
                 className="mt-0 space-y-2"
               >
-                <Badge variant="outline" className="font-normal">
-                  {t.featId}
-                </Badge>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   {t.hint}
                 </p>
                 <div className="bg-muted/40 rounded-md border border-dashed p-4">
                   <p className="text-muted-foreground text-center text-xs">
-                    구현 대기
+                    준비 중입니다.
                   </p>
                 </div>
               </TabsContent>

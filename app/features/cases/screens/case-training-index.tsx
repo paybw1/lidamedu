@@ -10,7 +10,7 @@ import { listApprovedCaseTrainingItems } from "~/features/cases/queries-case-tra
 import type { Route } from "./+types/case-training-index";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "판례 기반 쟁점추출 훈련 | Lidam" },
+  { title: "판례 기반 쟁점추출 훈련 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

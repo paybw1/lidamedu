@@ -223,7 +223,7 @@ function ResourceCard({
   }
 
   function handleDelete() {
-    if (!window.confirm("이 자료를 삭제할까요?")) return;
+    if (!window.confirm("이 자료를 삭제하시겠습니까?")) return;
     const fd = new FormData();
     fd.set("intent", "delete");
     fd.set("resourceId", resource.resourceId);
