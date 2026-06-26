@@ -171,6 +171,144 @@ export async function getSubjectProgress(
   };
 }
 
+// ── 과목별 "마지막 학습 지점"(이어서 보기) — 학습현황 진도 런처용 ──
+// study_sessions 를 1회만 조회해 과목별 최신 1건(조문/판례/문제)을 잡고,
+// 표시 라벨은 타입별 배치 조회로 해결한다(getSubjectProgress 5회 호출 방지).
+export interface SubjectLastPoint {
+  type: "조문" | "판례" | "문제";
+  label: string;
+  sub: string;
+  path: string;
+}
+
+function relativeKoTime(iso: string, now: number): string {
+  const diff = Math.max(0, now - new Date(iso).getTime());
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "방금 전";
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return "어제";
+  if (day < 7) return `${day}일 전`;
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return `${wk}주 전`;
+  return `${Math.floor(day / 30)}개월 전`;
+}
+
+export async function getLastStudyPointsBySubject(
+  client: SupabaseClient<Database>,
+  userId: string,
+  subjects: { slug: LawSubjectSlug }[],
+): Promise<Record<string, SubjectLastPoint | null>> {
+  const { data, error } = await client
+    .from("study_sessions")
+    .select("scope, started_at")
+    .eq("user_id", userId)
+    .order("started_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+
+  type Hit = { type: "article" | "case" | "problem"; id: string; at: string };
+  // DESC 정렬이라 과목별 첫 등장이 최신. 과목당 1건만 기록.
+  const latest = new Map<string, Hit>();
+  for (const row of data ?? []) {
+    const scope = row.scope as Partial<StudyScope> | null;
+    const tt = scope?.target_type;
+    if (!scope || !scope.subject || !scope.target_id) continue;
+    if (tt !== "article" && tt !== "case" && tt !== "problem") continue;
+    if (latest.has(scope.subject)) continue;
+    latest.set(scope.subject, { type: tt, id: scope.target_id, at: row.started_at });
+  }
+
+  const hits = [...latest.values()];
+  const idsOf = (t: Hit["type"]) =>
+    hits.filter((h) => h.type === t).map((h) => h.id);
+  const articleIds = idsOf("article");
+  const caseIds = idsOf("case");
+  const problemIds = idsOf("problem");
+
+  const [aData, cData, pData] = await Promise.all([
+    articleIds.length
+      ? client
+          .from("articles")
+          .select("article_id, article_number, display_label")
+          .in("article_id", articleIds)
+          .then((r) => r.data ?? [])
+      : Promise.resolve([]),
+    caseIds.length
+      ? client
+          .from("cases")
+          .select("case_id, case_title, case_number")
+          .in("case_id", caseIds)
+          .then((r) => r.data ?? [])
+      : Promise.resolve([]),
+    problemIds.length
+      ? client
+          .from("problems")
+          .select("problem_id, body_md, year, problem_number")
+          .in("problem_id", problemIds)
+          .then((r) => r.data ?? [])
+      : Promise.resolve([]),
+  ]);
+
+  const aMap = new Map(aData.map((a) => [a.article_id, a] as const));
+  const cMap = new Map(cData.map((c) => [c.case_id, c] as const));
+  const pMap = new Map(pData.map((p) => [p.problem_id, p] as const));
+
+  const now = Date.now();
+  const out: Record<string, SubjectLastPoint | null> = {};
+  for (const { slug } of subjects) {
+    const hit = latest.get(slug);
+    if (!hit) {
+      out[slug] = null;
+      continue;
+    }
+    const sub = relativeKoTime(hit.at, now);
+    if (hit.type === "article") {
+      const a = aMap.get(hit.id);
+      out[slug] = a
+        ? {
+            type: "조문",
+            label: a.display_label || `제${a.article_number ?? ""}조`,
+            sub,
+            path:
+              a.article_number != null
+                ? `/subjects/${slug}/articles/${a.article_number}`
+                : `/subjects/${slug}`,
+          }
+        : null;
+    } else if (hit.type === "case") {
+      const c = cMap.get(hit.id);
+      out[slug] = c
+        ? {
+            type: "판례",
+            label: c.case_title || c.case_number || "판례",
+            sub,
+            path: `/subjects/${slug}/cases/${hit.id}`,
+          }
+        : null;
+    } else {
+      const p = pMap.get(hit.id);
+      const body = (p?.body_md ?? "").replace(/\s+/g, " ").trim();
+      const label = body
+        ? body.length > 30
+          ? `${body.slice(0, 30)}…`
+          : body
+        : p?.year
+          ? `${p.year}년 ${p.problem_number ?? ""}번`
+          : "문제";
+      out[slug] = {
+        type: "문제",
+        label,
+        sub,
+        path: `/subjects/${slug}/problems/${hit.id}`,
+      };
+    }
+  }
+  return out;
+}
+
 // 문제 시도 기록.
 // OX 자동 채점: selectedChoiceId(또는 selectedBoxItemId) + oxAnswer ('O'|'X') 가 함께 오면 OX 시도로 기록.
 // 일반 객관식: selectedChoiceId + selectedChoiceIndex 만 오고 oxAnswer 는 null.
