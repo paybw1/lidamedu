@@ -1,19 +1,14 @@
 /**
- * Login Screen — Kakao OAuth + 이메일·비밀번호.
+ * Login Screen — 카카오 OAuth 단일.
  *
- * 진입 방식 2가지:
- *  1) 카카오 OAuth (기본)
- *  2) 이메일 + 비밀번호 (Supabase email/password auth)
- *
- * 가입 화면(/join)도 동일 진입. 디자인 토큰은 랜딩(lidam-design-system)을 따른다.
+ * 로그인·회원가입 모두 카카오로만 진행한다(이메일·비밀번호·구글 진입 제거).
+ * 디자인 토큰은 랜딩(lidam-design-system)을 따른다.
  */
 import type { Route } from "./+types/login";
 
-import { type MouseEventHandler, useState } from "react";
-import { Form, Link, data, redirect, useNavigation } from "react-router";
-import { z } from "zod";
+import type { MouseEventHandler } from "react";
+import { Link } from "react-router";
 
-import makeServerClient from "~/core/lib/supa-client.server";
 import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
 import { KakaoLogo } from "../components/logos/kakao";
@@ -24,34 +19,6 @@ export const meta: Route.MetaFunction = () => [
   { title: `로그인 | 리담변리사학원` },
 ];
 
-const credentialsSchema = z.object({
-  email: z.string().email("올바른 이메일 주소를 입력해주세요."),
-  password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다."),
-});
-
-export async function action({ request }: Route.ActionArgs) {
-  const fd = await request.formData();
-  const parsed = credentialsSchema.safeParse({
-    email: fd.get("email"),
-    password: fd.get("password"),
-  });
-  if (!parsed.success) {
-    return data(
-      { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." },
-      { status: 400 },
-    );
-  }
-  const [client, headers] = makeServerClient(request);
-  const { error } = await client.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
-  if (error) {
-    return data({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 400 });
-  }
-  return redirect("/dashboard", { headers });
-}
-
 const liftKakao: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(-1px)";
   e.currentTarget.style.boxShadow = "0 12px 28px rgba(254, 229, 0, 0.45)";
@@ -61,12 +28,7 @@ const liftKakaoLeave: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.boxShadow = "0 8px 22px rgba(254, 229, 0, 0.35)";
 };
 
-export default function Login({ actionData }: Route.ComponentProps) {
-  const nav = useNavigation();
-  const submitting = nav.state !== "idle" && nav.formMethod === "POST";
-  const error = actionData && "error" in actionData ? actionData.error : null;
-  const [showEmail, setShowEmail] = useState(false);
-
+export default function Login() {
   return (
     <section
       style={{
@@ -128,10 +90,9 @@ export default function Login({ actionData }: Route.ComponentProps) {
               margin: "0 0 28px",
             }}
           >
-            카카오·이메일 중 편한 방식으로 시작하세요.
+            카카오로 간편하게 시작하세요.
           </p>
 
-          {/* 1) Kakao OAuth */}
           <Link
             to="/auth/social/start/kakao"
             viewTransition
@@ -152,147 +113,11 @@ export default function Login({ actionData }: Route.ComponentProps) {
               textDecoration: "none",
               boxShadow: "0 8px 22px rgba(254, 229, 0, 0.35)",
               transition: `transform 160ms ${EASE_REVEAL}, box-shadow 160ms ${EASE_REVEAL}`,
-              marginBottom: 10,
             }}
           >
             <KakaoLogo style={{ width: 20, height: 20 }} />
             카카오로 시작하기
           </Link>
-
-          {/* 3) Email + Password */}
-          {!showEmail ? (
-            <button
-              type="button"
-              onClick={() => setShowEmail(true)}
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: PALETTE.inkSoft,
-                font: `500 13px/1.5 ${FONT}`,
-                textDecoration: "underline",
-              }}
-            >
-              이메일·비밀번호로 로그인
-            </button>
-          ) : (
-            <Form method="post" style={{ textAlign: "left" }}>
-              <label
-                htmlFor="login-email"
-                style={{
-                  display: "block",
-                  font: `500 12px/1.5 ${FONT}`,
-                  color: PALETTE.inkSoft,
-                  marginBottom: 4,
-                }}
-              >
-                이메일
-              </label>
-              <input
-                id="login-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                style={{
-                  width: "100%",
-                  height: 44,
-                  padding: "0 12px",
-                  borderRadius: 10,
-                  border: `1px solid ${PALETTE.line}`,
-                  font: `400 15px/1 ${FONT}`,
-                  color: PALETTE.ink,
-                  marginBottom: 12,
-                  background: PALETTE.base,
-                }}
-              />
-              <label
-                htmlFor="login-password"
-                style={{
-                  display: "block",
-                  font: `500 12px/1.5 ${FONT}`,
-                  color: PALETTE.inkSoft,
-                  marginBottom: 4,
-                }}
-              >
-                비밀번호
-              </label>
-              <input
-                id="login-password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                style={{
-                  width: "100%",
-                  height: 44,
-                  padding: "0 12px",
-                  borderRadius: 10,
-                  border: `1px solid ${PALETTE.line}`,
-                  font: `400 15px/1 ${FONT}`,
-                  color: PALETTE.ink,
-                  marginBottom: 14,
-                  background: PALETTE.base,
-                }}
-              />
-              {error ? (
-                <p
-                  style={{
-                    font: `500 12px/1.4 ${FONT}`,
-                    color: "#c2410c",
-                    margin: "0 0 10px",
-                  }}
-                >
-                  {error}
-                </p>
-              ) : null}
-              <button
-                type="submit"
-                disabled={submitting}
-                style={{
-                  width: "100%",
-                  height: 48,
-                  borderRadius: 10,
-                  background: PALETTE.primary,
-                  color: "#fff",
-                  font: `700 15px/1 ${FONT}`,
-                  border: "none",
-                  cursor: submitting ? "wait" : "pointer",
-                  opacity: submitting ? 0.7 : 1,
-                }}
-              >
-                {submitting ? "로그인 중..." : "로그인"}
-              </button>
-              <p
-                style={{
-                  font: `400 13px/1.5 ${FONT}`,
-                  color: PALETTE.inkSoft,
-                  textAlign: "center",
-                  marginTop: 14,
-                }}
-              >
-                <Link
-                  to="/forgot-password"
-                  style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}
-                >
-                  비밀번호를 잊으셨나요?
-                </Link>
-              </p>
-              <p
-                style={{
-                  font: `400 13px/1.5 ${FONT}`,
-                  color: PALETTE.inkSoft,
-                  textAlign: "center",
-                  marginTop: 6,
-                }}
-              >
-                계정이 없으세요?{" "}
-                <Link to="/join" style={{ color: PALETTE.primary, textDecoration: "underline" }}>
-                  회원가입
-                </Link>
-              </p>
-            </Form>
-          )}
 
           <p
             style={{
