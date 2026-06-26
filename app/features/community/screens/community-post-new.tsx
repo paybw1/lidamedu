@@ -198,7 +198,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
       title={isEdit ? "글 수정" : "새 글 작성"}
       desc={BOARD_LABEL[board]}
       backLink={{ to: cancelHref, label: BOARD_LABEL[board] }}
-      width="narrow"
+      width="feed"
     >
       <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
         <form onSubmit={handleSubmit}>
