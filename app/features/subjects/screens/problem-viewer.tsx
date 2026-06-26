@@ -107,6 +107,64 @@ import {
 // 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}). mcq-pack-sheet 와 동일 규칙.
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
 
+// 학습 내용 글자 크기 3단계(작게/보통/크게) — 학생 설정(localStorage). CSS 변수 --study-fs
+// 배율을 :root 에 적용하고, 본문·지문·해설 폰트가 calc(...*var(--study-fs)) 로 따라간다.
+const STUDY_FONT_STEPS = { sm: 0.9, md: 1, lg: 1.18 } as const;
+type StudyFontStep = keyof typeof STUDY_FONT_STEPS;
+
+function StudyFontControl() {
+  const [step, setStep] = useState<StudyFontStep>("md");
+  useEffect(() => {
+    const saved = localStorage.getItem("studyFontStep");
+    if (saved === "sm" || saved === "md" || saved === "lg") setStep(saved);
+  }, []);
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--study-fs",
+      String(STUDY_FONT_STEPS[step]),
+    );
+  }, [step]);
+  const choose = (s: StudyFontStep) => {
+    setStep(s);
+    try {
+      localStorage.setItem("studyFontStep", s);
+    } catch {
+      /* localStorage 불가(프라이빗 모드 등) 시 무시 — 현재 세션엔 적용됨 */
+    }
+  };
+  return (
+    <div
+      className="border-border ml-auto inline-flex items-center gap-0.5 rounded-full border p-0.5"
+      role="group"
+      aria-label="학습 내용 글자 크기"
+      title="학습 내용 글자 크기"
+    >
+      {(["sm", "md", "lg"] as StudyFontStep[]).map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => choose(s)}
+          aria-pressed={step === s}
+          aria-label={s === "sm" ? "작게" : s === "md" ? "보통" : "크게"}
+          className={cn(
+            "rounded-full px-2 leading-none font-semibold transition-colors",
+            s === "sm"
+              ? "text-[11px]"
+              : s === "md"
+                ? "text-[13px]"
+                : "text-[16px]",
+            step === s
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          가
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "문제 | 리담변리사학원" }];
   return [
@@ -1014,6 +1072,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       <VideoIcon className="size-3" /> 동영상 풀이 보기
                     </a>
                   ) : null}
+                  <StudyFontControl />
                 </div>
               </div>
 
@@ -1028,11 +1087,14 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 viewerIsStaff={canEditComment}
               >
                 {MD_IMAGE_RE.test(problem.bodyMd) ? (
-                  <div className="mb-7 text-[17px] leading-[1.8] font-medium dark:[&_img]:brightness-[.8]">
-                    <MarkdownView text={problem.bodyMd} className="text-[17px]" />
+                  <div className="mb-7 text-[length:calc(17px*var(--study-fs))] leading-[1.8] font-medium dark:[&_img]:brightness-[.8]">
+                    <MarkdownView
+                      text={problem.bodyMd}
+                      className="text-[length:calc(17px*var(--study-fs))]"
+                    />
                   </div>
                 ) : (
-                  <p className="text-foreground mb-7 text-[17px] leading-[1.8] font-medium tracking-[-0.01em] whitespace-pre-line">
+                  <p className="text-foreground mb-7 text-[length:calc(17px*var(--study-fs))] leading-[1.8] font-medium tracking-[-0.01em] whitespace-pre-line">
                     {problem.bodyMd}
                   </p>
                 )}
@@ -1044,7 +1106,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                     {problem.boxItems.map((bi) => (
                       <li
                         key={bi.boxItemId}
-                        className="text-foreground flex gap-3 text-[15px] leading-[1.7] tracking-[-0.005em]"
+                        className="text-foreground flex gap-3 text-[length:calc(15px*var(--study-fs))] leading-[1.7] tracking-[-0.005em]"
                       >
                         <span className="text-foreground/70 shrink-0 font-semibold">
                           {bi.marker}
@@ -1136,7 +1198,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                             </span>
                             {/* 선지 텍스트 — 조문/판례 본문처럼 하이라이트 가능. 선지별 fieldPath. */}
                             <HighlightOverlay
-                              className="text-foreground min-w-0 flex-1 text-[15px] leading-[1.65] tracking-[-0.005em] whitespace-pre-line"
+                              className="text-foreground min-w-0 flex-1 text-[length:calc(15px*var(--study-fs))] leading-[1.65] tracking-[-0.005em] whitespace-pre-line"
                               fieldPath={`problem.choice.${c.choiceIndex}`}
                               targetType="problem"
                               targetId={problem.problemId}
@@ -1260,11 +1322,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                             </p>
                           </div>
                           {MD_IMAGE_RE.test(problem.explanationMd) ? (
-                            <div className="px-5 py-4 text-sm leading-relaxed dark:[&_img]:brightness-[.8]">
+                            <div className="px-5 py-4 text-[length:calc(14px*var(--study-fs))] leading-relaxed dark:[&_img]:brightness-[.8]">
                               <MarkdownView text={problem.explanationMd} />
                             </div>
                           ) : (
-                            <div className="px-5 py-4 text-sm leading-relaxed whitespace-pre-line">
+                            <div className="px-5 py-4 text-[length:calc(14px*var(--study-fs))] leading-relaxed whitespace-pre-line">
                               {problem.explanationMd}
                             </div>
                           )}
