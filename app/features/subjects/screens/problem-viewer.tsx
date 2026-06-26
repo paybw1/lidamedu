@@ -102,9 +102,9 @@ import {
   lawSubjectSlugSchema,
 } from "~/features/subjects/lib/subjects";
 
-// 발문·해설에 markdown 이미지(![](url))나 <img> 가 있으면 MarkdownView 로 렌더(이미지·표·수식).
-// 없으면 plain whitespace-pre-line (mcq-pack-sheet 와 동일 규칙).
-const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<img\b/i;
+// 발문·해설에 markdown 이미지(![](url))·<img>·HTML <table> 가 있으면 MarkdownView 로
+// 렌더(이미지·표·수식). 없으면 plain whitespace-pre-line (mcq-pack-sheet 와 동일 규칙).
+const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table)\b/i;
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "문제 | 리담변리사학원" }];
@@ -1026,9 +1026,15 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 highlights={highlights}
                 viewerIsStaff={canEditComment}
               >
-                <p className="text-foreground mb-7 text-[17px] leading-[1.8] font-medium tracking-[-0.01em] whitespace-pre-line">
-                  {problem.bodyMd}
-                </p>
+                {MD_IMAGE_RE.test(problem.bodyMd) ? (
+                  <div className="mb-7 text-[17px] leading-[1.8] font-medium dark:[&_img]:brightness-[.8]">
+                    <MarkdownView text={problem.bodyMd} className="text-[17px]" />
+                  </div>
+                ) : (
+                  <p className="text-foreground mb-7 text-[17px] leading-[1.8] font-medium tracking-[-0.01em] whitespace-pre-line">
+                    {problem.bodyMd}
+                  </p>
+                )}
               </HighlightOverlay>
 
               {problem.boxItems.length > 0 ? (
