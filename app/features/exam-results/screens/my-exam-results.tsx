@@ -20,6 +20,7 @@ import {
   ResultFields,
   SecondRoundScores,
   SubjectScoreFieldsByRound,
+  SummaryNameVisibilityField,
 } from "~/features/exam-results/components/result-fields";
 import {
   EXAM_RESULT_STATUSES,
@@ -71,6 +72,9 @@ const upsertSchema = z.object({
     .union([z.coerce.number().min(0).max(100), z.literal("")])
     .optional(),
   studySummaryMd: z.string().max(8000).optional().nullable(),
+  summaryNameVisibility: z
+    .enum(["anonymous", "real_name", "nickname"])
+    .optional(),
 });
 
 const planSchema = z.object({
@@ -165,6 +169,7 @@ export async function action({ request }: Route.ActionArgs) {
       selfReportedSubjectScores:
         Object.keys(subjectScores).length > 0 ? subjectScores : null,
       studySummaryMd: parsed.data.studySummaryMd || null,
+      summaryNameVisibility: parsed.data.summaryNameVisibility,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true, resultId: res.resultId });
@@ -503,6 +508,9 @@ function ResultCard({
                 placeholder="이번 차수를 준비하면서 가장 중요했던 학습 방법·시간 배분 등"
               />
             </div>
+            <SummaryNameVisibilityField
+              defaultValue={result.summaryNameVisibility}
+            />
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

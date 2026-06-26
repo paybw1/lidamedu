@@ -9,13 +9,44 @@ import { cn } from "~/core/lib/utils";
 import {
   EXAM_RESULT_STATUSES,
   EXAM_RESULT_STATUS_LABEL,
+  SUMMARY_NAME_VISIBILITIES,
+  SUMMARY_NAME_VISIBILITY_LABEL,
   type ExamRound,
+  type SummaryNameVisibility,
 } from "~/features/exam-results/labels";
 import {
   FIRST_ROUND_SUBJECTS,
   SECOND_ROUND_REQUIRED_SUBJECTS,
   judgeFirstRoundResult,
 } from "~/features/exam-results/pass-criteria";
+
+// 합격 수기 작성자 표시 이름 모드 선택 — 신규·수정 폼 공용. 기본 anonymous(익명).
+export function SummaryNameVisibilityField({
+  defaultValue = "anonymous",
+}: {
+  defaultValue?: SummaryNameVisibility;
+}) {
+  return (
+    <div>
+      <Label className="text-[11px]">합격 수기 표시 이름</Label>
+      <select
+        name="summaryNameVisibility"
+        defaultValue={defaultValue}
+        className="border-input bg-background h-8 w-full rounded border px-2 text-xs"
+      >
+        {SUMMARY_NAME_VISIBILITIES.map((v) => (
+          <option key={v} value={v}>
+            {SUMMARY_NAME_VISIBILITY_LABEL[v]}
+          </option>
+        ))}
+      </select>
+      <p className="text-muted-foreground mt-1 text-[10px] leading-relaxed">
+        합격 수기를 공유할 때 작성자 이름 표시 방식입니다. 실명·닉네임은 프로필
+        정보로 표시되고, 비공개를 선택하면 익명으로 노출됩니다.
+      </p>
+    </div>
+  );
+}
 
 // 1차 과목별 점수 입력(차수 first 일 때만). 신규·수정·허브 폼 공용.
 export function SubjectScoreFields({
@@ -258,15 +289,18 @@ export function ResultFields({
       </div>
       <SubjectScoreFieldsByRound round={round} />
       {showSummary ? (
-        <div>
-          <Label className="text-[11px]">학습 요약 (선택)</Label>
-          <Textarea
-            name="studySummaryMd"
-            rows={3}
-            className="text-xs"
-            placeholder="이번 차수를 준비하면서 가장 중요했던 학습 방법·시간 배분 등"
-          />
-        </div>
+        <>
+          <div>
+            <Label className="text-[11px]">학습 요약 (선택)</Label>
+            <Textarea
+              name="studySummaryMd"
+              rows={3}
+              className="text-xs"
+              placeholder="이번 차수를 준비하면서 가장 중요했던 학습 방법·시간 배분 등"
+            />
+          </div>
+          <SummaryNameVisibilityField />
+        </>
       ) : null}
     </>
   );

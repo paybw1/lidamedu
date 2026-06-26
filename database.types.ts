@@ -2680,6 +2680,7 @@ export type Database = {
           self_reported_total_score: number | null
           status: Database["public"]["Enums"]["exam_result_status"]
           study_summary_md: string | null
+          summary_name_visibility: string
           updated_at: string
           user_id: string
           verification_status: Database["public"]["Enums"]["exam_verification_status"]
@@ -2698,6 +2699,7 @@ export type Database = {
           self_reported_total_score?: number | null
           status: Database["public"]["Enums"]["exam_result_status"]
           study_summary_md?: string | null
+          summary_name_visibility?: string
           updated_at?: string
           user_id: string
           verification_status?: Database["public"]["Enums"]["exam_verification_status"]
@@ -2716,6 +2718,7 @@ export type Database = {
           self_reported_total_score?: number | null
           status?: Database["public"]["Enums"]["exam_result_status"]
           study_summary_md?: string | null
+          summary_name_visibility?: string
           updated_at?: string
           user_id?: string
           verification_status?: Database["public"]["Enums"]["exam_verification_status"]

@@ -12,6 +12,7 @@ import type {
   ExamResultStatus,
   ExamRound,
   ExamVerificationStatus,
+  SummaryNameVisibility,
 } from "./labels";
 
 export type {
@@ -20,6 +21,7 @@ export type {
   ExamResultStatus,
   ExamRound,
   ExamVerificationStatus,
+  SummaryNameVisibility,
 } from "./labels";
 
 function rowToResult(r: {
@@ -37,6 +39,7 @@ function rowToResult(r: {
   verified_at: string | null;
   rejection_reason: string | null;
   study_summary_md: string | null;
+  summary_name_visibility: string | null;
   created_at: string;
   updated_at: string;
 }): ExamResultRow {
@@ -68,13 +71,16 @@ function rowToResult(r: {
     verifiedAt: r.verified_at,
     rejectionReason: r.rejection_reason,
     studySummaryMd: r.study_summary_md,
+    summaryNameVisibility:
+      (r.summary_name_visibility as SummaryNameVisibility | null) ??
+      "anonymous",
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
 }
 
 const ROW_SELECT =
-  "result_id, user_id, exam_year, exam_round, status, self_reported_total_score, self_reported_subject_scores, verification_status, certificate_url, certificate_path, verified_by, verified_at, rejection_reason, study_summary_md, created_at, updated_at";
+  "result_id, user_id, exam_year, exam_round, status, self_reported_total_score, self_reported_subject_scores, verification_status, certificate_url, certificate_path, verified_by, verified_at, rejection_reason, study_summary_md, summary_name_visibility, created_at, updated_at";
 
 // ─── 학생 본인 ───
 
@@ -158,6 +164,7 @@ export interface UpsertExamResultInput {
   selfReportedTotalScore?: number | null;
   selfReportedSubjectScores?: Record<string, number> | null;
   studySummaryMd?: string | null;
+  summaryNameVisibility?: SummaryNameVisibility;
 }
 
 export async function upsertMyExamResult(
@@ -174,6 +181,7 @@ export async function upsertMyExamResult(
     self_reported_total_score: input.selfReportedTotalScore ?? null,
     self_reported_subject_scores: input.selfReportedSubjectScores ?? null,
     study_summary_md: input.studySummaryMd ?? null,
+    summary_name_visibility: input.summaryNameVisibility ?? "anonymous",
   };
   const { data, error } = await client
     .from("exam_results")

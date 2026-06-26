@@ -33,10 +33,12 @@ describe("학생 화면 합격자 풀 반환 타입 PII 격리 (A4)", () => {
     expectTypeOf<Forbid<PasserBenchmarkMetric>>().toEqualTypeOf<true>();
   });
 
-  it("PasserSummary — resultId / scoreBucket / verified / summaryMd 만 (식별 필드 0)", () => {
+  it("PasserSummary — 집계/요약 + opt-in displayName (금지 PII 키 0)", () => {
     expectTypeOf<Forbid<PasserSummary>>().toEqualTypeOf<true>();
     expectTypeOf<PasserSummary>().toHaveProperty("scoreBucket");
     expectTypeOf<PasserSummary>().toHaveProperty("summaryMd");
+    // displayName 은 작성자가 동의 하에 고른 표시 이름(실명/닉네임/null) — 금지 PII 키(name/userName 등) 아님.
+    expectTypeOf<PasserSummary>().toHaveProperty("displayName");
   });
 
   it("PasserLawAverage — 과목별 평균만", () => {

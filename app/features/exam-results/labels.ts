@@ -40,6 +40,22 @@ export const EXAM_VERIFICATION_STATUS_LABEL: Record<
   rejected: "반려",
 };
 
+// 합격 수기 작성자 표시 이름 모드 — opt-in. 기본 anonymous(익명).
+export type SummaryNameVisibility = "anonymous" | "real_name" | "nickname";
+export const SUMMARY_NAME_VISIBILITIES: SummaryNameVisibility[] = [
+  "anonymous",
+  "real_name",
+  "nickname",
+];
+export const SUMMARY_NAME_VISIBILITY_LABEL: Record<
+  SummaryNameVisibility,
+  string
+> = {
+  anonymous: "비공개 (익명)",
+  real_name: "실명",
+  nickname: "닉네임",
+};
+
 export interface ExamResultRow {
   resultId: string;
   userId: string;
@@ -55,6 +71,7 @@ export interface ExamResultRow {
   verifiedAt: string | null;
   rejectionReason: string | null;
   studySummaryMd: string | null;
+  summaryNameVisibility: SummaryNameVisibility;
   createdAt: string;
   updatedAt: string;
 }

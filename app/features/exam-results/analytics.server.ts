@@ -1073,6 +1073,9 @@ export interface PasserSummary {
   scoreBucket: string | null; // "85점대", "70-79점" 등 익명 버킷
   verified: boolean;
   summaryMd: string;
+  // 작성자가 명시적으로 고른 표시 이름(실명/닉네임) — opt-in. 비공개(기본)면 null.
+  // 식별정보 누수가 아니라 동의 기반 공개라 PII 격리 테스트의 금지 키(name/userName 등)와 구분된다.
+  displayName: string | null;
   createdAt: string;
 }
 
@@ -1103,7 +1106,7 @@ export async function listPasserSummaries(
   let q = admin
     .from("exam_results")
     .select(
-      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, created_at, profiles!exam_results_user_id_fkey(pool_consent_at, is_synthetic)",
+      "result_id, exam_year, exam_round, status, verification_status, self_reported_total_score, study_summary_md, summary_name_visibility, created_at, profiles!exam_results_user_id_fkey(name, nickname, pool_consent_at, is_synthetic)",
     )
     .eq("status", "passed")
     .not("study_summary_md", "is", null)
@@ -1120,19 +1123,30 @@ export async function listPasserSummaries(
       (r.study_summary_md?.trim().length ?? 0) > 0 &&
       (!filter.excludeSynthetic || !r.profiles?.is_synthetic),
   );
-  return list.map((r) => ({
-    resultId: r.result_id,
-    examYear: r.exam_year,
-    examRound: r.exam_round as ExamRound,
-    scoreBucket: bucketScore(
-      r.self_reported_total_score === null
-        ? null
-        : Number(r.self_reported_total_score),
-    ),
-    verified: r.verification_status === "verified",
-    summaryMd: r.study_summary_md ?? "",
-    createdAt: r.created_at,
-  }));
+  return list.map((r) => {
+    // 표시 이름 — 작성자가 고른 모드에 따라 프로필에서 해석. 기본/비공개면 null.
+    const vis = r.summary_name_visibility ?? "anonymous";
+    const displayName =
+      vis === "real_name"
+        ? r.profiles?.name?.trim() || null
+        : vis === "nickname"
+          ? r.profiles?.nickname?.trim() || null
+          : null;
+    return {
+      resultId: r.result_id,
+      examYear: r.exam_year,
+      examRound: r.exam_round as ExamRound,
+      scoreBucket: bucketScore(
+        r.self_reported_total_score === null
+          ? null
+          : Number(r.self_reported_total_score),
+      ),
+      verified: r.verification_status === "verified",
+      summaryMd: r.study_summary_md ?? "",
+      displayName,
+      createdAt: r.created_at,
+    };
+  });
 }
 
 

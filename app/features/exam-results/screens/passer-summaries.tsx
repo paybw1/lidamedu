@@ -54,11 +54,12 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
           <GraduationCapIcon className="size-3.5" /> 합격자 수기
         </p>
         <h1 className="text-2xl font-bold tracking-tight">
-          합격자 학습 수기 (익명)
+          합격자 학습 수기
         </h1>
         <p className="text-muted-foreground text-sm">
-          분석 활용에 동의한 합격자들이 직접 작성한 학습 수기입니다. 이름·이메일
-          등 식별 정보는 표시되지 않습니다. 본인도 합격 후{" "}
+          분석 활용에 동의한 합격자들이 직접 작성한 학습 수기입니다. 작성자가
+          고른 표시 이름(실명·닉네임)으로 노출되며, 비공개를 선택하면 익명으로
+          표시됩니다. 본인도 합격 후{" "}
           <Link to="/me/exam-results" className="text-link underline">
             결과 입력
           </Link>{" "}
@@ -163,6 +164,14 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
                     </Badge>
                   ) : null}
                 </div>
+                {s.displayName ? (
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    작성자{" "}
+                    <span className="text-foreground font-semibold">
+                      {s.displayName}
+                    </span>
+                  </p>
+                ) : null}
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <p className="text-sm leading-relaxed whitespace-pre-line">
