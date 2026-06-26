@@ -109,7 +109,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
             }}
           >
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: PALETTE.primary }} />
-            리담 변리사 학원
+            리담변리사학원
           </div>
 
           <h1
@@ -120,7 +120,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
               margin: "0 0 10px",
             }}
           >
-            다시 오신 걸 환영해요
+            다시 오신 것을 환영합니다
           </h1>
           <p
             style={{

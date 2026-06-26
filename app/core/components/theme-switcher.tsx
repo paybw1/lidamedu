@@ -62,17 +62,17 @@ export default function ThemeSwitcher() {
         {/* Light theme option */}
         <DropdownMenuItem onClick={() => setTheme(Theme.LIGHT)}>
           <SunIcon className="size-4" />
-          Light
+          라이트
         </DropdownMenuItem>
         
         {/* Dark theme option */}
         <DropdownMenuItem onClick={() => setTheme(Theme.DARK)}>
-          <MoonIcon className="size-4" /> Dark
+          <MoonIcon className="size-4" /> 다크
         </DropdownMenuItem>
         
         {/* System theme option (follows OS preference) */}
         <DropdownMenuItem onClick={() => setTheme(null)}>
-          <MonitorIcon className="size-4" /> System
+          <MonitorIcon className="size-4" /> 시스템
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

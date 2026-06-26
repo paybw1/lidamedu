@@ -27,6 +27,7 @@ import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { listCohorts } from "~/features/cohorts/queries.server";
 import { Pill } from "~/features/latest/components/latest-list";
+import { FORMAT_LABEL, ORIGIN_LABEL } from "~/features/problems/labels";
 import {
   getStaffRole,
   getSystematicSkeleton,
@@ -418,8 +419,8 @@ function ProblemRow({
               {problem.problemNumber}번
             </Pill>
           ) : null}
-          <Pill>{problem.format}</Pill>
-          <Pill tone="outline">{problem.origin}</Pill>
+          <Pill>{FORMAT_LABEL[problem.format as keyof typeof FORMAT_LABEL] ?? problem.format}</Pill>
+          <Pill tone="outline">{ORIGIN_LABEL[problem.origin as keyof typeof ORIGIN_LABEL] ?? problem.origin}</Pill>
         </div>
         {/* 문제 클릭 = 학습 모드 세션 시작 + 이 문제부터. */}
         <Form method="post" action="/api/mcq-pack/start" className="w-full">

@@ -123,7 +123,7 @@ export default function Join({ actionData }: Route.ComponentProps) {
             }}
           >
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: PALETTE.primary }} />
-            리담 변리사 학원
+            리담변리사학원
           </div>
 
           <h1

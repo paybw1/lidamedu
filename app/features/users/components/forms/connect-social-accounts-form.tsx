@@ -16,12 +16,12 @@ import {
 
 const enabledProviders = [
   {
-    name: "Github",
+    name: "GitHub",
     key: "github",
     logo: <GithubLogo />,
   },
   {
-    name: "Kakao",
+    name: "카카오",
     key: "kakao",
     logo: <KakaoLogo />,
   },

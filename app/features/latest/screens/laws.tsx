@@ -563,7 +563,7 @@ function RevisionDeleteButton({
       onSubmit={(e) => {
         if (
           !window.confirm(
-            `'${label}' 법 개정 항목을 삭제할까요?\n연결된 조문 개정 스냅샷도 함께 삭제됩니다. 시행 중인 개정은 보호되어 삭제되지 않습니다.`,
+            `'${label}' 법 개정 항목을 삭제하시겠습니까?\n연결된 조문 개정 스냅샷도 함께 삭제됩니다. 시행 중인 개정은 보호되어 삭제되지 않습니다.`,
           )
         )
           e.preventDefault();

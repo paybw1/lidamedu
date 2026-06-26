@@ -98,7 +98,7 @@ export default function EditProfileForm({
               >
                 <span>아바타</span>
                 <Avatar className="size-24">
-                  {avatar ? <AvatarImage src={avatar} alt="Avatar" /> : null}
+                  {avatar ? <AvatarImage src={avatar} alt="아바타" /> : null}
                   <AvatarFallback>
                     <UserIcon className="text-muted-foreground size-10" />
                   </AvatarFallback>

@@ -919,7 +919,7 @@ function PdfAttachSection({
             disabled={submitting}
             className="h-7 rounded-full px-3 text-xs text-rose-600 hover:text-rose-700"
             onClick={(e) => {
-              if (!confirm("첨부 PDF 를 삭제할까요?")) e.preventDefault();
+              if (!confirm("첨부 PDF를 삭제하시겠습니까?")) e.preventDefault();
             }}
           >
             삭제

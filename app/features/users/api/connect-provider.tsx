@@ -75,7 +75,7 @@ export async function action({ request }: Route.ActionArgs) {
   
   // Return error if provider validation fails
   if (!success) {
-    return data({ error: "Invalid provider" }, { status: 400 });
+    return data({ error: "지원하지 않는 로그인 방식입니다." }, { status: 400 });
   }
   
   // Initiate identity linking process with Supabase Auth API

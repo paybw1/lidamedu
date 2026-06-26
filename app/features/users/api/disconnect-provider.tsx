@@ -74,7 +74,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   // Validate the provider parameter
   const { error, success, data: parsedParams } = schema.safeParse(params);
   if (!success) {
-    return data({ error: "Invalid provider" }, { status: 400 });
+    return data({ error: "지원하지 않는 로그인 방식입니다." }, { status: 400 });
   }
   
   // Fetch the user's current connected identities
@@ -87,7 +87,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   
   // Return error if the identity is not found
   if (!identity) {
-    return data({ error: "Identity not found" }, { status: 400 });
+    return data({ error: "연결된 계정을 찾을 수 없습니다." }, { status: 400 });
   }
   
   // Unlink the identity using Supabase Auth API

@@ -74,7 +74,7 @@ export async function action({ request }: Route.ActionArgs) {
   
   // Return error if email validation fails
   if (!success) {
-    return data({ error: "Invalid email" }, { status: 400 });
+    return data({ error: "올바른 이메일 주소가 아닙니다." }, { status: 400 });
   }
   
   // Submit email change request to Supabase Auth API
