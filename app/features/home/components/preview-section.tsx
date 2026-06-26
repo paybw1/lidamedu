@@ -69,7 +69,7 @@ export function PreviewSection() {
               whiteSpace: "pre-line",
             }}
           >
-            {"오늘 무엇을, 얼마나\n해야 하는지가 또렷해집니다."}
+            {"오늘 무엇을, 얼마나\n해야 하는지가 또렷해집니다"}
           </h2>
           <p
             style={{
@@ -80,8 +80,8 @@ export function PreviewSection() {
               maxWidth: 440,
             }}
           >
-            D-day, 연속 학습일, 과목별 진도, 약점 지표가 한 화면에. 작은 성취가
-            매일 쌓이는 감각.
+            D-day, 연속 학습일, 과목별 진도, 약점 지표가 한 화면에 모입니다. 작은
+            성취가 매일 쌓여요.
           </p>
           <LandingButton
             variant="outline"

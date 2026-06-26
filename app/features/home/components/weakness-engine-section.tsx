@@ -43,7 +43,7 @@ export function WeaknessEngineSection() {
       <SectionHeader
         eyebrow="WEAKNESS ENGINE · 약점 진단"
         title="어디가 약한지 알아야, 거기를 채웁니다"
-        subtitle="단원 × 지식종류로 약점을 짚고, 틀린 문제는 복습 큐가 잊을 때쯤 다시 꺼냅니다. 지금 바로 작동하는 분석 엔진."
+        subtitle="단원 × 지식종류로 약점을 짚고, 틀린 문제는 복습 큐가 잊을 때쯤 다시 꺼냅니다. 지금 바로 작동하는 분석 엔진입니다."
       />
 
       <div
@@ -148,7 +148,7 @@ export function WeaknessEngineSection() {
             ))}
           </div>
           <CardFoot>
-            단원 × 조문·판례·이론 교차 정답률 — 약한 칸이 한눈에.
+            단원 × 조문·판례·이론 교차 정답률 — 약한 칸이 한눈에 보입니다.
           </CardFoot>
         </Reveal>
 
@@ -237,7 +237,7 @@ export function WeaknessEngineSection() {
                 </li>
               ))}
             </ul>
-            <CardFoot>약한 칸부터 자동 추천.</CardFoot>
+            <CardFoot>약한 칸부터 자동으로 추천합니다.</CardFoot>
           </Reveal>
         </div>
       </div>

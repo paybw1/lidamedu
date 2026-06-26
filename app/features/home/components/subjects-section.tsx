@@ -20,7 +20,7 @@ export function SubjectsSection() {
       <SectionHeader
         eyebrow="SUBJECTS"
         title="다루는 과목"
-        subtitle="변리사 1차 + 2차, 그리고 1차 필수 자연과학 4과목까지."
+        subtitle="변리사 1차 + 2차, 그리고 1차 필수 자연과학 4과목까지 다룹니다."
       />
       <div
         style={{

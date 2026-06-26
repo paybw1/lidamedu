@@ -22,7 +22,7 @@ const STEPS = [
   {
     n: "STEP 3",
     t: "약점·진도 한 눈에",
-    d: "히트맵, 정답률, 연속 학습일이 대시보드에 모입니다. 다음에 무엇을 풀지 추천도.",
+    d: "히트맵, 정답률, 연속 학습일이 대시보드에 모입니다. 다음에 무엇을 풀지도 추천해 드립니다.",
   },
 ];
 
@@ -41,7 +41,7 @@ export function FlowSection() {
       <SectionHeader
         eyebrow="HOW IT WORKS"
         title="시작은 단순하게"
-        subtitle="가입하고 목표를 정하면, 나머지는 매일의 습관."
+        subtitle="가입하고 목표를 정하면, 나머지는 매일의 습관이 됩니다."
       />
       <div
         className="how-grid"

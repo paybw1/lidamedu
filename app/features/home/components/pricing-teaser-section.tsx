@@ -84,7 +84,7 @@ export function PricingTeaserSection() {
         eyebrow="PRICING"
         title="필요한 만큼만, 합리적으로"
         subtitle={
-          "학습정보·커뮤니티는 평생 무료. 조문·판례·문제 본격 학습은 정회원, 합격까지 함께는 종합반."
+          "학습정보·커뮤니티는 평생 무료입니다. 조문·판례·문제 본격 학습은 정회원, 합격까지 함께라면 종합반입니다."
         }
       />
       <div

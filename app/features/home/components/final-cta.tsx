@@ -97,7 +97,7 @@ export function FinalCta() {
             무료로 시작하기
           </LandingButton>
           <LandingButton size="lg" variant="onDarkGhost" to="/login">
-            이미 계정이 있어요
+            로그인
           </LandingButton>
         </div>
       </Reveal>
