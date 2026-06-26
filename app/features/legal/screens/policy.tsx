@@ -19,6 +19,7 @@ import { bundleMDX } from "mdx-bundler";
 import { getMDXComponent } from "mdx-bundler/client";
 import path from "node:path";
 import { Link, data } from "react-router";
+import remarkGfm from "remark-gfm";
 
 import {
   TypographyBlockquote,
@@ -30,6 +31,10 @@ import {
   TypographyList,
   TypographyOrderedList,
   TypographyP,
+  TypographyTable,
+  TypographyTableCell,
+  TypographyTableHead,
+  TypographyTableRow,
 } from "~/core/components/mdx-typography"; // Typography components for consistent MDX styling
 import { Button } from "~/core/components/ui/button";
 
@@ -102,6 +107,11 @@ export async function loader({ params }: Route.LoaderArgs) {
     // Load and bundle the MDX content
     const { code, frontmatter } = await bundleMDX({
       file: filePath,
+      mdxOptions(options) {
+        // GFM 활성화 — 마크다운 표(개인정보처리방침 §2 등) 렌더링.
+        options.remarkPlugins = [...(options.remarkPlugins ?? []), remarkGfm];
+        return options;
+      },
     });
     
     // Return the compiled code and frontmatter metadata
@@ -165,6 +175,10 @@ export default function Policy({
             ul: TypographyList,
             ol: TypographyOrderedList,
             code: TypographyInlineCode,
+            table: TypographyTable,
+            tr: TypographyTableRow,
+            th: TypographyTableHead,
+            td: TypographyTableCell,
           }}
         />
       </div>

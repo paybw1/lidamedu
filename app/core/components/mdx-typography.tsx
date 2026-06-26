@@ -244,3 +244,70 @@ export function TypographyInlineCode({
     </code>
   );
 }
+
+/**
+ * Table Typography Components
+ *
+ * GFM 마크다운 표(| ... |)를 일관된 스타일의 HTML 표로 렌더링한다.
+ * (privacy-policy 의 수집·이용 목적 표 등)
+ */
+export function TypographyTable({
+  children,
+  props,
+}: {
+  children: React.ReactNode;
+  props: React.HTMLAttributes<HTMLTableElement>;
+}) {
+  return (
+    <div className="my-6 w-full overflow-x-auto">
+      <table className="w-full border-collapse text-sm" {...props}>
+        {children}
+      </table>
+    </div>
+  );
+}
+
+export function TypographyTableHead({
+  children,
+  props,
+}: {
+  children: React.ReactNode;
+  props: React.HTMLAttributes<HTMLTableCellElement>;
+}) {
+  return (
+    <th
+      className="border-border bg-muted/50 border px-3 py-2 text-left font-semibold"
+      {...props}
+    >
+      {children}
+    </th>
+  );
+}
+
+export function TypographyTableCell({
+  children,
+  props,
+}: {
+  children: React.ReactNode;
+  props: React.HTMLAttributes<HTMLTableCellElement>;
+}) {
+  return (
+    <td className="border-border border px-3 py-2 align-top" {...props}>
+      {children}
+    </td>
+  );
+}
+
+export function TypographyTableRow({
+  children,
+  props,
+}: {
+  children: React.ReactNode;
+  props: React.HTMLAttributes<HTMLTableRowElement>;
+}) {
+  return (
+    <tr className="border-border border-b" {...props}>
+      {children}
+    </tr>
+  );
+}
