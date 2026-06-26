@@ -138,6 +138,12 @@ export function ChoiceEditor({
     oxAutoModeRef.current = false;
     setOxTruth("");
   };
+  // 관련 조문을 입력하면 분류를 '조문'으로 자동 전환(운영 편의). 판례의 보조
+  // '관련 조문(선택)' 입력은 제외 — 그 필드는 분류를 바꾸지 않는다.
+  const handleArticleInput = (v: string) => {
+    setArticleNumber(v);
+    if (v.trim() && type !== "precedent") setType("statute");
+  };
 
   // 해설이 바뀔 때 비어있는 ref 필드만 자동 채움. 운영자 수동 입력은 보존.
   // 이미 값이 있는 필드는 건드리지 않는다.
@@ -383,7 +389,7 @@ export function ChoiceEditor({
               type="text"
               name={`choice_${choice.choiceIndex}_article_number`}
               value={articleNumber}
-              onChange={(e) => setArticleNumber(e.target.value)}
+              onChange={(e) => handleArticleInput(e.target.value)}
               placeholder="29 / 28의2"
               className="border-input bg-background h-8 rounded-md border px-2 text-xs"
             />
