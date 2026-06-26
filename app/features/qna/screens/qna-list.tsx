@@ -1,4 +1,5 @@
 import {
+  InfoIcon,
   MessageCircleQuestionIcon,
   PencilLineIcon,
   SearchIcon,
@@ -154,6 +155,19 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
+      {/* 안내 — 학습과목(조문·판례·문제) 질문은 해당 상세 화면에서 대상에 연결해 작성. */}
+      <div className="border-primary/20 bg-primary/[0.04] mb-3.5 flex items-start gap-2.5 rounded-2xl border p-3.5">
+        <InfoIcon className="text-link mt-0.5 size-4 shrink-0" />
+        <p className="text-muted-foreground text-[13px] leading-relaxed">
+          <strong className="text-foreground">조문·판례·문제</strong>에 대한 질문은
+          해당 <strong className="text-foreground">상세 화면의 ‘Q&amp;A’ 패널</strong>
+          에서 남겨 주세요. 질문이 그 내용에 자동으로 연결돼 더 정확한 답변을 받을 수
+          있어요. <strong className="text-foreground">공부방법</strong> 등 일반 질문은
+          여기서 <strong className="text-foreground">‘공부방법 질문’</strong> 으로
+          작성하시면 됩니다.
+        </p>
+      </div>
+
       <Form
         method="get"
         className="border-border bg-card mb-3.5 flex flex-wrap items-center gap-2 rounded-2xl border p-3 shadow-sm"
