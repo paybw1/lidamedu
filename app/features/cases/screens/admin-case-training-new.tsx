@@ -13,7 +13,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-case-training-new";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "판례 선택 — 판례 기반 훈련 출제 | Lidam" },
+  { title: "판례 선택 — 판례 기반 훈련 출제 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

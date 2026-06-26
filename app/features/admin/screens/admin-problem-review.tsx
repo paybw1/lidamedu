@@ -155,7 +155,7 @@ export default function AdminProblemReview({
 
   const bulkApprove = () => {
     if (selected.size === 0) return;
-    if (!confirm(`선택한 ${selected.size}건을 일괄 승인합니다. 계속할까요?`))
+    if (!confirm(`선택한 ${selected.size}건을 일괄 승인합니다. 계속하시겠습니까?`))
       return;
     const fd = new FormData();
     fd.set("intent", "bulk-approve");
@@ -188,7 +188,7 @@ export default function AdminProblemReview({
       desc={
         <span>
           신규 등록·AI 초안의 강사 승인 게이트. <strong>승인</strong>되어야
-          모의고사 picker·학습과목·맞춤퀴즈에 노출.
+          모의고사 출제 선택·학습과목·맞춤퀴즈에 노출됩니다.
         </span>
       }
       role={role}

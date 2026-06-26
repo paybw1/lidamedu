@@ -34,7 +34,7 @@ import {
 import type { Route } from "./+types/admin-case-study-review";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "강의노트 case study 검토 | Lidam" },
+  { title: "강의노트 사례연구 검토 | 리담변리사학원" },
 ];
 
 const COURT_LABEL: Record<string, string> = {
@@ -441,7 +441,7 @@ function LinkedList({
   }, [unlink.data, onUnlinked]);
 
   function handleUnlink(caseId: string) {
-    if (!window.confirm("이 판례에서 자료를 제거할까요?")) return;
+    if (!window.confirm("이 판례에서 자료를 제거하시겠습니까?")) return;
     const fd = new FormData();
     fd.set("intent", "unlink");
     fd.set("caseId", caseId);

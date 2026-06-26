@@ -408,7 +408,7 @@ export default function AdminGsEdit({ loaderData }: Route.ComponentProps) {
                 size="sm"
                 className="text-rose-600 dark:text-rose-400"
                 onClick={(e) => {
-                  if (!confirm("이 회차와 모든 문제·제출을 삭제합니다. 계속할까요?"))
+                  if (!confirm("이 회차와 모든 문제·제출을 삭제합니다. 계속하시겠습니까?"))
                     e.preventDefault();
                 }}
               >
@@ -902,7 +902,7 @@ function QuestionEditor({
               size="sm"
               className="text-rose-600 dark:text-rose-400 h-8"
               onClick={(e) => {
-                if (!confirm("이 문항을 삭제할까요? (관련 답안도 함께 삭제)"))
+                if (!confirm("이 문항을 삭제하시겠습니까? (관련 답안도 함께 삭제)"))
                   e.preventDefault();
               }}
             >
@@ -1014,7 +1014,7 @@ function PaperSlot({
                 size="sm"
                 className="text-rose-600 dark:text-rose-400 h-8"
                 onClick={(e) => {
-                  if (!confirm("이 PDF 를 삭제할까요?")) e.preventDefault();
+                  if (!confirm("이 PDF 를 삭제하시겠습니까?")) e.preventDefault();
                 }}
               >
                 <Trash2Icon className="size-3.5" /> 삭제

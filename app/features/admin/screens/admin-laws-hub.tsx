@@ -13,7 +13,7 @@ import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 import type { Route } from "./+types/admin-laws-hub";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "법령 운영 | Lidam" },
+  { title: "법령 운영 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

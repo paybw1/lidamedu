@@ -215,7 +215,7 @@ function PostActions({
             <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="postId" value={postId} />
             <input type="hidden" name="boardId" value={boardId} />
-            <span className="text-muted-foreground text-xs">삭제할까요?</span>
+            <span className="text-muted-foreground text-xs">삭제하시겠습니까?</span>
             <Button
               type="submit"
               variant="destructive"

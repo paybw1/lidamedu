@@ -19,7 +19,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-law-health";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "콘텐츠 헬스 점수 | Lidam" },
+  { title: "콘텐츠 헬스 점수 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

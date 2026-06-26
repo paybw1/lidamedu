@@ -290,7 +290,7 @@ function PostActions({
           >
             <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="postId" value={post.postId} />
-            <span className="text-muted-foreground text-xs">삭제할까요?</span>
+            <span className="text-muted-foreground text-xs">삭제하시겠습니까?</span>
             <Button
               type="submit"
               variant="destructive"
@@ -530,7 +530,7 @@ function AttachmentItem({
   }
 
   function doDelete() {
-    if (!confirm(`첨부 "${a.originalFilename}" 를 삭제할까요?`)) return;
+    if (!confirm(`첨부 "${a.originalFilename}" 를 삭제하시겠습니까?`)) return;
     const fd = new FormData();
     fd.set("intent", "delete");
     fd.set("attachmentId", a.attachmentId);

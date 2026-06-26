@@ -112,7 +112,7 @@ export default function AdminAuditLogs({ loaderData }: Route.ComponentProps) {
       cluster="comms"
       role={role}
       title="감사 로그"
-      desc={`누가 · 언제 · 어떤 entity 에 · 무엇을 했는지. 전체 ${total.toLocaleString("ko-KR")}건.`}
+      desc={`누가 · 언제 · 어떤 대상에 · 무엇을 했는지. 전체 ${total.toLocaleString("ko-KR")}건.`}
     >
       {/* 원장 전용 배지 */}
       <div className="mb-4 flex items-center gap-1.5">

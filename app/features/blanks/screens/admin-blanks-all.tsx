@@ -531,7 +531,7 @@ export default function AdminBlanksAll({ loaderData }: Route.ComponentProps) {
     }
     if (
       !confirm(
-        `전체 미매칭 빈칸 ${totalUnplaced}개를 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.`,
+        `전체 미매칭 빈칸 ${totalUnplaced}개를 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
       )
     )
       return;

@@ -29,8 +29,8 @@ import type { Route } from "./+types/admin-case-training-edit";
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
     title: d?.item
-      ? `${d.item.caseRef.caseTitle || d.item.caseRef.caseNumber} — 편집 | Lidam`
-      : "훈련 항목 편집 | Lidam",
+      ? `${d.item.caseRef.caseTitle || d.item.caseRef.caseNumber} — 편집 | 리담변리사학원`
+      : "훈련 항목 편집 | 리담변리사학원",
   },
 ];
 
@@ -209,7 +209,7 @@ function DeleteItemButton({ itemId }: { itemId: string }) {
         variant="outline"
         className="rounded-full text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/30"
         onClick={(e) => {
-          if (!confirm("이 훈련 항목을 삭제(soft)합니다. 진행할까요?"))
+          if (!confirm("이 훈련 항목을 삭제(soft)합니다. 진행하시겠습니까?"))
             e.preventDefault();
         }}
       >
@@ -283,7 +283,7 @@ function FactsSection({
 
   const generateAi = () => {
     if (text.trim().length > 0) {
-      if (!confirm("기존 사실관계를 AI 초안으로 덮어씁니다. 진행할까요?"))
+      if (!confirm("기존 사실관계를 AI 초안으로 덮어씁니다. 진행하시겠습니까?"))
         return;
     }
     const fd = new FormData();
@@ -422,7 +422,7 @@ function IssuesSection({
   const generateAi = () => {
     if (issues.length > 0) {
       if (
-        !confirm("기존 쟁점을 그대로 두고 AI 초안 N건을 추가합니다. 진행할까요?")
+        !confirm("기존 쟁점을 그대로 두고 AI 초안 N건을 추가합니다. 진행하시겠습니까?")
       )
         return;
     }
@@ -707,7 +707,7 @@ function ConclusionsSection({
 
   const generateAi = () => {
     if (withConclusion > 0) {
-      if (!confirm("기존 결론을 AI 초안으로 덮어씁니다. 진행할까요?")) return;
+      if (!confirm("기존 결론을 AI 초안으로 덮어씁니다. 진행하시겠습니까?")) return;
     }
     const fd = new FormData();
     fd.set("itemId", itemId);

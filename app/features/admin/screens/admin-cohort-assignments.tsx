@@ -150,7 +150,7 @@ export default function AdminCohortAssignments({
           <p className="mt-1 text-xs">
             {availableWeeks.length > 0
               ? "위에서 커리큘럼 주차를 자동 변환하거나 수동으로 추가하세요."
-              : "먼저 커리큘럼을 cohort에 적용하면 주차별로 한 번에 과제를 만들 수 있습니다."}
+              : "먼저 커리큘럼을 반에 적용하면 주차별로 한 번에 과제를 만들 수 있습니다."}
           </p>
         </div>
       ) : (

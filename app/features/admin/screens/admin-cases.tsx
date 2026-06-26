@@ -165,7 +165,7 @@ export default function AdminCases({ loaderData }: Route.ComponentProps) {
       cluster="cases"
       role={role}
       title={`${subjectName} 판례 매핑`}
-      desc="판례↔조문 매핑을 한 화면에서 관리합니다. 초록 chip = 수동, 파랑 chip = 자동 추출."
+      desc="판례↔조문 매핑을 한 화면에서 관리합니다. 초록 칩 = 수동, 파랑 칩 = 자동 추출."
       headerRight={
         <Button asChild size="sm">
           <Link to="/admin/cases/edit">

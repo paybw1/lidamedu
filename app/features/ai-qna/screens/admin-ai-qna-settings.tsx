@@ -153,13 +153,13 @@ export default function AdminAiQnaSettings({
 
           <ToggleRow
             label="회원3 · 강사 (tier1)"
-            help="area_study_mgmt 구독자 + 강사. 비용 부담이 작아 우선 개방 권장."
+            help="area_study_mgmt 구독자 + 강사입니다. 비용 부담이 작아 우선 개방을 권장합니다."
             checked={instantDraft.tier1}
             onChange={(v) => setInstantDraft({ ...instantDraft, tier1: v })}
           />
           <ToggleRow
             label="무료 학생 (free)"
-            help="그 외 전체. 사용량이 많아 비용 영향이 큼 — 품질 확인 후 개방."
+            help="그 외 전체입니다. 사용량이 많아 비용 영향이 큽니다 — 품질 확인 후 개방하세요."
             checked={instantDraft.free}
             onChange={(v) => setInstantDraft({ ...instantDraft, free: v })}
           />

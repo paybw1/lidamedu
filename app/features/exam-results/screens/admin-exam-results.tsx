@@ -215,7 +215,7 @@ export default function AdminExamResults({ loaderData }: Route.ComponentProps) {
       desc={
         roleAtLeast(role, "manager")
           ? "학생이 입력한 시험 결과를 검토하고 합격증을 인증합니다."
-          : "본인 cohort 학생의 결과를 조회할 수 있습니다 (인증 처리는 관리자 이상)."
+          : "본인 반 학생의 결과를 조회할 수 있습니다 (인증 처리는 관리자 이상)."
       }
       headerRight={
         pendingCount > 0 ? (

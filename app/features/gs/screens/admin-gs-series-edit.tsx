@@ -159,7 +159,7 @@ export default function AdminGsSeriesEdit({
                 onClick={(e) => {
                   if (
                     !confirm(
-                      "이 시리즈를 삭제합니다. 회차들은 series 연결이 해제되지만 보존됩니다. 진행할까요?",
+                      "이 시리즈를 삭제합니다. 회차들은 시리즈 연결이 해제되지만 보존됩니다. 진행하시겠습니까?",
                     )
                   )
                     e.preventDefault();

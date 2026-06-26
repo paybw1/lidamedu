@@ -189,7 +189,7 @@ function BoardRow({
           method="post"
           action="/api/admin/cohort-board"
           onSubmit={(e) => {
-            if (!window.confirm("이 게시판을 삭제할까요? (글도 함께 숨겨집니다)"))
+            if (!window.confirm("이 게시판을 삭제하시겠습니까? (글도 함께 숨겨집니다)"))
               e.preventDefault();
           }}
         >

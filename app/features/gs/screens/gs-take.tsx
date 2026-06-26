@@ -170,7 +170,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
     }
     if (
       !confirm(
-        `페이지 ${pageNumber} 자리에 빈 슬롯을 추가합니다. 페이지 ${pageNumber} 부터 끝까지 한 칸씩 뒤로 밀립니다. 진행할까요?`,
+        `페이지 ${pageNumber} 자리에 빈 슬롯을 추가합니다. 페이지 ${pageNumber} 부터 끝까지 한 칸씩 뒤로 밀립니다. 진행하시겠습니까?`,
       )
     )
       return;
@@ -693,7 +693,7 @@ function PageSlot({
   };
 
   const onRemove = () => {
-    if (!confirm(`페이지 ${pageNumber} 를 삭제할까요?`)) return;
+    if (!confirm(`페이지 ${pageNumber} 를 삭제하시겠습니까?`)) return;
     const fd = new FormData();
     fd.set("intent", "remove-page");
     fd.set("roundId", round.roundId);

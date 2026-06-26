@@ -33,7 +33,7 @@ export function UnplacedBlanksSection({
   const handleRemoveAll = () => {
     if (
       !confirm(
-        `미매칭 빈칸 ${unplaced.length}개를 모두 삭제할까요?\n` +
+        `미매칭 빈칸 ${unplaced.length}개를 모두 삭제하시겠습니까?\n` +
           `(정답 입력됨 ${answeredButUnplaced.length}개, 미입력 ${unanswered.length}개)`,
       )
     )

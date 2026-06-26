@@ -33,7 +33,7 @@ import {
 import type { Route } from "./+types/admin-systematic-tree";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "체계도 트리 export/import | Lidam" },
+  { title: "체계도 트리 가져오기·내보내기 | 리담변리사학원" },
 ];
 
 const LAWS: { code: string; name: string }[] = [
@@ -152,7 +152,7 @@ export default function AdminSystematicTree({ loaderData }: Route.ComponentProps
     <AdminShell
       cluster="laws"
       role={loaderData.role}
-      title="체계도 트리 export/import"
+      title="체계도 트리 가져오기·내보내기"
       desc={
         <>
           한 과목의 체계도(<code>systematic_nodes</code>) 트리를 JSON 으로 다운로드
@@ -199,7 +199,7 @@ export default function AdminSystematicTree({ loaderData }: Route.ComponentProps
 
       {/* import 카드 */}
       <section>
-        <h2 className="mb-2 text-sm font-semibold">JSON 업로드 → import</h2>
+        <h2 className="mb-2 text-sm font-semibold">JSON 업로드 → 가져오기</h2>
         <ImportForm />
       </section>
 
@@ -314,7 +314,7 @@ function ImportForm() {
 
       <Button type="submit" disabled={submitting} size="sm" className="w-full">
         {submitting ? <Loader2Icon className="size-3.5 animate-spin" /> : <UploadIcon className="size-3.5" />}
-        업로드 + import
+        업로드 + 가져오기
       </Button>
 
       {result && result.ok && (

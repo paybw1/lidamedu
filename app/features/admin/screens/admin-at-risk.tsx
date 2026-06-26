@@ -23,7 +23,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-at-risk";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "수강생 위험군 | Lidam" },
+  { title: "수강생 위험군 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -81,7 +81,7 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
   const { role, summary, filters } = loaderData;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState(
-    "최근 학습이 뜸하네요. 짧게라도 매일 들여다보면 다시 페이스를 찾을 수 있어요. 함께해요!",
+    "최근 학습이 뜸합니다. 짧게라도 매일 들여다보면 다시 페이스를 찾을 수 있습니다. 함께해요!",
   );
   const fetcher = useFetcher<{ ok: boolean; sent?: number; error?: string }>();
   const sending = fetcher.state !== "idle";
@@ -118,7 +118,7 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
       cluster="students"
       role={role}
       title="위험 수강생 (7일 무접속)"
-      desc="모든 활성 반의 위험 학생을 한 화면에서. 학생을 선택해 일괄 격려 메시지를 발송하세요."
+      desc="모든 활성 반의 위험 학생을 한 화면에서 봅니다. 학생을 선택해 일괄 격려 메시지를 발송하세요."
       width={1280}
     >
       {/* KPI Row */}

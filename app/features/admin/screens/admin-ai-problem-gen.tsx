@@ -94,7 +94,7 @@ export default function AdminAiProblemGen({
           <Link to="/admin/problems/review" className="text-link hover:underline">
             검증 큐
           </Link>
-          에서 강사 승인 후 모의고사 picker·학습과목에 노출됩니다.
+          에서 강사 승인 후 모의고사 출제 선택·학습과목에 노출됩니다.
         </span>
       }
       role={role}

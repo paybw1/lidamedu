@@ -371,7 +371,7 @@ export default function AdminGsGrade({ loaderData }: Route.ComponentProps) {
                 onClick={(e) => {
                   if (
                     !confirm(
-                      "채점을 마무리하면 학생에게 결과가 공개됩니다. 진행할까요?",
+                      "채점을 마무리하면 학생에게 결과가 공개됩니다. 진행하시겠습니까?",
                     )
                   )
                     e.preventDefault();

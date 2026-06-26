@@ -241,7 +241,7 @@ export default function AdminGsDistinctions({
       cluster="gs"
       role={role}
       title={`${round.title} — 우수 답안`}
-      desc={`${LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 마킹 시 답안 작성자에게 포인트가 지급됩니다. 마킹 해제 시 자동 회수.`}
+      desc={`${LAW_SUBJECTS[round.subject]?.name ?? round.subject} · 마킹 시 답안 작성자에게 포인트가 지급됩니다. 마킹 해제 시 자동 회수됩니다.`}
       headerRight={
         distinctions.length > 0 ? (
           <Chip tone="amber">
@@ -257,7 +257,7 @@ export default function AdminGsDistinctions({
           icon={<CrownIcon className="text-amber-500 size-4" />}
           title="회차 종합 우수자"
           badge={`${totalDistinctions.length}명 마킹됨`}
-          desc="총점 상위 학생을 회차 종합 우수자로 선정. 후보는 채점 완료된 학생 중 상위 10명."
+          desc="총점 상위 학생을 회차 종합 우수자로 선정합니다. 후보는 채점 완료된 학생 중 상위 10명입니다."
         >
           {students.length === 0 ? (
             <EmptyState text="아직 채점된 답안이 없습니다." />
@@ -511,7 +511,7 @@ function CandidateRow({
               onClick={(e) => {
                 if (
                   !confirm(
-                    "마킹을 해제하면 지급된 포인트가 자동 회수됩니다. 진행할까요?",
+                    "마킹을 해제하면 지급된 포인트가 자동 회수됩니다. 진행하시겠습니까?",
                   )
                 )
                   e.preventDefault();

@@ -28,7 +28,7 @@ import {
 import type { Route } from "./+types/admin-case-violations";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "체계도 단일 placement 위반 | Lidam" },
+  { title: "체계도 단일 배치 위반 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -58,10 +58,10 @@ export default function AdminCaseViolations({
     <AdminShell
       cluster="cases"
       role={role}
-      title="체계도 단일 placement 위반"
+      title="체계도 단일 배치 위반"
       desc={
         <>
-          한 case 가 체계도 트리의 여러 노드에 잡히는 케이스 — 메인 노드를
+          한 판례가 체계도 트리의 여러 노드에 잡히는 경우 — 메인 노드를
           지정해 <code>cases.primary_node_id</code> 를 확정합니다. 지정 후
           페이지 새로고침 시 목록에서 사라집니다.
         </>

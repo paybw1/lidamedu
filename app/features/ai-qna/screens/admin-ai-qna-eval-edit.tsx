@@ -26,7 +26,7 @@ import {
 import type { Route } from "./+types/admin-ai-qna-eval-edit";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "AI Q&A eval 항목 | 운영자" },
+  { title: "AI Q&A 평가 항목 | 운영자" },
 ];
 
 const LAW_OPTIONS = [

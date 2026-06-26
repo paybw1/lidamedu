@@ -29,7 +29,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-community-reports";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "커뮤니티 신고 큐 | Lidam" },
+  { title: "커뮤니티 신고 큐 | 리담변리사학원" },
 ];
 
 const STATUS_VALUES = ["pending", "resolved", "dismissed", "all"] as const;
@@ -70,7 +70,7 @@ export default function AdminCommunityReports({
       cluster="comms"
       role={role}
       title="커뮤니티 신고 큐"
-      desc={`pending ${counts.pending}건 · 오늘 처리 ${counts.resolvedToday}건`}
+      desc={`대기 ${counts.pending}건 · 오늘 처리 ${counts.resolvedToday}건`}
     >
       <StatusTabs current={status} pending={counts.pending} />
       {items.length === 0 ? (

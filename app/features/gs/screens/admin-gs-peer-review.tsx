@@ -219,7 +219,7 @@ export default function AdminGsPeerReview({
               onClick={(e) => {
                 if (
                   !confirm(
-                    "셔플하여 부족분만 추가 배정합니다. 진행할까요?\n(이미 배정된 쌍은 유지됩니다)",
+                    "셔플하여 부족분만 추가 배정합니다. 진행하시겠습니까?\n(이미 배정된 쌍은 유지됩니다)",
                   )
                 )
                   e.preventDefault();
@@ -382,7 +382,7 @@ function ReviewerChip({
         title="클릭하여 배정 취소"
         onClick={(e) => {
           if (!visible) e.preventDefault();
-          if (!confirm("이 채점 배정을 취소합니다. 진행할까요?"))
+          if (!confirm("이 채점 배정을 취소합니다. 진행하시겠습니까?"))
             e.preventDefault();
         }}
         className={cn(

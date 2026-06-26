@@ -118,7 +118,7 @@ export function ConclusionWriteStage({
     }
     if (
       !confirm(
-        "제출 후엔 모범 결론·권장 강약이 공개되고 자기채점 단계로 넘어갑니다. 제출할까요?",
+        "제출 후엔 모범 결론·권장 강약이 공개되고 자기채점 단계로 넘어갑니다. 제출하시겠습니까?",
       )
     )
       return;

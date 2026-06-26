@@ -114,7 +114,7 @@ export default function AdminSubscriptions({ loaderData }: Route.ComponentProps)
               <CreditCardIcon className="text-link size-5" /> 수강권 / 결제 관리
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              feat-8-018 결제 인프라(`subscription_plans` / `payments` /
+              결제 인프라(`subscription_plans` / `payments` /
               `user_subscriptions`) 위에 운영팀이 수동 부여 / 만료 연장 / 취소
               관리. 학생별 상세는 학생 상세 페이지에서.
             </p>

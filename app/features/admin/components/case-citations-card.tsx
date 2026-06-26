@@ -111,7 +111,7 @@ export function CaseCitationsCard({
     if (
       !confirm(
         `해설 종류가 "판례" 인 선택지의 판례번호 입력란 "${caseNumber}" → "${newNumber}" 로 일괄 갱신합니다.\n` +
-          `자유 텍스트 본문(explanation_md)은 변경하지 않습니다.\n계속할까요?`,
+          `자유 텍스트 본문(explanation_md)은 변경하지 않습니다.\n계속하시겠습니까?`,
       )
     )
       return;
@@ -127,7 +127,7 @@ export function CaseCitationsCard({
     if (summary.missingLinkCount === 0) return;
     if (
       !confirm(
-        `해설 종류=판례 의 입력란에 "${caseNumber}" 가 박혔지만 link 가 없는 ${summary.missingLinkCount}개 문제에 link 를 추가합니다.\n계속할까요?`,
+        `해설 종류=판례 의 입력란에 "${caseNumber}" 가 박혔지만 연결이 없는 ${summary.missingLinkCount}개 문제에 연결을 추가합니다.\n계속하시겠습니까?`,
       )
     )
       return;

@@ -60,7 +60,7 @@ export default function AdminCurricula({ loaderData }: Route.ComponentProps) {
       cluster="cohorts"
       role={role}
       title="커리큘럼 관리"
-      desc="학습 트랙 템플릿 — cohort에 적용하면 학생 대시보드에 자동 노출"
+      desc="학습 트랙 템플릿 — 반에 적용하면 학생 대시보드에 자동 노출됩니다."
       headerRight={
         <Button size="sm" onClick={() => setShowNew((v) => !v)}>
           <PlusIcon className="size-3.5" /> 신규 커리큘럼

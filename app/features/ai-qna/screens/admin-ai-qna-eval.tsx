@@ -122,22 +122,22 @@ export default function AdminAiQnaEval({ loaderData }: Route.ComponentProps) {
   const submitting = navigation.state !== "idle";
 
   return (
-    <AdminShell title="AI Q&A eval 셋" cluster="comms">
+    <AdminShell title="AI Q&A 평가 셋" cluster="comms">
       <div className="mx-auto max-w-5xl space-y-4">
         <header className="space-y-1">
           <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">
             <BookmarkIcon className="text-link size-5" />
-            eval 데이터셋
+            평가 데이터셋
           </h1>
           <p className="text-muted-foreground text-sm">
-            강사가 라벨링한 골드 정답 셋. 자동 평가 cron(v1.2) 의 입력.{" "}
+            강사가 라벨링한 모범 정답 셋입니다. 자동 평가 스케줄러(v1.2)의 입력입니다.{" "}
             <Link
               to="/admin/ai-qna/feedback"
               className="text-link underline-offset-4 hover:underline"
             >
               부정 피드백 큐
             </Link>{" "}
-            의 👎 케이스를 그대로 eval 항목으로 승격할 수 있습니다.
+            의 👎 케이스를 그대로 평가 항목으로 승격할 수 있습니다.
           </p>
         </header>
 
@@ -201,9 +201,9 @@ export default function AdminAiQnaEval({ loaderData }: Route.ComponentProps) {
           <div className="rounded-2xl border border-dashed py-12 text-center">
             <BookmarkIcon className="text-muted-foreground mx-auto size-10" />
             <p className="text-muted-foreground mt-3 text-sm">
-              아직 eval 항목이 없습니다.
+              아직 평가 항목이 없습니다.
               <br />
-              부정 피드백 큐에서 "eval 로 승격" 또는 신규 추가로 시작하세요.
+              부정 피드백 큐에서 "평가로 승격" 또는 신규 추가로 시작하세요.
             </p>
           </div>
         ) : (

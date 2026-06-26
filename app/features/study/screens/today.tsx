@@ -52,7 +52,7 @@ import {
   getTodaySummary,
 } from "~/features/study/today-summary.server";
 
-export const meta: Route.MetaFunction = () => [{ title: "오늘 할 일 | Lidam" }];
+export const meta: Route.MetaFunction = () => [{ title: "오늘 할 일 | 리담변리사학원" }];
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);

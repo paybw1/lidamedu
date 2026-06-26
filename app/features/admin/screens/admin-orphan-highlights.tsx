@@ -25,7 +25,7 @@ import {
 import type { Route } from "./+types/admin-orphan-highlights";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Orphan staff underline | Lidam" },
+  { title: "미연결 밑줄 점검 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -64,12 +64,12 @@ export default function AdminOrphanHighlights({
     <AdminShell
       cluster="cases"
       role={role}
-      title="Orphan staff underline"
+      title="미연결 밑줄 점검"
       desc={
         <>
-          staff 가 그은 underline 중 본문에 label 텍스트가 더 이상 없는 row.
-          본문이 크게 편집돼 자동 재배치 불가 — case viewer 에서 새 underline 을
-          긋고 옛 row 를 여기서 삭제하세요.
+          강사가 그은 밑줄 중 본문에 라벨 텍스트가 더 이상 없는 항목입니다.
+          본문이 크게 편집돼 자동 재배치가 불가하니 — 판례 뷰어에서 새 밑줄을
+          긋고 옛 항목을 여기서 삭제하세요.
         </>
       }
       width={1100}
@@ -90,11 +90,11 @@ export default function AdminOrphanHighlights({
       <div className="mb-3 flex items-center gap-2">
         <HighlighterIcon className="text-muted-foreground size-4" />
         <span className="text-muted-foreground text-sm">
-          {subject.name} · orphan{" "}
+          {subject.name} · 미연결{" "}
           <span className="text-foreground font-semibold tabular-nums">
             {orphans.length.toLocaleString("ko-KR")}
           </span>
-          건 · 영향 case{" "}
+          건 · 영향 판례{" "}
           <span className="text-foreground font-semibold tabular-nums">
             {caseEntries.length.toLocaleString("ko-KR")}
           </span>
@@ -109,7 +109,7 @@ export default function AdminOrphanHighlights({
 
       {orphans.length === 0 ? (
         <div className="bg-emerald-500/5 text-muted-foreground rounded-xl border p-6 text-center text-sm">
-          {subject.name} 의 staff underline 이 모두 본문과 정합합니다.
+          {subject.name} 의 강사 밑줄이 모두 본문과 정합합니다.
         </div>
       ) : (
         <ul className="space-y-3">
@@ -252,7 +252,7 @@ function OrphanRow({ item }: { item: OrphanHighlight }) {
           className="h-7 gap-1 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
           disabled={submitting}
           onClick={(e) => {
-            if (!confirm("이 orphan highlight 를 삭제합니다. 진행할까요?")) {
+            if (!confirm("이 미연결 밑줄을 삭제합니다. 진행하시겠습니까?")) {
               e.preventDefault();
             }
           }}

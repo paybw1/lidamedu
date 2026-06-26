@@ -155,8 +155,8 @@ export default function AdminAiQnaEmbedStatus({
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               <code className="text-foreground">content_chunks</code> 의 임베딩
-              진행도. cron 매 15분 자동 실행(`/api/cron/embed-chunks`). 환경변수
-              미설정 시 dry-run.
+              진행도입니다. 스케줄러가 매 15분 자동 실행합니다(`/api/cron/embed-chunks`). 환경변수
+              미설정 시 빈 실행(dry-run) 상태입니다.
             </p>
           </div>
           <Form method="post">
@@ -171,7 +171,7 @@ export default function AdminAiQnaEmbedStatus({
                   ? "VOYAGE_API_KEY 미설정"
                   : !cronSecretConfigured
                     ? "CRON_SECRET 미설정"
-                    : "지금 임베딩 cron 호출 (50건 배치)"
+                    : "지금 임베딩 실행 (50건 배치)"
               }
             >
               {submitting ? (
@@ -179,7 +179,7 @@ export default function AdminAiQnaEmbedStatus({
               ) : (
                 <PlayIcon className="size-3.5" />
               )}
-              지금 cron 호출
+              지금 임베딩 실행
             </Button>
           </Form>
         </header>

@@ -33,7 +33,7 @@ import {
 } from "~/features/lectures/queries.server";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "강의노트 위치 확인 | Lidam" },
+  { title: "강의노트 위치 확인 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -388,7 +388,7 @@ function DetailPanel({
           className="text-muted-foreground hover:text-destructive h-8"
           disabled={busy}
           onClick={() => {
-            if (window.confirm("이 위치 링크를 삭제할까요?"))
+            if (window.confirm("이 위치 링크를 삭제하시겠습니까?"))
               submit({ intent: "delete", locationId: item.locationId });
           }}
         >

@@ -190,7 +190,7 @@ function ActiveCard({
     setTimeout(onMutated, 200);
   }
   function doCancel() {
-    if (!confirm(`이 구독을 취소합니다(만료일은 유지). 진행할까요?`)) return;
+    if (!confirm(`이 구독을 취소합니다(만료일은 유지). 진행하시겠습니까?`)) return;
     const fd = new FormData();
     fd.set("intent", "cancel");
     fd.set("subscriptionId", sub.subscriptionId);

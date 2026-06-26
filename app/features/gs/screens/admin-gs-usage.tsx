@@ -84,7 +84,7 @@ export default function AdminGsUsage({ loaderData }: Route.ComponentProps) {
       cluster="gs"
       role={role}
       title="GS AI·OCR 사용량"
-      desc="오늘 비용·cap 잔여, 최근 추이, 회차별 비용 상위. cap 도달 시 운영자 알림 1회 발송됩니다."
+      desc="오늘 비용·한도 잔여, 최근 추이, 회차별 비용 상위. 한도 도달 시 운영자 알림 1회 발송됩니다."
     >
       {/* 오늘 cap 잔여 — 3 카드 */}
       <section className="mb-6 grid gap-2.5 sm:grid-cols-3">

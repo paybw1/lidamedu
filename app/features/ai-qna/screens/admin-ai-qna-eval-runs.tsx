@@ -18,7 +18,7 @@ import {
 import type { Route } from "./+types/admin-ai-qna-eval-runs";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "AI Q&A eval 평가 이력 | 운영자" },
+  { title: "AI Q&A 평가 이력 | 운영자" },
 ];
 
 export async function loader({ params, request }: Route.LoaderArgs) {

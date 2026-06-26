@@ -28,7 +28,7 @@ import { getStaffRole } from "~/features/laws/queries.server";
 import type { Route } from "./+types/admin-seeds-preview";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "시드 import dry-run | Lidam" },
+  { title: "시드 가져오기 미리 점검 | 리담변리사학원" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -118,8 +118,8 @@ export default function AdminSeedsPreview({
     <AdminShell
       cluster="laws"
       role={role}
-      title="시드 import dry-run"
-      desc="CSV 일괄 정정 — 미리보기로 diff 를 확인한 뒤 승인하면 적용. 한 번에 ~500행 권장."
+      title="시드 가져오기 미리 점검"
+      desc="CSV 일괄 정정 — 미리보기로 변경분을 확인한 뒤 승인하면 적용됩니다. 한 번에 500행 이내를 권장합니다."
       width={1280}
     >
       {/* Non-negotiable §8 안내 */}
