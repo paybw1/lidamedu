@@ -62,15 +62,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ? reqUrl.origin
     : (process.env.SITE_URL ?? reqUrl.origin).replace(/\/+$/, "");
 
+  // 카카오 동의항목(검수 대상) — 회원가입 동의 화면에 6개 항목을 모두 노출하기 위해
+  // scope 로 명시 요청한다: 닉네임·프로필 사진·카카오계정(이메일)에 더해 이름·전화번호·
+  // 배송지(주소). 이름·전화번호·배송지는 비즈니스 앱 전환 + 동의항목 검수 승인이 전제이며,
+  // 카카오 콘솔에서 각 항목을 동의항목으로 설정(필수)해야 화면에 노출된다.
+  const kakaoScopes =
+    "profile_nickname profile_image account_email name phone_number shipping_address";
+
   // Initialize OAuth flow with the specified provider
   const { data: signInData, error: signInError } =
     await client.auth.signInWithOAuth({
       provider: parsedParams.provider,
       options: {
-        // 카카오는 Supabase(GoTrue)가 account_email·profile_image·profile_nickname 을
-        // 강제 요청하므로 scopes 로 줄일 수 없다. account_email 동의항목은 비즈앱 전환이
-        // 전제 — 카카오 콘솔에서 세 항목 모두 동의항목 ON 해야 KOE205 가 사라진다.
         redirectTo: `${siteUrl}/auth/social/complete/${parsedParams.provider}`,
+        ...(parsedParams.provider === "kakao"
+          ? { scopes: kakaoScopes }
+          : {}),
       },
     });
 
