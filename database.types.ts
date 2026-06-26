@@ -5038,6 +5038,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           analytics_consent_at: string | null
           avatar_url: string | null
           created_at: string
@@ -5048,6 +5049,7 @@ export type Database = {
           name: string
           next_exam_round: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year: number | null
+          nickname: string | null
           notify_channels: string[]
           onboarded_at: string | null
           phone_e164: string | null
@@ -5059,6 +5061,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
@@ -5069,6 +5072,7 @@ export type Database = {
           name: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year?: number | null
+          nickname?: string | null
           notify_channels?: string[]
           onboarded_at?: string | null
           phone_e164?: string | null
@@ -5080,6 +5084,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           analytics_consent_at?: string | null
           avatar_url?: string | null
           created_at?: string
@@ -5090,6 +5095,7 @@ export type Database = {
           name?: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
           next_exam_year?: number | null
+          nickname?: string | null
           notify_channels?: string[]
           onboarded_at?: string | null
           phone_e164?: string | null
