@@ -43,7 +43,8 @@ export interface LauncherSubject {
   postits: number;
   highlights: number;
   gs: { count: number; selfAvg: number } | null;
-  lastPoint: SubjectLastPoint | null;
+  /** 조문·판례·문제별 마지막 학습 지점(이어서 보기). 학습한 종류만 담긴다. */
+  lastPoints: SubjectLastPoint[];
 }
 
 export interface LauncherScience {
@@ -204,8 +205,6 @@ export function SubjectCard({
     );
   }
 
-  const lp = s.lastPoint;
-  const LpIcon = lp ? (TYPE_ICON[lp.type] ?? FileTextIcon) : FileTextIcon;
   const delta = s.passerAvg != null ? s.progressPct - s.passerAvg : null;
 
   return (
@@ -282,7 +281,10 @@ export function SubjectCard({
               : "text-muted-foreground"
           }
         />
-        <MiniStat label="문제 시도" value={s.attempts.toLocaleString("ko-KR")} />
+        <MiniStat
+          label="문제 시도"
+          value={s.attempts.toLocaleString("ko-KR")}
+        />
         {is2 && s.gs ? (
           <MiniStat
             label="답안"
@@ -298,42 +300,56 @@ export function SubjectCard({
         )}
       </div>
 
-      {/* last study point */}
-      {lp ? (
-        <Link
-          to={lp.path}
-          viewTransition
-          prefetch="intent"
-          className="border-border/60 bg-muted/40 mb-3.5 flex items-center gap-3 rounded-xl border p-3 no-underline"
-        >
-          <span className="bg-primary/10 text-primary inline-flex size-9 shrink-0 items-center justify-center rounded-lg">
-            <LpIcon className="size-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.1em] uppercase">
-              이어서 보기 · {lp.type}
-            </div>
-            <div className="text-foreground mt-0.5 truncate text-[13px] font-semibold">
-              {lp.label}
-            </div>
-            <div className="text-ink-soft mt-0.5 text-[11px]">{lp.sub}</div>
+      {/* 이어서 보기 — 조문·판례·문제별 마지막 학습 지점(각각 그 자리로 바로 이동) */}
+      {s.lastPoints.length > 0 ? (
+        <div className="mb-3.5 space-y-1.5">
+          <div className="text-muted-foreground font-mono text-[9px] font-bold tracking-[0.1em] uppercase">
+            이어서 보기
           </div>
-        </Link>
+          {s.lastPoints.map((p) => {
+            const PIcon = TYPE_ICON[p.type] ?? FileTextIcon;
+            return (
+              <Link
+                key={p.type}
+                to={p.path}
+                viewTransition
+                prefetch="intent"
+                className="border-border/60 bg-muted/40 hover:bg-muted flex items-center gap-2.5 rounded-xl border p-2.5 no-underline transition"
+              >
+                <span className="bg-primary/10 text-primary inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
+                  <PIcon className="size-3.5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-foreground text-[11px] font-bold">
+                      {p.type}
+                    </span>
+                    <span className="text-muted-foreground text-[10px]">
+                      {p.sub}
+                    </span>
+                  </div>
+                  <div className="text-foreground/90 mt-0.5 truncate text-xs font-medium">
+                    {p.label}
+                  </div>
+                </div>
+                <ArrowRightIcon className="text-muted-foreground size-3.5 shrink-0" />
+              </Link>
+            );
+          })}
+        </div>
       ) : null}
 
-      {/* CTAs */}
-      <div className="flex gap-2">
-        <Button asChild size="sm" className="flex-1 rounded-full">
-          <Link to={lp?.path ?? `/subjects/${s.slug}`} viewTransition>
-            이어서 보기 <ArrowRightIcon className="size-3.5" />
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm" className="rounded-full">
-          <Link to={`/subjects/${s.slug}`} viewTransition>
-            과목 홈
-          </Link>
-        </Button>
-      </div>
+      {/* 과목 홈 */}
+      <Button
+        asChild
+        variant="outline"
+        size="sm"
+        className="w-full rounded-full"
+      >
+        <Link to={`/subjects/${s.slug}`} viewTransition>
+          과목 홈 <ArrowRightIcon className="size-3.5" />
+        </Link>
+      </Button>
 
       {/* 자세히 expand */}
       <button
@@ -373,7 +389,12 @@ export function SubjectCard({
             />
           </div>
           <div className="mt-3.5 flex flex-wrap gap-1.5">
-            <Button asChild variant="secondary" size="sm" className="rounded-full">
+            <Button
+              asChild
+              variant="secondary"
+              size="sm"
+              className="rounded-full"
+            >
               <Link to={`/subjects/${s.slug}/quiz/setup`} viewTransition>
                 <TargetIcon className="size-3.5" /> 맞춤 퀴즈
               </Link>
@@ -405,7 +426,7 @@ export function ScienceCard({ s }: { s: LauncherScience }) {
             <span className="mr-1">{s.emoji}</span>
             {s.name}
           </h3>
-          <span className="bg-violet-500/12 inline-flex h-5 items-center rounded-full px-1.5 text-[10px] font-bold text-violet-600 dark:text-violet-400">
+          <span className="inline-flex h-5 items-center rounded-full bg-violet-500/12 px-1.5 text-[10px] font-bold text-violet-600 dark:text-violet-400">
             자연과학
           </span>
         </div>
@@ -443,7 +464,7 @@ export function ScienceCard({ s }: { s: LauncherScience }) {
           <span className="mr-1">{s.emoji}</span>
           {s.name}
         </h3>
-        <span className="bg-violet-500/12 inline-flex h-5 items-center rounded-full px-1.5 text-[10px] font-bold text-violet-600 dark:text-violet-400">
+        <span className="inline-flex h-5 items-center rounded-full bg-violet-500/12 px-1.5 text-[10px] font-bold text-violet-600 dark:text-violet-400">
           자연과학
         </span>
       </div>
@@ -471,7 +492,10 @@ export function ScienceCard({ s }: { s: LauncherScience }) {
           value={`${s.accuracy}%`}
           valueClass={scoreTextTone(s.accuracy)}
         />
-        <MiniStat label="문제 풀이" value={s.attempts.toLocaleString("ko-KR")} />
+        <MiniStat
+          label="문제 풀이"
+          value={s.attempts.toLocaleString("ko-KR")}
+        />
       </div>
 
       <Button asChild size="sm" className="mt-auto w-full rounded-full">

@@ -1,11 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
-import type {
-  AnnotationTargetType,
-} from "~/features/annotations/queries.server";
-import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import type { AnnotationTargetType } from "~/features/annotations/queries.server";
 import { articleSlug } from "~/features/laws/lib/identifier";
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+
+// ---- 문제 난이도 (전체 사용자 시도 집계) ----
+// 표시용 상수/타입은 client-safe 한 ./lib/difficulty 로 분리.
+import {
+  MIN_ATTEMPTS_FOR_DIFFICULTY,
+  type ProblemAggregateStats,
+  bucketDifficulty,
+  emptyProblemAggregate,
+} from "./lib/difficulty";
 
 export interface StudyScope {
   subject: LawSubjectSlug;
@@ -21,7 +28,8 @@ export async function recordStudySession(
 ): Promise<void> {
   const { error } = await client.from("study_sessions").insert({
     user_id: userId,
-    scope: scope as unknown as Database["public"]["Tables"]["study_sessions"]["Insert"]["scope"],
+    scope:
+      scope as unknown as Database["public"]["Tables"]["study_sessions"]["Insert"]["scope"],
   });
   if (error) throw error;
 }
@@ -200,7 +208,7 @@ export async function getLastStudyPointsBySubject(
   client: SupabaseClient<Database>,
   userId: string,
   subjects: { slug: LawSubjectSlug }[],
-): Promise<Record<string, SubjectLastPoint | null>> {
+): Promise<Record<string, SubjectLastPoint[]>> {
   const { data, error } = await client
     .from("study_sessions")
     .select("scope, started_at")
@@ -209,24 +217,31 @@ export async function getLastStudyPointsBySubject(
     .limit(500);
   if (error) throw error;
 
-  type Hit = { type: "article" | "case" | "problem"; id: string; at: string };
-  // DESC 정렬이라 과목별 첫 등장이 최신. 과목당 1건만 기록.
-  const latest = new Map<string, Hit>();
+  type Kind = "article" | "case" | "problem";
+  type Hit = { id: string; at: string };
+  // DESC 정렬이라 (과목, 종류) 별 첫 등장이 최신. 과목×종류당 1건만 기록 —
+  // 한 과목에서 조문/판례/문제 각각의 마지막 학습 지점을 따로 잡는다.
+  const latest = new Map<string, Hit>(); // key = `${subject}::${kind}`
   for (const row of data ?? []) {
     const scope = row.scope as Partial<StudyScope> | null;
     const tt = scope?.target_type;
     if (!scope || !scope.subject || !scope.target_id) continue;
     if (tt !== "article" && tt !== "case" && tt !== "problem") continue;
-    if (latest.has(scope.subject)) continue;
-    latest.set(scope.subject, { type: tt, id: scope.target_id, at: row.started_at });
+    const key = `${scope.subject}::${tt}`;
+    if (latest.has(key)) continue;
+    latest.set(key, { id: scope.target_id, at: row.started_at });
   }
 
-  const hits = [...latest.values()];
-  const idsOf = (t: Hit["type"]) =>
-    hits.filter((h) => h.type === t).map((h) => h.id);
-  const articleIds = idsOf("article");
-  const caseIds = idsOf("case");
-  const problemIds = idsOf("problem");
+  const idsByKind = (kind: Kind): string[] => {
+    const ids: string[] = [];
+    for (const [key, hit] of latest) {
+      if (key.endsWith(`::${kind}`)) ids.push(hit.id);
+    }
+    return ids;
+  };
+  const articleIds = idsByKind("article");
+  const caseIds = idsByKind("case");
+  const problemIds = idsByKind("problem");
 
   const [aData, cData, pData] = await Promise.all([
     articleIds.length
@@ -257,39 +272,41 @@ export async function getLastStudyPointsBySubject(
   const pMap = new Map(pData.map((p) => [p.problem_id, p] as const));
 
   const now = Date.now();
-  const out: Record<string, SubjectLastPoint | null> = {};
+  const out: Record<string, SubjectLastPoint[]> = {};
   for (const { slug } of subjects) {
-    const hit = latest.get(slug);
-    if (!hit) {
-      out[slug] = null;
-      continue;
+    const points: SubjectLastPoint[] = [];
+
+    // 조문
+    const aHit = latest.get(`${slug}::article`);
+    const a = aHit ? aMap.get(aHit.id) : undefined;
+    if (aHit && a) {
+      points.push({
+        type: "조문",
+        label: a.display_label || `제${a.article_number ?? ""}조`,
+        sub: relativeKoTime(aHit.at, now),
+        path:
+          a.article_number != null
+            ? `/subjects/${slug}/articles/${a.article_number}`
+            : `/subjects/${slug}`,
+      });
     }
-    const sub = relativeKoTime(hit.at, now);
-    if (hit.type === "article") {
-      const a = aMap.get(hit.id);
-      out[slug] = a
-        ? {
-            type: "조문",
-            label: a.display_label || `제${a.article_number ?? ""}조`,
-            sub,
-            path:
-              a.article_number != null
-                ? `/subjects/${slug}/articles/${a.article_number}`
-                : `/subjects/${slug}`,
-          }
-        : null;
-    } else if (hit.type === "case") {
-      const c = cMap.get(hit.id);
-      out[slug] = c
-        ? {
-            type: "판례",
-            label: c.case_title || c.case_number || "판례",
-            sub,
-            path: `/subjects/${slug}/cases/${hit.id}`,
-          }
-        : null;
-    } else {
-      const p = pMap.get(hit.id);
+
+    // 판례
+    const cHit = latest.get(`${slug}::case`);
+    const c = cHit ? cMap.get(cHit.id) : undefined;
+    if (cHit && c) {
+      points.push({
+        type: "판례",
+        label: c.case_title || c.case_number || "판례",
+        sub: relativeKoTime(cHit.at, now),
+        path: `/subjects/${slug}/cases/${cHit.id}`,
+      });
+    }
+
+    // 문제
+    const pHit = latest.get(`${slug}::problem`);
+    if (pHit) {
+      const p = pMap.get(pHit.id);
       const body = (p?.body_md ?? "").replace(/\s+/g, " ").trim();
       const label = body
         ? body.length > 30
@@ -298,13 +315,15 @@ export async function getLastStudyPointsBySubject(
         : p?.year
           ? `${p.year}년 ${p.problem_number ?? ""}번`
           : "문제";
-      out[slug] = {
+      points.push({
         type: "문제",
         label,
-        sub,
-        path: `/subjects/${slug}/problems/${hit.id}`,
-      };
+        sub: relativeKoTime(pHit.at, now),
+        path: `/subjects/${slug}/problems/${pHit.id}`,
+      });
     }
+
+    out[slug] = points;
   }
   return out;
 }
@@ -379,12 +398,7 @@ export interface QuizSession {
   sessionId: string;
   mode: QuizMode;
   lawCode: LawSubjectSlug | null;
-  scienceSubject:
-    | "physics"
-    | "chemistry"
-    | "biology"
-    | "earth_science"
-    | null;
+  scienceSubject: "physics" | "chemistry" | "biology" | "earth_science" | null;
   scopeType: QuizScopeType;
   scopePayload: Record<string, unknown>;
   problemIds: string[];
@@ -424,7 +438,8 @@ export async function createQuizSession(
       law_code: input.lawCode ?? null,
       science_subject: input.scienceSubject ?? null,
       scope_type: input.scopeType,
-      scope_payload: (input.scopePayload ?? {}) as Database["public"]["Tables"]["quiz_sessions"]["Insert"]["scope_payload"],
+      scope_payload: (input.scopePayload ??
+        {}) as Database["public"]["Tables"]["quiz_sessions"]["Insert"]["scope_payload"],
       problem_ids: input.problemIds,
       time_limit_sec: input.timeLimitSec ?? null,
       pack_id: input.packId ?? null,
@@ -469,8 +484,7 @@ export async function getQuizSession(
     sessionId: data.session_id,
     mode: data.mode as QuizMode,
     lawCode: data.law_code as LawSubjectSlug | null,
-    scienceSubject:
-      data.science_subject as QuizSession["scienceSubject"],
+    scienceSubject: data.science_subject as QuizSession["scienceSubject"],
     scopeType: data.scope_type as QuizScopeType,
     scopePayload: (data.scope_payload as Record<string, unknown>) ?? {},
     problemIds: data.problem_ids,
@@ -512,44 +526,44 @@ export async function getStudyAidCounts(
 
   const [wrongs, oxWrongs, bookmarkRes, memoRes, highlightRes, commentRes] =
     await Promise.all([
-    // 객관식 오답 카운트 — 최근 시도 기준 정확 카운트는 expensive 라서
-    // 정확한 listWrongAttempts 를 한 번 돌려 길이를 본다 (실제 위젯 표시용).
-    listWrongAttempts(client, userId),
-    listOxWrongAttempts(client, userId),
-    applySince(
-      client
-        .from("user_bookmarks")
-        .select("bookmark_id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .is("deleted_at", null)
-        .gt("star_level", 0),
-      "updated_at",
-    ),
-    applySince(
-      client
-        .from("user_memos")
-        .select("memo_id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .is("deleted_at", null),
-      "updated_at",
-    ),
-    applySince(
-      client
-        .from("user_highlights")
-        .select("highlight_id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .is("deleted_at", null),
-      "created_at",
-    ),
-    applySince(
-      client
-        .from("content_comments")
-        .select("comment_id", { count: "exact", head: true })
-        .eq("author_id", userId)
-        .is("deleted_at", null),
-      "updated_at",
-    ),
-  ]);
+      // 객관식 오답 카운트 — 최근 시도 기준 정확 카운트는 expensive 라서
+      // 정확한 listWrongAttempts 를 한 번 돌려 길이를 본다 (실제 위젯 표시용).
+      listWrongAttempts(client, userId),
+      listOxWrongAttempts(client, userId),
+      applySince(
+        client
+          .from("user_bookmarks")
+          .select("bookmark_id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .is("deleted_at", null)
+          .gt("star_level", 0),
+        "updated_at",
+      ),
+      applySince(
+        client
+          .from("user_memos")
+          .select("memo_id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .is("deleted_at", null),
+        "updated_at",
+      ),
+      applySince(
+        client
+          .from("user_highlights")
+          .select("highlight_id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .is("deleted_at", null),
+        "created_at",
+      ),
+      applySince(
+        client
+          .from("content_comments")
+          .select("comment_id", { count: "exact", head: true })
+          .eq("author_id", userId)
+          .is("deleted_at", null),
+        "updated_at",
+      ),
+    ]);
   return {
     wrongMcq: wrongs.length,
     wrongOx: oxWrongs.length,
@@ -637,11 +651,16 @@ export async function requestSubjectiveReview(
   client: SupabaseClient<Database>,
   userId: string,
   problemId: string,
-): Promise<{ ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }
+> {
   const existing = await getSubjectiveAttempt(client, userId, problemId);
   if (!existing) return { ok: false, error: "답안이 없습니다" };
   if (!existing.submittedAt) {
-    return { ok: false, error: "자기채점 완료(제출) 후에 첨삭 요청이 가능합니다." };
+    return {
+      ok: false,
+      error: "자기채점 완료(제출) 후에 첨삭 요청이 가능합니다.",
+    };
   }
   if (existing.reviewRequestedAt && !existing.reviewCompletedAt) {
     return { ok: false, error: "이미 첨삭 요청 중입니다." };
@@ -669,7 +688,9 @@ export async function completeSubjectiveReview(
   reviewerId: string,
   attemptId: string,
   input: { score: number | null; commentMd: string | null },
-): Promise<{ ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; attempt: SubjectiveAttempt } | { ok: false; error: string }
+> {
   const { data, error } = await client
     .from("user_subjective_attempts")
     .update({
@@ -756,21 +777,22 @@ export async function upsertSubjectiveAttempt(
     rubricSelfCheck?: number[] | null;
   },
 ): Promise<SubjectiveAttempt> {
-  const row: Database["public"]["Tables"]["user_subjective_attempts"]["Insert"] = {
-    user_id: userId,
-    problem_id: problemId,
-    answer_md: input.answerMd,
-    ...(input.submit
-      ? {
-          self_score: input.submit.selfScore,
-          self_score_note: input.submit.selfScoreNote,
-          submitted_at: new Date().toISOString(),
-        }
-      : {}),
-    ...(input.rubricSelfCheck !== undefined
-      ? { rubric_self_check: input.rubricSelfCheck }
-      : {}),
-  };
+  const row: Database["public"]["Tables"]["user_subjective_attempts"]["Insert"] =
+    {
+      user_id: userId,
+      problem_id: problemId,
+      answer_md: input.answerMd,
+      ...(input.submit
+        ? {
+            self_score: input.submit.selfScore,
+            self_score_note: input.submit.selfScoreNote,
+            submitted_at: new Date().toISOString(),
+          }
+        : {}),
+      ...(input.rubricSelfCheck !== undefined
+        ? { rubric_self_check: input.rubricSelfCheck }
+        : {}),
+    };
   const { data, error } = await client
     .from("user_subjective_attempts")
     .upsert(row, {
@@ -881,9 +903,7 @@ export async function getEvidenceForWrongProblems(
   // 1) problems — primary_article_id, source_chunk_ids, explanation_md.
   const { data: probs, error: pErr } = await client
     .from("problems")
-    .select(
-      "problem_id, primary_article_id, source_chunk_ids, explanation_md",
-    )
+    .select("problem_id, primary_article_id, source_chunk_ids, explanation_md")
     .in("problem_id", wrongProblemIds);
   if (pErr) throw pErr;
 
@@ -945,9 +965,7 @@ export async function getEvidenceForWrongProblems(
   const articlesByIdPromise = articleIds.size
     ? client
         .from("articles")
-        .select(
-          "article_id, display_label, article_number, laws(law_code)",
-        )
+        .select("article_id, display_label, article_number, laws(law_code)")
         .in("article_id", [...articleIds])
     : Promise.resolve({ data: [] });
   const casesByIdPromise = caseIds.size
@@ -1222,19 +1240,7 @@ export async function getQuizSessionResult(
   };
 }
 
-// ---- 문제 난이도 (전체 사용자 시도 집계) ----
-// 표시용 상수/타입은 client-safe 한 ./lib/difficulty 로 분리.
-import {
-  bucketDifficulty,
-  emptyProblemAggregate,
-  MIN_ATTEMPTS_FOR_DIFFICULTY,
-  type ProblemAggregateStats,
-} from "./lib/difficulty";
-
-export type {
-  DifficultyBucket,
-  ProblemAggregateStats,
-} from "./lib/difficulty";
+export type { DifficultyBucket, ProblemAggregateStats } from "./lib/difficulty";
 
 export async function getProblemStatsBulk(
   client: SupabaseClient<Database>,
@@ -1253,7 +1259,9 @@ export async function getProblemStatsBulk(
     if (error) throw error;
     for (const r of data ?? []) {
       const accuracyPct =
-        r.attempts > 0 ? Math.round((r.correct_attempts / r.attempts) * 100) : null;
+        r.attempts > 0
+          ? Math.round((r.correct_attempts / r.attempts) * 100)
+          : null;
       out.set(r.problem_id, {
         attempts: r.attempts,
         correctAttempts: r.correct_attempts,
@@ -1405,9 +1413,15 @@ export async function getRecentActivity(
   if (pending.length === 0) return [];
 
   // 2. 라벨 lookup — type 별 bulk.
-  const articleIds = pending.filter((p) => p.type === "article").map((p) => p.targetId);
-  const caseIds = pending.filter((p) => p.type === "case").map((p) => p.targetId);
-  const problemIds = pending.filter((p) => p.type === "problem").map((p) => p.targetId);
+  const articleIds = pending
+    .filter((p) => p.type === "article")
+    .map((p) => p.targetId);
+  const caseIds = pending
+    .filter((p) => p.type === "case")
+    .map((p) => p.targetId);
+  const problemIds = pending
+    .filter((p) => p.type === "problem")
+    .map((p) => p.targetId);
 
   const articleMap = new Map<
     string,
@@ -1416,9 +1430,7 @@ export async function getRecentActivity(
   if (articleIds.length > 0) {
     const { data: rows } = await client
       .from("articles")
-      .select(
-        "article_id, article_number, display_label, laws!inner(law_code)",
-      )
+      .select("article_id, article_number, display_label, laws!inner(law_code)")
       .in("article_id", articleIds);
     for (const r of rows ?? []) {
       if (!r.article_number) continue;
@@ -1450,14 +1462,17 @@ export async function getRecentActivity(
 
   const problemMap = new Map<
     string,
-    { snippet: string; year: number | null; problemNumber: number | null; lawCode: string }
+    {
+      snippet: string;
+      year: number | null;
+      problemNumber: number | null;
+      lawCode: string;
+    }
   >();
   if (problemIds.length > 0) {
     const { data: rows } = await client
       .from("problems")
-      .select(
-        "problem_id, body_md, year, problem_number, laws!inner(law_code)",
-      )
+      .select("problem_id, body_md, year, problem_number, laws!inner(law_code)")
       .in("problem_id", problemIds);
     for (const r of rows ?? []) {
       const body = r.body_md ?? "";
@@ -1650,7 +1665,11 @@ export async function getDailyStudyStats(
     .gte("attempted_at", rangeStart.toISOString())
     .order("attempted_at", { ascending: true })
     .limit(10000);
-  if (opts.until) q = q.lt("attempted_at", new Date(rangeEnd.getTime() + 86400000).toISOString());
+  if (opts.until)
+    q = q.lt(
+      "attempted_at",
+      new Date(rangeEnd.getTime() + 86400000).toISOString(),
+    );
   const { data: rows, error } = await q;
   if (error) throw error;
 
@@ -1762,7 +1781,8 @@ export async function getDashboardKpis(
   return {
     totalProblemTimeMs: timeMs,
     totalProblemsAttempted: distinct.size,
-    overallAccuracyPct: list.length > 0 ? Math.round((correct / list.length) * 100) : 0,
+    overallAccuracyPct:
+      list.length > 0 ? Math.round((correct / list.length) * 100) : 0,
     last7d: {
       totalProblemTimeMs: timeMs7d,
       totalProblemsAttempted: distinct7d.size,
@@ -1817,7 +1837,8 @@ export async function getAllSubjectsProgress(
   const visitedBySubject = new Map<string, Set<string>>();
   for (const r of sessRows ?? []) {
     const scope = r.scope as Partial<StudyScope> | null;
-    if (!scope?.subject || scope.target_type !== "article" || !scope.target_id) continue;
+    if (!scope?.subject || scope.target_type !== "article" || !scope.target_id)
+      continue;
     if (!visitedBySubject.has(scope.subject))
       visitedBySubject.set(scope.subject, new Set());
     visitedBySubject.get(scope.subject)!.add(scope.target_id);
@@ -1855,7 +1876,10 @@ export async function getAllSubjectsProgress(
       visitedCount: visited,
       totalArticleCount: total,
       problemsAttempted: distinctAttempted,
-      accuracyPct: acc && acc.total > 0 ? Math.round((acc.correct / acc.total) * 100) : null,
+      accuracyPct:
+        acc && acc.total > 0
+          ? Math.round((acc.correct / acc.total) * 100)
+          : null,
     };
   });
 }
@@ -1885,7 +1909,12 @@ export async function getUserProblemStats(
     .eq("law_code", lawCode)
     .maybeSingle();
   if (!law) {
-    return { attemptedCount: 0, correctCount: 0, wrongCount: 0, totalAttempts: 0 };
+    return {
+      attemptedCount: 0,
+      correctCount: 0,
+      wrongCount: 0,
+      totalAttempts: 0,
+    };
   }
   const { data: rows, error } = await client
     .from("user_problem_attempts")
@@ -2024,7 +2053,8 @@ export async function listWrongAttempts(
   const out: WrongAttemptItem[] = [];
   for (const { row, attempts } of lastByProblem.values()) {
     if (row.is_correct) continue;
-    const probLawCode = (row.problems.laws.law_code as LawSubjectSlug) ?? "patent";
+    const probLawCode =
+      (row.problems.laws.law_code as LawSubjectSlug) ?? "patent";
     if (lawCode && probLawCode !== lawCode) continue;
     const body = row.problems.body_md ?? "";
     out.push({
@@ -2108,7 +2138,8 @@ export async function listOxWrongAttempts(
     if (v.row.is_correct) continue;
     wrongRefs.push({ refKey, ...v });
     if (v.row.selected_choice_id) choiceIds.push(v.row.selected_choice_id);
-    else if (v.row.selected_box_item_id) boxIds.push(v.row.selected_box_item_id);
+    else if (v.row.selected_box_item_id)
+      boxIds.push(v.row.selected_box_item_id);
   }
   if (wrongRefs.length === 0) return [];
 
@@ -2157,7 +2188,8 @@ export async function listOxWrongAttempts(
   }
 
   const articleIds = new Set<string>();
-  for (const c of choiceMap.values()) if (c.articleId) articleIds.add(c.articleId);
+  for (const c of choiceMap.values())
+    if (c.articleId) articleIds.add(c.articleId);
   for (const b of boxMap.values()) if (b.articleId) articleIds.add(b.articleId);
 
   const articleMap = new Map<
@@ -2183,12 +2215,18 @@ export async function listOxWrongAttempts(
 
   const problemMap = new Map<
     string,
-    { year: number | null; problemNumber: number | null; lawCode: LawSubjectSlug }
+    {
+      year: number | null;
+      problemNumber: number | null;
+      lawCode: LawSubjectSlug;
+    }
   >();
   if (problemIds.size > 0) {
     const { data: pRows } = await client
       .from("problems")
-      .select("problem_id, year, problem_number, deleted_at, laws!inner(law_code)")
+      .select(
+        "problem_id, year, problem_number, deleted_at, laws!inner(law_code)",
+      )
       .in("problem_id", [...problemIds]);
     for (const p of pRows ?? []) {
       if (p.deleted_at) continue;
@@ -2208,7 +2246,8 @@ export async function listOxWrongAttempts(
       .from("problem_choices")
       .select("choice_id, ox_truth")
       .in("choice_id", choiceIds);
-    for (const r of ct ?? []) choiceTruthMap.set(r.choice_id, r.ox_truth as "O" | "X" | null);
+    for (const r of ct ?? [])
+      choiceTruthMap.set(r.choice_id, r.ox_truth as "O" | "X" | null);
   }
   const boxTruthMap = new Map<string, "O" | "X" | null>();
   if (boxIds.length > 0) {
@@ -2216,7 +2255,8 @@ export async function listOxWrongAttempts(
       .from("problem_box_items")
       .select("box_item_id, ox_truth")
       .in("box_item_id", boxIds);
-    for (const r of bt ?? []) boxTruthMap.set(r.box_item_id, r.ox_truth as "O" | "X" | null);
+    for (const r of bt ?? [])
+      boxTruthMap.set(r.box_item_id, r.ox_truth as "O" | "X" | null);
   }
 
   const out: OxWrongAttemptItem[] = [];
@@ -2689,9 +2729,7 @@ export async function getUserAccuracyTrend(
     .gte("attempted_at", firstWeekStart.toISOString())
     .limit(20000);
   if (opts.until) {
-    const tilEndWeek = new Date(
-      lastWeekStart.getTime() + 7 * 24 * 3600 * 1000,
-    );
+    const tilEndWeek = new Date(lastWeekStart.getTime() + 7 * 24 * 3600 * 1000);
     q = q.lt("attempted_at", tilEndWeek.toISOString());
   }
   const { data: rows, error } = await q;
@@ -2722,14 +2760,17 @@ export async function getUserAccuracyTrend(
       (thisWeekStart.getTime() - cursor) / (7 * 24 * 3600 * 1000),
     );
     const label =
-      weeksAgo === 0 ? "이번 주" : weeksAgo > 0 ? `${weeksAgo}주 전` : `+${-weeksAgo}주`;
+      weeksAgo === 0
+        ? "이번 주"
+        : weeksAgo > 0
+          ? `${weeksAgo}주 전`
+          : `+${-weeksAgo}주`;
     weeks.push({
       weekStart: key,
       label,
       totalAttempts: total,
       correctAttempts: correct,
-      accuracyPct:
-        total > 0 ? Math.round((correct / total) * 1000) / 10 : null,
+      accuracyPct: total > 0 ? Math.round((correct / total) * 1000) / 10 : null,
     });
     cursor += 7 * 24 * 3600 * 1000;
     safety += 1;
