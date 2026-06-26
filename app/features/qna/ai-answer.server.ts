@@ -12,7 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "database.types";
 
-import { getAppSetting } from "~/core/lib/app-settings.server";
+import { getAppSetting, setAppSetting } from "~/core/lib/app-settings.server";
 import { classifyRefusal } from "~/features/ai-qna/conversations.server";
 import { answerQuestion } from "~/features/ai-qna/lib/answer.server";
 import type { Citation } from "~/features/ai-qna/lib/citations";
@@ -27,6 +27,7 @@ import {
   recordUsage,
 } from "~/features/ai-qna/lib/usage-tracker.server";
 import {
+  getAiQuotas,
   getQuotaState,
   getUserAiTier,
   type AiTier,
@@ -37,12 +38,6 @@ import {
  * 품질 미흡 시 이 상수만 상향. (구 /ai 챗은 AI_QNA_MODEL=Sonnet 유지)
  */
 export const QNA_INSTANT_MODEL = "claude-haiku-4-5" as const;
-
-/** AI 즉답 1건 최대 출력 토큰 — 간결 답변 유도(비용·가독성). */
-const QNA_INSTANT_MAX_TOKENS = 800;
-
-/** 검색 컨텍스트 청크 수. */
-const QNA_INSTANT_CONTEXT_CHUNKS = 8;
 
 // ── 등급별 즉답 토글 ───────────────────────────────────────────────────────
 
@@ -72,6 +67,22 @@ export async function getQnaAiInstantToggle(
     free: r.free === true, // 명시적 true 일 때만 ON
     tier1: r.tier1 !== false, // 명시적 false 일 때만 OFF(기본 ON)
   };
+}
+
+/** 등급별 즉답 토글 저장(운영자). RLS 로 staff 만 통과. */
+export async function setQnaAiInstantToggle(
+  client: SupabaseClient<Database>,
+  toggle: QnaAiInstantToggle,
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  return setAppSetting(
+    client,
+    QNA_AI_INSTANT_KEY,
+    { free: toggle.free, tier1: toggle.tier1 } as unknown as Parameters<
+      typeof setAppSetting
+    >[2],
+    userId,
+  );
 }
 
 // ── 즉답 여부 결정 ─────────────────────────────────────────────────────────
@@ -140,13 +151,16 @@ export async function generateInstantAnswer(
   if (!question) return;
 
   try {
+    // 운영자 한도 — 컨텍스트 청크 수·최대 출력 토큰(/admin/ai-qna/settings 에서 조정).
+    const quotas = await getAiQuotas(adminClient);
+
     // 도메인 게이트(기본 OFF, env 토글) — 검색 전.
     const gateMode = gateModeFromEnv();
     const preGate = preSearchGate(question, gateMode);
     if (preGate && !preGate.pass) return; // 강사 대기
 
     const search = await hybridSearch(adminClient, question, {
-      topK: QNA_INSTANT_CONTEXT_CHUNKS,
+      topK: quotas.maxContextChunks,
       lawCodesOverride: lawCodesForSubject(thread.subject),
     });
 
@@ -161,7 +175,7 @@ export async function generateInstantAnswer(
     for await (const ev of answerQuestion(
       [{ role: "user", content: question }],
       search.hits,
-      { maxTokens: QNA_INSTANT_MAX_TOKENS, model: QNA_INSTANT_MODEL },
+      { maxTokens: quotas.maxOutputTokens, model: QNA_INSTANT_MODEL },
     )) {
       if (ev.type === "text") {
         fullText += ev.delta;

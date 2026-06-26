@@ -1,16 +1,23 @@
-// feat-9-006 — 운영자용 AI Q&A 한도 + 토큰 캡 편집 화면.
-// app_settings.ai_qna_quotas jsonb 1개 키. 저장 즉시 다음 ask 부터 반영.
+// feat-9-006 / 통합 Q&A Phase 6 — 운영자용 AI Q&A 설정 화면.
+// ① 등급별 'AI 즉답' 토글(app_settings.qna_ai_instant) ② 한도·토큰 캡(ai_qna_quotas).
+// 저장 즉시 다음 질문부터 반영.
 
-import { Loader2Icon, SaveIcon } from "lucide-react";
+import { Loader2Icon, SaveIcon, SparklesIcon } from "lucide-react";
 import { useState } from "react";
 import { Form, data, redirect, useNavigation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
+import { Switch } from "~/core/components/ui/switch";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getStaffRole } from "~/features/laws/queries.server";
+import {
+  getQnaAiInstantToggle,
+  setQnaAiInstantToggle,
+  type QnaAiInstantToggle,
+} from "~/features/qna/ai-answer.server";
 import {
   getAiQuotas,
   setAiQuotas,
@@ -20,7 +27,7 @@ import {
 import type { Route } from "./+types/admin-ai-qna-settings";
 
 export const meta: Route.MetaFunction = () => [
-  { title: "AI Q&A 한도 설정 | 운영자" },
+  { title: "AI Q&A 설정 | 운영자" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -31,8 +38,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw redirect("/login");
   const role = await getStaffRole(client, user.id);
   if (!role) throw redirect("/admin");
-  const quotas = await getAiQuotas(client);
-  return { quotas };
+  const [quotas, instant] = await Promise.all([
+    getAiQuotas(client),
+    getQnaAiInstantToggle(client),
+  ]);
+  return { quotas, instant };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -45,6 +55,18 @@ export async function action({ request }: Route.ActionArgs) {
   if (!role) return data({ error: "Forbidden" }, { status: 403 });
 
   const fd = await request.formData();
+
+  // 등급별 즉답 토글 저장 — 통합 Q&A 질문 생성 시 즉답 여부 결정.
+  if (fd.get("intent") === "instant") {
+    const toggle: QnaAiInstantToggle = {
+      free: fd.get("free") === "on",
+      tier1: fd.get("tier1") === "on",
+    };
+    const res = await setQnaAiInstantToggle(client, toggle, user.id);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: true, savedInstant: toggle });
+  }
+
   const next: AiQuotas = {
     freeDailyLimit: pickPositiveInt(fd.get("freeDailyLimit"), 5),
     tier1DailyLimit: pickPositiveInt(fd.get("tier1DailyLimit"), 20),
@@ -80,29 +102,100 @@ export default function AdminAiQnaSettings({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { quotas } = loaderData;
+  const { quotas, instant } = loaderData;
   const navigation = useNavigation();
   const saving = navigation.state !== "idle";
   const [draft, setDraft] = useState<AiQuotas>(quotas);
-  const saved = actionData && "ok" in actionData && actionData.ok;
+  const [instantDraft, setInstantDraft] = useState<QnaAiInstantToggle>(instant);
+  const quotaSaved = actionData && "saved" in actionData;
+  const instantSaved = actionData && "savedInstant" in actionData;
   const error =
     actionData && "error" in actionData ? actionData.error : null;
 
   return (
-    <AdminShell title="AI Q&A 한도 설정" cluster="comms">
+    <AdminShell title="AI Q&A 설정" cluster="comms">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
-          <h1 className="text-xl font-bold tracking-tight">
-            AI Q&A 한도 · 토큰 캡
-          </h1>
+          <h1 className="text-xl font-bold tracking-tight">AI Q&A 설정</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            저장 즉시 다음 요청부터 반영됩니다. 사용량 측정은{" "}
-            <code className="text-foreground">ai_messages.token_usage</code>{" "}
-            컬럼에서 향후 사용량 기반 청구로 활용 가능합니다.
+            통합 Q&A 의 등급별 AI 즉답 활성 여부와 한도·토큰 캡을 관리합니다. 저장
+            즉시 다음 질문부터 반영됩니다.
           </p>
         </header>
 
+        {/* ① 등급별 AI 즉답 토글 — 통합 Q&A 질문 시 AI 즉답 여부. OFF 면 강사 답변 대기. */}
+        <Form
+          method="post"
+          className="border-border bg-card space-y-4 rounded-2xl border p-5 shadow-sm"
+        >
+          <input type="hidden" name="intent" value="instant" />
+          <input
+            type="hidden"
+            name="free"
+            value={instantDraft.free ? "on" : "off"}
+          />
+          <input
+            type="hidden"
+            name="tier1"
+            value={instantDraft.tier1 ? "on" : "off"}
+          />
+          <div className="flex items-center gap-2">
+            <SparklesIcon className="text-link size-4" />
+            <h2 className="text-sm font-bold tracking-tight">
+              등급별 AI 즉답
+            </h2>
+          </div>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            ON 이면 해당 등급 학생이 Q&amp;A 에 질문할 때 AI 가 즉시 답변합니다(강사가
+            이후 정확/부정확을 확인). OFF 면 AI 없이 <strong>강사 답변 대기</strong>
+            로 등록됩니다(질문은 정상 접수). 품질을 확인하며 단계적으로 개방하세요.
+          </p>
+
+          <ToggleRow
+            label="회원3 · 강사 (tier1)"
+            help="area_study_mgmt 구독자 + 강사. 비용 부담이 작아 우선 개방 권장."
+            checked={instantDraft.tier1}
+            onChange={(v) => setInstantDraft({ ...instantDraft, tier1: v })}
+          />
+          <ToggleRow
+            label="무료 학생 (free)"
+            help="그 외 전체. 사용량이 많아 비용 영향이 큼 — 품질 확인 후 개방."
+            checked={instantDraft.free}
+            onChange={(v) => setInstantDraft({ ...instantDraft, free: v })}
+          />
+
+          {instantSaved ? (
+            <p className="text-sm text-emerald-600 dark:text-emerald-300">
+              즉답 설정이 저장되었습니다.
+            </p>
+          ) : null}
+
+          <div className="flex items-center gap-2">
+            <Button type="submit" size="sm" disabled={saving} className="rounded-full">
+              {saving ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <SaveIcon className="size-3.5" />
+              )}
+              즉답 설정 저장
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setInstantDraft(instant)}
+              disabled={saving}
+              className="rounded-full"
+            >
+              되돌리기
+            </Button>
+          </div>
+        </Form>
+
+        {/* ② 한도·토큰 캡 */}
+        <h2 className="text-sm font-bold tracking-tight">한도 · 토큰 캡</h2>
         <Form method="post" className="space-y-5">
+          <input type="hidden" name="intent" value="quotas" />
           <FieldRow
             label="무료 사용자 일 한도 (회/일)"
             help="비구독 학생의 하루 질문 횟수. 작은 값이 안전 — 기본 5."
@@ -143,7 +236,7 @@ export default function AdminAiQnaSettings({
           {error ? (
             <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>
           ) : null}
-          {saved ? (
+          {quotaSaved ? (
             <p className="text-sm text-emerald-600 dark:text-emerald-300">
               저장되었습니다.
             </p>
@@ -173,14 +266,14 @@ export default function AdminAiQnaSettings({
 
         <section className="border-border bg-muted/30 rounded-2xl border p-4 text-xs">
           <p className="text-foreground font-semibold">
-            비용 추정 (Claude Sonnet 4.6 기준, 한 건당 약 75원)
+            비용 추정 (Claude Haiku 4.5 기준, 한 건당 약 10원)
           </p>
           <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-4 leading-relaxed">
             <li>
               회원3 50명 × {draft.tier1DailyLimit}회/일 × 30일 ≈{" "}
               <strong className="text-foreground tabular-nums">
                 {(
-                  (50 * draft.tier1DailyLimit * 30 * 75) /
+                  (50 * draft.tier1DailyLimit * 30 * 10) /
                   10000
                 ).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}
               </strong>{" "}
@@ -190,21 +283,49 @@ export default function AdminAiQnaSettings({
               무료 100명 × {draft.freeDailyLimit}회/일 × 30일 ≈{" "}
               <strong className="text-foreground tabular-nums">
                 {(
-                  (100 * draft.freeDailyLimit * 30 * 75) /
+                  (100 * draft.freeDailyLimit * 30 * 10) /
                   10000
                 ).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}
               </strong>{" "}
               만원/월
             </li>
             <li>
-              실제는 평균 30% 사용 가정 시 위 값의 약 1/3 — 데이터가 쌓이면{" "}
-              <code className="text-foreground">ai_messages.token_usage</code>{" "}
-              로 정밀 정산 가능.
+              위는 한도 100% 사용 시 상한 — 실제는 더 낮습니다. 즉답이 꺼진 등급은
+              비용이 발생하지 않으며, 전역 일일 캡(<code className="text-foreground">
+                AI_QNA_DAILY_*_CAP
+              </code>)으로 최악도 천장 이하로 보장됩니다.
             </li>
           </ul>
         </section>
       </div>
     </AdminShell>
+  );
+}
+
+function ToggleRow({
+  label,
+  help,
+  checked,
+  onChange,
+}: {
+  label: string;
+  help: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="border-border/60 flex items-start justify-between gap-4 rounded-xl border p-3">
+      <div className="space-y-0.5">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-muted-foreground text-xs leading-relaxed">{help}</p>
+      </div>
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+        aria-label={label}
+        className="mt-0.5 shrink-0"
+      />
+    </div>
   );
 }
 

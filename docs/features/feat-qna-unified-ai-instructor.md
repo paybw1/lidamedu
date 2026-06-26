@@ -1,6 +1,6 @@
 # 통합 Q&A 설계 — 강사 + AI 답변 (학생 접근 최우선)
 
-> 상태: **구현 중 — Phase 1~5 완료(모델·즉답·평가·검토큐·진입통합).** Phase 6(운영 토글 UI) 대기. 기존 두 시스템(학습지원 AI Q&A + 커뮤니티 Q&A)을 하나로 합쳐, **학생이 한 곳에서 질문하면 AI가 즉시 답하고 강사가 확인·보완**하는 구조.
+> 상태: **Phase 1~6 전부 완료(모델·즉답·평가·검토큐·진입통합·운영토글).** 기존 두 시스템(학습지원 AI Q&A + 커뮤니티 Q&A)을 하나로 합쳐, **학생이 한 곳에서 질문하면 AI가 즉시 답하고 강사가 확인·보완**하는 구조. 별도 후속(선택): 멀티턴 후속질문·출처 원문 링크·학생 👍/👎·기존 AI 대화 데이터 이관.
 
 ## 0. 확정 결정 (2026-06-26)
 - **모델 A** (스레드 + 메시지 통합).
@@ -88,7 +88,7 @@
 3. ✅ **스레드 UI + 강사 정오 평가**(완료): 상세를 타임라인(질문→AI 카드→강사 답변)으로. **강사 정오 평가**(사용자 요청)=시험 대비라 binary **정확/부정확**(부분정확 없음). `qna_messages += verdict('correct'|'incorrect')·verified_by·verified_at`(마이그 20260626_qna_verdict, RLS 추가 불요·staff UPDATE 기존 정책 허용). 액션 `verdict` intent(staff 게이트)=AI 메시지에 verdict 부착 + 정확→thread `verified` / 부정확→`ai_answered`(강사 정정답변 폼 재노출, 기존 answer_md 흐름 재사용). 학생은 AI 카드에 **강사 확인·정확 / 강사 평가·부정확** 배지로 신뢰도 확인. 모듈 `setAiVerdict`(queries) + `VerdictControl`(qna-detail). **이번 제외**(후속 단계): 멀티턴 후속질문·출처 원문 링크·학생 👍/👎(AI 메시지는 author=null 이라 asker feedback RLS/RPC 별도 필요)·데이터 ETL.
 4. ✅ **강사 검토 큐**(완료): `/qna` 에 강사 전용 **"검토 필요"** 스코프(`scope=review`) = 미답(`open`) + AI 미검토(`ai_answered`) 모아보기, FIFO(오래된 것 먼저). 전역 카운트 배지(`countReviewQueue`), 빈 큐 전용 메시지. 카드 상태칩으로 미답(코랄)/AI답변 triage. 보완답변·✓확인은 Phase 3(평가+answer_md 재사용)로 선반영. `listThreads` scope 확장 + `getStaffRole` 게이트.
 5. ✅ **진입 통합**(완료): nav `학습지원`의 "AI Q&A" 항목 제거(커뮤니티 "Q&A"/qna 로 일원화). `AskAiButton`(조문/판례/문제 뷰어)→`/qna/new?targetType&targetId(+seed 본문 프리필)`, 라벨 "질문하기". `/ai` 라우트=`/qna` 로 redirect(ai-chat 은퇴 스텁, 멀티턴 UI는 git 이력 보존). 대시보드 "최근 AI 대화" 카드→**"최근 Q&A"**(dash-qna, asked-by-me 3건). study-aids-shell `/ai` 아이콘 매핑 제거. **유지**: 관리자 `/admin/ai-qna/*` 화면 + RAG 인프라(answer/hybrid-search/usage) + `/api/ai-qna/ask`(dormant).
-6. **운영 토글 UI + 정리**: 등급별 즉답 on/off 관리 화면, admin AI 화면 재배치, SPEC/문서.
+6. ✅ **운영 토글 UI**(완료): `/admin/ai-qna/settings`(제목 "AI Q&A 설정")에 **등급별 AI 즉답 토글** 섹션 추가 — Switch 2개(tier1·free)로 `app_settings.qna_ai_instant` 켜고 끄기(`setQnaAiInstantToggle`, action intent 분기). 즉답 생성이 `maxOutputTokens`·`maxContextChunks` 쿼터를 실제 사용하도록 `generateInstantAnswer` 배선(/ai 은퇴로 죽지 않게) + 비용 추정 Haiku(₩10) 기준 갱신. SPEC §5.9 통합 노트 등록.
 
 ## 9. 잔여(구현 중 확정) 
 - 등급별 즉답 기본값(초기: tier1 ON·free OFF 제안) + 운영자 토글 UI 위치.

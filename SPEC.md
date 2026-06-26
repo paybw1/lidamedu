@@ -570,6 +570,8 @@
 
 §14 결정 6건 권장안 채택 (2026-05-20): Voyage `voyage-3-large` 1024 차원, `claude-sonnet-4-6`, 무료 5/일·회원3 50/일, 뷰어 패널 먼저, 직전 4턴, 자연과학 v1 제외.
 
+> **★통합 Q&A (2026-06-26) — feat-9(AI) + feat-qna(강사) 일원화.** 별개였던 두 시스템을 커뮤니티 **Q&A(/qna)** 하나로 합쳤다. 학생이 질문하면 AI(**Haiku 4.5**)가 즉답하고 강사가 **정확/부정확**을 확인·보완. Phase 1~6 완료(설계·라이브): ① `qna_messages` 모델 + 등급별 즉답 토글(`app_settings.qna_ai_instant`) ② AI 즉답 배선(`generateInstantAnswer`, 토글/쿼터/글로벌캡 게이트, 거절=강사대기 폴백, 쿼터는 `ai_messages`+`qna_messages` 합산) ③ 강사 정오 평가(`qna_messages.verdict`) ④ 강사 검토 큐(`/qna?scope=review`) ⑤ 진입 통합(`/ai`→`/qna` redirect, `AskAiButton`→통합 작성, 대시보드 "최근 Q&A", nav 단일) ⑥ 운영자 등급별 즉답 토글 UI(`/admin/ai-qna/settings`). 아래 feat-9-004 의 `/ai` 챗 UI 는 **은퇴**(코드 git 이력 보존), RAG 인프라(feat-9-001~003)·관리자 화면·`/api/ai-qna/ask`(dormant)는 유지. **별도 후속**: 멀티턴 후속질문·출처 원문 링크·학생 👍/👎·기존 AI 대화 데이터 이관. 상세: `docs/features/feat-qna-unified-ai-instructor.md`.
+
 | ID | 기능 | 우선순위 | 상태 |
 |----|------|:-------:|:---:|
 | feat-9-001 | RAG 인프라 — `vector` 확장 + `content_chunks`(임베딩) + 청킹 + 임베딩 파이프라인(`/api/cron/embed-chunks`) + 전체 백필 | P2 | 🟡 |
