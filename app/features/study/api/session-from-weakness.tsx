@@ -54,7 +54,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data(
       {
         error:
-          "아직 약점 데이터가 부족합니다. 문제를 더 풀면 약점 단원 기반으로 추천돼요.",
+          "아직 약점 데이터가 부족합니다. 문제를 더 풀면 약점 단원을 기반으로 추천해 드립니다.",
       },
       { status: 400 },
     );

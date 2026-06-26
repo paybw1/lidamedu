@@ -150,10 +150,10 @@ async function pickWeakProblem(
     const extraCount = due.length - 1;
     return {
       kind: "weak_problem",
-      title: `복습 due — ${top.primaryArticleLabel ?? "미분류"}`,
+      title: `복습 예정 — ${top.primaryArticleLabel ?? "미분류"}`,
       body:
         extraCount > 0
-          ? `복습 시점 도래. SRS 큐 ${due.length}건 (${overdueDays}일 지남).`
+          ? `복습 시점 도래. 복습 큐 ${due.length}건 (${overdueDays}일 지남).`
           : `복습 시점 도래 (${overdueDays}일 지남). 간격 ${top.intervalDays}일 · 실패 ${top.lapses}회.`,
       ctaLabel: extraCount > 0 ? `복습 시작 (+${extraCount}건)` : "이 문제 풀기",
       ctaUrl: `/subjects/${top.lawCode}/problems/${top.problemId}`,
@@ -300,10 +300,10 @@ async function pickBlankDue(
     const extra = dueSets.length - 1;
     return {
       kind: "blank_due",
-      title: `빈칸 복습 due — ${top.displayLabel}`,
+      title: `빈칸 복습 예정 — ${top.displayLabel}`,
       body:
         extra > 0
-          ? `${top.dueBlankCount}개 빈칸 복습 시점 도래 (${overdueDays}일 지남). 다른 ${extra}개 세트도 due.`
+          ? `${top.dueBlankCount}개 빈칸 복습 시점 도래 (${overdueDays}일 지남). 다른 ${extra}개 세트도 복습 예정.`
           : `${top.dueBlankCount}개 빈칸 복습 시점 도래 (${overdueDays}일 지남).`,
       ctaLabel: "복습 시작",
       ctaUrl: `/subjects/${top.lawCode}/articles/${top.articleNumber}?blank=${top.setId}`,

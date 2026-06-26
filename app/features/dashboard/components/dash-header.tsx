@@ -39,8 +39,8 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
   const roundLabel = `변리사 ${data.examRound === "second" ? "2차" : "1차"}`;
   const remainText =
     data.remainingHours > 0
-      ? `오늘은 ${data.remainingHours.toFixed(1)}시간 더 학습하면 일 목표에 닿아요.`
-      : "오늘 학습 목표를 달성했어요. 흐름을 이어가 보세요.";
+      ? `오늘은 ${data.remainingHours.toFixed(1)}시간 더 학습하면 일 목표에 닿습니다.`
+      : "오늘 학습 목표를 달성했습니다. 흐름을 이어가 보세요.";
 
   return (
     <div

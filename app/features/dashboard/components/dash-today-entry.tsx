@@ -100,7 +100,7 @@ function TodayEntryEmpty() {
   return (
     <EmptyState
       icon={<SparklesIcon className="size-7" />}
-      title="첫 학습부터 시작해 볼까요?"
+      title="첫 학습부터 시작해 보세요"
       description="첫 학습을 시작하면 다음 날부터 복습 카드와 맞춤 추천이 자동으로 생깁니다."
       actions={
         <>
@@ -128,7 +128,7 @@ function TodayEntryAllDone() {
     <EmptyState
       icon={<CheckCircle2Icon className="size-7 text-emerald-500" />}
       title="오늘 할 일 완료"
-      description="복습·추천·과제를 모두 처리했어요. 더 학습하려면 오늘 화면에서 새 학습을 골라보세요."
+      description="복습·추천·과제를 모두 처리했습니다. 더 학습하려면 오늘 화면에서 새 학습을 골라 보세요."
       actions={
         <Button asChild size="sm" variant="outline">
           <Link to="/study/today">오늘 화면 열기</Link>

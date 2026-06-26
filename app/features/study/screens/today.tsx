@@ -343,8 +343,8 @@ function EmptyStateCard() {
   return (
     <EmptyState
       icon={<SparklesIcon className="size-8" />}
-      title="아직 복습할 항목이 없어요"
-      description="첫 학습을 시작하면 다음 날부터 복습 카드가 자동으로 생깁니다. 관심 있는 과목을 골라 첫 학습을 시작해 볼까요?"
+      title="아직 복습할 항목이 없습니다"
+      description="첫 학습을 시작하면 다음 날부터 복습 카드가 자동으로 생깁니다. 관심 있는 과목을 골라 첫 학습을 시작해 보세요."
       actions={
         <>
           <Button asChild size="sm">
@@ -371,7 +371,7 @@ function AllDoneCard() {
   return (
     <EmptyState
       icon={<CheckCircle2Icon className="size-8 text-emerald-500" />}
-      title="오늘 할 일을 모두 끝냈어요"
+      title="오늘 할 일을 모두 끝냈습니다"
       description="복습·추천·과제를 다 처리했습니다. 더 학습하려면 새 문제를 풀거나 통계로 오늘을 돌아보세요."
       actions={
         <>
@@ -451,7 +451,7 @@ function PrefToggleRow({
 function CardBacklogNotice({ items }: { items: TodaySummary["cardBacklog"] }) {
   return (
     <div className="mb-4 rounded-lg border border-amber-300/60 bg-amber-50/60 px-4 py-3 text-amber-800 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-200">
-      <p className="text-sm font-semibold">암기 카드 복습이 밀리고 있어요</p>
+      <p className="text-sm font-semibold">암기 카드 복습이 밀리고 있습니다</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {items.map((it) => (
           <Button key={it.kind} asChild size="sm" variant="outline">
@@ -527,7 +527,7 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
           <Link to="/study/stats" className="text-foreground underline">
             학습현황
           </Link>
-          에서 확인하세요. 추천 종류는 위 “추천 설정”에서 켜고 끌 수 있어요.
+          에서 확인하세요. 추천 종류는 위 “추천 설정”에서 켜고 끌 수 있습니다.
         </p>
       </div>
     </StudentShell>

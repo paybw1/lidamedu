@@ -530,7 +530,7 @@ function SrsTrendChart({ trend }: { trend: SrsTrend }) {
         </div>
         <p className="text-muted-foreground text-xs">
           매일 복습 일정에 새로 들어온 항목과 다시 푼 항목입니다. 다시 푸는
-          속도가 새로 들어오는 속도를 못 따라가면 밀린 항목이 쌓여요.
+          속도가 새로 들어오는 속도를 못 따라가면 밀린 항목이 쌓입니다.
         </p>
       </CardHeader>
       <CardContent className="pb-4">
@@ -593,7 +593,7 @@ function PasserBenchmarkSection({
       <Card className="mt-8 border-dashed">
         <CardContent className="text-muted-foreground py-6 text-center text-xs">
           합격자 표본이 부족합니다. 분석에 동의한 합격자가 3명 이상 모이면 본인
-          복습 현황과 평균을 비교해 보여드려요 (현재 {benchmark.sampleSize}명).
+          복습 현황과 평균을 비교해 드립니다 (현재 {benchmark.sampleSize}명).
         </CardContent>
       </Card>
     );
