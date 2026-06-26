@@ -1,6 +1,5 @@
 import {
   BellIcon,
-  HomeIcon,
   LogOutIcon,
   MenuIcon,
   PanelLeftOpenIcon,
@@ -106,14 +105,6 @@ export function UserMenu({
           <span className="truncate text-xs">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <SheetClose asChild>
-            <Link to="/dashboard" viewTransition>
-              <HomeIcon className="size-4" />
-              대시보드
-            </Link>
-          </SheetClose>
-        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <SheetClose asChild>
             <Link to="/account/edit" viewTransition>
