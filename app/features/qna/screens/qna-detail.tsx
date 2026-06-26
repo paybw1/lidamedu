@@ -21,6 +21,7 @@ import {
   QNA_TARGET_LABEL,
   type QnaQualityGrade,
   type QnaTargetType,
+  subjectLabel,
 } from "../labels";
 import { getThreadDetail } from "../queries.server";
 import { resolveTargetDisplay } from "../lib/target-display.server";
@@ -69,11 +70,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const isStaff =
     role === "instructor" || role === "manager" || role === "admin";
 
-  const target = await resolveTargetDisplay(
-    client,
-    thread.targetType,
-    thread.targetId,
-  );
+  // study_method 는 콘텐츠 앵커(targetId)가 없어 대상 표시 생략(과목 칩으로 분류 표시).
+  const target = thread.targetId
+    ? await resolveTargetDisplay(client, thread.targetType, thread.targetId)
+    : null;
 
   return {
     thread,
@@ -103,6 +103,9 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           <Chip tone={TARGET_TONE[thread.targetType]}>
             {QNA_TARGET_LABEL[thread.targetType]}
           </Chip>
+          {thread.subject ? (
+            <Chip tone="neutral">{subjectLabel(thread.subject)}</Chip>
+          ) : null}
           <Chip tone={isWaiting ? "coral" : "emerald"}>
             {QNA_STATUS_LABEL[thread.status]}
           </Chip>

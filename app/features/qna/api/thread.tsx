@@ -6,6 +6,7 @@ import { runAfterResponse } from "~/core/lib/wait-until.server";
 
 import {
   qnaQualityGradeSchema,
+  qnaSubjectSchema,
   qnaTargetTypeSchema,
 } from "../labels";
 import { notifyNewAnswer, notifyNewQuestion } from "../notify.server";
@@ -22,9 +23,12 @@ import type { Route } from "./+types/thread";
 const createSchema = z.object({
   intent: z.literal("create"),
   targetType: qnaTargetTypeSchema,
-  targetId: z.string().uuid(),
+  // study_method 는 대상 콘텐츠가 없어 targetId 미전송. 콘텐츠 Q&A 는 필수(아래 action 에서 검사).
+  targetId: z.string().uuid().optional(),
   title: z.string().min(1).max(200),
   questionMd: z.string().min(1).max(10000),
+  // 과목 분류 — study_method 필수. 콘텐츠 Q&A 는 대상에서 도출(미전송).
+  subject: qnaSubjectSchema.optional(),
 });
 
 const answerSchema = z.object({
@@ -74,11 +78,27 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (parsed.data.intent === "create") {
+    const { targetType, targetId, subject } = parsed.data;
+    // 공부방법은 과목 필수, 콘텐츠 Q&A 는 대상 필수.
+    if (targetType === "study_method") {
+      if (!subject) {
+        return data(
+          { ok: false, error: "subject-required" },
+          { status: 400, headers },
+        );
+      }
+    } else if (!targetId) {
+      return data(
+        { ok: false, error: "target-required" },
+        { status: 400, headers },
+      );
+    }
     const thread = await createThread(client, user.id, {
-      targetType: parsed.data.targetType,
-      targetId: parsed.data.targetId,
+      targetType,
+      targetId: targetId ?? null,
       title: parsed.data.title,
       questionMd: parsed.data.questionMd,
+      subject: subject ?? null,
     });
 
     const notifyTask = notifyNewQuestion(

@@ -21,6 +21,7 @@ const SUMMARY_COLUMNS = `
   thread_id,
   target_type,
   target_id,
+  subject,
   asker_id,
   answerer_id,
   title,
@@ -38,7 +39,8 @@ const DETAIL_COLUMNS = `${SUMMARY_COLUMNS}, question_md, answer_md`;
 type RawSummaryRow = {
   thread_id: string;
   target_type: QnaTargetType;
-  target_id: string;
+  target_id: string | null;
+  subject: string | null;
   asker_id: string;
   answerer_id: string | null;
   title: string;
@@ -61,6 +63,7 @@ function toSummary(row: RawSummaryRow): QnaThreadSummary {
     threadId: row.thread_id,
     targetType: row.target_type,
     targetId: row.target_id,
+    subject: row.subject,
     askerId: row.asker_id,
     askerName: row.asker?.name ?? null,
     answererId: row.answerer_id,
@@ -105,6 +108,8 @@ export interface ListFilter {
   scope: "all" | "asked-by-me" | "answered-by-me" | "open";
   query?: string;
   targetType?: QnaTargetType;
+  /** 과목 분류 필터(law_code 류). */
+  subject?: string;
   limit?: number;
 }
 
@@ -120,6 +125,7 @@ export async function listThreads(
     .is("deleted_at", null);
 
   if (filter.targetType) q = q.eq("target_type", filter.targetType);
+  if (filter.subject) q = q.eq("subject", filter.subject);
 
   if (filter.scope === "asked-by-me") {
     q = q.eq("asker_id", userId);
@@ -159,24 +165,71 @@ export async function getThreadDetail(
   return toDetail(data as unknown as RawDetailRow);
 }
 
+// 콘텐츠 대상(조문/판례/문제)의 과목(law_code) 도출 — 과목 분류 필터용.
+async function resolveSubjectForTarget(
+  client: SupabaseClient<Database>,
+  targetType: QnaTargetType,
+  targetId: string,
+): Promise<string | null> {
+  if (targetType === "article") {
+    const { data } = await client
+      .from("articles")
+      .select("laws(law_code)")
+      .eq("article_id", targetId)
+      .maybeSingle();
+    return data?.laws?.law_code ?? null;
+  }
+  if (targetType === "case") {
+    const { data } = await client
+      .from("cases")
+      .select("subject_laws")
+      .eq("case_id", targetId)
+      .maybeSingle();
+    return data?.subject_laws?.[0] ?? null;
+  }
+  if (targetType === "problem") {
+    const { data } = await client
+      .from("problems")
+      .select("laws(law_code)")
+      .eq("problem_id", targetId)
+      .maybeSingle();
+    return data?.laws?.law_code ?? null;
+  }
+  return null;
+}
+
 export async function createThread(
   client: SupabaseClient<Database>,
   asker_id: string,
   input: {
     targetType: QnaTargetType;
-    targetId: string;
+    /** study_method 는 null(콘텐츠 앵커 없음). */
+    targetId: string | null;
     title: string;
     questionMd: string;
+    /** study_method 필수. 콘텐츠 대상은 미지정 시 대상에서 도출. */
+    subject?: string | null;
   },
 ): Promise<QnaThreadDetail> {
+  const subject =
+    input.targetType === "study_method"
+      ? (input.subject ?? null)
+      : input.targetId
+        ? await resolveSubjectForTarget(
+            client,
+            input.targetType,
+            input.targetId,
+          )
+        : (input.subject ?? null);
   const { data, error } = await client
     .from("qna_threads")
     .insert({
       target_type: input.targetType,
-      target_id: input.targetId,
+      target_id: input.targetType === "study_method" ? null : input.targetId,
       asker_id,
       title: input.title,
       question_md: input.questionMd,
+      subject,
     })
     .select(DETAIL_COLUMNS)
     .single();

@@ -18,9 +18,14 @@ import makeServerClient from "~/core/lib/supa-client.server";
 
 import {
   QNA_STATUS_LABEL,
+  QNA_SUBJECTS,
+  QNA_SUBJECT_LABEL,
   QNA_TARGET_LABEL,
+  qnaSubjectSchema,
   qnaTargetTypeSchema,
+  type QnaSubject,
   type QnaTargetType,
+  subjectLabel,
 } from "../labels";
 import { listThreads, type ListFilter } from "../queries.server";
 
@@ -71,19 +76,27 @@ export async function loader({ request }: Route.LoaderArgs) {
     ? targetParse.data
     : undefined;
 
+  const rawSubject = url.searchParams.get("subject");
+  const subjectParse = rawSubject ? qnaSubjectSchema.safeParse(rawSubject) : null;
+  const subject: QnaSubject | undefined = subjectParse?.success
+    ? subjectParse.data
+    : undefined;
+
   const query = url.searchParams.get("q") ?? "";
 
   const threads = await listThreads(client, user.id, {
     scope,
     targetType,
+    subject,
     query,
   });
 
-  return { threads, scope, targetType, query, currentUserId: user.id };
+  return { threads, scope, targetType, subject, query, currentUserId: user.id };
 }
 
 export default function QnaList({ loaderData }: Route.ComponentProps) {
-  const { threads, scope, targetType, query, currentUserId } = loaderData;
+  const { threads, scope, targetType, subject, query, currentUserId } =
+    loaderData;
   const [searchParams] = useSearchParams();
 
   const buildHref = (overrides: Record<string, string | null>) => {
@@ -96,7 +109,8 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
   };
 
   const waitingCount = threads.filter((t) => t.status === "open").length;
-  const filterActive = scope !== "all" || !!targetType || query !== "";
+  const filterActive =
+    scope !== "all" || !!targetType || !!subject || query !== "";
 
   const descParts = [`총 ${threads.length}건`];
   if (waitingCount > 0) descParts.push(`답변 대기 ${waitingCount}건`);
@@ -108,8 +122,8 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
       desc={descParts.join(" · ")}
       headerRight={
         <Button asChild size="sm" className="h-9 rounded-full">
-          <Link to="/qna/new" viewTransition>
-            <PencilLineIcon className="size-4" /> 새 질문
+          <Link to="/qna/new?targetType=study_method" viewTransition>
+            <PencilLineIcon className="size-4" /> 공부방법 질문
           </Link>
         </Button>
       }
@@ -134,6 +148,9 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
         ) : null}
         {targetType ? (
           <input type="hidden" name="target" value={targetType} />
+        ) : null}
+        {subject ? (
+          <input type="hidden" name="subject" value={subject} />
         ) : null}
         <Button type="submit" size="sm" className="h-9 rounded-full">
           검색
@@ -179,7 +196,9 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
             전체
           </Chip>
         </Link>
-        {(["article", "case", "problem"] as QnaTargetType[]).map((t) => {
+        {(
+          ["article", "case", "problem", "study_method"] as QnaTargetType[]
+        ).map((t) => {
           const isActive = targetType === t;
           return (
             <Link key={t} to={buildHref({ target: t })}>
@@ -194,6 +213,30 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
         })}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground mr-1 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+          과목
+        </span>
+        <Link to={buildHref({ subject: null })}>
+          <Chip
+            tone={!subject ? "solid" : "neutral"}
+            className="transition-colors hover:opacity-85"
+          >
+            전체
+          </Chip>
+        </Link>
+        {QNA_SUBJECTS.map((s) => (
+          <Link key={s} to={buildHref({ subject: s })}>
+            <Chip
+              tone={subject === s ? "solid" : "neutral"}
+              className="transition-colors hover:opacity-85"
+            >
+              {QNA_SUBJECT_LABEL[s]}
+            </Chip>
+          </Link>
+        ))}
+      </div>
+
       {threads.length === 0 ? (
         <EmptyState
           icon={filterActive ? SearchXIcon : MessageCircleQuestionIcon}
@@ -205,8 +248,8 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
           }
           body={
             filterActive
-              ? "검색어나 분류·대상 필터를 바꿔 다시 찾아보세요."
-              : "조문·판례·문제 화면에서 클릭한 대상에 대해 질문할 수 있습니다."
+              ? "검색어나 분류·대상·과목 필터를 바꿔 다시 찾아보세요."
+              : "조문·판례·문제 상세 화면, 또는 ‘공부방법 질문’ 으로 질문할 수 있습니다. 답변은 강사가 답니다."
           }
         />
       ) : (
@@ -231,6 +274,9 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
                     <Chip tone={TARGET_TONE[t.targetType]}>
                       {QNA_TARGET_LABEL[t.targetType]}
                     </Chip>
+                    {t.subject ? (
+                      <Chip tone="neutral">{subjectLabel(t.subject)}</Chip>
+                    ) : null}
                     <Chip tone={isWaiting ? "coral" : "emerald"}>
                       {QNA_STATUS_LABEL[t.status]}
                     </Chip>

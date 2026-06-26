@@ -41,5 +41,8 @@ export async function resolveTargetDisplay(
   if (targetType === "problem") {
     return { label: "문제", href: null };
   }
+  if (targetType === "study_method") {
+    return { label: "공부방법", href: null };
+  }
   return null;
 }
