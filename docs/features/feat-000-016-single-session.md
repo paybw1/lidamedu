@@ -49,12 +49,13 @@
 **각자 다음 로그인부터** 자연 적용. 마이그레이션은 코드가 RPC를 호출하기 전엔 inert → 먼저
 적용해도 운영 무영향.
 
-## 한계 / 2단계(후속)
-- **유휴 화면**: 멈춰있는 기기는 다음 요청 전까지 안 쫓겨남 → (2단계) 클라이언트 하트비트 폴.
-- **API/리소스 라우트**: `requireAuthentication`만 거치는 action은 1단계 미적용 → (2단계)
-  민감 mutation에 `enforceSingleSession` 동급 검사 추가.
-- **심층 방어**(2단계): `complete.tsx`에서 `signOut({scope:"others"})`로 이전 기기 refresh
-  토큰까지 폐기.
+## 2단계 (적용 완료 — 0220898)
+- **① 유휴 하트비트**: `SessionHeartbeat`(`app/core/components/session-heartbeat.tsx`, private.layout 마운트)가 60초 + 탭 복귀 시 `/api/session/heartbeat` 폴 → superseded면 `reload` → 레이아웃 `enforceSingleSession`이 추방. 유휴(내비 없는) 기기도 ~1분 내 추방.
+- **② API action 차단**: `requireAuthentication(client, request?)` — request 전달 시 밀려난 세션이면 401. 민감 계정 API 5곳(change-email/password, delete-account, connect/disconnect-provider) 적용.
+- **③ 이전 기기 토큰 폐기**: `complete.tsx`에서 `signOut({scope:"others"})`로 다른 기기 refresh 토큰 폐기. `others`는 로컬(현재) 세션을 제거하지 않음(auth-js 소스 확인) — 방어적 try/catch.
+- 공유 판정은 `isSessionSuperseded`로 추출(enforce/heartbeat/guard 공유).
+
+## 한계
 - "결심한 공유"(추방마다 서로 재로그인 핑퐁)는 못 막으나, **실시간 동시 사용 불가** = 목적 달성.
 
 ## 검증
