@@ -497,7 +497,13 @@ export async function action({ params, request }: Route.ActionArgs) {
   if (pErr) return { ok: false, error: pErr.message } as const;
 
   // choices — 각 choice 별로 독립 update. correct_index + 관련 조문/판례.
-  const correctIndex = numberOrNull(fd.get("correctIndex"));
+  // 복수정답 — 체크된 정답 지문 전부(correctIndexes). 하나만 선택해도 정답 인정은 풀이 화면 채점이 처리.
+  const correctIndexes = new Set<number>(
+    fd
+      .getAll("correctIndexes")
+      .map((v) => Number(v))
+      .filter((n) => Number.isInteger(n)),
+  );
   const choiceCount = numberOrNull(fd.get("choiceCount")) ?? 0;
 
   // 같은 law 의 article_number → article_id 매핑은 한 번만 가져온다.
@@ -534,7 +540,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       body_md: String(fd.get(`choice_${i}_body`) ?? ""),
       explanation_md: stringOrNull(fd.get(`choice_${i}_explanation`)),
       choice_type: choiceType,
-      is_correct: correctIndex === i,
+      is_correct: correctIndexes.has(i),
       // 조문 ref: 어떤 type 이든 articleNumber 가 채워져 있으면 저장 (판례도 관련 조문을 함께 보관).
       related_article_number: articleNumber,
       related_article_id: articleId,
@@ -682,8 +688,10 @@ function AdminProblemEditInner({
       ineligible,
     }));
   const showRound = ORIGIN_HAS_ROUND[origin];
-  const correctIndex =
-    problem.choices.find((c) => c.isCorrect)?.choiceIndex ?? 0;
+  // 복수정답 지원 — 정답 지문 전체.
+  const correctIndexes = problem.choices
+    .filter((c) => c.isCorrect)
+    .map((c) => c.choiceIndex);
   const navigation = useNavigation();
   const submittingIntent =
     navigation.state === "submitting"
@@ -711,7 +719,16 @@ function AdminProblemEditInner({
     else if (r.ok && r.kind === "unflag_mismatch") toast.success("재검토 표시를 취소했습니다");
     else if (r.error) toast.error(r.error);
   }, [mismatchFetcher.data]);
-  const [selectedCorrect, setSelectedCorrect] = useState<number>(correctIndex);
+  const [selectedCorrect, setSelectedCorrect] = useState<Set<number>>(
+    () => new Set(correctIndexes),
+  );
+  const toggleCorrect = (idx: number) =>
+    setSelectedCorrect((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
 
   useEffect(() => {
     if (!actionData) return;
@@ -1148,7 +1165,7 @@ function AdminProblemEditInner({
                   polarity={polarity || null}
                   format={format}
                   correctChoiceBody={
-                    problem.choices.find((c) => c.choiceIndex === selectedCorrect)?.bodyMd ?? null
+                    problem.choices.find((c) => selectedCorrect.has(c.choiceIndex))?.bodyMd ?? null
                   }
                   bulkOxSignal={bulkOxSignal}
                   subNodeOptions={subNodeOptions}
@@ -1194,8 +1211,9 @@ function AdminProblemEditInner({
               <ChoiceEditor
                 key={c.choiceId}
                 choice={c}
-                selectedAsCorrect={c.choiceIndex === selectedCorrect}
-                onCorrect={() => setSelectedCorrect(c.choiceIndex)}
+                multiCorrect
+                selectedAsCorrect={selectedCorrect.has(c.choiceIndex)}
+                onCorrect={() => toggleCorrect(c.choiceIndex)}
                 polarity={polarity || null}
                 format={format}
                 bulkOxSignal={bulkOxSignal}
@@ -1376,10 +1394,10 @@ function PublishChecklist({
   ).length;
 
   const hasPrimary = problem.primaryArticleId !== null;
-  const correctChoice = isMcq
-    ? problem.choices.find((c) => c.isCorrect) ?? null
-    : null;
-  const hasCorrect = !isMcq || correctChoice !== null;
+  const correctChoices = isMcq
+    ? problem.choices.filter((c) => c.isCorrect)
+    : [];
+  const hasCorrect = !isMcq || correctChoices.length > 0;
 
   const syncFetcher = useFetcher<{
     ok?: boolean;
@@ -1421,8 +1439,8 @@ function PublishChecklist({
             state={hasCorrect ? "ok" : "warn"}
             label="객관식 정답"
             detail={
-              hasCorrect && correctChoice
-                ? `${correctChoice.choiceIndex}번이 정답`
+              hasCorrect && correctChoices.length > 0
+                ? `${correctChoices.map((c) => c.choiceIndex).join(", ")}번이 정답`
                 : "미설정 — 지문 카드에서 정답 선택"
             }
           />

@@ -28,6 +28,7 @@ export function ChoiceEditor({
   choice,
   selectedAsCorrect,
   onCorrect,
+  multiCorrect = false,
   layout = "default",
   polarity = null,
   format,
@@ -37,6 +38,8 @@ export function ChoiceEditor({
   choice: ProblemChoice;
   selectedAsCorrect: boolean;
   onCorrect: () => void;
+  // 복수정답 — true 면 라디오 대신 체크박스(name=correctIndexes), 여러 지문을 정답으로.
+  multiCorrect?: boolean;
   layout?: "default" | "compact";
   polarity?: ProblemPolarity | null;
   format: ProblemFormat;
@@ -225,8 +228,8 @@ export function ChoiceEditor({
         </span>
         <label className="inline-flex items-center gap-1 text-[11px]">
           <input
-            type="radio"
-            name="correctIndex"
+            type={multiCorrect ? "checkbox" : "radio"}
+            name={multiCorrect ? "correctIndexes" : "correctIndex"}
             value={choice.choiceIndex}
             checked={selectedAsCorrect}
             onChange={onCorrect}
