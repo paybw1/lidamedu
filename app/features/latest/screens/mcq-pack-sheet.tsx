@@ -779,8 +779,8 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
         );
       })}
       {problem.explanationMd ? (
-        <div className="border-border border-t pt-2 text-xs">
-          <p className="text-muted-foreground mb-1 font-mono font-semibold tracking-[0.06em] uppercase">
+        <div className="border-border border-t pt-2 text-sm leading-relaxed">
+          <p className="text-muted-foreground mb-1 text-xs font-mono font-semibold tracking-[0.06em] uppercase">
             종합 해설
           </p>
           {MD_IMAGE_RE.test(problem.explanationMd) ? (

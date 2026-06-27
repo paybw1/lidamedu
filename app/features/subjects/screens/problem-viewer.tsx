@@ -1322,11 +1322,11 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                             </p>
                           </div>
                           {MD_IMAGE_RE.test(problem.explanationMd) ? (
-                            <div className="px-5 py-4 text-[length:calc(14px*var(--study-fs))] leading-relaxed dark:[&_img]:brightness-[.8]">
+                            <div className="px-5 py-5 text-[length:calc(16px*var(--study-fs))] leading-[1.85] dark:[&_img]:brightness-[.8]">
                               <MarkdownView text={problem.explanationMd} />
                             </div>
                           ) : (
-                            <div className="px-5 py-4 text-[length:calc(14px*var(--study-fs))] leading-relaxed whitespace-pre-line">
+                            <div className="px-5 py-5 text-[length:calc(16px*var(--study-fs))] leading-[1.85] whitespace-pre-line">
                               {problem.explanationMd}
                             </div>
                           )}
@@ -1363,7 +1363,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                   return (
                                     <div
                                       key={bi.boxItemId}
-                                      className="flex items-start gap-3 px-5 py-3 text-sm"
+                                      className="flex items-start gap-3 px-5 py-3 text-[length:calc(15px*var(--study-fs))] leading-[1.7]"
                                     >
                                       <span
                                         className={cn(
@@ -1424,7 +1424,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                               return (
                                 <div
                                   key={c.choiceId}
-                                  className="flex items-start gap-3 px-5 py-3 text-sm"
+                                  className="flex items-start gap-3 px-5 py-3 text-[length:calc(15px*var(--study-fs))] leading-[1.7]"
                                 >
                                   <span
                                     className={cn(
