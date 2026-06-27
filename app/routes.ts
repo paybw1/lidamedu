@@ -172,6 +172,7 @@ export default [
         "/session-from-attempts",
         "features/study/api/session-from-attempts.tsx",
       ),
+      route("/session-from-srs", "features/study/api/session-from-srs.tsx"),
     ]),
     ...prefix("/mcq-pack", [
       route("/start", "features/mcq-packs/api/start.tsx"),

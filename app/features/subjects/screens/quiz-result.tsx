@@ -79,18 +79,26 @@ export default function QuizResult({ loaderData }: Route.ComponentProps) {
       ? session.scopePayload.nodeId
       : null;
 
+  // feat-2-026 — 복습(source='srs') 세션은 scopePayload.backHref 로 복귀(없으면 문제 탭).
+  const isReviewSession = session.scopePayload.source === "srs";
+  const backHref =
+    typeof session.scopePayload.backHref === "string"
+      ? session.scopePayload.backHref
+      : `/subjects/${subject.slug}?tab=problems`;
+  const backLabel = isReviewSession ? "복습으로" : "문제 탭으로";
+
   return (
     <div className="min-h-[calc(100vh-56px)] bg-background">
       <div className="mx-auto w-full max-w-[720px] px-6 py-8 pb-20">
         {/* Back link */}
         <div className="mb-4">
           <Link
-            to={`/subjects/${subject.slug}?tab=problems`}
+            to={backHref}
             viewTransition
             className="inline-flex items-center gap-1.5 text-[13px] font-medium text-link hover:text-link/80 transition-colors"
           >
             <ArrowLeftIcon className="size-3.5" />
-            문제 탭으로
+            {backLabel}
           </Link>
         </div>
 

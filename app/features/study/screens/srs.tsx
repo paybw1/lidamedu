@@ -8,7 +8,7 @@ import {
   HistoryIcon,
   RepeatIcon,
 } from "lucide-react";
-import { Link, data, redirect } from "react-router";
+import { Form, Link, data, redirect } from "react-router";
 
 import { AreaEyebrow, StudentShell } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
@@ -47,6 +47,10 @@ import {
 } from "~/features/study/passer-srs-benchmark.server";
 import { type SrsTrend, getSrsTrend } from "~/features/study/srs-trend.server";
 import { getDueProblems, getSrsCounts } from "~/features/study/srs.server";
+import {
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+} from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [{ title: "오늘의 복습 | 리담" }];
 
@@ -135,6 +139,11 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
     passerBenchmark,
     trend,
   } = loaderData;
+  // feat-2-026 — 과목별 due 묶음 → "복습 시작" 러너 진입(세션=단일 과목 제약).
+  const mcqGroups = LAW_SUBJECT_SLUGS.map((slug) => ({
+    slug,
+    count: items.filter((it) => it.lawCode === slug).length,
+  })).filter((g) => g.count > 0);
   return (
     <StudentShell>
       <header className="mb-6">
@@ -212,13 +221,35 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       ) : (
         <Card>
           <CardHeader className="pb-3">
-            <p className="text-foreground text-sm font-bold">
-              지금 풀어야 할 문제 {items.length}건
-            </p>
-            <p className="text-muted-foreground text-xs">
-              가장 오래 미룬 항목 먼저. 클릭해 풀면 다음 복습 일정이 자동으로
-              갱신됩니다.
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-foreground text-sm font-bold">
+                  지금 풀어야 할 문제 {items.length}건
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  묶음으로 모아 풉니다. 이전/다음으로 넘기며 풀면 다음 복습
+                  일정이 자동으로 갱신됩니다.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-ink-soft self-center text-[11px] font-semibold">
+                  묶음 복습
+                </span>
+                {mcqGroups.map((g) => (
+                  <Form
+                    key={g.slug}
+                    method="post"
+                    action="/api/study/session-from-srs"
+                  >
+                    <input type="hidden" name="subject" value={g.slug} />
+                    <Button size="sm" type="submit" className="rounded-full">
+                      {LAW_SUBJECTS[g.slug].name} {g.count}문항
+                      <ArrowRightIcon className="size-3.5" />
+                    </Button>
+                  </Form>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="pb-3">
             <div className="overflow-x-auto">

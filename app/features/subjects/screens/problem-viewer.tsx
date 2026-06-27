@@ -366,18 +366,30 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     session && typeof session.scopePayload.packTitle === "string"
       ? session.scopePayload.packTitle
       : null;
+  // feat-2-026 — 세션 생성처가 scopePayload 로 러너 라벨/복귀 경로를 지정할 수 있다(범용).
+  //   복습 세션(source='srs')은 라벨="복습 풀이", 뒤로가기="/study/srs".
+  const originLabelFromPayload =
+    session && typeof session.scopePayload.originLabel === "string"
+      ? session.scopePayload.originLabel
+      : null;
+  const backHrefFromPayload =
+    session && typeof session.scopePayload.backHref === "string"
+      ? session.scopePayload.backHref
+      : null;
   const navLabel = session
     ? packTitleFromPayload
       ? `문제집: ${packTitleFromPayload}`
-      : typeof session.scopePayload.nodeLabel === "string"
-        ? `체계: ${session.scopePayload.nodeLabel}`
-        : session.scopeType === "filter"
-          ? "맞춤 퀴즈"
-          : session.scopeType === "wrong-note"
-            ? "오답노트 풀이"
-            : session.scopeType === "bookmark"
-              ? "즐겨찾기 풀이"
-              : "퀴즈 풀이"
+      : originLabelFromPayload
+        ? originLabelFromPayload
+        : typeof session.scopePayload.nodeLabel === "string"
+          ? `체계: ${session.scopePayload.nodeLabel}`
+          : session.scopeType === "filter"
+            ? "맞춤 퀴즈"
+            : session.scopeType === "wrong-note"
+              ? "오답노트 풀이"
+              : session.scopeType === "bookmark"
+                ? "즐겨찾기 풀이"
+                : "퀴즈 풀이"
     : nodeSequence
       ? `체계: ${nodeSequence.node.displayLabel}`
       : null;
@@ -395,17 +407,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     (session && typeof session.scopePayload.nodeId === "string"
       ? session.scopePayload.nodeId
       : null);
-  const navBackHref = packIdFromPayload
-    ? `/latest/mcq/${packIdFromPayload}`
-    : navScopeType === "node"
-      ? `/subjects/${lawCode}?tab=problems${nodeIdForBack ? `&node=${nodeIdForBack}` : ""}`
-      : navScopeType === "filter"
-        ? `/subjects/${lawCode}/quiz/setup`
-        : navScopeType === "wrong-note"
-          ? `/study/wrong-note?subject=${lawCode}`
-          : navScopeType === "bookmark"
-            ? `/study/bookmarks?subject=${lawCode}&type=problem`
-            : `/subjects/${lawCode}?tab=problems`;
+  const navBackHref = backHrefFromPayload
+    ? backHrefFromPayload
+    : packIdFromPayload
+      ? `/latest/mcq/${packIdFromPayload}`
+      : navScopeType === "node"
+        ? `/subjects/${lawCode}?tab=problems${nodeIdForBack ? `&node=${nodeIdForBack}` : ""}`
+        : navScopeType === "filter"
+          ? `/subjects/${lawCode}/quiz/setup`
+          : navScopeType === "wrong-note"
+            ? `/study/wrong-note?subject=${lawCode}`
+            : navScopeType === "bookmark"
+              ? `/study/bookmarks?subject=${lawCode}&type=problem`
+              : `/subjects/${lawCode}?tab=problems`;
   if (navProblemIds && navLabel) {
     const idx = navProblemIds.findIndex((id) => id === problem.problemId);
     if (idx >= 0) {
