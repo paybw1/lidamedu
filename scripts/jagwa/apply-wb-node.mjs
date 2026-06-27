@@ -9,14 +9,16 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url.includes("mcgdoplo")) throw new Error(`SAFETY: ${url} not prod`);
 const sb = createClient(url, key);
 
-const work = JSON.parse(readFileSync("scripts/jagwa/.factbox/wb-node-worklist.json", "utf8"));
+const wlPath = process.argv.find((a) => a.endsWith(".json")) ?? "scripts/jagwa/.factbox/wb-node-worklist.json";
+const backupPath = wlPath.replace("worklist", "backup");
+const work = JSON.parse(readFileSync(wlPath, "utf8"));
 const apply = process.argv.includes("--apply");
 
 // 백업(현재 primary_node_id) — worklist.current 에 이미 담겨 있음.
 const backup = work.map((w) => ({ problemId: w.problemId, primary_node_id: w.current }));
 if (apply) {
-  writeFileSync("scripts/jagwa/.factbox/wb-node-backup.json", JSON.stringify(backup, null, 2));
-  console.log(`백업 ${backup.length} → .factbox/wb-node-backup.json`);
+  writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+  console.log(`백업 ${backup.length} → ${backupPath}`);
 }
 
 console.log(`대상 ${work.length}건 ${apply ? "적용" : "(점검 — --apply 로 적용)"}`);
