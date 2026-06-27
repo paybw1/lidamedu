@@ -64,7 +64,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [client] = makeServerClient(request);
   
   // Verify the user is authenticated
-  await requireAuthentication(client);
+  await requireAuthentication(client, request);
   
   // Extract and validate form data
   const formData = await request.formData();

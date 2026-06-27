@@ -3,6 +3,7 @@ import type { Route } from "./+types/private.layout";
 import { Outlet, data, redirect } from "react-router";
 
 import { CommandPalette } from "~/core/components/command-palette";
+import { SessionHeartbeat } from "~/core/components/session-heartbeat";
 import { requireServiceDataConsent } from "../lib/require-consent.server";
 import { enforceSingleSession } from "../lib/single-session.server";
 import makeServerClient from "../lib/supa-client.server";
@@ -34,6 +35,7 @@ export default function PrivateLayout() {
   return (
     <>
       <CommandPalette />
+      <SessionHeartbeat />
       <Outlet />
     </>
   );

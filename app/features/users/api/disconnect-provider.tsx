@@ -69,7 +69,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const [client] = makeServerClient(request);
   
   // Verify the user is authenticated
-  await requireAuthentication(client);
+  await requireAuthentication(client, request);
   
   // Validate the provider parameter
   const { error, success, data: parsedParams } = schema.safeParse(params);

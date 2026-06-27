@@ -52,7 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
   const [client] = makeServerClient(request);
 
   // Verify the user is authenticated
-  await requireAuthentication(client);
+  await requireAuthentication(client, request);
 
   // Get the authenticated user's information
   const {

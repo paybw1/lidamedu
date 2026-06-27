@@ -114,6 +114,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (user) {
     await claimSession(client, request, headers);
+    // feat-000-016 2단계 — 이전 기기 세션(refresh 토큰) 폐기(심층 방어). scope:"others"는
+    // 방금 만든 현재 세션은 유지한다. 실패해도 로그인은 진행(보조 수단이라 방어적 처리).
+    try {
+      await client.auth.signOut({ scope: "others" });
+    } catch {
+      // 무시 — 핵심 차단은 claimSession(sid)+레이아웃 검사. others 폐기는 보조.
+    }
   }
 
   // Redirect to home page with auth cookies in headers

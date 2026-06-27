@@ -16,6 +16,7 @@ import type { Database } from "database.types";
 import { data } from "react-router";
 
 import { ROLE_RANK, type UserRole } from "~/core/lib/roles";
+import { isSessionSuperseded } from "~/core/lib/single-session.server";
 
 /**
  * Require user authentication for a route or action
@@ -37,11 +38,19 @@ import { ROLE_RANK, type UserRole } from "~/core/lib/roles";
  * @param client - The Supabase client instance to use for authentication check
  * @throws {Response} 401 Unauthorized if no user is authenticated
  */
-export async function requireAuthentication(client: SupabaseClient) {
+export async function requireAuthentication(
+  client: SupabaseClient<Database>,
+  request?: Request,
+) {
   const {
     data: { user },
   } = await client.auth.getUser();
   if (!user) {
+    throw data(null, { status: 401 });
+  }
+  // feat-000-016 2단계 — 다른 기기에서 더 새 로그인했으면 이 요청(주로 민감 API action) 거부.
+  // request 를 넘긴 호출부만 적용(기존 호출은 무영향).
+  if (request && (await isSessionSuperseded(client, user, request))) {
     throw data(null, { status: 401 });
   }
 }

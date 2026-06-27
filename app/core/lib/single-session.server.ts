@@ -104,8 +104,29 @@ export async function releaseSession(
 }
 
 /**
- * 단일 세션 검사. 학생이고 DB 현재 세션과 이 브라우저 sid 가 다르면
- * (=다른 기기에서 더 새 로그인) 이 기기만 로그아웃시키고 /login 으로 보낸다.
+ * 이 브라우저 세션이 더 새 로그인에 의해 밀려났는지(superseded) 판정. 읽기 전용.
+ * 학생이고 DB active_session_id 와 쿠키 sid 가 다르면 true. (staff·미등록=false → 무중단)
+ * 추방/리다이렉트는 호출부(enforceSingleSession / 하트비트 / requireAuthentication)에서.
+ */
+export async function isSessionSuperseded(
+  client: SupabaseClient<Database>,
+  user: User,
+  request: Request,
+): Promise<boolean> {
+  const { data: profile } = await client
+    .from("profiles")
+    .select("role, active_session_id")
+    .eq("profile_id", user.id)
+    .single();
+  if (!profile || profile.role !== "student" || !profile.active_session_id) {
+    return false;
+  }
+  const cookieSid = await readSessionId(request);
+  return cookieSid !== profile.active_session_id;
+}
+
+/**
+ * 단일 세션 검사. 밀려난 세션이면 이 기기만 로그아웃시키고 /login 으로 보낸다.
  * private 레이아웃 loader 에서 호출. 통과 시 아무 동작 없음.
  *
  * NOTE: 추방은 `scope: "local"`(이 기기 세션만 종료) — 새 기기 세션은 건드리지 않는다.
@@ -116,20 +137,7 @@ export async function enforceSingleSession(
   request: Request,
   headers: Headers,
 ): Promise<void> {
-  const { data: profile } = await client
-    .from("profiles")
-    .select("role, active_session_id")
-    .eq("profile_id", user.id)
-    .single();
-
-  // 학생만 강제. active_session_id 가 NULL(기존 사용자·미등록)이면 통과(무중단 롤아웃).
-  if (!profile || profile.role !== "student" || !profile.active_session_id) {
-    return;
-  }
-
-  const cookieSid = await readSessionId(request);
-  if (cookieSid === profile.active_session_id) return; // 동일 세션 — 정상
-
+  if (!(await isSessionSuperseded(client, user, request))) return;
   // 다른 기기에서 더 새 로그인 발생 → 이 기기 세션만 종료.
   await client.auth.signOut({ scope: "local" });
   headers.append(

@@ -17,6 +17,8 @@ export default [
 
   // API Routes (no UI)
   ...prefix("/api", [
+    // feat-000-016 2단계 — 단일 세션 하트비트(유휴 기기 즉시 추방용 폴).
+    route("/session/heartbeat", "features/auth/api/session-heartbeat.tsx"),
     route("/search", "features/search/api/search.tsx"),
     route("/search/clear-history", "features/search/api/clear-history.tsx"),
     route("/bug-report", "features/bug-reports/api/bug-report.tsx"),
