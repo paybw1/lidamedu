@@ -1285,9 +1285,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                           problem.choices.find(
                             (c) => c.choiceIndex === selected,
                           )?.isCorrect ?? false;
-                        const correctChoice = problem.choices.find(
-                          (c) => c.isCorrect,
-                        );
+                        // 복수정답 지원 — 정답 지문 전부 표시.
+                        const correctIndexes = problem.choices
+                          .filter((c) => c.isCorrect)
+                          .map((c) => c.choiceIndex);
                         return (
                           <div className="flex items-center gap-3">
                             <span
@@ -1304,8 +1305,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                 <CircleXIcon className="size-4" />
                               )}
                               {isCorrectAns ? "정답입니다" : "오답입니다"}
-                              {correctChoice
-                                ? ` · 정답 ${correctChoice.choiceIndex}번`
+                              {correctIndexes.length > 0
+                                ? ` · 정답 ${correctIndexes.join(", ")}번`
                                 : null}
                             </span>
                           </div>
