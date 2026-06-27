@@ -54,7 +54,8 @@ const components: Components = {
         // table-auto (기본) — 컬럼 너비를 내용 길이에 따라 자동 배분.
         // 라벨 셀(서/의의 등 짧음) 은 좁게, 내용 셀(긴 텍스트) 은 넓게 자연스럽게 분포.
         // break-words 로 긴 한자/단어도 셀 안에서 줄바꿈.
-        className="w-full border-collapse text-left text-xs [&_td]:break-words [&_th]:break-words"
+        // 글자 크기 3단(--study-fs) 따라감 — 표 형식 지문도 발문과 함께 커지도록(기본 1=무변화).
+        className="w-full border-collapse text-left text-[length:calc(12px*var(--study-fs))] [&_td]:break-words [&_th]:break-words"
         {...props}
       />
     </div>
@@ -85,18 +86,34 @@ const components: Components = {
   ul: (props) => <ul className="my-1 list-disc pl-5" {...props} />,
   ol: (props) => <ol className="my-1 list-decimal pl-5" {...props} />,
   li: (props) => <li className="my-0" {...props} />,
-  h1: (props) => <h1 className="my-2 text-base font-bold" {...props} />,
-  h2: (props) => <h2 className="my-2 text-sm font-bold" {...props} />,
-  h3: (props) => <h3 className="my-1 text-xs font-bold" {...props} />,
+  // 머리글·코드도 글자 크기 3단(--study-fs)을 따라간다(기본 1=무변화).
+  h1: (props) => (
+    <h1
+      className="my-2 text-[length:calc(16px*var(--study-fs))] font-bold"
+      {...props}
+    />
+  ),
+  h2: (props) => (
+    <h2
+      className="my-2 text-[length:calc(14px*var(--study-fs))] font-bold"
+      {...props}
+    />
+  ),
+  h3: (props) => (
+    <h3
+      className="my-1 text-[length:calc(12px*var(--study-fs))] font-bold"
+      {...props}
+    />
+  ),
   code: (props) => (
     <code
-      className="bg-muted rounded px-1 py-0.5 font-mono text-[11px]"
+      className="bg-muted rounded px-1 py-0.5 font-mono text-[length:calc(11px*var(--study-fs))]"
       {...props}
     />
   ),
   pre: (props) => (
     <pre
-      className="bg-muted my-2 overflow-x-auto rounded p-2 font-mono text-[11px]"
+      className="bg-muted my-2 overflow-x-auto rounded p-2 font-mono text-[length:calc(11px*var(--study-fs))]"
       {...props}
     />
   ),

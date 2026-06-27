@@ -1338,7 +1338,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                           </div>
                           {MD_IMAGE_RE.test(problem.explanationMd) ? (
                             <div className="px-5 py-5 text-[length:calc(16px*var(--study-fs))] leading-[1.85] dark:[&_img]:brightness-[.8]">
-                              <MarkdownView text={problem.explanationMd} />
+                              <MarkdownView
+                                text={problem.explanationMd}
+                                className="text-[length:calc(16px*var(--study-fs))] leading-[1.85]"
+                              />
                             </div>
                           ) : (
                             <div className="px-5 py-5 text-[length:calc(16px*var(--study-fs))] leading-[1.85] whitespace-pre-line">
