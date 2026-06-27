@@ -208,10 +208,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  // feat-4-A-340 — 체계도 소분류 선택지. 한 조문이 (caseOnly 제외) ≥2 노드에 걸리면
-  // 그 노드들을 picker 로 제공해 문제를 정밀 배치한다.
+  // feat-4-A-340 — 한 조문이 (caseOnly 제외) ≥2 노드에 걸릴 때, 지문/박스 항목
+  // 단위 배치(related_node_id) picker 로 제공.
   const subNodeOptions: Record<string, { nodeId: string; label: string }[]> =
     {};
+  // 문제 단원 고정(primary_node_id) picker — 과목 전체 노드에서 선택 가능하게 한다.
+  // (조문이 1개 노드에만 걸려도 임의 노드로 정밀 재배치 가능 → 노드 오분류 수동 교정 수단)
+  let allNodeOptions: { nodeId: string; label: string }[] = [];
   let primaryNodeId: string | null = null;
   if (subject) {
     const skeleton = await getSystematicSkeleton(client, subject);
@@ -229,6 +232,23 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     for (const [num, opts] of Object.entries(map)) {
       if (opts.length >= 2) subNodeOptions[num] = opts;
     }
+    // 과목 전체 노드 — 조상 라벨 breadcrumb 로 식별성 확보(트리 순서 = path 정렬 유지).
+    const labelById = new Map(skeleton.map((n) => [n.nodeId, n.displayLabel]));
+    const parentById = new Map(skeleton.map((n) => [n.nodeId, n.parentId]));
+    const crumb = (id: string): string => {
+      const labels: string[] = [];
+      let cur: string | null = id;
+      for (let i = 0; cur && i < 12; i++) {
+        const lbl = labelById.get(cur);
+        if (!lbl) break;
+        labels.unshift(lbl);
+        cur = parentById.get(cur) ?? null;
+      }
+      return labels.join(" › ");
+    };
+    allNodeOptions = skeleton
+      .filter((n) => !n.caseOnly)
+      .map((n) => ({ nodeId: n.nodeId, label: crumb(n.nodeId) }));
     const { data: pn } = await client
       .from("problems")
       .select("primary_node_id")
@@ -237,7 +257,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     primaryNodeId = pn?.primary_node_id ?? null;
   }
 
-  return { problem, mcqPacks, role, siblings, subNodeOptions, primaryNodeId };
+  return {
+    problem,
+    mcqPacks,
+    role,
+    siblings,
+    subNodeOptions,
+    allNodeOptions,
+    primaryNodeId,
+  };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -592,8 +620,15 @@ function AdminProblemEditInner({
   loaderData,
   actionData,
 }: Route.ComponentProps) {
-  const { problem, mcqPacks, role, siblings, subNodeOptions, primaryNodeId } =
-    loaderData;
+  const {
+    problem,
+    mcqPacks,
+    role,
+    siblings,
+    subNodeOptions,
+    allNodeOptions,
+    primaryNodeId,
+  } = loaderData;
   // prev/next 는 진입 시점의 목록 순서로 고정한다(mount-time snapshot). 조문을 바꿔 저장하면
   // 목록이 조문순으로 재정렬돼 형제가 달라지지만, 같은 problemId 동안엔 외곽 key 가 그대로라
   // remount 가 없어 이 snapshot 이 저장 후에도 유지된다. prev/next 로 다른 문제로 이동하면
@@ -604,14 +639,6 @@ function AdminProblemEditInner({
     String(problem.primaryArticleNumber ?? ""),
   );
   const [primaryNode, setPrimaryNode] = useState(primaryNodeId ?? "");
-  const subNodeOpts = subNodeOptions[articleNum.trim()] ?? [];
-  useEffect(() => {
-    const opts = subNodeOptions[articleNum.trim()] ?? [];
-    // 조문이 바뀌어 현재 선택 노드가 더 이상 유효하지 않으면 해제.
-    setPrimaryNode((cur) =>
-      cur && !opts.some((o) => o.nodeId === cur) ? "" : cur,
-    );
-  }, [articleNum, subNodeOptions]);
   // 목록에서 편집 진입 시 따라오는 필터 쿼리를 보존해 ← 클릭 시 같은 필터 상태로 되돌린다.
   // viewer "수정" 진입은 ?returnTo=<viewer URL> 로 들어오는데, 이 경우 ← 가 그
   // viewer 로 복귀하도록 우선 적용 + form hidden 으로 carry 해 저장 후 redirect.
@@ -933,23 +960,19 @@ function AdminProblemEditInner({
               onChange={setArticleNum}
               placeholder="예: 29 / 28의2 (비우면 미연결)"
             />
-            {subNodeOpts.length > 0 ? (
-              <FormSelect
-                name="primaryNodeId"
-                label="체계도 소분류"
-                value={primaryNode}
-                onChange={setPrimaryNode}
-                options={[
-                  { value: "", label: "(자동 — 조문 전체)" },
-                  ...subNodeOpts.map((o) => ({
-                    value: o.nodeId,
-                    label: o.label,
-                  })),
-                ]}
-              />
-            ) : (
-              <input type="hidden" name="primaryNodeId" value={primaryNode} />
-            )}
+            <FormSelect
+              name="primaryNodeId"
+              label="체계도 단원 (고정 배치)"
+              value={primaryNode}
+              onChange={setPrimaryNode}
+              options={[
+                { value: "", label: "(자동 — 조문 연결 노드에 파생)" },
+                ...allNodeOptions.map((o) => ({
+                  value: o.nodeId,
+                  label: o.label,
+                })),
+              ]}
+            />
           </CardContent>
         </Card>
 
