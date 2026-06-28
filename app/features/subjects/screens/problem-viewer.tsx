@@ -10,6 +10,7 @@ import {
   ListTreeIcon,
   PanelRightIcon,
   PencilIcon,
+  ScrollTextIcon,
   TimerIcon,
   VideoIcon,
 } from "lucide-react";
@@ -508,10 +509,23 @@ function useExamTimer(
 }
 
 export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
-  const { collapsed: leftCollapsed, toggle: toggleLeft } =
-    useLeftPanelCollapse();
-  const { collapsed: rightCollapsed, toggle: toggleRight } =
-    useRightPanelCollapse();
+  const {
+    collapsed: leftCollapsed,
+    toggle: toggleLeft,
+    set: setLeft,
+  } = useLeftPanelCollapse();
+  const {
+    collapsed: rightCollapsed,
+    toggle: toggleRight,
+    set: setRight,
+  } = useRightPanelCollapse();
+  // 읽기 모드 — 좌우 패널 동시 접기/펼치기(데스크톱 정독 집중).
+  const readingMode = leftCollapsed && rightCollapsed;
+  const toggleReadingMode = () => {
+    const next = !readingMode;
+    setLeft(next);
+    setRight(next);
+  };
   const {
     subject,
     problem,
@@ -1044,7 +1058,23 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       <VideoIcon className="size-3" /> 동영상 풀이 보기
                     </a>
                   ) : null}
-                  <ReadingControls className="ml-auto" />
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleReadingMode}
+                      aria-pressed={readingMode}
+                      title="읽기 모드 — 좌우 패널 접고 본문 집중"
+                      className={cn(
+                        "hidden h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors lg:inline-flex",
+                        readingMode
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      <ScrollTextIcon className="size-3.5" /> 읽기 모드
+                    </button>
+                    <ReadingControls />
+                  </div>
                 </div>
               </div>
 
