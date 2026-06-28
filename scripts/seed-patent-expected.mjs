@@ -156,7 +156,15 @@ for (const p of problems) {
     if (sampleSkip.length < 3) sampleSkip.push({ reason: "noStem", problemNumber: p.problemNumber });
     continue;
   }
-  if (p.correctIndex == null) {
+  // 복수정답 지원 — correctList(배열) 우선, 없으면 correctIndex(단일).
+  const correctSet = new Set(
+    Array.isArray(p.correctList)
+      ? p.correctList
+      : p.correctIndex != null
+        ? [p.correctIndex]
+        : [],
+  );
+  if (correctSet.size === 0) {
     skipped++; skipReasons.noCorrect++;
     if (sampleSkip.length < 3) sampleSkip.push({ reason: "noCorrect", section: p.section, num: p.problemNumber });
     continue;
@@ -201,7 +209,7 @@ for (const p of problems) {
     problem_id: probRow.problem_id,
     choice_index: c.index,
     body_md: c.body,
-    is_correct: c.index === p.correctIndex,
+    is_correct: correctSet.has(c.index),
     explanation_md: p.choiceExplanations?.[c.index] ?? null,
   }));
   if (choiceRows.length > 0) {
