@@ -9,6 +9,7 @@ import { runAfterResponse } from "~/core/lib/wait-until.server";
 
 import { type LevelInfo, computeLevel } from "./lib/level";
 import { computeProtectedStreak, thisWeekActiveDays } from "./lib/streak";
+import { studyDeltaPct, weeklyStudyMs } from "./lib/study-volume";
 import { getDailyStudyStats } from "./queries.server";
 
 const GAM_STREAK_WINDOW_DAYS = 120; // range 셀렉터와 무관한 안정 윈도우(스트릭용 별도 fetch).
@@ -19,6 +20,10 @@ export interface GamificationSummary {
   thisWeekActiveDays: number;
   currentStreak: number;
   longestStreak: number;
+  // ★Phase 3 자기성장(주축, 비교 무관·A동의만) — 공부량 카드용.
+  thisWeekStudyMs: number;
+  lastWeekStudyMs: number;
+  studyDeltaPct: number | null; // 지난주 대비 %, 첫 주면 null
 }
 
 export async function getGamificationSummary(
@@ -44,6 +49,7 @@ export async function getGamificationSummary(
   const longestStreak = Math.max(row?.longest_streak_days ?? 0, currentStreak);
   const level = computeLevel(masteredCount);
   const leveledUp = level.levelNumber > (row?.level_seen ?? 1);
+  const { thisWeekMs, lastWeekMs } = weeklyStudyMs(daily.days, todayYmd);
 
   const last = daily.days[daily.days.length - 1];
   const activeToday =
@@ -74,5 +80,8 @@ export async function getGamificationSummary(
     thisWeekActiveDays: week,
     currentStreak,
     longestStreak,
+    thisWeekStudyMs: thisWeekMs,
+    lastWeekStudyMs: lastWeekMs,
+    studyDeltaPct: studyDeltaPct(thisWeekMs, lastWeekMs),
   };
 }

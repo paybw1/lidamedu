@@ -12,6 +12,7 @@ import {
   BookmarkIcon,
   BrainIcon,
   CalendarIcon,
+  ClockIcon,
   GavelIcon,
   HighlighterIcon,
   ListChecksIcon,
@@ -71,6 +72,7 @@ import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
 import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
 import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
+import { getCohortStudyPercentile } from "~/features/study/cohort-percentile.server";
 import { getGamificationSummary } from "~/features/study/gamification.server";
 import { getNodeMastery } from "~/features/study/mastery.server";
 import { GoalSummaryBar } from "~/features/study/components/goal-summary-bar";
@@ -346,6 +348,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     todayYmd,
     masteredCount,
   );
+  // Phase 3 공부량 코호트 구간 — ★B(pool) 동의자만(미동의=본인 성장만). 표본·격리는 서버 내부.
+  const cohortStudyBand = (await hasPoolConsent(client, user.id))
+    ? await getCohortStudyPercentile(user.id)
+    : null;
 
   return {
     myAnalysisOff: false as const,
@@ -376,6 +382,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     lastPoints,
     nodeMastery,
     gamification,
+    cohortStudyBand,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -802,6 +809,66 @@ function GrowthCard({ g }: { g: StatsData["gamification"] }) {
   );
 }
 
+// feat-2-027 Phase 3 — 공부량(자기성장 주축 + 코호트 구간 양념). ★순위 아님·격려·동의/표본 가드.
+function StudyVolumeCard({
+  g,
+  cohort,
+}: {
+  g: StatsData["gamification"];
+  cohort: StatsData["cohortStudyBand"];
+}) {
+  const thisWeekH = g.thisWeekStudyMs / 3_600_000;
+  const delta = g.studyDeltaPct;
+  return (
+    <Surface pad={0} tone="subtle">
+      <div className="px-6 pt-6 pb-3">
+        <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+          <ClockIcon className="size-4" /> 공부량
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          이번 주 학습량과 지난주 대비 나의 성장 · 비교는 양념일 뿐.
+        </p>
+      </div>
+      <div className="space-y-3 px-6 pb-6">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="text-sm">
+            이번 주 <b className="text-lg">{thisWeekH.toFixed(1)}</b>h 학습
+          </span>
+          {delta === null ? (
+            <span className="text-muted-foreground text-xs">
+              다음 주부터 지난주 대비 성장이 보여요
+            </span>
+          ) : delta >= 0 ? (
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              지난주 대비 +{delta}%
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              지난주 대비 {delta}%
+            </span>
+          )}
+        </div>
+        {cohort?.state === "ok" ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-3 text-sm">
+            <span className="text-muted-foreground text-xs">우리 반에서</span>
+            <Badge variant="secondary" className="text-xs">
+              상위 {cohort.topPercent}% · {cohort.band}
+            </Badge>
+            <span className="text-muted-foreground text-xs">
+              (동의 {cohort.sampleSize}명 기준)
+            </span>
+          </div>
+        ) : cohort?.state === "locked" ? (
+          <p className="text-muted-foreground border-t pt-3 text-xs">
+            우리 반 구간 비교는 동의한 동료 {cohort.needed}명이 모이면 자동으로
+            열려요 (현재 {cohort.current}명).
+          </p>
+        ) : null}
+      </div>
+    </Surface>
+  );
+}
+
 // 주별 학습시간 추이 — daily.days 주별 버킷(goals 에서 이관, range 연동).
 function StudyTimeTrendCard({
   days,
@@ -882,6 +949,7 @@ function OverviewTab({ data }: { data: StatsData }) {
     studyGoals,
     nodeMastery,
     gamification,
+    cohortStudyBand,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const goalDday = studyGoals.examDate
@@ -930,6 +998,8 @@ function OverviewTab({ data }: { data: StatsData }) {
       <MasteryCard rows={nodeMastery} />
 
       <GrowthCard g={gamification} />
+
+      <StudyVolumeCard g={gamification} cohort={cohortStudyBand} />
 
       {passerBenchmark ? (
         <PasserCalibrationCard
