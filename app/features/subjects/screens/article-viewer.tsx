@@ -46,6 +46,7 @@ import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
+import { StudyFontControl } from "~/features/study/components/study-font-control";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
@@ -1038,6 +1039,11 @@ function ArticleViewerInner({
               {/* ── Article body ───────────────────────────────────────── */}
               <div className="px-6 py-7">
                 <div className="mx-auto max-w-[800px]">
+                  {!editMode ? (
+                    <div className="mb-2 flex justify-end">
+                      <StudyFontControl />
+                    </div>
+                  ) : null}
                   {editMode ? (
                     <ArticleEditor
                       articleId={article.articleId}
@@ -1152,7 +1158,7 @@ function ArticleViewerInner({
                                 : ""}
                             </p>
                             {body ? (
-                              <div className="text-foreground text-[17px] leading-[1.85]">
+                              <div className="text-foreground text-[length:calc(17px*var(--study-fs))] leading-[1.85]">
                                 <ArticleBodyView
                                   body={body}
                                   titleMap={titleMap}
@@ -1174,7 +1180,7 @@ function ArticleViewerInner({
                                 ? ` (시행 ${compareEffectiveDate})`
                                 : ""}
                             </p>
-                            <div className="text-foreground text-[17px] leading-[1.85]">
+                            <div className="text-foreground text-[length:calc(17px*var(--study-fs))] leading-[1.85]">
                               <ArticleBodyView
                                 body={compareBody}
                                 titleMap={titleMap}
@@ -1195,7 +1201,7 @@ function ArticleViewerInner({
                                 : ""}
                             </p>
                             {body ? (
-                              <div className="text-foreground text-[17px] leading-[1.85]">
+                              <div className="text-foreground text-[length:calc(17px*var(--study-fs))] leading-[1.85]">
                                 <ArticleBodyView
                                   body={body}
                                   titleMap={titleMap}
@@ -1214,7 +1220,7 @@ function ArticleViewerInner({
                             <p className="mb-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-300">
                               🗓 {upcomingEffectiveDate} 시행 예정
                             </p>
-                            <div className="text-foreground text-[17px] leading-[1.85]">
+                            <div className="text-foreground text-[length:calc(17px*var(--study-fs))] leading-[1.85]">
                               <ArticleBodyView
                                 body={upcomingBody}
                                 titleMap={titleMap}
@@ -1226,7 +1232,7 @@ function ArticleViewerInner({
                           </div>
                         </div>
                       ) : body ? (
-                        <div className="text-foreground text-[17px] leading-[1.85]">
+                        <div className="text-foreground text-[length:calc(17px*var(--study-fs))] leading-[1.85]">
                           <ArticleBodyView
                             body={body}
                             titleMap={titleMap}

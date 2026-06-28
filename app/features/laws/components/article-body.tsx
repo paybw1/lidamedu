@@ -167,7 +167,7 @@ export function ArticleBodyView({
     >
       <BlockIndexCtx.Provider value={blockIndexMap}>
         <MemoMarksCtx.Provider value={memoMarks}>
-          <div className="space-y-3 font-serif text-[15px] leading-relaxed">
+          <div className="space-y-3 font-serif text-[length:calc(15px*var(--study-fs))] leading-relaxed">
             {body.blocks.map((b, i) => (
               <BlockView key={i} block={b} depth={0} />
             ))}

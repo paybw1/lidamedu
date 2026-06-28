@@ -27,6 +27,7 @@ import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import { listComments } from "~/features/comments/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { StudyFontControl } from "~/features/study/components/study-font-control";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import {
@@ -222,6 +223,7 @@ export default function ScienceProblemViewer({
             ) : null}
           </div>
           <div className="flex items-center gap-3">
+            <StudyFontControl />
             {isStaff ? (
               <Link
                 to={`/admin/problems/${problem.problemId}`}
@@ -263,7 +265,10 @@ export default function ScienceProblemViewer({
             <div className="flex items-start gap-3">
               <span className="mt-0.5 text-xl">{subjectMeta.emoji}</span>
               <div className="flex-1 text-base font-medium leading-relaxed">
-                <MarkdownView text={stem} className="text-base leading-relaxed" />
+                <MarkdownView
+                  text={stem}
+                  className="text-[length:calc(16px*var(--study-fs))] leading-relaxed"
+                />
                 {bogi.length > 0 ? (
                   <div className="border-border/70 bg-muted/30 dark:bg-muted/10 mt-4 rounded-xl border-2 px-5 py-4">
                     <p className="text-muted-foreground mb-2 text-xs font-bold tracking-wide">
@@ -329,7 +334,10 @@ export default function ScienceProblemViewer({
                       {c.choiceIndex}
                     </span>
                     <div className="flex-1">
-                      <MarkdownView text={c.bodyMd} />
+                      <MarkdownView
+                        text={c.bodyMd}
+                        className="text-[length:calc(15px*var(--study-fs))]"
+                      />
                     </div>
                     {isThisCorrect ? (
                       <CircleCheckIcon className="mt-0.5 size-4 shrink-0 text-emerald-600" />
@@ -339,7 +347,10 @@ export default function ScienceProblemViewer({
                   </div>
                   {revealed && c.explanationMd ? (
                     <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2 pl-8 text-xs leading-relaxed text-muted-foreground">
-                      <MarkdownView text={c.explanationMd} className="text-xs leading-relaxed" />
+                      <MarkdownView
+                        text={c.explanationMd}
+                        className="text-[length:calc(13px*var(--study-fs))] leading-relaxed"
+                      />
                     </div>
                   ) : null}
                 </button>
@@ -419,7 +430,7 @@ export default function ScienceProblemViewer({
             </h2>
             <MarkdownView
               text={problem.explanationMd}
-              className="text-sm leading-relaxed"
+              className="text-[length:calc(15px*var(--study-fs))] leading-relaxed"
             />
           </div>
         ) : null}

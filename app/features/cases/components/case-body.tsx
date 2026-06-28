@@ -21,6 +21,7 @@ import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
+import { StudyFontControl } from "~/features/study/components/study-font-control";
 import {
   ExamYearChip,
   mergeFirstRoundChips,
@@ -225,6 +226,8 @@ export function CaseBody({
           <span className="text-muted-foreground ml-auto text-xs tabular-nums">
             선고일 {kase.decidedAt}
           </span>
+
+          <StudyFontControl className="mr-1" />
 
           <CiteCopyButton
             court={kase.court}
@@ -775,7 +778,7 @@ export function Prose({ text }: { text: string }) {
   //   - 그 외 → 텍스트 + `<u>` 마커 (기존 동작)
   const blocks = buildProseBlocks(text);
   return (
-    <div className="text-foreground mx-auto max-w-[800px] space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
+    <div className="text-foreground mx-auto max-w-[800px] space-y-3 text-[length:calc(17px*var(--study-fs))] leading-[1.8] tracking-[-0.005em]">
       {blocks.map((b, i) => {
         if (b.kind === "blockImg")
           return <InlineImage key={i} alt={b.alt} url={b.url} />;

@@ -47,6 +47,7 @@ import {
 } from "~/features/laws/queries.server";
 import { listLectureResources } from "~/features/lectures/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { StudyFontControl } from "~/features/study/components/study-font-control";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
@@ -113,64 +114,6 @@ import {
 // 있으면 MarkdownView 로 렌더(이미지·표·수식). 없으면 plain whitespace-pre-line.
 // 파이프표 감지 = 구분선 `|---|` (\|[\s:]*-{3,}). mcq-pack-sheet 와 동일 규칙.
 const MD_IMAGE_RE = /!\[[^\]]*\]\([^)]*\)|<(img|table|div)\b|\|[\s:]*-{3,}/i;
-
-// 학습 내용 글자 크기 3단계(작게/보통/크게) — 학생 설정(localStorage). CSS 변수 --study-fs
-// 배율을 :root 에 적용하고, 본문·지문·해설 폰트가 calc(...*var(--study-fs)) 로 따라간다.
-const STUDY_FONT_STEPS = { sm: 0.9, md: 1, lg: 1.18 } as const;
-type StudyFontStep = keyof typeof STUDY_FONT_STEPS;
-
-function StudyFontControl() {
-  const [step, setStep] = useState<StudyFontStep>("md");
-  useEffect(() => {
-    const saved = localStorage.getItem("studyFontStep");
-    if (saved === "sm" || saved === "md" || saved === "lg") setStep(saved);
-  }, []);
-  useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--study-fs",
-      String(STUDY_FONT_STEPS[step]),
-    );
-  }, [step]);
-  const choose = (s: StudyFontStep) => {
-    setStep(s);
-    try {
-      localStorage.setItem("studyFontStep", s);
-    } catch {
-      /* localStorage 불가(프라이빗 모드 등) 시 무시 — 현재 세션엔 적용됨 */
-    }
-  };
-  return (
-    <div
-      className="border-border ml-auto inline-flex items-center gap-0.5 rounded-full border p-0.5"
-      role="group"
-      aria-label="학습 내용 글자 크기"
-      title="학습 내용 글자 크기"
-    >
-      {(["sm", "md", "lg"] as StudyFontStep[]).map((s) => (
-        <button
-          key={s}
-          type="button"
-          onClick={() => choose(s)}
-          aria-pressed={step === s}
-          aria-label={s === "sm" ? "작게" : s === "md" ? "보통" : "크게"}
-          className={cn(
-            "rounded-full px-2 leading-none font-semibold transition-colors",
-            s === "sm"
-              ? "text-[11px]"
-              : s === "md"
-                ? "text-[13px]"
-                : "text-[16px]",
-            step === s
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted",
-          )}
-        >
-          가
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export const meta: Route.MetaFunction = ({ data: loaderData }) => {
   if (!loaderData) return [{ title: "문제 | 리담변리사학원" }];
@@ -1101,7 +1044,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       <VideoIcon className="size-3" /> 동영상 풀이 보기
                     </a>
                   ) : null}
-                  <StudyFontControl />
+                  <StudyFontControl className="ml-auto" />
                 </div>
               </div>
 
