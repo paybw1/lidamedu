@@ -12,6 +12,7 @@ import {
   EyeOffIcon,
   ListTreeIcon,
   PencilLineIcon,
+  ScrollTextIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, data, useSearchParams } from "react-router";
@@ -527,6 +528,19 @@ function Inner({
               </p>
               {/* 모드 토글 버튼 행 */}
               <div className="border-border mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3">
+                <button
+                  type="button"
+                  onClick={toggleLeft}
+                  aria-pressed={leftCollapsed}
+                  title="읽기 모드 — 트리 접고 본문 집중"
+                  className={`hidden h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors lg:inline-flex ${
+                    leftCollapsed
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  <ScrollTextIcon className="size-3.5" /> 읽기 모드
+                </button>
                 {blankAvailableCount > 0 ? (
                   <>
                     <Button
