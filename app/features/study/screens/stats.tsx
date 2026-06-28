@@ -71,6 +71,7 @@ import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
 import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
 import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
+import { getNodeMastery } from "~/features/study/mastery.server";
 import { GoalSummaryBar } from "~/features/study/components/goal-summary-bar";
 import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
@@ -85,6 +86,7 @@ import {
   type RangeSelection,
   RangeSelectionGroup,
 } from "~/features/study/components/study-aids-list";
+import { summarizeMastery } from "~/features/study/lib/mastery";
 import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import {
   type PassPredictionSnapshotItem,
@@ -284,6 +286,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     passerBenchmark,
     oxSessions,
     lastPoints,
+    nodeMastery,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -321,6 +324,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     listMyOxSessions(client, user.id, { limit: 5 }),
     // 과목별 마지막 학습 지점(이어서 보기) — 진도 런처용. study_sessions 1회 + 배치 라벨.
     getLastStudyPointsBySubject(client, user.id, lawCodes),
+    // feat-2-027 Phase 1 — 단원 마스터리(파생: 노드별 정답률 + SRS 파지).
+    getNodeMastery(client, user.id, [...LAW_SUBJECT_SLUGS]),
   ]);
 
   const erRaw = examRoundRow.data?.next_exam_round;
@@ -354,6 +359,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
     oxSessions,
     lastPoints,
+    nodeMastery,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -650,6 +656,87 @@ function MilestonesCard({ overall }: { overall: StatsData["overall"] }) {
   );
 }
 
+// feat-2-027 Phase 1 — 단원 마스터리(학습한 단원의 숙련도 분포 + 정복 = 마스터 단원).
+//   ★질 게이트는 서버(computeNodeMastery)에 — 여기선 분포/정복만 담백하게 표시.
+function MasteryCard({ rows }: { rows: StatsData["nodeMastery"] }) {
+  const summary = summarizeMastery(rows.map((r) => r.stage));
+  const engaged = summary.learning + summary.familiar + summary.mastered;
+  const mastered = rows.filter((r) => r.stage === "mastered");
+  const widthPct = (n: number) => (engaged > 0 ? (n / engaged) * 100 : 0);
+  return (
+    <Surface pad={0} tone="subtle">
+      <div className="px-6 pt-6 pb-3">
+        <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+          <BrainIcon className="size-4" /> 단원 마스터리
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          학습한 단원의 숙련도 · 마스터 = 정답률 85%+ &amp; 복습 2회 통과(파지).
+        </p>
+      </div>
+      <div className="space-y-3 px-6 pb-6">
+        {engaged === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            아직 학습한 단원이 없어요. 문제를 풀면 단원별 숙련도가 쌓여요.
+          </p>
+        ) : (
+          <>
+            <div className="bg-muted flex h-2.5 w-full overflow-hidden rounded-full">
+              <div
+                className="bg-muted-foreground/30"
+                style={{ width: `${widthPct(summary.learning)}%` }}
+              />
+              <div
+                className="bg-sky-500"
+                style={{ width: `${widthPct(summary.familiar)}%` }}
+              />
+              <div
+                className="bg-emerald-600"
+                style={{ width: `${widthPct(summary.mastered)}%` }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              <span className="text-muted-foreground">
+                학습 중 {summary.learning}
+              </span>
+              <span className="font-medium text-sky-600 dark:text-sky-400">
+                익숙 {summary.familiar}
+              </span>
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                마스터 {summary.mastered}
+              </span>
+              <span className="text-muted-foreground">
+                · 학습 단원 {engaged}개
+              </span>
+            </div>
+            {mastered.length > 0 ? (
+              <p className="text-sm">
+                🎯 정복한 단원{" "}
+                <b className="text-emerald-600 dark:text-emerald-400">
+                  {mastered.length}
+                </b>
+                개
+                <span className="text-muted-foreground">
+                  {" · "}
+                  {mastered
+                    .slice(0, 6)
+                    .map((m) => m.displayLabel)
+                    .join(" · ")}
+                  {mastered.length > 6 ? " …" : ""}
+                </span>
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                익숙해진 단원을 복습으로 2회 이상 통과하면 “마스터(정복)”로
+                올라가요.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </Surface>
+  );
+}
+
 // 주별 학습시간 추이 — daily.days 주별 버킷(goals 에서 이관, range 연동).
 function StudyTimeTrendCard({
   days,
@@ -728,6 +815,7 @@ function OverviewTab({ data }: { data: StatsData }) {
     weakAreas,
     passerBenchmark,
     studyGoals,
+    nodeMastery,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const goalDday = studyGoals.examDate
@@ -772,6 +860,8 @@ function OverviewTab({ data }: { data: StatsData }) {
       <WeakReviewCard weakAreas={weakAreas} />
 
       <MilestonesCard overall={overall} />
+
+      <MasteryCard rows={nodeMastery} />
 
       {passerBenchmark ? (
         <PasserCalibrationCard
