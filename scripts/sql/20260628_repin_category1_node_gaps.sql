@@ -1,0 +1,25 @@
+-- 카테고리① 무관-노드 오배치 재핀 21건 (audit-node-gaps.mjs --emit 자동생성분, 적용 완료 스냅샷).
+-- 워크북 섹션이 정답 노드. 토픽과 무관한 포괄/오染 노드(보상금액소송·본안심리·행위능력 등)에 잘못 핀된 것을 섹션 노드로 복원.
+-- 의도된 하위노드(법정실시권·직무발명·취하포기)는 제외(②, 사용자 판단). 다중매칭(cand>1)도 제외(박스/선지 매칭으로 별도 처리: 20260628_repin_boxmatch_2.sql).
+-- 롤백: 각 problem_id 를 주석의 from-노드로 복원.
+update problems set primary_node_id = 'e2145cae-6ae1-4bcb-b477-824e5a9f37d4', updated_at = now() where problem_id = '41a3fabf-3a9e-40bb-93a1-6a1f5fd30817'; -- [발명] 예상#8: "침해에 대한 조치"(2ebc5ec9) → "발명"
+update problems set primary_node_id = '290eaff9-472a-4a1b-b1d0-c2a404f8c51a', updated_at = now() where problem_id = '06c76d4a-2d4c-4f30-ba49-18286035e462'; -- [기일, 기간 및 추후보완] 예상#4: "보상금액 또는 대가에 대한 소송"(11b02956) → "기일, 기간 및 추후보완"
+update problems set primary_node_id = '4b5098c5-4d73-4429-848c-66d34288e8a5', updated_at = now() where problem_id = '51387b2d-5c20-4358-8e0d-c11c7babbc59'; -- [특허에 관한 절차 일반] 예상#4: "국내우선권주장출원"(cc1ace6a) → "특허에 관한 절차 일반"
+update problems set primary_node_id = '4b5098c5-4d73-4429-848c-66d34288e8a5', updated_at = now() where problem_id = '0b9f34fd-146e-4e6c-bebf-a813a9ba195e'; -- [특허에 관한 절차 일반] 예상#9: "본안심리"(c64266d5) → "특허에 관한 절차 일반"
+update problems set primary_node_id = '544e3d23-b42b-444f-9a91-a9955339d7a0', updated_at = now() where problem_id = '6d8e1b29-2cfb-4af0-86b1-a03b64078ec0'; -- [선출원주의] 기출#7: "보상금액 또는 대가에 대한 소송"(11b02956) → "선출원주의"
+update problems set primary_node_id = 'f52d55dc-3d25-4acd-82eb-f246dcaf165c', updated_at = now() where problem_id = '38dfc432-7dbf-4dc4-a62c-dae581728848'; -- [특허출원에 필요한 서류] 예상#6: "국내우선권주장출원"(cc1ace6a) → "특허출원에 필요한 서류"
+update problems set primary_node_id = '9d7d1f0f-2d99-4796-9d12-f0db376cb816', updated_at = now() where problem_id = '9a917bfb-0f6b-427c-92e2-8cbbee45b904'; -- [하나의 특허출원의 범위] 예상#4: "보상금액 또는 대가에 대한 소송"(11b02956) → "하나의 특허출원의 범위"
+update problems set primary_node_id = '94b2dba1-9319-4b16-98a1-cd5ec5f8b3cd', updated_at = now() where problem_id = '771e1e4d-9bc8-4390-9361-192459169515'; -- [정당한 권리자의 보호] 예상#3: "본안심리"(c64266d5) → "정당한 권리자의 보호"
+update problems set primary_node_id = '0fc67e26-dc08-46e5-9d9a-0d6aaebbe7e1', updated_at = now() where problem_id = 'b9186e54-b7ef-45de-8447-8445c5214a0c'; -- [분할출원] 예상#4: "보상금액 또는 대가에 대한 소송"(11b02956) → "분할출원"
+update problems set primary_node_id = 'a0831a9c-be2f-4d0b-8be8-1f64b6b1caf2', updated_at = now() where problem_id = '3932c975-1234-4888-8cbe-c06d0e8ba9a6'; -- [변경출원] 기출#1: "보상금액 또는 대가에 대한 소송"(11b02956) → "변경출원"
+update problems set primary_node_id = '340e3501-9512-4d92-9ea5-3e2297b6bb53', updated_at = now() where problem_id = '3234dd94-d782-4d6c-8130-be3e65ceb3b7'; -- [조약우선권주장출원] 예상#8: "보상금액 또는 대가에 대한 소송"(11b02956) → "조약우선권주장출원"
+update problems set primary_node_id = 'e921734d-272f-40a3-87d6-c2047ce1da8e', updated_at = now() where problem_id = '6f340a80-902e-4a4e-af05-6e6ba9d0c452'; -- [특허여부결정에 의한 종료] 예상#7: "[03] 진행"(3839a8ca) → "특허여부결정에 의한 종료"
+update problems set primary_node_id = '7c880fa1-5418-4dd0-bc98-2a9ee124fcc8', updated_at = now() where problem_id = '593ee7c6-3a00-4586-abb3-2d574a4829bb'; -- [출원공개제도] 예상#7: "침해에 대한 조치"(2ebc5ec9) → "출원공개제도"
+update problems set primary_node_id = '16283fe0-62f8-499d-b787-d227f3e0e790', updated_at = now() where problem_id = '821d8013-3368-4f12-ba0f-cd88ad9ad86a'; -- [특허료의 납부] 기출#1: "보상금액 또는 대가에 대한 소송"(11b02956) → "특허료의 납부"
+update problems set primary_node_id = '94c5c08f-6bc4-4b4d-8d97-131a6d89539d', updated_at = now() where problem_id = '902d4fd4-a9c3-4518-a654-28a5aaa22ea4'; -- [존속기간과 연장제도] 예상#10: "침해에 대한 조치"(2ebc5ec9) → "존속기간과 연장제도"
+update problems set primary_node_id = 'e5b4304e-0973-4fb3-bd8e-777a722b6ce0', updated_at = now() where problem_id = '2a5d42c7-0316-470b-bf9f-f2aec583d055'; -- [침해의 종류] 예상#4: "본안심리"(c64266d5) → "침해의 종류"
+update problems set primary_node_id = '81a14689-7ec7-4aac-b081-24c8c171aa02', updated_at = now() where problem_id = 'fb99297c-f5fb-4111-bb4a-696f5509e539'; -- [강제실시권] 기출#8: "침해에 대한 조치"(2ebc5ec9) → "강제실시권"
+update problems set primary_node_id = 'c677a045-178e-4690-ab76-9d2afd5bcddb', updated_at = now() where problem_id = '24b9932e-df53-4ca5-b552-724ddf66a35c'; -- [심판의 당사자] 예상#1: "보상금액 또는 대가에 대한 소송"(11b02956) → "심판의 당사자"
+update problems set primary_node_id = 'ded28ad8-0f72-488a-9673-a97df82afbfe', updated_at = now() where problem_id = '24484219-97aa-4c2c-bdb8-a93e44954aa1'; -- [재심] 예상#10: "보상금액 또는 대가에 대한 소송"(11b02956) → "재심"
+update problems set primary_node_id = '40705add-345d-441a-9d96-077c5e5324ad', updated_at = now() where problem_id = 'e70c4d6e-c2f6-4953-984c-c028ecf90d04'; -- [특허소송] 예상#14: "보상금액 또는 대가에 대한 소송"(11b02956) → "특허소송"
+update problems set primary_node_id = '806d624d-0411-4360-a530-13c7454ee947', updated_at = now() where problem_id = 'e03a1fe2-0853-47df-8615-39f1c39bdd2f'; -- [불특허발명] 예상#2: "보상금액 또는 대가에 대한 소송"(11b02956) → "불특허발명"
