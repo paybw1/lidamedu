@@ -591,7 +591,12 @@ function ArticleViewerInner({
           </aside>
 
           {/* ── MAIN BODY ───────────────────────────────────────────────── */}
-          <main className="min-w-0 space-y-4">
+          <main
+            className={cn(
+              "min-w-0 space-y-4",
+              readingMode && "mx-auto w-full max-w-[848px]",
+            )}
+          >
             {/* Mobile drawer triggers */}
             <div className="flex flex-wrap gap-2 lg:hidden">
               <MobileNavDrawer

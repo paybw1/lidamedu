@@ -440,7 +440,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             </aside>
 
             {/* ── 중앙 본문 ── */}
-            <main className="min-w-0 space-y-4">
+            <main
+              className={cn(
+                "min-w-0 space-y-4",
+                readingMode && "mx-auto w-full max-w-[848px]",
+              )}
+            >
               {/* 모바일 드로어 트리거 */}
               <div className="flex flex-wrap gap-2 lg:hidden">
                 <MobileNavDrawer
