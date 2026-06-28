@@ -775,7 +775,7 @@ export function Prose({ text }: { text: string }) {
   //   - 그 외 → 텍스트 + `<u>` 마커 (기존 동작)
   const blocks = buildProseBlocks(text);
   return (
-    <div className="text-foreground/90 dark:text-foreground/85 space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
+    <div className="text-foreground mx-auto max-w-[800px] space-y-3 text-[17px] leading-[1.8] tracking-[-0.005em]">
       {blocks.map((b, i) => {
         if (b.kind === "blockImg")
           return <InlineImage key={i} alt={b.alt} url={b.url} />;

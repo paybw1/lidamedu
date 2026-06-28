@@ -55,7 +55,7 @@ const components: Components = {
         // 라벨 셀(서/의의 등 짧음) 은 좁게, 내용 셀(긴 텍스트) 은 넓게 자연스럽게 분포.
         // break-words 로 긴 한자/단어도 셀 안에서 줄바꿈.
         // 글자 크기 3단(--study-fs) 따라감 — 표 형식 지문도 발문과 함께 커지도록(기본 1=무변화).
-        className="w-full border-collapse text-left text-[length:calc(12px*var(--study-fs))] [&_td]:break-words [&_th]:break-words"
+        className="w-full border-collapse text-left text-[length:calc(13px*var(--study-fs))] [&_td]:break-words [&_th]:break-words"
         {...props}
       />
     </div>
@@ -107,13 +107,13 @@ const components: Components = {
   ),
   code: (props) => (
     <code
-      className="bg-muted rounded px-1 py-0.5 font-mono text-[length:calc(11px*var(--study-fs))]"
+      className="bg-muted rounded px-1 py-0.5 font-mono text-[length:calc(13px*var(--study-fs))]"
       {...props}
     />
   ),
   pre: (props) => (
     <pre
-      className="bg-muted my-2 overflow-x-auto rounded p-2 font-mono text-[length:calc(11px*var(--study-fs))]"
+      className="bg-muted my-2 overflow-x-auto rounded p-2 font-mono text-[length:calc(13px*var(--study-fs))]"
       {...props}
     />
   ),
@@ -166,7 +166,7 @@ export function MarkdownView({
   return (
     <div
       className={cn(
-        "text-foreground max-w-none text-xs leading-relaxed",
+        "text-foreground max-w-none text-sm leading-relaxed",
         className,
       )}
     >

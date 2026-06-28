@@ -35,13 +35,13 @@ body {
   --area-sticky-top: 0px;
 
   --background: #ffffff;
-  --foreground: #252525;
+  --foreground: #2e2e2e; /* P2: #252525 → 살짝 톤다운. 순백 배경 과대비(≈15:1) 완화. ★라이브 적정선 확인 */
 
   --card: #ffffff;
-  --card-foreground: #252525;
+  --card-foreground: #2e2e2e; /* P2: 본문 톤다운 */
 
   --popover: #ffffff;
-  --popover-foreground: #252525;
+  --popover-foreground: #2e2e2e; /* P2: 본문 톤다운 */
 
   --primary: #2d5ba8; /* 디자인 시스템 딥 로열블루 */
   --primary-foreground: #ffffff;
@@ -104,13 +104,13 @@ body {
 
 .dark {
   --background: #252525;
-  --foreground: #ffffff;
+  --foreground: #e6e6e6; /* P1: 순백 #fff → off-white. 다크 halation(흰 글자 번짐) 완화. 배경(#252525)은 비순검 유지 */
 
   --card: #333333;
-  --card-foreground: #ffffff;
+  --card-foreground: #e6e6e6; /* P1: 본문 off-white */
 
   --popover: #333333;
-  --popover-foreground: #ffffff;
+  --popover-foreground: #e6e6e6; /* P1: 본문 off-white */
 
   --primary: #3b6fc4; /* 디자인 시스템 blue-deep — 다크 표면 */
   --primary-foreground: #ffffff;

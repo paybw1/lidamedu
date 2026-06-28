@@ -1081,7 +1081,7 @@ function InlineNode({
                 rendered = (
                   <span
                     key={i}
-                    className="text-muted-foreground/70 ml-1 align-baseline text-[10px] italic"
+                    className="text-muted-foreground/70 ml-1 align-baseline text-[12px] italic"
                   >
                     {p.text}
                   </span>
@@ -1236,7 +1236,7 @@ function InlineNode({
         return <Fragment>{renderTextWithBlanks(node.text, 0)}</Fragment>;
       }
       return (
-        <span className="text-muted-foreground/70 ml-1 align-baseline text-[10px] italic">
+        <span className="text-muted-foreground/70 ml-1 align-baseline text-[12px] italic">
           {node.text}
         </span>
       );
