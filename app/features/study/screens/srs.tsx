@@ -145,6 +145,11 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
     slug,
     count: items.filter((it) => it.lawCode === slug).length,
   })).filter((g) => g.count > 0);
+  // feat-2-026 Stage 2b — 과목별 due 빈칸 세트 → 첫 세트로 빈칸 복습 러너 진입(?blankReview=1).
+  const blankGroups = LAW_SUBJECT_SLUGS.map((slug) => ({
+    slug,
+    sets: blankItems.filter((b) => b.lawCode === slug),
+  })).filter((g) => g.sets.length > 0);
   return (
     <StudentShell>
       <header className="mb-6">
@@ -380,10 +385,34 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       ) : (
         <Card>
           <CardHeader className="pb-3">
-            <p className="text-foreground text-sm font-bold">
-              지금 풀어야 할 빈칸 {blankCounts.dueSets} 세트 · 빈칸{" "}
-              {blankCounts.dueBlanks}개
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-foreground text-sm font-bold">
+                  지금 풀어야 할 빈칸 {blankCounts.dueSets} 세트 · 빈칸{" "}
+                  {blankCounts.dueBlanks}개
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  묶음으로 모아 풉니다. 한 세트를 채우면 다음 빈칸 세트로
+                  이어지고, 풀이마다 복습 일정이 갱신됩니다.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-ink-soft self-center text-[11px] font-semibold">
+                  묶음 복습
+                </span>
+                {blankGroups.map((g) => (
+                  <Button key={g.slug} asChild size="sm" className="rounded-full">
+                    <Link
+                      to={`/subjects/${g.slug}/articles/${g.sets[0].articleNumber}?blank=${g.sets[0].setId}&blankReview=1`}
+                      viewTransition
+                    >
+                      {LAW_SUBJECTS[g.slug].name} {g.sets.length}세트
+                      <ArrowRightIcon className="size-3.5" />
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="pb-3">
             <BlankSrsTable items={blankItems} />

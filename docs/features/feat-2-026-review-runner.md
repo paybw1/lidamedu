@@ -42,10 +42,15 @@
 **② 빈칸 러너 → 검토 결론(결정 대기)**:
 - 빈칸은 **풀기**라 MCQ처럼 scatter(세트 풀고 → `/study/srs` 복귀 → 다음 세트) 문제가 동일하게 있음 → 러너 가치 있음.
 - 그러나 빈칸 풀이는 **조문 뷰어 빈칸 모드**(`?blank=setId`, `BlankFillView`)에서 일어나고, 세트가 **여러 조문(·과목)에 흩어져** 있어, 진짜 러너는 조문 뷰어 빈칸 모드에 **세트 간 시퀀스(`?blankSeq=`) + "다음 빈칸 세트" 내비**를 추가해야 함.
-- 비용/위험: param-gated 추가(없으면 기존과 동일 → 회귀위험 낮음)이나, **복잡·critical 파일인 조문 뷰어 개입**. → **승인 게이트**(사용자 go 후 Stage 2b로 구현 권장). 임시 대안(per-subject "빈칸 복습 시작"=첫 세트만 열기)은 체이닝이 없어 scatter 미해소 → 반쪽이라 보류.
+- 비용/위험: param-gated 추가(없으면 기존과 동일 → 회귀위험 낮음)이나, **복잡·critical 파일인 조문 뷰어 개입**. → 사용자 승인 후 **Stage 2b로 구현 완료**(아래).
 
-### Stage 2b (제안 — 승인 후) — 빈칸 러너
-- API `session-from-srs`처럼 per-subject "빈칸 복습 시작" → 첫 due 세트 조문 `?blank={setId}&blankSeq={setId 목록}` 진입. 조문 뷰어 빈칸 모드가 `blankSeq` 있으면 진행도("빈칸 복습 N/M") + "다음 빈칸 세트"(다음 세트의 조문·blank 로 풀 내비) + 끝나면 `/study/srs` 복귀. 세트가 타 과목이면 과목 넘어가며 진행.
+### Stage 2b — 빈칸 러너 (완료)
+조문 뷰어를 **param-gated**(`?blankReview=1`)로 확장 — 없으면 기존과 100% 동일(회귀위험 낮음).
+- `srs.tsx` 빈칸 섹션: 과목별 "복습 시작" Link → 첫 due 세트 조문 `?blank={setId}&blankReview=1`(GET, 세션 불필요).
+- `article-viewer.tsx` loader: `blankReview=1`이면 (a) `initialBlankMode.content=true`로 **콘텐츠 빈칸 모드 자동 진입**, (b) 같은 과목 due 세트(`getDueBlankSets` 필터)에서 **다음 세트 nav 매 요청 재계산**(`blankReviewNav={remaining, nextHref}`). 푼 세트는 due 에서 빠져 자연히 남은 세트만 순회 → 다 풀면 `nextHref=null`.
+- `article-viewer.tsx` 컴포넌트: 콘텐츠 빈칸 렌더 위에 진행 strip("빈칸 복습 · 남은 N세트" + "다음 빈칸 세트"/"복습 완료" → `/study/srs"). `blankMode` 초기값을 `initialBlankMode.content`로.
+- 세션(quiz_sessions) 미사용 — 빈칸은 조문 뷰어 빈칸 모드가 본문 의존이라 서버 재계산 시퀀스가 더 가벼움. MCQ(problem-viewer 세션)와 다른 방식.
+- 채점·SRS 갱신은 기존 빈칸 attempt API(`applyBlankSrsUpdate`) 그대로.
 
 ### Stage 3 (선택) — 허브 재구성 + 보기 게이트
 - `/study/srs` 상단 통합 "복습 시작" 진입 정리, OX prev/next 카드 네비 보강, MCQ "오답 답 없이 다시 보기"(보기 게이트 `revealed || viewMode` 한 줄, `problem-viewer.tsx:1280`).

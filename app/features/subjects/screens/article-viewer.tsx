@@ -12,6 +12,7 @@ import {
   PanelRightIcon,
   PencilIcon,
   PencilLineIcon,
+  RepeatIcon,
   ScrollTextIcon,
   WorkflowIcon,
   XIcon,
@@ -42,6 +43,7 @@ import { PeriodAmbiguousPanel } from "~/features/blanks/components/period-ambigu
 import { computePeriodBlanks } from "~/features/blanks/lib/period-blanks";
 import { computeSubjectBlanks } from "~/features/blanks/lib/subject-blanks";
 import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
+import { getDueBlankSets } from "~/features/blanks/srs.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
@@ -257,6 +259,29 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         null)
       : (blankSets[0] ?? null);
 
+  // feat-2-026 Stage 2b — 빈칸 복습 러너. ?blankReview=1 이면 (a) 콘텐츠 빈칸 모드 자동
+  //   진입, (b) 같은 과목 due 세트 시퀀스의 "다음 세트" 내비를 매 요청 재계산(세션 없이).
+  //   푼 세트는 due 에서 빠지므로 자연히 남은 세트만 순회 → 다 풀면 nextHref=null(끝).
+  const blankReviewParam = reqUrl.searchParams.get("blankReview") === "1";
+  let blankReviewNav: { remaining: number; nextHref: string | null } | null =
+    null;
+  if (blankReviewParam) {
+    const dueSets = (await getDueBlankSets(client, user.id, 200)).filter(
+      (s) => s.lawCode === lawCode,
+    );
+    const curIdx = dueSets.findIndex((s) => s.setId === blankSetIdParam);
+    const nextSet =
+      curIdx >= 0
+        ? (dueSets[curIdx + 1] ?? null) // 스킵: 다음 순서로
+        : (dueSets.find((s) => s.setId !== blankSetIdParam) ?? null); // 풀어서 빠짐: 남은 첫 세트
+    blankReviewNav = {
+      remaining: dueSets.filter((s) => s.setId !== blankSetIdParam).length,
+      nextHref: nextSet
+        ? `/subjects/${nextSet.lawCode}/articles/${nextSet.articleNumber}?blank=${nextSet.setId}&blankReview=1`
+        : null,
+    };
+  }
+
   // 진도 기록 (loader 안에서 1번 fire-and-forget; 실패해도 화면은 계속)
   recordStudySession(client, user.id, {
     subject: lawCode,
@@ -283,7 +308,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       subject: subjectBlankParam,
       period: periodBlankParam,
       recitation: recitationParam,
+      content: blankReviewParam,
     },
+    blankReviewNav,
     articles,
     systematicNodes,
     relatedCases,
@@ -344,6 +371,7 @@ function ArticleViewerInner({
     qnaThreads,
     blankSets,
     blankSet,
+    blankReviewNav,
     staffRole,
     isAdmin,
     currentUserId,
@@ -395,7 +423,7 @@ function ArticleViewerInner({
     useLeftPanelCollapse();
   const { collapsed: rightCollapsed, toggle: toggleRight } =
     useRightPanelCollapse();
-  const [blankMode, setBlankMode] = useState(false);
+  const [blankMode, setBlankMode] = useState(initialBlankMode?.content ?? false);
   const [subjectBlankMode, setSubjectBlankMode] = useState(
     initialBlankMode?.subject ?? false,
   );
@@ -1021,13 +1049,58 @@ function ArticleViewerInner({
                       onCancel={() => setEditMode(false)}
                     />
                   ) : blankMode && blankSet && body ? (
-                    <BlankFillView
-                      setId={blankSet.setId}
-                      body={body}
-                      blanks={blankSet.blanks}
-                      titleMap={titleMap}
-                      lawCode={subject.slug}
-                    />
+                    <div className="space-y-4">
+                      {/* feat-2-026 Stage 2b — 빈칸 복습 러너 진행 strip(세트 간 이동) */}
+                      {blankReviewNav ? (
+                        <div className="border-primary/20 bg-primary/5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-2.5">
+                          <span className="text-link inline-flex items-center gap-1.5 text-sm font-semibold">
+                            <RepeatIcon className="size-4" /> 빈칸 복습
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            이 세트를 풀고 다음으로 넘어가세요
+                            {blankReviewNav.remaining > 0
+                              ? ` · 남은 ${blankReviewNav.remaining}세트`
+                              : ""}
+                          </span>
+                          <div className="ml-auto flex items-center gap-2">
+                            {blankReviewNav.nextHref ? (
+                              <>
+                                <Button
+                                  asChild
+                                  variant="ghost"
+                                  size="sm"
+                                  className="rounded-full"
+                                >
+                                  <Link to="/study/srs" viewTransition>
+                                    끝내기
+                                  </Link>
+                                </Button>
+                                <Button asChild size="sm" className="rounded-full">
+                                  <Link to={blankReviewNav.nextHref} viewTransition>
+                                    다음 빈칸 세트
+                                    <ChevronRightIcon className="size-3.5" />
+                                  </Link>
+                                </Button>
+                              </>
+                            ) : (
+                              <Button asChild size="sm" className="rounded-full">
+                                <Link to="/study/srs" viewTransition>
+                                  복습 완료
+                                  <ChevronRightIcon className="size-3.5" />
+                                </Link>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                      <BlankFillView
+                        setId={blankSet.setId}
+                        body={body}
+                        blanks={blankSet.blanks}
+                        titleMap={titleMap}
+                        lawCode={subject.slug}
+                      />
+                    </div>
                   ) : subjectBlankMode && body ? (
                     <BlankFillView
                       setId={null}
