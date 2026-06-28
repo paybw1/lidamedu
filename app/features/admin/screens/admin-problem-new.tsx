@@ -26,7 +26,6 @@ import {
 import {
   FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
-  SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-problem-new";
@@ -157,20 +156,12 @@ export default function AdminProblemNew({
                 required
                 className="w-full"
               >
-                <optgroup label="1차 · 객관식">
-                  {FIRST_EXAM_LAW_SLUGS.map((s) => (
-                    <option key={s} value={s}>
-                      {LAW_SUBJECTS[s].name}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="2차 · 주관식">
-                  {SECOND_EXAM_LAW_SLUGS.map((s) => (
-                    <option key={s} value={s}>
-                      {LAW_SUBJECTS[s].name}
-                    </option>
-                  ))}
-                </optgroup>
+                {/* /admin/problems 는 1차 객관식 전용 — 2차(주관식) 과목 제외. */}
+                {FIRST_EXAM_LAW_SLUGS.map((s) => (
+                  <option key={s} value={s}>
+                    {LAW_SUBJECTS[s].name}
+                  </option>
+                ))}
               </AdminSelect>
             </Field>
 

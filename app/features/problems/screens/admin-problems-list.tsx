@@ -26,8 +26,6 @@ import {
 import {
   FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
-  LAW_SUBJECT_SLUGS,
-  SECOND_EXAM_LAW_SLUGS,
 } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-problems-list";
@@ -57,8 +55,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const url = new URL(request.url);
   const subjectParam = url.searchParams.get("subject") ?? "patent";
-  const subject = LAW_SUBJECT_SLUGS.includes(subjectParam as never)
-    ? (subjectParam as (typeof LAW_SUBJECT_SLUGS)[number])
+  // /admin/problems 는 1차 객관식 전용 — 2차(주관식) 과목은 patent 로 폴백.
+  const subject = FIRST_EXAM_LAW_SLUGS.includes(subjectParam as never)
+    ? (subjectParam as (typeof FIRST_EXAM_LAW_SLUGS)[number])
     : "patent";
 
   const reviewParam = url.searchParams.get("review");
@@ -166,23 +165,10 @@ export default function AdminProblemsList({
           name="subject"
           label="과목"
           value={subject}
-          options={[]}
-          optionGroups={[
-            {
-              label: "1차 · 객관식",
-              options: FIRST_EXAM_LAW_SLUGS.map((s) => ({
-                value: s,
-                label: LAW_SUBJECTS[s].name,
-              })),
-            },
-            {
-              label: "2차 · 주관식",
-              options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
-                value: s,
-                label: LAW_SUBJECTS[s].name,
-              })),
-            },
-          ]}
+          options={FIRST_EXAM_LAW_SLUGS.map((s) => ({
+            value: s,
+            label: LAW_SUBJECTS[s].name,
+          }))}
         />
         <FilterSelect
           name="origin"
