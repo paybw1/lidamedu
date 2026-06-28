@@ -2219,22 +2219,10 @@ for (const spec of filtered) {
 
   if (!APPLY) continue;
 
-  // Storage 업로드.
-  const newHash = createHash("sha256").update(png).digest("hex").slice(0, 32);
-  const newObject = `${newHash}.png`;
-  const newUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${newObject}`;
-  const oldUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${spec.oldObjectName}`;
-
-  const { error: upErr } = await supa.storage.from(BUCKET).upload(newObject, png, {
-    contentType: "image/png",
-    upsert: false,
-  });
-  if (upErr && !/already exists|duplicate/i.test(upErr.message)) {
-    console.error(`    ✗ upload: ${upErr.message}`);
-    continue;
-  }
-
-  // DB 업데이트.
+  // 라이브 explanation_md 를 먼저 조회 → 현재 이미지 URL 을 직접 치환.
+  //   기존엔 spec.oldObjectName 으로 mcgdoplo URL 을 조립해 replaceAll 했는데, 라이브가
+  //   구 호스트(nctokynz)·다른 해시인 경우 매칭 실패로 조용히 skip 됐음.
+  //   → md 에 실제로 들어있는 이미지 URL 을 그대로 신규 URL 로 교체(호스트/해시 무관).
   const { data: prob, error: qErr } = await supa
     .from("problems")
     .select("explanation_md")
@@ -2245,9 +2233,35 @@ for (const spec of filtered) {
     continue;
   }
   const before = prob.explanation_md ?? "";
-  const after = before.replaceAll(oldUrl, newUrl);
+  const imgUrls = [...before.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((m) => m[1]);
+  const oldStem = spec.oldObjectName.replace(/\.[a-z0-9]+$/i, "");
+  // 이미지 1개면 그걸 교체. 여러 개면 oldObjectName 으로 특정.
+  const targetUrl =
+    imgUrls.length === 1
+      ? imgUrls[0]
+      : (imgUrls.find((u) => u.includes(oldStem)) ?? null);
+  if (!targetUrl) {
+    console.warn(`    ⚠ 치환 대상 불명 (이미지 ${imgUrls.length}개, old=${spec.oldObjectName})`);
+    continue;
+  }
+
+  // Storage 업로드.
+  const newHash = createHash("sha256").update(png).digest("hex").slice(0, 32);
+  const newObject = `${newHash}.png`;
+  const newUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${newObject}`;
+  const { error: upErr } = await supa.storage.from(BUCKET).upload(newObject, png, {
+    contentType: "image/png",
+    upsert: false,
+  });
+  if (upErr && !/already exists|duplicate/i.test(upErr.message)) {
+    console.error(`    ✗ upload: ${upErr.message}`);
+    continue;
+  }
+
+  // DB 업데이트 — 현재 이미지 URL → 신규 URL.
+  const after = before.replaceAll(targetUrl, newUrl);
   if (before === after) {
-    console.warn(`    ⚠ oldUrl 매칭 없음 (${spec.oldObjectName})`);
+    console.warn(`    ⚠ 치환 무효 (${targetUrl.slice(0, 50)})`);
     continue;
   }
   const { error: uErr } = await supa
