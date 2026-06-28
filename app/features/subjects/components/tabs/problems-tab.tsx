@@ -310,25 +310,49 @@ export function ProblemsTab({
           </div>
         ) : null}
 
-        {/* Learning mode cards — 3 columns */}
+        {/* Learning mode cards + 정오문제 불가 런처 */}
         {firstRound.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            <ModeCard
-              icon={<SlidersHorizontalIcon className="size-[18px]" />}
-              title="맞춤 퀴즈"
-              desc="유형/연도/극성으로 N문제 묶음 · 시험 모드 가능"
-              href={`/subjects/${subject.slug}/quiz/setup`}
-              cta="설정"
-              ctaVariant="outline"
-            />
-            <ModeCard
-              icon={<CheckSquareIcon className="size-[18px]" />}
-              title="정오문제"
-              desc="정오문제 지문 무작위 빠른 풀이"
-              href={`/subjects/${subject.slug}/ox`}
-              cta="시작"
-              ctaVariant="outline"
-            />
+          <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <ModeCard
+                icon={<SlidersHorizontalIcon className="size-[18px]" />}
+                title="맞춤 퀴즈"
+                desc="유형/연도/극성으로 N문제 묶음 · 시험 모드 가능"
+                href={`/subjects/${subject.slug}/quiz/setup`}
+                cta="설정"
+                ctaVariant="outline"
+              />
+              <ModeCard
+                icon={<CheckSquareIcon className="size-[18px]" />}
+                title="정오문제"
+                desc="정오문제 지문 무작위 빠른 풀이"
+                href={`/subjects/${subject.slug}/ox`}
+                cta="시작"
+                ctaVariant="outline"
+              />
+            </div>
+            {/* 요청2 — 정오문제로 만들 수 없어 OX 드릴에서 빠지는 문제(불가 체크)를 일반 객관식으로 */}
+            <Form method="post" action="/api/study/session-from-ox-ineligible">
+              <input type="hidden" name="subject" value={subject.slug} />
+              <button
+                type="submit"
+                className="border-border bg-muted/30 hover:border-primary/40 hover:bg-primary/[0.04] flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors"
+              >
+                <span className="bg-muted text-ink-soft inline-flex size-9 shrink-0 items-center justify-center rounded-lg">
+                  <CheckSquareIcon className="size-[18px]" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="text-foreground block text-sm font-bold">
+                    정오문제 불가 문제 풀기
+                  </span>
+                  <span className="text-muted-foreground block text-xs leading-relaxed">
+                    정오문제로 만들 수 없어 OX 드릴에서 빠지는 문제(순서나열·개수형
+                    등)를 일반 객관식으로 모아 풀이
+                  </span>
+                </span>
+                <ArrowRightIcon className="text-ink-faint size-3.5 shrink-0" />
+              </button>
+            </Form>
           </div>
         ) : null}
 

@@ -1016,6 +1016,55 @@ export async function getOxQuestionsForSubject(
   return out;
 }
 
+// "정오문제 불가" 문제 — 운영자가 ox_ineligible 로 체크해 OX 드릴(getOxQuestionsForSubject)에서
+// 완전히 빠지는 문제(불가 항목 ≥1 ∧ OX-eligible 항목 0)를 problem_id 로 반환.
+// 일반 객관식으로 모아 풀게 하는 런처(session-from-ox-ineligible)용.
+// 후보 = 불가 플래그 있는 문제(적음) → 그중 eligible 항목(ox_truth 있고 불가 아님) 보유분 제외.
+export async function getOxIneligibleProblemIds(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  opts?: { includeUnapproved?: boolean },
+): Promise<string[]> {
+  const { data: law } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (!law) return [];
+
+  // 1) "정오문제 불가" 체크된 항목이 있는 문제 후보(choices + box_items).
+  const candidates = new Set<string>();
+  for (const table of ["problem_choices", "problem_box_items"] as const) {
+    let q = client
+      .from(table)
+      .select("problem_id, problems!inner(law_id, deleted_at, review_status)")
+      .eq("problems.law_id", law.law_id)
+      .eq("ox_ineligible", true)
+      .is("problems.deleted_at", null);
+    if (!opts?.includeUnapproved) {
+      q = q.eq("problems.review_status", "approved");
+    }
+    const { data } = await q.limit(2000);
+    for (const r of data ?? []) candidates.add(r.problem_id);
+  }
+  if (candidates.size === 0) return [];
+
+  // 2) 후보 중 OX-eligible 항목(ox_truth not null ∧ 불가 아님)이 하나라도 있으면 제외
+  //    (그런 문제는 OX 드릴에 일부 나오므로 "완전히 빠지는" 대상이 아님).
+  const ids = [...candidates];
+  const hasEligible = new Set<string>();
+  for (const table of ["problem_choices", "problem_box_items"] as const) {
+    const { data } = await client
+      .from(table)
+      .select("problem_id")
+      .in("problem_id", ids)
+      .eq("ox_ineligible", false)
+      .not("ox_truth", "is", null);
+    for (const r of data ?? []) hasEligible.add(r.problem_id);
+  }
+  return ids.filter((id) => !hasEligible.has(id));
+}
+
 export async function getOxQuestionsForArticle(
   client: SupabaseClient<Database>,
   articleId: string,
