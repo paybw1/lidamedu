@@ -4,6 +4,7 @@ import type { Route } from "./+types/srs";
 
 import {
   ArrowRightIcon,
+  BookOpenIcon,
   CalendarClockIcon,
   HistoryIcon,
   RepeatIcon,
@@ -499,16 +500,22 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       ) : (
         <Card>
           <CardHeader className="pb-3">
-            <p className="text-foreground text-sm font-bold">
-              다시 정독할 조문 {articleItems.length}건
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-foreground text-sm font-bold">
+                다시 정독할 조문 {articleItems.length}건
+              </p>
+              <span className="bg-muted text-ink-soft rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                읽기 목록 · 채점 없음
+              </span>
+            </div>
             <p className="text-muted-foreground text-xs">
-              방문 횟수에 따라 7·14·30·60일 간격으로 다시 알림이 옵니다. 채점은
-              없고 단순히 다시 한 번 읽어보라는 알림이에요.
+              조문을 클릭하면 본래 위치(조문 뷰어)에서 정독합니다. 채점은 없고,
+              한 번 열어 읽으면 방문 횟수에 따라 7·14·30·60일 간격으로 다음
+              알림이 잡힙니다.
             </p>
           </CardHeader>
           <CardContent className="pb-3">
-            <ArticleReviewTable items={articleItems} />
+            <ArticleReviewList items={articleItems} />
           </CardContent>
         </Card>
       )}
@@ -691,71 +698,38 @@ function BenchmarkRow({
   );
 }
 
-function ArticleReviewTable({ items }: { items: DueArticleReviewItem[] }) {
+// 조문 정독은 "풀기"가 아니라 "읽기"라 표(풀기 섹션 형식) 대신 읽기 전용 클릭 리스트로.
+// 행 전체가 조문 뷰어(정독의 자연스러운 위치)로 가는 링크 — 클릭하면 방문 기록이 남아
+// 일정이 자동으로 다음 간격으로 밀린다(채점 없음).
+function ArticleReviewList({ items }: { items: DueArticleReviewItem[] }) {
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40%]">조문</TableHead>
-            <TableHead className="hidden w-[10%] sm:table-cell">과목</TableHead>
-            <TableHead className="hidden w-[10%] text-right sm:table-cell">
-              방문
-            </TableHead>
-            <TableHead className="hidden w-[10%] text-right sm:table-cell">
-              간격
-            </TableHead>
-            <TableHead className="w-[15%] text-right">마지막 방문</TableHead>
-            <TableHead className="w-[15%]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((it) => (
-            <TableRow key={it.articleId}>
-              <TableCell>
-                <p className="text-foreground text-sm font-semibold">
-                  {it.displayLabel}
-                </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-[11px] sm:text-[10px]">
-                  {it.articleNumber}
-                </p>
-                {/* 모바일 전용 — 숨긴 컬럼(과목·방문·간격) 보조 표기 */}
-                <p className="text-muted-foreground mt-1 font-mono text-[11px] sm:hidden">
-                  {it.lawCode} · 방문 {it.visitCount}회 · {it.intervalDays}d
-                </p>
-              </TableCell>
-              <TableCell className="hidden font-mono text-[11px] sm:table-cell">
-                {it.lawCode}
-              </TableCell>
-              <TableCell className="hidden text-right font-mono text-xs tabular-nums sm:table-cell">
-                {it.visitCount}회
-              </TableCell>
-              <TableCell className="hidden text-right font-mono text-xs tabular-nums sm:table-cell">
-                {it.intervalDays}d
-              </TableCell>
-              <TableCell className="text-muted-foreground text-right font-mono text-[11px]">
-                {fmtRelative(it.lastVisitedAt)}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  asChild
-                  size="sm"
-                  variant="ghost"
-                  className="h-9 sm:h-8"
-                >
-                  <Link
-                    to={`/subjects/${it.lawCode}/articles/${it.articleNumber}`}
-                    viewTransition
-                  >
-                    정독 <ArrowRightIcon className="size-3.5" />
-                  </Link>
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <ul className="divide-border divide-y">
+      {items.map((it) => (
+        <li key={it.articleId}>
+          <Link
+            to={`/subjects/${it.lawCode}/articles/${it.articleNumber}`}
+            viewTransition
+            className="group hover:bg-surface-3 -mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors"
+          >
+            <span className="bg-muted text-ink-soft group-hover:text-link inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
+              <BookOpenIcon className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-foreground truncate text-sm font-semibold">
+                {it.displayLabel}
+              </p>
+              <p className="text-muted-foreground mt-0.5 font-mono text-[11px]">
+                {LAW_SUBJECTS[it.lawCode].name} · {it.articleNumber} · 방문{" "}
+                {it.visitCount}회 · {fmtRelative(it.lastVisitedAt)}
+              </p>
+            </div>
+            <span className="text-ink-faint group-hover:text-link inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold whitespace-nowrap">
+              읽기 <ArrowRightIcon className="size-3.5" />
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 
