@@ -14,7 +14,14 @@ import {
   VideoIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, data, redirect, useFetcher, useNavigate } from "react-router";
+import {
+  Link,
+  data,
+  redirect,
+  useFetcher,
+  useNavigate,
+  useSearchParams,
+} from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Separator } from "~/core/components/ui/separator";
@@ -592,6 +599,12 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
   } = loaderData;
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [searchParams] = useSearchParams();
+  // feat-2-026 Stage 3 — 보기 모드(답 없이 정답·해설 읽기, 오답 다시보기). ?view=1 딥링크 진입 가능.
+  // 세션 내 문제 이동 시에도 유지(문제 바뀌어도 reset 안 함) — 묶음을 읽기로 훑는 흐름.
+  const [viewMode, setViewMode] = useState(
+    () => searchParams.get("view") === "1",
+  );
   const startedAtRef = useRef<number>(Date.now());
   const attemptFetcher = useFetcher();
   const completeFetcher = useFetcher();
@@ -601,6 +614,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
   const sessionMode: QuizMode = runnerNav?.mode ?? "study";
   const inSession = runnerNav !== null;
   const isExam = sessionMode === "exam";
+  // 채점 후 OR 보기 모드 → 정답·해설 노출(시험 모드 제외).
+  const showAnswers = (revealed || viewMode) && !isExam;
 
   // 문제가 바뀌면 상태 초기화.
   useEffect(() => {
@@ -1150,10 +1165,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                     {problem.choices.map((c) => {
                       const isSelected = selected === c.choiceIndex;
                       // 시험 모드에서는 채점 결과 노출 X.
-                      const showCorrect = revealed && !isExam && c.isCorrect;
+                      const showCorrect = showAnswers && c.isCorrect;
                       const showWrong =
-                        revealed && !isExam && isSelected && !c.isCorrect;
-                      const locked = revealed && !isExam;
+                        showAnswers && isSelected && !c.isCorrect;
+                      const locked = showAnswers;
                       return (
                         <li key={c.choiceId}>
                           <div
@@ -1259,14 +1274,46 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                           다음 문제 <ChevronRightIcon className="size-4" />
                         </Button>
                       )
+                    ) : viewMode ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setViewMode(false);
+                            reset();
+                          }}
+                          className="rounded-full"
+                        >
+                          직접 풀기
+                        </Button>
+                        {runnerNav?.nextId ? (
+                          <Button asChild className="rounded-full">
+                            <Link
+                              to={buildRunnerHref(runnerNav.nextId)}
+                              viewTransition
+                            >
+                              다음 문제 <ChevronRightIcon className="size-4" />
+                            </Link>
+                          </Button>
+                        ) : null}
+                      </>
                     ) : !revealed ? (
-                      <Button
-                        onClick={submitStudy}
-                        disabled={selected === null}
-                        className="rounded-full"
-                      >
-                        정답 확인 (학습 모드)
-                      </Button>
+                      <>
+                        <Button
+                          onClick={submitStudy}
+                          disabled={selected === null}
+                          className="rounded-full"
+                        >
+                          정답 확인 (학습 모드)
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setViewMode(true)}
+                          className="rounded-full"
+                        >
+                          답 없이 해설 보기
+                        </Button>
+                      </>
                     ) : (
                       <>
                         <Button
@@ -1291,18 +1338,33 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   </div>
 
                   {/* Explanation + O/X panel — after submit in study mode */}
-                  {revealed && !isExam ? (
+                  {showAnswers ? (
                     <div className="mt-7 space-y-4">
-                      {/* Verdict pill */}
+                      {/* Verdict pill — 채점(선택 있음)=정/오, 보기 모드(미선택)=정답만. */}
                       {(() => {
-                        const isCorrectAns =
-                          problem.choices.find(
-                            (c) => c.choiceIndex === selected,
-                          )?.isCorrect ?? false;
                         // 복수정답 지원 — 정답 지문 전부 표시.
                         const correctIndexes = problem.choices
                           .filter((c) => c.isCorrect)
                           .map((c) => c.choiceIndex);
+                        const answerSuffix =
+                          correctIndexes.length > 0
+                            ? `정답 ${correctIndexes.join(", ")}번`
+                            : "";
+                        const judged = revealed && selected !== null;
+                        if (!judged) {
+                          // 보기 모드 — 정/오 판정 없이 정답만 안내.
+                          return (
+                            <div className="flex items-center gap-3">
+                              <span className="bg-primary/10 text-link inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold">
+                                {answerSuffix || "해설"}
+                              </span>
+                            </div>
+                          );
+                        }
+                        const isCorrectAns =
+                          problem.choices.find(
+                            (c) => c.choiceIndex === selected,
+                          )?.isCorrect ?? false;
                         return (
                           <div className="flex items-center gap-3">
                             <span
@@ -1319,9 +1381,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                 <CircleXIcon className="size-4" />
                               )}
                               {isCorrectAns ? "정답입니다" : "오답입니다"}
-                              {correctIndexes.length > 0
-                                ? ` · 정답 ${correctIndexes.join(", ")}번`
-                                : null}
+                              {answerSuffix ? ` · ${answerSuffix}` : ""}
                             </span>
                           </div>
                         );

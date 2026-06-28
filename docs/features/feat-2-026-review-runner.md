@@ -52,8 +52,15 @@
 - 세션(quiz_sessions) 미사용 — 빈칸은 조문 뷰어 빈칸 모드가 본문 의존이라 서버 재계산 시퀀스가 더 가벼움. MCQ(problem-viewer 세션)와 다른 방식.
 - 채점·SRS 갱신은 기존 빈칸 attempt API(`applyBlankSrsUpdate`) 그대로.
 
-### Stage 3 (선택) — 허브 재구성 + 보기 게이트
-- `/study/srs` 상단 통합 "복습 시작" 진입 정리, OX prev/next 카드 네비 보강, MCQ "오답 답 없이 다시 보기"(보기 게이트 `revealed || viewMode` 한 줄, `problem-viewer.tsx:1280`).
+### Stage 3 — 허브 재구성 + OX prev/next + 보기 게이트 (완료)
+
+**① 허브 통합 진입(`srs.tsx`)**: 헤더 아래 "오늘 복습할 것" 요약 밴드 — 종류별 due(객관식·빈칸·정오문제·조문) 한눈 + 정오문제 묶음 러너 바로가기(단일 러너라). 객관식·빈칸은 과목별이라 각 섹션 버튼 유지(밴드는 전체 load 가시화). 모두 0이면 숨김.
+
+**② OX 러너 prev/next(`srs-ox-review.tsx`)**: 세로 나열 → **한 문항씩 이전/다음**. 답안(refId→O/X)을 부모로 올려(`answers` Map) prev/next 로 오가도 유지, `ReviewCard` controlled 화. 진행 배지 "문항 N/M · 채점 K/M". 즉답 채점·SRS 갱신은 기존 그대로.
+
+**③ MCQ "답 없이 해설 보기" 보기 게이트(`problem-viewer.tsx`)**: 점검의 "보기" 절반. `viewMode` state(+`?view=1` 딥링크) → 게이트 `showAnswers = (revealed || viewMode) && !isExam` 로 통일(choices 정답표시·locked·해설 블록). 액션에 "답 없이 해설 보기"/"직접 풀기" 토글. verdict pill = 채점(선택 있음) 시 정/오, 보기 모드(미선택) 시 중립 "정답 N번". 보기 모드는 attempt 미기록(읽기≠풀이) — SRS 영향 없음. 세션 내 문제 이동 시 viewMode 유지(묶음 읽기 훑기). 시험 모드 불변.
+
+typecheck + react-router build 통과.
 
 ## 파일 (Stage 1)
 

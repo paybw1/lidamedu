@@ -163,6 +163,58 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
         </p>
       </header>
 
+      {/* feat-2-026 Stage 3 ① — 복습 한눈에(통합 진입): 종류별 due 합 + 정오문제 묶음 러너 바로가기.
+          객관식·빈칸은 과목별이라 아래 섹션 버튼, 정오문제는 단일 러너라 여기서 바로 시작. */}
+      {counts.due + blankCounts.dueSets + oxCounts.due + articleCounts.due >
+      0 ? (
+        <Card className="ring-primary/10 mb-6 ring-1">
+          <CardContent className="py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-foreground text-sm font-bold">
+                  오늘 복습할 것
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  종류별로 묶음 복습을 시작하세요. 객관식·빈칸은 아래 과목별
+                  버튼, 정오문제는 여기서 바로 풀이가 됩니다.
+                </p>
+              </div>
+              {oxCounts.due > 0 ? (
+                <Button asChild size="sm" className="rounded-full">
+                  <Link to="/study/srs/ox" viewTransition>
+                    정오문제 복습 시작 <ArrowRightIcon className="size-3.5" />
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                { label: "객관식", value: counts.due, unit: "문항" },
+                { label: "빈칸", value: blankCounts.dueSets, unit: "세트" },
+                { label: "정오문제", value: oxCounts.due, unit: "문항" },
+                { label: "조문 정독", value: articleCounts.due, unit: "건" },
+              ].map((t) => (
+                <div
+                  key={t.label}
+                  className={cn(
+                    "border-border rounded-lg border px-3 py-2",
+                    t.value > 0 ? "bg-card" : "bg-muted/30 opacity-60",
+                  )}
+                >
+                  <p className="text-muted-foreground text-[11px]">{t.label}</p>
+                  <p className="text-foreground text-lg font-bold tabular-nums">
+                    {t.value}
+                    <span className="text-muted-foreground ml-1 text-[11px] font-normal">
+                      {t.unit}
+                    </span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* feat-2-020 SRS 처리 추이 */}
       <SrsTrendChart trend={trend} />
 
