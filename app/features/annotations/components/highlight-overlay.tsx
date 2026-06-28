@@ -175,6 +175,9 @@ export function HighlightOverlay({
   return (
     <div
       ref={ref}
+      // className 은 호출부가 컨테이너에 주입(선지처럼 flex item·타이포). 누락 시 선지
+      // 글자크기(--study-fs)·flex-1 레이아웃이 통째로 무효였다 — 반드시 적용.
+      className={className}
       data-highlight-field={fieldPath}
       data-highlight-target-type={targetType}
       data-highlight-target-id={targetId}

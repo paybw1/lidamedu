@@ -23,7 +23,7 @@ import {
   TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
-import { Form, Link, useSearchParams } from "react-router";
+import { Form, Link, useFetcher, useSearchParams } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -139,6 +139,15 @@ export function ProblemsTab({
     nodeFilter != null;
 
   const [searchParams] = useSearchParams();
+
+  // 정오문제 불가 런처 — fetcher 로 제출(성공=세션 redirect 자동 추종, 실패=인라인 메시지).
+  const ineligibleFetcher = useFetcher<{ error?: string }>();
+  const ineligibleBusy = ineligibleFetcher.state !== "idle";
+  // 범위 선택지 — 체계도 1·2단계 노드만(caseOnly 제외). path 는 "." 구분 materialized path.
+  const scopeNodes = systematicNodes.filter(
+    (n) => !n.caseOnly && n.path.split(".").length <= 2,
+  );
+
   // 체계도 필터만 해제 — 나머지 검색/필터는 보존.
   const clearNodeHref = (() => {
     const sp = new URLSearchParams(searchParams);
@@ -331,28 +340,67 @@ export function ProblemsTab({
                 ctaVariant="outline"
               />
             </div>
-            {/* 요청2 — 정오문제로 만들 수 없어 OX 드릴에서 빠지는 문제(불가 체크)를 일반 객관식으로 */}
-            <Form method="post" action="/api/study/session-from-ox-ineligible">
+            {/* 정오문제로 만들 수 없어 OX 드릴에서 빠지는 문제(불가 체크)를 일반 객관식으로.
+                체계도 1·2단계 노드로 범위를 좁힐 수 있다(미선택 시 과목 전체). */}
+            <ineligibleFetcher.Form
+              method="post"
+              action="/api/study/session-from-ox-ineligible"
+              className="border-border bg-muted/30 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3"
+            >
               <input type="hidden" name="subject" value={subject.slug} />
-              <button
+              <span className="bg-muted text-ink-soft inline-flex size-9 shrink-0 items-center justify-center rounded-lg">
+                <CheckSquareIcon className="size-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="text-foreground block text-sm font-bold">
+                  정오문제 불가 문제 풀기
+                </span>
+                <span className="text-muted-foreground block text-xs leading-relaxed">
+                  순서나열·개수형 등 정오문제로 만들 수 없어 OX 드릴에서 빠지는 문제를
+                  일반 객관식으로 모아 풀이
+                </span>
+              </span>
+              {/* 범위 — 체계도 1·2단계 노드(미선택 시 과목 전체) */}
+              <label className="flex flex-col gap-0.5">
+                <span className="text-muted-foreground font-mono text-[10px] font-bold tracking-wide uppercase">
+                  범위
+                </span>
+                <div className="relative">
+                  <select
+                    name="nodeId"
+                    defaultValue=""
+                    aria-label="정오문제 불가 풀이 범위(체계도)"
+                    className="border-border bg-background text-foreground h-8 max-w-[220px] appearance-none rounded-full border py-0 pr-7 pl-3 text-xs font-medium focus:outline-none"
+                  >
+                    <option value="">전체 범위</option>
+                    {scopeNodes.map((n) => {
+                      const isSub = n.path.split(".").length === 2;
+                      const label = stripSystematicNumber(n.displayLabel);
+                      return (
+                        <option key={n.nodeId} value={n.nodeId}>
+                          {isSub ? `└ ${label}` : label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
+                </div>
+              </label>
+              <Button
                 type="submit"
-                className="border-border bg-muted/30 hover:border-primary/40 hover:bg-primary/[0.04] flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors"
+                size="sm"
+                disabled={ineligibleBusy}
+                className="h-9 shrink-0 gap-1 rounded-full"
               >
-                <span className="bg-muted text-ink-soft inline-flex size-9 shrink-0 items-center justify-center rounded-lg">
-                  <CheckSquareIcon className="size-[18px]" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="text-foreground block text-sm font-bold">
-                    정오문제 불가 문제 풀기
-                  </span>
-                  <span className="text-muted-foreground block text-xs leading-relaxed">
-                    정오문제로 만들 수 없어 OX 드릴에서 빠지는 문제(순서나열·개수형
-                    등)를 일반 객관식으로 모아 풀이
-                  </span>
-                </span>
-                <ArrowRightIcon className="text-ink-faint size-3.5 shrink-0" />
-              </button>
-            </Form>
+                <PlayIcon className="size-3.5" />
+                {ineligibleBusy ? "준비 중…" : "시작"}
+              </Button>
+            </ineligibleFetcher.Form>
+            {ineligibleFetcher.data?.error ? (
+              <p className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                {ineligibleFetcher.data.error}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

@@ -111,6 +111,7 @@ export function CaseBody({
   viewerIsStaff = false,
   prevNext = null,
   officialPdfUrl = null,
+  showAskAi = true,
 }: {
   kase: CaseDetail;
   examProblems: ExamProblemRef[];
@@ -126,6 +127,8 @@ export function CaseBody({
   prevNext?: CasePrevNextData | null;
   /** 공식 전문 PDF (signed URL, 1h). null 이면 버튼 미노출. */
   officialPdfUrl?: string | null;
+  /** "질문하기" 버튼 노출. 학습과목 뷰어는 우측 패널 Q&A 와 중복이라 false. 기본 true(학습정보 read-only 등). */
+  showAskAi?: boolean;
 }) {
   const enableHighlights = highlights !== undefined;
   // staff "수정" 버튼 — 현재 경로(학생 판례 뷰어 / 학습정보 뷰어 등)를 returnTo 로 전달해
@@ -237,12 +240,15 @@ export function CaseBody({
             isEnBanc={kase.isEnBanc}
           />
 
-          {/* feat-9-004 — AI Q&A 진입. 이 판례가 앵커. */}
-          <AskAiButton
-            anchorType="case"
-            anchorId={kase.caseId}
-            seed={`${kase.caseNumber} 판례의 요지와 쟁점을 정리해줘.`}
-          />
+          {/* feat-9-004 — AI Q&A 진입. 이 판례가 앵커. 학습과목 뷰어는 우측 Q&A 패널과
+              중복이라 미노출(showAskAi=false), 학습정보 read-only 뷰어는 유일 진입점이라 노출. */}
+          {showAskAi ? (
+            <AskAiButton
+              anchorType="case"
+              anchorId={kase.caseId}
+              seed={`${kase.caseNumber} 판례의 요지와 쟁점을 정리해줘.`}
+            />
+          ) : null}
 
           {/* 공식 전문 PDF — 국가법령정보 OPEN API 자동 생성. 모든 사용자 노출. */}
           {officialPdfUrl ? (
@@ -664,7 +670,7 @@ function SummaryBlock({
         // 박스형 제목 — 본문과 시각 구분 + 줄간격(1.75)을 본문(1.8)과 비슷하게.
         // 옅은 outline + 거의 흰 배경 (minimal), 연한 파란 라벨 배지(blue-500).
         <div className="border-border bg-muted/40 rounded-lg border px-3.5 py-2.5 dark:bg-zinc-900/40">
-          <p className="text-foreground text-[16px] leading-[1.75] font-bold tracking-tight">
+          <p className="text-foreground text-[length:calc(16px*var(--study-fs))] leading-[1.75] font-bold tracking-tight">
             {labelNumber ? (
               <span className="bg-primary/85 mr-2 inline-flex items-center rounded px-1.5 align-[2px] font-mono text-[11.5px] font-extrabold text-white">
                 {labelNumber}
@@ -778,7 +784,7 @@ export function Prose({ text }: { text: string }) {
   //   - 그 외 → 텍스트 + `<u>` 마커 (기존 동작)
   const blocks = buildProseBlocks(text);
   return (
-    <div className="text-foreground mx-auto max-w-[800px] space-y-3 text-[length:calc(17px*var(--study-fs))] leading-[1.8] tracking-[-0.005em]">
+    <div className="case-prose text-foreground mx-auto max-w-[800px] space-y-3 text-[length:calc(17px*var(--study-fs))] leading-[1.8] tracking-[-0.005em]">
       {blocks.map((b, i) => {
         if (b.kind === "blockImg")
           return <InlineImage key={i} alt={b.alt} url={b.url} />;

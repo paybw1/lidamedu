@@ -443,7 +443,9 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             <main
               className={cn(
                 "min-w-0 space-y-4",
-                readingMode && "mx-auto w-full max-w-[848px]",
+                // 읽기 모드 — 패널 접힌 공간만큼 본문을 실제로 넓힌다(헤더·본문 정렬: 1128-패딩≈1080).
+                readingMode &&
+                  "mx-auto w-full max-w-[1128px] [&_.case-prose]:max-w-[1080px]",
               )}
             >
               {/* 모바일 드로어 트리거 */}
@@ -560,6 +562,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 canEditReferences={canEditReferences}
                 prevNext={prevNext}
                 officialPdfUrl={loaderData.officialPdfUrl}
+                showAskAi={false}
               />
             </main>
 

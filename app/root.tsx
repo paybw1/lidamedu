@@ -280,6 +280,30 @@ export default function App() {
 }
 
 /**
+ * 404 화면 — stale 번들(배포 직후 열려 있던 탭) 자가복구 가드 포함.
+ *
+ * 배포로 클라이언트 청크 해시가 바뀌면, 그 전에 로드된 탭의 라우트 매니페스트는
+ * 새 라우트(특히 신규 action route)를 모르거나 옛 청크 URL 을 가리킨다 → 서버엔
+ * 존재하는 경로를 클라이언트 네비게이션이 404 처리할 수 있다(서버는 정상 매칭).
+ * 경로별 1회에 한해 하드 리로드 → 최신 HTML/번들을 받아 서버 라우팅으로 해결한다.
+ * 진짜 없는 페이지는 1회 리로드 후 그대로 404 (sessionStorage 가드로 루프 방지).
+ */
+function NotFoundWithReloadGuard() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = `lidam-404-reload:${window.location.pathname}${window.location.search}`;
+    try {
+      if (sessionStorage.getItem(key)) return; // 이미 1회 시도 — 실제 404 로 확정.
+      sessionStorage.setItem(key, "1");
+      window.location.reload();
+    } catch {
+      // sessionStorage 불가(프라이빗 모드 등) — 리로드 생략, 404 그대로 표시.
+    }
+  }, []);
+  return <NotFound />;
+}
+
+/**
  * Global Error Boundary Component
  *
  * This component catches and displays errors that occur during rendering
@@ -323,8 +347,8 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   if (isRouteErrorResponse(error)) {
     // Handle route errors (404, 500, etc.)
     if (error.status === 404) {
-      // Show custom 404 page for "not found" errors
-      return <NotFound />;
+      // Show custom 404 page for "not found" errors (stale-bundle 자가복구 가드 포함).
+      return <NotFoundWithReloadGuard />;
     }
     message = "Error";
     details = error.statusText || details;

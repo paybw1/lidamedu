@@ -27,7 +27,6 @@ import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
@@ -594,7 +593,8 @@ function ArticleViewerInner({
           <main
             className={cn(
               "min-w-0 space-y-4",
-              readingMode && "mx-auto w-full max-w-[848px]",
+              // 읽기 모드 — 패널 접힌 공간만큼 본문을 실제로 넓힌다(내부 컬럼 1080).
+              readingMode && "mx-auto w-full max-w-[1128px]",
             )}
           >
             {/* Mobile drawer triggers */}
@@ -981,14 +981,8 @@ function ArticleViewerInner({
                   </div>
                 </div>
 
-                {/* Ghost action buttons on the right */}
+                {/* Ghost action buttons on the right (질문하기는 우측 Q&A 패널과 중복이라 제거) */}
                 <div className="ml-auto flex items-center gap-1.5">
-                  {/* feat-9-004 — AI Q&A 진입. 현재 조문이 앵커. */}
-                  <AskAiButton
-                    anchorType="article"
-                    anchorId={article.articleId}
-                    seed={`${article.displayLabel ?? `${article.articleNumber}조`} 에 대해 설명해줘.`}
-                  />
                   {canEdit ? (
                     <>
                       <Button
@@ -1056,7 +1050,12 @@ function ArticleViewerInner({
 
               {/* ── Article body ───────────────────────────────────────── */}
               <div className="px-6 py-7">
-                <div className="mx-auto max-w-[800px]">
+                <div
+                  className={cn(
+                    "mx-auto",
+                    readingMode ? "max-w-[1080px]" : "max-w-[800px]",
+                  )}
+                >
                   {!editMode ? (
                     <div className="mb-2 flex items-center justify-end gap-2">
                       <button

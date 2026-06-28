@@ -29,7 +29,6 @@ import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
@@ -775,18 +774,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             listHref={`/subjects/${subject.slug}?tab=problems`}
             listLabel={`${subject.name} 문제 색인`}
           />
-          {/* feat-9-004 — AI Q&A 진입 (세션 외 학습 모드). 시험 세션에선 산만함 방지로 숨김. */}
-          <span className="ml-auto">
-            <AskAiButton
-              anchorType="problem"
-              anchorId={problem.problemId}
-              seed={
-                problem.year && problem.problemNumber
-                  ? `${problem.year}년 ${problem.problemNumber}번 문제 해설을 정리해줘.`
-                  : "이 문제의 해설을 정리해줘."
-              }
-            />
-          </span>
+          {/* 질문하기는 우측 Q&A 패널과 중복이라 제거(feat-9 통합). */}
         </div>
       )}
 
@@ -922,7 +910,13 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Problem article — generous reading measure */}
-            <article className="mx-auto max-w-[760px] px-6 py-8 pb-16 md:px-10">
+            <article
+              className={cn(
+                "mx-auto px-6 py-8 pb-16 md:px-10",
+                // 읽기 모드 — 패널 접힌 공간만큼 본문을 실제로 넓힌다.
+                readingMode ? "max-w-[1080px]" : "max-w-[760px]",
+              )}
+            >
               {/* Exam mode timer banner */}
               {isExam && timerText ? (
                 <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-2.5 dark:border-amber-700/40 dark:bg-amber-950/30">

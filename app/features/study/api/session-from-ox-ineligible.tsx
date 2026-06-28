@@ -7,7 +7,10 @@ import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { getOxIneligibleProblemIds } from "~/features/problems/queries.server";
+import {
+  getOxIneligibleProblemIds,
+  getSystematicNodeProblemSequence,
+} from "~/features/problems/queries.server";
 import { createQuizSession } from "~/features/study/queries.server";
 import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 
@@ -32,14 +35,37 @@ export async function action({ request }: Route.ActionArgs) {
   }
   const { subject } = parsed.data;
 
+  // 체계도 범위(선택) — 문제탭 1·2단계 노드. 주면 그 부분트리 문제로 한정, 없으면 과목 전체.
+  const rawNode = form.get("nodeId");
+  const nodeId =
+    typeof rawNode === "string" && rawNode.trim() !== ""
+      ? rawNode.trim()
+      : null;
+
   // staff 면 draft 포함(학생은 승인분만).
   const role = await getStaffRole(client, user.id);
-  const problemIds = await getOxIneligibleProblemIds(client, subject, {
+  let problemIds = await getOxIneligibleProblemIds(client, subject, {
     includeUnapproved: role !== null,
   });
+
+  // 노드 범위 — 부분트리 문제 집합과 교집합. seq 의 problemId 매핑은 문제탭 노드 필터와 동일 로직.
+  let originLabel = "정오문제 불가 문제";
+  if (nodeId) {
+    const seq = await getSystematicNodeProblemSequence(client, nodeId);
+    const nodeSet = new Set((seq?.problems ?? []).map((p) => p.problemId));
+    problemIds = problemIds.filter((id) => nodeSet.has(id));
+    if (seq?.node.displayLabel) {
+      originLabel = `정오문제 불가 · ${seq.node.displayLabel}`;
+    }
+  }
+
   if (problemIds.length === 0) {
     return data(
-      { error: "정오문제 불가로 분류된 문제가 없습니다." },
+      {
+        error: nodeId
+          ? "선택한 체계 범위에는 정오문제 불가 문제가 없습니다."
+          : "정오문제 불가로 분류된 문제가 없습니다.",
+      },
       { status: 400 },
     );
   }
@@ -50,7 +76,7 @@ export async function action({ request }: Route.ActionArgs) {
     scopeType: "filter",
     scopePayload: {
       source: "ox_ineligible",
-      originLabel: "정오문제 불가 문제",
+      originLabel,
       backHref: `/subjects/${subject}?tab=problems`,
       requestedAt: new Date().toISOString(),
     },
