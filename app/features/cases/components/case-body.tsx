@@ -21,7 +21,7 @@ import { AskAiButton } from "~/features/ai-qna/components/ask-ai-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { CaseReferencesPanel } from "~/features/cases/components/case-references-panel";
 import { CiteCopyButton } from "~/features/cases/components/cite-copy";
-import { StudyFontControl } from "~/features/study/components/study-font-control";
+import { ReadingControls } from "~/features/study/components/study-font-control";
 import {
   ExamYearChip,
   mergeFirstRoundChips,
@@ -227,7 +227,7 @@ export function CaseBody({
             선고일 {kase.decidedAt}
           </span>
 
-          <StudyFontControl className="mr-1" />
+          <ReadingControls className="mr-1" />
 
           <CiteCopyButton
             court={kase.court}

@@ -32,7 +32,19 @@ function usePanelCollapse(key: string) {
       return next;
     });
   }, [key]);
-  return { collapsed, toggle };
+  // 읽기 모드(양 패널 동시 접기/펼치기)용 명시적 setter.
+  const set = useCallback(
+    (value: boolean) => {
+      setCollapsed(value);
+      try {
+        localStorage.setItem(key, value ? "1" : "0");
+      } catch {
+        // 무시 — 메모리 상태만.
+      }
+    },
+    [key],
+  );
+  return { collapsed, toggle, set };
 }
 
 export function useLeftPanelCollapse() {

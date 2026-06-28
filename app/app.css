@@ -169,6 +169,30 @@ body {
   --lp-wash: rgba(96, 165, 250, 0.07); /* hero wash (다크: 밝은 블루 7%) */
 }
 
+/* feat-2-027 P4 — 본문 명암 사용자 조절(ReadingContrastControl → html[data-reading]).
+   본문 fg 토큰을 모드별로 오버라이드. 기본(보통)=위 :root/.dark 의 P1/P2 값(#2e2e2e / #e6e6e6).
+   진하게=고대비(또렷), 연하게=저대비(눈부심·피로 완화). 눈·기기·시간대에 맞춰 본인이 선택. */
+:root[data-reading="high"] {
+  --foreground: #1f1f1f;
+  --card-foreground: #1f1f1f;
+  --popover-foreground: #1f1f1f;
+}
+:root[data-reading="soft"] {
+  --foreground: #474747;
+  --card-foreground: #474747;
+  --popover-foreground: #474747;
+}
+.dark[data-reading="high"] {
+  --foreground: #f5f5f5;
+  --card-foreground: #f5f5f5;
+  --popover-foreground: #f5f5f5;
+}
+.dark[data-reading="soft"] {
+  --foreground: #c2c2c2;
+  --card-foreground: #c2c2c2;
+  --popover-foreground: #c2c2c2;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

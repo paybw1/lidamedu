@@ -2,7 +2,12 @@ import type { ReactNode } from "react";
 
 import type { Route } from "./+types/case-viewer";
 
-import { ListTreeIcon, NetworkIcon, PanelRightIcon } from "lucide-react";
+import {
+  ListTreeIcon,
+  NetworkIcon,
+  PanelRightIcon,
+  ScrollTextIcon,
+} from "lucide-react";
 import { Link, data, redirect, useSearchParams } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -312,10 +317,23 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
 
   // soft-deleted 진입 fallback redirect 로 도착한 경우 — 한 번만 안내 배너.
   const [searchParams] = useSearchParams();
-  const { collapsed: leftCollapsed, toggle: toggleLeft } =
-    useLeftPanelCollapse();
-  const { collapsed: rightCollapsed, toggle: toggleRight } =
-    useRightPanelCollapse();
+  const {
+    collapsed: leftCollapsed,
+    toggle: toggleLeft,
+    set: setLeft,
+  } = useLeftPanelCollapse();
+  const {
+    collapsed: rightCollapsed,
+    toggle: toggleRight,
+    set: setRight,
+  } = useRightPanelCollapse();
+  // 읽기 모드 — 좌우 패널 동시 접기/펼치기(데스크톱 정독 집중).
+  const readingMode = leftCollapsed && rightCollapsed;
+  const toggleReadingMode = () => {
+    const next = !readingMode;
+    setLeft(next);
+    setRight(next);
+  };
   const replacedNotice = searchParams.get("from") === "replaced";
 
   // 좌측 판례 트리 active 필터 — 이 case 의 primary placement 위치를 자동
@@ -507,6 +525,24 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   </RelatedSection>
                 </CardHeader>
               </Card>
+
+              {/* 읽기 모드 — 좌우 패널 접고 본문 집중(데스크톱). */}
+              <div className="mb-3 hidden justify-end lg:flex">
+                <button
+                  type="button"
+                  onClick={toggleReadingMode}
+                  aria-pressed={readingMode}
+                  title="읽기 모드 — 좌우 패널 접고 본문 집중"
+                  className={cn(
+                    "inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
+                    readingMode
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  <ScrollTextIcon className="size-3.5" /> 읽기 모드
+                </button>
+              </div>
 
               {/* ── 판례 본문 (헤더 + 요지/이유/PDF/비고) — feat-3-205 공용 컴포넌트 ── */}
               <CaseBody

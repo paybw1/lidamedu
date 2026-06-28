@@ -27,7 +27,7 @@ import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import { listComments } from "~/features/comments/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
-import { StudyFontControl } from "~/features/study/components/study-font-control";
+import { ReadingControls } from "~/features/study/components/study-font-control";
 import { QnaPanel } from "~/features/qna/components/qna-panel";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import {
@@ -223,7 +223,7 @@ export default function ScienceProblemViewer({
             ) : null}
           </div>
           <div className="flex items-center gap-3">
-            <StudyFontControl />
+            <ReadingControls />
             {isStaff ? (
               <Link
                 to={`/admin/problems/${problem.problemId}`}

@@ -47,7 +47,7 @@ import {
 } from "~/features/laws/queries.server";
 import { listLectureResources } from "~/features/lectures/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
-import { StudyFontControl } from "~/features/study/components/study-font-control";
+import { ReadingControls } from "~/features/study/components/study-font-control";
 import {
   FORMAT_LABEL,
   ORIGIN_LABEL,
@@ -1044,7 +1044,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       <VideoIcon className="size-3" /> 동영상 풀이 보기
                     </a>
                   ) : null}
-                  <StudyFontControl className="ml-auto" />
+                  <ReadingControls className="ml-auto" />
                 </div>
               </div>
 

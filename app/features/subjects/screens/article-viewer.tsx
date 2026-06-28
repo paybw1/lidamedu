@@ -46,7 +46,7 @@ import { listBlankSetsByArticle } from "~/features/blanks/queries.server";
 import { getDueBlankSets } from "~/features/blanks/srs.server";
 import { listComments } from "~/features/comments/queries.server";
 import { ArticleBodyView } from "~/features/laws/components/article-body";
-import { StudyFontControl } from "~/features/study/components/study-font-control";
+import { ReadingControls } from "~/features/study/components/study-font-control";
 import { ArticleEditor } from "~/features/laws/components/article-editor";
 import { ArticleRightPanel } from "~/features/laws/components/article-right-panel";
 import { parseArticleBody } from "~/features/laws/lib/article-body";
@@ -420,10 +420,23 @@ function ArticleViewerInner({
   }, [articles, article.articleId]);
 
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
-  const { collapsed: leftCollapsed, toggle: toggleLeft } =
-    useLeftPanelCollapse();
-  const { collapsed: rightCollapsed, toggle: toggleRight } =
-    useRightPanelCollapse();
+  const {
+    collapsed: leftCollapsed,
+    toggle: toggleLeft,
+    set: setLeft,
+  } = useLeftPanelCollapse();
+  const {
+    collapsed: rightCollapsed,
+    toggle: toggleRight,
+    set: setRight,
+  } = useRightPanelCollapse();
+  // 읽기 모드 — 좌우 패널 동시 접기/펼치기(데스크톱 정독 집중). 양쪽 접힘 = 읽기 모드 ON.
+  const readingMode = leftCollapsed && rightCollapsed;
+  const toggleReadingMode = () => {
+    const next = !readingMode;
+    setLeft(next);
+    setRight(next);
+  };
   const [blankMode, setBlankMode] = useState(initialBlankMode?.content ?? false);
   const [subjectBlankMode, setSubjectBlankMode] = useState(
     initialBlankMode?.subject ?? false,
@@ -1040,8 +1053,22 @@ function ArticleViewerInner({
               <div className="px-6 py-7">
                 <div className="mx-auto max-w-[800px]">
                   {!editMode ? (
-                    <div className="mb-2 flex justify-end">
-                      <StudyFontControl />
+                    <div className="mb-2 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleReadingMode}
+                        aria-pressed={readingMode}
+                        title="읽기 모드 — 좌우 패널 접고 본문 집중"
+                        className={cn(
+                          "hidden h-7 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors lg:inline-flex",
+                          readingMode
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        <ScrollTextIcon className="size-3.5" /> 읽기 모드
+                      </button>
+                      <ReadingControls />
                     </div>
                   ) : null}
                   {editMode ? (
