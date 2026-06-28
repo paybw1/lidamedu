@@ -6129,6 +6129,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_gamification: {
+        Row: {
+          created_at: string
+          last_active_date: string | null
+          level_seen: number
+          longest_streak_days: number
+          streak_freezes_remaining: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_active_date?: string | null
+          level_seen?: number
+          longest_streak_days?: number
+          streak_freezes_remaining?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_active_date?: string | null
+          level_seen?: number
+          longest_streak_days?: number
+          streak_freezes_remaining?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_highlights: {
         Row: {
           after_ctx: string | null

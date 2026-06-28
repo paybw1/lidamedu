@@ -71,6 +71,7 @@ import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
 import { getActivityHeatmap } from "~/features/study/activity-heatmap.server";
 import { ActivityHeatmap } from "~/features/study/components/activity-heatmap";
+import { getGamificationSummary } from "~/features/study/gamification.server";
 import { getNodeMastery } from "~/features/study/mastery.server";
 import { GoalSummaryBar } from "~/features/study/components/goal-summary-bar";
 import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
@@ -332,6 +333,20 @@ export async function loader({ request }: Route.LoaderArgs) {
   const examRound: "first" | "second" | null =
     erRaw === "first" || erRaw === "second" ? erRaw : null;
 
+  // feat-2-027 Phase 2 — 게임화 요약(레벨=마스터 단원 수 파생 + 스트릭). KST 오늘 기준.
+  const masteredCount = summarizeMastery(
+    nodeMastery.map((r) => r.stage),
+  ).mastered;
+  const todayYmd = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const gamification = await getGamificationSummary(
+    client,
+    user.id,
+    todayYmd,
+    masteredCount,
+  );
+
   return {
     myAnalysisOff: false as const,
     examRound,
@@ -360,6 +375,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     oxSessions,
     lastPoints,
     nodeMastery,
+    gamification,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -737,6 +753,55 @@ function MasteryCard({ rows }: { rows: StatsData["nodeMastery"] }) {
   );
 }
 
+// feat-2-027 Phase 2 — 성장(전체 레벨 + 스트릭). 평소 담백, 성취 순간만 살짝, 학기초 격려.
+function GrowthCard({ g }: { g: StatsData["gamification"] }) {
+  const { level, leveledUp, thisWeekActiveDays, currentStreak, longestStreak } =
+    g;
+  return (
+    <Surface pad={0} tone="subtle">
+      <div className="px-6 pt-6 pb-3">
+        <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+          <TrendingUpIcon className="size-4" /> 성장
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          단원을 마스터할수록 단계가 올라가요 · 꾸준함은 이번 주 학습일로.
+        </p>
+      </div>
+      <div className="space-y-3 px-6 pb-6">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-lg font-bold tracking-tight">{level.name}</span>
+          <span className="text-muted-foreground text-xs">
+            단계 {level.levelNumber}/5 · 마스터 {level.masteredCount}단원
+          </span>
+          {leveledUp ? (
+            <Badge className="gap-1 bg-emerald-600 text-xs hover:bg-emerald-700">
+              단계 상승!
+            </Badge>
+          ) : null}
+        </div>
+        {level.nextName ? (
+          <p className="text-muted-foreground text-xs">
+            <b className="text-foreground">{level.toNext}단원</b> 더 마스터하면{" "}
+            <b className="text-foreground">{level.nextName}</b> 단계
+          </p>
+        ) : (
+          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            최고 단계 통달 — 합격까지 쭉!
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-3 text-sm">
+          <span>
+            이번 주 <b>{thisWeekActiveDays}</b>일 학습
+          </span>
+          <span className="text-muted-foreground text-xs">
+            🔥 현재 연속 {currentStreak}일 · 최장 {longestStreak}일
+          </span>
+        </div>
+      </div>
+    </Surface>
+  );
+}
+
 // 주별 학습시간 추이 — daily.days 주별 버킷(goals 에서 이관, range 연동).
 function StudyTimeTrendCard({
   days,
@@ -816,6 +881,7 @@ function OverviewTab({ data }: { data: StatsData }) {
     passerBenchmark,
     studyGoals,
     nodeMastery,
+    gamification,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const goalDday = studyGoals.examDate
@@ -862,6 +928,8 @@ function OverviewTab({ data }: { data: StatsData }) {
       <MilestonesCard overall={overall} />
 
       <MasteryCard rows={nodeMastery} />
+
+      <GrowthCard g={gamification} />
 
       {passerBenchmark ? (
         <PasserCalibrationCard
