@@ -26,6 +26,7 @@ import { z } from "zod";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { cn } from "~/core/lib/utils";
 import { McqAreaShell } from "~/features/mcq-packs/components/mcq-area-shell";
 import { isMockKind } from "~/features/mcq-packs/labels";
@@ -232,6 +233,32 @@ export async function action({ params, request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
+  }
+
+  // feat-7-040 후속 P3 — OX 시험 ref 단위 SRS 갱신. 이 bulk insert 경로가
+  // recordProblemAttempt 를 우회해 SRS 훅이 빠져 있었음(OX 자습은 됨). 응답 후 best-effort 로
+  // user_ox_ref_srs 갱신 → 복습 큐에 OX 시험 결과 반영.
+  if (attempts.length > 0) {
+    runAfterResponse(
+      (async () => {
+        const { applyOxRefSrsUpdate } = await import(
+          "~/features/study/ox-srs.server"
+        );
+        await Promise.all(
+          graded
+            .filter((i) => i.userAnswer !== null && i.gradeable)
+            .map((i) =>
+              applyOxRefSrsUpdate(
+                client,
+                user.id,
+                i.refType === "choice" ? "choice" : "box_item",
+                i.refId,
+                i.isCorrect,
+              ),
+            ),
+        );
+      })(),
+    );
   }
 
   // 집계도 서버 채점 기준. 채점불가 응답은 정/오 어디에도 안 들어가 blank 로 흡수.
