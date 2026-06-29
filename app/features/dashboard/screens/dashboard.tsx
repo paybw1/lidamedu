@@ -57,6 +57,7 @@ import {
   WeakNodesCard,
   WeakReviewCard,
 } from "~/features/dashboard/components/dash-weak";
+import { InstructorAccessNotice } from "~/features/dashboard/components/instructor-access-notice";
 import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
 import { StudentInputHub } from "~/features/dashboard/components/student-input-hub";
 import {
@@ -484,6 +485,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
       <ReducedDashboard
         name={loaderData.user.name}
         planCode={loaderData.planCode}
+        isCohortMember={loaderData.todaySummary.assignments.isCohortMember}
       />
     );
   }
@@ -656,6 +658,11 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               autoOpen={examRound === null && !goals.examDate}
             />
           </div>
+
+          {/* feat-7-040 — 강사 열람 투명성 고지(약관 제7조 ⑤). 지도형 과정(cohort) 멤버에게만. */}
+          {todaySummary.assignments.isCohortMember ? (
+            <InstructorAccessNotice />
+          ) : null}
 
           {/* 최상단 — 오늘로 가는 입구. 통계가 아니라 오늘 할 일 요약 + 큰 진입 버튼.
              ★ Notion·Linear 톤 시범 리디자인 — 학생 공용 프리미티브 사용.

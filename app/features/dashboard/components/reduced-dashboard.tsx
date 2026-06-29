@@ -4,6 +4,7 @@ import { Link } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
+import { InstructorAccessNotice } from "~/features/dashboard/components/instructor-access-notice";
 
 const PLAN_LABEL: Record<string, string> = {
   free: "무료",
@@ -14,9 +15,11 @@ const PLAN_LABEL: Record<string, string> = {
 export function ReducedDashboard({
   name,
   planCode,
+  isCohortMember,
 }: {
   name: string;
   planCode: string;
+  isCohortMember: boolean;
 }) {
   const planLabel = PLAN_LABEL[planCode] ?? planCode;
   const isPaid = planCode === "pro_monthly";
@@ -29,6 +32,13 @@ export function ReducedDashboard({
         <p className="text-muted-foreground mt-2 text-sm">
           현재 플랜: <strong>{planLabel}</strong>
         </p>
+
+        {/* feat-7-040 — 강사 열람 투명성 고지(약관 제7조 ⑤). 지도형 과정 멤버에게만. */}
+        {isCohortMember ? (
+          <div className="mt-6">
+            <InstructorAccessNotice />
+          </div>
+        ) : null}
 
         <Card className="mt-6 border-amber-300/60 bg-amber-50/30 dark:border-amber-700/50 dark:bg-amber-950/20">
           <CardContent className="space-y-3 px-5 py-5 text-sm leading-relaxed">

@@ -3,7 +3,7 @@
 // 학습 데이터 처리는 본 서비스의 본질적 구성요소(PIPA 15①4 계약 이행)이므로
 // 동의는 서비스 이용의 전제 조건이다 — "건너뛰기" 없음. 거부는 로그아웃/계정해지로만.
 
-import { CheckCircle2Icon, ShieldCheckIcon } from "lucide-react";
+import { CheckCircle2Icon, EyeIcon, ShieldCheckIcon } from "lucide-react";
 import { Form, Link, data, redirect, useNavigation } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
@@ -113,6 +113,15 @@ export default function Consent({ loaderData, actionData }: Route.ComponentProps
               <span>
                 합격 결과 인증(합격증 제출)은 <strong>별개의 선택 사항</strong>
                 이며, 거부하셔도 서비스 이용에 제한이 없습니다.
+              </span>
+            </div>
+
+            <div className="text-muted-foreground bg-primary/5 flex items-start gap-2 rounded-md p-3 text-[13px] leading-relaxed">
+              <EyeIcon className="text-link mt-0.5 size-4 shrink-0" />
+              <span>
+                <strong>강사 지도형 과정(온라인 종합반 등)</strong>에 등록하시면
+                담당 강사·운영자가 학습 지도 목적으로 회원님의 학습현황을
+                열람합니다(이용약관 제7조). 미등록 시에는 해당되지 않습니다.
               </span>
             </div>
 
