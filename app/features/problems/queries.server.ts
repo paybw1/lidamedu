@@ -228,6 +228,7 @@ export async function listProblemsBySubject(
       year: row.year,
       examRoundNo: row.exam_round_no,
       problemNumber: row.problem_number,
+      overallNo: null,
       bodyMd: row.body_md,
       importance: row.importance ?? 0,
       primaryArticleId: row.primary_article_id,
@@ -289,6 +290,77 @@ export async function listProblemsBySubject(
   });
 
   return mapped;
+}
+
+// 체계도 전체 순번 — 과목 문제를 체계도 노드 트리 순(노드 내는 listProblemsBySubject 기본순 유지)으로
+// 줄 세워 1..N 의 overallNo 를 in-place 부여. 노드 귀속 = primary_node_id 직접 + primary_article_id
+//   → article_systematic_links 파생(다중 연결 시 트리에서 가장 이른 노드). 배치가 바뀌면 매 호출
+//   재계산되는 파생값(저장 안 함). problems 는 listProblemsBySubject 가 돌려준 기본순 배열.
+export async function attachProblemOverallNo(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  problems: ProblemListItem[],
+): Promise<void> {
+  if (problems.length === 0) return;
+  const { data: law } = await client
+    .from("laws")
+    .select("law_id")
+    .eq("law_code", lawCode)
+    .maybeSingle();
+  if (!law) return;
+
+  const [nodesRes, aslRes, placRes] = await Promise.all([
+    client
+      .from("systematic_nodes")
+      .select("node_id, path")
+      .eq("law_code", lawCode)
+      .order("path"),
+    client.from("article_systematic_links").select("article_id, node_id"),
+    client
+      .from("problems")
+      .select("problem_id, primary_node_id")
+      .eq("law_id", law.law_id)
+      .is("deleted_at", null),
+  ]);
+
+  const nodes = nodesRes.data ?? [];
+  const nodeRank = new Map<string, number>();
+  nodes.forEach((n, i) => nodeRank.set(n.node_id, i));
+
+  // 조문 → 트리에서 가장 이른(rank 최소) 노드 rank.
+  const articleMinRank = new Map<string, number>();
+  for (const r of aslRes.data ?? []) {
+    const rank = nodeRank.get(r.node_id);
+    if (rank === undefined) continue;
+    const cur = articleMinRank.get(r.article_id);
+    if (cur === undefined || rank < cur) articleMinRank.set(r.article_id, rank);
+  }
+
+  const primaryNodeByProblem = new Map<string, string | null>();
+  for (const r of placRes.data ?? [])
+    primaryNodeByProblem.set(r.problem_id, r.primary_node_id);
+
+  const UNPLACED = nodes.length; // 미배치는 맨 뒤.
+  const rankOf = (p: ProblemListItem): number => {
+    const pn = primaryNodeByProblem.get(p.problemId);
+    if (pn != null) {
+      const r = nodeRank.get(pn);
+      if (r !== undefined) return r;
+    }
+    if (p.primaryArticleId != null) {
+      const r = articleMinRank.get(p.primaryArticleId);
+      if (r !== undefined) return r;
+    }
+    return UNPLACED;
+  };
+
+  // 1차 키 = 노드 트리 rank, 2차 = 입력 순서(listProblemsBySubject 기본순). stable sort.
+  const ordered = problems
+    .map((p, i) => ({ p, i, rank: rankOf(p) }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i);
+  ordered.forEach((x, idx) => {
+    x.p.overallNo = idx + 1;
+  });
 }
 
 // 표 검출 — 마크다운 표(`| --- |` 헤더 구분 행) 또는 raw HTML `<table>` 둘 중 하나.

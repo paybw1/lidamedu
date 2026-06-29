@@ -48,6 +48,7 @@ import {
 import {
   type ProblemListItem,
   type SystematicNodeProblemStat,
+  attachProblemOverallNo,
   getSystematicNodeProblemSequence,
   getSystematicNodeProblemStats,
   listProblemYears,
@@ -503,6 +504,8 @@ export function applyProblemListView(
     const mul = dir === "asc" ? 1 : -1;
     const valOf = (p: ProblemListItem): number | null => {
       switch (key) {
+        case "overall":
+          return p.overallNo ?? null;
         case "number":
           return p.problemNumber;
         case "year":
@@ -586,6 +589,8 @@ export async function listDisplayedProblems(
       ? new Set(seq.problems.map((p) => p.problemId))
       : new Set();
   }
+  // 뷰어 prev/next 도 "전체" 정렬 시 같은 순서를 따르도록 overallNo 부여.
+  await attachProblemOverallNo(client, lawCode, problems);
   return applyProblemListView(problems, aggStats, filters, {
     bookmarkedIds,
     nodeProblemIds,
@@ -750,6 +755,8 @@ export async function loadSubjectHub(
       ? getSystematicNodeProblemSequence(client, problemNodeId)
       : Promise.resolve(null),
   ]);
+  // 체계도 전체 순번(overallNo) — 노드 필터/정렬 전, 전과목 기준 1회 부여(파생값).
+  await attachProblemOverallNo(client, lawCode, problems);
   const cases = casesPage.items;
   const casesTotal = casesPage.total;
 

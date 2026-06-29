@@ -598,6 +598,13 @@ export function ProblemsTab({
                     className="w-10 text-center md:w-12"
                   />
                   <SortableHead
+                    label="전체"
+                    sortKey="overall"
+                    applied={appliedFilters}
+                    searchParams={searchParams}
+                    className="w-12 md:w-16"
+                  />
+                  <SortableHead
                     label="No."
                     sortKey="number"
                     applied={appliedFilters}
@@ -991,7 +998,10 @@ function ProblemRow({
           </span>
         ) : null}
       </TableCell>
-      <TableCell className="text-xs tabular-nums">
+      <TableCell className="text-link text-xs font-semibold tabular-nums">
+        {item.overallNo ?? "—"}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-xs tabular-nums">
         {item.problemNumber ?? "—"}
       </TableCell>
       <TableCell className="hidden md:table-cell">

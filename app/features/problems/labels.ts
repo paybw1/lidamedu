@@ -98,7 +98,8 @@ export const SCOPE_LABEL: Record<ProblemScope, string> = {
 // 컬럼(색인 기준) 헤더 클릭 → 그 기준으로 오름/내림 정렬. 클라(헤더 UI)·서버(정렬
 // 로직) 공용이라 여기(라벨 모듈)에 둔다. loader.server 의 ProblemSort = ProblemSortKey.
 export type ProblemSortKey =
-  | "number" // 문항 번호
+  | "overall" // 체계도 전체 순번(노드 트리 순 — 배치 따라 동적)
+  | "number" // 문항 번호(노드별/워크북)
   | "year" // 연도/회차
   | "accuracy" // 전체 정답률(난이도)
   | "importance" // 강사 중요도(★)
@@ -109,6 +110,7 @@ export type ProblemSortKey =
 export type ProblemSortDir = "asc" | "desc";
 
 export const PROBLEM_SORT_KEYS: readonly ProblemSortKey[] = [
+  "overall",
   "number",
   "year",
   "accuracy",
@@ -122,6 +124,7 @@ export const PROBLEM_SORT_KEYS: readonly ProblemSortKey[] = [
 // 컬럼별 "처음 누를 때" 기본 방향. 번호·출처류는 오름차순, 연도·중요도는 내림차순,
 // 난이도(정답률)는 오름차순(=어려운 것 먼저)이 학습상 유용.
 export const PROBLEM_SORT_DEFAULT_DIR: Record<ProblemSortKey, ProblemSortDir> = {
+  overall: "asc",
   number: "asc",
   year: "desc",
   accuracy: "asc",
@@ -190,6 +193,9 @@ export interface ProblemListItem {
   year: number | null;
   examRoundNo: number | null;
   problemNumber: number | null;
+  // 체계도 전체 순번(노드 트리 순 → 노드 내 기본순). 학습과목 허브 로더에서만 채움(그 외 미설정).
+  // 배치(primary 노드)가 바뀌면 매 로드마다 재계산되는 파생값.
+  overallNo?: number | null;
   bodyMd: string;
   primaryArticleId: string | null;
   primaryArticleNumber: string | null;
