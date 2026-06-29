@@ -6,6 +6,7 @@ import {
   ArrowRightIcon,
   BrainIcon,
   CheckCheckIcon,
+  ClipboardListIcon,
   ClockIcon,
   EyeIcon,
   EyeOffIcon,
@@ -101,6 +102,12 @@ import {
 } from "~/features/subscriptions/admin-queries.server";
 import { AdminSubscriptionPanel } from "~/features/subscriptions/components/admin-subscription-panel";
 import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
+import { listStudentAssignments } from "~/features/assignments/queries.server";
+import {
+  ASSIGNMENT_STATUS_LABEL,
+  type AssignmentStatus,
+  type StudentAssignmentRow,
+} from "~/features/assignments/labels";
 
 import type { Route } from "./+types/admin-student-detail";
 
@@ -148,6 +155,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     examResults,
     studyRank,
     studyDaily,
+    studentAssignments,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -186,6 +194,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getStudentCohortStudyRank(params.profileId),
     // feat-7-040 후속 — 최근 8주 학습 추세 미니차트용(주별 시간·풀이수).
     getDailyStudyStats(adminClient, params.profileId, { daysBack: 56 }),
+    // feat-7-040 후속 P1-b — 과제 이행(완료/미완). adminClient 내부, profileId 스코프.
+    listStudentAssignments(params.profileId),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
 
@@ -234,6 +244,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     examResults,
     studyRank,
     studyTrendWeeks,
+    studentAssignments,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -267,6 +278,7 @@ export default function AdminStudentDetail({
     examResults,
     studyRank,
     studyTrendWeeks,
+    studentAssignments,
     currentUserId,
     isAdmin,
     role,
@@ -384,6 +396,11 @@ export default function AdminStudentDetail({
       {/* feat-2-017 학생별 SRS 큐 요약 */}
       <div className="mb-6">
         <StudentSrsCard summary={srsSummary} />
+      </div>
+
+      {/* feat-7-040 후속 P1-b — 과제 이행(행동→파악 가시성) */}
+      <div className="mb-6">
+        <AssignmentProgressCard assignments={studentAssignments} />
       </div>
 
       {/* feat-2-022 학생별 정오문제 약점 진단 (단원 × 지식종류) — 학생 화면과 동일 게이트·톤 */}
@@ -1054,6 +1071,91 @@ function StudyTrendCard({
               );
             })}
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-7-040 후속 P1-b 과제 이행 ───
+
+function assignmentStatusBadge(status: AssignmentStatus): {
+  variant: "default" | "outline";
+  cls: string;
+} {
+  if (status === "completed") return { variant: "default", cls: "" };
+  if (status === "partial")
+    return {
+      variant: "outline",
+      cls: "border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400",
+    };
+  return { variant: "outline", cls: "text-muted-foreground" };
+}
+
+function AssignmentProgressCard({
+  assignments,
+}: {
+  assignments: StudentAssignmentRow[];
+}) {
+  const nowMs = Date.now();
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <ClipboardListIcon className="text-link size-4" /> 과제 이행 (
+          {assignments.length})
+        </p>
+        <p className="text-muted-foreground text-xs">
+          담당 반 과제의 완료 상태 — 자동 채점(풀이·열람 기준).
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="p-0">
+        {assignments.length === 0 ? (
+          <p className="text-muted-foreground px-4 py-6 text-center text-sm">
+            배정된 과제가 없습니다.
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {assignments.map((a) => {
+              const status = a.submission?.status ?? "pending";
+              const done = a.submission?.completedItems ?? 0;
+              const total = a.submission?.totalItems ?? 0;
+              const badge = assignmentStatusBadge(status);
+              const overdue =
+                status !== "completed" &&
+                new Date(a.dueAt).getTime() < nowMs;
+              return (
+                <li
+                  key={a.assignmentId}
+                  className="flex items-center gap-3 px-4 py-2.5"
+                >
+                  <Badge
+                    variant={badge.variant}
+                    className={cn("text-[10px]", badge.cls)}
+                  >
+                    {ASSIGNMENT_STATUS_LABEL[status]}
+                  </Badge>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {a.title}
+                  </span>
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    {done}/{total}
+                  </span>
+                  <span
+                    className={cn(
+                      "w-24 text-right text-[11px] tabular-nums",
+                      overdue
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    마감 {a.dueAt.slice(0, 10)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </CardContent>
     </Card>
