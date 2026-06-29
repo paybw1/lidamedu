@@ -2,7 +2,12 @@
 // /study/passer-trend — 학생 누구나 접근(인증 사용자).
 // 합격자 평균 곡선 + 본인 현재 곡선 overlay, 3종 지표(학습시간/풀이수/정답률).
 
-import { GraduationCapIcon, LineChartIcon, TrendingUpIcon } from "lucide-react";
+import {
+  GraduationCapIcon,
+  LineChartIcon,
+  SparklesIcon,
+  TrendingUpIcon,
+} from "lucide-react";
 import { Link, data, redirect } from "react-router";
 
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -59,6 +64,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
             </p>
           </CardContent>
         </Card>
+        <HubFooter />
       </div>
     );
   }
@@ -128,17 +134,31 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
         />
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <Link
-          to="/study/passer-summaries"
-          className="text-link inline-flex items-center gap-1 underline"
-        >
-          <GraduationCapIcon className="size-3" /> 합격자 학습 수기 보기
-        </Link>
-        <Link to="/dashboard" className="text-muted-foreground underline">
-          대시보드 →
-        </Link>
-      </div>
+      <HubFooter />
+    </div>
+  );
+}
+
+// 합격자 분석 허브 공용 하단 — 선택과목 가이드 + 합격 수기(커뮤니티) + 대시보드.
+// 수기는 커뮤니티로 통합돼 /community/review 가 정식 홈(중복 진입점 제거).
+function HubFooter() {
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <Link
+        to="/study/electives-guide"
+        className="text-link inline-flex items-center gap-1 underline"
+      >
+        <SparklesIcon className="size-3" /> 선택과목 가이드
+      </Link>
+      <Link
+        to="/community/review"
+        className="text-link inline-flex items-center gap-1 underline"
+      >
+        <GraduationCapIcon className="size-3" /> 합격 수기
+      </Link>
+      <Link to="/dashboard" className="text-muted-foreground ml-auto underline">
+        대시보드 →
+      </Link>
     </div>
   );
 }

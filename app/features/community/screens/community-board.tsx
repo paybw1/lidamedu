@@ -315,9 +315,14 @@ function PasserSummariesSection({
           ))}
         </ul>
       )}
-      {items.length > 6 ? (
-        <p className="text-muted-foreground mt-2 text-right text-[11px]">
-          전체 {items.length}건 — 필터 좁혀 확인
+      {items.length > 0 ? (
+        <p className="mt-2 text-right text-[11px]">
+          <Link
+            to="/study/passer-summaries"
+            className="text-link inline-flex items-center gap-1 hover:underline"
+          >
+            전체 합격 수기 보기 →
+          </Link>
         </p>
       ) : null}
     </section>

@@ -30,7 +30,7 @@ const INFO_DOT_BY_TO: Record<string, string> = {
   "/latest/essay": "bg-rose-500",
   "/latest/papers": "bg-sky-500",
   "/latest/book-updates": "bg-[#8B5A2B]",
-  "/study/passer-summaries": "bg-teal-500",
+  "/study/passer-trend": "bg-teal-500",
 };
 
 // 학습정보 탭 — 공용 `SectionTabs` 프리미티브. 학습관리/지원 3 영역과 동일 디자인 톤.

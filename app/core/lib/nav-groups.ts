@@ -93,8 +93,9 @@ export const NAV_GROUP_POOL = {
       { label: "2차 기출문제", to: "/latest/essay" },
       { label: "논문", to: "/latest/papers" },
       { label: "추록·정오표", to: "/latest/book-updates" },
-      // feat — 합격자 분석(누구나 열람, 서버게이트 없음) → 흐림 없는 학습정보에 노출(진입점 복구).
-      { label: "합격자 분석", to: "/study/passer-summaries" },
+      // 합격자 분석(추이·점수분포·선택과목) = 데이터. 합격 수기(서사)는 커뮤니티로 통합 —
+      // 학습정보는 '분석', 커뮤니티는 '수기'로 역할 분리(중복 진입점 제거).
+      { label: "합격자 분석", to: "/study/passer-trend" },
     ],
   },
   mock: {
