@@ -675,10 +675,20 @@ function WeakNodesPanel({
           );
         })}
       </ul>
+      {/* feat-7-040 후속 — 약점 복습(SRS) 진입. 모의 결과 → 복습 큐로 바로 행동. */}
+      <div className="mt-3">
+        <Link
+          to="/study/srs"
+          viewTransition
+          className="border-primary/40 bg-primary/5 hover:bg-primary/10 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors"
+        >
+          <RotateCcwIcon className="size-3.5" /> 약점 복습(SRS) 하러 가기
+        </Link>
+      </div>
       {weakNodes[0] && weakNodes[0].accuracyPct < 60 ? (
         <p className="text-muted-foreground mt-2 text-[11px]">
           💡 가장 약한 단원: <strong>{weakNodes[0].label}</strong> — 해당 단원
-          체계도에서 복습을 시작해보세요.
+          체계도에서 복습을 시작하거나 위 복습 큐(SRS)로 이어가세요.
         </p>
       ) : null}
     </div>
