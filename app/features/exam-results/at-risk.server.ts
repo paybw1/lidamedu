@@ -83,11 +83,132 @@ function clamp01(v: number): number {
   return v;
 }
 
+// ─── feat-7-040 P2 — 개인 시계열 추세 신호 ───
+// 절대 스냅샷(낮은 정답률)만으로는 "원래 못하는 학생"과 "갑자기 무너지는 학생"을
+// 구분 못 한다. 정답률 급락·공부량 급감을 28일 attempts 1회 벌크로 산출해 가산한다.
+// ★표본 가드: 직전 윈도우에 데이터가 충분할 때만 발화(신규·학기초 오탐 차단).
+const DAY_MS = 86_400_000;
+const TREND_FETCH_DAYS = 28; // 정답률 비교(최근14d vs 직전14d)를 덮는 최대 윈도우
+const TREND_ACC_SPLIT_DAYS = 14; // 정답률: [−14d, now] vs [−28d, −14d]
+const TREND_STUDY_RECENT_DAYS = 7; // 공부량: [−7d, now] vs [−14d, −7d]
+const MIN_PRIOR_ACC_ATTEMPTS = 10; // 직전 14d 표본 가드(정답률)
+const MIN_RECENT_ACC_ATTEMPTS = 5; // 최근 14d 표본 가드(정답률)
+const ACC_DROP_PP = 12; // 정답률 급락 임계(%p)
+const ACC_PRIOR_FLOOR = 50; // 직전 정답률 하한 — 이미 낮던 학생의 노이즈 제외
+const MIN_PRIOR_STUDY_MS = 60 * 60 * 1000; // 직전주 ≥1h 공부했을 때만(공부량 급감)
+const ACTIVITY_DROP_RATIO = 0.4; // 최근/직전 ≤ 0.4 = 60%+ 급감
+const W_TREND_ACC = 0.2; // 추세 가산 가중(정답률 급락)
+const W_TREND_ACTIVITY = 0.15; // 추세 가산 가중(공부량 급감)
+
+interface TrendSignal {
+  accReason: string | null;
+  accScore: number;
+  activityReason: string | null;
+  activityScore: number;
+}
+
+// 멤버별 추세 신호. 28일 attempts 벌크(유일키 attempt_id 페이징) → 윈도우 버킷.
+async function getCohortTrendSignals(
+  admin: SupabaseClient<Database>,
+  memberIds: string[],
+  now: number,
+): Promise<Map<string, TrendSignal>> {
+  const out = new Map<string, TrendSignal>();
+  if (memberIds.length === 0) return out;
+
+  interface Bucket {
+    recentAccCorrect: number;
+    recentAccTotal: number;
+    priorAccCorrect: number;
+    priorAccTotal: number;
+    recentMs: number;
+    priorMs: number;
+  }
+  const buckets = new Map<string, Bucket>();
+  for (const id of memberIds) {
+    buckets.set(id, {
+      recentAccCorrect: 0,
+      recentAccTotal: 0,
+      priorAccCorrect: 0,
+      priorAccTotal: 0,
+      recentMs: 0,
+      priorMs: 0,
+    });
+  }
+
+  const fetchCut = now - TREND_FETCH_DAYS * DAY_MS;
+  const accCut = now - TREND_ACC_SPLIT_DAYS * DAY_MS; // 이상 = 최근
+  const recentMsCut = now - TREND_STUDY_RECENT_DAYS * DAY_MS;
+  const priorMsCut = now - 2 * TREND_STUDY_RECENT_DAYS * DAY_MS; // [−14d, −7d]
+
+  for (let from = 0; ; from += 1000) {
+    const { data } = await admin
+      .from("user_problem_attempts")
+      .select("attempt_id, user_id, is_correct, time_spent_ms, attempted_at")
+      .in("user_id", memberIds)
+      .gte("attempted_at", new Date(fetchCut).toISOString())
+      .order("attempt_id", { ascending: true })
+      .range(from, from + 999);
+    if (!data?.length) break;
+    for (const r of data) {
+      const b = buckets.get(r.user_id);
+      if (!b || !r.attempted_at) continue;
+      const t = new Date(r.attempted_at).getTime();
+      // 정답률 윈도우(최근 14d vs 직전 14d)
+      if (t >= accCut) {
+        b.recentAccTotal += 1;
+        if (r.is_correct) b.recentAccCorrect += 1;
+      } else {
+        b.priorAccTotal += 1;
+        if (r.is_correct) b.priorAccCorrect += 1;
+      }
+      // 공부량 윈도우(최근 7d vs 직전 7d)
+      const ms = r.time_spent_ms ?? 0;
+      if (t >= recentMsCut) b.recentMs += ms;
+      else if (t >= priorMsCut) b.priorMs += ms;
+    }
+    if (data.length < 1000) break;
+  }
+
+  for (const id of memberIds) {
+    const b = buckets.get(id)!;
+    let accReason: string | null = null;
+    let accScore = 0;
+    let activityReason: string | null = null;
+    let activityScore = 0;
+
+    // 정답률 급락 — 직전·최근 표본 가드 + 직전 절대값 하한.
+    if (
+      b.priorAccTotal >= MIN_PRIOR_ACC_ATTEMPTS &&
+      b.recentAccTotal >= MIN_RECENT_ACC_ATTEMPTS
+    ) {
+      const priorAcc = (b.priorAccCorrect / b.priorAccTotal) * 100;
+      const recentAcc = (b.recentAccCorrect / b.recentAccTotal) * 100;
+      const drop = priorAcc - recentAcc;
+      if (priorAcc >= ACC_PRIOR_FLOOR && drop >= ACC_DROP_PP) {
+        accReason = `정답률 2주새 -${Math.round(drop)}%p (${Math.round(priorAcc)}→${Math.round(recentAcc)}%)`;
+        accScore = W_TREND_ACC;
+      }
+    }
+
+    // 공부량 급감 — 직전주 충분히 공부했을 때만(표본 가드).
+    if (b.priorMs >= MIN_PRIOR_STUDY_MS) {
+      const ratio = b.recentMs / b.priorMs;
+      if (ratio <= ACTIVITY_DROP_RATIO) {
+        activityReason = `공부량 직전주 대비 -${Math.round((1 - ratio) * 100)}%`;
+        activityScore = W_TREND_ACTIVITY;
+      }
+    }
+
+    out.set(id, { accReason, accScore, activityReason, activityScore });
+  }
+  return out;
+}
+
 export async function getAtRiskStudents(
   cohortId: string,
 ): Promise<AtRiskSummary> {
   const admin = adminClient as SupabaseClient<Database>;
-  void admin; // listCohortProgressSummary uses its own admin client
 
   const [baseline, members] = await Promise.all([
     computePasserBaseline(),
@@ -105,6 +226,12 @@ export async function getAtRiskStudents(
   }
 
   const now = Date.now();
+  // feat-7-040 P2 — 개인 시계열 추세 신호(정답률 급락·공부량 급감)를 멤버별로 가산.
+  const trendSignals = await getCohortTrendSignals(
+    admin,
+    members.map((m) => m.profileId),
+    now,
+  );
   const students: AtRiskStudent[] = members.map((m) => {
     // 비활성 일수
     const daysSinceActive = m.lastActivityAt
@@ -173,6 +300,18 @@ export async function getAtRiskStudents(
     } else if (daysSinceActive >= 7) {
       reasons.push(`${daysSinceActive}일 미접속`);
       score += W_INACTIVE * 0.4;
+    }
+
+    // feat-7-040 P2 — 추세 신호 가산. reasons 앞에 prepend("무너지기 시작" 우선 노출).
+    const trend = trendSignals.get(m.profileId);
+    if (trend) {
+      const trendReasons = [trend.accReason, trend.activityReason].filter(
+        (r): r is string => r !== null,
+      );
+      if (trendReasons.length > 0) {
+        reasons.unshift(...trendReasons);
+        score += trend.accScore + trend.activityScore;
+      }
     }
 
     const riskScore = clamp01(score);
