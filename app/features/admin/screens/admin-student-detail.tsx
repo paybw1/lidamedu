@@ -67,6 +67,17 @@ import {
   type GamificationSummary,
 } from "~/features/study/gamification.server";
 import { summarizeMastery } from "~/features/study/lib/mastery";
+import {
+  getStudentCohortStudyRank,
+  type CohortStudyBand,
+} from "~/features/study/cohort-percentile.server";
+import { listMyExamResults } from "~/features/exam-results/queries.server";
+import {
+  EXAM_ROUND_LABEL,
+  EXAM_RESULT_STATUS_LABEL,
+  EXAM_VERIFICATION_STATUS_LABEL,
+  type ExamResultRow,
+} from "~/features/exam-results/labels";
 import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
 import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import {
@@ -133,6 +144,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     oxDiagnosis,
     oxPasser,
     nodeMastery,
+    examResults,
+    studyRank,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -165,6 +178,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     })(),
     // feat-2-027 — 단원 마스터리(파생: 노드별 정답률 + SRS 파지). 학생 화면과 동일 계산.
     getNodeMastery(adminClient, params.profileId, [...LAW_SUBJECT_SLUGS]),
+    // feat-7-040 P1 — 실제 응시결과(자가신고·인증). adminClient = 타 사용자 private 데이터.
+    listMyExamResults(adminClient, params.profileId),
+    // feat-7-040 P1 — 공부량 반내 위치(약관 제7조 근거 반 전체 변형, B동의 무관). adminClient 내부.
+    getStudentCohortStudyRank(params.profileId),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
 
@@ -197,6 +214,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     oxPasser,
     nodeMastery,
     gamification,
+    examResults,
+    studyRank,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -227,6 +246,8 @@ export default function AdminStudentDetail({
     oxPasser,
     nodeMastery,
     gamification,
+    examResults,
+    studyRank,
     currentUserId,
     isAdmin,
     role,
@@ -320,12 +341,19 @@ export default function AdminStudentDetail({
       {/* feat-2-027 — 정착도(단원 마스터리) + 성장(레벨·스트릭·공부량). 학생 화면과 동일 계산, 관리자 시점 미러. */}
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         <MasteryCard rows={nodeMastery} />
-        <GrowthCard g={gamification} />
+        <GrowthCard g={gamification} studyRank={studyRank} />
       </div>
 
       {passTrend.length > 0 ? (
         <div className="mb-6">
           <PassTrendCard items={passTrend} />
+        </div>
+      ) : null}
+
+      {/* feat-7-040 P1 — 실제 응시결과(자가신고·인증). 합격 예측 옆 실제 결과. */}
+      {examResults.length > 0 ? (
+        <div className="mb-6">
+          <ExamResultsCard results={examResults} />
         </div>
       ) : null}
 
@@ -857,7 +885,13 @@ function MasteryCard({ rows }: { rows: NodeMasteryRow[] }) {
 
 // ─── feat-2-027 성장 (레벨·스트릭·공부량) — 학생 화면과 동일 계산 ───
 
-function GrowthCard({ g }: { g: GamificationSummary }) {
+function GrowthCard({
+  g,
+  studyRank,
+}: {
+  g: GamificationSummary;
+  studyRank: CohortStudyBand;
+}) {
   const { level, thisWeekActiveDays, currentStreak, longestStreak } = g;
   const thisWeekH = g.thisWeekStudyMs / 3_600_000;
   const delta = g.studyDeltaPct;
@@ -929,6 +963,90 @@ function GrowthCard({ g }: { g: GamificationSummary }) {
             </span>
           )}
         </div>
+        {studyRank.state === "ok" ? (
+          <p className="text-muted-foreground text-xs">
+            반 {studyRank.sampleSize}명 중 공부량{" "}
+            <span className="text-foreground font-semibold">
+              상위 {studyRank.topPercent}%
+            </span>{" "}
+            · {studyRank.band}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-7-040 P1 실제 응시 결과 (자가신고·인증) ───
+
+function examStatusTone(status: ExamResultRow["status"]): string {
+  if (status === "passed") return "text-emerald-600 dark:text-emerald-400";
+  if (status === "failed") return "text-rose-600 dark:text-rose-400";
+  if (status === "pending") return "text-amber-600 dark:text-amber-400";
+  return "text-muted-foreground";
+}
+
+function ExamResultsCard({ results }: { results: ExamResultRow[] }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <FileTextIcon className="text-link size-4" /> 실제 응시 결과
+        </p>
+        <p className="text-muted-foreground text-xs">
+          자가 신고·인증 기준. 합격 예측과 별개의 실제 결과.
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>연도</TableHead>
+              <TableHead>차수</TableHead>
+              <TableHead>결과</TableHead>
+              <TableHead className="text-right">자가신고 점수</TableHead>
+              <TableHead className="text-right">인증</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {results.map((r) => (
+              <TableRow key={r.resultId}>
+                <TableCell className="text-sm tabular-nums">
+                  {r.examYear}
+                </TableCell>
+                <TableCell className="text-sm">
+                  {EXAM_ROUND_LABEL[r.examRound]}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    "text-sm font-semibold",
+                    examStatusTone(r.status),
+                  )}
+                >
+                  {EXAM_RESULT_STATUS_LABEL[r.status]}
+                </TableCell>
+                <TableCell className="text-right text-xs tabular-nums">
+                  {r.selfReportedTotalScore !== null
+                    ? r.selfReportedTotalScore
+                    : "—"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant={
+                      r.verificationStatus === "verified"
+                        ? "default"
+                        : "outline"
+                    }
+                    className="text-[10px]"
+                  >
+                    {EXAM_VERIFICATION_STATUS_LABEL[r.verificationStatus]}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
