@@ -99,15 +99,28 @@ const MIN_PRIOR_STUDY_MS = 60 * 60 * 1000; // 직전주 ≥1h 공부했을 때�
 const ACTIVITY_DROP_RATIO = 0.4; // 최근/직전 ≤ 0.4 = 60%+ 급감
 const W_TREND_ACC = 0.2; // 추세 가산 가중(정답률 급락)
 const W_TREND_ACTIVITY = 0.15; // 추세 가산 가중(공부량 급감)
+const W_TREND_STALL = 0.15; // 추세 가산 가중(진도 정체)
+const STALL_MIN_ACTIVE_DAYS = 2; // 최근 7d 접속(study_session) 일수 ≥ — "활동은 있음"
+const STALL_MAX_RECENT_ATTEMPTS = 3; // 최근 7d 풀이 ≤ — "문제 진도 정체"
+const STALL_MIN_PRIOR_ATTEMPTS = 10; // 직전 7d 풀이 ≥ — "원래 풀던 학생"(표본 가드)
 
 interface TrendSignal {
   accReason: string | null;
   accScore: number;
   activityReason: string | null;
   activityScore: number;
+  stallReason: string | null;
+  stallScore: number;
 }
 
-// 멤버별 추세 신호. 28일 attempts 벌크(유일키 attempt_id 페이징) → 윈도우 버킷.
+// ISO → KST 날짜 문자열(YYYY-MM-DD). 진도 정체의 "접속 일수" 집계용.
+function kstDay(iso: string): string {
+  return new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+// 멤버별 추세 신호. 28일 attempts + 7일 study_sessions 벌크 → 윈도우 버킷.
 async function getCohortTrendSignals(
   admin: SupabaseClient<Database>,
   memberIds: string[],
@@ -123,6 +136,8 @@ async function getCohortTrendSignals(
     priorAccTotal: number;
     recentMs: number;
     priorMs: number;
+    recentCount7d: number;
+    priorCount7d: number;
   }
   const buckets = new Map<string, Bucket>();
   for (const id of memberIds) {
@@ -133,6 +148,8 @@ async function getCohortTrendSignals(
       priorAccTotal: 0,
       recentMs: 0,
       priorMs: 0,
+      recentCount7d: 0,
+      priorCount7d: 0,
     });
   }
 
@@ -162,12 +179,33 @@ async function getCohortTrendSignals(
         b.priorAccTotal += 1;
         if (r.is_correct) b.priorAccCorrect += 1;
       }
-      // 공부량 윈도우(최근 7d vs 직전 7d)
+      // 공부량·풀이수 윈도우(최근 7d vs 직전 7d)
       const ms = r.time_spent_ms ?? 0;
-      if (t >= recentMsCut) b.recentMs += ms;
-      else if (t >= priorMsCut) b.priorMs += ms;
+      if (t >= recentMsCut) {
+        b.recentMs += ms;
+        b.recentCount7d += 1;
+      } else if (t >= priorMsCut) {
+        b.priorMs += ms;
+        b.priorCount7d += 1;
+      }
     }
     if (data.length < 1000) break;
+  }
+
+  // 진도 정체용 — 최근 7d 접속(study_session) 일수. 윈도우가 작아 단일 조회(offset 페이징 회피).
+  const activeDays = new Map<string, Set<string>>();
+  for (const id of memberIds) activeDays.set(id, new Set<string>());
+  {
+    const { data } = await admin
+      .from("study_sessions")
+      .select("user_id, started_at")
+      .in("user_id", memberIds)
+      .gte("started_at", new Date(recentMsCut).toISOString())
+      .limit(10000);
+    for (const r of data ?? []) {
+      const set = activeDays.get(r.user_id);
+      if (set && r.started_at) set.add(kstDay(r.started_at));
+    }
   }
 
   for (const id of memberIds) {
@@ -176,6 +214,8 @@ async function getCohortTrendSignals(
     let accScore = 0;
     let activityReason: string | null = null;
     let activityScore = 0;
+    let stallReason: string | null = null;
+    let stallScore = 0;
 
     // 정답률 급락 — 직전·최근 표본 가드 + 직전 절대값 하한.
     if (
@@ -200,7 +240,25 @@ async function getCohortTrendSignals(
       }
     }
 
-    out.set(id, { accReason, accScore, activityReason, activityScore });
+    // 진도 정체 — 접속(study_session)은 있으나 새 문제 풀이가 멈춤. 직전 7d 에 풀던 학생만(표본 가드).
+    const recentActiveDays = activeDays.get(id)?.size ?? 0;
+    if (
+      recentActiveDays >= STALL_MIN_ACTIVE_DAYS &&
+      b.recentCount7d <= STALL_MAX_RECENT_ATTEMPTS &&
+      b.priorCount7d >= STALL_MIN_PRIOR_ATTEMPTS
+    ) {
+      stallReason = `접속 중이나 문제 진도 정체 (최근 7일 ${b.recentCount7d}문, 직전 ${b.priorCount7d}문)`;
+      stallScore = W_TREND_STALL;
+    }
+
+    out.set(id, {
+      accReason,
+      accScore,
+      activityReason,
+      activityScore,
+      stallReason,
+      stallScore,
+    });
   }
   return out;
 }
@@ -305,12 +363,14 @@ export async function getAtRiskStudents(
     // feat-7-040 P2 — 추세 신호 가산. reasons 앞에 prepend("무너지기 시작" 우선 노출).
     const trend = trendSignals.get(m.profileId);
     if (trend) {
-      const trendReasons = [trend.accReason, trend.activityReason].filter(
-        (r): r is string => r !== null,
-      );
+      const trendReasons = [
+        trend.accReason,
+        trend.activityReason,
+        trend.stallReason,
+      ].filter((r): r is string => r !== null);
       if (trendReasons.length > 0) {
         reasons.unshift(...trendReasons);
-        score += trend.accScore + trend.activityScore;
+        score += trend.accScore + trend.activityScore + trend.stallScore;
       }
     }
 
