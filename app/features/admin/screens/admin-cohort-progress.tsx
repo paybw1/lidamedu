@@ -21,6 +21,7 @@ import {
   listCohortProgressSummary,
   type CohortMemberProgress,
 } from "~/features/admin/queries/student-progress.server";
+import { getLastConsultedDates } from "~/features/student-notes/queries.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import {
   Bar,
@@ -54,7 +55,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const members = await listCohortProgressSummary(params.cohortId);
-  return { cohort, members, role };
+  // feat-7-040 후속 — 학생별 마지막 상담 경과일(서버 계산, hydration 안전). 미상담=키 없음.
+  const consultMap = await getLastConsultedDates(
+    members.map((m) => m.profileId),
+  );
+  const now = Date.now();
+  const consultDays: Record<string, number> = {};
+  for (const [pid, iso] of consultMap) {
+    consultDays[pid] = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
+  }
+  return { cohort, members, consultDays, role };
 }
 
 function accuracyTone(pct: number | null): string {
@@ -78,6 +88,23 @@ function formatLast(iso: string | null): string {
   return iso.slice(0, 10);
 }
 
+// feat-7-040 후속 P2 — 마지막 상담 표시(서버 계산 경과일). undefined=미상담.
+function consultLabel(days: number | undefined): { text: string; cls: string } {
+  if (days === undefined)
+    return {
+      text: "미상담",
+      cls: "text-rose-600 dark:text-rose-400 font-semibold",
+    };
+  if (days <= 0) return { text: "오늘", cls: "text-muted-foreground" };
+  return {
+    text: `${days}일 전`,
+    cls:
+      days >= 14
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-muted-foreground",
+  };
+}
+
 type SortKey = "default" | "accuracy_asc" | "attempts_desc" | "recent_desc" | "inactive_first";
 
 function inactiveDays(iso: string | null): number {
@@ -88,7 +115,7 @@ function inactiveDays(iso: string | null): number {
 export default function AdminCohortProgress({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, members, role } = loaderData;
+  const { cohort, members, consultDays, role } = loaderData;
 
   const [sortKey, setSortKey] = useState<SortKey>("default");
   const sortedMembers = useMemo(() => {
@@ -224,6 +251,7 @@ export default function AdminCohortProgress({
             { label: "빈칸", align: "right", width: "7rem" },
             { label: "메모/즐겨/하이", align: "right", width: "7rem" },
             { label: "최근 활동", align: "right", width: "6rem" },
+            { label: "상담", align: "right", width: "5rem" },
             { label: "", align: "right", width: "5rem" },
           ]}
           footer={
@@ -238,6 +266,7 @@ export default function AdminCohortProgress({
               member={m}
               index={i + 1}
               cohortId={cohort.cohortId}
+              consultedDays={consultDays[m.profileId]}
             />
           ))}
         </IndexTable>
@@ -250,11 +279,14 @@ function ProgressRow({
   member: m,
   index,
   cohortId: _cohortId,
+  consultedDays,
 }: {
   member: CohortMemberProgress;
   index: number;
   cohortId: string;
+  consultedDays: number | undefined;
 }) {
+  const consult = consultLabel(consultedDays);
   const isLowPerformer =
     m.problemsAttempted >= 5 && m.accuracyPct !== null && m.accuracyPct < 40;
   const isInactive = inactiveDays(m.lastActivityAt) >= 7;
@@ -334,6 +366,11 @@ function ProgressRow({
         <span className="inline-flex items-center gap-1">
           <ClockIcon className="size-3" />
           {formatLast(m.lastActivityAt)}
+        </span>
+      </TD>
+      <TD align="right">
+        <span className={cn("text-xs tabular-nums", consult.cls)}>
+          {consult.text}
         </span>
       </TD>
       <TD align="right">
