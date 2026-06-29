@@ -16,6 +16,7 @@ import {
   type CaseExamFilter,
   type CaseListItem,
   type CaseSubjectSort,
+  computeCaseOverallOrder,
   getCaseIdsByArticleLinks,
   getCaseIdsByPlacement,
   getCasePlacementMaps,
@@ -156,6 +157,8 @@ export interface SubjectHubData {
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
+  "overall_asc",
+  "overall_desc",
   "decided_desc",
   "decided_asc",
   "case_no",
@@ -212,8 +215,12 @@ function parseCaseFilters(url: URL): CaseFiltersApplied {
     sort = sortRaw as CaseSubjectSort;
   } else if (tree?.kind === "node") {
     sort = "source_asc";
-  } else {
+  } else if (tree) {
+    // 조문/장 axis(article·chapter) → 최신 해석부터 보는 게 자연스러움.
     sort = "decided_desc";
+  } else {
+    // 트리 미적용(전체 목록) → 체계도 전체 순번 순(문제 탭과 동일 방식).
+    sort = "overall_asc";
   }
   const bookmarkMin = parseLevel(url.searchParams.get("case_bookmarked"), 5);
   const importanceMin = parseLevel(url.searchParams.get("case_importance"), 3);
@@ -759,6 +766,29 @@ export async function loadSubjectHub(
   await attachProblemOverallNo(client, lawCode, problems);
   const cases = casesPage.items;
   const casesTotal = casesPage.total;
+
+  // 체계도 전체 순번(판례) — 전과목 기준 1회 계산 → 표시 항목에 부여. sort=overall 이면 재정렬.
+  // (판례는 listCasesBySubject 가 overall 을 모르므로 여기서 in-memory 정렬한다.)
+  const caseOverallMap = await computeCaseOverallOrder(
+    client,
+    lawCode,
+    systematicNodes.map((n) => n.nodeId),
+    placementMaps.caseSetByNodeId,
+  );
+  for (const c of cases) c.overallNo = caseOverallMap[c.caseId] ?? null;
+  if (caseFilters.sort === "overall_asc") {
+    cases.sort(
+      (a, b) =>
+        (a.overallNo ?? Number.POSITIVE_INFINITY) -
+        (b.overallNo ?? Number.POSITIVE_INFINITY),
+    );
+  } else if (caseFilters.sort === "overall_desc") {
+    cases.sort(
+      (a, b) =>
+        (b.overallNo ?? Number.NEGATIVE_INFINITY) -
+        (a.overallNo ?? Number.NEGATIVE_INFINITY),
+    );
+  }
 
   const caseTreeCounts = buildCaseTreeCounts(
     articles,

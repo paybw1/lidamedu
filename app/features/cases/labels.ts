@@ -37,6 +37,9 @@ export function buildCitation(opts: {
 
 export interface CaseListItem {
   caseId: string;
+  // 체계도 전체 순번(노드 트리 순 → 노드 내 원본순). 학습과목 허브 로더에서만 채움(그 외 미설정).
+  // 배치(case→node)가 바뀌면 매 로드 재계산되는 파생값.
+  overallNo?: number | null;
   court: CaseCourt;
   decidedAt: string;
   caseNumber: string;

@@ -67,6 +67,7 @@ function rowToListItem(
   );
   return {
     caseId: row.case_id,
+    overallNo: null,
     court: row.court,
     decidedAt: row.decided_at,
     caseNumber: row.case_number,
@@ -137,6 +138,8 @@ export async function listRecentCases(
 // source_asc — "원본 자료 순서". DB 에 source seq 컬럼이 따로 없어 created_at(import 시점)
 // 오름차순으로 대체. 같은 systematic node 안에서는 시드 시점의 source 순서가 대체로 보존됨.
 export type CaseSubjectSort =
+  | "overall_asc" // 체계도 전체 순번(노드 트리 순) — 학습과목 기본
+  | "overall_desc"
   | "decided_desc"
   | "decided_asc"
   | "case_no"
@@ -398,6 +401,55 @@ export async function getCasePlacementMaps(
   const caseSetByNodeId: Record<string, string[]> = {};
   for (const [k, v] of byNode.entries()) caseSetByNodeId[k] = [...v];
   return { caseSetByArticleId, caseSetByNodeId };
+}
+
+// 체계도 전체 순번(판례) — 과목 판례를 체계도 노드 트리 순(노드 내는 원본순 source_seq→사건번호)으로
+// 줄 세워 caseId → 1..N 맵 반환. 노드 귀속 = caseSetByNodeId(getCasePlacementMaps, 다중 노드면
+// 트리에서 가장 이른 노드). 배치가 바뀌면 매 호출 재계산되는 파생값(저장 안 함).
+//   nodeOrder = systematic_nodes 를 path 순으로 정렬한 node_id 배열(트리 표시 순).
+export async function computeCaseOverallOrder(
+  client: SupabaseClient<Database>,
+  lawCode: string,
+  nodeOrder: readonly string[],
+  caseSetByNodeId: Record<string, string[]>,
+): Promise<Record<string, number>> {
+  const nodeRank = new Map<string, number>();
+  nodeOrder.forEach((id, i) => nodeRank.set(id, i));
+
+  // case → 트리에서 가장 이른(rank 최소) 노드 rank.
+  const caseMinRank = new Map<string, number>();
+  for (const [nodeId, caseIds] of Object.entries(caseSetByNodeId)) {
+    const rank = nodeRank.get(nodeId);
+    if (rank === undefined) continue;
+    for (const cid of caseIds) {
+      const cur = caseMinRank.get(cid);
+      if (cur === undefined || rank < cur) caseMinRank.set(cid, rank);
+    }
+  }
+
+  // 노드 내 순서 키 = source_asc(원본 순서: source_seq nulls last → 사건번호). 미배치는 맨 뒤.
+  const { data: caseRows } = await client
+    .from("cases")
+    .select("case_id, source_seq, case_number")
+    .contains("subject_laws", [lawCode])
+    .is("deleted_at", null)
+    .range(0, CASE_LIST_MAX - 1);
+  const UNPLACED = nodeOrder.length;
+  const ordered = (caseRows ?? [])
+    .map((c) => ({
+      caseId: c.case_id,
+      rank: caseMinRank.get(c.case_id) ?? UNPLACED,
+      seq: c.source_seq ?? Number.POSITIVE_INFINITY,
+      num: c.case_number ?? "",
+    }))
+    .sort(
+      (a, b) => a.rank - b.rank || a.seq - b.seq || a.num.localeCompare(b.num),
+    );
+  const map: Record<string, number> = {};
+  ordered.forEach((x, i) => {
+    map[x.caseId] = i + 1;
+  });
+  return map;
 }
 
 // (deprecated) getCaseIdsByArticleIds — placement 모델로 전환되며 사용 안 함.

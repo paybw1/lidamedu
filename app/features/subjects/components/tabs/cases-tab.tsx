@@ -5,6 +5,9 @@ import type {
 import type { LawSubjectMeta } from "../../lib/subjects";
 
 import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
   ChevronDownIcon,
   GavelIcon,
   ListTreeIcon,
@@ -69,6 +72,8 @@ const EXAM_OPTIONS = [
 ] as const;
 
 const SORT_OPTIONS = [
+  { value: "overall_asc", label: "전체 번호 ↑" },
+  { value: "overall_desc", label: "전체 번호 ↓" },
   { value: "decided_desc", label: "선고일 ↓" },
   { value: "decided_asc", label: "선고일 ↑" },
   { value: "case_no", label: "사건번호" },
@@ -79,7 +84,7 @@ const DEFAULT_FILTERS: CaseFiltersApplied = {
   q: "",
   court: "all",
   exam: "any",
-  sort: "decided_desc",
+  sort: "overall_asc",
   bookmarkMin: 0,
   importanceMin: 0,
 };
@@ -147,6 +152,12 @@ export function CasesTab({
     sp.delete("case_node");
     return `?${sp.toString()}`;
   }, [searchParams]);
+  // "전체" 컬럼 클릭 정렬 — case_sort 만 바꾸고 나머지 필터·트리·검색은 보존.
+  const overallSortHref = (value: "overall_asc" | "overall_desc") => {
+    const sp = new URLSearchParams(searchParams);
+    sp.set("case_sort", value);
+    return `?${sp.toString()}`;
+  };
   // 검색어 해제 href — q 만 제거 (트리·정렬·법원·기출 필터는 유지).
   const clearQueryHref = useMemo(() => {
     const sp = new URLSearchParams(searchParams);
@@ -438,6 +449,32 @@ export function CasesTab({
                   <TableHead className="text-muted-foreground/70 w-10 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     ★
                   </TableHead>
+                  <TableHead className="text-muted-foreground/70 w-12 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
+                    <Link
+                      to={overallSortHref(
+                        filters.sort === "overall_asc"
+                          ? "overall_desc"
+                          : "overall_asc",
+                      )}
+                      preventScrollReset
+                      title="체계도 전체 순번으로 정렬"
+                      className={`inline-flex items-center gap-1 transition-colors hover:text-foreground ${
+                        filters.sort === "overall_asc" ||
+                        filters.sort === "overall_desc"
+                          ? "text-foreground"
+                          : ""
+                      }`}
+                    >
+                      전체
+                      {filters.sort === "overall_asc" ? (
+                        <ArrowUpIcon className="size-3" />
+                      ) : filters.sort === "overall_desc" ? (
+                        <ArrowDownIcon className="size-3" />
+                      ) : (
+                        <ArrowUpDownIcon className="size-3 opacity-30" />
+                      )}
+                    </Link>
+                  </TableHead>
                   <TableHead className="text-muted-foreground/70 hidden w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
                     법원
                   </TableHead>
@@ -564,6 +601,9 @@ function CaseRow({
         {item.importance >= 3 ? (
           <StarIcon className="mx-auto size-3.5 text-amber-500" />
         ) : null}
+      </TableCell>
+      <TableCell className="text-link text-xs font-semibold tabular-nums">
+        {item.overallNo ?? "—"}
       </TableCell>
       <TableCell className="hidden md:table-cell">
         <span className="text-link text-xs font-semibold">
