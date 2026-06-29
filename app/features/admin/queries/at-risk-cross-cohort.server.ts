@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { roleAtLeast, type UserRole } from "~/core/lib/roles";
 import { listCohorts } from "~/features/cohorts/queries.server";
 import {
@@ -101,4 +102,35 @@ export async function getCrossCohortAtRisk(
     cohorts: cohorts.map((c) => ({ cohortId: c.cohortId, name: c.name })),
     baselineSampleSize: summaries[0]?.summary.baseline?.sampleSize ?? null,
   };
+}
+
+/**
+ * 호출자가 알림을 보낼 수 있는 학생 profile_id 집합(쓰기 게이트용 권위 소스).
+ * 스코프는 위 getCrossCohortAtRisk 와 동일 — instructor 는 본인 소유 cohort,
+ * manager+ 는 전체. at-risk 여부가 아니라 **cohort 멤버십**으로 판정한다
+ * (risk 점수는 매 로드 재계산되므로 at-risk 기준이면 false rejection 발생).
+ *
+ * cohortId 목록은 listCohorts(ownerId 스코프) 로 owner 게이트가 이미 적용된 뒤이므로,
+ * 멤버 조회는 adminClient 로 해도 안전하다(cohort_members 는 student self-read RLS 부재).
+ */
+export async function getNotifiableStudentIds(
+  client: SupabaseClient<Database>,
+  opts: { callerRole: UserRole; callerId: string },
+): Promise<Set<string>> {
+  const isStaffPlus = roleAtLeast(opts.callerRole, "manager");
+  const cohorts = await listCohorts(client, {
+    ownerId: isStaffPlus ? undefined : opts.callerId,
+    includeArchived: false,
+  });
+  if (cohorts.length === 0) return new Set();
+
+  const { data: rows, error } = await adminClient
+    .from("cohort_members")
+    .select("profile_id")
+    .in(
+      "cohort_id",
+      cohorts.map((c) => c.cohortId),
+    );
+  if (error) throw error;
+  return new Set((rows ?? []).map((r) => r.profile_id));
 }

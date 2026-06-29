@@ -6,6 +6,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getNotifiableStudentIds } from "~/features/admin/queries/at-risk-cross-cohort.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { createUserNotifications } from "~/features/notifications/queries.server";
 
@@ -45,6 +46,24 @@ export async function action({ request }: Route.ActionArgs) {
     .filter((s) => s.length > 0);
   if (ids.length === 0) {
     return data({ ok: false, error: "선택된 학생이 없습니다." }, { status: 400 });
+  }
+
+  // ★ 쓰기 게이트: UI 가 보낸 profileIds 를 신뢰하지 않고, 호출자가 알림을
+  // 보낼 수 있는 cohort 멤버인지 서버에서 재검증한다(role 체크만으로는 instructor 가
+  // 임의 학생에게 발송 가능한 구멍). 권한 밖 id 가 하나라도 있으면 전체 거부(fail-closed).
+  const allowed = await getNotifiableStudentIds(client, {
+    callerRole: role,
+    callerId: user.id,
+  });
+  const denied = ids.filter((id) => !allowed.has(id));
+  if (denied.length > 0) {
+    return data(
+      {
+        ok: false,
+        error: "담당 반에 속하지 않은 학생이 포함되어 있습니다. 목록을 새로고침해 주세요.",
+      },
+      { status: 403 },
+    );
   }
 
   await createUserNotifications({
