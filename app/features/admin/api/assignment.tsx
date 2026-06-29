@@ -362,6 +362,7 @@ export async function action({ request }: Route.ActionArgs) {
       return data({
         ok: true,
         assignmentId: created.assignmentId,
+        cohortId,
         added: add.added,
       });
     }

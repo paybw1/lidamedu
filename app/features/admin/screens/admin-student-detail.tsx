@@ -204,6 +204,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const masteredCount = summarizeMastery(
     nodeMastery.map((r) => r.stage),
   ).mastered;
+  // feat-7-040 후속(가) — 개별 약점 단원 → 반 과제 CTA용. 시도≥3·정답률<70·미마스터.
+  const studentWeakNodes = nodeMastery
+    .filter(
+      (r) => r.attempts >= 3 && r.accuracyPct < 70 && r.stage !== "mastered",
+    )
+    .sort((a, b) => a.accuracyPct - b.accuracyPct)
+    .slice(0, 8)
+    .map((r) => ({ nodeId: r.nodeId, displayLabel: r.displayLabel }));
   const todayYmd = new Date(Date.now() + 9 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -245,6 +253,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     studyRank,
     studyTrendWeeks,
     studentAssignments,
+    studentWeakNodes,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -279,6 +288,7 @@ export default function AdminStudentDetail({
     studyRank,
     studyTrendWeeks,
     studentAssignments,
+    studentWeakNodes,
     currentUserId,
     isAdmin,
     role,
@@ -374,6 +384,20 @@ export default function AdminStudentDetail({
         <MasteryCard rows={nodeMastery} />
         <GrowthCard g={gamification} studyRank={studyRank} />
       </div>
+
+      {/* feat-7-040 후속(가) — 개별 약점 단원 → ★반 과제로 출제 */}
+      {studentWeakNodes.length > 0 && cohortComparisons.length > 0 ? (
+        <div className="mb-6">
+          <StudentWeakAssignmentForm
+            weakNodes={studentWeakNodes}
+            cohorts={cohortComparisons.map((c) => ({
+              cohortId: c.cohortId,
+              cohortName: c.cohortName,
+            }))}
+            studentName={student.name || "학생"}
+          />
+        </div>
+      ) : null}
 
       {/* feat-7-040 후속 — 최근 8주 학습 추세 미니차트(주별 시간·풀이수) */}
       <div className="mb-6">
@@ -1072,6 +1096,143 @@ function StudyTrendCard({
             })}
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-7-040 후속(가) — 개별 약점 단원 → 반 과제 출제 ───
+
+function StudentWeakAssignmentForm({
+  weakNodes,
+  cohorts,
+  studentName,
+}: {
+  weakNodes: Array<{ nodeId: string; displayLabel: string }>;
+  cohorts: Array<{ cohortId: string; cohortName: string }>;
+  studentName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const fetcher = useFetcher<{
+    ok?: true;
+    assignmentId?: string;
+    cohortId?: string;
+    error?: string;
+  }>();
+  const navigate = useNavigate();
+  const busy = fetcher.state !== "idle";
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data?.ok &&
+      fetcher.data.assignmentId
+    ) {
+      const cid = fetcher.data.cohortId ?? cohorts[0]?.cohortId;
+      if (cid)
+        navigate(
+          `/admin/cohorts/${cid}/assignments/${fetcher.data.assignmentId}`,
+        );
+    }
+  }, [fetcher.state, fetcher.data, navigate, cohorts]);
+
+  return (
+    <Card>
+      <CardContent className="px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <ClipboardListIcon className="text-link size-4" /> 약점 단원 → 반 과제
+            출제
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? "닫기" : `약점 단원 ${weakNodes.length}개로 과제 만들기`}
+          </Button>
+        </div>
+        <p className="text-muted-foreground mt-1 text-xs">
+          {studentName} 학생의 약점 단원(
+          {weakNodes
+            .slice(0, 4)
+            .map((w) => w.displayLabel)
+            .join(" · ")}
+          {weakNodes.length > 4 ? " …" : ""})에서 승인 문제를 골라{" "}
+          <b className="text-foreground">★ 반 전체 과제</b>로 출제합니다.
+        </p>
+        {open ? (
+          <fetcher.Form
+            method="post"
+            action="/api/admin/assignment"
+            className="mt-3 flex flex-wrap items-end gap-2"
+          >
+            <input type="hidden" name="intent" value="create_from_weak" />
+            <input
+              type="hidden"
+              name="nodeIds"
+              value={weakNodes.map((w) => w.nodeId).join(",")}
+            />
+            {cohorts.length === 1 ? (
+              <input
+                type="hidden"
+                name="cohortId"
+                value={cohorts[0].cohortId}
+              />
+            ) : (
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground text-[11px]">반</span>
+                <select
+                  name="cohortId"
+                  required
+                  className="border-input bg-background h-9 rounded-md border px-2 text-[13px]"
+                >
+                  {cohorts.map((c) => (
+                    <option key={c.cohortId} value={c.cohortId}>
+                      {c.cohortName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px]">제목</span>
+              <input
+                name="title"
+                defaultValue={`${studentName} 약점 보충 과제`}
+                maxLength={200}
+                className="border-input bg-background h-9 w-48 rounded-md border px-2 text-[13px]"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px]">마감</span>
+              <input
+                name="dueAt"
+                type="datetime-local"
+                required
+                className="border-input bg-background h-9 rounded-md border px-2 text-[13px]"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px]">문항</span>
+              <input
+                name="n"
+                type="number"
+                min={1}
+                max={50}
+                defaultValue={10}
+                className="border-input bg-background h-9 w-16 rounded-md border px-2 text-[13px]"
+              />
+            </label>
+            <Button type="submit" size="sm" disabled={busy}>
+              반 과제 만들기
+            </Button>
+            {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
+              <p className="w-full text-xs text-rose-600">
+                {fetcher.data.error}
+              </p>
+            ) : null}
+          </fetcher.Form>
+        ) : null}
       </CardContent>
     </Card>
   );
