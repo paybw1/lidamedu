@@ -19,12 +19,15 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import {
   isFirstExamSubject,
   isSecondExamSubject,
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
 } from "~/features/subjects/lib/subjects";
 import {
   getCohortAccuracyTrend,
@@ -36,6 +39,7 @@ import {
   type CohortSrsAggregate,
   getCohortSrsAggregate,
 } from "~/features/admin/queries/cohort-srs.server";
+import { getCohortWeakNodes } from "~/features/admin/queries/cohort-weakness.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 
@@ -61,13 +65,55 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!roleAtLeast(role, "manager") && cohort.ownerId !== user.id) {
     throw data("본인 소유 반만 조회 가능", { status: 403 });
   }
+  const cohortId = params.cohortId;
 
   const [stats, trend, srs] = await Promise.all([
-    getCohortAggregateStats(params.cohortId),
-    getCohortAccuracyTrend(params.cohortId, 4),
-    getCohortSrsAggregate(params.cohortId),
+    getCohortAggregateStats(cohortId),
+    getCohortAccuracyTrend(cohortId, 4),
+    getCohortSrsAggregate(cohortId),
   ]);
-  return { cohort, stats, trend, srs, role };
+
+  // feat-7-040 P3 — 반 공통 약점 단원(getCohortWeakNodes 재사용, 과목별). ★시도 있는 과목만
+  // 호출 — 이 함수는 호출마다 전 멤버 attempts 를 재스캔하므로 빈 과목 스캔을 피한다.
+  // 노드를 과목 가로질러 merge → 약점 점수 상위 N.
+  const activeSubjects = LAW_SUBJECT_SLUGS.filter((slug) =>
+    stats.bySubject.some(
+      (s) => s.lawCode === slug && s.avgProblemsAttempted > 0,
+    ),
+  );
+  const weakBySubject = await Promise.all(
+    activeSubjects.map(async (slug) => ({
+      slug,
+      result: await getCohortWeakNodes(adminClient, cohortId, slug, {
+        limit: 6,
+      }),
+    })),
+  );
+  const weakThreshold = weakBySubject[0]?.result.threshold ?? 0;
+  const cohortWeakNodes = weakBySubject
+    .flatMap(({ slug, result }) =>
+      result.nodes.map((n) => ({
+        nodeId: n.nodeId,
+        lawName: LAW_SUBJECTS[slug].name,
+        displayLabel: n.displayLabel,
+        accuracyPct: n.accuracyPct,
+        distinctStudents: n.distinctStudents,
+        attempts: n.attempts,
+        weaknessScore: n.weaknessScore,
+      })),
+    )
+    .sort((a, b) => b.weaknessScore - a.weaknessScore)
+    .slice(0, 8);
+
+  return {
+    cohort,
+    stats,
+    trend,
+    srs,
+    cohortWeakNodes,
+    weakThreshold,
+    role,
+  };
 }
 
 function accuracyTone(pct: number | null): string {
@@ -108,7 +154,8 @@ const BUCKET_LABEL: Record<AccuracyBucket, string> = {
 export default function AdminCohortStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, stats, trend, srs, role } = loaderData;
+  const { cohort, stats, trend, srs, cohortWeakNodes, weakThreshold, role } =
+    loaderData;
   const maxBucketCount = Math.max(
     1,
     ...stats.accuracyDistribution.map((d) => d.count),
@@ -282,6 +329,12 @@ export default function AdminCohortStats({
             </IndexTable>
           </div>
 
+          {/* feat-7-040 P3 — 반 공통 약점 단원 (보충 수업 주제 즉시 파악) */}
+          <CohortWeakNodesCard
+            nodes={cohortWeakNodes}
+            threshold={weakThreshold}
+          />
+
           {/* 상/하위 학생 */}
           <div className="grid gap-3 md:grid-cols-2">
             <RankCard
@@ -442,6 +495,72 @@ function RankCard({
                   {item.problemsAttempted}문
                 </span>
                 <ArrowRightIcon className="text-muted-foreground size-3" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-7-040 P3 반 공통 약점 단원 ───
+
+function CohortWeakNodesCard({
+  nodes,
+  threshold,
+}: {
+  nodes: Array<{
+    nodeId: string;
+    lawName: string;
+    displayLabel: string;
+    accuracyPct: number;
+    distinctStudents: number;
+    attempts: number;
+  }>;
+  threshold: number;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
+            <TargetIcon className="size-3.5 text-rose-500" /> 반 공통 약점 단원
+          </p>
+          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
+            서로 다른 {threshold}명 이상 시도 + 정답률 낮은 순
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {nodes.length === 0 ? (
+          <p className="text-muted-foreground px-4 py-6 text-center text-sm">
+            아직 공통 약점으로 잡힌 단원이 없습니다 (시도 학생·문항 수 부족).
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {nodes.map((n) => (
+              <li
+                key={`${n.lawName}-${n.nodeId}`}
+                className="flex items-center gap-3 px-4 py-2.5"
+              >
+                <span className="text-muted-foreground w-16 shrink-0 truncate text-[11px] font-medium">
+                  {n.lawName}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {n.displayLabel}
+                </span>
+                <span className="text-muted-foreground w-20 text-right text-[11px] tabular-nums">
+                  {n.distinctStudents}명 · {n.attempts}회
+                </span>
+                <span
+                  className={cn(
+                    "w-12 text-right text-sm font-bold tabular-nums",
+                    accuracyTone(n.accuracyPct),
+                  )}
+                >
+                  {n.accuracyPct}%
+                </span>
               </li>
             ))}
           </ul>
