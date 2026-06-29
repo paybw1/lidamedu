@@ -55,6 +55,7 @@ import {
 } from "~/features/subjects/lib/subjects";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
+  getDailyStudyStats,
   getUserPassPredictionTrend,
   type PassPredictionSnapshotItem,
 } from "~/features/study/queries.server";
@@ -146,6 +147,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     nodeMastery,
     examResults,
     studyRank,
+    studyDaily,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -182,6 +184,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listMyExamResults(adminClient, params.profileId),
     // feat-7-040 P1 — 공부량 반내 위치(약관 제7조 근거 반 전체 변형, B동의 무관). adminClient 내부.
     getStudentCohortStudyRank(params.profileId),
+    // feat-7-040 후속 — 최근 8주 학습 추세 미니차트용(주별 시간·풀이수).
+    getDailyStudyStats(adminClient, params.profileId, { daysBack: 56 }),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
 
@@ -201,6 +205,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     { persist: false },
   );
 
+  // feat-7-040 후속 — 최근 8주 주간 집계(공부 시간·풀이수). days 는 오래된→오늘, 가장 최근 주가 끝.
+  const TREND_WEEKS = 8;
+  const DAYS_PER_WEEK = 7;
+  const trendTail = studyDaily.days.slice(-TREND_WEEKS * DAYS_PER_WEEK);
+  const studyTrendWeeks = Array.from({ length: TREND_WEEKS }, (_, w) => {
+    const slice = trendTail.slice(w * DAYS_PER_WEEK, (w + 1) * DAYS_PER_WEEK);
+    const ms = slice.reduce((s, d) => s + d.timeMs, 0);
+    return {
+      hours: Math.round((ms / 3_600_000) * 10) / 10,
+      attempts: slice.reduce((s, d) => s + d.attemptCount, 0),
+    };
+  });
+
   return {
     student,
     cohortComparisons,
@@ -216,6 +233,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     gamification,
     examResults,
     studyRank,
+    studyTrendWeeks,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -248,6 +266,7 @@ export default function AdminStudentDetail({
     gamification,
     examResults,
     studyRank,
+    studyTrendWeeks,
     currentUserId,
     isAdmin,
     role,
@@ -342,6 +361,11 @@ export default function AdminStudentDetail({
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         <MasteryCard rows={nodeMastery} />
         <GrowthCard g={gamification} studyRank={studyRank} />
+      </div>
+
+      {/* feat-7-040 후속 — 최근 8주 학습 추세 미니차트(주별 시간·풀이수) */}
+      <div className="mb-6">
+        <StudyTrendCard weeks={studyTrendWeeks} />
       </div>
 
       {passTrend.length > 0 ? (
@@ -972,6 +996,65 @@ function GrowthCard({
             · {studyRank.band}
           </p>
         ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-7-040 후속 — 최근 8주 학습 추세 미니차트 ───
+
+function StudyTrendCard({
+  weeks,
+}: {
+  weeks: Array<{ hours: number; attempts: number }>;
+}) {
+  const maxHours = Math.max(1, ...weeks.map((w) => w.hours));
+  const hasData = weeks.some((w) => w.hours > 0 || w.attempts > 0);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <TrendingUpIcon className="text-link size-4" /> 최근 8주 학습 추세
+        </p>
+        <p className="text-muted-foreground text-xs">
+          주별 학습 시간(막대). 가장 오른쪽이 이번 주 — 하락·정체 추세를 한눈에.
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent>
+        {!hasData ? (
+          <p className="text-muted-foreground py-4 text-center text-sm">
+            최근 8주 학습 기록이 없습니다.
+          </p>
+        ) : (
+          <div className="flex items-end gap-1.5">
+            {weeks.map((w, i) => {
+              const isCurrent = i === weeks.length - 1;
+              return (
+                <div
+                  key={i}
+                  className="flex flex-1 flex-col items-center gap-1"
+                  title={`${w.hours}h · ${w.attempts}문`}
+                >
+                  <div className="bg-muted/40 relative flex h-20 w-full items-end overflow-hidden rounded">
+                    <div
+                      className={cn(
+                        "w-full transition-all",
+                        isCurrent ? "bg-primary" : "bg-muted-foreground/30",
+                      )}
+                      style={{
+                        height: `${Math.max(2, (w.hours / maxHours) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-muted-foreground text-[10px] tabular-nums">
+                    {w.hours}h
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
