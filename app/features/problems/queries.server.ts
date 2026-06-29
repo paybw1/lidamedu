@@ -29,6 +29,7 @@ import {
   type OxTruth,
   parseRubricItems,
 } from "./labels";
+import { dedupeOxByBody } from "~/features/problems/lib/ox-dedup";
 
 export type {
   ProblemExamRound,
@@ -1177,7 +1178,7 @@ export async function getOxQuestionsForArticle(
   let choiceQuery = client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
+      "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
     )
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
@@ -1210,6 +1211,7 @@ export async function getOxQuestionsForArticle(
       year: r.problems.year,
       problemNumber: r.problems.problem_number,
       origin: r.problems.origin,
+      reviewStatus: r.problems.review_status,
     });
   }
 
@@ -1217,7 +1219,7 @@ export async function getOxQuestionsForArticle(
   let boxQuery = client
     .from("problem_box_items")
     .select(
-      "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, deleted_at, primary_article_id, primary_node_id)",
+      "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
     )
     .eq("related_article_id", articleId)
     .eq("ox_ineligible", false)
@@ -1250,18 +1252,22 @@ export async function getOxQuestionsForArticle(
       year: r.problems.year,
       problemNumber: r.problems.problem_number,
       origin: r.problems.origin,
+      reviewStatus: r.problems.review_status,
     });
   }
 
+  // feat-4-A-343 — 표시 중복 제거: 같은 조문에 같은 지문(정규화)이 여러 문제에서 와
+  // 패널에 여러 번 뜨던 것을 대표 1개로 합친다(모순 그룹은 가드로 노출 유지).
+  const deduped = dedupeOxByBody(out);
   // 정렬: 연도 DESC, 문항 ASC. 같은 연도 내에서는 안정적 순서로.
-  out.sort((a, b) => {
+  deduped.sort((a, b) => {
     const ya = a.year ?? 0;
     const yb = b.year ?? 0;
     if (ya !== yb) return yb - ya;
     return (a.problemNumber ?? 0) - (b.problemNumber ?? 0);
   });
 
-  return out.slice(0, limit);
+  return deduped.slice(0, limit);
 }
 
 // OX 패널에서 사용자가 정답 확인 후 메모/즐겨찾기를 달 수 있게,

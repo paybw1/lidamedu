@@ -18,21 +18,13 @@ import { cn } from "~/core/lib/utils";
 import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
 import { MemoList } from "~/features/annotations/components/memo-list";
 import { ORIGIN_LABEL, type ProblemOrigin } from "~/features/problems/labels";
+import { stripLeadingMarker } from "~/features/problems/lib/ox-dedup";
 import type {
   OxQuestionItem,
   OxRefAnnotations,
   OxTruth,
 } from "~/features/problems/labels";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
-
-// OX 지문 앞 항목 번호 — (가) (ㄱ) [ㄱ] ㄱ. ① 등 — 제거 (정오문제는 지문 하나 단위라 번호가 불필요).
-function stripLeadingMarker(text: string): string {
-  let s = text.trimStart();
-  const marker =
-    /^(?:[([（［][가-힣ㄱ-ㅎ\d]+[)\]）］]|[가-힣ㄱ-ㅎ]\.|[①-⑳]|\d+[.)])\s*/;
-  while (marker.test(s)) s = s.replace(marker, "").trimStart();
-  return s;
-}
 
 // 출처 구분 토글 — 전체 / 기출 / 기타(그 외). 학생이 기출을 먼저 풀고 예상 등은 선택적으로.
 // 기출 = past_exam + past_exam_variant(기출변형도 기출로 분류). 기타 = 예상·모의·AI초안 등.
@@ -242,6 +234,11 @@ export function OxQuestionsPanel({
           <Badge variant="outline" className="text-[10px] tabular-nums">
             {cur.year}
             {cur.problemNumber ? ` · ${cur.problemNumber}번` : ""}
+          </Badge>
+        ) : null}
+        {cur.dupCount && cur.dupCount > 1 ? (
+          <Badge variant="outline" className="text-[10px]">
+            여러 회차 출제 {cur.dupCount}
           </Badge>
         ) : null}
         <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">

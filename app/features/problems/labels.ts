@@ -9,6 +9,8 @@ export type ProblemFormat = Database["public"]["Enums"]["problem_format"];
 export type ProblemOrigin = Database["public"]["Enums"]["problem_origin"];
 export type ProblemPolarity = Database["public"]["Enums"]["problem_polarity"];
 export type ProblemScope = Database["public"]["Enums"]["problem_scope"];
+export type ProblemReviewStatus =
+  Database["public"]["Enums"]["problem_review_status"];
 export type ProblemChoiceType =
   Database["public"]["Enums"]["problem_choice_type"];
 export type OxTruth = Database["public"]["Enums"]["ox_truth"];
@@ -53,6 +55,9 @@ export interface OxQuestionItem {
   year: number | null;
   problemNumber: number | null;
   origin: string;
+  // feat-4-A-343 — 표시 dedup 대표 선정용(승인>초안) + "여러 회차 출제" 배지(대표에만).
+  reviewStatus?: ProblemReviewStatus;
+  dupCount?: number;
 }
 
 export interface OxRefAnnotations {
