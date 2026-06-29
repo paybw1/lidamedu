@@ -68,6 +68,27 @@ export async function markSharedNotesRead(studentId: string): Promise<void> {
     .is("deleted_at", null);
 }
 
+// feat-7-040 후속 P2(신호→상담 루프) — 학생별 마지막 상담(student_notes 최신 created_at).
+// at-risk 등 파악 화면에서 "마지막 상담 N일 전/미상담" 신호로 환류. adminClient(호출부 staff 게이트 선행).
+// in() 로 대상 학생에 한정 → 행수 bounded(desc 정렬, 학생별 첫=최신).
+export async function getLastConsultedDates(
+  profileIds: string[],
+): Promise<Map<string, string>> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const out = new Map<string, string>();
+  if (profileIds.length === 0) return out;
+  const { data } = await admin
+    .from("student_notes")
+    .select("student_id, created_at")
+    .in("student_id", profileIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  for (const r of data ?? []) {
+    if (!out.has(r.student_id)) out.set(r.student_id, r.created_at);
+  }
+  return out;
+}
+
 export async function createNote(input: {
   studentId: string;
   authorId: string;

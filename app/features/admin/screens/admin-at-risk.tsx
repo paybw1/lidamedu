@@ -4,12 +4,13 @@
 
 import {
   AlertCircleIcon,
+  MessageSquarePlusIcon,
   MessageSquareIcon,
   SendIcon,
   UserCheckIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { Form, Link, data, useFetcher } from "react-router";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Form, Link, data, useFetcher, useRevalidator } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
@@ -18,6 +19,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import { getCrossCohortAtRisk } from "~/features/admin/queries/at-risk-cross-cohort.server";
+import { getLastConsultedDates } from "~/features/student-notes/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/admin-at-risk";
@@ -50,7 +52,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     riskLevel: riskFilter ?? undefined,
   });
 
-  return { role, summary, filters: { cohort: cohortFilter, risk: riskFilter } };
+  // feat-7-040 후속 P2(신호→상담 루프) — 마지막 상담 경과일. ★서버 계산(hydration 안전),
+  // 키 없음 = 미상담. 신호와 함께 "이 위험 학생을 언제 챙겼나"를 한 화면에 환류.
+  const lastConsulted = await getLastConsultedDates(
+    summary.students.map((s) => s.profileId),
+  );
+  const now = Date.now();
+  const consultDays: Record<string, number> = {};
+  for (const [pid, iso] of lastConsulted) {
+    consultDays[pid] = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
+  }
+
+  return {
+    role,
+    summary,
+    filters: { cohort: cohortFilter, risk: riskFilter },
+    consultDays,
+  };
 }
 
 function riskTone(level: "high" | "medium" | "low"): {
@@ -77,9 +95,30 @@ function riskTone(level: "high" | "medium" | "low"): {
   };
 }
 
+// feat-7-040 후속 P2 — 마지막 상담 표시. days undefined=미상담(강조), 14일+ 주의색.
+function consultedLabel(days: number | undefined): { text: string; cls: string } {
+  if (days === undefined)
+    return {
+      text: "미상담",
+      cls: "text-rose-600 dark:text-rose-400 font-semibold",
+    };
+  if (days <= 0) return { text: "오늘", cls: "text-muted-foreground" };
+  return {
+    text: `${days}일 전`,
+    cls:
+      days >= 14
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-muted-foreground",
+  };
+}
+
 export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
-  const { role, summary, filters } = loaderData;
+  const { role, summary, filters, consultDays } = loaderData;
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [consultFor, setConsultFor] = useState<string | null>(null);
+  const consultFetcher = useFetcher<{ ok?: true; error?: string }>();
+  const revalidator = useRevalidator();
+  const consultBusy = consultFetcher.state !== "idle";
   const [message, setMessage] = useState(
     "최근 학습이 뜸합니다. 짧게라도 매일 들여다보면 다시 페이스를 찾을 수 있습니다. 함께해요!",
   );
@@ -92,6 +131,19 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
       setSelected(new Set());
     }
   }, [fetcher.data]);
+
+  // 빠른 코멘트 저장 성공 → 폼 닫고 loader 재검증(마지막 상담 신호 갱신).
+  useEffect(() => {
+    if (
+      consultFetcher.state === "idle" &&
+      consultFetcher.data &&
+      "ok" in consultFetcher.data &&
+      consultFetcher.data.ok
+    ) {
+      setConsultFor(null);
+      revalidator.revalidate();
+    }
+  }, [consultFetcher.state, consultFetcher.data, revalidator]);
 
   const allIds = useMemo(
     () => summary.students.map((s) => s.profileId),
@@ -282,6 +334,9 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
                   <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
                     무접속
                   </th>
+                  <th className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
+                    마지막 상담
+                  </th>
                   <th className="text-muted-foreground px-3 py-2.5 text-left font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
                     위험 사유
                   </th>
@@ -292,11 +347,11 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
                 {summary.students.map((s) => {
                   const tone = riskTone(s.riskLevel);
                   const checked = selected.has(s.profileId);
+                  const consult = consultedLabel(consultDays[s.profileId]);
+                  const open = consultFor === s.profileId;
                   return (
-                    <tr
-                      key={s.profileId}
-                      className="border-border/60 border-t first:border-t-0"
-                    >
+                    <Fragment key={s.profileId}>
+                      <tr className="border-border/60 border-t first:border-t-0">
                       <td className="px-2 py-2.5 text-center">
                         <input
                           type="checkbox"
@@ -350,6 +405,14 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
                           ? "—"
                           : `${s.daysSinceActive}d`}
                       </td>
+                      <td
+                        className={cn(
+                          "px-3 py-2.5 text-right text-xs tabular-nums",
+                          consult.cls,
+                        )}
+                      >
+                        {consult.text}
+                      </td>
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {s.reasons.slice(0, 3).map((r, i) => (
@@ -359,7 +422,16 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
                           ))}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-right">
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant={open ? "secondary" : "ghost"}
+                          onClick={() =>
+                            setConsultFor(open ? null : s.profileId)
+                          }
+                        >
+                          <MessageSquarePlusIcon className="size-3.5" /> 코멘트
+                        </Button>
                         <Button asChild size="sm" variant="ghost">
                           <Link
                             to={`/admin/students/${s.profileId}#notes`}
@@ -369,7 +441,64 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
                           </Link>
                         </Button>
                       </td>
-                    </tr>
+                      </tr>
+                      {open ? (
+                        <tr>
+                          <td colSpan={10} className="bg-muted/30 px-4 py-3">
+                            <consultFetcher.Form
+                              method="post"
+                              action="/api/admin/student-note"
+                              className="flex flex-col gap-2"
+                            >
+                              <input type="hidden" name="intent" value="create" />
+                              <input
+                                type="hidden"
+                                name="studentId"
+                                value={s.profileId}
+                              />
+                              <input
+                                type="hidden"
+                                name="visibility"
+                                value="staff_only"
+                              />
+                              <Textarea
+                                name="bodyMd"
+                                required
+                                rows={2}
+                                maxLength={4000}
+                                placeholder={`${s.name} 학생 상담 코멘트 (강사만 — 빠른 기록)…`}
+                                className="bg-background"
+                                disabled={consultBusy}
+                              />
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setConsultFor(null)}
+                                >
+                                  취소
+                                </Button>
+                                <Button
+                                  type="submit"
+                                  size="sm"
+                                  disabled={consultBusy}
+                                >
+                                  저장
+                                </Button>
+                              </div>
+                              {consultFetcher.data &&
+                              "error" in consultFetcher.data &&
+                              consultFetcher.data.error ? (
+                                <p className="text-xs text-rose-600">
+                                  {consultFetcher.data.error}
+                                </p>
+                              ) : null}
+                            </consultFetcher.Form>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
