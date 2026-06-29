@@ -4,11 +4,13 @@
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  BrainIcon,
   CheckCheckIcon,
   ClockIcon,
   EyeIcon,
   EyeOffIcon,
   FileTextIcon,
+  FlameIcon,
   GavelIcon,
   ListChecksIcon,
   MailIcon,
@@ -49,12 +51,22 @@ import { roleAtLeast } from "~/core/lib/roles";
 import {
   isFirstExamSubject,
   isSecondExamSubject,
+  LAW_SUBJECT_SLUGS,
 } from "~/features/subjects/lib/subjects";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import {
   getUserPassPredictionTrend,
   type PassPredictionSnapshotItem,
 } from "~/features/study/queries.server";
+import {
+  getNodeMastery,
+  type NodeMasteryRow,
+} from "~/features/study/mastery.server";
+import {
+  getGamificationSummary,
+  type GamificationSummary,
+} from "~/features/study/gamification.server";
+import { summarizeMastery } from "~/features/study/lib/mastery";
 import { OxDiagnosisView } from "~/features/study/components/ox-diagnosis-view";
 import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import {
@@ -120,6 +132,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     srsSummary,
     oxDiagnosis,
     oxPasser,
+    nodeMastery,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -150,8 +163,27 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         minSample: g.minSample,
       };
     })(),
+    // feat-2-027 — 단원 마스터리(파생: 노드별 정답률 + SRS 파지). 학생 화면과 동일 계산.
+    getNodeMastery(adminClient, params.profileId, [...LAW_SUBJECT_SLUGS]),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
+
+  // feat-2-027 게임화 요약(레벨=마스터 단원 수 파생 + 스트릭 + 공부량). ★persist=false:
+  // 관리자 조회가 학생의 last_active/level_seen 을 쓰지 않도록(읽기 미러는 무부작용).
+  const masteredCount = summarizeMastery(
+    nodeMastery.map((r) => r.stage),
+  ).mastered;
+  const todayYmd = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const gamification = await getGamificationSummary(
+    adminClient,
+    params.profileId,
+    todayYmd,
+    masteredCount,
+    { persist: false },
+  );
+
   return {
     student,
     cohortComparisons,
@@ -163,6 +195,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     srsSummary,
     oxDiagnosis,
     oxPasser,
+    nodeMastery,
+    gamification,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -191,6 +225,8 @@ export default function AdminStudentDetail({
     srsSummary,
     oxDiagnosis,
     oxPasser,
+    nodeMastery,
+    gamification,
     currentUserId,
     isAdmin,
     role,
@@ -280,6 +316,12 @@ export default function AdminStudentDetail({
           ))}
         </div>
       ) : null}
+
+      {/* feat-2-027 — 정착도(단원 마스터리) + 성장(레벨·스트릭·공부량). 학생 화면과 동일 계산, 관리자 시점 미러. */}
+      <div className="mb-6 grid gap-4 lg:grid-cols-2">
+        <MasteryCard rows={nodeMastery} />
+        <GrowthCard g={gamification} />
+      </div>
 
       {passTrend.length > 0 ? (
         <div className="mb-6">
@@ -726,6 +768,166 @@ function PassTrendCard({ items }: { items: PassPredictionSnapshotItem[] }) {
               </div>
             </div>
           ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-2-027 단원 마스터리 (학생 화면과 동일 계산, 관리자 시점 미러) ───
+
+function MasteryCard({ rows }: { rows: NodeMasteryRow[] }) {
+  const summary = summarizeMastery(rows.map((r) => r.stage));
+  const engaged = summary.learning + summary.familiar + summary.mastered;
+  const mastered = rows.filter((r) => r.stage === "mastered");
+  const widthPct = (n: number) => (engaged > 0 ? (n / engaged) * 100 : 0);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <BrainIcon className="text-link size-4" /> 단원 마스터리
+        </p>
+        <p className="text-muted-foreground text-xs">
+          학습한 단원의 숙련도 · 마스터 = 정답률 85%+ &amp; 복습 2회 통과(파지)
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="space-y-3 pt-4">
+        {engaged === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            아직 학습한 단원이 없습니다.
+          </p>
+        ) : (
+          <>
+            <div className="bg-muted flex h-2.5 w-full overflow-hidden rounded-full">
+              <div
+                className="bg-muted-foreground/30"
+                style={{ width: `${widthPct(summary.learning)}%` }}
+              />
+              <div
+                className="bg-sky-500"
+                style={{ width: `${widthPct(summary.familiar)}%` }}
+              />
+              <div
+                className="bg-emerald-600"
+                style={{ width: `${widthPct(summary.mastered)}%` }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              <span className="text-muted-foreground">
+                학습 중 {summary.learning}
+              </span>
+              <span className="font-medium text-sky-600 dark:text-sky-400">
+                익숙 {summary.familiar}
+              </span>
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                마스터 {summary.mastered}
+              </span>
+              <span className="text-muted-foreground">
+                · 학습 단원 {engaged}개
+              </span>
+            </div>
+            {mastered.length > 0 ? (
+              <p className="text-sm">
+                정복한 단원{" "}
+                <b className="text-emerald-600 dark:text-emerald-400">
+                  {mastered.length}
+                </b>
+                개
+                <span className="text-muted-foreground">
+                  {" · "}
+                  {mastered
+                    .slice(0, 6)
+                    .map((m) => m.displayLabel)
+                    .join(" · ")}
+                  {mastered.length > 6 ? " …" : ""}
+                </span>
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                익숙한 단원을 복습으로 2회 이상 통과하면 마스터(정복)로 올라갑니다.
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-2-027 성장 (레벨·스트릭·공부량) — 학생 화면과 동일 계산 ───
+
+function GrowthCard({ g }: { g: GamificationSummary }) {
+  const { level, thisWeekActiveDays, currentStreak, longestStreak } = g;
+  const thisWeekH = g.thisWeekStudyMs / 3_600_000;
+  const delta = g.studyDeltaPct;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <TrendingUpIcon className="text-link size-4" /> 성장 · 공부량
+        </p>
+        <p className="text-muted-foreground text-xs">
+          마스터 단원 수로 단계 · 이번 주 학습일과 공부량
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="space-y-3 pt-4">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-lg font-bold tracking-tight">{level.name}</span>
+          <span className="text-muted-foreground text-xs">
+            단계 {level.levelNumber}/5 · 마스터 {level.masteredCount}단원
+          </span>
+        </div>
+        {level.nextName ? (
+          <p className="text-muted-foreground text-xs">
+            <b className="text-foreground">{level.toNext}단원</b> 더 마스터하면{" "}
+            <b className="text-foreground">{level.nextName}</b> 단계
+          </p>
+        ) : (
+          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            최고 단계 통달
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-3 text-sm">
+          <span>
+            이번 주 <b>{thisWeekActiveDays}</b>일 학습
+          </span>
+          <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
+            <FlameIcon className="size-3.5 text-orange-500" /> 연속{" "}
+            {currentStreak}일 · 최장 {longestStreak}일
+          </span>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+          <span>
+            이번 주 <b className="text-base">{thisWeekH.toFixed(1)}</b>h 학습
+          </span>
+          {delta === null ? (
+            <span className="text-muted-foreground text-xs">
+              지난주 대비 — (첫 주)
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-xs font-semibold tabular-nums",
+                delta > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : delta < 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-muted-foreground",
+              )}
+            >
+              {delta > 0 ? (
+                <TrendingUpIcon className="size-3" />
+              ) : delta < 0 ? (
+                <TrendingDownIcon className="size-3" />
+              ) : (
+                <MinusIcon className="size-3" />
+              )}
+              지난주 대비 {delta > 0 ? "+" : ""}
+              {delta}%
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

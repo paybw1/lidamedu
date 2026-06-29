@@ -31,6 +31,10 @@ export async function getGamificationSummary(
   userId: string,
   todayYmd: string,
   masteredCount: number,
+  // persist=false: 표시값만 산출하고 영속(upsert) 건너뜀. ★관리자가 학생을 "조회"할 때는
+  // 반드시 false — 안 그러면 staff 열람이 학생의 last_active_date/level_seen 을 갱신해
+  // 학생 본인의 "단계 상승" 알림을 가로채는 부작용이 생긴다(읽기 미러는 무부작용이어야 함).
+  opts?: { persist?: boolean },
 ): Promise<GamificationSummary> {
   const [rowRes, daily] = await Promise.all([
     client
@@ -59,20 +63,23 @@ export async function getGamificationSummary(
     : (row?.last_active_date ?? null);
 
   // 영속은 응답 후(표시값은 위에서 이미 산출). longest·last_active·level_seen 갱신.
-  runAfterResponse(
-    (async () => {
-      await client.from("user_gamification").upsert(
-        {
-          user_id: userId,
-          longest_streak_days: longestStreak,
-          last_active_date: lastActiveDate,
-          level_seen: level.levelNumber,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
-    })(),
-  );
+  // persist=false(관리자 미러 등)면 건너뜀.
+  if (opts?.persist !== false) {
+    runAfterResponse(
+      (async () => {
+        await client.from("user_gamification").upsert(
+          {
+            user_id: userId,
+            longest_streak_days: longestStreak,
+            last_active_date: lastActiveDate,
+            level_seen: level.levelNumber,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
+      })(),
+    );
+  }
 
   return {
     level,
