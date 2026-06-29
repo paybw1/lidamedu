@@ -489,7 +489,7 @@ export async function recomputeSubmission(
   const { data: items } = await admin
     .from("assignment_items")
     .select(
-      "item_id, kind, article_id, case_id, problem_id, blank_set_id, article_blank_sets(blanks)",
+      "item_id, kind, article_id, case_id, problem_id, blank_set_id, target_quantity, article_blank_sets(blanks)",
     )
     .eq("assignment_id", assignmentId);
   const itemList = items ?? [];
@@ -526,8 +526,8 @@ export async function recomputeSubmission(
     .map((i) => i.blank_set_id)
     .filter(Boolean) as string[];
 
-  // problem 정답 — 한 번이라도 정답이면 완수
-  const correctProblems = new Set<string>();
+  // problem 정답 횟수 — target_quantity 회(기본 1) 이상 정답이면 완수.
+  const correctProblemCount = new Map<string, number>();
   if (problemIds.length > 0) {
     const { data } = await admin
       .from("user_problem_attempts")
@@ -535,12 +535,16 @@ export async function recomputeSubmission(
       .eq("user_id", userId)
       .eq("is_correct", true)
       .in("problem_id", problemIds);
-    for (const r of data ?? []) correctProblems.add(r.problem_id);
+    for (const r of data ?? [])
+      correctProblemCount.set(
+        r.problem_id,
+        (correctProblemCount.get(r.problem_id) ?? 0) + 1,
+      );
   }
 
-  // article/case 열람 — study_sessions
-  const visitedArticles = new Set<string>();
-  const visitedCases = new Set<string>();
+  // article/case 열람 횟수 — target_quantity 회(기본 1) 이상이면 완수.
+  const articleVisits = new Map<string, number>();
+  const caseVisits = new Map<string, number>();
   if (articleIds.length > 0 || caseIds.length > 0) {
     const { data } = await admin
       .from("study_sessions")
@@ -553,8 +557,16 @@ export async function recomputeSubmission(
         target_id?: string;
       } | null;
       if (!scope?.target_id) continue;
-      if (scope.target_type === "article") visitedArticles.add(scope.target_id);
-      else if (scope.target_type === "case") visitedCases.add(scope.target_id);
+      if (scope.target_type === "article")
+        articleVisits.set(
+          scope.target_id,
+          (articleVisits.get(scope.target_id) ?? 0) + 1,
+        );
+      else if (scope.target_type === "case")
+        caseVisits.set(
+          scope.target_id,
+          (caseVisits.get(scope.target_id) ?? 0) + 1,
+        );
     }
   }
 
@@ -586,8 +598,8 @@ export async function recomputeSubmission(
     }
   }
 
-  // recitation — is_complete=true 1회 이상
-  const completedRecitations = new Set<string>();
+  // recitation 완료 횟수 — target_quantity 회(기본 1) 이상.
+  const recitationCount = new Map<string, number>();
   if (articleIds.length > 0) {
     const { data } = await admin
       .from("user_recitation_attempts")
@@ -595,24 +607,30 @@ export async function recomputeSubmission(
       .eq("user_id", userId)
       .eq("is_complete", true)
       .in("article_id", articleIds);
-    for (const r of data ?? []) completedRecitations.add(r.article_id);
+    for (const r of data ?? [])
+      recitationCount.set(
+        r.article_id,
+        (recitationCount.get(r.article_id) ?? 0) + 1,
+      );
   }
 
   // 3) 매칭 — 항목별 done 수집(⑥). 카운트(completed)와 동일 소스.
   let completed = 0;
   const doneByItem: Record<string, boolean> = {};
   for (const item of itemList) {
+    // 반복 목표 — target_quantity 회(기본 1) 이상이면 완수. blank_set 은 전 칸 정답(횟수 무관).
+    const need = Math.max(1, item.target_quantity ?? 1);
     let done = false;
     if (item.kind === "problem" && item.problem_id) {
-      done = correctProblems.has(item.problem_id);
+      done = (correctProblemCount.get(item.problem_id) ?? 0) >= need;
     } else if (item.kind === "article_read" && item.article_id) {
-      done = visitedArticles.has(item.article_id);
+      done = (articleVisits.get(item.article_id) ?? 0) >= need;
     } else if (item.kind === "case_read" && item.case_id) {
-      done = visitedCases.has(item.case_id);
+      done = (caseVisits.get(item.case_id) ?? 0) >= need;
     } else if (item.kind === "blank_set" && item.blank_set_id) {
       done = completedBlankSets.has(item.blank_set_id);
     } else if (item.kind === "recitation" && item.article_id) {
-      done = completedRecitations.has(item.article_id);
+      done = (recitationCount.get(item.article_id) ?? 0) >= need;
     }
     doneByItem[item.item_id] = done;
     if (done) completed += 1;
