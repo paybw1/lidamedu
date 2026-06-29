@@ -49,6 +49,10 @@ import {
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { roleAtLeast } from "~/core/lib/roles";
+import {
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+} from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-assignment-edit";
 
@@ -197,6 +201,8 @@ export default function AdminAssignmentEdit({
           assignmentId={assignment.assignmentId}
           nextOrd={assignment.items.length}
         />
+        {/* feat-7-040 후속 — 반 공통 약점 문제 자동 추가(모의 picker seam 재사용) */}
+        <WeakProblemsForm assignmentId={assignment.assignmentId} />
       </section>
 
       <Separator className="my-6" />
@@ -280,6 +286,73 @@ function ProgressRow({
         {m.completedAt ? m.completedAt.slice(0, 16).replace("T", " ") : "—"}
       </TD>
     </TR>
+  );
+}
+
+// feat-7-040 후속 — 반 공통 약점 → 과제 문제 자동 추가. 모의 picker 와 동일 seam.
+function WeakProblemsForm({ assignmentId }: { assignmentId: string }) {
+  const fetcher = useFetcher<{ ok?: true; added?: number; error?: string }>();
+  const reload = useReload();
+  const busy = fetcher.state !== "idle";
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok
+    ) {
+      reload();
+    }
+  }, [fetcher.state, fetcher.data, reload]);
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/assignment"
+      className="border-border bg-muted/30 flex flex-wrap items-end gap-2 rounded-xl border p-3"
+    >
+      <input type="hidden" name="intent" value="add_weak_items" />
+      <input type="hidden" name="assignmentId" value={assignmentId} />
+      <div className="flex flex-col gap-1">
+        <Label className="text-[11px]">약점 과목</Label>
+        <select
+          name="lawCode"
+          required
+          className="border-input bg-background h-9 rounded-md border px-2 text-[13px]"
+        >
+          {LAW_SUBJECT_SLUGS.map((s) => (
+            <option key={s} value={s}>
+              {LAW_SUBJECTS[s].name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <Label className="text-[11px]">문항 수</Label>
+        <Input
+          name="n"
+          type="number"
+          min={1}
+          max={50}
+          defaultValue={10}
+          className="h-9 w-20"
+        />
+      </div>
+      <Button type="submit" size="sm" variant="outline" disabled={busy}>
+        <PlusIcon className="size-3.5" /> 반 공통 약점 문제 자동 추가
+      </Button>
+      <p className="text-muted-foreground w-full text-[11px]">
+        반 공통 약점 단원(서로 다른 학생 다수가 시도·정답률 낮음)에서 승인된 문제를
+        가중 배분해 추가합니다. 표본 부족 시 추가되지 않습니다.
+      </p>
+      {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
+        <p className="w-full text-xs text-rose-600">{fetcher.data.error}</p>
+      ) : null}
+      {fetcher.data && fetcher.data.ok && fetcher.data.added !== undefined ? (
+        <p className="w-full text-xs text-emerald-700 dark:text-emerald-400">
+          ✓ {fetcher.data.added}문 추가됨
+        </p>
+      ) : null}
+    </fetcher.Form>
   );
 }
 

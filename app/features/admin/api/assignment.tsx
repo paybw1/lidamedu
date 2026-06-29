@@ -11,6 +11,7 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  addAssignmentProblemItems,
   convertWeekToAssignment,
   createAssignment,
   deleteAssignment,
@@ -20,6 +21,11 @@ import {
   type AssignmentItemKind,
 } from "~/features/assignments/queries.server";
 import { ASSIGNMENT_ITEM_KINDS } from "~/features/assignments/labels";
+import {
+  selectCohortWeakProblems,
+  selectProblemsForWeakNodes,
+} from "~/features/admin/queries/cohort-weakness.server";
+import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/assignment";
 
@@ -68,6 +74,8 @@ const OWNED_INTENTS = new Set([
   "upsert_item",
   "delete_item",
   "convert_week",
+  "add_weak_items",
+  "create_from_weak",
 ]);
 
 async function resolveAssignmentCohortId(
@@ -75,10 +83,19 @@ async function resolveAssignmentCohortId(
   intent: string,
   fd: FormData,
 ): Promise<string | null> {
-  if (intent === "create" || intent === "convert_week") {
+  if (
+    intent === "create" ||
+    intent === "convert_week" ||
+    intent === "create_from_weak"
+  ) {
     return emptyToNull(fd.get("cohortId"), 100);
   }
-  if (intent === "update" || intent === "delete" || intent === "upsert_item") {
+  if (
+    intent === "update" ||
+    intent === "delete" ||
+    intent === "upsert_item" ||
+    intent === "add_weak_items"
+  ) {
     const aid = String(fd.get("assignmentId") ?? "");
     if (!aid) return null;
     const { data: a } = await admin
@@ -247,6 +264,118 @@ export async function action({ request }: Route.ActionArgs) {
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true, assignmentId: res.assignmentId });
+  }
+
+  // ── feat-7-040 후속: 약점 → 과제 (모의 picker seam 재사용) ──
+  // add_weak_items: 기존 과제에 약점 문제 일괄 추가. create_from_weak: 신규 과제 생성+추가.
+  // 약점원: nodeIds(개별 약점, CSV) 우선, 없으면 lawCode(반 공통 약점). 0건이면 생성/추가 안 함.
+  if (intent === "add_weak_items" || intent === "create_from_weak") {
+    const n = Math.max(1, Math.min(50, Number(fd.get("n")) || 10));
+    const nodeIdsRaw = emptyToNull(fd.get("nodeIds"), 2000);
+    const lawParse = lawSubjectSlugSchema.safeParse(fd.get("lawCode"));
+
+    // 대상 cohort + (add 면) 기존 문제 제외 집합.
+    let cohortId: string;
+    let assignmentId: string | null = null;
+    const exclude = new Set<string>();
+    if (intent === "add_weak_items") {
+      assignmentId = String(fd.get("assignmentId") ?? "");
+      if (!assignmentId)
+        return data({ error: "assignmentId 누락" }, { status: 400 });
+      const { data: a } = await adminClient
+        .from("assignments")
+        .select("cohort_id")
+        .eq("assignment_id", assignmentId)
+        .maybeSingle();
+      if (!a) return data({ error: "과제를 찾을 수 없습니다" }, { status: 404 });
+      cohortId = a.cohort_id;
+      const { data: items } = await adminClient
+        .from("assignment_items")
+        .select("problem_id")
+        .eq("assignment_id", assignmentId)
+        .eq("kind", "problem");
+      for (const it of items ?? [])
+        if (it.problem_id) exclude.add(it.problem_id);
+    } else {
+      cohortId = String(fd.get("cohortId") ?? "");
+      if (!cohortId) return data({ error: "cohortId 누락" }, { status: 400 });
+    }
+
+    // 약점 문제 선택(공용 seam). adminClient — 위 owner 게이트가 선행 차단.
+    let problemIds: string[];
+    if (nodeIdsRaw) {
+      const nodeIds = nodeIdsRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const sel = await selectProblemsForWeakNodes(
+        adminClient,
+        nodeIds.map((id) => ({
+          nodeId: id,
+          weaknessScore: 1,
+          displayLabel: "",
+        })),
+        { totalN: n, excludeIds: exclude },
+      );
+      problemIds = sel.problemIds;
+    } else if (lawParse.success) {
+      const sel = await selectCohortWeakProblems(
+        adminClient,
+        cohortId,
+        lawParse.data,
+        { totalN: n, excludeIds: exclude },
+      );
+      problemIds = sel.problemIds;
+    } else {
+      return data(
+        { error: "과목(lawCode) 또는 단원(nodeIds)이 필요합니다" },
+        { status: 400 },
+      );
+    }
+    if (problemIds.length === 0) {
+      return data(
+        { error: "약점 문제를 찾지 못했습니다 (표본·승인 문제 부족)" },
+        { status: 400 },
+      );
+    }
+
+    if (intent === "create_from_weak") {
+      const title = (emptyToNull(fd.get("title"), 200) ?? "약점 보충 과제").slice(
+        0,
+        200,
+      );
+      const dueAt = String(fd.get("dueAt") ?? "");
+      if (!dueAt) return data({ error: "마감일(dueAt) 누락" }, { status: 400 });
+      const created = await createAssignment(client, {
+        cohortId,
+        title,
+        dueAt,
+        createdBy: user.id,
+      });
+      if (!created.ok) return data({ error: created.error }, { status: 400 });
+      const add = await addAssignmentProblemItems(
+        client,
+        created.assignmentId,
+        problemIds,
+      );
+      if (!add.ok) return data({ error: add.error }, { status: 400 });
+      return data({
+        ok: true,
+        assignmentId: created.assignmentId,
+        added: add.added,
+      });
+    }
+
+    // add_weak_items — assignmentId 는 위에서 확정.
+    if (!assignmentId)
+      return data({ error: "assignmentId 누락" }, { status: 400 });
+    const add = await addAssignmentProblemItems(
+      client,
+      assignmentId,
+      problemIds,
+    );
+    if (!add.ok) return data({ error: add.error }, { status: 400 });
+    return data({ ok: true, added: add.added });
   }
 
   return data({ error: `알 수 없는 intent: ${intent}` }, { status: 400 });

@@ -409,6 +409,33 @@ export async function upsertAssignmentItem(
   return { ok: true, itemId: data.item_id };
 }
 
+// feat-7-040 후속(약점→과제) — problem 항목 다건 일괄 추가. 기존 최대 ord 뒤에 이어붙임.
+// 요청 클라이언트 전달 시 RLS(소유권) 적용.
+export async function addAssignmentProblemItems(
+  client: SupabaseClient<Database>,
+  assignmentId: string,
+  problemIds: readonly string[],
+): Promise<{ ok: true; added: number } | { ok: false; error: string }> {
+  if (problemIds.length === 0) return { ok: true, added: 0 };
+  const { data: maxRow } = await client
+    .from("assignment_items")
+    .select("ord")
+    .eq("assignment_id", assignmentId)
+    .order("ord", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  let ord = (maxRow?.ord ?? -1) + 1;
+  const rows = problemIds.map((pid) => ({
+    assignment_id: assignmentId,
+    ord: ord++,
+    kind: "problem" as const,
+    problem_id: pid,
+  }));
+  const { error } = await client.from("assignment_items").insert(rows);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, added: rows.length };
+}
+
 export async function deleteAssignmentItem(
   client: SupabaseClient<Database>,
   itemId: string,

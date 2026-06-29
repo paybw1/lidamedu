@@ -12,8 +12,8 @@ import {
   TrophyIcon,
   UsersIcon,
 } from "lucide-react";
-import { Fragment } from "react";
-import { Link, data } from "react-router";
+import { Fragment, useEffect, useState } from "react";
+import { Link, data, useFetcher, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -333,6 +333,7 @@ export default function AdminCohortStats({
           <CohortWeakNodesCard
             nodes={cohortWeakNodes}
             threshold={weakThreshold}
+            cohortId={cohort.cohortId}
           />
 
           {/* 상/하위 학생 */}
@@ -509,6 +510,7 @@ function RankCard({
 function CohortWeakNodesCard({
   nodes,
   threshold,
+  cohortId,
 }: {
   nodes: Array<{
     nodeId: string;
@@ -519,7 +521,27 @@ function CohortWeakNodesCard({
     attempts: number;
   }>;
   threshold: number;
+  cohortId: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const fetcher = useFetcher<{
+    ok?: true;
+    assignmentId?: string;
+    error?: string;
+  }>();
+  const navigate = useNavigate();
+  const busy = fetcher.state !== "idle";
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data?.ok &&
+      fetcher.data.assignmentId
+    ) {
+      navigate(
+        `/admin/cohorts/${cohortId}/assignments/${fetcher.data.assignmentId}`,
+      );
+    }
+  }, [fetcher.state, fetcher.data, navigate, cohortId]);
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -527,12 +549,87 @@ function CohortWeakNodesCard({
           <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
             <TargetIcon className="size-3.5 text-rose-500" /> 반 공통 약점 단원
           </p>
-          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
-            서로 다른 {threshold}명 이상 시도 + 정답률 낮은 순
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
+              서로 다른 {threshold}명 이상 시도 + 정답률 낮은 순
+            </span>
+            {nodes.length > 0 ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setOpen((v) => !v)}
+              >
+                <ListChecksIcon className="size-3.5" /> 약점 과제 만들기
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
+        {open ? (
+          <fetcher.Form
+            method="post"
+            action="/api/admin/assignment"
+            className="border-border bg-muted/30 flex flex-wrap items-end gap-2 border-b p-3"
+          >
+            <input type="hidden" name="intent" value="create_from_weak" />
+            <input type="hidden" name="cohortId" value={cohortId} />
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px]">과목</span>
+              <select
+                name="lawCode"
+                required
+                className="border-input bg-background h-9 rounded-md border px-2 text-[13px]"
+              >
+                {LAW_SUBJECT_SLUGS.map((s) => (
+                  <option key={s} value={s}>
+                    {LAW_SUBJECTS[s].name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px]">제목</span>
+              <input
+                name="title"
+                defaultValue="약점 보충 과제"
+                maxLength={200}
+                className="border-input bg-background h-9 w-44 rounded-md border px-2 text-[13px]"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px]">마감</span>
+              <input
+                name="dueAt"
+                type="datetime-local"
+                required
+                className="border-input bg-background h-9 rounded-md border px-2 text-[13px]"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground text-[11px]">문항</span>
+              <input
+                name="n"
+                type="number"
+                min={1}
+                max={50}
+                defaultValue={10}
+                className="border-input bg-background h-9 w-16 rounded-md border px-2 text-[13px]"
+              />
+            </label>
+            <Button type="submit" size="sm" disabled={busy}>
+              만들기
+            </Button>
+            {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
+              <p className="w-full text-xs text-rose-600">
+                {fetcher.data.error}
+              </p>
+            ) : null}
+            <p className="text-muted-foreground w-full text-[11px]">
+              반 공통 약점 단원의 승인 문제로 과제를 생성하고 편집 화면으로 이동합니다.
+            </p>
+          </fetcher.Form>
+        ) : null}
         {nodes.length === 0 ? (
           <p className="text-muted-foreground px-4 py-6 text-center text-sm">
             아직 공통 약점으로 잡힌 단원이 없습니다 (시도 학생·문항 수 부족).

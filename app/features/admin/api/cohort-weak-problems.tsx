@@ -8,10 +8,8 @@ import { data } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { getCohortWeakNodes } from "~/features/admin/queries/cohort-weakness.server";
+import { selectCohortWeakProblems } from "~/features/admin/queries/cohort-weakness.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { pickProblemsFromWeakNodes } from "~/features/problems/lib/problem-selection";
-import { getSystematicNodeProblemSequence } from "~/features/problems/queries.server";
 import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 
 interface Candidate {
@@ -60,50 +58,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     role === "admin" || role === "manager" || cohort.owner_id === user.id;
   if (!owns) throw data("Forbidden", { status: 403 });
 
-  const weak = await getCohortWeakNodes(adminClient, cohortId, lawCode);
-  if (weak.nodes.length === 0) return empty(weak.cohortSize, weak.threshold);
-
-  // 노드별 후보 problem_id 수집(체계도 시퀀스) → approved 필터.
-  const seqs = await Promise.all(
-    weak.nodes.map((wn) =>
-      getSystematicNodeProblemSequence(adminClient, wn.nodeId),
-    ),
-  );
-  const rawByNode = new Map<string, string[]>();
-  const allIds = new Set<string>();
-  weak.nodes.forEach((wn, i) => {
-    const ids = (seqs[i]?.problems ?? []).map((p) => p.problemId);
-    rawByNode.set(wn.nodeId, ids);
-    for (const id of ids) allIds.add(id);
-  });
-
-  const approved = new Map<
-    string,
-    { body: string; year: number | null; num: number | null }
-  >();
-  const idArr = [...allIds];
-  for (let i = 0; i < idArr.length; i += 200) {
-    const { data: rows } = await adminClient
-      .from("problems")
-      .select("problem_id, body_md, year, problem_number")
-      .in("problem_id", idArr.slice(i, i + 200))
-      .eq("review_status", "approved")
-      .is("deleted_at", null);
-    for (const r of rows ?? [])
-      approved.set(r.problem_id, {
-        body: r.body_md ?? "",
-        year: r.year,
-        num: r.problem_number,
-      });
-  }
-
-  const problemsByNode = new Map<string, string[]>();
-  for (const [nid, ids] of rawByNode)
-    problemsByNode.set(
-      nid,
-      ids.filter((id) => approved.has(id)),
-    );
-
   // 이미 팩에 든 문제 제외.
   const exclude = new Set<string>();
   if (packId) {
@@ -114,35 +68,45 @@ export async function loader({ request }: Route.LoaderArgs) {
     for (const e of existing ?? []) exclude.add(e.problem_id);
   }
 
-  const pickedIds = pickProblemsFromWeakNodes(
-    weak.nodes.map((wn) => ({
-      nodeId: wn.nodeId,
-      weaknessScore: wn.weaknessScore,
-    })),
-    problemsByNode,
-    { totalN: n, excludeIds: exclude },
-  );
+  // 약점 문제 선택 — 공용 seam(과제 출제와 동일 규칙).
+  const sel = await selectCohortWeakProblems(adminClient, cohortId, lawCode, {
+    totalN: n,
+    excludeIds: exclude,
+  });
+  if (sel.problemIds.length === 0) return empty(sel.cohortSize, sel.threshold);
 
-  // problemId → 출처 약점 노드 라벨(첫 매칭).
-  const nodeOf = new Map<string, string>();
-  for (const wn of weak.nodes)
-    for (const id of problemsByNode.get(wn.nodeId) ?? [])
-      if (!nodeOf.has(id)) nodeOf.set(id, wn.displayLabel);
+  // 픽된 문제의 표시 메타(body/year/num).
+  const meta = new Map<
+    string,
+    { body: string; year: number | null; num: number | null }
+  >();
+  for (let i = 0; i < sel.problemIds.length; i += 200) {
+    const { data: rows } = await adminClient
+      .from("problems")
+      .select("problem_id, body_md, year, problem_number")
+      .in("problem_id", sel.problemIds.slice(i, i + 200));
+    for (const r of rows ?? [])
+      meta.set(r.problem_id, {
+        body: r.body_md ?? "",
+        year: r.year,
+        num: r.problem_number,
+      });
+  }
 
-  const items: Candidate[] = pickedIds.map((id) => {
-    const meta = approved.get(id)!;
-    const body = meta.body.slice(0, 80);
+  const items: Candidate[] = sel.problemIds.map((id) => {
+    const m = meta.get(id) ?? { body: "", year: null, num: null };
+    const body = m.body.slice(0, 80);
     return {
       id,
-      label: `${meta.year ?? "?"}${meta.num ? ` ${meta.num}번` : ""} — ${body}${meta.body.length > 80 ? "…" : ""}`,
-      secondary: `약점 단원: ${nodeOf.get(id) ?? ""}`,
-      preview: meta.body ? meta.body.slice(0, 2000) : undefined,
+      label: `${m.year ?? "?"}${m.num ? ` ${m.num}번` : ""} — ${body}${m.body.length > 80 ? "…" : ""}`,
+      secondary: `약점 단원: ${sel.nodeLabelByProblem.get(id) ?? ""}`,
+      preview: m.body ? m.body.slice(0, 2000) : undefined,
     };
   });
   return {
     items,
-    cohortSize: weak.cohortSize,
-    threshold: weak.threshold,
-    weakNodeCount: weak.nodes.length,
+    cohortSize: sel.cohortSize,
+    threshold: sel.threshold,
+    weakNodeCount: sel.weakNodeCount,
   };
 }

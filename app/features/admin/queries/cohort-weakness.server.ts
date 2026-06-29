@@ -12,6 +12,8 @@ import {
   getLawByCode,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
+import { getSystematicNodeProblemSequence } from "~/features/problems/queries.server";
+import { pickProblemsFromWeakNodes } from "~/features/problems/lib/problem-selection";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export interface CohortWeakNode {
@@ -166,4 +168,110 @@ export async function getCohortWeakNodes(
   }
   nodes.sort((x, y) => y.weaknessScore - x.weaknessScore);
   return { cohortSize, threshold, nodes: nodes.slice(0, limit) };
+}
+
+// ─── feat-7-040 후속: 약점 노드 → 문제 선택 seam (모의 picker·과제 출제 공용) ───
+// cohort-weak-problems(모의)·assignment(약점→과제) 가 동일 규칙을 재사용한다.
+
+export interface WeakNodeForSelection {
+  nodeId: string;
+  weaknessScore: number;
+  displayLabel: string;
+}
+
+/**
+ * 약점 노드들 → approved 문제 N개(가중 배분). 각 노드의 체계도 문제 시퀀스 →
+ * approved 필터 → pickProblemsFromWeakNodes. adminClient 전제(호출부 owner 게이트 선행).
+ */
+export async function selectProblemsForWeakNodes(
+  admin: SupabaseClient<Database>,
+  weakNodes: readonly WeakNodeForSelection[],
+  opts: { totalN: number; excludeIds?: ReadonlySet<string> },
+): Promise<{ problemIds: string[]; nodeLabelByProblem: Map<string, string> }> {
+  if (weakNodes.length === 0)
+    return { problemIds: [], nodeLabelByProblem: new Map() };
+
+  const seqs = await Promise.all(
+    weakNodes.map((wn) => getSystematicNodeProblemSequence(admin, wn.nodeId)),
+  );
+  const rawByNode = new Map<string, string[]>();
+  const allIds = new Set<string>();
+  weakNodes.forEach((wn, i) => {
+    const ids = (seqs[i]?.problems ?? []).map((p) => p.problemId);
+    rawByNode.set(wn.nodeId, ids);
+    for (const id of ids) allIds.add(id);
+  });
+  if (allIds.size === 0)
+    return { problemIds: [], nodeLabelByProblem: new Map() };
+
+  // approved 문제만(미승인/삭제 제외).
+  const approved = new Set<string>();
+  const idArr = [...allIds];
+  for (let i = 0; i < idArr.length; i += 200) {
+    const { data: rows } = await admin
+      .from("problems")
+      .select("problem_id")
+      .in("problem_id", idArr.slice(i, i + 200))
+      .eq("review_status", "approved")
+      .is("deleted_at", null);
+    for (const r of rows ?? []) approved.add(r.problem_id);
+  }
+
+  const problemsByNode = new Map<string, string[]>();
+  for (const [nid, ids] of rawByNode)
+    problemsByNode.set(
+      nid,
+      ids.filter((id) => approved.has(id)),
+    );
+
+  const problemIds = pickProblemsFromWeakNodes(
+    weakNodes.map((wn) => ({
+      nodeId: wn.nodeId,
+      weaknessScore: wn.weaknessScore,
+    })),
+    problemsByNode,
+    { totalN: opts.totalN, excludeIds: opts.excludeIds },
+  );
+
+  const nodeLabelByProblem = new Map<string, string>();
+  for (const wn of weakNodes)
+    for (const id of problemsByNode.get(wn.nodeId) ?? [])
+      if (!nodeLabelByProblem.has(id))
+        nodeLabelByProblem.set(id, wn.displayLabel);
+
+  return { problemIds, nodeLabelByProblem };
+}
+
+export interface CohortWeakSelection {
+  problemIds: string[];
+  nodeLabelByProblem: Map<string, string>;
+  cohortSize: number;
+  threshold: number;
+  weakNodeCount: number;
+}
+
+/** 반 공통 약점(getCohortWeakNodes) → approved 문제 N개. 모의·과제 공용. */
+export async function selectCohortWeakProblems(
+  admin: SupabaseClient<Database>,
+  cohortId: string,
+  lawCode: LawSubjectSlug,
+  opts: { totalN: number; excludeIds?: ReadonlySet<string> },
+): Promise<CohortWeakSelection> {
+  const weak = await getCohortWeakNodes(admin, cohortId, lawCode);
+  if (weak.nodes.length === 0) {
+    return {
+      problemIds: [],
+      nodeLabelByProblem: new Map(),
+      cohortSize: weak.cohortSize,
+      threshold: weak.threshold,
+      weakNodeCount: 0,
+    };
+  }
+  const sel = await selectProblemsForWeakNodes(admin, weak.nodes, opts);
+  return {
+    ...sel,
+    cohortSize: weak.cohortSize,
+    threshold: weak.threshold,
+    weakNodeCount: weak.nodes.length,
+  };
 }
