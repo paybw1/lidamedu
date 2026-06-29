@@ -171,24 +171,13 @@ function Actions({
       <Button
         variant="ghost"
         size={isVertical ? "icon" : "sm"}
-        className={cn(
-          "text-muted-foreground",
-          isVertical ? "size-9" : "inline-flex h-8 items-center gap-1.5 px-2",
-        )}
+        className={cn("text-muted-foreground", isVertical ? "size-9" : "size-8")}
         onClick={() => openCommandPalette()}
         aria-label="전역 검색 (⌘K)"
         data-testid="open-command-palette"
-        title="전역 검색"
+        title="전역 검색 (⌘K)"
       >
         <SearchIcon className="size-4" />
-        {!isVertical && (
-          <>
-            <span className="hidden text-xs sm:inline">검색</span>
-            <kbd className="bg-muted hidden rounded border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-              ⌘K
-            </kbd>
-          </>
-        )}
       </Button>
       {inboxUnread !== null && inboxHref ? (
         <Button
