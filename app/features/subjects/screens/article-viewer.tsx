@@ -1053,7 +1053,10 @@ function ArticleViewerInner({
                 <div
                   className={cn(
                     "mx-auto",
-                    readingMode ? "max-w-[1080px]" : "max-w-[800px]",
+                    // 패널(좌/우 중 하나라도) 접힘 → 본문을 넓혀 빈 공간 활용(800=3패널 기본).
+                    leftCollapsed || rightCollapsed
+                      ? "max-w-[1080px]"
+                      : "max-w-[800px]",
                   )}
                 >
                   {!editMode ? (

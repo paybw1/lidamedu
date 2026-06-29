@@ -443,9 +443,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             <main
               className={cn(
                 "min-w-0 space-y-4",
-                // 읽기 모드 — 패널 접힌 공간만큼 본문을 실제로 넓힌다(헤더·본문 정렬: 1128-패딩≈1080).
-                readingMode &&
-                  "mx-auto w-full max-w-[1128px] [&_.case-prose]:max-w-[1080px]",
+                // 패널(좌/우 중 하나라도) 접힘 → 본문 컬럼(.case-prose)을 넓혀 빈 공간 활용.
+                // 800 캡은 3패널 기본 레이아웃 가독성용 — max-w 라 main 폭 안에서 fill.
+                (leftCollapsed || rightCollapsed) &&
+                  "[&_.case-prose]:max-w-[1080px]",
+                // 읽기 모드(양 패널 접힘) → main 폭 캡+중앙정렬(좌우 모두 비어 전체폭이 되므로).
+                readingMode && "mx-auto w-full max-w-[1128px]",
               )}
             >
               {/* 모바일 드로어 트리거 */}

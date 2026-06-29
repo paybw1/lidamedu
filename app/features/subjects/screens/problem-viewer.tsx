@@ -913,8 +913,10 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             <article
               className={cn(
                 "mx-auto px-6 py-8 pb-16 md:px-10",
-                // 읽기 모드 — 패널 접힌 공간만큼 본문을 실제로 넓힌다.
-                readingMode ? "max-w-[1080px]" : "max-w-[760px]",
+                // 패널(좌/우 중 하나라도) 접힘 → 본문을 넓혀 빈 공간 활용(760=3패널 기본).
+                leftCollapsed || rightCollapsed
+                  ? "max-w-[1080px]"
+                  : "max-w-[760px]",
               )}
             >
               {/* Exam mode timer banner */}
