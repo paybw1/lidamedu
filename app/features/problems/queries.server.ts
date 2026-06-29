@@ -354,12 +354,21 @@ export async function attachProblemOverallNo(
     return UNPLACED;
   };
 
-  // 1차 키 = 노드 트리 rank, 2차 = 입력 순서(listProblemsBySubject 기본순). stable sort.
-  const ordered = problems
-    .map((p, i) => ({ p, i, rank: rankOf(p) }))
-    .sort((a, b) => a.rank - b.rank || a.i - b.i);
-  ordered.forEach((x, idx) => {
-    x.p.overallNo = idx + 1;
+  // 기본 정렬 = 체계도 노드 트리 순(1차) → 노드 내 문항번호(No.) 오름차순(2차).
+  //   동률(같은 노드·같은 No.: 기출/예상 워크북 각자 1번 중복 등)은 V8 stable 정렬로 기존 순서 유지.
+  //   problems 배열을 in-place 재정렬해 기본 표시 순서도 이 순서를 따르게 한다(overallNo = 그 위치).
+  const rankByProblem = new Map<string, number>(
+    problems.map((p) => [p.problemId, rankOf(p)]),
+  );
+  problems.sort(
+    (a, b) =>
+      (rankByProblem.get(a.problemId) ?? UNPLACED) -
+        (rankByProblem.get(b.problemId) ?? UNPLACED) ||
+      (a.problemNumber ?? Number.POSITIVE_INFINITY) -
+        (b.problemNumber ?? Number.POSITIVE_INFINITY),
+  );
+  problems.forEach((p, i) => {
+    p.overallNo = i + 1;
   });
 }
 
