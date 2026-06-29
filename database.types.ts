@@ -5322,6 +5322,8 @@ export type Database = {
           science_subject: Database["public"]["Enums"]["science_subject"] | null
           scope_payload: Json
           scope_type: string
+          score_correct: number | null
+          score_total: number | null
           session_id: string
           started_at: string
           time_limit_sec: number | null
@@ -5340,6 +5342,8 @@ export type Database = {
             | null
           scope_payload?: Json
           scope_type: string
+          score_correct?: number | null
+          score_total?: number | null
           session_id?: string
           started_at?: string
           time_limit_sec?: number | null
@@ -5358,6 +5362,8 @@ export type Database = {
             | null
           scope_payload?: Json
           scope_type?: string
+          score_correct?: number | null
+          score_total?: number | null
           session_id?: string
           started_at?: string
           time_limit_sec?: number | null

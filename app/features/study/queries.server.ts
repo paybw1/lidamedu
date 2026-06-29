@@ -456,9 +456,22 @@ export async function completeQuizSession(
   userId: string,
   sessionId: string,
 ): Promise<void> {
+  // feat-7-040 후속 P3 — 완료 시 점수 스냅샷(불변). 세션 attempts 집계 후 기록.
+  // .is(completed_at, null) 가드로 최초 완료에만 기록 → 이후 시도 편집과 무관한 불변값.
+  const { data: attempts } = await client
+    .from("user_problem_attempts")
+    .select("is_correct")
+    .eq("session_id", sessionId)
+    .eq("user_id", userId);
+  const scoreTotal = attempts?.length ?? 0;
+  const scoreCorrect = (attempts ?? []).filter((a) => a.is_correct).length;
   const { error } = await client
     .from("quiz_sessions")
-    .update({ completed_at: new Date().toISOString() })
+    .update({
+      completed_at: new Date().toISOString(),
+      score_correct: scoreCorrect,
+      score_total: scoreTotal,
+    })
     .eq("session_id", sessionId)
     .eq("user_id", userId)
     .is("completed_at", null);

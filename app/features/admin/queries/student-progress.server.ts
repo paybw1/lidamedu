@@ -981,7 +981,9 @@ export async function listStudentMockSessions(
 ): Promise<StudentMockSession[]> {
   const { data: sessions } = await adminClient
     .from("quiz_sessions")
-    .select("session_id, completed_at, pack_id, scope_payload")
+    .select(
+      "session_id, completed_at, pack_id, scope_payload, score_correct, score_total",
+    )
     .eq("user_id", userId)
     .eq("mode", "exam")
     .eq("scope_type", "pack")
@@ -991,18 +993,23 @@ export async function listStudentMockSessions(
   const list = sessions ?? [];
   if (list.length === 0) return [];
 
-  const sessionIds = list.map((s) => s.session_id);
-  const { data: attempts } = await adminClient
-    .from("user_problem_attempts")
-    .select("session_id, is_correct")
-    .in("session_id", sessionIds);
+  // 스냅샷(score_total) 없는 구 세션만 라이브 집계(폴백). 신규는 완료 시 기록된 불변 점수 사용.
+  const needLive = list
+    .filter((s) => s.score_total === null)
+    .map((s) => s.session_id);
   const agg = new Map<string, { total: number; correct: number }>();
-  for (const a of attempts ?? []) {
-    if (!a.session_id) continue;
-    const e = agg.get(a.session_id) ?? { total: 0, correct: 0 };
-    e.total += 1;
-    if (a.is_correct) e.correct += 1;
-    agg.set(a.session_id, e);
+  if (needLive.length > 0) {
+    const { data: attempts } = await adminClient
+      .from("user_problem_attempts")
+      .select("session_id, is_correct")
+      .in("session_id", needLive);
+    for (const a of attempts ?? []) {
+      if (!a.session_id) continue;
+      const e = agg.get(a.session_id) ?? { total: 0, correct: 0 };
+      e.total += 1;
+      if (a.is_correct) e.correct += 1;
+      agg.set(a.session_id, e);
+    }
   }
 
   const packIds = [
@@ -1020,16 +1027,18 @@ export async function listStudentMockSessions(
   }
 
   return list.map((s) => {
-    const e = agg.get(s.session_id) ?? { total: 0, correct: 0 };
+    const live = agg.get(s.session_id) ?? { total: 0, correct: 0 };
+    const total = s.score_total ?? live.total;
+    const correct = s.score_correct ?? live.correct;
     const payload = (s.scope_payload ?? null) as { exam_kind?: unknown } | null;
     return {
       sessionId: s.session_id,
       completedAt: s.completed_at as string,
       packTitle: s.pack_id ? (packTitle.get(s.pack_id) ?? null) : null,
       examKind: payload?.exam_kind === "ox" ? "ox" : "mcq",
-      total: e.total,
-      correct: e.correct,
-      accuracyPct: e.total > 0 ? Math.round((e.correct / e.total) * 100) : 0,
+      total,
+      correct,
+      accuracyPct: total > 0 ? Math.round((correct / total) * 100) : 0,
     };
   });
 }

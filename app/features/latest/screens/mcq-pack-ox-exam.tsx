@@ -193,6 +193,12 @@ export async function action({ params, request }: Route.ActionArgs) {
       pack_id: params.packId,
       started_at: startedAt,
       completed_at: completedAt,
+      // feat-7-040 후속 P3 — 점수 스냅샷(불변). 응답·채점가능 지문 기준(attempts 와 동일).
+      score_correct: graded.filter(
+        (i) => i.userAnswer !== null && i.gradeable && i.isCorrect,
+      ).length,
+      score_total: graded.filter((i) => i.userAnswer !== null && i.gradeable)
+        .length,
     })
     .select("session_id")
     .single();
