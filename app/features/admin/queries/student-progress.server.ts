@@ -961,3 +961,75 @@ export async function getStudentCohortComparisons(
   }
   return out;
 }
+
+// feat-7-040 후속 P3 — 학생의 플랫폼 모의(exam 모드) 응시 이력. ★자습(study)과 구분된 모의 성적
+// (파악 레이어가 평소 mode 를 무시하던 것 보완). staff-viewing-student → adminClient(호출부 owner
+// 게이트 선행). 세션 점수는 user_problem_attempts(session_id) 집계(라이브 계산 — 스냅샷 아님).
+export interface StudentMockSession {
+  sessionId: string;
+  completedAt: string;
+  packTitle: string | null;
+  examKind: "mcq" | "ox";
+  total: number;
+  correct: number;
+  accuracyPct: number;
+}
+
+export async function listStudentMockSessions(
+  userId: string,
+  limit = 8,
+): Promise<StudentMockSession[]> {
+  const { data: sessions } = await adminClient
+    .from("quiz_sessions")
+    .select("session_id, completed_at, pack_id, scope_payload")
+    .eq("user_id", userId)
+    .eq("mode", "exam")
+    .eq("scope_type", "pack")
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .limit(limit);
+  const list = sessions ?? [];
+  if (list.length === 0) return [];
+
+  const sessionIds = list.map((s) => s.session_id);
+  const { data: attempts } = await adminClient
+    .from("user_problem_attempts")
+    .select("session_id, is_correct")
+    .in("session_id", sessionIds);
+  const agg = new Map<string, { total: number; correct: number }>();
+  for (const a of attempts ?? []) {
+    if (!a.session_id) continue;
+    const e = agg.get(a.session_id) ?? { total: 0, correct: 0 };
+    e.total += 1;
+    if (a.is_correct) e.correct += 1;
+    agg.set(a.session_id, e);
+  }
+
+  const packIds = [
+    ...new Set(
+      list.map((s) => s.pack_id).filter((p): p is string => p !== null),
+    ),
+  ];
+  const packTitle = new Map<string, string>();
+  if (packIds.length > 0) {
+    const { data: packs } = await adminClient
+      .from("mcq_packs")
+      .select("pack_id, title")
+      .in("pack_id", packIds);
+    for (const p of packs ?? []) packTitle.set(p.pack_id, p.title);
+  }
+
+  return list.map((s) => {
+    const e = agg.get(s.session_id) ?? { total: 0, correct: 0 };
+    const payload = (s.scope_payload ?? null) as { exam_kind?: unknown } | null;
+    return {
+      sessionId: s.session_id,
+      completedAt: s.completed_at as string,
+      packTitle: s.pack_id ? (packTitle.get(s.pack_id) ?? null) : null,
+      examKind: payload?.exam_kind === "ox" ? "ox" : "mcq",
+      total: e.total,
+      correct: e.correct,
+      accuracyPct: e.total > 0 ? Math.round((e.correct / e.total) * 100) : 0,
+    };
+  });
+}

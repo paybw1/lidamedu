@@ -85,7 +85,9 @@ import { computeOxDiagnosis } from "~/features/study/lib/ox-diagnosis.server";
 import {
   getStudentCohortComparisons,
   getStudentDetail,
+  listStudentMockSessions,
   type StudentCohortComparison,
+  type StudentMockSession,
 } from "~/features/admin/queries/student-progress.server";
 import {
   type StudentSrsSummary,
@@ -156,6 +158,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     studyRank,
     studyDaily,
     studentAssignments,
+    studentMockSessions,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -196,6 +199,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     getDailyStudyStats(adminClient, params.profileId, { daysBack: 56 }),
     // feat-7-040 후속 P1-b — 과제 이행(완료/미완). adminClient 내부, profileId 스코프.
     listStudentAssignments(params.profileId),
+    // feat-7-040 후속 P3 — 플랫폼 모의(exam) 응시 이력(자습과 구분).
+    listStudentMockSessions(params.profileId),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
 
@@ -253,6 +258,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     studyRank,
     studyTrendWeeks,
     studentAssignments,
+    studentMockSessions,
     studentWeakNodes,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
@@ -288,6 +294,7 @@ export default function AdminStudentDetail({
     studyRank,
     studyTrendWeeks,
     studentAssignments,
+    studentMockSessions,
     studentWeakNodes,
     currentUserId,
     isAdmin,
@@ -414,6 +421,13 @@ export default function AdminStudentDetail({
       {examResults.length > 0 ? (
         <div className="mb-6">
           <ExamResultsCard results={examResults} />
+        </div>
+      ) : null}
+
+      {/* feat-7-040 P3 — 플랫폼 모의 응시(exam 모드, 자습과 구분) */}
+      {studentMockSessions.length > 0 ? (
+        <div className="mb-6">
+          <MockSessionsCard sessions={studentMockSessions} />
         </div>
       ) : null}
 
@@ -1233,6 +1247,55 @@ function StudentWeakAssignmentForm({
             ) : null}
           </fetcher.Form>
         ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── feat-7-040 P3 플랫폼 모의 응시 (exam 모드, 자습과 구분) ───
+
+function MockSessionsCard({ sessions }: { sessions: StudentMockSession[] }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+          <ListChecksIcon className="text-link size-4" /> 플랫폼 모의 응시
+        </p>
+        <p className="text-muted-foreground text-xs">
+          실전(exam) 모드 응시만 — 자습 풀이와 구분된 모의 성적·추이.
+        </p>
+      </CardHeader>
+      <Separator />
+      <CardContent className="p-0">
+        <ul className="divide-y">
+          {sessions.map((s) => (
+            <li
+              key={s.sessionId}
+              className="flex items-center gap-3 px-4 py-2.5"
+            >
+              <Badge variant="outline" className="text-[10px]">
+                {s.examKind === "ox" ? "OX" : "객관식"}
+              </Badge>
+              <span className="min-w-0 flex-1 truncate text-sm">
+                {s.packTitle ?? "모의고사"}
+              </span>
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {s.correct}/{s.total}
+              </span>
+              <span
+                className={cn(
+                  "w-12 text-right text-sm font-bold tabular-nums",
+                  accuracyTone(s.accuracyPct),
+                )}
+              >
+                {s.accuracyPct}%
+              </span>
+              <span className="text-muted-foreground w-20 text-right text-[11px] tabular-nums">
+                {s.completedAt.slice(0, 10)}
+              </span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   );
