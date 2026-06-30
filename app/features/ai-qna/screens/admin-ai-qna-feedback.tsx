@@ -116,7 +116,7 @@ export default function AdminAiQnaFeedback({
   const navigation = useNavigation();
   const submitting = navigation.state !== "idle";
   return (
-    <AdminShell title="AI Q&A 부정 피드백" cluster="comms">
+    <AdminShell title="AI Q&A 부정 피드백" cluster="ai-qna">
       <div className="mx-auto max-w-5xl space-y-4">
         <header className="space-y-1">
           <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">

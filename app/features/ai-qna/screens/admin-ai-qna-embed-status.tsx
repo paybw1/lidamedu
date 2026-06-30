@@ -146,7 +146,7 @@ export default function AdminAiQnaEmbedStatus({
   const cronErr = result && "error" in result ? (result as { error: string }).error : null;
 
   return (
-    <AdminShell title="AI Q&A 임베딩 상태" cluster="comms">
+    <AdminShell title="AI Q&A 임베딩 상태" cluster="ai-qna">
       <div className="mx-auto max-w-5xl space-y-4">
         <header className="flex flex-wrap items-end justify-between gap-2">
           <div>

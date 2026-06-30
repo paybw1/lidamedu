@@ -126,7 +126,7 @@ export default function AdminAiQnaUsage({ loaderData }: Route.ComponentProps) {
   );
 
   return (
-    <AdminShell title="AI Q&A 월별 사용량" cluster="comms">
+    <AdminShell title="AI Q&A 월별 사용량" cluster="ai-qna">
       <div className="mx-auto max-w-5xl space-y-4">
         <header className="flex flex-wrap items-end justify-between gap-2">
           <div>

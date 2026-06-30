@@ -1,9 +1,10 @@
-// 운영자 영역 공통 셸 — 9클러스터 사이드바 + breadcrumb + 페이지 헤더.
+// 운영자 영역 공통 셸 — 4개 섹션·클러스터 사이드바 + breadcrumb + 페이지 헤더.
 // 키트 lidam-admin/Shell.jsx 디자인. brief §5.2.
 // 모든 /admin/* 화면은 <AdminShell>로 감싸 일관된 네비게이션을 얻는다.
 import {
   AwardIcon,
   BellIcon,
+  BotIcon,
   ChevronDownIcon,
   GavelIcon,
   GraduationCapIcon,
@@ -34,7 +35,18 @@ export type AdminClusterId =
   | "cohorts"
   | "gs"
   | "analytics"
-  | "comms";
+  | "comms"
+  | "ai-qna";
+
+// 상위 섹션 — 클러스터를 4개 도메인으로 묶어 사이드바·허브에서 그룹 표시.
+export type AdminSectionId = "content" | "students" | "exam" | "system";
+
+export const ADMIN_SECTIONS: { id: AdminSectionId; label: string }[] = [
+  { id: "content", label: "콘텐츠 제작" },
+  { id: "students", label: "수강생 운영" },
+  { id: "exam", label: "시험·분석" },
+  { id: "system", label: "시스템" },
+];
 
 interface NavScreen {
   label: string;
@@ -43,12 +55,14 @@ interface NavScreen {
 
 interface NavCluster {
   id: AdminClusterId;
+  // hub 는 섹션에 속하지 않고 사이드바·허브 최상단에 단독 노출.
+  section?: AdminSectionId;
   label: string;
   Icon: LucideIcon;
   screens: NavScreen[];
 }
 
-// 9 클러스터 — 사이드바에는 안정적(비-파라미터) 라우트만 노출.
+// 클러스터 — 사이드바에는 안정적(비-파라미터) 라우트만 노출.
 // 상세·편집 화면(:id 파라미터)은 드릴다운으로 진입하며 breadcrumb 으로 위치를 표시.
 export const ADMIN_NAV: NavCluster[] = [
   {
@@ -59,6 +73,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "laws",
+    section: "content",
     label: "법령·개정",
     Icon: GavelIcon,
     screens: [
@@ -71,6 +86,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "cases",
+    section: "content",
     label: "판례",
     Icon: ScaleIcon,
     screens: [
@@ -86,6 +102,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "problems",
+    section: "content",
     label: "객관식 문제 · 정오문제",
     Icon: ListChecksIcon,
     screens: [
@@ -106,6 +123,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "blanks",
+    section: "content",
     label: "암기 자료",
     Icon: PencilLineIcon,
     screens: [
@@ -117,6 +135,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "relations",
+    section: "content",
     label: "연관관계",
     Icon: Link2Icon,
     screens: [
@@ -127,6 +146,7 @@ export const ADMIN_NAV: NavCluster[] = [
   {
     // 수강생 — 학생 중심 (사용자/위험군/수강권). 반·강의(cohorts) 와 분리.
     id: "students",
+    section: "students",
     label: "수강생",
     Icon: UsersIcon,
     screens: [
@@ -139,6 +159,7 @@ export const ADMIN_NAV: NavCluster[] = [
   {
     // 반·강의 — 반 단위 + 커리큘럼. 수강생(students) 와 분리.
     id: "cohorts",
+    section: "students",
     label: "반·강의",
     Icon: GraduationCapIcon,
     screens: [
@@ -149,6 +170,7 @@ export const ADMIN_NAV: NavCluster[] = [
   },
   {
     id: "gs",
+    section: "exam",
     label: "주관식 문제",
     Icon: AwardIcon,
     screens: [
@@ -160,18 +182,24 @@ export const ADMIN_NAV: NavCluster[] = [
     ],
   },
   {
+    // 합격자 분석 + 학습 분석(전체 학습현황) 통합. feat-7-041.
     id: "analytics",
-    label: "합격자 분석",
+    section: "exam",
+    label: "학습·합격 분석",
     Icon: TrendingUpIcon,
     screens: [
+      // 전체 학습현황(학원 전체 집계) — feat-7-041, manager+ 게이트.
+      { label: "전체 학습현황", to: "/admin/analytics/students" },
       { label: "합격 결과", to: "/admin/exam-results" },
       { label: "합격자 사례", to: "/admin/analytics/passers" },
       { label: "합격 vs 불합격 패턴", to: "/admin/analytics/failure-patterns" },
     ],
   },
   {
+    // 공지·커뮤니티 운영 + 감사. AI Q&A 운영은 별도 클러스터(ai-qna)로 분리.
     id: "comms",
-    label: "공지·알림·감사",
+    section: "system",
+    label: "공지·커뮤니티",
     Icon: BellIcon,
     screens: [
       { label: "공지 발송", to: "/admin/announcements" },
@@ -179,14 +207,21 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "감사 기록", to: "/admin/audit-logs" },
       { label: "커뮤니티 신고", to: "/admin/community/reports" },
       { label: "주관식 첨삭 대기", to: "/admin/subjective-reviews" },
-      // feat-9-005 — AI Q&A 운영 (피드백 + 지표 + 평가 세트 + 월별 사용량 + 색인 상태).
-      { label: "AI Q&A 부정 피드백", to: "/admin/ai-qna/feedback" },
-      { label: "AI Q&A 지표", to: "/admin/ai-qna/metrics" },
-      { label: "AI Q&A 평가 세트", to: "/admin/ai-qna/eval" },
-      { label: "AI Q&A 월별 사용량", to: "/admin/ai-qna/usage" },
-      { label: "AI Q&A 색인 상태", to: "/admin/ai-qna/embed-status" },
-      // feat-9-006 — AI Q&A 운영 설정 (한도/토큰 캡).
-      { label: "AI Q&A 한도 설정", to: "/admin/ai-qna/settings" },
+    ],
+  },
+  {
+    // AI Q&A 운영 — feat-9-005/006. comms 과적재 해소를 위해 별도 클러스터.
+    id: "ai-qna",
+    section: "system",
+    label: "AI Q&A 운영",
+    Icon: BotIcon,
+    screens: [
+      { label: "부정 피드백", to: "/admin/ai-qna/feedback" },
+      { label: "지표", to: "/admin/ai-qna/metrics" },
+      { label: "평가 세트", to: "/admin/ai-qna/eval" },
+      { label: "월별 사용량", to: "/admin/ai-qna/usage" },
+      { label: "색인 상태", to: "/admin/ai-qna/embed-status" },
+      { label: "한도 설정", to: "/admin/ai-qna/settings" },
     ],
   },
 ];
@@ -348,7 +383,8 @@ function AdminSidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
-        {ADMIN_NAV.map((c) => (
+        {/* hub — 섹션에 속하지 않는 단독 진입점 */}
+        {ADMIN_NAV.filter((c) => !c.section).map((c) => (
           <ClusterGroup
             key={c.id}
             cluster={c}
@@ -357,6 +393,31 @@ function AdminSidebar({
             collapsed={collapsed}
           />
         ))}
+        {/* 4개 상위 섹션 — 헤더 + 소속 클러스터 */}
+        {ADMIN_SECTIONS.map((section) => {
+          const clusters = ADMIN_NAV.filter((c) => c.section === section.id);
+          if (clusters.length === 0) return null;
+          return (
+            <div key={section.id} className="mt-3 first:mt-2">
+              {!collapsed ? (
+                <p className="text-muted-foreground/70 px-2.5 pt-1 pb-1 font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
+                  {section.label}
+                </p>
+              ) : (
+                <div className="border-sidebar-border/60 mx-2 my-1.5 border-t" />
+              )}
+              {clusters.map((c) => (
+                <ClusterGroup
+                  key={c.id}
+                  cluster={c}
+                  activeCluster={activeCluster}
+                  pathname={pathname}
+                  collapsed={collapsed}
+                />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       {!collapsed && role ? (

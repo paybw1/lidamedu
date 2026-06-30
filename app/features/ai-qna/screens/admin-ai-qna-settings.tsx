@@ -113,7 +113,7 @@ export default function AdminAiQnaSettings({
     actionData && "error" in actionData ? actionData.error : null;
 
   return (
-    <AdminShell title="AI Q&A 설정" cluster="comms">
+    <AdminShell title="AI Q&A 설정" cluster="ai-qna">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
           <h1 className="text-xl font-bold tracking-tight">AI Q&A 설정</h1>

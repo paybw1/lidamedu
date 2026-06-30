@@ -136,7 +136,7 @@ export default function AdminAiQnaEvalEdit({ loaderData }: Route.ComponentProps)
   const [notes, setNotes] = useState<string>(item?.notes ?? "");
 
   return (
-    <AdminShell title={mode === "edit" ? "eval 편집" : "eval 신규"} cluster="comms">
+    <AdminShell title={mode === "edit" ? "eval 편집" : "eval 신규"} cluster="ai-qna">
       <div className="mx-auto max-w-3xl space-y-4">
         <header className="flex items-center justify-between gap-2">
           <h1 className="text-xl font-bold tracking-tight">

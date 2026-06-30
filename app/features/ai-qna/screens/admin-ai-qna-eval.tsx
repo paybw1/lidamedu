@@ -122,7 +122,7 @@ export default function AdminAiQnaEval({ loaderData }: Route.ComponentProps) {
   const submitting = navigation.state !== "idle";
 
   return (
-    <AdminShell title="AI Q&A 평가 셋" cluster="comms">
+    <AdminShell title="AI Q&A 평가 셋" cluster="ai-qna">
       <div className="mx-auto max-w-5xl space-y-4">
         <header className="space-y-1">
           <h1 className="inline-flex items-center gap-2 text-xl font-bold tracking-tight">

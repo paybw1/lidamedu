@@ -90,7 +90,7 @@ export default function AdminAiQnaMetrics({ loaderData }: Route.ComponentProps) 
   const last7Negative = sum("negative_feedback");
 
   return (
-    <AdminShell title="AI Q&A 지표" cluster="comms">
+    <AdminShell title="AI Q&A 지표" cluster="ai-qna">
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="space-y-1">
           <h1 className="text-xl font-bold tracking-tight">AI Q&A 운영 지표</h1>

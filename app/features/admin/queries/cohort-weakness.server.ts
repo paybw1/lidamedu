@@ -61,27 +61,29 @@ export async function getCohortWeakNodes(
   const threshold = Math.max(floorStudents, Math.ceil(minRatio * cohortSize));
   if (cohortSize === 0) return { cohortSize: 0, threshold, nodes: [] };
 
-  // 2) 과목 + 체계도 스켈레톤 → article→node(s), node 라벨
-  const law = await getLawByCode(client, lawCode);
-  if (!law) return { cohortSize, threshold, nodes: [] };
-  const skeleton = await getSystematicSkeleton(client, lawCode);
-  const articleToNodes = new Map<string, string[]>();
-  const nodeLabel = new Map<string, string>();
-  for (const n of skeleton) {
-    if (n.caseOnly) continue;
-    nodeLabel.set(n.nodeId, n.displayLabel);
-    for (const a of n.articles) {
-      const arr = articleToNodes.get(a.articleId) ?? [];
-      arr.push(n.nodeId);
-      articleToNodes.set(a.articleId, arr);
-    }
-  }
+  // 2) 멤버 (학생,문제) 최신 시도 1건 — 과목 무관 1회 스캔.
+  const latest = await fetchLatestAttemptsForProfiles(client, userIds);
+  if (latest.size === 0) return { cohortSize, threshold, nodes: [] };
 
-  // 3) 멤버 시도 — (학생,문제) 최신 1건. attempted_at asc 페이지네이션(마지막=최신).
-  const latest = new Map<
-    string,
-    { userId: string; problemId: string; correct: boolean }
-  >();
+  // 3) 과목 귀속 + 노드별 집계 + 공통 가드.
+  const nodes = await weakNodesFromLatestAttempts(client, latest, lawCode, {
+    threshold,
+    minAttempts,
+    limit,
+  });
+  return { cohortSize, threshold, nodes };
+}
+
+// (학생,문제) 최신 시도 1건 맵 — 과목 무관. getCohortWeakNodes·전체 약점(getAllStudentsWeakNodes)
+// 공용 스캔 코어. attempted_at asc 페이지네이션(마지막 set = 최신). admin/RLS 우회는 caller 책임.
+export type LatestAttempt = { userId: string; problemId: string; correct: boolean };
+
+export async function fetchLatestAttemptsForProfiles(
+  client: SupabaseClient<Database>,
+  userIds: string[],
+): Promise<Map<string, LatestAttempt>> {
+  const latest = new Map<string, LatestAttempt>();
+  if (userIds.length === 0) return latest;
   const PAGE = 1000;
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await client
@@ -101,9 +103,38 @@ export async function getCohortWeakNodes(
     }
     if (rows.length < PAGE) break;
   }
-  if (latest.size === 0) return { cohortSize, threshold, nodes: [] };
+  return latest;
+}
 
-  // 4) 시도된 문제의 노드 귀속(이 과목만).
+// latest 맵 + 과목 → 약점 노드. "공통" 가드 threshold(시도 학생 수)는 호출자가 모집단
+// 정책(반 인원 비율 / 전체 학원 비율)에 맞춰 산정해 전달한다. 같은 latest 맵으로 5과목을
+// 반복 호출하면 시도 스캔 1회로 전과목 약점을 얻는다(getAllStudentsWeakNodes).
+export async function weakNodesFromLatestAttempts(
+  client: SupabaseClient<Database>,
+  latest: Map<string, LatestAttempt>,
+  lawCode: LawSubjectSlug,
+  opts: { threshold: number; minAttempts?: number; limit?: number },
+): Promise<CohortWeakNode[]> {
+  const minAttempts = opts.minAttempts ?? 5;
+  const limit = opts.limit ?? 12;
+
+  // 과목 + 체계도 스켈레톤 → article→node(s), node 라벨.
+  const law = await getLawByCode(client, lawCode);
+  if (!law) return [];
+  const skeleton = await getSystematicSkeleton(client, lawCode);
+  const articleToNodes = new Map<string, string[]>();
+  const nodeLabel = new Map<string, string>();
+  for (const n of skeleton) {
+    if (n.caseOnly) continue;
+    nodeLabel.set(n.nodeId, n.displayLabel);
+    for (const a of n.articles) {
+      const arr = articleToNodes.get(a.articleId) ?? [];
+      arr.push(n.nodeId);
+      articleToNodes.set(a.articleId, arr);
+    }
+  }
+
+  // 시도된 문제의 노드 귀속(이 과목만).
   const attemptedIds = [
     ...new Set([...latest.values()].map((v) => v.problemId)),
   ];
@@ -129,7 +160,7 @@ export async function getCohortWeakNodes(
     }
   }
 
-  // 5) 노드별 집계
+  // 노드별 집계.
   const agg = new Map<
     string,
     { attempts: number; correct: number; students: Set<string> }
@@ -150,10 +181,10 @@ export async function getCohortWeakNodes(
     }
   }
 
-  // 6) 공통 가드 + 약점 점수 + 정렬
+  // 공통 가드 + 약점 점수 + 정렬.
   const nodes: CohortWeakNode[] = [];
   for (const [nid, a] of agg) {
-    if (a.students.size < threshold) continue;
+    if (a.students.size < opts.threshold) continue;
     if (a.attempts < minAttempts) continue;
     const accuracyPct = Math.round((a.correct / a.attempts) * 100);
     nodes.push({
@@ -167,7 +198,7 @@ export async function getCohortWeakNodes(
     });
   }
   nodes.sort((x, y) => y.weaknessScore - x.weaknessScore);
-  return { cohortSize, threshold, nodes: nodes.slice(0, limit) };
+  return nodes.slice(0, limit);
 }
 
 // ─── feat-7-040 후속: 약점 노드 → 문제 선택 seam (모의 picker·과제 출제 공용) ───

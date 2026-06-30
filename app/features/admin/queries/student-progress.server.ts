@@ -48,7 +48,25 @@ export async function listCohortProgressSummary(
   if (mErr) throw mErr;
   if (!members || members.length === 0) return [];
 
-  const profileIds = members.map((m) => m.profile_id);
+  return summarizeProgressForProfiles(
+    members.map((m) => ({
+      profileId: m.profile_id,
+      name: m.profiles?.name ?? "",
+      joinedAt: m.joined_at,
+    })),
+  );
+}
+
+// 임의의 학생 명부(roster)에 대한 학습 요약 — listCohortProgressSummary 의 스캔 코어.
+// cohort 1개 또는 여러 반을 가로지른 전체 학생 집합 등 호출자가 모집단을 결정한다.
+// admin client 로 RLS 우회 — 권한 검사는 caller(loader) 에서 선행해야 함.
+export async function summarizeProgressForProfiles(
+  roster: Array<{ profileId: string; name: string; joinedAt: string }>,
+): Promise<CohortMemberProgress[]> {
+  const admin = adminClient as SupabaseClient<Database>;
+  if (roster.length === 0) return [];
+
+  const profileIds = roster.map((m) => m.profileId);
 
   // 이메일은 auth.users 에서.
   const authList = await adminClient.auth.admin.listUsers({
@@ -173,10 +191,10 @@ export async function listCohortProgressSummary(
     from += PAGE;
   }
 
-  return members.map((m) => {
-    const a = attemptsByUser.get(m.profile_id);
-    const b = blanksByUser.get(m.profile_id);
-    const arts = articlesByUser.get(m.profile_id);
+  return roster.map((m) => {
+    const a = attemptsByUser.get(m.profileId);
+    const b = blanksByUser.get(m.profileId);
+    const arts = articlesByUser.get(m.profileId);
     const problemsAttempted = a?.attempted.size ?? 0;
     const problemsCorrect = a?.correct.size ?? 0;
     const accuracyPct =
@@ -195,10 +213,10 @@ export async function listCohortProgressSummary(
       .sort()
       .pop() ?? null;
     return {
-      profileId: m.profile_id,
-      name: m.profiles?.name ?? "",
-      email: emailById.get(m.profile_id) ?? null,
-      joinedAt: m.joined_at,
+      profileId: m.profileId,
+      name: m.name,
+      email: emailById.get(m.profileId) ?? null,
+      joinedAt: m.joinedAt,
       problemsAttempted,
       problemsCorrect,
       accuracyPct,
@@ -206,9 +224,9 @@ export async function listCohortProgressSummary(
       blanksAttempts,
       blanksCorrect,
       blanksAccuracyPct,
-      memos: memosByUser.get(m.profile_id) ?? 0,
-      bookmarks: bookmarksByUser.get(m.profile_id) ?? 0,
-      highlights: highlightsByUser.get(m.profile_id) ?? 0,
+      memos: memosByUser.get(m.profileId) ?? 0,
+      bookmarks: bookmarksByUser.get(m.profileId) ?? 0,
+      highlights: highlightsByUser.get(m.profileId) ?? 0,
       lastActivityAt,
     };
   });
@@ -566,10 +584,19 @@ function bucketAccuracy(pct: number | null): AccuracyBucket {
 export async function getCohortAggregateStats(
   cohortId: string,
 ): Promise<CohortAggregateStats> {
+  // 1) cohort 멤버 + 학생별 진척(기존 함수 재사용) → 공용 집계기로 위임.
+  const members = await listCohortProgressSummary(cohortId);
+  return aggregateStatsFromMembers(members);
+}
+
+// 임의의 학생 명부 요약(CohortMemberProgress[])으로부터 집계 통계를 산출.
+// cohort 1개 또는 전체 반을 가로지른 모집단 모두에 동일하게 적용된다.
+// by-subject(4)는 모집단의 attempts/sessions 를 추가 스캔 — 호출자가 비용 인지.
+export async function aggregateStatsFromMembers(
+  members: CohortMemberProgress[],
+): Promise<CohortAggregateStats> {
   const admin = adminClient as SupabaseClient<Database>;
 
-  // 1) cohort 멤버 + 학생별 진척(기존 함수 재사용)
-  const members = await listCohortProgressSummary(cohortId);
   if (members.length === 0) {
     return {
       memberCount: 0,

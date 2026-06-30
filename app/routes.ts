@@ -769,6 +769,16 @@ export default [
         "/admin/lecture-locations",
         "features/lectures/screens/admin-lecture-locations.tsx",
       ),
+      // feat-7-041 — 전체 학습현황(학원 전체 집계·익명, manager+).
+      route(
+        "/admin/analytics/students",
+        "features/admin/screens/admin-students-analytics.tsx",
+      ),
+      // ⑥ 전체 공통 약점 단원 — 지연 로드 리소스 라우트(JSON).
+      route(
+        "/admin/analytics/students/weak-nodes",
+        "features/admin/screens/admin-students-weak-nodes.tsx",
+      ),
       route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",

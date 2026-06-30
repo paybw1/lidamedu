@@ -1,5 +1,5 @@
 // 운영자 메뉴 진입 (feat-7-001, 7-002)
-// - staff (instructor/admin): 운영자 허브 — 9 클러스터의 단일 진입점
+// - staff (instructor/admin): 운영자 허브 — 4개 섹션·클러스터의 단일 진입점
 // - 학생: 권한 안내 + 가능한 액션 안내 화면
 // - 비로그인: /login 으로 리다이렉트
 import type { Route } from "./+types/admin";
@@ -11,7 +11,11 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { ADMIN_NAV, AdminShell } from "~/features/admin/components/admin-shell";
+import {
+  ADMIN_NAV,
+  ADMIN_SECTIONS,
+  AdminShell,
+} from "~/features/admin/components/admin-shell";
 import { Chip } from "~/features/admin/components/admin-ui";
 import {
   type StaffContentStats,
@@ -363,53 +367,60 @@ function SeedTable({
   );
 }
 
-/* ── 9 클러스터 바로가기 ──────────────────────────────────────────────── */
+/* ── 클러스터 바로가기 (4개 섹션 그룹) ──────────────────────────────── */
 
-// 허브 IA = 9 클러스터. hub 자기 자신은 제외하고 8개를 카드로 노출.
+// 허브 IA = 4개 상위 섹션 × 소속 클러스터. hub 자기 자신은 제외.
 function ClusterGrid() {
-  const clusters = ADMIN_NAV.filter((c) => c.id !== "hub");
   return (
-    <section data-testid="admin-hub-clusters">
-      <p className="text-muted-foreground mb-3 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-        9 클러스터 바로가기
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {clusters.map((c) => {
-          const { Icon } = c;
-          return (
-            <Link
-              key={c.id}
-              to={c.screens[0].to}
-              viewTransition
-              className="group block"
-            >
-              <Card className="hover:border-primary h-full transition-colors">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="bg-primary/10 text-link inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
-                      <Icon className="size-4" />
-                    </span>
-                    <h3 className="flex-1 text-sm font-bold tracking-tight">
-                      {c.label}
-                    </h3>
-                    <ChevronRightIcon className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-1.5">
-                    {c.screens.map((s) => (
-                      <Chip key={s.to} tone="neutral">
-                        {s.label}
-                      </Chip>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <div className="space-y-7" data-testid="admin-hub-clusters">
+      {ADMIN_SECTIONS.map((section) => {
+        const clusters = ADMIN_NAV.filter((c) => c.section === section.id);
+        if (clusters.length === 0) return null;
+        return (
+          <section key={section.id}>
+            <p className="text-muted-foreground mb-3 font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              {section.label}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {clusters.map((c) => {
+                const { Icon } = c;
+                return (
+                  <Link
+                    key={c.id}
+                    to={c.screens[0].to}
+                    viewTransition
+                    className="group block"
+                  >
+                    <Card className="hover:border-primary h-full transition-colors">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="bg-primary/10 text-link inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
+                            <Icon className="size-4" />
+                          </span>
+                          <h3 className="flex-1 text-sm font-bold tracking-tight">
+                            {c.label}
+                          </h3>
+                          <ChevronRightIcon className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.screens.map((s) => (
+                            <Chip key={s.to} tone="neutral">
+                              {s.label}
+                            </Chip>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 

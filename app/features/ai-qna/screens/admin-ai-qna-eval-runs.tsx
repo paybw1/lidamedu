@@ -69,7 +69,7 @@ export default function AdminAiQnaEvalRuns({ loaderData }: Route.ComponentProps)
         };
 
   return (
-    <AdminShell title="eval 평가 이력" cluster="comms">
+    <AdminShell title="eval 평가 이력" cluster="ai-qna">
       <div className="mx-auto max-w-4xl space-y-4">
         <header className="space-y-2">
           <Button
