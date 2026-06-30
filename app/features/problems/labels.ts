@@ -58,6 +58,8 @@ export interface OxQuestionItem {
   // feat-4-A-343 — 표시 dedup 대표 선정용(승인>초안) + "여러 회차 출제" 배지(대표에만).
   reviewStatus?: ProblemReviewStatus;
   dupCount?: number;
+  // 스태프 수동 숨김 여부 — 학생 쿼리는 숨김 제외, 스태프 패널만 숨김 표시+복원.
+  oxHidden?: boolean;
 }
 
 export interface OxRefAnnotations {

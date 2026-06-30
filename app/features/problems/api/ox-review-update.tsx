@@ -14,6 +14,8 @@ const schema = z.object({
   refId: z.string().uuid(),
   oxTruth: z.union([z.literal("O"), z.literal("X"), z.literal("")]).optional(),
   oxIneligible: z.union([z.literal("true"), z.literal("false")]).optional(),
+  // 스태프 수동 숨김 토글(OX 패널·검수 공용). "true"=숨김, "false"=복원.
+  oxHidden: z.union([z.literal("true"), z.literal("false")]).optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -35,6 +37,8 @@ export async function action({ request }: Route.ActionArgs) {
     oxTruth: fd.get("oxTruth") == null ? undefined : String(fd.get("oxTruth")),
     oxIneligible:
       fd.get("oxIneligible") == null ? undefined : String(fd.get("oxIneligible")),
+    oxHidden:
+      fd.get("oxHidden") == null ? undefined : String(fd.get("oxHidden")),
   });
   if (!parsed.success) {
     return data({ error: "Invalid input" }, { status: 400 });
@@ -50,10 +54,16 @@ export async function action({ request }: Route.ActionArgs) {
     parsed.data.oxIneligible === undefined
       ? undefined
       : parsed.data.oxIneligible === "true";
+  const hidden =
+    parsed.data.oxHidden === undefined
+      ? undefined
+      : parsed.data.oxHidden === "true";
 
   await updateOxReviewItem(client, parsed.data.refType, parsed.data.refId, {
     oxTruth: truth,
     oxIneligible: ineligible,
+    hidden,
+    hiddenBy: hidden ? user.id : null,
   });
 
   return data({ ok: true });

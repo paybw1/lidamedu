@@ -481,6 +481,7 @@ export function ArticleRightPanel({
                   items={oxQuestions}
                   subject={subjectSlug}
                   annotationsByRef={oxAnnotationsByRef}
+                  isStaff={viewerIsStaff}
                 />
               </TabsContent>
             ) : null}

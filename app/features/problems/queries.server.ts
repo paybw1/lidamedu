@@ -528,7 +528,12 @@ export async function listRecentProblems(
 
 // 운영자 OX 검토용 — 학생 노출(ox_truth NOT NULL + ineligible=false + article 매핑) 조건과
 // 무관하게 후보 지문을 모두 조회. 운영자는 이 화면에서 ox_truth 수정 / ineligible 토글 가능.
-export type OxReviewStatus = "all" | "active" | "ineligible" | "untruthed";
+export type OxReviewStatus =
+  | "all"
+  | "active"
+  | "ineligible"
+  | "untruthed"
+  | "hidden";
 export interface OxReviewItem {
   refType: "choice" | "box";
   refId: string;
@@ -540,6 +545,8 @@ export interface OxReviewItem {
   marker: string | null; // box-item 만
   oxTruth: OxTruth | null;
   oxIneligible: boolean;
+  // 스태프 수동 숨김 — OX 패널·검수에서 토글. ineligible(구조적)과 구분.
+  oxHidden: boolean;
   relatedArticleId: string | null;
   relatedArticleLabel: string | null;
   relatedArticleNumber: string | null;
@@ -572,7 +579,7 @@ export async function listOxItemsForReview(
   let choiceQuery = client
     .from("problem_choices")
     .select(
-      "choice_id, problem_id, body_md, ox_truth, ox_ineligible, related_article_id, is_correct, problems!inner(year, problem_number, origin, deleted_at, law_id)",
+      "choice_id, problem_id, body_md, ox_truth, ox_ineligible, ox_hidden_at, related_article_id, is_correct, problems!inner(year, problem_number, origin, deleted_at, law_id)",
     )
     .eq("problems.law_id", law.law_id)
     .limit(limit);
@@ -596,6 +603,7 @@ export async function listOxItemsForReview(
       marker: null,
       oxTruth: r.ox_truth as OxTruth | null,
       oxIneligible: r.ox_ineligible ?? false,
+      oxHidden: r.ox_hidden_at != null,
       relatedArticleId: r.related_article_id,
       relatedArticleLabel: null,
       relatedArticleNumber: null,
@@ -607,7 +615,7 @@ export async function listOxItemsForReview(
   let boxQuery = client
     .from("problem_box_items")
     .select(
-      "box_item_id, problem_id, body_md, marker, ox_truth, ox_ineligible, related_article_id, problems!inner(year, problem_number, origin, deleted_at, law_id)",
+      "box_item_id, problem_id, body_md, marker, ox_truth, ox_ineligible, ox_hidden_at, related_article_id, problems!inner(year, problem_number, origin, deleted_at, law_id)",
     )
     .eq("problems.law_id", law.law_id)
     .limit(limit);
@@ -631,6 +639,7 @@ export async function listOxItemsForReview(
       marker: r.marker,
       oxTruth: r.ox_truth as OxTruth | null,
       oxIneligible: r.ox_ineligible ?? false,
+      oxHidden: r.ox_hidden_at != null,
       relatedArticleId: r.related_article_id,
       relatedArticleLabel: null,
       relatedArticleNumber: null,
@@ -654,6 +663,9 @@ export async function listOxItemsForReview(
       return (
         !it.oxIneligible && (it.oxTruth == null || it.relatedArticleId == null)
       );
+    }
+    if (status === "hidden") {
+      return it.oxHidden === true;
     }
     return true;
   });
@@ -713,7 +725,14 @@ export async function updateOxReviewItem(
   client: SupabaseClient<Database>,
   refType: "choice" | "box",
   refId: string,
-  patch: { oxTruth?: OxTruth | null; oxIneligible?: boolean },
+  patch: {
+    oxTruth?: OxTruth | null;
+    oxIneligible?: boolean;
+    // 스태프 수동 숨김 — true 면 ox_hidden_at=now·ox_hidden_by=hiddenBy, false 면 둘 다 null.
+    hidden?: boolean;
+    hiddenBy?: string | null;
+    nowIso?: string;
+  },
 ): Promise<void> {
   const ineligible = patch.oxIneligible ?? undefined;
   const truth =
@@ -726,6 +745,12 @@ export async function updateOxReviewItem(
   const update: Record<string, unknown> = {};
   if (truth !== undefined) update.ox_truth = truth;
   if (ineligible !== undefined) update.ox_ineligible = ineligible;
+  if (patch.hidden !== undefined) {
+    update.ox_hidden_at = patch.hidden
+      ? (patch.nowIso ?? new Date().toISOString())
+      : null;
+    update.ox_hidden_by = patch.hidden ? (patch.hiddenBy ?? null) : null;
+  }
   if (Object.keys(update).length === 0) return;
 
   if (refType === "choice") {
@@ -1196,7 +1221,7 @@ export async function getOxQuestionsForArticle(
     let q = client
       .from("problem_choices")
       .select(
-        "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
+        "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, ox_hidden_at, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
       )
       .eq("related_article_id", articleId)
       .eq("ox_ineligible", false)
@@ -1205,6 +1230,8 @@ export async function getOxQuestionsForArticle(
       .is("problems.deleted_at", null);
     if (!includeUnapproved) {
       q = q.eq("problems.review_status", "approved");
+      // 학생: 스태프가 숨긴 OX 비노출. 스태프(includeUnapproved)는 숨김 표시로 보임.
+      q = q.is("ox_hidden_at", null);
     }
     return q;
   };
@@ -1236,6 +1263,7 @@ export async function getOxQuestionsForArticle(
         problemNumber: r.problems.problem_number,
         origin: r.problems.origin,
         reviewStatus: r.problems.review_status,
+        oxHidden: r.ox_hidden_at != null,
       });
     }
     if (batch.length < PAGE) break;
@@ -1246,7 +1274,7 @@ export async function getOxQuestionsForArticle(
     let q = client
       .from("problem_box_items")
       .select(
-        "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
+        "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, ox_hidden_at, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
       )
       .eq("related_article_id", articleId)
       .eq("ox_ineligible", false)
@@ -1254,6 +1282,7 @@ export async function getOxQuestionsForArticle(
       .is("problems.deleted_at", null);
     if (!includeUnapproved) {
       q = q.eq("problems.review_status", "approved");
+      q = q.is("ox_hidden_at", null);
     }
     return q;
   };
@@ -1292,6 +1321,7 @@ export async function getOxQuestionsForArticle(
       problemNumber: r.problems.problem_number,
       origin: r.problems.origin,
       reviewStatus: r.problems.review_status,
+      oxHidden: r.ox_hidden_at != null,
     });
   }
 

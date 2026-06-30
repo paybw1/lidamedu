@@ -4379,6 +4379,8 @@ export type Database = {
           created_at: string
           explanation_md: string | null
           marker: string
+          ox_hidden_at: string | null
+          ox_hidden_by: string | null
           ox_ineligible: boolean
           ox_truth: Database["public"]["Enums"]["ox_truth"] | null
           position_index: number
@@ -4399,6 +4401,8 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           marker: string
+          ox_hidden_at?: string | null
+          ox_hidden_by?: string | null
           ox_ineligible?: boolean
           ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
           position_index: number
@@ -4419,6 +4423,8 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           marker?: string
+          ox_hidden_at?: string | null
+          ox_hidden_by?: string | null
           ox_ineligible?: boolean
           ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
           position_index?: number
@@ -4431,6 +4437,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "problem_box_items_ox_hidden_by_fkey"
+            columns: ["ox_hidden_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problem_box_items_ox_hidden_by_fkey"
+            columns: ["ox_hidden_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "problem_box_items_problem_id_fkey"
             columns: ["problem_id"]
@@ -4529,6 +4549,8 @@ export type Database = {
           created_at: string
           explanation_md: string | null
           is_correct: boolean
+          ox_hidden_at: string | null
+          ox_hidden_by: string | null
           ox_ineligible: boolean
           ox_truth: Database["public"]["Enums"]["ox_truth"] | null
           problem_id: string
@@ -4548,6 +4570,8 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
+          ox_hidden_at?: string | null
+          ox_hidden_by?: string | null
           ox_ineligible?: boolean
           ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
           problem_id: string
@@ -4567,6 +4591,8 @@ export type Database = {
           created_at?: string
           explanation_md?: string | null
           is_correct?: boolean
+          ox_hidden_at?: string | null
+          ox_hidden_by?: string | null
           ox_ineligible?: boolean
           ox_truth?: Database["public"]["Enums"]["ox_truth"] | null
           problem_id?: string
@@ -4577,6 +4603,20 @@ export type Database = {
           related_node_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "problem_choices_ox_hidden_by_fkey"
+            columns: ["ox_hidden_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "problem_choices_ox_hidden_by_fkey"
+            columns: ["ox_hidden_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "problem_choices_problem_id_fkey"
             columns: ["problem_id"]

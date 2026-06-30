@@ -4,6 +4,8 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   CircleXIcon,
+  EyeIcon,
+  EyeOffIcon,
   HeartIcon,
   NotebookPenIcon,
   PencilIcon,
@@ -104,6 +106,7 @@ export function OxQuestionsPanel({
   const [annoOpen, setAnnoOpen] = useState<"bookmark" | "memo" | null>(null);
   const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
   const attemptFetcher = useFetcher();
+  const hideFetcher = useFetcher();
   const startedAtRef = useRef<number>(Date.now());
   // 한 지문당 1회만 기록 (다시 풀기 → 동일 지문 재기록 방지). refId 단위.
   const recordedRefIdRef = useRef<string | null>(null);
@@ -241,9 +244,55 @@ export function OxQuestionsPanel({
             여러 회차 출제 {cur.dupCount}
           </Badge>
         ) : null}
-        <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
-          {pos + 1} / {filteredItems.length}
-        </span>
+        {isStaff && cur.oxHidden ? (
+          <Badge
+            variant="outline"
+            className="border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"
+          >
+            숨김됨
+          </Badge>
+        ) : null}
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="text-muted-foreground text-[10px] tabular-nums">
+            {pos + 1} / {filteredItems.length}
+          </span>
+          {isStaff ? (
+            <hideFetcher.Form
+              method="post"
+              action="/api/problems/ox-review-update"
+            >
+              <input type="hidden" name="refType" value={cur.refType} />
+              <input type="hidden" name="refId" value={cur.refId} />
+              <input
+                type="hidden"
+                name="oxHidden"
+                value={cur.oxHidden ? "false" : "true"}
+              />
+              <button
+                type="submit"
+                disabled={hideFetcher.state !== "idle"}
+                title={
+                  cur.oxHidden
+                    ? "숨김 해제 — 학생에게 다시 노출"
+                    : "이 정오문제 숨기기 — 학생 비노출(중복·부적합)"
+                }
+                aria-label={cur.oxHidden ? "숨김 해제" : "숨기기"}
+                className={cn(
+                  "inline-flex size-6 items-center justify-center rounded-md transition-colors disabled:opacity-50",
+                  cur.oxHidden
+                    ? "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-950/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                )}
+              >
+                {cur.oxHidden ? (
+                  <EyeIcon className="size-3.5" />
+                ) : (
+                  <EyeOffIcon className="size-3.5" />
+                )}
+              </button>
+            </hideFetcher.Form>
+          ) : null}
+        </div>
       </div>
 
       <p className="font-serif text-sm leading-relaxed">

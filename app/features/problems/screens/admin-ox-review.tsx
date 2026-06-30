@@ -61,6 +61,11 @@ const STATUS_OPTIONS: { value: OxReviewStatus; label: string; hint: string }[] =
     label: "미설정",
     hint: "ox_truth NULL 또는 조문 미매핑",
   },
+  {
+    value: "hidden",
+    label: "숨김처리됨",
+    hint: "스태프가 OX 패널에서 수동 숨김 (학생 비노출)",
+  },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -84,7 +89,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const status: OxReviewStatus =
     statusParam === "active" ||
     statusParam === "ineligible" ||
-    statusParam === "untruthed"
+    statusParam === "untruthed" ||
+    statusParam === "hidden"
       ? statusParam
       : "all";
 
@@ -114,6 +120,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     untruthed: all.filter(
       (it) => !it.oxIneligible && (it.oxTruth == null || it.relatedArticleId == null),
     ).length,
+    hidden: all.filter((it) => it.oxHidden).length,
   }));
 
   return { subject, status, year: Number.isFinite(year) ? year : null, items, years, counts, role };
@@ -275,6 +282,11 @@ function OxReviewRow({
     submittedIneligible === undefined
       ? item.oxIneligible
       : submittedIneligible === "true";
+  const submittedHidden = fetcher.formData?.get("oxHidden");
+  const hidden =
+    submittedHidden === undefined
+      ? item.oxHidden
+      : submittedHidden === "true";
 
   const submit = (patch: Record<string, string>) => {
     const fd = new FormData();
@@ -332,9 +344,10 @@ function OxReviewRow({
               ? "보기"
               : `박스${item.marker ? ` ${item.marker}` : ""}`}
           </Chip>
-          {isActiveStatus ? (
+          {isActiveStatus && !hidden ? (
             <Chip tone="emerald">노출</Chip>
           ) : null}
+          {hidden ? <Chip tone="amber">숨김</Chip> : null}
         </div>
       </TD>
       <TD className={cn(ineligible && "opacity-60")}>
@@ -368,18 +381,32 @@ function OxReviewRow({
         </div>
       </TD>
       <TD>
-        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs">
-          <input
-            type="checkbox"
-            checked={ineligible}
-            disabled={isSubmitting}
-            onChange={(e) =>
-              submit({ oxIneligible: e.target.checked ? "true" : "false" })
-            }
-            className="size-3.5"
-          />
-          불가 처리
-        </label>
+        <div className="flex flex-col gap-1">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs">
+            <input
+              type="checkbox"
+              checked={ineligible}
+              disabled={isSubmitting}
+              onChange={(e) =>
+                submit({ oxIneligible: e.target.checked ? "true" : "false" })
+              }
+              className="size-3.5"
+            />
+            불가 처리
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs">
+            <input
+              type="checkbox"
+              checked={hidden}
+              disabled={isSubmitting}
+              onChange={(e) =>
+                submit({ oxHidden: e.target.checked ? "true" : "false" })
+              }
+              className="size-3.5"
+            />
+            숨김
+          </label>
+        </div>
       </TD>
       <TD align="center">
         <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
