@@ -295,6 +295,72 @@ export async function getAllStudentsOverview(): Promise<AllStudentsOverview> {
   };
 }
 
+/* ── 전체(학원) 평균 — 개인 상세 "전체 평균 대비" 벤치마크용 ───────────── */
+
+export interface SchoolAverages {
+  studentCount: number;
+  avgAccuracyPct: number | null;
+  avgProblemsAttempted: number;
+  avgArticlesViewed: number;
+}
+
+// 활성 반 전체 학생의 학생단위 평균(정답률·문제풀이·조문열람) — 진척 1회 스캔.
+// by-subject·델타 없이 KPI만 → getAllStudentsOverview 보다 가볍다. 개인 상세 loader 용.
+export async function getSchoolAverages(): Promise<SchoolAverages> {
+  const empty: SchoolAverages = {
+    studentCount: 0,
+    avgAccuracyPct: null,
+    avgProblemsAttempted: 0,
+    avgArticlesViewed: 0,
+  };
+  const admin = adminClient as SupabaseClient<Database>;
+  const cohorts = await listCohorts(admin, { includeArchived: false });
+  if (cohorts.length === 0) return empty;
+  const { data, error } = await admin
+    .from("cohort_members")
+    .select("profile_id, joined_at")
+    .in(
+      "cohort_id",
+      cohorts.map((c) => c.cohortId),
+    );
+  if (error) throw error;
+  const rosterMap = new Map<
+    string,
+    { profileId: string; name: string; joinedAt: string }
+  >();
+  for (const m of data ?? []) {
+    if (!rosterMap.has(m.profile_id)) {
+      rosterMap.set(m.profile_id, {
+        profileId: m.profile_id,
+        name: "",
+        joinedAt: m.joined_at,
+      });
+    }
+  }
+  const roster = [...rosterMap.values()];
+  if (roster.length === 0) return empty;
+
+  const progress = await summarizeProgressForProfiles(roster);
+  const accuraciesValid = progress
+    .filter(
+      (p) =>
+        p.problemsAttempted >= AVG_ACCURACY_MIN_ATTEMPTS &&
+        p.accuracyPct !== null,
+    )
+    .map((p) => p.accuracyPct as number);
+  const avgAcc = avgOrNull(accuraciesValid);
+  return {
+    studentCount: progress.length,
+    avgAccuracyPct: avgAcc === null ? null : round1(avgAcc),
+    avgProblemsAttempted: round1(
+      avgOrNull(progress.map((p) => p.problemsAttempted)) ?? 0,
+    ),
+    avgArticlesViewed: round1(
+      avgOrNull(progress.map((p) => p.articlesViewed)) ?? 0,
+    ),
+  };
+}
+
 // 활성(비-보관) 반에 소속된 distinct 학생 id — 전체 약점 등 모집단 공용.
 export async function listActiveCohortStudentIds(): Promise<string[]> {
   const admin = adminClient as SupabaseClient<Database>;

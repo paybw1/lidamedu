@@ -90,6 +90,10 @@ import {
   type StudentMockSession,
 } from "~/features/admin/queries/student-progress.server";
 import {
+  getSchoolAverages,
+  type SchoolAverages,
+} from "~/features/admin/queries/all-students-overview.server";
+import {
   type StudentSrsSummary,
   getStudentSrsSummary,
 } from "~/features/admin/queries/student-srs.server";
@@ -159,6 +163,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     studyDaily,
     studentAssignments,
     studentMockSessions,
+    schoolAverages,
   ] = await Promise.all([
     getStudentDetail(params.profileId),
     getStudentCohortComparisons(params.profileId),
@@ -201,6 +206,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listStudentAssignments(params.profileId),
     // feat-7-040 후속 P3 — 플랫폼 모의(exam) 응시 이력(자습과 구분).
     listStudentMockSessions(params.profileId),
+    // feat-7-041 #3 — 전체(학원) 평균(반 평균과 같은 축에 "전체 대비" 표시).
+    getSchoolAverages(),
   ]);
   if (!student) throw data("Student not found", { status: 404 });
 
@@ -260,6 +267,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     studentAssignments,
     studentMockSessions,
     studentWeakNodes,
+    schoolAverages,
     currentUserId: user.id,
     isAdmin: roleAtLeast(role, "manager"),
     role,
@@ -296,6 +304,7 @@ export default function AdminStudentDetail({
     studentAssignments,
     studentMockSessions,
     studentWeakNodes,
+    schoolAverages,
     currentUserId,
     isAdmin,
     role,
@@ -381,7 +390,11 @@ export default function AdminStudentDetail({
       {cohortComparisons.length > 0 ? (
         <div className="mb-6 space-y-3">
           {cohortComparisons.map((c) => (
-            <CohortComparisonCard key={c.cohortId} comparison={c} />
+            <CohortComparisonCard
+              key={c.cohortId}
+              comparison={c}
+              school={schoolAverages}
+            />
           ))}
         </div>
       ) : null}
@@ -690,10 +703,17 @@ function ActivityIcon({ type }: { type: string }) {
 
 function CohortComparisonCard({
   comparison,
+  school,
 }: {
   comparison: StudentCohortComparison;
+  school: SchoolAverages;
 }) {
   const c = comparison;
+  const round1 = (x: number) => Math.round(x * 10) / 10;
+  const accSchoolDiff =
+    c.selfAccuracyPct !== null && school.avgAccuracyPct !== null
+      ? Math.round(c.selfAccuracyPct - school.avgAccuracyPct)
+      : null;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -730,33 +750,41 @@ function CohortComparisonCard({
           </div>
         </div>
         <p className="text-muted-foreground text-xs">
-          멤버 {c.memberCount}명 평균 기준
+          멤버 {c.memberCount}명 · 전체 {school.studentCount}명 평균 기준
         </p>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-3">
         <CompareChip
           label="정답률"
           self={c.selfAccuracyPct === null ? "—" : `${c.selfAccuracyPct}%`}
-          avg={c.avgAccuracyPct === null ? "—" : `${c.avgAccuracyPct}%`}
-          diff={c.diffAccuracyPct}
           unit="%p"
           higherIsBetter
+          cohortAvg={c.avgAccuracyPct === null ? "—" : `${c.avgAccuracyPct}%`}
+          cohortDiff={c.diffAccuracyPct}
+          schoolAvg={
+            school.avgAccuracyPct === null ? "—" : `${school.avgAccuracyPct}%`
+          }
+          schoolDiff={accSchoolDiff}
         />
         <CompareChip
           label="문제 풀이"
           self={`${c.selfProblemsAttempted}`}
-          avg={`${c.avgProblemsAttempted}`}
-          diff={c.diffProblemsAttempted}
           unit="문"
           higherIsBetter
+          cohortAvg={`${c.avgProblemsAttempted}`}
+          cohortDiff={c.diffProblemsAttempted}
+          schoolAvg={`${school.avgProblemsAttempted}`}
+          schoolDiff={round1(c.selfProblemsAttempted - school.avgProblemsAttempted)}
         />
         <CompareChip
           label="조문 열람"
           self={`${c.selfArticlesViewed}`}
-          avg={`${c.avgArticlesViewed}`}
-          diff={c.diffArticlesViewed}
           unit="조"
           higherIsBetter
+          cohortAvg={`${c.avgArticlesViewed}`}
+          cohortDiff={c.diffArticlesViewed}
+          schoolAvg={`${school.avgArticlesViewed}`}
+          schoolDiff={round1(c.selfArticlesViewed - school.avgArticlesViewed)}
         />
       </CardContent>
     </Card>
@@ -766,13 +794,57 @@ function CohortComparisonCard({
 function CompareChip({
   label,
   self,
+  unit,
+  higherIsBetter,
+  cohortAvg,
+  cohortDiff,
+  schoolAvg,
+  schoolDiff,
+}: {
+  label: string;
+  self: string;
+  unit: string;
+  higherIsBetter: boolean;
+  cohortAvg: string;
+  cohortDiff: number | null;
+  schoolAvg: string;
+  schoolDiff: number | null;
+}) {
+  return (
+    <div className="bg-muted/40 rounded-md border p-3">
+      <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+        {label}
+      </p>
+      <span className="mt-1 block text-lg font-bold tabular-nums">{self}</span>
+      <div className="mt-1.5 space-y-1">
+        <CompareLine
+          scope="반"
+          avg={cohortAvg}
+          diff={cohortDiff}
+          unit={unit}
+          higherIsBetter={higherIsBetter}
+        />
+        <CompareLine
+          scope="전체"
+          avg={schoolAvg}
+          diff={schoolDiff}
+          unit={unit}
+          higherIsBetter={higherIsBetter}
+        />
+      </div>
+    </div>
+  );
+}
+
+// "반 평균 50%  ▼ −4%p" 한 줄 — 반/전체 두 축을 같은 모양으로.
+function CompareLine({
+  scope,
   avg,
   diff,
   unit,
   higherIsBetter,
 }: {
-  label: string;
-  self: string;
+  scope: string;
   avg: string;
   diff: number | null;
   unit: string;
@@ -781,40 +853,32 @@ function CompareChip({
   const diffTone =
     diff === null
       ? "text-muted-foreground"
-      : (diff > 0) === higherIsBetter
-        ? "text-emerald-600 dark:text-emerald-400"
-        : diff === 0
-          ? "text-muted-foreground"
+      : diff === 0
+        ? "text-muted-foreground"
+        : (diff > 0) === higherIsBetter
+          ? "text-emerald-600 dark:text-emerald-400"
           : "text-rose-600 dark:text-rose-400";
   const DiffIcon =
-    diff === null
+    diff === null || diff === 0
       ? MinusIcon
       : diff > 0
         ? TrendingUpIcon
-        : diff < 0
-          ? TrendingDownIcon
-          : MinusIcon;
+        : TrendingDownIcon;
   const sign = diff === null || diff === 0 ? "" : diff > 0 ? "+" : "";
   return (
-    <div className="bg-muted/40 rounded-md border p-3">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
-        {label}
-      </p>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-lg font-bold tabular-nums">{self}</span>
-        <span className="text-muted-foreground text-xs tabular-nums">
-          평균 {avg}
-        </span>
-      </div>
-      <div
+    <div className="flex items-center justify-between gap-2 text-[11px]">
+      <span className="text-muted-foreground tabular-nums">
+        {scope} {avg}
+      </span>
+      <span
         className={cn(
-          "mt-1 inline-flex items-center gap-1 text-xs font-semibold tabular-nums",
+          "inline-flex items-center gap-0.5 font-semibold tabular-nums",
           diffTone,
         )}
       >
         <DiffIcon className="size-3" />
-        {diff === null ? "비교 불가" : `${sign}${diff}${unit}`}
-      </div>
+        {diff === null ? "—" : `${sign}${diff}${unit}`}
+      </span>
     </div>
   );
 }
