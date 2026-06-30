@@ -10,6 +10,7 @@ import {
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
+import { KakaoMap } from "~/features/home/components/kakao-map";
 
 import type { Route } from "./+types/location";
 
@@ -47,16 +48,13 @@ export default function Location() {
         </h1>
       </header>
 
-      {/* 지도 — 페이지 진입 시 바로 위치 노출 */}
+      {/* 지도 — 페이지 진입 시 바로 위치 노출(카카오맵, 실패 시 구글 폴백) */}
       <div className="border-border mb-5 overflow-hidden rounded-xl border shadow-sm">
-        <iframe
-          title="리담변리사학원 위치 지도"
-          src={MAP_EMBED_URL}
+        <KakaoMap
+          address="서울특별시 서초구 서초대로 131"
+          label="리담변리사학원 위치 지도"
+          fallbackSrc={MAP_EMBED_URL}
           className="block h-[320px] w-full md:h-[380px]"
-          style={{ border: 0 }}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          allowFullScreen
         />
       </div>
 
