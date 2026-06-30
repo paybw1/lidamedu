@@ -12,7 +12,7 @@ import {
   RefreshCcwIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useFetcher } from "react-router";
+import { Link, useFetcher, useLocation } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -107,6 +107,9 @@ export function OxQuestionsPanel({
   const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
   const attemptFetcher = useFetcher();
   const hideFetcher = useFetcher();
+  const location = useLocation();
+  // staff "수정" 진입 시, 저장 후 이 viewer(조문·노드·장 등)로 복귀하도록 현재 URL 을 carry.
+  const returnTo = `${location.pathname}${location.search}`;
   const startedAtRef = useRef<number>(Date.now());
   // 한 지문당 1회만 기록 (다시 풀기 → 동일 지문 재기록 방지). refId 단위.
   const recordedRefIdRef = useRef<string | null>(null);
@@ -438,7 +441,10 @@ export function OxQuestionsPanel({
             </Button>
             {isStaff ? (
               <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                <Link to={`/admin/problems/${cur.problemId}`} viewTransition>
+                <Link
+                  to={`/admin/problems/${cur.problemId}?returnTo=${encodeURIComponent(returnTo)}`}
+                  viewTransition
+                >
                   <PencilIcon className="size-3.5" /> 수정
                 </Link>
               </Button>

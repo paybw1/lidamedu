@@ -92,13 +92,20 @@ const FORM_ID = "admin-problem-edit-form";
 // returnTo 화이트리스트 — open-redirect 방지. admin-case-edit 의 safeReturnTo 와
 // 동일 패턴. 우리 도메인 안의 안전 경로만 허용:
 //   1) /admin/problems    — admin 목록·필터 보존 (?law=patent 등 query 포함)
-//   2) /subjects/<slug>/problems/<uuid> — 학생/공개 문제 viewer (viewer "수정" 진입점)
+//   2) /subjects/<slug>/<articles|chapters|systematic|cases|problems>/<id>
+//      — 학습과목 viewer (조문·장·체계도 노드·판례·문제). OX 패널 "수정" 진입점.
 function safeReturnTo(raw: unknown): string {
   if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//"))
     return "/admin/problems";
   if (/^\/admin\/problems(\/|\?|$)/.test(raw)) return raw;
-  if (/^\/subjects\/[a-z_-]+\/problems\/[a-f0-9-]+(\?|#|$)/i.test(raw))
+  if (
+    /^\/subjects\/[a-z_-]+\/(articles|chapters|systematic|cases|problems)\/[^/?#]+(\/|\?|#|$)/i.test(
+      raw,
+    )
+  )
     return raw;
+  // 과목 개요 OX 탭(/subjects/<slug>/ox) — id 세그먼트 없음.
+  if (/^\/subjects\/[a-z_-]+\/ox(\/|\?|#|$)/i.test(raw)) return raw;
   return "/admin/problems";
 }
 
