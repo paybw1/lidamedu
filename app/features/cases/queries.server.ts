@@ -190,63 +190,79 @@ export async function listCasesBySubject(
     return { items: [], total: 0 };
   }
 
-  let q = client
-    .from("cases")
-    .select(LIST_COLUMNS, { count: "exact" })
-    .contains("subject_laws", [lawCode])
-    .is("deleted_at", null);
+  // 필터·정렬이 적용된 빌더 — 페이지마다 새로 생성(빌더 재사용 금지). ★ case_id 를
+  //   마지막 정렬 키로 붙여(비유일 정렬에도) 페이지 경계가 흔들리지 않게 한다.
+  const buildQuery = () => {
+    let q = client
+      .from("cases")
+      .select(LIST_COLUMNS, { count: "exact" })
+      .contains("subject_laws", [lawCode])
+      .is("deleted_at", null);
 
-  if (restrictIds !== null) {
-    q = q.in("case_id", restrictIds);
-  }
+    if (restrictIds !== null) {
+      q = q.in("case_id", restrictIds);
+    }
 
-  const trimmed = options.query?.trim();
-  if (trimmed) {
-    // pg_trgm + ilike 다중 컬럼 — 사건번호·사건명·닉네임·유형·요지·판시이유·코멘트 본문.
-    // tsvector FTS 는 고도화 시점에 도입 (feat-4-A-208 P1+).
-    const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
-    const pattern = `%${escaped}%`;
-    q = q.or(
-      `case_number.ilike.${pattern},case_title.ilike.${pattern},nickname.ilike.${pattern},case_type.ilike.${pattern},summary_title.ilike.${pattern},summary_body_md.ilike.${pattern},reasoning_md.ilike.${pattern},comment_body_md.ilike.${pattern}`,
-    );
-  }
-  if (options.court && options.court !== "all") {
-    q = q.eq("court", options.court);
-  }
-  if (options.importanceMin && options.importanceMin > 0) {
-    q = q.gte("importance", options.importanceMin);
-  }
-  // 1차 기출(exam_1st/exam_both)은 위 restrictIds 로 이미 한정됨.
-  // 2차 기출은 종전대로 exam_2nd_years 컬럼 기반.
-  if (options.examFilter === "exam_2nd" || options.examFilter === "exam_both") {
-    q = q.not("exam_2nd_years", "eq", "{}");
-  }
+    const trimmed = options.query?.trim();
+    if (trimmed) {
+      // pg_trgm + ilike 다중 컬럼 — 사건번호·사건명·닉네임·유형·요지·판시이유·코멘트 본문.
+      const escaped = trimmed.replaceAll("%", "").replaceAll(",", " ");
+      const pattern = `%${escaped}%`;
+      q = q.or(
+        `case_number.ilike.${pattern},case_title.ilike.${pattern},nickname.ilike.${pattern},case_type.ilike.${pattern},summary_title.ilike.${pattern},summary_body_md.ilike.${pattern},reasoning_md.ilike.${pattern},comment_body_md.ilike.${pattern}`,
+      );
+    }
+    if (options.court && options.court !== "all") {
+      q = q.eq("court", options.court);
+    }
+    if (options.importanceMin && options.importanceMin > 0) {
+      q = q.gte("importance", options.importanceMin);
+    }
+    // 1차 기출(exam_1st/exam_both)은 위 restrictIds 로 이미 한정됨.
+    // 2차 기출은 종전대로 exam_2nd_years 컬럼 기반.
+    if (
+      options.examFilter === "exam_2nd" ||
+      options.examFilter === "exam_both"
+    ) {
+      q = q.not("exam_2nd_years", "eq", "{}");
+    }
 
-  switch (options.sort ?? "decided_desc") {
-    case "decided_asc":
-      q = q.order("decided_at", { ascending: true });
-      break;
-    case "case_no":
-      q = q.order("case_number", { ascending: true });
-      break;
-    case "source_asc":
-      // 원본 자료 순서 — cases.source_seq (precedents.json seqInSection 백필).
-      // NULLs(시드에 없는 staff 직접 등록 case)는 끝으로 보내고 case_number tie-break.
-      q = q
-        .order("source_seq", { ascending: true, nullsFirst: false })
-        .order("case_number", { ascending: true });
-      break;
-    default:
-      q = q.order("decided_at", { ascending: false });
-  }
+    switch (options.sort ?? "decided_desc") {
+      case "decided_asc":
+        q = q.order("decided_at", { ascending: true });
+        break;
+      case "case_no":
+        q = q.order("case_number", { ascending: true });
+        break;
+      case "source_asc":
+        // 원본 자료 순서 — cases.source_seq (precedents.json seqInSection 백필).
+        q = q
+          .order("source_seq", { ascending: true, nullsFirst: false })
+          .order("case_number", { ascending: true });
+        break;
+      default:
+        q = q.order("decided_at", { ascending: false });
+    }
+    return q.order("case_id", { ascending: true });
+  };
 
-  const { data, error, count } = await q.range(0, CASE_LIST_MAX - 1);
-  if (error) throw error;
+  // PostgREST max-rows=1000 — CASE_LIST_MAX 까지 페이지로 수집(단일 range 는 1000 에서
+  //   잘려, 과목 판례가 1000 넘으면 조용히 누락되던 잠재 버그).
+  const PAGE = 1000;
+  const rows: NonNullable<Awaited<ReturnType<typeof buildQuery>>["data"]> = [];
+  let total = 0;
+  for (let offset = 0; offset < CASE_LIST_MAX; offset += PAGE) {
+    const to = Math.min(offset + PAGE, CASE_LIST_MAX) - 1;
+    const { data, error, count } = await buildQuery().range(offset, to);
+    if (error) throw error;
+    if (count != null) total = count;
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < to - offset + 1) break;
+  }
   return {
-    items: (data ?? []).map((r) =>
-      rowToListItem(r as CaseListRow, examProblemsByCase),
-    ),
-    total: count ?? 0,
+    items: rows.map((r) => rowToListItem(r as CaseListRow, examProblemsByCase)),
+    total,
   };
 }
 
@@ -428,12 +444,27 @@ export async function computeCaseOverallOrder(
   }
 
   // 노드 내 순서 키 = source_asc(원본 순서: source_seq nulls last → 사건번호). 미배치는 맨 뒤.
-  const { data: caseRows } = await client
-    .from("cases")
-    .select("case_id, source_seq, case_number")
-    .contains("subject_laws", [lawCode])
-    .is("deleted_at", null)
-    .range(0, CASE_LIST_MAX - 1);
+  // PostgREST max-rows=1000 — CASE_LIST_MAX 까지 페이지로 수집(단일 range 는 1000 캡).
+  const CASE_PAGE = 1000;
+  const caseRows: Array<{
+    case_id: string;
+    source_seq: number | null;
+    case_number: string | null;
+  }> = [];
+  for (let offset = 0; offset < CASE_LIST_MAX; offset += CASE_PAGE) {
+    const to = Math.min(offset + CASE_PAGE, CASE_LIST_MAX) - 1;
+    const { data, error } = await client
+      .from("cases")
+      .select("case_id, source_seq, case_number")
+      .contains("subject_laws", [lawCode])
+      .is("deleted_at", null)
+      .order("case_id", { ascending: true })
+      .range(offset, to);
+    if (error) throw error;
+    const batch = data ?? [];
+    caseRows.push(...batch);
+    if (batch.length < to - offset + 1) break;
+  }
   const UNPLACED = nodeOrder.length;
   const ordered = (caseRows ?? [])
     .map((c) => ({
