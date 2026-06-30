@@ -293,8 +293,8 @@ function SimpleDropdown({
         {label}
       </NavigationMenuTrigger>
       <NavigationMenuContent>
-        {/* 가로 1줄 — 좌측 정렬(넓은 항목이 화면 밖으로 나가지 않게). 너무 길면 가로 스크롤. */}
-        <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
+        {/* 세로 목록 — 좌측 정렬, 항목 많으면 세로 스크롤. */}
+        <div className="flex max-h-[calc(100vh-7rem)] w-max max-w-[calc(100vw-2rem)] flex-col items-start gap-1 overflow-y-auto p-3">
           {items.map((item) => (
             <NavigationMenuLink asChild key={item.to}>
               <Link
@@ -311,7 +311,7 @@ function SimpleDropdown({
   );
 }
 
-// 학습과목 드롭다운 — V5 (chip 가로 1줄). 항목 = SUBJECT_NAV_ITEMS (SSOT).
+// 학습과목 드롭다운 — chip 세로 목록. 항목 = SUBJECT_NAV_ITEMS (SSOT).
 function SubjectsDropdown({ locked }: { locked: boolean }) {
   return (
     <NavigationMenuItem>
@@ -322,8 +322,8 @@ function SubjectsDropdown({ locked }: { locked: boolean }) {
         학습과목
       </NavigationMenuTrigger>
       <NavigationMenuContent>
-        {/* 1/2차 구분 없는 평면 6과목 — 가로 1줄(좌측 정렬) */}
-        <div className="flex w-max max-w-[calc(100vw-2rem)] items-center gap-1.5 overflow-x-auto p-3">
+        {/* 1/2차 구분 없는 평면 6과목 — 세로 목록(좌측 정렬) */}
+        <div className="flex max-h-[calc(100vh-7rem)] w-max max-w-[calc(100vw-2rem)] flex-col items-start gap-1 overflow-y-auto p-3">
           {SUBJECT_NAV_ITEMS.map((item) => (
             <NavigationMenuLink asChild key={item.href}>
               <Link
