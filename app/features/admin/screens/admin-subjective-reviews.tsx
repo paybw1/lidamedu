@@ -70,7 +70,7 @@ export default function AdminSubjectiveReviews({
 
   return (
     <AdminShell
-      cluster="comms"
+      cluster="gs"
       role={role}
       title="주관식 첨삭 큐"
       desc={
