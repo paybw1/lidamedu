@@ -28,6 +28,9 @@ export default function Footer() {
       <div className="mx-auto w-full max-w-screen-2xl space-y-3 px-5 md:px-10">
         {/* 약관·정책 링크 */}
         <nav className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium *:hover:underline">
+          <Link to="/about" viewTransition>
+            소개
+          </Link>
           <Link to="/legal/terms-of-service" viewTransition>
             이용약관
           </Link>

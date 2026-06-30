@@ -218,6 +218,7 @@ export default [
   // Pages with top navigation + footer
   layout("core/layouts/navigation.layout.tsx", [
     index("features/home/screens/home.tsx"),
+    route("/about", "features/home/screens/about.tsx"),
     route("/auth/confirm", "features/auth/screens/confirm.tsx"),
     route("/new-password", "features/auth/screens/new-password.tsx"),
     route("/error", "core/screens/error.tsx"),
