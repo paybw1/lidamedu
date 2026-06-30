@@ -15,9 +15,14 @@ export function stripLeadingMarker(text: string): string {
   return s;
 }
 
-// dedup 시그니처: 앞 번호 제거 + 모든 공백 제거 (감사 ox-dup-audit.mjs 와 동일 정규화).
+// dedup 시그니처: 앞 번호 제거 + NFKC 정규화 + 공백·구두점·기호 전부 제거.
+// 같은 지문의 사소한 표기차(쉼표·괄호·따옴표·전각/반각·마침표 유무)도 한 그룹으로 합치기
+// 위함 — 예전엔 공백만 제거해 "…경우에, 심결" vs "…경우에 심결" 이 따로 떠 중복으로 보였다.
+// (O/X 모순 그룹은 dedupeOxByBody 에서 별도 가드로 분리 노출하므로 과병합 위험 낮음.)
 export function normalizeOxBody(text: string): string {
-  return stripLeadingMarker(text).replace(/\s+/g, "");
+  return stripLeadingMarker(text)
+    .normalize("NFKC")
+    .replace(/[\s\p{P}\p{S}]/gu, "");
 }
 
 // 대표 선정 우선순위(클수록 우선): 승인>초안, 기출>변형>예상>모의>AI, 최신 연도, refId 안정정렬.
