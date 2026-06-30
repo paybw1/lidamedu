@@ -387,11 +387,16 @@ export async function getSubjectAxisCounts(
       .select("*", { count: "exact", head: true })
       .contains("subject_laws", [lawCode])
       .is("deleted_at", null),
+    // ★ 학습과목 문제탭 목록(listProblemsBySubject 기본)과 동일 가시성 필터로 카운트한다.
+    //   review_status='approved'(검토 대기 draft 제외) + 미공개 mock 제외 → 탭 배지 수가
+    //   실제 목록 수(예: 특허 1106)와 일치(이전엔 1112로 draft 6 포함되어 불일치).
     client
       .from("problems")
       .select("*", { count: "exact", head: true })
       .eq("law_id", lawId)
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      .eq("review_status", "approved")
+      .or("origin.neq.mock,released_at.not.is.null"),
   ]);
   return {
     articles: articles.count ?? 0,
