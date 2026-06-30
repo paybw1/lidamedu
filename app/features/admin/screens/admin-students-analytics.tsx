@@ -6,12 +6,14 @@ import {
   AlertTriangleIcon,
   ArrowRightIcon,
   BookOpenIcon,
+  ChevronDownIcon,
   Loader2Icon,
+  MessageSquareIcon,
   TargetIcon,
   TrendingUpIcon,
   UsersIcon,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
 
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
@@ -22,7 +24,9 @@ import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Bar, Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 import {
   type AllStudentsOverview,
+  type OverallWeakNode,
   type OverallWeaknessResult,
+  type WeakNodeBreakdown,
   getAllStudentsOverview,
 } from "~/features/admin/queries/all-students-overview.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -304,40 +308,184 @@ function OverallWeakNodes() {
       ) : (
         <div className="border-border bg-card divide-border/60 divide-y overflow-hidden rounded-xl border shadow-sm">
           {result.nodes.map((n, i) => (
-            <div
-              key={`${n.lawCode}:${n.nodeId}`}
-              className="flex items-center gap-3 px-3.5 py-2.5"
-            >
-              <span className="text-muted-foreground w-4 shrink-0 text-right font-mono text-xs font-bold tabular-nums">
-                {i + 1}
-              </span>
-              <Chip tone="neutral" className="shrink-0">
-                {n.lawName}
-              </Chip>
-              <div className="min-w-0 flex-1">
-                <p className="text-foreground truncate text-[13px] font-semibold">
-                  {n.displayLabel}
-                </p>
-                <p className="text-muted-foreground text-[11px]">
-                  {n.distinctStudents}명 · {n.attempts}회 풀이
-                </p>
-              </div>
-              <div className="hidden w-28 shrink-0 sm:block">
-                <Bar value={n.accuracyPct} tone="auto" className="h-2" />
-              </div>
-              <span
-                className={cn(
-                  "w-10 shrink-0 text-right font-mono text-xs font-bold tabular-nums",
-                  accuracyTone(n.accuracyPct),
-                )}
-              >
-                {n.accuracyPct}%
-              </span>
-            </div>
+            <WeakNodeRow key={`${n.lawCode}:${n.nodeId}`} node={n} index={i} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+// 약점 단원 한 행 — 펼치면 그 단원이 약한 반·학생을 지연 로드(역추적).
+function WeakNodeRow({ node, index }: { node: OverallWeakNode; index: number }) {
+  const [open, setOpen] = useState(false);
+  const fetcher = useFetcher<WeakNodeBreakdown>();
+  const detailUrl = `/admin/analytics/students/weak-nodes/${node.lawCode}/${node.nodeId}`;
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && fetcher.state === "idle" && fetcher.data === undefined) {
+      fetcher.load(detailUrl);
+    }
+  }
+
+  const loading = open && (fetcher.state !== "idle" || fetcher.data === undefined);
+  const detail = fetcher.data;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="hover:bg-muted/40 flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors"
+      >
+        <span className="text-muted-foreground w-4 shrink-0 text-right font-mono text-xs font-bold tabular-nums">
+          {index + 1}
+        </span>
+        <Chip tone="neutral" className="shrink-0">
+          {node.lawName}
+        </Chip>
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground truncate text-[13px] font-semibold">
+            {node.displayLabel}
+          </p>
+          <p className="text-muted-foreground text-[11px]">
+            {node.distinctStudents}명 · {node.attempts}회 풀이
+          </p>
+        </div>
+        <div className="hidden w-28 shrink-0 sm:block">
+          <Bar value={node.accuracyPct} tone="auto" className="h-2" />
+        </div>
+        <span
+          className={cn(
+            "w-10 shrink-0 text-right font-mono text-xs font-bold tabular-nums",
+            accuracyTone(node.accuracyPct),
+          )}
+        >
+          {node.accuracyPct}%
+        </span>
+        <ChevronDownIcon
+          className={cn(
+            "text-muted-foreground size-4 shrink-0 transition-transform",
+            open ? "rotate-0" : "-rotate-90",
+          )}
+        />
+      </button>
+      {open ? (
+        <div className="bg-muted/30 border-border/60 border-t px-3.5 py-3">
+          {loading ? (
+            <p className="text-muted-foreground flex items-center gap-2 py-2 text-xs">
+              <Loader2Icon className="size-3.5 animate-spin" />
+              약한 반·학생 분석 중…
+            </p>
+          ) : !detail || !detail.found ? (
+            <p className="text-muted-foreground py-2 text-xs">
+              이 단원을 푼 학생 데이터가 없습니다.
+            </p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <WeakNodeCohorts rows={detail.cohorts} />
+              <WeakNodeStudents rows={detail.students} />
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function WeakNodeCohorts({
+  rows,
+}: {
+  rows: WeakNodeBreakdown["cohorts"];
+}) {
+  return (
+    <div>
+      <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.08em] uppercase">
+        약한 반
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground text-xs">해당 없음</p>
+      ) : (
+        <ul className="space-y-1">
+          {rows.map((c) => (
+            <li key={c.cohortId} className="flex items-center gap-2 text-[13px]">
+              <Link
+                to={`/admin/cohorts/${c.cohortId}/stats`}
+                className="text-foreground min-w-0 flex-1 truncate font-medium hover:underline"
+                viewTransition
+              >
+                {c.name}
+              </Link>
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {c.distinctStudents}명
+              </span>
+              <span
+                className={cn(
+                  "w-9 text-right font-mono text-xs font-bold tabular-nums",
+                  accuracyTone(c.accuracyPct),
+                )}
+              >
+                {c.accuracyPct}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function WeakNodeStudents({
+  rows,
+}: {
+  rows: WeakNodeBreakdown["students"];
+}) {
+  return (
+    <div>
+      <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.08em] uppercase">
+        약한 학생 (정답률 낮은 순)
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground text-xs">해당 없음</p>
+      ) : (
+        <ul className="space-y-1">
+          {rows.slice(0, 8).map((s) => (
+            <li key={s.profileId} className="flex items-center gap-2 text-[13px]">
+              <Link
+                to={`/admin/students/${s.profileId}`}
+                className="text-foreground min-w-0 flex-1 truncate font-medium hover:underline"
+                viewTransition
+              >
+                {s.name || "(이름없음)"}
+              </Link>
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {s.attempts}회
+              </span>
+              <span
+                className={cn(
+                  "w-9 text-right font-mono text-xs font-bold tabular-nums",
+                  accuracyTone(s.accuracyPct),
+                )}
+              >
+                {s.accuracyPct}%
+              </span>
+              <Link
+                to={`/admin/students/${s.profileId}#notes`}
+                className="text-link inline-flex shrink-0"
+                aria-label={`${s.name} 상담`}
+                title="상담 메모"
+                viewTransition
+              >
+                <MessageSquareIcon className="size-3.5" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

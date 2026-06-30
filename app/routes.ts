@@ -779,6 +779,11 @@ export default [
         "/admin/analytics/students/weak-nodes",
         "features/admin/screens/admin-students-weak-nodes.tsx",
       ),
+      // ⑥-드릴다운: 한 약점 단원 → 약한 반·학생(지연 로드 리소스 라우트).
+      route(
+        "/admin/analytics/students/weak-nodes/:lawCode/:nodeId",
+        "features/admin/screens/admin-weak-node-detail.tsx",
+      ),
       route(
         "/admin/exam-results",
         "features/exam-results/screens/admin-exam-results.tsx",

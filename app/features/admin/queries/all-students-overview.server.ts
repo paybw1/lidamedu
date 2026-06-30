@@ -19,9 +19,11 @@ import { listCohorts } from "~/features/cohorts/queries.server";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
 import {
+  buildProblemNodeAttribution,
   fetchLatestAttemptsForProfiles,
   weakNodesFromLatestAttempts,
 } from "./cohort-weakness.server";
@@ -257,6 +259,126 @@ export async function getAllStudentsWeakNodes(opts?: {
   }
   merged.sort((a, b) => b.weaknessScore - a.weaknessScore);
   return { populationSize, threshold, nodes: merged.slice(0, limit) };
+}
+
+/* ── ⑥-드릴다운: 한 약점 단원 → 약한 반·학생 역추적 ──────────────────── */
+
+export interface WeakNodeCohortRow {
+  cohortId: string;
+  name: string;
+  accuracyPct: number;
+  distinctStudents: number;
+  attempts: number;
+}
+
+export interface WeakNodeStudentRow {
+  profileId: string;
+  name: string;
+  accuracyPct: number;
+  attempts: number;
+  cohortNames: string[];
+}
+
+export interface WeakNodeBreakdown {
+  found: boolean;
+  cohorts: WeakNodeCohortRow[]; // 정답률 낮은 반 우선
+  students: WeakNodeStudentRow[]; // 정답률 낮은 학생 우선
+}
+
+// 한 약점 단원(lawCode+nodeId)에 대해 그 단원 문제를 푼 반별 정답률 + 학생 명단.
+// manager+ 전용 화면에서만 호출(개인 식별 노출 — 약관 제7조 근거). 시도 스캔 1회.
+export async function getWeakNodeBreakdown(
+  lawCode: LawSubjectSlug,
+  nodeId: string,
+): Promise<WeakNodeBreakdown> {
+  const admin = adminClient as SupabaseClient<Database>;
+
+  const cohorts = await listCohorts(admin, { includeArchived: false });
+  if (cohorts.length === 0) return { found: false, cohorts: [], students: [] };
+  const cohortNameById = new Map(cohorts.map((c) => [c.cohortId, c.name]));
+
+  const { data: memberRows, error } = await admin
+    .from("cohort_members")
+    .select("cohort_id, profile_id, profiles!cohort_members_profile_id_fkey(name)")
+    .in(
+      "cohort_id",
+      cohorts.map((c) => c.cohortId),
+    );
+  if (error) throw error;
+  const nameById = new Map<string, string>();
+  const cohortsByProfile = new Map<
+    string,
+    Array<{ cohortId: string; name: string }>
+  >();
+  for (const m of memberRows ?? []) {
+    if (!nameById.has(m.profile_id))
+      nameById.set(m.profile_id, m.profiles?.name ?? "");
+    const cn = cohortNameById.get(m.cohort_id);
+    if (!cn) continue;
+    const arr = cohortsByProfile.get(m.profile_id) ?? [];
+    arr.push({ cohortId: m.cohort_id, name: cn });
+    cohortsByProfile.set(m.profile_id, arr);
+  }
+  const userIds = [...nameById.keys()];
+  if (userIds.length === 0) return { found: false, cohorts: [], students: [] };
+
+  const latest = await fetchLatestAttemptsForProfiles(admin, userIds);
+  const attemptedIds = [
+    ...new Set([...latest.values()].map((v) => v.problemId)),
+  ];
+  const { problemNodes } = await buildProblemNodeAttribution(
+    admin,
+    attemptedIds,
+    lawCode,
+  );
+
+  // 이 노드에 속한 문제만 — 학생·반 단위 집계.
+  const perStudent = new Map<string, { attempts: number; correct: number }>();
+  const perCohort = new Map<
+    string,
+    { attempts: number; correct: number; students: Set<string> }
+  >();
+  for (const v of latest.values()) {
+    const nodeIds = problemNodes.get(v.problemId);
+    if (!nodeIds || !nodeIds.includes(nodeId)) continue;
+    const s = perStudent.get(v.userId) ?? { attempts: 0, correct: 0 };
+    s.attempts++;
+    if (v.correct) s.correct++;
+    perStudent.set(v.userId, s);
+    for (const c of cohortsByProfile.get(v.userId) ?? []) {
+      const cc = perCohort.get(c.cohortId) ?? {
+        attempts: 0,
+        correct: 0,
+        students: new Set<string>(),
+      };
+      cc.attempts++;
+      if (v.correct) cc.correct++;
+      cc.students.add(v.userId);
+      perCohort.set(c.cohortId, cc);
+    }
+  }
+
+  const students: WeakNodeStudentRow[] = [...perStudent.entries()]
+    .map(([pid, s]) => ({
+      profileId: pid,
+      name: nameById.get(pid) ?? "",
+      accuracyPct: Math.round((s.correct / s.attempts) * 100),
+      attempts: s.attempts,
+      cohortNames: (cohortsByProfile.get(pid) ?? []).map((c) => c.name),
+    }))
+    .sort((a, b) => a.accuracyPct - b.accuracyPct || b.attempts - a.attempts);
+
+  const cohortRows: WeakNodeCohortRow[] = [...perCohort.entries()]
+    .map(([cid, c]) => ({
+      cohortId: cid,
+      name: cohortNameById.get(cid) ?? "",
+      accuracyPct: Math.round((c.correct / c.attempts) * 100),
+      distinctStudents: c.students.size,
+      attempts: c.attempts,
+    }))
+    .sort((a, b) => a.accuracyPct - b.accuracyPct);
+
+  return { found: students.length > 0, cohorts: cohortRows, students };
 }
 
 function emptyOverview(cohortCount = 0): AllStudentsOverview {

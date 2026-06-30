@@ -106,24 +106,24 @@ export async function fetchLatestAttemptsForProfiles(
   return latest;
 }
 
-// latest 맵 + 과목 → 약점 노드. "공통" 가드 threshold(시도 학생 수)는 호출자가 모집단
-// 정책(반 인원 비율 / 전체 학원 비율)에 맞춰 산정해 전달한다. 같은 latest 맵으로 5과목을
-// 반복 호출하면 시도 스캔 1회로 전과목 약점을 얻는다(getAllStudentsWeakNodes).
-export async function weakNodesFromLatestAttempts(
+// 시도된 문제들을 (이 과목의) 체계도 노드로 귀속. primary_node_id 직접 우선,
+// 없으면 primary_article_id→article_systematic_links 파생. node 라벨 맵도 함께.
+// 약점 집계·노드 역추적(getWeakNodeBreakdown) 공용.
+export async function buildProblemNodeAttribution(
   client: SupabaseClient<Database>,
-  latest: Map<string, LatestAttempt>,
+  attemptedIds: string[],
   lawCode: LawSubjectSlug,
-  opts: { threshold: number; minAttempts?: number; limit?: number },
-): Promise<CohortWeakNode[]> {
-  const minAttempts = opts.minAttempts ?? 5;
-  const limit = opts.limit ?? 12;
+): Promise<{
+  problemNodes: Map<string, string[]>;
+  nodeLabel: Map<string, string>;
+}> {
+  const problemNodes = new Map<string, string[]>();
+  const nodeLabel = new Map<string, string>();
 
-  // 과목 + 체계도 스켈레톤 → article→node(s), node 라벨.
   const law = await getLawByCode(client, lawCode);
-  if (!law) return [];
+  if (!law) return { problemNodes, nodeLabel };
   const skeleton = await getSystematicSkeleton(client, lawCode);
   const articleToNodes = new Map<string, string[]>();
-  const nodeLabel = new Map<string, string>();
   for (const n of skeleton) {
     if (n.caseOnly) continue;
     nodeLabel.set(n.nodeId, n.displayLabel);
@@ -134,11 +134,6 @@ export async function weakNodesFromLatestAttempts(
     }
   }
 
-  // 시도된 문제의 노드 귀속(이 과목만).
-  const attemptedIds = [
-    ...new Set([...latest.values()].map((v) => v.problemId)),
-  ];
-  const problemNodes = new Map<string, string[]>();
   for (let i = 0; i < attemptedIds.length; i += 200) {
     const slice = attemptedIds.slice(i, i + 200);
     const { data } = await client
@@ -159,6 +154,30 @@ export async function weakNodesFromLatestAttempts(
       );
     }
   }
+  return { problemNodes, nodeLabel };
+}
+
+// latest 맵 + 과목 → 약점 노드. "공통" 가드 threshold(시도 학생 수)는 호출자가 모집단
+// 정책(반 인원 비율 / 전체 학원 비율)에 맞춰 산정해 전달한다. 같은 latest 맵으로 5과목을
+// 반복 호출하면 시도 스캔 1회로 전과목 약점을 얻는다(getAllStudentsWeakNodes).
+export async function weakNodesFromLatestAttempts(
+  client: SupabaseClient<Database>,
+  latest: Map<string, LatestAttempt>,
+  lawCode: LawSubjectSlug,
+  opts: { threshold: number; minAttempts?: number; limit?: number },
+): Promise<CohortWeakNode[]> {
+  const minAttempts = opts.minAttempts ?? 5;
+  const limit = opts.limit ?? 12;
+
+  // 시도된 문제의 노드 귀속(이 과목만).
+  const attemptedIds = [
+    ...new Set([...latest.values()].map((v) => v.problemId)),
+  ];
+  const { problemNodes, nodeLabel } = await buildProblemNodeAttribution(
+    client,
+    attemptedIds,
+    lawCode,
+  );
 
   // 노드별 집계.
   const agg = new Map<
