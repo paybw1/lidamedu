@@ -94,56 +94,70 @@ export async function listProblemsBySubject(
     .maybeSingle();
   if (!law) return [];
 
-  let query = client
-    .from("problems")
-    .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
-    )
-    .eq("law_id", law.law_id)
-    .is("deleted_at", null);
+  // 필터가 적용된 기본 쿼리 빌더 — 페이징 루프에서 매 페이지 새로 생성(빌더 재사용 금지).
+  const buildQuery = () => {
+    let query = client
+      .from("problems")
+      .select(
+        "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
+      )
+      .eq("law_id", law.law_id)
+      .is("deleted_at", null);
 
-  // feat-10-002: 미공개 mock 문제(origin=mock·released_at null)는 학습과목 비노출.
-  // staff 문제 관리 화면(admin-problems-list)만 includeHiddenMock 으로 우회한다.
-  if (!opts.includeHiddenMock) {
-    query = query.or("origin.neq.mock,released_at.not.is.null");
-  }
+    // feat-10-002: 미공개 mock 문제(origin=mock·released_at null)는 학습과목 비노출.
+    // staff 문제 관리 화면(admin-problems-list)만 includeHiddenMock 으로 우회한다.
+    if (!opts.includeHiddenMock) {
+      query = query.or("origin.neq.mock,released_at.not.is.null");
+    }
 
-  // feat — 강사 검증 게이트. review_status='approved' 만 학생 노출. 기존 풀은 마이그
-  //   에서 일괄 approved backfill, 신규 (AI ai_draft + 수기) 만 draft 시작. staff 검증
-  //   화면은 includeUnapproved 로 우회.
-  if (!opts.includeUnapproved) {
-    query = query.eq("review_status", "approved");
-  }
+    // feat — 강사 검증 게이트. review_status='approved' 만 학생 노출. 기존 풀은 마이그
+    //   에서 일괄 approved backfill, 신규 (AI ai_draft + 수기) 만 draft 시작. staff 검증
+    //   화면은 includeUnapproved 로 우회.
+    if (!opts.includeUnapproved) {
+      query = query.eq("review_status", "approved");
+    }
 
-  if (filters.origins && filters.origins.length > 0) {
-    query = query.in("origin", filters.origins);
-  } else if (filters.origin) {
-    query = query.eq("origin", filters.origin);
-  }
-  if (filters.format) query = query.eq("format", filters.format);
-  if (filters.polarity) query = query.eq("polarity", filters.polarity);
-  if (filters.scope) query = query.eq("scope", filters.scope);
-  if (filters.examRound) query = query.eq("exam_round", filters.examRound);
-  if (filters.year != null) query = query.eq("year", filters.year);
-  if (filters.search && filters.search.trim().length > 0) {
-    // PostgREST .ilike() — % 와 _ 만 와일드카드로 escape 후 양쪽 % 추가.
-    const safe = filters.search.trim().replace(/[%_]/g, (m) => `\\${m}`);
-    query = query.ilike("body_md", `%${safe}%`);
-  }
-  if (filters.primaryArticleId)
-    query = query.eq("primary_article_id", filters.primaryArticleId);
-  if (filters.reviewStatus === "reviewed")
-    query = query.not("reviewed_at", "is", null);
-  else if (filters.reviewStatus === "pending")
-    query = query.is("reviewed_at", null);
-  else if (filters.reviewStatus === "mismatch")
-    query = query.not("mismatch_flagged_at", "is", null);
+    if (filters.origins && filters.origins.length > 0) {
+      query = query.in("origin", filters.origins);
+    } else if (filters.origin) {
+      query = query.eq("origin", filters.origin);
+    }
+    if (filters.format) query = query.eq("format", filters.format);
+    if (filters.polarity) query = query.eq("polarity", filters.polarity);
+    if (filters.scope) query = query.eq("scope", filters.scope);
+    if (filters.examRound) query = query.eq("exam_round", filters.examRound);
+    if (filters.year != null) query = query.eq("year", filters.year);
+    if (filters.search && filters.search.trim().length > 0) {
+      // PostgREST .ilike() — % 와 _ 만 와일드카드로 escape 후 양쪽 % 추가.
+      const safe = filters.search.trim().replace(/[%_]/g, (m) => `\\${m}`);
+      query = query.ilike("body_md", `%${safe}%`);
+    }
+    if (filters.primaryArticleId)
+      query = query.eq("primary_article_id", filters.primaryArticleId);
+    if (filters.reviewStatus === "reviewed")
+      query = query.not("reviewed_at", "is", null);
+    else if (filters.reviewStatus === "pending")
+      query = query.is("reviewed_at", null);
+    else if (filters.reviewStatus === "mismatch")
+      query = query.not("mismatch_flagged_at", "is", null);
 
-  const { data, error } = await query.order("created_at", {
-    ascending: true,
-  });
-  if (error) throw error;
-  const rows = data ?? [];
+    return query;
+  };
+
+  // PostgREST 기본 max-rows=1000 — 페이지로 끝까지 수집(특허 1112문항 등 1000 초과 과목이
+  //   1000 에서 잘리던 버그). ★ created_at 은 비유일 → problem_id 타이브레이커로 안정 페이징.
+  const PAGE = 1000;
+  const rows: NonNullable<Awaited<ReturnType<typeof buildQuery>>["data"]> = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await buildQuery()
+      .order("created_at", { ascending: true })
+      .order("problem_id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length < PAGE) break;
+  }
 
   // unclassified choice 카운트 — mc_box 는 choice 자체가 보기묶음(예: "㉮㉯") 이라 분류 불필요 → 제외.
   // 동시에 choice 해설에 표/이미지가 있는지도 같이 검출 (해설은 problem-level + choice-level + box-level 어디든 들어감).
