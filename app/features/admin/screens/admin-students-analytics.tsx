@@ -9,7 +9,9 @@ import {
   ChevronDownIcon,
   Loader2Icon,
   MessageSquareIcon,
+  MinusIcon,
   TargetIcon,
+  TrendingDownIcon,
   TrendingUpIcon,
   UsersIcon,
 } from "lucide-react";
@@ -87,6 +89,37 @@ function pct1(x: number | null): string {
 }
 function ratePct(x: number | null): string {
   return x === null ? "—" : `${Math.round(x * 100)}%`;
+}
+
+// 추세 델타 배지 — 양수 상승(에메랄드)·음수 하락(로즈)·0 보합·null 표본부족.
+function DeltaBadge({ value, unit }: { value: number | null; unit: string }) {
+  if (value === null) {
+    return <span className="text-muted-foreground/50 text-xs">—</span>;
+  }
+  if (value === 0) {
+    return (
+      <span className="text-muted-foreground inline-flex items-center gap-0.5 font-mono text-xs tabular-nums">
+        <MinusIcon className="size-3" />0
+      </span>
+    );
+  }
+  const up = value > 0;
+  const Icon = up ? TrendingUpIcon : TrendingDownIcon;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 font-mono text-xs font-bold tabular-nums",
+        up
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "text-rose-600 dark:text-rose-400",
+      )}
+    >
+      <Icon className="size-3" />
+      {up ? "+" : "−"}
+      {Math.abs(value)}
+      {unit}
+    </span>
+  );
 }
 
 export default function AdminStudentsAnalytics({
@@ -498,7 +531,8 @@ function CohortComparison({ o }: { o: AllStudentsOverview }) {
         <div>
           <h2 className="text-sm font-bold tracking-tight">반별 비교</h2>
           <p className="text-muted-foreground text-xs">
-            정답률 낮은(가장 지원이 필요한) 반이 위로. 반 이름을 누르면 상세 통계.
+            정답률 낮은(가장 지원이 필요한) 반이 위로. 추세는 최근 2주 vs 직전
+            2주(활동은 1주). 반 이름을 누르면 상세 통계.
           </p>
         </div>
       </div>
@@ -509,6 +543,8 @@ function CohortComparison({ o }: { o: AllStudentsOverview }) {
           { label: "인원", align: "right" },
           { label: "7일 활성", align: "right" },
           { label: "평균 정답률", align: "right" },
+          { label: "정답률 추세", align: "right" },
+          { label: "활동 추세", align: "right" },
           { label: "평균 문제풀이", align: "right" },
           { label: "", align: "right", width: "44px" },
         ]}
@@ -532,6 +568,12 @@ function CohortComparison({ o }: { o: AllStudentsOverview }) {
             </TD>
             <TD align="right" className={cn("font-mono font-bold", accuracyTone(c.avgAccuracyPct))}>
               {pct1(c.avgAccuracyPct)}
+            </TD>
+            <TD align="right">
+              <DeltaBadge value={c.accuracyDeltaPct} unit="%p" />
+            </TD>
+            <TD align="right">
+              <DeltaBadge value={c.activeDelta} unit="명" />
             </TD>
             <TD align="right" mono soft>
               {c.avgProblemsAttempted}

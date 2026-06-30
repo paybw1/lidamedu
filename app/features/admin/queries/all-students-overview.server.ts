@@ -46,6 +46,10 @@ export interface CohortComparisonRow {
   active7dRate: number | null; // 0~1
   avgAccuracyPct: number | null;
   avgProblemsAttempted: number;
+  // 추세 — 최근 14일 vs 직전 14일 정답률(%p), 표본 부족 시 null.
+  accuracyDeltaPct: number | null;
+  // 활동 추세 — 최근 7일 vs 직전 7일 활동 학생 수 차이.
+  activeDelta: number | null;
 }
 
 export interface AllStudentsOverview {
@@ -84,6 +88,101 @@ function cohortAvgAccuracy(rows: CohortMemberProgress[]): number | null {
     .map((p) => p.accuracyPct as number);
   const a = avgOrNull(valid);
   return a === null ? null : round1(a);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// 윈도우별 최소 시도 — 정답률 추세 노이즈 가드(적게 풀면 추세 무의미).
+const TREND_MIN_ATTEMPTS = 10;
+
+interface CohortTrendDelta {
+  accuracyDeltaPct: number | null; // 최근14d − 직전14d (%p)
+  activeDelta: number | null; // 최근7d − 직전7d 활동 학생 수
+}
+
+// 반별 추세 델타 — 최근 28일 attempts 1회(날짜 한정) 벌크 스캔.
+// 정답률: 최근 14일 vs 직전 14일(표본 ≥10 일 때만). 활동: 최근 7일 vs 직전 7일 활동 학생 수.
+async function computeCohortTrendDeltas(
+  admin: SupabaseClient<Database>,
+  userIds: string[],
+  cohortIdsByProfile: Map<string, string[]>,
+  now: number,
+): Promise<Map<string, CohortTrendDelta>> {
+  const result = new Map<string, CohortTrendDelta>();
+  if (userIds.length === 0) return result;
+
+  const d7 = now - 7 * DAY_MS;
+  const d14 = now - 14 * DAY_MS;
+  const d28 = now - 28 * DAY_MS;
+  const sinceIso = new Date(d28).toISOString();
+
+  interface Acc {
+    recent14: { t: number; c: number };
+    prior14: { t: number; c: number };
+    recent7: Set<string>;
+    prior7: Set<string>;
+  }
+  const acc = new Map<string, Acc>();
+  const ensure = (cid: string): Acc => {
+    let e = acc.get(cid);
+    if (!e) {
+      e = {
+        recent14: { t: 0, c: 0 },
+        prior14: { t: 0, c: 0 },
+        recent7: new Set(),
+        prior7: new Set(),
+      };
+      acc.set(cid, e);
+    }
+    return e;
+  };
+
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin
+      .from("user_problem_attempts")
+      .select("user_id, is_correct, attempted_at")
+      .in("user_id", userIds)
+      .gte("attempted_at", sinceIso)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    for (const r of rows) {
+      const cids = cohortIdsByProfile.get(r.user_id);
+      if (!cids) continue;
+      const t = new Date(r.attempted_at).getTime();
+      const correct = r.is_correct === true;
+      for (const cid of cids) {
+        const e = ensure(cid);
+        if (t >= d14) {
+          e.recent14.t++;
+          if (correct) e.recent14.c++;
+        } else {
+          e.prior14.t++;
+          if (correct) e.prior14.c++;
+        }
+        if (t >= d7) e.recent7.add(r.user_id);
+        else if (t >= d14) e.prior7.add(r.user_id);
+      }
+    }
+    if (rows.length < PAGE) break;
+  }
+
+  for (const [cid, e] of acc) {
+    let accuracyDeltaPct: number | null = null;
+    if (
+      e.recent14.t >= TREND_MIN_ATTEMPTS &&
+      e.prior14.t >= TREND_MIN_ATTEMPTS
+    ) {
+      const recentAcc = (e.recent14.c / e.recent14.t) * 100;
+      const priorAcc = (e.prior14.c / e.prior14.t) * 100;
+      accuracyDeltaPct = Math.round(recentAcc - priorAcc);
+    }
+    result.set(cid, {
+      accuracyDeltaPct,
+      activeDelta: e.recent7.size - e.prior7.size,
+    });
+  }
+  return result;
 }
 
 export async function getAllStudentsOverview(): Promise<AllStudentsOverview> {
@@ -134,17 +233,31 @@ export async function getAllStudentsOverview(): Promise<AllStudentsOverview> {
 
   // 6) 반별 비교 — 같은 progress 객체를 cohort 로 group(추가 스캔 없음).
   const byCohort = new Map<string, CohortMemberProgress[]>();
+  const cohortIdsByProfile = new Map<string, string[]>();
   for (const m of memberships) {
+    const arr2 = cohortIdsByProfile.get(m.profile_id) ?? [];
+    arr2.push(m.cohort_id);
+    cohortIdsByProfile.set(m.profile_id, arr2);
     const p = progressById.get(m.profile_id);
     if (!p) continue;
     const arr = byCohort.get(m.cohort_id) ?? [];
     arr.push(p);
     byCohort.set(m.cohort_id, arr);
   }
+
+  // 6b) 반별 추세 델타(최근 28일 1회 스캔).
+  const deltaByCohort = await computeCohortTrendDeltas(
+    admin,
+    roster.map((r) => r.profileId),
+    cohortIdsByProfile,
+    now,
+  );
+
   const cohortRows: CohortComparisonRow[] = cohorts
     .map((c) => {
       const rows = byCohort.get(c.cohortId) ?? [];
       const active = rows.filter((p) => isActive7d(p, now)).length;
+      const delta = deltaByCohort.get(c.cohortId);
       return {
         cohortId: c.cohortId,
         name: c.name,
@@ -156,6 +269,8 @@ export async function getAllStudentsOverview(): Promise<AllStudentsOverview> {
           rows.length > 0
             ? round1(avgOrNull(rows.map((p) => p.problemsAttempted)) ?? 0)
             : 0,
+        accuracyDeltaPct: delta?.accuracyDeltaPct ?? null,
+        activeDelta: delta?.activeDelta ?? null,
       };
     })
     .filter((r) => r.memberCount > 0)
