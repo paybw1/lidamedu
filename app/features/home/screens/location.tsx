@@ -17,6 +17,11 @@ const KAKAO_MAP_URL = "https://kko.to/-nr4arxA9m";
 const OPEN_CHAT_URL = "https://open.kakao.com/o/pb4ApLdi";
 const ADDRESS = "(06588) 서울특별시 서초구 서초대로 131 2층";
 const PHONE = "02-594-8881";
+// 키 없이 임베드 가능한 구글 지도(주소 검색) — 페이지에서 바로 위치 표시.
+// 실제 길찾기는 한국 사용자 친화적인 카카오맵 버튼으로 유도.
+const MAP_EMBED_URL = `https://www.google.com/maps?q=${encodeURIComponent(
+  "서울특별시 서초구 서초대로 131",
+)}&z=17&output=embed`;
 const TRANSIT = [
   "7호선 내방역 8번 출구에서 도보 4분",
   "2호선 서초역 4번 출구에서 도보 10분",
@@ -37,13 +42,23 @@ export default function Location() {
         <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">
           Location
         </p>
-        <h1
-          className="text-3xl font-extrabold tracking-tight md:text-4xl"
-          style={{ fontFamily: '"Noto Serif KR", serif' }}
-        >
+        <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
           찾아오시는 길
         </h1>
       </header>
+
+      {/* 지도 — 페이지 진입 시 바로 위치 노출 */}
+      <div className="border-border mb-5 overflow-hidden rounded-xl border shadow-sm">
+        <iframe
+          title="리담변리사학원 위치 지도"
+          src={MAP_EMBED_URL}
+          className="block h-[320px] w-full md:h-[380px]"
+          style={{ border: 0 }}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+        />
+      </div>
 
       <Card>
         <CardContent className="space-y-6 py-6">

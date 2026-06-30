@@ -43,10 +43,7 @@ export default function About() {
         <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">
           Dreams start here
         </p>
-        <h1
-          className="text-3xl font-extrabold tracking-tight md:text-4xl"
-          style={{ fontFamily: '"Noto Serif KR", serif' }}
-        >
+        <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
           변리사의 꿈을 함께 합니다.
         </h1>
       </header>
