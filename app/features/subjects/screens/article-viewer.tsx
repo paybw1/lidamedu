@@ -208,7 +208,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     listThreadsForTarget(client, "article", article.articleId, 20),
     listBlankSetsByArticle(client, article.articleId),
     Promise.resolve(viewerStaffRole),
-    getOxQuestionsForArticle(client, article.articleId, 50, {
+    // 표시 컷 500 — 한 조문 OX(특허 제29조 233+개)를 origin(기출·변형·예상) 누락 없이
+    // 전부 패널에 싣는다. 패널이 전체/기출/기타 토글로 거른다.
+    getOxQuestionsForArticle(client, article.articleId, 500, {
       includeUnapproved: viewerStaffRole !== null,
     }),
     listComments(client, "article", article.articleId),

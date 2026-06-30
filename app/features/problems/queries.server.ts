@@ -1188,63 +1188,88 @@ export async function getOxQuestionsForArticle(
     return subtree.includes(problemPrimaryNodeId);
   };
 
-  // 1. problem_choices.
-  let choiceQuery = client
-    .from("problem_choices")
-    .select(
-      "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
-    )
-    .eq("related_article_id", articleId)
-    .eq("ox_ineligible", false)
-    .not("ox_truth", "is", null)
-    // 삭제된 문제 제외를 SQL 에서(루프 skip 만으로는 limit 이 삭제 행으로 채워져 staff 화면이
-    // 굶는다 — staff RLS 는 deleted 도 읽으므로). 중복 재import 로 삭제된 구버전 지문이 limit 을
-    // 점유하던 버그.
-    .is("problems.deleted_at", null);
-  if (!includeUnapproved) {
-    choiceQuery = choiceQuery.eq("problems.review_status", "approved");
-  }
-  const { data: choiceRows } = await choiceQuery.limit(limit);
-  for (const r of choiceRows ?? []) {
-    if (r.problems.deleted_at) continue;
-    if (
-      !placed(
-        r.related_node_id,
-        r.problems.primary_article_id,
-        r.problems.primary_node_id,
+  // ★ 적격 OX 는 페이지네이션으로 전량 수집한다. 예전엔 .limit(50) 로 정렬 없이 임의 50개만
+  //   가져와, 한 조문에 OX 가 많으면(특허 제29조 233+개) 예상문제(origin=expected) 등 일부
+  //   origin 이 통째로 잘려 패널에 안 뜨던 버그. 표시 컷(limit)은 정렬 후에만 적용한다.
+  const PAGE = 1000;
+  const buildChoiceQuery = () => {
+    let q = client
+      .from("problem_choices")
+      .select(
+        "choice_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
       )
-    )
-      continue;
-    out.push({
-      refType: "choice",
-      refId: r.choice_id,
-      problemId: r.problem_id,
-      bodyMd: r.body_md,
-      oxTruth: r.ox_truth as OxTruth,
-      explanationMd: r.explanation_md,
-      year: r.problems.year,
-      problemNumber: r.problems.problem_number,
-      origin: r.problems.origin,
-      reviewStatus: r.problems.review_status,
-    });
+      .eq("related_article_id", articleId)
+      .eq("ox_ineligible", false)
+      .not("ox_truth", "is", null)
+      // 삭제된 문제 제외를 SQL 에서(staff RLS 는 deleted 도 읽으므로 루프 skip 만으론 부족).
+      .is("problems.deleted_at", null);
+    if (!includeUnapproved) {
+      q = q.eq("problems.review_status", "approved");
+    }
+    return q;
+  };
+  // 1. problem_choices — 전량 페이지 수집(choice_id 안정 정렬).
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await buildChoiceQuery()
+      .order("choice_id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = data ?? [];
+    for (const r of batch) {
+      if (r.problems.deleted_at) continue;
+      if (
+        !placed(
+          r.related_node_id,
+          r.problems.primary_article_id,
+          r.problems.primary_node_id,
+        )
+      )
+        continue;
+      out.push({
+        refType: "choice",
+        refId: r.choice_id,
+        problemId: r.problem_id,
+        bodyMd: r.body_md,
+        oxTruth: r.ox_truth as OxTruth,
+        explanationMd: r.explanation_md,
+        year: r.problems.year,
+        problemNumber: r.problems.problem_number,
+        origin: r.problems.origin,
+        reviewStatus: r.problems.review_status,
+      });
+    }
+    if (batch.length < PAGE) break;
   }
 
-  // 2. problem_box_items (박스형 사례 지문).
-  let boxQuery = client
-    .from("problem_box_items")
-    .select(
-      "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
-    )
-    .eq("related_article_id", articleId)
-    .eq("ox_ineligible", false)
-    .not("ox_truth", "is", null)
-    // 삭제된 문제 제외 (choices 와 동일 — limit 이 삭제 행으로 채워지지 않도록 SQL 필터).
-    .is("problems.deleted_at", null);
-  if (!includeUnapproved) {
-    boxQuery = boxQuery.eq("problems.review_status", "approved");
+  // 2. problem_box_items (박스형 사례 지문) — choices 와 동일하게 전량 페이지 수집.
+  const buildBoxQuery = () => {
+    let q = client
+      .from("problem_box_items")
+      .select(
+        "box_item_id, problem_id, body_md, ox_truth, explanation_md, related_node_id, problems!inner(year, problem_number, origin, review_status, deleted_at, primary_article_id, primary_node_id)",
+      )
+      .eq("related_article_id", articleId)
+      .eq("ox_ineligible", false)
+      .not("ox_truth", "is", null)
+      .is("problems.deleted_at", null);
+    if (!includeUnapproved) {
+      q = q.eq("problems.review_status", "approved");
+    }
+    return q;
+  };
+  const boxRows: NonNullable<
+    Awaited<ReturnType<typeof buildBoxQuery>>["data"]
+  > = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await buildBoxQuery()
+      .order("box_item_id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = data ?? [];
+    boxRows.push(...batch);
+    if (batch.length < PAGE) break;
   }
-  const { data: boxRows } = await boxQuery.limit(limit);
-  for (const r of boxRows ?? []) {
+  for (const r of boxRows) {
     if (r.problems.deleted_at) continue;
     if (
       !placed(
