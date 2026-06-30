@@ -165,7 +165,19 @@ async function montage(list, path) {
   await canvas.composite(comps).png().toFile(path);
   console.log(`몽타주: ${path}`);
 }
-await montage(items.slice(0, 40), `${OUT}/montage-top40.png`);
-await montage(items.slice(40, 80), `${OUT}/montage-40-80.png`);
-console.log(`\n출력 폴더: ${OUT}`);
+// 전수 몽타주 — 과목·연도·번호 순으로 40개씩(육안 전수 검토용).
+const ord = [...items].sort(
+  (a, b) =>
+    a.subject.localeCompare(b.subject) ||
+    a.year - b.year ||
+    a.num - b.num,
+);
+const PER = 40;
+for (let b = 0; b * PER < ord.length; b++) {
+  await montage(
+    ord.slice(b * PER, b * PER + PER),
+    `${OUT}/all-${String(b + 1).padStart(2, "0")}.png`,
+  );
+}
+console.log(`\n출력 폴더: ${OUT}  (전수 몽타주 all-NN.png ${Math.ceil(ord.length / PER)}장)`);
 process.exit(0);
