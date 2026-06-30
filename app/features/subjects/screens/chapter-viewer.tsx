@@ -197,7 +197,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ).then((entries) => Object.fromEntries(entries)),
     Promise.all(
       articleIds.map((id) =>
-        getOxQuestionsForArticle(client, id, 50, {
+        // 표시 컷 500 — 조문별 OX(기출·변형·예상)를 origin 누락 없이 전부 싣는다.
+        getOxQuestionsForArticle(client, id, 500, {
           includeUnapproved: viewerStaffRole !== null,
         }).then((items) => [id, items] as const),
       ),
