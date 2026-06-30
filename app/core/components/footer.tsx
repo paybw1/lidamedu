@@ -24,22 +24,38 @@ import { Link } from "react-router";
  */
 export default function Footer() {
   return (
-    <footer className="text-muted-foreground mt-auto flex items-center justify-between border-t py-3 text-sm md:py-5">
-      <div className="mx-auto flex h-full w-full max-w-screen-2xl flex-col items-center justify-between gap-2.5 md:order-none md:flex-row md:gap-0">
-        {/* Copyright notice - appears second on mobile, first on desktop */}
-        <div className="order-2 md:order-none">
-          <p>© 리담지식재산교육원 주식회사. 모든 권리 보유.</p>
-        </div>
-        
-        {/* Legal links - appears first on mobile, second on desktop */}
-        <div className="order-1 flex gap-10 *:underline md:order-none">
-          <Link to="/legal/privacy-policy" viewTransition>
-            개인정보처리방침
-          </Link>
+    <footer className="text-muted-foreground mt-auto border-t py-6 text-xs leading-relaxed md:py-8 md:text-[13px]">
+      <div className="mx-auto w-full max-w-screen-2xl space-y-3 px-5 md:px-10">
+        {/* 약관·정책 링크 */}
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-medium *:hover:underline">
           <Link to="/legal/terms-of-service" viewTransition>
             이용약관
           </Link>
+          <Link to="/legal/privacy-policy" viewTransition>
+            개인정보처리방침
+          </Link>
+        </nav>
+
+        {/* 사업자 정보 */}
+        <div className="space-y-0.5">
+          <p>리담지식재산교육원 주식회사 | 대표 : 전화연</p>
+          <p>
+            학원등록번호:제15318호 | 원격학원등록번호:제15319호 | 출판사신고번호
+            제2026-000065호
+          </p>
+          <p>
+            사업자등록번호 : 587-88-03609 | 통신판매업신고번호 :
+            2026-서울서초-0888
+          </p>
+          <p>
+            주소 : (06588) 서울특별시 서초구 서초대로 131 2층 ☏ 02-594-8881 /
+            개인정보관리책임자 : 조형남
+          </p>
         </div>
+
+        <p className="text-muted-foreground/80">
+          Copyright (c) 리담지식재산교육원 주식회사 All Rights Reserved.
+        </p>
       </div>
     </footer>
   );
