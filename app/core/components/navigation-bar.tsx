@@ -53,9 +53,9 @@ import {
 
 type SimpleLink = { label: string; to: string };
 
-// V5 nav dropdown chip — rest 는 #FAFAFA pill, hover/focus 시 brand blue.
-const CHIP_CLASS =
-  "inline-flex items-center rounded-full border border-black/[0.06] bg-[#FAFAFA] px-[13px] py-[7px] text-[13px] font-semibold leading-none tracking-[-0.01em] text-foreground no-underline outline-none transition-all duration-150 hover:border-transparent hover:bg-[#2D5BA8] hover:text-white focus-visible:border-transparent focus-visible:bg-[#2D5BA8] focus-visible:text-white dark:border-border dark:bg-muted";
+// 세로 드롭다운 항목 — 사각형 박스(테두리·배경 pill) 없이 평문 링크. hover 시에만 글자색 강조.
+const DROPDOWN_ITEM_CLASS =
+  "block w-full rounded-md px-3 py-2 text-[13px] font-medium text-foreground no-underline outline-none transition-colors hover:text-[#2D5BA8] focus-visible:text-[#2D5BA8]";
 
 // 상단 네비게이션 8개 top-level (좌→우):
 // 대시보드(flat) · 학습관리▾ · 학습과목▾ · 학습지원▾ · 학습정보▾ · 모의고사▾ · 커뮤니티▾ · 운영자(flat)
@@ -299,7 +299,7 @@ function SimpleDropdown({
             <NavigationMenuLink asChild key={item.to}>
               <Link
                 to={item.to}
-                className={cn(CHIP_CLASS, "whitespace-nowrap")}
+                className={cn(DROPDOWN_ITEM_CLASS, "whitespace-nowrap")}
               >
                 {item.label}
               </Link>
@@ -328,7 +328,7 @@ function SubjectsDropdown({ locked }: { locked: boolean }) {
             <NavigationMenuLink asChild key={item.href}>
               <Link
                 to={item.href}
-                className={cn(CHIP_CLASS, "whitespace-nowrap")}
+                className={cn(DROPDOWN_ITEM_CLASS, "whitespace-nowrap")}
               >
                 {item.name}
               </Link>
