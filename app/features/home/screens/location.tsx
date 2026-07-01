@@ -11,6 +11,7 @@ import {
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
 import { KakaoMap } from "~/features/home/components/kakao-map";
+import { KakaoRoughMap } from "~/features/home/components/kakao-rough-map";
 
 import type { Route } from "./+types/location";
 
@@ -83,6 +84,11 @@ export default function Location() {
               ))}
             </ul>
           </InfoRow>
+
+          {/* 카카오 약도 위젯(등록된 roughmap) — 클라 전용 렌더. 대중교통↔길찾기 사이. */}
+          <div className="border-border overflow-hidden rounded-lg border">
+            <KakaoRoughMap />
+          </div>
 
           <div className="flex flex-col gap-2.5 pt-1 sm:flex-row">
             <Button asChild className="flex-1">
