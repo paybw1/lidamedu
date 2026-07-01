@@ -16,8 +16,8 @@ const LOADER_SRC =
   "https://ssl.daumcdn.net/dmaps/map_js_init/roughmapLoader.js";
 const TIMESTAMP = "1782880326471";
 const KEY = "qgjdsajoqdy";
-const MAP_WIDTH = "640";
-const MAP_HEIGHT = "360";
+const MAP_WIDTH = "700";
+const MAP_HEIGHT = "440";
 const LOADER_CLASS = "daum_roughmap_loader_script";
 const LANDER_CLASS = "daum_roughmap_lander_script";
 

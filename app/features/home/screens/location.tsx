@@ -4,7 +4,6 @@ import {
   ExternalLinkIcon,
   MapPinIcon,
   MessageCircleIcon,
-  PhoneIcon,
   TrainFrontIcon,
 } from "lucide-react";
 
@@ -17,7 +16,6 @@ import type { Route } from "./+types/location";
 const KAKAO_MAP_URL = "https://kko.to/-nr4arxA9m";
 const OPEN_CHAT_URL = "https://open.kakao.com/o/pb4ApLdi";
 const ADDRESS = "(06588) 서울특별시 서초구 서초대로 131 2층";
-const PHONE = "02-594-8881";
 const TRANSIT = [
   "7호선 내방역 8번 출구에서 도보 4분",
   "2호선 서초역 4번 출구에서 도보 10분",
@@ -33,7 +31,7 @@ export const meta: Route.MetaFunction = () => [
 
 export default function Location() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 py-16 md:px-8 md:py-24">
+    <main className="mx-auto w-full max-w-3xl px-5 py-16 md:px-8 md:py-24">
       <header className="mb-10 text-center">
         <p className="text-link mb-3 font-mono text-xs font-semibold tracking-[0.2em] uppercase">
           Location
@@ -43,27 +41,15 @@ export default function Location() {
         </h1>
       </header>
 
-      {/* 카카오 약도 — 페이지 진입 시 바로 위치 노출(등록된 roughmap 위젯) */}
-      <div className="border-border mb-5 overflow-hidden rounded-xl border p-3 shadow-sm">
+      {/* 카카오 약도 — 페이지 진입 시 바로 위치 노출(등록된 roughmap 위젯).
+          ★ 배경 흰색 고정 — 위젯 글씨가 어두워 다크 모드 어두운 배경선 안 보이므로. */}
+      <div className="border-border mb-5 overflow-hidden rounded-xl border bg-white shadow-sm">
         <KakaoRoughMap />
       </div>
 
       <Card>
         <CardContent className="space-y-6 py-6">
-          <InfoRow icon={MapPinIcon} label="주소">
-            <p className="text-foreground font-medium">{ADDRESS}</p>
-            <p className="text-muted-foreground text-sm">리담변리사학원</p>
-          </InfoRow>
-
-          <InfoRow icon={PhoneIcon} label="전화">
-            <a
-              href={`tel:${PHONE.replace(/-/g, "")}`}
-              className="text-foreground font-medium hover:underline"
-            >
-              {PHONE}
-            </a>
-          </InfoRow>
-
+          {/* 주소·전화는 약도 위젯 하단에 이미 표시되어 중복 → 제거. */}
           <InfoRow icon={TrainFrontIcon} label="대중교통">
             <ul className="space-y-1">
               {TRANSIT.map((t) => (
