@@ -16,6 +16,7 @@ import { PasserStatsSection } from "~/features/home/components/passer-stats-sect
 import { PreviewSection } from "~/features/home/components/preview-section";
 import { PricingTeaserSection } from "~/features/home/components/pricing-teaser-section";
 import { SubjectsSection } from "~/features/home/components/subjects-section";
+import { TrialCalloutSection } from "~/features/home/components/trial-callout-section";
 import { WeaknessEngineSection } from "~/features/home/components/weakness-engine-section";
 import { Band } from "~/features/home/lib/landing";
 
@@ -70,6 +71,7 @@ export default function Home() {
       }}
     >
       <Hero />
+      <TrialCalloutSection />
       <Band tone="shelf">
         <WeaknessEngineSection />
       </Band>
