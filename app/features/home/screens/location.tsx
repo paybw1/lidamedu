@@ -10,7 +10,6 @@ import {
 
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent } from "~/core/components/ui/card";
-import { KakaoMap } from "~/features/home/components/kakao-map";
 import { KakaoRoughMap } from "~/features/home/components/kakao-rough-map";
 
 import type { Route } from "./+types/location";
@@ -19,11 +18,6 @@ const KAKAO_MAP_URL = "https://kko.to/-nr4arxA9m";
 const OPEN_CHAT_URL = "https://open.kakao.com/o/pb4ApLdi";
 const ADDRESS = "(06588) 서울특별시 서초구 서초대로 131 2층";
 const PHONE = "02-594-8881";
-// 키 없이 임베드 가능한 구글 지도(주소 검색) — 페이지에서 바로 위치 표시.
-// 실제 길찾기는 한국 사용자 친화적인 카카오맵 버튼으로 유도.
-const MAP_EMBED_URL = `https://www.google.com/maps?q=${encodeURIComponent(
-  "서울특별시 서초구 서초대로 131",
-)}&z=17&output=embed`;
 const TRANSIT = [
   "7호선 내방역 8번 출구에서 도보 4분",
   "2호선 서초역 4번 출구에서 도보 10분",
@@ -49,14 +43,9 @@ export default function Location() {
         </h1>
       </header>
 
-      {/* 지도 — 페이지 진입 시 바로 위치 노출(카카오맵, 실패 시 구글 폴백) */}
-      <div className="border-border mb-5 overflow-hidden rounded-xl border shadow-sm">
-        <KakaoMap
-          address="서울특별시 서초구 서초대로 131"
-          label="리담변리사학원 위치 지도"
-          fallbackSrc={MAP_EMBED_URL}
-          className="block h-[320px] w-full md:h-[380px]"
-        />
+      {/* 카카오 약도 — 페이지 진입 시 바로 위치 노출(등록된 roughmap 위젯) */}
+      <div className="border-border mb-5 overflow-hidden rounded-xl border p-3 shadow-sm">
+        <KakaoRoughMap />
       </div>
 
       <Card>
@@ -84,11 +73,6 @@ export default function Location() {
               ))}
             </ul>
           </InfoRow>
-
-          {/* 카카오 약도 위젯(등록된 roughmap) — 클라 전용 렌더. 대중교통↔길찾기 사이. */}
-          <div className="border-border overflow-hidden rounded-lg border">
-            <KakaoRoughMap />
-          </div>
 
           <div className="flex flex-col gap-2.5 pt-1 sm:flex-row">
             <Button asChild className="flex-1">
