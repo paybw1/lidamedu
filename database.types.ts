@@ -5951,6 +5951,7 @@ export type Database = {
       }
       subscription_plans: {
         Row: {
+          available_from: string | null
           code: string
           created_at: string
           description: string | null
@@ -5966,6 +5967,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          available_from?: string | null
           code: string
           created_at?: string
           description?: string | null
@@ -5981,6 +5983,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          available_from?: string | null
           code?: string
           created_at?: string
           description?: string | null

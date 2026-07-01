@@ -40,7 +40,7 @@ const TIERS: Tier[] = [
     variant: "outline",
   },
   {
-    label: "자기학습 · 과목별",
+    label: "자기학습 · 과목/번들",
     price: "과목별",
     priceUnit: "결제",
     includes: [
@@ -74,7 +74,18 @@ const TIERS: Tier[] = [
   },
 ];
 
-export function PricingTeaserSection() {
+interface BundleTeaser {
+  name: string;
+  base: number;
+  effective: number;
+  openLabel: string | null;
+}
+
+export function PricingTeaserSection({
+  bundleTeaser,
+}: {
+  bundleTeaser: BundleTeaser | null;
+}) {
   return (
     <section
       aria-labelledby="pricing-h2"
@@ -152,40 +163,99 @@ export function PricingTeaserSection() {
               >
                 {t.label}
               </div>
-              <div
-                style={{
-                  font: "800 32px/1 Pretendard, sans-serif",
-                  letterSpacing: "-0.025em",
-                  fontVariantNumeric: "tabular-nums",
-                  color: PALETTE.ink,
-                }}
-              >
-                {t.price}
-                {t.priceUnit ? (
-                  <span
+              {t.recommended && bundleTeaser ? (
+                <>
+                  <div
                     style={{
-                      fontSize: 14,
-                      color: PALETTE.inkSoft,
-                      marginLeft: 4,
-                      letterSpacing: 0,
+                      font: "700 11px/1 Pretendard, sans-serif",
+                      color: PALETTE.link,
+                      marginBottom: 5,
+                      letterSpacing: "0.02em",
                     }}
                   >
-                    {t.priceUnit}
-                  </span>
-                ) : null}
-              </div>
-              {t.note ? (
-                <div
-                  style={{
-                    marginTop: 8,
-                    font: "500 12px/1.45 Pretendard, sans-serif",
-                    color: PALETTE.inkSoft,
-                    letterSpacing: "-0.005em",
-                  }}
-                >
-                  {t.note}
-                </div>
-              ) : null}
+                    {bundleTeaser.name}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      font: "800 32px/1 Pretendard, sans-serif",
+                      letterSpacing: "-0.025em",
+                      fontVariantNumeric: "tabular-nums",
+                      color: PALETTE.ink,
+                    }}
+                  >
+                    <span>₩{bundleTeaser.effective.toLocaleString("ko-KR")}</span>
+                    {bundleTeaser.effective < bundleTeaser.base ? (
+                      <span
+                        style={{
+                          fontSize: 16,
+                          color: PALETTE.inkSoft,
+                          textDecoration: "line-through",
+                          letterSpacing: 0,
+                        }}
+                      >
+                        ₩{bundleTeaser.base.toLocaleString("ko-KR")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      font: "500 12px/1.45 Pretendard, sans-serif",
+                      color: PALETTE.inkSoft,
+                      letterSpacing: "-0.005em",
+                    }}
+                  >
+                    {bundleTeaser.effective < bundleTeaser.base
+                      ? `₩${(bundleTeaser.base - bundleTeaser.effective).toLocaleString("ko-KR")} 할인 · `
+                      : ""}
+                    과목별 결제도 가능
+                    {bundleTeaser.openLabel
+                      ? ` · 상표·디자인 ${bundleTeaser.openLabel}`
+                      : ""}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      font: "800 32px/1 Pretendard, sans-serif",
+                      letterSpacing: "-0.025em",
+                      fontVariantNumeric: "tabular-nums",
+                      color: PALETTE.ink,
+                    }}
+                  >
+                    {t.price}
+                    {t.priceUnit ? (
+                      <span
+                        style={{
+                          fontSize: 14,
+                          color: PALETTE.inkSoft,
+                          marginLeft: 4,
+                          letterSpacing: 0,
+                        }}
+                      >
+                        {t.priceUnit}
+                      </span>
+                    ) : null}
+                  </div>
+                  {t.note ? (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        font: "500 12px/1.45 Pretendard, sans-serif",
+                        color: PALETTE.inkSoft,
+                        letterSpacing: "-0.005em",
+                      }}
+                    >
+                      {t.note}
+                    </div>
+                  ) : null}
+                </>
+              )}
             </div>
             <ul
               style={{

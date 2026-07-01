@@ -48,6 +48,11 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: "플랜을 찾을 수 없습니다" }, { status: 404 });
   if (plan.priceKrw <= 0)
     return data({ error: "유료 플랜만 결제 가능합니다" }, { status: 400 });
+  if (plan.availableFrom && new Date(plan.availableFrom).getTime() > Date.now())
+    return data(
+      { error: "아직 오픈 전 상품입니다" },
+      { status: 400 },
+    );
 
   // feat-8-028 — 유효 할인 계산(쿠폰 또는 자동 프로모션). 서버 권위 금액.
   const disc = await resolveCheckoutDiscount({

@@ -28,7 +28,7 @@ export type {
 } from "./labels";
 
 const PLAN_COLUMNS =
-  "plan_id, code, name, description, price_krw, duration_days, features, subject_codes, product_kind, display_order, is_active";
+  "plan_id, code, name, description, price_krw, duration_days, features, subject_codes, product_kind, available_from, display_order, is_active";
 
 function rowToPlan(r: {
   plan_id: string;
@@ -40,6 +40,7 @@ function rowToPlan(r: {
   features: unknown;
   subject_codes: unknown;
   product_kind: string;
+  available_from: string | null;
   display_order: number;
   is_active: boolean;
 }): SubscriptionPlan {
@@ -55,6 +56,7 @@ function rowToPlan(r: {
       ? (r.subject_codes as string[])
       : [],
     productKind: r.product_kind as SubscriptionPlan["productKind"],
+    availableFrom: r.available_from,
     displayOrder: r.display_order,
     isActive: r.is_active,
   };
@@ -107,6 +109,7 @@ export interface UpsertPlanInput {
   productKind: ProductKind;
   subjectCodes: string[];
   features: string[];
+  availableFrom: string | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -125,6 +128,7 @@ export async function upsertPlan(
     product_kind: input.productKind,
     subject_codes: input.subjectCodes as never,
     features: input.features as never,
+    available_from: input.availableFrom,
     display_order: input.displayOrder,
     is_active: input.isActive,
   };

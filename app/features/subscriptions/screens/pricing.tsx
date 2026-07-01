@@ -18,6 +18,7 @@ import {
   FEATURE_LABEL,
   bestAutomaticDiscount,
   effectivePriceKrw,
+  openMonthLabel,
 } from "~/features/subscriptions/labels";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
@@ -251,6 +252,12 @@ function PlanCard({
       ? bestAutomaticDiscount(plan, plan.priceKrw, discounts, nowMs)
       : null;
   const effective = auto ? effectivePriceKrw(plan.priceKrw, auto) : plan.priceKrw;
+  // 오픈 예정(available_from 이후 판매) — 데이터 고도화 중 과목 등.
+  const comingSoon =
+    !!plan.availableFrom && new Date(plan.availableFrom).getTime() > nowMs;
+  const openLabel = comingSoon
+    ? openMonthLabel(plan.availableFrom as string)
+    : null;
 
   return (
     <Card
@@ -263,6 +270,14 @@ function PlanCard({
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold">{plan.name}</p>
           <div className="flex items-center gap-1">
+            {comingSoon ? (
+              <Badge
+                variant="outline"
+                className="border-amber-400 text-[10px] text-amber-700 dark:text-amber-300"
+              >
+                {openLabel}
+              </Badge>
+            ) : null}
             {highlight ? (
               <Badge variant="default" className="text-[10px]">
                 추천
@@ -345,6 +360,8 @@ function PlanCard({
           owned={owned}
           isFree={isFree}
           isCohort={isCohort}
+          comingSoon={comingSoon}
+          openLabel={openLabel}
           isAuthed={isAuthed}
           tossClientKey={tossClientKey}
           activeCode={activeCode}
@@ -360,6 +377,8 @@ function PlanCta({
   owned,
   isFree,
   isCohort,
+  comingSoon,
+  openLabel,
   isAuthed,
   tossClientKey,
   activeCode,
@@ -369,11 +388,20 @@ function PlanCta({
   owned: boolean;
   isFree: boolean;
   isCohort: boolean;
+  comingSoon: boolean;
+  openLabel: string | null;
   isAuthed: boolean;
   tossClientKey: string | null;
   activeCode: string;
   coupon: string | null;
 }) {
+  if (comingSoon && !isFree && !isCohort) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        {openLabel ?? "오픈 예정"}
+      </Button>
+    );
+  }
   if (isFree) {
     const isActive = activeCode === "free";
     return (

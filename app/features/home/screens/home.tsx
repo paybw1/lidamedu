@@ -1,10 +1,18 @@
 import type { Route } from "./+types/home";
 
 import i18next from "~/core/lib/i18next.server";
+import makeServerClient from "~/core/lib/supa-client.server";
 import {
   type PublicPlatformStats,
   getPublicPlatformStats,
 } from "~/features/exam-results/analytics.server";
+import { listActiveDiscounts } from "~/features/subscriptions/discounts.server";
+import {
+  bestAutomaticDiscount,
+  effectivePriceKrw,
+  openMonthLabel,
+} from "~/features/subscriptions/labels";
+import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
 import { FaqSection } from "~/features/home/components/faq-section";
 import { FeaturesSection } from "~/features/home/components/features-section";
 import { FinalCta } from "~/features/home/components/final-cta";
@@ -51,14 +59,57 @@ export async function loader({ request }: Route.LoaderArgs) {
   } catch {
     stats = null;
   }
+
+  // 요금제 티저 — 대표 번들(전체 통합)의 할인 적용가. best-effort.
+  let bundleTeaser: {
+    name: string;
+    base: number;
+    effective: number;
+    openLabel: string | null;
+  } | null = null;
+  try {
+    const [client] = makeServerClient(request);
+    const [plans, discounts] = await Promise.all([
+      listSubscriptionPlans(client),
+      listActiveDiscounts(client),
+    ]);
+    const bundle =
+      plans.find((p) => p.code === "bundle_all") ??
+      plans.find((p) => p.productKind === "bundle");
+    if (bundle) {
+      const nowMs = Date.now();
+      const auto = bestAutomaticDiscount(
+        bundle,
+        bundle.priceKrw,
+        discounts,
+        nowMs,
+      );
+      bundleTeaser = {
+        name: bundle.name,
+        base: bundle.priceKrw,
+        effective: auto
+          ? effectivePriceKrw(bundle.priceKrw, auto)
+          : bundle.priceKrw,
+        openLabel:
+          bundle.availableFrom &&
+          new Date(bundle.availableFrom).getTime() > Date.now()
+            ? openMonthLabel(bundle.availableFrom)
+            : null,
+      };
+    }
+  } catch {
+    bundleTeaser = null;
+  }
+
   return {
     title: t("home.title"),
     subtitle: t("home.subtitle"),
     stats,
+    bundleTeaser,
   };
 }
 
-export default function Home() {
+export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <div
       data-screen-label="lidam-landing"
@@ -87,7 +138,7 @@ export default function Home() {
       <Band tone="shelf">
         <LatestSection />
       </Band>
-      <PricingTeaserSection />
+      <PricingTeaserSection bundleTeaser={loaderData.bundleTeaser} />
       <Band tone="shelf">
         <FlowSection />
       </Band>

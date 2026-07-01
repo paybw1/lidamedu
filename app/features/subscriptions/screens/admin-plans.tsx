@@ -52,6 +52,13 @@ const subjectName = (slug: string) =>
     ? "자연과학"
     : (LAW_SUBJECTS[slug as keyof typeof LAW_SUBJECTS]?.name ?? slug);
 
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const dt = new Date(iso);
+  const off = dt.getTimezoneOffset() * 60000;
+  return new Date(dt.getTime() - off).toISOString().slice(0, 16);
+}
+
 export default function AdminPlans({ loaderData }: Route.ComponentProps) {
   const { plans, role } = loaderData;
   const [adding, setAdding] = useState(false);
@@ -280,6 +287,14 @@ function PlanForm({
             min={0}
             required
             defaultValue={plan?.displayOrder ?? 0}
+            className="h-8 text-xs"
+          />
+        </FormField>
+        <FormField label="오픈일 (비우면 즉시 판매)">
+          <Input
+            name="availableFrom"
+            type="datetime-local"
+            defaultValue={isoToLocalInput(plan?.availableFrom ?? null)}
             className="h-8 text-xs"
           />
         </FormField>

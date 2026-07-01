@@ -42,6 +42,8 @@ export interface SubscriptionPlan {
   /** feat-8-028 — 부여 학습과목 slug 배열(개별/번들). 결제 시 열리는 과목. */
   subjectCodes: string[];
   productKind: ProductKind;
+  /** 오픈일 — 이 시각 전이면 "오픈 예정"(구매 불가). null = 즉시 판매. */
+  availableFrom: string | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -131,6 +133,12 @@ export function effectivePriceKrw(basePriceKrw: number, d: Discount): number {
       ? Math.floor((basePriceKrw * d.value) / 100)
       : d.value;
   return Math.max(0, basePriceKrw - off);
+}
+
+// 오픈 예정 라벨 — KST 기준 "N월 오픈"(서버 UTC/클라 TZ 무관하게 한국 월 표기).
+export function openMonthLabel(availableFromIso: string): string {
+  const kst = new Date(new Date(availableFromIso).getTime() + 9 * 3600 * 1000);
+  return `${kst.getUTCMonth() + 1}월 오픈`;
 }
 
 // 자동(코드 없는) 프로모션 중 최대 할인 상품가.

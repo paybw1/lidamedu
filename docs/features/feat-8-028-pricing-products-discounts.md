@@ -42,3 +42,7 @@
 - Judgment: 수익화 운영 필수(과목별 금액·번들·할인). 기존 구독/결제 인프라 재사용.
 - Structure: 상품=플랜 SSOT, 할인=별도 테이블, 금액=서버 권위(할인 서버 계산). 권한=plan.subject_codes 파생.
 - Code: 리졸버 SSOT membership.server.ts. 상품/할인 관리 = admin + adminClient.
+
+## 오픈일 · 티저 대표가 (2026-07-02)
+- `subscription_plans.available_from`(nullable) — 오픈 예정 상품. 상표법·디자인보호법 및 이를 포함한 번들(bundle_ip/bundle_all) = 2026-08-01(데이터 고도화 중). pricing "N월 오픈" 배지 + 구매 차단(create-order 가드), admin-plans 오픈일 필드. KST 월 라벨 `openMonthLabel`.
+- 요금표 티저(랜딩)에 대표 번들(1차 전체 통합) 할인가 노출 — home 로더가 bundle_all + 활성 할인으로 유효가 산출→PricingTeaserSection. 번들 자동 할인 ₩45,000(기존 '오픈 기념 할인' ₩50,000은 비활성 전환).

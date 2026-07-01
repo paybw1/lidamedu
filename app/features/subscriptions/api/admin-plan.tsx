@@ -15,6 +15,13 @@ import type { Route } from "./+types/admin-plan";
 const SUBJECT_SLUGS = new Set<string>([...LAW_SUBJECT_SLUGS, "science"]);
 const FEATURE_KEYS = new Set<string>(Object.keys(FEATURE_LABEL));
 
+const toIso = (v: FormDataEntryValue | null): string | null => {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
+
 const schema = z.object({
   intent: z.enum(["create", "update"]),
   code: z
@@ -28,6 +35,7 @@ const schema = z.object({
   priceKrw: z.coerce.number().int().min(0).max(100_000_000),
   durationDays: z.coerce.number().int().min(0).max(3650),
   productKind: z.enum(["subject", "bundle", "membership"]),
+  availableFrom: z.string().datetime().nullable(),
   displayOrder: z.coerce.number().int().min(0).max(9999),
   isActive: z.boolean(),
 });
@@ -58,6 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
     priceKrw: fd.get("priceKrw"),
     durationDays: fd.get("durationDays"),
     productKind: fd.get("productKind"),
+    availableFrom: toIso(fd.get("availableFrom")),
     displayOrder: fd.get("displayOrder"),
     isActive: fd.get("isActive") === "1",
   });
@@ -88,6 +97,7 @@ export async function action({ request }: Route.ActionArgs) {
       productKind: parsed.data.productKind,
       subjectCodes,
       features,
+      availableFrom: parsed.data.availableFrom,
       displayOrder: parsed.data.displayOrder,
       isActive: parsed.data.isActive,
     },
