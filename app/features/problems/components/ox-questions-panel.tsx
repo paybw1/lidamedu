@@ -99,7 +99,14 @@ export function OxQuestionsPanel({
   annotationsByRef?: Record<string, OxRefAnnotations>;
   isStaff?: boolean;
 }) {
-  const [idx, setIdx] = useState(0);
+  const location = useLocation();
+  // staff "수정" 왕복 후 편집하던 지문으로 복귀 — ?ox=<refId> 로 초기 위치를 지정.
+  const restoreRefId = new URLSearchParams(location.search).get("ox");
+  const [idx, setIdx] = useState<number>(() => {
+    if (!restoreRefId) return 0;
+    const i = items.findIndex((it) => it.refId === restoreRefId);
+    return i >= 0 ? i : 0;
+  });
   const [picked, setPicked] = useState<OxTruth | null>(null);
   const [revealed, setRevealed] = useState(false);
   // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'memo' | null.
@@ -107,9 +114,6 @@ export function OxQuestionsPanel({
   const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
   const attemptFetcher = useFetcher();
   const hideFetcher = useFetcher();
-  const location = useLocation();
-  // staff "수정" 진입 시, 저장 후 이 viewer(조문·노드·장 등)로 복귀하도록 현재 URL 을 carry.
-  const returnTo = `${location.pathname}${location.search}`;
   const startedAtRef = useRef<number>(Date.now());
   // 한 지문당 1회만 기록 (다시 풀기 → 동일 지문 재기록 방지). refId 단위.
   const recordedRefIdRef = useRef<string | null>(null);
@@ -137,7 +141,14 @@ export function OxQuestionsPanel({
   // 내려올 때마다 idx/picked/revealed 가 리셋되어 정답 확인 박스가 접힘.
   // refId 시퀀스 시그니처로 비교해 실제 변경된 경우에만 리셋.
   const itemsKey = items.map((it) => it.refId).join("|");
+  const didInitRef = useRef(false);
   useEffect(() => {
+    // 최초 마운트는 ?ox=<refId> 로 잡은 초기 위치를 보존(리셋 skip).
+    // 이후 조문/장 이동(itemsKey 변경)·출처 토글 변경 시에만 처음으로 리셋.
+    if (!didInitRef.current) {
+      didInitRef.current = true;
+      return;
+    }
     setIdx(0);
     setPicked(null);
     setRevealed(false);
@@ -178,6 +189,10 @@ export function OxQuestionsPanel({
 
   const pos = Math.min(idx, filteredItems.length - 1);
   const cur = filteredItems[pos];
+  // staff "수정" 진입 URL — 저장 후 이 viewer 로, 그리고 편집하던 지문(cur)으로 복귀.
+  const editSp = new URLSearchParams(location.search);
+  editSp.set("ox", cur.refId);
+  const editReturnTo = `${location.pathname}?${editSp.toString()}`;
   const isCorrect = picked !== null && picked === cur.oxTruth;
   const isWrong = picked !== null && picked !== cur.oxTruth;
 
@@ -442,7 +457,7 @@ export function OxQuestionsPanel({
             {isStaff ? (
               <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
                 <Link
-                  to={`/admin/problems/${cur.problemId}?returnTo=${encodeURIComponent(returnTo)}`}
+                  to={`/admin/problems/${cur.problemId}?returnTo=${encodeURIComponent(editReturnTo)}`}
                   viewTransition
                 >
                   <PencilIcon className="size-3.5" /> 수정
