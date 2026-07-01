@@ -35,12 +35,15 @@ export default function Location() {
         <KakaoRoughMap />
       </div>
 
-      {/* 대중교통 — 약도 아래 간단히. */}
-      <ul className="text-foreground/90 space-y-1 text-center leading-relaxed">
-        {TRANSIT.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
+      {/* 주변 지하철 — 제목 바로 밑에 도보 안내 두 줄. */}
+      <div className="text-center">
+        <p className="text-foreground mb-1.5 font-semibold">주변 지하철</p>
+        <ul className="text-foreground/90 space-y-1 leading-relaxed">
+          {TRANSIT.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
     </main>
   );
 }
