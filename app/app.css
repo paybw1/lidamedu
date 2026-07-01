@@ -381,3 +381,10 @@ body {
 .case-md-table tbody tr:nth-child(odd) td {
   background-color: color-mix(in oklch, var(--muted) 25%, transparent);
 }
+
+/* 카카오 약도(roughmap) 위젯 내장 "주변 지하철"은 카카오 자동 데이터(가장 가까운 역
+   = 내방·방배역)라 코드로 값을 못 바꾼다. 위젯 것을 숨기고, /location 페이지의
+   "주변 지하철"(내방·서초역) 텍스트로 대체 표시한다. */
+.root_daum_roughmap .section_subway {
+  display: none;
+}
