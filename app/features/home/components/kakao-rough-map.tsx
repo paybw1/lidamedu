@@ -11,11 +11,12 @@
 // ★ StrictMode 이중호출·effect 재실행에도 render 는 1회만(ref + 컨테이너 자식 가드).
 import { useEffect, useRef } from "react";
 
-const CONTAINER_ID = "daumRoughmapContainer1782880326471";
+const CONTAINER_ID = "daumRoughmapContainer1782884265767";
 const LOADER_SRC =
   "https://ssl.daumcdn.net/dmaps/map_js_init/roughmapLoader.js";
-const TIMESTAMP = "1782880326471";
-const KEY = "qgjdsajoqdy";
+const TIMESTAMP = "1782884265767";
+const KEY = "qghxgoo3hwt";
+// 크기는 기존과 동일(확대본 유지) — 위젯 기본 640x360 대신.
 const MAP_WIDTH = "700";
 const MAP_HEIGHT = "440";
 const LOADER_CLASS = "daum_roughmap_loader_script";
