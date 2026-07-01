@@ -22,8 +22,21 @@ export type MembershipGrade =
 export const DEFAULT_SELF_STUDY_SUBJECT = "science";
 // 체험(가입 후 15일) 열람 가능 학습과목 — 특허법만.
 export const TRIAL_SUBJECTS: readonly string[] = ["patent"];
-// 자기학습 플랜 코드(레거시 'pro_monthly' 유지). 신규 'self_study' 코드도 동일 취급.
-const SELF_STUDY_PLAN_CODES = ["pro_monthly", "self_study"];
+// feat-8-028 — 자기학습 상품 종류(개별 과목 / 번들). 이 상품 구독 시 grade=self_study,
+//   부여 과목 = plan.subject_codes 합집합(+ 자연과학).
+const SELF_STUDY_PRODUCT_KINDS = ["subject", "bundle"];
+// 자기학습 등급의 area 기능 세트(체험·폴백 공용). 상품 features 와 동일하게 시드됨.
+const SELF_STUDY_FEATURES = [
+  "area_subjects",
+  "area_study_aids",
+  "area_study_mgmt",
+  "passer_benchmarks",
+  "passer_trend",
+  "passer_summaries",
+  "weak_node_guide",
+  "recommended_actions",
+  "base_learning",
+];
 
 export interface MembershipAccess {
   grade: MembershipGrade;
@@ -78,41 +91,49 @@ export async function getMembershipAccess(
   );
   if (activeCohorts.length > 0) {
     const anyFull = activeCohorts.some((r) => r.cohorts.access_scope === "full");
-    const featureCode = anyFull ? "cohort" : SELF_STUDY_PLAN_CODES[0];
     return {
       grade: "cohort",
       planCode: "cohort",
-      features: await planFeatures(featureCode),
+      // full=종합반 전체 기능 / self_study=자기학습 수준 기능.
+      features: anyFull ? await planFeatures("cohort") : [...SELF_STUDY_FEATURES],
       subjects: "all",
       trialEndsAt: null,
     };
   }
 
-  // 3) 활성 자기학습 구독(과목별). subject_code null = 전체(레거시/whole).
+  // 3) 활성 자기학습 상품 구독(개별 과목 / 번들). 부여 과목 = plan.subject_codes 합집합.
   const { data: subs } = await admin
     .from("user_subscriptions")
-    .select("subject_code, subscription_plans!inner(code)")
+    .select(
+      "subject_code, subscription_plans!inner(product_kind, subject_codes, features)",
+    )
     .eq("user_id", userId)
     .eq("status", "active")
     .gte("expires_at", nowIso);
   const selfSubs = (subs ?? []).filter((s) =>
-    SELF_STUDY_PLAN_CODES.includes(s.subscription_plans.code),
+    SELF_STUDY_PRODUCT_KINDS.includes(s.subscription_plans.product_kind),
   );
   if (selfSubs.length > 0) {
-    let subjects: "all" | string[];
-    if (selfSubs.some((s) => !s.subject_code)) {
-      subjects = "all";
-    } else {
-      const set = new Set<string>();
-      for (const s of selfSubs) if (s.subject_code) set.add(s.subject_code);
-      set.add(DEFAULT_SELF_STUDY_SUBJECT); // 자연과학 기본 활성
-      subjects = [...set];
+    const subjectSet = new Set<string>();
+    const featureSet = new Set<string>();
+    for (const s of selfSubs) {
+      const codes = Array.isArray(s.subscription_plans.subject_codes)
+        ? (s.subscription_plans.subject_codes as string[])
+        : [];
+      for (const c of codes) subjectSet.add(c);
+      // 레거시 폴백: 상품이 subject_codes 를 안 가지면 결제 시 태깅한 subject_code 사용.
+      if (codes.length === 0 && s.subject_code) subjectSet.add(s.subject_code);
+      const feats = Array.isArray(s.subscription_plans.features)
+        ? (s.subscription_plans.features as string[])
+        : [];
+      for (const f of feats) featureSet.add(f);
     }
+    subjectSet.add(DEFAULT_SELF_STUDY_SUBJECT); // 자연과학 기본 활성
     return {
       grade: "self_study",
-      planCode: SELF_STUDY_PLAN_CODES[0],
-      features: await planFeatures(SELF_STUDY_PLAN_CODES[0]),
-      subjects,
+      planCode: "self_study",
+      features: featureSet.size > 0 ? [...featureSet] : [...SELF_STUDY_FEATURES],
+      subjects: [...subjectSet],
       trialEndsAt: null,
     };
   }
@@ -128,7 +149,7 @@ export async function getMembershipAccess(
     return {
       grade: "trial",
       planCode: "free",
-      features: await planFeatures(SELF_STUDY_PLAN_CODES[0]),
+      features: [...SELF_STUDY_FEATURES],
       subjects: [...TRIAL_SUBJECTS],
       trialEndsAt,
     };

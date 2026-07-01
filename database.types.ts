@@ -2670,6 +2670,63 @@ export type Database = {
           },
         ]
       }
+      discounts: {
+        Row: {
+          code: string | null
+          created_at: string
+          discount_id: string
+          ends_at: string | null
+          is_active: boolean
+          kind: string
+          max_uses: number | null
+          min_amount_krw: number | null
+          name: string
+          per_user_limit: number | null
+          starts_at: string | null
+          target_kind: string
+          target_plan_codes: Json
+          updated_at: string
+          used_count: number
+          value: number
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          discount_id?: string
+          ends_at?: string | null
+          is_active?: boolean
+          kind: string
+          max_uses?: number | null
+          min_amount_krw?: number | null
+          name: string
+          per_user_limit?: number | null
+          starts_at?: string | null
+          target_kind?: string
+          target_plan_codes?: Json
+          updated_at?: string
+          used_count?: number
+          value: number
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          discount_id?: string
+          ends_at?: string | null
+          is_active?: boolean
+          kind?: string
+          max_uses?: number | null
+          min_amount_krw?: number | null
+          name?: string
+          per_user_limit?: number | null
+          starts_at?: string | null
+          target_kind?: string
+          target_plan_codes?: Json
+          updated_at?: string
+          used_count?: number
+          value?: number
+        }
+        Relationships: []
+      }
       exam_results: {
         Row: {
           certificate_path: string | null
@@ -4314,6 +4371,7 @@ export type Database = {
         Row: {
           amount_krw: number
           created_at: string
+          discount_id: string | null
           failure_reason: string | null
           payment_id: string
           plan_id: string
@@ -4328,6 +4386,7 @@ export type Database = {
         Insert: {
           amount_krw: number
           created_at?: string
+          discount_id?: string | null
           failure_reason?: string | null
           payment_id?: string
           plan_id: string
@@ -4342,6 +4401,7 @@ export type Database = {
         Update: {
           amount_krw?: number
           created_at?: string
+          discount_id?: string | null
           failure_reason?: string | null
           payment_id?: string
           plan_id?: string
@@ -4354,6 +4414,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "discounts"
+            referencedColumns: ["discount_id"]
+          },
           {
             foreignKeyName: "payments_plan_id_fkey"
             columns: ["plan_id"]
@@ -5894,6 +5961,8 @@ export type Database = {
           name: string
           plan_id: string
           price_krw: number
+          product_kind: string
+          subject_codes: Json
           updated_at: string
         }
         Insert: {
@@ -5907,6 +5976,8 @@ export type Database = {
           name: string
           plan_id?: string
           price_krw: number
+          product_kind?: string
+          subject_codes?: Json
           updated_at?: string
         }
         Update: {
@@ -5920,6 +5991,8 @@ export type Database = {
           name?: string
           plan_id?: string
           price_krw?: number
+          product_kind?: string
+          subject_codes?: Json
           updated_at?: string
         }
         Relationships: []
