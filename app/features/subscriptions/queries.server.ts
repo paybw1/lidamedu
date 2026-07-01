@@ -6,6 +6,7 @@ import type { Database } from "database.types";
 import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
+import { incrementDiscountUse } from "~/features/subscriptions/discounts.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 
 import type {
@@ -265,6 +266,10 @@ export async function createPendingPayment(input: {
   tossOrderId: string;
   /** 자기학습 과목별 결제 — 결제하는 학습과목 슬러그. 전체 플랜은 null. */
   subjectCode?: string | null;
+  /** feat-8-028 — 할인 적용 후 실제 결제 금액(미지정 시 정가). */
+  amountKrw?: number;
+  /** 적용된 할인 id(있으면). */
+  discountId?: string | null;
 }): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
   const admin = adminClient as SupabaseClient<Database>;
   const { data, error } = await admin
@@ -272,10 +277,11 @@ export async function createPendingPayment(input: {
     .insert({
       user_id: input.userId,
       plan_id: input.plan.planId,
-      amount_krw: input.plan.priceKrw,
+      amount_krw: input.amountKrw ?? input.plan.priceKrw,
       status: "pending",
       toss_order_id: input.tossOrderId,
       subject_code: input.subjectCode ?? null,
+      discount_id: input.discountId ?? null,
     })
     .select("payment_id")
     .single();
@@ -302,7 +308,7 @@ export async function confirmPayment(
   const { data: payRow, error: payErr } = await admin
     .from("payments")
     .select(
-      "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, subject_code, subscription_plans(duration_days, code, name)",
+      "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, subject_code, discount_id, subscription_plans(duration_days, code, name)",
     )
     .eq("toss_order_id", input.tossOrderId)
     .maybeSingle();
@@ -362,6 +368,11 @@ export async function confirmPayment(
       toss_response: tossPayload as never,
     })
     .eq("payment_id", payRow.payment_id);
+
+  // feat-8-028 — 할인 사용 횟수 반영(완료 시점).
+  if (payRow.discount_id) {
+    await incrementDiscountUse(payRow.discount_id);
+  }
 
   // 4) 구독 row insert (같은 플랜·과목의 기존 활성 구독 있으면 연장). 과목별 결제라
   //    subject_code 단위로 매칭 — null(전체 플랜)과 특정 과목을 구분한다.

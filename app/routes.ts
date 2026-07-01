@@ -755,6 +755,15 @@ export default [
         "features/subscriptions/screens/admin-plans.tsx",
       ),
       route("/api/admin/plan", "features/subscriptions/api/admin-plan.tsx"),
+      // feat-8-028 — 할인 관리 (manager+).
+      route(
+        "/admin/discounts",
+        "features/subscriptions/screens/admin-discounts.tsx",
+      ),
+      route(
+        "/api/admin/discount",
+        "features/subscriptions/api/admin-discount.tsx",
+      ),
       route("/api/comments/comment", "features/comments/api/comment.tsx"),
       // 판례 공식 전문 PDF — 매 클릭마다 fresh signed URL 발급 + 302 redirect.
       // 클라엔 정적 URL 만 노출(만료 무관). 학생 인증 필수.

@@ -9,9 +9,16 @@ import { Link } from "react-router";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import { Input } from "~/core/components/ui/input";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
-import { FEATURE_LABEL } from "~/features/subscriptions/labels";
+import { listActiveDiscounts } from "~/features/subscriptions/discounts.server";
+import {
+  type Discount,
+  FEATURE_LABEL,
+  bestAutomaticDiscount,
+  effectivePriceKrw,
+} from "~/features/subscriptions/labels";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
   type SubscriptionPlan,
@@ -66,6 +73,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         : [];
   }
 
+  const discounts = await listActiveDiscounts(client);
   const locked = new URL(request.url).searchParams.get("locked");
   return {
     plans,
@@ -74,12 +82,15 @@ export async function loader({ request }: Route.LoaderArgs) {
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
     locked,
     ownedSubjects,
+    discounts,
   };
 }
 
 export default function Pricing({ loaderData }: Route.ComponentProps) {
-  const { plans, active, isAuthed, tossClientKey, locked, ownedSubjects } =
+  const { plans, active, isAuthed, tossClientKey, locked, ownedSubjects, discounts } =
     loaderData;
+  const [coupon, setCoupon] = useState("");
+  const nowMs = Date.now();
   const bundles = plans.filter((p) => p.productKind === "bundle");
   const subjects = plans.filter((p) => p.productKind === "subject");
   const memberships = plans.filter((p) => p.productKind === "membership");
@@ -96,6 +107,9 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
     isAuthed,
     tossClientKey,
     activeCode: active.planCode,
+    discounts,
+    nowMs,
+    coupon: coupon.trim() || null,
   });
 
   return (
@@ -134,6 +148,22 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
               </Link>
             </CardContent>
           </Card>
+        ) : null}
+
+        {isAuthed ? (
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <Input
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value)}
+              placeholder="쿠폰 코드 (선택)"
+              className="h-9 max-w-[220px] text-sm"
+            />
+            {coupon.trim() ? (
+              <span className="text-muted-foreground text-xs">
+                결제 시 자동 적용됩니다
+              </span>
+            ) : null}
+          </div>
         ) : null}
 
         {bundles.length > 0 ? (
@@ -199,16 +229,28 @@ function PlanCard({
   isAuthed,
   tossClientKey,
   activeCode,
+  discounts,
+  nowMs,
+  coupon,
 }: {
   plan: SubscriptionPlan;
   owned: boolean;
   isAuthed: boolean;
   tossClientKey: string | null;
   activeCode: string;
+  discounts: Discount[];
+  nowMs: number;
+  coupon: string | null;
 }) {
   const isFree = plan.code === "free";
   const isCohort = plan.code === "cohort";
   const highlight = plan.code === "bundle_all";
+  // 자동 프로모션(코드 없는) 할인 미리보기. 쿠폰은 결제 시 서버가 재계산.
+  const auto =
+    plan.priceKrw > 0
+      ? bestAutomaticDiscount(plan, plan.priceKrw, discounts, nowMs)
+      : null;
+  const effective = auto ? effectivePriceKrw(plan.priceKrw, auto) : plan.priceKrw;
 
   return (
     <Card
@@ -236,18 +278,32 @@ function PlanCard({
             ) : null}
           </div>
         </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold tabular-nums">
-            {plan.priceKrw === 0
-              ? "무료"
-              : `₩${plan.priceKrw.toLocaleString("ko-KR")}`}
-          </span>
+        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+          {plan.priceKrw === 0 ? (
+            <span className="text-3xl font-bold">무료</span>
+          ) : (
+            <>
+              <span className="text-3xl font-bold tabular-nums">
+                ₩{effective.toLocaleString("ko-KR")}
+              </span>
+              {auto ? (
+                <span className="text-muted-foreground text-sm line-through tabular-nums">
+                  ₩{plan.priceKrw.toLocaleString("ko-KR")}
+                </span>
+              ) : null}
+            </>
+          )}
           {plan.durationDays > 0 && plan.priceKrw > 0 ? (
             <span className="text-muted-foreground text-xs">
               / {plan.durationDays}일
             </span>
           ) : null}
         </div>
+        {auto ? (
+          <Badge className="w-fit bg-rose-500 text-[10px] text-white hover:bg-rose-500">
+            {auto.name}
+          </Badge>
+        ) : null}
         {plan.description ? (
           <p className="text-muted-foreground text-xs leading-relaxed">
             {plan.description}
@@ -292,6 +348,7 @@ function PlanCard({
           isAuthed={isAuthed}
           tossClientKey={tossClientKey}
           activeCode={activeCode}
+          coupon={coupon}
         />
       </CardContent>
     </Card>
@@ -306,6 +363,7 @@ function PlanCta({
   isAuthed,
   tossClientKey,
   activeCode,
+  coupon,
 }: {
   plan: SubscriptionPlan;
   owned: boolean;
@@ -314,6 +372,7 @@ function PlanCta({
   isAuthed: boolean;
   tossClientKey: string | null;
   activeCode: string;
+  coupon: string | null;
 }) {
   if (isFree) {
     const isActive = activeCode === "free";
@@ -340,7 +399,12 @@ function PlanCta({
     );
   }
   return (
-    <SubscribeButton plan={plan} isAuthed={isAuthed} tossClientKey={tossClientKey} />
+    <SubscribeButton
+      plan={plan}
+      isAuthed={isAuthed}
+      tossClientKey={tossClientKey}
+      coupon={coupon}
+    />
   );
 }
 
@@ -348,10 +412,12 @@ function SubscribeButton({
   plan,
   isAuthed,
   tossClientKey,
+  coupon,
 }: {
   plan: SubscriptionPlan;
   isAuthed: boolean;
   tossClientKey: string | null;
+  coupon: string | null;
 }) {
   const [pending, setPending] = useState(false);
   if (!isAuthed) {
@@ -376,7 +442,7 @@ function SubscribeButton({
       onClick={async () => {
         setPending(true);
         try {
-          await startSubscriptionCheckout(plan, tossClientKey);
+          await startSubscriptionCheckout(plan, tossClientKey, coupon);
         } finally {
           setPending(false);
         }
@@ -387,14 +453,16 @@ function SubscribeButton({
   );
 }
 
-// 결제 개시 — pending payment 생성 후 토스 SDK 호출. 상품(plan) 단위 결제.
+// 결제 개시 — pending payment 생성(서버가 할인 계산) 후 토스 SDK 호출. 상품 단위.
 async function startSubscriptionCheckout(
   plan: SubscriptionPlan,
   tossClientKey: string,
+  couponCode?: string | null,
 ): Promise<void> {
   const fd = new FormData();
   fd.append("intent", "create-order");
   fd.append("planCode", plan.code);
+  if (couponCode) fd.append("discountCode", couponCode);
   const res = await fetch("/api/payments/create-order", {
     method: "POST",
     body: fd,
@@ -402,19 +470,22 @@ async function startSubscriptionCheckout(
   const json = (await res.json()) as {
     ok?: boolean;
     orderId?: string;
+    amount?: number;
     error?: string;
   };
   if (!json.ok || !json.orderId) {
     alert(`결제 준비 실패: ${json.error ?? "알 수 없는 오류"}`);
     return;
   }
+  // 서버가 계산한 할인 후 금액으로 결제(정가 아님 — confirm 금액 검증과 정합).
+  const amount = typeof json.amount === "number" ? json.amount : plan.priceKrw;
   try {
     const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
     const tossPayments = await loadTossPayments(tossClientKey);
     const payment = tossPayments.payment({ customerKey: plan.planId });
     await payment.requestPayment({
       method: "CARD",
-      amount: { currency: "KRW", value: plan.priceKrw },
+      amount: { currency: "KRW", value: amount },
       orderId: json.orderId,
       orderName: plan.name,
       successUrl: `${window.location.origin}/api/payments/toss/confirm`,

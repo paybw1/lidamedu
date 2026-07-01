@@ -36,7 +36,7 @@
 - **A. 모델·시드·리졸버** ✅ — plans.subject_codes/product_kind + discounts + payments.discount_id 마이그, 상품 시드(개별4+번들2, pro_monthly 은퇴), 리졸버 plan.subject_codes 기반 전환. (마이그 20260701_pricing_products_discounts.sql)
 - **B. 상품 관리 admin** ✅ — `/admin/pricing`(수강생 클러스터, manager+) 상품 목록 + 생성/수정 폼(코드·이름·종류·가격·기간·정렬·설명·부여 과목 체크·부여 기능 체크·활성). `listAllPlans`/`upsertPlan`(queries.server) + `/api/admin/plan`(zod+logAuditEvent). SubscriptionPlan 타입에 subjectCodes/productKind 배선.
 - **C. pricing 화면 개편** ✅ — 상품 종류별 섹션(번들/개별 과목/회원제) 카드. 각 카드=가격·열리는 학습과목 칩·보유 시 "보유 중" 배지·구독 시작(상품 단위 startSubscriptionCheckout, planCode만). Stage 4 SubjectSubscribeList/SubjectRow 제거.
-- **D. 할인 엔진** — create-order 할인 계산 + 할인 admin(기간·조건·쿠폰) + pricing 할인 표시(원가 취소선).
+- **D. 할인 엔진** ✅ — `discounts.server`(list/upsert/`resolveCheckoutDiscount`/`incrementDiscountUse`) + labels 순수 헬퍼(`discountAppliesToPlan`/`effectivePriceKrw`/`bestAutomaticDiscount`). create-order 가 쿠폰·자동 프로모션 유효 할인 계산 → 할인가 pending payment(+discount_id) + 유효 금액 반환(클라 Toss amount 정합). confirmPayment 완료 시 used_count+1. pricing 자동 할인 원가 취소선·할인 배지 + 쿠폰 입력. 할인 관리 admin `/admin/discounts`(기간·조건·쿠폰·대상, logAuditEvent).
 
 ## 3계층 게이트
 - Judgment: 수익화 운영 필수(과목별 금액·번들·할인). 기존 구독/결제 인프라 재사용.

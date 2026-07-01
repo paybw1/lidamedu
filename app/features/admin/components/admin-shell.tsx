@@ -154,8 +154,9 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
       // feat-7-014 — manager+ 전용. 메뉴는 노출, loader 에서 차단.
       { label: "수강권 관리", to: "/admin/subscriptions" },
-      // feat-8-028 — manager+ 상품·요금(가격·부여 과목·할인) 관리.
+      // feat-8-028 — manager+ 상품·요금·할인 관리.
       { label: "상품·요금 관리", to: "/admin/pricing" },
+      { label: "할인 관리", to: "/admin/discounts" },
     ],
   },
   {

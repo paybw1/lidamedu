@@ -7,6 +7,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { resolveCheckoutDiscount } from "~/features/subscriptions/discounts.server";
 import {
   createPendingPayment,
   getPlanByCode,
@@ -20,6 +21,8 @@ const schema = z.object({
   planCode: z.string().min(1).max(40),
   // 자기학습 과목별 결제 — 법률과목 슬러그만(자연과학은 기본 무료라 결제 대상 아님).
   subjectCode: lawSubjectSlugSchema.optional(),
+  // feat-8-028 — 쿠폰 코드(선택).
+  discountCode: z.string().trim().max(40).optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -46,6 +49,19 @@ export async function action({ request }: Route.ActionArgs) {
   if (plan.priceKrw <= 0)
     return data({ error: "유료 플랜만 결제 가능합니다" }, { status: 400 });
 
+  // feat-8-028 — 유효 할인 계산(쿠폰 또는 자동 프로모션). 서버 권위 금액.
+  const disc = await resolveCheckoutDiscount({
+    plan: { code: plan.code, productKind: plan.productKind, priceKrw: plan.priceKrw },
+    code: parsed.data.discountCode ?? null,
+    userId: user.id,
+  });
+  if (!disc.ok) return data({ error: disc.error }, { status: 400 });
+  if (disc.amountKrw <= 0)
+    return data(
+      { error: "할인 후 결제 금액이 0원입니다. 운영자에게 문의하세요." },
+      { status: 400 },
+    );
+
   // 토스 orderId 는 6~64자 영숫자/하이픈/언더스코어. UUID 사용.
   const tossOrderId = `lidam-${randomUUID()}`;
   const res = await createPendingPayment({
@@ -53,6 +69,8 @@ export async function action({ request }: Route.ActionArgs) {
     plan,
     tossOrderId,
     subjectCode: parsed.data.subjectCode ?? null,
+    amountKrw: disc.amountKrw,
+    discountId: disc.discount?.discountId ?? null,
   });
   if (!res.ok) return data({ error: res.error }, { status: 500 });
 
@@ -60,5 +78,6 @@ export async function action({ request }: Route.ActionArgs) {
     ok: true,
     orderId: tossOrderId,
     paymentId: res.paymentId,
+    amount: disc.amountKrw,
   });
 }
