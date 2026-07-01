@@ -62,6 +62,16 @@ export interface OxQuestionItem {
   oxHidden?: boolean;
 }
 
+// 지문(선지/박스)이 정오문제로 학습 가능한지 — 정오문제 패널 노출 조건과 동일 SSOT
+// (ox_truth 가 분류돼 있고 ox_ineligible 이 아님). 이걸 만족해야 정오문제 즐겨찾기
+// (problem_choice/problem_box_item 타깃)로 연결된다. 미충족 = 정오문제 학습 불가.
+export function isOxEligible(
+  oxTruth: OxTruth | null,
+  oxIneligible: boolean | null,
+): boolean {
+  return oxTruth != null && oxIneligible !== true;
+}
+
 export interface OxRefAnnotations {
   memos: MemoRecord[];
   bookmark: BookmarkRecord | null;
