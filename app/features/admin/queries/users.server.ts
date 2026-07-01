@@ -11,9 +11,14 @@ export type UserRole = Database["public"]["Enums"]["user_role"];
 export interface AdminUserRow {
   profileId: string;
   name: string;
+  // 카카오 로그인으로 수집되는 프로필 정보(6-scope): 닉네임·프로필사진·이메일·전화·주소.
+  nickname: string | null;
+  avatarUrl: string | null;
   role: UserRole;
   email: string | null;
   phoneE164: string | null;
+  address: string | null;
+  marketingConsent: boolean;
   createdAt: string;
   updatedAt: string;
   lastSignInAt: string | null;
@@ -47,7 +52,9 @@ export async function listAdminUsers(
   const [{ data: profileRows, error: pErr }, authList] = await Promise.all([
     (client as SupabaseClient<Database>)
       .from("profiles")
-      .select("profile_id, name, role, phone_e164, created_at, updated_at"),
+      .select(
+        "profile_id, name, nickname, avatar_url, role, phone_e164, address, marketing_consent, created_at, updated_at",
+      ),
     client.auth.admin.listUsers({ page: 1, perPage: 1000 }),
   ]);
   if (pErr) throw pErr;
@@ -61,9 +68,13 @@ export async function listAdminUsers(
     return {
       profileId: u.id,
       name: profile?.name ?? "",
+      nickname: profile?.nickname ?? null,
+      avatarUrl: profile?.avatar_url ?? null,
       role: (profile?.role ?? "student") as UserRole,
       email: u.email ?? null,
       phoneE164: profile?.phone_e164 ?? null,
+      address: profile?.address ?? null,
+      marketingConsent: profile?.marketing_consent ?? false,
       createdAt: profile?.created_at ?? u.created_at,
       updatedAt: profile?.updated_at ?? u.created_at,
       lastSignInAt: u.last_sign_in_at ?? null,
@@ -78,7 +89,10 @@ export async function listAdminUsers(
     rows = rows.filter(
       (r) =>
         r.name.toLowerCase().includes(trimmed) ||
-        (r.email ?? "").toLowerCase().includes(trimmed),
+        (r.email ?? "").toLowerCase().includes(trimmed) ||
+        (r.nickname ?? "").toLowerCase().includes(trimmed) ||
+        (r.phoneE164 ?? "").toLowerCase().includes(trimmed) ||
+        (r.address ?? "").toLowerCase().includes(trimmed),
     );
   }
   // 가입일 내림차순.

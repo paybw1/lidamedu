@@ -138,8 +138,8 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
               type="search"
               name="q"
               defaultValue={filters.q}
-              placeholder="이름·이메일 검색"
-              aria-label="이름·이메일 검색"
+              placeholder="이름·이메일·닉네임·전화·주소 검색"
+              aria-label="이름·이메일·닉네임·전화·주소 검색"
               className="border-input bg-background focus:border-primary h-9 w-full rounded-md border pr-3 pl-9 text-[13px] outline-none"
             />
           </div>
@@ -183,11 +183,13 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <IndexTable
-          minWidth={720}
+          minWidth={1040}
           headers={[
             { label: "No", align: "center", width: "3rem" },
-            { label: "이름", width: "10rem" },
+            { label: "이름 · 닉네임", width: "12rem" },
             { label: "이메일" },
+            { label: "전화번호", width: "9rem" },
+            { label: "주소" },
             { label: "역할", width: "9rem" },
             { label: "가입일", align: "right", width: "7rem" },
             { label: "마지막 로그인", align: "right", width: "8rem" },
@@ -256,12 +258,28 @@ function UserRow({
         {index}
       </TD>
       <TD>
-        <div className="inline-flex items-center gap-1.5">
-          <UserIcon className="text-muted-foreground size-3.5 shrink-0" />
-          <span className="font-medium">{user.name || "—"}</span>
-          {isCurrentUser ? (
-            <Chip tone="outline">본인</Chip>
-          ) : null}
+        <div className="flex items-center gap-2">
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="size-6 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <UserIcon className="text-muted-foreground size-3.5 shrink-0" />
+          )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium">{user.name || "—"}</span>
+              {isCurrentUser ? <Chip tone="outline">본인</Chip> : null}
+            </div>
+            {user.nickname && user.nickname !== user.name ? (
+              <span className="text-muted-foreground block truncate text-[11px]">
+                {user.nickname}
+              </span>
+            ) : null}
+          </div>
         </div>
       </TD>
       <TD soft>
@@ -275,6 +293,14 @@ function UserRow({
             aria-label="이메일 인증 완료"
           />
         ) : null}
+      </TD>
+      <TD soft mono>
+        {user.phoneE164 ?? "—"}
+      </TD>
+      <TD soft>
+        <span className="block max-w-[22rem] truncate" title={user.address ?? undefined}>
+          {user.address ?? "—"}
+        </span>
       </TD>
       <TD>
         <fetcher.Form method="post" action="/api/admin/user-role">

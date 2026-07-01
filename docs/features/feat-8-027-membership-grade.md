@@ -28,11 +28,16 @@
 - `subscription_plans` `pro_monthly` → name '자기학습', features 보강(area_study_mgmt·passer_* 포함, 상담·과제·모의·반별 제외).
 
 ## 단계 계획
-1. **DB + 리졸버** ✅ (본 커밋) — 스키마, `getMembershipAccess`/`requireSubject`, requireFeature 위임.
-2. **게이팅 배선** — /subjects/:subject loader 에 `requireSubject`(체험=특허법 한정). 무료회원 학습과목 차단 확인.
+1. **DB + 리졸버** ✅ (7d06c1a) — 스키마, `getMembershipAccess`/`requireSubject`, requireFeature 위임.
+2. **게이팅 배선** ✅ (7d06c1a) — `subjects.layout` 단일 지점에서 URL 과목 슬러그로 `requireSubject`
+   (체험=특허법만, 자기학습=결제 과목+자연과학, 종합반/staff=전체, 무료회원=차단). pricing
+   `?locked=subject:<slug>` 배너에 과목명 표시. 개별 뷰어 로더 무수정.
 3. **체험 공지·강등** — 가입 사전공지 + 만료 D-N 인박스/팝업(`trial_expiry_notified_at`) + 자동 강등(로그인 훅/cron).
 4. **자기학습 과목별 결제** — pricing 과목 단위, Toss 배선(subject_code), 자연과학 기본.
 5. **종합반 신청·승인 + 종류별 범위** — 신청 큐(pending→active) + `cohorts.access_scope` 운영 UI.
+
+## UX 후속(폴백)
+- 학습과목 탭(AreaTabs)이 미허용 과목도 클릭 가능 → 클릭 시 /pricing redirect(기능은 정상, 잠금 표시 없음). 등급별 잠금 배지는 후속 폴리시.
 
 ## 3계층 게이트
 - **Judgment**: 스펙상 필수(수익화·차등 접근). 기존 구독 인프라 재사용이라 중복 최소.
