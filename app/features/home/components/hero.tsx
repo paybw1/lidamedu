@@ -103,15 +103,14 @@ export function Hero() {
           </Reveal>
           <Reveal delay={400}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {/* 가입(무료로 시작하기)은 바로 아래 무료 체험 콜아웃이 담당 —
+                  중복을 피해 Hero 상단은 로그인만. */}
               <LandingButton
                 size="lg"
                 variant="primary"
-                to="/join"
+                to="/login"
                 iconRight={<ArrowRightIcon size={17} strokeWidth={1.8} />}
               >
-                무료로 시작하기
-              </LandingButton>
-              <LandingButton size="lg" variant="outline" to="/login">
                 로그인
               </LandingButton>
             </div>

@@ -18,37 +18,40 @@ interface Tier {
   to: string;
   variant: ButtonVariant;
   recommended?: boolean;
+  note?: string;
 }
 
-// feat-8-008 — 3-tier 영역 게이팅에 맞춰 includes 정렬.
-// 회원1(무료) = 학습정보 + 커뮤니티 / 회원2(정회원) = +학습과목·학습보조 / 회원3(종합반) = +학습관리·모의고사.
+// feat-8-027/8-028 — 등급·과목별 상품 구조에 맞춘 티저.
+// 무료회원 = 커뮤니티·학습정보 / 자기학습 = 과목별 결제(학습과목·학습보조·학습관리) / 종합반 = 전체.
 const TIERS: Tier[] = [
   {
-    label: "무료 · 평생",
+    label: "무료회원 · 평생",
     price: "₩0",
     priceUnit: "",
     includes: [
+      "커뮤니티 (반별 게시판 제외)",
       "최근 판례·법령 개정 피드",
       "1·2차 기출문제 색인",
-      "논문·도서 추록 색인",
-      "커뮤니티·공지·스터디 모집",
+      "공지·스터디 모집",
     ],
+    note: "가입 후 15일간 특허법 학습과목 무료 체험",
     cta: "무료로 시작",
     to: "/join",
     variant: "outline",
   },
   {
-    label: "정회원 · 자기주도",
-    price: "₩99,000",
-    priceUnit: "/ 월",
+    label: "자기학습 · 과목별",
+    price: "과목별",
+    priceUnit: "결제",
     includes: [
-      "무료 전체",
-      "조문·판례·문제 본문 학습 (학습과목)",
-      "오답노트·하이라이트·메모·암기",
-      "조문 트리·맞춤 퀴즈",
-      "Q&A·강사 주석 열람",
+      "조문·판례·문제 본문 학습 (결제 과목)",
+      "자연과학 기본 포함",
+      "오답노트·하이라이트·코멘트·암기",
+      "학습관리 (대시보드·진도·합격 예측)",
+      "합격자 평균 비교",
     ],
-    cta: "정회원 시작",
+    note: "필요한 과목만 · 산업재산권법/전체 통합 번들 제공",
+    cta: "요금제 보기",
     to: "/pricing",
     variant: "primary",
     recommended: true,
@@ -58,12 +61,13 @@ const TIERS: Tier[] = [
     price: "상담 후 결정",
     priceUnit: "",
     includes: [
-      "정회원 전체",
-      "대시보드·진도·합격 예측 분석",
-      "1·2차 모의고사 + 온라인 GS",
+      "자기학습 전체",
+      "1차 모의고사",
       "커리큘럼 + 위클리 과제",
       "강사 첨삭 + 1:1 상담",
+      "반별 게시판",
     ],
+    note: "2차 모의고사·온라인 GS는 별도 프로그램",
     cta: "학원 상담",
     to: "/contact",
     variant: "outline",
@@ -84,7 +88,7 @@ export function PricingTeaserSection() {
         eyebrow="PRICING"
         title="필요한 만큼만, 합리적으로"
         subtitle={
-          "학습정보·커뮤니티는 평생 무료입니다. 조문·판례·문제 본격 학습은 정회원, 합격까지 함께라면 종합반입니다."
+          "커뮤니티·학습정보는 평생 무료, 가입 후 15일은 특허법을 무료로 체험합니다. 조문·판례·문제 학습은 필요한 과목만 결제하고, 합격까지 함께라면 종합반입니다."
         }
       />
       <div
@@ -170,6 +174,18 @@ export function PricingTeaserSection() {
                   </span>
                 ) : null}
               </div>
+              {t.note ? (
+                <div
+                  style={{
+                    marginTop: 8,
+                    font: "500 12px/1.45 Pretendard, sans-serif",
+                    color: PALETTE.inkSoft,
+                    letterSpacing: "-0.005em",
+                  }}
+                >
+                  {t.note}
+                </div>
+              ) : null}
             </div>
             <ul
               style={{
