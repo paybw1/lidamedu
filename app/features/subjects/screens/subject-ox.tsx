@@ -35,7 +35,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const items = await getOxQuestionsForSubject(client, lawCode, 200, {
     includeUnapproved: role !== null,
   });
-  return { subject: LAW_SUBJECTS[lawCode], items, isStaff: role !== null };
+  return {
+    subject: LAW_SUBJECTS[lawCode],
+    items,
+    isStaff: role !== null,
+    currentUserId: user.id,
+    isAdmin: role === "admin" || role === "manager",
+  };
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -48,7 +54,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function SubjectOx({ loaderData }: Route.ComponentProps) {
-  const { subject, items, isStaff } = loaderData;
+  const { subject, items, isStaff, currentUserId, isAdmin } = loaderData;
   // 진입 시 1회 셔플 (서버 사이드 useMemo 는 idempotent — Date.now seed 없음).
   const shuffled = useMemo(() => shuffle(items), [items]);
 
@@ -114,6 +120,8 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
                 items={shuffled}
                 subject={subject.slug}
                 isStaff={isStaff}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
               />
             </div>
           </div>

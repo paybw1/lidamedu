@@ -57,24 +57,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     article: 0,
     case: 0,
     problem: 0,
-    ox: 0,
   };
   for (const m of items) {
     if (m.targetType === "article") counts.article += 1;
     else if (m.targetType === "case") counts.case += 1;
-    else if (m.targetType === "problem") counts.problem += 1;
-    else counts.ox += 1;
+    else counts.problem += 1;
   }
   return { items, counts, aidCounts };
 }
 
-type TypeFilter = "article" | "case" | "problem" | "ox";
+// 정오문제(OX)는 "지문 전체 대상"이라 포스트잇이 아니라 코멘트로 관리(/study/comments).
+// 포스트잇 = 문구 앵커 → 조문·판례·문제 본문만.
+type TypeFilter = "article" | "case" | "problem";
 
 const TYPE_OPTIONS = [
   ["article", "조문"],
   ["case", "판례"],
   ["problem", "문제"],
-  ["ox", "정오문제"],
 ] as const;
 
 export default function Notes({ loaderData }: Route.ComponentProps) {
@@ -98,13 +97,7 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
   const needle = q.trim().toLowerCase();
   const items = all.filter((m) => {
     if (subject && m.lawCode !== subject) return false;
-    if (type === "ox") {
-      if (
-        m.targetType !== "problem_choice" &&
-        m.targetType !== "problem_box_item"
-      )
-        return false;
-    } else if (type && m.targetType !== type) return false;
+    if (type && m.targetType !== type) return false;
     if (!inRangeSelection(m.updatedAt, rangeSel)) return false;
     if (needle) {
       const hay = [
@@ -134,7 +127,6 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
         { label: "조문", value: counts.article, dotClass: "bg-primary" },
         { label: "판례", value: counts.case, dotClass: "bg-violet-500" },
         { label: "문제", value: counts.problem, dotClass: "bg-amber-500" },
-        { label: "정오문제", value: counts.ox, dotClass: "bg-rose-500" },
       ]}
     >
       <FilterBar

@@ -7652,7 +7652,12 @@ export type Database = {
       community_post_attachment_kind: "image" | "pdf" | "file"
       community_report_status: "pending" | "resolved" | "dismissed"
       community_report_target: "post" | "comment"
-      content_comment_target_type: "article" | "case" | "problem"
+      content_comment_target_type:
+        | "article"
+        | "case"
+        | "problem"
+        | "problem_choice"
+        | "problem_box_item"
       curriculum_item_kind:
         | "article"
         | "case"
@@ -7905,7 +7910,13 @@ export const Constants = {
       community_post_attachment_kind: ["image", "pdf", "file"],
       community_report_status: ["pending", "resolved", "dismissed"],
       community_report_target: ["post", "comment"],
-      content_comment_target_type: ["article", "case", "problem"],
+      content_comment_target_type: [
+        "article",
+        "case",
+        "problem",
+        "problem_choice",
+        "problem_box_item",
+      ],
       curriculum_item_kind: [
         "article",
         "case",

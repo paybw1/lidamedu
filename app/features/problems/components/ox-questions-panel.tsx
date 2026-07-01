@@ -7,7 +7,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   HeartIcon,
-  NotebookPenIcon,
+  MessageSquarePlusIcon,
   PencilIcon,
   RefreshCcwIcon,
 } from "lucide-react";
@@ -18,7 +18,7 @@ import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import { BookmarkStars } from "~/features/annotations/components/bookmark-stars";
-import { MemoList } from "~/features/annotations/components/memo-list";
+import { CommentsPanel } from "~/features/comments/components/comments-panel";
 import { ORIGIN_LABEL, type ProblemOrigin } from "~/features/problems/labels";
 import { stripLeadingMarker } from "~/features/problems/lib/ox-dedup";
 import type {
@@ -93,11 +93,17 @@ export function OxQuestionsPanel({
   subject,
   annotationsByRef,
   isStaff = false,
+  currentUserId = null,
+  isAdmin = false,
 }: {
   items: OxQuestionItem[];
   subject: LawSubjectSlug;
   annotationsByRef?: Record<string, OxRefAnnotations>;
   isStaff?: boolean;
+  /** 코멘트 작성 가능 여부 판정용 — 로그인 사용자 id. */
+  currentUserId?: string | null;
+  /** 코멘트 고정/전체 관리 권한(운영자). */
+  isAdmin?: boolean;
 }) {
   const location = useLocation();
   // staff "수정" 왕복 후 편집하던 지문으로 복귀 — ?ox=<refId> 로 초기 위치를 지정.
@@ -109,8 +115,8 @@ export function OxQuestionsPanel({
   });
   const [picked, setPicked] = useState<OxTruth | null>(null);
   const [revealed, setRevealed] = useState(false);
-  // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'memo' | null.
-  const [annoOpen, setAnnoOpen] = useState<"bookmark" | "memo" | null>(null);
+  // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'comment' | null.
+  const [annoOpen, setAnnoOpen] = useState<"bookmark" | "comment" | null>(null);
   const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
   // 학생 개인 숨김: 기본은 숨긴 지문 제외, 토글 켜면 복원용으로 함께 표시.
   const [showHidden, setShowHidden] = useState(false);
@@ -293,7 +299,7 @@ export function OxQuestionsPanel({
   const annoTargetType =
     cur.refType === "choice" ? "problem_choice" : "problem_box_item";
   const curAnno = annotationsByRef?.[cur.refId];
-  const memoCount = curAnno?.memos.length ?? 0;
+  const commentCount = curAnno?.comments.length ?? 0;
   const starLevel = curAnno?.bookmark?.starLevel ?? 0;
 
   return (
@@ -506,20 +512,20 @@ export function OxQuestionsPanel({
             </Button>
             <Button
               type="button"
-              variant={annoOpen === "memo" ? "default" : "outline"}
+              variant={annoOpen === "comment" ? "default" : "outline"}
               size="sm"
               onClick={() =>
-                setAnnoOpen((v) => (v === "memo" ? null : "memo"))
+                setAnnoOpen((v) => (v === "comment" ? null : "comment"))
               }
               className="h-7 gap-1 text-xs"
-              aria-pressed={annoOpen === "memo"}
-              data-testid="ox-toggle-memo"
+              aria-pressed={annoOpen === "comment"}
+              data-testid="ox-toggle-comment"
             >
-              <NotebookPenIcon className="size-3" />
-              메모
-              {memoCount > 0 ? (
+              <MessageSquarePlusIcon className="size-3" />
+              코멘트
+              {commentCount > 0 ? (
                 <span className="text-muted-foreground tabular-nums">
-                  {memoCount}
+                  {commentCount}
                 </span>
               ) : null}
             </Button>
@@ -578,16 +584,19 @@ export function OxQuestionsPanel({
             </div>
           ) : null}
 
-          {annoOpen === "memo" ? (
+          {annoOpen === "comment" ? (
             <div
               className="bg-background mt-2 rounded-md border p-3"
-              data-testid="ox-memo-panel"
+              data-testid="ox-comment-panel"
             >
-              <MemoList
-                key={`memo:${cur.refId}`}
+              <CommentsPanel
+                key={`comment:${cur.refId}`}
                 targetType={annoTargetType}
                 targetId={cur.refId}
-                initial={curAnno?.memos ?? []}
+                comments={curAnno?.comments ?? []}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                emptyHint="이 정오문제 지문에 대한 코멘트가 아직 없습니다"
               />
             </div>
           ) : null}

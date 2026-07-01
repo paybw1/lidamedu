@@ -52,21 +52,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     listAllComments(client, user.id),
     getStudyAidCounts(client, user.id),
   ]);
-  const counts = { total: items.length, article: 0, case: 0, problem: 0 };
+  const counts = { total: items.length, article: 0, case: 0, problem: 0, ox: 0 };
   for (const c of items) {
     if (c.targetType === "article") counts.article += 1;
     else if (c.targetType === "case") counts.case += 1;
-    else counts.problem += 1;
+    else if (c.targetType === "problem") counts.problem += 1;
+    else counts.ox += 1;
   }
   return { items, counts, aidCounts };
 }
 
-type TypeFilter = "article" | "case" | "problem";
+type TypeFilter = "article" | "case" | "problem" | "ox";
 
 const TYPE_OPTIONS = [
   ["article", "조문"],
   ["case", "판례"],
   ["problem", "문제"],
+  ["ox", "정오문제"],
 ] as const;
 
 export default function Comments({ loaderData }: Route.ComponentProps) {
@@ -90,7 +92,13 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
   const needle = q.trim().toLowerCase();
   const items = all.filter((c) => {
     if (subject && c.lawCode !== subject) return false;
-    if (type && c.targetType !== type) return false;
+    if (type === "ox") {
+      if (
+        c.targetType !== "problem_choice" &&
+        c.targetType !== "problem_box_item"
+      )
+        return false;
+    } else if (type && c.targetType !== type) return false;
     if (!inRangeSelection(c.updatedAt, rangeSel)) return false;
     if (needle) {
       const hay = [c.bodyMd, c.primaryLabel, c.secondaryLabel, c.bodySnippet]
@@ -107,12 +115,13 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
       active="comments"
       tabCounts={toTabCounts(aidCounts)}
       title="코멘트"
-      desc="조문 · 판례 · 문제 뷰어에서 작성한 코멘트. 최근 수정 순으로 정렬됩니다."
+      desc="조문 · 판례 · 문제 · 정오문제 뷰어에서 작성한 코멘트. 최근 수정 순으로 정렬됩니다."
       summaryStats={[
         { label: "전체", value: counts.total, dotClass: "bg-primary" },
         { label: "조문", value: counts.article, dotClass: "bg-primary" },
         { label: "판례", value: counts.case, dotClass: "bg-violet-500" },
         { label: "문제", value: counts.problem, dotClass: "bg-amber-500" },
+        { label: "정오문제", value: counts.ox, dotClass: "bg-rose-500" },
       ]}
     >
       <FilterBar

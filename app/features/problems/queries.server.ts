@@ -15,10 +15,8 @@ import type {
   ProblemScope,
 } from "./labels";
 
-import {
-  getBookmarksByTargets,
-  listMemosByTargets,
-} from "~/features/annotations/queries.server";
+import { getBookmarksByTargets } from "~/features/annotations/queries.server";
+import { listCommentsBulk } from "~/features/comments/queries.server";
 import { articleSlug } from "~/features/laws/lib/identifier";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
@@ -1339,8 +1337,10 @@ export async function getOxQuestionsForArticle(
   return deduped.slice(0, limit);
 }
 
-// OX 패널에서 사용자가 정답 확인 후 메모/즐겨찾기를 달 수 있게,
-// 각 OX ref(choice/box-item) 별 memo / bookmark 를 한 번에 fetch 해서 refId 키로 반환.
+// OX 패널에서 사용자가 정답 확인 후 코멘트/즐겨찾기를 달 수 있게,
+// 각 OX ref(choice/box-item) 별 코멘트(content_comments) / bookmark 를 한 번에 fetch 해서
+// refId 키로 반환. 정오문제 = 지문 전체 대상 → 포스트잇(문구 앵커)이 아니라 코멘트.
+// 코멘트 가시성(강사 공개 / 학생 본인)은 content_comments RLS 가 경계.
 export async function getOxAnnotationsForRefs(
   client: SupabaseClient<Database>,
   userId: string,
@@ -1354,11 +1354,11 @@ export async function getOxAnnotationsForRefs(
     else if (it.refType === "box") boxIds.push(it.refId);
   }
 
-  const [choiceMemos, choiceBookmarks, boxMemos, boxBookmarks, hiddenSet] =
+  const [choiceComments, choiceBookmarks, boxComments, boxBookmarks, hiddenSet] =
     await Promise.all([
-      listMemosByTargets(client, userId, "problem_choice", choiceIds),
+      listCommentsBulk(client, "problem_choice", choiceIds),
       getBookmarksByTargets(client, userId, "problem_choice", choiceIds),
-      listMemosByTargets(client, userId, "problem_box_item", boxIds),
+      listCommentsBulk(client, "problem_box_item", boxIds),
       getBookmarksByTargets(client, userId, "problem_box_item", boxIds),
       getUserHiddenOxRefs(client, userId, choiceIds, boxIds),
     ]);
@@ -1367,10 +1367,10 @@ export async function getOxAnnotationsForRefs(
   for (const it of items) {
     const targetType =
       it.refType === "choice" ? "problem_choice" : "problem_box_item";
-    const memos = it.refType === "choice" ? choiceMemos : boxMemos;
+    const comments = it.refType === "choice" ? choiceComments : boxComments;
     const bookmarks = it.refType === "choice" ? choiceBookmarks : boxBookmarks;
     out[it.refId] = {
-      memos: memos[it.refId] ?? [],
+      comments: comments[it.refId] ?? [],
       bookmark: bookmarks[it.refId] ?? null,
       userHidden: hiddenSet.has(`${targetType}:${it.refId}`),
     };

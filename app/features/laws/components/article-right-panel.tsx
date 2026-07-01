@@ -482,6 +482,8 @@ export function ArticleRightPanel({
                   subject={subjectSlug}
                   annotationsByRef={oxAnnotationsByRef}
                   isStaff={viewerIsStaff}
+                  currentUserId={currentUserId}
+                  isAdmin={isAdmin}
                 />
               </TabsContent>
             ) : null}

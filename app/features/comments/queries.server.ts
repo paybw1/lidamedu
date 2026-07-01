@@ -9,7 +9,14 @@ import {
   scienceSubjectName,
 } from "~/features/subjects/lib/science";
 
-export type CommentTargetType = "article" | "case" | "problem";
+// 정오문제(OX 지문 = problem_choice / problem_box_item) 도 "지문 전체에 대한 의견"
+// 이므로 코멘트 대상이다. 포스트잇(문구 앵커)과 구분.
+export type CommentTargetType =
+  | "article"
+  | "case"
+  | "problem"
+  | "problem_choice"
+  | "problem_box_item";
 
 export interface ContentComment {
   commentId: string;
@@ -205,6 +212,12 @@ export async function listAllComments(
   const problemIds = list
     .filter((r) => r.target_type === "problem")
     .map((r) => r.target_id);
+  const choiceIds = list
+    .filter((r) => r.target_type === "problem_choice")
+    .map((r) => r.target_id);
+  const boxItemIds = list
+    .filter((r) => r.target_type === "problem_box_item")
+    .map((r) => r.target_id);
 
   const { articleSlug } = await import("~/features/laws/lib/identifier");
 
@@ -245,6 +258,39 @@ export async function listAllComments(
     }
   }
 
+  // 정오문제(OX) 코멘트 = problem_choice / problem_box_item → 부모 problem 해소.
+  const choiceParentMap = new Map<
+    string,
+    { problemId: string; bodyMd: string | null }
+  >();
+  if (choiceIds.length > 0) {
+    const { data: cs } = await client
+      .from("problem_choices")
+      .select("choice_id, problem_id, body_md")
+      .in("choice_id", choiceIds);
+    for (const c of cs ?? [])
+      choiceParentMap.set(c.choice_id, {
+        problemId: c.problem_id,
+        bodyMd: c.body_md,
+      });
+  }
+  const boxParentMap = new Map<
+    string,
+    { problemId: string; bodyMd: string | null; marker: string | null }
+  >();
+  if (boxItemIds.length > 0) {
+    const { data: bs } = await client
+      .from("problem_box_items")
+      .select("box_item_id, problem_id, body_md, marker")
+      .in("box_item_id", boxItemIds);
+    for (const b of bs ?? [])
+      boxParentMap.set(b.box_item_id, {
+        problemId: b.problem_id,
+        bodyMd: b.body_md,
+        marker: b.marker,
+      });
+  }
+
   const problemMap = new Map<
     string,
     {
@@ -255,13 +301,16 @@ export async function listAllComments(
       scienceSubject: string | null;
     }
   >();
-  if (problemIds.length > 0) {
+  const allProblemIds = new Set<string>(problemIds);
+  for (const v of choiceParentMap.values()) allProblemIds.add(v.problemId);
+  for (const v of boxParentMap.values()) allProblemIds.add(v.problemId);
+  if (allProblemIds.size > 0) {
     const { data: ps } = await client
       .from("problems")
       .select(
         "problem_id, year, problem_number, body_md, science_subject, laws(law_code)",
       )
-      .in("problem_id", problemIds);
+      .in("problem_id", [...allProblemIds]);
     for (const p of ps ?? []) {
       const body = p.body_md ?? "";
       problemMap.set(p.problem_id, {
@@ -327,6 +376,45 @@ export async function listAllComments(
           href: sci
             ? scienceProblemHref(sci, r.target_id)
             : `/subjects/${p.lawCode}/problems/${r.target_id}`,
+        },
+      ];
+    }
+    if (r.target_type === "problem_choice") {
+      const c = choiceParentMap.get(r.target_id);
+      if (!c) return [];
+      const p = problemMap.get(c.problemId);
+      if (!p?.lawCode) return [];
+      const body = c.bodyMd ?? "";
+      return [
+        {
+          ...base,
+          lawCode: p.lawCode,
+          primaryLabel: "정오문제 지문",
+          secondaryLabel: p.year
+            ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+            : "문제",
+          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          href: `/subjects/${p.lawCode}/problems/${c.problemId}`,
+        },
+      ];
+    }
+    if (r.target_type === "problem_box_item") {
+      const b = boxParentMap.get(r.target_id);
+      if (!b) return [];
+      const p = problemMap.get(b.problemId);
+      if (!p?.lawCode) return [];
+      const raw = b.bodyMd ?? "";
+      const body = b.marker ? `[${b.marker}] ${raw}` : raw;
+      return [
+        {
+          ...base,
+          lawCode: p.lawCode,
+          primaryLabel: "정오문제 박스 항목",
+          secondaryLabel: p.year
+            ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
+            : "문제",
+          bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+          href: `/subjects/${p.lawCode}/problems/${b.problemId}`,
         },
       ];
     }
