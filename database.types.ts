@@ -7747,6 +7747,7 @@ export type Database = {
         | "community_post_mention"
         | "gs_cap_reached"
         | "bug_report_created"
+        | "trial_expiry_warning"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -8012,6 +8013,7 @@ export const Constants = {
         "community_post_mention",
         "gs_cap_reached",
         "bug_report_created",
+        "trial_expiry_warning",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

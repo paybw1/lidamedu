@@ -58,6 +58,7 @@ import {
   WeakReviewCard,
 } from "~/features/dashboard/components/dash-weak";
 import { InstructorAccessNotice } from "~/features/dashboard/components/instructor-access-notice";
+import { TrialNoticeBanner } from "~/features/dashboard/components/trial-notice-banner";
 import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
 import { StudentInputHub } from "~/features/dashboard/components/student-input-hub";
 import {
@@ -103,7 +104,9 @@ import {
   LAW_SUBJECT_SLUGS,
 } from "~/features/subjects/lib/subjects";
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import { getActiveSubscription } from "~/features/subscriptions/queries.server";
+import { notifyTrialExpiryIfDue } from "~/features/subscriptions/trial.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "대시보드 | 리담변리사학원" },
@@ -348,10 +351,28 @@ export async function loader({ request }: Route.LoaderArgs) {
   const hasMgmt = isStaff || sub.features.includes("area_study_mgmt");
   const planCode = sub.planCode;
 
+  // feat-8-027 — 체험(가입 15일) 안내 배너 + 만료 임박 인박스 공지(지연 트리거·1회).
+  const access = await getMembershipAccess(client, user.id);
+  const trial =
+    access.grade === "trial" && access.trialEndsAt
+      ? {
+          endsAt: access.trialEndsAt,
+          daysLeft: Math.max(
+            0,
+            Math.ceil(
+              (new Date(access.trialEndsAt).getTime() - Date.now()) /
+                86_400_000,
+            ),
+          ),
+        }
+      : null;
+  if (trial) runAfterResponse(notifyTrialExpiryIfDue(user.id));
+
   return {
     isStaff,
     hasMgmt,
     planCode,
+    trial,
     // feat-8-026b — 선택 동의(A/B) 토글을 대시보드에서(응시 결과에서 이전).
     myAnalysisConsentAt: predictProfile?.my_analysis_consent_at ?? null,
     poolConsentAt: predictProfile?.pool_consent_at ?? null,
@@ -646,6 +667,11 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               remainingHours: Math.max(0, dailyTargetHours - todayHours),
             }}
           />
+
+          {/* feat-8-027 — 체험(가입 15일) 안내 배너. 특허법만 무료·만료 후 무료회원 전환 사전공지. */}
+          {loaderData.trial ? (
+            <TrialNoticeBanner daysLeft={loaderData.trial.daysLeft} />
+          ) : null}
 
           {/* 내 정보 설정 허브 — 목표·시험결과·동의를 한 Sheet 3블록으로(각 독립 저장).
              차수·목표 모두 미설정이면 첫 진입에 자동 오픈(온보딩성 넛지). */}

@@ -25,6 +25,7 @@ const STUDENT_KINDS: NotificationKind[] = [
   "announcement",
   "student_note_shared",
   "exam_result_reminder",
+  "trial_expiry_warning",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {

@@ -8,6 +8,7 @@ import {
   MegaphoneIcon,
   MessageCircleIcon,
   MessageSquareTextIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 import { Form, Link, data } from "react-router";
 
@@ -51,6 +52,7 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   announcement: "공지",
   student_note_shared: "상담 코멘트",
   exam_result_reminder: "응시 결과",
+  trial_expiry_warning: "체험 만료 임박",
 };
 
 const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
@@ -59,6 +61,7 @@ const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
   announcement: MegaphoneIcon,
   student_note_shared: MessageSquareTextIcon,
   exam_result_reminder: CalendarClockIcon,
+  trial_expiry_warning: TriangleAlertIcon,
 };
 
 function formatRelative(iso: string): string {
