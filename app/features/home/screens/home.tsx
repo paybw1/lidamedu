@@ -65,7 +65,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     name: string;
     base: number;
     effective: number;
-    openLabel: string | null;
+    learnNote: string | null;
   } | null = null;
   try {
     const [client] = makeServerClient(request);
@@ -84,17 +84,22 @@ export async function loader({ request }: Route.LoaderArgs) {
         discounts,
         nowMs,
       );
+      // 학습 개시 예정 과목(상표·디자인 등) 안내 — 개별 상품 available_from 미래.
+      const cs = plans.filter(
+        (p) =>
+          p.productKind === "subject" &&
+          p.availableFrom &&
+          new Date(p.availableFrom).getTime() > nowMs,
+      );
       bundleTeaser = {
         name: bundle.name,
         base: bundle.priceKrw,
         effective: auto
           ? effectivePriceKrw(bundle.priceKrw, auto)
           : bundle.priceKrw,
-        openLabel:
-          bundle.availableFrom &&
-          new Date(bundle.availableFrom).getTime() > Date.now()
-            ? openMonthLabel(bundle.availableFrom)
-            : null,
+        learnNote: cs.length
+          ? `${cs.map((p) => p.name).join("·")}은 ${openMonthLabel(cs[0].availableFrom as string)}부터 학습 가능`
+          : null,
       };
     }
   } catch {

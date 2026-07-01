@@ -78,7 +78,7 @@ interface BundleTeaser {
   name: string;
   base: number;
   effective: number;
-  openLabel: string | null;
+  learnNote: string | null;
 }
 
 export function PricingTeaserSection({
@@ -213,8 +213,8 @@ export function PricingTeaserSection({
                       ? `₩${(bundleTeaser.base - bundleTeaser.effective).toLocaleString("ko-KR")} 할인 · `
                       : ""}
                     과목별 결제도 가능
-                    {bundleTeaser.openLabel
-                      ? ` · 상표·디자인 ${bundleTeaser.openLabel}`
+                    {bundleTeaser.learnNote
+                      ? ` · ${bundleTeaser.learnNote}`
                       : ""}
                   </div>
                 </>

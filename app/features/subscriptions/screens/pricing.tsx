@@ -75,6 +75,20 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const discounts = await listActiveDiscounts(client);
+  // 학습 개시 예정 과목(상표·디자인 등) — 개별 상품 available_from 미래. 번들엔 안내만.
+  const nowMs = Date.now();
+  const csProducts = plans.filter(
+    (p) =>
+      p.productKind === "subject" &&
+      p.availableFrom &&
+      new Date(p.availableFrom).getTime() > nowMs,
+  );
+  const comingSoon = csProducts.length
+    ? {
+        slugs: csProducts.flatMap((p) => p.subjectCodes),
+        note: `${csProducts.map((p) => p.name).join("·")}은 ${openMonthLabel(csProducts[0].availableFrom as string)}부터 학습 가능`,
+      }
+    : null;
   const locked = new URL(request.url).searchParams.get("locked");
   return {
     plans,
@@ -84,12 +98,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     locked,
     ownedSubjects,
     discounts,
+    comingSoon,
   };
 }
 
 export default function Pricing({ loaderData }: Route.ComponentProps) {
-  const { plans, active, isAuthed, tossClientKey, locked, ownedSubjects, discounts } =
-    loaderData;
+  const {
+    plans,
+    active,
+    isAuthed,
+    tossClientKey,
+    locked,
+    ownedSubjects,
+    discounts,
+    comingSoon,
+  } = loaderData;
   const [coupon, setCoupon] = useState("");
   const nowMs = Date.now();
   const bundles = plans.filter((p) => p.productKind === "bundle");
@@ -111,6 +134,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
     discounts,
     nowMs,
     coupon: coupon.trim() || null,
+    learningSoon: comingSoon,
   });
 
   return (
@@ -126,7 +150,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
           </h1>
           <p className="text-muted-foreground mx-auto mt-2 max-w-xl text-sm">
             과목별로 결제하거나 번들로 한 번에. 자연과학은 기본 무료로 함께
-            열립니다. 상담·과제·모의고사·반별 게시판은 종합반에서 제공됩니다.
+            열립니다. 상담·과제·1차 모의고사·반별 게시판은 종합반에서 제공됩니다.
           </p>
         </header>
 
@@ -233,6 +257,7 @@ function PlanCard({
   discounts,
   nowMs,
   coupon,
+  learningSoon,
 }: {
   plan: SubscriptionPlan;
   owned: boolean;
@@ -242,6 +267,7 @@ function PlanCard({
   discounts: Discount[];
   nowMs: number;
   coupon: string | null;
+  learningSoon: { slugs: string[]; note: string } | null;
 }) {
   const isFree = plan.code === "free";
   const isCohort = plan.code === "cohort";
@@ -258,6 +284,13 @@ function PlanCard({
   const openLabel = comingSoon
     ? openMonthLabel(plan.availableFrom as string)
     : null;
+  // 지금 판매되는 상품이지만 포함 과목 중 학습 개시 예정(상표·디자인 등)이 있으면 안내.
+  const learnNote =
+    learningSoon &&
+    !plan.availableFrom &&
+    plan.subjectCodes.some((s) => learningSoon.slugs.includes(s))
+      ? learningSoon.note
+      : null;
 
   return (
     <Card
@@ -344,6 +377,11 @@ function PlanCard({
                 + 자연과학(기본)
               </span>
             </div>
+            {learnNote ? (
+              <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+                ⏳ {learnNote}
+              </p>
+            ) : null}
           </div>
         ) : (
           <ul className="space-y-1 text-xs">
