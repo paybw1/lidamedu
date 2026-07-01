@@ -149,8 +149,8 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
       desc={descParts.join(" · ")}
       headerRight={
         <Button asChild size="sm" className="h-9 rounded-full">
-          <Link to="/qna/new?targetType=study_method" viewTransition>
-            <PencilLineIcon className="size-4" /> 공부방법 질문
+          <Link to="/qna/new" viewTransition>
+            <PencilLineIcon className="size-4" /> 새 질문
           </Link>
         </Button>
       }

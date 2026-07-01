@@ -80,7 +80,10 @@ export default [
     ...prefix("/recitation", [
       route("/attempt", "features/recitation/api/attempt.tsx"),
     ]),
-    ...prefix("/qna", [route("/thread", "features/qna/api/thread.tsx")]),
+    ...prefix("/qna", [
+      route("/thread", "features/qna/api/thread.tsx"),
+      route("/target-resolve", "features/qna/api/target-resolve.tsx"),
+    ]),
     // feat-3-504 — 논문 PDF signed URL (인증 사용자 누구나).
     ...prefix("/papers", [
       route("/signed-url", "features/papers/api/paper-signed-url.tsx"),

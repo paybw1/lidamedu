@@ -1,10 +1,11 @@
 import {
   CheckCircle2Icon,
   MessageCircleQuestionIcon,
+  SearchIcon,
   SendIcon,
 } from "lucide-react";
-import { useState } from "react";
-import { Link, redirect, useFetcher } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, redirect, useFetcher, useNavigate } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Input } from "~/core/components/ui/input";
@@ -97,7 +98,7 @@ export default function QnaNew({ loaderData }: Route.ComponentProps) {
     return <QnaForm mode="study_method" targetType="study_method" />;
   }
   if (loaderData.mode === "none") {
-    return <NoTargetGuide />;
+    return <QnaTargetPicker />;
   }
   return (
     <QnaForm
@@ -110,38 +111,254 @@ export default function QnaNew({ loaderData }: Route.ComponentProps) {
   );
 }
 
-// 대상 없이 진입 시 안내 — 콘텐츠 Q&A 는 조문/판례/문제 화면에서, 공부방법은 여기서 바로.
-function NoTargetGuide() {
+// 커뮤니티 진입(대상 미지정) — 대상을 식별자로 특정해 표준 질문 URL 로 이동.
+//   조문=과목+조문번호 / 판례=판례번호 / 문제=과목+차수+년도+번호.
+//   해석 성공 시 /qna/new?targetType&targetId 로 이동 → 기존 content 폼이 인수(상세패널과 등가).
+const PICKER_KINDS = [
+  { key: "article", label: "조문" },
+  { key: "case", label: "판례" },
+  { key: "problem", label: "문제" },
+  { key: "study_method", label: "공부방법" },
+] as const;
+type PickerKind = (typeof PICKER_KINDS)[number]["key"];
+
+// 조문/판례/문제 대상은 법률과목만.
+const LAW_SUBJECT_OPTIONS = [
+  "patent",
+  "trademark",
+  "design",
+  "civil",
+  "civil-procedure",
+] as const;
+
+interface ResolveResult {
+  ok: boolean;
+  targetType?: string;
+  targetId?: string;
+  label?: string;
+  error?: string;
+}
+
+function QnaTargetPicker() {
+  const navigate = useNavigate();
+  const resolveFetcher = useFetcher<ResolveResult>();
+  const [kind, setKind] = useState<PickerKind>("article");
+  const [subject, setSubject] = useState<string>("patent");
+  const [articleNumber, setArticleNumber] = useState("");
+  const [caseNumber, setCaseNumber] = useState("");
+  const [examRound, setExamRound] = useState<"first" | "second">("first");
+  const [year, setYear] = useState("");
+  const [problemNumber, setProblemNumber] = useState("");
+
+  const resolving = resolveFetcher.state !== "idle";
+  const notFound =
+    resolveFetcher.state === "idle" &&
+    resolveFetcher.data != null &&
+    resolveFetcher.data.ok === false;
+
+  // 해석 성공 → 표준 content URL 로 이동(기존 폼이 대상 칩+제목+본문 인수).
+  useEffect(() => {
+    const d = resolveFetcher.data;
+    if (d && d.ok && d.targetType && d.targetId) {
+      navigate(
+        `/qna/new?targetType=${d.targetType}&targetId=${d.targetId}`,
+        { viewTransition: true },
+      );
+    }
+  }, [resolveFetcher.data, navigate]);
+
+  const canSubmit =
+    kind === "article"
+      ? Boolean(subject && articleNumber.trim())
+      : kind === "case"
+        ? Boolean(caseNumber.trim())
+        : kind === "problem"
+          ? Boolean(subject && year.trim() && problemNumber.trim())
+          : true;
+
+  const onSubmit = () => {
+    if (kind === "study_method") {
+      navigate("/qna/new?targetType=study_method", { viewTransition: true });
+      return;
+    }
+    const p = new URLSearchParams();
+    if (kind === "article") {
+      p.set("type", "article");
+      p.set("subject", subject);
+      p.set("articleNumber", articleNumber.trim());
+    } else if (kind === "case") {
+      p.set("type", "case");
+      p.set("caseNumber", caseNumber.trim());
+    } else {
+      p.set("type", "problem");
+      p.set("subject", subject);
+      p.set("examRound", examRound);
+      p.set("year", year.trim());
+      p.set("problemNumber", problemNumber.trim());
+    }
+    resolveFetcher.load(`/api/qna/target-resolve?${p.toString()}`);
+  };
+
+  const subjectSelect = (
+    <label className="block">
+      <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+        과목
+      </span>
+      <select
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+      >
+        {LAW_SUBJECT_OPTIONS.map((s) => (
+          <option key={s} value={s}>
+            {QNA_SUBJECT_LABEL[s]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
     <CommunityShell
       category="qna"
       title="새 질문"
+      desc="조문·판례·문제를 특정하거나, 공부방법을 골라 질문하면 AI/강사가 답변합니다."
       backLink={{ to: "/qna", label: "Q&A 목록" }}
       width="narrow"
     >
-      <div className="border-border bg-card flex flex-col items-center gap-2.5 rounded-2xl border px-8 py-14 text-center shadow-sm">
-        <span className="text-link mb-1 inline-flex size-14 items-center justify-center rounded-2xl bg-primary/10">
-          <MessageCircleQuestionIcon className="size-7" />
-        </span>
-        <div className="text-base font-bold tracking-tight">
-          질문할 대상을 선택하세요
+      <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
+        {/* 대상 유형 */}
+        <div className="mb-5">
+          <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+            질문 대상
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {PICKER_KINDS.map((k) => (
+              <button
+                key={k.key}
+                type="button"
+                onClick={() => setKind(k.key)}
+                className={
+                  kind === k.key
+                    ? "bg-primary text-primary-foreground rounded-full px-3.5 py-1.5 text-sm font-semibold"
+                    : "border-border text-muted-foreground hover:text-foreground rounded-full border px-3.5 py-1.5 text-sm"
+                }
+              >
+                {k.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-          <strong className="text-foreground">조문 · 판례 · 문제</strong> 에 대한
-          질문은 해당 상세 화면 우측 <strong className="text-foreground">‘Q&amp;A’</strong>{" "}
-          패널에서, <strong className="text-foreground">공부방법</strong> 질문은
-          아래 버튼으로 바로 작성할 수 있습니다. AI/강사가 답변을 합니다.
-        </p>
-        <div className="mt-3 flex justify-center gap-2">
-          <Button asChild size="sm" className="rounded-full">
-            <Link to="/qna/new?targetType=study_method" viewTransition>
-              공부방법 질문하기
-            </Link>
-          </Button>
+
+        {/* 유형별 식별자 */}
+        {kind === "article" ? (
+          <div className="grid grid-cols-2 gap-3">
+            {subjectSelect}
+            <label className="block">
+              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                조문번호
+              </span>
+              <Input
+                value={articleNumber}
+                onChange={(e) => setArticleNumber(e.target.value)}
+                placeholder="예: 29 또는 29의2"
+                inputMode="numeric"
+              />
+            </label>
+          </div>
+        ) : null}
+
+        {kind === "case" ? (
+          <label className="block">
+            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              판례번호
+            </span>
+            <Input
+              value={caseNumber}
+              onChange={(e) => setCaseNumber(e.target.value)}
+              placeholder="예: 2013도10265"
+            />
+          </label>
+        ) : null}
+
+        {kind === "problem" ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="col-span-2 sm:col-span-1">{subjectSelect}</div>
+            <label className="block">
+              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                차수
+              </span>
+              <select
+                value={examRound}
+                onChange={(e) =>
+                  setExamRound(e.target.value === "second" ? "second" : "first")
+                }
+                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              >
+                <option value="first">1차</option>
+                <option value="second">2차</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                년도
+              </span>
+              <Input
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="2020"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="block">
+              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                번호
+              </span>
+              <Input
+                value={problemNumber}
+                onChange={(e) => setProblemNumber(e.target.value)}
+                placeholder="5"
+                inputMode="numeric"
+              />
+            </label>
+          </div>
+        ) : null}
+
+        {kind === "study_method" ? (
+          <p className="text-muted-foreground border-border bg-muted/40 rounded-xl border p-3 text-sm leading-relaxed">
+            <MessageCircleQuestionIcon className="text-link mr-1 inline size-4 align-text-bottom" />
+            공부방법 질문은 대상 콘텐츠 없이 과목만 선택해 작성합니다. 아래
+            버튼을 눌러 이어가세요.
+          </p>
+        ) : null}
+
+        {notFound ? (
+          <p className="mt-3 text-sm text-destructive">
+            해당 대상을 찾을 수 없습니다. 과목·번호를 다시 확인해 주세요.
+          </p>
+        ) : null}
+
+        <div className="mt-5 flex justify-end gap-2">
           <Button asChild variant="outline" size="sm" className="rounded-full">
             <Link to="/qna" viewTransition>
-              Q&amp;A 목록
+              취소
             </Link>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full"
+            disabled={!canSubmit || resolving}
+            onClick={onSubmit}
+          >
+            {kind === "study_method" ? (
+              <>질문 작성 이어가기</>
+            ) : (
+              <>
+                {resolving ? "확인 중…" : "대상 확인"}{" "}
+                <SearchIcon className="size-3.5" />
+              </>
+            )}
           </Button>
         </div>
       </div>
