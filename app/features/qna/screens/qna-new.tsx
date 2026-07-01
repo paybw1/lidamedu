@@ -157,6 +157,65 @@ interface NodesResult {
   nodes: Array<{ nodeId: string; label: string; depth: number }>;
 }
 
+// 체계도(단원) 노드 검색형 콤보박스 — 타이핑으로 필터, 클릭 선택.
+function NodeCombobox({
+  nodes,
+  value,
+  onChange,
+  loading,
+}: {
+  nodes: Array<{ nodeId: string; label: string; depth: number }>;
+  value: string;
+  onChange: (nodeId: string) => void;
+  loading: boolean;
+}) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const selected = nodes.find((n) => n.nodeId === value);
+  const needle = q.trim().toLowerCase();
+  const filtered = needle
+    ? nodes.filter((n) => n.label.toLowerCase().includes(needle))
+    : nodes;
+
+  return (
+    <div className="relative">
+      <Input
+        value={open ? q : (selected?.label ?? "")}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => {
+          setQ("");
+          setOpen(true);
+        }}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        placeholder={loading ? "불러오는 중…" : "단원 검색"}
+      />
+      {open && filtered.length > 0 ? (
+        <ul className="border-border bg-popover absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border shadow-md">
+          {filtered.slice(0, 60).map((n) => (
+            <li key={n.nodeId}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(n.nodeId);
+                  setOpen(false);
+                }}
+                className="hover:bg-accent block w-full py-1.5 pr-3 text-left text-sm"
+                style={{ paddingLeft: `${12 + n.depth * 12}px` }}
+              >
+                {n.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function QnaTargetPicker() {
   const navigate = useNavigate();
   const resolveFetcher = useFetcher<ResolveResult>();
@@ -410,22 +469,12 @@ function QnaTargetPicker() {
                   <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
                     체계도(단원)
                   </span>
-                  <select
+                  <NodeCombobox
+                    nodes={subjectNodes}
                     value={primaryNodeId}
-                    onChange={(e) => setPrimaryNodeId(e.target.value)}
-                    className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-                  >
-                    <option value="" disabled>
-                      {nodesFetcher.state !== "idle"
-                        ? "불러오는 중…"
-                        : "단원 선택"}
-                    </option>
-                    {subjectNodes.map((n) => (
-                      <option key={n.nodeId} value={n.nodeId}>
-                        {`${"  ".repeat(n.depth)}${n.label}`}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setPrimaryNodeId}
+                    loading={nodesFetcher.state !== "idle"}
+                  />
                 </label>
                 <label className="block">
                   <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
