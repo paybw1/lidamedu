@@ -4,13 +4,16 @@
 // /pricing?locked=subject:<slug> 로 redirect. URL 2번째 세그먼트(과목 슬러그)로 단일 지점 게이트.
 
 import { useEffect } from "react";
-import { Outlet, data, useLocation } from "react-router";
+import { Outlet, data, redirect, useLocation } from "react-router";
 
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
+import { LOCKED_HINT, isSubjectLocked } from "~/core/lib/nav-groups";
 import makeServerClient from "~/core/lib/supa-client.server";
-import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
-import { requireSubject } from "~/features/subscriptions/membership.server";
-import { requireFeature } from "~/features/subscriptions/queries.server";
+import {
+  SUBJECT_NAV_ITEMS,
+  subjectSlugFromHref,
+} from "~/core/lib/subject-groups";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/subjects.layout";
@@ -18,39 +21,64 @@ import type { Route } from "./+types/subjects.layout";
 // 학습과목 슬러그 SSOT — 5개 법률과목 + 자연과학(science). URL 세그먼트 게이트 판정용.
 const SUBJECT_SLUGS = new Set<string>([...LAW_SUBJECT_SLUGS, "science"]);
 
-// 학습과목 토글 — 6과목 SSOT(SUBJECT_NAV_ITEMS) 파생, 상단바 학습과목 드롭다운과 동일.
-// 다른 영역(학습관리·지원·정보)과 동일한 화면 내 가로 토글(SectionTabs)을 학습과목에도 제공.
-const SUBJECT_TAB_ITEMS: SectionTabItem[] = SUBJECT_NAV_ITEMS.map((s) => ({
-  id: s.href,
-  to: s.href,
-  label: s.name,
-  match: [s.href],
-}));
-
 export async function loader({ request }: Route.LoaderArgs) {
   // headers 전달 — supabase 갱신 cookie 누수 방지 (private.layout 와 동일 이유).
   const [client, headers] = makeServerClient(request);
   const {
     data: { user },
   } = await client.auth.getUser();
-  // 비로그인은 상위 private.layout 이 처리 — 여기서는 로그인 사용자만 게이트.
-  if (user) {
-    // URL: /subjects/<subject>/... — 2번째 세그먼트가 과목 슬러그.
-    const seg = new URL(request.url).pathname.split("/").filter(Boolean);
-    const subjectSlug = seg[1];
-    if (subjectSlug && SUBJECT_SLUGS.has(subjectSlug)) {
-      // 과목별 게이트(area_subjects 보유 + 해당 과목 열람 권한).
-      await requireSubject(client, user.id, subjectSlug);
-    } else {
-      // 과목 미특정(/subjects 색인 등) — 영역 게이트만.
-      await requireFeature(client, user.id, "area_subjects");
+  // 비로그인은 상위 private.layout 이 처리.
+  if (!user) {
+    return data(
+      { subjectAccess: [] as "all" | string[], isStaff: false },
+      { headers },
+    );
+  }
+  // 등급 리졸버 1회 조회 — 게이트 + 탭 비활성 판정 공용.
+  const access = await getMembershipAccess(client, user.id);
+  const isStaff = access.grade === "staff";
+  // URL: /subjects/<subject>/... — 2번째 세그먼트가 과목 슬러그.
+  const seg = new URL(request.url).pathname.split("/").filter(Boolean);
+  const subjectSlug = seg[1];
+  // 서버 게이트(리졸버 권위): area_subjects 없음(무료회원) 차단 + 미허용 과목 차단.
+  if (!isStaff) {
+    if (!access.features.includes("area_subjects")) {
+      throw redirect("/pricing?locked=area_subjects");
+    }
+    if (
+      subjectSlug &&
+      SUBJECT_SLUGS.has(subjectSlug) &&
+      access.subjects !== "all" &&
+      !access.subjects.includes(subjectSlug)
+    ) {
+      throw redirect(
+        `/pricing?locked=${encodeURIComponent(`subject:${subjectSlug}`)}`,
+      );
     }
   }
-  return data(null, { headers });
+  return data({ subjectAccess: access.subjects, isStaff }, { headers });
 }
 
-export default function SubjectsLayout() {
+export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
+  const { subjectAccess, isStaff } = loaderData;
   const location = useLocation();
+
+  // 학습과목 토글 — 6과목(SUBJECT_NAV_ITEMS) 파생. 권한 없는 과목은 비활성 표시.
+  const tabItems: SectionTabItem[] = SUBJECT_NAV_ITEMS.map((s) => {
+    const disabled = isSubjectLocked(
+      subjectSlugFromHref(s.href),
+      isStaff,
+      subjectAccess,
+    );
+    return {
+      id: s.href,
+      to: s.href,
+      label: s.name,
+      match: [s.href],
+      disabled,
+      disabledHint: disabled ? LOCKED_HINT : undefined,
+    };
+  });
   // 모바일 트리/학습보조 Sheet(모달 Radix Dialog)가 열린 채 트리 링크로 다른
   // 라우트(판례→조문/체계도, 문제→조문 등)로 전환되면, Sheet 이 cleanup 전에
   // unmount 되어 <body> 에 건 pointer-events:none 가 남고 → 도착 화면이 클릭
@@ -64,7 +92,7 @@ export default function SubjectsLayout() {
 
   return (
     <>
-      <AreaTabs ariaLabel="학습과목" items={SUBJECT_TAB_ITEMS} />
+      <AreaTabs ariaLabel="학습과목" items={tabItems} />
       <Outlet />
     </>
   );

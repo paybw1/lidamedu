@@ -24,9 +24,13 @@ import {
   LOCKED_HINT,
   TOPBAR_DROPDOWNS,
   isAreaLocked,
+  isSubjectLocked,
   topbarDropdownItems,
 } from "~/core/lib/nav-groups";
-import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
+import {
+  SUBJECT_NAV_ITEMS,
+  subjectSlugFromHref,
+} from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 
 import { openCommandPalette } from "./command-palette";
@@ -312,7 +316,16 @@ function SimpleDropdown({
 }
 
 // 학습과목 드롭다운 — chip 세로 목록. 항목 = SUBJECT_NAV_ITEMS (SSOT).
-function SubjectsDropdown({ locked }: { locked: boolean }) {
+// feat-8-027 — 열람 권한 없는 과목은 비활성(클릭 불가·회색) 표시.
+function SubjectsDropdown({
+  locked,
+  isStaff = false,
+  subjects,
+}: {
+  locked: boolean;
+  isStaff?: boolean;
+  subjects?: "all" | string[];
+}) {
   return (
     <NavigationMenuItem>
       <NavigationMenuTrigger
@@ -324,16 +337,39 @@ function SubjectsDropdown({ locked }: { locked: boolean }) {
       <NavigationMenuContent>
         {/* 1/2차 구분 없는 평면 6과목 — 세로 목록(좌측 정렬) */}
         <div className="flex max-h-[calc(100vh-7rem)] w-max max-w-[calc(100vw-2rem)] flex-col items-start gap-1 overflow-y-auto p-3">
-          {SUBJECT_NAV_ITEMS.map((item) => (
-            <NavigationMenuLink asChild key={item.href}>
-              <Link
-                to={item.href}
-                className={cn(DROPDOWN_ITEM_CLASS, "whitespace-nowrap")}
-              >
-                {item.name}
-              </Link>
-            </NavigationMenuLink>
-          ))}
+          {SUBJECT_NAV_ITEMS.map((item) => {
+            const subjLocked = isSubjectLocked(
+              subjectSlugFromHref(item.href),
+              isStaff,
+              subjects,
+            );
+            if (subjLocked) {
+              return (
+                <span
+                  key={item.href}
+                  className={cn(
+                    DROPDOWN_ITEM_CLASS,
+                    "whitespace-nowrap",
+                    LOCKED_DIM_CLASS,
+                  )}
+                  title={LOCKED_HINT}
+                  aria-disabled="true"
+                >
+                  {item.name}
+                </span>
+              );
+            }
+            return (
+              <NavigationMenuLink asChild key={item.href}>
+                <Link
+                  to={item.href}
+                  className={cn(DROPDOWN_ITEM_CLASS, "whitespace-nowrap")}
+                >
+                  {item.name}
+                </Link>
+              </NavigationMenuLink>
+            );
+          })}
         </div>
       </NavigationMenuContent>
     </NavigationMenuItem>
@@ -370,6 +406,7 @@ export function NavigationBar({
   inboxHref = null,
   isStaff = false,
   features,
+  subjects,
   hideMenus = false,
   hideAll = false,
 }: {
@@ -385,6 +422,8 @@ export function NavigationBar({
   isStaff?: boolean;
   // feat-8-008 — 사용자의 구독/cohort 기반 영역 플래그. undefined = 미산정(로딩) → 잠금 미표시.
   features?: string[];
+  // feat-8-027 — 학습과목 열람 가능 과목('all' | slug[]). 미허용 과목은 드롭다운서 비활성.
+  subjects?: "all" | string[];
   // 새 nav 검증용 — 학생 사이드바 병존 시 기존 메뉴 dropdown 들 숨김. 로고·알림·유저메뉴는 유지.
   hideMenus?: boolean;
   // 사이드바 모드 — 상단 nav 전체 숨김(로고·도구·유저메뉴 포함). 사이드바가 모든 역할 흡수.
@@ -434,6 +473,8 @@ export function NavigationBar({
                   <SubjectsDropdown
                     key={d.label}
                     locked={isAreaLocked(d.area, isStaff, features)}
+                    isStaff={isStaff}
+                    subjects={subjects}
                   />
                 ) : (
                   <SimpleDropdown

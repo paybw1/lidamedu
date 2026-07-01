@@ -24,6 +24,10 @@ export interface SectionTabItem {
   dotClass?: string;
   /** 베타·잠금 등 라벨 옆 작은 chip (옵션). */
   badge?: ReactNode;
+  /** feat-8-027 — 권한 없음 등으로 비활성(클릭 불가·회색) 표시. */
+  disabled?: boolean;
+  /** 비활성 사유 툴팁. */
+  disabledHint?: string;
 }
 
 // 한 항목의 매칭 길이 — match prefix(없으면 to) 중 현재 pathname 에 맞는 가장 긴 것의 길이.
@@ -82,6 +86,20 @@ export function SectionTabs({
         {items.map((t) => {
           const active = t.id === activeId;
           const Icon = t.icon;
+          // 권한 없는 항목 = 비활성(클릭 불가·회색).
+          if (t.disabled) {
+            return (
+              <span
+                key={t.id}
+                aria-disabled="true"
+                title={t.disabledHint}
+                className="text-ink-soft inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium opacity-45"
+              >
+                {Icon ? <Icon className="size-3.5" /> : null}
+                <span>{t.label}</span>
+              </span>
+            );
+          }
           return (
             <Link
               key={t.id}

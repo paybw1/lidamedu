@@ -159,13 +159,24 @@ export function isAreaLocked(
   );
 }
 
-// feat-8-008 — 영역 잠금 시각 표시 = 흐림(dim)으로 통일(자물쇠 아이콘 폐기).
-//   상단바·사이드바·하단탭 공용 단일 소스. ★클릭 동작·서버 게이트는 그대로 —
-//   시각만 흐리게 해 "잠긴 입구가 보이되 거슬리지 않는" 수준(투명도 낮춤). 잠긴
-//   메뉴도 그대로 눌러 구독 안내로 진입(disabled 아님 — 구독 유도 기회 유지).
-export const LOCKED_DIM_CLASS = "opacity-50";
-// 흐림만으론 의미 전달이 약해 hover/focus 툴팁으로 보완(제거된 aria-label 대체).
+// feat-8-008/8-027 — 권한 없는 항목 = 비활성(disabled) 표시로 통일(자물쇠 아이콘 폐기).
+//   상단바·사이드바·하단탭 공용 단일 소스. ★흐림(opacity) + 클릭 불가(pointer-events-none)
+//   로 "비활성" 상태를 명확히 한다(서버 게이트가 권위 — 이건 시각·상호작용 힌트).
+export const LOCKED_DIM_CLASS =
+  "pointer-events-none opacity-45 cursor-not-allowed";
+// 비활성 사유 툴팁(제거된 aria-label 대체). pointer-events-none 라 부모에 걸어 힌트 유지.
 export const LOCKED_HINT = "구독 시 이용 가능";
+
+// feat-8-027 — 학습과목 내 개별 과목 잠금 판정(체험=특허법만, 자기학습=결제 과목 등).
+//   subjects='all' 또는 slug 포함 시 미잠금. staff 면제, 미산정(undefined) 시 미표시(로딩).
+export function isSubjectLocked(
+  slug: string,
+  isStaff: boolean,
+  subjects: "all" | string[] | undefined,
+): boolean {
+  if (isStaff || subjects === undefined || subjects === "all") return false;
+  return !subjects.includes(slug);
+}
 
 // 상단바 표면 매핑 — 6 드롭다운을 풀 그룹 조합으로 정의(SSOT 단일 소비).
 //   순서·구성은 현행 상단바와 동일. subjects 는 SUBJECT_NAV_ITEMS 로 별도 렌더.

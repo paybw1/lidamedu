@@ -36,8 +36,9 @@
 4. **자기학습 과목별 결제** ✅ — `payments.subject_code` + createPendingPayment/confirmPayment 과목 배선(구독 매칭·연장을 subject_code 단위로). create-order 에 subjectCode(법률과목 슬러그만). pricing 자기학습 카드=과목별 구독 목록(`SubjectSubscribeList`, 5개 법률과목 개별 결제·보유 과목 "보유 중"·자연과학 "기본 무료"). /me/subscription 활성 학습과목 칩. ※라이브 결제 검증은 Toss env 세팅 후.
 5. **종합반 종류별 범위 + 승인** ✅ — `cohorts.access_scope`(full/self_study) 운영 UI(admin-cohorts CohortForm "열람 범위" 선택 + 카드 배지). createCohort/updateCohort·cohort API·CohortListItem 배선. 리졸버가 cohort 멤버의 access_scope 로 full/자기학습 범위 부여. **승인=기존 종합반 멤버 추가(add_member) 그대로**(운영자 확인 후 등업). **신청 채널=기존 상담(/contact)** — 별도 인앱 신청 큐는 미구축(YAGNI, 필요 시 후속).
 
-## UX 후속(폴백)
-- 학습과목 탭(AreaTabs)이 미허용 과목도 클릭 가능 → 클릭 시 /pricing redirect(기능은 정상, 잠금 표시 없음). 등급별 잠금 배지는 후속 폴리시.
+## 권한 없는 항목 = 비활성(disabled) 표시 ✅
+- 영역 잠금(무료회원 등) = `LOCKED_DIM_CLASS`에 `pointer-events-none` → 상단바·사이드바·하단탭에서 클릭 불가·회색(단일 소스).
+- 과목별(체험=특허법만 등) = 등급 리졸버 `subjects`를 nav 로 배선(`getMembershipAccess`), `isSubjectLocked` 로 판정. 상단 학습과목 드롭다운·사이드바 과목·학습과목 탭(`SectionTabs` disabled)에서 미허용 과목 비활성. `subjectSlugFromHref` SSOT.
 
 ## 3계층 게이트
 - **Judgment**: 스펙상 필수(수익화·차등 접근). 기존 구독 인프라 재사용이라 중복 최소.

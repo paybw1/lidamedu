@@ -123,3 +123,8 @@ export const SUBJECT_NAV_ITEMS: ReadonlyArray<SubjectItem> = [
     meta: "조문 502 · 판례 2.1k",
   },
 ] as const;
+
+// "/subjects/<slug>" → "<slug>". 과목별 권한(등급 리졸버 subjects) 판정용 슬러그 추출.
+export function subjectSlugFromHref(href: string): string {
+  return href.replace(/^\/subjects\//, "").split("/")[0];
+}

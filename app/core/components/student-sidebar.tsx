@@ -16,7 +16,10 @@ import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 
-import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
+import {
+  SUBJECT_NAV_ITEMS,
+  subjectSlugFromHref,
+} from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 import {
   FLAT_ADMIN,
@@ -25,6 +28,7 @@ import {
   LOCKED_HINT,
   type NavGroup,
   isAreaLocked,
+  isSubjectLocked,
   isNavActive,
   pickActiveLinkTo,
   useNavLayout,
@@ -45,6 +49,8 @@ interface StudentSidebarProps {
   inboxHref: string | null;
   // feat-8-008 — 구독/cohort 영역 플래그. 잠금 흐림(dim) 시각표시용(상단바와 동일).
   features?: string[];
+  // feat-8-027 — 학습과목 열람 가능 과목('all' | slug[]). 미허용 과목은 비활성.
+  subjects?: "all" | string[];
 }
 
 export function StudentSidebar({
@@ -53,6 +59,7 @@ export function StudentSidebar({
   inboxUnread,
   inboxHref,
   features,
+  subjects,
 }: StudentSidebarProps) {
   const { core, secondary } = useNavLayout();
   // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용(상단바와 동일 규칙). 서버 영역 게이트가 권위, 시각 힌트만.
@@ -195,6 +202,8 @@ export function StudentSidebar({
                 search={search}
                 onPick={collapseAfterPick}
                 locked={lockOf(g.area)}
+                isStaff={isStaff}
+                subjects={subjects}
               />
             );
           }
@@ -517,6 +526,8 @@ interface SubjectsRowProps {
   search: string;
   onPick: () => void;
   locked?: boolean;
+  isStaff?: boolean;
+  subjects?: "all" | string[];
 }
 function SubjectsRow({
   collapsed,
@@ -527,6 +538,8 @@ function SubjectsRow({
   search,
   onPick,
   locked,
+  isStaff,
+  subjects,
 }: SubjectsRowProps) {
   if (collapsed)
     return (
@@ -545,6 +558,8 @@ function SubjectsRow({
       search={search}
       onPick={onPick}
       locked={locked}
+      isStaff={isStaff}
+      subjects={subjects}
     />
   );
 }
@@ -556,6 +571,8 @@ function SubjectsFull({
   search,
   onPick,
   locked,
+  isStaff = false,
+  subjects,
 }: Omit<SubjectsRowProps, "collapsed" | "onExpand">) {
   return (
     <div>
@@ -579,9 +596,29 @@ function SubjectsFull({
       </button>
       {open ? (
         <div className="border-border ml-6 mt-1 flex flex-col gap-0.5 border-l pl-2">
-          {/* 1/2차 구분 없는 평면 6과목 */}
+          {/* 1/2차 구분 없는 평면 6과목. 권한 없는 과목은 비활성(클릭 불가). */}
           {SUBJECT_NAV_ITEMS.map((item) => {
             const active = isNavActive(item.href, path, search);
+            const subjLocked = isSubjectLocked(
+              subjectSlugFromHref(item.href),
+              isStaff,
+              subjects,
+            );
+            if (subjLocked) {
+              return (
+                <span
+                  key={item.href}
+                  title={LOCKED_HINT}
+                  aria-disabled="true"
+                  className={cn(
+                    "text-muted-foreground rounded-md px-1.5 py-1 text-xs",
+                    LOCKED_DIM_CLASS,
+                  )}
+                >
+                  {item.name}
+                </span>
+              );
+            }
             return (
               <Link
                 key={item.href}

@@ -14,7 +14,7 @@ export function AreaTabs({
   ariaLabel: string;
   items: SectionTabItem[];
 }) {
-  // 정책: icon·dotClass 제거(텍스트만). 나머지(id·to·label·match·count·badge)는 유지.
+  // 정책: icon·dotClass 제거(텍스트만). 나머지(id·to·label·match·count·badge·disabled)는 유지.
   const textOnly: SectionTabItem[] = items.map((it) => ({
     id: it.id,
     to: it.to,
@@ -22,6 +22,8 @@ export function AreaTabs({
     match: it.match,
     count: it.count,
     badge: it.badge,
+    disabled: it.disabled,
+    disabledHint: it.disabledHint,
   }));
   return <SectionTabs ariaLabel={ariaLabel} items={textOnly} sticky />;
 }

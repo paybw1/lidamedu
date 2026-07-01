@@ -6,7 +6,7 @@ import { Await, Link, Outlet, data } from "react-router";
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { getUnreadCount } from "~/features/notifications/queries.server";
-import { getActiveSubscription } from "~/features/subscriptions/queries.server";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 
 import Footer from "../components/footer";
 import { NavigationBar } from "../components/navigation-bar";
@@ -37,14 +37,25 @@ export async function loader({ request }: Route.LoaderArgs) {
     const {
       data: { user },
     } = await client.auth.getUser();
-    if (!user) return { isStaff: false, unread: 0, features: [] as string[] };
+    if (!user)
+      return {
+        isStaff: false,
+        unread: 0,
+        features: [] as string[],
+        subjects: [] as "all" | string[],
+      };
     const role = await getStaffRole(client, user.id);
     const audience: "staff" | "student" = role ? "staff" : "student";
-    const [unread, sub] = await Promise.all([
+    const [unread, access] = await Promise.all([
       getUnreadCount(client, user.id, audience),
-      getActiveSubscription(client, user.id),
+      getMembershipAccess(client, user.id),
     ]);
-    return { isStaff: role !== null, unread, features: sub.features };
+    return {
+      isStaff: role !== null,
+      unread,
+      features: access.features,
+      subjects: access.subjects,
+    };
   })();
   return data({ userPromise, inboxPromise, navMode }, { headers });
 }
@@ -113,6 +124,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
                       isStaff={inbox.isStaff}
                       features={inbox.features}
+                      subjects={inbox.subjects}
                       hideAll={isSidebar}
                     />
                   )}
@@ -164,6 +176,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                         inboxUnread={inbox.unread}
                         inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
                         features={inbox.features}
+                        subjects={inbox.subjects}
                       />
                     ) : null
                   }
