@@ -131,6 +131,14 @@ const LAW_SUBJECT_OPTIONS = [
   "civil-procedure",
 ] as const;
 
+// 문제 출처 — 기출/기출변형/예상.
+const PROBLEM_ORIGIN_OPTIONS = [
+  { key: "past_exam", label: "기출" },
+  { key: "past_exam_variant", label: "기출변형" },
+  { key: "expected", label: "예상" },
+] as const;
+type ProblemOriginKey = (typeof PROBLEM_ORIGIN_OPTIONS)[number]["key"];
+
 interface ResolveResult {
   ok: boolean;
   targetType?: string;
@@ -147,6 +155,7 @@ function QnaTargetPicker() {
   const [articleNumber, setArticleNumber] = useState("");
   const [caseNumber, setCaseNumber] = useState("");
   const [examRound, setExamRound] = useState<"first" | "second">("first");
+  const [origin, setOrigin] = useState<ProblemOriginKey>("past_exam");
   const [year, setYear] = useState("");
   const [problemNumber, setProblemNumber] = useState("");
 
@@ -193,6 +202,7 @@ function QnaTargetPicker() {
       p.set("type", "problem");
       p.set("subject", subject);
       p.set("examRound", examRound);
+      p.set("origin", origin);
       p.set("year", year.trim());
       p.set("problemNumber", problemNumber.trim());
     }
@@ -282,8 +292,24 @@ function QnaTargetPicker() {
         ) : null}
 
         {kind === "problem" ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="col-span-2 sm:col-span-1">{subjectSelect}</div>
+            <label className="block">
+              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                출처
+              </span>
+              <select
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value as ProblemOriginKey)}
+                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+              >
+                {PROBLEM_ORIGIN_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="block">
               <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
                 차수
