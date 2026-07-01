@@ -112,8 +112,11 @@ export function OxQuestionsPanel({
   // 정답 확인 후 표시되는 보조 패널: 'bookmark' | 'memo' | null.
   const [annoOpen, setAnnoOpen] = useState<"bookmark" | "memo" | null>(null);
   const [originFilter, setOriginFilter] = useState<OxOriginFilter>("all");
+  // 학생 개인 숨김: 기본은 숨긴 지문 제외, 토글 켜면 복원용으로 함께 표시.
+  const [showHidden, setShowHidden] = useState(false);
   const attemptFetcher = useFetcher();
   const hideFetcher = useFetcher();
+  const userHideFetcher = useFetcher();
   const startedAtRef = useRef<number>(Date.now());
   // 한 지문당 1회만 기록 (다시 풀기 → 동일 지문 재기록 방지). refId 단위.
   const recordedRefIdRef = useRef<string | null>(null);
@@ -187,8 +190,57 @@ export function OxQuestionsPanel({
     );
   }
 
-  const pos = Math.min(idx, filteredItems.length - 1);
-  const cur = filteredItems[pos];
+  // 학생 개인 숨김(user_ox_hidden) — 숨긴 지문은 기본 회전에서 제외.
+  const isUserHidden = (refId: string) =>
+    annotationsByRef?.[refId]?.userHidden ?? false;
+  const userHiddenCount = filteredItems.filter((it) =>
+    isUserHidden(it.refId),
+  ).length;
+  const workingItems = showHidden
+    ? filteredItems
+    : filteredItems.filter((it) => !isUserHidden(it.refId));
+
+  // 개인 숨김 보기 토글(학생만) — 숨긴 지문이 있을 때만 노출.
+  const hiddenToggleEl =
+    !isStaff && userHiddenCount > 0 ? (
+      <button
+        type="button"
+        onClick={() => {
+          setShowHidden((v) => !v);
+          setIdx(0);
+          setPicked(null);
+          setRevealed(false);
+        }}
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] underline-offset-2 hover:underline"
+      >
+        {showHidden ? (
+          <>
+            <EyeOffIcon className="size-3" /> 숨긴 지문 감추기
+          </>
+        ) : (
+          <>
+            <EyeIcon className="size-3" /> 숨긴 지문 {userHiddenCount}개 보기
+          </>
+        )}
+      </button>
+    ) : null;
+
+  if (workingItems.length === 0) {
+    // 이 분류의 지문을 학생이 전부 개인 숨김한 경우.
+    return (
+      <div className="space-y-3" data-testid="ox-panel">
+        {toggleEl}
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          숨긴 지문을 제외하면 표시할 정오문제가 없습니다.
+        </p>
+        {hiddenToggleEl}
+      </div>
+    );
+  }
+
+  const pos = Math.min(idx, workingItems.length - 1);
+  const cur = workingItems[pos];
+  const curHidden = isUserHidden(cur.refId);
   // staff "수정" 진입 URL — 저장 후 이 viewer 로, 그리고 편집하던 지문(cur)으로 복귀.
   const editSp = new URLSearchParams(location.search);
   editSp.set("ox", cur.refId);
@@ -224,7 +276,7 @@ export function OxQuestionsPanel({
   };
 
   const goNext = () => {
-    setIdx((i) => (i + 1) % filteredItems.length);
+    setIdx((i) => (i + 1) % workingItems.length);
     setPicked(null);
     setRevealed(false);
     setAnnoOpen(null);
@@ -246,7 +298,10 @@ export function OxQuestionsPanel({
 
   return (
     <div className="space-y-3" data-testid="ox-panel">
-      {toggleEl}
+      <div className="flex items-center justify-between gap-2">
+        <div>{hiddenToggleEl}</div>
+        {toggleEl}
+      </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge variant="secondary" className="text-[10px]">
           {ORIGIN_LABEL[cur.origin as ProblemOrigin] ?? cur.origin}
@@ -270,9 +325,17 @@ export function OxQuestionsPanel({
             숨김됨
           </Badge>
         ) : null}
+        {!isStaff && curHidden ? (
+          <Badge
+            variant="outline"
+            className="border-amber-400/60 text-[10px] text-amber-700 dark:text-amber-300"
+          >
+            내가 숨김
+          </Badge>
+        ) : null}
         <div className="ml-auto flex items-center gap-1.5">
           <span className="text-muted-foreground text-[10px] tabular-nums">
-            {pos + 1} / {filteredItems.length}
+            {pos + 1} / {workingItems.length}
           </span>
           {isStaff ? (
             <hideFetcher.Form
@@ -309,7 +372,42 @@ export function OxQuestionsPanel({
                 )}
               </button>
             </hideFetcher.Form>
-          ) : null}
+          ) : (
+            <userHideFetcher.Form
+              method="post"
+              action="/api/problems/ox-user-hide"
+            >
+              <input type="hidden" name="refType" value={cur.refType} />
+              <input type="hidden" name="refId" value={cur.refId} />
+              <input
+                type="hidden"
+                name="hidden"
+                value={curHidden ? "false" : "true"}
+              />
+              <button
+                type="submit"
+                disabled={userHideFetcher.state !== "idle"}
+                title={
+                  curHidden
+                    ? "숨김 해제 — 다시 이 지문을 봄"
+                    : "이 지문 숨기기 — 나에게만 안 보이게"
+                }
+                aria-label={curHidden ? "숨김 해제" : "숨기기"}
+                className={cn(
+                  "inline-flex size-6 items-center justify-center rounded-md transition-colors disabled:opacity-50",
+                  curHidden
+                    ? "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-950/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                )}
+              >
+                {curHidden ? (
+                  <EyeIcon className="size-3.5" />
+                ) : (
+                  <EyeOffIcon className="size-3.5" />
+                )}
+              </button>
+            </userHideFetcher.Form>
+          )}
         </div>
       </div>
 

@@ -65,6 +65,9 @@ export interface OxQuestionItem {
 export interface OxRefAnnotations {
   memos: MemoRecord[];
   bookmark: BookmarkRecord | null;
+  // 학생 개인 숨김(user_ox_hidden). staff 전체 숨김(OxQuestionItem.oxHidden)과 별개 —
+  // 본인만 해당 지문을 안 보이게 하는 개인 설정.
+  userHidden: boolean;
 }
 
 export const FORMAT_LABEL: Record<ProblemFormat, string> = {

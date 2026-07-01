@@ -6455,6 +6455,27 @@ export type Database = {
           },
         ]
       }
+      user_ox_hidden: {
+        Row: {
+          created_at: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          target_id: string
+          target_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          target_id?: string
+          target_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_ox_ref_srs: {
         Row: {
           created_at: string

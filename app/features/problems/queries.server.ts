@@ -1354,29 +1354,53 @@ export async function getOxAnnotationsForRefs(
     else if (it.refType === "box") boxIds.push(it.refId);
   }
 
-  const [choiceMemos, choiceBookmarks, boxMemos, boxBookmarks] =
+  const [choiceMemos, choiceBookmarks, boxMemos, boxBookmarks, hiddenSet] =
     await Promise.all([
       listMemosByTargets(client, userId, "problem_choice", choiceIds),
       getBookmarksByTargets(client, userId, "problem_choice", choiceIds),
       listMemosByTargets(client, userId, "problem_box_item", boxIds),
       getBookmarksByTargets(client, userId, "problem_box_item", boxIds),
+      getUserHiddenOxRefs(client, userId, choiceIds, boxIds),
     ]);
 
   const out: Record<string, OxRefAnnotations> = {};
   for (const it of items) {
-    if (it.refType === "choice") {
-      out[it.refId] = {
-        memos: choiceMemos[it.refId] ?? [],
-        bookmark: choiceBookmarks[it.refId] ?? null,
-      };
-    } else {
-      out[it.refId] = {
-        memos: boxMemos[it.refId] ?? [],
-        bookmark: boxBookmarks[it.refId] ?? null,
-      };
-    }
+    const targetType =
+      it.refType === "choice" ? "problem_choice" : "problem_box_item";
+    const memos = it.refType === "choice" ? choiceMemos : boxMemos;
+    const bookmarks = it.refType === "choice" ? choiceBookmarks : boxBookmarks;
+    out[it.refId] = {
+      memos: memos[it.refId] ?? [],
+      bookmark: bookmarks[it.refId] ?? null,
+      userHidden: hiddenSet.has(`${targetType}:${it.refId}`),
+    };
   }
   return out;
+}
+
+// 학생 개인 숨김(user_ox_hidden) 조회 — "<target_type>:<target_id>" 집합으로 반환.
+async function getUserHiddenOxRefs(
+  client: SupabaseClient<Database>,
+  userId: string,
+  choiceIds: string[],
+  boxIds: string[],
+): Promise<Set<string>> {
+  const set = new Set<string>();
+  if (choiceIds.length === 0 && boxIds.length === 0) return set;
+  const { data, error } = await client
+    .from("user_ox_hidden")
+    .select("target_type, target_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const choiceSet = new Set(choiceIds);
+  const boxSet = new Set(boxIds);
+  for (const r of data ?? []) {
+    if (r.target_type === "problem_choice" && choiceSet.has(r.target_id))
+      set.add(`problem_choice:${r.target_id}`);
+    else if (r.target_type === "problem_box_item" && boxSet.has(r.target_id))
+      set.add(`problem_box_item:${r.target_id}`);
+  }
+  return set;
 }
 
 // 해설 — 지문별 "관련 조문 / 관련 판례" 링크 노출용. choice·box-item 들이 가리키는

@@ -152,6 +152,7 @@ export default [
       ),
       route("/attempt", "features/problems/api/attempt.tsx"),
       route("/ox-review-update", "features/problems/api/ox-review-update.tsx"),
+      route("/ox-user-hide", "features/problems/api/ox-user-hide.tsx"),
     ]),
     ...prefix("/study", [
       route("/session-complete", "features/study/api/session-complete.tsx"),
