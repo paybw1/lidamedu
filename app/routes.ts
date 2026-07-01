@@ -749,6 +749,12 @@ export default [
         "/api/admin/subscription",
         "features/subscriptions/api/admin-subscription.tsx",
       ),
+      // feat-8-028 — 상품·요금 관리 (manager+).
+      route(
+        "/admin/pricing",
+        "features/subscriptions/screens/admin-plans.tsx",
+      ),
+      route("/api/admin/plan", "features/subscriptions/api/admin-plan.tsx"),
       route("/api/comments/comment", "features/comments/api/comment.tsx"),
       // 판례 공식 전문 PDF — 매 클릭마다 fresh signed URL 발급 + 302 redirect.
       // 클라엔 정적 URL 만 노출(만료 무관). 학생 인증 필수.

@@ -22,6 +22,15 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   refunded: "환불",
 };
 
+// feat-8-028 — 상품 종류. subject=개별 과목, bundle=번들, membership=회원제(free/cohort).
+export type ProductKind = "subject" | "bundle" | "membership";
+
+export const PRODUCT_KIND_LABEL: Record<ProductKind, string> = {
+  subject: "개별 과목",
+  bundle: "번들",
+  membership: "회원제",
+};
+
 export interface SubscriptionPlan {
   planId: string;
   code: string;
@@ -30,6 +39,9 @@ export interface SubscriptionPlan {
   priceKrw: number;
   durationDays: number;
   features: string[];
+  /** feat-8-028 — 부여 학습과목 slug 배열(개별/번들). 결제 시 열리는 과목. */
+  subjectCodes: string[];
+  productKind: ProductKind;
   displayOrder: number;
   isActive: boolean;
 }

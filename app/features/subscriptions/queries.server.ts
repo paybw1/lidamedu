@@ -11,6 +11,7 @@ import { getMembershipAccess } from "~/features/subscriptions/membership.server"
 import type {
   PaymentRow,
   PaymentStatus,
+  ProductKind,
   SubscriptionPlan,
   SubscriptionStatus,
   UserSubscription,
@@ -19,10 +20,14 @@ import type {
 export type {
   PaymentRow,
   PaymentStatus,
+  ProductKind,
   SubscriptionPlan,
   SubscriptionStatus,
   UserSubscription,
 } from "./labels";
+
+const PLAN_COLUMNS =
+  "plan_id, code, name, description, price_krw, duration_days, features, subject_codes, product_kind, display_order, is_active";
 
 function rowToPlan(r: {
   plan_id: string;
@@ -32,6 +37,8 @@ function rowToPlan(r: {
   price_krw: number;
   duration_days: number;
   features: unknown;
+  subject_codes: unknown;
+  product_kind: string;
   display_order: number;
   is_active: boolean;
 }): SubscriptionPlan {
@@ -43,6 +50,10 @@ function rowToPlan(r: {
     priceKrw: r.price_krw,
     durationDays: r.duration_days,
     features: Array.isArray(r.features) ? (r.features as string[]) : [],
+    subjectCodes: Array.isArray(r.subject_codes)
+      ? (r.subject_codes as string[])
+      : [],
+    productKind: r.product_kind as SubscriptionPlan["productKind"],
     displayOrder: r.display_order,
     isActive: r.is_active,
   };
@@ -53,9 +64,7 @@ export async function listSubscriptionPlans(
 ): Promise<SubscriptionPlan[]> {
   const { data, error } = await client
     .from("subscription_plans")
-    .select(
-      "plan_id, code, name, description, price_krw, duration_days, features, display_order, is_active",
-    )
+    .select(PLAN_COLUMNS)
     .eq("is_active", true)
     .order("display_order", { ascending: true });
   if (error) throw error;
@@ -68,13 +77,73 @@ export async function getPlanByCode(
 ): Promise<SubscriptionPlan | null> {
   const { data, error } = await client
     .from("subscription_plans")
-    .select(
-      "plan_id, code, name, description, price_krw, duration_days, features, display_order, is_active",
-    )
+    .select(PLAN_COLUMNS)
     .eq("code", code)
     .maybeSingle();
   if (error) throw error;
   return data ? rowToPlan(data) : null;
+}
+
+// ─── 상품(플랜) 관리 (feat-8-028 Stage B, admin) ───
+
+// 전체 플랜(비활성 포함) — 운영관리 상품 목록. adminClient.
+export async function listAllPlans(): Promise<SubscriptionPlan[]> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data, error } = await admin
+    .from("subscription_plans")
+    .select(PLAN_COLUMNS)
+    .order("display_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToPlan);
+}
+
+export interface UpsertPlanInput {
+  code: string;
+  name: string;
+  description: string | null;
+  priceKrw: number;
+  durationDays: number;
+  productKind: ProductKind;
+  subjectCodes: string[];
+  features: string[];
+  displayOrder: number;
+  isActive: boolean;
+}
+
+// 상품 생성/수정. code 는 생성 시에만 지정(수정 시 불변 키). adminClient.
+export async function upsertPlan(
+  input: UpsertPlanInput,
+  mode: "create" | "update",
+): Promise<{ ok: true; planId: string } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const row = {
+    name: input.name,
+    description: input.description,
+    price_krw: input.priceKrw,
+    duration_days: input.durationDays,
+    product_kind: input.productKind,
+    subject_codes: input.subjectCodes as never,
+    features: input.features as never,
+    display_order: input.displayOrder,
+    is_active: input.isActive,
+  };
+  if (mode === "create") {
+    const { data, error } = await admin
+      .from("subscription_plans")
+      .insert({ code: input.code, ...row })
+      .select("plan_id")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, planId: data.plan_id };
+  }
+  const { data, error } = await admin
+    .from("subscription_plans")
+    .update(row)
+    .eq("code", input.code)
+    .select("plan_id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, planId: data.plan_id };
 }
 
 export interface ActiveSubscriptionInfo {
