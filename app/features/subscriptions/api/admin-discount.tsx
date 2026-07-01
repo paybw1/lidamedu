@@ -6,7 +6,10 @@ import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { upsertDiscount } from "~/features/subscriptions/discounts.server";
+import {
+  deleteDiscount,
+  upsertDiscount,
+} from "~/features/subscriptions/discounts.server";
 
 import type { Route } from "./+types/admin-discount";
 
@@ -54,6 +57,25 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const fd = await request.formData();
+
+  // 삭제 — discountId 만 필요. (schema 는 create/update 전용)
+  if (String(fd.get("intent") ?? "") === "delete") {
+    const discountId = String(fd.get("discountId") ?? "");
+    if (!z.string().uuid().safeParse(discountId).success) {
+      return data({ error: "Invalid id" }, { status: 400 });
+    }
+    const del = await deleteDiscount(discountId);
+    if (!del.ok) return data({ error: del.error }, { status: 400 });
+    await logAuditEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: "discount.delete",
+      entityType: "discount",
+      entityId: discountId,
+    });
+    return data({ ok: true });
+  }
+
   const codeRaw = String(fd.get("code") ?? "").trim();
   const parsed = schema.safeParse({
     intent: fd.get("intent"),

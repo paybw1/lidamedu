@@ -2,7 +2,13 @@
 // 기간·조건·쿠폰(코드) 할인 정의. 자동 프로모션(코드 없음)은 요금표에 즉시 반영.
 import type { ReactNode } from "react";
 
-import { PencilIcon, PlusIcon, TicketPercentIcon, XIcon } from "lucide-react";
+import {
+  PencilIcon,
+  PlusIcon,
+  TicketPercentIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { data, useFetcher, useLocation, useNavigate } from "react-router";
 
@@ -100,6 +106,22 @@ function DiscountRow({
   plans: SubscriptionPlan[];
 }) {
   const [editing, setEditing] = useState(false);
+  const delFetcher = useFetcher<{ ok?: true; error?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (
+      delFetcher.state === "idle" &&
+      delFetcher.data &&
+      "ok" in delFetcher.data &&
+      delFetcher.data.ok
+    ) {
+      navigate(location.pathname + location.search, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [delFetcher.state, delFetcher.data, navigate, location.pathname, location.search]);
   const period =
     d.startsAt || d.endsAt
       ? `${d.startsAt ? d.startsAt.slice(0, 10) : "…"} ~ ${d.endsAt ? d.endsAt.slice(0, 10) : "…"}`
@@ -134,14 +156,37 @@ function DiscountRow({
           )}
         </TD>
         <TD align="right">
-          <button
-            type="button"
-            onClick={() => setEditing((v) => !v)}
-            className="text-muted-foreground hover:text-foreground p-1"
-            aria-label="수정"
-          >
-            <PencilIcon className="size-3.5" />
-          </button>
+          <div className="flex items-center justify-end gap-0.5">
+            <button
+              type="button"
+              onClick={() => setEditing((v) => !v)}
+              className="text-muted-foreground hover:text-foreground p-1"
+              aria-label="수정"
+            >
+              <PencilIcon className="size-3.5" />
+            </button>
+            <delFetcher.Form
+              method="post"
+              action="/api/admin/discount"
+              className="inline"
+              onSubmit={(e) => {
+                if (!confirm(`할인 "${d.name}"을(를) 삭제하시겠습니까?`)) {
+                  e.preventDefault();
+                }
+              }}
+            >
+              <input type="hidden" name="intent" value="delete" />
+              <input type="hidden" name="discountId" value={d.discountId} />
+              <button
+                type="submit"
+                disabled={delFetcher.state !== "idle"}
+                className="text-muted-foreground p-1 hover:text-rose-600 disabled:opacity-50"
+                aria-label="삭제"
+              >
+                <Trash2Icon className="size-3.5" />
+              </button>
+            </delFetcher.Form>
+          </div>
         </TD>
       </TR>
       {editing ? (

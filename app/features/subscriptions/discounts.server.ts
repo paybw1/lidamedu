@@ -188,6 +188,19 @@ export async function resolveCheckoutDiscount(input: {
   };
 }
 
+// 할인 삭제. payments FK 는 ON DELETE SET NULL(결제 이력 보존).
+export async function deleteDiscount(
+  discountId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { error } = await admin
+    .from("discounts")
+    .delete()
+    .eq("discount_id", discountId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 // 결제 완료 시 할인 사용 횟수 +1 (best-effort, 경미한 경쟁 허용).
 export async function incrementDiscountUse(discountId: string): Promise<void> {
   const admin = adminClient as SupabaseClient<Database>;
