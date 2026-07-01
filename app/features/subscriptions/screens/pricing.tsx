@@ -16,6 +16,18 @@ import {
   getActiveSubscription,
   listSubscriptionPlans,
 } from "~/features/subscriptions/queries.server";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+
+// ?locked= 배너 라벨 — feature 코드 또는 "subject:<slug>"(과목별 게이트) 해소.
+function lockedLabel(locked: string): string {
+  if (locked.startsWith("subject:")) {
+    const slug = locked.slice("subject:".length);
+    if (slug === "science") return "자연과학 학습과목";
+    const meta = LAW_SUBJECTS[slug as keyof typeof LAW_SUBJECTS];
+    return meta ? `${meta.name} 학습과목` : "이 과목";
+  }
+  return FEATURE_LABEL[locked] ?? "이 기능";
+}
 
 export const meta: Route.MetaFunction = () => [
   { title: "요금제 | 리담변리사학원" },
@@ -69,8 +81,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
         {locked ? (
           <Card className="mb-4 border-amber-300 bg-amber-50/70 dark:border-amber-700/50 dark:bg-amber-950/30">
             <CardContent className="px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-              🔒 <strong>{FEATURE_LABEL[locked] ?? "이 기능"}</strong> 영역은
-              상위 요금제에서 이용할 수 있습니다. 아래에서 요금제를 확인하세요.
+              🔒 <strong>{lockedLabel(locked)}</strong> 은(는) 상위 요금제에서
+              이용할 수 있습니다. 아래에서 요금제를 확인하세요.
             </CardContent>
           </Card>
         ) : null}

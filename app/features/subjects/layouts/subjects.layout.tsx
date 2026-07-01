@@ -1,6 +1,7 @@
-// feat-8-008 — 학습과목(/subjects/*) 영역 게이트.
-// 회원2(area_subjects) 이상만 진입. staff(강사/관리자/원장)는 requireFeature 가 면제.
-// 미보유 시 /pricing?locked=area_subjects 로 redirect. UI 는 없음 — <Outlet/> 만.
+// feat-8-008/8-027 — 학습과목(/subjects/*) 영역 + 과목별 게이트.
+// area_subjects 미보유(무료회원) → /pricing?locked=area_subjects.
+// 과목별: 체험=특허법만, 자기학습=결제 과목(+자연과학), 종합반/staff=전체. 미허용 과목은
+// /pricing?locked=subject:<slug> 로 redirect. URL 2번째 세그먼트(과목 슬러그)로 단일 지점 게이트.
 
 import { useEffect } from "react";
 import { Outlet, data, useLocation } from "react-router";
@@ -8,9 +9,14 @@ import { Outlet, data, useLocation } from "react-router";
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
+import { requireSubject } from "~/features/subscriptions/membership.server";
 import { requireFeature } from "~/features/subscriptions/queries.server";
+import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/subjects.layout";
+
+// 학습과목 슬러그 SSOT — 5개 법률과목 + 자연과학(science). URL 세그먼트 게이트 판정용.
+const SUBJECT_SLUGS = new Set<string>([...LAW_SUBJECT_SLUGS, "science"]);
 
 // 학습과목 토글 — 6과목 SSOT(SUBJECT_NAV_ITEMS) 파생, 상단바 학습과목 드롭다운과 동일.
 // 다른 영역(학습관리·지원·정보)과 동일한 화면 내 가로 토글(SectionTabs)을 학습과목에도 제공.
@@ -29,7 +35,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   // 비로그인은 상위 private.layout 이 처리 — 여기서는 로그인 사용자만 게이트.
   if (user) {
-    await requireFeature(client, user.id, "area_subjects");
+    // URL: /subjects/<subject>/... — 2번째 세그먼트가 과목 슬러그.
+    const seg = new URL(request.url).pathname.split("/").filter(Boolean);
+    const subjectSlug = seg[1];
+    if (subjectSlug && SUBJECT_SLUGS.has(subjectSlug)) {
+      // 과목별 게이트(area_subjects 보유 + 해당 과목 열람 권한).
+      await requireSubject(client, user.id, subjectSlug);
+    } else {
+      // 과목 미특정(/subjects 색인 등) — 영역 게이트만.
+      await requireFeature(client, user.id, "area_subjects");
+    }
   }
   return data(null, { headers });
 }
