@@ -4318,6 +4318,7 @@ export type Database = {
           payment_id: string
           plan_id: string
           status: Database["public"]["Enums"]["payment_status"]
+          subject_code: string | null
           toss_order_id: string
           toss_payment_key: string | null
           toss_response: Json | null
@@ -4331,6 +4332,7 @@ export type Database = {
           payment_id?: string
           plan_id: string
           status?: Database["public"]["Enums"]["payment_status"]
+          subject_code?: string | null
           toss_order_id: string
           toss_payment_key?: string | null
           toss_response?: Json | null
@@ -4344,6 +4346,7 @@ export type Database = {
           payment_id?: string
           plan_id?: string
           status?: Database["public"]["Enums"]["payment_status"]
+          subject_code?: string | null
           toss_order_id?: string
           toss_payment_key?: string | null
           toss_response?: Json | null

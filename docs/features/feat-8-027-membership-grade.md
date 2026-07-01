@@ -33,7 +33,7 @@
    (체험=특허법만, 자기학습=결제 과목+자연과학, 종합반/staff=전체, 무료회원=차단). pricing
    `?locked=subject:<slug>` 배너에 과목명 표시. 개별 뷰어 로더 무수정.
 3. **체험 공지·강등** ✅ — 대시보드 배너(`TrialNoticeBanner`, 체험 시작일부터 상시=사전공지, D-3 이내 경고 톤) + 만료 임박 인박스 알림 1회(`trial_expiry_warning` kind, `notifyTrialExpiryIfDue` 지연 트리거·`runAfterResponse`·`trial_expiry_notified_at` 플래그, 크론 비의존). 자동 강등=리졸버 파생(별도 작업 없음).
-4. **자기학습 과목별 결제** — pricing 과목 단위, Toss 배선(subject_code), 자연과학 기본.
+4. **자기학습 과목별 결제** ✅ — `payments.subject_code` + createPendingPayment/confirmPayment 과목 배선(구독 매칭·연장을 subject_code 단위로). create-order 에 subjectCode(법률과목 슬러그만). pricing 자기학습 카드=과목별 구독 목록(`SubjectSubscribeList`, 5개 법률과목 개별 결제·보유 과목 "보유 중"·자연과학 "기본 무료"). /me/subscription 활성 학습과목 칩. ※라이브 결제 검증은 Toss env 세팅 후.
 5. **종합반 신청·승인 + 종류별 범위** — 신청 큐(pending→active) + `cohorts.access_scope` 운영 UI.
 
 ## UX 후속(폴백)

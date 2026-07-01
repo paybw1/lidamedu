@@ -28,10 +28,12 @@ import {
   type PaymentStatus,
   SUBSCRIPTION_STATUS_LABEL,
 } from "~/features/subscriptions/labels";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
   getActiveSubscription,
   listMyPayments,
 } from "~/features/subscriptions/queries.server";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
   { title: "내 구독 | 리담변리사학원" },
@@ -43,15 +45,23 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
-  const [active, payments] = await Promise.all([
+  const [active, payments, access] = await Promise.all([
     getActiveSubscription(client, user.id),
     listMyPayments(client, user.id),
+    getMembershipAccess(client, user.id),
   ]);
+  // feat-8-027 — 자기학습 활성 학습과목. cohort/staff=전체, self_study=보유 과목, 그 외=없음.
+  const activeSubjects: "all" | string[] | null =
+    access.grade === "cohort" || access.grade === "staff"
+      ? "all"
+      : access.grade === "self_study"
+        ? access.subjects
+        : null;
   const url = new URL(request.url);
   const paid = url.searchParams.get("paid") === "1";
   const failed = url.searchParams.get("failed") === "1";
   const failMsg = url.searchParams.get("msg");
-  return { active, payments, paid, failed, failMsg };
+  return { active, payments, paid, failed, failMsg, activeSubjects };
 }
 
 const STATUS_TONE: Record<PaymentStatus, string> = {
@@ -61,8 +71,13 @@ const STATUS_TONE: Record<PaymentStatus, string> = {
   refunded: "bg-muted text-muted-foreground",
 };
 
+const subjectLabel = (slug: string) =>
+  slug === "science"
+    ? "자연과학"
+    : (LAW_SUBJECTS[slug as keyof typeof LAW_SUBJECTS]?.name ?? slug);
+
 export default function MySubscription({ loaderData }: Route.ComponentProps) {
-  const { active, payments, paid, failed, failMsg } = loaderData;
+  const { active, payments, paid, failed, failMsg, activeSubjects } = loaderData;
 
   return (
     <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
@@ -121,6 +136,30 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
                   {SUBSCRIPTION_STATUS_LABEL[active.subscription.status]}
                 </Badge>
               </div>
+              {activeSubjects ? (
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-[11px] font-semibold">
+                    활성 학습과목
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {activeSubjects === "all" ? (
+                      <Badge variant="secondary" className="text-[11px]">
+                        전체 과목
+                      </Badge>
+                    ) : (
+                      activeSubjects.map((s) => (
+                        <Badge
+                          key={s}
+                          variant="secondary"
+                          className="text-[11px]"
+                        >
+                          {subjectLabel(s)}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : null}
               <ul className="space-y-1">
                 {active.features.map((f) => (
                   <li

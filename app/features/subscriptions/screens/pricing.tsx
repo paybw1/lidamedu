@@ -2,7 +2,8 @@
 // 비로그인도 접근 가능. 로그인 사용자는 "구독 시작" 클릭 시 결제 흐름 진입.
 import type { Route } from "./+types/pricing";
 
-import { CheckIcon, SparklesIcon } from "lucide-react";
+import { CheckIcon, LockIcon, SparklesIcon } from "lucide-react";
+import { useState } from "react";
 import { Link, data, redirect, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -16,7 +17,8 @@ import {
   getActiveSubscription,
   listSubscriptionPlans,
 } from "~/features/subscriptions/queries.server";
-import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
+import { LAW_SUBJECTS, LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 // ?locked= 배너 라벨 — feature 코드 또는 "subject:<slug>"(과목별 게이트) 해소.
 function lockedLabel(locked: string): string {
@@ -47,6 +49,18 @@ export async function loader({ request }: Route.LoaderArgs) {
         planCode: "free",
         features: [],
       };
+  // feat-8-027 — 자기학습은 과목별 결제. 이미 보유(결제/종합반/staff)한 과목 표시용.
+  let ownedSubjects: "all" | string[] = [];
+  if (user) {
+    const access = await getMembershipAccess(client, user.id);
+    ownedSubjects =
+      access.grade === "self_study" ||
+      access.grade === "cohort" ||
+      access.grade === "staff"
+        ? access.subjects
+        : [];
+  }
+
   // feat-8-008: 영역 게이트 redirect — ?locked={feature} 로 안내 배너 표시.
   const locked = new URL(request.url).searchParams.get("locked");
   return {
@@ -55,11 +69,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     isAuthed: !!user,
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
     locked,
+    ownedSubjects,
   };
 }
 
 export default function Pricing({ loaderData }: Route.ComponentProps) {
-  const { plans, active, isAuthed, tossClientKey, locked } = loaderData;
+  const { plans, active, isAuthed, tossClientKey, locked, ownedSubjects } =
+    loaderData;
   return (
     <div className="bg-muted/30 min-h-screen px-4 py-10 md:py-14">
       <div className="mx-auto w-full max-w-screen-lg">
@@ -107,6 +123,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
               isAuthed={isAuthed}
               activeCode={active.planCode}
               tossClientKey={tossClientKey}
+              ownedSubjects={ownedSubjects}
             />
           ))}
         </div>
@@ -128,16 +145,20 @@ function PlanCard({
   isAuthed,
   activeCode,
   tossClientKey,
+  ownedSubjects,
 }: {
   plan: SubscriptionPlan;
   isAuthed: boolean;
   activeCode: string;
   tossClientKey: string | null;
+  ownedSubjects: "all" | string[];
 }) {
   const isActive = activeCode === plan.code;
   const isFree = plan.priceKrw === 0 && plan.code !== "cohort";
   const isCohort = plan.code === "cohort";
-  const isHighlight = plan.code === "pro_monthly";
+  // 자기학습(pro_monthly) = 과목별 결제.
+  const isSelfStudy = plan.code === "pro_monthly";
+  const isHighlight = isSelfStudy;
 
   return (
     <Card
@@ -171,7 +192,8 @@ function PlanCard({
           </span>
           {plan.durationDays > 0 ? (
             <span className="text-muted-foreground text-xs">
-              / {plan.durationDays}일
+              {isSelfStudy ? "/ 과목 · " : "/ "}
+              {plan.durationDays}일
             </span>
           ) : null}
         </div>
@@ -200,6 +222,13 @@ function PlanCard({
           <Button asChild variant="outline" size="sm">
             <Link to="/contact">학원 상담</Link>
           </Button>
+        ) : isSelfStudy ? (
+          <SubjectSubscribeList
+            plan={plan}
+            isAuthed={isAuthed}
+            tossClientKey={tossClientKey}
+            ownedSubjects={ownedSubjects}
+          />
         ) : (
           <SubscribeButton
             plan={plan}
@@ -293,5 +322,142 @@ function SubscribeButton({
     >
       {isActive ? "사용 중" : "구독 시작"}
     </Button>
+  );
+}
+
+// 결제 개시 — pending payment 생성 후 토스 SDK 호출. subject 있으면 과목별 결제.
+async function startSubscriptionCheckout(
+  plan: SubscriptionPlan,
+  tossClientKey: string,
+  subject?: { code: string; name: string },
+): Promise<void> {
+  const fd = new FormData();
+  fd.append("intent", "create-order");
+  fd.append("planCode", plan.code);
+  if (subject) fd.append("subjectCode", subject.code);
+  const res = await fetch("/api/payments/create-order", {
+    method: "POST",
+    body: fd,
+  });
+  const json = (await res.json()) as {
+    ok?: boolean;
+    orderId?: string;
+    error?: string;
+  };
+  if (!json.ok || !json.orderId) {
+    alert(`결제 준비 실패: ${json.error ?? "알 수 없는 오류"}`);
+    return;
+  }
+  try {
+    const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+    const tossPayments = await loadTossPayments(tossClientKey);
+    const payment = tossPayments.payment({ customerKey: plan.planId });
+    await payment.requestPayment({
+      method: "CARD",
+      amount: { currency: "KRW", value: plan.priceKrw },
+      orderId: json.orderId,
+      orderName: subject ? `${plan.name} · ${subject.name}` : plan.name,
+      successUrl: `${window.location.origin}/api/payments/toss/confirm`,
+      failUrl: `${window.location.origin}/me/subscription?failed=1`,
+    });
+  } catch (e) {
+    alert(`결제 SDK 오류: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+// 자기학습 과목별 구독 — 5개 법률과목 각각 결제. 자연과학은 기본 무료.
+function SubjectSubscribeList({
+  plan,
+  isAuthed,
+  tossClientKey,
+  ownedSubjects,
+}: {
+  plan: SubscriptionPlan;
+  isAuthed: boolean;
+  tossClientKey: string | null;
+  ownedSubjects: "all" | string[];
+}) {
+  if (!isAuthed) {
+    return (
+      <Button asChild size="sm">
+        <Link to="/join?redirect=/pricing">가입하고 구독</Link>
+      </Button>
+    );
+  }
+  if (!tossClientKey) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        결제 미설정
+      </Button>
+    );
+  }
+  const owns = (slug: string) =>
+    ownedSubjects === "all" || ownedSubjects.includes(slug);
+  return (
+    <div className="space-y-1.5">
+      <p className="text-muted-foreground text-[11px] font-semibold">
+        과목별 구독
+      </p>
+      {LAW_SUBJECT_SLUGS.map((slug) => (
+        <SubjectRow
+          key={slug}
+          plan={plan}
+          slug={slug}
+          name={LAW_SUBJECTS[slug].name}
+          owned={owns(slug)}
+          tossClientKey={tossClientKey}
+        />
+      ))}
+      <div className="text-muted-foreground flex items-center justify-between rounded-md border border-dashed px-2.5 py-1.5 text-xs">
+        <span>자연과학</span>
+        <span className="font-medium">기본 포함 · 무료</span>
+      </div>
+    </div>
+  );
+}
+
+function SubjectRow({
+  plan,
+  slug,
+  name,
+  owned,
+  tossClientKey,
+}: {
+  plan: SubscriptionPlan;
+  slug: string;
+  name: string;
+  owned: boolean;
+  tossClientKey: string;
+}) {
+  const [pending, setPending] = useState(false);
+  return (
+    <div className="flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs">
+      <span className="font-medium">{name}</span>
+      {owned ? (
+        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+          <CheckIcon className="size-3" /> 보유 중
+        </span>
+      ) : (
+        <Button
+          size="sm"
+          type="button"
+          className="h-6 px-2 text-[11px]"
+          disabled={pending}
+          onClick={async () => {
+            setPending(true);
+            try {
+              await startSubscriptionCheckout(plan, tossClientKey, {
+                code: slug,
+                name,
+              });
+            } finally {
+              setPending(false);
+            }
+          }}
+        >
+          <LockIcon className="size-3" /> 구독
+        </Button>
+      )}
+    </div>
   );
 }

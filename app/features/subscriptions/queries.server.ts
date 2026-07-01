@@ -194,6 +194,8 @@ export async function createPendingPayment(input: {
   userId: string;
   plan: SubscriptionPlan;
   tossOrderId: string;
+  /** 자기학습 과목별 결제 — 결제하는 학습과목 슬러그. 전체 플랜은 null. */
+  subjectCode?: string | null;
 }): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
   const admin = adminClient as SupabaseClient<Database>;
   const { data, error } = await admin
@@ -204,6 +206,7 @@ export async function createPendingPayment(input: {
       amount_krw: input.plan.priceKrw,
       status: "pending",
       toss_order_id: input.tossOrderId,
+      subject_code: input.subjectCode ?? null,
     })
     .select("payment_id")
     .single();
@@ -230,7 +233,7 @@ export async function confirmPayment(
   const { data: payRow, error: payErr } = await admin
     .from("payments")
     .select(
-      "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, subscription_plans(duration_days, code, name)",
+      "payment_id, user_id, plan_id, amount_krw, status, toss_order_id, subject_code, subscription_plans(duration_days, code, name)",
     )
     .eq("toss_order_id", input.tossOrderId)
     .maybeSingle();
@@ -291,16 +294,22 @@ export async function confirmPayment(
     })
     .eq("payment_id", payRow.payment_id);
 
-  // 4) 구독 row insert (기존 활성 구독 있으면 연장)
+  // 4) 구독 row insert (같은 플랜·과목의 기존 활성 구독 있으면 연장). 과목별 결제라
+  //    subject_code 단위로 매칭 — null(전체 플랜)과 특정 과목을 구분한다.
   const durationDays = payRow.subscription_plans?.duration_days ?? 30;
+  const subjectCode = payRow.subject_code ?? null;
   const now = new Date();
-  const { data: existing } = await admin
+  let existingQuery = admin
     .from("user_subscriptions")
     .select("subscription_id, expires_at")
     .eq("user_id", payRow.user_id)
     .eq("plan_id", payRow.plan_id)
     .eq("status", "active")
-    .gte("expires_at", now.toISOString())
+    .gte("expires_at", now.toISOString());
+  existingQuery = subjectCode
+    ? existingQuery.eq("subject_code", subjectCode)
+    : existingQuery.is("subject_code", null);
+  const { data: existing } = await existingQuery
     .order("expires_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -328,20 +337,25 @@ export async function confirmPayment(
       user_id: payRow.user_id,
       plan_id: payRow.plan_id,
       payment_id: payRow.payment_id,
+      subject_code: subjectCode,
       started_at: now.toISOString(),
       expires_at: newExpiresAt,
       status: "active",
     });
   }
 
-  // 5) 최신 구독 fetch 후 반환
-  const { data: latestSub, error: latestErr } = await admin
+  // 5) 최신 구독 fetch 후 반환 (방금 결제한 과목 단위로).
+  let latestQuery = admin
     .from("user_subscriptions")
     .select(
       "subscription_id, user_id, plan_id, started_at, expires_at, status, payment_id, subscription_plans!inner(code, name)",
     )
     .eq("user_id", payRow.user_id)
-    .eq("plan_id", payRow.plan_id)
+    .eq("plan_id", payRow.plan_id);
+  latestQuery = subjectCode
+    ? latestQuery.eq("subject_code", subjectCode)
+    : latestQuery.is("subject_code", null);
+  const { data: latestSub, error: latestErr } = await latestQuery
     .order("expires_at", { ascending: false })
     .limit(1)
     .maybeSingle();

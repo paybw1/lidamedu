@@ -11,12 +11,15 @@ import {
   createPendingPayment,
   getPlanByCode,
 } from "~/features/subscriptions/queries.server";
+import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/create-order";
 
 const schema = z.object({
   intent: z.literal("create-order"),
   planCode: z.string().min(1).max(40),
+  // 자기학습 과목별 결제 — 법률과목 슬러그만(자연과학은 기본 무료라 결제 대상 아님).
+  subjectCode: lawSubjectSlugSchema.optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -49,6 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
     userId: user.id,
     plan,
     tossOrderId,
+    subjectCode: parsed.data.subjectCode ?? null,
   });
   if (!res.ok) return data({ error: res.error }, { status: 500 });
 
