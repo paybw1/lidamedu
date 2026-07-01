@@ -20,9 +20,9 @@ update public.subscription_plans
   set is_active = false, product_kind = 'membership'
   where code = 'pro_monthly';
 
--- 2) 상품 시드 — 개별 4과목 + 번들 2종. features = 자기학습 기능 세트(area 접근).
+-- 2) 상품 시드 — 개별 4과목(1차) + 번들 2종. features = 자기학습 기능 세트(area 접근).
 --    가격은 운영자가 조정할 placeholder. 자연과학은 기본 무료라 상품 없음.
---    민사소송법(civil-procedure)은 데이터 적재 후 전체통합에 편입.
+--    민사소송법(civil-procedure)은 2차 과목 — 전체통합(1차)에 넣지 않는다. 2차는 추후 별도 프로그램.
 insert into public.subscription_plans
   (code, name, description, price_krw, duration_days, features, subject_codes, product_kind, display_order, is_active)
 values
@@ -38,10 +38,10 @@ values
   ('subj_civil', '민법', '민법 단과', 99000, 30,
    '["area_subjects","area_study_aids","area_study_mgmt","passer_benchmarks","passer_trend","passer_summaries","weak_node_guide","recommended_actions","base_learning"]'::jsonb,
    '["civil"]'::jsonb, 'subject', 13, true),
-  ('bundle_ip', '산업재산권법 통합', '특허·상표·디자인 3과목 통합', 249000, 30,
+  ('bundle_ip', '산업재산권법 통합', '특허·상표·디자인 3과목 통합 (1차)', 249000, 30,
    '["area_subjects","area_study_aids","area_study_mgmt","passer_benchmarks","passer_trend","passer_summaries","weak_node_guide","recommended_actions","base_learning"]'::jsonb,
    '["patent","trademark","design"]'::jsonb, 'bundle', 20, true),
-  ('bundle_all', '전체 통합', '전 과목 통합 (민사소송법은 추후 편입)', 299000, 30,
+  ('bundle_all', '1차 전체 통합', '1차 전 과목 통합 (특허·상표·디자인·민법)', 299000, 30,
    '["area_subjects","area_study_aids","area_study_mgmt","passer_benchmarks","passer_trend","passer_summaries","weak_node_guide","recommended_actions","base_learning"]'::jsonb,
    '["patent","trademark","design","civil"]'::jsonb, 'bundle', 21, true)
 on conflict (code) do update set

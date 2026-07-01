@@ -18,8 +18,8 @@
 | subj_design | 디자인보호법 | [design] | 99,000 | subject |
 | subj_civil | 민법 | [civil] | 99,000 | subject |
 | bundle_ip | 산업재산권법 통합 | [patent,trademark,design] | 249,000 | bundle |
-| bundle_all | 전체 통합 | [patent,trademark,design,civil] | 299,000 | bundle |
-- 자연과학 = 기본 무료(상품 없음). 민사소송법 = 데이터 적재 후 bundle_all 편입.
+| bundle_all | 1차 전체 통합 | [patent,trademark,design,civil] | 299,000 | bundle |
+- 자연과학 = 기본 무료(상품 없음). **민사소송법 = 2차 과목** — 1차 상품/번들에 넣지 않는다. 2차는 추후 별도 프로그램으로 구성.
 - 레거시 `pro_monthly`(자기학습) 은퇴(is_active=false) — 오픈 전이라 마이그 없이 무시.
 
 ### discounts 테이블 (기간·조건·쿠폰)
