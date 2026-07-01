@@ -55,6 +55,7 @@ const TARGET_TONE: Record<
   "primary" | "violet" | "amber" | "emerald" | "neutral"
 > = {
   article: "primary",
+  node: "primary",
   case: "violet",
   problem: "amber",
   study_method: "emerald",

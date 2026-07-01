@@ -83,6 +83,7 @@ export default [
     ...prefix("/qna", [
       route("/thread", "features/qna/api/thread.tsx"),
       route("/target-resolve", "features/qna/api/target-resolve.tsx"),
+      route("/nodes", "features/qna/api/nodes.tsx"),
     ]),
     // feat-3-504 — 논문 PDF signed URL (인증 사용자 누구나).
     ...prefix("/papers", [

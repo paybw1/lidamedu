@@ -35,6 +35,7 @@ const TARGET_TONE: Record<
   "primary" | "violet" | "amber" | "emerald" | "neutral"
 > = {
   article: "primary",
+  node: "primary",
   case: "violet",
   problem: "amber",
   study_method: "emerald",
@@ -139,42 +140,76 @@ const PROBLEM_ORIGIN_OPTIONS = [
 ] as const;
 type ProblemOriginKey = (typeof PROBLEM_ORIGIN_OPTIONS)[number]["key"];
 
+interface NodeOpt {
+  nodeId: string;
+  label: string;
+}
 interface ResolveResult {
   ok: boolean;
   targetType?: string;
   targetId?: string;
   label?: string;
   error?: string;
+  nodes?: NodeOpt[] | null;
+}
+interface NodesResult {
+  ok: boolean;
+  nodes: Array<{ nodeId: string; label: string; depth: number }>;
 }
 
 function QnaTargetPicker() {
   const navigate = useNavigate();
   const resolveFetcher = useFetcher<ResolveResult>();
+  const nodesFetcher = useFetcher<NodesResult>();
   const [kind, setKind] = useState<PickerKind>("article");
   const [subject, setSubject] = useState<string>("patent");
   const [articleNumber, setArticleNumber] = useState("");
   const [caseNumber, setCaseNumber] = useState("");
-  const [examRound, setExamRound] = useState<"first" | "second">("first");
   const [origin, setOrigin] = useState<ProblemOriginKey>("past_exam");
   const [year, setYear] = useState("");
   const [problemNumber, setProblemNumber] = useState("");
+  const [primaryNodeId, setPrimaryNodeId] = useState("");
+  // 조문이 여러 쟁점에 걸릴 때 — 해석 후 쟁점 선택 단계.
+  const [articleChoice, setArticleChoice] = useState<{
+    targetId: string;
+    label: string;
+    nodes: NodeOpt[];
+  } | null>(null);
 
   const resolving = resolveFetcher.state !== "idle";
+  const isExpected = kind === "problem" && origin === "expected";
   const notFound =
-    resolveFetcher.state === "idle" &&
-    resolveFetcher.data != null &&
-    resolveFetcher.data.ok === false;
+    resolveFetcher.state === "idle" && resolveFetcher.data?.ok === false;
 
-  // 해석 성공 → 표준 content URL 로 이동(기존 폼이 대상 칩+제목+본문 인수).
+  const goTo = (targetType: string, targetId: string) =>
+    navigate(`/qna/new?targetType=${targetType}&targetId=${targetId}`, {
+      viewTransition: true,
+    });
+
+  // 예상 문제 선택 시 과목의 체계도 노드 로드.
+  useEffect(() => {
+    if (isExpected && subject) {
+      nodesFetcher.load(`/api/qna/nodes?subject=${subject}`);
+      setPrimaryNodeId("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpected, subject]);
+
+  // 해석 결과 → 조문이 여러 쟁점에 걸리면 쟁점 선택 단계, 아니면 바로 이동.
   useEffect(() => {
     const d = resolveFetcher.data;
-    if (d && d.ok && d.targetType && d.targetId) {
-      navigate(
-        `/qna/new?targetType=${d.targetType}&targetId=${d.targetId}`,
-        { viewTransition: true },
-      );
+    if (!d || !d.ok || !d.targetType || !d.targetId) return;
+    if (d.targetType === "article" && d.nodes && d.nodes.length >= 2) {
+      setArticleChoice({
+        targetId: d.targetId,
+        label: d.label ?? "",
+        nodes: d.nodes,
+      });
+      return;
     }
-  }, [resolveFetcher.data, navigate]);
+    goTo(d.targetType, d.targetId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolveFetcher.data]);
 
   const canSubmit =
     kind === "article"
@@ -182,7 +217,9 @@ function QnaTargetPicker() {
       : kind === "case"
         ? Boolean(caseNumber.trim())
         : kind === "problem"
-          ? Boolean(subject && year.trim() && problemNumber.trim())
+          ? isExpected
+            ? Boolean(subject && primaryNodeId && problemNumber.trim())
+            : Boolean(subject && year.trim() && problemNumber.trim())
           : true;
 
   const onSubmit = () => {
@@ -201,10 +238,10 @@ function QnaTargetPicker() {
     } else {
       p.set("type", "problem");
       p.set("subject", subject);
-      p.set("examRound", examRound);
       p.set("origin", origin);
-      p.set("year", year.trim());
       p.set("problemNumber", problemNumber.trim());
+      if (isExpected) p.set("primaryNodeId", primaryNodeId);
+      else p.set("year", year.trim());
     }
     resolveFetcher.load(`/api/qna/target-resolve?${p.toString()}`);
   };
@@ -227,6 +264,61 @@ function QnaTargetPicker() {
       </select>
     </label>
   );
+
+  // ── 쟁점 선택 단계 (조문이 여러 쟁점에 걸림) ──
+  if (articleChoice) {
+    return (
+      <CommunityShell
+        category="qna"
+        title="새 질문"
+        desc="이 조문은 여러 쟁점에 걸쳐 있어요. 어느 쟁점에 대한 질문인가요?"
+        backLink={{ to: "/qna", label: "Q&A 목록" }}
+        width="narrow"
+      >
+        <div className="border-border bg-card rounded-2xl border p-5 shadow-sm md:p-6">
+          <div className="border-border bg-muted/40 mb-4 flex flex-wrap items-center gap-2 rounded-xl border p-3">
+            <Chip tone="primary">조문</Chip>
+            <span className="text-sm font-bold tracking-tight">
+              {articleChoice.label}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => goTo("article", articleChoice.targetId)}
+              className="border-border hover:border-primary hover:bg-primary/5 rounded-xl border px-4 py-2.5 text-left text-sm font-medium"
+            >
+              조문 전체에 대해 질문
+            </button>
+            {articleChoice.nodes.map((n) => (
+              <button
+                key={n.nodeId}
+                type="button"
+                onClick={() => goTo("node", n.nodeId)}
+                className="border-border hover:border-primary hover:bg-primary/5 flex items-center gap-2 rounded-xl border px-4 py-2.5 text-left text-sm font-medium"
+              >
+                <Chip tone="primary">쟁점</Chip>
+                {n.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="rounded-full"
+              onClick={() => setArticleChoice(null)}
+            >
+              다시 선택
+            </Button>
+          </div>
+        </div>
+      </CommunityShell>
+    );
+  }
+
+  const subjectNodes = nodesFetcher.data?.nodes ?? [];
 
   return (
     <CommunityShell
@@ -260,7 +352,6 @@ function QnaTargetPicker() {
           </div>
         </div>
 
-        {/* 유형별 식별자 */}
         {kind === "article" ? (
           <div className="grid grid-cols-2 gap-3">
             {subjectSelect}
@@ -292,61 +383,88 @@ function QnaTargetPicker() {
         ) : null}
 
         {kind === "problem" ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="col-span-2 sm:col-span-1">{subjectSelect}</div>
-            <label className="block">
-              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                출처
-              </span>
-              <select
-                value={origin}
-                onChange={(e) => setOrigin(e.target.value as ProblemOriginKey)}
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-              >
-                {PROBLEM_ORIGIN_OPTIONS.map((o) => (
-                  <option key={o.key} value={o.key}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                차수
-              </span>
-              <select
-                value={examRound}
-                onChange={(e) =>
-                  setExamRound(e.target.value === "second" ? "second" : "first")
-                }
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-              >
-                <option value="first">1차</option>
-                <option value="second">2차</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                년도
-              </span>
-              <Input
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                placeholder="2020"
-                inputMode="numeric"
-              />
-            </label>
-            <label className="block">
-              <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                번호
-              </span>
-              <Input
-                value={problemNumber}
-                onChange={(e) => setProblemNumber(e.target.value)}
-                placeholder="5"
-                inputMode="numeric"
-              />
-            </label>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {subjectSelect}
+              <label className="block">
+                <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                  출처
+                </span>
+                <select
+                  value={origin}
+                  onChange={(e) => setOrigin(e.target.value as ProblemOriginKey)}
+                  className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                >
+                  {PROBLEM_ORIGIN_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {/* 객관식은 모두 1차라 차수 없음. 기출/변형=년도+번호, 예상=체계도+번호. */}
+            {isExpected ? (
+              <div className="grid grid-cols-3 gap-3">
+                <label className="col-span-2 block">
+                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    체계도(단원)
+                  </span>
+                  <select
+                    value={primaryNodeId}
+                    onChange={(e) => setPrimaryNodeId(e.target.value)}
+                    className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                  >
+                    <option value="" disabled>
+                      {nodesFetcher.state !== "idle"
+                        ? "불러오는 중…"
+                        : "단원 선택"}
+                    </option>
+                    {subjectNodes.map((n) => (
+                      <option key={n.nodeId} value={n.nodeId}>
+                        {`${"  ".repeat(n.depth)}${n.label}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    번호
+                  </span>
+                  <Input
+                    value={problemNumber}
+                    onChange={(e) => setProblemNumber(e.target.value)}
+                    placeholder="5"
+                    inputMode="numeric"
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    년도
+                  </span>
+                  <Input
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    placeholder="2020"
+                    inputMode="numeric"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+                    번호
+                  </span>
+                  <Input
+                    value={problemNumber}
+                    onChange={(e) => setProblemNumber(e.target.value)}
+                    placeholder="5"
+                    inputMode="numeric"
+                  />
+                </label>
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -359,7 +477,7 @@ function QnaTargetPicker() {
         ) : null}
 
         {notFound ? (
-          <p className="mt-3 text-sm text-destructive">
+          <p className="text-destructive mt-3 text-sm">
             해당 대상을 찾을 수 없습니다. 과목·번호를 다시 확인해 주세요.
           </p>
         ) : null}

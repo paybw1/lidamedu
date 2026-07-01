@@ -1,6 +1,6 @@
-// 사람이 읽는 식별자(조문번호 / 판례번호 / 과목·차수·년도·번호) → Q&A target_id 해석.
-// 커뮤니티 Q&A 대상 선택기에서 사용. 상세패널 질문과 동일한 target_type+target_id 를
-// 만들어주는 게 목적 — 해석 실패 시 null.
+// 사람이 읽는 식별자(조문번호 / 쟁점노드 / 판례번호 / 과목·년도·번호 또는 체계도·번호)
+// → Q&A target_id 해석. 커뮤니티 Q&A 대상 선택기에서 사용. 상세패널 질문과 동일한
+// target_type+target_id 를 만들어주는 게 목적 — 해석 실패 시 null.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
@@ -15,17 +15,23 @@ import type { QnaTargetType } from "../labels";
 import {
   articleHref,
   caseHref,
+  nodeHref,
   problemDisplayLabel,
   problemHref,
   type TargetDisplay,
 } from "./target-display.server";
 
+export interface NodeOption {
+  nodeId: string;
+  label: string;
+}
 export interface ResolvedTarget extends TargetDisplay {
   targetType: QnaTargetType;
   targetId: string;
+  // 조문이 여러 쟁점(노드)에 걸릴 때 — 쟁점 선택지(≥2면 UI 노출).
+  nodes?: NodeOption[];
 }
 
-// 조문·판례·문제 대상은 법률과목만(자연과학은 조문/판례 없음, 문제는 후속).
 const LAW_SUBJECTS: readonly string[] = [
   "patent",
   "trademark",
@@ -39,11 +45,27 @@ function asLawSubject(subject: string): LawSubjectSlug | null {
 
 // "제29조의2" / "29조" / "29의2" → "29의2" (articles.article_number 표기와 정합).
 function normalizeArticleNumber(input: string): string {
-  return input
-    .replace(/제/g, "")
-    .replace(/조/g, "")
-    .replace(/\s/g, "")
-    .trim();
+  return input.replace(/제/g, "").replace(/조/g, "").replace(/\s/g, "").trim();
+}
+
+// 한 조문이 걸린 체계도 노드 목록(쟁점 선택지).
+async function getArticleNodes(
+  client: SupabaseClient<Database>,
+  articleId: string,
+): Promise<NodeOption[]> {
+  const { data: links } = await client
+    .from("article_systematic_links")
+    .select("node_id")
+    .eq("article_id", articleId);
+  const nodeIds = [...new Set((links ?? []).map((l) => l.node_id))];
+  if (nodeIds.length === 0) return [];
+  const { data: nodes } = await client
+    .from("systematic_nodes")
+    .select("node_id, display_label, path")
+    .in("node_id", nodeIds);
+  return (nodes ?? [])
+    .sort((a, b) => String(a.path).localeCompare(String(b.path)))
+    .map((n) => ({ nodeId: n.node_id, label: n.display_label }));
 }
 
 export async function resolveArticleTarget(
@@ -59,12 +81,55 @@ export async function resolveArticleTarget(
   if (!law) return null;
   const article = await getArticleByNumber(client, law.lawId, num);
   if (!article) return null;
+  const nodes = await getArticleNodes(client, article.articleId);
   return {
     targetType: "article",
     targetId: article.articleId,
     label: `${law.shortLabel} ${article.displayLabel}`,
     href: articleHref(lawCode, article.articleNumber),
+    nodes,
   };
+}
+
+// 쟁점(체계도 노드) 대상 — 노드 id 검증 + 표시.
+export async function resolveNodeTarget(
+  client: SupabaseClient<Database>,
+  nodeId: string,
+): Promise<ResolvedTarget | null> {
+  const { data: node } = await client
+    .from("systematic_nodes")
+    .select("node_id, display_label, law_code")
+    .eq("node_id", nodeId)
+    .maybeSingle();
+  if (!node) return null;
+  const law = await getLawByCode(client, node.law_code as LawSubjectSlug);
+  const prefix = law?.shortLabel ? `${law.shortLabel} ` : "";
+  return {
+    targetType: "node",
+    targetId: node.node_id,
+    label: `${prefix}${node.display_label}`,
+    href: nodeHref(node.law_code, node.node_id),
+  };
+}
+
+// 과목의 체계도 노드 목록(예상문제 대상 선택용). path 순.
+export async function listSubjectNodes(
+  client: SupabaseClient<Database>,
+  subject: string,
+): Promise<Array<{ nodeId: string; label: string; depth: number }>> {
+  const lawCode = asLawSubject(subject);
+  if (!lawCode) return [];
+  const { data } = await client
+    .from("systematic_nodes")
+    .select("node_id, display_label, path")
+    .eq("law_code", lawCode);
+  return (data ?? [])
+    .sort((a, b) => String(a.path).localeCompare(String(b.path)))
+    .map((n) => ({
+      nodeId: n.node_id,
+      label: n.display_label,
+      depth: Math.max(0, String(n.path).split(".").length - 2),
+    }));
 }
 
 export async function resolveCaseTarget(
@@ -91,31 +156,39 @@ export async function resolveCaseTarget(
   };
 }
 
+// 문제 대상 — 객관식은 모두 1차. 기출/변형=년도+번호, 예상=체계도(노드)+번호(year 없음).
 export async function resolveProblemTarget(
   client: SupabaseClient<Database>,
   args: {
     subject: string;
-    examRound: Database["public"]["Enums"]["problem_exam_round"];
-    year: number;
+    origin: Database["public"]["Enums"]["problem_origin"];
     problemNumber: number;
-    origin?: Database["public"]["Enums"]["problem_origin"];
+    year?: number;
+    primaryNodeId?: string;
   },
 ): Promise<ResolvedTarget | null> {
   const lawCode = asLawSubject(args.subject);
   if (!lawCode) return null;
   const law = await getLawByCode(client, lawCode);
   if (!law) return null;
-  const origin = args.origin ?? "past_exam";
-  const { data, error } = await client
+
+  let query = client
     .from("problems")
-    .select("problem_id, year, exam_round, problem_number, origin")
+    .select("problem_id, year, problem_number, origin")
     .eq("law_id", law.lawId)
-    .eq("exam_round", args.examRound)
-    .eq("year", args.year)
+    .eq("origin", args.origin)
     .eq("problem_number", args.problemNumber)
-    .eq("origin", origin)
-    .is("deleted_at", null)
-    .limit(1);
+    .is("deleted_at", null);
+
+  if (args.origin === "expected") {
+    if (!args.primaryNodeId) return null;
+    query = query.eq("primary_node_id", args.primaryNodeId);
+  } else {
+    if (args.year == null) return null;
+    query = query.eq("year", args.year).eq("exam_round", "first");
+  }
+
+  const { data, error } = await query.limit(1);
   if (error) throw error;
   const row = data?.[0];
   if (!row) return null;
@@ -125,7 +198,6 @@ export async function resolveProblemTarget(
     label: problemDisplayLabel({
       shortLabel: law.shortLabel,
       year: row.year,
-      examRound: row.exam_round,
       problemNumber: row.problem_number,
       origin: row.origin,
     }),

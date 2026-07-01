@@ -7,6 +7,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   ListTreeIcon,
+  MessageCircleQuestionIcon,
   PanelRightIcon,
   PencilLineIcon,
   ScrollTextIcon,
@@ -62,6 +63,7 @@ import {
   getOxQuestionsForArticle,
   listProblemsByArticleIds,
 } from "~/features/problems/queries.server";
+import { QnaPanel } from "~/features/qna/components/qna-panel";
 import { listThreadsForTarget } from "~/features/qna/queries.server";
 import { getCaseIdsByPlacement } from "~/features/cases/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
@@ -303,11 +305,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     );
   }
 
+  // feat-9-010 — 이 쟁점(노드)에 대한 Q&A(node 대상). 조문 단위 Q&A 와 별개로,
+  // 여러 쟁점에 걸친 조문에서 쟁점 특정 질문을 이 노드에 모아 보여준다.
+  const nodeQnaThreads = await listThreadsForTarget(client, "node", nodeId, 20);
+
   return {
     subject: LAW_SUBJECTS[lawCode],
     axisCounts,
     lawId: law.lawId,
     node,
+    nodeQnaThreads,
     nodePrevNext,
     articles,
     systematicNodes,
@@ -354,6 +361,7 @@ function Inner({
     subject,
     lawId,
     node,
+    nodeQnaThreads,
     nodePrevNext,
     articles,
     systematicNodes,
@@ -608,6 +616,21 @@ function Inner({
                 </span>
                 개
               </p>
+              {/* feat-9-010 — 이 쟁점(노드) 대상 Q&A. 조문 단위 Q&A(각 조문 패널)와 별개로,
+                  이 쟁점으로 특정해 물은 질문을 여기 모아 보여준다. */}
+              <details className="border-border bg-muted/20 mt-3 rounded-xl border px-3 py-2">
+                <summary className="text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs font-semibold">
+                  <MessageCircleQuestionIcon className="size-3.5" />이 쟁점에 대한 질문
+                  {nodeQnaThreads.length > 0 ? ` ${nodeQnaThreads.length}` : ""}
+                </summary>
+                <div className="mt-3">
+                  <QnaPanel
+                    threads={nodeQnaThreads}
+                    targetType="node"
+                    targetId={node.nodeId}
+                  />
+                </div>
+              </details>
               {/* 모드 토글 버튼 행 */}
               <div className="border-border mt-3 flex flex-wrap items-center gap-1.5 border-t pt-3">
                 {blankAvailableCount > 0 ? (

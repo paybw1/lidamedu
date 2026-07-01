@@ -7705,6 +7705,7 @@ export type Database = {
         | "problem"
         | "study_method"
         | "general"
+        | "node"
       resource_kind:
         | "lecture_note"
         | "lecture_video"
@@ -7961,6 +7962,7 @@ export const Constants = {
         "problem",
         "study_method",
         "general",
+        "node",
       ],
       resource_kind: [
         "lecture_note",

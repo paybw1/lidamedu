@@ -8,6 +8,7 @@ export type QnaQualityGrade = Database["public"]["Enums"]["qna_quality_grade"];
 
 export const QNA_TARGET_TYPES: QnaTargetType[] = [
   "article",
+  "node",
   "case",
   "problem",
   "study_method",
@@ -17,6 +18,7 @@ export const QNA_QUALITY_GRADES: QnaQualityGrade[] = ["high", "mid", "low"];
 
 export const qnaTargetTypeSchema = z.enum([
   "article",
+  "node",
   "case",
   "problem",
   "study_method",
@@ -52,6 +54,7 @@ export const qnaQualityGradeSchema = z.enum(["high", "mid", "low"]);
 
 export const QNA_TARGET_LABEL: Record<QnaTargetType, string> = {
   article: "조문",
+  node: "쟁점",
   case: "판례",
   problem: "문제",
   study_method: "공부방법",

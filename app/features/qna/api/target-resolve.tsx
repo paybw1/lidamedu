@@ -8,6 +8,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import {
   resolveArticleTarget,
   resolveCaseTarget,
+  resolveNodeTarget,
   resolveProblemTarget,
 } from "../lib/target-resolve.server";
 
@@ -20,18 +21,21 @@ const paramSchema = z.discriminatedUnion("type", [
     articleNumber: z.string().min(1),
   }),
   z.object({
+    type: z.literal("node"),
+    nodeId: z.string().uuid(),
+  }),
+  z.object({
     type: z.literal("case"),
     caseNumber: z.string().min(1),
   }),
   z.object({
     type: z.literal("problem"),
     subject: z.string().min(1),
-    examRound: z.enum(["first", "second"]),
-    year: z.coerce.number().int().min(1900).max(2100),
+    origin: z.enum(["past_exam", "past_exam_variant", "expected", "mock"]),
     problemNumber: z.coerce.number().int().min(1).max(200),
-    origin: z
-      .enum(["past_exam", "past_exam_variant", "expected", "mock"])
-      .optional(),
+    // 기출/변형=년도, 예상=체계도 노드(둘 중 하나). resolver 가 origin 별로 강제.
+    year: z.coerce.number().int().min(1900).max(2100).optional(),
+    primaryNodeId: z.string().uuid().optional(),
   }),
 ]);
 
@@ -59,15 +63,17 @@ export async function loader({ request }: Route.LoaderArgs) {
           parsed.data.subject,
           parsed.data.articleNumber,
         )
-      : parsed.data.type === "case"
-        ? await resolveCaseTarget(client, parsed.data.caseNumber)
-        : await resolveProblemTarget(client, {
-            subject: parsed.data.subject,
-            examRound: parsed.data.examRound,
-            year: parsed.data.year,
-            problemNumber: parsed.data.problemNumber,
-            origin: parsed.data.origin,
-          });
+      : parsed.data.type === "node"
+        ? await resolveNodeTarget(client, parsed.data.nodeId)
+        : parsed.data.type === "case"
+          ? await resolveCaseTarget(client, parsed.data.caseNumber)
+          : await resolveProblemTarget(client, {
+              subject: parsed.data.subject,
+              origin: parsed.data.origin,
+              problemNumber: parsed.data.problemNumber,
+              year: parsed.data.year,
+              primaryNodeId: parsed.data.primaryNodeId,
+            });
 
   if (!resolved) {
     return data({ ok: false as const, error: "not-found" });
@@ -78,5 +84,6 @@ export async function loader({ request }: Route.LoaderArgs) {
     targetId: resolved.targetId,
     label: resolved.label,
     href: resolved.href,
+    nodes: resolved.nodes ?? null,
   });
 }

@@ -333,6 +333,14 @@ async function resolveSubjectForTarget(
       .maybeSingle();
     return data?.laws?.law_code ?? null;
   }
+  if (targetType === "node") {
+    const { data } = await client
+      .from("systematic_nodes")
+      .select("law_code")
+      .eq("node_id", targetId)
+      .maybeSingle();
+    return data?.law_code ?? null;
+  }
   return null;
 }
 

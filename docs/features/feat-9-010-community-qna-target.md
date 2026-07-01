@@ -28,5 +28,9 @@
 - **Structure**: 해석·검증은 서버(엔드포인트+생성 시 재검증), 피커 입력은 FE 인터랙션. 뮤테이션 경로 단일 유지(createThread 무변경).
 - **Code**: 라벨/링크 SSOT는 target-display, 해석은 target-resolve.
 
+## 확장 (2026-07-01)
+- **쟁점(체계도 노드) 대상 추가** — `qna_target_type` enum += `node`(마이그레이션 `20260701_qna_target_node.sql`). 조문이 여러 쟁점에 걸리면(제29조 → 신규성·진보성·확대선출원·산업상이용) 피커가 조문 해석 후 **쟁점 선택 단계**를 띄워 노드 대상으로 질문 가능. `resolveTargetDisplay`/`resolveSubjectForTarget`/target-resolve 에 node 처리. **노드 뷰어(systematic-node-viewer)에 노드 대상 QnaPanel**(`nodeQnaThreads`, "이 쟁점에 대한 질문") — 상세패널 등가.
+- **문제 피커 개편** — 객관식은 모두 1차라 **차수 필드 제거**. 기출/변형=과목+년도+번호. **예상=과목+체계도(단원 노드)+번호**(예상문제는 year=null, `primary_node_id`+`problem_number`로 특정). 노드 목록 `GET /api/qna/nodes?subject=`. 라벨도 차수 제거(`problemDisplayLabel`).
+
 ## 범위 밖(후속)
-자연과학 문제 대상, 기출변형/예상 origin 선택 UI, 판례 번호 자동완성, 조문 항·호 단위 타깃.
+자연과학 문제 대상, 판례 번호 자동완성, 조문 항·호 단위 타깃, 예상문제 (node,번호) 중복 9건 정밀 구분.

@@ -11,31 +11,27 @@ export interface TargetDisplay {
   href: string | null;
 }
 
-type ProblemExamRound = Database["public"]["Enums"]["problem_exam_round"];
 type ProblemOrigin = Database["public"]["Enums"]["problem_origin"];
 
 // ── 순수 라벨/링크 빌더 (target-resolve 와 공유 — SSOT) ──
+// 객관식은 모두 1차라 차수는 표기하지 않는다. 기출/변형=년도+번호, 예상/모의=출처+번호(년도 없음).
 export function problemDisplayLabel(args: {
   shortLabel: string;
   year: number | null;
-  examRound: ProblemExamRound;
   problemNumber: number | null;
   origin: ProblemOrigin;
 }): string {
-  const round = args.examRound === "second" ? "2차" : "1차";
-  const originSuffix =
+  const num = args.problemNumber != null ? `${args.problemNumber}번` : "";
+  if (args.origin === "expected") return `${args.shortLabel} 예상 ${num}`.trim();
+  if (args.origin === "mock") return `${args.shortLabel} 모의 ${num}`.trim();
+  const yearPart = args.year ? `${args.year}년 ` : "";
+  const suffix =
     args.origin === "past_exam_variant"
       ? " (변형)"
-      : args.origin === "expected"
-        ? " (예상)"
-        : args.origin === "mock"
-          ? " (모의)"
-          : args.origin === "ai_draft"
-            ? " (초안)"
-            : "";
-  const yearPart = args.year ? `${args.year}년 ` : "";
-  const numPart = args.problemNumber != null ? `${args.problemNumber}번` : "";
-  return `${args.shortLabel} ${yearPart}${round} ${numPart}${originSuffix}`.trim();
+      : args.origin === "ai_draft"
+        ? " (초안)"
+        : "";
+  return `${args.shortLabel} ${yearPart}${num}${suffix}`.trim();
 }
 
 export function articleHref(lawCode: string, articleNumber: string | null) {
@@ -46,6 +42,9 @@ export function caseHref(lawCode: string | null, caseId: string) {
 }
 export function problemHref(lawCode: string | null, problemId: string) {
   return lawCode ? `/subjects/${lawCode}/problems/${problemId}` : null;
+}
+export function nodeHref(lawCode: string | null, nodeId: string) {
+  return lawCode ? `/subjects/${lawCode}/systematic/${nodeId}` : null;
 }
 
 export async function resolveTargetDisplay(
@@ -86,7 +85,7 @@ export async function resolveTargetDisplay(
     const { data, error } = await client
       .from("problems")
       .select(
-        "problem_id, year, exam_round, problem_number, origin, laws ( law_code, short_label )",
+        "problem_id, year, problem_number, origin, laws ( law_code, short_label )",
       )
       .eq("problem_id", targetId)
       .is("deleted_at", null)
@@ -97,11 +96,29 @@ export async function resolveTargetDisplay(
       label: problemDisplayLabel({
         shortLabel,
         year: data.year,
-        examRound: data.exam_round,
         problemNumber: data.problem_number,
         origin: data.origin,
       }),
       href: problemHref(data.laws?.law_code ?? null, data.problem_id),
+    };
+  }
+
+  if (targetType === "node") {
+    const { data, error } = await client
+      .from("systematic_nodes")
+      .select("node_id, display_label, law_code")
+      .eq("node_id", targetId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const { data: law } = await client
+      .from("laws")
+      .select("short_label")
+      .eq("law_code", data.law_code)
+      .maybeSingle();
+    const prefix = law?.short_label ? `${law.short_label} ` : "";
+    return {
+      label: `${prefix}${data.display_label}`,
+      href: nodeHref(data.law_code, data.node_id),
     };
   }
 
