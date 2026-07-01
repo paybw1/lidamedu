@@ -2056,6 +2056,7 @@ export type Database = {
       }
       cohorts: {
         Row: {
+          access_scope: string
           cohort_id: string
           created_at: string
           deleted_at: string | null
@@ -2068,6 +2069,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_scope?: string
           cohort_id?: string
           created_at?: string
           deleted_at?: string | null
@@ -2080,6 +2082,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_scope?: string
           cohort_id?: string
           created_at?: string
           deleted_at?: string | null
@@ -5104,6 +5107,8 @@ export type Database = {
           recommendation_prefs: Json
           role: Database["public"]["Enums"]["user_role"]
           service_data_consent_at: string | null
+          trial_ends_at: string | null
+          trial_expiry_notified_at: string | null
           updated_at: string
         }
         Insert: {
@@ -5130,6 +5135,8 @@ export type Database = {
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
           service_data_consent_at?: string | null
+          trial_ends_at?: string | null
+          trial_expiry_notified_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -5156,6 +5163,8 @@ export type Database = {
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
           service_data_consent_at?: string | null
+          trial_ends_at?: string | null
+          trial_expiry_notified_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -6896,6 +6905,7 @@ export type Database = {
           plan_id: string
           started_at: string
           status: Database["public"]["Enums"]["subscription_status"]
+          subject_code: string | null
           subscription_id: string
           updated_at: string
           user_id: string
@@ -6907,6 +6917,7 @@ export type Database = {
           plan_id: string
           started_at?: string
           status?: Database["public"]["Enums"]["subscription_status"]
+          subject_code?: string | null
           subscription_id?: string
           updated_at?: string
           user_id: string
@@ -6918,6 +6929,7 @@ export type Database = {
           plan_id?: string
           started_at?: string
           status?: Database["public"]["Enums"]["subscription_status"]
+          subject_code?: string | null
           subscription_id?: string
           updated_at?: string
           user_id?: string

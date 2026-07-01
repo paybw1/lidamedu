@@ -6,7 +6,7 @@ import type { Database } from "database.types";
 import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { getStaffRole } from "~/features/laws/queries.server";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 
 import type {
   PaymentRow,
@@ -169,21 +169,21 @@ export async function hasFeature(
   userId: string,
   feature: string,
 ): Promise<boolean> {
-  const sub = await getActiveSubscription(client, userId);
-  return sub.features.includes(feature);
+  // feat-8-027: 등급 리졸버(체험/무료회원/자기학습/종합반 종류) 기준.
+  const access = await getMembershipAccess(client, userId);
+  return access.grade === "staff" || access.features.includes(feature);
 }
 
-// feat-8-008: 영역 게이트 — 라우트 그룹 loader 에서 호출. 해당 영역 기능이 없으면
+// feat-8-008/8-027: 영역 게이트 — 라우트 그룹 loader 에서 호출. 해당 영역 기능이 없으면
 // /pricing?locked= 으로 redirect. staff(강사/관리자/원장)는 구독 게이팅 면제.
 export async function requireFeature(
   client: SupabaseClient<Database>,
   userId: string,
   feature: string,
 ): Promise<void> {
-  const role = await getStaffRole(client, userId);
-  if (role) return;
-  const sub = await getActiveSubscription(client, userId);
-  if (!sub.features.includes(feature)) {
+  const access = await getMembershipAccess(client, userId);
+  if (access.grade === "staff") return;
+  if (!access.features.includes(feature)) {
     throw redirect(`/pricing?locked=${encodeURIComponent(feature)}`);
   }
 }
