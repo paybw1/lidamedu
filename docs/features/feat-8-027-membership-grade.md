@@ -34,7 +34,7 @@
    `?locked=subject:<slug>` 배너에 과목명 표시. 개별 뷰어 로더 무수정.
 3. **체험 공지·강등** ✅ — 대시보드 배너(`TrialNoticeBanner`, 체험 시작일부터 상시=사전공지, D-3 이내 경고 톤) + 만료 임박 인박스 알림 1회(`trial_expiry_warning` kind, `notifyTrialExpiryIfDue` 지연 트리거·`runAfterResponse`·`trial_expiry_notified_at` 플래그, 크론 비의존). 자동 강등=리졸버 파생(별도 작업 없음).
 4. **자기학습 과목별 결제** ✅ — `payments.subject_code` + createPendingPayment/confirmPayment 과목 배선(구독 매칭·연장을 subject_code 단위로). create-order 에 subjectCode(법률과목 슬러그만). pricing 자기학습 카드=과목별 구독 목록(`SubjectSubscribeList`, 5개 법률과목 개별 결제·보유 과목 "보유 중"·자연과학 "기본 무료"). /me/subscription 활성 학습과목 칩. ※라이브 결제 검증은 Toss env 세팅 후.
-5. **종합반 신청·승인 + 종류별 범위** — 신청 큐(pending→active) + `cohorts.access_scope` 운영 UI.
+5. **종합반 종류별 범위 + 승인** ✅ — `cohorts.access_scope`(full/self_study) 운영 UI(admin-cohorts CohortForm "열람 범위" 선택 + 카드 배지). createCohort/updateCohort·cohort API·CohortListItem 배선. 리졸버가 cohort 멤버의 access_scope 로 full/자기학습 범위 부여. **승인=기존 종합반 멤버 추가(add_member) 그대로**(운영자 확인 후 등업). **신청 채널=기존 상담(/contact)** — 별도 인앱 신청 큐는 미구축(YAGNI, 필요 시 후속).
 
 ## UX 후속(폴백)
 - 학습과목 탭(AreaTabs)이 미허용 과목도 클릭 가능 → 클릭 시 /pricing redirect(기능은 정상, 잠금 표시 없음). 등급별 잠금 배지는 후속 폴리시.

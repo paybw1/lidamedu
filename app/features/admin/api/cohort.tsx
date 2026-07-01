@@ -39,6 +39,8 @@ const upsertSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
     .nullable()
     .optional(),
+  // feat-8-027 — 종합반 종류별 열람 범위. 미지정 시 full.
+  accessScope: z.enum(["full", "self_study"]).optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -62,6 +64,7 @@ export async function action({ request }: Route.ActionArgs) {
       description: emptyToNull(fd.get("description"), 2000),
       startsOn: emptyToNull(fd.get("startsOn"), 10),
       endsOn: emptyToNull(fd.get("endsOn"), 10),
+      accessScope: fd.get("accessScope") ?? undefined,
     });
     if (!parsed.success) {
       return data(
@@ -84,6 +87,7 @@ export async function action({ request }: Route.ActionArgs) {
       startsOn: parsed.data.startsOn ?? null,
       endsOn: parsed.data.endsOn ?? null,
       isArchived: false,
+      accessScope: parsed.data.accessScope ?? "full",
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true, cohortId: res.cohortId });
@@ -105,6 +109,7 @@ export async function action({ request }: Route.ActionArgs) {
       description: emptyToNull(fd.get("description"), 2000),
       startsOn: emptyToNull(fd.get("startsOn"), 10),
       endsOn: emptyToNull(fd.get("endsOn"), 10),
+      accessScope: fd.get("accessScope") ?? undefined,
     });
     if (!parsed.success) {
       return data(
@@ -119,6 +124,7 @@ export async function action({ request }: Route.ActionArgs) {
       startsOn: parsed.data.startsOn ?? null,
       endsOn: parsed.data.endsOn ?? null,
       isArchived,
+      accessScope: parsed.data.accessScope,
     });
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });

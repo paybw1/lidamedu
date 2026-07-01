@@ -8,12 +8,20 @@ import type { Database } from "database.types";
 import adminClient from "~/core/lib/supa-admin-client.server";
 import type { UserRole } from "~/core/lib/roles";
 
-import type { CohortListItem, CohortMember } from "./labels";
+import type {
+  CohortAccessScope,
+  CohortListItem,
+  CohortMember,
+} from "./labels";
 
-export type { CohortListItem, CohortMember } from "./labels";
+export type {
+  CohortAccessScope,
+  CohortListItem,
+  CohortMember,
+} from "./labels";
 
 const LIST_COLUMNS =
-  "cohort_id, name, description, owner_id, starts_on, ends_on, is_archived, created_at, updated_at, profiles!owner_id(name)";
+  "cohort_id, name, description, owner_id, starts_on, ends_on, is_archived, access_scope, created_at, updated_at, profiles!owner_id(name)";
 
 interface CohortRow {
   cohort_id: string;
@@ -23,6 +31,7 @@ interface CohortRow {
   starts_on: string | null;
   ends_on: string | null;
   is_archived: boolean;
+  access_scope: string;
   created_at: string;
   updated_at: string;
   profiles: { name: string } | null;
@@ -77,6 +86,7 @@ export async function listCohorts(
     startsOn: c.starts_on,
     endsOn: c.ends_on,
     isArchived: c.is_archived,
+    accessScope: (c.access_scope as CohortAccessScope) ?? "full",
     memberCount: memberCount.get(c.cohort_id) ?? 0,
     createdAt: c.created_at,
     updatedAt: c.updated_at,
@@ -109,6 +119,7 @@ export async function getCohortById(
     startsOn: c.starts_on,
     endsOn: c.ends_on,
     isArchived: c.is_archived,
+    accessScope: (c.access_scope as CohortAccessScope) ?? "full",
     memberCount: count ?? 0,
     createdAt: c.created_at,
     updatedAt: c.updated_at,
@@ -176,6 +187,7 @@ export interface UpsertCohortInput {
   startsOn?: string | null;
   endsOn?: string | null;
   isArchived?: boolean;
+  accessScope?: CohortAccessScope;
 }
 
 export async function createCohort(
@@ -191,6 +203,7 @@ export async function createCohort(
       starts_on: input.startsOn ?? null,
       ends_on: input.endsOn ?? null,
       is_archived: input.isArchived ?? false,
+      access_scope: input.accessScope ?? "full",
     })
     .select("cohort_id")
     .single();
@@ -210,6 +223,7 @@ export async function updateCohort(
   if (patch.startsOn !== undefined) update.starts_on = patch.startsOn;
   if (patch.endsOn !== undefined) update.ends_on = patch.endsOn;
   if (patch.isArchived !== undefined) update.is_archived = patch.isArchived;
+  if (patch.accessScope !== undefined) update.access_scope = patch.accessScope;
   if (Object.keys(update).length === 0) return { ok: true };
   const { error } = await client
     .from("cohorts")

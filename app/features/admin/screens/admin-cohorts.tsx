@@ -239,6 +239,11 @@ function CohortRow({ cohort }: { cohort: CohortListItem }) {
             {cohort.description}
           </p>
         ) : null}
+        {cohort.accessScope === "self_study" ? (
+          <div className="mt-1">
+            <Chip tone="outline">자기학습 범위</Chip>
+          </div>
+        ) : null}
       </TD>
       <TD soft>
         {cohort.ownerName ? cohort.ownerName : <span className="text-muted-foreground/50">—</span>}
@@ -384,6 +389,17 @@ function CohortForm({
             rows={3}
             className="border-input bg-background w-full rounded-md border px-2 py-1 text-xs"
           />
+        </FormField>
+        {/* feat-8-027 — 종합반 종류별 열람 범위. */}
+        <FormField label="열람 범위">
+          <select
+            name="accessScope"
+            defaultValue={cohort?.accessScope ?? "full"}
+            className="border-input bg-background h-8 w-full rounded-md border px-2 text-xs"
+          >
+            <option value="full">전체 열람</option>
+            <option value="self_study">자기학습 범위로 제한</option>
+          </select>
         </FormField>
         {mode === "update" ? (
           <FormField label="아카이브">
