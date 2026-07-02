@@ -33,6 +33,11 @@ import {
 } from "~/features/admin/queries/all-students-overview.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import {
+  getQnaAnalyticsByNode,
+  type QnaAnalyticsResult,
+  type QnaNodeStat,
+} from "~/features/qna/analytics.server";
 import type { AccuracyBucket } from "~/features/admin/queries/student-progress.server";
 
 import type { Route } from "./+types/admin-students-analytics";
@@ -52,11 +57,19 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // 전체 조망은 manager+ 전용 — instructor 는 담당 반만 본다(약관 제7조).
   if (!roleAtLeast(role, "manager")) {
-    return { role, overview: null as AllStudentsOverview | null };
+    return {
+      role,
+      overview: null as AllStudentsOverview | null,
+      qna: null as QnaAnalyticsResult | null,
+    };
   }
 
-  const overview = await getAllStudentsOverview();
-  return { role, overview };
+  // 과목·단원별 Q&A 집계는 가벼워 loader 에서 함께(약점 단원 배지에도 재사용).
+  const [overview, qna] = await Promise.all([
+    getAllStudentsOverview(),
+    getQnaAnalyticsByNode({ limit: 20 }),
+  ]);
+  return { role, overview, qna };
 }
 
 const BUCKET_TONE: Record<AccuracyBucket, string> = {
@@ -125,7 +138,7 @@ function DeltaBadge({ value, unit }: { value: number | null; unit: string }) {
 export default function AdminStudentsAnalytics({
   loaderData,
 }: Route.ComponentProps) {
-  const { role, overview } = loaderData;
+  const { role, overview, qna } = loaderData;
 
   return (
     <AdminShell
@@ -145,7 +158,8 @@ export default function AdminStudentsAnalytics({
             <AccuracyDistribution o={overview} />
             <BySubject o={overview} />
           </div>
-          <OverallWeakNodes />
+          <OverallWeakNodes qnaByNode={qna?.byNodeId ?? {}} />
+          <QnaNodeSection result={qna} />
           <CohortComparison o={overview} />
           <MonitoringLinks />
         </div>
@@ -292,7 +306,102 @@ function BySubject({ o }: { o: AllStudentsOverview }) {
 
 /* ── ⑥ 전체 공통 약점 단원 (지연 로드) ───────────────────────────────── */
 
-function OverallWeakNodes() {
+/* ── ⑦ 과목·단원별 Q&A ───────────────────────────────────────────────── */
+
+function QnaNodeSection({ result }: { result: QnaAnalyticsResult | null }) {
+  if (!result) return null;
+  return (
+    <section data-testid="students-analytics-qna-nodes">
+      <div className="mb-2">
+        <div className="flex items-center gap-2">
+          <MessageSquareIcon className="text-link size-4" />
+          <h2 className="text-sm font-bold tracking-tight">과목·단원별 Q&A</h2>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          질문이 몰리는 단원 = 학생들이 어려워하는 단원. 강사가 매긴 질문
+          수준(상·중·하)과 AI 답변 정오 평가를 함께 봅니다.
+          {result.totalThreads > 0
+            ? ` 전체 ${result.totalThreads}건 · 수준 평가 ${result.gradedThreads}건.`
+            : null}
+        </p>
+      </div>
+      {result.nodes.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-foreground text-sm font-semibold">
+              아직 Q&A 질문이 없습니다
+            </p>
+            <p className="text-muted-foreground mx-auto mt-1 max-w-md text-xs leading-relaxed">
+              학생 질문이 쌓이면 과목·단원별로 어디에 질문이 몰리는지 여기에
+              집계됩니다.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="border-border bg-card divide-border/60 divide-y overflow-hidden rounded-xl border shadow-sm">
+          {result.nodes.map((n, i) => (
+            <QnaNodeRow key={`${n.nodeId ?? "none"}:${n.subject}`} node={n} index={i} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function QnaNodeRow({ node, index }: { node: QnaNodeStat; index: number }) {
+  const aiTotal = node.aiCorrect + node.aiIncorrect;
+  return (
+    <div className="flex items-center gap-3 px-3.5 py-2.5">
+      <span className="text-muted-foreground w-4 shrink-0 text-right font-mono text-xs font-bold tabular-nums">
+        {index + 1}
+      </span>
+      <Chip tone="neutral" className="shrink-0">
+        {node.lawName}
+      </Chip>
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "truncate text-[13px] font-semibold",
+            node.nodeId ? "text-foreground" : "text-muted-foreground italic",
+          )}
+        >
+          {node.displayLabel}
+        </p>
+        <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-[11px]">
+          <span className="text-emerald-600 dark:text-emerald-300">
+            상 {node.high}
+          </span>
+          <span className="text-amber-600 dark:text-amber-300">
+            중 {node.mid}
+          </span>
+          <span className="text-slate-500 dark:text-slate-400">
+            하 {node.low}
+          </span>
+          {node.ungraded > 0 ? <span>미평가 {node.ungraded}</span> : null}
+          {aiTotal > 0 ? (
+            <span title="AI 답변에 강사가 매긴 정오 평가">
+              · AI 정확 {node.aiCorrect}/{aiTotal}
+            </span>
+          ) : null}
+        </p>
+      </div>
+      {node.open > 0 ? (
+        <Chip tone="coral" className="shrink-0">
+          미답 {node.open}
+        </Chip>
+      ) : null}
+      <span className="text-foreground w-10 shrink-0 text-right font-mono text-xs font-bold tabular-nums">
+        {node.total}건
+      </span>
+    </div>
+  );
+}
+
+function OverallWeakNodes({
+  qnaByNode,
+}: {
+  qnaByNode: Record<string, number>;
+}) {
   const fetcher = useFetcher<OverallWeaknessResult>();
   useEffect(() => {
     // 무거운 집계라 마운트 후 1회만 on-demand 로드(가드: idle + 미수신).
@@ -341,7 +450,12 @@ function OverallWeakNodes() {
       ) : (
         <div className="border-border bg-card divide-border/60 divide-y overflow-hidden rounded-xl border shadow-sm">
           {result.nodes.map((n, i) => (
-            <WeakNodeRow key={`${n.lawCode}:${n.nodeId}`} node={n} index={i} />
+            <WeakNodeRow
+              key={`${n.lawCode}:${n.nodeId}`}
+              node={n}
+              index={i}
+              questionCount={qnaByNode[n.nodeId] ?? 0}
+            />
           ))}
         </div>
       )}
@@ -350,7 +464,15 @@ function OverallWeakNodes() {
 }
 
 // 약점 단원 한 행 — 펼치면 그 단원이 약한 반·학생을 지연 로드(역추적).
-function WeakNodeRow({ node, index }: { node: OverallWeakNode; index: number }) {
+function WeakNodeRow({
+  node,
+  index,
+  questionCount,
+}: {
+  node: OverallWeakNode;
+  index: number;
+  questionCount: number;
+}) {
   const [open, setOpen] = useState(false);
   const fetcher = useFetcher<WeakNodeBreakdown>();
   const detailUrl = `/admin/analytics/students/weak-nodes/${node.lawCode}/${node.nodeId}`;
@@ -381,9 +503,19 @@ function WeakNodeRow({ node, index }: { node: OverallWeakNode; index: number }) 
           {node.lawName}
         </Chip>
         <div className="min-w-0 flex-1">
-          <p className="text-foreground truncate text-[13px] font-semibold">
-            {node.displayLabel}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-foreground truncate text-[13px] font-semibold">
+              {node.displayLabel}
+            </p>
+            {questionCount > 0 ? (
+              <span
+                title="이 단원에 올라온 Q&A 질문 수 — 오답률과 함께 보는 어려움 신호"
+                className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300"
+              >
+                <MessageSquareIcon className="size-2.5" /> 질문 {questionCount}
+              </span>
+            ) : null}
+          </div>
           <p className="text-muted-foreground text-[11px]">
             {node.distinctStudents}명 · {node.attempts}회 풀이
           </p>

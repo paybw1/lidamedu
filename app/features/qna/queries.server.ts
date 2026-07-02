@@ -344,6 +344,51 @@ async function resolveSubjectForTarget(
   return null;
 }
 
+// 대상(조문/판례/문제/쟁점)의 체계도 노드(단원) 도출 — 학습분석 집계용으로 스레드에 캡처.
+//   조문→article_systematic_links 첫 노드(path 우선) / 판례·문제→primary_node_id /
+//   쟁점→자기 자신 / 공부방법·일반→null.
+export async function resolveNodeForTarget(
+  client: SupabaseClient<Database>,
+  targetType: QnaTargetType,
+  targetId: string,
+): Promise<string | null> {
+  if (targetType === "node") return targetId;
+  if (targetType === "problem") {
+    const { data } = await client
+      .from("problems")
+      .select("primary_node_id")
+      .eq("problem_id", targetId)
+      .maybeSingle();
+    return data?.primary_node_id ?? null;
+  }
+  if (targetType === "case") {
+    const { data } = await client
+      .from("cases")
+      .select("primary_node_id")
+      .eq("case_id", targetId)
+      .maybeSingle();
+    return data?.primary_node_id ?? null;
+  }
+  if (targetType === "article") {
+    const { data: links } = await client
+      .from("article_systematic_links")
+      .select("node_id")
+      .eq("article_id", targetId);
+    const ids = [...new Set((links ?? []).map((l) => l.node_id))];
+    if (ids.length === 0) return null;
+    const { data: nodes } = await client
+      .from("systematic_nodes")
+      .select("node_id, path")
+      .in("node_id", ids);
+    return (
+      (nodes ?? [])
+        .sort((a, b) => String(a.path).localeCompare(String(b.path)))[0]
+        ?.node_id ?? null
+    );
+  }
+  return null;
+}
+
 export async function createThread(
   client: SupabaseClient<Database>,
   asker_id: string,
@@ -367,6 +412,11 @@ export async function createThread(
             input.targetId,
           )
         : (input.subject ?? null);
+  // 단원(체계도 노드) 캡처 — 콘텐츠 대상만. 공부방법·앵커 없는 질문은 null.
+  const nodeId =
+    input.targetType !== "study_method" && input.targetId
+      ? await resolveNodeForTarget(client, input.targetType, input.targetId)
+      : null;
   const { data, error } = await client
     .from("qna_threads")
     .insert({
@@ -376,6 +426,7 @@ export async function createThread(
       title: input.title,
       question_md: input.questionMd,
       subject,
+      node_id: nodeId,
     })
     .select(DETAIL_COLUMNS)
     .single();
