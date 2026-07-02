@@ -64,7 +64,7 @@ export default function AdminDiscounts({ loaderData }: Route.ComponentProps) {
       cluster="students"
       role={role}
       title="할인 관리"
-      desc="기간·조건 할인과 쿠폰을 정의합니다. 코드 없는 할인은 요금표에 자동 반영됩니다. (manager 이상)"
+      desc="기간·조건 할인과 쿠폰을 정의합니다. ‘구독 기간’은 할인받으려면 구독을 시작해야 하는 구간, ‘혜택 기간’은 그 구독이 갱신에도 할인받는 마지막 시점입니다. (manager 이상)"
       headerRight={
         <Button size="sm" onClick={() => setAdding((v) => !v)}>
           <PlusIcon className="size-3.5" /> 할인 추가
@@ -78,13 +78,14 @@ export default function AdminDiscounts({ loaderData }: Route.ComponentProps) {
       ) : null}
 
       <IndexTable
-        minWidth={960}
+        minWidth={1040}
         headers={[
           { label: "이름" },
           { label: "코드", width: "8rem" },
           { label: "할인", width: "6rem" },
-          { label: "대상", width: "8rem" },
-          { label: "기간", width: "11rem" },
+          { label: "대상", width: "7rem" },
+          { label: "구독 기간", width: "9rem" },
+          { label: "혜택 기간", width: "9rem" },
           { label: "사용", align: "center", width: "5rem" },
           { label: "활성", align: "center", width: "5rem" },
           { label: "", align: "right", width: "4rem" },
@@ -122,13 +123,15 @@ function DiscountRow({
       });
     }
   }, [delFetcher.state, delFetcher.data, navigate, location.pathname, location.search]);
-  const period =
+  // 구독 기간 = 할인받으려면 이 구간에 구독을 시작해야 함(가입 창).
+  const enrollWindow =
     d.startsAt || d.endsAt
-      ? `${d.startsAt ? d.startsAt.slice(0, 10) : "…"} ~ ${d.endsAt ? d.endsAt.slice(0, 10) : "…"}` +
-        (d.renewalUntil ? ` (갱신 ${d.renewalUntil.slice(0, 10)}까지)` : "")
-      : d.renewalUntil
-        ? `상시 (갱신 ${d.renewalUntil.slice(0, 10)}까지)`
-        : "상시";
+      ? `${d.startsAt ? d.startsAt.slice(0, 10) : "…"} ~ ${d.endsAt ? d.endsAt.slice(0, 10) : "…"}`
+      : "상시";
+  // 혜택 기간 = 자격을 얻은 구독이 갱신에도 할인받는 마지막 시점.
+  const benefitPeriod = d.renewalUntil
+    ? `~ ${d.renewalUntil.slice(0, 10)}`
+    : "구독 기간까지";
   return (
     <>
       <TR>
@@ -144,8 +147,13 @@ function DiscountRow({
             : `₩${d.value.toLocaleString("ko-KR")}`}
         </TD>
         <TD soft>{DISCOUNT_TARGET_LABEL[d.targetKind]}</TD>
+        <TD soft mono>{enrollWindow}</TD>
         <TD soft mono>
-          {period}
+          {d.renewalUntil ? (
+            benefitPeriod
+          ) : (
+            <span className="text-muted-foreground/70">{benefitPeriod}</span>
+          )}
         </TD>
         <TD align="center" mono soft>
           {d.usedCount}
