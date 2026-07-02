@@ -30,6 +30,7 @@ import {
 } from "../labels";
 import { getThreadDetail, listThreadMessages } from "../queries.server";
 import { resolveTargetDisplay } from "../lib/target-display.server";
+import { MarkdownView } from "~/features/problems/components/markdown-view";
 
 import type { Route } from "./+types/qna-detail";
 
@@ -166,9 +167,11 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
             {new Date(thread.createdAt).toLocaleString("ko-KR")}
           </span>
         </div>
-        <p className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85] whitespace-pre-line">
-          {thread.questionMd}
-        </p>
+        <MarkdownView
+          text={thread.questionMd}
+          trusted={false}
+          className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85]"
+        />
       </article>
 
       {/* AI 즉답 카드 — 질문 직후 자동 생성분. 강사 정식답변과 공존. */}
@@ -198,9 +201,11 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
               </span>
             ) : null}
           </div>
-          <p className="text-foreground/85 text-[15px] leading-[1.85] whitespace-pre-line">
-            {thread.answerMd}
-          </p>
+          <MarkdownView
+            text={thread.answerMd}
+            trusted={false}
+            className="text-foreground/85 text-[15px] leading-[1.85]"
+          />
         </article>
       ) : null}
 
@@ -257,9 +262,11 @@ function AiAnswerCard({
           {new Date(message.createdAt).toLocaleString("ko-KR")}
         </span>
       </div>
-      <p className="text-foreground/85 text-[15px] leading-[1.85] whitespace-pre-line">
-        {message.bodyMd}
-      </p>
+      <MarkdownView
+        text={message.bodyMd}
+        trusted={false}
+        className="text-foreground/85 text-[15px] leading-[1.85]"
+      />
       {message.citations.length > 0 ? (
         <CitationList citations={message.citations} />
       ) : null}
