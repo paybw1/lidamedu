@@ -37,6 +37,9 @@ export default function Footer() {
           <Link to="/legal/privacy-policy" viewTransition>
             개인정보처리방침
           </Link>
+          <Link to="/legal/refund-policy" viewTransition>
+            환불 규정
+          </Link>
           <Link to="/location" viewTransition>
             찾아오시는 길
           </Link>

@@ -4375,6 +4375,9 @@ export type Database = {
           failure_reason: string | null
           payment_id: string
           plan_id: string
+          refund_amount_krw: number | null
+          refund_reason: string | null
+          refunded_at: string | null
           status: Database["public"]["Enums"]["payment_status"]
           subject_code: string | null
           toss_order_id: string
@@ -4390,6 +4393,9 @@ export type Database = {
           failure_reason?: string | null
           payment_id?: string
           plan_id: string
+          refund_amount_krw?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           subject_code?: string | null
           toss_order_id: string
@@ -4405,6 +4411,9 @@ export type Database = {
           failure_reason?: string | null
           payment_id?: string
           plan_id?: string
+          refund_amount_krw?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           subject_code?: string | null
           toss_order_id?: string
@@ -6978,6 +6987,8 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          auto_renew: boolean
+          cancelled_at: string | null
           created_at: string
           expires_at: string
           payment_id: string | null
@@ -6990,6 +7001,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
           created_at?: string
           expires_at: string
           payment_id?: string | null
@@ -7002,6 +7015,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_renew?: boolean
+          cancelled_at?: string | null
           created_at?: string
           expires_at?: string
           payment_id?: string | null

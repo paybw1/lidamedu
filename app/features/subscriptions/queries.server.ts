@@ -398,11 +398,23 @@ export async function confirmPayment(
     .limit(1)
     .maybeSingle();
 
+  // 유료 기간 시작점 계산:
+  //  · 기존 활성 구독 연장 → 그 만료일부터.
+  //  · 신규 + 가입 15일 체험 중 → ★체험 종료일부터(#3, 일찍 결제해도 체험 손해 없음).
+  //  · 그 외 신규 → 지금부터.
   let baseTimeMs: number;
   if (existing && new Date(existing.expires_at).getTime() > now.getTime()) {
     baseTimeMs = new Date(existing.expires_at).getTime();
   } else {
-    baseTimeMs = now.getTime();
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("trial_ends_at")
+      .eq("profile_id", payRow.user_id)
+      .maybeSingle();
+    const trialEndMs = prof?.trial_ends_at
+      ? new Date(prof.trial_ends_at).getTime()
+      : 0;
+    baseTimeMs = trialEndMs > now.getTime() ? trialEndMs : now.getTime();
   }
   const newExpiresAt = new Date(
     baseTimeMs + durationDays * 86_400_000,
@@ -422,7 +434,8 @@ export async function confirmPayment(
       plan_id: payRow.plan_id,
       payment_id: payRow.payment_id,
       subject_code: subjectCode,
-      started_at: now.toISOString(),
+      // 체험 중 결제면 유료 기간 시작 = 체험 종료일(그 전까지는 체험으로 이용).
+      started_at: new Date(baseTimeMs).toISOString(),
       expires_at: newExpiresAt,
       status: "active",
     });
@@ -464,6 +477,122 @@ export async function confirmPayment(
       paymentId: latestSub.payment_id,
     },
   };
+}
+
+// feat-8-028 — 해지·환불 정책:
+//  · 결제 후 3일 이내 해지 → 전액 환불 + 정기구독 즉시 취소(접근 종료).
+//  · 3일 경과 후 해지 → 그 달분 환불 없음. 정기구독만 해지(다음 갱신 청구 없음),
+//    남은 기간(만료일)까지 이용.
+export const REFUND_WINDOW_DAYS = 3;
+
+/** 결제 후 3일 이내인가 — 전액 환불 가능 판정(순수, UI/서버 공용). */
+export function isRefundable(status: string, createdAtIso: string): boolean {
+  if (status !== "completed") return false;
+  const created = new Date(createdAtIso).getTime();
+  return Date.now() <= created + REFUND_WINDOW_DAYS * 86_400_000;
+}
+
+// 본인 구독 해지 — 소유권·상태 검증 후 3일 정책 분기. ★서버 권위(클라 신뢰 안 함).
+//  refunded=true  → 3일 이내: Toss 전액 취소 + 구독 즉시 종료.
+//  refunded=false → 3일 경과: 환불 없음, auto_renew off + cancelled_at(잔여기간 이용).
+export async function cancelSubscription(input: {
+  userId: string;
+  subscriptionId: string;
+}): Promise<
+  | { ok: true; refunded: boolean; accessUntil: string | null }
+  | { ok: false; error: string }
+> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data: sub, error: subErr } = await admin
+    .from("user_subscriptions")
+    .select("subscription_id, user_id, status, expires_at, payment_id")
+    .eq("subscription_id", input.subscriptionId)
+    .maybeSingle();
+  if (subErr) return { ok: false, error: subErr.message };
+  if (!sub) return { ok: false, error: "구독 정보를 찾을 수 없습니다" };
+  if (sub.user_id !== input.userId)
+    return { ok: false, error: "본인 구독만 해지할 수 있습니다" };
+  if (sub.status !== "active")
+    return { ok: false, error: "활성 구독만 해지할 수 있습니다" };
+
+  const nowIso = new Date().toISOString();
+
+  // 연결된 최종 결제(3일 이내면 전액 환불 대상).
+  let pay: {
+    payment_id: string;
+    amount_krw: number;
+    status: string;
+    toss_payment_key: string | null;
+    created_at: string;
+  } | null = null;
+  if (sub.payment_id) {
+    const { data } = await admin
+      .from("payments")
+      .select("payment_id, amount_krw, status, toss_payment_key, created_at")
+      .eq("payment_id", sub.payment_id)
+      .maybeSingle();
+    pay = data ?? null;
+  }
+
+  // 3일 이내 — 전액 환불 + 즉시 종료.
+  if (pay && isRefundable(pay.status, pay.created_at)) {
+    if (!pay.toss_payment_key)
+      return { ok: false, error: "결제 키가 없어 환불할 수 없습니다" };
+    const secret = process.env.TOSS_SECRET_KEY;
+    if (!secret) return { ok: false, error: "TOSS_SECRET_KEY 환경변수 미설정" };
+    const basic = Buffer.from(`${secret}:`).toString("base64");
+    const reason = "고객 해지 요청(결제 후 3일 이내 전액 환불)";
+    try {
+      const res = await fetch(
+        `https://api.tosspayments.com/v1/payments/${pay.toss_payment_key}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${basic}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cancelReason: reason }),
+        },
+      );
+      const payload = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) {
+        const msg =
+          typeof payload?.message === "string"
+            ? payload.message
+            : `Toss 환불 실패 (HTTP ${res.status})`;
+        return { ok: false, error: msg };
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { ok: false, error: `Toss 환불 API 호출 실패: ${msg}` };
+    }
+    await admin
+      .from("payments")
+      .update({
+        status: "refunded",
+        refunded_at: nowIso,
+        refund_amount_krw: pay.amount_krw,
+        refund_reason: reason,
+      })
+      .eq("payment_id", pay.payment_id);
+    await admin
+      .from("user_subscriptions")
+      .update({
+        status: "cancelled",
+        cancelled_at: nowIso,
+        auto_renew: false,
+        updated_at: nowIso,
+      })
+      .eq("subscription_id", sub.subscription_id);
+    return { ok: true, refunded: true, accessUntil: null };
+  }
+
+  // 3일 경과 — 환불 없음. 정기결제만 해지(다음 갱신 청구 없음), 남은 기간 이용.
+  await admin
+    .from("user_subscriptions")
+    .update({ auto_renew: false, cancelled_at: nowIso, updated_at: nowIso })
+    .eq("subscription_id", sub.subscription_id);
+  return { ok: true, refunded: false, accessUntil: sub.expires_at };
 }
 
 export async function listMyPayments(

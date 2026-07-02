@@ -54,6 +54,26 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
 
+  // 중복 결제 가드 — 같은 상품(+과목)의 최근(10분 내) 미완료 결제가 있으면 거부.
+  // 더블클릭·중복 호출로 pending 이 2건 생겨 둘 다 결제되는 이중청구를 서버단에서 차단.
+  const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
+  let dupQuery = client
+    .from("payments")
+    .select("payment_id")
+    .eq("user_id", user.id)
+    .eq("plan_id", plan.planId)
+    .eq("status", "pending")
+    .gte("created_at", tenMinAgo);
+  dupQuery = parsed.data.subjectCode
+    ? dupQuery.eq("subject_code", parsed.data.subjectCode)
+    : dupQuery.is("subject_code", null);
+  const { data: dup } = await dupQuery.limit(1).maybeSingle();
+  if (dup)
+    return data(
+      { error: "이미 진행 중인 결제가 있습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 409 },
+    );
+
   // feat-8-028 — 유효 할인 계산(쿠폰 또는 자동 프로모션). 서버 권위 금액.
   const disc = await resolveCheckoutDiscount({
     plan: { code: plan.code, productKind: plan.productKind, priceKrw: plan.priceKrw },

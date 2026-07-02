@@ -7,7 +7,7 @@ import {
   CrownIcon,
   ReceiptIcon,
 } from "lucide-react";
-import { Link, data, redirect } from "react-router";
+import { Form, Link, redirect } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -30,7 +30,9 @@ import {
 } from "~/features/subscriptions/labels";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
+  REFUND_WINDOW_DAYS,
   getActiveSubscription,
+  isRefundable,
   listMyPayments,
 } from "~/features/subscriptions/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
@@ -61,7 +63,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   const paid = url.searchParams.get("paid") === "1";
   const failed = url.searchParams.get("failed") === "1";
   const failMsg = url.searchParams.get("msg");
-  return { active, payments, paid, failed, failMsg, activeSubjects };
+  const refunded = url.searchParams.get("refunded") === "1";
+  const cancelled = url.searchParams.get("cancelled") === "1";
+  const cancelError = url.searchParams.get("cancelError");
+  // 활성 구독 해지 시 전액 환불 대상인지 — 연결 결제가 3일 이내인지 서버에서 판정.
+  const linkedPayment = active.subscription?.paymentId
+    ? (payments.find((p) => p.paymentId === active.subscription!.paymentId) ??
+      null)
+    : null;
+  const refundEligible = linkedPayment
+    ? isRefundable(linkedPayment.status, linkedPayment.createdAt)
+    : false;
+  return {
+    active,
+    payments,
+    paid,
+    failed,
+    failMsg,
+    refunded,
+    cancelled,
+    cancelError,
+    activeSubjects,
+    refundWindowDays: REFUND_WINDOW_DAYS,
+    refundEligible,
+  };
 }
 
 const STATUS_TONE: Record<PaymentStatus, string> = {
@@ -77,7 +102,19 @@ const subjectLabel = (slug: string) =>
     : (LAW_SUBJECTS[slug as keyof typeof LAW_SUBJECTS]?.name ?? slug);
 
 export default function MySubscription({ loaderData }: Route.ComponentProps) {
-  const { active, payments, paid, failed, failMsg, activeSubjects } = loaderData;
+  const {
+    active,
+    payments,
+    paid,
+    failed,
+    failMsg,
+    refunded,
+    cancelled,
+    cancelError,
+    activeSubjects,
+    refundWindowDays,
+    refundEligible,
+  } = loaderData;
 
   return (
     <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
@@ -108,6 +145,33 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
             <Link to="/pricing" className="ml-1 underline">
               요금제로 돌아가기
             </Link>
+          </CardContent>
+        </Card>
+      ) : null}
+      {refunded ? (
+        <Card className="mb-4 border-emerald-300 bg-emerald-50/60">
+          <CardContent className="px-4 py-3 text-sm text-emerald-900">
+            <CheckCircle2Icon className="mr-1 inline size-4" />
+            전액 환불되었습니다. 해당 구독은 즉시 종료되었으며, 환불 금액은
+            카드사 정책에 따라 영업일 기준 수일 내 반영됩니다.
+          </CardContent>
+        </Card>
+      ) : null}
+      {cancelled ? (
+        <Card className="mb-4 border-emerald-300 bg-emerald-50/60">
+          <CardContent className="px-4 py-3 text-sm text-emerald-900">
+            <CheckCircle2Icon className="mr-1 inline size-4" />
+            정기결제가 해지되었습니다. 이미 결제된 이 달분은 환불되지 않으며,
+            남은 이용 기간(만료일)까지는 그대로 사용할 수 있습니다. 다음 갱신일에
+            추가 청구되지 않습니다.
+          </CardContent>
+        </Card>
+      ) : null}
+      {cancelError ? (
+        <Card className="mb-4 border-rose-300 bg-rose-50/60">
+          <CardContent className="px-4 py-3 text-sm text-rose-900">
+            <CircleAlertIcon className="mr-1 inline size-4" />
+            해지 처리 실패 — {cancelError}
           </CardContent>
         </Card>
       ) : null}
@@ -171,9 +235,43 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
                   </li>
                 ))}
               </ul>
-              <Button asChild size="sm" variant="outline">
-                <Link to="/pricing">플랜 비교 / 연장</Link>
-              </Button>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/pricing">플랜 비교 / 연장</Link>
+                </Button>
+                {active.subscription ? (
+                  <Form
+                    method="post"
+                    action="/api/subscriptions/cancel"
+                    onSubmit={(e) => {
+                      const msg = refundEligible
+                        ? "결제 후 3일 이내입니다. 전액 환불되고 구독이 즉시 종료됩니다. 해지하시겠습니까?"
+                        : "결제 후 3일이 지나 이 달분은 환불되지 않습니다. 정기결제만 해지되어 남은 기간까지 이용하고 다음 갱신은 청구되지 않습니다. 해지하시겠습니까?";
+                      if (!window.confirm(msg)) e.preventDefault();
+                    }}
+                  >
+                    <input type="hidden" name="intent" value="cancel" />
+                    <input
+                      type="hidden"
+                      name="subscriptionId"
+                      value={active.subscription.subscriptionId}
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-rose-700"
+                    >
+                      {refundEligible ? "해지 / 전액 환불" : "정기결제 해지"}
+                    </Button>
+                  </Form>
+                ) : null}
+              </div>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                {refundEligible
+                  ? `결제 후 ${refundWindowDays}일 이내 — 지금 해지하면 전액 환불되고 구독이 즉시 종료됩니다.`
+                  : `결제 후 ${refundWindowDays}일 경과 — 해지 시 이 달분은 환불되지 않지만, 남은 기간까지 이용하며 다음 갱신은 청구되지 않습니다.`}
+              </p>
             </>
           ) : (
             <>
@@ -242,6 +340,14 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
               </TableBody>
             </Table>
           )}
+          <p className="text-muted-foreground mt-3 px-4 text-[11px] leading-relaxed">
+            결제 후 {refundWindowDays}일 이내 해지 시 전액 환불·즉시 종료,
+            {refundWindowDays}일 경과 후에는 그 달분 환불 없이 정기결제만
+            해지됩니다.{" "}
+            <Link to="/legal/refund-policy" className="underline">
+              환불 규정 전문
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>

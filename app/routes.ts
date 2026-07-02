@@ -623,6 +623,11 @@ export default [
         "/api/cron/recheck-precedents",
         "features/cron/api/recheck-precedents.tsx",
       ),
+      // feat-8-028 — 구독 유지보수 cron: 만료 강등 + 미결제 pending 정리.
+      route(
+        "/api/cron/subscription-maintenance",
+        "features/cron/api/subscription-maintenance.tsx",
+      ),
       route(
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",
@@ -739,6 +744,11 @@ export default [
       route(
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",
+      ),
+      // feat-8-028 — 구독 해지/환불(본인). 3일 이내 전액환불+종료 / 이후 정기해지.
+      route(
+        "/api/subscriptions/cancel",
+        "features/subscriptions/api/cancel-subscription.tsx",
       ),
       // feat-7-014 — 운영자 수강권 관리 (manager+).
       route(
