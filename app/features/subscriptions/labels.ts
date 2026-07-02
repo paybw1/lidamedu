@@ -101,6 +101,8 @@ export interface Discount {
   targetPlanCodes: string[];
   startsAt: string | null;
   endsAt: string | null;
+  /** 혜택 지속 종료일 — 가입 창에 시작해 지속 중인 구독이 갱신에도 할인받는 마지막 시점. */
+  renewalUntil: string | null;
   minAmountKrw: number | null;
   maxUses: number | null;
   usedCount: number;
@@ -120,6 +122,28 @@ export function discountAppliesToPlan(
   if (d.endsAt && new Date(d.endsAt).getTime() < nowMs) return false;
   if (d.minAmountKrw != null && basePriceKrw < d.minAmountKrw) return false;
   if (d.maxUses != null && d.usedCount >= d.maxUses) return false;
+  if (d.targetKind === "subject" && plan.productKind !== "subject") return false;
+  if (d.targetKind === "bundle" && plan.productKind !== "bundle") return false;
+  if (d.targetKind === "plan" && !d.targetPlanCodes.includes(plan.code))
+    return false;
+  return true;
+}
+
+// 갱신 시 할인 지속 판정 — 가입 창(ends_at) 대신 혜택 지속 종료일(renewal_until)까지 유효.
+//   구독이 원래 이 할인을 받았고(호출부에서 확인) 지속 중일 때만 사용한다.
+//   renewal_until 이 없으면 지속 없음 → ends_at(가입 창)까지만.
+export function discountAppliesAtRenewal(
+  d: Discount,
+  plan: { productKind: ProductKind; code: string },
+  basePriceKrw: number,
+  nowMs: number,
+): boolean {
+  if (!d.isActive) return false;
+  if (d.startsAt && new Date(d.startsAt).getTime() > nowMs) return false;
+  const benefitEnd = d.renewalUntil ?? d.endsAt;
+  if (benefitEnd && new Date(benefitEnd).getTime() < nowMs) return false;
+  if (d.minAmountKrw != null && basePriceKrw < d.minAmountKrw) return false;
+  // maxUses(전체 사용 한도)는 갱신 지속 대상엔 적용하지 않음 — 이미 자격을 얻은 구독.
   if (d.targetKind === "subject" && plan.productKind !== "subject") return false;
   if (d.targetKind === "bundle" && plan.productKind !== "bundle") return false;
   if (d.targetKind === "plan" && !d.targetPlanCodes.includes(plan.code))

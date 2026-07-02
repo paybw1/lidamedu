@@ -13,7 +13,7 @@ import {
   listActiveDiscounts,
 } from "~/features/subscriptions/discounts.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
-import { bestAutomaticDiscount, effectivePriceKrw } from "./labels";
+import { discountAppliesAtRenewal, effectivePriceKrw } from "./labels";
 
 import type {
   PaymentRow,
@@ -838,8 +838,13 @@ export async function chargeDueRenewals(): Promise<{
     .lte("expires_at", windowIso)
     .gte("expires_at", nowIso);
 
-  // 갱신에도 그 시점 유효한 자동 프로모션 할인 적용(오픈 할인 등, feat-8-028 B정책).
-  const autoDiscounts = await listActiveDiscounts(admin);
+  // 갱신 할인 = '지속' 모델: 신규 프로모션을 새로 부여하지 않고, 그 구독이 원래
+  //   받던 할인(직전 완료 결제의 discount_id)을 혜택 지속 종료일(renewal_until)까지
+  //   유지한다. 가입 창에 시작해 지속 중인 구독만 혜택을 이어받는다.
+  const activeDiscounts = await listActiveDiscounts(admin);
+  const discountById = new Map(
+    activeDiscounts.map((d) => [d.discountId, d] as const),
+  );
 
   let charged = 0;
   let failed = 0;
@@ -857,12 +862,33 @@ export async function chargeDueRenewals(): Promise<{
       continue;
     }
     const plan = sub.subscription_plans;
-    const auto = bestAutomaticDiscount(
-      { productKind: plan.product_kind as ProductKind, code: plan.code },
-      plan.price_krw,
-      autoDiscounts,
-      nowMs,
-    );
+    // 직전 완료 결제(가장 최근) — 할인 체인의 연속성 판정 기준.
+    //   직전 결제에 할인이 붙어 있었고 그 할인이 아직 지속 유효하면 이어간다.
+    let priorQuery = admin
+      .from("payments")
+      .select("discount_id")
+      .eq("user_id", sub.user_id)
+      .eq("plan_id", sub.plan_id)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    priorQuery = sub.subject_code
+      ? priorQuery.eq("subject_code", sub.subject_code)
+      : priorQuery.is("subject_code", null);
+    const { data: prior } = await priorQuery.maybeSingle();
+    const priorDiscount = prior?.discount_id
+      ? (discountById.get(prior.discount_id) ?? null)
+      : null;
+    const auto =
+      priorDiscount &&
+      discountAppliesAtRenewal(
+        priorDiscount,
+        { productKind: plan.product_kind as ProductKind, code: plan.code },
+        plan.price_krw,
+        nowMs,
+      )
+        ? priorDiscount
+        : null;
     const amount = auto
       ? effectivePriceKrw(plan.price_krw, auto)
       : plan.price_krw;

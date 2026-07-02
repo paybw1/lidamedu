@@ -2715,6 +2715,7 @@ export type Database = {
           min_amount_krw: number | null
           name: string
           per_user_limit: number | null
+          renewal_until: string | null
           starts_at: string | null
           target_kind: string
           target_plan_codes: Json
@@ -2733,6 +2734,7 @@ export type Database = {
           min_amount_krw?: number | null
           name: string
           per_user_limit?: number | null
+          renewal_until?: string | null
           starts_at?: string | null
           target_kind?: string
           target_plan_codes?: Json
@@ -2751,6 +2753,7 @@ export type Database = {
           min_amount_krw?: number | null
           name?: string
           per_user_limit?: number | null
+          renewal_until?: string | null
           starts_at?: string | null
           target_kind?: string
           target_plan_codes?: Json

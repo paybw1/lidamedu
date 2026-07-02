@@ -124,8 +124,11 @@ function DiscountRow({
   }, [delFetcher.state, delFetcher.data, navigate, location.pathname, location.search]);
   const period =
     d.startsAt || d.endsAt
-      ? `${d.startsAt ? d.startsAt.slice(0, 10) : "…"} ~ ${d.endsAt ? d.endsAt.slice(0, 10) : "…"}`
-      : "상시";
+      ? `${d.startsAt ? d.startsAt.slice(0, 10) : "…"} ~ ${d.endsAt ? d.endsAt.slice(0, 10) : "…"}` +
+        (d.renewalUntil ? ` (갱신 ${d.renewalUntil.slice(0, 10)}까지)` : "")
+      : d.renewalUntil
+        ? `상시 (갱신 ${d.renewalUntil.slice(0, 10)}까지)`
+        : "상시";
   return (
     <>
       <TR>
@@ -341,7 +344,7 @@ function DiscountForm({
             className="h-8 text-xs"
           />
         </FormField>
-        <FormField label="시작 (선택)">
+        <FormField label="가입 시작 (선택)">
           <Input
             name="startsAt"
             type="datetime-local"
@@ -349,13 +352,25 @@ function DiscountForm({
             className="h-8 text-xs"
           />
         </FormField>
-        <FormField label="종료 (선택)">
+        <FormField label="가입 종료 (선택)">
           <Input
             name="endsAt"
             type="datetime-local"
             defaultValue={isoToLocalInput(d?.endsAt ?? null)}
             className="h-8 text-xs"
           />
+        </FormField>
+        <FormField label="혜택 지속 종료일 (선택)">
+          <Input
+            name="renewalUntil"
+            type="datetime-local"
+            defaultValue={isoToLocalInput(d?.renewalUntil ?? null)}
+            className="h-8 text-xs"
+          />
+          <p className="text-muted-foreground mt-1 text-[10px] leading-tight">
+            가입 기간에 시작해 지속 중인 구독이 갱신에도 할인받는 마지막
+            시점. 비우면 가입 기간까지만.
+          </p>
         </FormField>
         <FormField label="총 사용 한도 (선택)">
           <Input

@@ -17,7 +17,7 @@ import {
 export type { Discount } from "./labels";
 
 const DISCOUNT_COLUMNS =
-  "discount_id, name, code, kind, value, target_kind, target_plan_codes, starts_at, ends_at, min_amount_krw, max_uses, used_count, per_user_limit, is_active";
+  "discount_id, name, code, kind, value, target_kind, target_plan_codes, starts_at, ends_at, renewal_until, min_amount_krw, max_uses, used_count, per_user_limit, is_active";
 
 type DiscountRow = {
   discount_id: string;
@@ -29,6 +29,7 @@ type DiscountRow = {
   target_plan_codes: unknown;
   starts_at: string | null;
   ends_at: string | null;
+  renewal_until: string | null;
   min_amount_krw: number | null;
   max_uses: number | null;
   used_count: number;
@@ -49,6 +50,7 @@ function rowToDiscount(r: DiscountRow): Discount {
       : [],
     startsAt: r.starts_at,
     endsAt: r.ends_at,
+    renewalUntil: r.renewal_until,
     minAmountKrw: r.min_amount_krw,
     maxUses: r.max_uses,
     usedCount: r.used_count,
@@ -90,6 +92,7 @@ export interface UpsertDiscountInput {
   targetPlanCodes: string[];
   startsAt: string | null;
   endsAt: string | null;
+  renewalUntil: string | null;
   minAmountKrw: number | null;
   maxUses: number | null;
   perUserLimit: number | null;
@@ -110,6 +113,7 @@ export async function upsertDiscount(
     target_plan_codes: input.targetPlanCodes as never,
     starts_at: input.startsAt,
     ends_at: input.endsAt,
+    renewal_until: input.renewalUntil,
     min_amount_krw: input.minAmountKrw,
     max_uses: input.maxUses,
     per_user_limit: input.perUserLimit,
