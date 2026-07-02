@@ -48,6 +48,7 @@ import {
 } from "~/features/laws/queries.server";
 import { listLectureResources } from "~/features/lectures/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { ProblemCodeChip } from "~/features/problems/components/problem-code-chip";
 import { ReadingControls } from "~/features/study/components/study-font-control";
 import { OxBookmarkToggle } from "~/features/problems/components/ox-bookmark-toggle";
 import {
@@ -980,6 +981,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 ) : null}
                 {/* Chips row */}
                 <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <ProblemCodeChip displayNo={problem.displayNo} />
                   <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
                     {ORIGIN_LABEL[problem.origin]}
                   </span>

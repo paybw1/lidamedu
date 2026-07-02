@@ -1916,7 +1916,7 @@ export async function getProblemById(
   const { data: problem, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, law_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .eq("problem_id", problemId)
     .is("deleted_at", null)
@@ -1946,6 +1946,7 @@ export async function getProblemById(
 
   return {
     problemId: problem.problem_id,
+    displayNo: problem.display_no,
     examRound: problem.exam_round,
     format: problem.format,
     origin: problem.origin,
@@ -2024,7 +2025,7 @@ export async function getProblemDetailsByIds(
   const { data: problemRows, error } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .in("problem_id", problemIds)
     .is("deleted_at", null);
@@ -2092,6 +2093,7 @@ export async function getProblemDetailsByIds(
     const boxItems = boxItemsByProblem.get(p.problem_id) ?? [];
     byId.set(p.problem_id, {
       problemId: p.problem_id,
+      displayNo: p.display_no,
       examRound: p.exam_round,
       format: p.format,
       origin: p.origin,
@@ -2324,7 +2326,7 @@ export async function getSystematicNodeProblems(
   const { data: problemRows } = await client
     .from("problems")
     .select(
-      "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
     )
     .in("problem_id", placedIds)
     .is("deleted_at", null);
@@ -2400,6 +2402,7 @@ export async function getSystematicNodeProblems(
       .filter((p) => p.primary_article_id === a.article_id)
       .map<ProblemDetail>((p) => ({
         problemId: p.problem_id,
+        displayNo: p.display_no,
         examRound: p.exam_round,
         format: p.format,
         origin: p.origin,

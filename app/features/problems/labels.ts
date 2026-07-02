@@ -281,6 +281,8 @@ export interface ProblemBoxItem {
 }
 
 export interface ProblemDetail extends ProblemListItem {
+  /** 전역 고유 표시번호(불변). 코드 표기 "P-{displayNo}". */
+  displayNo: number;
   choices: ProblemChoice[];
   boxItems: ProblemBoxItem[];
 }
