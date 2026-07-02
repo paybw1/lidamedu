@@ -2,7 +2,7 @@
 // 키트 lidam-latest/EssayScreen 디자인.
 
 import { PenLineIcon, PencilIcon, SearchXIcon } from "lucide-react";
-import { Link, data } from "react-router";
+import { Link, data, useLocation } from "react-router";
 
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
@@ -111,6 +111,11 @@ function lawName(slug: string): string {
 
 export default function LatestEssay({ loaderData }: Route.ComponentProps) {
   const { problems, filters, isStaff } = loaderData;
+  // 현재 필터(검색 쿼리)를 뷰어에 넘겨, 뷰어 "목록으로"가 필터된 목록으로 복귀하게 함.
+  const location = useLocation();
+  const backQs = location.search
+    ? `?back=${encodeURIComponent(location.search)}`
+    : "";
   const filterActive =
     !!filters.subject ||
     !!filters.year ||
@@ -208,7 +213,7 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
                   <PencilIcon className="size-3.5" /> 수정
                 </Link>
               ) : null}
-              <FeedCardLink to={`/latest/essay/${p.problemId}`}>
+              <FeedCardLink to={`/latest/essay/${p.problemId}${backQs}`}>
                 <MetaRow right={relativeKo(p.createdAt)}>
                   <Pill tone="rose">
                     <PenLineIcon className="size-3" />

@@ -3,7 +3,7 @@
 // 학습과목 problem-viewer 와 달리 답안 작성·첨삭·진도 없음 — 본문 + 모범답안/채점기준 열람만.
 
 import { ArrowLeftIcon, PencilIcon } from "lucide-react";
-import { Link, data } from "react-router";
+import { Link, data, useSearchParams } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -41,6 +41,10 @@ export default function LatestEssayViewer({
   loaderData,
 }: Route.ComponentProps) {
   const { problem, isStaff } = loaderData;
+  // 목록에서 넘어온 필터(?back=<검색쿼리>)로 복귀 — 없으면 전체 목록.
+  const [searchParams] = useSearchParams();
+  const back = searchParams.get("back");
+  const backTo = back ? `/latest/essay${back}` : "/latest/essay";
   const hasReveal =
     problem.explanationMd != null ||
     problem.modelAnswerMd != null ||
@@ -52,7 +56,7 @@ export default function LatestEssayViewer({
       <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-8 md:py-8">
         <div className="mb-4 flex items-center justify-between gap-2">
           <Link
-            to="/latest/essay"
+            to={backTo}
             viewTransition
             className="text-link hover:text-link/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
           >
