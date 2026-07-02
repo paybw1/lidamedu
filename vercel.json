@@ -24,6 +24,10 @@
     {
       "path": "/api/cron/subscription-maintenance",
       "schedule": "10 15 * * *"
+    },
+    {
+      "path": "/api/cron/billing-charge",
+      "schedule": "20 15 * * *"
     }
   ]
 }

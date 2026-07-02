@@ -94,6 +94,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     plans,
     active,
     isAuthed: !!user,
+    userId: user?.id ?? null,
     tossClientKey: process.env.TOSS_CLIENT_KEY ?? null,
     locked,
     ownedSubjects,
@@ -107,6 +108,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
     plans,
     active,
     isAuthed,
+    userId,
     tossClientKey,
     locked,
     ownedSubjects,
@@ -129,6 +131,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
     plan: p,
     owned: owns(p),
     isAuthed,
+    userId,
     tossClientKey,
     activeCode: active.planCode,
     discounts,
@@ -252,6 +255,7 @@ function PlanCard({
   plan,
   owned,
   isAuthed,
+  userId,
   tossClientKey,
   activeCode,
   discounts,
@@ -262,6 +266,7 @@ function PlanCard({
   plan: SubscriptionPlan;
   owned: boolean;
   isAuthed: boolean;
+  userId: string | null;
   tossClientKey: string | null;
   activeCode: string;
   discounts: Discount[];
@@ -401,6 +406,7 @@ function PlanCard({
           comingSoon={comingSoon}
           openLabel={openLabel}
           isAuthed={isAuthed}
+          userId={userId}
           tossClientKey={tossClientKey}
           activeCode={activeCode}
           coupon={coupon}
@@ -418,6 +424,7 @@ function PlanCta({
   comingSoon,
   openLabel,
   isAuthed,
+  userId,
   tossClientKey,
   activeCode,
   coupon,
@@ -429,6 +436,7 @@ function PlanCta({
   comingSoon: boolean;
   openLabel: string | null;
   isAuthed: boolean;
+  userId: string | null;
   tossClientKey: string | null;
   activeCode: string;
   coupon: string | null;
@@ -468,6 +476,7 @@ function PlanCta({
     <SubscribeButton
       plan={plan}
       isAuthed={isAuthed}
+      userId={userId}
       tossClientKey={tossClientKey}
       coupon={coupon}
     />
@@ -477,15 +486,18 @@ function PlanCta({
 function SubscribeButton({
   plan,
   isAuthed,
+  userId,
   tossClientKey,
   coupon,
 }: {
   plan: SubscriptionPlan;
   isAuthed: boolean;
+  userId: string | null;
   tossClientKey: string | null;
   coupon: string | null;
 }) {
   const [pending, setPending] = useState(false);
+  const [autoPay, setAutoPay] = useState(false);
   if (!isAuthed) {
     return (
       <Button asChild size="sm">
@@ -501,21 +513,36 @@ function SubscribeButton({
     );
   }
   return (
-    <Button
-      size="sm"
-      type="button"
-      disabled={pending}
-      onClick={async () => {
-        setPending(true);
-        try {
-          await startSubscriptionCheckout(plan, tossClientKey, coupon);
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      구독 시작
-    </Button>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+        <input
+          type="checkbox"
+          checked={autoPay}
+          onChange={(e) => setAutoPay(e.target.checked)}
+          className="size-3.5"
+        />
+        매월 자동결제(동의 시 매월 카드 자동 청구)
+      </label>
+      <Button
+        size="sm"
+        type="button"
+        disabled={pending}
+        onClick={async () => {
+          setPending(true);
+          try {
+            if (autoPay) {
+              await startBillingCheckout(plan, userId, tossClientKey, coupon);
+            } else {
+              await startSubscriptionCheckout(plan, tossClientKey, coupon);
+            }
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        {autoPay ? "자동결제로 시작" : "구독 시작"}
+      </Button>
+    </div>
   );
 }
 
@@ -559,5 +586,33 @@ async function startSubscriptionCheckout(
     });
   } catch (e) {
     alert(`결제 SDK 오류: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+// 자동결제 개시 — 카드 등록(requestBillingAuth). 콜백에서 빌링키 발급 + 첫 달 청구.
+// customerKey=본인 userId(콜백 서버가 위조 검증). 첫 결제·연장 금액은 서버 권위.
+async function startBillingCheckout(
+  plan: SubscriptionPlan,
+  userId: string | null,
+  tossClientKey: string,
+  couponCode?: string | null,
+): Promise<void> {
+  if (!userId) {
+    alert("로그인이 필요합니다.");
+    return;
+  }
+  try {
+    const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+    const tossPayments = await loadTossPayments(tossClientKey);
+    const payment = tossPayments.payment({ customerKey: userId });
+    const qs = new URLSearchParams({ planCode: plan.code });
+    if (couponCode) qs.set("discountCode", couponCode);
+    await payment.requestBillingAuth({
+      method: "CARD",
+      successUrl: `${window.location.origin}/api/payments/toss/billing-confirm?${qs.toString()}`,
+      failUrl: `${window.location.origin}/me/subscription?failed=1`,
+    });
+  } catch (e) {
+    alert(`자동결제 SDK 오류: ${e instanceof Error ? e.message : String(e)}`);
   }
 }

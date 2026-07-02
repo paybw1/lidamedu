@@ -1090,6 +1090,39 @@ export type Database = {
           },
         ]
       }
+      billing_keys: {
+        Row: {
+          billing_key: string
+          billing_key_id: string
+          card_company: string | null
+          card_number_masked: string | null
+          created_at: string
+          customer_key: string
+          deleted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          billing_key: string
+          billing_key_id?: string
+          card_company?: string | null
+          card_number_masked?: string | null
+          created_at?: string
+          customer_key: string
+          deleted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          billing_key?: string
+          billing_key_id?: string
+          card_company?: string | null
+          card_number_masked?: string | null
+          created_at?: string
+          customer_key?: string
+          deleted_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       book_updates: {
         Row: {
           book_title: string

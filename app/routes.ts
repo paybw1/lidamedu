@@ -628,6 +628,11 @@ export default [
         "/api/cron/subscription-maintenance",
         "features/cron/api/subscription-maintenance.tsx",
       ),
+      // feat-8-028 Stage 5 — 자동결제 갱신 청구 cron.
+      route(
+        "/api/cron/billing-charge",
+        "features/cron/api/billing-charge.tsx",
+      ),
       route(
         "/api/student/lecture-progress",
         "features/lectures/api/progress.tsx",
@@ -744,6 +749,11 @@ export default [
       route(
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",
+      ),
+      // feat-8-028 Stage 5 — 자동결제 카드 등록 콜백(빌링키 발급 + 첫 달 청구).
+      route(
+        "/api/payments/toss/billing-confirm",
+        "features/subscriptions/api/billing-confirm.tsx",
       ),
       // feat-8-028 — 구독 해지/환불(본인). 3일 이내 전액환불+종료 / 이후 정기해지.
       route(

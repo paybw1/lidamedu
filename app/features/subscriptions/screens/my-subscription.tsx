@@ -31,6 +31,7 @@ import {
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
   REFUND_WINDOW_DAYS,
+  getActiveBillingKey,
   getActiveSubscription,
   isRefundable,
   listMyPayments,
@@ -74,6 +75,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   const refundEligible = linkedPayment
     ? isRefundable(linkedPayment.status, linkedPayment.createdAt)
     : false;
+  // 자동결제(정기결제) 상태 + 등록 카드 표시.
+  let autoRenew = false;
+  if (active.subscription) {
+    const { data: sc } = await client
+      .from("user_subscriptions")
+      .select("auto_renew")
+      .eq("subscription_id", active.subscription.subscriptionId)
+      .maybeSingle();
+    autoRenew = !!sc?.auto_renew;
+  }
+  const billingCard = autoRenew ? await getActiveBillingKey(client, user.id) : null;
   return {
     active,
     payments,
@@ -86,6 +98,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     activeSubjects,
     refundWindowDays: REFUND_WINDOW_DAYS,
     refundEligible,
+    autoRenew,
+    billingCard,
   };
 }
 
@@ -114,6 +128,8 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
     activeSubjects,
     refundWindowDays,
     refundEligible,
+    autoRenew,
+    billingCard,
   } = loaderData;
 
   return (
@@ -235,6 +251,21 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
                   </li>
                 ))}
               </ul>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[11px]",
+                    autoRenew
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {autoRenew
+                    ? `매월 자동결제${billingCard?.cardCompany ? ` · ${billingCard.cardCompany}${billingCard.cardMasked ? ` ${billingCard.cardMasked}` : ""}` : ""}`
+                    : "자동 갱신 없음 (만료 시 종료)"}
+                </Badge>
+              </div>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <Button asChild size="sm" variant="outline">
                   <Link to="/pricing">플랜 비교 / 연장</Link>

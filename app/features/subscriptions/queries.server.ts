@@ -1,5 +1,7 @@
 // 구독·결제 서버 쿼리. 본인 read 는 RLS. 결제 write 는 service_role(server action) 만.
 
+import { randomUUID } from "node:crypto";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
@@ -299,6 +301,111 @@ export interface ConfirmPaymentInput {
   amountKrw: number;
 }
 
+// 결제 기간 반영(공용) — 일회성 결제·자동결제(빌링) 모두 사용.
+//  · 같은 플랜·과목의 활성 구독 있으면 만료일 연장, 없으면 신규.
+//  · 신규 + 가입 15일 체험 중이면 유료 기간을 체험 종료일부터 시작(#3).
+//  · autoRenew 지정 시 정기결제 여부 반영(빌링=true).
+async function upsertPaidSubscription(
+  admin: SupabaseClient<Database>,
+  input: {
+    userId: string;
+    planId: string;
+    subjectCode: string | null;
+    durationDays: number;
+    paymentId: string;
+    autoRenew?: boolean;
+  },
+): Promise<{ subscription: UserSubscription } | { error: string }> {
+  const now = new Date();
+  let existingQuery = admin
+    .from("user_subscriptions")
+    .select("subscription_id, expires_at")
+    .eq("user_id", input.userId)
+    .eq("plan_id", input.planId)
+    .eq("status", "active")
+    .gte("expires_at", now.toISOString());
+  existingQuery = input.subjectCode
+    ? existingQuery.eq("subject_code", input.subjectCode)
+    : existingQuery.is("subject_code", null);
+  const { data: existing } = await existingQuery
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let baseTimeMs: number;
+  if (existing && new Date(existing.expires_at).getTime() > now.getTime()) {
+    baseTimeMs = new Date(existing.expires_at).getTime();
+  } else {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("trial_ends_at")
+      .eq("profile_id", input.userId)
+      .maybeSingle();
+    const trialEndMs = prof?.trial_ends_at
+      ? new Date(prof.trial_ends_at).getTime()
+      : 0;
+    baseTimeMs = trialEndMs > now.getTime() ? trialEndMs : now.getTime();
+  }
+  const newExpiresAt = new Date(
+    baseTimeMs + input.durationDays * 86_400_000,
+  ).toISOString();
+
+  if (existing) {
+    await admin
+      .from("user_subscriptions")
+      .update({
+        expires_at: newExpiresAt,
+        payment_id: input.paymentId,
+        ...(input.autoRenew !== undefined
+          ? { auto_renew: input.autoRenew }
+          : {}),
+      })
+      .eq("subscription_id", existing.subscription_id);
+  } else {
+    await admin.from("user_subscriptions").insert({
+      user_id: input.userId,
+      plan_id: input.planId,
+      payment_id: input.paymentId,
+      subject_code: input.subjectCode,
+      started_at: new Date(baseTimeMs).toISOString(),
+      expires_at: newExpiresAt,
+      status: "active",
+      auto_renew: input.autoRenew ?? false,
+    });
+  }
+
+  let latestQuery = admin
+    .from("user_subscriptions")
+    .select(
+      "subscription_id, user_id, plan_id, started_at, expires_at, status, payment_id, subscription_plans!inner(code, name)",
+    )
+    .eq("user_id", input.userId)
+    .eq("plan_id", input.planId);
+  latestQuery = input.subjectCode
+    ? latestQuery.eq("subject_code", input.subjectCode)
+    : latestQuery.is("subject_code", null);
+  const { data: latestSub, error: latestErr } = await latestQuery
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestErr || !latestSub) {
+    return { error: latestErr?.message ?? "구독 생성 후 조회 실패" };
+  }
+  return {
+    subscription: {
+      subscriptionId: latestSub.subscription_id,
+      userId: latestSub.user_id,
+      planId: latestSub.plan_id,
+      planCode: latestSub.subscription_plans.code,
+      planName: latestSub.subscription_plans.name,
+      startedAt: latestSub.started_at,
+      expiresAt: latestSub.expires_at,
+      status: latestSub.status as SubscriptionStatus,
+      paymentId: latestSub.payment_id,
+    },
+  };
+}
+
 // 토스 confirm API 호출 후 payment + subscription row 갱신.
 export async function confirmPayment(
   input: ConfirmPaymentInput,
@@ -378,105 +485,17 @@ export async function confirmPayment(
     await incrementDiscountUse(payRow.discount_id);
   }
 
-  // 4) 구독 row insert (같은 플랜·과목의 기존 활성 구독 있으면 연장). 과목별 결제라
-  //    subject_code 단위로 매칭 — null(전체 플랜)과 특정 과목을 구분한다.
+  // 4~5) 결제 기간 반영(체험 오프셋·연장 포함) — 빌링과 공용 헬퍼.
   const durationDays = payRow.subscription_plans?.duration_days ?? 30;
-  const subjectCode = payRow.subject_code ?? null;
-  const now = new Date();
-  let existingQuery = admin
-    .from("user_subscriptions")
-    .select("subscription_id, expires_at")
-    .eq("user_id", payRow.user_id)
-    .eq("plan_id", payRow.plan_id)
-    .eq("status", "active")
-    .gte("expires_at", now.toISOString());
-  existingQuery = subjectCode
-    ? existingQuery.eq("subject_code", subjectCode)
-    : existingQuery.is("subject_code", null);
-  const { data: existing } = await existingQuery
-    .order("expires_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // 유료 기간 시작점 계산:
-  //  · 기존 활성 구독 연장 → 그 만료일부터.
-  //  · 신규 + 가입 15일 체험 중 → ★체험 종료일부터(#3, 일찍 결제해도 체험 손해 없음).
-  //  · 그 외 신규 → 지금부터.
-  let baseTimeMs: number;
-  if (existing && new Date(existing.expires_at).getTime() > now.getTime()) {
-    baseTimeMs = new Date(existing.expires_at).getTime();
-  } else {
-    const { data: prof } = await admin
-      .from("profiles")
-      .select("trial_ends_at")
-      .eq("profile_id", payRow.user_id)
-      .maybeSingle();
-    const trialEndMs = prof?.trial_ends_at
-      ? new Date(prof.trial_ends_at).getTime()
-      : 0;
-    baseTimeMs = trialEndMs > now.getTime() ? trialEndMs : now.getTime();
-  }
-  const newExpiresAt = new Date(
-    baseTimeMs + durationDays * 86_400_000,
-  ).toISOString();
-
-  if (existing) {
-    await admin
-      .from("user_subscriptions")
-      .update({
-        expires_at: newExpiresAt,
-        payment_id: payRow.payment_id,
-      })
-      .eq("subscription_id", existing.subscription_id);
-  } else {
-    await admin.from("user_subscriptions").insert({
-      user_id: payRow.user_id,
-      plan_id: payRow.plan_id,
-      payment_id: payRow.payment_id,
-      subject_code: subjectCode,
-      // 체험 중 결제면 유료 기간 시작 = 체험 종료일(그 전까지는 체험으로 이용).
-      started_at: new Date(baseTimeMs).toISOString(),
-      expires_at: newExpiresAt,
-      status: "active",
-    });
-  }
-
-  // 5) 최신 구독 fetch 후 반환 (방금 결제한 과목 단위로).
-  let latestQuery = admin
-    .from("user_subscriptions")
-    .select(
-      "subscription_id, user_id, plan_id, started_at, expires_at, status, payment_id, subscription_plans!inner(code, name)",
-    )
-    .eq("user_id", payRow.user_id)
-    .eq("plan_id", payRow.plan_id);
-  latestQuery = subjectCode
-    ? latestQuery.eq("subject_code", subjectCode)
-    : latestQuery.is("subject_code", null);
-  const { data: latestSub, error: latestErr } = await latestQuery
-    .order("expires_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (latestErr || !latestSub) {
-    return {
-      ok: false,
-      error: latestErr?.message ?? "구독 생성 후 조회 실패",
-    };
-  }
-
-  return {
-    ok: true,
-    subscription: {
-      subscriptionId: latestSub.subscription_id,
-      userId: latestSub.user_id,
-      planId: latestSub.plan_id,
-      planCode: latestSub.subscription_plans.code,
-      planName: latestSub.subscription_plans.name,
-      startedAt: latestSub.started_at,
-      expiresAt: latestSub.expires_at,
-      status: latestSub.status as SubscriptionStatus,
-      paymentId: latestSub.payment_id,
-    },
-  };
+  const res = await upsertPaidSubscription(admin, {
+    userId: payRow.user_id,
+    planId: payRow.plan_id,
+    subjectCode: payRow.subject_code ?? null,
+    durationDays,
+    paymentId: payRow.payment_id,
+  });
+  if ("error" in res) return { ok: false, error: res.error };
+  return { ok: true, subscription: res.subscription };
 }
 
 // feat-8-028 — 해지·환불 정책:
@@ -593,6 +612,300 @@ export async function cancelSubscription(input: {
     .update({ auto_renew: false, cancelled_at: nowIso, updated_at: nowIso })
     .eq("subscription_id", sub.subscription_id);
   return { ok: true, refunded: false, accessUntil: sub.expires_at };
+}
+
+// ─── 자동결제(빌링) — feat-8-028 Stage 5 ───
+// 첫 등록: requestBillingAuth(클라) → authKey → issueAndSaveBillingKey → 첫 달 청구.
+// 갱신: billing-charge 크론이 만료 임박 auto_renew 구독을 chargeDueRenewals 로 청구.
+
+const TOSS_API = "https://api.tosspayments.com/v1";
+
+function tossBasicAuth(): string | null {
+  const secret = process.env.TOSS_SECRET_KEY;
+  if (!secret) return null;
+  return Buffer.from(`${secret}:`).toString("base64");
+}
+
+// authKey → billingKey 발급 후 저장(카드 1개 유지: 기존 것 soft-delete).
+export async function issueAndSaveBillingKey(input: {
+  userId: string;
+  authKey: string;
+  customerKey: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const basic = tossBasicAuth();
+  if (!basic) return { ok: false, error: "TOSS_SECRET_KEY 환경변수 미설정" };
+  let payload: Record<string, unknown>;
+  try {
+    const res = await fetch(`${TOSS_API}/billing/authorizations/issue`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basic}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        authKey: input.authKey,
+        customerKey: input.customerKey,
+      }),
+    });
+    payload = (await res.json()) as Record<string, unknown>;
+    if (!res.ok) {
+      const msg =
+        typeof payload?.message === "string"
+          ? payload.message
+          : `빌링키 발급 실패 (HTTP ${res.status})`;
+      return { ok: false, error: msg };
+    }
+  } catch (e) {
+    return {
+      ok: false,
+      error: `빌링키 발급 호출 실패: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  const billingKey =
+    typeof payload.billingKey === "string" ? payload.billingKey : null;
+  if (!billingKey) return { ok: false, error: "빌링키 응답 형식 오류" };
+  const card = (payload.card ?? {}) as Record<string, unknown>;
+  const admin = adminClient as SupabaseClient<Database>;
+  await admin
+    .from("billing_keys")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("user_id", input.userId)
+    .is("deleted_at", null);
+  await admin.from("billing_keys").insert({
+    user_id: input.userId,
+    billing_key: billingKey,
+    customer_key: input.customerKey,
+    card_company: typeof card.company === "string" ? card.company : null,
+    card_number_masked: typeof card.number === "string" ? card.number : null,
+  });
+  return { ok: true };
+}
+
+// 빌링키로 즉시 청구.
+async function chargeBillingKey(input: {
+  billingKey: string;
+  customerKey: string;
+  amountKrw: number;
+  orderId: string;
+  orderName: string;
+}): Promise<
+  | { ok: true; paymentKey: string; payload: Record<string, unknown> }
+  | { ok: false; error: string }
+> {
+  const basic = tossBasicAuth();
+  if (!basic) return { ok: false, error: "TOSS_SECRET_KEY 환경변수 미설정" };
+  try {
+    const res = await fetch(`${TOSS_API}/billing/${input.billingKey}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basic}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        customerKey: input.customerKey,
+        amount: input.amountKrw,
+        orderId: input.orderId,
+        orderName: input.orderName,
+      }),
+    });
+    const payload = (await res.json()) as Record<string, unknown>;
+    if (!res.ok) {
+      const msg =
+        typeof payload?.message === "string"
+          ? payload.message
+          : `자동결제 실패 (HTTP ${res.status})`;
+      return { ok: false, error: msg };
+    }
+    return {
+      ok: true,
+      paymentKey:
+        typeof payload.paymentKey === "string" ? payload.paymentKey : "",
+      payload,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: `자동결제 호출 실패: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+}
+
+// 완료된 결제 1건 기록(빌링 청구 후). 반환 paymentId.
+async function recordCompletedBillingPayment(
+  admin: SupabaseClient<Database>,
+  input: {
+    userId: string;
+    planId: string;
+    amountKrw: number;
+    discountId: string | null;
+    tossOrderId: string;
+    tossPaymentKey: string;
+    tossPayload: Record<string, unknown>;
+  },
+): Promise<string | null> {
+  const { data } = await admin
+    .from("payments")
+    .insert({
+      user_id: input.userId,
+      plan_id: input.planId,
+      amount_krw: input.amountKrw,
+      status: "completed",
+      toss_order_id: input.tossOrderId,
+      toss_payment_key: input.tossPaymentKey,
+      toss_response: input.tossPayload as never,
+      discount_id: input.discountId,
+    })
+    .select("payment_id")
+    .single();
+  return data?.payment_id ?? null;
+}
+
+// 빌링키 발급 직후 첫 달 청구 + 구독 활성화(auto_renew=true).
+export async function chargeAndActivateBilling(input: {
+  userId: string;
+  customerKey: string;
+  plan: SubscriptionPlan;
+  amountKrw: number;
+  discountId: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data: bk } = await admin
+    .from("billing_keys")
+    .select("billing_key, customer_key")
+    .eq("user_id", input.userId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!bk) return { ok: false, error: "등록된 자동결제 카드가 없습니다" };
+
+  const orderId = `lidam-b-${randomUUID()}`;
+  const charge = await chargeBillingKey({
+    billingKey: bk.billing_key,
+    customerKey: bk.customer_key,
+    amountKrw: input.amountKrw,
+    orderId,
+    orderName: input.plan.name,
+  });
+  if (!charge.ok) return { ok: false, error: charge.error };
+
+  const paymentId = await recordCompletedBillingPayment(admin, {
+    userId: input.userId,
+    planId: input.plan.planId,
+    amountKrw: input.amountKrw,
+    discountId: input.discountId,
+    tossOrderId: orderId,
+    tossPaymentKey: charge.paymentKey,
+    tossPayload: charge.payload,
+  });
+  if (!paymentId) return { ok: false, error: "결제 기록 실패" };
+  if (input.discountId) await incrementDiscountUse(input.discountId);
+
+  const res = await upsertPaidSubscription(admin, {
+    userId: input.userId,
+    planId: input.plan.planId,
+    subjectCode: null,
+    durationDays: input.plan.durationDays,
+    paymentId,
+    autoRenew: true,
+  });
+  if ("error" in res) return { ok: false, error: res.error };
+  return { ok: true };
+}
+
+// 갱신 청구(크론) — 만료 임박 auto_renew 구독을 빌링키로 청구·연장.
+// 대상: status=active · auto_renew=true · cancelled_at IS NULL · 만료 24h 이내.
+export async function chargeDueRenewals(): Promise<{
+  charged: number;
+  failed: number;
+}> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const nowMs = Date.now();
+  const windowIso = new Date(nowMs + 24 * 3_600_000).toISOString();
+  const nowIso = new Date(nowMs).toISOString();
+  const { data: due } = await admin
+    .from("user_subscriptions")
+    .select(
+      "subscription_id, user_id, plan_id, subject_code, subscription_plans!inner(name, price_krw, duration_days)",
+    )
+    .eq("status", "active")
+    .eq("auto_renew", true)
+    .is("cancelled_at", null)
+    .lte("expires_at", windowIso)
+    .gte("expires_at", nowIso);
+
+  let charged = 0;
+  let failed = 0;
+  for (const sub of due ?? []) {
+    const { data: bk } = await admin
+      .from("billing_keys")
+      .select("billing_key, customer_key")
+      .eq("user_id", sub.user_id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!bk) {
+      failed += 1;
+      continue;
+    }
+    const amount = sub.subscription_plans.price_krw;
+    const orderId = `lidam-r-${randomUUID()}`;
+    const charge = await chargeBillingKey({
+      billingKey: bk.billing_key,
+      customerKey: bk.customer_key,
+      amountKrw: amount,
+      orderId,
+      orderName: `${sub.subscription_plans.name} 자동갱신`,
+    });
+    if (!charge.ok) {
+      failed += 1;
+      continue;
+    }
+    const paymentId = await recordCompletedBillingPayment(admin, {
+      userId: sub.user_id,
+      planId: sub.plan_id,
+      amountKrw: amount,
+      discountId: null,
+      tossOrderId: orderId,
+      tossPaymentKey: charge.paymentKey,
+      tossPayload: charge.payload,
+    });
+    if (!paymentId) {
+      failed += 1;
+      continue;
+    }
+    await upsertPaidSubscription(admin, {
+      userId: sub.user_id,
+      planId: sub.plan_id,
+      subjectCode: sub.subject_code ?? null,
+      durationDays: sub.subscription_plans.duration_days,
+      paymentId,
+      autoRenew: true,
+    });
+    charged += 1;
+  }
+  return { charged, failed };
+}
+
+// 본인 자동결제 카드 조회(표시용).
+export async function getActiveBillingKey(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<{ cardCompany: string | null; cardMasked: string | null } | null> {
+  const { data } = await client
+    .from("billing_keys")
+    .select("card_company, card_number_masked")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    cardCompany: data.card_company,
+    cardMasked: data.card_number_masked,
+  };
 }
 
 export async function listMyPayments(
