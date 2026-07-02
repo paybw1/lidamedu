@@ -1,5 +1,4 @@
 import {
-  InfoIcon,
   MessageCircleQuestionIcon,
   PencilLineIcon,
   SearchIcon,
@@ -31,6 +30,7 @@ import {
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import { countReviewQueue, listThreads, type ListFilter } from "../queries.server";
+import { resolveTargetDisplay } from "../lib/target-display.server";
 
 import type { Route } from "./+types/qna-list";
 
@@ -101,8 +101,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     isStaff ? countReviewQueue(client) : Promise.resolve(0),
   ]);
 
+  // 대상(조문/판례/문제) 설명 라벨 — "무엇에 대한 질문인지"를 리스트에 표시.
+  //   질문 제목만으론 대상이 안 보여서(예: "의료업"), 대상 상세 라벨을 함께 노출.
+  const targetLabels: Record<string, string> = {};
+  await Promise.all(
+    threads.map(async (t) => {
+      if (!t.targetId) return;
+      const d = await resolveTargetDisplay(client, t.targetType, t.targetId);
+      if (d?.label) targetLabels[t.threadId] = d.label;
+    }),
+  );
+
   return {
     threads,
+    targetLabels,
     scope,
     targetType,
     subject,
@@ -116,6 +128,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function QnaList({ loaderData }: Route.ComponentProps) {
   const {
     threads,
+    targetLabels,
     scope,
     targetType,
     subject,
@@ -156,18 +169,6 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
         </Button>
       }
     >
-      {/* 안내 — 학습과목(조문·판례·문제) 질문은 해당 상세 화면에서 대상에 연결해 작성. */}
-      <div className="border-primary/20 bg-primary/[0.04] mb-3.5 flex items-start gap-2.5 rounded-2xl border p-3.5">
-        <InfoIcon className="text-link mt-0.5 size-4 shrink-0" />
-        <p className="text-muted-foreground text-[13px] leading-relaxed">
-          <strong className="text-foreground">조문·판례·문제</strong>에 대한 질문은
-          해당 <strong className="text-foreground">상세 화면의 ‘Q&amp;A’ 패널</strong>
-          에서 남겨 주세요. 질문이 그 내용에 자동으로 연결돼 더 정확한 답변을 받을 수
-          있습니다. <strong className="text-foreground">공부방법</strong> 등 일반 질문은
-          여기서 <strong className="text-foreground">‘공부방법 질문’</strong> 으로
-          작성하시면 됩니다.
-        </p>
-      </div>
 
       <Form
         method="get"
@@ -348,6 +349,11 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
                       {relativeKo(t.createdAt)}
                     </span>
                   </div>
+                  {targetLabels[t.threadId] ? (
+                    <p className="text-link mb-0.5 text-[12px] font-semibold">
+                      {targetLabels[t.threadId]}
+                    </p>
+                  ) : null}
                   <p className="text-[15px] leading-snug font-bold tracking-tight">
                     {t.title}
                   </p>
