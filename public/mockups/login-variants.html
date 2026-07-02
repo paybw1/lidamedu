@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>로그인 화면 3안 미리보기 — 리담변리사학원</title>
+    <style>
+      :root {
+        --primary: #2d5ba8;
+        --grad-to: #1e4789;
+        --ink: #2e2e2e;
+        --ink-soft: #475569;
+        --ink-faint: #94a3b8;
+        --line: #e5e9ef;
+        --tint: #e7edf6;
+        --card: #ffffff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Pretendard, -apple-system, "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: #f4f6fa;
+      }
+      .page { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+      h2.title { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+      p.lead { color: var(--ink-soft); font-size: 14px; margin-top: 4px; }
+      .variant { margin-top: 40px; }
+      .variant > .label {
+        font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+        color: var(--primary); text-transform: uppercase; margin-bottom: 10px;
+      }
+      .stage {
+        display: flex; align-items: center; justify-content: center;
+        padding: 40px 20px; border-radius: 16px; border: 1px solid var(--line);
+        background: radial-gradient(120% 80% at 50% 0%, var(--tint) 0%, transparent 60%), #fff;
+      }
+      .card {
+        width: 100%; max-width: 420px; background: var(--card);
+        border-radius: 20px; border: 1px solid var(--line);
+        box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+        padding: 44px 36px 32px; text-align: center;
+      }
+      .logo { height: 48px; width: auto; margin: 0 auto 22px; display: block; }
+      .h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.025em; margin: 0 0 10px; }
+      .sub { font-size: 15px; color: var(--ink-soft); margin: 0 0 28px; }
+      .kakao {
+        display: flex; width: 100%; height: 52px; align-items: center;
+        justify-content: center; gap: 8px; border-radius: 12px;
+        background: #FEE500; color: #191600; font-size: 15px; font-weight: 700;
+        text-decoration: none; box-shadow: 0 8px 22px rgba(254,229,0,0.35);
+      }
+      .bubble { width: 18px; height: 16px; background: #191600; border-radius: 45%; position: relative; }
+      .consent { font-size: 12px; color: var(--ink-faint); margin-top: 20px; }
+      .consent a { color: var(--ink-soft); }
+      /* 2안 */
+      .wordmark { font-family: "Noto Serif KR","Nanum Myeongjo",serif; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+      .rule { width: 40px; height: 3px; border-radius: 2px; background: var(--primary); margin: 0 auto 18px; }
+      /* 3안 */
+      .split {
+        width: 100%; max-width: 860px; display: grid; grid-template-columns: 1fr 1fr;
+        background: var(--card); border-radius: 20px; border: 1px solid var(--line);
+        box-shadow: 0 16px 48px rgba(0,0,0,0.08); overflow: hidden;
+      }
+      .split .brand {
+        background: var(--primary); color: #fff; padding: 48px 40px;
+        display: flex; flex-direction: column; justify-content: center; gap: 14px; text-align: left;
+      }
+      .split .brand img { height: 44px; width: auto; filter: brightness(0) invert(1); }
+      .split .brand .name { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+      .split .brand p { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.86); margin: 0; }
+      .split .right { padding: 48px 40px; text-align: center; }
+      @media (max-width: 719px) { .split { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h2 class="title">로그인 화면 브랜드 표현 — 3안 미리보기</h2>
+      <p class="lead">
+        아래 세 가지를 비교해 보세요. 실제 색·폰트·카카오 버튼과 동일합니다.
+        마음에 드는 안의 번호를 알려주시면 그 안으로 확정합니다.
+      </p>
+
+      <!-- 1안 -->
+      <div class="variant">
+        <div class="label">1안 · 로고 이미지 (추천)</div>
+        <div class="stage">
+          <div class="card">
+            <img class="logo" src="../lidam-logo.png" alt="리담변리사학원" />
+            <h1 class="h1">다시 오신 것을 환영합니다</h1>
+            <p class="sub">카카오로 간편하게 시작하세요.</p>
+            <a class="kakao" href="#"><span class="bubble"></span>카카오로 시작하기</a>
+            <p class="consent">
+              로그인 시 <a href="#">이용약관</a>과 <a href="#">개인정보처리방침</a>에 동의하게 됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2안 -->
+      <div class="variant">
+        <div class="label">2안 · 제목형 워드마크(명조)</div>
+        <div class="stage">
+          <div class="card">
+            <div class="wordmark">리담변리사학원</div>
+            <div class="rule"></div>
+            <p class="sub" style="margin:0 0 4px;color:var(--ink);font-weight:600;">
+              다시 오신 것을 환영합니다
+            </p>
+            <p class="sub">카카오로 간편하게 시작하세요.</p>
+            <a class="kakao" href="#"><span class="bubble"></span>카카오로 시작하기</a>
+            <p class="consent">
+              로그인 시 <a href="#">이용약관</a>과 <a href="#">개인정보처리방침</a>에 동의하게 됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3안 -->
+      <div class="variant">
+        <div class="label">3안 · 좌측 브랜드 패널(2단, 모바일=1단)</div>
+        <div class="stage">
+          <div class="split">
+            <div class="brand">
+              <img src="../lidam-logo.png" alt="리담변리사학원" />
+              <div class="name">리담변리사학원</div>
+              <p>조문·판례·문제가 끊김 없이 이어지는<br />변리사 시험 학습 플랫폼</p>
+            </div>
+            <div class="right">
+              <h1 class="h1" style="font-size:22px;">다시 오신 것을 환영합니다</h1>
+              <p class="sub">카카오로 간편하게 시작하세요.</p>
+              <a class="kakao" href="#"><span class="bubble"></span>카카오로 시작하기</a>
+              <p class="consent">
+                로그인 시 <a href="#">이용약관</a>과 <a href="#">개인정보처리방침</a>에 동의하게 됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
