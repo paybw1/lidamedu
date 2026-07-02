@@ -31,6 +31,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
+import type { BookmarkRecord } from "~/features/annotations/labels";
 import {
   getBookmark,
   getBookmarksByTargets,
@@ -278,11 +279,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       problem.boxItems.map((b) => b.boxItemId),
     ),
   ]);
-  const oxBookmarkLevels: Record<string, number> = {};
-  for (const [id, bm] of Object.entries(oxChoiceBookmarks))
-    oxBookmarkLevels[id] = bm.starLevel;
-  for (const [id, bm] of Object.entries(oxBoxBookmarks))
-    oxBookmarkLevels[id] = bm.starLevel;
+  // 선지/박스 즐겨찾기 전체 레코드(별 5단계 + 단계별 메모). 조문·문제 즐겨찾기와 동일 UI로
+  // 팝오버에서 매길 수 있게 레벨만이 아니라 record 전체를 넘긴다.
+  const oxBookmarks: Record<string, BookmarkRecord> = {
+    ...oxChoiceBookmarks,
+    ...oxBoxBookmarks,
+  };
   // Map → 직렬화 가능한 plain object 로 변환 (loader return).
   const choiceArticleRefs: Record<
     string,
@@ -478,7 +480,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     citedCases,
     choiceArticleRefs,
     choiceCaseRefs,
-    oxBookmarkLevels,
+    oxBookmarks,
     subjectiveAttempt,
     problemComments,
     canEditComment: staffRole !== null,
@@ -571,7 +573,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     citedCases,
     choiceArticleRefs,
     choiceCaseRefs,
-    oxBookmarkLevels,
+    oxBookmarks,
     subjectiveAttempt,
     problemComments,
     canEditComment,
@@ -1467,8 +1469,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                         <OxBookmarkToggle
                                           refType="box"
                                           refId={bi.boxItemId}
-                                          initialLevel={
-                                            oxBookmarkLevels[bi.boxItemId] ?? 0
+                                          initial={
+                                            oxBookmarks[bi.boxItemId] ?? null
                                           }
                                           eligible={isOxEligible(
                                             bi.oxTruth,
@@ -1591,8 +1593,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                                       <OxBookmarkToggle
                                         refType="choice"
                                         refId={c.choiceId}
-                                        initialLevel={
-                                          oxBookmarkLevels[c.choiceId] ?? 0
+                                        initial={
+                                          oxBookmarks[c.choiceId] ?? null
                                         }
                                         eligible={isOxEligible(
                                           c.oxTruth,

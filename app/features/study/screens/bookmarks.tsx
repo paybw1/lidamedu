@@ -201,7 +201,8 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
               selected={minStar === n}
               onClick={() => setMinStar(n)}
             >
-              ★ {n}↑
+              ★ {n}
+              {n < 5 ? "↑" : ""}
             </FilterChip>
           ))}
         </FilterGroup>
