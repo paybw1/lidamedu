@@ -99,36 +99,28 @@ export function PreviewSection() {
             gap: 12,
           }}
         >
-          <Reveal delay={0} style={tile()}>
-            <Lbl>진도</Lbl>
-            <Num value={Math.round(pct).toString()} unit="%" />
-            <Sub>특허법 · 38h 누적</Sub>
-            <Bar value={pct} />
+          <Reveal delay={0} style={tile(true)}>
+            <Lbl dark>진도</Lbl>
+            <Num value={Math.round(pct).toString()} unit="%" dark />
+            <Sub dark>특허법 · 38h 누적</Sub>
+            <Bar value={pct} dark />
           </Reveal>
-          <Reveal
-            delay={120}
-            style={{
-              ...tile(),
-              background: PALETTE.gradientVisit,
-              color: "#fff",
-              border: 0,
-            }}
-          >
+          <Reveal delay={120} style={tile(true)}>
             <Lbl dark>이번 주</Lbl>
             <Num value={hours.toFixed(1)} unit="h" dark />
             <Sub dark>목표 25h</Sub>
             <Bar value={(hours / 25) * 100} dark />
           </Reveal>
-          <Reveal delay={240} style={tile()}>
-            <Lbl>학습 히트맵</Lbl>
-            <MiniHeatmap inView={inView} />
-            <Sub>최근 4주 · 평균 1.8h/일</Sub>
+          <Reveal delay={240} style={tile(true)}>
+            <Lbl dark>학습 히트맵</Lbl>
+            <MiniHeatmap inView={inView} dark />
+            <Sub dark>최근 4주 · 평균 1.8h/일</Sub>
           </Reveal>
-          <Reveal delay={360} style={tile()}>
-            <Lbl>문제</Lbl>
-            <Num value={Math.round(probs).toLocaleString("ko-KR")} unit="" />
-            <Sub>정답률 {acc.toFixed(1)}%</Sub>
-            <Bar value={acc} />
+          <Reveal delay={360} style={tile(true)}>
+            <Lbl dark>문제</Lbl>
+            <Num value={Math.round(probs).toLocaleString("ko-KR")} unit="" dark />
+            <Sub dark>정답률 {acc.toFixed(1)}%</Sub>
+            <Bar value={acc} dark />
           </Reveal>
         </div>
       </div>
@@ -142,7 +134,18 @@ export function PreviewSection() {
   );
 }
 
-function tile(): CSSProperties {
+function tile(dark?: boolean): CSSProperties {
+  if (dark) {
+    // 파란 바탕 + 흰색 — 라이트 배경에서 미리보기 카드가 또렷하게 보이도록.
+    return {
+      padding: 16,
+      borderRadius: 16,
+      background: PALETTE.gradientVisit,
+      border: "1px solid rgba(255,255,255,0.16)",
+      color: "#fff",
+      boxShadow: "0 6px 20px -8px rgba(45,91,168,0.5)",
+    };
+  }
   return {
     padding: 16,
     borderRadius: 16,
@@ -234,14 +237,22 @@ function Bar({ value, dark }: { value: number; dark?: boolean }) {
   );
 }
 
-function MiniHeatmap({ inView }: { inView: boolean }) {
-  const tones = [
-    "var(--surface-3)",
-    "rgba(45, 91, 168, 0.15)",
-    "rgba(45, 91, 168, 0.35)",
-    "rgba(45, 91, 168, 0.6)",
-    PALETTE.primary,
-  ];
+function MiniHeatmap({ inView, dark }: { inView: boolean; dark?: boolean }) {
+  const tones = dark
+    ? [
+        "rgba(255,255,255,0.14)",
+        "rgba(255,255,255,0.3)",
+        "rgba(255,255,255,0.5)",
+        "rgba(255,255,255,0.72)",
+        "#fff",
+      ]
+    : [
+        "var(--surface-3)",
+        "rgba(45, 91, 168, 0.15)",
+        "rgba(45, 91, 168, 0.35)",
+        "rgba(45, 91, 168, 0.6)",
+        PALETTE.primary,
+      ];
   const cells: number[] = [];
   for (let i = 0; i < 28; i++) {
     const v = ((i * 7) ^ (i >> 1)) & 7;
