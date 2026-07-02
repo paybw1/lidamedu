@@ -13,6 +13,7 @@ import {
   openMonthLabel,
 } from "~/features/subscriptions/labels";
 import { listSubscriptionPlans } from "~/features/subscriptions/queries.server";
+import { getLatestLandingFeed } from "~/features/home/latest-feed.server";
 import { FaqSection } from "~/features/home/components/faq-section";
 import { FeaturesSection } from "~/features/home/components/features-section";
 import { FinalCta } from "~/features/home/components/final-cta";
@@ -106,11 +107,21 @@ export async function loader({ request }: Route.LoaderArgs) {
     bundleTeaser = null;
   }
 
+  // LATEST 섹션 — 실데이터 최신 피드(각 카테고리 최신 1건). best-effort.
+  let latestFeed: Awaited<ReturnType<typeof getLatestLandingFeed>> = [];
+  try {
+    const [client] = makeServerClient(request);
+    latestFeed = await getLatestLandingFeed(client);
+  } catch {
+    latestFeed = [];
+  }
+
   return {
     title: t("home.title"),
     subtitle: t("home.subtitle"),
     stats,
     bundleTeaser,
+    latestFeed,
   };
 }
 
@@ -141,7 +152,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       </Band>
       <PasserStatsSection />
       <Band tone="shelf">
-        <LatestSection />
+        <LatestSection items={loaderData.latestFeed} />
       </Band>
       <PricingTeaserSection bundleTeaser={loaderData.bundleTeaser} />
       <Band tone="shelf">

@@ -4,46 +4,8 @@ import { ArrowRightIcon } from "lucide-react";
 import { Link } from "react-router";
 
 import { SectionHeader } from "~/features/home/components/section-header";
+import type { LatestFeedItem } from "~/features/home/latest-feed.server";
 import { PALETTE, Reveal } from "~/features/home/lib/landing";
-
-const ITEMS = [
-  {
-    cat: "법 개정",
-    dot: "#5C7F6A",
-    body: "특허법 제29조 — 2026.01.15. 시행",
-    to: "/latest/laws",
-  },
-  {
-    cat: "최근 판례",
-    dot: "#7B6BA0",
-    body: "대법원 2025다123456 — 균등론 적용 범위",
-    to: "/latest/cases",
-  },
-  {
-    cat: "1차 기출문제",
-    dot: "#A77B3F",
-    body: "2026년 모의고사 — 상표법 240제 추가",
-    to: "/latest/mcq?kind=past_exam",
-  },
-  {
-    cat: "2차 기출문제",
-    dot: "#C97D5B",
-    body: "2026 GS 2회 — 디자인보호법 사례형",
-    to: "/latest/essay",
-  },
-  {
-    cat: "논문",
-    dot: "#2D5BA8",
-    body: "직접침해와 간접침해의 경계 — 김OO 교수",
-    to: "/latest/papers",
-  },
-  {
-    cat: "추록·정오표",
-    dot: "#8B5A2B",
-    body: "변리사법 강의 4판 — 정오표 v1.2",
-    to: "/latest/book-updates",
-  },
-];
 
 const onEnter: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(-2px)";
@@ -62,7 +24,8 @@ const onLeave: MouseEventHandler<HTMLElement> = (e) => {
   if (cat instanceof HTMLElement) cat.style.color = PALETTE.inkSoft;
 };
 
-export function LatestSection() {
+export function LatestSection({ items }: { items: LatestFeedItem[] }) {
+  if (items.length === 0) return null;
   return (
     <section
       aria-labelledby="latest-h2"
@@ -76,7 +39,7 @@ export function LatestSection() {
         eyebrow="LATEST"
         title="매일 무엇이 새로 올라왔는지, 한 화면에"
         subtitle={
-          "법 개정 · 신규 판례 · 신규 문제 · 논문 · 도서 추록까지 한 곳에 모입니다.\n즐겨찾기한 조문이 개정되면 알림으로 알려드려요."
+          "법 개정 · 신규 판례 · 신규 문제 · 도서 추록까지 한 곳에 모입니다.\n즐겨찾기한 조문이 개정되면 알림으로 알려드려요."
         }
       />
       <div
@@ -87,7 +50,7 @@ export function LatestSection() {
           gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
         }}
       >
-        {ITEMS.map((it, i) => (
+        {items.map((it, i) => (
           <Reveal
             key={it.cat}
             delay={i * 70}
