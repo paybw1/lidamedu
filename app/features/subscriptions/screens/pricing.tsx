@@ -64,8 +64,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       };
   // feat-8-028 — 이미 보유(결제/종합반/staff)한 과목. "보유 중" 표시용.
   let ownedSubjects: "all" | string[] = [];
+  let isStaff = false;
   if (user) {
     const access = await getMembershipAccess(client, user.id);
+    isStaff = access.grade === "staff";
     ownedSubjects =
       access.grade === "self_study" ||
       access.grade === "cohort" ||
@@ -73,6 +75,12 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? access.subjects
         : [];
   }
+  // 관리자 결제 테스트 모드 — staff 는 전 과목 "보유 중"이라 결제 UI가 안 뜬다.
+  // ?testStudent=1 이면 (staff 한정) 미보유로 취급해 학생처럼 결제 흐름을 볼 수 있게.
+  const reqUrl = new URL(request.url);
+  const testStudentMode =
+    isStaff && reqUrl.searchParams.get("testStudent") === "1";
+  if (testStudentMode) ownedSubjects = [];
 
   const discounts = await listActiveDiscounts(client);
   // 학습 개시 예정 과목(상표·디자인 등) — 개별 상품 available_from 미래. 번들엔 안내만.
@@ -89,7 +97,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         note: `${csProducts.map((p) => p.name).join("·")}은 ${openMonthLabel(csProducts[0].availableFrom as string)}부터 학습 가능`,
       }
     : null;
-  const locked = new URL(request.url).searchParams.get("locked");
+  const locked = reqUrl.searchParams.get("locked");
   return {
     plans,
     active,
@@ -100,6 +108,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     ownedSubjects,
     discounts,
     comingSoon,
+    isStaff,
+    testStudentMode,
   };
 }
 
@@ -114,6 +124,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
     ownedSubjects,
     discounts,
     comingSoon,
+    isStaff,
+    testStudentMode,
   } = loaderData;
   const [coupon, setCoupon] = useState("");
   const nowMs = Date.now();
@@ -156,6 +168,24 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
             열립니다. 상담·과제·1차 모의고사·반별 게시판은 종합반에서 제공됩니다.
           </p>
         </header>
+
+        {isStaff ? (
+          <Card className="mb-4 border-sky-300 bg-sky-50/70 dark:border-sky-700/50 dark:bg-sky-950/30">
+            <CardContent className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm text-sky-900 dark:text-sky-200">
+              <span>
+                🧪 관리자 결제 테스트 모드 —{" "}
+                {testStudentMode
+                  ? "학생처럼 결제 UI가 표시됩니다. 실제 결제(테스트 키)까지 진행할 수 있어요."
+                  : "관리자는 전 과목 보유 중이라 결제 버튼이 숨겨집니다. 켜면 학생처럼 결제 UI가 보입니다."}
+              </span>
+              <Button asChild size="sm" variant="outline">
+                <Link to={testStudentMode ? "/pricing" : "/pricing?testStudent=1"}>
+                  {testStudentMode ? "테스트 모드 끄기" : "테스트 모드 켜기"}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {locked ? (
           <Card className="mb-4 border-amber-300 bg-amber-50/70 dark:border-amber-700/50 dark:bg-amber-950/30">
