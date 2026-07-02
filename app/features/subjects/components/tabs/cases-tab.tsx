@@ -598,8 +598,17 @@ function CaseRow({
   return (
     <TableRow className="hover:bg-muted/40 cursor-pointer">
       <TableCell className="text-center">
+        {/* 중요 판례(중요도 3) = 채워진 별 / 기출 판례 = 빈 별 표시. */}
         {item.importance >= 3 ? (
-          <StarIcon className="mx-auto size-3.5 text-amber-500" />
+          <StarIcon
+            className="mx-auto size-3.5 fill-amber-400 text-amber-500"
+            aria-label="중요 판례"
+          />
+        ) : item.exam1stProblems.length + item.exam2ndYears.length > 0 ? (
+          <StarIcon
+            className="mx-auto size-3.5 text-amber-400/70"
+            aria-label="기출 판례"
+          />
         ) : null}
       </TableCell>
       <TableCell className="text-link text-xs font-semibold tabular-nums">
