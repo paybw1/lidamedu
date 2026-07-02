@@ -49,14 +49,6 @@ interface Filters {
   subjectiveKeyword?: string;
 }
 
-const ORIGINS: Array<{ value: ProblemOrigin | "all"; label: string }> = [
-  { value: "all", label: "전체 출처" },
-  { value: "past_exam", label: "기출" },
-  { value: "past_exam_variant", label: "기출변형" },
-  { value: "expected", label: "예상" },
-  { value: "mock", label: "모의" },
-];
-
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -158,15 +150,12 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
           name="subject"
           ariaLabel="과목"
           defaultValue={filters.subject ?? ""}
-          options={[{ value: "", label: "전체 과목" }]}
-          optionGroups={[
-            {
-              label: "2차 · 주관식",
-              options: SECOND_EXAM_LAW_SLUGS.map((s) => ({
-                value: s,
-                label: LAW_SUBJECTS[s].name,
-              })),
-            },
+          options={[
+            { value: "", label: "전체 과목" },
+            ...SECOND_EXAM_LAW_SLUGS.map((s) => ({
+              value: s,
+              label: LAW_SUBJECTS[s].name,
+            })),
           ]}
         />
         <FilterSelect
@@ -179,26 +168,6 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
               value: String(y),
               label: `${y}년`,
             })),
-          ]}
-        />
-        <FilterSelect
-          name="origin"
-          ariaLabel="출처"
-          defaultValue={filters.origin ?? ""}
-          options={ORIGINS.map((o) => ({
-            value: o.value === "all" ? "" : o.value,
-            label: o.label,
-          }))}
-        />
-        <FilterSelect
-          name="kind"
-          ariaLabel="주관식 유형"
-          defaultValue={filters.subjectiveKind ?? ""}
-          options={[
-            { value: "", label: "전체 유형" },
-            { value: "case_based", label: "사례형" },
-            { value: "theory", label: "논점형" },
-            { value: "mixed", label: "혼합형" },
           ]}
         />
         <input
