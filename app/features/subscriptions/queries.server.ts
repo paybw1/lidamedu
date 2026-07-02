@@ -8,8 +8,12 @@ import type { Database } from "database.types";
 import { redirect } from "react-router";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
-import { incrementDiscountUse } from "~/features/subscriptions/discounts.server";
+import {
+  incrementDiscountUse,
+  listActiveDiscounts,
+} from "~/features/subscriptions/discounts.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
+import { bestAutomaticDiscount, effectivePriceKrw } from "./labels";
 
 import type {
   PaymentRow,
@@ -826,13 +830,16 @@ export async function chargeDueRenewals(): Promise<{
   const { data: due } = await admin
     .from("user_subscriptions")
     .select(
-      "subscription_id, user_id, plan_id, subject_code, subscription_plans!inner(name, price_krw, duration_days)",
+      "subscription_id, user_id, plan_id, subject_code, subscription_plans!inner(code, name, price_krw, duration_days, product_kind)",
     )
     .eq("status", "active")
     .eq("auto_renew", true)
     .is("cancelled_at", null)
     .lte("expires_at", windowIso)
     .gte("expires_at", nowIso);
+
+  // 갱신에도 그 시점 유효한 자동 프로모션 할인 적용(오픈 할인 등, feat-8-028 B정책).
+  const autoDiscounts = await listActiveDiscounts(admin);
 
   let charged = 0;
   let failed = 0;
@@ -849,14 +856,26 @@ export async function chargeDueRenewals(): Promise<{
       failed += 1;
       continue;
     }
-    const amount = sub.subscription_plans.price_krw;
+    const plan = sub.subscription_plans;
+    const auto = bestAutomaticDiscount(
+      { productKind: plan.product_kind as ProductKind, code: plan.code },
+      plan.price_krw,
+      autoDiscounts,
+      nowMs,
+    );
+    const amount = auto
+      ? effectivePriceKrw(plan.price_krw, auto)
+      : plan.price_krw;
+    // 할인 후 0원이면 청구 불가 → 할인 없이 정가 청구(0원 청구 회피).
+    const chargeAmount = amount > 0 ? amount : plan.price_krw;
+    const appliedDiscountId = amount > 0 && auto ? auto.discountId : null;
     const orderId = `lidam-r-${randomUUID()}`;
     const charge = await chargeBillingKey({
       billingKey: bk.billing_key,
       customerKey: bk.customer_key,
-      amountKrw: amount,
+      amountKrw: chargeAmount,
       orderId,
-      orderName: `${sub.subscription_plans.name} 자동갱신`,
+      orderName: `${plan.name} 자동갱신`,
     });
     if (!charge.ok) {
       failed += 1;
@@ -865,8 +884,8 @@ export async function chargeDueRenewals(): Promise<{
     const paymentId = await recordCompletedBillingPayment(admin, {
       userId: sub.user_id,
       planId: sub.plan_id,
-      amountKrw: amount,
-      discountId: null,
+      amountKrw: chargeAmount,
+      discountId: appliedDiscountId,
       tossOrderId: orderId,
       tossPaymentKey: charge.paymentKey,
       tossPayload: charge.payload,
@@ -875,11 +894,12 @@ export async function chargeDueRenewals(): Promise<{
       failed += 1;
       continue;
     }
+    if (appliedDiscountId) await incrementDiscountUse(appliedDiscountId);
     await upsertPaidSubscription(admin, {
       userId: sub.user_id,
       planId: sub.plan_id,
       subjectCode: sub.subject_code ?? null,
-      durationDays: sub.subscription_plans.duration_days,
+      durationDays: plan.duration_days,
       paymentId,
       autoRenew: true,
     });
