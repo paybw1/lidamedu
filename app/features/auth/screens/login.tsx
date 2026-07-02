@@ -1,14 +1,18 @@
 /**
- * Login Screen — 카카오 OAuth 단일.
+ * Login Screen — 카카오 OAuth + (운영자 토글 시) 이메일·비밀번호.
  *
- * 로그인·회원가입 모두 카카오로만 진행한다(이메일·비밀번호·구글 진입 제거).
- * 디자인 토큰은 랜딩(lidam-design-system)을 따른다.
+ * 기본은 카카오 단일. 운영자가 /admin/auth 에서 id/pw 를 켜면 이메일·비밀번호
+ * 로그인 폼이 함께 노출된다. 디자인 토큰은 랜딩(lidam-design-system)을 따른다.
  */
 import type { Route } from "./+types/login";
 
 import type { MouseEventHandler } from "react";
-import { Link } from "react-router";
+import { Form, Link, data, redirect, useNavigation } from "react-router";
+import { z } from "zod";
 
+import { claimSession } from "~/core/lib/single-session.server";
+import makeServerClient from "~/core/lib/supa-client.server";
+import { isPasswordLoginEnabled } from "~/features/auth/settings.server";
 import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
 import { KakaoLogo } from "../components/logos/kakao";
@@ -20,9 +24,58 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 // feat-000-016 — 다른 기기 로그인으로 추방된 경우 안내 배너를 띄운다.
-export function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
+  const [client] = makeServerClient(request);
   const reason = new URL(request.url).searchParams.get("reason");
-  return { otherDevice: reason === "other-device" };
+  const passwordLogin = await isPasswordLoginEnabled(client);
+  return { otherDevice: reason === "other-device", passwordLogin };
+}
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+// feat-000-017 — 이메일·비밀번호 로그인. ★서버 권위: 토글 OFF면 거부(UI 숨김만 불충분).
+export async function action({ request }: Route.ActionArgs) {
+  const [client, headers] = makeServerClient(request);
+  if (!(await isPasswordLoginEnabled(client))) {
+    return data(
+      { error: "이메일 로그인이 비활성화되어 있습니다." },
+      { status: 403 },
+    );
+  }
+  const fd = await request.formData();
+  const parsed = loginSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) {
+    return data(
+      { error: "이메일과 비밀번호를 확인해 주세요." },
+      { status: 400 },
+    );
+  }
+  const { error } = await client.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (error) {
+    return data(
+      { error: "이메일 또는 비밀번호가 올바르지 않습니다." },
+      { status: 400 },
+    );
+  }
+  // 단일 세션(feat-000-016): 현재 세션을 유효 세션으로 등록 + 이전 기기 폐기(카카오와 동일).
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (user) {
+    await claimSession(client, request, headers);
+    try {
+      await client.auth.signOut({ scope: "others" });
+    } catch {
+      /* 보조 수단 — 핵심 차단은 claimSession + 레이아웃 검사 */
+    }
+  }
+  return redirect("/", { headers });
 }
 
 const liftKakao: MouseEventHandler<HTMLElement> = (e) => {
@@ -34,7 +87,12 @@ const liftKakaoLeave: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.boxShadow = "0 8px 22px rgba(254, 229, 0, 0.35)";
 };
 
-export default function Login({ loaderData }: Route.ComponentProps) {
+export default function Login({ loaderData, actionData }: Route.ComponentProps) {
+  const navigation = useNavigation();
+  const submitting = navigation.state !== "idle";
+  const error =
+    actionData && "error" in actionData ? actionData.error : null;
+
   return (
     <section
       style={{
@@ -142,6 +200,79 @@ export default function Login({ loaderData }: Route.ComponentProps) {
             <KakaoLogo style={{ width: 20, height: 20 }} />
             카카오로 시작하기
           </Link>
+
+          {/* feat-000-017 — 운영자가 켠 경우에만 이메일·비밀번호 로그인 노출 */}
+          {loaderData.passwordLogin ? (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  margin: "22px 0 18px",
+                }}
+              >
+                <span style={{ flex: 1, height: 1, background: PALETTE.line }} />
+                <span
+                  style={{
+                    font: `500 12px/1 ${FONT}`,
+                    color: PALETTE.inkMute,
+                  }}
+                >
+                  또는 이메일로 로그인
+                </span>
+                <span style={{ flex: 1, height: 1, background: PALETTE.line }} />
+              </div>
+              <Form method="post" style={{ textAlign: "left" }}>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  autoComplete="email"
+                  placeholder="이메일"
+                  className="border-input bg-background mb-2 h-11 w-full rounded-lg border px-3 text-sm"
+                />
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  autoComplete="current-password"
+                  placeholder="비밀번호"
+                  className="border-input bg-background h-11 w-full rounded-lg border px-3 text-sm"
+                />
+                {error ? (
+                  <p
+                    style={{
+                      font: `500 12px/1.5 ${FONT}`,
+                      color: "#dc2626",
+                      margin: "8px 2px 0",
+                    }}
+                  >
+                    {error}
+                  </p>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-primary text-primary-foreground mt-3 h-11 w-full rounded-lg text-sm font-bold disabled:opacity-60"
+                >
+                  {submitting ? "로그인 중…" : "이메일로 로그인"}
+                </button>
+              </Form>
+              <div style={{ marginTop: 12 }}>
+                <Link
+                  to="/forgot-password"
+                  style={{
+                    font: `500 12px/1 ${FONT}`,
+                    color: PALETTE.inkSoft,
+                    textDecoration: "underline",
+                  }}
+                >
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </div>
+            </>
+          ) : null}
 
           <p
             style={{

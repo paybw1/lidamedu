@@ -1,15 +1,18 @@
 /**
- * Join Screen — 카카오 OAuth 단일 회원가입.
+ * Join Screen — 카카오 OAuth + (운영자 토글 시) 이메일·비밀번호 가입.
  *
- * 이메일·비밀번호·구글 진입 제거 — 가입은 카카오로만. 수집 항목(닉네임·프로필 사진·
- * 카카오계정 이메일·이름·전화번호·배송지)은 카카오 동의항목으로 받는다(start.tsx scope).
- * 필수 동의(이용약관·개인정보·학습 데이터)는 가입 후 /consent 게이트에서 수렴한다.
+ * 기본은 카카오 단일. 운영자가 /admin/auth 에서 id/pw 를 켜면 이메일·비밀번호
+ * 가입 폼이 함께 노출된다. 필수 동의는 가입 후 /consent 게이트에서 수렴한다.
  */
 import type { Route } from "./+types/join";
 
 import type { MouseEventHandler } from "react";
-import { Link } from "react-router";
+import { Form, Link, data, redirect, useNavigation } from "react-router";
+import { z } from "zod";
 
+import { claimSession } from "~/core/lib/single-session.server";
+import makeServerClient from "~/core/lib/supa-client.server";
+import { isPasswordLoginEnabled } from "~/features/auth/settings.server";
 import { EASE_REVEAL, PALETTE, Reveal } from "~/features/home/lib/landing";
 
 import { KakaoLogo } from "../components/logos/kakao";
@@ -20,6 +23,68 @@ export const meta: Route.MetaFunction = () => [
   { title: `회원가입 | 리담변리사학원` },
 ];
 
+export async function loader({ request }: Route.LoaderArgs) {
+  const [client] = makeServerClient(request);
+  const passwordLogin = await isPasswordLoginEnabled(client);
+  return { passwordLogin };
+}
+
+const signupSchema = z.object({
+  name: z.string().trim().min(1).max(40),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+// feat-000-017 — 이메일·비밀번호 가입. ★서버 권위: 토글 OFF면 거부.
+export async function action({ request }: Route.ActionArgs) {
+  const [client, headers] = makeServerClient(request);
+  if (!(await isPasswordLoginEnabled(client))) {
+    return data(
+      { error: "이메일 가입이 비활성화되어 있습니다." },
+      { status: 403 },
+    );
+  }
+  const fd = await request.formData();
+  const parsed = signupSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) {
+    return data(
+      { error: "이름·이메일·비밀번호(8자 이상)를 확인해 주세요." },
+      { status: 400 },
+    );
+  }
+  const origin = new URL(request.url).origin;
+  const { data: signUpData, error } = await client.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    options: {
+      data: { name: parsed.data.name },
+      emailRedirectTo: `${origin}/auth/confirm?type=email`,
+    },
+  });
+  if (error) {
+    return data(
+      { error: "가입에 실패했습니다. 이미 가입된 이메일인지 확인해 주세요." },
+      { status: 400 },
+    );
+  }
+  // 이메일 확인 필요(세션 없음) → 안내. 자동 확인(세션 있음) → 단일세션 등록 후 진입.
+  if (!signUpData.session) {
+    return data({ ok: true as const, needsConfirm: true as const });
+  }
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (user) {
+    await claimSession(client, request, headers);
+    try {
+      await client.auth.signOut({ scope: "others" });
+    } catch {
+      /* 보조 */
+    }
+  }
+  return redirect("/", { headers });
+}
+
 const liftKakao: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.transform = "translateY(-1px)";
   e.currentTarget.style.boxShadow = "0 12px 28px rgba(254, 229, 0, 0.45)";
@@ -29,7 +94,13 @@ const liftKakaoLeave: MouseEventHandler<HTMLElement> = (e) => {
   e.currentTarget.style.boxShadow = "0 8px 22px rgba(254, 229, 0, 0.35)";
 };
 
-export default function Join() {
+export default function Join({ loaderData, actionData }: Route.ComponentProps) {
+  const navigation = useNavigation();
+  const submitting = navigation.state !== "idle";
+  const error = actionData && "error" in actionData ? actionData.error : null;
+  const needsConfirm =
+    actionData && "needsConfirm" in actionData && actionData.needsConfirm;
+
   return (
     <section
       style={{
@@ -59,17 +130,16 @@ export default function Join() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              padding: "6px 12px",
-              background: PALETTE.tint,
-              color: PALETTE.primary,
+              padding: "7px 14px",
+              background: PALETTE.primary,
+              color: "#fff",
               borderRadius: 9999,
-              font: `600 11px/1 ${FONT}`,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
+              font: `700 12px/1 ${FONT}`,
+              letterSpacing: "0.1em",
               marginBottom: 22,
             }}
           >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: PALETTE.primary }} />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff" }} />
             리담변리사학원
           </div>
 
@@ -120,6 +190,90 @@ export default function Join() {
             카카오로 시작하기
           </Link>
 
+          {/* feat-000-017 — 운영자가 켠 경우에만 이메일·비밀번호 가입 노출 */}
+          {loaderData.passwordLogin ? (
+            needsConfirm ? (
+              <div
+                style={{
+                  marginTop: 22,
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  background: PALETTE.tint,
+                  border: `1px solid ${PALETTE.line}`,
+                  color: PALETTE.ink,
+                  font: `500 13px/1.6 ${FONT}`,
+                  textAlign: "left",
+                }}
+              >
+                입력하신 이메일로 <strong>가입 확인 메일</strong>을 보냈습니다.
+                메일의 링크를 클릭해 인증을 완료한 뒤 로그인해 주세요.
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    margin: "22px 0 18px",
+                  }}
+                >
+                  <span style={{ flex: 1, height: 1, background: PALETTE.line }} />
+                  <span style={{ font: `500 12px/1 ${FONT}`, color: PALETTE.inkMute }}>
+                    또는 이메일로 가입
+                  </span>
+                  <span style={{ flex: 1, height: 1, background: PALETTE.line }} />
+                </div>
+                <Form method="post" style={{ textAlign: "left" }}>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    maxLength={40}
+                    autoComplete="name"
+                    placeholder="이름"
+                    className="border-input bg-background mb-2 h-11 w-full rounded-lg border px-3 text-sm"
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    autoComplete="email"
+                    placeholder="이메일"
+                    className="border-input bg-background mb-2 h-11 w-full rounded-lg border px-3 text-sm"
+                  />
+                  <input
+                    type="password"
+                    name="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    placeholder="비밀번호 (8자 이상)"
+                    className="border-input bg-background h-11 w-full rounded-lg border px-3 text-sm"
+                  />
+                  {error ? (
+                    <p
+                      style={{
+                        font: `500 12px/1.5 ${FONT}`,
+                        color: "#dc2626",
+                        margin: "8px 2px 0",
+                      }}
+                    >
+                      {error}
+                    </p>
+                  ) : null}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="bg-primary text-primary-foreground mt-3 h-11 w-full rounded-lg text-sm font-bold disabled:opacity-60"
+                  >
+                    {submitting ? "가입 중…" : "이메일로 가입"}
+                  </button>
+                </Form>
+              </>
+            )
+          ) : null}
+
           <p
             style={{
               font: `400 13px/1.5 ${FONT}`,
@@ -142,7 +296,7 @@ export default function Join() {
               margin: "16px 0 0",
             }}
           >
-            카카오로 가입 시{" "}
+            가입 시{" "}
             <Link to="/legal/terms-of-service" style={{ color: PALETTE.inkSoft, textDecoration: "underline" }}>
               이용약관
             </Link>

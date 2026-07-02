@@ -8,6 +8,7 @@ import {
   ChevronDownIcon,
   GavelIcon,
   GraduationCapIcon,
+  KeyRoundIcon,
   LayoutDashboardIcon,
   Link2Icon,
   ListChecksIcon,
@@ -36,7 +37,8 @@ export type AdminClusterId =
   | "gs"
   | "analytics"
   | "comms"
-  | "ai-qna";
+  | "ai-qna"
+  | "auth-settings";
 
 // 상위 섹션 — 클러스터를 4개 도메인으로 묶어 사이드바·허브에서 그룹 표시.
 export type AdminSectionId = "content" | "students" | "exam" | "system";
@@ -227,6 +229,14 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "색인 상태", to: "/admin/ai-qna/embed-status" },
       { label: "한도 설정", to: "/admin/ai-qna/settings" },
     ],
+  },
+  {
+    // 로그인 방식 등 인증 설정. feat-000-017 — id/pw 로그인 노출 토글.
+    id: "auth-settings",
+    section: "system",
+    label: "로그인 설정",
+    Icon: KeyRoundIcon,
+    screens: [{ label: "로그인 방식", to: "/admin/auth" }],
   },
 ];
 
