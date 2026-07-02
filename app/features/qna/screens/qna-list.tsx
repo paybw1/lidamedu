@@ -30,7 +30,10 @@ import {
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import { countReviewQueue, listThreads, type ListFilter } from "../queries.server";
-import { resolveTargetDisplay } from "../lib/target-display.server";
+import {
+  resolveTargetDisplay,
+  type CrumbSegment,
+} from "../lib/target-display.server";
 
 import type { Route } from "./+types/qna-list";
 
@@ -61,6 +64,54 @@ const TARGET_TONE: Record<
   study_method: "emerald",
   general: "neutral",
 };
+
+// 대상 유형(② 세그먼트) pill 색 — 조문/판례/문제/쟁점.
+const CRUMB_TYPE_TONE: Record<string, string> = {
+  조문: "bg-primary/10 text-primary",
+  판례: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
+  문제: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  쟁점: "bg-primary/10 text-primary",
+};
+
+// 과목 › 유형 › 식별자 › 쟁점(체계도) breadcrumb 한 줄.
+function TargetCrumb({ segments }: { segments: CrumbSegment[] }) {
+  return (
+    <div className="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+      {segments.map((seg, i) => (
+        <span key={i} className="inline-flex items-center gap-1.5">
+          {i > 0 ? (
+            <span className="text-muted-foreground/50 text-[11px]">›</span>
+          ) : null}
+          {seg.kind === "subject" ? (
+            <span className="bg-muted rounded-md px-2 py-0.5 font-bold">
+              {seg.text}
+            </span>
+          ) : seg.kind === "type" ? (
+            <span
+              className={cn(
+                "rounded-md px-2 py-0.5 font-bold",
+                CRUMB_TYPE_TONE[seg.text] ?? "bg-muted text-muted-foreground",
+              )}
+            >
+              {seg.text}
+            </span>
+          ) : seg.kind === "node" ? (
+            <span className="text-link font-bold">◆ {seg.text}</span>
+          ) : (
+            <span className="font-bold">
+              {seg.text}
+              {seg.sub ? (
+                <span className="text-muted-foreground ml-1 font-medium">
+                  {seg.sub}
+                </span>
+              ) : null}
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export const meta: Route.MetaFunction = () => [{ title: "Q&A | 리담변리사학원" }];
 
@@ -101,20 +152,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     isStaff ? countReviewQueue(client) : Promise.resolve(0),
   ]);
 
-  // 대상(조문/판례/문제) 설명 라벨 — "무엇에 대한 질문인지"를 리스트에 표시.
-  //   질문 제목만으론 대상이 안 보여서(예: "의료업"), 대상 상세 라벨을 함께 노출.
-  const targetLabels: Record<string, string> = {};
+  // 대상 breadcrumb — "무엇에 대한 질문인지"를 과목 › 유형 › 식별자 › 쟁점 4단계로 표시.
+  //   질문 제목만으론 대상이 안 보여서(예: "의료업") 대상 경로를 함께 노출.
+  const targetCrumbs: Record<string, CrumbSegment[]> = {};
   await Promise.all(
     threads.map(async (t) => {
       if (!t.targetId) return;
       const d = await resolveTargetDisplay(client, t.targetType, t.targetId);
-      if (d?.label) targetLabels[t.threadId] = d.label;
+      if (d?.segments?.length) targetCrumbs[t.threadId] = d.segments;
     }),
   );
 
   return {
     threads,
-    targetLabels,
+    targetCrumbs,
     scope,
     targetType,
     subject,
@@ -128,7 +179,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function QnaList({ loaderData }: Route.ComponentProps) {
   const {
     threads,
-    targetLabels,
+    targetCrumbs,
     scope,
     targetType,
     subject,
@@ -333,27 +384,39 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
                       : "border-border bg-card hover:border-primary/30",
                   )}
                 >
-                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                    <Chip tone={TARGET_TONE[t.targetType]}>
-                      {QNA_TARGET_LABEL[t.targetType]}
-                    </Chip>
-                    {t.subject ? (
-                      <Chip tone="neutral">{subjectLabel(t.subject)}</Chip>
-                    ) : null}
-                    <Chip tone={isWaiting ? "coral" : "emerald"}>
-                      {QNA_STATUS_LABEL[t.status]}
-                    </Chip>
-                    {isMine ? <Chip tone="outline">내 질문</Chip> : null}
-                    {isMyAnswer ? <Chip tone="outline">내 답변</Chip> : null}
-                    <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">
-                      {relativeKo(t.createdAt)}
-                    </span>
-                  </div>
-                  {targetLabels[t.threadId] ? (
-                    <p className="text-link mb-0.5 text-[12px] font-semibold">
-                      {targetLabels[t.threadId]}
-                    </p>
-                  ) : null}
+                  {(() => {
+                    const crumb = targetCrumbs[t.threadId];
+                    return (
+                      <>
+                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                          {/* 유형·과목은 breadcrumb 이 있으면 그쪽에서 표기 → 중복 제거. */}
+                          {!crumb ? (
+                            <>
+                              <Chip tone={TARGET_TONE[t.targetType]}>
+                                {QNA_TARGET_LABEL[t.targetType]}
+                              </Chip>
+                              {t.subject ? (
+                                <Chip tone="neutral">
+                                  {subjectLabel(t.subject)}
+                                </Chip>
+                              ) : null}
+                            </>
+                          ) : null}
+                          <Chip tone={isWaiting ? "coral" : "emerald"}>
+                            {QNA_STATUS_LABEL[t.status]}
+                          </Chip>
+                          {isMine ? <Chip tone="outline">내 질문</Chip> : null}
+                          {isMyAnswer ? (
+                            <Chip tone="outline">내 답변</Chip>
+                          ) : null}
+                          <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">
+                            {relativeKo(t.createdAt)}
+                          </span>
+                        </div>
+                        {crumb ? <TargetCrumb segments={crumb} /> : null}
+                      </>
+                    );
+                  })()}
                   <p className="text-[15px] leading-snug font-bold tracking-tight">
                     {t.title}
                   </p>

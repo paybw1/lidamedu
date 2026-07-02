@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Q&amp;A 대상 해시태그 breadcrumb — 미리보기</title>
+    <style>
+      :root {
+        --bg: #f6f7f8;
+        --card: #ffffff;
+        --border: #e6e8ea;
+        --ink: #1c2024;
+        --ink-soft: #6b7280;
+        --muted: #9aa1a9;
+        /* 대상 유형 색 (앱 TARGET_TONE 과 정합) */
+        --primary: #2f6f4f; /* 조문 */
+        --primary-bg: #e9f3ee;
+        --violet: #6b4fa0; /* 판례 */
+        --violet-bg: #efeaf7;
+        --amber: #a06a1f; /* 문제 */
+        --amber-bg: #f6efe1;
+        --emerald: #1f7a5a; /* 공부방법 */
+        --emerald-bg: #e5f3ee;
+        --rose: #c0392b;
+        --rose-bg: #fbecea;
+        --link: #2563a8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Pretendard, "Pretendard Variable", -apple-system, system-ui, sans-serif;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+      h1 { font-size: 22px; letter-spacing: -0.02em; margin: 0 0 6px; }
+      .lede { color: var(--ink-soft); font-size: 14px; margin: 0 0 28px; }
+      .sec-label {
+        font: 700 11px/1 ui-monospace, monospace;
+        letter-spacing: 0.12em; text-transform: uppercase;
+        color: var(--muted); margin: 30px 0 10px;
+      }
+
+      /* ── 카드 ── */
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 15px 16px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 2px rgba(16,24,40,0.04);
+      }
+      .card.waiting { border-color: rgba(192,57,43,0.28); background: rgba(192,57,43,0.04); }
+
+      /* ── 상단 상태 칩 줄 (기존 유지) ── */
+      .chiprow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 9px; }
+      .chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        font: 600 11px/1 Pretendard, sans-serif;
+        padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+      }
+      .chip.article { color: var(--primary); background: var(--primary-bg); }
+      .chip.case { color: var(--violet); background: var(--violet-bg); }
+      .chip.problem { color: var(--amber); background: var(--amber-bg); }
+      .chip.method { color: var(--emerald); background: var(--emerald-bg); }
+      .chip.neutral { color: var(--ink-soft); background: #f0f1f2; }
+      .chip.waiting { color: var(--rose); background: var(--rose-bg); }
+      .chip.done { color: var(--emerald); background: var(--emerald-bg); }
+      .time { margin-left: auto; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+      /* ── ★ 핵심: 대상 breadcrumb (해시태그 경로) ── */
+      .crumb {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+        margin-bottom: 7px; font-size: 12px;
+      }
+      .seg { display: inline-flex; align-items: center; }
+      /* 1) 과목 · 2) 유형 = 작은 pill */
+      .seg.pill {
+        font-weight: 700; padding: 2px 8px; border-radius: 6px;
+      }
+      .seg.subj { color: var(--ink); background: #eef0f2; }
+      .seg.kind-article { color: var(--primary); background: var(--primary-bg); }
+      .seg.kind-case { color: var(--violet); background: var(--violet-bg); }
+      .seg.kind-problem { color: var(--amber); background: var(--amber-bg); }
+      .seg.kind-method { color: var(--emerald); background: var(--emerald-bg); }
+      /* 3) 식별자 = 굵은 텍스트 */
+      .seg.ident { font-weight: 700; color: var(--ink); }
+      .seg.ident .sub { font-weight: 500; color: var(--ink-soft); }
+      /* 4) 체계도 노드 = 링크 톤 (쟁점) */
+      .seg.node { font-weight: 700; color: var(--link); }
+      .seg.node::before { content: "◆"; font-size: 8px; margin-right: 3px; opacity: 0.7; }
+      .sep { color: var(--muted); font-size: 11px; user-select: none; }
+
+      .title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 4px; }
+      .meta { color: var(--ink-soft); font-size: 12.5px; }
+
+      /* Variant B (해시태그 스타일) */
+      .hash { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; }
+      .tag {
+        font: 600 11.5px/1 Pretendard, sans-serif;
+        padding: 3px 8px; border-radius: 999px;
+        background: #f0f1f2; color: var(--ink-soft);
+      }
+      .tag.k { color: var(--primary); background: var(--primary-bg); }
+      .tag.n { color: var(--link); background: #e8f0fa; }
+
+      .note {
+        margin-top: 34px; padding: 16px 18px; border-radius: 12px;
+        background: #eef2f7; border: 1px solid #dbe3ec; font-size: 13px; color: #38424f;
+      }
+      .note b { color: #1c2024; }
+      .note code { background: #dde5ee; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+      table.map { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+      table.map th, table.map td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #dbe3ec; vertical-align: top; }
+      table.map th { color: var(--ink-soft); font-weight: 700; width: 74px; white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Q&amp;A 질문 목록 — 대상 해시태그 breadcrumb</h1>
+      <p class="lede">
+        질문마다 <b>과목 › 유형 › 식별자 › 쟁점(체계도 노드)</b> 4단계 경로를 붙여
+        “무엇에 대한 질문인지”를 한 줄로 보여줍니다. 마지막 <b>쟁점 노드</b>가
+        조문·판례·문제를 하나의 체계도 위에서 묶는 공통 좌표입니다.
+      </p>
+
+      <div class="sec-label">방안 A — breadcrumb 경로형 (권장)</div>
+
+      <!-- 조문 -->
+      <div class="card">
+        <div class="chiprow">
+          <span class="chip article">조문</span>
+          <span class="chip neutral">특허법</span>
+          <span class="chip done">답변완료</span>
+          <span class="time">2일 전</span>
+        </div>
+        <div class="crumb">
+          <span class="seg pill subj">특허</span>
+          <span class="sep">›</span>
+          <span class="seg pill kind-article">조문</span>
+          <span class="sep">›</span>
+          <span class="seg ident">제29조 <span class="sub">특허요건</span></span>
+          <span class="sep">›</span>
+          <span class="seg node">산업상 이용가능성</span>
+        </div>
+        <div class="title">의료업이 산업상 이용가능성에서 제외되는 근거가 궁금합니다</div>
+        <div class="meta">홍길동 → 김강사</div>
+      </div>
+
+      <!-- 판례 -->
+      <div class="card waiting">
+        <div class="chiprow">
+          <span class="chip case">판례</span>
+          <span class="chip neutral">특허법</span>
+          <span class="chip waiting">답변대기</span>
+          <span class="time">5시간 전</span>
+        </div>
+        <div class="crumb">
+          <span class="seg pill subj">특허</span>
+          <span class="sep">›</span>
+          <span class="seg pill kind-case">판례</span>
+          <span class="sep">›</span>
+          <span class="seg ident">2001후2801 <span class="sub">대법원 2003. 3. 14. 선고</span></span>
+          <span class="sep">›</span>
+          <span class="seg node">산업상 이용가능성</span>
+        </div>
+        <div class="title">이 판례에서 ‘의료행위’와 ‘의료기기’를 나눈 기준이 뭔가요?</div>
+        <div class="meta">이수험</div>
+      </div>
+
+      <!-- 문제 -->
+      <div class="card">
+        <div class="chiprow">
+          <span class="chip problem">문제</span>
+          <span class="chip neutral">특허법</span>
+          <span class="chip done">답변완료</span>
+          <span class="time">1일 전</span>
+        </div>
+        <div class="crumb">
+          <span class="seg pill subj">특허</span>
+          <span class="sep">›</span>
+          <span class="seg pill kind-problem">문제</span>
+          <span class="sep">›</span>
+          <span class="seg ident">2020년 기출 <span class="sub">12번 · P-3417</span></span>
+          <span class="sep">›</span>
+          <span class="seg node">진보성</span>
+        </div>
+        <div class="title">③번 선지가 왜 틀린 지문인지 이해가 안 됩니다</div>
+        <div class="meta">박학생 → 최강사</div>
+      </div>
+
+      <!-- 공부방법 -->
+      <div class="card">
+        <div class="chiprow">
+          <span class="chip method">공부방법</span>
+          <span class="chip neutral">특허법</span>
+          <span class="chip done">답변완료</span>
+          <span class="time">3일 전</span>
+        </div>
+        <div class="crumb">
+          <span class="seg pill subj">특허</span>
+          <span class="sep">›</span>
+          <span class="seg pill kind-method">공부방법</span>
+        </div>
+        <div class="title">진보성 판단 파트는 조문·판례 어느 순서로 보는 게 좋을까요?</div>
+        <div class="meta">정수험 → 김강사</div>
+      </div>
+
+      <div class="sec-label">방안 B — 해시태그 나열형 (대안)</div>
+
+      <div class="card">
+        <div class="chiprow">
+          <span class="chip case">판례</span>
+          <span class="chip neutral">특허법</span>
+          <span class="chip done">답변완료</span>
+          <span class="time">2일 전</span>
+        </div>
+        <div class="hash">
+          <span class="tag">#특허</span>
+          <span class="tag k">#판례</span>
+          <span class="tag">#2001후2801</span>
+          <span class="tag n">#산업상이용가능성</span>
+        </div>
+        <div class="title">이 판례에서 ‘의료행위’와 ‘의료기기’를 나눈 기준이 뭔가요?</div>
+        <div class="meta">이수험</div>
+      </div>
+
+      <div class="card">
+        <div class="chiprow">
+          <span class="chip problem">문제</span>
+          <span class="chip neutral">특허법</span>
+          <span class="chip done">답변완료</span>
+          <span class="time">1일 전</span>
+        </div>
+        <div class="hash">
+          <span class="tag">#특허</span>
+          <span class="tag k">#문제</span>
+          <span class="tag">#2020기출_12번</span>
+          <span class="tag n">#진보성</span>
+        </div>
+        <div class="title">③번 선지가 왜 틀린 지문인지 이해가 안 됩니다</div>
+        <div class="meta">박학생 → 최강사</div>
+      </div>
+
+      <div class="note">
+        <b>데이터는 이미 다 있습니다 — 표시 방식만 바꾸면 됩니다.</b>
+        현재 <code>resolveTargetDisplay()</code> 가 단일 문자열(예: 판례 <code>2001후2801</code>)만
+        반환해서 리스트에 파편만 보이는 상태입니다. 이를 4개 세그먼트 객체로 확장합니다.
+        <table class="map">
+          <tr><th>세그먼트</th><th>출처 (기존 테이블)</th></tr>
+          <tr><td>① 과목</td><td><code>laws.short_label</code> / thread.subject</td></tr>
+          <tr><td>② 유형</td><td>thread.target_type (조문·판례·문제)</td></tr>
+          <tr>
+            <td>③ 식별자</td>
+            <td>
+              조문 = <code>articles.article_number</code> + <code>title</code><br />
+              판례 = <code>cases.case_number</code> (+ court·decided_at)<br />
+              문제 = <code>origin</code>+<code>year</code>+<code>problem_number</code> (+ P-code)
+            </td>
+          </tr>
+          <tr>
+            <td>④ 쟁점<br />(체계도)</td>
+            <td>
+              조문 → <code>article_systematic_links</code> → <code>systematic_nodes.display_label</code><br />
+              판례 → 판례에 연결된 조문/노드 (없으면 ④ 생략)<br />
+              문제 → <code>problems.primary_node_id</code> → <code>systematic_nodes</code>
+            </td>
+          </tr>
+        </table>
+        ④가 없는 경우(연결 미지정·공부방법·일반)는 세그먼트를 자동 생략합니다.
+        조문이 여러 노드에 걸리면 <b>primary/첫 노드 1개만</b> 표시(중복 방지).
+      </div>
+    </div>
+  </body>
+</html>
