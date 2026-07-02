@@ -12,6 +12,10 @@ import QnaNewQuestionEmail from "../../../transactional-emails/emails/qna-new-qu
 
 import { QNA_QUALITY_LABEL, QNA_TARGET_LABEL, type QnaQualityGrade, type QnaTargetType } from "./labels";
 import {
+  getAnswererIdsForCategory,
+  resolveAnswererCategory,
+} from "./answerers.server";
+import {
   KakaoNotConfigured,
   sendKakaoAlimtalk,
   type KakaoTemplateKey,
@@ -140,20 +144,32 @@ async function dispatch(
 interface NewQuestionPayload {
   threadId: string;
   targetType: QnaTargetType;
+  targetId: string | null;
+  subject: string | null;
   title: string;
   questionMd: string;
   askerName: string | null;
 }
 
-// 풀 모델: 모든 instructor + admin 에게 (질문자 본인 제외) 알림 발송.
+// 라우팅 모델: 질문의 답변자 카테고리에 지정된 담당자에게만 발송.
+//   담당자 미지정(또는 공통/미해결)이면 전체 staff 풀 fallback — 질문 유실 방지.
 export async function notifyNewQuestion(
   payload: NewQuestionPayload,
   excludeProfileId: string,
 ): Promise<void> {
   try {
-    const staffIds = (await fetchStaffProfileIds()).filter(
-      (id) => id !== excludeProfileId,
-    );
+    const category = await resolveAnswererCategory(adminClient, {
+      targetType: payload.targetType,
+      targetId: payload.targetId,
+      subject: payload.subject,
+    });
+    const assignedIds = category
+      ? await getAnswererIdsForCategory(adminClient, category)
+      : [];
+    // 담당자 지정 → 그 담당자에게만. 미지정 → 전체 staff 풀.
+    const targetIds =
+      assignedIds.length > 0 ? assignedIds : await fetchStaffProfileIds();
+    const staffIds = targetIds.filter((id) => id !== excludeProfileId);
     const recipients = await fetchRecipients(staffIds);
     if (recipients.length === 0) return;
 

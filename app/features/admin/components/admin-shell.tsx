@@ -211,6 +211,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       { label: "공지 발송", to: "/admin/announcements" },
       { label: "받은 알림함", to: "/admin/inbox" },
+      { label: "Q&A 답변자 지정", to: "/admin/qna/answerers" },
       { label: "감사 기록", to: "/admin/audit-logs" },
       { label: "커뮤니티 신고", to: "/admin/community/reports" },
     ],

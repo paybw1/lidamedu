@@ -121,6 +121,8 @@ export async function action({ request }: Route.ActionArgs) {
       {
         threadId: thread.threadId,
         targetType: thread.targetType,
+        targetId: thread.targetId,
+        subject: thread.subject,
         title: thread.title,
         questionMd: thread.questionMd,
         askerName: thread.askerName,

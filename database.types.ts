@@ -5284,6 +5284,59 @@ export type Database = {
         }
         Relationships: []
       }
+      qna_answerer_assignments: {
+        Row: {
+          answerer_id: string
+          assignment_id: string
+          category: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          answerer_id: string
+          assignment_id?: string
+          category: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          answerer_id?: string
+          assignment_id?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qna_answerer_assignments_answerer_id_fkey"
+            columns: ["answerer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_answerer_assignments_answerer_id_fkey"
+            columns: ["answerer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_answerer_assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_answerer_assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       qna_messages: {
         Row: {
           author_id: string | null

@@ -738,6 +738,11 @@ export default [
       ),
       // feat-000-017 — 운영자 로그인 방식 설정(id/pw 토글).
       route("/admin/auth", "features/auth/screens/admin-auth-settings.tsx"),
+      // Q&A 과목별 답변자 지정 — 새 질문 담당자 라우팅.
+      route(
+        "/admin/qna/answerers",
+        "features/qna/screens/admin-qna-answerers.tsx",
+      ),
       route("/onboarding/welcome", "features/onboarding/screens/welcome.tsx"),
       route("/pricing", "features/subscriptions/screens/pricing.tsx"),
       route(
