@@ -745,16 +745,18 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 
           <SectionBand eyebrow="PASS FORECAST · 합격 예측" />
           <DashGrid>
-            <SpanCol span={6}>
-              <PassPredictionCard prediction={passPrediction} />
-            </SpanCol>
             {!passerGate.enabled ? (
-              // 1년차 — 합격자 비교 게이트 OFF. 합격 기준 안내 카드로 대체.
+              // 합격자 데이터 게이트 OFF — 합격 예측은 합격자 기준이 없어 신뢰가 어렵다.
+              // 예측 카드는 숨기고 공식 합격선 안내만. 실 합격자 ≥ 임계 누적 시 자동 노출.
+              // (예측 점수·스냅샷은 runAfterResponse 로 계속 기록 → 데이터 준비되면 그대로 표시)
               <SpanCol span={6}>
                 <PassCriterionAnnouncementCard gate={passerGate} />
               </SpanCol>
             ) : (
               <>
+                <SpanCol span={6}>
+                  <PassPredictionCard prediction={passPrediction} />
+                </SpanCol>
                 {passerBenchmark !== null ? (
                   <SpanCol span={4}>
                     <PasserBenchmarkCard benchmark={passerBenchmark} />
