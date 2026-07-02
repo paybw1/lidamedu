@@ -15,7 +15,9 @@ const paras = (j.paragraphs || j)
   .map((p) => (p.text || "").trim())
   .filter((t) => t && !SEP_ROW.test(t)); // 표 구분행 단독 문단 제거
 
-const MARKER = /^【\s*([A-Z])\s*-\s*(\d+)\s*】\s*\((\d+)\s*점\)/;
+// 문제 마커 — 【 A-1 】(30점)(2010~2013) / 【 문제-1 】(30점)(2014~) 양식 모두 수용.
+//   【 】 안 내용을 라벨로, 뒤 (N점)을 배점으로.
+const MARKER = /^【\s*([^】]+?)\s*】\s*\(\s*(\d+)\s*점\s*\)/;
 
 const SEP_ONLY = /^[\s|:\-]+$/; // 마크다운 표 구분행(| --- |)
 
@@ -49,8 +51,8 @@ for (const t of paras) {
   if (m) {
     if (cur) problems.push(cur);
     cur = {
-      label: `${m[1]}-${m[2]}`,
-      totalPoints: Number(m[3]),
+      label: m[1].replace(/\s+/g, " ").trim(), // "A-1" 또는 "문제-1"
+      totalPoints: Number(m[2]),
       lines: [],
     };
     continue;
