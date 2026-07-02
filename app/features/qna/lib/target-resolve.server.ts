@@ -9,6 +9,7 @@ import {
   getArticleByNumber,
   getLawByCode,
 } from "~/features/laws/queries.server";
+import { formatProblemCode } from "~/features/problems/lib/problem-code";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type { QnaTargetType } from "../labels";
@@ -202,5 +203,37 @@ export async function resolveProblemTarget(
       origin: row.origin,
     }),
     href: problemHref(lawCode, row.problem_id),
+  };
+}
+
+// 문제 고유번호(display_no) → 문제 target. 코드 "P-{n}" 로 한 번에 특정.
+export async function resolveProblemByDisplayNo(
+  client: SupabaseClient<Database>,
+  displayNo: number,
+): Promise<ResolvedTarget | null> {
+  const { data, error } = await client
+    .from("problems")
+    .select(
+      "problem_id, display_no, year, problem_number, origin, laws!inner(law_code)",
+    )
+    .eq("display_no", displayNo)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const lawCode = asLawSubject(data.laws.law_code);
+  if (!lawCode) return null;
+  const law = await getLawByCode(client, lawCode);
+  const base = problemDisplayLabel({
+    shortLabel: law?.shortLabel ?? "",
+    year: data.year,
+    problemNumber: data.problem_number,
+    origin: data.origin,
+  });
+  return {
+    targetType: "problem",
+    targetId: data.problem_id,
+    label: `${formatProblemCode(data.display_no)} · ${base}`,
+    href: problemHref(lawCode, data.problem_id),
   };
 }

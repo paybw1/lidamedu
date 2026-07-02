@@ -12,6 +12,7 @@ import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
 import { Chip } from "~/features/community/components/community-ui";
 import { CommunityShell } from "~/features/community/components/community-shell";
+import { parseProblemCode } from "~/features/problems/lib/problem-code";
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import {
@@ -118,6 +119,7 @@ export default function QnaNew({ loaderData }: Route.ComponentProps) {
 const PICKER_KINDS = [
   { key: "article", label: "조문" },
   { key: "case", label: "판례" },
+  { key: "problem_code", label: "문제번호" },
   { key: "problem", label: "문제" },
   { key: "study_method", label: "공부방법" },
 ] as const;
@@ -227,6 +229,7 @@ function QnaTargetPicker() {
   const [origin, setOrigin] = useState<ProblemOriginKey>("past_exam");
   const [year, setYear] = useState("");
   const [problemNumber, setProblemNumber] = useState("");
+  const [problemCode, setProblemCode] = useState("");
   const [primaryNodeId, setPrimaryNodeId] = useState("");
   // 조문이 여러 쟁점에 걸릴 때 — 해석 후 쟁점 선택 단계.
   const [articleChoice, setArticleChoice] = useState<{
@@ -275,11 +278,13 @@ function QnaTargetPicker() {
       ? Boolean(subject && articleNumber.trim())
       : kind === "case"
         ? Boolean(caseNumber.trim())
-        : kind === "problem"
-          ? isExpected
-            ? Boolean(subject && primaryNodeId && problemNumber.trim())
-            : Boolean(subject && year.trim() && problemNumber.trim())
-          : true;
+        : kind === "problem_code"
+          ? parseProblemCode(problemCode) !== null
+          : kind === "problem"
+            ? isExpected
+              ? Boolean(subject && primaryNodeId && problemNumber.trim())
+              : Boolean(subject && year.trim() && problemNumber.trim())
+            : true;
 
   const onSubmit = () => {
     if (kind === "study_method") {
@@ -294,6 +299,11 @@ function QnaTargetPicker() {
     } else if (kind === "case") {
       p.set("type", "case");
       p.set("caseNumber", caseNumber.trim());
+    } else if (kind === "problem_code") {
+      const n = parseProblemCode(problemCode);
+      if (!n) return;
+      p.set("type", "problem_code");
+      p.set("displayNo", String(n));
     } else {
       p.set("type", "problem");
       p.set("subject", subject);
@@ -438,6 +448,23 @@ function QnaTargetPicker() {
               onChange={(e) => setCaseNumber(e.target.value)}
               placeholder="예: 2013도10265"
             />
+          </label>
+        ) : null}
+
+        {kind === "problem_code" ? (
+          <label className="block">
+            <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
+              문제번호
+            </span>
+            <Input
+              value={problemCode}
+              onChange={(e) => setProblemCode(e.target.value)}
+              placeholder="예: P-10342 (문제 화면의 번호)"
+            />
+            <span className="text-muted-foreground mt-1 block text-[11px]">
+              문제 화면 상단의 <strong>P-번호</strong>를 입력하면 그 문제로 바로
+              특정됩니다.
+            </span>
           </label>
         ) : null}
 

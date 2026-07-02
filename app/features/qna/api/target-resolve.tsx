@@ -9,6 +9,7 @@ import {
   resolveArticleTarget,
   resolveCaseTarget,
   resolveNodeTarget,
+  resolveProblemByDisplayNo,
   resolveProblemTarget,
 } from "../lib/target-resolve.server";
 
@@ -27,6 +28,10 @@ const paramSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("case"),
     caseNumber: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("problem_code"),
+    displayNo: z.coerce.number().int().min(1),
   }),
   z.object({
     type: z.literal("problem"),
@@ -67,6 +72,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? await resolveNodeTarget(client, parsed.data.nodeId)
         : parsed.data.type === "case"
           ? await resolveCaseTarget(client, parsed.data.caseNumber)
+          : parsed.data.type === "problem_code"
+          ? await resolveProblemByDisplayNo(client, parsed.data.displayNo)
           : await resolveProblemTarget(client, {
               subject: parsed.data.subject,
               origin: parsed.data.origin,
