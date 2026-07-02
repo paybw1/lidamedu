@@ -544,15 +544,26 @@ function SubscribeButton({
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+      <label className="flex items-start gap-1.5 text-[11px] leading-snug">
         <input
           type="checkbox"
           checked={autoPay}
           onChange={(e) => setAutoPay(e.target.checked)}
-          className="size-3.5"
+          className="mt-0.5 size-3.5 shrink-0"
         />
-        매월 자동결제(동의 시 매월 카드 자동 청구)
+        <span className="text-muted-foreground">매월 자동결제(정기결제)에 동의</span>
       </label>
+      {autoPay ? (
+        <p className="text-muted-foreground rounded-md bg-muted/60 px-2 py-1.5 text-[10px] leading-relaxed">
+          매월 결제일에 <strong>위 표시 금액(할인 적용가)</strong>이 등록하신
+          카드로 <strong>자동 청구</strong>되며, 해지 전까지 매월 갱신됩니다.
+          «내 구독»에서 언제든 해지할 수 있고, 결제 후 3일 이내에는 전액
+          환불됩니다.{" "}
+          <Link to="/legal/refund-policy" className="underline" target="_blank">
+            환불 규정
+          </Link>
+        </p>
+      ) : null}
       <Button
         size="sm"
         type="button"
