@@ -61,7 +61,7 @@ export function StudentSidebar({
   features,
   subjects,
 }: StudentSidebarProps) {
-  const { core, secondary } = useNavLayout();
+  const { core, secondary } = useNavLayout(isStaff);
   // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용(상단바와 동일 규칙). 서버 영역 게이트가 권위, 시각 힌트만.
   const lockOf = (area?: string) => isAreaLocked(area, isStaff, features);
   const location = useLocation();

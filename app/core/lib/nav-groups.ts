@@ -18,7 +18,13 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 
-export type NavLink = { label: string; to: string; meta?: string };
+// staffOnly: 학생에게 숨기고 staff(강사·관리자·원장)에게만 노출. 오픈 준비 중 기능 임시 숨김용.
+export type NavLink = {
+  label: string;
+  to: string;
+  meta?: string;
+  staffOnly?: boolean;
+};
 export type NavGroup = {
   // id 는 풀의 키 — 호출처에서 keyof typeof NAV_GROUP_POOL 로 narrow.
   id: string;
@@ -91,11 +97,12 @@ export const NAV_GROUP_POOL = {
       { label: "최근 판례", to: "/latest/cases" },
       { label: "1차 기출문제", to: "/latest/mcq?kind=past_exam" },
       { label: "2차 기출문제", to: "/latest/essay" },
-      { label: "논문", to: "/latest/papers" },
+      // 논문·합격자 분석 = 오픈 준비 중 → 학생 숨김, staff 만 노출(staffOnly).
+      { label: "논문", to: "/latest/papers", staffOnly: true },
       { label: "추록·정오표", to: "/latest/book-updates" },
       // 합격자 분석(추이·점수분포·선택과목) = 데이터. 합격 수기(서사)는 커뮤니티로 통합 —
       // 학습정보는 '분석', 커뮤니티는 '수기'로 역할 분리(중복 진입점 제거).
-      { label: "합격자 분석", to: "/study/passer-trend" },
+      { label: "합격자 분석", to: "/study/passer-trend", staffOnly: true },
     ],
   },
   mock: {
@@ -198,11 +205,20 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
   { label: "커뮤니티", groupIds: AREA_GROUP_IDS.community },
 ];
 
+// staffOnly 항목은 학생에게 숨김(staff 는 전부). isStaff 미지정 시 전부 노출(안전 기본).
+export function visibleItems(items: NavLink[], isStaff: boolean): NavLink[] {
+  return items.filter((i) => isStaff || !i.staffOnly);
+}
+
 // 상단바 드롭다운 항목 = 구성 그룹들의 items 평탄화(단일 소스 파생).
+//   isStaff 지정 시 staffOnly 항목을 학생에게서 필터(기본 true = 전부, 하위호환).
 export function topbarDropdownItems(
   groupIds: ReadonlyArray<NavGroupId>,
+  isStaff: boolean = true,
 ): NavLink[] {
-  return groupIds.flatMap((id) => NAV_GROUP_POOL[id].items);
+  return groupIds.flatMap((id) =>
+    visibleItems([...NAV_GROUP_POOL[id].items], isStaff),
+  );
 }
 
 // 화면 내 영역 토글(AreaTabs)용 항목 — 드롭다운 항목을 SectionTabItem 모양으로 변환.
@@ -245,16 +261,24 @@ export function getCoreTabIds(): ReadonlyArray<NavGroupId> {
  * useMemo 로 stable reference — 호출처 useEffect/useMemo 의 deps 무한루프 방지.
  * getCoreTabIds() 가 user preference 로 교체될 때는 그 deps 도 추가 필요.
  */
-export function useNavLayout(): { core: NavGroup[]; secondary: NavGroup[] } {
+export function useNavLayout(isStaff: boolean = true): {
+  core: NavGroup[];
+  secondary: NavGroup[];
+} {
   return useMemo(() => {
     const coreIds = getCoreTabIds();
     const coreSet = new Set<NavGroupId>(coreIds);
-    const core = coreIds.map((id) => NAV_GROUP_POOL[id]);
+    // staffOnly 항목을 학생에게서 필터(오픈 준비 중 기능 숨김). staff 는 전부.
+    const withVisible = (id: NavGroupId): NavGroup => {
+      const g = NAV_GROUP_POOL[id];
+      return { ...g, items: visibleItems([...g.items], isStaff) };
+    };
+    const core = coreIds.map(withVisible);
     const secondary = (Object.keys(NAV_GROUP_POOL) as NavGroupId[])
       .filter((id) => !coreSet.has(id))
-      .map((id) => NAV_GROUP_POOL[id]);
+      .map(withVisible);
     return { core, secondary };
-  }, []);
+  }, [isStaff]);
 }
 
 // Flat — 그룹이 아니라 단일 link.

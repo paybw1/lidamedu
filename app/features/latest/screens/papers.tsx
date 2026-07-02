@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import {
   Link,
   data,
+  redirect,
   useFetcher,
   useLocation,
   useNavigate,
@@ -78,6 +79,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
 
   const role = await getStaffRole(client, user.id);
+  // 논문 = 오픈 준비 중 → staff 전용. 학생 직접 접근 차단(nav 에서도 숨김).
+  if (!role) throw redirect("/dashboard");
 
   const url = new URL(request.url);
   const subjectParam = url.searchParams.get("subject");

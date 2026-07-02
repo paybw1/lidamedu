@@ -36,7 +36,12 @@ const INFO_DOT_BY_TO: Record<string, string> = {
 // 학습정보 탭 — 공용 `SectionTabs` 프리미티브. 학습관리/지원 3 영역과 동일 디자인 톤.
 // SectionTabs 가 path 기반 자동 매칭(active 인자는 호환성 유지).
 function LatestTabs({ active: _active }: { active: LatestCategory }) {
-  const items: SectionTabItem[] = topbarDropdownItems(AREA_GROUP_IDS.info).map(
+  // staffOnly(논문·합격자 분석) 은 이 인페이지 탭 스트립에서 숨긴다(오픈 준비 중).
+  //   staff 는 상단바 드롭다운·사이드바·직접 URL 로 접근. 이 컴포넌트엔 isStaff 미전달이라 false 고정.
+  const items: SectionTabItem[] = topbarDropdownItems(
+    AREA_GROUP_IDS.info,
+    false,
+  ).map(
     (link) => {
       const path = link.to.split("?")[0];
       return {

@@ -21,6 +21,7 @@ import {
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import { hasPoolConsent } from "~/features/exam-results/queries.server";
 import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
+import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/passer-trend";
 
@@ -34,6 +35,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login");
+  // 합격자 분석 = 오픈 준비 중 → staff 전용. 학생 직접 접근 차단(nav 에서도 숨김).
+  if (!(await getStaffRole(client, user.id))) throw redirect("/dashboard");
   // 학생 화면 — 합성 합격자 노출 금지 + 게이트 OFF 시 호출 skip.
   // viewer-B 게이트(feat-8-026b) — 전역 게이트 ON + 요청자 풀(B) 동의 동시 충족 시만 비교 노출.
   const gate = await isPasserBenchmarkEnabled();

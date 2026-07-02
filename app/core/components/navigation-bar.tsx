@@ -480,7 +480,7 @@ export function NavigationBar({
                   <SimpleDropdown
                     key={d.label}
                     label={d.label}
-                    items={topbarDropdownItems(d.groupIds ?? [])}
+                    items={topbarDropdownItems(d.groupIds ?? [], isStaff)}
                     locked={isAreaLocked(d.area, isStaff, features)}
                   />
                 ),
@@ -549,7 +549,7 @@ export function NavigationBar({
                       <MobileGroup
                         key={d.label}
                         label={d.label}
-                        items={topbarDropdownItems(d.groupIds ?? [])}
+                        items={topbarDropdownItems(d.groupIds ?? [], isStaff)}
                       />
                     ),
                   )}

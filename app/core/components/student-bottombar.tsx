@@ -66,7 +66,7 @@ export function StudentBottomBar({
   // feat-8-008 — 구독/cohort 영역 플래그. 잠금 흐림(dim) 시각표시용(상단바·사이드바와 동일).
   features?: string[];
 }) {
-  const { core, secondary } = useNavLayout();
+  const { core, secondary } = useNavLayout(isStaff);
   // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용. 서버 영역 게이트가 권위, 시각 힌트만.
   const lockOf = (area?: string) => isAreaLocked(area, isStaff, features);
   const location = useLocation();
