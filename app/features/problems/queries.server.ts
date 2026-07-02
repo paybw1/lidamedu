@@ -498,9 +498,16 @@ export async function listRecentProblems(
     const pattern = `%${escaped}%`;
     q = q.ilike("body_md", pattern);
   }
-  const { data, error } = await q
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  // 2차(주관식) 목록은 시험(연도·회차) 최신순 + 문제번호 오름차순(1,2,3,4).
+  //   mcq LATEST 피드는 종전대로 등록일 최신순.
+  const ordered =
+    formatFilter === "subjective"
+      ? q
+          .order("year", { ascending: false, nullsFirst: false })
+          .order("exam_round_no", { ascending: false, nullsFirst: false })
+          .order("problem_number", { ascending: true, nullsFirst: false })
+      : q.order("created_at", { ascending: false });
+  const { data, error } = await ordered.limit(limit);
   if (error) throw error;
   return (data ?? []).map((r) => ({
     problemId: r.problem_id,

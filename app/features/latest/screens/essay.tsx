@@ -140,7 +140,7 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
       category="essay"
       width="feed"
       title="2차 기출문제"
-      desc={`${descParts.join(" · ")} — 등록일 최신순으로 모은 신규 2차 기출문제입니다.`}
+      desc={`${descParts.join(" · ")} — 최근 시험부터, 문제 순서대로 정리한 2차 기출문제입니다.`}
     >
       <LatestFilterForm
         search={{
