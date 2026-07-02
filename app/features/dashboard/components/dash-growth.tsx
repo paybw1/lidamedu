@@ -1,12 +1,9 @@
 // GROWTH 요약 스트립 — 학습현황(게임화, feat-2-027)의 압축 미러.
-// 레벨(마스터 단원 파생) · 마스터 단원 수 · 연속 학습(스트릭) · 이번 주 공부량 변화.
+// 레벨(마스터 단원 파생) · 마스터 단원 수 · 이번 주 공부량 변화(지난주 대비).
+// ★연속 학습(스트릭)은 여기에 두지 않는다 — 바로 아래 "오늘의 진척도" 칩이 단독 소유.
+//   (스트립 protected streak vs 진척도 raw streak 값 불일치 + 중복 노출 회피)
 // 상세·코호트 비교는 /study/stats. 대시보드는 읽기 미러(persist=false) — 부작용 없음.
-import {
-  FlameIcon,
-  ClockIcon,
-  SproutIcon,
-  TrophyIcon,
-} from "lucide-react";
+import { ClockIcon, SproutIcon, TrophyIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { Card, Num, T } from "~/features/dashboard/lib/dash";
@@ -17,7 +14,6 @@ export interface GrowthStripData {
   masteredCount: number;
   toNext: number | null;
   nextName: string | null;
-  currentStreak: number;
   thisWeekStudyMs: number;
   studyDeltaPct: number | null; // 지난주 대비 %, 첫 주면 null
 }
@@ -70,13 +66,6 @@ export function GrowthStripCard({ g }: { g: GrowthStripData }) {
       value: g.masteredCount,
       unit: "단원",
       sub: "정답률 + 복습 파지 기준",
-    },
-    {
-      icon: FlameIcon,
-      label: "연속 학습",
-      value: g.currentStreak,
-      unit: "일",
-      sub: g.currentStreak > 0 ? "오늘도 이어가요" : "오늘 시작해요",
     },
     {
       icon: ClockIcon,

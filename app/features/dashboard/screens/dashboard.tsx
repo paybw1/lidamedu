@@ -336,7 +336,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       masteredCount: g.level.masteredCount,
       toNext: g.level.toNext,
       nextName: g.level.nextName,
-      currentStreak: g.currentStreak,
       thisWeekStudyMs: g.thisWeekStudyMs,
       studyDeltaPct: g.studyDeltaPct,
     };
