@@ -389,6 +389,21 @@ export async function resolveNodeForTarget(
   return null;
 }
 
+// 과학 문제 대상의 과학 단원(science_sections) 도출 — node_id 와 대칭(과학 축).
+export async function resolveScienceSectionForTarget(
+  client: SupabaseClient<Database>,
+  targetType: QnaTargetType,
+  targetId: string,
+): Promise<string | null> {
+  if (targetType !== "problem") return null;
+  const { data } = await client
+    .from("problems")
+    .select("science_section_id")
+    .eq("problem_id", targetId)
+    .maybeSingle();
+  return data?.science_section_id ?? null;
+}
+
 export async function createThread(
   client: SupabaseClient<Database>,
   asker_id: string,
@@ -412,11 +427,19 @@ export async function createThread(
             input.targetId,
           )
         : (input.subject ?? null);
-  // 단원(체계도 노드) 캡처 — 콘텐츠 대상만. 공부방법·앵커 없는 질문은 null.
-  const nodeId =
-    input.targetType !== "study_method" && input.targetId
-      ? await resolveNodeForTarget(client, input.targetType, input.targetId)
-      : null;
+  // 단원 캡처 — 콘텐츠 대상만. 법과목=체계도 노드 / 과학=science_sections.
+  //   공부방법·앵커 없는 질문은 둘 다 null.
+  const hasAnchor = input.targetType !== "study_method" && !!input.targetId;
+  const [nodeId, scienceSectionId] = hasAnchor
+    ? await Promise.all([
+        resolveNodeForTarget(client, input.targetType, input.targetId!),
+        resolveScienceSectionForTarget(
+          client,
+          input.targetType,
+          input.targetId!,
+        ),
+      ])
+    : [null, null];
   const { data, error } = await client
     .from("qna_threads")
     .insert({
@@ -427,6 +450,7 @@ export async function createThread(
       question_md: input.questionMd,
       subject,
       node_id: nodeId,
+      science_section_id: scienceSectionId,
     })
     .select(DETAIL_COLUMNS)
     .single();

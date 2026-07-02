@@ -362,7 +362,9 @@ function QnaNodeRow({ node, index }: { node: QnaNodeStat; index: number }) {
         <p
           className={cn(
             "truncate text-[13px] font-semibold",
-            node.nodeId ? "text-foreground" : "text-muted-foreground italic",
+            node.nodeId || node.scienceSectionId
+              ? "text-foreground"
+              : "text-muted-foreground italic",
           )}
         >
           {node.displayLabel}

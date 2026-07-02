@@ -10,12 +10,15 @@ import {
   LAW_SUBJECTS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
+import { scienceSubjectName } from "~/features/subjects/lib/science";
 
 import { QNA_SUBJECT_LABEL, type QnaSubject } from "./labels";
 
 export interface QnaNodeStat {
-  /** null = 단원 미지정(공부방법·일반·과학 등 노드 없는 질문). */
+  /** 법과목 체계도 노드. null = 노드 없음(과학·공부방법·일반). */
   nodeId: string | null;
+  /** 과학 단원(science_sections). 법과목이면 null. */
+  scienceSectionId: string | null;
   subject: string | null;
   lawCode: string | null;
   lawName: string;
@@ -50,6 +53,7 @@ function subjectLawName(subject: string | null): string {
 
 interface Bucket {
   nodeId: string | null;
+  scienceSectionId: string | null;
   subject: string | null;
   total: number;
   high: number;
@@ -63,8 +67,15 @@ interface Bucket {
 }
 
 const NONE_PREFIX = "__none__:";
-function bucketKey(nodeId: string | null, subject: string | null): string {
-  return nodeId ?? `${NONE_PREFIX}${subject ?? "unknown"}`;
+// 단원 키 — 법과목=노드 / 과학=섹션 / 없으면 과목별 미지정 버킷.
+function bucketKey(
+  nodeId: string | null,
+  scienceSectionId: string | null,
+  subject: string | null,
+): string {
+  if (nodeId) return `node:${nodeId}`;
+  if (scienceSectionId) return `sci:${scienceSectionId}`;
+  return `${NONE_PREFIX}${subject ?? "unknown"}`;
 }
 
 export async function getQnaAnalyticsByNode(opts?: {
@@ -75,7 +86,9 @@ export async function getQnaAnalyticsByNode(opts?: {
 
   const { data: threads, error } = await admin
     .from("qna_threads")
-    .select("thread_id, subject, node_id, quality_grade, status")
+    .select(
+      "thread_id, subject, node_id, science_section_id, quality_grade, status",
+    )
     .is("deleted_at", null);
   if (error || !threads) {
     return { totalThreads: 0, gradedThreads: 0, nodes: [], byNodeId: {} };
@@ -86,12 +99,13 @@ export async function getQnaAnalyticsByNode(opts?: {
   let gradedThreads = 0;
 
   for (const t of threads) {
-    const key = bucketKey(t.node_id, t.subject);
+    const key = bucketKey(t.node_id, t.science_section_id, t.subject);
     threadKey.set(t.thread_id, key);
     let b = buckets.get(key);
     if (!b) {
       b = {
         nodeId: t.node_id,
+        scienceSectionId: t.science_section_id,
         subject: t.subject,
         total: 0,
         high: 0,
@@ -129,7 +143,7 @@ export async function getQnaAnalyticsByNode(opts?: {
     else if (m.verdict === "incorrect") b.aiIncorrect += 1;
   }
 
-  // 노드 라벨/과목 해석.
+  // 노드 라벨/과목 해석(법과목).
   const nodeIds = [...buckets.values()]
     .map((b) => b.nodeId)
     .filter((id): id is string => id != null);
@@ -147,17 +161,44 @@ export async function getQnaAnalyticsByNode(opts?: {
     }
   }
 
+  // 과학 단원 라벨/과목(물리·화학·생물·지구과학) 해석.
+  const sciIds = [...buckets.values()]
+    .map((b) => b.scienceSectionId)
+    .filter((id): id is string => id != null);
+  const sciMeta = new Map<string, { label: string; subject: string }>();
+  if (sciIds.length > 0) {
+    const { data: sections } = await admin
+      .from("science_sections")
+      .select("section_id, label, science_subject")
+      .in("section_id", sciIds);
+    for (const s of sections ?? []) {
+      sciMeta.set(s.section_id, {
+        label: s.label,
+        subject: s.science_subject,
+      });
+    }
+  }
+
   const byNodeId: Record<string, number> = {};
   const rows: QnaNodeStat[] = [...buckets.values()].map((b) => {
-    const meta = b.nodeId ? nodeMeta.get(b.nodeId) : undefined;
-    const lawCode = meta?.lawCode ?? b.subject ?? null;
+    const nodeM = b.nodeId ? nodeMeta.get(b.nodeId) : undefined;
+    const sciM = b.scienceSectionId
+      ? sciMeta.get(b.scienceSectionId)
+      : undefined;
     if (b.nodeId) byNodeId[b.nodeId] = b.total;
+    // 법과목 노드 / 과학 단원 / 미지정 순으로 라벨·과목명 결정.
+    const lawCode = nodeM?.lawCode ?? b.subject ?? null;
+    const lawName = sciM
+      ? scienceSubjectName(sciM.subject)
+      : subjectLawName(lawCode);
+    const displayLabel = nodeM?.label ?? sciM?.label ?? "단원 미지정";
     return {
       nodeId: b.nodeId,
+      scienceSectionId: b.scienceSectionId,
       subject: b.subject,
       lawCode,
-      lawName: subjectLawName(lawCode),
-      displayLabel: meta?.label ?? "단원 미지정",
+      lawName,
+      displayLabel,
       total: b.total,
       high: b.high,
       mid: b.mid,

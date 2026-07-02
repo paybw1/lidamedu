@@ -5451,6 +5451,7 @@ export type Database = {
           node_id: string | null
           quality_grade: Database["public"]["Enums"]["qna_quality_grade"] | null
           question_md: string
+          science_section_id: string | null
           status: Database["public"]["Enums"]["qna_status"]
           subject: string | null
           target_id: string | null
@@ -5471,6 +5472,7 @@ export type Database = {
             | Database["public"]["Enums"]["qna_quality_grade"]
             | null
           question_md: string
+          science_section_id?: string | null
           status?: Database["public"]["Enums"]["qna_status"]
           subject?: string | null
           target_id?: string | null
@@ -5491,6 +5493,7 @@ export type Database = {
             | Database["public"]["Enums"]["qna_quality_grade"]
             | null
           question_md?: string
+          science_section_id?: string | null
           status?: Database["public"]["Enums"]["qna_status"]
           subject?: string | null
           target_id?: string | null
@@ -5534,6 +5537,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "systematic_nodes"
             referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "qna_threads_science_section_id_fkey"
+            columns: ["science_section_id"]
+            isOneToOne: false
+            referencedRelation: "science_sections"
+            referencedColumns: ["section_id"]
           },
         ]
       }
