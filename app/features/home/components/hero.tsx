@@ -167,10 +167,9 @@ function HeroPreviewCard() {
     <div
       ref={ref}
       style={{
-        // 파란 바탕 + 흰색 — 히어로 대시보드 미리보기 카드.
-        background: PALETTE.gradientVisit,
+        background: "var(--card)",
         borderRadius: 16,
-        border: `1px solid rgba(255,255,255,0.16)`,
+        border: `1px solid var(--border)`,
         boxShadow: "var(--lp-shadow-lg)",
         padding: 24,
         position: "relative",
@@ -185,7 +184,7 @@ function HeroPreviewCard() {
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          background: "rgba(255,255,255,0.18)",
+          background: PALETTE.link,
           color: "#fff",
           padding: "4px 10px",
           borderRadius: 9999,
@@ -203,7 +202,7 @@ function HeroPreviewCard() {
             font: "600 11px/1 Pretendard, sans-serif",
             letterSpacing: "0.1em",
             textTransform: "uppercase",
-            color: "rgba(255,255,255,0.75)",
+            color: PALETTE.inkSoft,
             marginBottom: 6,
           }}
         >
@@ -214,7 +213,7 @@ function HeroPreviewCard() {
             font: "800 56px/1 Pretendard, sans-serif",
             letterSpacing: "-0.03em",
             fontVariantNumeric: "tabular-nums",
-            color: "#fff",
+            color: PALETTE.link,
           }}
         >
           D-{Math.round(dDay)}
@@ -222,7 +221,7 @@ function HeroPreviewCard() {
         <div
           style={{
             font: "400 13px/1.5 Pretendard, sans-serif",
-            color: "rgba(255,255,255,0.8)",
+            color: PALETTE.inkSoft,
             marginTop: 4,
             letterSpacing: "-0.01em",
           }}
@@ -244,15 +243,15 @@ function HeroPreviewCard() {
             key={s.lbl}
             style={{
               padding: "10px 12px",
-              background: "rgba(255,255,255,0.1)",
+              background: PALETTE.base,
               borderRadius: 12,
-              border: `1px solid rgba(255,255,255,0.14)`,
+              border: `1px solid var(--border)`,
             }}
           >
             <div
               style={{
                 font: "500 11px/1 Pretendard, sans-serif",
-                color: "rgba(255,255,255,0.7)",
+                color: PALETTE.inkSoft,
                 marginBottom: 4,
               }}
             >
@@ -262,7 +261,7 @@ function HeroPreviewCard() {
               style={{
                 font: "700 20px/1 Pretendard, sans-serif",
                 fontVariantNumeric: "tabular-nums",
-                color: "#fff",
+                color: PALETTE.ink,
                 letterSpacing: "-0.02em",
               }}
             >
@@ -270,7 +269,7 @@ function HeroPreviewCard() {
               <span
                 style={{
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.65)",
+                  color: PALETTE.inkSoft,
                   marginLeft: 2,
                 }}
               >
@@ -286,7 +285,7 @@ function HeroPreviewCard() {
           font: "600 12px/1 Pretendard, sans-serif",
           letterSpacing: "0.1em",
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.75)",
+          color: PALETTE.inkSoft,
           marginBottom: 10,
         }}
       >
@@ -311,9 +310,9 @@ function HeroPreviewCard() {
               gap: 10,
               padding: "8px 10px",
               borderRadius: 10,
-              background: it.done ? "rgba(255,255,255,0.12)" : "transparent",
+              background: it.done ? PALETTE.tint : "transparent",
               font: "400 13px/1.4 Pretendard, sans-serif",
-              color: it.done ? "#fff" : "rgba(255,255,255,0.72)",
+              color: it.done ? PALETTE.ink : PALETTE.inkSoft,
               letterSpacing: "-0.01em",
               textDecoration: it.done ? "line-through" : "none",
               opacity: 0,
@@ -328,8 +327,8 @@ function HeroPreviewCard() {
                 width: 16,
                 height: 16,
                 borderRadius: 4,
-                background: it.done ? "#fff" : "transparent",
-                border: it.done ? 0 : `1.5px solid rgba(255,255,255,0.4)`,
+                background: it.done ? PALETTE.primary : "transparent",
+                border: it.done ? 0 : `1.5px solid rgba(0,0,0,0.2)`,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -337,7 +336,7 @@ function HeroPreviewCard() {
               }}
             >
               {it.done ? (
-                <CheckIcon size={11} strokeWidth={3} color={PALETTE.primary} />
+                <CheckIcon size={11} strokeWidth={3} color="#fff" />
               ) : null}
             </span>
             {it.text}
@@ -348,12 +347,12 @@ function HeroPreviewCard() {
         style={{
           marginTop: 16,
           paddingTop: 14,
-          borderTop: `1px solid rgba(255,255,255,0.16)`,
+          borderTop: `1px solid var(--border)`,
           display: "flex",
           alignItems: "center",
           gap: 8,
           font: "500 12px/1.4 Pretendard, sans-serif",
-          color: "rgba(255,255,255,0.75)",
+          color: PALETTE.inkSoft,
           letterSpacing: "-0.01em",
         }}
       >
@@ -362,12 +361,12 @@ function HeroPreviewCard() {
             width: 7,
             height: 7,
             borderRadius: "50%",
-            background: "#ffd27a",
+            background: "var(--lp-weak)",
             flexShrink: 0,
           }}
         />
         이번 주 약점{" "}
-        <strong style={{ color: "#fff", fontWeight: 700 }}>
+        <strong style={{ color: PALETTE.ink, fontWeight: 700 }}>
           진보성 · 판례
         </strong>
       </div>
