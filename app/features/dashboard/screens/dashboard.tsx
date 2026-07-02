@@ -35,6 +35,10 @@ import {
   DashHeader,
   DashKpiStrip,
 } from "~/features/dashboard/components/dash-header";
+import {
+  GrowthStripCard,
+  type GrowthStripData,
+} from "~/features/dashboard/components/dash-growth";
 import { DashKpiStripV2 } from "~/features/dashboard/components/dash-kpi-strip-v2";
 import { OxRecentCard } from "~/features/dashboard/components/dash-ox";
 import {
@@ -85,7 +89,10 @@ import {
 import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
 import { countMyOxWrongNoteItems } from "~/features/problems/queries.server";
 import { getUserRecitationStats } from "~/features/recitation/queries.server";
+import { getGamificationSummary } from "~/features/study/gamification.server";
+import { summarizeMastery } from "~/features/study/lib/mastery";
 import { predictPassScore } from "~/features/study/lib/pass-predict";
+import { getNodeMastery } from "~/features/study/mastery.server";
 import { upsertPassPredictionSnapshot } from "~/features/study/pass-predict-snapshot.server";
 import {
   getAllSubjectsProgress,
@@ -301,6 +308,40 @@ export async function loader({ request }: Route.LoaderArgs) {
     ),
   );
 
+  // feat-2-027 — 성장 요약 스트립(레벨·마스터 단원·스트릭·주간 공부량).
+  // A(내 분석) 동의 시만 산출·노출. 상세·코호트 비교는 /study/stats.
+  // ★대시보드는 읽기 미러 → persist:false — 영속(레벨업 알림)은 학습현황이 소유.
+  const myAnalysisOn = predictProfile?.my_analysis_consent_at != null;
+  let growthStrip: GrowthStripData | null = null;
+  if (myAnalysisOn) {
+    const nodeMastery = await getNodeMastery(client, user.id, [
+      ...LAW_SUBJECT_SLUGS,
+    ]);
+    const masteredCount = summarizeMastery(
+      nodeMastery.map((r) => r.stage),
+    ).mastered;
+    const todayYmd = new Date(Date.now() + 9 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const g = await getGamificationSummary(
+      client,
+      user.id,
+      todayYmd,
+      masteredCount,
+      { persist: false },
+    );
+    growthStrip = {
+      levelName: g.level.name,
+      levelNumber: g.level.levelNumber,
+      masteredCount: g.level.masteredCount,
+      toNext: g.level.toNext,
+      nextName: g.level.nextName,
+      currentStreak: g.currentStreak,
+      thisWeekStudyMs: g.thisWeekStudyMs,
+      studyDeltaPct: g.studyDeltaPct,
+    };
+  }
+
   const todayLabel = new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
     month: "long",
@@ -385,6 +426,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     recommendedActions,
     pendingAssignments,
     passPrediction,
+    growthStrip,
     user: {
       name,
       // 차수는 profiles.next_exam_round 실데이터(feat-2-025); 기수는 활성 트랙 있을 때만.
@@ -737,6 +779,31 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
               }}
             />
           </div>
+
+          {/* GROWTH · 성장 — 학습현황(게임화)의 압축 미러. A(내 분석) 동의 시만.
+             레벨·마스터 단원·연속 학습·주간 공부량. 상세·코호트 비교는 /study/stats. */}
+          {loaderData.growthStrip ? (
+            <>
+              <SectionBand
+                eyebrow="GROWTH · 성장"
+                right={
+                  <Link
+                    to="/study/stats"
+                    style={{
+                      font: "600 11px/1 Pretendard, sans-serif",
+                      color: T.link,
+                      textDecoration: "none",
+                    }}
+                  >
+                    학습현황 자세히 →
+                  </Link>
+                }
+              />
+              <div className="mb-2">
+                <GrowthStripCard g={loaderData.growthStrip} />
+              </div>
+            </>
+          ) : null}
 
           {/* RecommendedActionsCard / WeekTrackCard / PendingAssignmentsCard 는
              [오늘] 본문 (/study/today) 에서 단일 흐름으로 표시. 대시보드 입구는
