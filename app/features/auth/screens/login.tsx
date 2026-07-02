@@ -83,17 +83,16 @@ export default function Login({ loaderData }: Route.ComponentProps) {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              padding: "6px 12px",
-              background: PALETTE.tint,
-              color: PALETTE.primary,
+              padding: "7px 14px",
+              background: PALETTE.primary,
+              color: "#fff",
               borderRadius: 9999,
-              font: `600 11px/1 ${FONT}`,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
+              font: `700 12px/1 ${FONT}`,
+              letterSpacing: "0.1em",
               marginBottom: 22,
             }}
           >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: PALETTE.primary }} />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff" }} />
             리담변리사학원
           </div>
 
