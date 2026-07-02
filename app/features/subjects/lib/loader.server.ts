@@ -679,11 +679,16 @@ export async function loadSubjectHub(
       .select("*", { count: "exact", head: true })
       .contains("subject_laws", [lawCode])
       .is("deleted_at", null),
+    // ★ 책갈피 레일 "문제 N" — getSubjectAxisCounts(뷰어 loader)와 동일 가시성
+    //   필터(approved + 미공개 mock 제외)로 세야 허브·뷰어 간 카운트가 일치한다.
+    //   deleted_at 만 걸면 검토대기 draft 6건이 포함돼 1112↔1106 로 왔다갔다 했다.
     client
       .from("problems")
       .select("*", { count: "exact", head: true })
       .eq("law_id", law.lawId)
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      .eq("review_status", "approved")
+      .or("origin.neq.mock,released_at.not.is.null"),
   ]);
   const totalCaseCount = totalCaseCountRes.count ?? 0;
   const totalProblemCount = totalProblemCountRes.count ?? 0;
