@@ -441,6 +441,8 @@ function compareArticlePath(a: string, b: string): number {
 export interface RecentProblemItem {
   problemId: string;
   bodySnippet: string;
+  /** 본문 포함 이미지(도형 상표 등) URL — 목록 카드 미리보기용, 최대 4장. */
+  imageUrls: string[];
   format: string;
   origin: string;
   year: number | null;
@@ -528,21 +530,31 @@ export async function listRecentProblems(
           (b.problem_number ?? Number.MAX_SAFE_INTEGER),
     );
   }
-  return rows.map((r) => ({
-    problemId: r.problem_id,
-    bodySnippet:
-      (r.body_md ?? "").length > 100
-        ? `${(r.body_md ?? "").slice(0, 100)}…`
-        : (r.body_md ?? ""),
-    format: r.format,
-    origin: r.origin,
-    year: r.year,
-    problemNumber: r.problem_number,
-    createdAt: r.created_at,
-    lawCode: r.laws.law_code,
-    subjectiveKind: r.subjective_kind,
-    subjectiveTopic: r.subjective_topic,
-  }));
+  return rows.map((r) => {
+    const body = r.body_md ?? "";
+    // 스니펫에는 이미지 마크다운 원문(![](url))이 노출되지 않게 제거하고,
+    // 이미지는 URL 로 뽑아 카드에서 도형 미리보기로 렌더한다.
+    const imageUrls = [...body.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)]
+      .map((m) => m[1])
+      .slice(0, 4);
+    const textOnly = body
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+      .replace(/[ \t]{2,}/g, " ");
+    return {
+      problemId: r.problem_id,
+      bodySnippet:
+        textOnly.length > 100 ? `${textOnly.slice(0, 100)}…` : textOnly,
+      imageUrls,
+      format: r.format,
+      origin: r.origin,
+      year: r.year,
+      problemNumber: r.problem_number,
+      createdAt: r.created_at,
+      lawCode: r.laws.law_code,
+      subjectiveKind: r.subjective_kind,
+      subjectiveTopic: r.subjective_topic,
+    };
+  });
 }
 
 // 정오문제 — 특정 조문에 연결된 OX 가능 지문 (객관식 choice + box-item 통합).

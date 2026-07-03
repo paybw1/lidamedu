@@ -17,6 +17,7 @@ import {
   type Discount,
   FEATURE_LABEL,
   bestAutomaticDiscount,
+  discountPeriodLabel,
   effectivePriceKrw,
   openMonthLabel,
 } from "~/features/subscriptions/labels";
@@ -383,9 +384,16 @@ function PlanCard({
           ) : null}
         </div>
         {auto ? (
-          <Badge className="w-fit bg-rose-500 text-[10px] text-white hover:bg-rose-500">
-            {auto.name}
-          </Badge>
+          <div className="space-y-1">
+            <Badge className="w-fit bg-rose-500 text-[10px] text-white hover:bg-rose-500">
+              {auto.name}
+            </Badge>
+            {discountPeriodLabel(auto) ? (
+              <p className="text-[11px] leading-snug text-rose-700 dark:text-rose-300">
+                {discountPeriodLabel(auto)}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {plan.description ? (
           <p className="text-muted-foreground text-xs leading-relaxed">

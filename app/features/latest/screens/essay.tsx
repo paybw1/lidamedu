@@ -243,6 +243,18 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
                 <p className="text-foreground/80 mt-1 line-clamp-2 text-[13px] leading-relaxed">
                   {p.bodySnippet}
                 </p>
+                {p.imageUrls.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {p.imageUrls.map((src) => (
+                      <img
+                        key={src}
+                        src={src}
+                        alt="문제 도형"
+                        className="border-border h-8 rounded border bg-white px-1 py-0.5"
+                      />
+                    ))}
+                  </div>
+                ) : null}
                 <CardCta label="지금 풀어보기" />
               </FeedCardLink>
             </div>

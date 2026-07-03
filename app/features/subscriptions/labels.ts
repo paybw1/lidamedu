@@ -165,6 +165,28 @@ export function openMonthLabel(availableFromIso: string): string {
   return `${kst.getUTCMonth() + 1}월 오픈`;
 }
 
+// KST 날짜 라벨 — "2026. 7. 3." (서버 UTC/클라 TZ 무관하게 한국 날짜 표기).
+export function kstDateLabel(iso: string): string {
+  const kst = new Date(new Date(iso).getTime() + 9 * 3600 * 1000);
+  return `${kst.getUTCFullYear()}. ${kst.getUTCMonth() + 1}. ${kst.getUTCDate()}.`;
+}
+
+// 할인 기간 안내 — 가입 창(startsAt~endsAt에 구독 시작해야 적용)과
+// 혜택 지속 종료일(renewalUntil까지 갱신에도 할인가 유지)을 학생에게 표기.
+export function discountPeriodLabel(d: Discount): string | null {
+  const window =
+    d.startsAt && d.endsAt
+      ? `${kstDateLabel(d.startsAt)} ~ ${kstDateLabel(d.endsAt)} 구독 시 적용`
+      : d.endsAt
+        ? `${kstDateLabel(d.endsAt)}까지 구독 시 적용`
+        : null;
+  const renewal = d.renewalUntil
+    ? `${kstDateLabel(d.renewalUntil)}까지 할인가로 갱신`
+    : null;
+  if (!window && !renewal) return null;
+  return [window, renewal].filter(Boolean).join(" · ");
+}
+
 // 자동(코드 없는) 프로모션 중 최대 할인 상품가.
 export function bestAutomaticDiscount(
   plan: { productKind: ProductKind; code: string },
