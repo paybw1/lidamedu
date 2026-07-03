@@ -111,13 +111,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     listProblemYears(client, subject),
     listSystematicTopNodes(client, subject),
   ]);
-  return { problems, years, subject, filters, originParam, systematicNodes, role };
+  // sort=desc → 기본 정렬(체계도/조문 순서)의 역순. prev/next(편집 화면)는 기본 순서 유지.
+  const sortDir = url.searchParams.get("sort") === "desc" ? "desc" : "asc";
+  if (sortDir === "desc") problems.reverse();
+  return { problems, years, subject, filters, originParam, sortDir, systematicNodes, role };
 }
 
 export default function AdminProblemsList({
   loaderData,
 }: Route.ComponentProps) {
-  const { problems, years, subject, filters, originParam, systematicNodes, role } =
+  const { problems, years, subject, filters, originParam, sortDir, systematicNodes, role } =
     loaderData;
   // 편집 화면 진입 시 현재 필터 쿼리를 그대로 전달 → 편집 화면의 "←" 가 같은 쿼리로 되돌아갈 수 있게.
   const [searchParams] = useSearchParams();
@@ -225,6 +228,15 @@ export default function AdminProblemsList({
           options={[
             { value: "", label: "전체" },
             ...years.map((y) => ({ value: String(y), label: `${y}년` })),
+          ]}
+        />
+        <FilterSelect
+          name="sort"
+          label="정렬"
+          value={sortDir}
+          options={[
+            { value: "asc", label: "오름차순" },
+            { value: "desc", label: "내림차순" },
           ]}
         />
         <FilterSelect
