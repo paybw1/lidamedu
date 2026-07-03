@@ -74,6 +74,11 @@ interface SubjectHubProps {
   axisCounts?: Record<SubjectTab, number>;
   // 주관식 탭 게이트 — 고도화 전까지 staff 전용(학생은 레일에서 비활성).
   isStaff?: boolean;
+  // 주관식 문항별 답안 작성/제출/첨삭 상태 — 주관식 탭 학습 현황용.
+  subjectiveAttemptStatus?: Record<
+    string,
+    { submitted: boolean; reviewed: boolean }
+  >;
 }
 
 export function SubjectHub(props: SubjectHubProps) {
@@ -109,6 +114,7 @@ function SubjectHubInner({
   problemNodeFilter,
   axisCounts,
   isStaff = false,
+  subjectiveAttemptStatus,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -251,7 +257,7 @@ function SubjectHubInner({
                   (p) => p.examRound === "second",
                 )}
                 appliedFilters={problemFilters ?? {}}
-                studyStatus={studyStatus}
+                attemptStatus={subjectiveAttemptStatus ?? {}}
                 systematicNodes={systematicNodes ?? []}
               />
             </TabsContent>

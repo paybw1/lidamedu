@@ -157,6 +157,11 @@ export interface SubjectHubData {
   axisCounts: Record<SubjectTab, number>;
   // 주관식 탭 게이트 — 고도화 전까지 staff 전용(학생은 레일에서 비활성).
   isStaff: boolean;
+  // 주관식 학습 현황 — 문항별 답안 작성/제출(자기채점)/첨삭 완료 상태(user_subjective_attempts).
+  subjectiveAttemptStatus: Record<
+    string,
+    { submitted: boolean; reviewed: boolean }
+  >;
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
@@ -672,6 +677,7 @@ export async function loadSubjectHub(
       progressByArticle: {} as NodeProgressByArticle,
       axisCounts: { articles: 0, cases: 0, problems: 0, subjective: 0 },
       isStaff: false,
+      subjectiveAttemptStatus: {},
     };
   }
   // 1단계 — 트리/판례 카운트 등 case-filter 결정에 선행해야 하는 데이터.
@@ -869,6 +875,28 @@ export async function loadSubjectHub(
       ])
     : [null, {}, {}, null, [], {} as NodeProgressByArticle];
 
+  // 주관식 학습 현황 — 이 과목 주관식 문항별 답안 작성/제출/첨삭 상태.
+  const subjectiveAttemptStatus: Record<
+    string,
+    { submitted: boolean; reviewed: boolean }
+  > = {};
+  if (user) {
+    const { data: subjAttempts } = await client
+      .from("user_subjective_attempts")
+      .select(
+        "problem_id, submitted_at, review_completed_at, problems!inner(law_id)",
+      )
+      .eq("user_id", user.id)
+      .eq("problems.law_id", law.lawId)
+      .is("deleted_at", null);
+    for (const r of subjAttempts ?? []) {
+      subjectiveAttemptStatus[r.problem_id] = {
+        submitted: r.submitted_at != null,
+        reviewed: r.review_completed_at != null,
+      };
+    }
+  }
+
   // 표시되는 문제 ID 들의 전체 사용자 정답률 집계 (난이도 뱃지용).
   const aggMap = await getProblemStatsBulk(
     client,
@@ -931,6 +959,7 @@ export async function loadSubjectHub(
       subjective: totalSubjectiveCount,
     },
     isStaff: staffRole !== null,
+    subjectiveAttemptStatus,
     problemYears,
     problemFilters,
     problemStats,

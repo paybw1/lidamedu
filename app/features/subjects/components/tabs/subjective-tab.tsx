@@ -29,10 +29,12 @@ import {
 import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { ProblemSystematicTree } from "../problem-systematic-tree";
 import { SortAxisProvider, SortAxisToggle } from "../sort-axis";
-import {
-  SubjectStudyStatus,
-  type SubjectStudyStatusProps,
-} from "../subject-study-status";
+
+/** 문항별 답안 작성/제출(자기채점)/첨삭 완료 상태 — user_subjective_attempts 파생. */
+export type SubjectiveAttemptStatus = Record<
+  string,
+  { submitted: boolean; reviewed: boolean }
+>;
 
 // 출처 표시 — 기출변형도 "기출"로 묶어 노출(객관식 탭과 동일 정책).
 function mergedOriginLabel(origin: ProblemOrigin): string {
@@ -72,13 +74,13 @@ export function SubjectiveTab({
   subject,
   problems,
   appliedFilters,
-  studyStatus,
+  attemptStatus,
   systematicNodes,
 }: {
   subject: LawSubjectMeta;
   problems: ProblemListItem[];
   appliedFilters: ProblemFiltersApplied;
-  studyStatus: SubjectStudyStatusProps;
+  attemptStatus: SubjectiveAttemptStatus;
   systematicNodes: SystematicNode[];
 }) {
   const [searchParams] = useSearchParams();
@@ -97,6 +99,17 @@ export function SubjectiveTab({
   })();
 
   const groups = groupByYear(problems);
+
+  // 주관식 학습 현황 — 객관식 정답률 대신 답안 작성/제출/첨삭 진행으로 측정.
+  const total = problems.length;
+  const attempted = problems.filter((p) => attemptStatus[p.problemId]).length;
+  const submitted = problems.filter(
+    (p) => attemptStatus[p.problemId]?.submitted,
+  ).length;
+  const reviewed = problems.filter(
+    (p) => attemptStatus[p.problemId]?.reviewed,
+  ).length;
+  const progressPct = total > 0 ? Math.round((attempted / total) * 100) : 0;
 
   // 좌측 체계도 트리 패널 — 객관식 탭과 동일 마크업(데스크톱 사이드바/모바일 드로어 공용).
   // 주관식은 아직 노드 매핑이 없어 카운트는 비어 있다(고도화 시 nodeStats 배선).
@@ -143,7 +156,45 @@ export function SubjectiveTab({
           </MobileNavDrawer>
         </div>
 
-        <SubjectStudyStatus {...studyStatus} />
+        {/* 주관식 학습 현황 — 답안 작성(진행률)·자기채점 제출·첨삭 완료 */}
+        <div className="grid gap-3 sm:grid-cols-4">
+          <SubjectiveKpiCard
+            label="주관식 문항"
+            value={total.toLocaleString("ko-KR")}
+            sub="현재 등록된 전체"
+          />
+          <SubjectiveKpiCard
+            label="답안 작성"
+            value={`${attempted.toLocaleString("ko-KR")}문항`}
+            sub={`진행률 ${progressPct}%`}
+            accent={attempted > 0}
+          />
+          <SubjectiveKpiCard
+            label="자기채점 제출"
+            value={`${submitted.toLocaleString("ko-KR")}문항`}
+            sub="작성 후 제출한 답안"
+          />
+          <SubjectiveKpiCard
+            label="첨삭 완료"
+            value={`${reviewed.toLocaleString("ko-KR")}문항`}
+            sub="강사 검토를 받은 답안"
+          />
+        </div>
+        {total > 0 ? (
+          <div
+            className="bg-muted h-2 w-full overflow-hidden rounded-full"
+            role="progressbar"
+            aria-valuenow={progressPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="주관식 답안 작성 진행률"
+          >
+            <div
+              className="bg-primary h-full rounded-full transition-all"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        ) : null}
 
         {groups.length === 0 ? (
           <div className="border-border rounded-xl border border-dashed p-10 text-center">
@@ -180,6 +231,7 @@ export function SubjectiveTab({
                     subjectSlug={subject.slug}
                     item={p}
                     linkQuery={problemLinkQuery}
+                    status={attemptStatus[p.problemId] ?? null}
                   />
                 ))}
               </div>
@@ -191,14 +243,72 @@ export function SubjectiveTab({
   );
 }
 
+function SubjectiveKpiCard({
+  label,
+  value,
+  sub,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+      <p className="text-muted-foreground text-[11px] font-semibold tracking-wide">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-xl font-extrabold tabular-nums ${accent ? "text-link" : "text-foreground"}`}
+      >
+        {value}
+      </p>
+      {sub ? (
+        <p className="text-muted-foreground mt-0.5 text-[11px]">{sub}</p>
+      ) : null}
+    </div>
+  );
+}
+
+// 문항 학습 상태 배지 — 첨삭 완료 > 제출 > 작성 중 우선.
+function AttemptStatusBadge({
+  status,
+}: {
+  status: { submitted: boolean; reviewed: boolean } | null;
+}) {
+  if (!status) return null;
+  if (status.reviewed) {
+    return (
+      <Badge className="bg-violet-500 text-xs text-white hover:bg-violet-500">
+        첨삭 완료
+      </Badge>
+    );
+  }
+  if (status.submitted) {
+    return (
+      <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">
+        제출함
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-sky-500 text-xs text-white hover:bg-sky-500">
+      작성 중
+    </Badge>
+  );
+}
+
 function SubjectiveCard({
   subjectSlug,
   item,
   linkQuery,
+  status,
 }: {
   subjectSlug: LawSubjectMeta["slug"];
   item: ProblemListItem;
   linkQuery: string;
+  status: { submitted: boolean; reviewed: boolean } | null;
 }) {
   const snippet =
     item.bodyMd.length > 160 ? `${item.bodyMd.slice(0, 160)}…` : item.bodyMd;
@@ -240,6 +350,9 @@ function SubjectiveCard({
               {item.primaryArticleLabel}
             </Badge>
           ) : null}
+          <span className="ml-auto">
+            <AttemptStatusBadge status={status} />
+          </span>
         </div>
         {item.subjectiveTopic ? (
           <p className="text-muted-foreground mb-1 text-xs">

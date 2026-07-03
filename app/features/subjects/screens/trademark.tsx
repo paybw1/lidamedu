@@ -37,6 +37,7 @@ export default function SubjectTrademark({ loaderData }: Route.ComponentProps) {
       problemNodeFilter={loaderData.problemNodeFilter}
       axisCounts={loaderData.axisCounts}
       isStaff={loaderData.isStaff}
+      subjectiveAttemptStatus={loaderData.subjectiveAttemptStatus}
     />
   );
 }

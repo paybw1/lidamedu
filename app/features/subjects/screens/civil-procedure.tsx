@@ -41,6 +41,7 @@ export default function SubjectCivilProcedure({
       problemNodeFilter={loaderData.problemNodeFilter}
       axisCounts={loaderData.axisCounts}
       isStaff={loaderData.isStaff}
+      subjectiveAttemptStatus={loaderData.subjectiveAttemptStatus}
     />
   );
 }
