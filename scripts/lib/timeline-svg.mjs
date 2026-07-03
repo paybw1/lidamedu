@@ -59,6 +59,8 @@ function eventBoxSize(ev) {
 }
 
 export function renderTimelineSvg(spec) {
+  // 세로 레이아웃 — 가로가 본문 폭에 안 맞을 때(글자 축소 방지). 시간축 위→아래.
+  if (spec.layout === "vertical") return renderVerticalTimelineSvg(spec);
   const W = spec.width ?? 2400;
   const margin = { left: 180, right: 100 };
   const tlX0 = margin.left;
@@ -124,7 +126,7 @@ export function renderTimelineSvg(spec) {
     `<defs>`,
     `<marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f172a"/></marker>`,
     `<filter id="cardShadow" x="-10%" y="-10%" width="120%" height="130%">`,
-    `  <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.10"/>`,
+    `  <feDropShadow dx="0" dy="1" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.05"/>`,
     `</filter>`,
     `<filter id="chipShadow" x="-20%" y="-20%" width="140%" height="140%">`,
     `  <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.18"/>`,
@@ -243,10 +245,8 @@ export function renderTimelineSvg(spec) {
     const c = PALETTE[actorMap[ev.actor].color];
     parts.push(
       `<g filter="url(#cardShadow)">`,
-      `<rect x="${ev.boxX}" y="${ev.boxY}" width="${ev.w}" height="${ev.h}" rx="14" fill="${c.fill}" stroke="${c.stroke}" stroke-width="2"/>`,
+      `<rect x="${ev.boxX}" y="${ev.boxY}" width="${ev.w}" height="${ev.h}" rx="12" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5"/>`,
       `</g>`,
-      // 박스 좌측 액센트 바 — 색상 강조.
-      `<rect x="${ev.boxX}" y="${ev.boxY + 8}" width="6" height="${ev.h - 16}" rx="3" fill="${c.stroke}"/>`,
       `<text x="${ev.cx}" y="${ev.boxY + BOX_PAD_Y + TITLE_FS - 4}" font-size="${TITLE_FS}" font-weight="700" fill="${c.text}" text-anchor="middle">${escape(ev.title)}</text>`,
     );
     let ly = ev.boxY + BOX_PAD_Y + TITLE_FS + TITLE_TO_LINE_GAP;
@@ -295,6 +295,98 @@ export function renderTimelineSvg(spec) {
           );
         }
       }
+    }
+  }
+
+  parts.push(`</svg>`);
+  return parts.join("\n");
+}
+
+// ── 세로 타임라인 ─────────────────────────────────────────────────────────
+// 시간축이 위→아래. 각 event 는 축 오른쪽 full-width 카드(actor chip + 제목 + lines).
+// 본문 폭(좁음)에 맞아 축소돼도 글자가 안 작아짐 → 해설에서 "한 눈에" 가독.
+// spec 은 가로와 동일(actors/events/markers). events 는 x(시간) 순으로 위→아래 배치.
+const V = {
+  W: 920, axisX: 78, cardX: 150, rightPad: 40,
+  titleFs: 30, lineFs: 24, lineLh: 36, pad: 22, gap: 30, chip: 46, top: 56,
+};
+
+function renderVerticalTimelineSvg(spec) {
+  const W = spec.width ?? V.W;
+  const cardX = V.cardX;
+  const cardW = W - cardX - V.rightPad;
+
+  const actorMap = {};
+  spec.actors.forEach((a, i) => {
+    actorMap[a.id] = { ...a, color: a.color ?? ACTOR_COLORS[i % ACTOR_COLORS.length] };
+  });
+
+  const cardH = (ev) => {
+    const lc = ev.lines?.length ?? 0;
+    return V.pad * 2 + V.chip + (lc > 0 ? 14 + lc * V.lineLh : 0);
+  };
+
+  // 시간(x) 순으로 위→아래.
+  const evs = [...(spec.events ?? [])].sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
+  let y = V.top;
+  const placed = evs.map((ev) => {
+    const h = cardH(ev);
+    const top = y;
+    y += h + V.gap;
+    return { ...ev, top, h, cy: top + h / 2 };
+  });
+  const axisTop = V.top - 26;
+  const axisBottom = (placed.length ? placed[placed.length - 1].top + placed[placed.length - 1].h - 10 : V.top);
+  const totalH = axisBottom + 56;
+
+  const parts = [];
+  parts.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${totalH}" font-family="'Pretendard','Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif">`,
+    `<defs>`,
+    `<marker id="arrd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f172a"/></marker>`,
+    `<filter id="vshadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="1" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.05"/></filter>`,
+    `</defs>`,
+    `<rect x="0" y="0" width="${W}" height="${totalH}" fill="#fcfcfd"/>`,
+    `<line x1="${V.axisX}" y1="${axisTop}" x2="${V.axisX}" y2="${axisBottom + 16}" stroke="#0f172a" stroke-width="4" stroke-linecap="round" marker-end="url(#arrd)"/>`,
+  );
+
+  // markers (임계 날짜 등) — x 를 인접 event 사이 y 로 매핑해 가로 점선 + 라벨.
+  for (const m of spec.markers ?? []) {
+    const after = placed.filter((e) => (e.x ?? 0) <= m.x);
+    const my = after.length
+      ? (after.length < placed.length
+          ? (after[after.length - 1].top + after[after.length - 1].h + placed[after.length].top) / 2
+          : axisBottom + 4)
+      : axisTop + 4;
+    const color = m.color ?? "#dc2626";
+    parts.push(
+      `<line x1="${V.axisX - 18}" y1="${my}" x2="${W - V.rightPad}" y2="${my}" stroke="${color}" stroke-width="2.5" stroke-dasharray="8,6"/>`,
+      `<rect x="${cardX}" y="${my - 34}" width="${Math.min(560, cardW)}" height="40" rx="9" fill="#fff" stroke="${color}" stroke-width="2"/>`,
+      `<text x="${cardX + 16}" y="${my - 7}" font-size="22" font-weight="700" fill="${color}">${escape(m.label)}</text>`,
+    );
+  }
+
+  for (const ev of placed) {
+    const c = PALETTE[actorMap[ev.actor].color];
+    const a = actorMap[ev.actor];
+    parts.push(
+      // 축 마커 + 커넥터
+      `<line x1="${V.axisX + 11}" y1="${ev.cy}" x2="${cardX}" y2="${ev.cy}" stroke="${c.stroke}" stroke-width="2.5" opacity="0.85"/>`,
+      `<circle cx="${V.axisX}" cy="${ev.cy}" r="11" fill="#fff" stroke="${c.stroke}" stroke-width="3.5"/>`,
+      `<circle cx="${V.axisX}" cy="${ev.cy}" r="5" fill="${c.stroke}"/>`,
+      // 카드
+      `<g filter="url(#vshadow)"><rect x="${cardX}" y="${ev.top}" width="${cardW}" height="${ev.h}" rx="12" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5"/></g>`,
+      // actor chip + 제목
+      `<rect x="${cardX + V.pad}" y="${ev.top + V.pad}" width="${V.chip}" height="${V.chip}" rx="12" fill="${c.chipFill}"/>`,
+      `<text x="${cardX + V.pad + V.chip / 2}" y="${ev.top + V.pad + V.chip / 2 + 11}" font-size="30" font-weight="800" fill="${c.chipText}" text-anchor="middle">${escape(a.label)}</text>`,
+      `<text x="${cardX + V.pad + V.chip + 16}" y="${ev.top + V.pad + V.chip / 2 + 10}" font-size="${V.titleFs}" font-weight="700" fill="${c.text}">${escape(ev.title)}</text>`,
+    );
+    let ly = ev.top + V.pad + V.chip + 14 + V.lineFs;
+    for (const line of ev.lines ?? []) {
+      parts.push(
+        `<text x="${cardX + V.pad}" y="${ly}" font-size="${V.lineFs}" font-weight="700" fill="${c.text}">${escape(line)}</text>`,
+      );
+      ly += V.lineLh;
     }
   }
 

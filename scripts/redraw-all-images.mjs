@@ -27,6 +27,7 @@ const BUCKET = "problem-explanations";
 
 const ARGS = process.argv.slice(2);
 const APPLY = ARGS.includes("--apply");
+const VERTICAL = ARGS.includes("--vertical"); // 세로 레이아웃 미리보기(timelineSpec 만)
 const ONLY_INDEX = ARGS.indexOf("--only");
 const ONLY_PID = ONLY_INDEX >= 0 ? ARGS[ONLY_INDEX + 1] : null;
 const BATCH_INDEX = ARGS.indexOf("--batch");
@@ -2205,7 +2206,11 @@ console.log(`처리 대상: ${filtered.length} / ${SPECS.length}`);
 
 let updated = 0;
 for (const spec of filtered) {
-  const svg = spec.svg ?? renderTimelineSvg(spec.timelineSpec);
+  const ts =
+    spec.timelineSpec && VERTICAL
+      ? { ...spec.timelineSpec, layout: "vertical" }
+      : spec.timelineSpec;
+  const svg = spec.svg ?? renderTimelineSvg(ts);
   const png = await sharp(Buffer.from(svg), { density: 200 })
     .png({ compressionLevel: 9 })
     .toBuffer();
