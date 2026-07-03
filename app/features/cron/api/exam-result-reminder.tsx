@@ -23,6 +23,7 @@ import type { Route } from "./+types/exam-result-reminder";
 
 const THROTTLE_DAYS = 14;
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
+const REPLY_TO_EMAIL = process.env.RESEND_REPLY_TO_EMAIL ?? "bwyim@lidamip.com";
 const APP_URL = process.env.APP_URL ?? "http://localhost:5173";
 
 function checkAuth(request: Request): boolean {
@@ -77,6 +78,7 @@ async function sendReminderEmail(input: {
     );
     const res = await resendClient.emails.send({
       from: FROM_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
       to: email,
       subject: `[리담변리사학원] ${input.examYear}년 ${roundLabel} 시험 결과를 입력해 주세요`,
       html,

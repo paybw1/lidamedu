@@ -22,6 +22,7 @@ import WeeklyReportStaff from "../../../transactional-emails/emails/weekly-repor
 import WeeklyReportStudent from "../../../transactional-emails/emails/weekly-report-student";
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
+const REPLY_TO_EMAIL = process.env.RESEND_REPLY_TO_EMAIL ?? "bwyim@lidamip.com";
 const APP_URL = process.env.APP_URL ?? "http://localhost:5173";
 
 interface DispatchResult {
@@ -132,6 +133,7 @@ async function sendStudentReport(userId: string): Promise<{
   try {
     const res = await resendClient.emails.send({
       from: FROM_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
       to: email,
       subject: `[리담변리사학원] 주간 학습 리포트 · ${weekRangeLabelKst(now)}`,
       html,
@@ -216,6 +218,7 @@ async function sendStaffReport(
   try {
     const res = await resendClient.emails.send({
       from: FROM_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
       to: email,
       subject: `[리담변리사학원] ${cohortName} 주간 운영 리포트 · ${weekRangeLabelKst(now)}`,
       html,

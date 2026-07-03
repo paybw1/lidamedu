@@ -22,6 +22,7 @@ import {
 } from "./notify-kakao.server";
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
+const REPLY_TO_EMAIL = process.env.RESEND_REPLY_TO_EMAIL ?? "bwyim@lidamip.com";
 const APP_URL = process.env.APP_URL ?? "http://localhost:5173";
 
 type NotifyChannel = "email" | "kakao";
@@ -101,6 +102,7 @@ async function dispatch(
         try {
           await resendClient.emails.send({
             from: FROM_EMAIL,
+            replyTo: REPLY_TO_EMAIL,
             to: recipient.email!,
             subject: email.subject,
             html: email.html,

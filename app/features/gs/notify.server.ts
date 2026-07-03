@@ -10,6 +10,7 @@ import GsPeerAssignmentEmail from "../../../transactional-emails/emails/gs-peer-
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
+const REPLY_TO_EMAIL = process.env.RESEND_REPLY_TO_EMAIL ?? "bwyim@lidamip.com";
 const APP_URL = process.env.APP_URL ?? "http://localhost:5173";
 
 interface NewAssignmentRow {
@@ -121,6 +122,7 @@ async function sendEmail(
     );
     await resendClient.emails.send({
       from: FROM_EMAIL,
+      replyTo: REPLY_TO_EMAIL,
       to,
       subject: `[리담변리사학원] 동료 채점 ${assignedCount}건 배정 — ${round.title}`,
       html,
