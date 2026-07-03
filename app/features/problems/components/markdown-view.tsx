@@ -49,25 +49,32 @@ function injectLineBreaks(node: ReactNode, keyPrefix = ""): ReactNode {
 
 const components: Components = {
   table: (props) => (
-    <div className="my-2 overflow-x-auto">
+    <div className="my-3 overflow-x-auto">
       <table
         // table-auto (기본) — 컬럼 너비를 내용 길이에 따라 자동 배분.
         // 라벨 셀(서/의의 등 짧음) 은 좁게, 내용 셀(긴 텍스트) 은 넓게 자연스럽게 분포.
         // break-words 로 긴 한자/단어도 셀 안에서 줄바꿈.
         // 글자 크기 3단(--study-fs) 따라감 — 표 형식 지문도 발문과 함께 커지도록(기본 1=무변화).
-        className="w-full border-collapse text-left text-[length:calc(13px*var(--study-fs))] [&_td]:break-words [&_th]:break-words"
+        // 얼룩무늬(even 행 배경) — 긴 비교표에서 행 추적 가독성. 셀 스타일은 th/td 매핑에서.
+        className="w-full border-collapse text-left text-[length:calc(13px*var(--study-fs))] [&_td]:break-words [&_th]:break-words [&_tbody_tr:nth-child(even)]:bg-muted/30"
         {...props}
       />
     </div>
   ),
   thead: (props) => <thead className="bg-muted" {...props} />,
   th: ({ children, ...props }) => (
-    <th className="border border-border px-2 py-1 font-semibold" {...props}>
+    <th
+      className="border-border border px-3 py-1.5 leading-relaxed font-semibold"
+      {...props}
+    >
       {injectLineBreaks(children)}
     </th>
   ),
   td: ({ children, ...props }) => (
-    <td className="border border-border px-2 py-1 align-top" {...props}>
+    <td
+      className="border-border border px-3 py-1.5 align-top leading-relaxed"
+      {...props}
+    >
       {injectLineBreaks(children)}
     </td>
   ),
