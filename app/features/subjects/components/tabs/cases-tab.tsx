@@ -647,7 +647,8 @@ function CaseRow({
       </TableCell>
       <TableCell className="whitespace-normal">
         {item.nickname ? (
-          <span className="mb-0.5 inline-flex max-w-full items-center truncate rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          // 별칭이 문장형으로 길 수 있어 truncate 대신 줄바꿈 허용 — 잘림 없이 전체 표시.
+          <span className="mb-0.5 inline-block max-w-full rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold break-words whitespace-normal text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
             {item.nickname}
           </span>
         ) : null}
