@@ -54,6 +54,36 @@ export interface OxCrossCell extends OxCell {
   choiceType: ProblemChoiceType | null;
 }
 
+/** 체계도 노드 메타(트리 롤업용) — computeOxDiagnosis 가 조상 폐쇄까지 조회해 공급. */
+export interface OxNodeMetaRow {
+  nodeId: string;
+  parentId: string | null;
+  label: string;
+  lawCode: string;
+  /** 체계도 정렬 키(ltree path 문자열). */
+  path: string;
+}
+
+/**
+ * 체계도 정렬 트리 행(전위 순회 평탄화). 셀은 하위 노드 전체 롤업 합산 —
+ * 리프 귀속은 1회뿐이라 조상 경로 합산에 중복 없음. 기타(귀속 실패)는 말미 평면 행.
+ */
+export interface OxTreeRow {
+  /** null = 기타(노드 귀속 실패). */
+  nodeId: string | null;
+  label: string;
+  lawCode: string | null;
+  /** 루트 0. */
+  depth: number;
+  /** 접기/펼치기 렌더용 — 트리 내 부모 nodeId. */
+  parentId: string | null;
+  hasChildren: boolean;
+  /** choiceType별 롤업 셀. key = choiceType | "null"(미분류). 시도>0 종류만. */
+  cells: Record<string, OxCell>;
+  /** 행 전체(종류 합산) 롤업. */
+  total: OxCell;
+}
+
 export interface OxDiagnosis {
   totals: {
     attempts: number;
@@ -67,6 +97,12 @@ export interface OxDiagnosis {
   byNode: OxNodeRow[];
   /** node × choiceType (시도>0 셀만). attempts 내림차순. */
   cross: OxCrossCell[];
+  /**
+   * 체계도 정렬 매트릭스(조상 롤업 포함, 전위 순회 평탄화).
+   * buildOxDiagnosis 단독으로는 노드 계층을 모름 → 빈 배열. computeOxDiagnosis 가
+   * buildOxDiagnosisTree 로 채운다. 뷰는 비어 있으면 평면 매트릭스로 폴백.
+   */
+  tree: OxTreeRow[];
   minAttempts: number;
   dedup: "latest" | "all";
 }
@@ -183,6 +219,7 @@ export function buildOxDiagnosis(
       byChoiceType: [],
       byNode: [],
       cross: [],
+      tree: [],
       minAttempts,
       dedup,
     };
@@ -286,9 +323,152 @@ export function buildOxDiagnosis(
     byChoiceType,
     byNode,
     cross,
+    tree: [],
     minAttempts,
     dedup,
   };
+}
+
+/**
+ * 순수 트리 빌더 — cross(리프 노드×종류 셀)를 체계도 계층(nodes)에 얹어
+ * 조상 롤업 매트릭스를 만든다. 반환은 전위 순회 평탄화(depth 포함).
+ *  - 등장 리프의 조상 전체를 포함(중간 노드는 직접 시도 0이어도 합산 행으로 등장).
+ *  - 정렬: lawCode → path (체계도 순서). 기타(nodeId null)는 말미.
+ *  - 메타에 없는 노드(고아)는 루트 취급 — 라벨은 fallbackLabel 사전에서.
+ */
+export function buildOxDiagnosisTree(
+  cross: OxCrossCell[],
+  nodes: OxNodeMetaRow[],
+  options: {
+    minAttempts?: number;
+    /** 메타 없는 노드용 라벨(byNode 라벨 재사용). */
+    fallbackLabel?: Map<string, string>;
+    fallbackLawCode?: Map<string, string>;
+  } = {},
+): OxTreeRow[] {
+  const minAttempts = options.minAttempts ?? OX_DIAGNOSIS_MIN_ATTEMPTS;
+  interface Bucket {
+    attempts: number;
+    correct: number;
+  }
+  // 리프 직접 셀: nodeKey → (ctKey → bucket).
+  const leafCells = new Map<string, Map<string, Bucket>>();
+  for (const c of cross) {
+    const nodeKey = c.nodeId ?? "null";
+    const ctKey = c.choiceType ?? "null";
+    const byCt = leafCells.get(nodeKey) ?? new Map<string, Bucket>();
+    const b = byCt.get(ctKey) ?? { attempts: 0, correct: 0 };
+    b.attempts += c.attempts;
+    b.correct += c.correct;
+    byCt.set(ctKey, b);
+    leafCells.set(nodeKey, byCt);
+  }
+
+  const metaById = new Map(nodes.map((n) => [n.nodeId, n]));
+  // 등장 리프 + 조상 폐쇄.
+  const involved = new Set<string>();
+  for (const key of leafCells.keys()) {
+    if (key === "null") continue;
+    let cur: string | null = key;
+    for (let guard = 0; cur && guard < 20; guard++) {
+      if (involved.has(cur)) break;
+      involved.add(cur);
+      cur = metaById.get(cur)?.parentId ?? null;
+    }
+  }
+
+  // 자식 사전 (트리 내 부모 없으면 루트).
+  const childrenOf = new Map<string | null, string[]>();
+  const parentInTree = new Map<string, string | null>();
+  for (const id of involved) {
+    const rawParent = metaById.get(id)?.parentId ?? null;
+    const parent = rawParent && involved.has(rawParent) ? rawParent : null;
+    parentInTree.set(id, parent);
+    const list = childrenOf.get(parent) ?? [];
+    list.push(id);
+    childrenOf.set(parent, list);
+  }
+  const orderKey = (id: string) => {
+    const m = metaById.get(id);
+    return `${m?.lawCode ?? "~"}¦${m?.path ?? "~"}`;
+  };
+  for (const list of childrenOf.values())
+    list.sort((a, b) => orderKey(a).localeCompare(orderKey(b)));
+
+  // 롤업: 후위 합산(자식 → 부모).
+  const rolled = new Map<string, Map<string, Bucket>>();
+  const rollup = (id: string): Map<string, Bucket> => {
+    const cached = rolled.get(id);
+    if (cached) return cached;
+    const acc = new Map<string, Bucket>();
+    const merge = (src: Map<string, Bucket> | undefined) => {
+      if (!src) return;
+      for (const [ct, b] of src) {
+        const cur = acc.get(ct) ?? { attempts: 0, correct: 0 };
+        cur.attempts += b.attempts;
+        cur.correct += b.correct;
+        acc.set(ct, cur);
+      }
+    };
+    merge(leafCells.get(id));
+    for (const child of childrenOf.get(id) ?? []) merge(rollup(child));
+    rolled.set(id, acc);
+    return acc;
+  };
+
+  const out: OxTreeRow[] = [];
+  const emit = (id: string, depth: number) => {
+    const meta = metaById.get(id);
+    const byCt = rollup(id);
+    const cells: Record<string, OxCell> = {};
+    let ta = 0;
+    let tc = 0;
+    for (const [ct, b] of byCt) {
+      cells[ct] = mkCell(b.attempts, b.correct, minAttempts);
+      ta += b.attempts;
+      tc += b.correct;
+    }
+    const kids = childrenOf.get(id) ?? [];
+    out.push({
+      nodeId: id,
+      label:
+        meta?.label ??
+        options.fallbackLabel?.get(id) ??
+        "(라벨 없음)",
+      lawCode: meta?.lawCode ?? options.fallbackLawCode?.get(id) ?? null,
+      depth,
+      parentId: parentInTree.get(id) ?? null,
+      hasChildren: kids.length > 0,
+      cells,
+      total: mkCell(ta, tc, minAttempts),
+    });
+    for (const child of kids) emit(child, depth + 1);
+  };
+  for (const root of childrenOf.get(null) ?? []) emit(root, 0);
+
+  // 기타(귀속 실패) — 말미 평면 행.
+  const other = leafCells.get("null");
+  if (other) {
+    const cells: Record<string, OxCell> = {};
+    let ta = 0;
+    let tc = 0;
+    for (const [ct, b] of other) {
+      cells[ct] = mkCell(b.attempts, b.correct, minAttempts);
+      ta += b.attempts;
+      tc += b.correct;
+    }
+    out.push({
+      nodeId: null,
+      label: "기타",
+      lawCode: null,
+      depth: 0,
+      parentId: null,
+      hasChildren: false,
+      cells,
+      total: mkCell(ta, tc, minAttempts),
+    });
+  }
+  return out;
 }
 
 /**
@@ -415,27 +595,47 @@ export async function computeOxDiagnosis(
     nodeByProblem.set(pid, aid ? (nodeByArticle.get(aid) ?? null) : null);
   }
 
-  // node 라벨 + 과목(deep-link 용).
+  // node 라벨 + 과목(deep-link 용) + 트리 메타(부모 폐쇄까지 반복 조회 — 깊이 유한).
   const nodeIds = [
     ...new Set([...nodeByProblem.values()].filter((v): v is string => !!v)),
   ];
   const labelByNode = new Map<string, string>();
   const lawCodeByNode = new Map<string, string>();
-  for (let i = 0; i < nodeIds.length; i += CHUNK) {
-    const slice = nodeIds.slice(i, i + CHUNK);
-    const { data } = await client
-      .from("systematic_nodes")
-      .select("node_id, display_label, law_code")
-      .in("node_id", slice);
-    for (const n of data ?? []) {
-      labelByNode.set(n.node_id, n.display_label);
-      lawCodeByNode.set(n.node_id, n.law_code);
+  const nodeMeta = new Map<string, OxNodeMetaRow>();
+  let pending = nodeIds;
+  for (let round = 0; pending.length > 0 && round < 20; round++) {
+    const fetched: string[] = [];
+    for (let i = 0; i < pending.length; i += CHUNK) {
+      const slice = pending.slice(i, i + CHUNK);
+      const { data } = await client
+        .from("systematic_nodes")
+        .select("node_id, parent_id, path, display_label, law_code")
+        .in("node_id", slice);
+      for (const n of data ?? []) {
+        labelByNode.set(n.node_id, n.display_label);
+        lawCodeByNode.set(n.node_id, n.law_code);
+        nodeMeta.set(n.node_id, {
+          nodeId: n.node_id,
+          parentId: n.parent_id,
+          label: n.display_label,
+          lawCode: n.law_code,
+          path: String(n.path ?? ""),
+        });
+        if (n.parent_id) fetched.push(n.parent_id);
+      }
     }
+    pending = [...new Set(fetched)].filter((id) => !nodeMeta.has(id));
   }
 
-  return buildOxDiagnosis(
+  const diagnosis = buildOxDiagnosis(
     rows,
     { ctByRef, nodeByProblem, labelByNode, lawCodeByNode },
     { dedup, minAttempts },
   );
+  diagnosis.tree = buildOxDiagnosisTree(diagnosis.cross, [...nodeMeta.values()], {
+    minAttempts,
+    fallbackLabel: labelByNode,
+    fallbackLawCode: lawCodeByNode,
+  });
+  return diagnosis;
 }

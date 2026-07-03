@@ -7,8 +7,10 @@ import type { ProblemChoiceType } from "~/features/problems/labels";
 import {
   OX_DIAGNOSIS_MIN_ATTEMPTS,
   type OxAttemptRow,
+  type OxNodeMetaRow,
   type OxRefMeta,
   buildOxDiagnosis,
+  buildOxDiagnosisTree,
 } from "./ox-diagnosis.server";
 
 const AT = "2026-06-01T00:00:00.000Z";
@@ -222,5 +224,74 @@ describe("buildOxDiagnosis — 미분류 / 기타 / 빈데이터", () => {
     expect(d.byChoiceType).toHaveLength(0);
     expect(d.byNode).toHaveLength(0);
     expect(d.cross).toHaveLength(0);
+  });
+});
+
+describe("buildOxDiagnosisTree — 체계도 롤업", () => {
+  // 트리: root(대단원) ─ n1(리프), n2(리프). 표본은 sampleRows 그대로.
+  function treeNodes(): OxNodeMetaRow[] {
+    return [
+      { nodeId: "root", parentId: null, label: "대단원", lawCode: "patent", path: "a" },
+      { nodeId: "n1", parentId: "root", label: "단원1", lawCode: "patent", path: "a.b" },
+      { nodeId: "n2", parentId: "root", label: "단원2", lawCode: "patent", path: "a.c" },
+    ];
+  }
+
+  it("조상 합산 + 전위 순회 + depth", () => {
+    const d = buildOxDiagnosis(sampleRows(), sampleMeta());
+    const tree = buildOxDiagnosisTree(d.cross, treeNodes());
+    expect(tree.map((r) => r.nodeId)).toEqual(["root", "n1", "n2"]);
+    expect(tree.map((r) => r.depth)).toEqual([0, 1, 1]);
+    const root = tree[0];
+    // root 합산 = n1(조문5 + 판례3) + n2(이론6) = 14.
+    expect(root.total.attempts).toBe(14);
+    expect(root.total.correct).toBe(8);
+    expect(root.hasChildren).toBe(true);
+    // 종류별 롤업: 판례는 n1 에서만 3건(리프에선 표본미달) — root 도 3건이지만 게이트 그대로.
+    expect(root.cells.statute?.attempts).toBe(5);
+    expect(root.cells.precedent?.attempts).toBe(3);
+    expect(root.cells.precedent?.belowThreshold).toBe(true);
+    expect(root.cells.theory?.attempts).toBe(6);
+  });
+
+  it("하위 셀 N 미달이 상위 합산에서 게이트 통과(표본 회수)", () => {
+    // n1=조문3 + n2=조문3 → 리프는 각각 미달, root 합산 6은 통과.
+    const rows: OxAttemptRow[] = [];
+    ["c1", "c2", "c3"].forEach((id) => push(rows, "p1", "choice", id, true));
+    ["c4", "c5", "c6"].forEach((id) => push(rows, "p3", "choice", id, false));
+    const meta = sampleMeta();
+    ["c1", "c2", "c3", "c4", "c5", "c6"].forEach((id) =>
+      meta.ctByRef.set(`choice:${id}`, "statute"),
+    );
+    const d = buildOxDiagnosis(rows, meta);
+    const tree = buildOxDiagnosisTree(d.cross, treeNodes());
+    const root = tree.find((r) => r.nodeId === "root")!;
+    const n1 = tree.find((r) => r.nodeId === "n1")!;
+    expect(n1.cells.statute?.belowThreshold).toBe(true);
+    expect(root.cells.statute?.belowThreshold).toBe(false);
+    expect(root.cells.statute?.attempts).toBe(6);
+    expect(root.cells.statute?.accuracyPct).toBe(50);
+  });
+
+  it("메타 없는 고아 노드는 루트 취급 + fallback 라벨, 기타는 말미", () => {
+    const rows: OxAttemptRow[] = [];
+    push(rows, "p1", "choice", "c1", true); // n1 — 메타에 없음(고아)
+    push(rows, "pX", "choice", "cZ", false); // 노드 귀속 실패 → 기타
+    const meta = sampleMeta();
+    meta.ctByRef.set("choice:cZ", "statute");
+    meta.nodeByProblem.set("pX", null);
+    const d = buildOxDiagnosis(rows, meta);
+    const tree = buildOxDiagnosisTree(d.cross, [], {
+      fallbackLabel: meta.labelByNode,
+      fallbackLawCode: meta.lawCodeByNode,
+    });
+    expect(tree.map((r) => r.nodeId)).toEqual(["n1", null]);
+    expect(tree[0].label).toBe("단원1");
+    expect(tree[0].lawCode).toBe("patent");
+    expect(tree[1].label).toBe("기타");
+  });
+
+  it("빈 cross → 빈 트리", () => {
+    expect(buildOxDiagnosisTree([], treeNodes())).toHaveLength(0);
   });
 });

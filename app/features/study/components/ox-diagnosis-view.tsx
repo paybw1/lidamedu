@@ -1,7 +1,17 @@
 // feat-2-022 — OX 약점 진단 공용 표현 뷰. 학생 화면(/study/ox-diagnosis)과
 // 강사 드릴다운(/admin/students/:id)이 같은 게이트·처방 톤을 쓰도록 추출.
 // audience="self"(본인) | "staff"(이 학생) 로 문구만 분기. 집계 로직/게이트는 동일.
-import { ArrowRightIcon, BrainIcon, InfoIcon, LayersIcon, LockIcon, TargetIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  BrainIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  InfoIcon,
+  LayersIcon,
+  LockIcon,
+  TargetIcon,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
@@ -22,10 +32,13 @@ import {
   type ProblemChoiceType,
 } from "~/features/problems/labels";
 import type {
+  OxCell,
   OxChoiceTypeRow,
   OxCrossCell,
   OxDiagnosis,
+  OxTreeRow,
 } from "~/features/study/lib/ox-diagnosis.server";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 type Audience = "self" | "staff";
 
@@ -301,6 +314,176 @@ function CrossMatrix({
   diagnosis: OxDiagnosis;
   audience: Audience;
 }) {
+  // 체계도 트리(조상 롤업)가 있으면 트리형, 없으면(구 데이터/합성 입력) 평면 폴백.
+  if (diagnosis.tree.length > 0) {
+    return (
+      <TreeMatrix
+        rows={diagnosis.tree}
+        minAttempts={diagnosis.minAttempts}
+        audience={audience}
+      />
+    );
+  }
+  return <FlatMatrix diagnosis={diagnosis} audience={audience} />;
+}
+
+// 체계도 정렬 매트릭스 — 상위 단원 행 = 하위 전체 합산(rollup). 접기/펼치기 드릴다운.
+// 표본 게이트의 실익: 하위 셀이 N 미달이어도 상위 합산 셀에서 진단 가능.
+function TreeMatrix({
+  rows,
+  minAttempts,
+  audience,
+}: {
+  rows: OxTreeRow[];
+  minAttempts: number;
+  audience: Audience;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const parentOf = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const r of rows) if (r.nodeId) m.set(r.nodeId, r.parentId);
+    return m;
+  }, [rows]);
+  // 과목이 2개 이상 섞이면 루트 행에 과목 칩으로 구분.
+  const multiSubject = useMemo(
+    () => new Set(rows.map((r) => r.lawCode).filter(Boolean)).size > 1,
+    [rows],
+  );
+  const isVisible = (row: OxTreeRow): boolean => {
+    let cur = row.parentId;
+    for (let guard = 0; cur && guard < 20; guard++) {
+      if (!expanded.has(cur)) return false;
+      cur = parentOf.get(cur) ?? null;
+    }
+    return true;
+  };
+  const toggle = (nodeId: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <h2 className="text-base font-bold tracking-tight">
+          단원 × 지식종류 매트릭스
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          체계도 순서. 상위 단원 행은 하위 단원 전체의 합산입니다 — ▸ 를 눌러
+          펼치면 세부 단원별로 드릴다운됩니다. 셀 = 정답률 (시도수), 표본 N
+          {minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면 해당 단원
+          학습으로 이동합니다.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[12rem]">단원</TableHead>
+                {MATRIX_TYPES.map((t) => (
+                  <TableHead key={t} className="text-center">
+                    {CHOICE_TYPE_LABEL[t]}
+                  </TableHead>
+                ))}
+                <TableHead className="text-center">전체</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.filter(isVisible).map((row) => (
+                <TableRow
+                  key={row.nodeId ?? "null"}
+                  className={cn(row.depth === 0 && "bg-muted/30")}
+                >
+                  <TableCell className="font-medium">
+                    <div
+                      className="flex items-start gap-1"
+                      style={{ paddingLeft: `${row.depth * 16}px` }}
+                    >
+                      {row.hasChildren && row.nodeId ? (
+                        <button
+                          type="button"
+                          onClick={() => toggle(row.nodeId!)}
+                          aria-expanded={expanded.has(row.nodeId)}
+                          aria-label={
+                            expanded.has(row.nodeId) ? "하위 단원 접기" : "하위 단원 펼치기"
+                          }
+                          className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
+                        >
+                          {expanded.has(row.nodeId) ? (
+                            <ChevronDownIcon className="size-3.5" />
+                          ) : (
+                            <ChevronRightIcon className="size-3.5" />
+                          )}
+                        </button>
+                      ) : (
+                        <span className="w-3.5 shrink-0" />
+                      )}
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          {row.lawCode && row.nodeId ? (
+                            <Link
+                              to={`/subjects/${row.lawCode}/systematic/${row.nodeId}`}
+                              className="text-link hover:underline"
+                              viewTransition
+                            >
+                              {row.label}
+                            </Link>
+                          ) : (
+                            row.label
+                          )}
+                          {multiSubject && row.depth === 0 && row.lawCode ? (
+                            <Badge
+                              variant="outline"
+                              className="px-1.5 py-0 text-[10px]"
+                            >
+                              {LAW_SUBJECTS[
+                                row.lawCode as keyof typeof LAW_SUBJECTS
+                              ]?.name ?? row.lawCode}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        {audience === "self" && !row.hasChildren && row.nodeId && row.lawCode ? (
+                          <Link
+                            to={`/study/srs/ox?node=${row.nodeId}&subject=${row.lawCode}`}
+                            className="text-muted-foreground hover:text-link block text-[11px]"
+                            viewTransition
+                          >
+                            ↻ 이 단원 다시 풀기
+                          </Link>
+                        ) : null}
+                      </div>
+                    </div>
+                  </TableCell>
+                  {MATRIX_TYPES.map((t) => (
+                    <TableCell key={t} className="text-center">
+                      <MatrixCell cell={row.cells[t]} />
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-center">
+                    <MatrixCell cell={row.total} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// 평면 폴백 — tree 미제공(합성 입력 등) 시 기존 약점순 상위 N 표.
+function FlatMatrix({
+  diagnosis,
+  audience,
+}: {
+  diagnosis: OxDiagnosis;
+  audience: Audience;
+}) {
   const cellByKey = new Map<string, OxCrossCell>();
   for (const c of diagnosis.cross) {
     cellByKey.set(`${c.nodeId ?? "null"}¦${c.choiceType ?? "null"}`, c);
@@ -382,7 +565,7 @@ function CrossMatrix({
   );
 }
 
-function MatrixCell({ cell }: { cell: OxCrossCell | undefined }) {
+function MatrixCell({ cell }: { cell: OxCell | undefined }) {
   if (!cell || cell.attempts === 0) {
     return <span className="text-muted-foreground/40">—</span>;
   }
