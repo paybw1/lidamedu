@@ -62,10 +62,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const reviewParam = url.searchParams.get("review");
   const mediaParam = url.searchParams.get("media");
+  // origin=past_all → 기출+기출변형 통합 검색 (origins .in 그룹 조회, origin 보다 우선)
+  const originParam = url.searchParams.get("origin") || undefined;
   const filters = {
-    origin: (url.searchParams.get("origin") || undefined) as
+    origin: (originParam === "past_all" ? undefined : originParam) as
       | ProblemOrigin
       | undefined,
+    origins:
+      originParam === "past_all"
+        ? (["past_exam", "past_exam_variant"] as ProblemOrigin[])
+        : undefined,
     format: (url.searchParams.get("format") || undefined) as
       | ProblemFormat
       | undefined,
@@ -105,20 +111,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     listProblemYears(client, subject),
     listSystematicTopNodes(client, subject),
   ]);
-  return { problems, years, subject, filters, systematicNodes, role };
+  return { problems, years, subject, filters, originParam, systematicNodes, role };
 }
 
 export default function AdminProblemsList({
   loaderData,
 }: Route.ComponentProps) {
-  const { problems, years, subject, filters, systematicNodes, role } =
+  const { problems, years, subject, filters, originParam, systematicNodes, role } =
     loaderData;
   // 편집 화면 진입 시 현재 필터 쿼리를 그대로 전달 → 편집 화면의 "←" 가 같은 쿼리로 되돌아갈 수 있게.
   const [searchParams] = useSearchParams();
   const filterQs = searchParams.toString();
   const subjectMeta = LAW_SUBJECTS[subject];
   const filterActive =
-    !!filters.origin ||
+    !!originParam ||
     !!filters.format ||
     !!filters.polarity ||
     !!filters.scope ||
@@ -173,9 +179,13 @@ export default function AdminProblemsList({
         <FilterSelect
           name="origin"
           label="출처"
-          value={filters.origin ?? ""}
+          value={originParam ?? ""}
           options={[
             { value: "", label: "전체" },
+            {
+              value: "past_all",
+              label: `${ORIGIN_LABEL.past_exam}+${ORIGIN_LABEL.past_exam_variant}`,
+            },
             ...ORIGINS.map((v) => ({ value: v, label: ORIGIN_LABEL[v] })),
           ]}
         />
