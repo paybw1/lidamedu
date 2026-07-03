@@ -9,6 +9,10 @@ export interface PopupNotice {
   noticeId: string;
   title: string;
   bodyMd: string;
+  /** 업로드한 디자인 이미지(public popup-notices 버킷) — 팝업에 원본 표시. */
+  imageUrl: string | null;
+  /** 유튜브 영상 URL — 팝업에 embed 표시. */
+  youtubeUrl: string | null;
   linkUrl: string | null;
   linkLabel: string | null;
   startsAt: string | null;
@@ -25,6 +29,8 @@ function mapRow(r: Row): PopupNotice {
     noticeId: r.notice_id,
     title: r.title,
     bodyMd: r.body_md,
+    imageUrl: r.image_url,
+    youtubeUrl: r.youtube_url,
     linkUrl: r.link_url,
     linkLabel: r.link_label,
     startsAt: r.starts_at,
@@ -63,6 +69,8 @@ export async function listAllPopupNotices(
 export interface PopupNoticeInput {
   title: string;
   bodyMd: string;
+  imageUrl: string | null;
+  youtubeUrl: string | null;
   linkUrl: string | null;
   linkLabel: string | null;
   startsAt: string | null;
@@ -80,6 +88,8 @@ export async function createPopupNotice(
     .insert({
       title: input.title,
       body_md: input.bodyMd,
+      image_url: input.imageUrl,
+      youtube_url: input.youtubeUrl,
       link_url: input.linkUrl,
       link_label: input.linkLabel,
       starts_at: input.startsAt,
@@ -103,6 +113,8 @@ export async function updatePopupNotice(
     .update({
       title: input.title,
       body_md: input.bodyMd,
+      image_url: input.imageUrl,
+      youtube_url: input.youtubeUrl,
       link_url: input.linkUrl,
       link_label: input.linkLabel,
       starts_at: input.startsAt,

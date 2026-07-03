@@ -132,7 +132,9 @@ function NoticeRow({ notice: n, live }: { notice: PopupNotice; live: boolean }) 
     <>
       <TR>
         <TD>
-          <span className="font-medium">{n.title}</span>
+          <span className="mr-1.5 font-medium">{n.title}</span>
+          {n.imageUrl ? <Chip tone="outline">이미지</Chip> : null}
+          {n.youtubeUrl ? <Chip tone="outline">영상</Chip> : null}
         </TD>
         <TD soft mono>
           {period}
@@ -268,6 +270,7 @@ function NoticeForm({
     <fetcher.Form
       method="post"
       action="/api/admin/popup-notice"
+      encType="multipart/form-data"
       className="bg-card border-border space-y-3 rounded-xl border p-4 shadow-sm"
     >
       <p className="text-muted-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase">
@@ -276,6 +279,9 @@ function NoticeForm({
       <input type="hidden" name="intent" value={mode} />
       {mode === "update" ? (
         <input type="hidden" name="noticeId" value={n!.noticeId} />
+      ) : null}
+      {n?.imageUrl ? (
+        <input type="hidden" name="existingImageUrl" value={n.imageUrl} />
       ) : null}
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
@@ -337,8 +343,48 @@ function NoticeForm({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <FormField label="팝업 이미지 (선택 · jpg/png/webp/gif, 5MB 이하)">
+          <input
+            type="file"
+            name="imageFile"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="border-input bg-background h-8 w-full rounded-md border px-2 py-1 text-xs file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-0.5 file:text-xs"
+          />
+          <p className="text-muted-foreground mt-1 text-[10px] leading-tight">
+            디자인한 배너 이미지를 올리면 팝업에 원본 그대로 표시됩니다. 폰트·색·
+            표 등은 이미지 안에서 자유롭게 구성하세요.
+          </p>
+          {n?.imageUrl ? (
+            <div className="mt-1.5 flex items-center gap-2">
+              <img
+                src={n.imageUrl}
+                alt="현재 팝업 이미지"
+                className="border-border h-14 rounded border object-contain"
+              />
+              <label className="inline-flex items-center gap-1 text-[11px]">
+                <input type="checkbox" name="removeImage" value="1" className="size-3" />
+                이미지 제거
+              </label>
+            </div>
+          ) : null}
+        </FormField>
+        <FormField label="유튜브 영상 URL (선택)">
+          <Input
+            name="youtubeUrl"
+            type="url"
+            defaultValue={n?.youtubeUrl ?? ""}
+            className="h-8 text-xs"
+            placeholder="https://www.youtube.com/watch?v=… 또는 https://youtu.be/…"
+          />
+          <p className="text-muted-foreground mt-1 text-[10px] leading-tight">
+            입력하면 팝업 안에 영상 플레이어가 표시됩니다.
+          </p>
+        </FormField>
+      </div>
+
       <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-        <FormField label="내용 (마크다운)">
+        <FormField label="내용 (마크다운 · 선택 — 이미지만으로 충분하면 비워두세요)">
           <textarea
             name="bodyMd"
             value={bodyMd}

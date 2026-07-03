@@ -4495,6 +4495,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           ends_at: string | null
+          image_url: string | null
           is_active: boolean
           link_label: string | null
           link_url: string | null
@@ -4502,12 +4503,14 @@ export type Database = {
           starts_at: string | null
           title: string
           updated_at: string
+          youtube_url: string | null
         }
         Insert: {
           body_md?: string
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
+          image_url?: string | null
           is_active?: boolean
           link_label?: string | null
           link_url?: string | null
@@ -4515,12 +4518,14 @@ export type Database = {
           starts_at?: string | null
           title: string
           updated_at?: string
+          youtube_url?: string | null
         }
         Update: {
           body_md?: string
           created_at?: string
           created_by?: string | null
           ends_at?: string | null
+          image_url?: string | null
           is_active?: boolean
           link_label?: string | null
           link_url?: string | null
@@ -4528,6 +4533,7 @@ export type Database = {
           starts_at?: string | null
           title?: string
           updated_at?: string
+          youtube_url?: string | null
         }
         Relationships: [
           {

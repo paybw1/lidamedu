@@ -4,6 +4,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import { roleAtLeast } from "~/core/lib/roles";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { logAuditEvent } from "~/features/admin/queries/audit-log.server";
 import {
@@ -20,12 +21,32 @@ const schema = z.object({
   noticeId: z.string().uuid().nullable(),
   title: z.string().min(1).max(200),
   bodyMd: z.string().max(5000),
+  youtubeUrl: z
+    .string()
+    .url()
+    .refine((u) => extractYoutubeId(u) !== null, {
+      message: "유튜브 영상 URL 이 아닙니다 (youtube.com/watch 또는 youtu.be)",
+    })
+    .nullable(),
   linkUrl: z.string().url().nullable(),
   linkLabel: z.string().max(60).nullable(),
   startsAt: z.string().datetime().nullable(),
   endsAt: z.string().datetime().nullable(),
   isActive: z.boolean(),
 });
+
+// 유튜브 영상 ID 추출 — watch?v= / youtu.be/ / shorts/ / embed/ 수용.
+function extractYoutubeId(url: string): string | null {
+  const m =
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,20})/.exec(
+      url,
+    );
+  return m?.[1] ?? null;
+}
+
+const IMAGE_BUCKET = "popup-notices";
+const IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function toIso(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? "").trim();
@@ -77,6 +98,7 @@ export async function action({ request }: Route.ActionArgs) {
     noticeId: toNullable(fd.get("noticeId")),
     title: fd.get("title"),
     bodyMd: String(fd.get("bodyMd") ?? ""),
+    youtubeUrl: toNullable(fd.get("youtubeUrl")),
     linkUrl: toNullable(fd.get("linkUrl")),
     linkLabel: toNullable(fd.get("linkLabel")),
     startsAt: toIso(fd.get("startsAt")),
@@ -89,9 +111,39 @@ export async function action({ request }: Route.ActionArgs) {
       { status: 400 },
     );
   }
+
+  // 이미지 — 새 파일 업로드 > 제거 체크 > 기존 유지.
+  //   업로드는 service_role(adminClient) — public 버킷이지만 쓰기 정책 없음.
+  let imageUrl = toNullable(fd.get("existingImageUrl"));
+  if (fd.get("removeImage") === "1") imageUrl = null;
+  const imageFile = fd.get("imageFile");
+  if (imageFile instanceof File && imageFile.size > 0) {
+    if (imageFile.size > IMAGE_MAX_SIZE) {
+      return data({ error: "이미지는 5MB 이하만 가능합니다." }, { status: 400 });
+    }
+    if (!IMAGE_MIMES.has(imageFile.type)) {
+      return data(
+        { error: "이미지(jpg/png/webp/gif)만 업로드할 수 있습니다." },
+        { status: 400 },
+      );
+    }
+    const ext = imageFile.name.includes(".")
+      ? imageFile.name.split(".").pop()
+      : "png";
+    const path = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+    const { error: upErr } = await adminClient.storage
+      .from(IMAGE_BUCKET)
+      .upload(path, imageFile, { contentType: imageFile.type, upsert: false });
+    if (upErr) return data({ error: upErr.message }, { status: 400 });
+    imageUrl = adminClient.storage.from(IMAGE_BUCKET).getPublicUrl(path)
+      .data.publicUrl;
+  }
+
   const input = {
     title: parsed.data.title,
     bodyMd: parsed.data.bodyMd,
+    imageUrl,
+    youtubeUrl: parsed.data.youtubeUrl,
     linkUrl: parsed.data.linkUrl,
     linkLabel: parsed.data.linkLabel,
     startsAt: parsed.data.startsAt,

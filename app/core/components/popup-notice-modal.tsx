@@ -14,8 +14,19 @@ export interface PopupNoticeDisplay {
   noticeId: string;
   title: string;
   bodyMd: string;
+  imageUrl: string | null;
+  youtubeUrl: string | null;
   linkUrl: string | null;
   linkLabel: string | null;
+}
+
+// 유튜브 영상 ID 추출 — watch?v= / youtu.be/ / shorts/ / embed/ 수용.
+function extractYoutubeId(url: string): string | null {
+  const m =
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,20})/.exec(
+      url,
+    );
+  return m?.[1] ?? null;
 }
 
 const STORAGE_PREFIX = "popupNoticeHiddenUntil:";
@@ -76,7 +87,7 @@ export function PopupNoticeModal({
       aria-modal="true"
       aria-label={current.title}
     >
-      <div className="bg-card border-border w-full max-w-md rounded-xl border shadow-xl">
+      <div className="bg-card border-border w-full max-w-lg rounded-xl border shadow-xl">
         <div className="border-border/60 flex items-center justify-between gap-2 border-b px-5 py-3.5">
           <h2 className="text-[15px] font-bold tracking-tight">{current.title}</h2>
           <button
@@ -88,8 +99,38 @@ export function PopupNoticeModal({
             <XIcon className="size-4" />
           </button>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
-          <MarkdownView text={current.bodyMd} trusted={false} />
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto px-5 py-4">
+          {current.imageUrl ? (
+            current.linkUrl ? (
+              <a href={current.linkUrl} aria-label={current.linkLabel || "자세히 보기"}>
+                <img
+                  src={current.imageUrl}
+                  alt={current.title}
+                  className="w-full rounded-lg"
+                />
+              </a>
+            ) : (
+              <img
+                src={current.imageUrl}
+                alt={current.title}
+                className="w-full rounded-lg"
+              />
+            )
+          ) : null}
+          {current.youtubeUrl && extractYoutubeId(current.youtubeUrl) ? (
+            <div className="aspect-video w-full overflow-hidden rounded-lg">
+              <iframe
+                src={`https://www.youtube.com/embed/${extractYoutubeId(current.youtubeUrl)}`}
+                title={current.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="h-full w-full"
+              />
+            </div>
+          ) : null}
+          {current.bodyMd.trim() ? (
+            <MarkdownView text={current.bodyMd} trusted={false} />
+          ) : null}
         </div>
         <div className="border-border/60 flex items-center justify-between gap-2 border-t px-5 py-3">
           <button
