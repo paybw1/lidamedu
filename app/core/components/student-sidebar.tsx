@@ -65,9 +65,9 @@ export function StudentSidebar({
   features,
   subjects,
 }: StudentSidebarProps) {
-  const { core, secondary } = useNavLayout(isStaff);
-  // 잠금 판정은 등급 기준(원장 체험 모드 반영) — 메뉴 노출은 역할(isStaff) 기준 유지.
+  // 잠금·staffOnly 항목 판정은 등급 기준(원장 체험 모드 반영) — 운영관리 링크 노출은 역할(isStaff) 기준 유지.
   const lockStaff = gradeStaff ?? isStaff;
+  const { core, secondary } = useNavLayout(lockStaff);
   // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용(상단바와 동일 규칙). 서버 영역 게이트가 권위, 시각 힌트만.
   const lockOf = (area?: string) => isAreaLocked(area, lockStaff, features);
   const location = useLocation();
