@@ -388,7 +388,7 @@ export function SubjectCard({
               value={s.weak > 0 ? `${s.weak}개` : "없음"}
             />
           </div>
-          <div className="mt-3.5 flex flex-wrap gap-1.5">
+          <div className="mt-3.5 flex flex-wrap justify-center gap-1.5">
             <Button
               asChild
               variant="secondary"
