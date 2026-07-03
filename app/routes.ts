@@ -133,6 +133,7 @@ export default [
       route("/mcq-pack", "features/admin/api/mcq-pack.tsx"),
       route("/mcq-exam", "features/admin/api/mcq-exam.tsx"),
       route("/user-role", "features/admin/api/user-role.tsx"),
+      route("/user-access", "features/admin/api/user-access.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
       route("/cohort-board", "features/admin/api/cohort-board.tsx"),
       route(
@@ -1029,6 +1030,8 @@ export default [
     ]),
     // feat-8-026 — 학습 데이터 활용 필수 동의 게이트(자체 인증, private.layout 밖 = 루프 회피).
     route("/consent", "features/onboarding/screens/consent.tsx"),
+    // 서비스 접근 승인 대기(자체 인증, private.layout 밖 = 루프 회피).
+    route("/pending-approval", "features/onboarding/screens/pending-approval.tsx"),
   ]),
 
   ...prefix("/legal", [route("/:slug", "features/legal/screens/policy.tsx")]),

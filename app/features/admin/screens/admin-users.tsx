@@ -33,7 +33,7 @@ import {
   TR,
 } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
-import { ROLE_LABEL } from "~/core/lib/roles";
+import { ROLE_LABEL, isStaffRole } from "~/core/lib/roles";
 import {
   listAdminUsers,
   type AdminUserRow,
@@ -183,7 +183,7 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <IndexTable
-          minWidth={1040}
+          minWidth={1160}
           headers={[
             { label: "No", align: "center", width: "3rem" },
             { label: "이름 · 닉네임", width: "12rem" },
@@ -191,6 +191,7 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
             { label: "전화번호", width: "9rem" },
             { label: "주소" },
             { label: "역할", width: "9rem" },
+            { label: "이용 승인", width: "8rem" },
             { label: "가입일", align: "right", width: "7rem" },
             { label: "마지막 로그인", align: "right", width: "8rem" },
           ]}
@@ -337,6 +338,9 @@ function UserRow({
           ) : null}
         </fetcher.Form>
       </TD>
+      <TD>
+        <AccessApprovalCell user={user} />
+      </TD>
       <TD align="right" mono soft>
         {user.createdAt.slice(0, 10)}
       </TD>
@@ -344,6 +348,67 @@ function UserRow({
         {user.lastSignInAt ? user.lastSignInAt.slice(0, 10) : "—"}
       </TD>
     </TR>
+  );
+}
+
+// 서비스 접근 승인/해제 셀 — 승인 게이트(requireAccessApproval) 대상은 학생만이므로
+// staff 행은 "면제"로 표시. 해제는 위험 동작이라 confirm.
+function AccessApprovalCell({ user }: { user: AdminUserRow }) {
+  const fetcher = useFetcher<{ ok?: true; error?: string }>();
+  const err =
+    fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
+
+  if (isStaffRole(user.role)) {
+    return <Chip tone="outline">면제</Chip>;
+  }
+
+  const approved = !!user.accessApprovedAt;
+  return (
+    <fetcher.Form
+      method="post"
+      action="/api/admin/user-access"
+      onSubmit={(e) => {
+        if (
+          approved &&
+          !confirm(
+            `${user.name || "이 사용자"}의 이용 승인을 해제하시겠습니까? 해제 즉시 서비스를 이용할 수 없습니다.`,
+          )
+        ) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <input type="hidden" name="profileId" value={user.profileId} />
+      <input type="hidden" name="approved" value={approved ? "0" : "1"} />
+      <div className="flex items-center gap-1.5">
+        {approved ? (
+          <>
+            <span className="text-muted-foreground text-[11px] tabular-nums">
+              {user.accessApprovedAt!.slice(0, 10)}
+            </span>
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              disabled={fetcher.state !== "idle"}
+              className="h-6 px-2 text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400"
+            >
+              해제
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="submit"
+            size="sm"
+            disabled={fetcher.state !== "idle"}
+            className="h-6 px-2 text-[11px]"
+          >
+            승인
+          </Button>
+        )}
+      </div>
+      {err ? <p className="text-rose-600 mt-0.5 text-[10px]">{err}</p> : null}
+    </fetcher.Form>
   );
 }
 

@@ -42,6 +42,8 @@ import { Toaster } from "sonner";
 
 import { Dialog } from "./core/components/ui/dialog";
 import { Sheet } from "./core/components/ui/sheet";
+import { GEO_BLOCKED_CODE } from "./core/lib/geo-gate";
+import { requireAllowedCountry } from "./core/lib/geo-gate.server";
 import i18next from "./core/lib/i18next.server";
 import { themeSessionResolver } from "./core/lib/theme-session.server";
 import { cn } from "./core/lib/utils";
@@ -87,6 +89,9 @@ export const links: Route.LinksFunction = () => [
  * @returns Object containing theme and locale preferences
  */
 export async function loader({ request }: Route.LoaderArgs) {
+  // 한국 외 IP 문서 요청 차단 (Vercel 헤더 기반, 로컬은 통과).
+  requireAllowedCountry(request);
+
   // Validate that all required Supabase environment variables are present
   // This prevents the application from starting with incomplete configuration
   if (
@@ -349,6 +354,23 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     if (error.status === 404) {
       // Show custom 404 page for "not found" errors (stale-bundle 자가복구 가드 포함).
       return <NotFoundWithReloadGuard />;
+    }
+    // 국가 게이트 차단 (root loader 의 requireAllowedCountry) — 전용 안내 화면.
+    if (
+      error.status === 403 &&
+      (error.data as { code?: string } | null)?.code === GEO_BLOCKED_CODE
+    ) {
+      return (
+        <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+          <h1 className="text-2xl font-bold">해외에서는 접속할 수 없습니다</h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            리담변리사학원 학습 플랫폼은 대한민국 내에서만 이용하실 수 있습니다.
+            <br />
+            국내에서 접속 중인데 이 화면이 보인다면 VPN·프록시를 끄고 다시 시도해
+            주세요.
+          </p>
+        </main>
+      );
     }
     message = "Error";
     details = error.statusText || details;

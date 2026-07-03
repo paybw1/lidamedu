@@ -4,6 +4,7 @@ import { Outlet, data, redirect } from "react-router";
 
 import { CommandPalette } from "~/core/components/command-palette";
 import { SessionHeartbeat } from "~/core/components/session-heartbeat";
+import { requireAccessApproval } from "../lib/require-approval.server";
 import { requireServiceDataConsent } from "../lib/require-consent.server";
 import { enforceSingleSession } from "../lib/single-session.server";
 import makeServerClient from "../lib/supa-client.server";
@@ -24,6 +25,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   // feat-000-016 — 단일 세션 강제. 다른 기기에서 더 새 로그인이 발생했으면(학생 한정)
   // 이 기기 세션만 종료하고 /login?reason=other-device 로. 통과 시 무동작.
   await enforceSingleSession(client, user, request, headers);
+
+  // 접근 승인 게이트 — 미승인 학생은 /pending-approval 로. 동의 게이트보다 먼저.
+  await requireAccessApproval(client, user, request, headers);
 
   // feat-8-026 — 학습 데이터 활용 미동의 학생은 /consent 로. staff/동의자/allow-list 통과.
   await requireServiceDataConsent(client, user, request, headers);

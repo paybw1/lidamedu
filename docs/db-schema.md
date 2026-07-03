@@ -95,10 +95,11 @@ CLAUDE.md 결정사항에 따라 Drizzle 제거 완료. 서버 쿼리는 `supa-c
 | `avatar_url` | text | |
 | `role` | `user_role` enum (`student`/`instructor`/`manager`/`admin`) | default `student`. 등급: student<instructor<manager<admin (feat-7-031) |
 | `marketing_consent` | boolean default false | |
+| `access_approved_at` | timestamptz | 서비스 접근 승인 게이트. NULL=승인 대기(신규 가입 기본), NOT NULL=승인. 승인/해제는 `/admin/users` (service_role 전용). 게이트: `requireAccessApproval` (private/dashboard layout, staff 면제) |
 | `created_at` / `updated_at` | timestamptz | |
 
 **RLS**: select/update/delete-own-profile (본인만).
-**트리거**: `on_auth_user_created` → `handle_new_user()` 가 가입 시 자동 row 생성. `profiles_guard_role_change` → `role` 자가 변경(self-escalation) 차단 — service_role(운영자 API)만 허용 (feat-7-031).
+**트리거**: `on_auth_user_created` → `handle_new_user()` 가 가입 시 자동 row 생성. `profiles_guard_role_change` → `role` 자가 변경(self-escalation) 차단 — service_role(운영자 API)만 허용 (feat-7-031). `trg_prevent_access_approval_self_change` → `access_approved_at` 자가 변경 차단 — service_role 만 허용 (`scripts/sql/add_access_approved_at.sql`).
 
 > 적용된 SQL: `sql/signup_setup.sql` + `harden_signup_and_add_email_lookup`.
 > 추가 RPC: `email_already_registered(p_email text) returns boolean` (service_role 만 호출 가능).

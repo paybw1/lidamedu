@@ -19,6 +19,7 @@ export interface AdminUserRow {
   phoneE164: string | null;
   address: string | null;
   marketingConsent: boolean;
+  accessApprovedAt: string | null;
   createdAt: string;
   updatedAt: string;
   lastSignInAt: string | null;
@@ -53,7 +54,7 @@ export async function listAdminUsers(
     (client as SupabaseClient<Database>)
       .from("profiles")
       .select(
-        "profile_id, name, nickname, avatar_url, role, phone_e164, address, marketing_consent, created_at, updated_at",
+        "profile_id, name, nickname, avatar_url, role, phone_e164, address, marketing_consent, access_approved_at, created_at, updated_at",
       ),
     client.auth.admin.listUsers({ page: 1, perPage: 1000 }),
   ]);
@@ -75,6 +76,7 @@ export async function listAdminUsers(
       phoneE164: profile?.phone_e164 ?? null,
       address: profile?.address ?? null,
       marketingConsent: profile?.marketing_consent ?? false,
+      accessApprovedAt: profile?.access_approved_at ?? null,
       createdAt: profile?.created_at ?? u.created_at,
       updatedAt: profile?.updated_at ?? u.created_at,
       lastSignInAt: u.last_sign_in_at ?? null,
@@ -116,6 +118,20 @@ export async function updateUserRole(
   const { error } = await client
     .from("profiles")
     .update({ role: newRole })
+    .eq("profile_id", profileId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// 서비스 접근 승인/해제 — access_approved_at 은 가드 트리거로 service_role 만 변경 가능.
+export async function setUserAccessApproval(
+  profileId: string,
+  approved: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const client = adminClient as SupabaseClient<Database>;
+  const { error } = await client
+    .from("profiles")
+    .update({ access_approved_at: approved ? new Date().toISOString() : null })
     .eq("profile_id", profileId);
   if (error) return { ok: false, error: error.message };
   return { ok: true };

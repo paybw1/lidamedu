@@ -1,5 +1,6 @@
 import { Outlet, data, redirect } from "react-router";
 
+import { requireAccessApproval } from "~/core/lib/require-approval.server";
 import { requireServiceDataConsent } from "~/core/lib/require-consent.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 
@@ -14,6 +15,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (!user) {
     throw redirect("/login", { headers });
   }
+  // 접근 승인 게이트 — 미승인 학생은 /pending-approval 로. 동의 게이트보다 먼저.
+  await requireAccessApproval(client, user, request, headers);
   // feat-8-026 — 학습 데이터 활용 미동의 학생은 /consent 로.
   await requireServiceDataConsent(client, user, request, headers);
   return data(null, { headers });

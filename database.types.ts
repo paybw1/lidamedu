@@ -5202,6 +5202,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_approved_at: string | null
           active_session_at: string | null
           active_session_device: string | null
           active_session_id: string | null
@@ -5230,6 +5231,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_approved_at?: string | null
           active_session_at?: string | null
           active_session_device?: string | null
           active_session_id?: string | null
@@ -5258,6 +5260,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_approved_at?: string | null
           active_session_at?: string | null
           active_session_device?: string | null
           active_session_id?: string | null
