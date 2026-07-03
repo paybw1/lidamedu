@@ -103,6 +103,12 @@ export interface OxDiagnosis {
    * buildOxDiagnosisTree 로 채운다. 뷰는 비어 있으면 평면 매트릭스로 폴백.
    */
   tree: OxTreeRow[];
+  /**
+   * 조문(법전) 기준 매트릭스 — 편→장→절 그룹 롤업. 전 과목 동일 기준(민법처럼
+   * 체계도 없는 과목 포함)이라 과목 간 비교용 토글 뷰. nodeId = 그룹 article_id
+   * (딥링크는 /subjects/:law/chapters/:id).
+   */
+  articleTree: OxTreeRow[];
   minAttempts: number;
   dedup: "latest" | "all";
 }
@@ -220,6 +226,7 @@ export function buildOxDiagnosis(
       byNode: [],
       cross: [],
       tree: [],
+      articleTree: [],
       minAttempts,
       dedup,
     };
@@ -324,6 +331,7 @@ export function buildOxDiagnosis(
     byNode,
     cross,
     tree: [],
+    articleTree: [],
     minAttempts,
     dedup,
   };
@@ -636,6 +644,99 @@ export async function computeOxDiagnosis(
     minAttempts,
     fallbackLabel: labelByNode,
     fallbackLawCode: lawCodeByNode,
+  });
+
+  // ── 조문(법전) 기준 트리 — 전 과목 동일 기준(체계도 없는 민법 포함) 토글 뷰 ──
+  // 조문의 조상 폐쇄를 조회해 문제를 가장 가까운 그룹(편/장/절)에 귀속시킨다.
+  interface ArtMeta {
+    parentId: string | null;
+    label: string;
+    level: string;
+    path: string;
+    lawId: string;
+  }
+  const artMeta = new Map<string, ArtMeta>();
+  let pendingArt = articleIds;
+  for (let round = 0; pendingArt.length > 0 && round < 12; round++) {
+    const fetched: string[] = [];
+    for (let i = 0; i < pendingArt.length; i += CHUNK) {
+      const slice = pendingArt.slice(i, i + CHUNK);
+      const { data } = await client
+        .from("articles")
+        .select("article_id, parent_id, path, display_label, level, law_id")
+        .in("article_id", slice);
+      for (const a of data ?? []) {
+        artMeta.set(a.article_id, {
+          parentId: a.parent_id,
+          label: a.display_label,
+          level: a.level,
+          path: String(a.path ?? ""),
+          lawId: a.law_id,
+        });
+        if (a.parent_id) fetched.push(a.parent_id);
+      }
+    }
+    pendingArt = [...new Set(fetched)].filter((id) => !artMeta.has(id));
+  }
+  const lawIds = [...new Set([...artMeta.values()].map((a) => a.lawId))];
+  const lawCodeByLawId = new Map<string, string>();
+  if (lawIds.length > 0) {
+    const { data } = await client
+      .from("laws")
+      .select("law_id, law_code")
+      .in("law_id", lawIds);
+    for (const l of data ?? []) lawCodeByLawId.set(l.law_id, l.law_code);
+  }
+  // 매트릭스 행 단위 = 그룹(편/장/절)만 — 조 단위(수백 행)는 과함.
+  const GROUP_LEVELS = new Set(["part", "chapter", "section"]);
+  const groupByProblem = new Map<string, string | null>();
+  for (const pid of problemIds) {
+    let cur = articleByProblem.get(pid) ?? null;
+    let group: string | null = null;
+    for (let guard = 0; cur && guard < 12; guard++) {
+      const m = artMeta.get(cur);
+      if (!m) break;
+      if (GROUP_LEVELS.has(m.level)) {
+        group = cur;
+        break;
+      }
+      cur = m.parentId;
+    }
+    groupByProblem.set(pid, group);
+  }
+  const groupLabel = new Map<string, string>();
+  const groupLawCode = new Map<string, string>();
+  const groupMetaRows: OxNodeMetaRow[] = [];
+  for (const [id, m] of artMeta) {
+    if (!GROUP_LEVELS.has(m.level)) continue;
+    // 그룹의 트리 부모는 그룹인 경우만 연결(조문 부모는 루트 취급 — 방어).
+    const parentIsGroup =
+      !!m.parentId && GROUP_LEVELS.has(artMeta.get(m.parentId)?.level ?? "");
+    const lawCode = lawCodeByLawId.get(m.lawId) ?? "";
+    groupMetaRows.push({
+      nodeId: id,
+      parentId: parentIsGroup ? m.parentId : null,
+      label: m.label,
+      lawCode,
+      path: m.path,
+    });
+    groupLabel.set(id, m.label);
+    groupLawCode.set(id, lawCode);
+  }
+  const articleDiag = buildOxDiagnosis(
+    rows,
+    {
+      ctByRef,
+      nodeByProblem: groupByProblem,
+      labelByNode: groupLabel,
+      lawCodeByNode: groupLawCode,
+    },
+    { dedup, minAttempts },
+  );
+  diagnosis.articleTree = buildOxDiagnosisTree(articleDiag.cross, groupMetaRows, {
+    minAttempts,
+    fallbackLabel: groupLabel,
+    fallbackLawCode: groupLawCode,
   });
   return diagnosis;
 }

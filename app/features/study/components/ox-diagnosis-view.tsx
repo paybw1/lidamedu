@@ -310,6 +310,9 @@ function Prescription({
   );
 }
 
+// 매트릭스 기준 — 체계도(학습 단위) / 조문(법전 편·장·절, 전 과목 동일 기준).
+type MatrixBasis = "systematic" | "article";
+
 function CrossMatrix({
   diagnosis,
   audience,
@@ -317,17 +320,26 @@ function CrossMatrix({
   diagnosis: OxDiagnosis;
   audience: Audience;
 }) {
-  // 체계도 트리(조상 롤업)가 있으면 트리형, 없으면(구 데이터/합성 입력) 평면 폴백.
-  if (diagnosis.tree.length > 0) {
-    return (
-      <TreeMatrix
-        rows={diagnosis.tree}
-        minAttempts={diagnosis.minAttempts}
-        audience={audience}
-      />
-    );
+  // 기본 = 체계도(학습 단위). 체계도 트리가 비면(민법만 푼 경우 등) 조문 기준으로 시작.
+  const [basis, setBasis] = useState<MatrixBasis>(() =>
+    diagnosis.tree.length > 0 ? "systematic" : "article",
+  );
+  const rows = basis === "systematic" ? diagnosis.tree : diagnosis.articleTree;
+  const canToggle =
+    diagnosis.tree.length > 0 && diagnosis.articleTree.length > 0;
+  // 트리 정보가 전혀 없으면(합성 입력 등) 평면 폴백.
+  if (diagnosis.tree.length === 0 && diagnosis.articleTree.length === 0) {
+    return <FlatMatrix diagnosis={diagnosis} audience={audience} />;
   }
-  return <FlatMatrix diagnosis={diagnosis} audience={audience} />;
+  return (
+    <TreeMatrix
+      rows={rows}
+      minAttempts={diagnosis.minAttempts}
+      audience={audience}
+      basis={basis}
+      onBasisChange={canToggle ? setBasis : undefined}
+    />
+  );
 }
 
 // 과목 섹션 표시 순서 — 민법 → 특허법 → 디자인보호법 → 상표법 → (그 외 정식 순서).
@@ -347,10 +359,15 @@ function TreeMatrix({
   rows,
   minAttempts,
   audience,
+  basis,
+  onBasisChange,
 }: {
   rows: OxTreeRow[];
   minAttempts: number;
   audience: Audience;
+  basis: MatrixBasis;
+  /** 미전달 = 토글 숨김(한쪽 기준만 데이터 존재). */
+  onBasisChange?: (b: MatrixBasis) => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const parentOf = useMemo(() => {
@@ -403,14 +420,47 @@ function TreeMatrix({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <h2 className="text-base font-bold tracking-tight">
-          단원 × 지식종류 매트릭스
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold tracking-tight">
+            단원 × 지식종류 매트릭스
+          </h2>
+          {onBasisChange ? (
+            <div
+              className="border-border inline-flex overflow-hidden rounded-lg border text-xs"
+              role="group"
+              aria-label="매트릭스 기준"
+            >
+              {(
+                [
+                  ["systematic", "체계도 기준"],
+                  ["article", "조문 기준"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onBasisChange(value)}
+                  aria-pressed={basis === value}
+                  className={cn(
+                    "px-2.5 py-1 font-semibold transition-colors",
+                    basis === value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <p className="text-muted-foreground text-xs">
-          과목별 · 체계도 순서. 상위 단원 행은 하위 단원 전체의 합산입니다 — ▸ 를
-          눌러 펼치면 세부 단원별로 드릴다운됩니다. 셀 = 정답률 (시도수), 표본 N
-          {minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면 해당 단원
-          학습으로 이동합니다.
+          {basis === "systematic"
+            ? "과목별 · 체계도 순서. 상위 단원 행은 하위 단원 전체의 합산입니다"
+            : "과목별 · 법전 편 → 장 → 절 순서. 상위 행은 하위 전체의 합산입니다"}
+          {" "}— ▸ 를 눌러 펼치면 세부 단원별로 드릴다운됩니다. 셀 = 정답률
+          (시도수), 표본 N{minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면
+          해당 단원 학습으로 이동합니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -468,7 +518,11 @@ function TreeMatrix({
                           <div className="min-w-0 space-y-0.5">
                             {row.lawCode && row.nodeId ? (
                               <Link
-                                to={`/subjects/${row.lawCode}/systematic/${row.nodeId}`}
+                                to={
+                                  basis === "systematic"
+                                    ? `/subjects/${row.lawCode}/systematic/${row.nodeId}`
+                                    : `/subjects/${row.lawCode}/chapters/${row.nodeId}`
+                                }
                                 className="text-link hover:underline"
                                 viewTransition
                               >
@@ -477,7 +531,9 @@ function TreeMatrix({
                             ) : (
                               row.label
                             )}
+                            {/* 다시 풀기 러너는 체계도 노드 전용(exact-node) — 조문 기준 행엔 미노출. */}
                             {audience === "self" &&
+                            basis === "systematic" &&
                             !row.hasChildren &&
                             row.nodeId &&
                             row.lawCode ? (
