@@ -68,9 +68,15 @@ const schema = z.object({ grade: z.string().max(100) });
 export async function action({ request }: Route.ActionArgs) {
   const { user } = await requireAdmin(request);
   const fd = await request.formData();
-  const parsed = schema.safeParse({ grade: String(fd.get("grade") ?? "") });
-  if (!parsed.success) return data({ error: "입력 오류" }, { status: 400 });
-  const value = parsed.data.grade === "" ? null : parsed.data.grade;
+  // 해제 버튼은 intent=clear — 라디오(name=grade)와 같은 name을 쓰면 체크된
+  // 라디오 값이 먼저 직렬화되어 해제가 무시되므로 name을 분리한다.
+  const isClear = fd.get("intent") === "clear";
+  let value: string | null = null;
+  if (!isClear) {
+    const parsed = schema.safeParse({ grade: String(fd.get("grade") ?? "") });
+    if (!parsed.success) return data({ error: "입력 오류" }, { status: 400 });
+    value = parsed.data.grade === "" ? null : parsed.data.grade;
+  }
   const { error } = await adminClient
     .from("profiles")
     .update({ membership_test_grade: value })
@@ -168,8 +174,8 @@ export default function AdminMembershipTest({
             type="submit"
             size="sm"
             variant="outline"
-            name="grade"
-            value=""
+            name="intent"
+            value="clear"
             disabled={submitting || !current}
           >
             <RotateCcwIcon className="size-3.5" /> 해제 (원장 권한 복귀)
