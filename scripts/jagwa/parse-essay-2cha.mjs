@@ -21,22 +21,11 @@ const MARKER = /^【\s*([^】]+?)\s*】\s*\(\s*(\d+)\s*점\s*\)/;
 
 const SEP_ONLY = /^[\s|:\-]+$/; // 마크다운 표 구분행(| --- |)
 
-// 한 문단 안에서 같은 이미지 마커([IMG:ref])가 반복되면(원문이 같은 상표 마크를 여러 번
-// 인용) 첫 등장만 남긴다 — "같은 마크 연속 N개"로 지저분해지는 것 방지.
-function dedupImg(t) {
-  const seen = new Set();
-  return t
-    .replace(/\[IMG:([^\]]+)\]/g, (m, ref) => {
-      if (seen.has(ref)) return "";
-      seen.add(ref);
-      return m;
-    })
-    .replace(/[ \t]{2,}/g, " ");
-}
+// (2026-07) 이미지 마커는 hwpx-to-text 가 텍스트 흐름상 등장 위치에 인라인으로 넣는다 —
+// 같은 마크의 반복 인용도 원문의 각 인용 지점이므로 dedup 하지 않는다.
 
 // 박스(표/| 포함) → blockquote. 그 외는 그대로. 하위문항은 굵게 배점.
 function fmtParagraph(t) {
-  t = dedupImg(t);
   if (t.startsWith("|")) {
     let s = t
       .replace(/\|\s*-{2,}\s*\|/g, " ") // | --- | 구분행 제거

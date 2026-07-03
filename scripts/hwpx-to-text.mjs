@@ -118,6 +118,8 @@ function paraFromNode(node, charPrMap, sectionName) {
       let runText = "";
       const runChildren = c[ck] ?? [];
       // 한 run 안에 hp:t (텍스트) 와 hp:pic (그림) 이 둘 다 있을 수 있다.
+      // 그림 마커는 텍스트 흐름상 등장 위치에 그대로(인라인) 삽입한다 —
+      // 원문이 ‘ ’ 따옴표 사이에 도형을 배치하는 경우(상표 2차 등) 위치 보존.
       walk(runChildren, (n) => {
         const tk = Object.keys(n).find((k) => k !== ":@" && !k.startsWith("@_"));
         if (!tk) return;
@@ -130,7 +132,10 @@ function paraFromNode(node, charPrMap, sectionName) {
         if (tk === "hc:img" || tk.endsWith(":img")) {
           const imgAttrs = n[":@"] ?? {};
           const ref = imgAttrs["@_binaryItemIDRef"];
-          if (ref) para.imageRefs.push(ref);
+          if (ref) {
+            para.imageRefs.push(ref);
+            runText += `[IMG:${ref}]`;
+          }
         }
       });
       if (runText.length > 0) {
@@ -142,14 +147,17 @@ function paraFromNode(node, charPrMap, sectionName) {
         });
       }
     }
-    // hp:pic / hp:ctrl (그림 control) 등 run 형제로 등장하는 그림 처리.
+    // hp:pic / hp:ctrl (그림 control) 등 run 형제로 등장하는 그림 처리 — 역시 인라인.
     if (ck === "hp:pic" || ck.endsWith(":pic")) {
       walk([c], (n) => {
         const tk = Object.keys(n).find((k) => k !== ":@" && !k.startsWith("@_"));
         if (tk === "hc:img" || (tk && tk.endsWith(":img"))) {
           const imgAttrs = n[":@"] ?? {};
           const ref = imgAttrs["@_binaryItemIDRef"];
-          if (ref) para.imageRefs.push(ref);
+          if (ref) {
+            para.imageRefs.push(ref);
+            para.text += `[IMG:${ref}]`;
+          }
         }
       });
     }
@@ -159,15 +167,12 @@ function paraFromNode(node, charPrMap, sectionName) {
     para.italic = cp?.italic ?? false;
     para.bold = cp?.bold ?? false;
   }
-  // 그림이 있으면 paragraph 내 marker 형태로 텍스트 끝에 추가 (downstream 에서 url 로 치환).
+  // 그림 marker 는 위에서 텍스트 흐름상 등장 위치에 인라인으로 이미 삽입됨.
   // 장식 이미지(chapter 헤더) 는 제거 — paragraph 텍스트에 "제N장" 이 있으면 본문 의미가 아니므로.
   const isChapterHeader = /제\s*\d+\s*장/.test(para.text) ||
     /정답\s*및\s*해설|문\s*[•·]\s*제\s*[•·]\s*편|리담특허법/.test(para.text);
-  if (!isChapterHeader) {
-    for (const ref of para.imageRefs) {
-      para.text += (para.text ? " " : "") + `[IMG:${ref}]`;
-    }
-  } else {
+  if (isChapterHeader) {
+    para.text = para.text.replace(/\[IMG:[^\]]+\]/g, "").trim();
     para.imageRefs = [];
   }
   return para;
