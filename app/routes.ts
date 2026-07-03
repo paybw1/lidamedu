@@ -134,6 +134,7 @@ export default [
       route("/mcq-exam", "features/admin/api/mcq-exam.tsx"),
       route("/user-role", "features/admin/api/user-role.tsx"),
       route("/user-access", "features/admin/api/user-access.tsx"),
+      route("/popup-notice", "features/admin/api/popup-notice.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
       route("/cohort-board", "features/admin/api/cohort-board.tsx"),
       route(
@@ -548,6 +549,10 @@ export default [
         "features/admin/screens/admin-orphan-highlights.tsx",
       ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
+      route(
+        "/admin/popup-notices",
+        "features/admin/screens/admin-popup-notices.tsx",
+      ),
       route(
         "/admin/community/reports",
         "features/admin/screens/admin-community-reports.tsx",

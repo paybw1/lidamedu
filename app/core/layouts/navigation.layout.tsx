@@ -4,12 +4,14 @@ import { type CSSProperties, Suspense, useEffect, useState } from "react";
 import { Await, Link, Outlet, data } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
+import { listActivePopupNotices } from "~/features/admin/queries/popup-notices.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { getUnreadCount } from "~/features/notifications/queries.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 
 import Footer from "../components/footer";
 import { NavigationBar } from "../components/navigation-bar";
+import { PopupNoticeModal } from "../components/popup-notice-modal";
 import { StudentBottomBar } from "../components/student-bottombar";
 import { StudentSidebar } from "../components/student-sidebar";
 import makeServerClient from "../lib/supa-client.server";
@@ -57,11 +59,17 @@ export async function loader({ request }: Route.LoaderArgs) {
       subjects: access.subjects,
     };
   })();
-  return data({ userPromise, inboxPromise, navMode }, { headers });
+  // 팝업 공지 — 활성+기간내 공지(RLS 필터). 부가 기능이라 스트리밍(promise)으로 비차단.
+  const popupNoticesPromise = listActivePopupNotices(client);
+  return data(
+    { userPromise, inboxPromise, navMode, popupNoticesPromise },
+    { headers },
+  );
 }
 
 export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
-  const { userPromise, inboxPromise, navMode } = loaderData;
+  const { userPromise, inboxPromise, navMode, popupNoticesPromise } =
+    loaderData;
   const isSidebar = navMode === "sidebar";
   // 하단 탭바 접기 상태 — 공부 화면 확대용. localStorage 로 유지.
   const [navCollapsed, setNavCollapsed] = useState(false);
@@ -234,6 +242,14 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
       <Suspense fallback={null}>
         <Await resolve={userPromise}>
           {({ data: { user } }) => (user ? <BugReportWidget /> : null)}
+        </Await>
+      </Suspense>
+      {/* 팝업 공지 — 활성 공지가 있으면 모달. 닫기 상태는 localStorage(컴포넌트 소유). */}
+      <Suspense fallback={null}>
+        <Await resolve={popupNoticesPromise}>
+          {(notices) =>
+            notices.length > 0 ? <PopupNoticeModal notices={notices} /> : null
+          }
         </Await>
       </Suspense>
     </div>

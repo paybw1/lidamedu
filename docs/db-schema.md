@@ -1072,3 +1072,28 @@ create index content_chunks_dirty
 **차원 변경 주의**: `vector(1024)` 의 1024 는 임베딩 모델(현재 Voyage `voyage-3-large`)에 종속. 모델·차원 변경 시 마이그레이션 + 전체 재임베딩 필요. 단일 소유 상수: `app/features/ai-qna/lib/constants.ts`.
 
 > v1 에서 `ai_conversations` / `ai_messages` 는 feat-9-004 단계에 도입(별도 마이그레이션). 이 섹션은 RAG 색인 인프라만.
+
+---
+
+## popup_notices  ✅ 적용됨 (2026-07-03)
+
+운영자가 만드는 사이트 팝업(모달) 공지. `/admin/popup-notices` 관리, `navigation.layout` 이 활성 공지를 모달로 표시.
+
+```sql
+create table public.popup_notices (
+  notice_id   uuid primary key default gen_random_uuid(),
+  title       text not null,
+  body_md     text not null default '',
+  link_url    text,
+  link_label  text,
+  starts_at   timestamptz,          -- 노출 시작 (null=즉시)
+  ends_at     timestamptz,          -- 노출 종료 (null=무기한)
+  is_active   boolean not null default false,
+  created_by  uuid references profiles(profile_id),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+```
+
+**RLS**: select 는 노출 조건 행만(`is_active` + 기간내) 전체 공개 / 전체 열람·쓰기는 `manager`·`admin` (profiles role 서브쿼리). 적용 SQL: `scripts/sql/add_popup_notices.sql`.
+**학생 닫기 상태**: DB 아님 — localStorage(`popupNoticeHiddenUntil:<id>`, 닫기=10분·오늘 하루 보지 않기=자정까지).

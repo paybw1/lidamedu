@@ -4489,6 +4489,63 @@ export type Database = {
           },
         ]
       }
+      popup_notices: {
+        Row: {
+          body_md: string
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          is_active: boolean
+          link_label: string | null
+          link_url: string | null
+          notice_id: string
+          starts_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_md?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          is_active?: boolean
+          link_label?: string | null
+          link_url?: string | null
+          notice_id?: string
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          is_active?: boolean
+          link_label?: string | null
+          link_url?: string | null
+          notice_id?: string
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "popup_notices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "popup_notices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       problem_box_items: {
         Row: {
           body_md: string
