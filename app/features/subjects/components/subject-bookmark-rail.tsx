@@ -90,12 +90,12 @@ export function BookmarkTabInner({
 }
 
 /**
- * 상세 뷰어용 축 내비 — 좌측 트리 패널 헤더(체계도/조문 토글 위)에 놓는 가로
- * 세그먼트. 세로 레일(구 SubjectBookmarkRail)을 패널 안으로 옮긴 것.
+ * 상세 뷰어용 축 내비 — 좌측 트리 패널 헤더 상단의 언더라인 탭(시안 C).
+ * 세로 레일(구 SubjectBookmarkRail)을 패널 안으로 옮긴 것.
  *
- * 체계도/조문 토글(AxisSegmented)과 같은 트랙 문법을 쓰되, "보기 방식"이 아닌
- * "콘텐츠 축 이동"이라는 상위 위계를 드러내도록 활성 항목을 네이비 채움
- * (bg-primary)으로 더 진하게 구분한다. 각 항목 = 해당 축 과목 색인으로 가는 링크.
+ * "콘텐츠 축 전환(상단 탭)"과 "보기 방식(체계도/조문 세그먼트)"이 다른 층위임이
+ * 드러나도록 언더라인 탭 문법을 쓴다. 활성 축 = 파란 밑줄 + 파란 글씨.
+ * 각 항목 = 해당 축 과목 색인으로 가는 링크. 라벨은 한 줄 고정(whitespace-nowrap).
  */
 export function SubjectAxisNav({
   subjectSlug,
@@ -114,10 +114,7 @@ export function SubjectAxisNav({
   return (
     <nav
       aria-label="과목 학습 영역"
-      className={cn(
-        "bg-muted text-muted-foreground flex items-stretch gap-[1px] rounded-lg p-[3px]",
-        className,
-      )}
+      className={cn("border-border flex border-b", className)}
     >
       {/* 주관식(고도화 전 staff 전용) 축은 호출부가 staff 여부(showSubjective)로 결정. */}
       {bookmarkAxesFor(subjectSlug)
@@ -125,7 +122,6 @@ export function SubjectAxisNav({
         .map((axis) => {
           const isActive = axis.value === active;
           const count = counts?.[axis.value];
-          const Icon = axis.icon;
           return (
             <Link
               key={axis.value}
@@ -133,31 +129,23 @@ export function SubjectAxisNav({
               viewTransition
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                // 아이콘 위·라벨 아래 세로 스택 — 좁은 패널에서도 라벨("객관식" 등)이
-                // 한 줄로 유지되도록 whitespace-nowrap + 최소 폭 버튼.
-                "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1.5 leading-tight transition-colors",
+                "-mb-px flex flex-1 flex-col items-center gap-px border-b-2 px-1 pt-1 pb-1.5 leading-tight transition-colors",
                 "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:text-link",
+                  ? "border-primary text-link"
+                  : "text-muted-foreground hover:text-link border-transparent",
               )}
             >
-              <Icon className="size-4" />
               <span
                 className={cn(
-                  "text-[11px] whitespace-nowrap",
-                  isActive ? "font-bold" : "font-semibold",
+                  "text-[12px] whitespace-nowrap",
+                  isActive ? "font-extrabold" : "font-semibold",
                 )}
               >
                 {axis.label}
               </span>
               {count !== undefined ? (
-                <span
-                  className={cn(
-                    "text-[10px] font-bold whitespace-nowrap tabular-nums",
-                    isActive ? "opacity-85" : "opacity-65",
-                  )}
-                >
+                <span className="text-[10px] font-semibold whitespace-nowrap opacity-70 tabular-nums">
                   {count.toLocaleString("ko-KR")}
                 </span>
               ) : null}

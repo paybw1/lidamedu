@@ -435,7 +435,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         active="cases"
                         counts={loaderData.axisCounts}
                         showSubjective={loaderData.isStaff}
-                        className="flex-1"
+                        className="mt-1 px-2"
                       />
                     }
                   />
@@ -662,19 +662,18 @@ function CaseTreeSidebarInner({
   const systematicEmpty = systematicNodes.length === 0;
   return (
     <div>
-      {/* 헤더 — 데스크톱(leftSlot 주입): [접기+축 내비] / [체계도·조문 전체 폭] sticky.
+      {/* 헤더 — 데스크톱(leftSlot 주입): [접기 맨 위] → [축 언더라인 탭] → [체계도/조문] sticky.
           모바일 드로어(leftSlot 없음): 정렬축 토글만 우측 정렬(기존 동작). */}
       {leftSlot ? (
-        <div className="border-border bg-card sticky top-0 z-10 space-y-2 rounded-t-xl border-b px-3 py-2.5">
-          <div className="flex items-center gap-1.5">
-            {leftSlot}
-            {axisNav}
+        <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
+          <div className="px-3 pt-2">{leftSlot}</div>
+          {axisNav}
+          <div className="flex justify-end px-3 py-2">
+            <SortAxisToggle
+              size="sm"
+              disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+            />
           </div>
-          <SortAxisToggle
-            size="sm"
-            className="flex w-full [&>button]:flex-1"
-            disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-          />
         </div>
       ) : (
         <div className="flex items-center justify-end gap-2 pb-2">

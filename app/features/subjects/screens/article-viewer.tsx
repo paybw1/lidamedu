@@ -545,23 +545,24 @@ function ArticleViewerInner({
               </div>
             ) : (
               <div className="border-border bg-card rounded-xl border shadow-sm">
-                {/* [접기+축 내비] / [체계도·조문 전체 폭] 헤더 — 스크롤해도 패널 상단 고정. */}
-                <div className="border-border bg-card sticky top-0 z-10 space-y-2 rounded-t-xl border-b px-3 py-2.5">
-                  <div className="flex items-center gap-1.5">
+                {/* 헤더(스크롤해도 상단 고정): [접기 맨 위] → [축 언더라인 탭] → [체계도/조문]. */}
+                <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
+                  <div className="px-3 pt-2">
                     <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                    <SubjectAxisNav
-                      subjectSlug={subject.slug}
-                      active="articles"
-                      counts={loaderData.axisCounts}
-                      showSubjective={loaderData.staffRole !== null}
-                      className="flex-1"
+                  </div>
+                  <SubjectAxisNav
+                    subjectSlug={subject.slug}
+                    active="articles"
+                    counts={loaderData.axisCounts}
+                    showSubjective={loaderData.staffRole !== null}
+                    className="mt-1 px-2"
+                  />
+                  <div className="flex justify-end px-3 py-2">
+                    <SortAxisToggle
+                      size="sm"
+                      disabledAxes={systematicEmpty ? ["systematic"] : undefined}
                     />
                   </div>
-                  <SortAxisToggle
-                    size="sm"
-                    className="flex w-full [&>button]:flex-1"
-                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-                  />
                 </div>
                 <div className="px-1.5 py-2">
                   {renderSystematic ? (
