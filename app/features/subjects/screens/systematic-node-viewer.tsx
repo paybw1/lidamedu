@@ -334,6 +334,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     selectedBlankOwner: ownerParam,
     commentsByArticle,
     canEditComment: staffRole !== null,
+    isStaff: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
     lectureResourcesByArticle,
@@ -461,6 +462,7 @@ function Inner({
         subjectSlug={subject.slug}
         active="articles"
         counts={loaderData.axisCounts}
+        showSubjective={loaderData.isStaff}
         className="lg:sticky lg:top-20"
       />
       <div

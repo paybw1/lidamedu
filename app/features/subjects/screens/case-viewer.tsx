@@ -278,6 +278,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     caseComments,
     canEditComment: staffRole !== null,
     canEditCase: staffRole !== null,
+    isStaff: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
     lectureResources,
@@ -408,6 +409,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
             subjectSlug={subject.slug}
             active="cases"
             counts={loaderData.axisCounts}
+            showSubjective={loaderData.isStaff}
             className="lg:sticky lg:top-20"
           />
           <div

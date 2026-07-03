@@ -538,6 +538,7 @@ function ArticleViewerInner({
           subjectSlug={subject.slug}
           active="articles"
           counts={loaderData.axisCounts}
+          showSubjective={loaderData.staffRole !== null}
           className="lg:sticky lg:top-20"
         />
         <div
