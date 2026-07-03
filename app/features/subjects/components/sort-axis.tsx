@@ -85,17 +85,23 @@ const AXIS_OPTIONS: { value: SortAxis; label: string; icon: typeof NetworkIcon }
     { value: "statutory", label: "조문", icon: LayoutListIcon },
   ];
 
-export function SortAxisToggle({
+// 표현부 — 컨텍스트 비의존 세그먼트 컨트롤. 조문/체계도 축 토글의 단일 스타일
+// 소스(좌패널·학습현황 매트릭스 등 공유). 상태는 호출부 소유.
+export function AxisSegmented({
+  axis,
+  onChange,
   className,
   size = "default",
   disabledAxes,
+  ariaLabel = "정렬 기준",
 }: {
+  axis: SortAxis;
+  onChange: (axis: SortAxis) => void;
   className?: string;
   size?: "sm" | "default";
   disabledAxes?: SortAxis[];
+  ariaLabel?: string;
 }) {
-  const { axis, setAxis } = useSortAxis();
-
   return (
     <div
       className={cn(
@@ -104,7 +110,7 @@ export function SortAxisToggle({
         className,
       )}
       role="group"
-      aria-label="정렬 기준"
+      aria-label={ariaLabel}
     >
       {AXIS_OPTIONS.map(({ value, label, icon: Icon }) => {
         const active = axis === value;
@@ -113,7 +119,7 @@ export function SortAxisToggle({
           <button
             key={value}
             type="button"
-            onClick={() => setAxis(value)}
+            onClick={() => onChange(value)}
             aria-pressed={active}
             aria-disabled={disabled}
             disabled={disabled}
@@ -132,5 +138,26 @@ export function SortAxisToggle({
         );
       })}
     </div>
+  );
+}
+
+export function SortAxisToggle({
+  className,
+  size = "default",
+  disabledAxes,
+}: {
+  className?: string;
+  size?: "sm" | "default";
+  disabledAxes?: SortAxis[];
+}) {
+  const { axis, setAxis } = useSortAxis();
+  return (
+    <AxisSegmented
+      axis={axis}
+      onChange={setAxis}
+      className={className}
+      size={size}
+      disabledAxes={disabledAxes}
+    />
   );
 }

@@ -38,6 +38,7 @@ import type {
   OxDiagnosis,
   OxTreeRow,
 } from "~/features/study/lib/ox-diagnosis.server";
+import { AxisSegmented } from "~/features/subjects/components/sort-axis";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
@@ -435,34 +436,16 @@ function TreeMatrix({
           <h2 className="text-base font-bold tracking-tight">
             단원 × 지식종류 매트릭스
           </h2>
+          {/* 학습과목 좌패널의 체계도/조문 토글(SortAxisToggle)과 동일한 표현부 재사용. */}
           {onBasisChange ? (
-            <div
-              className="border-border inline-flex overflow-hidden rounded-lg border text-xs"
-              role="group"
-              aria-label="매트릭스 기준"
-            >
-              {(
-                [
-                  ["systematic", "체계도 기준"],
-                  ["article", "조문 기준"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => onBasisChange(value)}
-                  aria-pressed={basis === value}
-                  className={cn(
-                    "px-2.5 py-1 font-semibold transition-colors",
-                    basis === value
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <AxisSegmented
+              axis={basis === "systematic" ? "systematic" : "statutory"}
+              onChange={(a) =>
+                onBasisChange(a === "systematic" ? "systematic" : "article")
+              }
+              size="sm"
+              ariaLabel="매트릭스 기준"
+            />
           ) : null}
         </div>
         <p className="text-muted-foreground text-xs">
