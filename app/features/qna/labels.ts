@@ -14,7 +14,15 @@ export const QNA_TARGET_TYPES: QnaTargetType[] = [
   "study_method",
 ];
 export const QNA_STATUSES: QnaStatus[] = ["open", "answered", "closed"];
-export const QNA_QUALITY_GRADES: QnaQualityGrade[] = ["high", "mid", "low"];
+// 질문 수준 5점 척도 — 5(매우 높음)~1(매우 낮음). 기존 3단계(high/mid/low) 데이터는
+// 각각 4/3/2 로 재해석 표시.
+export const QNA_QUALITY_GRADES: QnaQualityGrade[] = [
+  "very_high",
+  "high",
+  "mid",
+  "low",
+  "very_low",
+];
 
 export const qnaTargetTypeSchema = z.enum([
   "article",
@@ -50,7 +58,13 @@ export function subjectLabel(subject: string | null): string | null {
   return QNA_SUBJECT_LABEL[subject as QnaSubject] ?? subject;
 }
 export const qnaStatusSchema = z.enum(["open", "answered", "closed"]);
-export const qnaQualityGradeSchema = z.enum(["high", "mid", "low"]);
+export const qnaQualityGradeSchema = z.enum([
+  "very_high",
+  "high",
+  "mid",
+  "low",
+  "very_low",
+]);
 
 export const QNA_TARGET_LABEL: Record<QnaTargetType, string> = {
   article: "조문",
@@ -70,9 +84,11 @@ export const QNA_STATUS_LABEL: Record<QnaStatus, string> = {
 };
 
 export const QNA_QUALITY_LABEL: Record<QnaQualityGrade, string> = {
-  high: "상",
-  mid: "중",
-  low: "하",
+  very_high: "5 (매우 높음)",
+  high: "4 (높음)",
+  mid: "3 (보통)",
+  low: "2 (낮음)",
+  very_low: "1 (매우 낮음)",
 };
 
 export interface QnaThreadSummary {

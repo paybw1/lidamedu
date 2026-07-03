@@ -17,11 +17,17 @@ interface Props {
   title: string;
   targetLabel: string;
   answerMd: string;
-  qualityGrade: "high" | "mid" | "low";
+  qualityGrade: "very_high" | "high" | "mid" | "low" | "very_low";
   answererName: string;
 }
 
-const GRADE_LABEL = { high: "상", mid: "중", low: "하" } as const;
+const GRADE_LABEL = {
+  very_high: "5 (매우 높음)",
+  high: "4 (높음)",
+  mid: "3 (보통)",
+  low: "2 (낮음)",
+  very_low: "1 (매우 낮음)",
+} as const;
 
 export default function QnaNewAnswer({
   link,

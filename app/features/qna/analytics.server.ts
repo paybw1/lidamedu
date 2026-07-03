@@ -120,9 +120,10 @@ export async function getQnaAnalyticsByNode(opts?: {
       buckets.set(key, b);
     }
     b.total += 1;
-    if (t.quality_grade === "high") b.high += 1;
+    // 5점 척도 도입 후에도 집계 버킷은 3단 유지 — very_high→high / very_low→low 로 귀속.
+    if (t.quality_grade === "high" || t.quality_grade === "very_high") b.high += 1;
     else if (t.quality_grade === "mid") b.mid += 1;
-    else if (t.quality_grade === "low") b.low += 1;
+    else if (t.quality_grade === "low" || t.quality_grade === "very_low") b.low += 1;
     else b.ungraded += 1;
     if (t.quality_grade) gradedThreads += 1;
     if (t.status === "open") b.open += 1;

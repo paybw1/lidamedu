@@ -7983,7 +7983,7 @@ export type Database = {
       problem_source_doc_kind: "problem" | "answer"
       problem_subject_type: "law" | "science"
       qna_message_role: "student" | "ai" | "instructor"
-      qna_quality_grade: "high" | "mid" | "low"
+      qna_quality_grade: "very_high" | "high" | "mid" | "low" | "very_low"
       qna_status: "open" | "answered" | "closed" | "ai_answered" | "verified"
       qna_target_type:
         | "article"
@@ -8247,7 +8247,7 @@ export const Constants = {
       problem_source_doc_kind: ["problem", "answer"],
       problem_subject_type: ["law", "science"],
       qna_message_role: ["student", "ai", "instructor"],
-      qna_quality_grade: ["high", "mid", "low"],
+      qna_quality_grade: ["very_high", "high", "mid", "low", "very_low"],
       qna_status: ["open", "answered", "closed", "ai_answered", "verified"],
       qna_target_type: [
         "article",

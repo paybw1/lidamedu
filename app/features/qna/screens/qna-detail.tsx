@@ -107,9 +107,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function QnaDetail({ loaderData }: Route.ComponentProps) {
   const { thread, messages, currentUserId, isStaff, target } = loaderData;
   const isAsker = thread.askerId === currentUserId;
-  // ai_answered 도 강사 정식답변이 없는 상태 — 강사가 보완/정정 답변을 달 수 있다.
+  // ai_answered/verified 도 강사 정식답변이 없는 상태 — AI 답변을 정확으로 확인한
+  // 뒤에도 강사가 보완/정정 답변을 달 수 있다.
   const canAnswer =
-    (thread.status === "open" || thread.status === "ai_answered") &&
+    (thread.status === "open" ||
+      thread.status === "ai_answered" ||
+      thread.status === "verified") &&
     isStaff &&
     thread.answererId === null;
   const isWaiting = thread.status === "open";
