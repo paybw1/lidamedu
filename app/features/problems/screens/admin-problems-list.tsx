@@ -122,7 +122,6 @@ export default function AdminProblemsList({
   // 편집 화면 진입 시 현재 필터 쿼리를 그대로 전달 → 편집 화면의 "←" 가 같은 쿼리로 되돌아갈 수 있게.
   const [searchParams] = useSearchParams();
   const filterQs = searchParams.toString();
-  const subjectMeta = LAW_SUBJECTS[subject];
   const filterActive =
     !!originParam ||
     !!filters.format ||
@@ -136,7 +135,7 @@ export default function AdminProblemsList({
     <AdminShell
       cluster="problems"
       role={role}
-      title={`${subjectMeta.name} 객관식 문제`}
+      title="객관식 문제"
       desc="체계도 / 조문 순서로 문제 목록을 조회합니다. 분류되지 않은 지문이 있는 문제는 ? 칩으로 표시됩니다."
       headerRight={
         <Button asChild size="sm">
