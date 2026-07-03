@@ -1085,6 +1085,8 @@ create table public.popup_notices (
   notice_id   uuid primary key default gen_random_uuid(),
   title       text not null,
   body_md     text not null default '',
+  image_url   text,                  -- 디자인 이미지(public 버킷 popup-notices, A안)
+  youtube_url text,                  -- 유튜브 영상(표시 시 embed)
   link_url    text,
   link_label  text,
   starts_at   timestamptz,          -- 노출 시작 (null=즉시)
