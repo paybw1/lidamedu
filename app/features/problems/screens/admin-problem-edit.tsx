@@ -167,10 +167,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (subject) {
     const reviewParam = url.searchParams.get("review");
     const mediaParam = url.searchParams.get("media");
+    // origin=past_all → 기출+기출변형 통합 (목록 화면과 동일 매핑, enum 캐스팅 방지)
+    const originParam = url.searchParams.get("origin") || undefined;
     const filters = {
-      origin: (url.searchParams.get("origin") || undefined) as
+      origin: (originParam === "past_all" ? undefined : originParam) as
         | ProblemOrigin
         | undefined,
+      origins:
+        originParam === "past_all"
+          ? (["past_exam", "past_exam_variant"] as ProblemOrigin[])
+          : undefined,
       format: (url.searchParams.get("format") || undefined) as
         | ProblemFormat
         | undefined,
