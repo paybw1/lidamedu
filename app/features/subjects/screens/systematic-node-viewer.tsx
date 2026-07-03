@@ -469,21 +469,23 @@ function Inner({
             </div>
           ) : (
             <Card className="rounded-xl border py-4 shadow-sm">
-              {/* 축 내비+토글+정렬축 헤더 — 트리 스크롤해도 상단 고정(sticky top-0). */}
+              {/* [접기+축 내비] / [체계도·조문 전체 폭] 헤더 — 스크롤해도 상단 고정. */}
               <CardHeader className="border-border bg-card sticky top-0 z-10 space-y-2 border-b px-4 pb-3">
-                <SubjectAxisNav
-                  subjectSlug={subject.slug}
-                  active="articles"
-                  counts={loaderData.axisCounts}
-                  showSubjective={loaderData.isStaff}
-                />
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
                   <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                  <SortAxisToggle
-                    size="sm"
-                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                  <SubjectAxisNav
+                    subjectSlug={subject.slug}
+                    active="articles"
+                    counts={loaderData.axisCounts}
+                    showSubjective={loaderData.isStaff}
+                    className="flex-1"
                   />
                 </div>
+                <SortAxisToggle
+                  size="sm"
+                  className="flex w-full [&>button]:flex-1"
+                  disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                />
               </CardHeader>
               <CardContent className="px-2 pb-2">
                 {renderSystematic ? (

@@ -416,16 +416,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : (
                 <div className="border-border bg-card rounded-xl border shadow-sm">
-                  {/* 축 내비(조문·판례·객관식·주관식) — 체계도/조문 토글 위. */}
-                  <div className="px-3 pt-2.5">
-                    <SubjectAxisNav
-                      subjectSlug={subject.slug}
-                      active="cases"
-                      counts={loaderData.axisCounts}
-                      showSubjective={loaderData.isStaff}
-                    />
-                  </div>
-                  {/* 조문 뷰어와 동일 — [접기][체계도/조문] sticky 헤더, 텍스트 라벨 없음. */}
+                  {/* 조문 뷰어와 동일 — [접기+축 내비] / [체계도·조문] sticky 헤더. */}
                   <CaseTreeSidebar
                     subjectSlug={subject.slug}
                     articles={articles}
@@ -436,6 +427,15 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                       <LeftPanelToggle
                         collapsed={false}
                         onToggle={toggleLeft}
+                      />
+                    }
+                    axisNav={
+                      <SubjectAxisNav
+                        subjectSlug={subject.slug}
+                        active="cases"
+                        counts={loaderData.axisCounts}
+                        showSubjective={loaderData.isStaff}
+                        className="flex-1"
                       />
                     }
                   />
@@ -629,8 +629,10 @@ function CaseTreeSidebar(props: {
   systematicNodes: SystematicNode[];
   caseTreeCounts: CaseTreeCounts;
   activeFilter: CaseTreeFilter | null;
-  // 데스크톱 패널 헤더에 끼워 넣을 접기 토글(정렬축 토글 왼쪽). 모바일 드로어는 미지정.
+  // 데스크톱 패널 헤더에 끼워 넣을 접기 토글(축 내비 왼쪽). 모바일 드로어는 미지정.
   leftSlot?: ReactNode;
+  // 축 내비(조문·판례·객관식·주관식) — 데스크톱 헤더 첫 줄(접기 옆). 모바일 미지정.
+  axisNav?: ReactNode;
 }) {
   return (
     <SortAxisProvider>
@@ -646,6 +648,7 @@ function CaseTreeSidebarInner({
   caseTreeCounts,
   activeFilter,
   leftSlot,
+  axisNav,
 }: {
   subjectSlug: string;
   articles: ArticleNode[];
@@ -653,27 +656,34 @@ function CaseTreeSidebarInner({
   caseTreeCounts: CaseTreeCounts;
   activeFilter: CaseTreeFilter | null;
   leftSlot?: ReactNode;
+  axisNav?: ReactNode;
 }) {
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
   return (
     <div>
-      {/* 토글 행 — 데스크톱(leftSlot 주입): [접기][체계도/조문] sticky 헤더.
+      {/* 헤더 — 데스크톱(leftSlot 주입): [접기+축 내비] / [체계도·조문 전체 폭] sticky.
           모바일 드로어(leftSlot 없음): 정렬축 토글만 우측 정렬(기존 동작). */}
-      <div
-        className={cn(
-          "flex items-center gap-2",
-          leftSlot
-            ? "border-border bg-card sticky top-0 z-10 justify-between rounded-t-xl border-b px-3 py-2.5"
-            : "justify-end pb-2",
-        )}
-      >
-        {leftSlot}
-        <SortAxisToggle
-          size="sm"
-          disabledAxes={systematicEmpty ? ["systematic"] : undefined}
-        />
-      </div>
+      {leftSlot ? (
+        <div className="border-border bg-card sticky top-0 z-10 space-y-2 rounded-t-xl border-b px-3 py-2.5">
+          <div className="flex items-center gap-1.5">
+            {leftSlot}
+            {axisNav}
+          </div>
+          <SortAxisToggle
+            size="sm"
+            className="flex w-full [&>button]:flex-1"
+            disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+          />
+        </div>
+      ) : (
+        <div className="flex items-center justify-end gap-2 pb-2">
+          <SortAxisToggle
+            size="sm"
+            disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+          />
+        </div>
+      )}
       <div className={leftSlot ? "px-1.5 py-2" : ""}>
         <CasesTree
           axis={axis}

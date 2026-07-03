@@ -827,18 +827,23 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : (
                 <>
-                  {/* 축 내비+토글 행 — [조문·판례·객관식·주관식] 위, [접기][체계도/조문(조문 비활성)] 아래. */}
+                  {/* [접기+축 내비] / [체계도·조문(조문 비활성) 전체 폭] 헤더 — 상단 고정. */}
                   <div className="bg-background sticky top-0 z-10 space-y-2 px-3 py-2">
-                    <SubjectAxisNav
-                      subjectSlug={subject.slug}
-                      active={isSubjectiveProblem ? "subjective" : "problems"}
-                      counts={loaderData.axisCounts}
-                      showSubjective={isStaff}
-                    />
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
                       <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                      <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
+                      <SubjectAxisNav
+                        subjectSlug={subject.slug}
+                        active={isSubjectiveProblem ? "subjective" : "problems"}
+                        counts={loaderData.axisCounts}
+                        showSubjective={isStaff}
+                        className="flex-1"
+                      />
                     </div>
+                    <SortAxisToggle
+                      size="sm"
+                      className="flex w-full [&>button]:flex-1"
+                      disabledAxes={["statutory"]}
+                    />
                   </div>
                   {systematicEmpty ? (
                     <p className="text-muted-foreground px-4 py-6 text-xs">

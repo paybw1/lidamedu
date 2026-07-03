@@ -133,28 +133,28 @@ export function SubjectAxisNav({
               viewTransition
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 leading-tight transition-colors",
+                // 아이콘 위·라벨 아래 세로 스택 — 좁은 패널에서도 라벨("객관식" 등)이
+                // 한 줄로 유지되도록 whitespace-nowrap + 최소 폭 버튼.
+                "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1.5 leading-tight transition-colors",
                 "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "hover:text-link",
               )}
             >
-              <span className="flex items-center gap-1">
-                <Icon className="size-3.5" />
-                <span
-                  className={cn(
-                    "text-[11.5px]",
-                    isActive ? "font-bold" : "font-semibold",
-                  )}
-                >
-                  {axis.label}
-                </span>
+              <Icon className="size-4" />
+              <span
+                className={cn(
+                  "text-[11px] whitespace-nowrap",
+                  isActive ? "font-bold" : "font-semibold",
+                )}
+              >
+                {axis.label}
               </span>
               {count !== undefined ? (
                 <span
                   className={cn(
-                    "text-[10px] font-bold tabular-nums",
+                    "text-[10px] font-bold whitespace-nowrap tabular-nums",
                     isActive ? "opacity-85" : "opacity-65",
                   )}
                 >

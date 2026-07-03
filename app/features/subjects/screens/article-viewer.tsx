@@ -545,21 +545,23 @@ function ArticleViewerInner({
               </div>
             ) : (
               <div className="border-border bg-card rounded-xl border shadow-sm">
-                {/* 축 내비+토글+정렬축 헤더 — 트리를 스크롤해도 패널 상단 고정(sticky top-0). */}
+                {/* [접기+축 내비] / [체계도·조문 전체 폭] 헤더 — 스크롤해도 패널 상단 고정. */}
                 <div className="border-border bg-card sticky top-0 z-10 space-y-2 rounded-t-xl border-b px-3 py-2.5">
-                  <SubjectAxisNav
-                    subjectSlug={subject.slug}
-                    active="articles"
-                    counts={loaderData.axisCounts}
-                    showSubjective={loaderData.staffRole !== null}
-                  />
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
                     <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                    <SortAxisToggle
-                      size="sm"
-                      disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                    <SubjectAxisNav
+                      subjectSlug={subject.slug}
+                      active="articles"
+                      counts={loaderData.axisCounts}
+                      showSubjective={loaderData.staffRole !== null}
+                      className="flex-1"
                     />
                   </div>
+                  <SortAxisToggle
+                    size="sm"
+                    className="flex w-full [&>button]:flex-1"
+                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                  />
                 </div>
                 <div className="px-1.5 py-2">
                   {renderSystematic ? (
