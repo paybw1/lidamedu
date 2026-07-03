@@ -9,6 +9,7 @@ import type {
   LawRevisionListItem,
   RevisionArticleEntry,
 } from "./labels";
+import { isMaintenanceRevisionNumber } from "./labels";
 
 export type {
   ArticleChangeKind,
@@ -83,6 +84,7 @@ export async function listLawRevisionsForAdmin(
     videoUrl: r.video_url,
     articleCount: countByRevision.get(r.law_revision_id) ?? 0,
     createdAt: r.created_at,
+    isMaintenance: isMaintenanceRevisionNumber(r.revision_number),
   }));
 }
 
@@ -122,6 +124,7 @@ export async function getLawRevisionById(
     videoUrl: r.video_url,
     articleCount: count ?? 0,
     createdAt: r.created_at,
+    isMaintenance: isMaintenanceRevisionNumber(r.revision_number),
   };
 }
 
@@ -238,6 +241,28 @@ export async function deleteDraftLawRevision(
   client: SupabaseClient<Database>,
   lawRevisionId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // 안전 가드 — 이 개정의 스냅샷이 어떤 조문의 현재 시행 본문(current_revision_id)이면
+  // 삭제 시 그 조문 본문이 유실/롤백된다 → 거부. (내부 정정 스냅샷 오삭제 방지)
+  const { data: held } = await client
+    .from("article_revisions")
+    .select(
+      "revision_id, articles!article_revisions_article_id_fkey!inner(display_label, current_revision_id)",
+    )
+    .eq("law_revision_id", lawRevisionId);
+  const current = (held ?? []).filter(
+    (ar) => ar.articles?.current_revision_id === ar.revision_id,
+  );
+  if (current.length > 0) {
+    const labels = current
+      .slice(0, 3)
+      .map((ar) => ar.articles?.display_label)
+      .filter(Boolean)
+      .join(", ");
+    return {
+      ok: false,
+      error: `이 개정은 현재 시행 중인 조문 본문 스냅샷을 보유하고 있어 삭제할 수 없습니다 (${labels}${current.length > 3 ? ` 외 ${current.length - 3}건` : ""}).`,
+    };
+  }
   // 우선 article_revisions 모두 삭제.
   const { error: arErr } = await client
     .from("article_revisions")

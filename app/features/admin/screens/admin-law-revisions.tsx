@@ -90,15 +90,19 @@ export default function AdminLawRevisions({
   const [showAdd, setShowAdd] = useState(false);
   const subject = LAW_SUBJECTS[lawCode];
   const today = new Date().toISOString().slice(0, 10);
-  const reflected = revisions.filter((r) => r.effectiveDate != null).length;
-  const drafts = revisions.length - reflected;
+  // 법 개정과 내부 정정 스냅샷(조문 오탈자·라벨 정정이 개정 흐름으로 저장된 것) 분리 —
+  // 정정분은 법 개정이 아니므로 본 목록에서 제외하고 하단 관리 섹션에서만 보여준다.
+  const legal = revisions.filter((r) => !r.isMaintenance);
+  const maintenance = revisions.filter((r) => r.isMaintenance);
+  const reflected = legal.filter((r) => r.effectiveDate != null).length;
+  const drafts = legal.length - reflected;
 
   return (
     <AdminShell
       cluster="laws"
       role={role}
       title={`${subject.name} 개정 목록`}
-      desc={`전체 ${revisions.length} · 반영 ${reflected} · 미반영 ${drafts}`}
+      desc={`전체 ${legal.length} · 반영 ${reflected} · 미반영 ${drafts}`}
       headerRight={
         !showAdd ? (
           <Button size="sm" onClick={() => setShowAdd(true)}>
@@ -118,12 +122,82 @@ export default function AdminLawRevisions({
 
       <RevisionSection
         title="개정"
-        revisions={revisions}
+        revisions={legal}
         lawCode={lawCode}
         today={today}
         emptyText="등록된 개정이 없습니다."
       />
+
+      <MaintenanceSection revisions={maintenance} lawCode={lawCode} />
     </AdminShell>
+  );
+}
+
+/* ── MaintenanceSection — 조문 정정 스냅샷(시스템 생성) 관리 ─────────────── */
+// 조문 오탈자·라벨 정정이 개정 흐름(원문 불변 원칙)으로 저장된 내부 스냅샷.
+// 현재 시행 조문 본문을 보유할 수 있어 삭제 금지 — 조회 전용으로만 관리한다.
+function MaintenanceSection({
+  revisions,
+  lawCode,
+}: {
+  revisions: LawRevisionListItem[];
+  lawCode: LawSubjectSlug;
+}) {
+  const [open, setOpen] = useState(false);
+  if (revisions.length === 0) return null;
+  return (
+    <section className="mb-6 space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="text-muted-foreground hover:text-foreground font-mono text-[11px] font-semibold tracking-[0.08em] uppercase"
+      >
+        {open ? "▾" : "▸"} 조문 정정 스냅샷{" "}
+        <span className="text-muted-foreground/60 tabular-nums">
+          ({revisions.length})
+        </span>
+      </button>
+      {open ? (
+        <>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            조문 오탈자·라벨 정정 작업이 개정 이력(원문 불변 원칙)으로 저장된
+            시스템 생성 스냅샷입니다. 법 개정이 아니므로 위 목록·학습정보에는
+            표시되지 않습니다. 현재 시행 중인 조문 본문을 보유할 수 있어{" "}
+            <strong className="text-foreground font-semibold">
+              삭제하면 안 됩니다
+            </strong>
+            (조회 전용).
+          </p>
+          <IndexTable
+            minWidth={520}
+            headers={[
+              { label: "정정 ID" },
+              { label: "조문", align: "right", width: "6rem" },
+              { label: "생성일", align: "right", width: "10rem" },
+            ]}
+          >
+            {revisions.map((r) => (
+              <TR key={r.lawRevisionId}>
+                <TD>
+                  <Link
+                    to={`/admin/laws/${lawCode}/revisions/${r.lawRevisionId}`}
+                    className="text-link font-mono text-xs hover:underline"
+                    viewTransition
+                  >
+                    {r.revisionNumber}
+                  </Link>
+                </TD>
+                <TD align="right">{r.articleCount}</TD>
+                <TD align="right" soft>
+                  {r.createdAt.slice(0, 10)}
+                </TD>
+              </TR>
+            ))}
+          </IndexTable>
+        </>
+      ) : null}
+    </section>
   );
 }
 

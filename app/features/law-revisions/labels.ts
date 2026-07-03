@@ -31,6 +31,21 @@ export interface LawRevisionListItem {
   videoUrl: string | null;
   articleCount: number;
   createdAt: string;
+  /**
+   * 내부 정정 스냅샷 여부 — 조문 오탈자·라벨 정정이 개정 흐름(불변 원칙)으로 저장된
+   * 시스템 생성분(quick-/fix-/조문정리 패턴). 실제 법 개정이 아니므로 개정 목록과
+   * 분리해 표시하고, 현재 조문 본문 스냅샷을 보유할 수 있어 삭제 금지.
+   */
+  isMaintenance: boolean;
+}
+
+// 내부 정정 스냅샷 판별 — 학습정보 목록 필터(laws/queries.server.ts)와 동일 패턴 SSOT.
+export function isMaintenanceRevisionNumber(revisionNumber: string): boolean {
+  return (
+    revisionNumber.startsWith("quick-") ||
+    revisionNumber.startsWith("fix-") ||
+    revisionNumber.includes("조문정리")
+  );
 }
 
 export interface RevisionArticleEntry {
