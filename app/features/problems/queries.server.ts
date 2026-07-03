@@ -19,6 +19,7 @@ import { getBookmarksByTargets } from "~/features/annotations/queries.server";
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { articleSlug } from "~/features/laws/lib/identifier";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
 import {
   MC_FORMATS,
@@ -480,7 +481,7 @@ export async function listRecentProblems(
   let q = client
     .from("problems")
     .select(
-      "problem_id, body_md, format, origin, year, problem_number, created_at, subjective_kind, subjective_topic, laws!inner(law_code)",
+      "problem_id, body_md, format, origin, year, exam_round_no, problem_number, created_at, subjective_kind, subjective_topic, laws!inner(law_code)",
     )
     .in("format", formats)
     .is("deleted_at", null);
@@ -509,7 +510,25 @@ export async function listRecentProblems(
       : q.order("created_at", { ascending: false });
   const { data, error } = await ordered.limit(limit);
   if (error) throw error;
-  return (data ?? []).map((r) => ({
+  const rows = data ?? [];
+  // 같은 시험(연도·회차) 안에서는 과목 고정 순서(특허→상표→디자인→…)로 묶고
+  // 과목 내 문제번호 오름차순 — "2025 특허법 1,2,3,4 → 2025 상표법 1,2,3,4".
+  // law_code 커스텀 순서는 DB 정렬로 표현이 안 되므로 fetch 후 재정렬.
+  if (formatFilter === "subjective") {
+    const subjectRank = new Map<string, number>(
+      LAW_SUBJECT_SLUGS.map((s, i) => [s, i]),
+    );
+    const rank = (code: string) => subjectRank.get(code) ?? LAW_SUBJECT_SLUGS.length;
+    rows.sort(
+      (a, b) =>
+        (b.year ?? -1) - (a.year ?? -1) ||
+        (b.exam_round_no ?? -1) - (a.exam_round_no ?? -1) ||
+        rank(a.laws.law_code) - rank(b.laws.law_code) ||
+        (a.problem_number ?? Number.MAX_SAFE_INTEGER) -
+          (b.problem_number ?? Number.MAX_SAFE_INTEGER),
+    );
+  }
+  return rows.map((r) => ({
     problemId: r.problem_id,
     bodySnippet:
       (r.body_md ?? "").length > 100
