@@ -458,28 +458,30 @@ function TreeMatrix({
           표본 N{minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면 해당
           단원 학습으로 이동합니다.
         </p>
-        {/* 과목 필터 칩 — 전 과목 데이터가 쌓이면 화면이 길어져 원하는 과목만 골라 본다. */}
-        <div
-          className="flex flex-wrap gap-1.5 pt-1"
-          role="group"
-          aria-label="과목 선택"
-        >
-          {[{ key: "all", name: "전체" }, ...groups].map((g) => (
-            <button
-              key={g.key}
-              type="button"
-              onClick={() => setSubjectFilter(g.key)}
-              aria-pressed={subjectFilter === g.key}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
-                subjectFilter === g.key
-                  ? "border-primary bg-primary/10 text-link"
-                  : "border-border bg-muted/30 text-muted-foreground hover:border-primary hover:text-link",
-              )}
-            >
-              {g.name}
-            </button>
-          ))}
+        {/* 과목 필터 — 체계도/조문 토글(AxisSegmented)과 동일한 세그먼트 스타일. */}
+        <div className="pt-1">
+          <div
+            className="bg-muted text-muted-foreground inline-flex h-7 items-center rounded-lg p-[3px]"
+            role="group"
+            aria-label="과목 선택"
+          >
+            {[{ key: "all", name: "전체" }, ...groups].map((g) => (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => setSubjectFilter(g.key)}
+                aria-pressed={subjectFilter === g.key}
+                className={cn(
+                  "inline-flex h-full items-center rounded-md px-2 text-[11px] font-medium transition-colors",
+                  subjectFilter === g.key
+                    ? "bg-background shadow-sm text-[#2D5BA8] dark:text-[#8FB4E3]"
+                    : "hover:text-foreground",
+                )}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
