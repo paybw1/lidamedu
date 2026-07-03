@@ -95,7 +95,7 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
@@ -534,13 +534,6 @@ function ArticleViewerInner({
 
       {/* 3-pane shell: left tree | body | right panel */}
       <div className="mx-auto flex w-full max-w-screen-2xl flex-1 flex-row items-start gap-0 px-4 py-5 md:px-8 md:py-7">
-        <SubjectBookmarkRail
-          subjectSlug={subject.slug}
-          active="articles"
-          counts={loaderData.axisCounts}
-          showSubjective={loaderData.staffRole !== null}
-          className="lg:sticky lg:top-20"
-        />
         <div
           className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
@@ -552,13 +545,21 @@ function ArticleViewerInner({
               </div>
             ) : (
               <div className="border-border bg-card rounded-xl border shadow-sm">
-                {/* 토글+정렬축 헤더 — 트리를 스크롤해도 패널 상단 고정(sticky top-0). */}
-                <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-between gap-2 rounded-t-xl border-b px-3 py-2.5">
-                  <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                  <SortAxisToggle
-                    size="sm"
-                    disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                {/* 축 내비+토글+정렬축 헤더 — 트리를 스크롤해도 패널 상단 고정(sticky top-0). */}
+                <div className="border-border bg-card sticky top-0 z-10 space-y-2 rounded-t-xl border-b px-3 py-2.5">
+                  <SubjectAxisNav
+                    subjectSlug={subject.slug}
+                    active="articles"
+                    counts={loaderData.axisCounts}
+                    showSubjective={loaderData.staffRole !== null}
                   />
+                  <div className="flex items-center justify-between gap-2">
+                    <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                    <SortAxisToggle
+                      size="sm"
+                      disabledAxes={systematicEmpty ? ["systematic"] : undefined}
+                    />
+                  </div>
                 </div>
                 <div className="px-1.5 py-2">
                   {renderSystematic ? (

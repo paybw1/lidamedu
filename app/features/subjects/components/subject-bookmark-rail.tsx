@@ -90,16 +90,14 @@ export function BookmarkTabInner({
 }
 
 /**
- * 상세 뷰어용 책갈피 레일 — 좌측 트리 패널 바깥에 세로로 부착하는 3축 내비.
+ * 상세 뷰어용 축 내비 — 좌측 트리 패널 헤더(체계도/조문 토글 위)에 놓는 가로
+ * 세그먼트. 세로 레일(구 SubjectBookmarkRail)을 패널 안으로 옮긴 것.
  *
- * 허브와 달리 탭 전환이 아니라 해당 축의 과목 색인으로 이동하는 링크 3개다.
- * 현재 화면의 축(`active`)은 역상(네이비 채움)으로 강조하고, 활성 탭은 1px
- * 우측 이동해 좌측 트리 패널 변에 맞물린다. 데스크톱 전용(`lg` 미만 숨김) —
- * 모바일 뷰어는 좌측 트리를 시트로 여는 기존 흐름을 그대로 둔다.
- *
- * sticky 위치는 화면마다 헤더 높이가 달라 `className` 으로 호출부가 정한다.
+ * 체계도/조문 토글(AxisSegmented)과 같은 트랙 문법을 쓰되, "보기 방식"이 아닌
+ * "콘텐츠 축 이동"이라는 상위 위계를 드러내도록 활성 항목을 네이비 채움
+ * (bg-primary)으로 더 진하게 구분한다. 각 항목 = 해당 축 과목 색인으로 가는 링크.
  */
-export function SubjectBookmarkRail({
+export function SubjectAxisNav({
   subjectSlug,
   active,
   counts,
@@ -117,9 +115,7 @@ export function SubjectBookmarkRail({
     <nav
       aria-label="과목 학습 영역"
       className={cn(
-        // lg:z-10 — sticky 레일이 스택 컨텍스트를 만들므로, 역시 sticky 인 좌측
-        // 트리 패널보다 위에 그려지도록 z 를 올린다(활성 탭 맞물림이 가려지지 않게).
-        "hidden w-[58px] shrink-0 flex-col items-stretch gap-2.5 pt-5 lg:z-10 lg:flex",
+        "bg-muted text-muted-foreground flex items-stretch gap-[1px] rounded-lg p-[3px]",
         className,
       )}
     >
@@ -127,32 +123,47 @@ export function SubjectBookmarkRail({
       {bookmarkAxesFor(subjectSlug)
         .filter((a) => a.value !== "subjective" || showSubjective)
         .map((axis) => {
-        const isActive = axis.value === active;
-        return (
-          <Link
-            key={axis.value}
-            to={bookmarkAxisHref(subjectSlug, axis.value)}
-            viewTransition
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "relative flex h-[148px] w-[58px] flex-none flex-col items-center justify-center gap-2 p-0",
-              "rounded-l-xl rounded-r-none border border-r-0 transition-all",
-              "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
-              isActive
-                ? "border-primary bg-primary text-primary-foreground z-10 translate-x-px shadow-[-4px_6px_18px_rgba(45,91,168,0.26)]"
-                : // 비활성 탭은 bg-muted — 뷰어 트리 패널이 bg-card 라 같은 색이면
-                  // 레일이 패널에 묻힌다. muted 로 페이지·패널 양쪽과 대비를 준다.
-                  "border-border bg-muted text-muted-foreground hover:bg-primary/[0.06] hover:text-link hover:-translate-x-1.5",
-            )}
-          >
-            <BookmarkTabInner
-              icon={axis.icon}
-              label={axis.label}
-              count={counts?.[axis.value]}
-            />
-          </Link>
-        );
-      })}
+          const isActive = axis.value === active;
+          const count = counts?.[axis.value];
+          const Icon = axis.icon;
+          return (
+            <Link
+              key={axis.value}
+              to={bookmarkAxisHref(subjectSlug, axis.value)}
+              viewTransition
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 leading-tight transition-colors",
+                "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "hover:text-link",
+              )}
+            >
+              <span className="flex items-center gap-1">
+                <Icon className="size-3.5" />
+                <span
+                  className={cn(
+                    "text-[11.5px]",
+                    isActive ? "font-bold" : "font-semibold",
+                  )}
+                >
+                  {axis.label}
+                </span>
+              </span>
+              {count !== undefined ? (
+                <span
+                  className={cn(
+                    "text-[10px] font-bold tabular-nums",
+                    isActive ? "opacity-85" : "opacity-65",
+                  )}
+                >
+                  {count.toLocaleString("ko-KR")}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
     </nav>
   );
 }

@@ -82,7 +82,7 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import {
@@ -399,13 +399,6 @@ function Inner({
     <div className="mx-auto flex w-full max-w-screen-2xl flex-row items-start gap-0 px-5 py-6 md:px-10 md:py-8">
       <HighlightToolbar />
 
-      <SubjectBookmarkRail
-        subjectSlug={subject.slug}
-        active="articles"
-        counts={loaderData.axisCounts}
-        showSubjective={loaderData.isStaff}
-        className="lg:sticky lg:top-20"
-      />
       <div
         className={`grid min-w-0 flex-1 gap-5 ${leftOnlyGridCls(leftCollapsed)}`}
       >
@@ -417,8 +410,14 @@ function Inner({
             </div>
           ) : (
             <Card className="rounded-xl border py-4 shadow-sm">
-              {/* 토글+정렬축 헤더 — 트리 스크롤해도 상단 고정(sticky top-0). */}
-              <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-3">
+              {/* 축 내비+토글+정렬축 헤더 — 트리 스크롤해도 상단 고정(sticky top-0). */}
+              <CardHeader className="border-border bg-card sticky top-0 z-10 space-y-2 border-b px-4 pb-3">
+                <SubjectAxisNav
+                  subjectSlug={subject.slug}
+                  active="articles"
+                  counts={loaderData.axisCounts}
+                  showSubjective={loaderData.isStaff}
+                />
                 <div className="flex items-center justify-between gap-2">
                   <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
                   <SortAxisToggle

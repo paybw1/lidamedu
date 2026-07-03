@@ -80,7 +80,7 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
@@ -458,13 +458,6 @@ function Inner({
       {/* multi-article 환경: HighlightToolbar 1개를 root 에 mount, prop 없이 selection 컨테이너의 dataset 으로 article 결정 */}
       <HighlightToolbar />
 
-      <SubjectBookmarkRail
-        subjectSlug={subject.slug}
-        active="articles"
-        counts={loaderData.axisCounts}
-        showSubjective={loaderData.isStaff}
-        className="lg:sticky lg:top-20"
-      />
       <div
         className={`grid min-w-0 flex-1 gap-5 ${leftOnlyGridCls(leftCollapsed)}`}
       >
@@ -476,8 +469,14 @@ function Inner({
             </div>
           ) : (
             <Card className="rounded-xl border py-4 shadow-sm">
-              {/* 토글+정렬축 헤더 — 트리 스크롤해도 상단 고정(sticky top-0). */}
-              <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-3">
+              {/* 축 내비+토글+정렬축 헤더 — 트리 스크롤해도 상단 고정(sticky top-0). */}
+              <CardHeader className="border-border bg-card sticky top-0 z-10 space-y-2 border-b px-4 pb-3">
+                <SubjectAxisNav
+                  subjectSlug={subject.slug}
+                  active="articles"
+                  counts={loaderData.axisCounts}
+                  showSubjective={loaderData.isStaff}
+                />
                 <div className="flex items-center justify-between gap-2">
                   <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
                   <SortAxisToggle

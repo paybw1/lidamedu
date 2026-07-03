@@ -73,7 +73,7 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   type CaseTreeCounts,
@@ -403,15 +403,8 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           <ViewerBackButton listHref={listHref} listLabel="판례 목록으로" />
         </div>
 
-        {/* 책갈피 레일 + 3분할 그리드 — §5.1 */}
+        {/* 3분할 그리드 — §5.1. 축 내비는 좌패널 헤더로 이동. */}
         <div className="flex flex-row items-start gap-0">
-          <SubjectBookmarkRail
-            subjectSlug={subject.slug}
-            active="cases"
-            counts={loaderData.axisCounts}
-            showSubjective={loaderData.isStaff}
-            className="lg:sticky lg:top-20"
-          />
           <div
             className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
           >
@@ -423,6 +416,15 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : (
                 <div className="border-border bg-card rounded-xl border shadow-sm">
+                  {/* 축 내비(조문·판례·객관식·주관식) — 체계도/조문 토글 위. */}
+                  <div className="px-3 pt-2.5">
+                    <SubjectAxisNav
+                      subjectSlug={subject.slug}
+                      active="cases"
+                      counts={loaderData.axisCounts}
+                      showSubjective={loaderData.isStaff}
+                    />
+                  </div>
                   {/* 조문 뷰어와 동일 — [접기][체계도/조문] sticky 헤더, 텍스트 라벨 없음. */}
                   <CaseTreeSidebar
                     subjectSlug={subject.slug}

@@ -103,7 +103,7 @@ import {
   SortAxisProvider,
   SortAxisToggle,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
+import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   listDisplayedProblems,
@@ -812,15 +812,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      {/* 책갈피 레일 + 3-pane shell: left tree 260 / body / right panel 320 */}
+      {/* 3-pane shell: left tree 260 / body / right panel 320. 축 내비는 좌패널 헤더로 이동. */}
       <div className="mx-auto flex max-w-screen-2xl flex-row items-start gap-0 px-0">
-        <SubjectBookmarkRail
-          subjectSlug={subject.slug}
-          active={isSubjectiveProblem ? "subjective" : "problems"}
-          counts={loaderData.axisCounts}
-          showSubjective={isStaff}
-          className="lg:sticky lg:top-[calc(3.5rem+41px)]"
-        />
         <div
           className={`grid min-w-0 flex-1 gap-0 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
@@ -834,10 +827,18 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : (
                 <>
-                  {/* 토글 행 — [접기][체계도/조문(조문 비활성)]. 스크롤해도 상단 고정. */}
-                  <div className="bg-background sticky top-0 z-10 flex items-center justify-between gap-2 px-3 py-2">
-                    <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                    <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
+                  {/* 축 내비+토글 행 — [조문·판례·객관식·주관식] 위, [접기][체계도/조문(조문 비활성)] 아래. */}
+                  <div className="bg-background sticky top-0 z-10 space-y-2 px-3 py-2">
+                    <SubjectAxisNav
+                      subjectSlug={subject.slug}
+                      active={isSubjectiveProblem ? "subjective" : "problems"}
+                      counts={loaderData.axisCounts}
+                      showSubjective={isStaff}
+                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
+                      <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
+                    </div>
                   </div>
                   {systematicEmpty ? (
                     <p className="text-muted-foreground px-4 py-6 text-xs">
