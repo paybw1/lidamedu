@@ -443,6 +443,8 @@ export interface RecentProblemItem {
   bodySnippet: string;
   /** 스니펫을 본문 등장 순서대로 텍스트/이미지 토큰으로 분해 — 도형이 원위치에 인라인 렌더되도록. */
   snippetParts: Array<{ t: "text" | "img"; v: string }>;
+  /** 본문 전체 이미지 수 — 스니펫 밖(첨부 도면 등)까지 포함한 목록 배지용. */
+  imageCount: number;
   format: string;
   origin: string;
   year: number | null;
@@ -567,6 +569,7 @@ export async function listRecentProblems(
       bodySnippet:
         textOnly.length > 100 ? `${textOnly.slice(0, 100)}…` : textOnly,
       snippetParts,
+      imageCount: (body.match(/!\[[^\]]*\]\(/g) ?? []).length,
       format: r.format,
       origin: r.origin,
       year: r.year,

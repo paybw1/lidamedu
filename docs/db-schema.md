@@ -96,6 +96,7 @@ CLAUDE.md 결정사항에 따라 Drizzle 제거 완료. 서버 쿼리는 `supa-c
 | `role` | `user_role` enum (`student`/`instructor`/`manager`/`admin`) | default `student`. 등급: student<instructor<manager<admin (feat-7-031) |
 | `marketing_consent` | boolean default false | |
 | `access_approved_at` | timestamptz | 서비스 접근 승인 게이트. NULL=승인 대기(신규 가입 기본), NOT NULL=승인. 승인/해제는 `/admin/users` (service_role 전용). 게이트: `requireAccessApproval` (private/dashboard layout, staff 면제) |
+| `membership_test_grade` | text | 등급 체험 테스트(원장 전용, `/admin/membership-test`). `trial`/`free_member`/`cohort`/`plan:<code>`/NULL. `getMembershipAccess` 가 staff 역할일 때만 반영 — 학생이 조작해도 무효 |
 | `created_at` / `updated_at` | timestamptz | |
 
 **RLS**: select/update/delete-own-profile (본인만).

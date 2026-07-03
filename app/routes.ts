@@ -554,6 +554,10 @@ export default [
         "features/admin/screens/admin-popup-notices.tsx",
       ),
       route(
+        "/admin/membership-test",
+        "features/admin/screens/admin-membership-test.tsx",
+      ),
+      route(
         "/admin/community/reports",
         "features/admin/screens/admin-community-reports.tsx",
       ),

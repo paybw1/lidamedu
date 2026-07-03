@@ -62,14 +62,85 @@ async function planFeatures(code: string): Promise<string[]> {
   return Array.isArray(data?.features) ? (data.features as string[]) : [];
 }
 
+// 등급 체험 테스트 오버라이드(profiles.membership_test_grade) → 합성 access.
+// staff 역할일 때만 호출되므로 학생이 컬럼을 조작해도 효과 없음.
+//   'trial' | 'free_member' | 'cohort' | 'plan:<plan_code>'
+async function synthesizeTestAccess(
+  override: string,
+): Promise<MembershipAccess | null> {
+  if (override === "trial") {
+    return {
+      grade: "trial",
+      planCode: "free",
+      features: [...SELF_STUDY_FEATURES],
+      subjects: [...TRIAL_SUBJECTS],
+      trialEndsAt: new Date(Date.now() + 15 * 86_400_000).toISOString(),
+    };
+  }
+  if (override === "free_member") {
+    return {
+      grade: "free_member",
+      planCode: "free",
+      features: await planFeatures("free"),
+      subjects: [],
+      trialEndsAt: null,
+    };
+  }
+  if (override === "cohort") {
+    return {
+      grade: "cohort",
+      planCode: "cohort",
+      features: await planFeatures("cohort"),
+      subjects: "all",
+      trialEndsAt: null,
+    };
+  }
+  if (override.startsWith("plan:")) {
+    const code = override.slice("plan:".length);
+    const { data: plan } = await admin
+      .from("subscription_plans")
+      .select("product_kind, subject_codes, features")
+      .eq("code", code)
+      .maybeSingle();
+    if (!plan || !SELF_STUDY_PRODUCT_KINDS.includes(plan.product_kind)) {
+      return null;
+    }
+    const subjects = new Set<string>(
+      Array.isArray(plan.subject_codes) ? (plan.subject_codes as string[]) : [],
+    );
+    subjects.add(DEFAULT_SELF_STUDY_SUBJECT);
+    const feats = Array.isArray(plan.features)
+      ? (plan.features as string[])
+      : [];
+    return {
+      grade: "self_study",
+      planCode: "self_study",
+      features: feats.length > 0 ? feats : [...SELF_STUDY_FEATURES],
+      subjects: [...subjects],
+      trialEndsAt: null,
+    };
+  }
+  return null;
+}
+
 // 사용자의 유효 등급·기능·과목을 파생.
 export async function getMembershipAccess(
   client: SupabaseClient<Database>,
   userId: string,
 ): Promise<MembershipAccess> {
-  // 1) staff — 구독 게이팅 면제(전체).
+  // 1) staff — 구독 게이팅 면제(전체). 단, 등급 체험 테스트 오버라이드가 설정돼
+  //    있으면 해당 등급의 access 를 합성해 학생 화면을 그대로 재현한다.
   const role = await getStaffRole(client, userId);
   if (role) {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("membership_test_grade")
+      .eq("profile_id", userId)
+      .maybeSingle();
+    if (prof?.membership_test_grade) {
+      const synthesized = await synthesizeTestAccess(prof.membership_test_grade);
+      if (synthesized) return synthesized;
+    }
     return {
       grade: "staff",
       planCode: "cohort",

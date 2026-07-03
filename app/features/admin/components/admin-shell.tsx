@@ -159,6 +159,7 @@ export const ADMIN_NAV: NavCluster[] = [
       // feat-8-028 — manager+ 상품·요금·할인 관리.
       { label: "상품·요금 관리", to: "/admin/pricing" },
       { label: "할인 관리", to: "/admin/discounts" },
+      { label: "등급 체험 테스트", to: "/admin/membership-test" },
     ],
   },
   {

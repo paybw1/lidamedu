@@ -5270,6 +5270,7 @@ export type Database = {
           highlight_color_aliases: Json
           is_synthetic: boolean
           marketing_consent: boolean
+          membership_test_grade: string | null
           my_analysis_consent_at: string | null
           name: string
           next_exam_round: Database["public"]["Enums"]["exam_round"] | null
@@ -5299,6 +5300,7 @@ export type Database = {
           highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
+          membership_test_grade?: string | null
           my_analysis_consent_at?: string | null
           name: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null
@@ -5328,6 +5330,7 @@ export type Database = {
           highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
+          membership_test_grade?: string | null
           my_analysis_consent_at?: string | null
           name?: string
           next_exam_round?: Database["public"]["Enums"]["exam_round"] | null

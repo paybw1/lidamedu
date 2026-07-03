@@ -1,7 +1,7 @@
 // 최신 2차 기출문제 — 등록일 최신순. 검색·과목·년도·출처 필터.
 // 키트 lidam-latest/EssayScreen 디자인.
 
-import { PenLineIcon, PencilIcon, SearchXIcon } from "lucide-react";
+import { ImageIcon, PenLineIcon, PencilIcon, SearchXIcon } from "lucide-react";
 import { Link, data, useLocation } from "react-router";
 
 import { getStaffRole } from "~/features/laws/queries.server";
@@ -231,6 +231,11 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
                   {p.subjectiveKind ? (
                     <Pill tone="primary">
                       {SUBJECTIVE_KIND_LABEL[p.subjectiveKind]}
+                    </Pill>
+                  ) : null}
+                  {p.imageCount > 0 ? (
+                    <Pill tone="outline">
+                      <ImageIcon className="size-3" /> 그림 {p.imageCount}
                     </Pill>
                   ) : null}
                   {isRecent(p.createdAt) ? <NewBadge /> : null}
