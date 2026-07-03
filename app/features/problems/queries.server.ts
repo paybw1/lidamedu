@@ -441,8 +441,8 @@ function compareArticlePath(a: string, b: string): number {
 export interface RecentProblemItem {
   problemId: string;
   bodySnippet: string;
-  /** 본문 포함 이미지(도형 상표 등) URL — 목록 카드 미리보기용, 최대 4장. */
-  imageUrls: string[];
+  /** 스니펫을 본문 등장 순서대로 텍스트/이미지 토큰으로 분해 — 도형이 원위치에 인라인 렌더되도록. */
+  snippetParts: Array<{ t: "text" | "img"; v: string }>;
   format: string;
   origin: string;
   year: number | null;
@@ -532,11 +532,33 @@ export async function listRecentProblems(
   }
   return rows.map((r) => {
     const body = r.body_md ?? "";
-    // 스니펫에는 이미지 마크다운 원문(![](url))이 노출되지 않게 제거하고,
-    // 이미지는 URL 로 뽑아 카드에서 도형 미리보기로 렌더한다.
-    const imageUrls = [...body.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)]
-      .map((m) => m[1])
-      .slice(0, 4);
+    // 스니펫을 텍스트/이미지 토큰으로 분해 — 도형(![](url))이 본문 등장 위치 그대로
+    // 카드에서 인라인 렌더되도록. 텍스트 예산(100자)까지만 담고 이미지 토큰은 자르지 않는다.
+    const BUDGET = 100;
+    const snippetParts: Array<{ t: "text" | "img"; v: string }> = [];
+    let used = 0;
+    let cursor = 0;
+    let clipped = false;
+    for (const m of body.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
+      const before = body.slice(cursor, m.index);
+      if (used + before.length > BUDGET) {
+        snippetParts.push({ t: "text", v: `${before.slice(0, BUDGET - used)}…` });
+        used = BUDGET;
+        clipped = true;
+        break;
+      }
+      if (before) snippetParts.push({ t: "text", v: before });
+      used += before.length;
+      snippetParts.push({ t: "img", v: m[1] });
+      cursor = (m.index ?? 0) + m[0].length;
+    }
+    if (!clipped) {
+      const rest = body.slice(cursor);
+      snippetParts.push({
+        t: "text",
+        v: used + rest.length > BUDGET ? `${rest.slice(0, BUDGET - used)}…` : rest,
+      });
+    }
     const textOnly = body
       .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
       .replace(/[ \t]{2,}/g, " ");
@@ -544,7 +566,7 @@ export async function listRecentProblems(
       problemId: r.problem_id,
       bodySnippet:
         textOnly.length > 100 ? `${textOnly.slice(0, 100)}…` : textOnly,
-      imageUrls,
+      snippetParts,
       format: r.format,
       origin: r.origin,
       year: r.year,

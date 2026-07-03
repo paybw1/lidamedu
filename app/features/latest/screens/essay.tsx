@@ -241,20 +241,19 @@ export default function LatestEssay({ loaderData }: Route.ComponentProps) {
                   </p>
                 ) : null}
                 <p className="text-foreground/80 mt-1 line-clamp-2 text-[13px] leading-relaxed">
-                  {p.bodySnippet}
-                </p>
-                {p.imageUrls.length > 0 ? (
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    {p.imageUrls.map((src) => (
+                  {p.snippetParts.map((part, i) =>
+                    part.t === "img" ? (
                       <img
-                        key={src}
-                        src={src}
+                        key={i}
+                        src={part.v}
                         alt="문제 도형"
-                        className="border-border h-8 rounded border bg-white px-1 py-0.5"
+                        className="border-border mx-0.5 inline-block h-6 rounded border bg-white px-0.5 align-text-bottom"
                       />
-                    ))}
-                  </div>
-                ) : null}
+                    ) : (
+                      <span key={i}>{part.v}</span>
+                    ),
+                  )}
+                </p>
                 <CardCta label="지금 풀어보기" />
               </FeedCardLink>
             </div>
