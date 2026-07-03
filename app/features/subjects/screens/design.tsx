@@ -38,6 +38,7 @@ export default function SubjectDesign({ loaderData }: Route.ComponentProps) {
       systematicNodeProblemStats={loaderData.systematicNodeProblemStats}
       problemNodeFilter={loaderData.problemNodeFilter}
       axisCounts={loaderData.axisCounts}
+      isStaff={loaderData.isStaff}
     />
   );
 }

@@ -36,6 +36,7 @@ export default function SubjectCivil({ loaderData }: Route.ComponentProps) {
       systematicNodeProblemStats={loaderData.systematicNodeProblemStats}
       problemNodeFilter={loaderData.problemNodeFilter}
       axisCounts={loaderData.axisCounts}
+      isStaff={loaderData.isStaff}
     />
   );
 }

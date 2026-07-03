@@ -29,6 +29,7 @@ import {
   getArticleSkeleton,
   getLatestPublishedRevisionDate,
   getLawByCode,
+  getStaffRole,
   getSystematicSkeleton,
 } from "~/features/laws/queries.server";
 import {
@@ -154,6 +155,8 @@ export interface SubjectHubData {
   problemNodeFilter: ProblemNodeFilter | null;
   // 책갈피 레일 3축 총량(필터 무관 head-count). BookmarkTab 옆 카운트 표시용.
   axisCounts: Record<SubjectTab, number>;
+  // 주관식 탭 게이트 — 고도화 전까지 staff 전용(학생은 레일에서 비활성).
+  isStaff: boolean;
 }
 
 const CASE_SORTS: readonly CaseSubjectSort[] = [
@@ -668,6 +671,7 @@ export async function loadSubjectHub(
       recommendedArticles: [],
       progressByArticle: {} as NodeProgressByArticle,
       axisCounts: { articles: 0, cases: 0, problems: 0, subjective: 0 },
+      isStaff: false,
     };
   }
   // 1단계 — 트리/판례 카운트 등 case-filter 결정에 선행해야 하는 데이터.
@@ -721,6 +725,8 @@ export async function loadSubjectHub(
   const {
     data: { user },
   } = await authPromise;
+  // 주관식 탭 게이트(고도화 전 staff 전용) — 레일 비활성 판정용.
+  const staffRole = user ? await getStaffRole(client, user.id) : null;
 
   // 트리 필터 → case id 셋. 축에 따라 다른 정책:
   //   • article / chapter (조문 axis) → article_case_links many-to-many
@@ -924,6 +930,7 @@ export async function loadSubjectHub(
       problems: totalProblemCount,
       subjective: totalSubjectiveCount,
     },
+    isStaff: staffRole !== null,
     problemYears,
     problemFilters,
     problemStats,

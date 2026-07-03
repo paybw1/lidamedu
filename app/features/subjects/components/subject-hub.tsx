@@ -72,6 +72,8 @@ interface SubjectHubProps {
   problemNodeFilter?: ProblemNodeFilter | null;
   // 책갈피 레일 3축 총량 — BookmarkTab 옆 카운트 배지.
   axisCounts?: Record<SubjectTab, number>;
+  // 주관식 탭 게이트 — 고도화 전까지 staff 전용(학생은 레일에서 비활성).
+  isStaff?: boolean;
 }
 
 export function SubjectHub(props: SubjectHubProps) {
@@ -106,19 +108,21 @@ function SubjectHubInner({
   systematicNodeProblemStats,
   problemNodeFilter,
   axisCounts,
+  isStaff = false,
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // 주관식(2차) 탭은 2차 과목만 — 1차 전용(민법)에서 ?tab=subjective 진입 시 기본 탭으로.
+  // 주관식(2차) 탭은 2차 과목만 + 고도화 전까지 staff 전용(학생은 비활성·진입 차단).
   const hasSubjectiveTab = subject.exam !== "first";
+  const subjectiveEnabled = hasSubjectiveTab && isStaff;
   const activeTab = useMemo<SubjectTab>(() => {
     const raw = searchParams.get("tab");
     const parsed = subjectTabSchema.safeParse(raw);
     if (!parsed.success) return DEFAULT_SUBJECT_TAB;
-    if (parsed.data === "subjective" && !hasSubjectiveTab)
+    if (parsed.data === "subjective" && !subjectiveEnabled)
       return DEFAULT_SUBJECT_TAB;
     return parsed.data;
-  }, [searchParams, hasSubjectiveTab]);
+  }, [searchParams, subjectiveEnabled]);
 
   const onTabChange = useCallback(
     (next: string) => {
@@ -181,6 +185,8 @@ function SubjectHubInner({
               icon={axis.icon}
               label={axis.label}
               count={axisCounts?.[axis.value]}
+              // 주관식은 고도화 전까지 staff 전용 — 학생에겐 비활성(회색·클릭 불가).
+              disabled={axis.value === "subjective" && !subjectiveEnabled}
             />
           ))}
         </TabsList>
@@ -237,7 +243,7 @@ function SubjectHubInner({
               studyStatus={studyStatus}
             />
           </TabsContent>
-          {hasSubjectiveTab ? (
+          {subjectiveEnabled ? (
             <TabsContent value="subjective" className="mt-0">
               <SubjectiveTab
                 subject={subject}
@@ -246,6 +252,7 @@ function SubjectHubInner({
                 )}
                 appliedFilters={problemFilters ?? {}}
                 studyStatus={studyStatus}
+                systematicNodes={systematicNodes ?? []}
               />
             </TabsContent>
           ) : null}
@@ -269,16 +276,22 @@ function BookmarkTab({
   icon,
   label,
   count,
+  disabled = false,
 }: {
   value: SubjectTab;
   icon: ComponentType<{ className?: string }>;
   label: string;
   count?: number;
+  disabled?: boolean;
 }) {
   return (
     <TabsTrigger
       value={value}
+      disabled={disabled}
+      title={disabled ? "준비 중" : undefined}
       className={cn(
+        // 비활성(주관식 학생) — 회색·클릭 불가. 잠금 흐림 대신 완전 비활성 패턴.
+        disabled && "cursor-not-allowed opacity-40 hover:translate-x-0",
         // flex-none — 기본 flex-1 을 눌러 h-[148px] 가 실제로 적용되게 한다.
         "relative flex h-[148px] w-[58px] flex-none flex-col items-center justify-center gap-2 p-0",
         "rounded-l-xl rounded-r-none border border-r-0 transition-all",

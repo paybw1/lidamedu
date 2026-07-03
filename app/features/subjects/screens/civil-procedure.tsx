@@ -40,6 +40,7 @@ export default function SubjectCivilProcedure({
       systematicNodeProblemStats={loaderData.systematicNodeProblemStats}
       problemNodeFilter={loaderData.problemNodeFilter}
       axisCounts={loaderData.axisCounts}
+      isStaff={loaderData.isStaff}
     />
   );
 }

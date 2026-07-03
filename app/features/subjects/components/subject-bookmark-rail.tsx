@@ -120,7 +120,11 @@ export function SubjectBookmarkRail({
         className,
       )}
     >
-      {bookmarkAxesFor(subjectSlug).map((axis) => {
+      {/* 뷰어 레일은 staff 여부를 모름 — 주관식(고도화 전 staff 전용) 축은 제외.
+          staff 는 과목 허브 레일에서 주관식 탭으로 진입한다. */}
+      {bookmarkAxesFor(subjectSlug)
+        .filter((a) => a.value !== "subjective")
+        .map((axis) => {
         const isActive = axis.value === active;
         return (
           <Link
