@@ -141,7 +141,8 @@ export function PopupNoticeModal({
             오늘 하루 보지 않기
           </button>
           <div className="flex items-center gap-2">
-            {current.linkUrl ? (
+            {/* 이미지 팝업은 이미지 안 CTA + 이미지 클릭이 링크 역할 — 푸터 버튼 중복 제거. */}
+            {current.linkUrl && !current.imageUrl ? (
               <Button asChild size="sm">
                 <a href={current.linkUrl}>{current.linkLabel || "자세히 보기"}</a>
               </Button>

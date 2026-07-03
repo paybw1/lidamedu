@@ -1154,6 +1154,21 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : null}
 
+              {/* 주관식 키워드 — 분류 라벨의 키워드를 본문 아래 해시태그로 표시. */}
+              {problem.format === "subjective" &&
+              (problem.subjectiveKeywords ?? []).length > 0 ? (
+                <div className="mb-6 flex flex-wrap gap-1.5">
+                  {(problem.subjectiveKeywords ?? []).map((k) => (
+                    <span
+                      key={k}
+                      className="text-link bg-primary/[0.07] rounded-full px-2.5 py-1 text-[13px] font-semibold"
+                    >
+                      #{k}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
               {problem.format === "subjective" ? (
                 <SubjectivePanel
                   problemId={problem.problemId}

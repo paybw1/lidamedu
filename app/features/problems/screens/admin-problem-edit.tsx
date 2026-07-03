@@ -766,7 +766,11 @@ function AdminProblemEditInner({
           ) : null}
         </span>
       }
-      desc="문제 메타·본문·지문·해설·관련 자료를 편집합니다. 저장하지 않은 변경 사항은 유실됩니다."
+      desc={
+        format === "subjective"
+          ? "주관식 문제 — 메타·본문·모범답안·채점 기준을 편집합니다. 저장하지 않은 변경 사항은 유실됩니다."
+          : "문제 메타·본문·지문·해설·관련 자료를 편집합니다. 저장하지 않은 변경 사항은 유실됩니다."
+      }
       headerRight={
         <div className="flex flex-wrap items-center gap-2">
           {problem.reviewedAt ? (
@@ -845,7 +849,11 @@ function AdminProblemEditInner({
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
         >
           <ListIcon className="size-3.5" />
-          {returnTo ? "이전 화면으로" : "객관식 문제 목록"}
+          {returnTo
+            ? "이전 화면으로"
+            : format === "subjective"
+              ? "주관식 문제 목록"
+              : "객관식 문제 목록"}
         </Link>
         {frozenSiblings.total > 0 ? (
           <div className="flex items-center gap-1.5">
@@ -879,6 +887,9 @@ function AdminProblemEditInner({
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
+        {format === "subjective" ? (
+          <Chip tone="violet">주관식 (2차)</Chip>
+        ) : null}
         {problem.mismatchFlaggedAt ? (
           <Chip tone="amber">
             <AlertTriangleIcon className="size-3" />
@@ -1182,6 +1193,8 @@ function AdminProblemEditInner({
           </Card>
         ) : null}
 
+        {/* 지문·정오문제 도구는 객관식 전용 — 주관식은 지문이 없어 카드 전체 숨김. */}
+        {format !== "subjective" ? (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
@@ -1229,6 +1242,7 @@ function AdminProblemEditInner({
             ))}
           </CardContent>
         </Card>
+        ) : null}
 
         <div className="flex items-center justify-end">
           <Button type="submit" name="intent" value="save" disabled={isSaving}>
@@ -1423,12 +1437,16 @@ function PublishChecklist({
   }, [syncFetcher.data]);
   const isSyncing = syncFetcher.state !== "idle";
 
+  const isSubjective = problem.format === "subjective";
+
   return (
     <Card className="mb-4">
       <CardHeader className="pb-2">
         <h2 className="text-sm font-semibold">출제 마무리 체크리스트</h2>
         <p className="text-muted-foreground text-[11px]">
-          이 항목을 모두 채워야 학생 화면(과목 hub · 조문 정오문제 위젯 · 최신 정보 mcq)에 정상 노출됩니다.
+          {isSubjective
+            ? "이 항목을 채워야 학생 주관식 화면(답안 작성·모범답안·자기채점)이 온전하게 동작합니다."
+            : "이 항목을 모두 채워야 학생 화면(과목 hub · 조문 정오문제 위젯 · 최신 정보 mcq)에 정상 노출됩니다."}
         </p>
       </CardHeader>
       <CardContent className="grid gap-1.5 text-xs">
@@ -1501,6 +1519,46 @@ function PublishChecklist({
                 : `${mcqPacks.length}개 pack 매핑 · 공개 ${mcqPacks.filter((p) => p.isPublished).length}개`
             }
           />
+        ) : null}
+        {isSubjective ? (
+          <>
+            <ChecklistRow
+              state={
+                (problem.modelAnswerMd ?? "").trim() !== "" ? "ok" : "warn"
+              }
+              label="모범답안"
+              detail={
+                (problem.modelAnswerMd ?? "").trim() !== ""
+                  ? "등록됨 — 학생 '모범답안 보기'에 노출"
+                  : "미등록 — 아래 '주관식 모범답안' 카드에서 작성"
+              }
+            />
+            <ChecklistRow
+              state={(problem.rubricItems ?? []).length > 0 ? "ok" : "warn"}
+              label="채점 항목 체크리스트"
+              detail={
+                (problem.rubricItems ?? []).length > 0
+                  ? `${(problem.rubricItems ?? []).length}개 항목 — 자기채점 UI 활성`
+                  : "미구성 — 학생 자기채점 점수 산출 불가"
+              }
+            />
+            <ChecklistRow
+              state={
+                problem.subjectiveKind &&
+                (problem.subjectiveKeywords ?? []).length > 0
+                  ? "ok"
+                  : "warn"
+              }
+              label="주관식 분류 (유형·키워드)"
+              detail={
+                problem.subjectiveKind
+                  ? (problem.subjectiveKeywords ?? []).length > 0
+                    ? `유형 지정 · 키워드 ${(problem.subjectiveKeywords ?? []).length}개 — 본문 해시태그로 노출`
+                    : "유형은 지정됨 · 키워드 미입력 — 입력하면 본문에 해시태그로 노출"
+                  : "유형 미지정 — '주관식 분류 라벨' 카드에서 설정"
+              }
+            />
+          </>
         ) : null}
       </CardContent>
     </Card>

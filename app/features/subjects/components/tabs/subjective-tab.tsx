@@ -360,6 +360,13 @@ function SubjectiveCard({
           </p>
         ) : null}
         <p className="line-clamp-2 text-sm leading-snug">{snippet}</p>
+        {(item.subjectiveKeywords ?? []).length > 0 ? (
+          <p className="text-link mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs font-semibold">
+            {(item.subjectiveKeywords ?? []).map((k) => (
+              <span key={k}>#{k}</span>
+            ))}
+          </p>
+        ) : null}
         <p className="text-link mt-2 inline-flex items-center gap-1 text-xs">
           지금 풀어보기 <ArrowRightIcon className="size-3" />
         </p>
