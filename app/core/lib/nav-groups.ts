@@ -174,15 +174,31 @@ export const LOCKED_DIM_CLASS =
 // 비활성 사유 툴팁(제거된 aria-label 대체). pointer-events-none 라 부모에 걸어 힌트 유지.
 export const LOCKED_HINT = "구독 시 이용 가능";
 
+// 콘텐츠 고도화 전 학생 비활성 과목 — 등급·구매 여부와 무관하게 학생에게 잠금(staff 만 접근).
+//   민법(객관식 전량 검토 대기)·민사소송법(조문 미적재). 준비되면 여기서 제거.
+export const STUDENT_DISABLED_SUBJECTS: ReadonlyArray<string> = [
+  "civil",
+  "civil-procedure",
+];
+export const PREPARING_HINT = "준비 중";
+
 // feat-8-027 — 학습과목 내 개별 과목 잠금 판정(체험=특허법만, 자기학습=결제 과목 등).
 //   subjects='all' 또는 slug 포함 시 미잠금. staff 면제, 미산정(undefined) 시 미표시(로딩).
+//   ★준비 중 과목(STUDENT_DISABLED_SUBJECTS)은 등급 무관하게 학생 잠금.
 export function isSubjectLocked(
   slug: string,
   isStaff: boolean,
   subjects: "all" | string[] | undefined,
 ): boolean {
-  if (isStaff || subjects === undefined || subjects === "all") return false;
+  if (isStaff) return false;
+  if (STUDENT_DISABLED_SUBJECTS.includes(slug)) return true;
+  if (subjects === undefined || subjects === "all") return false;
   return !subjects.includes(slug);
+}
+
+// 과목 비활성 사유 힌트 — 준비 중 과목은 구독과 무관하므로 문구를 구분.
+export function subjectLockedHint(slug: string): string {
+  return STUDENT_DISABLED_SUBJECTS.includes(slug) ? PREPARING_HINT : LOCKED_HINT;
 }
 
 // 상단바 표면 매핑 — 6 드롭다운을 풀 그룹 조합으로 정의(SSOT 단일 소비).

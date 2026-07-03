@@ -7,7 +7,11 @@ import { useEffect } from "react";
 import { Outlet, data, redirect, useLocation } from "react-router";
 
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
-import { LOCKED_HINT, isSubjectLocked } from "~/core/lib/nav-groups";
+import {
+  STUDENT_DISABLED_SUBJECTS,
+  isSubjectLocked,
+  subjectLockedHint,
+} from "~/core/lib/nav-groups";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   SUBJECT_NAV_ITEMS,
@@ -42,6 +46,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const subjectSlug = seg[1];
   // 서버 게이트(리졸버 권위): area_subjects 없음(무료회원) 차단 + 미허용 과목 차단.
   if (!isStaff) {
+    // 준비 중 과목(민법·민소) — 등급·구매 무관 학생 차단. 결제 유도가 아니므로 대시보드로.
+    if (subjectSlug && STUDENT_DISABLED_SUBJECTS.includes(subjectSlug)) {
+      throw redirect("/dashboard");
+    }
     if (!access.features.includes("area_subjects")) {
       throw redirect("/pricing?locked=area_subjects");
     }
@@ -65,18 +73,15 @@ export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
 
   // 학습과목 토글 — 6과목(SUBJECT_NAV_ITEMS) 파생. 권한 없는 과목은 비활성 표시.
   const tabItems: SectionTabItem[] = SUBJECT_NAV_ITEMS.map((s) => {
-    const disabled = isSubjectLocked(
-      subjectSlugFromHref(s.href),
-      isStaff,
-      subjectAccess,
-    );
+    const slug = subjectSlugFromHref(s.href);
+    const disabled = isSubjectLocked(slug, isStaff, subjectAccess);
     return {
       id: s.href,
       to: s.href,
       label: s.name,
       match: [s.href],
       disabled,
-      disabledHint: disabled ? LOCKED_HINT : undefined,
+      disabledHint: disabled ? subjectLockedHint(slug) : undefined,
     };
   });
   // 모바일 트리/학습보조 Sheet(모달 Radix Dialog)가 열린 채 트리 링크로 다른
