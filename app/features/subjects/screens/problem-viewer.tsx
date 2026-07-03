@@ -484,6 +484,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     subjectiveAttempt,
     problemComments,
     canEditComment: staffRole !== null,
+    isStaff: staffRole !== null,
     isAdmin: staffRole === "admin",
     currentUserId: user.id,
     adjacent: adjacentNav,
@@ -577,12 +578,15 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     subjectiveAttempt,
     problemComments,
     canEditComment,
+    isStaff,
     isAdmin,
     currentUserId,
     adjacent,
     adjacentQuery,
     lectureResources,
   } = loaderData;
+  // 주관식 문제면 레일 활성 축·"목록으로" 복귀 탭을 주관식으로.
+  const isSubjectiveProblem = problem.format === "subjective";
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [searchParams] = useSearchParams();
@@ -801,8 +805,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         /* No session: simple back link row */
         <div className="mx-auto flex max-w-screen-2xl items-center gap-2 px-4 py-3 md:px-6">
           <ViewerBackButton
-            listHref={`/subjects/${subject.slug}?tab=problems`}
-            listLabel={`${subject.name} 문제 색인`}
+            listHref={`/subjects/${subject.slug}?tab=${isSubjectiveProblem ? "subjective" : "problems"}`}
+            listLabel={`${subject.name} ${isSubjectiveProblem ? "주관식" : "객관식"} 색인`}
           />
           {/* 질문하기는 우측 Q&A 패널과 중복이라 제거(feat-9 통합). */}
         </div>
@@ -812,8 +816,9 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
       <div className="mx-auto flex max-w-screen-2xl flex-row items-start gap-0 px-0">
         <SubjectBookmarkRail
           subjectSlug={subject.slug}
-          active="problems"
+          active={isSubjectiveProblem ? "subjective" : "problems"}
           counts={loaderData.axisCounts}
+          showSubjective={isStaff}
           className="lg:sticky lg:top-[calc(3.5rem+41px)]"
         />
         <div

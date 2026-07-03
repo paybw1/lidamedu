@@ -104,11 +104,14 @@ export function SubjectBookmarkRail({
   active,
   counts,
   className,
+  showSubjective = false,
 }: {
   subjectSlug: string;
   active: SubjectTab;
   counts?: Record<SubjectTab, number>;
   className?: string;
+  /** 주관식 축 노출 — 고도화 전 staff 전용이라 뷰어가 staff 여부로 넘긴다. */
+  showSubjective?: boolean;
 }) {
   return (
     <nav
@@ -120,10 +123,9 @@ export function SubjectBookmarkRail({
         className,
       )}
     >
-      {/* 뷰어 레일은 staff 여부를 모름 — 주관식(고도화 전 staff 전용) 축은 제외.
-          staff 는 과목 허브 레일에서 주관식 탭으로 진입한다. */}
+      {/* 주관식(고도화 전 staff 전용) 축은 호출부가 staff 여부(showSubjective)로 결정. */}
       {bookmarkAxesFor(subjectSlug)
-        .filter((a) => a.value !== "subjective")
+        .filter((a) => a.value !== "subjective" || showSubjective)
         .map((axis) => {
         const isActive = axis.value === active;
         return (
