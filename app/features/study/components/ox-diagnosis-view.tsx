@@ -182,14 +182,19 @@ function ChoiceTypeSection({
           <LayersIcon className="size-4" /> 지식종류별 정답률
         </h2>
         <p className="text-muted-foreground text-xs">
-          조문 · 판례 · 이론 지문 정답률. 표본 N{minAttempts}건 미만은 참고용입니다.
+          조문 · 판례 · 이론 지문 정답률. 표본 N{minAttempts}건 미만은
+          참고용입니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-2.5">
         {rows.length === 0 ? (
-          <p className="text-muted-foreground text-xs">집계된 지문이 없습니다.</p>
+          <p className="text-muted-foreground text-xs">
+            집계된 지문이 없습니다.
+          </p>
         ) : (
-          rows.map((r) => <ChoiceTypeBar key={r.choiceType ?? "null"} row={r} />)
+          rows.map((r) => (
+            <ChoiceTypeBar key={r.choiceType ?? "null"} row={r} />
+          ))
         )}
       </CardContent>
     </Card>
@@ -230,7 +235,9 @@ function ChoiceTypeBar({ row }: { row: OxChoiceTypeRow }) {
             데이터 부족 ({row.attempts}건)
           </span>
         ) : (
-          <span className={cn("font-semibold", pct !== null ? accTone(pct) : "")}>
+          <span
+            className={cn("font-semibold", pct !== null ? accTone(pct) : "")}
+          >
             {pct}%{" "}
             <span className="text-muted-foreground">({row.attempts}건)</span>
           </span>
@@ -258,8 +265,8 @@ function Prescription({
       <Card className="border-dashed">
         <CardContent className="text-muted-foreground flex items-center gap-2 py-4 text-xs">
           <InfoIcon className="size-3.5 shrink-0" />
-          종류별 표본(N≥5)이 더 쌓이면 학습 방향을 제안합니다. 지금은 특정 종류를
-          약점으로 단정하지 않습니다.
+          종류별 표본(N≥5)이 더 쌓이면 학습 방향을 제안합니다. 지금은 특정
+          종류를 약점으로 단정하지 않습니다.
         </CardContent>
       </Card>
     );
@@ -290,14 +297,15 @@ function Prescription({
         <p className="text-sm leading-relaxed">
           {audience === "self" ? (
             <>
-              <strong className="font-semibold">{label}</strong> 지문 정답률이 낮은
-              편입니다 ({weakest.accuracyPct}% · {weakest.attempts}건). {label} 관련
-              학습을 한 번 점검해보세요.
+              <strong className="font-semibold">{label}</strong> 지문 정답률이
+              낮은 편입니다 ({weakest.accuracyPct}% · {weakest.attempts}건).{" "}
+              {label} 관련 학습을 한 번 점검해보세요.
             </>
           ) : (
             <>
               이 학생은 <strong className="font-semibold">{label}</strong> 지문
-              정답률이 낮은 편입니다 ({weakest.accuracyPct}% · {weakest.attempts}건).
+              정답률이 낮은 편입니다 ({weakest.accuracyPct}% ·{" "}
+              {weakest.attempts}건).
               {label} 학습 지도를 점검해보세요.
             </>
           )}
@@ -376,9 +384,11 @@ function TreeMatrix({
     return m;
   }, [rows]);
   // 과목별 그룹 — 루트의 lawCode 로 서브트리 블록(전위 순회 연속)을 나눈다.
-  // 기타(lawCode null)는 말미 "기타" 섹션.
+  // OX 대상 4과목(민·특·디·상)은 데이터가 없어도 섹션을 항상 노출(빈 상태 안내) —
+  // "다른 과목은 어디 갔지?" 혼란 방지. 기타(lawCode null)는 말미 "기타" 섹션.
   const groups = useMemo(() => {
     const byLaw = new Map<string, OxTreeRow[]>();
+    for (const key of MATRIX_SUBJECT_ORDER.slice(0, 4)) byLaw.set(key, []);
     for (const row of rows) {
       const key = row.lawCode ?? "_etc";
       const list = byLaw.get(key) ?? [];
@@ -391,6 +401,7 @@ function TreeMatrix({
       return idx === -1 ? 900 : idx;
     };
     return [...byLaw.entries()]
+      .filter(([key, groupRows]) => groupRows.length > 0 || key !== "_etc")
       .sort((a, b) => orderOf(a[0]) - orderOf(b[0]))
       .map(([key, groupRows]) => ({
         key,
@@ -457,10 +468,10 @@ function TreeMatrix({
         <p className="text-muted-foreground text-xs">
           {basis === "systematic"
             ? "과목별 · 체계도 순서. 상위 단원 행은 하위 단원 전체의 합산입니다"
-            : "과목별 · 법전 편 → 장 → 절 순서. 상위 행은 하위 전체의 합산입니다"}
-          {" "}— ▸ 를 눌러 펼치면 세부 단원별로 드릴다운됩니다. 셀 = 정답률
-          (시도수), 표본 N{minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면
-          해당 단원 학습으로 이동합니다.
+            : "과목별 · 법전 편 → 장 → 절 순서. 상위 행은 하위 전체의 합산입니다"}{" "}
+          — ▸ 를 눌러 펼치면 세부 단원별로 드릴다운됩니다. 셀 = 정답률 (시도수),
+          표본 N{minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면 해당
+          단원 학습으로 이동합니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -470,97 +481,105 @@ function TreeMatrix({
               <LayersIcon className="text-muted-foreground size-3.5" />
               {group.name}
             </h3>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[12rem]">단원</TableHead>
-                    {MATRIX_TYPES.map((t) => (
-                      <TableHead key={t} className="text-center">
-                        {CHOICE_TYPE_LABEL[t]}
-                      </TableHead>
-                    ))}
-                    <TableHead className="text-center">전체</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {group.rows.filter(isVisible).map((row) => (
-                    <TableRow
-                      key={row.nodeId ?? "null"}
-                      className={cn(row.depth === 0 && "bg-muted/30")}
-                    >
-                      <TableCell className="font-medium">
-                        <div
-                          className="flex items-start gap-1"
-                          style={{ paddingLeft: `${row.depth * 16}px` }}
-                        >
-                          {row.hasChildren && row.nodeId ? (
-                            <button
-                              type="button"
-                              onClick={() => toggle(row.nodeId!)}
-                              aria-expanded={expanded.has(row.nodeId)}
-                              aria-label={
-                                expanded.has(row.nodeId)
-                                  ? "하위 단원 접기"
-                                  : "하위 단원 펼치기"
-                              }
-                              className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
-                            >
-                              {expanded.has(row.nodeId) ? (
-                                <ChevronDownIcon className="size-3.5" />
-                              ) : (
-                                <ChevronRightIcon className="size-3.5" />
-                              )}
-                            </button>
-                          ) : (
-                            <span className="w-3.5 shrink-0" />
-                          )}
-                          <div className="min-w-0 space-y-0.5">
-                            {row.lawCode && row.nodeId ? (
-                              <Link
-                                to={
-                                  basis === "systematic"
-                                    ? `/subjects/${row.lawCode}/systematic/${row.nodeId}`
-                                    : `/subjects/${row.lawCode}/chapters/${row.nodeId}`
-                                }
-                                className="text-link hover:underline"
-                                viewTransition
-                              >
-                                {row.label}
-                              </Link>
-                            ) : (
-                              row.label
-                            )}
-                            {/* 다시 풀기 러너는 체계도 노드 전용(exact-node) — 조문 기준 행엔 미노출. */}
-                            {audience === "self" &&
-                            basis === "systematic" &&
-                            !row.hasChildren &&
-                            row.nodeId &&
-                            row.lawCode ? (
-                              <Link
-                                to={`/study/srs/ox?node=${row.nodeId}&subject=${row.lawCode}`}
-                                className="text-muted-foreground hover:text-link block text-[11px]"
-                                viewTransition
-                              >
-                                ↻ 이 단원 다시 풀기
-                              </Link>
-                            ) : null}
-                          </div>
-                        </div>
-                      </TableCell>
+            {group.rows.length === 0 ? (
+              <p className="border-border text-muted-foreground rounded-lg border border-dashed px-3 py-2.5 text-xs">
+                {audience === "self"
+                  ? "아직 이 과목의 정오문제 풀이 기록이 없습니다. 조문·단원 페이지의 정오문제 패널에서 지문을 풀면 여기에 쌓입니다."
+                  : "이 과목의 정오문제 풀이 기록이 아직 없습니다."}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[12rem]">단원</TableHead>
                       {MATRIX_TYPES.map((t) => (
-                        <TableCell key={t} className="text-center">
-                          <MatrixCell cell={row.cells[t]} />
-                        </TableCell>
+                        <TableHead key={t} className="text-center">
+                          {CHOICE_TYPE_LABEL[t]}
+                        </TableHead>
                       ))}
-                      <TableCell className="text-center">
-                        <MatrixCell cell={row.total} />
-                      </TableCell>
+                      <TableHead className="text-center">전체</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {group.rows.filter(isVisible).map((row) => (
+                      <TableRow
+                        key={row.nodeId ?? "null"}
+                        className={cn(row.depth === 0 && "bg-muted/30")}
+                      >
+                        <TableCell className="font-medium">
+                          <div
+                            className="flex items-start gap-1"
+                            style={{ paddingLeft: `${row.depth * 16}px` }}
+                          >
+                            {row.hasChildren && row.nodeId ? (
+                              <button
+                                type="button"
+                                onClick={() => toggle(row.nodeId!)}
+                                aria-expanded={expanded.has(row.nodeId)}
+                                aria-label={
+                                  expanded.has(row.nodeId)
+                                    ? "하위 단원 접기"
+                                    : "하위 단원 펼치기"
+                                }
+                                className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
+                              >
+                                {expanded.has(row.nodeId) ? (
+                                  <ChevronDownIcon className="size-3.5" />
+                                ) : (
+                                  <ChevronRightIcon className="size-3.5" />
+                                )}
+                              </button>
+                            ) : (
+                              <span className="w-3.5 shrink-0" />
+                            )}
+                            <div className="min-w-0 space-y-0.5">
+                              {row.lawCode && row.nodeId ? (
+                                <Link
+                                  to={
+                                    basis === "systematic"
+                                      ? `/subjects/${row.lawCode}/systematic/${row.nodeId}`
+                                      : `/subjects/${row.lawCode}/chapters/${row.nodeId}`
+                                  }
+                                  className="text-link hover:underline"
+                                  viewTransition
+                                >
+                                  {row.label}
+                                </Link>
+                              ) : (
+                                row.label
+                              )}
+                              {/* 다시 풀기 러너는 체계도 노드 전용(exact-node) — 조문 기준 행엔 미노출. */}
+                              {audience === "self" &&
+                              basis === "systematic" &&
+                              !row.hasChildren &&
+                              row.nodeId &&
+                              row.lawCode ? (
+                                <Link
+                                  to={`/study/srs/ox?node=${row.nodeId}&subject=${row.lawCode}`}
+                                  className="text-muted-foreground hover:text-link block text-[11px]"
+                                  viewTransition
+                                >
+                                  ↻ 이 단원 다시 풀기
+                                </Link>
+                              ) : null}
+                            </div>
+                          </div>
+                        </TableCell>
+                        {MATRIX_TYPES.map((t) => (
+                          <TableCell key={t} className="text-center">
+                            <MatrixCell cell={row.cells[t]} />
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-center">
+                          <MatrixCell cell={row.total} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
         ))}
       </CardContent>
@@ -591,8 +610,9 @@ function FlatMatrix({
           단원 × 지식종류 매트릭스
         </h2>
         <p className="text-muted-foreground text-xs">
-          단원별 약한 지식종류. 셀 = 정답률 (시도수). 표본 N{diagnosis.minAttempts}건
-          미만은 회색(단정 제외). 단원명을 누르면 해당 단원 학습으로 이동합니다.
+          단원별 약한 지식종류. 셀 = 정답률 (시도수). 표본 N
+          {diagnosis.minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면 해당
+          단원 학습으로 이동합니다.
         </p>
       </CardHeader>
       <CardContent>
@@ -684,8 +704,9 @@ function PasserPlaceholder({ passer }: { passer: OxDiagnosisPasser }) {
     <Card className="border-dashed">
       <CardContent className="text-muted-foreground flex items-center gap-2 py-5 text-xs">
         <LockIcon className="size-3.5 shrink-0" />
-        합격자 평균과의 지식종류별 비교는 분석에 동의한 합격자가 {passer.minSample}명
-        이상 모이면 제공됩니다 (현재 {passer.sampleSize}명).
+        합격자 평균과의 지식종류별 비교는 분석에 동의한 합격자가{" "}
+        {passer.minSample}명 이상 모이면 제공됩니다 (현재 {passer.sampleSize}
+        명).
       </CardContent>
     </Card>
   );
