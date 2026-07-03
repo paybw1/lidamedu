@@ -25,6 +25,7 @@ import {
   TOPBAR_DROPDOWNS,
   isAreaLocked,
   isSubjectLocked,
+  subjectLockedHint,
   topbarDropdownItems,
 } from "~/core/lib/nav-groups";
 import {
@@ -338,11 +339,8 @@ function SubjectsDropdown({
         {/* 1/2차 구분 없는 평면 6과목 — 세로 목록(좌측 정렬) */}
         <div className="flex max-h-[calc(100vh-7rem)] w-max max-w-[calc(100vw-2rem)] flex-col items-start gap-1 overflow-y-auto p-3">
           {SUBJECT_NAV_ITEMS.map((item) => {
-            const subjLocked = isSubjectLocked(
-              subjectSlugFromHref(item.href),
-              isStaff,
-              subjects,
-            );
+            const slug = subjectSlugFromHref(item.href);
+            const subjLocked = isSubjectLocked(slug, isStaff, subjects);
             if (subjLocked) {
               return (
                 <span
@@ -352,7 +350,7 @@ function SubjectsDropdown({
                     "whitespace-nowrap",
                     LOCKED_DIM_CLASS,
                   )}
-                  title={LOCKED_HINT}
+                  title={subjectLockedHint(slug)}
                   aria-disabled="true"
                 >
                   {item.name}
@@ -405,6 +403,7 @@ export function NavigationBar({
   inboxUnread = null,
   inboxHref = null,
   isStaff = false,
+  gradeStaff,
   features,
   subjects,
   hideMenus = false,
@@ -420,6 +419,10 @@ export function NavigationBar({
   inboxHref?: string | null;
   // staff(강사·관리자·원장) 여부 — 운영관리 메뉴는 staff 에게만 노출.
   isStaff?: boolean;
+  // 잠금(dim) 판정용 staff 여부 — 등급 리졸버 기준(access.grade === 'staff').
+  // 원장 등급 체험 중에는 false 가 되어 학생과 동일한 잠금 표시를 재현한다.
+  // 미전달 시 isStaff 폴백. 메뉴 노출(운영관리 등)은 여전히 isStaff(역할) 기준.
+  gradeStaff?: boolean;
   // feat-8-008 — 사용자의 구독/cohort 기반 영역 플래그. undefined = 미산정(로딩) → 잠금 미표시.
   features?: string[];
   // feat-8-027 — 학습과목 열람 가능 과목('all' | slug[]). 미허용 과목은 드롭다운서 비활성.
@@ -431,6 +434,8 @@ export function NavigationBar({
 }) {
   // 사이드바 모드 — 상단 nav 전체 미렌더. 사이드바가 로고·도구·유저메뉴 흡수.
   if (hideAll) return null;
+  // 잠금 판정은 등급 기준(체험 모드 반영), 미전달 시 역할 기준 폴백.
+  const lockStaff = gradeStaff ?? isStaff;
   // feat-8-008 — 영역 잠금은 TOPBAR_DROPDOWNS 의 area 로 드롭다운별 판정(isAreaLocked) →
   //   흐림(dim) 처리. staff 면제·미산정 시 미표시. 서버 영역 게이트가 권위(시각 힌트만).
   return (
@@ -472,8 +477,8 @@ export function NavigationBar({
                 d.subjects ? (
                   <SubjectsDropdown
                     key={d.label}
-                    locked={isAreaLocked(d.area, isStaff, features)}
-                    isStaff={isStaff}
+                    locked={isAreaLocked(d.area, lockStaff, features)}
+                    isStaff={lockStaff}
                     subjects={subjects}
                   />
                 ) : (
@@ -481,7 +486,7 @@ export function NavigationBar({
                     key={d.label}
                     label={d.label}
                     items={topbarDropdownItems(d.groupIds ?? [], isStaff)}
-                    locked={isAreaLocked(d.area, isStaff, features)}
+                    locked={isAreaLocked(d.area, lockStaff, features)}
                   />
                 ),
               )}

@@ -29,6 +29,7 @@ import {
   type NavGroup,
   isAreaLocked,
   isSubjectLocked,
+  subjectLockedHint,
   isNavActive,
   pickActiveLinkTo,
   useNavLayout,
@@ -40,6 +41,8 @@ const STORAGE_KEY = "studentSidebarCollapsed";
 
 interface StudentSidebarProps {
   isStaff: boolean;
+  // 잠금(dim) 판정용 — 등급 리졸버 기준(체험 모드 반영). 미전달 시 isStaff 폴백.
+  gradeStaff?: boolean;
   user: {
     name: string;
     email: string | undefined;
@@ -55,6 +58,7 @@ interface StudentSidebarProps {
 
 export function StudentSidebar({
   isStaff,
+  gradeStaff,
   user,
   inboxUnread,
   inboxHref,
@@ -62,8 +66,10 @@ export function StudentSidebar({
   subjects,
 }: StudentSidebarProps) {
   const { core, secondary } = useNavLayout(isStaff);
+  // 잠금 판정은 등급 기준(원장 체험 모드 반영) — 메뉴 노출은 역할(isStaff) 기준 유지.
+  const lockStaff = gradeStaff ?? isStaff;
   // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용(상단바와 동일 규칙). 서버 영역 게이트가 권위, 시각 힌트만.
-  const lockOf = (area?: string) => isAreaLocked(area, isStaff, features);
+  const lockOf = (area?: string) => isAreaLocked(area, lockStaff, features);
   const location = useLocation();
   const path = location.pathname;
   const search = location.search;
@@ -202,7 +208,7 @@ export function StudentSidebar({
                 search={search}
                 onPick={collapseAfterPick}
                 locked={lockOf(g.area)}
-                isStaff={isStaff}
+                isStaff={lockStaff}
                 subjects={subjects}
               />
             );
@@ -599,16 +605,13 @@ function SubjectsFull({
           {/* 1/2차 구분 없는 평면 6과목. 권한 없는 과목은 비활성(클릭 불가). */}
           {SUBJECT_NAV_ITEMS.map((item) => {
             const active = isNavActive(item.href, path, search);
-            const subjLocked = isSubjectLocked(
-              subjectSlugFromHref(item.href),
-              isStaff,
-              subjects,
-            );
+            const slug = subjectSlugFromHref(item.href);
+            const subjLocked = isSubjectLocked(slug, isStaff, subjects);
             if (subjLocked) {
               return (
                 <span
                   key={item.href}
-                  title={LOCKED_HINT}
+                  title={subjectLockedHint(slug)}
                   aria-disabled="true"
                   className={cn(
                     "text-muted-foreground rounded-md px-1.5 py-1 text-xs",

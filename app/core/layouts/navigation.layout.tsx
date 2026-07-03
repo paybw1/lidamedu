@@ -42,6 +42,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     if (!user)
       return {
         isStaff: false,
+        gradeStaff: false,
         unread: 0,
         features: [] as string[],
         subjects: [] as "all" | string[],
@@ -54,6 +55,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     ]);
     return {
       isStaff: role !== null,
+      // 잠금(dim) 판정용 — 등급 리졸버 기준. 원장 등급 체험(membership_test_grade)
+      // 중에는 false 가 되어 학생과 동일한 비활성 표시를 재현한다.
+      gradeStaff: access.grade === "staff",
       unread,
       features: access.features,
       subjects: access.subjects,
@@ -131,6 +135,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       inboxUnread={inbox.unread}
                       inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
                       isStaff={inbox.isStaff}
+                      gradeStaff={inbox.gradeStaff}
                       features={inbox.features}
                       subjects={inbox.subjects}
                       hideAll={isSidebar}
@@ -176,6 +181,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                     user ? (
                       <StudentSidebar
                         isStaff={inbox.isStaff}
+                        gradeStaff={inbox.gradeStaff}
                         user={{
                           name: user.user_metadata.name || "학습자",
                           email: user.email,
@@ -219,6 +225,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                   {(inbox) => (
                     <StudentBottomBar
                       isStaff={inbox.isStaff}
+                      gradeStaff={inbox.gradeStaff}
                       inboxUnread={inbox.unread}
                       inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
                       user={{
@@ -229,6 +236,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       collapsed={navCollapsed}
                       onToggleCollapse={toggleNav}
                       features={inbox.features}
+                      subjects={inbox.subjects}
                     />
                   )}
                 </Await>

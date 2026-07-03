@@ -25,7 +25,10 @@ import { Sheet, SheetContent, SheetTitle } from "~/core/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "~/core/components/ui/avatar";
 import { openCommandPalette } from "~/core/components/command-palette";
 import ThemeSwitcher from "~/core/components/theme-switcher";
-import { SUBJECT_NAV_ITEMS } from "~/core/lib/subject-groups";
+import {
+  SUBJECT_NAV_ITEMS,
+  subjectSlugFromHref,
+} from "~/core/lib/subject-groups";
 import { cn } from "~/core/lib/utils";
 import {
   FLAT_ADMIN,
@@ -36,7 +39,9 @@ import {
   type NavGroupId,
   isAreaLocked,
   isNavActive,
+  isSubjectLocked,
   pickActiveLinkTo,
+  subjectLockedHint,
   useNavLayout,
 } from "~/core/lib/nav-groups";
 
@@ -48,14 +53,18 @@ type BottomBarUser = {
 
 export function StudentBottomBar({
   isStaff,
+  gradeStaff,
   inboxUnread = 0,
   inboxHref = "/inbox",
   user,
   collapsed = false,
   onToggleCollapse,
   features,
+  subjects,
 }: {
   isStaff: boolean;
+  // 잠금(dim) 판정용 — 등급 리졸버 기준(체험 모드 반영). 미전달 시 isStaff 폴백.
+  gradeStaff?: boolean;
   // 상단 바를 모바일에서 숨기므로 알림/계정/검색/테마를 하단 더보기로 흡수.
   inboxUnread?: number;
   inboxHref?: string;
@@ -65,10 +74,14 @@ export function StudentBottomBar({
   onToggleCollapse?: () => void;
   // feat-8-008 — 구독/cohort 영역 플래그. 잠금 흐림(dim) 시각표시용(상단바·사이드바와 동일).
   features?: string[];
+  // feat-8-027 — 학습과목 열람 가능 과목('all' | slug[]). 미허용 과목은 시트에서 비활성.
+  subjects?: "all" | string[];
 }) {
   const { core, secondary } = useNavLayout(isStaff);
+  // 잠금 판정은 등급 기준(원장 체험 모드 반영) — 메뉴 노출은 역할(isStaff) 기준 유지.
+  const lockStaff = gradeStaff ?? isStaff;
   // feat-8-008 — 영역 잠금 흐림(dim) 일관 적용. 서버 영역 게이트가 권위, 시각 힌트만.
-  const lockOf = (area?: string) => isAreaLocked(area, isStaff, features);
+  const lockOf = (area?: string) => isAreaLocked(area, lockStaff, features);
   const location = useLocation();
   const path = location.pathname;
   const search = location.search;
@@ -258,6 +271,8 @@ export function StudentBottomBar({
                 path={path}
                 search={search}
                 locked={lockOf(core.find((g) => g.id === "subjects")?.area)}
+                isStaff={lockStaff}
+                subjects={subjects}
               />
             ) : sheetTab ? (
               <GroupSheet
@@ -334,11 +349,15 @@ function SubjectsSheet({
   path,
   search,
   locked,
+  isStaff = false,
+  subjects,
 }: {
   onPick: () => void;
   path: string;
   search: string;
   locked?: boolean;
+  isStaff?: boolean;
+  subjects?: "all" | string[];
 }) {
   return (
     <div>
@@ -348,10 +367,26 @@ function SubjectsSheet({
       >
         학습과목
       </p>
-      {/* 1/2차 구분 없는 평면 6과목 */}
+      {/* 1/2차 구분 없는 평면 6과목. 권한 없는·준비 중 과목은 비활성(클릭 불가). */}
       <div className="flex flex-wrap gap-1.5">
         {SUBJECT_NAV_ITEMS.map((item) => {
           const active = isNavActive(item.href, path, search);
+          const slug = subjectSlugFromHref(item.href);
+          if (isSubjectLocked(slug, isStaff, subjects)) {
+            return (
+              <span
+                key={item.href}
+                title={subjectLockedHint(slug)}
+                aria-disabled="true"
+                className={cn(
+                  "border-border bg-muted/30 rounded-md border px-2.5 py-1 text-xs",
+                  LOCKED_DIM_CLASS,
+                )}
+              >
+                {item.name}
+              </span>
+            );
+          }
           return (
             <Link
               key={item.href}
