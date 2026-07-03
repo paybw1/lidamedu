@@ -38,7 +38,10 @@ import type {
   OxDiagnosis,
   OxTreeRow,
 } from "~/features/study/lib/ox-diagnosis.server";
-import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import {
+  LAW_SUBJECTS,
+  LAW_SUBJECT_SLUGS,
+} from "~/features/subjects/lib/subjects";
 
 type Audience = "self" | "staff";
 
@@ -327,8 +330,19 @@ function CrossMatrix({
   return <FlatMatrix diagnosis={diagnosis} audience={audience} />;
 }
 
-// 체계도 정렬 매트릭스 — 상위 단원 행 = 하위 전체 합산(rollup). 접기/펼치기 드릴다운.
-// 표본 게이트의 실익: 하위 셀이 N 미달이어도 상위 합산 셀에서 진단 가능.
+// 과목 섹션 표시 순서 — 민법 → 특허법 → 디자인보호법 → 상표법 → (그 외 정식 순서).
+const MATRIX_SUBJECT_ORDER: string[] = [
+  "civil",
+  "patent",
+  "design",
+  "trademark",
+  ...LAW_SUBJECT_SLUGS.filter(
+    (s) => !["civil", "patent", "design", "trademark"].includes(s),
+  ),
+];
+
+// 체계도 정렬 매트릭스 — 과목별 섹션으로 구분, 상위 단원 행 = 하위 전체 합산(rollup).
+// 접기/펼치기 드릴다운. 표본 게이트의 실익: 하위 셀이 N 미달이어도 상위 합산 셀에서 진단 가능.
 function TreeMatrix({
   rows,
   minAttempts,
@@ -344,11 +358,32 @@ function TreeMatrix({
     for (const r of rows) if (r.nodeId) m.set(r.nodeId, r.parentId);
     return m;
   }, [rows]);
-  // 과목이 2개 이상 섞이면 루트 행에 과목 칩으로 구분.
-  const multiSubject = useMemo(
-    () => new Set(rows.map((r) => r.lawCode).filter(Boolean)).size > 1,
-    [rows],
-  );
+  // 과목별 그룹 — 루트의 lawCode 로 서브트리 블록(전위 순회 연속)을 나눈다.
+  // 기타(lawCode null)는 말미 "기타" 섹션.
+  const groups = useMemo(() => {
+    const byLaw = new Map<string, OxTreeRow[]>();
+    for (const row of rows) {
+      const key = row.lawCode ?? "_etc";
+      const list = byLaw.get(key) ?? [];
+      list.push(row);
+      byLaw.set(key, list);
+    }
+    const orderOf = (key: string) => {
+      if (key === "_etc") return 999;
+      const idx = MATRIX_SUBJECT_ORDER.indexOf(key);
+      return idx === -1 ? 900 : idx;
+    };
+    return [...byLaw.entries()]
+      .sort((a, b) => orderOf(a[0]) - orderOf(b[0]))
+      .map(([key, groupRows]) => ({
+        key,
+        name:
+          key === "_etc"
+            ? "기타"
+            : (LAW_SUBJECTS[key as keyof typeof LAW_SUBJECTS]?.name ?? key),
+        rows: groupRows,
+      }));
+  }, [rows]);
   const isVisible = (row: OxTreeRow): boolean => {
     let cur = row.parentId;
     for (let guard = 0; cur && guard < 20; guard++) {
@@ -372,105 +407,106 @@ function TreeMatrix({
           단원 × 지식종류 매트릭스
         </h2>
         <p className="text-muted-foreground text-xs">
-          체계도 순서. 상위 단원 행은 하위 단원 전체의 합산입니다 — ▸ 를 눌러
-          펼치면 세부 단원별로 드릴다운됩니다. 셀 = 정답률 (시도수), 표본 N
+          과목별 · 체계도 순서. 상위 단원 행은 하위 단원 전체의 합산입니다 — ▸ 를
+          눌러 펼치면 세부 단원별로 드릴다운됩니다. 셀 = 정답률 (시도수), 표본 N
           {minAttempts}건 미만은 회색(단정 제외). 단원명을 누르면 해당 단원
           학습으로 이동합니다.
         </p>
       </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[12rem]">단원</TableHead>
-                {MATRIX_TYPES.map((t) => (
-                  <TableHead key={t} className="text-center">
-                    {CHOICE_TYPE_LABEL[t]}
-                  </TableHead>
-                ))}
-                <TableHead className="text-center">전체</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.filter(isVisible).map((row) => (
-                <TableRow
-                  key={row.nodeId ?? "null"}
-                  className={cn(row.depth === 0 && "bg-muted/30")}
-                >
-                  <TableCell className="font-medium">
-                    <div
-                      className="flex items-start gap-1"
-                      style={{ paddingLeft: `${row.depth * 16}px` }}
+      <CardContent className="space-y-5">
+        {groups.map((group) => (
+          <div key={group.key}>
+            <h3 className="text-foreground mb-1.5 flex items-center gap-1.5 text-sm font-bold">
+              <LayersIcon className="text-muted-foreground size-3.5" />
+              {group.name}
+            </h3>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[12rem]">단원</TableHead>
+                    {MATRIX_TYPES.map((t) => (
+                      <TableHead key={t} className="text-center">
+                        {CHOICE_TYPE_LABEL[t]}
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-center">전체</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {group.rows.filter(isVisible).map((row) => (
+                    <TableRow
+                      key={row.nodeId ?? "null"}
+                      className={cn(row.depth === 0 && "bg-muted/30")}
                     >
-                      {row.hasChildren && row.nodeId ? (
-                        <button
-                          type="button"
-                          onClick={() => toggle(row.nodeId!)}
-                          aria-expanded={expanded.has(row.nodeId)}
-                          aria-label={
-                            expanded.has(row.nodeId) ? "하위 단원 접기" : "하위 단원 펼치기"
-                          }
-                          className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
+                      <TableCell className="font-medium">
+                        <div
+                          className="flex items-start gap-1"
+                          style={{ paddingLeft: `${row.depth * 16}px` }}
                         >
-                          {expanded.has(row.nodeId) ? (
-                            <ChevronDownIcon className="size-3.5" />
-                          ) : (
-                            <ChevronRightIcon className="size-3.5" />
-                          )}
-                        </button>
-                      ) : (
-                        <span className="w-3.5 shrink-0" />
-                      )}
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-1.5">
-                          {row.lawCode && row.nodeId ? (
-                            <Link
-                              to={`/subjects/${row.lawCode}/systematic/${row.nodeId}`}
-                              className="text-link hover:underline"
-                              viewTransition
+                          {row.hasChildren && row.nodeId ? (
+                            <button
+                              type="button"
+                              onClick={() => toggle(row.nodeId!)}
+                              aria-expanded={expanded.has(row.nodeId)}
+                              aria-label={
+                                expanded.has(row.nodeId)
+                                  ? "하위 단원 접기"
+                                  : "하위 단원 펼치기"
+                              }
+                              className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0"
                             >
-                              {row.label}
-                            </Link>
+                              {expanded.has(row.nodeId) ? (
+                                <ChevronDownIcon className="size-3.5" />
+                              ) : (
+                                <ChevronRightIcon className="size-3.5" />
+                              )}
+                            </button>
                           ) : (
-                            row.label
+                            <span className="w-3.5 shrink-0" />
                           )}
-                          {multiSubject && row.depth === 0 && row.lawCode ? (
-                            <Badge
-                              variant="outline"
-                              className="px-1.5 py-0 text-[10px]"
-                            >
-                              {LAW_SUBJECTS[
-                                row.lawCode as keyof typeof LAW_SUBJECTS
-                              ]?.name ?? row.lawCode}
-                            </Badge>
-                          ) : null}
+                          <div className="min-w-0 space-y-0.5">
+                            {row.lawCode && row.nodeId ? (
+                              <Link
+                                to={`/subjects/${row.lawCode}/systematic/${row.nodeId}`}
+                                className="text-link hover:underline"
+                                viewTransition
+                              >
+                                {row.label}
+                              </Link>
+                            ) : (
+                              row.label
+                            )}
+                            {audience === "self" &&
+                            !row.hasChildren &&
+                            row.nodeId &&
+                            row.lawCode ? (
+                              <Link
+                                to={`/study/srs/ox?node=${row.nodeId}&subject=${row.lawCode}`}
+                                className="text-muted-foreground hover:text-link block text-[11px]"
+                                viewTransition
+                              >
+                                ↻ 이 단원 다시 풀기
+                              </Link>
+                            ) : null}
+                          </div>
                         </div>
-                        {audience === "self" && !row.hasChildren && row.nodeId && row.lawCode ? (
-                          <Link
-                            to={`/study/srs/ox?node=${row.nodeId}&subject=${row.lawCode}`}
-                            className="text-muted-foreground hover:text-link block text-[11px]"
-                            viewTransition
-                          >
-                            ↻ 이 단원 다시 풀기
-                          </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                  </TableCell>
-                  {MATRIX_TYPES.map((t) => (
-                    <TableCell key={t} className="text-center">
-                      <MatrixCell cell={row.cells[t]} />
-                    </TableCell>
+                      </TableCell>
+                      {MATRIX_TYPES.map((t) => (
+                        <TableCell key={t} className="text-center">
+                          <MatrixCell cell={row.cells[t]} />
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-center">
+                        <MatrixCell cell={row.total} />
+                      </TableCell>
+                    </TableRow>
                   ))}
-                  <TableCell className="text-center">
-                    <MatrixCell cell={row.total} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
