@@ -83,8 +83,7 @@ import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
-  LeftPanelToggle,
-  RightPanelToggle,
+  PanelEdgeHandle,
   panelGridCls,
   useLeftPanelCollapse,
   useRightPanelCollapse,
@@ -537,25 +536,27 @@ function ArticleViewerInner({
         <div
           className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
-          {/* ── LEFT TREE (desktop sticky, 접기/펼치기) ─────────────────── */}
-          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
+          {/* ── LEFT TREE (desktop sticky, 경계 손잡이로 접기/펼치기) ────── */}
+          <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
             {leftCollapsed ? (
-              <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
-                <LeftPanelToggle collapsed onToggle={toggleLeft} />
+              <div className="flex h-[70vh] items-center justify-start">
+                <PanelEdgeHandle
+                  side="left"
+                  collapsed
+                  onToggle={toggleLeft}
+                />
               </div>
             ) : (
-              <div className="border-border bg-card rounded-xl border shadow-sm">
-                {/* 헤더(스크롤해도 상단 고정): [접기 맨 위] → [축 언더라인 탭] → [체계도/조문]. */}
+              <>
+              <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+                {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
                 <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
-                  <div className="px-3 pt-2">
-                    <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                  </div>
                   <SubjectAxisNav
                     subjectSlug={subject.slug}
                     active="articles"
                     counts={loaderData.axisCounts}
                     showSubjective={loaderData.staffRole !== null}
-                    className="mt-1 px-2"
+                    className="px-2 pt-1.5"
                   />
                   <div className="flex justify-end px-3 py-2">
                     <SortAxisToggle
@@ -593,6 +594,14 @@ function ArticleViewerInner({
                   ) : null}
                 </div>
               </div>
+              {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
+              <PanelEdgeHandle
+                side="left"
+                collapsed={false}
+                onToggle={toggleLeft}
+                className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
+              />
+              </>
             )}
           </aside>
 
@@ -1294,18 +1303,15 @@ function ArticleViewerInner({
             </div>
           </main>
 
-          {/* ── RIGHT PANEL (desktop sticky, 접기/펼치기) ───────────────── */}
-          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
+          {/* ── RIGHT PANEL (desktop sticky, 경계 손잡이로 접기/펼치기) ──── */}
+          <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
             {rightCollapsed ? (
-              <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
-                <RightPanelToggle collapsed onToggle={toggleRight} />
+              <div className="flex h-[70vh] items-center justify-end">
+                <PanelEdgeHandle side="right" collapsed onToggle={toggleRight} />
               </div>
             ) : (
-              <div className="border-border bg-card rounded-xl border shadow-sm">
-                {/* 토글 헤더 — 패널을 스크롤해도 상단 고정(sticky top-0). */}
-                <div className="border-border bg-card sticky top-0 z-10 flex rounded-t-xl border-b px-3 py-2">
-                  <RightPanelToggle collapsed={false} onToggle={toggleRight} />
-                </div>
+              <>
+              <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
                 <ArticleRightPanel
                   target={{ type: "article", id: article.articleId }}
                   bookmark={bookmark}
@@ -1328,6 +1334,14 @@ function ArticleViewerInner({
                   pdfLocationsEnabled={pdfLocationsEnabled}
                 />
               </div>
+              {/* 경계 손잡이 — 패널 왼쪽 변 세로 중앙(국가법령정보센터식). */}
+              <PanelEdgeHandle
+                side="right"
+                collapsed={false}
+                onToggle={toggleRight}
+                className="absolute top-1/2 -left-2.5 z-20 -translate-y-1/2"
+              />
+              </>
             )}
           </aside>
         </div>

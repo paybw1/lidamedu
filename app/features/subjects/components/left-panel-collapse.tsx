@@ -3,6 +3,8 @@
 //   콘텐츠 대신 펼치기 버튼만 보인다. 상태는 localStorage 로 화면 간 유지.
 //   (파일명은 left- 이지만 좌·우 양쪽을 다룬다.)
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PanelRightCloseIcon,
@@ -102,6 +104,53 @@ export function LeftPanelToggle({
       ) : (
         <PanelLeftCloseIcon className="size-4" />
       )}
+    </button>
+  );
+}
+
+/**
+ * 국가법령정보센터식 경계 손잡이 — 패널과 본문 사이 경계의 세로 중앙에 붙는
+ * 얇고 긴 화살표 탭. 클릭으로 패널 접기/펼치기.
+ *   side="left"  = 좌패널(펼침: 오른쪽 변에 ◀ / 접힘: 스트립 중앙에 ▶)
+ *   side="right" = 우패널(펼침: 왼쪽 변에 ▶ / 접힘: 스트립 중앙에 ◀)
+ * 위치(absolute/중앙정렬)는 호출부가 className 으로 지정한다.
+ */
+export function PanelEdgeHandle({
+  side,
+  collapsed,
+  onToggle,
+  className,
+}: {
+  side: "left" | "right";
+  collapsed: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  const pointsLeft = side === "left" ? !collapsed : collapsed;
+  const Icon = pointsLeft ? ChevronLeftIcon : ChevronRightIcon;
+  const label =
+    side === "left"
+      ? collapsed
+        ? "왼쪽 패널 펼치기"
+        : "왼쪽 패널 접기"
+      : collapsed
+        ? "오른쪽 패널 펼치기"
+        : "오른쪽 패널 접기";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={label}
+      aria-label={label}
+      aria-expanded={!collapsed}
+      className={cn(
+        "border-border bg-card text-muted-foreground flex h-16 w-[18px] items-center justify-center rounded-lg border shadow-sm transition-colors",
+        "hover:border-primary hover:bg-primary hover:text-primary-foreground",
+        "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none",
+        className,
+      )}
+    >
+      <Icon className="size-3.5" />
     </button>
   );
 }

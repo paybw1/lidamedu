@@ -69,7 +69,7 @@ import { getCaseIdsByPlacement } from "~/features/cases/queries.server";
 import { getRelatedCasesByArticle } from "~/features/relations/queries.server";
 import { ArticleTree } from "~/features/subjects/components/article-tree";
 import {
-  LeftPanelToggle,
+  PanelEdgeHandle,
   leftOnlyGridCls,
   useLeftPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
@@ -461,17 +461,17 @@ function Inner({
       <div
         className={`grid min-w-0 flex-1 gap-5 ${leftOnlyGridCls(leftCollapsed)}`}
       >
-        {/* ── 좌측 트리 (데스크톱, 접기/펼치기) ── */}
-        <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
+        {/* ── 좌측 트리 (데스크톱, 경계 손잡이로 접기/펼치기) ── */}
+        <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
           {leftCollapsed ? (
-            <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
-              <LeftPanelToggle collapsed onToggle={toggleLeft} />
+            <div className="flex h-[70vh] items-center justify-start">
+              <PanelEdgeHandle side="left" collapsed onToggle={toggleLeft} />
             </div>
           ) : (
-            <Card className="rounded-xl border py-4 shadow-sm">
-              {/* 헤더(스크롤해도 상단 고정): [접기 맨 위] → [축 언더라인 탭] → [체계도/조문]. */}
+            <>
+            <Card className="rounded-xl border py-4 shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+              {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
               <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-0">
-                <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
                 <SubjectAxisNav
                   subjectSlug={subject.slug}
                   active="articles"
@@ -510,6 +510,14 @@ function Inner({
                 )}
               </CardContent>
             </Card>
+            {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
+            <PanelEdgeHandle
+              side="left"
+              collapsed={false}
+              onToggle={toggleLeft}
+              className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
+            />
+            </>
           )}
         </aside>
 

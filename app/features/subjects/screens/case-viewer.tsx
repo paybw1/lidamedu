@@ -61,8 +61,7 @@ import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { CasesTree } from "~/features/subjects/components/cases-tree";
 import {
-  LeftPanelToggle,
-  RightPanelToggle,
+  PanelEdgeHandle,
   panelGridCls,
   useLeftPanelCollapse,
   useRightPanelCollapse,
@@ -408,38 +407,42 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
           <div
             className={`grid min-w-0 flex-1 gap-5 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
           >
-            {/* ── 좌측 조문 트리 (데스크톱 sticky, 접기/펼치기) ── */}
-            <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
+            {/* ── 좌측 조문 트리 (데스크톱 sticky, 경계 손잡이로 접기/펼치기) ── */}
+            <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
               {leftCollapsed ? (
-                <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
-                  <LeftPanelToggle collapsed onToggle={toggleLeft} />
+                <div className="flex h-[70vh] items-center justify-start">
+                  <PanelEdgeHandle side="left" collapsed onToggle={toggleLeft} />
                 </div>
               ) : (
-                <div className="border-border bg-card rounded-xl border shadow-sm">
-                  {/* 조문 뷰어와 동일 — [접기+축 내비] / [체계도·조문] sticky 헤더. */}
+                <>
+                <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+                  {/* 조문 뷰어와 동일 — [축 언더라인 탭] / [체계도·조문] sticky 헤더. */}
                   <CaseTreeSidebar
                     subjectSlug={subject.slug}
                     articles={articles}
                     systematicNodes={systematicNodes}
                     caseTreeCounts={caseTreeCounts}
                     activeFilter={activeCaseTreeFilter}
-                    leftSlot={
-                      <LeftPanelToggle
-                        collapsed={false}
-                        onToggle={toggleLeft}
-                      />
-                    }
+                    desktopHeader
                     axisNav={
                       <SubjectAxisNav
                         subjectSlug={subject.slug}
                         active="cases"
                         counts={loaderData.axisCounts}
                         showSubjective={loaderData.isStaff}
-                        className="mt-1 px-2"
+                        className="px-2 pt-1.5"
                       />
                     }
                   />
                 </div>
+                {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
+                <PanelEdgeHandle
+                  side="left"
+                  collapsed={false}
+                  onToggle={toggleLeft}
+                  className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
+                />
+                </>
               )}
             </aside>
 
@@ -573,21 +576,19 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
               />
             </main>
 
-            {/* ── 우측 학습 패널 (데스크톱 sticky, 접기/펼치기) ── */}
-            <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-auto">
+            {/* ── 우측 학습 패널 (데스크톱 sticky, 경계 손잡이로 접기/펼치기) ── */}
+            <aside className="relative hidden lg:sticky lg:top-20 lg:block lg:self-start">
               {rightCollapsed ? (
-                <div className="border-border bg-card flex justify-center rounded-xl border py-2 shadow-sm">
-                  <RightPanelToggle collapsed onToggle={toggleRight} />
+                <div className="flex h-[70vh] items-center justify-end">
+                  <PanelEdgeHandle
+                    side="right"
+                    collapsed
+                    onToggle={toggleRight}
+                  />
                 </div>
               ) : (
-                <div className="border-border bg-card rounded-xl border shadow-sm">
-                  {/* 토글 헤더 — 패널을 스크롤해도 상단 고정(sticky top-0). */}
-                  <div className="border-border bg-card sticky top-0 z-10 flex rounded-t-xl border-b px-3 py-2">
-                    <RightPanelToggle
-                      collapsed={false}
-                      onToggle={toggleRight}
-                    />
-                  </div>
+                <>
+                <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
                   <ArticleRightPanel
                     target={{ type: "case", id: kase.caseId }}
                     bookmark={bookmark}
@@ -606,6 +607,14 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     pdfLocationsEnabled={pdfLocationsEnabled}
                   />
                 </div>
+                {/* 경계 손잡이 — 패널 왼쪽 변 세로 중앙(국가법령정보센터식). */}
+                <PanelEdgeHandle
+                  side="right"
+                  collapsed={false}
+                  onToggle={toggleRight}
+                  className="absolute top-1/2 -left-2.5 z-20 -translate-y-1/2"
+                />
+                </>
               )}
             </aside>
           </div>
@@ -629,9 +638,9 @@ function CaseTreeSidebar(props: {
   systematicNodes: SystematicNode[];
   caseTreeCounts: CaseTreeCounts;
   activeFilter: CaseTreeFilter | null;
-  // 데스크톱 패널 헤더에 끼워 넣을 접기 토글(축 내비 왼쪽). 모바일 드로어는 미지정.
-  leftSlot?: ReactNode;
-  // 축 내비(조문·판례·객관식·주관식) — 데스크톱 헤더 첫 줄(접기 옆). 모바일 미지정.
+  // 데스크톱 패널 헤더(sticky, 축 내비 포함) 렌더 여부. 모바일 드로어는 미지정.
+  desktopHeader?: boolean;
+  // 축 내비(조문·판례·객관식·주관식) — 데스크톱 헤더 첫 줄. 모바일 미지정.
   axisNav?: ReactNode;
 }) {
   return (
@@ -647,7 +656,7 @@ function CaseTreeSidebarInner({
   systematicNodes,
   caseTreeCounts,
   activeFilter,
-  leftSlot,
+  desktopHeader = false,
   axisNav,
 }: {
   subjectSlug: string;
@@ -655,18 +664,17 @@ function CaseTreeSidebarInner({
   systematicNodes: SystematicNode[];
   caseTreeCounts: CaseTreeCounts;
   activeFilter: CaseTreeFilter | null;
-  leftSlot?: ReactNode;
+  desktopHeader?: boolean;
   axisNav?: ReactNode;
 }) {
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
   return (
     <div>
-      {/* 헤더 — 데스크톱(leftSlot 주입): [접기 맨 위] → [축 언더라인 탭] → [체계도/조문] sticky.
-          모바일 드로어(leftSlot 없음): 정렬축 토글만 우측 정렬(기존 동작). */}
-      {leftSlot ? (
+      {/* 헤더 — 데스크톱: [축 언더라인 탭] → [체계도/조문] sticky.
+          모바일 드로어: 정렬축 토글만 우측 정렬(기존 동작). */}
+      {desktopHeader ? (
         <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
-          <div className="px-3 pt-2">{leftSlot}</div>
           {axisNav}
           <div className="flex justify-end px-3 py-2">
             <SortAxisToggle
@@ -683,7 +691,7 @@ function CaseTreeSidebarInner({
           />
         </div>
       )}
-      <div className={leftSlot ? "px-1.5 py-2" : ""}>
+      <div className={desktopHeader ? "px-1.5 py-2" : ""}>
         <CasesTree
           axis={axis}
           articles={articles}

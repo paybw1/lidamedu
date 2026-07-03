@@ -91,8 +91,7 @@ import {
   recordStudySession,
 } from "~/features/study/queries.server";
 import {
-  LeftPanelToggle,
-  RightPanelToggle,
+  PanelEdgeHandle,
   panelGridCls,
   useLeftPanelCollapse,
   useRightPanelCollapse,
@@ -817,27 +816,25 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
         <div
           className={`grid min-w-0 flex-1 gap-0 ${panelGridCls(leftCollapsed, rightCollapsed)}`}
         >
-          {/* Left tree — desktop sticky, 접기/펼치기. 문제는 체계도 고정
+          {/* Left tree — desktop sticky, 경계 손잡이로 접기/펼치기. 문제는 체계도 고정
               (SortAxisProvider forced — 조문 leaf 로 이동해도 조문 뷰어가 체계도 유지). */}
-          <aside className="lg:border-border hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto lg:border-r">
+          <aside className="lg:border-border relative hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:border-r">
             <SortAxisProvider forced="systematic">
               {leftCollapsed ? (
-                <div className="flex justify-center py-3">
-                  <LeftPanelToggle collapsed onToggle={toggleLeft} />
+                <div className="flex h-[70vh] items-center justify-center">
+                  <PanelEdgeHandle side="left" collapsed onToggle={toggleLeft} />
                 </div>
               ) : (
                 <>
-                  {/* 헤더(상단 고정): [접기 맨 위] → [축 언더라인 탭] → [체계도/조문(조문 비활성)]. */}
+                <div className="lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
+                  {/* 헤더(상단 고정): [축 언더라인 탭] → [체계도/조문(조문 비활성)]. */}
                   <div className="bg-background sticky top-0 z-10">
-                    <div className="px-3 pt-2">
-                      <LeftPanelToggle collapsed={false} onToggle={toggleLeft} />
-                    </div>
                     <SubjectAxisNav
                       subjectSlug={subject.slug}
                       active={isSubjectiveProblem ? "subjective" : "problems"}
                       counts={loaderData.axisCounts}
                       showSubjective={isStaff}
-                      className="mt-1 px-2"
+                      className="px-2 pt-1.5"
                     />
                     <div className="flex justify-end px-3 py-2">
                       <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
@@ -855,6 +852,14 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       linkBase={`/subjects/${subject.slug}`}
                     />
                   )}
+                </div>
+                {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
+                <PanelEdgeHandle
+                  side="left"
+                  collapsed={false}
+                  onToggle={toggleLeft}
+                  className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
+                />
                 </>
               )}
             </SortAxisProvider>
@@ -1639,18 +1644,15 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             </article>
           </main>
 
-          {/* Right panel — desktop sticky, 접기/펼치기 */}
-          <aside className="hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
+          {/* Right panel — desktop sticky, 경계 손잡이로 접기/펼치기 */}
+          <aside className="relative hidden lg:sticky lg:top-[calc(3.5rem+41px)] lg:block">
             {rightCollapsed ? (
-              <div className="flex justify-center py-3">
-                <RightPanelToggle collapsed onToggle={toggleRight} />
+              <div className="flex h-[70vh] items-center justify-center">
+                <PanelEdgeHandle side="right" collapsed onToggle={toggleRight} />
               </div>
             ) : (
               <>
-                {/* 토글 — 패널을 스크롤해도 상단 고정(sticky top-0). */}
-                <div className="bg-background sticky top-0 z-10 flex px-3 py-2">
-                  <RightPanelToggle collapsed={false} onToggle={toggleRight} />
-                </div>
+                <div className="lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
                 <ArticleRightPanel
                   target={{ type: "problem", id: problem.problemId }}
                   bookmark={bookmark}
@@ -1676,6 +1678,14 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   isAdmin={isAdmin}
                   viewerIsStaff={canEditComment}
                   importance={problem.importance}
+                />
+                </div>
+                {/* 경계 손잡이 — 패널 왼쪽 변 세로 중앙(국가법령정보센터식). */}
+                <PanelEdgeHandle
+                  side="right"
+                  collapsed={false}
+                  onToggle={toggleRight}
+                  className="absolute top-1/2 -left-2.5 z-20 -translate-y-1/2"
                 />
               </>
             )}
