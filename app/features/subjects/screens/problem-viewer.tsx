@@ -243,7 +243,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       : getAdjacentProblems(client, problem.problemId),
     law
       ? getSubjectAxisCounts(client, lawCode, law.lawId)
-      : Promise.resolve({ articles: 0, cases: 0, problems: 0 }),
+      : Promise.resolve({ articles: 0, cases: 0, problems: 0, subjective: 0 }),
     listLectureResources(client, "problem", problem.problemId),
     law
       ? getSystematicNodeProblemStats(client, lawCode)

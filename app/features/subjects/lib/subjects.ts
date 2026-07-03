@@ -12,7 +12,13 @@ export type LawSubjectSlug = (typeof LAW_SUBJECT_SLUGS)[number];
 
 export const lawSubjectSlugSchema = z.enum(LAW_SUBJECT_SLUGS);
 
-export const SUBJECT_TAB_VALUES = ["articles", "cases", "problems"] as const;
+// problems=객관식(1차) / subjective=주관식(2차) — 2차 과목(특·상·디·민소)만 주관식 탭 노출.
+export const SUBJECT_TAB_VALUES = [
+  "articles",
+  "cases",
+  "problems",
+  "subjective",
+] as const;
 
 export type SubjectTab = (typeof SUBJECT_TAB_VALUES)[number];
 

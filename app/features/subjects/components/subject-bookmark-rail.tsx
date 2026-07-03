@@ -7,12 +7,22 @@
 // 들고, 이 파일은 뷰어용 링크 레일(SubjectBookmarkRail)만 제공한다.
 import type { ComponentType } from "react";
 
-import { BookmarkIcon, GavelIcon, ListChecksIcon } from "lucide-react";
+import {
+  BookmarkIcon,
+  GavelIcon,
+  ListChecksIcon,
+  PenLineIcon,
+} from "lucide-react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 
-import { DEFAULT_SUBJECT_TAB, type SubjectTab } from "../lib/subjects";
+import {
+  DEFAULT_SUBJECT_TAB,
+  LAW_SUBJECTS,
+  type LawSubjectSlug,
+  type SubjectTab,
+} from "../lib/subjects";
 
 interface BookmarkAxis {
   value: SubjectTab;
@@ -20,12 +30,20 @@ interface BookmarkAxis {
   label: string;
 }
 
-/** 책갈피 3축 — 레일 표시 순서대로. 허브·뷰어 공용 SSOT. */
+/** 책갈피 축 — 레일 표시 순서대로. 허브·뷰어 공용 SSOT. */
 export const BOOKMARK_AXES: readonly BookmarkAxis[] = [
   { value: "articles", icon: BookmarkIcon, label: "조문" },
   { value: "cases", icon: GavelIcon, label: "판례" },
-  { value: "problems", icon: ListChecksIcon, label: "문제" },
+  { value: "problems", icon: ListChecksIcon, label: "객관식" },
+  { value: "subjective", icon: PenLineIcon, label: "주관식" },
 ];
+
+/** 과목별 축 — 주관식(2차) 탭은 2차 과목(특·상·디·민소)만. 민법(1차 전용)은 제외. */
+export function bookmarkAxesFor(subjectSlug: string): readonly BookmarkAxis[] {
+  const meta = LAW_SUBJECTS[subjectSlug as LawSubjectSlug];
+  if (meta && meta.exam !== "first") return BOOKMARK_AXES;
+  return BOOKMARK_AXES.filter((a) => a.value !== "subjective");
+}
 
 /** 축 → 과목 허브 URL. 기본 탭(조문)은 쿼리 없이 정규 경로로. */
 export function bookmarkAxisHref(
@@ -102,7 +120,7 @@ export function SubjectBookmarkRail({
         className,
       )}
     >
-      {BOOKMARK_AXES.map((axis) => {
+      {bookmarkAxesFor(subjectSlug).map((axis) => {
         const isActive = axis.value === active;
         return (
           <Link

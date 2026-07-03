@@ -123,8 +123,8 @@ export function ProblemsTab({
   nodeFilter: ProblemNodeFilter | null;
   studyStatus: SubjectStudyStatusProps;
 }) {
+  // 주관식(2차)은 별도 레일 탭(SubjectiveTab) — 이 탭은 객관식(1차)만 다룬다.
   const firstRound = problems.filter((p) => p.examRound === "first");
-  const secondRound = problems.filter((p) => p.examRound === "second");
   const filterActive =
     appliedFilters.origin != null ||
     appliedFilters.year != null ||
@@ -674,42 +674,6 @@ export function ProblemsTab({
           )}
         </div>
 
-        {/* 2차 주관식 section */}
-        {subject.exam !== "first" ? (
-          <div className="border-border overflow-hidden rounded-xl border shadow-sm">
-            <div className="border-border bg-muted/30 flex items-center justify-between border-b px-4 py-3">
-              <div className="flex items-center gap-2">
-                <PencilIcon className="text-link size-4" />
-                <h3 className="text-sm font-semibold">2차 주관식</h3>
-              </div>
-              <span className="border-border bg-background text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums">
-                {secondRound.length}건
-              </span>
-            </div>
-            <div className="p-4">
-              {secondRound.length === 0 ? (
-                <div className="border-border rounded-lg border border-dashed p-8 text-center">
-                  <p className="text-muted-foreground text-sm">
-                    {filterActive
-                      ? "조건에 맞는 주관식 문제가 없습니다."
-                      : "등록된 주관식 문제가 아직 없습니다."}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {secondRound.map((p) => (
-                    <SubjectiveCard
-                      key={p.problemId}
-                      subjectSlug={subject.slug}
-                      item={p}
-                      linkQuery={problemLinkQuery}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
       </section>
     </div>
   );
@@ -822,71 +786,6 @@ function FilterSelectChip({
         <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
       </div>
     </div>
-  );
-}
-
-function SubjectiveCard({
-  subjectSlug,
-  item,
-  linkQuery,
-}: {
-  subjectSlug: LawSubjectMeta["slug"];
-  item: ProblemListItem;
-  linkQuery: string;
-}) {
-  const snippet =
-    item.bodyMd.length > 160 ? `${item.bodyMd.slice(0, 160)}…` : item.bodyMd;
-  return (
-    <Link
-      to={`/subjects/${subjectSlug}/problems/${item.problemId}${linkQuery}`}
-      viewTransition
-      prefetch="intent"
-      className="group block"
-    >
-      <div className="border-border bg-card hover:border-primary rounded-xl border p-4 transition-colors">
-        <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <Badge variant="default" className="text-xs">
-            <PencilIcon className="size-3" /> 주관식
-          </Badge>
-          {item.importance >= 1 ? (
-            <Badge
-              variant="outline"
-              className="border-amber-300 text-xs text-amber-600 dark:border-amber-700 dark:text-amber-400"
-            >
-              <StarIcon className="size-3 fill-current" /> {item.importance}
-            </Badge>
-          ) : null}
-          <Badge variant="secondary" className="text-xs">
-            {mergedOriginLabel(item.origin)}
-          </Badge>
-          {item.year ? (
-            <Badge variant="outline" className="text-xs tabular-nums">
-              {item.year}
-              {item.problemNumber ? ` · ${item.problemNumber}번` : ""}
-            </Badge>
-          ) : null}
-          {item.subjectiveKind ? (
-            <Badge variant="default" className="text-xs">
-              {SUBJECTIVE_KIND_LABEL[item.subjectiveKind]}
-            </Badge>
-          ) : null}
-          {item.primaryArticleLabel ? (
-            <Badge variant="outline" className="text-xs">
-              {item.primaryArticleLabel}
-            </Badge>
-          ) : null}
-        </div>
-        {item.subjectiveTopic ? (
-          <p className="text-muted-foreground mb-1 text-xs">
-            논점 — {item.subjectiveTopic}
-          </p>
-        ) : null}
-        <p className="line-clamp-2 text-sm leading-snug">{snippet}</p>
-        <p className="text-link mt-2 inline-flex items-center gap-1 text-xs">
-          지금 풀어보기 <ArrowRightIcon className="size-3" />
-        </p>
-      </div>
-    </Link>
   );
 }
 

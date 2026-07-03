@@ -41,10 +41,11 @@ import {
   subjectTabSchema,
 } from "../lib/subjects";
 import { SortAxisProvider } from "./sort-axis";
-import { BOOKMARK_AXES, BookmarkTabInner } from "./subject-bookmark-rail";
+import { BookmarkTabInner, bookmarkAxesFor } from "./subject-bookmark-rail";
 import { ArticlesTab } from "./tabs/articles-tab";
 import { CasesTab } from "./tabs/cases-tab";
 import { ProblemsTab } from "./tabs/problems-tab";
+import { SubjectiveTab } from "./tabs/subjective-tab";
 
 interface SubjectHubProps {
   subject: LawSubjectMeta;
@@ -108,11 +109,16 @@ function SubjectHubInner({
 }: SubjectHubProps) {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // 주관식(2차) 탭은 2차 과목만 — 1차 전용(민법)에서 ?tab=subjective 진입 시 기본 탭으로.
+  const hasSubjectiveTab = subject.exam !== "first";
   const activeTab = useMemo<SubjectTab>(() => {
     const raw = searchParams.get("tab");
     const parsed = subjectTabSchema.safeParse(raw);
-    return parsed.success ? parsed.data : DEFAULT_SUBJECT_TAB;
-  }, [searchParams]);
+    if (!parsed.success) return DEFAULT_SUBJECT_TAB;
+    if (parsed.data === "subjective" && !hasSubjectiveTab)
+      return DEFAULT_SUBJECT_TAB;
+    return parsed.data;
+  }, [searchParams, hasSubjectiveTab]);
 
   const onTabChange = useCallback(
     (next: string) => {
@@ -168,7 +174,7 @@ function SubjectHubInner({
       >
         {/* 책갈피 레일 — pt 로 패널 둥근 모서리를 비켜 직선 변에 부착 */}
         <TabsList className="flex h-auto w-[58px] shrink-0 flex-col items-stretch gap-2.5 rounded-none border-0 bg-transparent p-0 pt-5 lg:sticky lg:top-20">
-          {BOOKMARK_AXES.map((axis) => (
+          {bookmarkAxesFor(subject.slug).map((axis) => (
             <BookmarkTab
               key={axis.value}
               value={axis.value}
@@ -231,6 +237,18 @@ function SubjectHubInner({
               studyStatus={studyStatus}
             />
           </TabsContent>
+          {hasSubjectiveTab ? (
+            <TabsContent value="subjective" className="mt-0">
+              <SubjectiveTab
+                subject={subject}
+                problems={(problems ?? []).filter(
+                  (p) => p.examRound === "second",
+                )}
+                appliedFilters={problemFilters ?? {}}
+                studyStatus={studyStatus}
+              />
+            </TabsContent>
+          ) : null}
         </div>
       </Tabs>
     </div>

@@ -376,7 +376,7 @@ export async function getSubjectAxisCounts(
   lawCode: LawSubjectSlug,
   lawId: string,
 ): Promise<Record<SubjectTab, number>> {
-  const [articles, cases, problems] = await Promise.all([
+  const [articles, cases, problems, subjective] = await Promise.all([
     client
       .from("articles")
       .select("*", { count: "exact", head: true })
@@ -390,18 +390,29 @@ export async function getSubjectAxisCounts(
     // ★ 학습과목 문제탭 목록(listProblemsBySubject 기본)과 동일 가시성 필터로 카운트한다.
     //   review_status='approved'(검토 대기 draft 제외) + 미공개 mock 제외 → 탭 배지 수가
     //   실제 목록 수(예: 특허 1106)와 일치(이전엔 1112로 draft 6 포함되어 불일치).
+    //   객관식(problems)=1차 / 주관식(subjective)=2차 — 레일 탭 분리와 동일 기준.
     client
       .from("problems")
       .select("*", { count: "exact", head: true })
       .eq("law_id", lawId)
       .is("deleted_at", null)
       .eq("review_status", "approved")
+      .eq("exam_round", "first")
+      .or("origin.neq.mock,released_at.not.is.null"),
+    client
+      .from("problems")
+      .select("*", { count: "exact", head: true })
+      .eq("law_id", lawId)
+      .is("deleted_at", null)
+      .eq("review_status", "approved")
+      .eq("exam_round", "second")
       .or("origin.neq.mock,released_at.not.is.null"),
   ]);
   return {
     articles: articles.count ?? 0,
     cases: cases.count ?? 0,
     problems: problems.count ?? 0,
+    subjective: subjective.count ?? 0,
   };
 }
 
@@ -656,7 +667,7 @@ export async function loadSubjectHub(
       problemAggStats: {},
       recommendedArticles: [],
       progressByArticle: {} as NodeProgressByArticle,
-      axisCounts: { articles: 0, cases: 0, problems: 0 },
+      axisCounts: { articles: 0, cases: 0, problems: 0, subjective: 0 },
     };
   }
   // 1단계 — 트리/판례 카운트 등 case-filter 결정에 선행해야 하는 데이터.
@@ -670,6 +681,7 @@ export async function loadSubjectHub(
     placementMaps,
     totalCaseCountRes,
     totalProblemCountRes,
+    totalSubjectiveCountRes,
   ] = await Promise.all([
     getArticleSkeleton(client, law.lawId),
     getSystematicSkeleton(client, lawCode),
@@ -679,19 +691,30 @@ export async function loadSubjectHub(
       .select("*", { count: "exact", head: true })
       .contains("subject_laws", [lawCode])
       .is("deleted_at", null),
-    // ★ 책갈피 레일 "문제 N" — getSubjectAxisCounts(뷰어 loader)와 동일 가시성
+    // ★ 책갈피 레일 "객관식 N" — getSubjectAxisCounts(뷰어 loader)와 동일 가시성
     //   필터(approved + 미공개 mock 제외)로 세야 허브·뷰어 간 카운트가 일치한다.
     //   deleted_at 만 걸면 검토대기 draft 6건이 포함돼 1112↔1106 로 왔다갔다 했다.
+    //   객관식(1차)/주관식(2차) 레일 탭 분리에 맞춰 exam_round 로 나눠 센다.
     client
       .from("problems")
       .select("*", { count: "exact", head: true })
       .eq("law_id", law.lawId)
       .is("deleted_at", null)
       .eq("review_status", "approved")
+      .eq("exam_round", "first")
+      .or("origin.neq.mock,released_at.not.is.null"),
+    client
+      .from("problems")
+      .select("*", { count: "exact", head: true })
+      .eq("law_id", law.lawId)
+      .is("deleted_at", null)
+      .eq("review_status", "approved")
+      .eq("exam_round", "second")
       .or("origin.neq.mock,released_at.not.is.null"),
   ]);
   const totalCaseCount = totalCaseCountRes.count ?? 0;
   const totalProblemCount = totalProblemCountRes.count ?? 0;
+  const totalSubjectiveCount = totalSubjectiveCountRes.count ?? 0;
 
   // Phase A2 — authPromise 는 Stage 1 과 겹쳐 보통 이 시점에 완료. 즐겨찾기 필터가
   // case 목록 쿼리(Stage 2)에 선행해야 하므로 user 를 여기서 확정한다.
@@ -899,6 +922,7 @@ export async function loadSubjectHub(
       articles: totalArticleCount,
       cases: totalCaseCount,
       problems: totalProblemCount,
+      subjective: totalSubjectiveCount,
     },
     problemYears,
     problemFilters,
