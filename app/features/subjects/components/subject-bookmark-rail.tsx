@@ -38,11 +38,21 @@ export const BOOKMARK_AXES: readonly BookmarkAxis[] = [
   { value: "subjective", icon: PenLineIcon, label: "주관식" },
 ];
 
-/** 과목별 축 — 주관식(2차) 탭은 2차 과목(특·상·디·민소)만. 민법(1차 전용)은 제외. */
+/**
+ * 과목별 축 — 시험 차수를 따라간다.
+ * · 1차 전용(민법): 객관식만 — 주관식 제외.
+ * · 2차 전용(민사소송법): 주관식만 — 객관식 제외.
+ * · 1·2차(특·상·디): 둘 다.
+ */
 export function bookmarkAxesFor(subjectSlug: string): readonly BookmarkAxis[] {
   const meta = LAW_SUBJECTS[subjectSlug as LawSubjectSlug];
-  if (meta && meta.exam !== "first") return BOOKMARK_AXES;
-  return BOOKMARK_AXES.filter((a) => a.value !== "subjective");
+  if (meta?.exam === "first") {
+    return BOOKMARK_AXES.filter((a) => a.value !== "subjective");
+  }
+  if (meta?.exam === "second") {
+    return BOOKMARK_AXES.filter((a) => a.value !== "problems");
+  }
+  return BOOKMARK_AXES;
 }
 
 /** 축 → 과목 허브 URL. 기본 탭(조문)은 쿼리 없이 정규 경로로. */
@@ -56,41 +66,28 @@ export function bookmarkAxisHref(
 }
 
 /**
- * 책갈피 탭 1개의 내부 — 아이콘 + 세로 라벨, 그리고 `count` 가 주어지면
- * 구분선 + 콘텐츠 수. 허브·뷰어 레일 모두 count 를 넘긴다.
+ * 책갈피 탭 1개의 내부 — 세로 라벨, 그리고 `count` 가 주어지면 구분선 + 콘텐츠 수.
+ * 아이콘 없음 — 전 과목 동일한 고정 크기의 홀쭉한 탭.
  */
 export function BookmarkTabInner({
-  icon: Icon,
   label,
   count,
-  compact = false,
 }: {
-  icon: ComponentType<{ className?: string }>;
   label: string;
   count?: number;
-  /** 짧은 탭(패널이 짧은 과목) — 구분선을 생략해 아이콘·라벨·카운트를 유지. */
-  compact?: boolean;
 }) {
   return (
     <>
-      <Icon className={compact ? "size-[18px]" : "size-[22px]"} />
       <span className="text-[14px] font-extrabold tracking-[0.1em] [writing-mode:vertical-rl]">
         {label}
       </span>
       {count !== undefined ? (
         <>
-          {!compact ? (
-            <span
-              aria-hidden="true"
-              className="h-px w-3.5 bg-current opacity-30"
-            />
-          ) : null}
           <span
-            className={cn(
-              "font-bold tabular-nums opacity-80",
-              compact ? "text-[10px]" : "text-[11px]",
-            )}
-          >
+            aria-hidden="true"
+            className="h-px w-3.5 bg-current opacity-30"
+          />
+          <span className="text-[11px] font-bold tabular-nums opacity-80">
             {count.toLocaleString("ko-KR")}
           </span>
         </>

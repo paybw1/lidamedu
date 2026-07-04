@@ -185,10 +185,7 @@ export function ProblemsTab({
   // 헤더는 체계도/조문 토글(문제는 체계도 고정 → 조문 비활성, 조문 뷰어와 동일 UX).
   const treePanel = (
     <SortAxisProvider forced="systematic">
-      <div
-      data-hub-left-panel=""
-      className="border-border bg-muted/30 overflow-hidden rounded-xl border"
-    >
+      <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
         <div className="border-border flex items-center justify-end border-b px-3 py-2">
           <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
         </div>
