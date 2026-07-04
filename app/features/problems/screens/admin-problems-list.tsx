@@ -339,11 +339,13 @@ export default function AdminProblemsList({
                     <span className="text-muted-foreground">—</span>
                   )}
                 </TD>
-                <TD soft>{ORIGIN_LABEL[p.origin]}</TD>
+                <TD soft className="whitespace-nowrap">
+                  {ORIGIN_LABEL[p.origin]}
+                </TD>
                 <TD>
                   <Chip tone="neutral">{FORMAT_LABEL[p.format]}</Chip>
                 </TD>
-                <TD align="center" soft>
+                <TD align="center" soft className="whitespace-nowrap">
                   {p.polarity ? POLARITY_LABEL[p.polarity] : "—"}
                 </TD>
                 <TD align="center" soft>
