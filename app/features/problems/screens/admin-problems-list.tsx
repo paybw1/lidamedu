@@ -111,9 +111,18 @@ export async function loader({ request }: Route.LoaderArgs) {
     listProblemYears(client, subject),
     listSystematicTopNodes(client, subject),
   ]);
-  // sort=desc → 기본 정렬(체계도/조문 순서)의 역순. prev/next(편집 화면)는 기본 순서 유지.
-  const sortDir = url.searchParams.get("sort") === "desc" ? "desc" : "asc";
+  // sort=asc/desc → 기본 정렬(체계도/조문 순서) 정/역순, no_asc/no_desc → 식별번호(P-n) 순.
+  // prev/next(편집 화면)는 기본 순서 유지.
+  const sortParam = url.searchParams.get("sort");
+  const sortDir: "asc" | "desc" | "no_asc" | "no_desc" =
+    sortParam === "desc" || sortParam === "no_asc" || sortParam === "no_desc"
+      ? sortParam
+      : "asc";
   if (sortDir === "desc") problems.reverse();
+  else if (sortDir === "no_asc" || sortDir === "no_desc") {
+    const dir = sortDir === "no_asc" ? 1 : -1;
+    problems.sort((a, b) => dir * ((a.displayNo ?? 0) - (b.displayNo ?? 0)));
+  }
   return { problems, years, subject, filters, originParam, sortDir, systematicNodes, role };
 }
 
@@ -235,8 +244,10 @@ export default function AdminProblemsList({
           label="정렬"
           value={sortDir}
           options={[
-            { value: "asc", label: "오름차순" },
-            { value: "desc", label: "내림차순" },
+            { value: "asc", label: "체계도 오름차순" },
+            { value: "desc", label: "체계도 내림차순" },
+            { value: "no_asc", label: "번호 오름차순" },
+            { value: "no_desc", label: "번호 내림차순" },
           ]}
         />
         <FilterSelect
@@ -291,8 +302,9 @@ export default function AdminProblemsList({
         </div>
       ) : (
         <IndexTable
-          minWidth={920}
+          minWidth={980}
           headers={[
+            { label: "번호", width: "4.5rem" },
             { label: "조문", width: "9rem" },
             { label: "출처" },
             { label: "유형" },
@@ -315,6 +327,9 @@ export default function AdminProblemsList({
               : `/admin/problems/${p.problemId}`;
             return (
               <TR key={p.problemId}>
+                <TD mono soft>
+                  {p.displayNo != null ? `P-${p.displayNo}` : "—"}
+                </TD>
                 <TD mono>
                   {p.primaryArticleNumber ? (
                     <span className="text-link">

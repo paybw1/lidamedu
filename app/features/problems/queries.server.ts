@@ -98,7 +98,7 @@ export async function listProblemsBySubject(
     let query = client
       .from("problems")
       .select(
-        "problem_id, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
+        "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label, path)",
       )
       .eq("law_id", law.law_id)
       .is("deleted_at", null);
@@ -242,6 +242,7 @@ export async function listProblemsBySubject(
       year: row.year,
       examRoundNo: row.exam_round_no,
       problemNumber: row.problem_number,
+      displayNo: row.display_no,
       overallNo: null,
       bodyMd: row.body_md,
       importance: row.importance ?? 0,

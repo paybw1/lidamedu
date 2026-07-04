@@ -215,6 +215,8 @@ export interface ProblemListItem {
   year: number | null;
   examRoundNo: number | null;
   problemNumber: number | null;
+  // 전역 고유 표시번호(불변, "P-{n}"). listProblemsBySubject 에서 채움(그 외 미설정 가능).
+  displayNo?: number | null;
   // 체계도 전체 순번(노드 트리 순 → 노드 내 기본순). 학습과목 허브 로더에서만 채움(그 외 미설정).
   // 배치(primary 노드)가 바뀌면 매 로드마다 재계산되는 파생값.
   overallNo?: number | null;
