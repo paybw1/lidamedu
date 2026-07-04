@@ -70,7 +70,7 @@ export default function AdminWithdrawals({ loaderData }: Route.ComponentProps) {
       cluster="students"
       role={role}
       title="탈퇴 관리"
-      desc="탈퇴 처리 시 이용 승인이 즉시 해제되고 계정·학습 데이터는 보존됩니다. 완전 삭제는 계정과 학습 데이터를 제거하는 비가역 작업입니다 (이 대장의 이름·아이디 스냅샷만 남음)."
+      desc="탈퇴 처리 시 이용 승인이 즉시 해제되고 계정·학습 데이터는 보존됩니다(개인정보처리방침 — 탈퇴 후 3년 보관, 재구독 시 학습 기록 복원). 완전 삭제는 보관 기간 경과 또는 본인 파기 요청 시 수행하는 비가역 작업입니다 (이 대장의 이름·아이디 스냅샷만 남음). 학생 셀프 탈퇴(/account/edit)도 이 대장에 기록됩니다."
     >
       {/* 탈퇴 처리 폼 */}
       <Form

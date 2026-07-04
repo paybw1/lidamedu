@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/core/components/ui/card";
-import { GithubLogo } from "~/features/auth/components/logos/github";
 import { KakaoLogo } from "~/features/auth/components/logos/kakao";
 
 import {
@@ -14,12 +13,8 @@ import {
   DisconnectProviderButton,
 } from "../connect-provider-buttons";
 
+// 카카오 단일 로그인 정책 — GitHub 등 다른 제공자는 노출하지 않는다.
 const enabledProviders = [
-  {
-    name: "GitHub",
-    key: "github",
-    logo: <GithubLogo />,
-  },
   {
     name: "카카오",
     key: "kakao",

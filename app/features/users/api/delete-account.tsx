@@ -1,88 +1,42 @@
 /**
- * Delete Account API Endpoint
+ * 회원 탈퇴 API — 즉시 계정 삭제가 아니라 "탈퇴 처리" 흐름.
  *
- * This file implements an API endpoint for completely deleting a user's account.
- * It handles authentication checks, user deletion from Supabase Auth, and cleanup
- * of associated storage resources.
+ * 학생이 /account/edit 에서 탈퇴하면:
+ *   1. 탈퇴 대장(user_withdrawals)에 기록 — 운영자 /admin/withdrawals 에서 관리
+ *   2. 이용 승인 해제(access_approved_at=null) — 즉시 접속 차단
+ *   3. 로그아웃 (단일 세션 해제 포함)
  *
- * Key features:
- * - Request method validation (DELETE only)
- * - Authentication protection
- * - Complete user deletion from Supabase Auth
- * - Cleanup of user avatar from storage
- * - Redirection to home page after successful deletion
- * - Error handling for API errors
+ * 계정·학습 데이터(메모/진도/풀이 등)는 개인정보처리방침의 보유 기간(탈퇴 후 3년)
+ * 동안 보존 — 재구독 시 학습 기록을 복원하기 위함. 완전 삭제(비가역)는 보유 기간
+ * 경과 또는 본인 파기 요청 시 운영자가 /admin/withdrawals 에서 수행한다.
  */
 import type { Route } from "./+types/delete-account";
 
 import { data, redirect } from "react-router";
 
 import { requireAuthentication, requireMethod } from "~/core/lib/guards.server";
-import adminClient from "~/core/lib/supa-admin-client.server";
+import { releaseSession } from "~/core/lib/single-session.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { processWithdrawal } from "~/features/admin/queries/withdrawals.server";
 
-/**
- * Action handler for processing account deletion requests
- *
- * This function handles the complete account deletion flow:
- * 1. Validates that the request method is DELETE
- * 2. Authenticates the user making the request
- * 3. Deletes the user from Supabase Auth
- * 4. Attempts to clean up the user's avatar from storage
- * 5. Redirects to the home page or returns error response
- *
- * Security considerations:
- * - Requires DELETE method to prevent unintended account deletions
- * - Requires authentication to protect user accounts
- * - Uses admin client for user deletion (elevated permissions)
- * - Handles errors gracefully with appropriate status codes
- * - Performs cleanup of associated resources
- *
- * Note: This is a destructive operation that permanently removes the user's
- * account and associated data. It cannot be undone.
- *
- * @param request - The incoming HTTP request
- * @returns Redirect to home page or error response
- */
 export async function action({ request }: Route.ActionArgs) {
-  // Validate request method (only allow DELETE)
   requireMethod("DELETE")(request);
 
-  // Create a server-side Supabase client with the user's session
-  const [client] = makeServerClient(request);
-
-  // Verify the user is authenticated
+  const [client, headers] = makeServerClient(request);
   await requireAuthentication(client, request);
-
-  // Get the authenticated user's information
   const {
     data: { user },
   } = await client.auth.getUser();
+  if (!user) return data({ error: "로그인이 필요합니다." }, { status: 401 });
 
-  // Delete the user from Supabase Auth
-  const { error } = await adminClient.auth.admin.deleteUser(user!.id);
-
-  // Handle API errors
-  if (error) {
-    return data(
-      {
-        error: error.message,
-      },
-      {
-        status: 500,
-      },
-    );
+  // 탈퇴 대장 기록 + 이용 승인 해제. (학생 계정만 — staff 는 운영자에게 문의)
+  const res = await processWithdrawal(user.id, "본인 요청 (계정 화면)", user.id);
+  if (!res.ok) {
+    return data({ error: res.error }, { status: 400 });
   }
 
-  // Clean up user's avatar from storage
-  // Note: We don't fail the request if this cleanup fails
-  try {
-    await adminClient.storage.from("avatars").remove([user!.id]);
-  } catch (error) {
-    // We don't really care if this fails, as the main user deletion succeeded
-    // This is just cleanup of associated resources
-  }
-
-  // Redirect to home page after successful deletion
-  return redirect("/");
+  // 로그아웃 — 단일 세션 해제 후 세션 종료.
+  await releaseSession(client, headers);
+  await client.auth.signOut();
+  return redirect("/", { headers });
 }

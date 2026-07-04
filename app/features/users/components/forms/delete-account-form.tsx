@@ -23,6 +23,12 @@ export default function DeleteAccountForm() {
       </CardHeader>
       <CardContent>
         <fetcher.Form method="delete" className="space-y-4" action="/api/users">
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            탈퇴 시 서비스 이용이 즉시 중지됩니다. 작성하신 학습 기록(메모·진도·문제
+            풀이 등)은 개인정보처리방침에 따라 탈퇴 후 3년간 보관되며, 그 기간 안에
+            다시 구독하시면 학습 기록을 이어서 이용하실 수 있습니다. 즉시 파기를
+            원하시면 문의를 통해 요청하실 수 있습니다.
+          </p>
           <Label>
             <Checkbox
               id="confirm-delete"
@@ -30,7 +36,7 @@ export default function DeleteAccountForm() {
               required
               className="border-black dark:border-white"
             />
-            계정을 삭제(회원 탈퇴)하겠습니다.
+            회원 탈퇴를 신청합니다.
           </Label>
           <Label>
             <Checkbox
@@ -39,7 +45,7 @@ export default function DeleteAccountForm() {
               required
               className="border-black dark:border-white"
             />
-            이 작업은 되돌릴 수 없음을 이해합니다.
+            학습 기록 보관 정책(3년)을 확인했습니다.
           </Label>
           <Button
             variant={"destructive"}

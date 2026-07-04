@@ -33,7 +33,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
  * preventing potential security issues with unsupported providers.
  */
 const schema = z.object({
-  provider: z.enum(["github", "kakao"]),
+  provider: z.enum(["kakao"]),
 });
 
 /**
