@@ -6,7 +6,14 @@ import type {
 } from "../lib/loader.server";
 import type { SubjectStudyStatusProps } from "./subject-study-status";
 
-import { type ComponentType, useCallback, useMemo } from "react";
+import {
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "react-router";
 
 import { AreaEyebrow } from "~/core/components/student";
@@ -130,6 +137,27 @@ function SubjectHubInner({
     return parsed.data;
   }, [searchParams, subjectiveEnabled]);
 
+  // 책갈피 레일 높이 맞춤 — 좌측 트리 패널이 짧은 과목(민법: 편 5개 접힘)에서
+  // 탭(기본 148px)이 패널 아래로 튀어나오지 않게, 패널 실높이를 관측해 탭이
+  // 높이를 나눠 갖는다. 패널이 충분히 길면 기본 크기 유지(레일이 부풀지 않음).
+  const contentWrapRef = useRef<HTMLDivElement | null>(null);
+  const [panelHeight, setPanelHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const wrap = contentWrapRef.current;
+    if (!wrap) return;
+    const el = wrap.querySelector<HTMLElement>("[data-hub-left-panel]");
+    // 모바일(lg 미만)은 패널이 hidden — 측정 불가 시 기본 크기.
+    if (!el || el.offsetParent === null) {
+      setPanelHeight(null);
+      return;
+    }
+    const update = () => setPanelHeight(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activeTab]);
+
   const onTabChange = useCallback(
     (next: string) => {
       const parsed = subjectTabSchema.safeParse(next);
@@ -170,6 +198,29 @@ function SubjectHubInner({
     annotationCount,
   };
 
+  // 레일 지오메트리 — 패널 높이에서 상단 여백·탭 간격을 뺀 몫을 탭이 균등 분배.
+  // 기본(패널이 길거나 미측정) 148px, 최소 84px 아래로는 줄이지 않는다.
+  const railAxes = bookmarkAxesFor(subject.slug);
+  const TAB_MAX_PX = 148;
+  const TAB_MIN_PX = 84;
+  const RAIL_TOP_PX = 20; // pt-5
+  const RAIL_GAP_PX = 10; // gap-2.5
+  const tabHeight =
+    panelHeight == null
+      ? TAB_MAX_PX
+      : Math.round(
+          Math.min(
+            TAB_MAX_PX,
+            Math.max(
+              TAB_MIN_PX,
+              (panelHeight - RAIL_TOP_PX - RAIL_GAP_PX * (railAxes.length - 1)) /
+                railAxes.length,
+            ),
+          ),
+        );
+  // 줄어든 탭은 구분선을 생략하고 간격을 좁혀 아이콘·라벨·카운트를 유지한다.
+  const railCompact = tabHeight < 132;
+
   return (
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-6 md:px-10 md:py-8">
       <SubjectHeader subject={subject} />
@@ -184,20 +235,22 @@ function SubjectHubInner({
       >
         {/* 책갈피 레일 — pt 로 패널 둥근 모서리를 비켜 직선 변에 부착 */}
         <TabsList className="flex h-auto w-[58px] shrink-0 flex-col items-stretch gap-2.5 rounded-none border-0 bg-transparent p-0 pt-5 lg:sticky lg:top-20">
-          {bookmarkAxesFor(subject.slug).map((axis) => (
+          {railAxes.map((axis) => (
             <BookmarkTab
               key={axis.value}
               value={axis.value}
               icon={axis.icon}
               label={axis.label}
               count={axisCounts?.[axis.value]}
+              heightPx={tabHeight}
+              compact={railCompact}
               // 주관식은 고도화 전까지 staff 전용 — 학생에겐 비활성(회색·클릭 불가).
               disabled={axis.value === "subjective" && !subjectiveEnabled}
             />
           ))}
         </TabsList>
 
-        <div className="min-w-0 flex-1">
+        <div ref={contentWrapRef} className="min-w-0 flex-1">
           <TabsContent value="articles" className="mt-0">
             <ArticlesTab
               subject={subject}
@@ -282,12 +335,18 @@ function BookmarkTab({
   icon,
   label,
   count,
+  heightPx,
+  compact = false,
   disabled = false,
 }: {
   value: SubjectTab;
   icon: ComponentType<{ className?: string }>;
   label: string;
   count?: number;
+  /** 탭 높이 — 좌측 패널 높이를 탭 수로 나눈 값(패널이 길면 기본 148). */
+  heightPx: number;
+  /** 줄어든 높이 — 구분선 생략·간격 축소로 내용 유지. */
+  compact?: boolean;
   disabled?: boolean;
 }) {
   return (
@@ -295,11 +354,13 @@ function BookmarkTab({
       value={value}
       disabled={disabled}
       title={disabled ? "준비 중" : undefined}
+      style={{ height: heightPx }}
       className={cn(
         // 비활성(주관식 학생) — 회색·클릭 불가. 잠금 흐림 대신 완전 비활성 패턴.
         disabled && "cursor-not-allowed opacity-40 hover:translate-x-0",
-        // flex-none — 기본 flex-1 을 눌러 h-[148px] 가 실제로 적용되게 한다.
-        "relative flex h-[148px] w-[58px] flex-none flex-col items-center justify-center gap-2 p-0",
+        // flex-none — 기본 flex-1 을 눌러 style height 가 실제로 적용되게 한다.
+        "relative flex w-[58px] flex-none flex-col items-center justify-center p-0",
+        compact ? "gap-1" : "gap-2",
         "rounded-l-xl rounded-r-none border border-r-0 transition-all",
         // 비활성 기본
         "border-border bg-card text-muted-foreground",
@@ -311,7 +372,12 @@ function BookmarkTab({
         "data-[state=active]:shadow-[-4px_6px_18px_rgba(45,91,168,0.26)]",
       )}
     >
-      <BookmarkTabInner icon={icon} label={label} count={count} />
+      <BookmarkTabInner
+        icon={icon}
+        label={label}
+        count={count}
+        compact={compact}
+      />
     </TabsTrigger>
   );
 }

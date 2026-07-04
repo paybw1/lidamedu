@@ -115,7 +115,10 @@ export function SubjectiveTab({
   // 주관식은 아직 노드 매핑이 없어 카운트는 비어 있다(고도화 시 nodeStats 배선).
   const treePanel = (
     <SortAxisProvider forced="systematic">
-      <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+      <div
+      data-hub-left-panel=""
+      className="border-border bg-muted/30 overflow-hidden rounded-xl border"
+    >
         <div className="border-border flex items-center justify-end border-b px-3 py-2">
           <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
         </div>

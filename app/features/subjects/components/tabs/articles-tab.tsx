@@ -67,7 +67,10 @@ export function ArticlesTab({
 
   // 목차 트리 — 데스크톱 사이드바 / 모바일 드로어 공용 마크업.
   const treePanel = (
-    <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+    <div
+      data-hub-left-panel=""
+      className="border-border bg-muted/30 overflow-hidden rounded-xl border"
+    >
       {/* Outline header */}
       <div className="border-border flex items-center justify-end border-b px-3 py-2">
         <SortAxisToggle

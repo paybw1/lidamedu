@@ -63,24 +63,34 @@ export function BookmarkTabInner({
   icon: Icon,
   label,
   count,
+  compact = false,
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   count?: number;
+  /** 짧은 탭(패널이 짧은 과목) — 구분선을 생략해 아이콘·라벨·카운트를 유지. */
+  compact?: boolean;
 }) {
   return (
     <>
-      <Icon className="size-[22px]" />
+      <Icon className={compact ? "size-[18px]" : "size-[22px]"} />
       <span className="text-[14px] font-extrabold tracking-[0.1em] [writing-mode:vertical-rl]">
         {label}
       </span>
       {count !== undefined ? (
         <>
+          {!compact ? (
+            <span
+              aria-hidden="true"
+              className="h-px w-3.5 bg-current opacity-30"
+            />
+          ) : null}
           <span
-            aria-hidden="true"
-            className="h-px w-3.5 bg-current opacity-30"
-          />
-          <span className="text-[11px] font-bold tabular-nums opacity-80">
+            className={cn(
+              "font-bold tabular-nums opacity-80",
+              compact ? "text-[10px]" : "text-[11px]",
+            )}
+          >
             {count.toLocaleString("ko-KR")}
           </span>
         </>

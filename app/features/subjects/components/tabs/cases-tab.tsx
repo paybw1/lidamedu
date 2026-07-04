@@ -227,7 +227,10 @@ export function CasesTab({
 
   // 트리 패널 — 데스크톱 사이드바 / 모바일 드로어에서 동일 마크업 재사용.
   const treePanel = (
-    <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
+    <div
+      data-hub-left-panel=""
+      className="border-border bg-muted/30 overflow-hidden rounded-xl border"
+    >
       <div className="border-border flex items-center justify-end border-b px-4 py-3">
         <SortAxisToggle
           size="sm"
