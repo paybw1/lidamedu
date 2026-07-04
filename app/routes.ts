@@ -800,6 +800,19 @@ export default [
         "/api/admin/share-rule",
         "features/subscriptions/api/admin-share-rule.tsx",
       ),
+      // feat-8-029 Stage 3 — 강사 정산 (manager+).
+      route(
+        "/admin/settlements",
+        "features/subscriptions/screens/admin-settlements.tsx",
+      ),
+      route(
+        "/admin/settlements/:settlementId",
+        "features/subscriptions/screens/admin-settlement-detail.tsx",
+      ),
+      route(
+        "/api/admin/settlement",
+        "features/subscriptions/api/admin-settlement.tsx",
+      ),
       // feat-8-028 — 상품·요금 관리 (manager+).
       route(
         "/admin/pricing",

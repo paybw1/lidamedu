@@ -3586,6 +3586,158 @@ export type Database = {
           },
         ]
       }
+      instructor_settlement_items: {
+        Row: {
+          base_amount_krw: number
+          created_at: string
+          item_id: string
+          kind: string
+          note: string | null
+          payment_id: string
+          rule_id: string | null
+          settlement_id: string
+          share_amount_krw: number
+          share_kind: string
+          share_value: number
+        }
+        Insert: {
+          base_amount_krw: number
+          created_at?: string
+          item_id?: string
+          kind?: string
+          note?: string | null
+          payment_id: string
+          rule_id?: string | null
+          settlement_id: string
+          share_amount_krw: number
+          share_kind: string
+          share_value: number
+        }
+        Update: {
+          base_amount_krw?: number
+          created_at?: string
+          item_id?: string
+          kind?: string
+          note?: string | null
+          payment_id?: string
+          rule_id?: string | null
+          settlement_id?: string
+          share_amount_krw?: number
+          share_kind?: string
+          share_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_settlement_items_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlement_items_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_share_rules"
+            referencedColumns: ["rule_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlement_items_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_settlements"
+            referencedColumns: ["settlement_id"]
+          },
+        ]
+      }
+      instructor_settlements: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          instructor_id: string
+          memo: string | null
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          settlement_id: string
+          status: string
+          total_share_krw: number
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          instructor_id: string
+          memo?: string | null
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          settlement_id?: string
+          status?: string
+          total_share_krw?: number
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          instructor_id?: string
+          memo?: string | null
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          settlement_id?: string
+          status?: string
+          total_share_krw?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_settlements_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlements_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlements_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_settlements_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       instructor_share_rules: {
         Row: {
           created_at: string

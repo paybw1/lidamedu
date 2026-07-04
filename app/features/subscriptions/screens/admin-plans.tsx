@@ -65,7 +65,7 @@ export default function AdminPlans({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="students"
+      cluster="sales"
       role={role}
       title="상품·요금 관리"
       desc="개별 과목·번들·회원제 상품의 가격·부여 과목·기능·기간을 관리합니다. (manager 이상)"
