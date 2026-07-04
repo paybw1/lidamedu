@@ -14,15 +14,22 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/core/components/ui/sheet";
-import type { StudyGoals } from "~/features/goals/queries.server";
+import type {
+  ExamPlanOption,
+  StudyGoals,
+} from "~/features/goals/queries.server";
 import { GoalFields } from "~/features/study/components/goal-fields";
 
 export function GoalSummaryBar({
   goals,
   examRound,
+  examOptions,
+  selectedPlan,
 }: {
   goals: StudyGoals;
   examRound: "first" | "second";
+  examOptions: ExamPlanOption[];
+  selectedPlan: string | null;
 }) {
   const fetcher = useFetcher<{ ok?: true } | { error?: string }>();
   const submitting = fetcher.state !== "idle";
@@ -89,7 +96,12 @@ export function GoalSummaryBar({
             action="/study/stats"
             className="space-y-4 px-4 pb-6"
           >
-            <GoalFields goals={goals} examRound={examRound} />
+            <GoalFields
+              goals={goals}
+              examRound={examRound}
+              examOptions={examOptions}
+              selectedPlan={selectedPlan}
+            />
 
             {errorMsg ? (
               <p

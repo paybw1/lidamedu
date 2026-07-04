@@ -214,6 +214,7 @@ export const ADMIN_NAV: NavCluster[] = [
     screens: [
       // 전체 학습현황(학원 전체 집계) — feat-7-041, manager+ 게이트.
       { label: "전체 학습현황", to: "/admin/analytics/students" },
+      { label: "시험일 관리", to: "/admin/exam-schedules" },
       { label: "합격 결과", to: "/admin/exam-results" },
       { label: "합격자 사례", to: "/admin/analytics/passers" },
       { label: "합격 vs 불합격 패턴", to: "/admin/analytics/failure-patterns" },

@@ -81,7 +81,10 @@ import { EXAM_ROUND_LABEL } from "~/features/exam-results/labels";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import { hasPoolConsent } from "~/features/exam-results/queries.server";
 import { generateRecommendedActions } from "~/features/exam-results/recommendations";
-import { getStudyGoals } from "~/features/goals/queries.server";
+import {
+  getStudyGoals,
+  listExamPlanOptions,
+} from "~/features/goals/queries.server";
 import {
   getStaffRole,
   listRecentLawRevisions,
@@ -161,13 +164,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   // pass-predict 차수 분기용 — next_exam_round 조회. null = 1차 default.
   const { data: predictProfile } = await client
     .from("profiles")
-    .select("next_exam_round, my_analysis_consent_at, pool_consent_at")
+    .select("next_exam_round, next_exam_year, my_analysis_consent_at, pool_consent_at")
     .eq("profile_id", user.id)
     .maybeSingle();
   const userExamRound = (predictProfile?.next_exam_round ?? null) as
     | "first"
     | "second"
     | null;
+  const userExamYear = predictProfile?.next_exam_year ?? null;
 
   // 빈칸 학습 요약 + 문제풀이 KPI + 5과목 진도 + 84일 활동 병렬 조회.
   const [
@@ -198,6 +202,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     getStudyGoals(client, user.id),
     getWeakAreas(client, user.id, 5),
   ]);
+  // 응시 시험 옵션(내 정보 설정 목표 블록) — 운영자 관리 시험 일정.
+  const examOptions = await listExamPlanOptions(client);
+  const selectedPlan =
+    userExamRound && userExamYear ? `${userExamYear}:${userExamRound}` : null;
   const [
     recentRevisions,
     recentCases,
@@ -434,6 +442,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         : `${EXAM_ROUND_LABEL[userExamRound ?? "first"]} 준비`,
     },
     examRound: userExamRound,
+    examOptions,
+    selectedPlan,
     blankSummary: {
       content: summarize(content),
       subject: summarize(subject),
@@ -720,6 +730,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
             <StudentInputHub
               goals={goals}
               examRound={examRound}
+              examOptions={loaderData.examOptions}
+              selectedPlan={loaderData.selectedPlan}
               myAnalysisConsentAt={loaderData.myAnalysisConsentAt}
               poolConsentAt={loaderData.poolConsentAt}
               autoOpen={examRound === null && !goals.examDate}

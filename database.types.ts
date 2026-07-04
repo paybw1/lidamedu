@@ -2852,6 +2852,30 @@ export type Database = {
           },
         ]
       }
+      exam_schedules: {
+        Row: {
+          exam_date: string
+          exam_round: string
+          exam_year: number
+          memo: string | null
+          updated_at: string
+        }
+        Insert: {
+          exam_date: string
+          exam_round: string
+          exam_year: number
+          memo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          exam_date?: string
+          exam_round?: string
+          exam_year?: number
+          memo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gs_ai_usage: {
         Row: {
           cost_usd: number

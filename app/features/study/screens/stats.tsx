@@ -65,7 +65,9 @@ import {
   setNextExamPlan,
 } from "~/features/exam-results/queries.server";
 import {
+  getExamScheduleDate,
   getStudyGoals,
+  listExamPlanOptions,
   upsertStudyGoals,
 } from "~/features/goals/queries.server";
 import { listMyOxSessions } from "~/features/mcq-packs/queries.server";
@@ -204,15 +206,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   // feat-8-026b A 게이트 — 미동의/철회 시 통계 미표시(데이터는 보존, 재동의 시 복구).
   // 단 목표 설정(띠+Sheet)은 분석이 아니라 기본 설정 → A-게이트와 무관하게 노출(통폐합 3a).
   if (!(await hasMyAnalysisConsent(client, user.id))) {
-    const [studyGoals, examRoundRow] = await Promise.all([
+    const [studyGoals, examRoundRow, examOptions] = await Promise.all([
       getStudyGoals(client, user.id),
       client
         .from("profiles")
-        .select("next_exam_round")
+        .select("next_exam_round, next_exam_year")
         .eq("profile_id", user.id)
         .maybeSingle(),
+      listExamPlanOptions(client),
     ]);
     const er = examRoundRow.data?.next_exam_round;
+    const ey = examRoundRow.data?.next_exam_year;
     return {
       myAnalysisOff: true as const,
       studyGoals,
@@ -220,6 +224,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         | "first"
         | "second"
         | null,
+      examOptions,
+      selectedPlan: er && ey ? `${ey}:${er}` : null,
     };
   }
 
@@ -290,6 +296,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     oxSessions,
     lastPoints,
     nodeMastery,
+    examOptions,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -313,7 +320,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     // 미선택(null)이면 종전대로 1차·2차 모두 노출.
     client
       .from("profiles")
-      .select("next_exam_round")
+      .select("next_exam_round, next_exam_year")
       .eq("profile_id", user.id)
       .maybeSingle(),
     getStudyGoals(client, user.id),
@@ -329,6 +336,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     getLastStudyPointsBySubject(client, user.id, lawCodes),
     // feat-2-027 Phase 1 — 단원 마스터리(파생: 노드별 정답률 + SRS 파지).
     getNodeMastery(client, user.id, [...LAW_SUBJECT_SLUGS]),
+    // 응시 시험 옵션 — 운영자 관리 시험 일정(exam_schedules).
+    listExamPlanOptions(client),
   ]);
 
   const erRaw = examRoundRow.data?.next_exam_round;
@@ -353,9 +362,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     ? await getCohortStudyPercentile(user.id)
     : null;
 
+  const examYear = examRoundRow.data?.next_exam_year ?? null;
+
   return {
     myAnalysisOff: false as const,
     examRound,
+    examOptions,
+    selectedPlan: examRound && examYear ? `${examYear}:${examRound}` : null,
     studyGoals,
     passerBenchmark,
     rangeSel,
@@ -393,9 +406,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 const goalSchema = z.object({
-  examDate: z
+  // "2027:first" — 응시 시험(연도·차수 통합). 빈 값 = 변경 없음(기존 시험일·차수 유지).
+  examPlan: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "시험일은 YYYY-MM-DD 형식")
+    .regex(/^\d{4}:(first|second)$/, "응시 시험 형식 오류")
     .optional()
     .or(z.literal("")),
   weeklyGoalHours: z.coerce
@@ -411,7 +425,8 @@ const goalSchema = z.object({
 });
 
 // 학습 목표 폼(상단 띠 Sheet) — goals 에서 이관(통폐합 3a).
-// 차수=profiles SSOT(setNextExamPlan), 나머지=study_goals(upsertStudyGoals).
+// 응시 시험(연도:차수) 선택 → 시험일은 exam_schedules(운영자 관리)에서 자동 파생.
+// 차수·연도=profiles SSOT(setNextExamPlan), 시험일 등=study_goals(upsertStudyGoals).
 export async function action({ request }: Route.ActionArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -421,7 +436,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   const form = await request.formData();
   const parsed = goalSchema.safeParse({
-    examDate: form.get("examDate") ?? "",
+    examPlan: form.get("examPlan") ?? "",
     weeklyGoalHours: form.get("weeklyGoalHours") ?? "0",
     examRound: form.get("examRound") ?? "first",
     targetScore: form.get("targetScore") ?? "",
@@ -432,22 +447,47 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ error: first?.message ?? "입력 오류" }, { status: 400 });
   }
 
-  // 차수는 profiles SSOT(feat-2-025) — next_exam_year 보존, 차수만 갱신.
-  const { data: profile } = await client
-    .from("profiles")
-    .select("next_exam_year")
-    .eq("profile_id", user.id)
-    .maybeSingle();
-  const planRes = await setNextExamPlan(client, user.id, {
-    nextExamYear: profile?.next_exam_year ?? null,
-    nextExamRound: parsed.data.examRound,
-  });
-  if (!planRes.ok) {
-    return data({ error: planRes.error }, { status: 400 });
+  const current = await getStudyGoals(client, user.id);
+  let examDate = current.examDate; // 미선택 시 기존 시험일 유지
+  if (parsed.data.examPlan) {
+    const [yStr, round] = parsed.data.examPlan.split(":") as [
+      string,
+      "first" | "second",
+    ];
+    const year = Number(yStr);
+    const scheduleDate = await getExamScheduleDate(client, year, round);
+    if (!scheduleDate) {
+      return data(
+        { error: "선택한 시험 일정을 찾을 수 없습니다. 관리자에게 문의해 주세요." },
+        { status: 400 },
+      );
+    }
+    examDate = scheduleDate;
+    const planRes = await setNextExamPlan(client, user.id, {
+      nextExamYear: year,
+      nextExamRound: round,
+    });
+    if (!planRes.ok) {
+      return data({ error: planRes.error }, { status: 400 });
+    }
+  } else {
+    // 응시 시험 미선택 — 차수 hidden(기존값)만 보존 갱신.
+    const { data: profile } = await client
+      .from("profiles")
+      .select("next_exam_year")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+    const planRes = await setNextExamPlan(client, user.id, {
+      nextExamYear: profile?.next_exam_year ?? null,
+      nextExamRound: parsed.data.examRound,
+    });
+    if (!planRes.ok) {
+      return data({ error: planRes.error }, { status: 400 });
+    }
   }
 
   await upsertStudyGoals(client, user.id, {
-    examDate: parsed.data.examDate ? parsed.data.examDate : null,
+    examDate,
     weeklyGoalHours: parsed.data.weeklyGoalHours,
     targetScore:
       typeof parsed.data.targetScore === "number"
@@ -490,6 +530,8 @@ export default function StudyStats({ loaderData }: Route.ComponentProps) {
         <GoalSummaryBar
           goals={loaderData.studyGoals}
           examRound={loaderData.examRound ?? "first"}
+          examOptions={loaderData.examOptions}
+          selectedPlan={loaderData.selectedPlan}
         />
         <MyAnalysisOffNotice feature="학습 통계" />
       </StudentShell>
@@ -566,6 +608,8 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
         <GoalSummaryBar
           goals={loaderData.studyGoals}
           examRound={loaderData.examRound ?? "first"}
+          examOptions={loaderData.examOptions}
+          selectedPlan={loaderData.selectedPlan}
         />
         <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
           <RangeSelectionGroup value={rangeSel} onChange={setRange} />

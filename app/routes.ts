@@ -559,6 +559,11 @@ export default [
         "features/admin/screens/admin-withdrawals.tsx",
       ),
       route("/api/admin/withdrawal", "features/admin/api/withdrawal.tsx"),
+      // 시험일 관리 (manager+) — 학생 목표 폼 "응시 시험" 시험일 자동 파생 SSOT.
+      route(
+        "/admin/exam-schedules",
+        "features/admin/screens/admin-exam-schedules.tsx",
+      ),
       route(
         "/admin/popup-notices",
         "features/admin/screens/admin-popup-notices.tsx",

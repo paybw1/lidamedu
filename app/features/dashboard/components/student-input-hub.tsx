@@ -17,18 +17,25 @@ import {
 } from "~/core/components/ui/sheet";
 import { ConsentSection } from "~/features/exam-results/components/consent-section";
 import { ResultFields } from "~/features/exam-results/components/result-fields";
-import type { StudyGoals } from "~/features/goals/queries.server";
+import type {
+  ExamPlanOption,
+  StudyGoals,
+} from "~/features/goals/queries.server";
 import { GoalFields } from "~/features/study/components/goal-fields";
 
 export function StudentInputHub({
   goals,
   examRound,
+  examOptions,
+  selectedPlan,
   myAnalysisConsentAt,
   poolConsentAt,
   autoOpen = false,
 }: {
   goals: StudyGoals;
   examRound: "first" | "second" | null;
+  examOptions: ExamPlanOption[];
+  selectedPlan: string | null;
   myAnalysisConsentAt: string | null;
   poolConsentAt: string | null;
   autoOpen?: boolean;
@@ -54,7 +61,12 @@ export function StudentInputHub({
           </SheetDescription>
         </SheetHeader>
         <div className="space-y-6 px-4 pb-10">
-          <GoalBlock goals={goals} examRound={round} />
+          <GoalBlock
+            goals={goals}
+            examRound={round}
+            examOptions={examOptions}
+            selectedPlan={selectedPlan}
+          />
           <ResultBlock currentYear={currentYear} defaultRound={round} />
           <section className="border-t pt-5">
             <ConsentSection
@@ -72,9 +84,13 @@ export function StudentInputHub({
 function GoalBlock({
   goals,
   examRound,
+  examOptions,
+  selectedPlan,
 }: {
   goals: StudyGoals;
   examRound: "first" | "second";
+  examOptions: ExamPlanOption[];
+  selectedPlan: string | null;
 }) {
   const fetcher = useFetcher<{ ok?: true } | { error?: string }>();
   const submitting = fetcher.state !== "idle";
@@ -94,7 +110,12 @@ function GoalBlock({
         }
       />
       <fetcher.Form method="post" action="/study/stats" className="space-y-3">
-        <GoalFields goals={goals} examRound={examRound} />
+        <GoalFields
+          goals={goals}
+          examRound={examRound}
+          examOptions={examOptions}
+          selectedPlan={selectedPlan}
+        />
         <BlockMessage error={errorMsg ?? null} saved={saved} />
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? "저장 중…" : "목표 저장"}
