@@ -223,6 +223,7 @@ export function CasesTree({
   systematicNodes,
   caseTreeCounts,
   active,
+  searchVisible = true,
   emptyHint,
   linkBase = "",
 }: {
@@ -235,6 +236,8 @@ export function CasesTree({
     byNodeId: Record<string, number>;
   };
   active: CaseTreeFilter | null;
+  /** 헤더 돋보기 토글 — false 면 검색 입력 숨김·질의 초기화. 허브(상시)는 기본 true. */
+  searchVisible?: boolean;
   emptyHint?: string;
   // 트리 링크 경로 prefix. "" = 현재 페이지 상대(?query) — cases 탭 기본.
   // case-viewer 등 다른 라우트에서는 "/subjects/{slug}" 절대 경로를 넘긴다.
@@ -242,6 +245,9 @@ export function CasesTree({
 }) {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    if (!searchVisible) setSearchQuery("");
+  }, [searchVisible]);
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
   // 사이드바 scrollTop 보존 — 노드 클릭·case 편집 back·라우트 전환 어디서든
@@ -362,33 +368,35 @@ export function CasesTree({
 
   return (
     <div ref={rootRef} className="space-y-2">
-      <div className="px-2">
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2 size-3 -translate-y-1/2" />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              renderSystematic
-                ? "체계도 검색 — 예: 진보성, 신규성"
-                : "조문 검색 — 예: 신규성, 제29조"
-            }
-            aria-label="판례 트리 내 검색"
-            className="border-input bg-background h-7 w-full rounded-md border pl-7 pr-7 text-[11px]"
-          />
-          {searchQuery ? (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              aria-label="검색 지우기"
-              className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
-            >
-              ✕
-            </button>
-          ) : null}
+      {searchVisible ? (
+        <div className="px-2">
+          <div className="relative">
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-2 size-3 -translate-y-1/2" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                renderSystematic
+                  ? "체계도 검색 — 예: 진보성, 신규성"
+                  : "조문 검색 — 예: 신규성, 제29조"
+              }
+              aria-label="판례 트리 내 검색"
+              className="border-input bg-background h-7 w-full rounded-md border pl-7 pr-7 text-[11px]"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="검색 지우기"
+                className="text-muted-foreground hover:text-foreground absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px]"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {active ? (
         <div className="bg-accent/40 mx-2 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px]">

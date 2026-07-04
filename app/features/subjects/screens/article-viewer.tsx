@@ -564,7 +564,7 @@ function ArticleViewerInner({
                 <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
                   <div className="flex items-center justify-between gap-2 px-3 py-2">
                     {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}
-                    {!renderSystematic ? (
+                    {/* 검색 토글 — 조문·체계도 트리 공용 */}
                       <button
                         type="button"
                         onClick={() => setTreeSearchOpen((v) => !v)}
@@ -580,9 +580,6 @@ function ArticleViewerInner({
                       >
                         <SearchIcon className="size-3.5" />
                       </button>
-                    ) : (
-                      <span />
-                    )}
                     <SortAxisToggle
                       size="sm"
                       disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -592,6 +589,7 @@ function ArticleViewerInner({
                 <div className="px-1.5 py-2">
                   {renderSystematic ? (
                     <SystematicTree
+                      searchVisible={treeSearchOpen}
                       nodes={systematicNodes}
                       activeArticleId={article.articleId}
                       lawCode={subject.slug}
@@ -669,6 +667,7 @@ function ArticleViewerInner({
                   </div>
                   {renderSystematic ? (
                     <SystematicTree
+                      searchVisible={treeSearchOpen}
                       nodes={systematicNodes}
                       activeArticleId={article.articleId}
                       lawCode={subject.slug}

@@ -3,9 +3,10 @@ import {
   HeartIcon,
   HighlighterIcon,
   NetworkIcon,
+  SearchIcon,
   StickyNoteIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
@@ -138,6 +139,7 @@ export function SystematicTree({
   bookmarkLevels,
   annotationCounts,
   progressByArticle,
+  searchVisible = false,
 }: {
   nodes: SystematicNode[];
   activeArticleId?: string;
@@ -146,6 +148,8 @@ export function SystematicTree({
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
   progressByArticle?: NodeProgressByArticle;
+  /** 헤더 돋보기 토글 — true 면 검색 입력 노출, 닫으면 질의 초기화. */
+  searchVisible?: boolean;
 }) {
   // 조문 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
   // 세부 분기(예: 신규성일반/동일성)는 조문 화면에 등장하지 않는다.
@@ -153,11 +157,47 @@ export function SystematicTree({
     () => nodes.filter((n) => !n.caseOnly),
     [nodes],
   );
-  const tree = useMemo(() => buildTree(visibleNodes), [visibleNodes]);
-  const expandedIds = useMemo(
-    () => findActiveAncestors(visibleNodes, activeArticleId),
-    [visibleNodes, activeArticleId],
-  );
+  // 검색 — 노드 라벨 또는 조문 라벨 substring 매칭. 매칭 노드/조문 + 조상 라인 유지.
+  const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    if (!searchVisible) setSearchQuery("");
+  }, [searchVisible]);
+  const query = searchQuery.trim().toLowerCase();
+  const searchedNodes = useMemo(() => {
+    if (!query) return visibleNodes;
+    const byId = new Map(visibleNodes.map((n) => [n.nodeId, n] as const));
+    const keep = new Set<string>();
+    for (const n of visibleNodes) {
+      const selfHit =
+        n.displayLabel.toLowerCase().includes(query) ||
+        n.articles.some((a) => a.displayLabel.toLowerCase().includes(query));
+      if (!selfHit) continue;
+      keep.add(n.nodeId);
+      let cur = n;
+      while (cur.parentId && byId.has(cur.parentId)) {
+        keep.add(cur.parentId);
+        cur = byId.get(cur.parentId)!;
+      }
+    }
+    return visibleNodes
+      .filter((n) => keep.has(n.nodeId))
+      .map((n) => {
+        // 노드 라벨 자체가 매칭이면 조문 전부 유지, 조상 경로/조문 매칭이면 매칭 조문만.
+        if (n.displayLabel.toLowerCase().includes(query)) return n;
+        return {
+          ...n,
+          articles: n.articles.filter((a) =>
+            a.displayLabel.toLowerCase().includes(query),
+          ),
+        };
+      });
+  }, [visibleNodes, query]);
+  const tree = useMemo(() => buildTree(searchedNodes), [searchedNodes]);
+  const expandedIds = useMemo(() => {
+    // 검색 중엔 결과 트리 전체 펼침 — 매칭 위치가 접혀 있으면 검색 의미가 없다.
+    if (query) return new Set(searchedNodes.map((n) => n.nodeId));
+    return findActiveAncestors(searchedNodes, activeArticleId);
+  }, [searchedNodes, activeArticleId, query]);
   const [importanceFilter, setImportanceFilter] = useState<ImportanceFilter>(0);
   const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
   const showBookmarkFilter = bookmarkLevels !== undefined;
@@ -190,7 +230,8 @@ export function SystematicTree({
 
   const filterActive = importanceFilter !== 0 || bookmarkFilter !== 0;
 
-  if (tree.length === 0) {
+  // 데이터 자체가 없을 때만 안내 문구 — 검색으로 비어진 경우는 아래 빈 결과 분기.
+  if (visibleNodes.length === 0) {
     return (
       <p className="text-muted-foreground px-2 py-4 text-xs">
         {emptyHint ?? "테크 트리 데이터가 등록되지 않았습니다."}
@@ -201,6 +242,19 @@ export function SystematicTree({
   return (
     <div className="space-y-2">
       <div className="space-y-1.5 px-2">
+        {searchVisible ? (
+          <div className="relative">
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-2 size-3 -translate-y-1/2" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="체계도 검색 — 예: 진보성, 제29조"
+              aria-label="체계도 트리 내 검색"
+              className="border-input bg-background h-7 w-full rounded-md border pr-2 pl-7 text-[11px]"
+            />
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-1">
           <span className="text-muted-foreground mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
             <span className="text-amber-500">★</span>
@@ -256,7 +310,9 @@ export function SystematicTree({
       </div>
       {visible.length === 0 ? (
         <p className="text-muted-foreground px-2 py-4 text-xs">
-          {bookmarkFilter !== 0
+          {query
+            ? `"${searchQuery.trim()}" 매칭 결과가 없습니다.`
+            : bookmarkFilter !== 0
             ? `즐겨찾기 ${BOOKMARK_LABELS[bookmarkFilter]} 조문이 없습니다.`
             : `중요도 ${IMPORTANCE_LABELS[importanceFilter]} 조문이 없습니다.`}
         </p>
@@ -264,7 +320,7 @@ export function SystematicTree({
         <ul className="space-y-0.5 text-sm">
           {visible.map((n) => (
             <SystematicItem
-              key={n.nodeId}
+              key={query ? n.nodeId + "-s" : n.nodeId}
               node={n}
               depth={0}
               forceOpen={expandedIds}

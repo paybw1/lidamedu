@@ -1,9 +1,11 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 import type { Route } from "./+types/case-viewer";
 
 import {
   ListTreeIcon,
+  SearchIcon,
   NetworkIcon,
   PanelRightIcon,
   ScrollTextIcon,
@@ -666,13 +668,31 @@ function CaseTreeSidebarInner({
 }) {
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
+  // 트리 검색 — 다른 뷰어와 동일하게 헤더 돋보기 아이콘 토글(데스크톱).
+  // 모바일 드로어는 기존처럼 검색 입력 상시 노출.
+  const [treeSearchOpen, setTreeSearchOpen] = useState(false);
   return (
     <div>
-      {/* 헤더 — 데스크톱: [축 언더라인 탭] → [체계도/조문] sticky.
+      {/* 헤더 — 데스크톱: [돋보기 토글][체계도/조문] sticky.
           모바일 드로어: 정렬축 토글만 우측 정렬(기존 동작). */}
       {desktopHeader ? (
         <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
-          <div className="flex justify-end px-3 py-2">
+          <div className="flex items-center justify-between gap-2 px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setTreeSearchOpen((v) => !v)}
+              aria-pressed={treeSearchOpen}
+              aria-label="트리 검색"
+              title="트리 검색"
+              className={cn(
+                "border-border inline-flex size-7 items-center justify-center rounded-md border transition-colors",
+                treeSearchOpen
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground hover:text-link",
+              )}
+            >
+              <SearchIcon className="size-3.5" />
+            </button>
             <SortAxisToggle
               size="sm"
               disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -694,6 +714,7 @@ function CaseTreeSidebarInner({
           systematicNodes={systematicNodes}
           caseTreeCounts={caseTreeCounts}
           active={activeFilter}
+          searchVisible={desktopHeader ? treeSearchOpen : true}
           linkBase={`/subjects/${subjectSlug}`}
         />
       </div>

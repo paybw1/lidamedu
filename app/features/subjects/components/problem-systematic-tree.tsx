@@ -3,7 +3,7 @@
 // 문제 탭 배너의 "이 체계 풀기" 버튼이 담당한다.
 // 체계도 노드만 표시(조문 leaf 없음). 데이터 유무와 무관하게 조문·판례·문제 탭이
 // 같은 목차를 보여야 하므로 문제 0건 노드도 숨기지 않는다.
-import { ChevronRightIcon, ListChecksIcon } from "lucide-react";
+import { ChevronRightIcon, ListChecksIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
@@ -61,6 +61,7 @@ export function ProblemSystematicTree({
   activeNodeId,
   emptyHint,
   linkBase = "",
+  searchVisible = false,
 }: {
   nodes: SystematicNode[];
   nodeStats: Record<string, SystematicNodeProblemStat>;
@@ -69,20 +70,44 @@ export function ProblemSystematicTree({
   // 지정 시 노드 링크를 절대 경로(`{linkBase}?tab=problems&node=`)로 — 문제 뷰어 등
   // 다른 화면에서 허브 문제 탭으로 이동할 때. 미지정(허브 내부)이면 현재 파라미터 보존.
   linkBase?: string;
+  /** 헤더 돋보기 토글 — true 면 검색 입력 노출, 닫으면 질의 초기화. */
+  searchVisible?: boolean;
 }) {
   const [searchParams] = useSearchParams();
   // 문제 트리는 판례 전용 노드(caseOnly)를 제외 — 판례 체계도에만 존재하는
   // 세부 분기(예: 신규성일반/동일성)는 문제 화면에 등장하지 않는다.
   const visibleNodes = useMemo(() => nodes.filter((n) => !n.caseOnly), [nodes]);
-  const tree = useMemo(() => buildTree(visibleNodes), [visibleNodes]);
-  // 활성 노드 + 그 조상은 펼친 상태로 시작.
+  // 검색 — 노드 라벨 substring 매칭. 매칭 노드 + 조상 라인 유지, 결과는 전체 펼침.
+  const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    if (!searchVisible) setSearchQuery("");
+  }, [searchVisible]);
+  const query = searchQuery.trim().toLowerCase();
+  const searchedNodes = useMemo(() => {
+    if (!query) return visibleNodes;
+    const byId = new Map(visibleNodes.map((n) => [n.nodeId, n] as const));
+    const keep = new Set<string>();
+    for (const n of visibleNodes) {
+      if (!n.displayLabel.toLowerCase().includes(query)) continue;
+      keep.add(n.nodeId);
+      let cur = n;
+      while (cur.parentId && byId.has(cur.parentId)) {
+        keep.add(cur.parentId);
+        cur = byId.get(cur.parentId)!;
+      }
+    }
+    return visibleNodes.filter((n) => keep.has(n.nodeId));
+  }, [visibleNodes, query]);
+  const tree = useMemo(() => buildTree(searchedNodes), [searchedNodes]);
+  // 활성 노드 + 그 조상은 펼친 상태로 시작. 검색 중엔 결과 트리 전체 펼침.
   const forceOpen = useMemo(() => {
-    const set = ancestorIds(visibleNodes, activeNodeId);
+    if (query) return new Set(searchedNodes.map((n) => n.nodeId));
+    const set = ancestorIds(searchedNodes, activeNodeId);
     if (activeNodeId) set.add(activeNodeId);
     return set;
-  }, [visibleNodes, activeNodeId]);
+  }, [searchedNodes, activeNodeId, query]);
 
-  if (tree.length === 0) {
+  if (visibleNodes.length === 0) {
     return (
       <p className="text-muted-foreground px-2 py-4 text-xs">
         {emptyHint ?? "체계도가 아직 등록되지 않았습니다."}
@@ -90,20 +115,43 @@ export function ProblemSystematicTree({
     );
   }
   return (
-    <ul className="space-y-0.5 text-sm">
-      {tree.map((n) => (
-        <NodeItem
-          key={n.nodeId}
-          node={n}
-          depth={0}
-          nodeStats={nodeStats}
-          activeNodeId={activeNodeId}
-          forceOpen={forceOpen}
-          searchParams={searchParams}
-          linkBase={linkBase}
-        />
-      ))}
-    </ul>
+    <div className="space-y-2">
+      {searchVisible ? (
+        <div className="px-2">
+          <div className="relative">
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-2 size-3 -translate-y-1/2" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="체계도 검색 — 예: 진보성, 신규성"
+              aria-label="체계도 트리 내 검색"
+              className="border-input bg-background h-7 w-full rounded-md border pr-2 pl-7 text-[11px]"
+            />
+          </div>
+        </div>
+      ) : null}
+      {tree.length === 0 ? (
+        <p className="text-muted-foreground px-2 py-4 text-xs">
+          {`"${searchQuery.trim()}" 매칭 결과가 없습니다.`}
+        </p>
+      ) : (
+        <ul className="space-y-0.5 text-sm">
+          {tree.map((n) => (
+            <NodeItem
+              key={query ? `${n.nodeId}-s` : n.nodeId}
+              node={n}
+              depth={0}
+              nodeStats={nodeStats}
+              activeNodeId={activeNodeId}
+              forceOpen={forceOpen}
+              searchParams={searchParams}
+              linkBase={linkBase}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

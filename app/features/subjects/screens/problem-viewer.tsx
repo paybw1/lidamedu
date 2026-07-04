@@ -13,6 +13,7 @@ import {
   ScrollTextIcon,
   TimerIcon,
   VideoIcon,
+  SearchIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -547,6 +548,8 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     toggle: toggleRight,
     set: setRight,
   } = useRightPanelCollapse();
+  // 좌 트리 검색 — 헤더 돋보기 아이콘 토글(다른 뷰어와 동일 패턴).
+  const [treeSearchOpen, setTreeSearchOpen] = useState(false);
   // 읽기 모드 — 좌우 패널 동시 접기/펼치기(데스크톱 정독 집중).
   const readingMode = leftCollapsed && rightCollapsed;
   const toggleReadingMode = () => {
@@ -835,9 +838,24 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   showSubjective={isStaff}
                 />
                 <div className="min-w-0 flex-1 lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
-                  {/* 헤더(상단 고정): [축 언더라인 탭] → [체계도/조문(조문 비활성)]. */}
+                  {/* 헤더(상단 고정): [돋보기 토글][체계도/조문(조문 비활성)]. */}
                   <div className="bg-background sticky top-0 z-10">
-                    <div className="flex justify-end px-3 py-2">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => setTreeSearchOpen((v) => !v)}
+                        aria-pressed={treeSearchOpen}
+                        aria-label="트리 검색"
+                        title="트리 검색"
+                        className={cn(
+                          "border-border inline-flex size-7 items-center justify-center rounded-md border transition-colors",
+                          treeSearchOpen
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-muted-foreground hover:text-link",
+                        )}
+                      >
+                        <SearchIcon className="size-3.5" />
+                      </button>
                       <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
                     </div>
                   </div>
@@ -847,6 +865,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                     </p>
                   ) : (
                     <ProblemSystematicTree
+                      searchVisible={treeSearchOpen}
                       nodes={systematicNodes}
                       nodeStats={problemNodeStats}
                       activeNodeId={activeNodeId ?? undefined}

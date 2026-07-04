@@ -485,7 +485,7 @@ function Inner({
               <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b px-4">
                 <div className="flex items-center justify-between gap-2 py-2">
                   {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}
-                  {!renderSystematic ? (
+                  {/* 검색 토글 — 조문·체계도 트리 공용 */}
                     <button
                       type="button"
                       onClick={() => setTreeSearchOpen((v) => !v)}
@@ -501,9 +501,6 @@ function Inner({
                     >
                       <SearchIcon className="size-3.5" />
                     </button>
-                  ) : (
-                    <span />
-                  )}
                   <SortAxisToggle
                     size="sm"
                     disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -513,6 +510,7 @@ function Inner({
               <CardContent className="px-2 py-2">
                 {renderSystematic ? (
                   <SystematicTree
+                    searchVisible={treeSearchOpen}
                     nodes={systematicNodes}
                     activeArticleId={firstArticleId}
                     lawCode={subject.slug}
@@ -576,6 +574,7 @@ function Inner({
                 </div>
                 {renderSystematic ? (
                   <SystematicTree
+                    searchVisible={treeSearchOpen}
                     nodes={systematicNodes}
                     activeArticleId={firstArticleId}
                     lawCode={subject.slug}
