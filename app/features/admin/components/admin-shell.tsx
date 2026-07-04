@@ -170,7 +170,10 @@ export const ADMIN_NAV: NavCluster[] = [
     section: "students",
     label: "매출·정산",
     Icon: BanknoteIcon,
-    screens: [{ label: "주문·결제 관리", to: "/admin/payments" }],
+    screens: [
+      { label: "주문·결제 관리", to: "/admin/payments" },
+      { label: "강사 배분 기준", to: "/admin/settlements/rules" },
+    ],
   },
   {
     // 반·강의 — 반 단위 + 커리큘럼. 수강생(students) 와 분리.

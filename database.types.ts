@@ -3586,6 +3586,90 @@ export type Database = {
           },
         ]
       }
+      instructor_share_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          instructor_id: string
+          is_active: boolean
+          memo: string | null
+          rule_id: string
+          share_kind: string
+          share_value: number
+          target_kind: string
+          target_plan_id: string | null
+          target_subject_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          instructor_id: string
+          is_active?: boolean
+          memo?: string | null
+          rule_id?: string
+          share_kind: string
+          share_value: number
+          target_kind: string
+          target_plan_id?: string | null
+          target_subject_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          instructor_id?: string
+          is_active?: boolean
+          memo?: string | null
+          rule_id?: string
+          share_kind?: string
+          share_value?: number
+          target_kind?: string
+          target_plan_id?: string | null
+          target_subject_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_share_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_share_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_share_rules_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_share_rules_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_share_rules_target_plan_id_fkey"
+            columns: ["target_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["plan_id"]
+          },
+        ]
+      }
       law_revisions: {
         Row: {
           comparison_pdf: string | null

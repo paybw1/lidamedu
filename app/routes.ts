@@ -791,6 +791,15 @@ export default [
         "/admin/payments",
         "features/subscriptions/screens/admin-payments.tsx",
       ),
+      // feat-8-029 Stage 2 — 강사 배분 기준 (manager+).
+      route(
+        "/admin/settlements/rules",
+        "features/subscriptions/screens/admin-share-rules.tsx",
+      ),
+      route(
+        "/api/admin/share-rule",
+        "features/subscriptions/api/admin-share-rule.tsx",
+      ),
       // feat-8-028 — 상품·요금 관리 (manager+).
       route(
         "/admin/pricing",
