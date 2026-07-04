@@ -490,7 +490,7 @@ function Inner({
                   className="h-8 gap-1.5 rounded-full"
                   data-testid="open-tree-drawer"
                 >
-                  <ListTreeIcon className="size-3.5" /> 조문 트리
+                  <ListTreeIcon className="size-3.5" /> 목차로 찾기
                 </Button>
               </SheetTrigger>
               <SheetContent
@@ -498,7 +498,7 @@ function Inner({
                 className="w-[320px] overflow-y-auto p-0 sm:max-w-[360px]"
               >
                 <SheetHeader>
-                  <SheetTitle>조문 트리</SheetTitle>
+                  <SheetTitle>목차</SheetTitle>
                 </SheetHeader>
                 <div className="space-y-3 px-3 pb-4">
                   <div className="flex justify-end">

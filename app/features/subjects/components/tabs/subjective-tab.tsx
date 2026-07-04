@@ -115,8 +115,8 @@ export function SubjectiveTab({
   // 주관식은 아직 노드 매핑이 없어 카운트는 비어 있다(고도화 시 nodeStats 배선).
   const treePanel = (
     <SortAxisProvider forced="systematic">
-      <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
-        <div className="border-border flex items-center justify-end border-b px-3 py-2">
+      <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-end rounded-t-xl border-b px-3 py-2">
           <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
         </div>
         <div className="p-2">
@@ -129,7 +129,7 @@ export function SubjectiveTab({
   return (
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
       {/* Left: 체계도 패널 — 데스크톱만 sticky 사이드바. 모바일은 드로어. */}
-      <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+      <aside className="hidden lg:sticky lg:top-20 lg:block">
         {treePanel}
       </aside>
 
@@ -145,12 +145,12 @@ export function SubjectiveTab({
                 size="sm"
                 className="h-9 gap-1.5 rounded-full text-xs"
               >
-                <ListTreeIcon className="size-3.5" /> 체계별로 찾기
+                <ListTreeIcon className="size-3.5" /> 목차로 찾기
               </Button>
             }
           >
             <SheetHeader className="border-border border-b px-4 py-3">
-              <SheetTitle className="text-sm font-semibold">체계도</SheetTitle>
+              <SheetTitle className="text-sm font-semibold">목차</SheetTitle>
             </SheetHeader>
             <div className="px-3 py-3">{treePanel}</div>
           </MobileNavDrawer>

@@ -188,8 +188,9 @@ function SubjectHubInner({
         className="mt-6 flex flex-row items-start gap-0"
       >
         {/* 책갈피 레일 — pt 로 패널 둥근 모서리를 비켜 직선 변에 부착.
-            sticky 금지: 스크롤을 따라오면 패널과 분리돼 보인다(패널 상단 고정). */}
-        <TabsList className="flex h-auto w-[52px] shrink-0 flex-col items-stretch gap-1.5 rounded-none border-0 bg-transparent p-0 pt-5">
+            sticky 금지: 스크롤을 따라오면 패널과 분리돼 보인다(패널 상단 고정).
+            모바일은 숨김 — 상단 바 둘째 줄의 축 칩으로 조문·판례를 전환한다. */}
+        <TabsList className="hidden h-auto w-[52px] shrink-0 flex-col items-stretch gap-1.5 rounded-none border-0 bg-transparent p-0 pt-5 lg:flex">
           {railAxes.map((axis) => (
             <BookmarkTab
               key={axis.value}

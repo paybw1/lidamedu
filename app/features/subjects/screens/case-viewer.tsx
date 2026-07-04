@@ -460,12 +460,12 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                       className="h-9 rounded-full text-xs"
                       data-testid="open-tree-drawer"
                     >
-                      <ListTreeIcon className="size-3.5" /> 판례 트리
+                      <ListTreeIcon className="size-3.5" /> 목차로 찾기
                     </Button>
                   }
                 >
                   <SheetHeader>
-                    <SheetTitle>{subject.name} 판례 트리</SheetTitle>
+                    <SheetTitle>목차</SheetTitle>
                   </SheetHeader>
                   <div className="px-3 pb-4">
                     <CaseTreeSidebar

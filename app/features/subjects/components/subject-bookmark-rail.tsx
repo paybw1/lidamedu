@@ -154,7 +154,8 @@ export function SubjectAxisChips({
                   "transition-all duration-200 ease-out motion-reduce:transition-none",
                   isActive
                     ? "ml-1.5 max-w-24 opacity-100"
-                    : "ml-0 max-w-0 opacity-0 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100",
+                    : // 모바일(호버 없음)은 항상 펼침 — 축소·호버 확장은 데스크톱(lg+)만.
+                      "ml-1.5 max-w-24 opacity-100 lg:ml-0 lg:max-w-0 lg:opacity-0 lg:group-hover:ml-1.5 lg:group-hover:max-w-24 lg:group-hover:opacity-100 lg:group-focus-visible:ml-1.5 lg:group-focus-visible:max-w-24 lg:group-focus-visible:opacity-100",
                 )}
               >
                 {axis.label}

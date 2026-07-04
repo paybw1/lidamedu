@@ -22,6 +22,26 @@ import { Link } from "react-router";
  * 
  * @returns A footer component with copyright information and legal links
  */
+function BusinessInfo() {
+  return (
+    <>
+      <p>리담지식재산교육원 주식회사 | 대표 : 전화연</p>
+      <p>
+        학원등록번호 : 제15318호 | 원격학원등록번호 : 제15319호 |
+        출판사신고번호 : 제2026-000065호
+      </p>
+      <p>
+        사업자등록번호 : 587-88-03609 | 통신판매업신고번호 :
+        2026-서울서초-0888
+      </p>
+      <p>
+        주소 : (06588) 서울특별시 서초구 서초대로 131 2층 | ☏ 02-594-8881 |
+        개인정보관리책임자 : 조형남
+      </p>
+    </>
+  );
+}
+
 export default function Footer() {
   return (
     <footer className="text-muted-foreground mt-auto border-t py-6 text-xs leading-relaxed md:py-8 md:text-[13px]">
@@ -45,21 +65,18 @@ export default function Footer() {
           </Link>
         </nav>
 
-        {/* 사업자 정보 */}
-        <div className="space-y-0.5">
-          <p>리담지식재산교육원 주식회사 | 대표 : 전화연</p>
-          <p>
-            학원등록번호 : 제15318호 | 원격학원등록번호 : 제15319호 |
-            출판사신고번호 : 제2026-000065호
-          </p>
-          <p>
-            사업자등록번호 : 587-88-03609 | 통신판매업신고번호 :
-            2026-서울서초-0888
-          </p>
-          <p>
-            주소 : (06588) 서울특별시 서초구 서초대로 131 2층 | ☏ 02-594-8881 |
-            개인정보관리책임자 : 조형남
-          </p>
+        {/* 사업자 정보 — 모바일은 기본 접힘(화면 과밀 방지), 데스크톱은 상시 표시.
+            통신판매업자 표시 의무가 있어 삭제 대신 접기로 유지한다. */}
+        <details className="md:hidden">
+          <summary className="cursor-pointer font-medium select-none">
+            사업자 정보
+          </summary>
+          <div className="mt-1.5 space-y-0.5">
+            <BusinessInfo />
+          </div>
+        </details>
+        <div className="hidden space-y-0.5 md:block">
+          <BusinessInfo />
         </div>
 
         <p className="text-muted-foreground/80">

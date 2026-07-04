@@ -641,12 +641,12 @@ function ArticleViewerInner({
                     className="h-9 gap-1.5 rounded-full text-xs"
                     data-testid="open-tree-drawer"
                   >
-                    <ListTreeIcon className="size-3.5" /> 조문 트리
+                    <ListTreeIcon className="size-3.5" /> 목차로 찾기
                   </Button>
                 }
               >
                 <SheetHeader>
-                  <SheetTitle>조문 트리</SheetTitle>
+                  <SheetTitle>목차</SheetTitle>
                 </SheetHeader>
                 <div className="space-y-3 px-3 pb-4">
                   <div className="flex justify-end">

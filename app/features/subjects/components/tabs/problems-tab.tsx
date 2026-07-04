@@ -185,8 +185,8 @@ export function ProblemsTab({
   // 헤더는 체계도/조문 토글(문제는 체계도 고정 → 조문 비활성, 조문 뷰어와 동일 UX).
   const treePanel = (
     <SortAxisProvider forced="systematic">
-      <div className="border-border bg-muted/30 overflow-hidden rounded-xl border">
-        <div className="border-border flex items-center justify-end border-b px-3 py-2">
+      <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+        <div className="border-border bg-card sticky top-0 z-10 flex items-center justify-end rounded-t-xl border-b px-3 py-2">
           <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
         </div>
         <div className="p-2">
@@ -203,7 +203,7 @@ export function ProblemsTab({
   return (
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
       {/* Left: tree panel — 데스크톱만 sticky 사이드바. 모바일은 드로어. */}
-      <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+      <aside className="hidden lg:sticky lg:top-20 lg:block">
         {treePanel}
       </aside>
       <section className="space-y-4">
@@ -219,12 +219,12 @@ export function ProblemsTab({
                 className="h-9 gap-1.5 rounded-full text-xs"
                 data-testid="open-tree-drawer"
               >
-                <ListTreeIcon className="size-3.5" /> 체계별로 찾기
+                <ListTreeIcon className="size-3.5" /> 목차로 찾기
               </Button>
             }
           >
             <SheetHeader className="border-border border-b px-4 py-3">
-              <SheetTitle className="text-sm font-semibold">체계도</SheetTitle>
+              <SheetTitle className="text-sm font-semibold">목차</SheetTitle>
             </SheetHeader>
             <div className="px-3 py-3">{treePanel}</div>
           </MobileNavDrawer>
