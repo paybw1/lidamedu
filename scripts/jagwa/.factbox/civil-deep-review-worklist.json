@@ -15,7 +15,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "E 오탐 — 대결/스 형식 인용 이미 존재, 사건번호 웹검증 완료(2026-07-05), 플래그 해제"
   },
   {
    "problemId": "0799805e-6ada-43eb-9952-d328e745f242",
@@ -25,7 +26,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "0c7aa4da-5257-455a-a5d2-92a4197259b7",
@@ -35,7 +37,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "0fe34dc4-ad3a-43a3-ae35-211780a7aefe",
@@ -45,7 +48,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "1195d14c-2e36-424f-8550-d0aa8b194013",
@@ -55,7 +59,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "11c0a2ad-d442-4a07-bf1e-8c04f3619ed6",
@@ -65,7 +70,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 환매특약의 종된 계약성 직접 판시 미확인. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "15918e3f-23f0-4d35-b283-80b79b5a3cfd",
@@ -75,7 +81,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "E 오탐 — 대결/스 형식 인용 이미 존재, 사건번호 웹검증 완료(2026-07-05), 플래그 해제"
   },
   {
    "problemId": "18ea278b-af4f-493d-9f84-09f178b34e4f",
@@ -105,7 +112,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "22cb212a-d1e6-4923-9a00-8d05a6c9907f",
@@ -125,7 +133,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "2c8bc311-375f-417c-a675-36dfad40a15d",
@@ -165,7 +174,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "372af9d9-bdfd-42d2-9334-acb2a96ee894",
@@ -175,7 +185,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "E 오탐 — 대결/스 형식 인용 이미 존재, 사건번호 웹검증 완료(2026-07-05), 플래그 해제"
   },
   {
    "problemId": "374fef9d-4615-4e1b-affa-42f078ab8346",
@@ -185,7 +196,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "37b44a58-4cfa-4085-ba00-9d15cfd6c9ae",
@@ -195,7 +207,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 제140조의 승계인에 특정승계인 포함 — 직접 판시 대법원 판례 미확인, 통설 법리로 서술 권장. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "3e5b48be-c657-44b1-a44f-b6be36c3f41a",
@@ -205,7 +218,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 매도인의 말소청구에 대한 수탁자의 동시이행 항변 불가 — 직접 판시 미확인. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "42e8d4d1-bbc6-41bf-b654-e3ec2291f4fb",
@@ -245,7 +259,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "501d944e-704c-4a87-8ef6-a43311a5bb43",
@@ -275,7 +290,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "677f4b92-37b2-406c-b970-1d422b355e09",
@@ -285,7 +301,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "683aef08-1a8a-47ac-85a8-8d02091aef88",
@@ -295,7 +312,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "E 오탐 — 대결/스 형식 인용 이미 존재, 사건번호 웹검증 완료(2026-07-05), 플래그 해제"
   },
   {
    "problemId": "6ad71045-7507-4d85-a261-d943cfc4e1e8",
@@ -306,7 +324,8 @@
     "D:짧음701",
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "6f478faf-c992-46fe-9c61-fbfd1f16b825",
@@ -336,7 +355,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "72caa082-deb6-4da2-8e55-aaf4c4fa9f3e",
@@ -346,7 +366,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 제3취득자 책임 감축 항변 불가 — 직접 판시 미확인(72다485·2010다3681은 인접 법리). 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "738893ee-dceb-459f-b458-29873a39e867",
@@ -356,7 +377,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "74b36081-517f-4bb7-ad46-13b2c8f00020",
@@ -366,7 +388,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "75ee4aa8-6763-4b3a-b7df-b569914aef62",
@@ -386,7 +409,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "81f37ede-fc36-4d5d-ae85-48ef8f255a64",
@@ -397,7 +421,8 @@
     "C:법개정문구",
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "8527edbd-3b31-4183-a003-7ede3705f07e",
@@ -407,7 +432,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "8d02b761-e471-4f90-b654-c32310eda476",
@@ -417,7 +443,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 대항요건 구비 전 양도인의 재판상 청구 시효중단 — 직접 판시 미확인. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "8e31ca22-0f4b-4991-b484-fcef63c4af94",
@@ -427,7 +454,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 임대수익·전매차익 상당의 손해는 특별손해 — on-point 판례 사건번호·요지 동시 확인 실패. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "962ecbd2-801d-4b1e-a58a-c724dda2d690",
@@ -437,7 +465,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "9cc63f24-17c3-4972-b428-7e1153bf078d",
@@ -447,7 +476,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "a082ef91-c551-4bf7-a3a1-74475475e835",
@@ -457,7 +487,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "a3f2a435-2198-497f-a29c-1d8c848b0611",
@@ -477,7 +508,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "a7727bdd-1685-4e2d-815a-946b5bbc3dc3",
@@ -487,7 +519,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "adf2828e-564c-4678-b9a2-17d2e046bf8a",
@@ -497,7 +530,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "af11d40e-d44d-445e-bfb6-c61055d27b35",
@@ -527,7 +561,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 불요 판정(2026-07-05) — 해설이 조문 근거로 충분(에이전트+검토). 재검토 표시 유지(사람 확인용)"
   },
   {
    "problemId": "cced1fb0-2a25-4fc6-b69d-914c1a370e23",
@@ -537,7 +572,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "E 오탐 — 대결/스 형식 인용 이미 존재, 사건번호 웹검증 완료(2026-07-05), 플래그 해제"
   },
   {
    "problemId": "d0437618-dac3-4ad7-b8ef-3ceeacdbd053",
@@ -577,7 +613,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 가장저당권에 기한 경매에서 경락·취득한 자는 제108조 제2항의 제3자에 해당한다. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "f1cdac4c-3873-4fae-ba7a-0bdd22c2edfd",
@@ -587,7 +624,8 @@
    "reasons": [
     "E:판례인용無"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "판례 인용 보강 완료(2026-07-05) — 웹검증 인용 삽입; 미확인 명제 인용 생략: 전차인은 전대인에 대한 보증금반환채권으로 임대인의 목적물반환청구에 대항할 수 없다 — 신뢰 출처에서 미확인. 재검토 표시 유지(사람 검수용)"
   },
   {
    "problemId": "f2ed6706-ba6a-4fd1-bcc1-59c031b59d11",
