@@ -786,6 +786,11 @@ export default [
         "/api/admin/subscription",
         "features/subscriptions/api/admin-subscription.tsx",
       ),
+      // feat-8-029 — 주문·결제 관리 (manager+): 기간별 결제·환불 내역·통계.
+      route(
+        "/admin/payments",
+        "features/subscriptions/screens/admin-payments.tsx",
+      ),
       // feat-8-028 — 상품·요금 관리 (manager+).
       route(
         "/admin/pricing",

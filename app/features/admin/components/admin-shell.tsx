@@ -3,6 +3,7 @@
 // 모든 /admin/* 화면은 <AdminShell>로 감싸 일관된 네비게이션을 얻는다.
 import {
   AwardIcon,
+  BanknoteIcon,
   BellIcon,
   BotIcon,
   ChevronDownIcon,
@@ -33,6 +34,7 @@ export type AdminClusterId =
   | "blanks"
   | "relations"
   | "students"
+  | "sales"
   | "cohorts"
   | "gs"
   | "analytics"
@@ -161,6 +163,14 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "할인 관리", to: "/admin/discounts" },
       { label: "등급 체험 테스트", to: "/admin/membership-test" },
     ],
+  },
+  {
+    // 매출·정산 — 주문결제 내역·통계 + 강사 배분·정산 (feat-8-029). manager+ 전용(loader 차단).
+    id: "sales",
+    section: "students",
+    label: "매출·정산",
+    Icon: BanknoteIcon,
+    screens: [{ label: "주문·결제 관리", to: "/admin/payments" }],
   },
   {
     // 반·강의 — 반 단위 + 커리큘럼. 수강생(students) 와 분리.
