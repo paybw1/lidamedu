@@ -60,6 +60,7 @@ import { getRelatedArticlesByCase } from "~/features/relations/queries.server";
 import { FlowNav } from "~/features/study/components/flow-nav";
 import { recordStudySession } from "~/features/study/queries.server";
 import { CasesTree } from "~/features/subjects/components/cases-tree";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import {
   PanelEdgeHandle,
   panelGridCls,
@@ -290,6 +291,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function CaseViewer({ loaderData }: Route.ComponentProps) {
   const {
     subject,
+    axisCounts,
     kase,
     articles,
     systematicNodes,
@@ -306,6 +308,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
     caseComments,
     canEditComment,
     canEditCase,
+    isStaff,
     isAdmin,
     currentUserId,
     lectureResources,
@@ -414,7 +417,14 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : (
                 <>
-                <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+                <div className="flex items-start">
+                <SubjectBookmarkRail
+                  subjectSlug={subject.slug}
+                  active="cases"
+                  counts={axisCounts}
+                  showSubjective={isStaff}
+                />
+                <div className="border-border bg-card min-w-0 flex-1 rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
                   {/* 조문 뷰어와 동일 — [축 언더라인 탭] / [체계도·조문] sticky 헤더. */}
                   <CaseTreeSidebar
                     subjectSlug={subject.slug}
@@ -432,6 +442,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                   onToggle={toggleLeft}
                   className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
                 />
+                </div>
                 </>
               )}
             </aside>

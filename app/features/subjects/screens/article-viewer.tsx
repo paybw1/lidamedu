@@ -95,6 +95,7 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
@@ -352,6 +353,7 @@ function ArticleViewerInner({
   const {
     subject,
     lawId,
+    axisCounts,
     article,
     body,
     atDate,
@@ -550,7 +552,14 @@ function ArticleViewerInner({
               </div>
             ) : (
               <>
-              <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+              <div className="flex items-start">
+              <SubjectBookmarkRail
+                subjectSlug={subject.slug}
+                active="articles"
+                counts={axisCounts}
+                showSubjective={staffRole !== null}
+              />
+              <div className="border-border bg-card min-w-0 flex-1 rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
                 {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
                 <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
                   <div className="flex items-center justify-between gap-2 px-3 py-2">
@@ -617,6 +626,7 @@ function ArticleViewerInner({
                 onToggle={toggleLeft}
                 className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
               />
+              </div>
               </>
             )}
           </aside>

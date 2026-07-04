@@ -97,6 +97,7 @@ import {
   useRightPanelCollapse,
 } from "~/features/subjects/components/left-panel-collapse";
 import { MobileNavDrawer } from "~/features/subjects/components/mobile-nav-drawer";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { ProblemSystematicTree } from "~/features/subjects/components/problem-systematic-tree";
 import {
   SortAxisProvider,
@@ -576,6 +577,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
     subjectiveAttempt,
     problemComments,
     canEditComment,
+    axisCounts,
     isStaff,
     isAdmin,
     currentUserId,
@@ -825,7 +827,14 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 </div>
               ) : (
                 <>
-                <div className="lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
+                <div className="flex items-start">
+                <SubjectBookmarkRail
+                  subjectSlug={subject.slug}
+                  active={isSubjectiveProblem ? "subjective" : "problems"}
+                  counts={axisCounts}
+                  showSubjective={isStaff}
+                />
+                <div className="min-w-0 flex-1 lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
                   {/* 헤더(상단 고정): [축 언더라인 탭] → [체계도/조문(조문 비활성)]. */}
                   <div className="bg-background sticky top-0 z-10">
                     <div className="flex justify-end px-3 py-2">
@@ -852,6 +861,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   onToggle={toggleLeft}
                   className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
                 />
+                </div>
                 </>
               )}
             </SortAxisProvider>

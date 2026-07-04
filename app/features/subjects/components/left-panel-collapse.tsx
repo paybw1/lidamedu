@@ -58,6 +58,7 @@ export function useRightPanelCollapse() {
 
 // 그리드 컬럼 템플릿 — 접힌 트랙은 좁은 스트립. Tailwind JIT 가 스캔하도록 리터럴 4분기
 // (동적 문자열 보간은 스캔 불가 → 빌드에서 클래스 누락).
+// 좌 트랙 312px = 책갈피 레일 52px + 트리 카드 260px (펼침 시 레일 포함 폭).
 export function panelGridCls(
   leftCollapsed: boolean,
   rightCollapsed: boolean,
@@ -65,8 +66,8 @@ export function panelGridCls(
   if (leftCollapsed && rightCollapsed)
     return "lg:grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]";
   if (leftCollapsed) return "lg:grid-cols-[2.5rem_minmax(0,1fr)_320px]";
-  if (rightCollapsed) return "lg:grid-cols-[260px_minmax(0,1fr)_2.5rem]";
-  return "lg:grid-cols-[260px_minmax(0,1fr)_320px]";
+  if (rightCollapsed) return "lg:grid-cols-[312px_minmax(0,1fr)_2.5rem]";
+  return "lg:grid-cols-[312px_minmax(0,1fr)_320px]";
 }
 
 // 좌측 트리만 접는 2-컬럼 그리드(체계도 노드/장 뷰어 — 우측 패널이 본문 카드 내부라
@@ -74,7 +75,7 @@ export function panelGridCls(
 export function leftOnlyGridCls(leftCollapsed: boolean): string {
   return leftCollapsed
     ? "lg:grid-cols-[2.5rem_minmax(0,1fr)]"
-    : "lg:grid-cols-[260px_minmax(0,1fr)]";
+    : "lg:grid-cols-[312px_minmax(0,1fr)]";
 }
 
 // bg-card 헤더 위에서도 또렷하게 보이도록 — muted 배경 + foreground 아이콘 + 그림자.

@@ -83,6 +83,7 @@ import {
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
 import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
+import { SubjectBookmarkRail } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
 import { buildNodeProgressByArticle } from "~/features/subjects/lib/node-progress.server";
@@ -472,7 +473,14 @@ function Inner({
             </div>
           ) : (
             <>
-            <Card className="gap-0 rounded-xl border py-0 shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <div className="flex items-start">
+            <SubjectBookmarkRail
+              subjectSlug={subject.slug}
+              active="articles"
+              counts={loaderData.axisCounts}
+              showSubjective={loaderData.isStaff}
+            />
+            <Card className="min-w-0 flex-1 gap-0 rounded-xl border py-0 shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
               {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
               <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b px-4">
                 <div className="flex items-center justify-between gap-2 py-2">
@@ -534,6 +542,7 @@ function Inner({
               onToggle={toggleLeft}
               className="absolute top-1/2 -right-2.5 z-20 -translate-y-1/2"
             />
+            </div>
             </>
           )}
         </aside>

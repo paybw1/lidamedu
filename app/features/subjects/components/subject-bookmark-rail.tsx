@@ -97,6 +97,63 @@ export function BookmarkTabInner({
 }
 
 /**
+ * 뷰어용 책갈피 레일(PC) — 허브의 세로 책갈피 탭과 동일한 룩의 링크 판.
+ * 조문·판례·장·체계도·문제 뷰어의 좌측 트리 패널 왼쪽 변에 부착하며,
+ * 각 탭은 해당 축의 과목 색인(허브 탭)으로 간다. 활성 축 = 네이비 역상
+ * + 1px 우측 이동으로 패널 변에 맞물림. 모바일은 상단 축 칩이 담당(숨김).
+ */
+export function SubjectBookmarkRail({
+  subjectSlug,
+  active,
+  counts,
+  className,
+  showSubjective = false,
+}: {
+  subjectSlug: string;
+  active: SubjectTab;
+  counts?: Record<SubjectTab, number>;
+  className?: string;
+  /** 주관식 축 노출 — 고도화 전 staff 전용이라 호출부가 staff 여부로 넘긴다. */
+  showSubjective?: boolean;
+}) {
+  return (
+    <nav
+      aria-label="과목 학습 영역"
+      className={cn(
+        "flex w-[52px] shrink-0 flex-col items-stretch gap-1.5 pt-5",
+        className,
+      )}
+    >
+      {bookmarkAxesFor(subjectSlug)
+        .filter((a) => a.value !== "subjective" || showSubjective)
+        .map((axis) => {
+          const isActive = axis.value === active;
+          return (
+            <Link
+              key={axis.value}
+              to={bookmarkAxisHref(subjectSlug, axis.value)}
+              viewTransition
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "relative flex h-[88px] w-[52px] flex-none flex-col items-center justify-center gap-1",
+                "rounded-l-xl rounded-r-none border border-r-0 transition-all",
+                isActive
+                  ? "border-primary bg-primary text-primary-foreground z-10 translate-x-px shadow-[-4px_6px_18px_rgba(45,91,168,0.26)]"
+                  : "border-border bg-card text-muted-foreground hover:bg-primary/[0.06] hover:text-link hover:-translate-x-1.5",
+              )}
+            >
+              <BookmarkTabInner
+                label={axis.label}
+                count={counts?.[axis.value]}
+              />
+            </Link>
+          );
+        })}
+    </nav>
+  );
+}
+
+/**
  * 축 내비 칩 그룹 — 상단 학습과목 바 둘째 줄(모바일 전용).
  * PC 는 허브의 세로 책갈피 레일이 축 전환을 담당하므로 SectionTabs 가
  * lg+ 에서 이 슬롯을 렌더하지 않는다.
