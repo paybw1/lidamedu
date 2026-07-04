@@ -413,9 +413,9 @@ function Inner({
             </div>
           ) : (
             <>
-            <Card className="rounded-xl border py-4 shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
+            <Card className="gap-0 rounded-xl border py-0 shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
               {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
-              <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-0">
+              <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b px-4">
                 <div className="flex items-center justify-between gap-2 py-2">
                   {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}
                   {!renderSystematic ? (
@@ -442,8 +442,8 @@ function Inner({
                     disabledAxes={systematicEmpty ? ["systematic"] : undefined}
                   />
                 </div>
-              </CardHeader>
-              <CardContent className="px-2 pb-2">
+              </div>
+              <CardContent className="px-2 py-2">
                 {renderSystematic ? (
                   <SystematicTree
                     nodes={systematicNodes}
