@@ -673,7 +673,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 가담법 제7조 제2항→제1항 정정(조문 원문 웹확인). 검수용 유지"
   },
   {
    "problemId": "10b4f82a-f967-4582-92e5-f91f834db3f3",
@@ -683,7 +684,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 선지별 라벨 ①~⑤→ㄱ~ㅁ 정정(mc_box 구조). 검수용 유지"
   },
   {
    "problemId": "aced6d8d-5f8d-4379-963e-a4124c616883",
@@ -693,7 +695,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 97다1556→94다38106 교체(구상권 없으면 대위 불성립 정본). 검수용 유지"
   },
   {
    "problemId": "c8767f88-55dc-4ce5-b652-4657ecaae8b3",
@@ -703,7 +706,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 제639조 단서 서술 정정(존속기간 문구는 해석 효과임을 명시). 검수용 유지"
   },
   {
    "problemId": "afde3c03-9fb3-4041-bb95-38fae9979f9a",
@@ -713,7 +717,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 2007다6307 실재·적합 판명(입주자대표회의 비법인사단). 해제"
   },
   {
    "problemId": "9880a262-971d-4e65-ac1c-deeda696a613",
@@ -723,7 +728,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 제538조 제1항 전단→후단 3곳 정정(조문 원문 대조). 검수용 유지"
   },
   {
    "problemId": "4cf0cf5e-2e46-4cce-a797-ab64aa82d735",
@@ -733,7 +739,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 제137조 오인용 제거·취소 방식 서술 정리. 검수용 유지"
   },
   {
    "problemId": "0f5e94fb-d870-423f-8c09-de382cfefde8",
@@ -743,7 +750,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 결론의 선의 요건 오설명 정정(틀린 이유=추인 선행 단일). 검수용 유지"
   },
   {
    "problemId": "6c49fb8e-eaa8-4158-bb57-0dad416ed593",
@@ -753,7 +761,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 제202조 본문/후문 구조 서술 정정. 검수용 유지"
   },
   {
    "problemId": "bf7b1edf-d119-4ec0-a49b-06ae99ecc2ef",
@@ -763,7 +772,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 인용 3건(99다65462·2009다37831·95다30734) 전부 실재·적합 판명. 해제"
   },
   {
    "problemId": "025f424c-84bd-4fb3-a388-0e0d0d535a47",
@@ -773,7 +783,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 제340조 제1항→제2항 정정. 검수용 유지"
   },
   {
    "problemId": "a564e8d3-66c1-406b-b054-97535de808f1",
@@ -783,7 +794,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 70다2895→70다1360, 97다50299→97다55164 교체(검증). 검수용 유지"
   },
   {
    "problemId": "0c21f419-273c-4b39-818f-6870f727f1f4",
@@ -793,7 +805,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 2000다50350→2002다73852 교체(기준시=사실심 변론종결시 정본). 검수용 유지"
   },
   {
    "problemId": "bb8a28a4-d23f-4597-be7c-93a6bf67404a",
@@ -803,7 +816,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 91다34790 요지에 수급인 원시취득 원칙 포함 확인. 해제"
   },
   {
    "problemId": "eb41de5b-a6d4-49dd-b6a1-cba72de7689d",
@@ -813,7 +827,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): ① 어업권 법리 반대로 서술돼 있던 것 정정(2010다57626: 반환청구 가능)+flags 잔재 문구 제거. 검수용 유지"
   },
   {
    "problemId": "a1a1a8e4-105d-4cec-9d2d-3415be8df2d7",
@@ -823,7 +838,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 실재 미확인 96다2887 인용 제거(통설 서술). 검수용 유지"
   },
   {
    "problemId": "4881e889-27e4-425b-bb0b-172c08a26cee",
@@ -833,7 +849,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 제190조 인도 법리 오설명 2곳 정정(간접점유 취득 구조)+내부 메모 제거. 검수용 유지"
   },
   {
    "problemId": "6d7ca5e1-8953-4b2f-99b7-c59eea3719f6",
@@ -843,7 +860,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 검증 완료 — 인용·판정 전부 정합. 선지 오탈자(반화)는 시험지 원문 동일(원문 충실 유지). 해제"
   },
   {
    "problemId": "20533845-04e2-4432-b829-8ef8f8632f38",
@@ -853,7 +871,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 검증 완료. 해제"
   },
   {
    "problemId": "9cd1ae7f-ea1b-44c8-bde1-f920284030d4",
@@ -863,7 +882,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 검증 완료 — 인용 실재·정합. 해제"
   },
   {
    "problemId": "ad908335-1330-44a2-aefb-4299e6690191",
@@ -873,7 +893,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): ★문항 본문에 보기 ㄱ~ㅁ 누락 → 시험지 원문(파싱 소스)으로 복원(45→478자). 검수용 유지"
   },
   {
    "problemId": "396855a5-fe86-41f2-ad15-8180fdda6925",
@@ -883,7 +904,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 검증 완료. 해제"
   },
   {
    "problemId": "81dd9828-11bc-411b-9497-8c25aeccb316",
@@ -893,7 +915,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 강사 원문 근접 표현 2문장 재서술(저작권). 검수용 유지"
   },
   {
    "problemId": "0393d90d-d36d-49a6-ba83-f10dd7ce70c6",
@@ -903,7 +926,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 검증 완료 — 인용·판정 전부 정합. 오탈자(항병권) 원문 동일(유지). 해제"
   },
   {
    "problemId": "70306a89-fdcf-4e33-8514-1a9c8011b6b6",
@@ -913,7 +937,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 검증 완료. 해제"
   },
   {
    "problemId": "fba60a6c-f48f-4c83-ad1b-82b3aadd7559",
@@ -923,7 +948,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 96다18182·97다50985·2002다31537 실재·배치 정확 확인. 해제"
   },
   {
    "problemId": "9cbdcc9a-435e-4eca-b610-3769066022ab",
@@ -933,7 +959,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): ③ 내부모순 해소 — 97다10864(불가분물 초과취소 가능) 명시, 출제 확정답 ② 단일임을 수험 유의로 서술. 검수용 유지(판례-지문 긴장 잔존)"
   },
   {
    "problemId": "dfb92272-fdd5-4200-a99a-6c208e719070",
@@ -943,7 +970,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 98다43601 전합 라벨 정정(공동저당 사안)·2000다48517 전합 표기 제거·90다카6399 실재 확인. 검수용 유지"
   },
   {
    "problemId": "c0460fc9-0b06-4717-ac0b-8ef8a6350a8e",
@@ -953,7 +981,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 2009다14340(무관 판례)→93다21569 교체. 검수용 유지"
   },
   {
    "problemId": "cfd26221-71d5-40f4-9022-13bfca8ce3f2",
@@ -963,7 +992,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 플래그=타출판사 대조 불가 메모(결함 아님)+내부 메모 잔존 정리. 해제"
   },
   {
    "problemId": "b3ce50ed-b5f8-4792-8296-2a5917d153b7",
@@ -973,7 +1003,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 제228조 여수급여청구권 주체·보상 오설명 정정+내부 메모 제거. 검수용 유지"
   },
   {
    "problemId": "e254b141-35dd-483b-a383-3e0e6a8e644a",
@@ -983,7 +1014,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 결함 없음 메모+내부 메모 정리. 해제"
   },
   {
    "problemId": "49bc96b1-0e82-48f5-8022-0f0c6efcf7a8",
@@ -993,7 +1025,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 결함 없음. 해제"
   },
   {
    "problemId": "f58c3f8b-3eb3-4fd6-8a5a-ed0b094cf99a",
@@ -1003,7 +1036,8 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 조문 병기 참고 메모(양쪽 다 정확). 해제"
   },
   {
    "problemId": "7ba24a89-52fc-4a87-9383-aacc3cbb3332",
@@ -1013,7 +1047,20 @@
    "reasons": [
     "기존:검증 플래그"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "기존플래그 처리(2026-07-05): 결함 없음(대조 불가 메모). 해제"
+  },
+  {
+   "problemId": "5e538bf6-ff5a-46ac-aac4-0156eba6cb5c",
+   "displayNo": null,
+   "year": 2021,
+   "q": 39,
+   "reasons": [
+    "신규:지문 전사오류 정정(ㄴ 없다→있다, 3자 출처 일치·공단키 정합)"
+   ],
+   "preexisting": false,
+   "resolved": "검수용 표시"
   }
- ]
+ ],
+ "memoLeakCleanup": "2026-07-05: 내부 검증/저작권 메모가 해설에 잔존하던 109건 전량 절단 정리(백업 tmp/jagwa/civil-p35/memo-leak-backup.json), 메모가 본문 결함을 지적한 2017#23·2020#17·2021#39 는 본문까지 정정"
 }
