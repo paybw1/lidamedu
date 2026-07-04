@@ -92,7 +92,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 검증 완료 — 개정·이력 서술 정확(2026-07-05: 2010#9 성년후견 병기 정확, 2020#19 전항정답 이력, 2017#1 판례 문구). 플래그 해제"
   },
   {
    "problemId": "219c08ad-b9db-400e-add3-16f969a5c62f",
@@ -102,7 +103,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "2208d118-660d-4a4b-b675-fb0981c371ad",
@@ -123,7 +125,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "2b1e8930-b421-4884-b282-1104e245b715",
@@ -144,7 +147,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "2e7e0b3e-d8dd-4b36-9e80-61491888eeae",
@@ -154,7 +158,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 기존 검증 플래그는 별도 유지"
   },
   {
    "problemId": "34267f79-e104-41fb-90d8-e9178fbb413c",
@@ -164,7 +169,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 처리 — 2020 전합 부기: 현행 기준 ㄱ '인도' 부분 부정(정답은 출제 당시 기준) 수험 유의 명시. 재검토 표시 유지(검수용)"
   },
   {
    "problemId": "34da636f-98f1-4532-b129-e27b82b5293c",
@@ -229,7 +235,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "C 처리 — 2020 전합(2018다287522) 부기: 보존행위→지분권 방해배제 구성 변경, 결론 유지. 기존 플래그 별도 유지"
   },
   {
    "problemId": "43c08ee4-8f3b-4827-b5a9-d54b78c30ee1",
@@ -239,7 +246,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 검증 완료 — 개정·이력 서술 정확(2026-07-05: 2010#9 성년후견 병기 정확, 2020#19 전항정답 이력, 2017#1 판례 문구). 플래그 해제"
   },
   {
    "problemId": "4a104c2a-8ac6-4a8b-879f-cec7d823dd09",
@@ -249,7 +257,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "4c7aa632-6ea6-4138-bb24-f3de0015b60f",
@@ -270,7 +279,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "62c5b75a-d0b8-403c-bb43-ced316b52b49",
@@ -280,7 +290,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "62fab7df-744f-4403-81d5-eb86e0794e4b",
@@ -335,7 +346,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 검증 완료 — 개정·이력 서술 정확(2026-07-05: 2010#9 성년후견 병기 정확, 2020#19 전항정답 이력, 2017#1 판례 문구). 플래그 해제"
   },
   {
    "problemId": "6f6635b6-f779-41fc-9881-e9f0960661c3",
@@ -345,7 +357,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "6ff82ab0-f232-4937-8716-9f3265686d93",
@@ -399,7 +412,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "7a5e8a3c-4af2-4be7-8d4b-c5419ca8dc72",
@@ -498,7 +512,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "a754e0e2-074b-4b2e-a96b-5884896e3037",
@@ -593,7 +608,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "df4a36cf-ed76-459c-b434-838ae760682c",
@@ -603,7 +619,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": true
+   "preexisting": true,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 기존 검증 플래그는 별도 유지"
   },
   {
    "problemId": "ea77d15e-0bb0-45c8-b36c-7cf596b9a472",
@@ -635,7 +652,8 @@
    "reasons": [
     "C:법개정문구"
    ],
-   "preexisting": false
+   "preexisting": false,
+   "resolved": "C 오탐 — '점유개정'의 '개정' 문자열 매칭(법개정 무관, 2026-07-05). 플래그 해제"
   },
   {
    "problemId": "f488b793-aa45-4485-ae93-a4d6dde6bc71",
