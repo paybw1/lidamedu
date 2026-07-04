@@ -1,0 +1,963 @@
+{
+ "createdAt": "2026-07-04T08:10:02.684Z",
+ "criteria": {
+  "C": "해설에 법개정 민감 문구(출제 당시/개정 전/현행법상 등) — 개정 반영 정합 확인",
+  "D": "해설 800자 미만 — 근거 보강",
+  "E": "판례 준거 문제인데 해설에 판례 인용(사건번호) 전무 — 근거 판례 확인·인용",
+  "기존": "민법 해설 프로젝트의 검증 플래그(책형·전사 검증 잔여)"
+ },
+ "items": [
+  {
+   "problemId": "076a8508-9c68-4bd3-acb6-dba4b88f99ad",
+   "displayNo": 9017,
+   "year": 2015,
+   "q": 7,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "0799805e-6ada-43eb-9952-d328e745f242",
+   "displayNo": 9188,
+   "year": 2019,
+   "q": 18,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "0c7aa4da-5257-455a-a5d2-92a4197259b7",
+   "displayNo": 8966,
+   "year": 2013,
+   "q": 36,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "0fe34dc4-ad3a-43a3-ae35-211780a7aefe",
+   "displayNo": 9034,
+   "year": 2015,
+   "q": 24,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "1195d14c-2e36-424f-8550-d0aa8b194013",
+   "displayNo": 9078,
+   "year": 2016,
+   "q": 28,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "11c0a2ad-d442-4a07-bf1e-8c04f3619ed6",
+   "displayNo": 9169,
+   "year": 2018,
+   "q": 39,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "15918e3f-23f0-4d35-b283-80b79b5a3cfd",
+   "displayNo": 9252,
+   "year": 2022,
+   "q": 2,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "18ea278b-af4f-493d-9f84-09f178b34e4f",
+   "displayNo": 8819,
+   "year": 2010,
+   "q": 9,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "219c08ad-b9db-400e-add3-16f969a5c62f",
+   "displayNo": 9150,
+   "year": 2018,
+   "q": 20,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "2208d118-660d-4a4b-b675-fb0981c371ad",
+   "displayNo": 8955,
+   "year": 2013,
+   "q": 25,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "22cb212a-d1e6-4923-9a00-8d05a6c9907f",
+   "displayNo": 9473,
+   "year": 2021,
+   "q": 23,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "2b1e8930-b421-4884-b282-1104e245b715",
+   "displayNo": 8891,
+   "year": 2012,
+   "q": 1,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "2c8bc311-375f-417c-a675-36dfad40a15d",
+   "displayNo": 8903,
+   "year": 2012,
+   "q": 13,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "2e7e0b3e-d8dd-4b36-9e80-61491888eeae",
+   "displayNo": 9454,
+   "year": 2021,
+   "q": 4,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "34267f79-e104-41fb-90d8-e9178fbb413c",
+   "displayNo": 9066,
+   "year": 2016,
+   "q": 16,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "34da636f-98f1-4532-b129-e27b82b5293c",
+   "displayNo": 8962,
+   "year": 2013,
+   "q": 32,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "372af9d9-bdfd-42d2-9334-acb2a96ee894",
+   "displayNo": 8979,
+   "year": 2014,
+   "q": 9,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "374fef9d-4615-4e1b-affa-42f078ab8346",
+   "displayNo": 8878,
+   "year": 2011,
+   "q": 28,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "37b44a58-4cfa-4085-ba00-9d15cfd6c9ae",
+   "displayNo": 9340,
+   "year": 2024,
+   "q": 10,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "3e5b48be-c657-44b1-a44f-b6be36c3f41a",
+   "displayNo": 8952,
+   "year": 2013,
+   "q": 22,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "42e8d4d1-bbc6-41bf-b654-e3ec2291f4fb",
+   "displayNo": 9026,
+   "year": 2015,
+   "q": 16,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "43c08ee4-8f3b-4827-b5a9-d54b78c30ee1",
+   "displayNo": 9229,
+   "year": 2020,
+   "q": 19,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "4a104c2a-8ac6-4a8b-879f-cec7d823dd09",
+   "displayNo": 9351,
+   "year": 2024,
+   "q": 21,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "4c7aa632-6ea6-4138-bb24-f3de0015b60f",
+   "displayNo": 9052,
+   "year": 2016,
+   "q": 2,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "501d944e-704c-4a87-8ef6-a43311a5bb43",
+   "displayNo": 9074,
+   "year": 2016,
+   "q": 24,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "62c5b75a-d0b8-403c-bb43-ced316b52b49",
+   "displayNo": 9463,
+   "year": 2021,
+   "q": 13,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "62fab7df-744f-4403-81d5-eb86e0794e4b",
+   "displayNo": 8969,
+   "year": 2013,
+   "q": 39,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "677f4b92-37b2-406c-b970-1d422b355e09",
+   "displayNo": 8917,
+   "year": 2012,
+   "q": 27,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "683aef08-1a8a-47ac-85a8-8d02091aef88",
+   "displayNo": 8931,
+   "year": 2013,
+   "q": 1,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "6ad71045-7507-4d85-a261-d943cfc4e1e8",
+   "displayNo": 8972,
+   "year": 2014,
+   "q": 2,
+   "reasons": [
+    "D:짧음701",
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "6f478faf-c992-46fe-9c61-fbfd1f16b825",
+   "displayNo": 9091,
+   "year": 2017,
+   "q": 1,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "6f6635b6-f779-41fc-9881-e9f0960661c3",
+   "displayNo": 9394,
+   "year": 2025,
+   "q": 24,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "6ff82ab0-f232-4937-8716-9f3265686d93",
+   "displayNo": 8934,
+   "year": 2013,
+   "q": 4,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "72caa082-deb6-4da2-8e55-aaf4c4fa9f3e",
+   "displayNo": 8910,
+   "year": 2012,
+   "q": 20,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "738893ee-dceb-459f-b458-29873a39e867",
+   "displayNo": 9359,
+   "year": 2024,
+   "q": 29,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "74b36081-517f-4bb7-ad46-13b2c8f00020",
+   "displayNo": 8828,
+   "year": 2010,
+   "q": 18,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "75ee4aa8-6763-4b3a-b7df-b569914aef62",
+   "displayNo": 9344,
+   "year": 2024,
+   "q": 14,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "7a5e8a3c-4af2-4be7-8d4b-c5419ca8dc72",
+   "displayNo": 9195,
+   "year": 2019,
+   "q": 25,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "81f37ede-fc36-4d5d-ae85-48ef8f255a64",
+   "displayNo": 9187,
+   "year": 2019,
+   "q": 17,
+   "reasons": [
+    "C:법개정문구",
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "8527edbd-3b31-4183-a003-7ede3705f07e",
+   "displayNo": 9023,
+   "year": 2015,
+   "q": 13,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "8d02b761-e471-4f90-b654-c32310eda476",
+   "displayNo": 8942,
+   "year": 2013,
+   "q": 12,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "8e31ca22-0f4b-4991-b484-fcef63c4af94",
+   "displayNo": 8935,
+   "year": 2013,
+   "q": 5,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "962ecbd2-801d-4b1e-a58a-c724dda2d690",
+   "displayNo": 8901,
+   "year": 2012,
+   "q": 11,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "9cc63f24-17c3-4972-b428-7e1153bf078d",
+   "displayNo": 9219,
+   "year": 2020,
+   "q": 9,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "a082ef91-c551-4bf7-a3a1-74475475e835",
+   "displayNo": 9213,
+   "year": 2020,
+   "q": 3,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "a3f2a435-2198-497f-a29c-1d8c848b0611",
+   "displayNo": 8945,
+   "year": 2013,
+   "q": 15,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "a754e0e2-074b-4b2e-a96b-5884896e3037",
+   "displayNo": 9075,
+   "year": 2016,
+   "q": 25,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "a7727bdd-1685-4e2d-815a-946b5bbc3dc3",
+   "displayNo": 9295,
+   "year": 2023,
+   "q": 5,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "adf2828e-564c-4678-b9a2-17d2e046bf8a",
+   "displayNo": 8921,
+   "year": 2012,
+   "q": 31,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "af11d40e-d44d-445e-bfb6-c61055d27b35",
+   "displayNo": 9421,
+   "year": 2026,
+   "q": 11,
+   "reasons": [
+    "D:짧음639"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "b87600b9-ca5e-4baf-acb2-d139f2302b95",
+   "displayNo": 8980,
+   "year": 2014,
+   "q": 10,
+   "reasons": [
+    "D:짧음760"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "c1eab4f7-e45c-4108-be18-c9b5db824c0b",
+   "displayNo": 9233,
+   "year": 2020,
+   "q": 23,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "cced1fb0-2a25-4fc6-b69d-914c1a370e23",
+   "displayNo": 8933,
+   "year": 2013,
+   "q": 3,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "d0437618-dac3-4ad7-b8ef-3ceeacdbd053",
+   "displayNo": 9057,
+   "year": 2016,
+   "q": 7,
+   "reasons": [
+    "D:짧음792"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "d8952eb5-fd4a-41ec-91cd-ce109925ddfb",
+   "displayNo": 9234,
+   "year": 2020,
+   "q": 24,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "df4a36cf-ed76-459c-b434-838ae760682c",
+   "displayNo": 8992,
+   "year": 2014,
+   "q": 22,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "ea77d15e-0bb0-45c8-b36c-7cf596b9a472",
+   "displayNo": 8932,
+   "year": 2013,
+   "q": 2,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "f1cdac4c-3873-4fae-ba7a-0bdd22c2edfd",
+   "displayNo": 8968,
+   "year": 2013,
+   "q": 38,
+   "reasons": [
+    "E:판례인용無"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "f2ed6706-ba6a-4fd1-bcc1-59c031b59d11",
+   "displayNo": 9266,
+   "year": 2022,
+   "q": 16,
+   "reasons": [
+    "C:법개정문구"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "f488b793-aa45-4485-ae93-a4d6dde6bc71",
+   "displayNo": 9411,
+   "year": 2026,
+   "q": 1,
+   "reasons": [
+    "D:짧음718"
+   ],
+   "preexisting": false
+  },
+  {
+   "problemId": "a858daf3-ff4a-42f9-9372-455d3d5c6fcd",
+   "displayNo": 8944,
+   "year": 2013,
+   "q": 14,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "10b4f82a-f967-4582-92e5-f91f834db3f3",
+   "displayNo": 8989,
+   "year": 2014,
+   "q": 19,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "aced6d8d-5f8d-4379-963e-a4124c616883",
+   "displayNo": 8998,
+   "year": 2014,
+   "q": 28,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "c8767f88-55dc-4ce5-b652-4657ecaae8b3",
+   "displayNo": 9000,
+   "year": 2014,
+   "q": 30,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "afde3c03-9fb3-4041-bb95-38fae9979f9a",
+   "displayNo": 8982,
+   "year": 2014,
+   "q": 12,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "9880a262-971d-4e65-ac1c-deeda696a613",
+   "displayNo": 9002,
+   "year": 2014,
+   "q": 32,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "4cf0cf5e-2e46-4cce-a797-ab64aa82d735",
+   "displayNo": 9059,
+   "year": 2016,
+   "q": 9,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "0f5e94fb-d870-423f-8c09-de382cfefde8",
+   "displayNo": 9419,
+   "year": 2026,
+   "q": 9,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "6c49fb8e-eaa8-4158-bb57-0dad416ed593",
+   "displayNo": 8983,
+   "year": 2014,
+   "q": 13,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "bf7b1edf-d119-4ec0-a49b-06ae99ecc2ef",
+   "displayNo": 9063,
+   "year": 2016,
+   "q": 13,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "025f424c-84bd-4fb3-a388-0e0d0d535a47",
+   "displayNo": 8984,
+   "year": 2014,
+   "q": 14,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "a564e8d3-66c1-406b-b054-97535de808f1",
+   "displayNo": 9088,
+   "year": 2016,
+   "q": 38,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "0c21f419-273c-4b39-818f-6870f727f1f4",
+   "displayNo": 9006,
+   "year": 2014,
+   "q": 36,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "bb8a28a4-d23f-4597-be7c-93a6bf67404a",
+   "displayNo": 9087,
+   "year": 2016,
+   "q": 37,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "eb41de5b-a6d4-49dd-b6a1-cba72de7689d",
+   "displayNo": 9090,
+   "year": 2016,
+   "q": 40,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "a1a1a8e4-105d-4cec-9d2d-3415be8df2d7",
+   "displayNo": 9420,
+   "year": 2026,
+   "q": 10,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "4881e889-27e4-425b-bb0b-172c08a26cee",
+   "displayNo": 9113,
+   "year": 2017,
+   "q": 23,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "6d7ca5e1-8953-4b2f-99b7-c59eea3719f6",
+   "displayNo": 8864,
+   "year": 2011,
+   "q": 14,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "20533845-04e2-4432-b829-8ef8f8632f38",
+   "displayNo": 8887,
+   "year": 2011,
+   "q": 37,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "9cd1ae7f-ea1b-44c8-bde1-f920284030d4",
+   "displayNo": 8868,
+   "year": 2011,
+   "q": 18,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "ad908335-1330-44a2-aefb-4299e6690191",
+   "displayNo": 9029,
+   "year": 2015,
+   "q": 19,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "396855a5-fe86-41f2-ad15-8180fdda6925",
+   "displayNo": 8890,
+   "year": 2011,
+   "q": 40,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "81dd9828-11bc-411b-9497-8c25aeccb316",
+   "displayNo": 8840,
+   "year": 2010,
+   "q": 30,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "0393d90d-d36d-49a6-ba83-f10dd7ce70c6",
+   "displayNo": 8882,
+   "year": 2011,
+   "q": 32,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "70306a89-fdcf-4e33-8514-1a9c8011b6b6",
+   "displayNo": 8884,
+   "year": 2011,
+   "q": 34,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "fba60a6c-f48f-4c83-ad1b-82b3aadd7559",
+   "displayNo": 8974,
+   "year": 2014,
+   "q": 4,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "9cbdcc9a-435e-4eca-b610-3769066022ab",
+   "displayNo": 9005,
+   "year": 2014,
+   "q": 35,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "dfb92272-fdd5-4200-a99a-6c208e719070",
+   "displayNo": 9068,
+   "year": 2016,
+   "q": 18,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "c0460fc9-0b06-4717-ac0b-8ef8a6350a8e",
+   "displayNo": 9163,
+   "year": 2018,
+   "q": 33,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "cfd26221-71d5-40f4-9022-13bfca8ce3f2",
+   "displayNo": 9217,
+   "year": 2020,
+   "q": 7,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "b3ce50ed-b5f8-4792-8296-2a5917d153b7",
+   "displayNo": 9227,
+   "year": 2020,
+   "q": 17,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "e254b141-35dd-483b-a383-3e0e6a8e644a",
+   "displayNo": 9261,
+   "year": 2022,
+   "q": 11,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "49bc96b1-0e82-48f5-8022-0f0c6efcf7a8",
+   "displayNo": 9293,
+   "year": 2023,
+   "q": 3,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "f58c3f8b-3eb3-4fd6-8a5a-ed0b094cf99a",
+   "displayNo": 9310,
+   "year": 2023,
+   "q": 20,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  },
+  {
+   "problemId": "7ba24a89-52fc-4a87-9383-aacc3cbb3332",
+   "displayNo": 9474,
+   "year": 2021,
+   "q": 24,
+   "reasons": [
+    "기존:검증 플래그"
+   ],
+   "preexisting": true
+  }
+ ]
+}
