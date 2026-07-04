@@ -18,6 +18,7 @@ import { z } from "zod";
 
 import { claimSession } from "~/core/lib/single-session.server";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { recordLoginAccess } from "~/features/auth/lib/access-log.server";
 
 /**
  * Meta function for the social authentication complete page
@@ -114,6 +115,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (user) {
     await claimSession(client, request, headers);
+    // 접속 이력 기록 (/admin/access-logs) — 실패해도 로그인 진행.
+    await recordLoginAccess(user.id, request);
     // feat-000-016 2단계 — 이전 기기 세션(refresh 토큰) 폐기(심층 방어). scope:"others"는
     // 방금 만든 현재 세션은 유지한다. 실패해도 로그인은 진행(보조 수단이라 방어적 처리).
     try {

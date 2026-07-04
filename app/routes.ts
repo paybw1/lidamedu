@@ -549,6 +549,16 @@ export default [
         "features/admin/screens/admin-orphan-highlights.tsx",
       ),
       route("/admin/users", "features/admin/screens/admin-users.tsx"),
+      // 접속이력·탈퇴 관리 (admin 전용).
+      route(
+        "/admin/access-logs",
+        "features/admin/screens/admin-access-logs.tsx",
+      ),
+      route(
+        "/admin/withdrawals",
+        "features/admin/screens/admin-withdrawals.tsx",
+      ),
+      route("/api/admin/withdrawal", "features/admin/api/withdrawal.tsx"),
       route(
         "/admin/popup-notices",
         "features/admin/screens/admin-popup-notices.tsx",
