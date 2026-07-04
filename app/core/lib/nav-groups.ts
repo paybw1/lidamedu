@@ -175,8 +175,10 @@ export const LOCKED_DIM_CLASS =
 export const LOCKED_HINT = "구독 시 이용 가능";
 
 // 콘텐츠 고도화 전 학생 비활성 과목 — 등급·구매 여부와 무관하게 학생에게 잠금(staff 만 접근).
-//   민법(객관식 전량 검토 대기)·민사소송법(조문 미적재). 준비되면 여기서 제거.
+//   현재 학생 노출 허용 = 특허법·자연과학뿐. 나머지는 준비되는 대로 여기서 제거.
 export const STUDENT_DISABLED_SUBJECTS: ReadonlyArray<string> = [
+  "trademark",
+  "design",
   "civil",
   "civil-procedure",
 ];
