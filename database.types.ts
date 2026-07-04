@@ -5512,6 +5512,7 @@ export type Database = {
           highlight_color_aliases: Json
           is_synthetic: boolean
           marketing_consent: boolean
+          member_no: number | null
           membership_test_grade: string | null
           my_analysis_consent_at: string | null
           name: string
@@ -5542,6 +5543,7 @@ export type Database = {
           highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
+          member_no?: number | null
           membership_test_grade?: string | null
           my_analysis_consent_at?: string | null
           name: string
@@ -5572,6 +5574,7 @@ export type Database = {
           highlight_color_aliases?: Json
           is_synthetic?: boolean
           marketing_consent?: boolean
+          member_no?: number | null
           membership_test_grade?: string | null
           my_analysis_consent_at?: string | null
           name?: string
@@ -6470,6 +6473,54 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "systematic_nodes"
             referencedColumns: ["node_id"]
+          },
+        ]
+      }
+      user_access_logs: {
+        Row: {
+          browser: string | null
+          client: string | null
+          created_at: string
+          device: string | null
+          ip: string | null
+          kind: string
+          log_id: string
+          user_id: string | null
+        }
+        Insert: {
+          browser?: string | null
+          client?: string | null
+          created_at?: string
+          device?: string | null
+          ip?: string | null
+          kind?: string
+          log_id?: string
+          user_id?: string | null
+        }
+        Update: {
+          browser?: string | null
+          client?: string | null
+          created_at?: string
+          device?: string | null
+          ip?: string | null
+          kind?: string
+          log_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_access_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_access_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -7470,6 +7521,80 @@ export type Database = {
           {
             foreignKeyName: "user_subscriptions_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      user_withdrawals: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          member_no: number | null
+          reason: string | null
+          status: string
+          user_id: string | null
+          user_login_id: string | null
+          user_name: string | null
+          withdrawal_id: string
+          withdrawn_at: string
+          withdrawn_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          member_no?: number | null
+          reason?: string | null
+          status?: string
+          user_id?: string | null
+          user_login_id?: string | null
+          user_name?: string | null
+          withdrawal_id?: string
+          withdrawn_at?: string
+          withdrawn_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          member_no?: number | null
+          reason?: string | null
+          status?: string
+          user_id?: string | null
+          user_login_id?: string | null
+          user_name?: string | null
+          withdrawal_id?: string
+          withdrawn_at?: string
+          withdrawn_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_withdrawals_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_withdrawals_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_withdrawals_withdrawn_by_fkey"
+            columns: ["withdrawn_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_withdrawals_withdrawn_by_fkey"
+            columns: ["withdrawn_by"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]

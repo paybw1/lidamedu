@@ -183,17 +183,19 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <IndexTable
-          minWidth={1160}
+          minWidth={1280}
           headers={[
             { label: "No", align: "center", width: "3rem" },
-            { label: "이름 · 닉네임", width: "12rem" },
+            { label: "회원번호", align: "center", width: "4.5rem" },
+            { label: "소속", width: "7rem" },
+            { label: "회원명 (회원아이디)", width: "13rem" },
+            { label: "휴대전화", width: "8.5rem" },
             { label: "이메일" },
-            { label: "전화번호", width: "9rem" },
-            { label: "주소" },
-            { label: "역할", width: "9rem" },
-            { label: "이용 승인", width: "8rem" },
-            { label: "가입일", align: "right", width: "7rem" },
-            { label: "마지막 로그인", align: "right", width: "8rem" },
+            { label: "수강", width: "9rem" },
+            { label: "실결제금액", align: "right", width: "7rem" },
+            { label: "접속일", align: "right", width: "6.5rem" },
+            { label: "가입일", align: "right", width: "6.5rem" },
+            { label: "상태", width: "11rem" },
           ]}
           footer={
             <div className="border-border/60 flex items-center justify-between border-t px-3 py-2">
@@ -253,10 +255,25 @@ function UserRow({
   const err =
     fetcher.data && "error" in fetcher.data ? fetcher.data.error : null;
 
+  // 회원아이디 = 이메일 로컬파트 (카카오 단일 로그인).
+  const loginId = user.email ? user.email.split("@")[0] : null;
+
   return (
     <TR>
       <TD align="center" soft mono>
         {index}
+      </TD>
+      <TD align="center" mono>
+        {user.memberNo ?? "—"}
+      </TD>
+      <TD soft>
+        {user.cohortNames.length > 0 ? (
+          <span className="block max-w-[7rem] truncate" title={user.cohortNames.join(", ")}>
+            {user.cohortNames.join(", ")}
+          </span>
+        ) : (
+          "—"
+        )}
       </TD>
       <TD>
         <div className="flex items-center gap-2">
@@ -273,6 +290,9 @@ function UserRow({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="font-medium">{user.name || "—"}</span>
+              {loginId ? (
+                <span className="text-muted-foreground text-[11px]">({loginId})</span>
+              ) : null}
               {isCurrentUser ? <Chip tone="outline">본인</Chip> : null}
             </div>
             {user.nickname && user.nickname !== user.name ? (
@@ -282,6 +302,9 @@ function UserRow({
             ) : null}
           </div>
         </div>
+      </TD>
+      <TD soft mono>
+        {user.phoneE164 ?? "—"}
       </TD>
       <TD soft>
         <span className="inline-flex items-center gap-1">
@@ -295,57 +318,66 @@ function UserRow({
           />
         ) : null}
       </TD>
-      <TD soft mono>
-        {user.phoneE164 ?? "—"}
-      </TD>
-      <TD soft>
-        <span className="block max-w-[22rem] truncate" title={user.address ?? undefined}>
-          {user.address ?? "—"}
-        </span>
-      </TD>
       <TD>
-        <fetcher.Form method="post" action="/api/admin/user-role">
-          <input type="hidden" name="profileId" value={user.profileId} />
-          {/* 역할 변경은 위험 동작 — 코랄 계열 select + confirm */}
-          <select
-            name="role"
-            defaultValue={user.role}
-            disabled={isCurrentUser || fetcher.state !== "idle"}
-            onChange={(e) => {
-              const next = e.currentTarget.value;
-              if (
-                confirm(
-                  `역할을 "${ROLE_LABEL[next as UserRole]}"으로 변경합니까? (되돌리기 가능)`,
-                )
-              ) {
-                e.currentTarget.form?.requestSubmit();
-              } else {
-                // 원복
-                e.currentTarget.value = user.role;
-              }
-            }}
-            className={`border-input bg-background h-7 rounded-md border px-2 text-xs disabled:opacity-50 ${isCurrentUser ? "" : "focus:border-rose-400"}`}
-            title={isCurrentUser ? "본인 역할은 변경 불가" : "역할 변경 (위험 동작)"}
-            aria-label={`${user.name || "사용자"} 역할`}
+        {user.cohortNames.length > 0 ? (
+          <Chip tone="violet">종합반</Chip>
+        ) : user.activePlanNames.length > 0 ? (
+          <span
+            className="block max-w-[9rem] truncate text-[12px]"
+            title={user.activePlanNames.join(", ")}
           >
-            <option value="student">수험생</option>
-            <option value="instructor">강사</option>
-            <option value="manager">관리자</option>
-            <option value="admin">원장</option>
-          </select>
-          {err ? (
-            <p className="text-rose-600 mt-0.5 text-[10px]">{err}</p>
-          ) : null}
-        </fetcher.Form>
+            {user.activePlanNames.join(", ")}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
       </TD>
-      <TD>
-        <AccessApprovalCell user={user} />
+      <TD align="right" mono>
+        {user.netPaidKrw > 0 ? `₩${user.netPaidKrw.toLocaleString("ko-KR")}` : "—"}
+      </TD>
+      <TD align="right" mono soft>
+        {user.lastSignInAt ? user.lastSignInAt.slice(0, 10) : "—"}
       </TD>
       <TD align="right" mono soft>
         {user.createdAt.slice(0, 10)}
       </TD>
-      <TD align="right" mono soft>
-        {user.lastSignInAt ? user.lastSignInAt.slice(0, 10) : "—"}
+      <TD>
+        <div className="flex flex-col gap-1">
+          <AccessApprovalCell user={user} />
+          <fetcher.Form method="post" action="/api/admin/user-role">
+            <input type="hidden" name="profileId" value={user.profileId} />
+            {/* 역할 변경은 위험 동작 — 코랄 계열 select + confirm */}
+            <select
+              name="role"
+              defaultValue={user.role}
+              disabled={isCurrentUser || fetcher.state !== "idle"}
+              onChange={(e) => {
+                const next = e.currentTarget.value;
+                if (
+                  confirm(
+                    `역할을 "${ROLE_LABEL[next as UserRole]}"으로 변경하시겠습니까? (되돌리기 가능)`,
+                  )
+                ) {
+                  e.currentTarget.form?.requestSubmit();
+                } else {
+                  // 원복
+                  e.currentTarget.value = user.role;
+                }
+              }}
+              className={`border-input bg-background h-6 rounded-md border px-1.5 text-[11px] disabled:opacity-50 ${isCurrentUser ? "" : "focus:border-rose-400"}`}
+              title={isCurrentUser ? "본인 역할은 변경 불가" : "역할 변경 (위험 동작)"}
+              aria-label={`${user.name || "사용자"} 역할`}
+            >
+              <option value="student">수험생</option>
+              <option value="instructor">강사</option>
+              <option value="manager">관리자</option>
+              <option value="admin">원장</option>
+            </select>
+            {err ? (
+              <p className="text-rose-600 mt-0.5 text-[10px]">{err}</p>
+            ) : null}
+          </fetcher.Form>
+        </div>
       </TD>
     </TR>
   );
