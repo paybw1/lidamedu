@@ -26,6 +26,7 @@ import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import { Input } from "~/core/components/ui/input";
 import { Textarea } from "~/core/components/ui/textarea";
+import { assertSubjectWritable } from "~/core/lib/staff-subject-guard.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
@@ -291,6 +292,16 @@ export async function action({ params, request }: Route.ActionArgs) {
   if (!user) return { ok: false, error: "Unauthorized" } as const;
   const role = await getStaffRole(client, user.id);
   if (!role) return { ok: false, error: "Forbidden" } as const;
+
+  // feat-7-041 — 강사는 담당 과목 문제만 수정 가능(admin/manager 는 전 과목).
+  if (role === "instructor") {
+    const { data: prob } = await client
+      .from("problems")
+      .select("laws(law_code)")
+      .eq("problem_id", problemId)
+      .maybeSingle();
+    await assertSubjectWritable(role, user.id, prob?.laws?.law_code ?? []);
+  }
 
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "save");

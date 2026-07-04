@@ -4,6 +4,7 @@ import type { Json } from "database.types";
 import { data, redirect } from "react-router";
 import { z } from "zod";
 
+import { assertSubjectWritable } from "~/core/lib/staff-subject-guard.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { reindexCases } from "~/features/ai-qna/lib/source-chunker.server";
@@ -132,6 +133,24 @@ export async function action({ request }: Route.ActionArgs) {
 
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
+
+  // feat-7-041 — 강사는 담당 과목 판례만 쓰기 가능(admin/manager 전 과목).
+  // 대상 판례의 subject_laws(복수 과목 가능) 중 하나라도 담당이면 허용.
+  if (role === "instructor") {
+    const targetCaseId = String(fd.get("caseId") ?? "");
+    if (z.string().uuid().safeParse(targetCaseId).success) {
+      const { data: target } = await client
+        .from("cases")
+        .select("subject_laws")
+        .eq("case_id", targetCaseId)
+        .maybeSingle();
+      await assertSubjectWritable(role, user.id, target?.subject_laws ?? []);
+    } else {
+      // 신규 등록 — 폼의 과목 필드 기준.
+      const subj = emptyToNull(fd.get("subjectLaws")) ?? emptyToNull(fd.get("law"));
+      await assertSubjectWritable(role, user.id, subj ? subj.split(",").map((s) => s.trim()) : []);
+    }
+  }
 
   if (intent === "delete") {
     const caseId = String(fd.get("caseId") ?? "");

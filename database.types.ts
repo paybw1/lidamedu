@@ -3846,6 +3846,56 @@ export type Database = {
           },
         ]
       }
+      instructor_subjects: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          instructor_id: string
+          subject_code: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          instructor_id: string
+          subject_code: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          instructor_id?: string
+          subject_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_subjects_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_subjects_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_subjects_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_subjects_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       law_revisions: {
         Row: {
           comparison_pdf: string | null

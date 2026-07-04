@@ -559,6 +559,11 @@ export default [
         "features/admin/screens/admin-withdrawals.tsx",
       ),
       route("/api/admin/withdrawal", "features/admin/api/withdrawal.tsx"),
+      // feat-7-041 — 강사 관리 (admin): 담당 과목 지정 + 배분 규칙 연결.
+      route(
+        "/admin/instructors",
+        "features/admin/screens/admin-instructors.tsx",
+      ),
       // 시험일 관리 (manager+) — 학생 목표 폼 "응시 시험" 시험일 자동 파생 SSOT.
       route(
         "/admin/exam-schedules",

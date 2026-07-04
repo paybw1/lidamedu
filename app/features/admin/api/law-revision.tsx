@@ -3,6 +3,7 @@
 import { data } from "react-router";
 import { z } from "zod";
 
+import { assertSubjectWritable } from "~/core/lib/staff-subject-guard.server";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { reindexArticles } from "~/features/ai-qna/lib/source-chunker.server";
@@ -51,6 +52,30 @@ export async function action({ request }: Route.ActionArgs) {
 
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
+
+  // feat-7-041 — 강사는 담당 과목 법령의 개정 작업만 가능(admin/manager 전 과목).
+  if (role === "instructor") {
+    const uuid = z.string().uuid();
+    let lawCode: string | null = null;
+    const lawIdRaw = String(fd.get("lawId") ?? "");
+    const revIdRaw = String(fd.get("lawRevisionId") ?? "");
+    if (uuid.safeParse(lawIdRaw).success) {
+      const { data: law } = await client
+        .from("laws")
+        .select("law_code")
+        .eq("law_id", lawIdRaw)
+        .maybeSingle();
+      lawCode = law?.law_code ?? null;
+    } else if (uuid.safeParse(revIdRaw).success) {
+      const { data: rev } = await client
+        .from("law_revisions")
+        .select("laws(law_code)")
+        .eq("law_revision_id", revIdRaw)
+        .maybeSingle();
+      lawCode = rev?.laws?.law_code ?? null;
+    }
+    await assertSubjectWritable(role, user.id, lawCode ?? []);
+  }
 
   if (intent === "create") {
     const schema = z.object({

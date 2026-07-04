@@ -155,6 +155,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: UsersIcon,
     screens: [
       { label: "수강생 목록", to: "/admin/users" },
+      // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
+      { label: "강사 관리", to: "/admin/instructors" },
       { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
       // feat-7-014 — manager+ 전용. 메뉴는 노출, loader 에서 차단.
       { label: "수강권 관리", to: "/admin/subscriptions" },
