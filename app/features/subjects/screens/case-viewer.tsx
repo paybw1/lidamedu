@@ -430,7 +430,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         active="cases"
                         counts={loaderData.axisCounts}
                         showSubjective={loaderData.isStaff}
-                        className="mx-2 mt-2"
+                        className="rounded-t-[11px]"
                       />
                     }
                   />

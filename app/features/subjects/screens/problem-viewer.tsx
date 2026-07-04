@@ -834,7 +834,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       active={isSubjectiveProblem ? "subjective" : "problems"}
                       counts={loaderData.axisCounts}
                       showSubjective={isStaff}
-                      className="mx-2 mt-2"
+                      className=""
                     />
                     <div className="flex justify-end px-3 py-2">
                       <SortAxisToggle size="sm" disabledAxes={["statutory"]} />

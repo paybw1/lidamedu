@@ -422,7 +422,7 @@ function Inner({
                   active="articles"
                   counts={loaderData.axisCounts}
                   showSubjective={loaderData.isStaff}
-                  className="mt-1"
+                  className="-mx-4 -mt-4 rounded-t-[11px]"
                 />
                 <div className="flex items-center justify-between gap-2 py-2">
                   {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}

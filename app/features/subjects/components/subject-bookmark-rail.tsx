@@ -90,11 +90,12 @@ export function BookmarkTabInner({
 }
 
 /**
- * 상세 뷰어용 축 내비 — 좌측 트리 패널 헤더 상단의 네이비 탭 스트립.
+ * 상세 뷰어용 축 내비 — 좌측 트리 패널 상단 전체 폭의 네이비 스트립(시안 E2b).
  * 세로 레일(구 SubjectBookmarkRail)을 패널 안으로 옮긴 것.
  *
- * 스트립 전체가 파란(primary) 배경이고 선택된 축만 흰(card) 칩으로 반전 —
- * "콘텐츠 축 전환"이 헤더에서 가장 강한 위계임이 색 무게로 드러난다.
+ * 4칸은 얇은 흰 구분선으로 나뉘고, 선택된 축만 밝은 네이비로 점등되면서
+ * 스트립 아래로 살짝 돌출(내려오는 탭) — "이 축이 아래 내용을 잡고 있다"는
+ * 물리 은유. 색은 primary 위 검정/흰 오버레이로 파생해 다크 모드도 자동 대응.
  * 각 항목 = 해당 축 과목 색인으로 가는 링크. 라벨은 한 줄 고정(whitespace-nowrap).
  */
 export function SubjectAxisNav({
@@ -115,7 +116,7 @@ export function SubjectAxisNav({
     <nav
       aria-label="과목 학습 영역"
       className={cn(
-        "bg-primary flex items-stretch gap-[2px] rounded-lg p-[3px]",
+        "bg-primary relative flex items-stretch divide-x divide-white/15",
         className,
       )}
     >
@@ -132,11 +133,14 @@ export function SubjectAxisNav({
               viewTransition
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-px rounded-md px-1 py-1.5 leading-tight transition-colors",
+                "flex flex-1 flex-col items-center justify-center gap-px px-1 py-2 leading-tight",
+                "transition-all duration-150",
                 "focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none focus-visible:ring-inset",
                 isActive
-                  ? "bg-card text-link shadow-sm"
-                  : "text-primary-foreground/80 hover:bg-white/10 hover:text-primary-foreground",
+                  ? // 선택 = 밝은 네이비 + 아래로 6px 돌출(내려오는 탭) + 그림자.
+                    "z-10 -mb-1.5 rounded-b-lg bg-white/20 pb-3.5 text-white shadow-[0_3px_8px_rgba(15,35,75,0.3)]"
+                  : // 미선택 = 더 어두운 네이비. 호버 시 부드럽게 밝아짐(애니메이션).
+                    "bg-black/20 text-white/65 hover:bg-black/5 hover:text-white",
               )}
             >
               <span
@@ -148,7 +152,7 @@ export function SubjectAxisNav({
                 {axis.label}
               </span>
               {count !== undefined ? (
-                <span className="text-[9px] font-semibold whitespace-nowrap opacity-70 tabular-nums">
+                <span className="text-[9px] font-semibold whitespace-nowrap opacity-75 tabular-nums">
                   {count.toLocaleString("ko-KR")}
                 </span>
               ) : null}
