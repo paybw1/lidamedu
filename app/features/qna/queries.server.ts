@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { accrueQnaAnswerCredit } from "~/features/qna/rewards.server";
+
 import type {
   QnaCitation,
   QnaMessage,
@@ -478,6 +480,12 @@ export async function answerThread(
     .select(DETAIL_COLUMNS)
     .single();
   if (error) throw error;
+  // feat-7-042 — 강사 답변 적립(스레드당 1건, 실패해도 답변은 성공 처리).
+  try {
+    await accrueQnaAnswerCredit(answerer_id, threadId);
+  } catch {
+    // 적립 실패는 무시 — 지급 화면 대사에서 발견 가능.
+  }
   return toDetail(data as unknown as RawDetailRow);
 }
 

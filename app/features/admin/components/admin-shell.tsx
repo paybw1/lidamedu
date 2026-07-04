@@ -178,6 +178,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "할인 관리", to: "/admin/discounts" },
       { label: "강사 배분 기준", to: "/admin/settlements/rules" },
       { label: "강사 정산", to: "/admin/settlements" },
+      { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards" },
     ],
   },
   {

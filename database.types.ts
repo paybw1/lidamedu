@@ -3610,6 +3610,62 @@ export type Database = {
           },
         ]
       }
+      instructor_qna_credits: {
+        Row: {
+          amount_krw: number
+          created_at: string
+          credit_id: string
+          instructor_id: string
+          payout_id: string | null
+          thread_id: string
+        }
+        Insert: {
+          amount_krw: number
+          created_at?: string
+          credit_id?: string
+          instructor_id: string
+          payout_id?: string | null
+          thread_id: string
+        }
+        Update: {
+          amount_krw?: number
+          created_at?: string
+          credit_id?: string
+          instructor_id?: string
+          payout_id?: string | null
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_qna_credits_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_qna_credits_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "instructor_qna_credits_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "qna_reward_payouts"
+            referencedColumns: ["payout_id"]
+          },
+          {
+            foreignKeyName: "instructor_qna_credits_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: true
+            referencedRelation: "qna_threads"
+            referencedColumns: ["thread_id"]
+          },
+        ]
+      }
       instructor_settlement_items: {
         Row: {
           base_amount_krw: number
@@ -5822,6 +5878,107 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "qna_messages"
             referencedColumns: ["message_id"]
+          },
+        ]
+      }
+      qna_reward_payouts: {
+        Row: {
+          amount_krw: number
+          credit_count: number
+          instructor_id: string
+          memo: string | null
+          paid_at: string
+          paid_by: string | null
+          payout_id: string
+        }
+        Insert: {
+          amount_krw: number
+          credit_count?: number
+          instructor_id: string
+          memo?: string | null
+          paid_at?: string
+          paid_by?: string | null
+          payout_id?: string
+        }
+        Update: {
+          amount_krw?: number
+          credit_count?: number
+          instructor_id?: string
+          memo?: string | null
+          paid_at?: string
+          paid_by?: string | null
+          payout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qna_reward_payouts_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_reward_payouts_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_reward_payouts_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_reward_payouts_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      qna_reward_settings: {
+        Row: {
+          id: boolean
+          is_active: boolean
+          payout_threshold_krw: number
+          unit_krw: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          is_active?: boolean
+          payout_threshold_krw?: number
+          unit_krw?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          is_active?: boolean
+          payout_threshold_krw?: number
+          unit_krw?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qna_reward_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "qna_reward_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
           },
         ]
       }

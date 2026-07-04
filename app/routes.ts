@@ -820,6 +820,11 @@ export default [
         "/api/admin/share-rule",
         "features/subscriptions/api/admin-share-rule.tsx",
       ),
+      // feat-7-042 — Q&A 답변 적립·지급 (manager+).
+      route(
+        "/admin/settlements/qna-rewards",
+        "features/admin/screens/admin-qna-rewards.tsx",
+      ),
       // feat-8-029 Stage 3 — 강사 정산 (manager+).
       route(
         "/admin/settlements",
