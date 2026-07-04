@@ -143,20 +143,24 @@ export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <AreaTabs
-        ariaLabel="학습과목"
-        items={tabItems}
-        rightSlot={
-          axisData && currentSubject ? (
-            <SubjectAxisChips
-              subjectSlug={currentSubject}
-              active={activeAxis}
-              counts={axisData.axisCounts}
-              showSubjective={isStaff}
-            />
-          ) : undefined
-        }
-      />
+      {/* SectionTabs 는 -mx-4(full-bleed) 전제라 패딩 컨테이너로 감싸 상쇄 —
+          맨몸으로 두면 우측 16px 초과로 모바일 가로 스크롤이 생긴다. */}
+      <div className="overflow-x-clip px-4 sm:px-6 md:px-8">
+        <AreaTabs
+          ariaLabel="학습과목"
+          items={tabItems}
+          rightSlot={
+            axisData && currentSubject ? (
+              <SubjectAxisChips
+                subjectSlug={currentSubject}
+                active={activeAxis}
+                counts={axisData.axisCounts}
+                showSubjective={isStaff}
+              />
+            ) : undefined
+          }
+        />
+      </div>
       <Outlet />
     </>
   );

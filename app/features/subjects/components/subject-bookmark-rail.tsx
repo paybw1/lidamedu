@@ -97,13 +97,14 @@ export function BookmarkTabInner({
 }
 
 /**
- * 축 내비 칩 그룹(시안 G2) — 상단 학습과목 바 우측에 놓는 아이콘 칩 4개.
- * "특허법(과목) + 조문(공부 대상)"을 화면 최상단에서 특정한다.
+ * 축 내비 칩 그룹 — 상단 학습과목 바 둘째 줄(모바일 전용).
+ * PC 는 허브의 세로 책갈피 레일이 축 전환을 담당하므로 SectionTabs 가
+ * lg+ 에서 이 슬롯을 렌더하지 않는다.
  *
- * 선택된 축 = 네이비 채움 + 라벨·카운트 고정 표시. 미선택 = 아이콘만 보이는
- * 원형 칩, 호버·포커스 시 라벨과 카운트가 확장 애니메이션으로 펼쳐진다.
- * 각 항목 = 해당 축 과목 색인으로 가는 링크. subjects.layout 이 자식 라우트의
- * loaderData(axisCounts)를 useMatches 로 읽어 렌더한다.
+ * 선택된 축 = 네이비 채움, 미선택 = 테두리 칩. 라벨·카운트는 항상 펼침
+ * (터치 환경 — 호버 없음). 각 항목 = 해당 축 과목 색인으로 가는 링크.
+ * subjects.layout 이 자식 라우트의 loaderData(axisCounts)를 useMatches 로
+ * 읽어 렌더한다.
  */
 export function SubjectAxisChips({
   subjectSlug,
@@ -147,17 +148,7 @@ export function SubjectAxisChips({
               )}
             >
               <Icon className="size-3.5 shrink-0" />
-              {/* 라벨+카운트 — 선택 칩은 고정, 나머지는 호버/포커스 시 확장(G2 애니메이션). */}
-              <span
-                className={cn(
-                  "flex items-baseline gap-1 overflow-hidden whitespace-nowrap",
-                  "transition-all duration-200 ease-out motion-reduce:transition-none",
-                  isActive
-                    ? "ml-1.5 max-w-24 opacity-100"
-                    : // 모바일(호버 없음)은 항상 펼침 — 축소·호버 확장은 데스크톱(lg+)만.
-                      "ml-1.5 max-w-24 opacity-100 lg:ml-0 lg:max-w-0 lg:opacity-0 lg:group-hover:ml-1.5 lg:group-hover:max-w-24 lg:group-hover:opacity-100 lg:group-focus-visible:ml-1.5 lg:group-focus-visible:max-w-24 lg:group-focus-visible:opacity-100",
-                )}
-              >
+              <span className="ml-1.5 flex items-baseline gap-1 whitespace-nowrap">
                 {axis.label}
                 {count !== undefined ? (
                   <span

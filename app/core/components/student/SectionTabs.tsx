@@ -142,10 +142,8 @@ export function SectionTabs({
           );
         })}
         </div>
-        {/* 우측 슬롯(축 칩) — 데스크톱은 같은 줄 우측 끝. */}
-        {rightSlot ? <div className="hidden lg:block">{rightSlot}</div> : null}
       </div>
-      {/* 모바일: 축 칩을 둘째 줄로 내림 — 탭 줄 폭을 뺏지 않는다. */}
+      {/* 우측 슬롯(축 칩) — 모바일 전용 둘째 줄. PC 는 허브 책갈피 레일이 담당해 숨김. */}
       {rightSlot ? (
         <div className="mx-auto max-w-screen-xl overflow-x-auto pb-2 lg:hidden">
           {rightSlot}
