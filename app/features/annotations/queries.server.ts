@@ -271,18 +271,30 @@ export async function getBookmarksByTargets(
   targetIds: string[],
 ): Promise<Record<string, BookmarkRecord>> {
   if (targetIds.length === 0) return {};
-  const { data, error } = await client
-    .from("user_bookmarks")
-    .select(
-      "bookmark_id, target_id, star_level, note_md, step_notes, updated_at",
-    )
-    .eq("user_id", userId)
-    .eq("target_type", targetType)
-    .in("target_id", targetIds)
-    .is("deleted_at", null);
-  if (error) throw error;
+  // .in() 은 GET 쿼리스트링 — chapter 뷰어의 OX ref 처럼 수천 개면 URL 길이
+  // 초과로 400 이 난다. 배치로 나눠 조회 후 병합.
+  const CHUNK = 150;
+  const chunks: string[][] = [];
+  for (let i = 0; i < targetIds.length; i += CHUNK) {
+    chunks.push(targetIds.slice(i, i + CHUNK));
+  }
+  const results = await Promise.all(
+    chunks.map(async (ids) => {
+      const { data, error } = await client
+        .from("user_bookmarks")
+        .select(
+          "bookmark_id, target_id, star_level, note_md, step_notes, updated_at",
+        )
+        .eq("user_id", userId)
+        .eq("target_type", targetType)
+        .in("target_id", ids)
+        .is("deleted_at", null);
+      if (error) throw error;
+      return data ?? [];
+    }),
+  );
   const out: Record<string, BookmarkRecord> = {};
-  for (const row of data ?? []) {
+  for (const row of results.flat()) {
     out[row.target_id] = {
       bookmarkId: row.bookmark_id,
       starLevel: row.star_level,

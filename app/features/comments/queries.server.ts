@@ -65,6 +65,10 @@ function mapComment(r: CommentRow): ContentComment {
   };
 }
 
+// PostgREST .in() 은 GET 쿼리스트링이라 ID 가 수천 개면 URL 길이 초과로 400 이 난다
+// (chapter 뷰어의 OX choice ref 등). 게이트웨이 한계 아래로 안전한 배치 크기.
+const IN_CHUNK_SIZE = 150;
+
 // 여러 target 일괄 fetch — chapter/systematic 뷰어처럼 N개 조문이 한 화면에 노출될 때.
 export async function listCommentsBulk(
   client: SupabaseClient<Database>,
@@ -72,17 +76,27 @@ export async function listCommentsBulk(
   targetIds: string[],
 ): Promise<Record<string, ContentComment[]>> {
   if (targetIds.length === 0) return {};
-  const { data, error } = await client
-    .from("content_comments")
-    .select(COMMENT_COLUMNS)
-    .eq("target_type", targetType)
-    .in("target_id", targetIds)
-    .is("deleted_at", null)
-    .order("is_pinned", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) throw error;
+  // 같은 target 의 행은 같은 chunk 에서 조회되므로 per-target 정렬은 보존된다.
+  const chunks: string[][] = [];
+  for (let i = 0; i < targetIds.length; i += IN_CHUNK_SIZE) {
+    chunks.push(targetIds.slice(i, i + IN_CHUNK_SIZE));
+  }
+  const results = await Promise.all(
+    chunks.map(async (ids) => {
+      const { data, error } = await client
+        .from("content_comments")
+        .select(COMMENT_COLUMNS)
+        .eq("target_type", targetType)
+        .in("target_id", ids)
+        .is("deleted_at", null)
+        .order("is_pinned", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as CommentRow[];
+    }),
+  );
   const out: Record<string, ContentComment[]> = {};
-  for (const r of (data ?? []) as CommentRow[]) {
+  for (const r of results.flat()) {
     const item = mapComment(r);
     if (!out[item.targetId]) out[item.targetId] = [];
     out[item.targetId].push(item);
