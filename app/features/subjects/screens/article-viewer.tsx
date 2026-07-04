@@ -559,9 +559,9 @@ function ArticleViewerInner({
                     active="articles"
                     counts={loaderData.axisCounts}
                     showSubjective={loaderData.staffRole !== null}
-                    className="rounded-t-[11px]"
+                    className=""
                   />
-                  <div className="flex items-center justify-between gap-2 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2 px-3 pt-4 pb-2">
                     {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}
                     {!renderSystematic ? (
                       <button

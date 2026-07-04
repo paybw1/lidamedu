@@ -836,7 +836,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                       showSubjective={isStaff}
                       className=""
                     />
-                    <div className="flex justify-end px-3 py-2">
+                    <div className="flex justify-end px-3 pt-4 pb-2">
                       <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
                     </div>
                   </div>

@@ -430,7 +430,7 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                         active="cases"
                         counts={loaderData.axisCounts}
                         showSubjective={loaderData.isStaff}
-                        className="rounded-t-[11px]"
+                        className=""
                       />
                     }
                   />
@@ -676,7 +676,7 @@ function CaseTreeSidebarInner({
       {desktopHeader ? (
         <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
           {axisNav}
-          <div className="flex justify-end px-3 py-2">
+          <div className="flex justify-end px-3 pt-4 pb-2">
             <SortAxisToggle
               size="sm"
               disabledAxes={systematicEmpty ? ["systematic"] : undefined}

@@ -137,8 +137,9 @@ export function SubjectAxisNav({
                 "transition-all duration-150",
                 "focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none focus-visible:ring-inset",
                 isActive
-                  ? // 선택 = 밝은 네이비 + 아래로 6px 돌출(내려오는 탭) + 그림자.
-                    "z-10 -mb-1.5 rounded-b-lg bg-white/20 pb-3.5 text-white shadow-[0_3px_8px_rgba(15,35,75,0.3)]"
+                  ? // 선택 = 밝은 네이비(단색 — 오버레이면 돌출부가 스트립 밖 흰 배경과
+                    // 합성돼 색이 달라진다) + 아래로 6px 돌출(내려오는 탭) + 그림자.
+                    "z-10 -mb-1.5 rounded-b-lg bg-[#4c7fd0] pb-3.5 text-white shadow-[0_3px_8px_rgba(15,35,75,0.3)] dark:bg-[#4f7fc7]"
                   : // 미선택 = 더 어두운 네이비. 호버 시 부드럽게 밝아짐(애니메이션).
                     "bg-black/20 text-white/65 hover:bg-black/5 hover:text-white",
               )}
