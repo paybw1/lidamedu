@@ -54,10 +54,13 @@ export function SectionTabs({
   ariaLabel,
   items,
   sticky = true,
+  rightSlot,
 }: {
   ariaLabel: string;
   items: SectionTabItem[];
   sticky?: boolean;
+  /** 바 우측 고정 영역(탭 스크롤 밖) — 학습과목 축 칩 등. */
+  rightSlot?: ReactNode;
 }) {
   const { pathname } = useLocation();
   // 겹치는 prefix 항목(예: /gs vs /gs/issues, /latest/mcq vs /latest/mcq/exams)이
@@ -82,7 +85,8 @@ export function SectionTabs({
         sticky && "sticky top-0 z-10 md:top-[var(--area-sticky-top)]",
       )}
     >
-      <div className="mx-auto flex max-w-screen-xl gap-1 overflow-x-auto py-2">
+      <div className="mx-auto flex max-w-screen-xl items-center gap-1 py-2">
+        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
         {items.map((t) => {
           const active = t.id === activeId;
           const Icon = t.icon;
@@ -137,6 +141,8 @@ export function SectionTabs({
             </Link>
           );
         })}
+        </div>
+        {rightSlot}
       </div>
     </nav>
   );

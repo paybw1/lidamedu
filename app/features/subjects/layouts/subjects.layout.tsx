@@ -4,7 +4,13 @@
 // /pricing?locked=subject:<slug> 로 redirect. URL 2번째 세그먼트(과목 슬러그)로 단일 지점 게이트.
 
 import { useEffect } from "react";
-import { Outlet, data, redirect, useLocation } from "react-router";
+import {
+  Outlet,
+  data,
+  redirect,
+  useLocation,
+  useMatches,
+} from "react-router";
 
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
 import {
@@ -17,8 +23,13 @@ import {
   SUBJECT_NAV_ITEMS,
   subjectSlugFromHref,
 } from "~/core/lib/subject-groups";
+import { SubjectAxisChips } from "~/features/subjects/components/subject-bookmark-rail";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
-import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
+import {
+  LAW_SUBJECT_SLUGS,
+  SUBJECT_TAB_VALUES,
+  type SubjectTab,
+} from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/subjects.layout";
 
@@ -70,6 +81,41 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
   const { subjectAccess, isStaff } = loaderData;
   const location = useLocation();
+  const matches = useMatches();
+
+  // 축 칩(조문/판례/객관식/주관식) — 자식 라우트(뷰어·허브)의 loaderData 에서
+  // axisCounts 를 읽어 상단 바 우측에 렌더. 없으면(퀴즈·OX 등) 칩 숨김.
+  const seg = location.pathname.split("/").filter(Boolean);
+  const currentSubject = seg[1];
+  const axisData = (() => {
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const d = matches[i].data as
+        | {
+            axisCounts?: Record<SubjectTab, number>;
+            problem?: { format?: string };
+          }
+        | null
+        | undefined;
+      if (d && typeof d === "object" && d.axisCounts) return d;
+    }
+    return null;
+  })();
+  // 현재 축 도출 — 경로 세그먼트 기준(판례/문제), 허브는 ?tab=, 그 외 조문 계열.
+  const activeAxis: SubjectTab = (() => {
+    if (seg[2] === "cases") return "cases";
+    if (seg[2] === "problems") {
+      return axisData?.problem?.format === "subjective"
+        ? "subjective"
+        : "problems";
+    }
+    if (!seg[2]) {
+      const tab = new URLSearchParams(location.search).get("tab");
+      if (tab && (SUBJECT_TAB_VALUES as readonly string[]).includes(tab)) {
+        return tab as SubjectTab;
+      }
+    }
+    return "articles";
+  })();
 
   // 학습과목 토글 — 6과목(SUBJECT_NAV_ITEMS) 파생. 권한 없는 과목은 비활성 표시.
   const tabItems: SectionTabItem[] = SUBJECT_NAV_ITEMS.map((s) => {
@@ -97,7 +143,20 @@ export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
-      <AreaTabs ariaLabel="학습과목" items={tabItems} />
+      <AreaTabs
+        ariaLabel="학습과목"
+        items={tabItems}
+        rightSlot={
+          axisData && currentSubject ? (
+            <SubjectAxisChips
+              subjectSlug={currentSubject}
+              active={activeAxis}
+              counts={axisData.axisCounts}
+              showSubjective={isStaff}
+            />
+          ) : undefined
+        }
+      />
       <Outlet />
     </>
   );

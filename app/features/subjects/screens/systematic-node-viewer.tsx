@@ -82,7 +82,6 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { stripSystematicNumber } from "~/features/subjects/components/systematic-node-label";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
@@ -476,14 +475,7 @@ function Inner({
             <Card className="rounded-xl border py-4 shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
               {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
               <CardHeader className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-0">
-                <SubjectAxisNav
-                  subjectSlug={subject.slug}
-                  active="articles"
-                  counts={loaderData.axisCounts}
-                  showSubjective={loaderData.isStaff}
-                  className="-mx-4 -mt-4 rounded-t-[11px]"
-                />
-                <div className="flex items-center justify-between gap-2 pt-4 pb-2">
+                <div className="flex items-center justify-between gap-2 py-2">
                   {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}
                   {!renderSystematic ? (
                     <button

@@ -5,14 +5,19 @@
 // 4영역(학습관리·학습지원·학습정보·학습과목)이 모두 이 래퍼를 거쳐 동일 렌더.
 // 향후 정책 변경(아이콘 on/off·sticky offset 등)은 여기 한 곳만 고치면 4영역 일괄 반영.
 
+import type { ReactNode } from "react";
+
 import { SectionTabs, type SectionTabItem } from "./SectionTabs";
 
 export function AreaTabs({
   ariaLabel,
   items,
+  rightSlot,
 }: {
   ariaLabel: string;
   items: SectionTabItem[];
+  /** 바 우측 고정 영역 — 학습과목 축 칩(조문/판례/객관식/주관식) 등. */
+  rightSlot?: ReactNode;
 }) {
   // 정책: icon·dotClass 제거(텍스트만). 나머지(id·to·label·match·count·badge·disabled)는 유지.
   const textOnly: SectionTabItem[] = items.map((it) => ({
@@ -25,5 +30,12 @@ export function AreaTabs({
     disabled: it.disabled,
     disabledHint: it.disabledHint,
   }));
-  return <SectionTabs ariaLabel={ariaLabel} items={textOnly} sticky />;
+  return (
+    <SectionTabs
+      ariaLabel={ariaLabel}
+      items={textOnly}
+      sticky
+      rightSlot={rightSlot}
+    />
+  );
 }

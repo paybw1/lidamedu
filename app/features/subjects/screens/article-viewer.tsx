@@ -95,7 +95,6 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { SystematicTree } from "~/features/subjects/components/systematic-tree";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import { getSubjectAxisCounts } from "~/features/subjects/lib/loader.server";
@@ -554,14 +553,7 @@ function ArticleViewerInner({
               <div className="border-border bg-card rounded-xl border shadow-sm lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
                 {/* 헤더(스크롤해도 상단 고정): [축 언더라인 탭] → [체계도/조문]. */}
                 <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
-                  <SubjectAxisNav
-                    subjectSlug={subject.slug}
-                    active="articles"
-                    counts={loaderData.axisCounts}
-                    showSubjective={loaderData.staffRole !== null}
-                    className="rounded-t-[11px]"
-                  />
-                  <div className="flex items-center justify-between gap-2 px-3 pt-4 pb-2">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2">
                     {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}
                     {!renderSystematic ? (
                       <button

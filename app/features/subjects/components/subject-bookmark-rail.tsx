@@ -90,15 +90,15 @@ export function BookmarkTabInner({
 }
 
 /**
- * 상세 뷰어용 축 내비 — 좌측 트리 패널 상단 전체 폭의 네이비 스트립(시안 E2b).
- * 세로 레일(구 SubjectBookmarkRail)을 패널 안으로 옮긴 것.
+ * 축 내비 칩 그룹(시안 G2) — 상단 학습과목 바 우측에 놓는 아이콘 칩 4개.
+ * "특허법(과목) + 조문(공부 대상)"을 화면 최상단에서 특정한다.
  *
- * 4칸은 얇은 흰 구분선으로 나뉘고, 선택된 축만 밝은 네이비로 점등되면서
- * 스트립 아래로 살짝 돌출(내려오는 탭) — "이 축이 아래 내용을 잡고 있다"는
- * 물리 은유. 색은 primary 위 검정/흰 오버레이로 파생해 다크 모드도 자동 대응.
- * 각 항목 = 해당 축 과목 색인으로 가는 링크. 라벨은 한 줄 고정(whitespace-nowrap).
+ * 선택된 축 = 네이비 채움 + 라벨·카운트 고정 표시. 미선택 = 아이콘만 보이는
+ * 원형 칩, 호버·포커스 시 라벨과 카운트가 확장 애니메이션으로 펼쳐진다.
+ * 각 항목 = 해당 축 과목 색인으로 가는 링크. subjects.layout 이 자식 라우트의
+ * loaderData(axisCounts)를 useMatches 로 읽어 렌더한다.
  */
-export function SubjectAxisNav({
+export function SubjectAxisChips({
   subjectSlug,
   active,
   counts,
@@ -109,16 +109,13 @@ export function SubjectAxisNav({
   active: SubjectTab;
   counts?: Record<SubjectTab, number>;
   className?: string;
-  /** 주관식 축 노출 — 고도화 전 staff 전용이라 뷰어가 staff 여부로 넘긴다. */
+  /** 주관식 축 노출 — 고도화 전 staff 전용이라 호출부가 staff 여부로 넘긴다. */
   showSubjective?: boolean;
 }) {
   return (
     <nav
       aria-label="과목 학습 영역"
-      className={cn(
-        "bg-primary relative flex items-stretch divide-x divide-white/15",
-        className,
-      )}
+      className={cn("flex shrink-0 items-center gap-1.5 pl-3", className)}
     >
       {/* 주관식(고도화 전 staff 전용) 축은 호출부가 staff 여부(showSubjective)로 결정. */}
       {bookmarkAxesFor(subjectSlug)
@@ -126,37 +123,45 @@ export function SubjectAxisNav({
         .map((axis) => {
           const isActive = axis.value === active;
           const count = counts?.[axis.value];
+          const Icon = axis.icon;
           return (
             <Link
               key={axis.value}
               to={bookmarkAxisHref(subjectSlug, axis.value)}
               viewTransition
               aria-current={isActive ? "page" : undefined}
+              title={axis.label}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-px px-1 py-2 leading-tight",
-                "transition-all duration-150",
-                "focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none focus-visible:ring-inset",
+                "group border-border inline-flex h-[30px] items-center rounded-full border px-2 text-[12.5px] font-semibold transition-colors",
+                "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none",
                 isActive
-                  ? // 선택 = 밝은 네이비(단색 — 오버레이면 돌출부가 스트립 밖 흰 배경과
-                    // 합성돼 색이 달라진다) + 아래로 6px 돌출(내려오는 탭) + 그림자.
-                    "z-10 -mb-1.5 rounded-b-lg bg-[#4c7fd0] pb-3.5 text-white shadow-[0_3px_8px_rgba(15,35,75,0.3)] dark:bg-[#4f7fc7]"
-                  : // 미선택 = 더 어두운 네이비. 호버 시 부드럽게 밝아짐(애니메이션).
-                    "bg-black/20 text-white/65 hover:bg-black/5 hover:text-white",
+                  ? "bg-primary border-primary text-primary-foreground font-extrabold shadow-[0_2px_6px_rgba(30,60,110,0.25)]"
+                  : "bg-card text-muted-foreground hover:border-primary hover:text-link",
               )}
             >
+              <Icon className="size-3.5 shrink-0" />
+              {/* 라벨+카운트 — 선택 칩은 고정, 나머지는 호버/포커스 시 확장(G2 애니메이션). */}
               <span
                 className={cn(
-                  "text-[13px] whitespace-nowrap",
-                  isActive ? "font-extrabold" : "font-semibold",
+                  "flex items-baseline gap-1 overflow-hidden whitespace-nowrap",
+                  "transition-all duration-200 ease-out motion-reduce:transition-none",
+                  isActive
+                    ? "ml-1.5 max-w-24 opacity-100"
+                    : "ml-0 max-w-0 opacity-0 group-hover:ml-1.5 group-hover:max-w-24 group-hover:opacity-100 group-focus-visible:ml-1.5 group-focus-visible:max-w-24 group-focus-visible:opacity-100",
                 )}
               >
                 {axis.label}
+                {count !== undefined ? (
+                  <span
+                    className={cn(
+                      "text-[10.5px] font-bold tabular-nums",
+                      isActive ? "opacity-80" : "opacity-60",
+                    )}
+                  >
+                    {count.toLocaleString("ko-KR")}
+                  </span>
+                ) : null}
               </span>
-              {count !== undefined ? (
-                <span className="text-[9px] font-semibold whitespace-nowrap opacity-75 tabular-nums">
-                  {count.toLocaleString("ko-KR")}
-                </span>
-              ) : null}
             </Link>
           );
         })}

@@ -102,7 +102,6 @@ import {
   SortAxisProvider,
   SortAxisToggle,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   listDisplayedProblems,
@@ -829,14 +828,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 <div className="lg:max-h-[calc(100vh-3.5rem-41px)] lg:overflow-y-auto">
                   {/* 헤더(상단 고정): [축 언더라인 탭] → [체계도/조문(조문 비활성)]. */}
                   <div className="bg-background sticky top-0 z-10">
-                    <SubjectAxisNav
-                      subjectSlug={subject.slug}
-                      active={isSubjectiveProblem ? "subjective" : "problems"}
-                      counts={loaderData.axisCounts}
-                      showSubjective={isStaff}
-                      className=""
-                    />
-                    <div className="flex justify-end px-3 pt-4 pb-2">
+                    <div className="flex justify-end px-3 py-2">
                       <SortAxisToggle size="sm" disabledAxes={["statutory"]} />
                     </div>
                   </div>

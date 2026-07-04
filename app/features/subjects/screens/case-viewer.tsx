@@ -72,7 +72,6 @@ import {
   SortAxisToggle,
   useSortAxis,
 } from "~/features/subjects/components/sort-axis";
-import { SubjectAxisNav } from "~/features/subjects/components/subject-bookmark-rail";
 import { ViewerBackButton } from "~/features/subjects/components/viewer-back-button";
 import {
   type CaseTreeCounts,
@@ -424,15 +423,6 @@ export default function CaseViewer({ loaderData }: Route.ComponentProps) {
                     caseTreeCounts={caseTreeCounts}
                     activeFilter={activeCaseTreeFilter}
                     desktopHeader
-                    axisNav={
-                      <SubjectAxisNav
-                        subjectSlug={subject.slug}
-                        active="cases"
-                        counts={loaderData.axisCounts}
-                        showSubjective={loaderData.isStaff}
-                        className="rounded-t-[11px]"
-                      />
-                    }
                   />
                 </div>
                 {/* 경계 손잡이 — 패널 오른쪽 변 세로 중앙(국가법령정보센터식). */}
@@ -640,8 +630,6 @@ function CaseTreeSidebar(props: {
   activeFilter: CaseTreeFilter | null;
   // 데스크톱 패널 헤더(sticky, 축 내비 포함) 렌더 여부. 모바일 드로어는 미지정.
   desktopHeader?: boolean;
-  // 축 내비(조문·판례·객관식·주관식) — 데스크톱 헤더 첫 줄. 모바일 미지정.
-  axisNav?: ReactNode;
 }) {
   return (
     <SortAxisProvider>
@@ -657,7 +645,6 @@ function CaseTreeSidebarInner({
   caseTreeCounts,
   activeFilter,
   desktopHeader = false,
-  axisNav,
 }: {
   subjectSlug: string;
   articles: ArticleNode[];
@@ -665,7 +652,6 @@ function CaseTreeSidebarInner({
   caseTreeCounts: CaseTreeCounts;
   activeFilter: CaseTreeFilter | null;
   desktopHeader?: boolean;
-  axisNav?: ReactNode;
 }) {
   const { axis } = useSortAxis();
   const systematicEmpty = systematicNodes.length === 0;
@@ -675,8 +661,7 @@ function CaseTreeSidebarInner({
           모바일 드로어: 정렬축 토글만 우측 정렬(기존 동작). */}
       {desktopHeader ? (
         <div className="border-border bg-card sticky top-0 z-10 rounded-t-xl border-b">
-          {axisNav}
-          <div className="flex justify-end px-3 pt-4 pb-2">
+          <div className="flex justify-end px-3 py-2">
             <SortAxisToggle
               size="sm"
               disabledAxes={systematicEmpty ? ["systematic"] : undefined}
