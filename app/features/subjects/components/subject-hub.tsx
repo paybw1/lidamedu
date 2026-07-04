@@ -187,8 +187,9 @@ function SubjectHubInner({
         orientation="vertical"
         className="mt-6 flex flex-row items-start gap-0"
       >
-        {/* 책갈피 레일 — pt 로 패널 둥근 모서리를 비켜 직선 변에 부착 */}
-        <TabsList className="flex h-auto w-[52px] shrink-0 flex-col items-stretch gap-2.5 rounded-none border-0 bg-transparent p-0 pt-5 lg:sticky lg:top-20">
+        {/* 책갈피 레일 — pt 로 패널 둥근 모서리를 비켜 직선 변에 부착.
+            sticky 금지: 스크롤을 따라오면 패널과 분리돼 보인다(패널 상단 고정). */}
+        <TabsList className="flex h-auto w-[52px] shrink-0 flex-col items-stretch gap-1.5 rounded-none border-0 bg-transparent p-0 pt-5">
           {railAxes.map((axis) => (
             <BookmarkTab
               key={axis.value}
@@ -274,7 +275,7 @@ function SubjectHubInner({
 
 /**
  * 세로 책갈피 탭 (정보형) — 세로 라벨 + 구분선 + 콘텐츠 수. 아이콘 없이
- * 전 과목 동일한 고정 크기(96×52). 활성 시 네이비로 채워지며(역상) 1px
+ * 전 과목 동일한 고정 크기(88×52). 활성 시 네이비로 채워지며(역상) 1px
  * 우측 이동해 좌측 트리 패널 변에 맞물린다.
  *
  * 주의: `TabsTrigger` 기본 클래스에 `flex-1`(세로 레일에서 높이를 먹어버림)과
@@ -301,8 +302,8 @@ function BookmarkTab({
       className={cn(
         // 비활성(주관식 학생) — 회색·클릭 불가. 잠금 흐림 대신 완전 비활성 패턴.
         disabled && "cursor-not-allowed opacity-40 hover:translate-x-0",
-        // flex-none — 기본 flex-1 을 눌러 h-[96px] 가 실제로 적용되게 한다.
-        "relative flex h-[96px] w-[52px] flex-none flex-col items-center justify-center gap-2 p-0",
+        // flex-none — 기본 flex-1 을 눌러 h-[88px] 가 실제로 적용되게 한다.
+        "relative flex h-[88px] w-[52px] flex-none flex-col items-center justify-center gap-1 p-0",
         "rounded-l-xl rounded-r-none border border-r-0 transition-all",
         // 비활성 기본
         "border-border bg-card text-muted-foreground",

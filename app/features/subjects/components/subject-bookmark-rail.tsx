@@ -87,7 +87,7 @@ export function BookmarkTabInner({
             aria-hidden="true"
             className="h-px w-3.5 bg-current opacity-30"
           />
-          <span className="text-[11px] font-bold tabular-nums opacity-80">
+          <span className="text-[10px] font-bold tabular-nums opacity-80">
             {count.toLocaleString("ko-KR")}
           </span>
         </>
