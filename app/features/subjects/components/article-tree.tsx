@@ -142,6 +142,7 @@ export function ArticleTree({
   bookmarkLevels,
   annotationCounts,
   lazyExpand,
+  searchVisible = true,
 }: {
   nodes: ArticleNode[];
   emptyHint?: string;
@@ -152,6 +153,8 @@ export function ArticleTree({
   bookmarkLevels?: Record<string, number>;
   annotationCounts?: Record<string, ArticleAnnotationCounts>;
   lazyExpand?: LazyExpandConfig;
+  // 검색 입력 노출 — 데스크톱 패널은 헤더의 돋보기 아이콘으로 제어(기본 true=모바일 등).
+  searchVisible?: boolean;
 }) {
   // Lazy 모드용 — 펼침 이벤트로 fetch 한 자식 노드 누적.
   // nodes prop 이 바뀌면(다른 법령으로 이동 등) 리셋.
@@ -238,6 +241,10 @@ export function ArticleTree({
   const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
   const [searchQuery, setSearchQuery] = useState("");
   const showBookmarkFilter = bookmarkLevels !== undefined;
+  // 검색창을 닫으면 잔여 필터가 보이지 않게 남는 것 방지 — 질의도 함께 비운다.
+  useEffect(() => {
+    if (!searchVisible) setSearchQuery("");
+  }, [searchVisible]);
   const trimmedQuery = searchQuery.trim().toLowerCase();
 
   const visible = useMemo(() => {
@@ -295,26 +302,28 @@ export function ArticleTree({
   return (
     <div className="space-y-2">
       <div className="space-y-1.5 px-2">
-        <div className="relative">
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="조문 검색 — 예: 신규성, 제29조"
-            aria-label="조문 트리 내 검색"
-            className="border-input bg-background h-7 w-full rounded-md border px-2 pr-7 text-[11px]"
-          />
-          {searchQuery ? (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              aria-label="검색 지우기"
-              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1.5 -translate-y-1/2 text-[10px]"
-            >
-              ✕
-            </button>
-          ) : null}
-        </div>
+        {searchVisible ? (
+          <div className="relative">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="조문 검색 — 예: 신규성, 제29조"
+              aria-label="조문 트리 내 검색"
+              className="border-input bg-background h-7 w-full rounded-md border px-2 pr-7 text-[11px]"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="검색 지우기"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1.5 -translate-y-1/2 text-[10px]"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-1">
           <span className="text-muted-foreground mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
             <span className="text-amber-500">★</span>

@@ -224,7 +224,8 @@ export function SystematicTree({
           ))}
         </div>
         {showBookmarkFilter ? (
-          <div className="flex flex-wrap items-center gap-1">
+          // 조문 트리와 동일 — flex-nowrap + 좁은 패딩으로 한 줄 유지.
+          <div className="flex flex-nowrap items-center gap-0.5">
             <span className="text-muted-foreground mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium tracking-wide uppercase">
               <HeartIcon className="size-3 fill-rose-500 stroke-rose-500" />
               즐겨찾기
@@ -236,7 +237,7 @@ export function SystematicTree({
                 onClick={() => setBookmarkFilter(v)}
                 aria-pressed={bookmarkFilter === v}
                 className={cn(
-                  "rounded-md border px-1.5 py-0.5 text-[11px] transition-colors",
+                  "rounded-md border px-1 py-0.5 text-[11px] tabular-nums transition-colors",
                   bookmarkFilter === v
                     ? "border-rose-500 bg-rose-500 text-white"
                     : "bg-background hover:bg-accent text-muted-foreground border-input",

@@ -12,6 +12,7 @@ import {
   EyeOffIcon,
   ListTreeIcon,
   PencilLineIcon,
+SearchIcon,
   ScrollTextIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -28,6 +29,7 @@ import {
   SheetTrigger,
 } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
@@ -329,6 +331,8 @@ function Inner({
   const { axis } = useSortAxis();
   const { collapsed: leftCollapsed, toggle: toggleLeft } =
     useLeftPanelCollapse();
+  // 조문 트리 검색 — 헤더 돋보기 아이콘으로 열고 닫음(기본 닫힘).
+  const [treeSearchOpen, setTreeSearchOpen] = useState(false);
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
   const [subtitlesOnly, setSubtitlesOnly] = useState(false);
@@ -418,9 +422,29 @@ function Inner({
                   active="articles"
                   counts={loaderData.axisCounts}
                   showSubjective={loaderData.isStaff}
-                  className="mt-1 -mx-2"
+                  className="mt-1"
                 />
-                <div className="flex justify-end py-2">
+                <div className="flex items-center justify-between gap-2 py-2">
+                  {/* 조문 트리 검색 — 아이콘 토글(체계도 트리에는 검색 없음). */}
+                  {!renderSystematic ? (
+                    <button
+                      type="button"
+                      onClick={() => setTreeSearchOpen((v) => !v)}
+                      aria-pressed={treeSearchOpen}
+                      aria-label="조문 검색"
+                      title="조문 검색"
+                      className={cn(
+                        "border-border inline-flex size-7 items-center justify-center rounded-md border transition-colors",
+                        treeSearchOpen
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card text-muted-foreground hover:text-link",
+                      )}
+                    >
+                      <SearchIcon className="size-3.5" />
+                    </button>
+                  ) : (
+                    <span />
+                  )}
                   <SortAxisToggle
                     size="sm"
                     disabledAxes={systematicEmpty ? ["systematic"] : undefined}
@@ -444,6 +468,7 @@ function Inner({
                     lawCode={subject.slug}
                     bookmarkLevels={bookmarkLevels}
                     annotationCounts={annotationCounts}
+                    searchVisible={treeSearchOpen}
                     lazyExpand={
                       subject.slug === "civil" ? { lawId } : undefined
                     }
