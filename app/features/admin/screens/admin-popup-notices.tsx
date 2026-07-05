@@ -340,17 +340,16 @@ function NoticeForm({
             />
             활성 (체크 해제 시 저장만 하고 노출 안 함)
           </label>
-          {mode === "create" ? (
-            <label className="inline-flex items-center gap-1.5 text-xs">
-              <input
-                type="checkbox"
-                name="alsoAnnounce"
-                value="1"
-                className="size-3.5"
-              />
-              커뮤니티 공지사항에도 게시 (전체 공지로 즉시 발행)
-            </label>
-          ) : null}
+          {/* 생성·수정 공통 — 수정에서 체크하면 사후 게시(같은 제목의 발행 공지가 있으면 중복 게시 안 함) */}
+          <label className="inline-flex items-center gap-1.5 text-xs">
+            <input
+              type="checkbox"
+              name="alsoAnnounce"
+              value="1"
+              className="size-3.5"
+            />
+            커뮤니티 공지사항에도 게시 (전체 공지로 즉시 발행)
+          </label>
         </div>
       </div>
 

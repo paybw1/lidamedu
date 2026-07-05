@@ -205,5 +205,39 @@ export async function action({ request }: Route.ActionArgs) {
     entityId: parsed.data.noticeId,
     metadata: { title: input.title },
   });
+  // 옵션 — 수정 시에도 공지사항 게시 가능(생성 때 빠뜨린 팝업의 사후 게시 경로).
+  //   생성 브리지와 동일한 본문 합성. 같은 제목의 발행 공지가 있으면 중복 게시하지 않는다.
+  if (fd.get("alsoAnnounce") === "1") {
+    const { data: dup } = await client
+      .from("announcements")
+      .select("announcement_id")
+      .eq("title", input.title)
+      .is("deleted_at", null)
+      .limit(1);
+    if ((dup ?? []).length === 0) {
+      const parts: string[] = [];
+      if (input.imageUrl) parts.push(`![${input.title}](${input.imageUrl})`);
+      if (input.bodyMd.trim()) parts.push(input.bodyMd.trim());
+      if (input.youtubeUrl) parts.push(`영상: ${input.youtubeUrl}`);
+      if (input.linkUrl) {
+        parts.push(`[${input.linkLabel || "자세히 보기"}](${input.linkUrl})`);
+      }
+      const ann = await createAnnouncement(client, {
+        title: input.title,
+        bodyMd: parts.join("\n\n") || input.title,
+        authorId: user.id,
+        audienceKind: "all",
+        audiences: [],
+        isPinned: false,
+        publish: true,
+      });
+      if (!ann.ok) {
+        return data(
+          { error: `팝업은 저장됐지만 공지사항 게시에 실패했습니다: ${ann.error}` },
+          { status: 400 },
+        );
+      }
+    }
+  }
   return data({ ok: true });
 }
