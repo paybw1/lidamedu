@@ -36,8 +36,12 @@ import {
   getAssignmentWithItems,
   listAssignmentProgress,
 } from "~/features/assignments/queries.server";
-import type { OfflineTestSummary } from "~/features/offline-tests/labels";
+import {
+  offlineTestSubjectName,
+  type OfflineTestSummary,
+} from "~/features/offline-tests/labels";
 import { listOfflineTests } from "~/features/offline-tests/queries.server";
+import { SCIENCE_SUBJECT_SLUGS, SCIENCE_SUBJECTS } from "~/features/subjects/lib/science";
 import {
   ASSIGNMENT_ITEM_KINDS,
   ASSIGNMENT_ITEM_KIND_LABEL,
@@ -343,7 +347,7 @@ function OfflineTestsSection({
         <ul className="border-border bg-card divide-border divide-y rounded-xl border shadow-sm">
           {tests.map((t) => (
             <li key={t.testId} className="flex items-center gap-2 px-3 py-2">
-              <Chip tone="outline">{LAW_SUBJECTS[t.lawCode].name}</Chip>
+              <Chip tone="outline">{offlineTestSubjectName(t)}</Chip>
               <Link
                 to={`/admin/cohorts/${cohortId}/assignments/${assignmentId}/tests/${t.testId}`}
                 className="hover:text-link min-w-0 flex-1 truncate text-xs font-medium"
@@ -381,15 +385,24 @@ function OfflineTestsSection({
           <div className="flex flex-col gap-1">
             <Label className="text-[11px]">과목</Label>
             <select
-              name="lawCode"
+              name="subject"
               required
               className="border-input bg-background h-9 rounded-md border px-2 text-[13px]"
             >
-              {LAW_SUBJECT_SLUGS.map((s) => (
-                <option key={s} value={s}>
-                  {LAW_SUBJECTS[s].name}
-                </option>
-              ))}
+              <optgroup label="법률">
+                {LAW_SUBJECT_SLUGS.map((s) => (
+                  <option key={s} value={s}>
+                    {LAW_SUBJECTS[s].name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="자연과학 (객관식만)">
+                {SCIENCE_SUBJECT_SLUGS.map((s) => (
+                  <option key={s} value={`science:${s}`}>
+                    {SCIENCE_SUBJECTS[s].name}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
           <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>

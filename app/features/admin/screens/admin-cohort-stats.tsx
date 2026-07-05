@@ -41,7 +41,10 @@ import {
   getCohortSrsAggregate,
 } from "~/features/admin/queries/cohort-srs.server";
 import { getCohortWeakNodes } from "~/features/admin/queries/cohort-weakness.server";
-import type { CohortOfflineTestStat } from "~/features/offline-tests/labels";
+import {
+  offlineTestSubjectName,
+  type CohortOfflineTestStat,
+} from "~/features/offline-tests/labels";
 import { listCohortOfflineTestStats } from "~/features/offline-tests/results.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
@@ -422,9 +425,7 @@ function OfflineTestStatsCard({
                 <td className="max-w-56 truncate px-4 py-2 font-medium">
                   {t.title}
                 </td>
-                <td className="px-2 py-2">
-                  {LAW_SUBJECTS[t.lawCode as LawSubjectSlug]?.name ?? t.lawCode}
-                </td>
+                <td className="px-2 py-2">{offlineTestSubjectName(t)}</td>
                 <td className="px-2 py-2 text-right tabular-nums">
                   {t.takenCount}
                   {t.absentCount > 0 ? (

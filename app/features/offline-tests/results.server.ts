@@ -62,7 +62,7 @@ export async function listCohortOfflineTestStats(
 ): Promise<CohortOfflineTestStat[]> {
   const { data: tests, error } = await client
     .from("offline_tests")
-    .select("test_id, assignment_id, title, law_code, created_at")
+    .select("test_id, assignment_id, title, law_code, science_subject, created_at")
     .eq("cohort_id", cohortId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -100,7 +100,8 @@ export async function listCohortOfflineTestStats(
       testId: t.test_id,
       assignmentId: t.assignment_id,
       title: t.title,
-      lawCode: t.law_code,
+      lawCode: t.law_code as CohortOfflineTestStat["lawCode"],
+      scienceSubject: t.science_subject as CohortOfflineTestStat["scienceSubject"],
       createdAt: t.created_at,
       takenCount: taken.length,
       absentCount: rs.filter((r) => r.status === "absent").length,
@@ -312,8 +313,9 @@ export async function saveOfflineTestResults(
         .insert({
           user_id: entry.userId,
           mode: "exam",
+          // 과목 XOR — quiz_sessions check 와 offline_tests check 가 동일 축.
           law_code: test.lawCode,
-          science_subject: null,
+          science_subject: test.scienceSubject,
           scope_type: "filter",
           scope_payload: {
             source: "offline_test",

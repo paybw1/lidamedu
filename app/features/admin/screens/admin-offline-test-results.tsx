@@ -14,9 +14,9 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getCohortById, listCohortMembers } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { offlineTestSubjectName } from "~/features/offline-tests/labels";
 import { getOfflineTestWithQuestions } from "~/features/offline-tests/queries.server";
 import { listOfflineTestResults } from "~/features/offline-tests/results.server";
-import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-offline-test-results";
 
@@ -249,7 +249,7 @@ export default function AdminOfflineTestResults({
       role={role}
       width={1200}
       title={`${test.title} — 결과 입력`}
-      desc={`${LAW_SUBJECTS[test.lawCode].name} · ${test.questions.length}문항 · ${maxScore}점 만점 · 학생 ${members.length}명`}
+      desc={`${offlineTestSubjectName(test)} · ${test.questions.length}문항 · ${maxScore}점 만점 · 학생 ${members.length}명`}
       headerRight={
         <div className="flex items-center gap-2">
           <label className="text-muted-foreground flex items-center gap-1.5 text-xs">

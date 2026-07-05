@@ -7,6 +7,8 @@ import type { Database } from "database.types";
 import { fetchAllIn } from "~/core/lib/supa-batch.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
+import type { ScienceSubjectSlug } from "~/features/subjects/lib/science";
+
 import type {
   BlankCandidate,
   McqCandidate,
@@ -14,6 +16,7 @@ import type {
   OfflineQuestionType,
   OfflineTestDetail,
   OfflineTestQuestion,
+  OfflineTestSubject,
   OfflineTestSummary,
   OxCandidate,
 } from "./labels";
@@ -41,7 +44,9 @@ export async function listOfflineTests(
 ): Promise<OfflineTestSummary[]> {
   const { data: tests, error } = await client
     .from("offline_tests")
-    .select("test_id, assignment_id, cohort_id, title, law_code, duration_min, created_at")
+    .select(
+      "test_id, assignment_id, cohort_id, title, law_code, science_subject, duration_min, created_at",
+    )
     .eq("assignment_id", assignmentId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
@@ -83,7 +88,8 @@ export async function listOfflineTests(
     assignmentId: t.assignment_id,
     cohortId: t.cohort_id,
     title: t.title,
-    lawCode: t.law_code as LawSubjectSlug,
+    lawCode: t.law_code as LawSubjectSlug | null,
+    scienceSubject: t.science_subject as ScienceSubjectSlug | null,
     durationMin: t.duration_min,
     questionCount: countByTest.get(t.test_id)?.n ?? 0,
     totalPoints: countByTest.get(t.test_id)?.pts ?? 0,
@@ -98,7 +104,7 @@ export async function createOfflineTest(
     assignmentId: string;
     cohortId: string;
     title: string;
-    lawCode: LawSubjectSlug;
+    subject: OfflineTestSubject;
     createdBy: string;
   },
 ): Promise<string> {
@@ -108,7 +114,8 @@ export async function createOfflineTest(
       assignment_id: input.assignmentId,
       cohort_id: input.cohortId,
       title: input.title,
-      law_code: input.lawCode,
+      law_code: input.subject.lawCode,
+      science_subject: input.subject.scienceSubject,
       created_by: input.createdBy,
     })
     .select("test_id")
@@ -157,7 +164,7 @@ export async function getOfflineTestWithQuestions(
   const { data: t, error } = await client
     .from("offline_tests")
     .select(
-      "test_id, assignment_id, cohort_id, title, law_code, duration_min, instructions_md",
+      "test_id, assignment_id, cohort_id, title, law_code, science_subject, duration_min, instructions_md",
     )
     .eq("test_id", testId)
     .is("deleted_at", null)
@@ -275,7 +282,8 @@ export async function getOfflineTestWithQuestions(
     assignmentId: t.assignment_id,
     cohortId: t.cohort_id,
     title: t.title,
-    lawCode: t.law_code as LawSubjectSlug,
+    lawCode: t.law_code as LawSubjectSlug | null,
+    scienceSubject: t.science_subject as ScienceSubjectSlug | null,
     durationMin: t.duration_min,
     instructionsMd: t.instructions_md,
     questions,
@@ -462,10 +470,9 @@ export interface OfflineTestPrintQuestion {
   } | null;
 }
 
-export interface OfflineTestPrintData {
+export interface OfflineTestPrintData extends OfflineTestSubject {
   testId: string;
   title: string;
-  lawCode: LawSubjectSlug;
   durationMin: number | null;
   instructionsMd: string | null;
   totalPoints: number;
@@ -615,6 +622,7 @@ export async function getOfflineTestPrintData(
     testId: detail.testId,
     title: detail.title,
     lawCode: detail.lawCode,
+    scienceSubject: detail.scienceSubject,
     durationMin: detail.durationMin,
     instructionsMd: detail.instructionsMd,
     totalPoints: questions.reduce((s, q) => s + q.points, 0),
@@ -723,6 +731,40 @@ export async function listMcqCandidates(
       importance: p.importance ?? 0,
       format: p.format,
     }));
+}
+
+// 자연과학 객관식 후보 — 과목(물/화/생/지) + 단원(science_sections) 필터.
+// 자과는 OX·빈칸이 없으므로 시험지 문항 유형은 mcq 뿐.
+export async function listScienceMcqCandidates(
+  client: SupabaseClient<Database>,
+  filter: {
+    scienceSubject: ScienceSubjectSlug;
+    sectionId?: string | null;
+    limit?: number;
+  },
+): Promise<McqCandidate[]> {
+  let q = client
+    .from("problems")
+    .select("problem_id, body_md, year, problem_number, importance, format")
+    .eq("subject_type", "science")
+    .eq("science_subject", filter.scienceSubject)
+    .eq("review_status", "approved")
+    .is("deleted_at", null);
+  if (filter.sectionId) q = q.eq("science_section_id", filter.sectionId);
+  const { data, error } = await q
+    .order("year", { ascending: false })
+    .order("problem_number", { ascending: true })
+    .order("problem_id")
+    .limit(filter.limit ?? 100);
+  if (error) throw error;
+  return (data ?? []).map((p) => ({
+    problemId: p.problem_id,
+    snippet: snippet(p.body_md),
+    year: p.year,
+    problemNumber: p.problem_number,
+    importance: p.importance ?? 0,
+    format: p.format,
+  }));
 }
 
 export async function listOxCandidates(

@@ -4834,7 +4834,8 @@ export type Database = {
           deleted_at: string | null
           duration_min: number | null
           instructions_md: string | null
-          law_code: string
+          law_code: string | null
+          science_subject: string | null
           test_id: string
           title: string
           updated_at: string
@@ -4847,7 +4848,8 @@ export type Database = {
           deleted_at?: string | null
           duration_min?: number | null
           instructions_md?: string | null
-          law_code: string
+          law_code?: string | null
+          science_subject?: string | null
           test_id?: string
           title: string
           updated_at?: string
@@ -4860,7 +4862,8 @@ export type Database = {
           deleted_at?: string | null
           duration_min?: number | null
           instructions_md?: string | null
-          law_code?: string
+          law_code?: string | null
+          science_subject?: string | null
           test_id?: string
           title?: string
           updated_at?: string

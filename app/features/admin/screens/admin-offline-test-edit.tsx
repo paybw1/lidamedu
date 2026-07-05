@@ -34,6 +34,7 @@ import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   OFFLINE_QUESTION_TYPE_LABEL,
+  offlineTestSubjectName,
   type BlankCandidate,
   type McqCandidate,
   type OfflineQuestionRef,
@@ -46,8 +47,8 @@ import {
   listBlankCandidates,
   listMcqCandidates,
   listOxCandidates,
+  listScienceMcqCandidates,
 } from "~/features/offline-tests/queries.server";
-import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-offline-test-edit";
 
@@ -79,45 +80,75 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Test not found", { status: 404 });
   }
 
-  // 후보 탐색 필터 (URL) — type/node/imp.
+  // 후보 탐색 필터 (URL) — type/node/imp. 자연과학은 객관식 고정 + 파트=단원.
+  const isScience = !!test.scienceSubject;
   const url = new URL(request.url);
-  const type = (["mcq", "ox", "blank"] as const).find(
-    (t) => t === url.searchParams.get("type"),
-  ) ?? "mcq";
+  const type = isScience
+    ? "mcq"
+    : ((["mcq", "ox", "blank"] as const).find(
+        (t) => t === url.searchParams.get("type"),
+      ) ?? "mcq");
   const nodeId = url.searchParams.get("node") || null;
   const minImportance = Math.max(
     0,
     Math.min(3, Number(url.searchParams.get("imp")) || 0),
   );
 
-  const filter = { lawCode: test.lawCode, nodeId, minImportance, limit: 80 };
-  const [mcqCands, oxCands, blankCands] = await Promise.all([
-    type === "mcq" ? listMcqCandidates(client, filter) : Promise.resolve([]),
-    type === "ox" ? listOxCandidates(client, filter) : Promise.resolve([]),
-    type === "blank" ? listBlankCandidates(client, filter) : Promise.resolve([]),
-  ]);
+  let mcqCands: Awaited<ReturnType<typeof listMcqCandidates>> = [];
+  let oxCands: Awaited<ReturnType<typeof listOxCandidates>> = [];
+  let blankCands: Awaited<ReturnType<typeof listBlankCandidates>> = [];
+  if (isScience && test.scienceSubject) {
+    mcqCands = await listScienceMcqCandidates(client, {
+      scienceSubject: test.scienceSubject,
+      sectionId: nodeId,
+      limit: 80,
+    });
+  } else if (test.lawCode) {
+    const filter = { lawCode: test.lawCode, nodeId, minImportance, limit: 80 };
+    [mcqCands, oxCands, blankCands] = await Promise.all([
+      type === "mcq" ? listMcqCandidates(client, filter) : Promise.resolve([]),
+      type === "ox" ? listOxCandidates(client, filter) : Promise.resolve([]),
+      type === "blank" ? listBlankCandidates(client, filter) : Promise.resolve([]),
+    ]);
+  }
 
-  // 파트(체계도 노드) 옵션 — 라벨만 필요하므로 경량 조회.
-  const { data: nodes } = await client
-    .from("systematic_nodes")
-    .select("node_id, display_label, path")
-    .eq("law_code", test.lawCode)
-    .eq("case_only", false)
-    .order("path");
+  // 파트 옵션 — 법률=체계도 노드 / 자연과학=단원(science_sections). 라벨만 경량 조회.
+  let nodes: Array<{ nodeId: string; label: string; depth: number }> = [];
+  if (isScience && test.scienceSubject) {
+    const { data: sections } = await client
+      .from("science_sections")
+      .select("section_id, label, order_index")
+      .eq("science_subject", test.scienceSubject)
+      .order("order_index");
+    nodes = (sections ?? []).map((s) => ({
+      nodeId: s.section_id,
+      label: s.label,
+      depth: 1,
+    }));
+  } else if (test.lawCode) {
+    const { data: rows } = await client
+      .from("systematic_nodes")
+      .select("node_id, display_label, path")
+      .eq("law_code", test.lawCode)
+      .eq("case_only", false)
+      .order("path");
+    nodes = (rows ?? []).map((n) => ({
+      nodeId: n.node_id,
+      label: n.display_label,
+      depth: String(n.path ?? "").split(".").length,
+    }));
+  }
 
   return {
     cohort,
     test,
     role,
+    isScience,
     filter: { type, nodeId, minImportance },
     mcqCands,
     oxCands,
     blankCands,
-    nodes: (nodes ?? []).map((n) => ({
-      nodeId: n.node_id,
-      label: n.display_label,
-      depth: String(n.path ?? "").split(".").length,
-    })),
+    nodes,
   };
 }
 
@@ -136,8 +167,17 @@ const API = "/api/admin/offline-test";
 export default function AdminOfflineTestEdit({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, test, role, filter, mcqCands, oxCands, blankCands, nodes } =
-    loaderData;
+  const {
+    cohort,
+    test,
+    role,
+    isScience,
+    filter,
+    mcqCands,
+    oxCands,
+    blankCands,
+    nodes,
+  } = loaderData;
   const basePath = `/admin/cohorts/${cohort.cohortId}/assignments/${test.assignmentId}`;
   const totalPoints = test.questions.reduce((s, q) => s + q.points, 0);
 
@@ -147,7 +187,7 @@ export default function AdminOfflineTestEdit({
       role={role}
       width={1100}
       title={test.title}
-      desc={`${LAW_SUBJECTS[test.lawCode].name} · ${test.questions.length}문항 · ${totalPoints}점${test.durationMin ? ` · ${test.durationMin}분` : ""}`}
+      desc={`${offlineTestSubjectName(test)} · ${test.questions.length}문항 · ${totalPoints}점${test.durationMin ? ` · ${test.durationMin}분` : ""}`}
       headerRight={
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="outline">
@@ -194,7 +234,7 @@ export default function AdminOfflineTestEdit({
               유형·파트·중요도로 후보를 찾아 시험지에 담습니다.
             </p>
           </div>
-          <CandidateFilter filter={filter} nodes={nodes} />
+          <CandidateFilter filter={filter} nodes={nodes} isScience={isScience} />
           <CandidatePanel
             testId={test.testId}
             type={filter.type}
@@ -202,7 +242,7 @@ export default function AdminOfflineTestEdit({
             oxCands={oxCands}
             blankCands={blankCands}
           />
-          <AutoPickForm testId={test.testId} filter={filter} lawCode={test.lawCode} />
+          <AutoPickForm testId={test.testId} filter={filter} />
         </section>
 
         {/* 우: 담긴 문항 */}
@@ -329,9 +369,11 @@ function TestMetaForm({
 function CandidateFilter({
   filter,
   nodes,
+  isScience,
 }: {
   filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
   nodes: Array<{ nodeId: string; label: string; depth: number }>;
+  isScience: boolean;
 }) {
   return (
     <Form method="get" preventScrollReset className="flex flex-wrap items-end gap-2 border-b px-4 py-3">
@@ -340,17 +382,21 @@ function CandidateFilter({
         <select
           name="type"
           defaultValue={filter.type}
-          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+          disabled={isScience}
+          title={isScience ? "자연과학은 객관식만 지원합니다" : undefined}
+          className="border-input bg-background h-8 rounded-md border px-2 text-xs disabled:opacity-60"
         >
-          {(["mcq", "ox", "blank"] as const).map((t) => (
-            <option key={t} value={t}>
-              {OFFLINE_QUESTION_TYPE_LABEL[t]}
-            </option>
-          ))}
+          {(isScience ? (["mcq"] as const) : (["mcq", "ox", "blank"] as const)).map(
+            (t) => (
+              <option key={t} value={t}>
+                {OFFLINE_QUESTION_TYPE_LABEL[t]}
+              </option>
+            ),
+          )}
         </select>
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        <Label className="text-[11px]">파트(체계도)</Label>
+        <Label className="text-[11px]">{isScience ? "단원" : "파트(체계도)"}</Label>
         <select
           name="node"
           defaultValue={filter.nodeId ?? ""}
@@ -365,19 +411,21 @@ function CandidateFilter({
           ))}
         </select>
       </div>
-      <div className="flex flex-col gap-1">
-        <Label className="text-[11px]">중요도</Label>
-        <select
-          name="imp"
-          defaultValue={String(filter.minImportance)}
-          className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-        >
-          <option value="0">전체</option>
-          <option value="1">★ 이상</option>
-          <option value="2">★★ 이상</option>
-          <option value="3">★★★</option>
-        </select>
-      </div>
+      {isScience ? null : (
+        <div className="flex flex-col gap-1">
+          <Label className="text-[11px]">중요도</Label>
+          <select
+            name="imp"
+            defaultValue={String(filter.minImportance)}
+            className="border-input bg-background h-8 rounded-md border px-2 text-xs"
+          >
+            <option value="0">전체</option>
+            <option value="1">★ 이상</option>
+            <option value="2">★★ 이상</option>
+            <option value="3">★★★</option>
+          </select>
+        </div>
+      )}
       <Button type="submit" size="sm" variant="outline">
         조회
       </Button>
@@ -508,11 +556,9 @@ function CandidatePanel({
 function AutoPickForm({
   testId,
   filter,
-  lawCode,
 }: {
   testId: string;
   filter: { type: OfflineQuestionType; nodeId: string | null; minImportance: number };
-  lawCode: string;
 }) {
   const fetcher = useFetcher<{ ok?: true; added?: number; error?: string }>();
   const reload = useReload();
@@ -530,7 +576,6 @@ function AutoPickForm({
       <input type="hidden" name="intent" value="auto_pick" />
       <input type="hidden" name="testId" value={testId} />
       <input type="hidden" name="type" value={filter.type} />
-      <input type="hidden" name="lawCode" value={lawCode} />
       <input type="hidden" name="nodeId" value={filter.nodeId ?? ""} />
       <input type="hidden" name="minImportance" value={filter.minImportance} />
       <WandSparklesIcon className="text-muted-foreground size-3.5" />

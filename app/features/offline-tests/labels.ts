@@ -1,7 +1,15 @@
 // feat-7-042 — 오프라인 테스트 공용 타입·라벨. 클라이언트/서버 양쪽 import 가능.
 // (컴포넌트가 쓰는 값·타입은 *.server.ts 에 두면 클라이언트 번들 위반 — 여기로 분리.)
 
-import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+import {
+  SCIENCE_SUBJECTS,
+  normalizeScienceSlug,
+  type ScienceSubjectSlug,
+} from "~/features/subjects/lib/science";
+import {
+  LAW_SUBJECTS,
+  type LawSubjectSlug,
+} from "~/features/subjects/lib/subjects";
 
 export type OfflineQuestionType = "mcq" | "ox" | "blank";
 
@@ -11,12 +19,38 @@ export const OFFLINE_QUESTION_TYPE_LABEL: Record<OfflineQuestionType, string> = 
   blank: "빈칸",
 };
 
-export interface OfflineTestSummary {
+// 과목 = 법률(law_code) XOR 자연과학(science_subject). DB check 가 강제.
+export interface OfflineTestSubject {
+  lawCode: LawSubjectSlug | null;
+  scienceSubject: ScienceSubjectSlug | null;
+}
+
+export function offlineTestSubjectName(s: OfflineTestSubject): string {
+  if (s.lawCode) return LAW_SUBJECTS[s.lawCode]?.name ?? s.lawCode;
+  if (s.scienceSubject) return SCIENCE_SUBJECTS[s.scienceSubject]?.name ?? s.scienceSubject;
+  return "—";
+}
+
+// 과목 select 단일 값 ↔ 컬럼 쌍 변환 — "patent" | "science:physics".
+export function parseOfflineTestSubject(raw: string): OfflineTestSubject | null {
+  if (raw.startsWith("science:")) {
+    const slug = normalizeScienceSlug(raw.slice("science:".length));
+    return slug ? { lawCode: null, scienceSubject: slug } : null;
+  }
+  return Object.prototype.hasOwnProperty.call(LAW_SUBJECTS, raw)
+    ? { lawCode: raw as LawSubjectSlug, scienceSubject: null }
+    : null;
+}
+
+export function offlineTestSubjectValue(s: OfflineTestSubject): string {
+  return s.lawCode ?? `science:${s.scienceSubject}`;
+}
+
+export interface OfflineTestSummary extends OfflineTestSubject {
   testId: string;
   assignmentId: string;
   cohortId: string;
   title: string;
-  lawCode: LawSubjectSlug;
   durationMin: number | null;
   questionCount: number;
   totalPoints: number;
@@ -39,12 +73,11 @@ export interface OfflineTestQuestion {
   sub: string | null;
 }
 
-export interface OfflineTestDetail {
+export interface OfflineTestDetail extends OfflineTestSubject {
   testId: string;
   assignmentId: string;
   cohortId: string;
   title: string;
-  lawCode: LawSubjectSlug;
   durationMin: number | null;
   instructionsMd: string | null;
   questions: OfflineTestQuestion[];
@@ -86,11 +119,10 @@ export interface BlankCandidate {
   articleImportance: number;
 }
 
-export interface CohortOfflineTestStat {
+export interface CohortOfflineTestStat extends OfflineTestSubject {
   testId: string;
   assignmentId: string;
   title: string;
-  lawCode: string;
   createdAt: string;
   takenCount: number;
   absentCount: number;

@@ -10,11 +10,11 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
+import { offlineTestSubjectName } from "~/features/offline-tests/labels";
 import {
   getOfflineTestPrintData,
   type OfflineTestPrintQuestion,
 } from "~/features/offline-tests/queries.server";
-import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-offline-test-print";
 
@@ -308,7 +308,7 @@ export default function AdminOfflineTestPrint({
               ) : null}
             </h1>
             <p className="mt-1 text-[13px] text-neutral-600 tabular-nums">
-              과목: {LAW_SUBJECTS[test.lawCode].name} · {test.questions.length}
+              과목: {offlineTestSubjectName(test)} · {test.questions.length}
               문항 · {test.totalPoints}점
               {test.durationMin ? ` · 시험시간 ${test.durationMin}분` : ""}
             </p>

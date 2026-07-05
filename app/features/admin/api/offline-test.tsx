@@ -12,12 +12,15 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { roleAtLeast } from "~/core/lib/roles";
 import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { parseOfflineTestSubject } from "~/features/offline-tests/labels";
 import {
   addTestQuestions,
   createOfflineTest,
+  getOfflineTestWithQuestions,
   listBlankCandidates,
   listMcqCandidates,
   listOxCandidates,
+  listScienceMcqCandidates,
   moveTestQuestion,
   removeTestQuestion,
   setTestQuestionPoints,
@@ -26,7 +29,6 @@ import {
   type OfflineQuestionRef,
 } from "~/features/offline-tests/queries.server";
 import { saveOfflineTestResults } from "~/features/offline-tests/results.server";
-import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/offline-test";
 
@@ -94,15 +96,16 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "create_test") {
     const assignmentId = String(fd.get("assignmentId") ?? "");
     const title = String(fd.get("title") ?? "").trim().slice(0, 200);
-    const lawParse = lawSubjectSlugSchema.safeParse(fd.get("lawCode"));
-    if (!assignmentId || !title || !lawParse.success) {
+    // 과목 값: "patent" 같은 법률 슬러그 또는 "science:physics".
+    const subject = parseOfflineTestSubject(String(fd.get("subject") ?? ""));
+    if (!assignmentId || !title || !subject) {
       return data({ error: "제목·과목을 입력하세요" }, { status: 400 });
     }
     const testId = await createOfflineTest(client, {
       assignmentId,
       cohortId,
       title,
-      lawCode: lawParse.data,
+      subject,
       createdBy: user.id,
     });
     return data({ ok: true, testId, cohortId, assignmentId });
@@ -150,30 +153,44 @@ export async function action({ request }: Route.ActionArgs) {
   // 조건(유형·파트·중요도)에서 N문항 자동 추출 — 중요도 내림차순, 동률은 후보 순.
   if (intent === "auto_pick") {
     const typeParse = z.enum(["mcq", "ox", "blank"]).safeParse(fd.get("type"));
-    const lawParse = lawSubjectSlugSchema.safeParse(fd.get("lawCode"));
-    if (!typeParse.success || !lawParse.success) {
-      return data({ error: "유형·과목 오류" }, { status: 400 });
+    if (!typeParse.success) {
+      return data({ error: "유형 오류" }, { status: 400 });
     }
+    const test = await getOfflineTestWithQuestions(client, testId);
+    if (!test) return data({ error: "테스트를 찾을 수 없습니다" }, { status: 404 });
     const n = Math.max(1, Math.min(50, Number(fd.get("n")) || 10));
     const nodeId = String(fd.get("nodeId") ?? "") || null;
     const minImportance = Math.max(0, Math.min(3, Number(fd.get("minImportance")) || 0));
-    const filter = { lawCode: lawParse.data, nodeId, minImportance, limit: n * 4 };
 
     let refs: OfflineQuestionRef[] = [];
-    if (typeParse.data === "mcq") {
-      const cands = await listMcqCandidates(client, filter);
+    if (test.scienceSubject) {
+      // 자연과학 — 객관식만 (OX·빈칸 없음). 파트 = science_sections.
+      if (typeParse.data !== "mcq") {
+        return data({ error: "자연과학은 객관식만 지원합니다" }, { status: 400 });
+      }
+      const cands = await listScienceMcqCandidates(client, {
+        scienceSubject: test.scienceSubject,
+        sectionId: nodeId,
+        limit: n * 4,
+      });
       refs = cands.map((c) => ({ questionType: "mcq" as const, problemId: c.problemId }));
-    } else if (typeParse.data === "ox") {
-      const cands = await listOxCandidates(client, filter);
-      refs = cands.map((c) => ({
-        questionType: "ox" as const,
-        oxRefType: c.refType,
-        oxRefId: c.refId,
-        oxProblemId: c.problemId,
-      }));
-    } else {
-      const cands = await listBlankCandidates(client, filter);
-      refs = cands.map((c) => ({ questionType: "blank" as const, blankSetId: c.setId }));
+    } else if (test.lawCode) {
+      const filter = { lawCode: test.lawCode, nodeId, minImportance, limit: n * 4 };
+      if (typeParse.data === "mcq") {
+        const cands = await listMcqCandidates(client, filter);
+        refs = cands.map((c) => ({ questionType: "mcq" as const, problemId: c.problemId }));
+      } else if (typeParse.data === "ox") {
+        const cands = await listOxCandidates(client, filter);
+        refs = cands.map((c) => ({
+          questionType: "ox" as const,
+          oxRefType: c.refType,
+          oxRefId: c.refId,
+          oxProblemId: c.problemId,
+        }));
+      } else {
+        const cands = await listBlankCandidates(client, filter);
+        refs = cands.map((c) => ({ questionType: "blank" as const, blankSetId: c.setId }));
+      }
     }
     if (refs.length === 0) {
       return data({ error: "조건에 맞는 문항 후보가 없습니다" }, { status: 400 });
