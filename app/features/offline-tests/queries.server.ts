@@ -462,6 +462,199 @@ export async function setTestQuestionPoints(
   if (error) throw error;
 }
 
+// ── 인쇄(시험지/정답지)용 전문 데이터 ───────────────────────────────────────
+// 빌더의 라벨 스니펫과 달리 문제 전문·선지·정답·해설·빈칸 본문을 전부 싣는다.
+// (mc_box 는 wrong-note 인쇄와 동일하게 body_md 에 박스가 포함된 형태를 그대로 사용.)
+
+export interface PrintBlankItem {
+  idx: number;
+  answer: string;
+  length: number;
+}
+
+export interface OfflineTestPrintQuestion {
+  ord: number;
+  points: number;
+  questionType: OfflineQuestionType;
+  mcq: {
+    bodyMd: string;
+    year: number | null;
+    problemNumber: number | null;
+    choices: Array<{ index: number; bodyMd: string; isCorrect: boolean }>;
+    explanationMd: string | null;
+  } | null;
+  ox: {
+    statementMd: string;
+    truth: "O" | "X";
+    explanationMd: string | null;
+  } | null;
+  blank: {
+    articleLabel: string;
+    bodyText: string; // [[BLANK:N]] 토큰 포함
+    blanks: PrintBlankItem[];
+  } | null;
+}
+
+export interface OfflineTestPrintData {
+  testId: string;
+  title: string;
+  lawCode: LawSubjectSlug;
+  durationMin: number | null;
+  instructionsMd: string | null;
+  totalPoints: number;
+  questions: OfflineTestPrintQuestion[];
+}
+
+export async function getOfflineTestPrintData(
+  client: SupabaseClient<Database>,
+  testId: string,
+): Promise<OfflineTestPrintData | null> {
+  const detail = await getOfflineTestWithQuestions(client, testId);
+  if (!detail) return null;
+
+  const mcqIds = detail.questions
+    .filter((q) => q.questionType === "mcq" && q.problemId)
+    .map((q) => q.problemId as string);
+  const choiceRefIds = detail.questions
+    .filter((q) => q.questionType === "ox" && q.oxRefType === "choice" && q.oxRefId)
+    .map((q) => q.oxRefId as string);
+  const boxRefIds = detail.questions
+    .filter((q) => q.questionType === "ox" && q.oxRefType === "box" && q.oxRefId)
+    .map((q) => q.oxRefId as string);
+  const blankSetIds = detail.questions
+    .filter((q) => q.questionType === "blank" && q.blankSetId)
+    .map((q) => q.blankSetId as string);
+
+  const [problems, choices, oxChoices, oxBoxes, blankSets] = await Promise.all([
+    mcqIds.length
+      ? fetchAllIn(mcqIds, (slice) =>
+          client
+            .from("problems")
+            .select("problem_id, body_md, year, problem_number, explanation_md")
+            .in("problem_id", slice)
+            .order("problem_id"),
+        )
+      : Promise.resolve([]),
+    mcqIds.length
+      ? fetchAllIn(mcqIds, (slice) =>
+          client
+            .from("problem_choices")
+            .select("problem_id, choice_index, body_md, is_correct")
+            .in("problem_id", slice)
+            .order("choice_index"),
+        )
+      : Promise.resolve([]),
+    choiceRefIds.length
+      ? fetchAllIn(choiceRefIds, (slice) =>
+          client
+            .from("problem_choices")
+            .select("choice_id, body_md, ox_truth, explanation_md")
+            .in("choice_id", slice)
+            .order("choice_id"),
+        )
+      : Promise.resolve([]),
+    boxRefIds.length
+      ? fetchAllIn(boxRefIds, (slice) =>
+          client
+            .from("problem_box_items")
+            .select("box_item_id, body_md, ox_truth, explanation_md")
+            .in("box_item_id", slice)
+            .order("box_item_id"),
+        )
+      : Promise.resolve([]),
+    blankSetIds.length
+      ? fetchAllIn(blankSetIds, (slice) =>
+          client
+            .from("article_blank_sets")
+            .select("set_id, body_text, blanks, articles!inner(display_label)")
+            .in("set_id", slice)
+            .order("set_id"),
+        )
+      : Promise.resolve([]),
+  ]);
+
+  const problemById = new Map(problems.map((p) => [p.problem_id, p] as const));
+  const choicesByProblem = new Map<
+    string,
+    Array<{ index: number; bodyMd: string; isCorrect: boolean }>
+  >();
+  for (const c of choices) {
+    const arr = choicesByProblem.get(c.problem_id) ?? [];
+    arr.push({ index: c.choice_index, bodyMd: c.body_md ?? "", isCorrect: c.is_correct });
+    choicesByProblem.set(c.problem_id, arr);
+  }
+  const oxChoiceById = new Map(oxChoices.map((c) => [c.choice_id, c] as const));
+  const oxBoxById = new Map(oxBoxes.map((b) => [b.box_item_id, b] as const));
+  const blankById = new Map(blankSets.map((b) => [b.set_id, b] as const));
+
+  const parseBlankItems = (raw: unknown): PrintBlankItem[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((b) => {
+        const o = b as { idx?: number; answer?: string; length?: number };
+        return {
+          idx: Number(o.idx ?? 0),
+          answer: String(o.answer ?? ""),
+          length: Number(o.length ?? String(o.answer ?? "").length),
+        };
+      })
+      .sort((a, b) => a.idx - b.idx);
+  };
+
+  const questions: OfflineTestPrintQuestion[] = detail.questions.map((q) => {
+    let mcq: OfflineTestPrintQuestion["mcq"] = null;
+    let ox: OfflineTestPrintQuestion["ox"] = null;
+    let blank: OfflineTestPrintQuestion["blank"] = null;
+    if (q.questionType === "mcq" && q.problemId) {
+      const p = problemById.get(q.problemId);
+      mcq = {
+        bodyMd: p?.body_md ?? "",
+        year: p?.year ?? null,
+        problemNumber: p?.problem_number ?? null,
+        choices: (choicesByProblem.get(q.problemId) ?? []).sort(
+          (a, b) => a.index - b.index,
+        ),
+        explanationMd: p?.explanation_md ?? null,
+      };
+    } else if (q.questionType === "ox" && q.oxRefId) {
+      const ref =
+        q.oxRefType === "choice"
+          ? oxChoiceById.get(q.oxRefId)
+          : oxBoxById.get(q.oxRefId);
+      ox = {
+        statementMd: ref?.body_md ?? "",
+        truth: (ref?.ox_truth as "O" | "X") ?? "O",
+        explanationMd: ref?.explanation_md ?? null,
+      };
+    } else if (q.questionType === "blank" && q.blankSetId) {
+      const b = blankById.get(q.blankSetId);
+      blank = {
+        articleLabel: b?.articles?.display_label ?? "조문",
+        bodyText: b?.body_text ?? "",
+        blanks: parseBlankItems(b?.blanks),
+      };
+    }
+    return {
+      ord: q.ord,
+      points: q.points,
+      questionType: q.questionType,
+      mcq,
+      ox,
+      blank,
+    };
+  });
+
+  return {
+    testId: detail.testId,
+    title: detail.title,
+    lawCode: detail.lawCode,
+    durationMin: detail.durationMin,
+    instructionsMd: detail.instructionsMd,
+    totalPoints: questions.reduce((s, q) => s + q.points, 0),
+    questions,
+  };
+}
+
 // ── 후보 탐색 (과목 · 파트(체계도 노드) · 중요도) ────────────────────────────
 
 export interface McqCandidate {

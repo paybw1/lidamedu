@@ -647,10 +647,14 @@ export default [
         "/admin/cohorts/:cohortId/assignments/:assignmentId",
         "features/admin/screens/admin-assignment-edit.tsx",
       ),
-      // feat-7-042 — 오프라인 테스트 (시험지 빌더).
+      // feat-7-042 — 오프라인 테스트 (시험지 빌더·인쇄).
       route(
         "/admin/cohorts/:cohortId/assignments/:assignmentId/tests/:testId",
         "features/admin/screens/admin-offline-test-edit.tsx",
+      ),
+      route(
+        "/admin/cohorts/:cohortId/assignments/:assignmentId/tests/:testId/print",
+        "features/admin/screens/admin-offline-test-print.tsx",
       ),
       route("/api/admin/assignment", "features/admin/api/assignment.tsx"),
       route("/api/admin/offline-test", "features/admin/api/offline-test.tsx"),
