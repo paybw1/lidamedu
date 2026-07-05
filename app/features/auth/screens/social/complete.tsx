@@ -124,6 +124,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     } catch {
       // 무시 — 핵심 차단은 claimSession(sid)+레이아웃 검사. others 폐기는 보조.
     }
+    // 팝업 공지 — 로그인마다 다시 표시(정책). 이 마커를 보면 PopupNoticeModal 이
+    // "단순 닫기" 억제를 해제한다("오늘 하루 보지 않기"는 그날 유지). JS 가 읽고
+    // 지워야 하므로 HttpOnly 아님.
+    headers.append(
+      "Set-Cookie",
+      "popup_login_reset=1; Path=/; Max-Age=600; SameSite=Lax",
+    );
   }
 
   // Redirect to home page with auth cookies in headers

@@ -31,21 +31,60 @@ function extractYoutubeId(url: string): string | null {
 
 const STORAGE_PREFIX = "popupNoticeHiddenUntil:";
 
+// 억제 값 형식 — "day:<ts>"(오늘 하루) / "never:<ts>"(앞으로 보지 않기) / "tmp:<ts>"(단순 닫기·링크 클릭).
+// 정책: 팝업은 로그인마다 다시 표시 — 로그인 마커(popup_login_reset 쿠키)를 보면
+// tmp 억제만 해제하고, 사용자의 명시적 옵트아웃(day·never)은 유지한다.
 function hiddenUntilMs(noticeId: string): number {
   try {
-    return Number(window.localStorage.getItem(STORAGE_PREFIX + noticeId) ?? 0);
+    const raw = window.localStorage.getItem(STORAGE_PREFIX + noticeId) ?? "0";
+    return Number(raw.replace(/^(day|never|tmp):/, ""));
   } catch {
     return 0;
+  }
+}
+
+function setSuppression(
+  noticeId: string,
+  kind: "day" | "never" | "tmp",
+  untilMs: number,
+): void {
+  try {
+    window.localStorage.setItem(
+      STORAGE_PREFIX + noticeId,
+      `${kind}:${untilMs}`,
+    );
+  } catch {
+    // localStorage 불가(프라이빗 모드 등) — 이번 렌더에서만 닫힘.
   }
 }
 
 function hideToday(noticeId: string): void {
   const end = new Date();
   end.setHours(24, 0, 0, 0); // 오늘 자정까지
+  setSuppression(noticeId, "day", end.getTime());
+}
+
+// 앞으로 보지 않기 — 이 공지는 이 기기에서 다시 표시하지 않음(로그인 리셋에도 유지).
+const NEVER_MS = 4102444800000; // 2100-01-01
+function hideForever(noticeId: string): void {
+  setSuppression(noticeId, "never", NEVER_MS);
+}
+
+// 로그인 직후 1회 — tmp 억제(레거시 bare 숫자 포함) 해제 후 마커 쿠키 제거.
+function resetTmpSuppressionsOnLogin(): void {
   try {
-    window.localStorage.setItem(STORAGE_PREFIX + noticeId, String(end.getTime()));
+    if (!/(?:^|;\s*)popup_login_reset=1/.test(document.cookie)) return;
+    for (let i = window.localStorage.length - 1; i >= 0; i--) {
+      const key = window.localStorage.key(i);
+      if (!key?.startsWith(STORAGE_PREFIX)) continue;
+      const raw = window.localStorage.getItem(key) ?? "";
+      if (!raw.startsWith("day:") && !raw.startsWith("never:")) {
+        window.localStorage.removeItem(key);
+      }
+    }
+    document.cookie = "popup_login_reset=; Path=/; Max-Age=0; SameSite=Lax";
   } catch {
-    // localStorage 불가(프라이빗 모드 등) — 이번 렌더에서만 닫힘.
+    // 무시 — 다음 로그인에서 재시도.
   }
 }
 
@@ -57,6 +96,8 @@ export function PopupNoticeModal({
   // SSR 시점엔 localStorage 를 모름 → mount 후 필터 (hydration mismatch 방지).
   const [visible, setVisible] = useState<PopupNoticeDisplay[]>([]);
   useEffect(() => {
+    // 로그인 직후면 단순 닫기 억제 해제 — 팝업은 로그인마다 다시 표시(정책).
+    resetTmpSuppressionsOnLogin();
     const now = Date.now();
     setVisible(notices.filter((n) => hiddenUntilMs(n.noticeId) < now));
   }, [notices]);
@@ -64,19 +105,11 @@ export function PopupNoticeModal({
   const current = visible[0];
   if (!current) return null;
 
-  const closeCurrent = (hide: boolean) => {
-    if (hide) hideToday(current.noticeId);
-    else {
-      // 단순 닫기도 이 세션에선 다시 안 뜨게 짧게(10분) 기억 — 페이지 이동마다 재등장 방지.
-      try {
-        window.localStorage.setItem(
-          STORAGE_PREFIX + current.noticeId,
-          String(Date.now() + 10 * 60 * 1000),
-        );
-      } catch {
-        // 무시
-      }
-    }
+  const closeCurrent = (mode: "tmp" | "day" | "never") => {
+    if (mode === "day") hideToday(current.noticeId);
+    else if (mode === "never") hideForever(current.noticeId);
+    // 단순 닫기·링크 클릭 — 이 세션에선 다시 안 뜨게 짧게(10분) 기억. 다음 로그인 때 리셋.
+    else setSuppression(current.noticeId, "tmp", Date.now() + 10 * 60 * 1000);
     setVisible((v) => v.filter((n) => n.noticeId !== current.noticeId));
   };
 
@@ -92,7 +125,7 @@ export function PopupNoticeModal({
           <h2 className="text-[15px] font-bold tracking-tight">{current.title}</h2>
           <button
             type="button"
-            onClick={() => closeCurrent(false)}
+            onClick={() => closeCurrent("tmp")}
             aria-label="닫기"
             className="text-muted-foreground hover:text-foreground p-1"
           >
@@ -107,7 +140,7 @@ export function PopupNoticeModal({
               <a
                 href={current.linkUrl}
                 aria-label={current.linkLabel || "자세히 보기"}
-                onClick={() => closeCurrent(false)}
+                onClick={() => closeCurrent("tmp")}
               >
                 <img
                   src={current.imageUrl}
@@ -138,24 +171,37 @@ export function PopupNoticeModal({
             <MarkdownView text={current.bodyMd} trusted={false} />
           ) : null}
         </div>
-        <div className="border-border/60 flex items-center justify-between gap-2 border-t px-5 py-3">
-          <button
-            type="button"
-            onClick={() => closeCurrent(true)}
-            className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
-          >
-            오늘 하루 보지 않기
-          </button>
+        <div className="border-border/60 flex flex-wrap items-center justify-between gap-2 border-t px-5 py-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => closeCurrent("day")}
+              className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
+            >
+              오늘 하루 보지 않기
+            </button>
+            <button
+              type="button"
+              onClick={() => closeCurrent("never")}
+              className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
+            >
+              앞으로 보지 않기
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             {/* 이미지 팝업은 이미지 안 CTA + 이미지 클릭이 링크 역할 — 푸터 버튼 중복 제거. */}
             {current.linkUrl && !current.imageUrl ? (
               <Button asChild size="sm">
-                <a href={current.linkUrl} onClick={() => closeCurrent(false)}>
+                <a href={current.linkUrl} onClick={() => closeCurrent("tmp")}>
                   {current.linkLabel || "자세히 보기"}
                 </a>
               </Button>
             ) : null}
-            <Button size="sm" variant="outline" onClick={() => closeCurrent(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => closeCurrent("tmp")}
+            >
               닫기
             </Button>
           </div>
