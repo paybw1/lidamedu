@@ -325,8 +325,9 @@ function NotFoundWithReloadGuard() {
  * @param error - The error that was caught by React Router
  */
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = "문제가 발생했습니다";
+  let details =
+    "일시적인 오류일 수 있습니다. 잠시 후 새로고침하거나 다시 시도해 주세요.";
   let stack: string | undefined;
 
   // DEV: 진단 가능하게 message + stack 명시적으로 분리해 출력.
@@ -372,7 +373,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         </main>
       );
     }
-    message = "Error";
+    message = "오류가 발생했습니다";
     details = error.statusText || details;
     if (import.meta.env.DEV) {
       stack = JSON.stringify(
@@ -403,11 +404,18 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   // Render a simple error page with available information
   return (
-    <main className="container mx-auto p-4 pt-16">
-      <h1>{message}</h1>
-      <p>{details}</p>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+      <h1 className="text-2xl font-bold">{message}</h1>
+      <p className="text-muted-foreground text-sm leading-relaxed">{details}</p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="bg-primary text-primary-foreground mt-2 h-10 rounded-lg px-5 text-sm font-bold"
+      >
+        새로고침
+      </button>
       {stack && (
-        <pre className="w-full overflow-x-auto p-4">
+        <pre className="w-full max-w-3xl overflow-x-auto p-4 text-left">
           <code>{stack}</code>
         </pre>
       )}
