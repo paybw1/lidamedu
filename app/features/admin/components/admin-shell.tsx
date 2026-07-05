@@ -14,6 +14,7 @@ import {
   Link2Icon,
   ListChecksIcon,
   type LucideIcon,
+  PackageIcon,
   PanelLeftIcon,
   PencilLineIcon,
   ScaleIcon,
@@ -36,6 +37,7 @@ export type AdminClusterId =
   | "students"
   | "sales"
   | "cohorts"
+  | "products"
   | "gs"
   | "analytics"
   | "comms"
@@ -148,49 +150,58 @@ export const ADMIN_NAV: NavCluster[] = [
     ],
   },
   {
-    // 수강생 — 학생 중심 (사용자/위험군/수강권). 반·강의(cohorts) 와 분리.
+    // 회원 관리 — 사람 축(수강생·강사·접속·탈퇴·위험군). 상품/종합반/매출과 분리.
     id: "students",
     section: "students",
-    label: "수강생",
+    label: "회원 관리",
     Icon: UsersIcon,
     screens: [
-      { label: "수강생 목록", to: "/admin/users" },
+      { label: "수강생 관리", to: "/admin/users" },
       // feat-7-041 — 강사 담당 과목(콘텐츠 쓰기 권한) + 배분 규칙 연결.
       { label: "강사 관리", to: "/admin/instructors" },
-      { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
-      // feat-7-014 — manager+ 전용. 메뉴는 노출, loader 에서 차단.
-      { label: "수강권 관리", to: "/admin/subscriptions" },
       { label: "접속이력 관리", to: "/admin/access-logs" },
       { label: "탈퇴 관리", to: "/admin/withdrawals" },
+      { label: "위험 수강생 (7일 무접속)", to: "/admin/cohorts/at-risk" },
       { label: "등급 체험 테스트", to: "/admin/membership-test" },
     ],
   },
   {
-    // 매출·정산 — 주문결제 내역·통계 + 강사 배분·정산 (feat-8-029). manager+ 전용(loader 차단).
-    id: "sales",
+    // 종합반 관리 — 반 단위 운영(반·게시판·커리큘럼).
+    id: "cohorts",
     section: "students",
-    label: "매출·정산",
-    Icon: BanknoteIcon,
+    label: "종합반 관리",
+    Icon: GraduationCapIcon,
     screens: [
-      { label: "주문·결제 관리", to: "/admin/payments" },
-      // feat-8-028 — manager+ 상품·요금·할인 관리 (수강생 클러스터에서 이동).
-      { label: "상품·요금 관리", to: "/admin/pricing" },
-      { label: "할인 관리", to: "/admin/discounts" },
-      { label: "강사 배분 기준", to: "/admin/settlements/rules" },
-      { label: "강사 정산", to: "/admin/settlements" },
-      { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards" },
+      { label: "반 관리", to: "/admin/cohorts" },
+      { label: "반별 게시판 관리", to: "/admin/cohort-boards" },
+      { label: "커리큘럼 관리", to: "/admin/curricula" },
     ],
   },
   {
-    // 반·강의 — 반 단위 + 커리큘럼. 수강생(students) 와 분리.
-    id: "cohorts",
+    // 상품 관리 — 상품 정의(요금·할인)와 학생별 보유(수강권). 거래(매출·정산)와 분리.
+    id: "products",
     section: "students",
-    label: "반·강의",
-    Icon: GraduationCapIcon,
+    label: "상품 관리",
+    Icon: PackageIcon,
     screens: [
-      { label: "반 목록", to: "/admin/cohorts" },
-      { label: "반별 게시판", to: "/admin/cohort-boards" },
-      { label: "커리큘럼 관리", to: "/admin/curricula" },
+      // feat-8-028 — manager+ 상품·요금·할인.
+      { label: "상품·요금 관리", to: "/admin/pricing" },
+      { label: "할인 관리", to: "/admin/discounts" },
+      // feat-7-014 — 수강권 = 상품의 학생별 인스턴스(재량 부여·연장·취소).
+      { label: "수강권 관리", to: "/admin/subscriptions" },
+    ],
+  },
+  {
+    // 매출·정산 관리 — 거래 축(주문결제·강사 배분·정산·적립). manager+ 전용(loader 차단).
+    id: "sales",
+    section: "students",
+    label: "매출·정산 관리",
+    Icon: BanknoteIcon,
+    screens: [
+      { label: "주문·결제 관리", to: "/admin/payments" },
+      { label: "강사 배분 기준", to: "/admin/settlements/rules" },
+      { label: "강사 정산", to: "/admin/settlements" },
+      { label: "Q&A 답변 적립", to: "/admin/settlements/qna-rewards" },
     ],
   },
   {

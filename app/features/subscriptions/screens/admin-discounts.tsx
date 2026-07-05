@@ -61,7 +61,7 @@ export default function AdminDiscounts({ loaderData }: Route.ComponentProps) {
 
   return (
     <AdminShell
-      cluster="sales"
+      cluster="products"
       role={role}
       title="할인 관리"
       desc="기간·조건 할인과 쿠폰을 정의합니다. ‘구독 기간’은 할인받으려면 구독을 시작해야 하는 구간, ‘혜택 기간’은 그 구독이 갱신에도 할인받는 마지막 시점입니다. (manager 이상)"

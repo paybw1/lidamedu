@@ -150,7 +150,7 @@ export default function AdminSubscriptions({ loaderData }: Route.ComponentProps)
   };
 
   return (
-    <AdminShell title="수강권 관리" cluster="students">
+    <AdminShell title="수강권 관리" cluster="products">
       <div className="mx-auto max-w-6xl space-y-4">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
