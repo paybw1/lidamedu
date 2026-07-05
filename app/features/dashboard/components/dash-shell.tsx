@@ -28,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "대시보드", to: "/dashboard", icon: LayoutDashboardIcon, active: true },
   { label: "학습관리", to: "/goals", icon: ClipboardListIcon },
   { label: "학습과목", to: "/subjects/patent", icon: BookOpenIcon },
-  { label: "학습지원", to: "/study/wrong-note", icon: BookmarkIcon },
+  { label: "학습노트", to: "/study/wrong-note", icon: BookmarkIcon },
   { label: "학습정보", to: "/latest/laws", icon: NewspaperIcon },
   { label: "커뮤니티", to: "/community", icon: MessagesSquareIcon },
   { label: "운영관리", to: "/admin", icon: ShieldIcon },

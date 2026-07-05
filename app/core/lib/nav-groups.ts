@@ -66,7 +66,7 @@ export const NAV_GROUP_POOL = {
   },
   aids: {
     id: "aids" as const,
-    label: "학습지원",
+    label: "학습노트",
     Icon: HighlighterIcon,
     items: [
       { label: "오답노트", to: "/study/wrong-note" },
@@ -233,7 +233,7 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
     area: "area_study_mgmt",
   },
   { label: "학습과목", subjects: true, area: "area_subjects" },
-  { label: "학습지원", groupIds: AREA_GROUP_IDS.aids, area: "area_study_aids" },
+  { label: "학습노트", groupIds: AREA_GROUP_IDS.aids, area: "area_study_aids" },
   { label: "학습정보", groupIds: AREA_GROUP_IDS.info },
   { label: "모의고사", groupIds: AREA_GROUP_IDS.mock, area: "area_mock_exams" },
   { label: "커뮤니티", groupIds: AREA_GROUP_IDS.community },

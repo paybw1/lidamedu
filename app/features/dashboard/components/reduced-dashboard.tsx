@@ -55,7 +55,7 @@ export function ReducedDashboard({
               상단 메뉴에서 현재 이용 가능한 영역으로 바로 진입할 수 있습니다 —{" "}
               <strong>
                 학습정보 · 커뮤니티
-                {isPaid ? " · 학습과목 · 학습지원" : ""}
+                {isPaid ? " · 학습과목 · 학습노트" : ""}
               </strong>
               .
             </p>

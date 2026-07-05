@@ -74,7 +74,7 @@ export function StudyAidsTabs({
       };
     },
   );
-  return <AreaTabs ariaLabel="학습지원" items={items} />;
+  return <AreaTabs ariaLabel="학습노트" items={items} />;
 }
 
 export interface CountStat {
@@ -136,7 +136,7 @@ export function StudyAidsShell({
       const { downloadElementAsPdf } = await import(
         "~/core/lib/pdf-export.client"
       );
-      await downloadElementAsPdf(contentRef.current, `학습지원-${title}.pdf`);
+      await downloadElementAsPdf(contentRef.current, `학습노트-${title}.pdf`);
     } catch (err) {
       console.error("[study-aids] PDF 내보내기 실패:", err);
       toast.error("PDF 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
