@@ -971,6 +971,7 @@ export type Database = {
           due_at: string
           source_curriculum_id: string | null
           source_week_id: string | null
+          target_profile_id: string | null
           title: string
           updated_at: string
         }
@@ -986,6 +987,7 @@ export type Database = {
           due_at: string
           source_curriculum_id?: string | null
           source_week_id?: string | null
+          target_profile_id?: string | null
           title: string
           updated_at?: string
         }
@@ -1001,6 +1003,7 @@ export type Database = {
           due_at?: string
           source_curriculum_id?: string | null
           source_week_id?: string | null
+          target_profile_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -1039,6 +1042,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "curriculum_weeks"
             referencedColumns: ["week_id"]
+          },
+          {
+            foreignKeyName: "assignments_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "assignments_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2296,6 +2313,7 @@ export type Database = {
           owner_id: string
           starts_on: string | null
           updated_at: string
+          weak_assignment_auto: boolean
         }
         Insert: {
           access_scope?: string
@@ -2309,6 +2327,7 @@ export type Database = {
           owner_id: string
           starts_on?: string | null
           updated_at?: string
+          weak_assignment_auto?: boolean
         }
         Update: {
           access_scope?: string
@@ -2322,6 +2341,7 @@ export type Database = {
           owner_id?: string
           starts_on?: string | null
           updated_at?: string
+          weak_assignment_auto?: boolean
         }
         Relationships: [
           {
