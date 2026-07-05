@@ -4666,6 +4666,236 @@ export type Database = {
           },
         ]
       }
+      offline_test_questions: {
+        Row: {
+          blank_set_id: string | null
+          created_at: string
+          ord: number
+          ox_problem_id: string | null
+          ox_ref_id: string | null
+          ox_ref_type: string | null
+          points: number
+          problem_id: string | null
+          question_id: string
+          question_type: string
+          test_id: string
+        }
+        Insert: {
+          blank_set_id?: string | null
+          created_at?: string
+          ord: number
+          ox_problem_id?: string | null
+          ox_ref_id?: string | null
+          ox_ref_type?: string | null
+          points?: number
+          problem_id?: string | null
+          question_id?: string
+          question_type: string
+          test_id: string
+        }
+        Update: {
+          blank_set_id?: string | null
+          created_at?: string
+          ord?: number
+          ox_problem_id?: string | null
+          ox_ref_id?: string | null
+          ox_ref_type?: string | null
+          points?: number
+          problem_id?: string | null
+          question_id?: string
+          question_type?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_test_questions_blank_set_id_fkey"
+            columns: ["blank_set_id"]
+            isOneToOne: false
+            referencedRelation: "article_blank_sets"
+            referencedColumns: ["set_id"]
+          },
+          {
+            foreignKeyName: "offline_test_questions_ox_problem_id_fkey"
+            columns: ["ox_problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "offline_test_questions_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+          {
+            foreignKeyName: "offline_test_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "offline_tests"
+            referencedColumns: ["test_id"]
+          },
+        ]
+      }
+      offline_test_results: {
+        Row: {
+          entered_at: string
+          entered_by: string | null
+          max_score: number | null
+          note: string | null
+          result_id: string
+          score: number | null
+          session_id: string | null
+          status: string
+          taken_at: string | null
+          test_id: string
+          user_id: string
+          wrong_ords: number[]
+        }
+        Insert: {
+          entered_at?: string
+          entered_by?: string | null
+          max_score?: number | null
+          note?: string | null
+          result_id?: string
+          score?: number | null
+          session_id?: string | null
+          status?: string
+          taken_at?: string | null
+          test_id: string
+          user_id: string
+          wrong_ords?: number[]
+        }
+        Update: {
+          entered_at?: string
+          entered_by?: string | null
+          max_score?: number | null
+          note?: string | null
+          result_id?: string
+          score?: number | null
+          session_id?: string | null
+          status?: string
+          taken_at?: string | null
+          test_id?: string
+          user_id?: string
+          wrong_ords?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_test_results_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "offline_test_results_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "offline_test_results_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "offline_test_results_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "offline_tests"
+            referencedColumns: ["test_id"]
+          },
+          {
+            foreignKeyName: "offline_test_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "offline_test_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      offline_tests: {
+        Row: {
+          assignment_id: string
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          duration_min: number | null
+          instructions_md: string | null
+          law_code: string
+          test_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          cohort_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          duration_min?: number | null
+          instructions_md?: string | null
+          law_code: string
+          test_id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          cohort_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          duration_min?: number | null
+          instructions_md?: string | null
+          law_code?: string
+          test_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_tests_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "offline_tests_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "offline_tests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "offline_tests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       ox_article_suggestions: {
         Row: {
           created_at: string
