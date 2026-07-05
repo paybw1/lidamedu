@@ -61,7 +61,7 @@ export default function GuideIndex({ loaderData }: Route.ComponentProps) {
         </h1>
         <p className="text-muted-foreground text-sm">
           처음 오셨거나 기능이 낯설 때 여기서 사용법을 확인할 수 있습니다. 짧은
-          글(영상)으로 준비했습니다.
+          글(영상)로 준비했습니다.
         </p>
       </header>
 
