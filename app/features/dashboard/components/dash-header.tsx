@@ -13,6 +13,7 @@ import {
   useCountUp,
   useInView,
 } from "~/features/dashboard/lib/dash";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 
 export interface DashHeaderData {
   userName: string;
@@ -79,6 +80,8 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
           {remainText}
         </p>
       </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <GuideHelpButton screenKey="dashboard" />
       <div
         style={{
           display: "inline-flex",
@@ -135,6 +138,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
             </Link>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

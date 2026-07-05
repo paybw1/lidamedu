@@ -20,6 +20,7 @@ import { roleAtLeast } from "~/core/lib/roles";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
+import { GUIDE_SCREEN_KEYS } from "~/features/guide/help-keys";
 import {
   type GuideArticle,
   listAllGuides,
@@ -319,14 +320,22 @@ function GuideForm({
             placeholder="https://www.youtube.com/watch?v=… 또는 https://youtu.be/…"
           />
         </FormField>
-        <FormField label="화면 키 (선택 — 후속 '화면 안 ? 도움말' 연결용)">
+        <FormField label="화면 키 (선택 — 그 화면의 '?' 도움 버튼에 연결)">
           <Input
             name="screenKey"
             maxLength={60}
             defaultValue={g?.screenKey ?? ""}
+            list="guide-screen-keys"
             className="h-8 text-xs"
             placeholder="예: article-viewer (비워 두어도 됩니다)"
           />
+          <datalist id="guide-screen-keys">
+            {GUIDE_SCREEN_KEYS.map((k) => (
+              <option key={k.key} value={k.key}>
+                {k.label}
+              </option>
+            ))}
+          </datalist>
         </FormField>
       </div>
 

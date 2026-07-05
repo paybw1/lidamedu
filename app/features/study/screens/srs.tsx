@@ -12,6 +12,7 @@ import {
 import { Form, Link, data, redirect } from "react-router";
 
 import { AreaEyebrow, StudentShell } from "~/core/components/student";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
 import {
@@ -152,15 +153,18 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
   })).filter((g) => g.sets.length > 0);
   return (
     <StudentShell>
-      <header className="mb-6">
-        <AreaEyebrow area="manage" />
-        <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
-          복습
-        </h1>
-        <p className="text-ink-soft mt-2 text-sm leading-relaxed">
-          틀리면 1일, 맞으면 3·7·14·30·60일 간격으로 일정이 자동으로 잡힙니다.
-          지금 봐야 할 객관식 문제와 빈칸을 모아서 보여 드립니다.
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <AreaEyebrow area="manage" />
+          <h1 className="text-foreground mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+            복습
+          </h1>
+          <p className="text-ink-soft mt-2 text-sm leading-relaxed">
+            틀리면 1일, 맞으면 3·7·14·30·60일 간격으로 일정이 자동으로 잡힙니다.
+            지금 봐야 할 객관식 문제와 빈칸을 모아서 보여 드립니다.
+          </p>
+        </div>
+        <GuideHelpButton screenKey="study-srs" className="mt-1" />
       </header>
 
       {/* feat-2-026 Stage 3 ① — 복습 한눈에(통합 진입): 종류별 due 합 + 정오문제 묶음 러너 바로가기.

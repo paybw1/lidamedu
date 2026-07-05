@@ -30,6 +30,7 @@ import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import type { BookmarkRecord } from "~/features/annotations/labels";
@@ -812,6 +813,9 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
             listLabel={`${subject.name} ${isSubjectiveProblem ? "주관식" : "객관식"} 색인`}
           />
           {/* 질문하기는 우측 Q&A 패널과 중복이라 제거(feat-9 통합). */}
+          <div className="ml-auto">
+            <GuideHelpButton screenKey="problem-viewer" />
+          </div>
         </div>
       )}
 

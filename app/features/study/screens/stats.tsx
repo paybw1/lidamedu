@@ -33,6 +33,7 @@ import {
 import { z } from "zod";
 
 import { PageHeader, StudentShell, Surface } from "~/core/components/student";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import {
@@ -595,11 +596,14 @@ function StudyStatsInner({ loaderData }: { loaderData: StatsData }) {
         title="학습현황"
         description="차수를 골라 과목별 진도와 정답률을 한눈에 확인하고, 이어서 학습할 조문·판례·문제로 바로 이동합니다."
         actions={
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/dashboard" viewTransition>
-              대시보드
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <GuideHelpButton screenKey="study-stats" />
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/dashboard" viewTransition>
+                대시보드
+              </Link>
+            </Button>
+          </div>
         }
       />
 

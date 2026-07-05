@@ -72,6 +72,21 @@ export async function getPublishedGuide(
   return data ? rowToGuide(data) : null;
 }
 
+/** 화면 안 "?" 도움 버튼 — screen_key 로 매칭되는 발행 가이드(보통 0~1건). RLS 발행본만. */
+export async function listGuidesByScreenKey(
+  client: SupabaseClient<Database>,
+  screenKey: string,
+): Promise<GuideArticle[]> {
+  const { data, error } = await client
+    .from("guide_articles")
+    .select(COLS)
+    .eq("screen_key", screenKey)
+    .order("display_order")
+    .limit(5);
+  if (error) throw error;
+  return (data ?? []).map(rowToGuide);
+}
+
 // ── 운영자 ──────────────────────────────────────────────────────────────────
 
 export async function listAllGuides(): Promise<GuideArticle[]> {

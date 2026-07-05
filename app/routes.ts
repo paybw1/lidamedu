@@ -118,6 +118,8 @@ export default [
       "/cohorts/upgrade-request",
       "features/cohorts/api/upgrade-request.tsx",
     ),
+    // 화면 안 "?" 도움 버튼 — ?key=<screenKey> 발행 가이드 조회.
+    route("/guide-help", "features/guide/api/help.tsx"),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),

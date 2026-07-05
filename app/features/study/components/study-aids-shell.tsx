@@ -19,6 +19,7 @@ import {
 } from "~/core/components/student";
 import { AREA_GROUP_IDS, topbarDropdownItems } from "~/core/lib/nav-groups";
 import { cn } from "~/core/lib/utils";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import type { StudyAidCounts } from "~/features/study/queries.server";
 
 export type StudyAidTab =
@@ -114,6 +115,7 @@ export function StudyAidsShell({
   desc,
   summaryStats,
   printHref,
+  helpKey,
   children,
 }: {
   active: StudyAidTab;
@@ -124,6 +126,8 @@ export function StudyAidsShell({
   // 제공 시: "복습 정리본" 인쇄 라우트를 새 탭으로 연다(콘텐츠 정리본 → PDF 저장).
   // 미제공 시(아직 정리본 미구현 탭): 화면 캡처(html2canvas) 폴백.
   printHref?: string;
+  // 화면 안 "?" 도움 버튼 — 이용 가이드(screen_key) 연결. 미지정 시 미표시.
+  helpKey?: string;
   children: ReactNode;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -156,7 +160,12 @@ export function StudyAidsShell({
             title={title}
             description={desc}
             actions={
-              printHref ? (
+              <div
+                className="flex items-center gap-2"
+                data-pdf-exclude="true"
+              >
+                {helpKey ? <GuideHelpButton screenKey={helpKey} /> : null}
+                {printHref ? (
                 <a
                   href={printHref}
                   target="_blank"
@@ -178,7 +187,8 @@ export function StudyAidsShell({
                   <DownloadIcon className="size-3.5" />
                   {exporting ? "PDF 생성 중…" : "PDF 저장"}
                 </button>
-              )
+              )}
+              </div>
             }
           />
           {summaryStats ? <CountStrip stats={summaryStats} /> : null}

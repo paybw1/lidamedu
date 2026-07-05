@@ -28,6 +28,7 @@ import { Separator } from "~/core/components/ui/separator";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { HighlightOverlay } from "~/features/annotations/components/highlight-overlay";
 import { HighlightToolbar } from "~/features/annotations/components/highlight-toolbar";
 import {
@@ -1102,6 +1103,7 @@ function ArticleViewerInner({
                 >
                   {!editMode ? (
                     <div className="mb-2 flex items-center justify-end gap-2">
+                      <GuideHelpButton screenKey="article-viewer" />
                       <button
                         type="button"
                         onClick={toggleReadingMode}
