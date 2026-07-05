@@ -781,6 +781,18 @@ function AdminProblemEditInner({
               · 문제 #{problem.problemNumber}
             </span>
           ) : null}
+          {/* 식별번호 — 인용·Q&A 특정용 전역 고유번호. 클릭 시 복사. */}
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard.writeText(`P-${problem.displayNo}`);
+              toast.success(`P-${problem.displayNo} 복사됨`);
+            }}
+            title="식별번호 복사"
+            className="bg-primary/10 text-link hover:bg-primary hover:text-primary-foreground rounded-full px-2.5 py-0.5 font-mono text-sm font-semibold transition"
+          >
+            P-{problem.displayNo}
+          </button>
         </span>
       }
       desc={
