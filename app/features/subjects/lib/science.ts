@@ -60,3 +60,13 @@ export interface ScienceSectionStats extends ScienceSection {
   correct: number;
   accuracyPct: number | null;
 }
+
+// 미완료 퀴즈 세션 이어풀기 정보 — 허브 행동 카드용.
+export interface ScienceResumeInfo {
+  sessionId: string;
+  mode: "study" | "exam";
+  answered: number;
+  total: number;
+  nextProblemId: string;
+  startedAt: string;
+}

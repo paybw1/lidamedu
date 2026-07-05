@@ -14,6 +14,7 @@ import {
   normalizeScienceSlug,
 } from "~/features/subjects/lib/science";
 import {
+  getScienceWrongProblemIds,
   listScienceProblems,
   listScienceYears,
   listSectionsWithCounts,
@@ -81,17 +82,28 @@ export async function action({ params, request }: Route.ActionArgs) {
     return data({ error: "Invalid input" }, { status: 400 });
   }
 
-  const candidates = await listScienceProblems(
+  let candidates = await listScienceProblems(
     client,
     subject,
     parsed.data.sectionIds ?? [],
     parsed.data.years ?? [],
   );
+
+  // 허브 "오답 다시 풀기" — 가장 최근 시도가 오답인 문제만 남긴다.
+  const wrongOnly = form.get("wrong") === "1";
+  if (wrongOnly) {
+    const wrongIds = new Set(
+      await getScienceWrongProblemIds(client, user.id, subject),
+    );
+    candidates = candidates.filter((p) => wrongIds.has(p.problemId));
+  }
+
   if (candidates.length === 0) {
     return data(
       {
-        error:
-          "조건에 맞는 자연과학 문제가 없습니다. 운영자에게 문제 등록을 요청해 주세요.",
+        error: wrongOnly
+          ? "다시 풀 오답이 없습니다."
+          : "조건에 맞는 자연과학 문제가 없습니다. 운영자에게 문제 등록을 요청해 주세요.",
       },
       { status: 400 },
     );
@@ -163,7 +175,6 @@ export default function ScienceQuizSetup({
             <SlidersHorizontalIcon className="size-3" /> 자연과학 맞춤 퀴즈
           </p>
           <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
-            <span className="mr-2 text-xl">{subjectMeta.emoji}</span>
             {subjectMeta.name}
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed">

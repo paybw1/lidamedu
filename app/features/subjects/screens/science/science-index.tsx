@@ -1,6 +1,7 @@
 // /subjects/science — 자연과학 허브. nav 의 "자연과학" 단일 진입점에서 도달한다.
 // 상단 과목 탭(물/화/생/지)을 클릭하면 다른 화면으로 넘어가지 않고, 같은 허브
 // 화면에서 그 과목 내용(과목별 ScienceHub 뷰)이 바로 교체되어 보인다(?subject=).
+// 탭에는 과목별 진척 링을 내장 — "4과목 고르게" 균형이 탭에서 바로 보인다.
 // 진입 게이트(area_subjects)는 상위 subjects.layout 이 담당.
 
 import { Link } from "react-router";
@@ -15,10 +16,8 @@ import {
   normalizeScienceSlug,
 } from "~/features/subjects/lib/science";
 import {
-  getScienceProgress,
-  listScienceBookmarkedProblems,
-  listScienceYears,
-  listSectionsWithStats,
+  getAllScienceSubjectsProgress,
+  loadScienceHubData,
 } from "~/features/subjects/lib/science.server";
 
 import type { Route } from "./+types/science-index";
@@ -41,21 +40,55 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const [sections, years, progress, bookmarks] = await Promise.all([
-    listSectionsWithStats(client, subject, user?.id ?? null),
-    listScienceYears(client, subject),
-    user
-      ? getScienceProgress(client, user.id, subject)
-      : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),
-    user
-      ? listScienceBookmarkedProblems(client, user.id, subject)
-      : Promise.resolve([]),
+  const [hub, allProgress] = await Promise.all([
+    loadScienceHubData(client, user?.id ?? null, subject),
+    user ? getAllScienceSubjectsProgress(client, user.id) : Promise.resolve(null),
   ]);
-  return { subject, sections, years, progress, bookmarks };
+  return { subject, ...hub, allProgress };
+}
+
+// 탭 진척 미니 링 — currentColor 로 활성/비활성 톤을 그대로 따른다.
+function TabProgressRing({ pct }: { pct: number }) {
+  const r = 5.5;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox="0 0 14 14" className="size-3.5 -rotate-90" aria-hidden="true">
+      <circle
+        cx="7"
+        cy="7"
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.25"
+        strokeWidth="2.5"
+      />
+      {pct > 0 ? (
+        <circle
+          cx="7"
+          cy="7"
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={`${(c * pct) / 100} ${c}`}
+        />
+      ) : null}
+    </svg>
+  );
 }
 
 export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
-  const { subject, sections, years, progress, bookmarks } = loaderData;
+  const {
+    subject,
+    sections,
+    years,
+    progress,
+    bookmarks,
+    resume,
+    wrongCount,
+    allProgress,
+  } = loaderData;
   return (
     <div className="bg-background">
       {/* 과목 탭 — 클릭 시 같은 화면에서 내용만 교체(페이지 전환 아님). */}
@@ -67,6 +100,11 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
           {SCIENCE_SUBJECT_SLUGS.map((slug) => {
             const active = slug === subject;
             const m = SCIENCE_SUBJECTS[slug];
+            const prog = allProgress?.find((p) => p.slug === slug);
+            const pct =
+              prog && prog.total > 0
+                ? Math.round((prog.attempted / prog.total) * 100)
+                : null;
             return (
               <Link
                 key={slug}
@@ -74,6 +112,11 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
                 preventScrollReset
                 viewTransition
                 aria-current={active ? "page" : undefined}
+                title={
+                  prog && prog.total > 0
+                    ? `내 풀이 ${prog.attempted}/${prog.total}`
+                    : undefined
+                }
                 className={cn(
                   "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
                   active
@@ -81,8 +124,20 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
                     : "border-border bg-card hover:border-primary hover:text-link",
                 )}
               >
-                <span aria-hidden="true">{m.emoji}</span>
+                {pct != null ? <TabProgressRing pct={pct} /> : null}
                 {m.name}
+                {pct != null ? (
+                  <span
+                    className={cn(
+                      "font-mono text-[10px] tabular-nums",
+                      active
+                        ? "text-primary-foreground/80"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {pct}%
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -96,6 +151,8 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
         years={years}
         progress={progress}
         bookmarks={bookmarks}
+        resume={resume}
+        wrongCount={wrongCount}
         hideBackLink
       />
     </div>

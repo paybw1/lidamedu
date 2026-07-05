@@ -2,11 +2,7 @@ import type { Route } from "./+types/physics";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import ScienceHub from "~/features/subjects/components/science-hub";
-import {
-  getScienceProgress,
-  listScienceYears,
-  listSectionsWithStats,
-} from "~/features/subjects/lib/science.server";
+import { loadScienceHubData } from "~/features/subjects/lib/science.server";
 
 export const meta: Route.MetaFunction = () => [{ title: "물리 | 리담변리사학원" }];
 
@@ -15,14 +11,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  const [sections, years, progress] = await Promise.all([
-    listSectionsWithStats(client, "physics", user?.id ?? null),
-    listScienceYears(client, "physics"),
-    user
-      ? getScienceProgress(client, user.id, "physics")
-      : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),
-  ]);
-  return { sections, years, progress };
+  return loadScienceHubData(client, user?.id ?? null, "physics");
 }
 
 export default function SubjectPhysics({ loaderData }: Route.ComponentProps) {
@@ -32,6 +21,9 @@ export default function SubjectPhysics({ loaderData }: Route.ComponentProps) {
       sections={loaderData.sections}
       years={loaderData.years}
       progress={loaderData.progress}
+      bookmarks={loaderData.bookmarks}
+      resume={loaderData.resume}
+      wrongCount={loaderData.wrongCount}
     />
   );
 }

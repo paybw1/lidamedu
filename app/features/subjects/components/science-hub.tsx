@@ -1,17 +1,29 @@
-// 자연과학 4과목 공용 허브 UI — 단원 목록 + KPI placeholder.
-// 풀이 Runner / 색인 / 통계 등 5.4.A.3 의 객관식 자산을 추후 연결한다.
+// 자연과학 4과목 공용 허브 UI — "기출 훈련장" 레이아웃.
+// 상단 행동 카드(이어서 풀기·맞춤 퀴즈·오답 다시 풀기) + 2열(단원별 훈련 / 연도별 기출·즐겨찾기).
+// 단원·연도·오답 클릭은 quiz-setup action POST 를 재사용 — 별도 러너 없이 즉시 세션 생성.
 
 import { useState } from "react";
 
-import { ArrowRightIcon, ChevronRightIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  ChevronRightIcon,
+  PlayIcon,
+  RotateCcwIcon,
+} from "lucide-react";
 import { Form, Link } from "react-router";
 
 import { cn } from "~/core/lib/utils";
 import {
   SCIENCE_SUBJECTS,
+  type ScienceResumeInfo,
   type ScienceSectionStats,
   type ScienceSubjectSlug,
 } from "~/features/subjects/lib/science";
+
+// 정답률 60% 미만 단원 = 약점 표시.
+const WEAK_ACCURACY_PCT = 60;
+// quiz-setup action 스키마의 count 상한.
+const QUIZ_COUNT_MAX = 200;
 
 type ScienceBookmark = {
   problemId: string;
@@ -21,7 +33,15 @@ type ScienceBookmark = {
   starLevel: number;
 };
 
-// 자연과학 전용 즐겨찾기 검색 (C-3) — 이 과목에서 별점 매긴 문제를 연도·번호·본문으로 찾기.
+function accuracyTone(acc: number | null): string {
+  if (acc === null) return "text-muted-foreground";
+  if (acc >= 80) return "text-emerald-600 dark:text-emerald-400";
+  if (acc >= WEAK_ACCURACY_PCT) return "text-lime-600 dark:text-lime-400";
+  if (acc >= 40) return "text-amber-600 dark:text-amber-400";
+  return "text-rose-600 dark:text-rose-400";
+}
+
+// 자연과학 전용 즐겨찾기 검색 (C-3) — 별점 매긴 문제를 연도·번호·본문으로 찾기.
 function ScienceBookmarkSearch({
   subject,
   items,
@@ -41,8 +61,8 @@ function ScienceBookmarkSearch({
       )
     : items;
   return (
-    <div className="bg-card mb-6 rounded-xl border shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
+    <div className="bg-card rounded-xl border shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
         <h2 className="text-sm font-bold tracking-tight">
           내 즐겨찾기{" "}
           <span className="text-muted-foreground font-normal">
@@ -54,12 +74,12 @@ function ScienceBookmarkSearch({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="연도·번호·본문"
-          className="border-border focus:border-primary h-8 w-40 rounded-md border bg-transparent px-2 text-xs outline-none"
+          className="border-border focus:border-primary h-8 w-32 rounded-md border bg-transparent px-2 text-xs outline-none"
         />
       </div>
       <div className="divide-y">
         {filtered.length === 0 ? (
-          <p className="text-muted-foreground px-6 py-6 text-center text-xs">
+          <p className="text-muted-foreground px-5 py-5 text-center text-xs">
             {query ? "검색 결과가 없습니다." : "즐겨찾기한 문제가 없습니다."}
           </p>
         ) : (
@@ -68,7 +88,7 @@ function ScienceBookmarkSearch({
               key={b.problemId}
               to={`/subjects/science/${subject}/problems/${b.problemId}`}
               viewTransition
-              className="hover:bg-accent/50 flex items-center gap-3 px-6 py-3 transition-colors"
+              className="hover:bg-accent/50 flex items-center gap-2.5 px-5 py-2.5 transition-colors"
             >
               <span className="shrink-0 text-xs text-amber-500">
                 {"★".repeat(b.starLevel)}
@@ -94,6 +114,8 @@ export default function ScienceHub({
   years,
   progress,
   bookmarks = [],
+  resume = null,
+  wrongCount = 0,
   hideBackLink = false,
 }: {
   subject: ScienceSubjectSlug;
@@ -101,7 +123,9 @@ export default function ScienceHub({
   years: { year: number; count: number }[];
   progress: { attempted: number; correct: number; total: number };
   bookmarks?: ScienceBookmark[];
-  // /subjects/science 허브에 탭으로 임베드될 때 "← 자연과학" 백링크 숨김(중복).
+  resume?: ScienceResumeInfo | null;
+  wrongCount?: number;
+  // /subjects/science 허브에 탭으로 임베드될 때 "← 자연과학" 백링크·eyebrow 숨김(중복).
   hideBackLink?: boolean;
 }) {
   const meta = SCIENCE_SUBJECTS[subject];
@@ -112,260 +136,332 @@ export default function ScienceHub({
       : null;
 
   const sciencePath = subject === "earth_science" ? "earth-science" : subject;
+  const setupAction = `/subjects/science/${sciencePath}/quiz/setup`;
 
   return (
-    <div className="min-h-[calc(100vh-56px)] bg-background">
-      <div className="mx-auto w-full max-w-screen-lg px-5 py-8 md:px-10 md:py-10">
-
-        {/* Page header */}
-        <div className="mb-8">
-          {hideBackLink ? null : (
-            <Link
-              to="/subjects/science"
-              className="text-muted-foreground mb-3 inline-flex items-center gap-1 text-xs hover:text-foreground transition-colors"
-            >
-              <ChevronRightIcon className="size-3 rotate-180" /> 자연과학
-            </Link>
-          )}
-          <p className="text-link mb-1 font-mono text-[11px] font-bold uppercase tracking-widest">
-            자연과학 · 1차 필수
-          </p>
-          <h1 className="mb-1.5 text-3xl font-extrabold tracking-tight md:text-4xl">
-            <span className="mr-2 text-2xl">{meta.emoji}</span>
-            {meta.name}
-          </h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            변리사 1차 자연과학 필수과목 · 객관식 문제 중심으로 학습합니다.
-          </p>
-        </div>
-
-        {/* KPI row */}
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border bg-card px-5 py-4 shadow-sm">
-            <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold uppercase tracking-widest">
-              총 문항
-            </p>
-            <p className="text-3xl font-extrabold tabular-nums tracking-tight">
-              {totalProblems.toLocaleString("ko-KR")}
-            </p>
+    <div className="bg-background min-h-[calc(100vh-56px)]">
+      <div
+        className={cn(
+          "mx-auto w-full max-w-screen-lg px-5 md:px-10",
+          hideBackLink ? "py-6" : "py-8 md:py-10",
+        )}
+      >
+        {/* Page header — 제목 + 우측 요약 통계 한 줄 */}
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+          <div>
+            {hideBackLink ? null : (
+              <>
+                <Link
+                  to="/subjects/science"
+                  className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs transition-colors"
+                >
+                  <ChevronRightIcon className="size-3 rotate-180" /> 자연과학
+                </Link>
+                <p className="text-link mb-1 font-mono text-[11px] font-bold tracking-widest uppercase">
+                  자연과학 · 1차 필수
+                </p>
+              </>
+            )}
+            <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
+              {meta.name}
+            </h1>
+            {hideBackLink ? null : (
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                자연과학은 4과목을 모두 응시합니다 — 과목당 10문항, 고르게
+                학습하세요.
+              </p>
+            )}
           </div>
-          <div className="rounded-xl border bg-card px-5 py-4 shadow-sm">
-            <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold uppercase tracking-widest">
-              내 풀이
-            </p>
-            <p className="text-3xl font-extrabold tabular-nums tracking-tight">
-              {progress.attempted.toLocaleString("ko-KR")}
-              <span className="text-muted-foreground ml-1.5 text-base font-normal">
-                / {progress.total.toLocaleString("ko-KR")}
+          {progress.total > 0 ? (
+            <p className="text-muted-foreground pb-0.5 text-xs">
+              내 풀이{" "}
+              <span className="text-foreground font-bold tabular-nums">
+                {progress.attempted.toLocaleString("ko-KR")}/
+                {progress.total.toLocaleString("ko-KR")}
               </span>
-            </p>
-          </div>
-          <div className="rounded-xl border bg-card px-5 py-4 shadow-sm">
-            <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold uppercase tracking-widest">
-              내 정답률
-            </p>
-            <p className="text-3xl font-extrabold tabular-nums tracking-tight">
               {correctRate != null ? (
                 <>
-                  <span className="text-emerald-600 dark:text-emerald-400">
-                    {correctRate}
-                  </span>
-                  <span className="text-muted-foreground ml-1 text-base font-normal">
-                    % ({progress.correct}/{progress.attempted})
+                  {" "}
+                  · 정답률{" "}
+                  <span
+                    className={cn("font-bold tabular-nums", accuracyTone(correctRate))}
+                  >
+                    {correctRate}%
                   </span>
                 </>
-              ) : (
-                <span className="text-muted-foreground text-base font-normal italic">
-                  풀이 없음
-                </span>
-              )}
+              ) : null}
             </p>
-          </div>
+          ) : null}
         </div>
 
-        {bookmarks.length > 0 ? (
-          <ScienceBookmarkSearch subject={sciencePath} items={bookmarks} />
-        ) : null}
-
-        {/* Section list card */}
-        <div className="rounded-xl border bg-card shadow-sm">
-          <div className="flex items-center justify-between border-b px-6 py-4">
-            <div>
-              <h2 className="text-sm font-bold tracking-tight">
-                단원 <span className="text-muted-foreground font-normal">({sections.length})</span>
-              </h2>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                대단원 분류표 — 각 단원에 문제가 등록되면 풀이 화면으로 진입할 수 있습니다.
-              </p>
-            </div>
-            {totalProblems > 0 ? (
+        {/* 행동 카드 — 이어서 풀기 / 새 퀴즈 / 오답 다시 풀기 */}
+        {totalProblems > 0 ? (
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {resume ? (
               <Link
-                to={`/subjects/science/${sciencePath}/quiz/setup`}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors"
+                to={`/subjects/science/${sciencePath}/problems/${resume.nextProblemId}?session=${resume.sessionId}`}
+                viewTransition
+                className="group bg-card hover:border-primary rounded-xl border p-4 shadow-sm transition-colors"
               >
-                맞춤 퀴즈 시작
-                <ArrowRightIcon className="size-3.5" />
+                <p className="text-link mb-1 font-mono text-[10px] font-bold tracking-widest uppercase">
+                  이어서 풀기
+                </p>
+                <p className="inline-flex items-center gap-1.5 text-sm font-bold">
+                  <span className="tabular-nums">
+                    {resume.answered}/{resume.total}
+                  </span>
+                  문항 진행 중
+                  <ArrowRightIcon className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                </p>
+                <p className="text-muted-foreground mt-0.5 text-xs">
+                  마지막 학습 세션을 이어서 풉니다.
+                </p>
               </Link>
             ) : null}
-          </div>
 
-          <div className="divide-y">
+            <Link
+              to={setupAction}
+              viewTransition
+              className="group bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl p-4 shadow-sm transition-colors"
+            >
+              <p className="mb-1 font-mono text-[10px] font-bold tracking-widest uppercase opacity-70">
+                맞춤 퀴즈
+              </p>
+              <p className="inline-flex items-center gap-1.5 text-sm font-bold">
+                <PlayIcon className="size-3.5" /> 새 퀴즈 시작
+                <ArrowRightIcon className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+              </p>
+              <p className="mt-0.5 text-xs opacity-80">
+                단원·연도·문항 수를 골라 시작합니다.
+              </p>
+            </Link>
+
+            {wrongCount > 0 ? (
+              <Form method="post" action={setupAction} className="h-full">
+                <input type="hidden" name="wrong" value="1" />
+                <input type="hidden" name="mode" value="study" />
+                <input
+                  type="hidden"
+                  name="count"
+                  value={Math.min(wrongCount, QUIZ_COUNT_MAX)}
+                />
+                <button
+                  type="submit"
+                  className="group h-full w-full rounded-xl border border-amber-300/70 bg-amber-50 p-4 text-left shadow-sm transition-colors hover:border-amber-400 dark:border-amber-700/60 dark:bg-amber-950/40 dark:hover:border-amber-600"
+                >
+                  <p className="mb-1 font-mono text-[10px] font-bold tracking-widest text-amber-700 uppercase dark:text-amber-400">
+                    오답
+                  </p>
+                  <p className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-900 dark:text-amber-100">
+                    <RotateCcwIcon className="size-3.5" />
+                    <span className="tabular-nums">{wrongCount}</span>문항 다시
+                    풀기
+                    <ArrowRightIcon className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-800/80 dark:text-amber-200/70">
+                    최근 시도가 오답인 문제만 모았습니다.
+                  </p>
+                </button>
+              </Form>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* 본문 2열 — 좌: 단원별 훈련 / 우: 연도별 기출·즐겨찾기 */}
+        <div className="grid items-start gap-6 lg:grid-cols-3">
+          {/* 단원별 훈련 */}
+          <div className="bg-card rounded-xl border shadow-sm lg:col-span-2">
+            <div className="border-b px-5 py-3.5">
+              <h2 className="text-sm font-bold tracking-tight">
+                단원별 훈련{" "}
+                <span className="text-muted-foreground font-normal">
+                  ({sections.length})
+                </span>
+              </h2>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                단원을 누르면 그 단원 문제를 바로 풉니다. 정답률{" "}
+                {WEAK_ACCURACY_PCT}% 미만 단원은{" "}
+                <span className="inline-block size-1.5 rounded-full bg-rose-500 align-middle" />{" "}
+                약점 표시.
+              </p>
+            </div>
+
             {sections.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-                <p className="text-muted-foreground text-sm">등록된 단원이 없습니다.</p>
+              <div className="flex flex-col items-center justify-center gap-2 px-5 py-12 text-center">
+                <p className="text-muted-foreground text-sm">
+                  등록된 단원이 없습니다.
+                </p>
                 <p className="text-muted-foreground text-xs">
                   운영자가 단원과 문제를 추가하면 학습을 시작할 수 있습니다.
                 </p>
               </div>
             ) : (
-              sections.map((s) => {
-                const acc = s.accuracyPct;
-                const accTone =
-                  acc === null
-                    ? "text-muted-foreground"
-                    : acc >= 80
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : acc >= 60
-                        ? "text-lime-600 dark:text-lime-400"
-                        : acc >= 40
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-rose-600 dark:text-rose-400";
-                const pctOfTotal =
-                  s.problemCount > 0
-                    ? Math.min(100, Math.round((s.attempted / s.problemCount) * 100))
-                    : 0;
-                return (
-                  <div
-                    key={s.sectionId}
-                    className="hover:bg-muted/30 px-6 py-4 transition-colors"
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Order index */}
-                      <span className="text-muted-foreground mt-0.5 w-6 shrink-0 text-right font-mono text-xs tabular-nums">
-                        {s.orderIndex + 1}
-                      </span>
-
-                      {/* Label + description */}
-                      <div className="min-w-0 flex-1">
-                        <p className="mb-0.5 text-sm font-semibold leading-snug">
-                          {s.label}
-                        </p>
-                        {s.descriptionMd ? (
-                          <p className="text-muted-foreground text-xs leading-relaxed">
-                            {s.descriptionMd}
-                          </p>
-                        ) : null}
-
-                        {/* Progress bar */}
-                        {s.problemCount > 0 ? (
-                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all",
-                                pctOfTotal >= 80
-                                  ? "bg-emerald-500"
-                                  : pctOfTotal >= 40
-                                    ? "bg-primary"
-                                    : "bg-primary/60",
-                              )}
-                              style={{ width: `${pctOfTotal}%` }}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {/* Stats */}
-                      <div className="flex shrink-0 items-center gap-4 text-right">
-                        <div>
-                          <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-                            문제
-                          </p>
-                          <p className="text-sm font-bold tabular-nums">
-                            {s.problemCount}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-                            풀이
-                          </p>
-                          <p className="text-sm tabular-nums">
-                            {s.attempted}
-                            <span className="text-muted-foreground text-[10px]">
-                              {" "}({pctOfTotal}%)
+              <>
+                {/* 열 라벨 — 우측 수치 3열과 폭을 맞춘다 */}
+                <div className="text-muted-foreground flex items-center gap-3 border-b px-5 py-1.5 text-[10px] font-semibold tracking-wide uppercase">
+                  <span className="w-5 shrink-0" />
+                  <span className="min-w-0 flex-1">단원</span>
+                  <span className="w-12 shrink-0 text-right">문항</span>
+                  <span className="hidden w-12 shrink-0 text-right sm:block">
+                    풀이
+                  </span>
+                  <span className="w-11 shrink-0 text-right">정답률</span>
+                  <span className="w-3.5 shrink-0" />
+                </div>
+                <div className="divide-y">
+                  {sections.map((s) => {
+                    const acc = s.accuracyPct;
+                    const weak = acc !== null && acc < WEAK_ACCURACY_PCT;
+                    const pctOfTotal =
+                      s.problemCount > 0
+                        ? Math.min(
+                            100,
+                            Math.round((s.attempted / s.problemCount) * 100),
+                          )
+                        : 0;
+                    const disabled = s.problemCount === 0;
+                    return (
+                      <Form
+                        key={s.sectionId}
+                        method="post"
+                        action={setupAction}
+                      >
+                        <input
+                          type="hidden"
+                          name="sectionIds"
+                          value={s.sectionId}
+                        />
+                        <input type="hidden" name="mode" value="study" />
+                        <input
+                          type="hidden"
+                          name="count"
+                          value={Math.min(
+                            Math.max(s.problemCount, 1),
+                            QUIZ_COUNT_MAX,
+                          )}
+                        />
+                        <button
+                          type="submit"
+                          disabled={disabled}
+                          className={cn(
+                            "group flex w-full items-center gap-3 px-5 py-3 text-left transition-colors",
+                            disabled
+                              ? "cursor-default opacity-45"
+                              : "hover:bg-primary/[0.04]",
+                          )}
+                        >
+                          <span className="text-muted-foreground w-5 shrink-0 text-right font-mono text-xs tabular-nums">
+                            {s.orderIndex + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate text-sm leading-snug font-semibold">
+                                {s.label}
+                              </span>
+                              {weak ? (
+                                <span
+                                  className="size-1.5 shrink-0 rounded-full bg-rose-500"
+                                  title={`정답률 ${WEAK_ACCURACY_PCT}% 미만 — 약점 단원`}
+                                />
+                              ) : null}
                             </span>
-                          </p>
-                        </div>
-                        <div className="min-w-[3rem]">
-                          <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-                            정답률
-                          </p>
-                          <p className={cn("text-sm font-bold tabular-nums", accTone)}>
+                            {s.descriptionMd ? (
+                              <span className="text-muted-foreground mt-0.5 line-clamp-1 block text-[11px] leading-relaxed">
+                                {s.descriptionMd}
+                              </span>
+                            ) : null}
+                            {s.problemCount > 0 ? (
+                              <span className="bg-muted mt-1.5 block h-1 overflow-hidden rounded-full">
+                                <span
+                                  className={cn(
+                                    "block h-full rounded-full transition-all",
+                                    pctOfTotal >= 80
+                                      ? "bg-emerald-500"
+                                      : pctOfTotal >= 40
+                                        ? "bg-primary"
+                                        : "bg-primary/60",
+                                  )}
+                                  style={{ width: `${pctOfTotal}%` }}
+                                />
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="w-12 shrink-0 text-right text-sm font-bold tabular-nums">
+                            {s.problemCount}
+                          </span>
+                          <span className="text-muted-foreground hidden w-12 shrink-0 text-right text-sm tabular-nums sm:block">
+                            {s.attempted}
+                          </span>
+                          <span
+                            className={cn(
+                              "w-11 shrink-0 text-right text-sm font-bold tabular-nums",
+                              accuracyTone(acc),
+                            )}
+                          >
                             {acc === null ? "—" : `${acc}%`}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+                          </span>
+                          <ChevronRightIcon
+                            className={cn(
+                              "text-muted-foreground size-3.5 shrink-0 transition-opacity",
+                              disabled
+                                ? "opacity-0"
+                                : "opacity-0 group-hover:opacity-100",
+                            )}
+                          />
+                        </button>
+                      </Form>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
-        </div>
 
-        {/* 연도별 기출 — 클릭 시 그 해 문제를 번호순으로 바로 풀기 */}
-        {years.length > 0 ? (
-          <div className="mt-6 rounded-xl border bg-card shadow-sm">
-            <div className="border-b px-6 py-4">
-              <h2 className="text-sm font-bold tracking-tight">
-                연도별 기출{" "}
-                <span className="text-muted-foreground font-normal">
-                  ({years.length}개년)
-                </span>
-              </h2>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                연도를 누르면 그 해 {meta.name} 기출을 번호 순서대로 바로 풉니다.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 px-6 py-4">
-              {years.map((y) => (
-                <Form
-                  key={y.year}
-                  method="post"
-                  action={`/subjects/science/${sciencePath}/quiz/setup`}
-                >
-                  <input type="hidden" name="years" value={y.year} />
-                  <input type="hidden" name="ordered" value="1" />
-                  <input type="hidden" name="mode" value="study" />
-                  <input type="hidden" name="count" value={y.count} />
-                  <button
-                    type="submit"
-                    className="border-border hover:border-primary/50 hover:bg-primary/[0.04] inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-all"
-                  >
-                    {y.year}년
-                    <span className="text-muted-foreground text-[11px] font-normal tabular-nums">
-                      {y.count}
+          {/* 우측 — 연도별 기출 + 즐겨찾기 */}
+          <div className="space-y-6">
+            {years.length > 0 ? (
+              <div className="bg-card rounded-xl border shadow-sm">
+                <div className="border-b px-5 py-3.5">
+                  <h2 className="text-sm font-bold tracking-tight">
+                    연도별 기출{" "}
+                    <span className="text-muted-foreground font-normal">
+                      ({years.length}개년)
                     </span>
-                  </button>
-                </Form>
-              ))}
-            </div>
+                  </h2>
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    연도를 누르면 번호 순서대로 바로 풉니다.
+                  </p>
+                </div>
+                <div className="divide-y">
+                  {years.map((y) => (
+                    <Form key={y.year} method="post" action={setupAction}>
+                      <input type="hidden" name="years" value={y.year} />
+                      <input type="hidden" name="ordered" value="1" />
+                      <input type="hidden" name="mode" value="study" />
+                      <input type="hidden" name="count" value={y.count} />
+                      <button
+                        type="submit"
+                        className="group hover:bg-primary/[0.04] flex w-full items-center justify-between px-5 py-2.5 text-left transition-colors"
+                      >
+                        <span className="text-sm font-semibold tabular-nums">
+                          {y.year}년
+                        </span>
+                        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs tabular-nums">
+                          {y.count}문항
+                          <ArrowRightIcon className="size-3 transition-transform group-hover:translate-x-0.5" />
+                        </span>
+                      </button>
+                    </Form>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {bookmarks.length > 0 ? (
+              <ScienceBookmarkSearch subject={sciencePath} items={bookmarks} />
+            ) : null}
           </div>
-        ) : null}
-
-        {/* Info notice */}
-        <div className="bg-primary/[0.06] mt-6 rounded-xl px-6 py-5">
-          <p className="text-link mb-1 font-mono text-[10px] font-bold uppercase tracking-widest">
-            안내
-          </p>
-          <p className="text-foreground text-sm leading-relaxed">
-            자연과학은 4과목(물리·화학·생물·지구과학)을 <strong>모두 응시</strong>하는 1차
-            필수 과목입니다. 총 40문항 중 과목별 10문항씩 출제되므로, 네 과목을 고르게 학습하세요.
-          </p>
         </div>
-
-        <p className="text-muted-foreground mt-4 text-xs">
-          ※ 연도별 기출과 단원별 문제로 학습할 수 있습니다.
-        </p>
       </div>
     </div>
   );

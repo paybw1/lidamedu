@@ -6,6 +6,7 @@ import type { Database } from "database.types";
 import {
   SCIENCE_SUBJECTS,
   SCIENCE_SUBJECT_SLUGS,
+  type ScienceResumeInfo,
   type ScienceSection,
   type ScienceSectionStats,
   type ScienceSubjectSlug,
@@ -399,4 +400,124 @@ export async function listSectionsWithCounts(
     descriptionMd: s.description_md,
     problemCount: counts.get(s.section_id) ?? 0,
   }));
+}
+
+// 미완료 세션 이어풀기 — 최근 14일 내 study 모드 세션 중 "일부만 푼"
+// (0 < answered < total) 것을 최신순으로 하나 고른다.
+// exam 모드는 타이머가 started_at 기준이라 이어풀기에 부적합 — 제외.
+const RESUME_WINDOW_DAYS = 14;
+
+export async function getScienceResumeSession(
+  client: SupabaseClient<Database>,
+  userId: string,
+  scienceSubject: ScienceSubjectSlug,
+): Promise<ScienceResumeInfo | null> {
+  const cutoff = new Date(
+    Date.now() - RESUME_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const { data: sessions, error } = await client
+    .from("quiz_sessions")
+    .select("session_id, mode, problem_ids, started_at")
+    .eq("user_id", userId)
+    .eq("science_subject", scienceSubject)
+    .eq("mode", "study")
+    .is("completed_at", null)
+    .gte("started_at", cutoff)
+    .order("started_at", { ascending: false })
+    .limit(5);
+  if (error) throw error;
+
+  for (const s of sessions ?? []) {
+    const ids: string[] = s.problem_ids ?? [];
+    if (ids.length === 0) continue;
+    const { data: att, error: attErr } = await client
+      .from("user_problem_attempts")
+      .select("problem_id")
+      .eq("user_id", userId)
+      .eq("session_id", s.session_id);
+    if (attErr) throw attErr;
+    const done = new Set((att ?? []).map((a) => a.problem_id));
+    // 시작만 하고 안 푼 세션·사실상 다 푼 세션은 이어풀기 대상이 아니다.
+    if (done.size === 0 || done.size >= ids.length) continue;
+    const next = ids.find((id) => !done.has(id)) ?? ids[0];
+    return {
+      sessionId: s.session_id,
+      mode: s.mode as ScienceResumeInfo["mode"],
+      answered: done.size,
+      total: ids.length,
+      nextProblemId: next,
+      startedAt: s.started_at,
+    };
+  }
+  return null;
+}
+
+// "가장 최근 시도가 오답"인 문제 id — 오답 다시 풀기 후보 (listWrongAttempts 와
+// 같은 룰. 그 함수는 laws!inner 라 자과가 떨어져 재사용 불가 → 자과 전용).
+export async function getScienceWrongProblemIds(
+  client: SupabaseClient<Database>,
+  userId: string,
+  scienceSubject: ScienceSubjectSlug,
+): Promise<string[]> {
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, is_correct, attempted_at, problems!inner(science_subject, subject_type, review_status, deleted_at)",
+    )
+    .eq("user_id", userId)
+    .eq("problems.subject_type", "science")
+    .eq("problems.science_subject", scienceSubject)
+    .order("attempted_at", { ascending: false })
+    .limit(2000);
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const wrong: string[] = [];
+  for (const r of rows ?? []) {
+    if (seen.has(r.problem_id)) continue;
+    seen.add(r.problem_id);
+    if (
+      !r.is_correct &&
+      r.problems.review_status === "approved" &&
+      !r.problems.deleted_at
+    ) {
+      wrong.push(r.problem_id);
+    }
+  }
+  return wrong;
+}
+
+// 허브 화면 공용 loader — index(탭 임베드)와 과목별 화면 4곳이 공유.
+export interface ScienceHubData {
+  sections: ScienceSectionStats[];
+  years: Array<{ year: number; count: number }>;
+  progress: { attempted: number; correct: number; total: number };
+  bookmarks: ScienceBookmarkedProblem[];
+  resume: ScienceResumeInfo | null;
+  wrongCount: number;
+}
+
+export async function loadScienceHubData(
+  client: SupabaseClient<Database>,
+  userId: string | null,
+  subject: ScienceSubjectSlug,
+): Promise<ScienceHubData> {
+  const [sections, years, progress, bookmarks, resume, wrongIds] =
+    await Promise.all([
+      listSectionsWithStats(client, subject, userId),
+      listScienceYears(client, subject),
+      userId
+        ? getScienceProgress(client, userId, subject)
+        : Promise.resolve({ attempted: 0, correct: 0, total: 0 }),
+      userId
+        ? listScienceBookmarkedProblems(client, userId, subject)
+        : Promise.resolve([]),
+      userId
+        ? getScienceResumeSession(client, userId, subject)
+        : Promise.resolve(null),
+      userId
+        ? getScienceWrongProblemIds(client, userId, subject)
+        : Promise.resolve([]),
+    ]);
+  return { sections, years, progress, bookmarks, resume, wrongCount: wrongIds.length };
 }
