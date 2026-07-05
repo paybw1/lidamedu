@@ -12,6 +12,7 @@ import {
   LatestEmpty,
   Pill,
 } from "~/features/latest/components/latest-list";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import makeServerClient from "~/core/lib/supa-client.server";
 import type { McqExamItem } from "~/features/mcq-exams/labels";
@@ -45,6 +46,7 @@ export default function McqExamIndex({ loaderData }: Route.ComponentProps) {
       width="index"
       title="1차 통합 모의고사"
       desc={`${exams.length.toLocaleString("ko-KR")}건 — 산업재산권법·민법·자연과학을 한 시험으로 묶어 과목별 과락과 전 과목 평균으로 합격을 판정합니다.`}
+      headerRight={<GuideHelpButton screenKey="mcq-exams" />}
     >
       {exams.length === 0 ? (
         <LatestEmpty

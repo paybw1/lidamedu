@@ -130,6 +130,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
       active="bookmarks"
       tabCounts={toTabCounts(aidCounts)}
       title="즐겨찾기"
+      helpKey="bookmarks"
       desc="별점을 매겨 둔 조문 · 판례 · 문제 · 정오문제가 모이는 곳입니다. 별점 높은 순으로 정렬됩니다."
       printHref="/study/bookmarks/print"
       summaryStats={[

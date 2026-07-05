@@ -32,6 +32,7 @@ import {
 } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { runAfterResponse } from "~/core/lib/wait-until.server";
 import {
   kstToday,
@@ -484,16 +485,19 @@ export default function StudyToday({ loaderData }: Route.ComponentProps) {
             {formatKstDate(summary.date)}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setPrefsOpen((v) => !v)}
-          aria-expanded={prefsOpen}
-          className="text-ink-soft shrink-0 gap-1.5"
-        >
-          <SlidersHorizontalIcon className="size-3.5" />
-          추천 설정
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPrefsOpen((v) => !v)}
+            aria-expanded={prefsOpen}
+            className="text-ink-soft gap-1.5"
+          >
+            <SlidersHorizontalIcon className="size-3.5" />
+            추천 설정
+          </Button>
+          <GuideHelpButton screenKey="today" />
+        </div>
       </header>
 
       {prefsOpen ? (

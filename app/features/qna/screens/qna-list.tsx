@@ -14,6 +14,7 @@ import {
   relativeKo,
 } from "~/features/community/components/community-ui";
 import { CommunityShell } from "~/features/community/components/community-shell";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import {
@@ -213,11 +214,14 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
       title="Q&A"
       desc={descParts.join(" · ")}
       headerRight={
-        <Button asChild size="sm" className="h-9 rounded-full">
-          <Link to="/qna/new" viewTransition>
-            <PencilLineIcon className="size-4" /> 새 질문
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <GuideHelpButton screenKey="qna" />
+          <Button asChild size="sm" className="h-9 rounded-full">
+            <Link to="/qna/new" viewTransition>
+              <PencilLineIcon className="size-4" /> 새 질문
+            </Link>
+          </Button>
+        </div>
       }
     >
 

@@ -4,6 +4,7 @@ import { Link, data } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { Chip } from "~/features/community/components/community-ui";
 import { listApprovedCaseTrainingItems } from "~/features/cases/queries-case-training.server";
 
@@ -27,14 +28,17 @@ export default function CaseTrainingIndex({ loaderData }: Route.ComponentProps) 
   const { items } = loaderData;
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight">
-          판례 기반 쟁점추출 훈련
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          강사가 선별한 판례의 사실관계를 읽고 백지에서 쟁점을 추출해 보세요.
-          채점 후에 판례 전문이 공개됩니다.
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-tight">
+            판례 기반 쟁점추출 훈련
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            강사가 선별한 판례의 사실관계를 읽고 백지에서 쟁점을 추출해 보세요.
+            채점 후에 판례 전문이 공개됩니다.
+          </p>
+        </div>
+        <GuideHelpButton screenKey="case-training" />
       </header>
 
       {items.length === 0 ? (

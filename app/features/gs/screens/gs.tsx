@@ -16,6 +16,7 @@ import { Link, data } from "react-router";
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import {
   Chip,
@@ -105,6 +106,7 @@ export default function OnlineGs({ loaderData }: Route.ComponentProps) {
           {upcoming.length} · 마감 {closed.length}.
         </>
       }
+      headerRight={<GuideHelpButton screenKey="gs" />}
     >
       {/* §4 — 논점 추출 훈련 진입 카드 (가벼운 반복 학습) */}
       <Link

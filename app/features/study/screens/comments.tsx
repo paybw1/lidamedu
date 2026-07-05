@@ -115,6 +115,7 @@ export default function Comments({ loaderData }: Route.ComponentProps) {
       active="comments"
       tabCounts={toTabCounts(aidCounts)}
       title="코멘트"
+      helpKey="comments"
       desc="조문 · 판례 · 문제 · 정오문제 뷰어에서 작성한 코멘트가 모입니다. 최근 수정 순으로 정렬됩니다."
       summaryStats={[
         { label: "전체", value: counts.total, dotClass: "bg-primary" },

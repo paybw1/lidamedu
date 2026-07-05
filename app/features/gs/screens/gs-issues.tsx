@@ -12,6 +12,7 @@ import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { MockExamShell } from "~/features/mcq-exams/components/mock-exam-shell";
 import { Chip } from "~/features/community/components/community-ui";
 import {
@@ -79,6 +80,7 @@ export default function GsIssuesIndex({ loaderData }: Route.ComponentProps) {
       title="논점 추출 훈련"
       desc="사례를 보고 핵심 논점을 백지에서 직접 적은 뒤 모범 논점과 대조합니다. 답안 전체를 쓰는 게 아니라 빠르게 반복해 보세요."
       backLink={{ to: "/gs", label: "온라인 GS" }}
+      headerRight={<GuideHelpButton screenKey="gs-issues" />}
     >
       {/* 과목 필터 */}
       <nav className="mb-4 flex flex-wrap gap-1.5">

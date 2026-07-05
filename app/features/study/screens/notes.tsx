@@ -120,6 +120,7 @@ export default function Notes({ loaderData }: Route.ComponentProps) {
       active="notes"
       tabCounts={toTabCounts(aidCounts)}
       title="포스트잇"
+      helpKey="notes"
       desc="조문 · 판례 · 문제 뷰어에서 작성한 포스트잇이 모입니다. 최근 수정 순으로 정렬됩니다."
       printHref="/study/notes/print"
       summaryStats={[

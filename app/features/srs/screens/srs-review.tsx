@@ -17,6 +17,7 @@ import { Link, redirect, useFetcher } from "react-router";
 import { PageHeader, StudentShell, Surface } from "~/core/components/student";
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
 import { cn } from "~/core/lib/utils";
 import { hasMyAnalysisConsent } from "~/features/exam-results/queries.server";
 import {
@@ -214,12 +215,15 @@ function SrsReviewInner({
           title="오늘의 암기 카드"
           description={today}
           actions={
-            <Link
-              to="/srs/stats"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline"
-            >
-              통계
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/srs/stats"
+                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline"
+              >
+                통계
+              </Link>
+              <GuideHelpButton screenKey="srs-cards" />
+            </div>
           }
         />
 
