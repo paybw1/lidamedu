@@ -640,6 +640,11 @@ export default [
         "/admin/cohorts/:cohortId/test-series",
         "features/admin/screens/admin-cohort-test-series.tsx",
       ),
+      // 월간 개인 성적표 — 학생당 1페이지 인쇄(PDF 저장).
+      route(
+        "/admin/cohorts/:cohortId/monthly-report",
+        "features/admin/screens/admin-cohort-monthly-report.tsx",
+      ),
       route(
         "/admin/cohorts/:cohortId/progress",
         "features/admin/screens/admin-cohort-progress.tsx",
