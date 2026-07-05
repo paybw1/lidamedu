@@ -1705,6 +1705,72 @@ export type Database = {
           },
         ]
       }
+      cohort_attendance: {
+        Row: {
+          attendance_id: string
+          class_session_id: string
+          note: string | null
+          profile_id: string
+          recorded_at: string
+          recorded_by: string | null
+          status: string
+        }
+        Insert: {
+          attendance_id?: string
+          class_session_id: string
+          note?: string | null
+          profile_id: string
+          recorded_at?: string
+          recorded_by?: string | null
+          status: string
+        }
+        Update: {
+          attendance_id?: string
+          class_session_id?: string
+          note?: string | null
+          profile_id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_attendance_class_session_id_fkey"
+            columns: ["class_session_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_class_sessions"
+            referencedColumns: ["class_session_id"]
+          },
+          {
+            foreignKeyName: "cohort_attendance_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_attendance_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_attendance_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_attendance_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       cohort_board_cohorts: {
         Row: {
           added_at: string
@@ -1967,6 +2033,64 @@ export type Database = {
           },
           {
             foreignKeyName: "cohort_boards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      cohort_class_sessions: {
+        Row: {
+          class_session_id: string
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          held_on: string
+          note: string | null
+          session_no: number
+          title: string | null
+        }
+        Insert: {
+          class_session_id?: string
+          cohort_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          held_on: string
+          note?: string | null
+          session_no: number
+          title?: string | null
+        }
+        Update: {
+          class_session_id?: string
+          cohort_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          held_on?: string
+          note?: string | null
+          session_no?: number
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_class_sessions_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "cohort_class_sessions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_class_sessions_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "public_profiles"

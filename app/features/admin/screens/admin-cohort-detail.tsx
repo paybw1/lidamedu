@@ -6,6 +6,7 @@ import {
   BarChart3Icon,
   BookCheckIcon,
   CalendarRangeIcon,
+  ClipboardCheckIcon,
   MailIcon,
   PencilIcon,
   PlusIcon,
@@ -143,6 +144,11 @@ export default function AdminCohortDetail({
             <Button asChild size="sm" variant="outline">
               <Link to={`/admin/cohorts/${cohort.cohortId}/assignments`}>
                 <BookCheckIcon className="size-3.5" /> 과제
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/admin/cohorts/${cohort.cohortId}/attendance`}>
+                <ClipboardCheckIcon className="size-3.5" /> 출결
               </Link>
             </Button>
             <Button

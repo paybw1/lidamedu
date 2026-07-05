@@ -625,6 +625,16 @@ export default [
         "/admin/cohorts/:cohortId",
         "features/admin/screens/admin-cohort-detail.tsx",
       ),
+      // feat-7-043 — 출결 대장.
+      route(
+        "/admin/cohorts/:cohortId/attendance",
+        "features/admin/screens/admin-cohort-attendance.tsx",
+      ),
+      route(
+        "/admin/cohorts/:cohortId/attendance/:classSessionId",
+        "features/admin/screens/admin-attendance-check.tsx",
+      ),
+      route("/api/admin/attendance", "features/admin/api/attendance.tsx"),
       route(
         "/admin/cohorts/:cohortId/progress",
         "features/admin/screens/admin-cohort-progress.tsx",
