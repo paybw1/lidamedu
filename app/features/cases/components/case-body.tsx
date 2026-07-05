@@ -40,6 +40,10 @@ import {
   renderTableHtml,
   startsWithInlineQuote,
 } from "~/features/cases/lib/case-markdown";
+import {
+  numberingIndentPx,
+  splitCaseNumbering,
+} from "~/features/cases/lib/case-numbering";
 import type { ExamProblemRef } from "~/features/problems/labels";
 
 type HighlightsProp = React.ComponentProps<
@@ -794,7 +798,7 @@ export function Prose({ text }: { text: string }) {
           <p key={i} className="whitespace-pre-wrap">
             {b.parts.map((part, j) =>
               part.kind === "text" ? (
-                <Fragment key={j}>{renderWithUnderline(part.text)}</Fragment>
+                <Fragment key={j}>{renderNumberedText(part.text)}</Fragment>
               ) : (
                 <EmbeddedInlineImage key={j} alt={part.alt} url={part.url} />
               ),
@@ -868,6 +872,34 @@ function InlineTable({ markdown }: { markdown: string }) {
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
+}
+
+// 넘버링 자동 정렬 — 판결문 계층 마커("1." "가." "1)" "(1)" 등) 앞에서 시각적
+// 줄바꿈 + 깊이별 들여쓰기. ★문자 불변: 세그먼트는 원문 부분 문자열 그대로라
+// textContent 흐름이 동일 → 하이라이트(offset 기반) 정합 유지. 줄바꿈은 block
+// span 렌더로만 표현하고 문자를 넣지 않는다.
+function renderNumberedText(text: string): ReactNode {
+  const segments = splitCaseNumbering(text);
+  if (segments.length === 1 && segments[0].depth === null) {
+    return renderWithUnderline(text);
+  }
+  return segments.map((seg, i) => {
+    if (seg.depth === null) {
+      // 마커 없는 선행 세그먼트 — 흐름 그대로.
+      return (
+        <Fragment key={`seg-${i}`}>{renderWithUnderline(seg.text)}</Fragment>
+      );
+    }
+    return (
+      <span
+        key={`seg-${i}`}
+        className={cn("block", i > 0 && "mt-1.5")}
+        style={{ paddingLeft: numberingIndentPx(seg.depth) }}
+      >
+        {renderWithUnderline(seg.text)}
+      </span>
+    );
+  });
 }
 
 // `<u>...</u>` 마커를 React fragment + <u> element 시퀀스로 변환.
