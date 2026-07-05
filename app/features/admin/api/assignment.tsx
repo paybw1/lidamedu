@@ -21,6 +21,7 @@ import {
   type AssignmentItemKind,
 } from "~/features/assignments/queries.server";
 import { ASSIGNMENT_ITEM_KINDS } from "~/features/assignments/labels";
+import { generateWeakAssignmentsForCohort } from "~/features/assignments/weak-personal.server";
 import {
   selectCohortWeakProblems,
   selectProblemsForWeakNodes,
@@ -76,6 +77,8 @@ const OWNED_INTENTS = new Set([
   "convert_week",
   "add_weak_items",
   "create_from_weak",
+  "generate_weak_personal",
+  "toggle_weak_auto",
 ]);
 
 async function resolveAssignmentCohortId(
@@ -86,7 +89,9 @@ async function resolveAssignmentCohortId(
   if (
     intent === "create" ||
     intent === "convert_week" ||
-    intent === "create_from_weak"
+    intent === "create_from_weak" ||
+    intent === "generate_weak_personal" ||
+    intent === "toggle_weak_auto"
   ) {
     return emptyToNull(fd.get("cohortId"), 100);
   }
@@ -377,6 +382,32 @@ export async function action({ request }: Route.ActionArgs) {
     );
     if (!add.ok) return data({ error: add.error }, { status: 400 });
     return data({ ok: true, added: add.added });
+  }
+
+  // ── feat-7-045: 약점 개인 보충 과제 ──
+  if (intent === "generate_weak_personal") {
+    const cohortId = String(fd.get("cohortId") ?? "");
+    if (!cohortId) return data({ error: "cohortId 누락" }, { status: 400 });
+    const n = Math.max(1, Math.min(30, Number(fd.get("n")) || 10));
+    const dueDays = Math.max(1, Math.min(30, Number(fd.get("dueDays")) || 7));
+    const summary = await generateWeakAssignmentsForCohort(cohortId, {
+      n,
+      dueDays,
+      createdBy: user.id,
+    });
+    return data({ ok: true, ...summary });
+  }
+
+  if (intent === "toggle_weak_auto") {
+    const cohortId = String(fd.get("cohortId") ?? "");
+    if (!cohortId) return data({ error: "cohortId 누락" }, { status: 400 });
+    const enabled = String(fd.get("enabled")) === "1";
+    const { error } = await client
+      .from("cohorts")
+      .update({ weak_assignment_auto: enabled })
+      .eq("cohort_id", cohortId);
+    if (error) return data({ error: error.message }, { status: 400 });
+    return data({ ok: true, enabled });
   }
 
   return data({ error: `알 수 없는 intent: ${intent}` }, { status: 400 });

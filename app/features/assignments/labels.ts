@@ -52,6 +52,9 @@ export interface AssignmentListItem {
   sourceWeekId: string | null;
   itemCount: number;
   deadlinePolicy: DeadlinePolicy;
+  // feat-7-045 — 개인 과제 대상(null=반 전체). 약점 자동 보충이 주 사용처.
+  targetProfileId: string | null;
+  targetName?: string | null;
   // 운영자 화면용 — 멤버 완수율
   totalMembers?: number;
   completedMembers?: number;

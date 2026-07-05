@@ -691,6 +691,11 @@ export default [
       ),
       route("/api/cron/weekly-reports", "features/cron/api/weekly-reports.tsx"),
       route("/api/cron/inactive-alert", "features/cron/api/inactive-alert.tsx"),
+      // feat-7-045 — 약점 개인 보충 과제 주간 자동 생성 (opt-in 반만).
+      route(
+        "/api/cron/weak-assignments",
+        "features/cron/api/weak-assignments.tsx",
+      ),
       route(
         "/api/cron/pass-predict-snapshot",
         "features/cron/api/pass-predict-snapshot.tsx",

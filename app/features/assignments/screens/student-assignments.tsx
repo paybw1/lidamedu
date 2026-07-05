@@ -217,7 +217,17 @@ function AssignmentCard({
       <Card className="hover:border-primary transition-colors">
         <CardHeader className="px-4 pb-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold">{a.title}</p>
+            <p className="text-sm font-semibold">
+              {a.targetProfileId ? (
+                <Badge
+                  variant="outline"
+                  className="mr-1.5 border-amber-300 align-middle text-[10px] text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                >
+                  나만의 맞춤
+                </Badge>
+              ) : null}
+              {a.title}
+            </p>
             <Badge
               variant={
                 status === "completed"

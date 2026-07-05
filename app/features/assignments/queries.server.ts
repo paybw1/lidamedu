@@ -39,7 +39,7 @@ export async function listAssignmentsByCohort(
   const { data: rows, error } = await admin
     .from("assignments")
     .select(
-      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy",
+      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy, target_profile_id, profiles!assignments_target_profile_id_fkey(name)",
     )
     .eq("cohort_id", cohortId)
     .is("deleted_at", null)
@@ -90,8 +90,11 @@ export async function listAssignmentsByCohort(
     sourceCurriculumId: r.source_curriculum_id,
     sourceWeekId: r.source_week_id,
     deadlinePolicy: r.deadline_policy,
+    targetProfileId: r.target_profile_id,
+    targetName: r.profiles?.name ?? null,
     itemCount: itemByA.get(r.assignment_id) ?? 0,
-    totalMembers: totalMembers ?? 0,
+    // 개인 과제는 대상 1명 기준으로 완수율 계산.
+    totalMembers: r.target_profile_id ? 1 : (totalMembers ?? 0),
     completedMembers: completedByA.get(r.assignment_id) ?? 0,
   }));
 }
@@ -105,7 +108,7 @@ export async function getAssignmentWithItems(
   const { data: a, error } = await admin
     .from("assignments")
     .select(
-      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy",
+      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy, target_profile_id",
     )
     .eq("assignment_id", assignmentId)
     .is("deleted_at", null)
@@ -200,8 +203,9 @@ export async function getAssignmentWithItems(
     sourceCurriculumId: a.source_curriculum_id,
     sourceWeekId: a.source_week_id,
     deadlinePolicy: a.deadline_policy,
+    targetProfileId: a.target_profile_id,
     itemCount: items.length,
-    totalMembers: totalMembers ?? 0,
+    totalMembers: a.target_profile_id ? 1 : (totalMembers ?? 0),
     completedMembers: completedMembers ?? 0,
     items,
   };
@@ -218,6 +222,8 @@ export interface CreateAssignmentInput {
   sourceCurriculumId?: string | null;
   sourceWeekId?: string | null;
   deadlinePolicy?: DeadlinePolicy;
+  // feat-7-045 — 개인 과제 대상. 지정 시 반 전체 공지 fanout 을 생략한다.
+  targetProfileId?: string | null;
 }
 
 export async function createAssignment(
@@ -237,19 +243,23 @@ export async function createAssignment(
       source_curriculum_id: input.sourceCurriculumId ?? null,
       source_week_id: input.sourceWeekId ?? null,
       deadline_policy: input.deadlinePolicy ?? "recommended",
+      target_profile_id: input.targetProfileId ?? null,
     })
     .select("assignment_id")
     .single();
   if (error) return { ok: false, error: error.message };
-  // best-effort 알림 발송 — cohort fanout
-  await postAssignmentAnnouncement(admin, {
-    assignmentId: data.assignment_id,
-    cohortId: input.cohortId,
-    title: input.title,
-    dueAt: input.dueAt,
-    description: input.descriptionMd ?? null,
-    authorId: input.createdBy,
-  });
+  // best-effort 알림 발송 — cohort fanout. 개인 과제는 반 전체 공지가 무의미해 생략
+  // (학생 노출은 /assignments 목록·대시보드 마감 임박·주간 리포트가 담당).
+  if (!input.targetProfileId) {
+    await postAssignmentAnnouncement(admin, {
+      assignmentId: data.assignment_id,
+      cohortId: input.cohortId,
+      title: input.title,
+      dueAt: input.dueAt,
+      description: input.descriptionMd ?? null,
+      authorId: input.createdBy,
+    });
+  }
   return { ok: true, assignmentId: data.assignment_id };
 }
 
@@ -729,19 +739,21 @@ export async function listAssignmentProgress(
   // assignment 의 cohort 확인
   const { data: a } = await admin
     .from("assignments")
-    .select("cohort_id")
+    .select("cohort_id, target_profile_id")
     .eq("assignment_id", assignmentId)
     .maybeSingle();
   if (!a) return [];
 
-  // 멤버 가져옴
+  // 멤버 가져옴 — 개인 과제는 대상 학생만.
   const { data: members } = await admin
     .from("cohort_members")
     .select(
       "profile_id, profiles!cohort_members_profile_id_fkey(name)",
     )
     .eq("cohort_id", a.cohort_id);
-  const memberList = members ?? [];
+  const memberList = (members ?? []).filter(
+    (m) => !a.target_profile_id || m.profile_id === a.target_profile_id,
+  );
   if (memberList.length === 0) return [];
 
   // 각 멤버 submission 재계산
@@ -819,10 +831,12 @@ export async function listStudentAssignments(
   const { data: rows } = await admin
     .from("assignments")
     .select(
-      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy",
+      "assignment_id, cohort_id, title, description_md, assigned_at, due_at, created_by, source_curriculum_id, source_week_id, deadline_policy, target_profile_id",
     )
     .in("cohort_id", cohortIds)
     .is("deleted_at", null)
+    // feat-7-045 — 반 공통 + 본인 개인 과제만 (타인 개인 과제 제외).
+    .or(`target_profile_id.is.null,target_profile_id.eq.${userId}`)
     .order("due_at", { ascending: true });
   const list = rows ?? [];
   if (list.length === 0) return [];
@@ -865,6 +879,7 @@ export async function listStudentAssignments(
     sourceCurriculumId: r.source_curriculum_id,
     sourceWeekId: r.source_week_id,
     deadlinePolicy: r.deadline_policy,
+    targetProfileId: r.target_profile_id,
     itemCount: itemByA.get(r.assignment_id) ?? 0,
     submission: subByA.get(r.assignment_id) ?? null,
   }));
@@ -879,6 +894,8 @@ export async function getStudentAssignment(
   // cohort 멤버 검증
   const detail = await getAssignmentWithItems(assignmentId);
   if (!detail) return null;
+  // feat-7-045 — 타인의 개인 과제 접근 차단.
+  if (detail.targetProfileId && detail.targetProfileId !== userId) return null;
   const { data: member } = await admin
     .from("cohort_members")
     .select("cohort_id")

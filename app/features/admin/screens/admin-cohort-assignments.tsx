@@ -58,10 +58,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("본인 소유 반만 접근 가능", { status: 403 });
   }
 
-  const [assignments, cohortCurricula] = await Promise.all([
+  const [assignments, cohortCurricula, cohortRow] = await Promise.all([
     listAssignmentsByCohort(params.cohortId),
     listCohortCurricula(params.cohortId),
+    client
+      .from("cohorts")
+      .select("weak_assignment_auto")
+      .eq("cohort_id", params.cohortId)
+      .maybeSingle(),
   ]);
+  const weakAuto = cohortRow.data?.weak_assignment_auto ?? false;
 
   // 적용된 커리큘럼들의 주차 일람 (자동 변환 후보)
   const curriculumDetails = await Promise.all(
@@ -80,16 +86,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       })),
     );
 
-  return { cohort, assignments, availableWeeks, role };
+  return { cohort, assignments, availableWeeks, role, weakAuto };
 }
 
 export default function AdminCohortAssignments({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, assignments, availableWeeks, role } = loaderData;
+  const { cohort, assignments, availableWeeks, role, weakAuto } = loaderData;
   const [tab, setTab] = useState<"new" | "convert" | null>(null);
+  // feat-7-045 — 개인 과제(약점 보충)는 양이 많아 기본 접힘.
+  const [showPersonal, setShowPersonal] = useState(false);
+  const personalCount = assignments.filter((a) => a.targetProfileId).length;
+  const visibleAssignments = showPersonal
+    ? assignments
+    : assignments.filter((a) => !a.targetProfileId);
 
-  const completePctAll = assignments.map((a) =>
+  const completePctAll = visibleAssignments.map((a) =>
     (a.totalMembers ?? 0) > 0
       ? Math.round(((a.completedMembers ?? 0) / (a.totalMembers as number)) * 100)
       : 0,
@@ -143,6 +155,15 @@ export default function AdminCohortAssignments({
         </div>
       ) : null}
 
+      {/* feat-7-045 — 약점 개인 보충 과제 (진단→처방 자동화) */}
+      <WeakPersonalBlock
+        cohortId={cohort.cohortId}
+        weakAuto={weakAuto}
+        personalCount={personalCount}
+        showPersonal={showPersonal}
+        onTogglePersonal={() => setShowPersonal((v) => !v)}
+      />
+
       {assignments.length === 0 ? (
         <div className="border-border bg-card text-muted-foreground rounded-xl border py-16 text-center shadow-sm">
           <ClipboardListIcon className="mx-auto mb-2 size-8 opacity-30" />
@@ -170,20 +191,25 @@ export default function AdminCohortAssignments({
             </div>
           }
         >
-          {assignments.map((a, idx) => {
+          {visibleAssignments.map((a, idx) => {
             const completePct = completePctAll[idx];
             const overdue =
               new Date(a.dueAt).getTime() < Date.now() && completePct < 100;
             return (
               <TR key={a.assignmentId}>
                 <TD>
-                  <Link
-                    to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
-                    viewTransition
-                    className="hover:text-link text-[13px] font-medium"
-                  >
-                    {a.title}
-                  </Link>
+                  <span className="inline-flex items-center gap-1.5">
+                    {a.targetProfileId ? (
+                      <Chip tone="amber">개인{a.targetName ? ` · ${a.targetName}` : ""}</Chip>
+                    ) : null}
+                    <Link
+                      to={`/admin/cohorts/${cohort.cohortId}/assignments/${a.assignmentId}`}
+                      viewTransition
+                      className="hover:text-link text-[13px] font-medium"
+                    >
+                      {a.title}
+                    </Link>
+                  </span>
                 </TD>
                 <TD mono soft>
                   <span className={overdue ? "text-rose-600 dark:text-rose-400" : ""}>
@@ -230,6 +256,134 @@ export default function AdminCohortAssignments({
         </IndexTable>
       )}
     </AdminShell>
+  );
+}
+
+// ─── feat-7-045 — 약점 개인 보충 과제 블록 ───
+
+function WeakPersonalBlock({
+  cohortId,
+  weakAuto,
+  personalCount,
+  showPersonal,
+  onTogglePersonal,
+}: {
+  cohortId: string;
+  weakAuto: boolean;
+  personalCount: number;
+  showPersonal: boolean;
+  onTogglePersonal: () => void;
+}) {
+  const genFetcher = useFetcher<{
+    ok?: true;
+    created?: number;
+    skippedRecent?: number;
+    skippedNoWeak?: number;
+    skippedNoProblems?: number;
+    error?: string;
+  }>();
+  const toggleFetcher = useFetcher<{ ok?: true; enabled?: boolean; error?: string }>();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (
+      genFetcher.state === "idle" &&
+      genFetcher.data &&
+      "ok" in genFetcher.data &&
+      genFetcher.data.ok
+    ) {
+      navigate(`/admin/cohorts/${cohortId}/assignments`, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  }, [genFetcher.state, genFetcher.data, navigate, cohortId]);
+
+  const autoNow =
+    toggleFetcher.state === "idle" && toggleFetcher.data?.ok
+      ? (toggleFetcher.data.enabled ?? weakAuto)
+      : weakAuto;
+
+  return (
+    <div className="border-border bg-muted/30 mb-4 rounded-xl border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold">약점 개인 보충 과제</p>
+        <p className="text-muted-foreground text-[11px]">
+          학생별 약점 단원에서 문제를 뽑아 개인 과제를 만듭니다 (주 1회
+          가드·최근 4주 출제 제외).
+        </p>
+      </div>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <genFetcher.Form
+          method="post"
+          action="/api/admin/assignment"
+          className="flex flex-wrap items-end gap-2"
+        >
+          <input type="hidden" name="intent" value="generate_weak_personal" />
+          <input type="hidden" name="cohortId" value={cohortId} />
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px]">문항 수</Label>
+            <Input
+              name="n"
+              type="number"
+              min={1}
+              max={30}
+              defaultValue={10}
+              className="h-8 w-20 text-xs tabular-nums"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px]">마감(일)</Label>
+            <Input
+              name="dueDays"
+              type="number"
+              min={1}
+              max={30}
+              defaultValue={7}
+              className="h-8 w-20 text-xs tabular-nums"
+            />
+          </div>
+          <Button type="submit" size="sm" disabled={genFetcher.state !== "idle"}>
+            <WandSparklesIcon className="size-3.5" />
+            {genFetcher.state !== "idle" ? "생성 중…" : "지금 생성"}
+          </Button>
+        </genFetcher.Form>
+
+        <toggleFetcher.Form method="post" action="/api/admin/assignment">
+          <input type="hidden" name="intent" value="toggle_weak_auto" />
+          <input type="hidden" name="cohortId" value={cohortId} />
+          <input type="hidden" name="enabled" value={autoNow ? "0" : "1"} />
+          <Button
+            type="submit"
+            size="sm"
+            variant={autoNow ? "default" : "outline"}
+            disabled={toggleFetcher.state !== "idle"}
+            title="켜면 주간 cron(/api/cron/weak-assignments)이 이 반에 자동 생성합니다"
+          >
+            주간 자동 {autoNow ? "ON" : "OFF"}
+          </Button>
+        </toggleFetcher.Form>
+
+        {personalCount > 0 ? (
+          <Button size="sm" variant="ghost" onClick={onTogglePersonal}>
+            개인 과제 {personalCount}건 {showPersonal ? "숨기기" : "보기"}
+          </Button>
+        ) : null}
+      </div>
+      {genFetcher.data && "error" in genFetcher.data && genFetcher.data.error ? (
+        <p className="mt-2 text-xs text-rose-600">{genFetcher.data.error}</p>
+      ) : null}
+      {genFetcher.data && genFetcher.data.ok ? (
+        <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">
+          ✓ 생성 {genFetcher.data.created ?? 0}건 · 이번 주 기존{" "}
+          {genFetcher.data.skippedRecent ?? 0} · 약점 데이터 부족{" "}
+          {genFetcher.data.skippedNoWeak ?? 0} · 출제 문제 없음{" "}
+          {genFetcher.data.skippedNoProblems ?? 0}
+        </p>
+      ) : null}
+      {toggleFetcher.data && "error" in toggleFetcher.data && toggleFetcher.data.error ? (
+        <p className="mt-2 text-xs text-rose-600">{toggleFetcher.data.error}</p>
+      ) : null}
+    </div>
   );
 }
 
