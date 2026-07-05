@@ -477,6 +477,14 @@ export function CasesTab({
                     className="w-24 md:w-32"
                   />
                   <SortableCaseHead
+                    label="전합"
+                    column="enbanc"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="hidden w-14 md:table-cell"
+                    align="center"
+                  />
+                  <SortableCaseHead
                     label="사건유형"
                     column="type"
                     sort={filters.sort}
@@ -486,14 +494,6 @@ export function CasesTab({
                   <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건명 / 기출
                   </TableHead>
-                  <SortableCaseHead
-                    label="전합"
-                    column="enbanc"
-                    sort={filters.sort}
-                    searchParams={searchParams}
-                    className="hidden w-14 md:table-cell"
-                    align="center"
-                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -718,6 +718,13 @@ function CaseRow({
           {item.decidedAt}
         </span>
       </TableCell>
+      <TableCell className="hidden text-center md:table-cell">
+        {item.isEnBanc ? (
+          <span className="bg-primary/10 text-link inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
+            전합
+          </span>
+        ) : null}
+      </TableCell>
       <TableCell className="hidden align-top whitespace-normal md:table-cell">
         {item.caseType ? (
           <span className="border-border bg-muted/50 text-muted-foreground inline-block max-w-full rounded-full border px-2 py-0.5 text-[11px] font-medium break-words">
@@ -753,13 +760,6 @@ function CaseRow({
               <ExamYearChip key={`2-${y}`} round="second" year={y} />
             ))}
           </div>
-        ) : null}
-      </TableCell>
-      <TableCell className="hidden text-center md:table-cell">
-        {item.isEnBanc ? (
-          <span className="bg-primary/10 text-link inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold">
-            전합
-          </span>
         ) : null}
       </TableCell>
     </TableRow>
