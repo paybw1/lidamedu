@@ -5,6 +5,7 @@ import {
   ClipboardListIcon,
   PencilIcon,
   PlusIcon,
+  PrinterIcon,
   Trash2Icon,
   UsersIcon,
   XIcon,
@@ -360,6 +361,23 @@ function OfflineTestsSection({
               <span className="text-muted-foreground text-[11px] tabular-nums">
                 결과 {t.resultCount}명
               </span>
+              {/* 인쇄(PDF 저장) 바로가기 — 빌더 안 거치고 목록에서 즉시 */}
+              <Link
+                to={`/admin/cohorts/${cohortId}/assignments/${assignmentId}/tests/${t.testId}/print`}
+                target="_blank"
+                title="문제지 인쇄 / PDF 저장"
+                className="text-muted-foreground hover:text-link inline-flex items-center gap-1 text-[11px] font-semibold"
+              >
+                <PrinterIcon className="size-3.5" /> 문제지
+              </Link>
+              <Link
+                to={`/admin/cohorts/${cohortId}/assignments/${assignmentId}/tests/${t.testId}/print?answers=1`}
+                target="_blank"
+                title="정답·해설지 인쇄 / PDF 저장"
+                className="text-muted-foreground hover:text-link inline-flex items-center gap-1 text-[11px] font-semibold"
+              >
+                <PrinterIcon className="size-3.5" /> 정답
+              </Link>
             </li>
           ))}
         </ul>
