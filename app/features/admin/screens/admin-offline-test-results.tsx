@@ -69,6 +69,88 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   };
 }
 
+function accuracyTone(pct: number | null): string {
+  if (pct === null) return "text-muted-foreground";
+  if (pct >= 80) return "text-emerald-600 dark:text-emerald-400";
+  if (pct >= 60) return "text-lime-600 dark:text-lime-400";
+  if (pct >= 40) return "text-amber-600 dark:text-amber-400";
+  return "text-rose-600 dark:text-rose-400";
+}
+
+// 저장된 결과 기준 테스트 통계 — 평균·최고/최저·미응시 + 문항별 정답률(변별 낮은 문항 식별).
+function TestStatsBlock({
+  ords,
+  maxScore,
+  results,
+}: {
+  ords: number[];
+  maxScore: number;
+  results: Array<{
+    status: "taken" | "absent";
+    score: number | null;
+    wrongOrds: number[];
+  }>;
+}) {
+  const taken = results.filter((r) => r.status === "taken" && r.score !== null);
+  if (taken.length === 0) return null;
+  const scores = taken.map((r) => r.score as number);
+  const avg = Math.round((scores.reduce((s, v) => s + v, 0) / scores.length) * 10) / 10;
+  const absent = results.filter((r) => r.status === "absent").length;
+  const wrongCountByOrd = new Map<number, number>();
+  for (const r of taken) {
+    for (const o of r.wrongOrds) {
+      wrongCountByOrd.set(o, (wrongCountByOrd.get(o) ?? 0) + 1);
+    }
+  }
+  return (
+    <div className="border-border bg-card mb-4 rounded-xl border shadow-sm">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 border-b px-4 py-2.5 text-xs">
+        <span>
+          응시{" "}
+          <strong className="tabular-nums">{taken.length}</strong>명
+          {absent > 0 ? (
+            <span className="text-muted-foreground"> · 미응시 {absent}명</span>
+          ) : null}
+        </span>
+        <span>
+          평균{" "}
+          <strong className={cn("tabular-nums", accuracyTone(maxScore > 0 ? Math.round((avg / maxScore) * 100) : null))}>
+            {avg}
+          </strong>
+          <span className="text-muted-foreground">/{maxScore}</span>
+        </span>
+        <span className="text-muted-foreground tabular-nums">
+          최고 {Math.max(...scores)} · 최저 {Math.min(...scores)}
+        </span>
+      </div>
+      <div className="px-4 py-2.5">
+        <p className="text-muted-foreground mb-1.5 text-[10px] font-semibold tracking-wide uppercase">
+          문항별 정답률
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {ords.map((o) => {
+            const wrong = wrongCountByOrd.get(o) ?? 0;
+            const pct = Math.round(((taken.length - wrong) / taken.length) * 100);
+            return (
+              <span
+                key={o}
+                title={`${o + 1}번 — 정답률 ${pct}% (오답 ${wrong}명)`}
+                className={cn(
+                  "inline-flex h-6 min-w-10 items-center justify-center gap-0.5 rounded border px-1 text-[10px] tabular-nums",
+                  accuracyTone(pct),
+                )}
+              >
+                <span className="text-muted-foreground">{o + 1}.</span>
+                {pct}%
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type RowStatus = "none" | "taken" | "absent";
 
 interface RowState {
@@ -216,6 +298,10 @@ export default function AdminOfflineTestResults({
           {fetcher.data.absent ?? 0}명
         </p>
       ) : null}
+
+      {/* 4단계 — 저장된 결과 기준 테스트 통계 */}
+      <TestStatsBlock ords={ords} maxScore={maxScore} results={results} />
+
 
       {test.questions.length === 0 ? (
         <p className="text-muted-foreground rounded-xl border border-dashed py-10 text-center text-sm">

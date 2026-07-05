@@ -1,6 +1,6 @@
 # feat-7-042 — 오프라인 테스트 (종합반 시험지 제작·PDF 출력·결과 입력·통합 통계)
 
-> 상태: 🟡 진행 중 (2026-07-05 착수)
+> 상태: ✅ 전 단계 구현 완료 (2026-07-05)
 > 소유 화면: `/admin/cohorts/:cohortId/assignments/:assignmentId` 하위
 > 관련: feat-7-021(과제 배포) · feat-7-040(관리자 학습현황) · docs/features/과제-상담-모의-점검-연계.md
 
@@ -118,3 +118,11 @@ attempts/sessions 는 기존 테이블 RLS 그대로(학생 본인 소유).
 
 ## 6. 진행 로그
 - 2026-07-05: 설계 승인(사용자 "진행 OK"), 문서 작성.
+- 2026-07-05: 전 단계 구현·푸시 완료 — DB(ee34e48) → ①빌더(922fd5a) →
+  ②인쇄/PDF(573c527) → ③결과 입력·신호 합류·학생 결과 카드·멤버 read RLS(a387d51)
+  → ④테스트 통계(결과 화면 KPI+문항별 정답률)·반 통계 카드(admin-cohort-stats).
+  구현 파일: app/features/offline-tests/{queries,results}.server.ts,
+  admin/api/offline-test.tsx, admin/screens/admin-offline-test-{edit,print,results}.tsx.
+- 알려진 한계: 빈칸 시도(user_blank_attempts)는 세션 컬럼이 없어 append-only —
+  재저장은 최신 시도 우선 규칙이 흡수하지만 taken→absent 전환 시 빈칸 기록은
+  철회되지 않음(객관식·OX 는 세션 삭제로 철회됨).

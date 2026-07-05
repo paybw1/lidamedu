@@ -28,6 +28,7 @@ import {
   isSecondExamSubject,
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
+  type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 import {
   getCohortAccuracyTrend,
@@ -40,6 +41,10 @@ import {
   getCohortSrsAggregate,
 } from "~/features/admin/queries/cohort-srs.server";
 import { getCohortWeakNodes } from "~/features/admin/queries/cohort-weakness.server";
+import {
+  listCohortOfflineTestStats,
+  type CohortOfflineTestStat,
+} from "~/features/offline-tests/results.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 
@@ -67,10 +72,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
   const cohortId = params.cohortId;
 
-  const [stats, trend, srs] = await Promise.all([
+  const [stats, trend, srs, offlineTests] = await Promise.all([
     getCohortAggregateStats(cohortId),
     getCohortAccuracyTrend(cohortId, 4),
     getCohortSrsAggregate(cohortId),
+    listCohortOfflineTestStats(client, cohortId),
   ]);
 
   // feat-7-040 P3 — 반 공통 약점 단원(getCohortWeakNodes 재사용, 과목별). ★시도 있는 과목만
@@ -112,6 +118,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     srs,
     cohortWeakNodes,
     weakThreshold,
+    offlineTests,
     role,
   };
 }
@@ -154,8 +161,16 @@ const BUCKET_LABEL: Record<AccuracyBucket, string> = {
 export default function AdminCohortStats({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, stats, trend, srs, cohortWeakNodes, weakThreshold, role } =
-    loaderData;
+  const {
+    cohort,
+    stats,
+    trend,
+    srs,
+    cohortWeakNodes,
+    weakThreshold,
+    offlineTests,
+    role,
+  } = loaderData;
   const maxBucketCount = Math.max(
     1,
     ...stats.accuracyDistribution.map((d) => d.count),
@@ -336,6 +351,9 @@ export default function AdminCohortStats({
             cohortId={cohort.cohortId}
           />
 
+          {/* feat-7-042 — 오프라인 테스트 결과 (온라인 진도 대비 현장 시험 성적) */}
+          <OfflineTestStatsCard tests={offlineTests} cohortId={cohort.cohortId} />
+
           {/* 상/하위 학생 */}
           <div className="grid gap-3 md:grid-cols-2">
             <RankCard
@@ -362,6 +380,99 @@ export default function AdminCohortStats({
         </div>
       )}
     </AdminShell>
+  );
+}
+
+// feat-7-042 — 반 오프라인 테스트 결과 요약. 평균 % 는 온라인 정답률과 같은 톤 스케일.
+function OfflineTestStatsCard({
+  tests,
+  cohortId,
+}: {
+  tests: CohortOfflineTestStat[];
+  cohortId: string;
+}) {
+  if (tests.length === 0) return null;
+  return (
+    <div className="border-border bg-card rounded-xl border shadow-sm">
+      <div className="border-b px-4 py-3">
+        <h2 className="text-sm font-bold tracking-tight">
+          오프라인 테스트{" "}
+          <span className="text-muted-foreground font-normal">
+            ({tests.length})
+          </span>
+        </h2>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          현장 시험 결과 — 문항별 정오는 학생 학습 기록에 합류되어 위의 약점
+          단원·정답률에도 반영됩니다.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-xs">
+          <thead>
+            <tr className="text-muted-foreground border-b text-left">
+              <th className="px-4 py-2 font-semibold">테스트</th>
+              <th className="px-2 py-2 font-semibold">과목</th>
+              <th className="px-2 py-2 text-right font-semibold">응시</th>
+              <th className="px-2 py-2 text-right font-semibold">평균</th>
+              <th className="px-2 py-2 text-right font-semibold">최고/최저</th>
+              <th className="px-4 py-2 text-right font-semibold">결과</th>
+            </tr>
+          </thead>
+          <tbody className="divide-border divide-y">
+            {tests.map((t) => (
+              <tr key={t.testId}>
+                <td className="max-w-56 truncate px-4 py-2 font-medium">
+                  {t.title}
+                </td>
+                <td className="px-2 py-2">
+                  {LAW_SUBJECTS[t.lawCode as LawSubjectSlug]?.name ?? t.lawCode}
+                </td>
+                <td className="px-2 py-2 text-right tabular-nums">
+                  {t.takenCount}
+                  {t.absentCount > 0 ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      (미응시 {t.absentCount})
+                    </span>
+                  ) : null}
+                </td>
+                <td
+                  className={cn(
+                    "px-2 py-2 text-right font-bold tabular-nums",
+                    accuracyTone(t.avgPct),
+                  )}
+                >
+                  {t.avgScore !== null ? (
+                    <>
+                      {t.avgScore}
+                      {t.maxScore !== null ? (
+                        <span className="text-muted-foreground font-normal">
+                          /{t.maxScore}
+                        </span>
+                      ) : null}
+                      {t.avgPct !== null ? ` (${t.avgPct}%)` : ""}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                  {t.topScore !== null ? `${t.topScore} / ${t.bottomScore}` : "—"}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <Link
+                    to={`/admin/cohorts/${cohortId}/assignments/${t.assignmentId}/tests/${t.testId}/results`}
+                    className="text-link hover:underline"
+                  >
+                    입력·상세
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

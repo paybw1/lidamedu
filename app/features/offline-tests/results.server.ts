@@ -50,6 +50,83 @@ export async function listOfflineTestResults(
   }));
 }
 
+// 4단계 — 반 단위 오프라인 테스트 통계 (반 통계 화면 카드용).
+export interface CohortOfflineTestStat {
+  testId: string;
+  assignmentId: string;
+  title: string;
+  lawCode: string;
+  createdAt: string;
+  takenCount: number;
+  absentCount: number;
+  maxScore: number | null;
+  avgScore: number | null;
+  avgPct: number | null;
+  topScore: number | null;
+  bottomScore: number | null;
+}
+
+export async function listCohortOfflineTestStats(
+  client: SupabaseClient<Database>,
+  cohortId: string,
+  limit = 10,
+): Promise<CohortOfflineTestStat[]> {
+  const { data: tests, error } = await client
+    .from("offline_tests")
+    .select("test_id, assignment_id, title, law_code, created_at")
+    .eq("cohort_id", cohortId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const list = tests ?? [];
+  if (list.length === 0) return [];
+
+  const rows = await fetchAllIn(
+    list.map((t) => t.test_id),
+    (slice) =>
+      client
+        .from("offline_test_results")
+        .select("test_id, status, score, max_score, result_id")
+        .in("test_id", slice)
+        .order("result_id"),
+  );
+  const byTest = new Map<string, typeof rows>();
+  for (const r of rows) {
+    const arr = byTest.get(r.test_id) ?? [];
+    arr.push(r);
+    byTest.set(r.test_id, arr);
+  }
+
+  return list.map((t) => {
+    const rs = byTest.get(t.test_id) ?? [];
+    const taken = rs.filter((r) => r.status === "taken" && r.score !== null);
+    const scores = taken.map((r) => Number(r.score));
+    const maxScore = rs.find((r) => r.max_score !== null)?.max_score;
+    const avg =
+      scores.length > 0
+        ? Math.round((scores.reduce((s, v) => s + v, 0) / scores.length) * 10) / 10
+        : null;
+    return {
+      testId: t.test_id,
+      assignmentId: t.assignment_id,
+      title: t.title,
+      lawCode: t.law_code,
+      createdAt: t.created_at,
+      takenCount: taken.length,
+      absentCount: rs.filter((r) => r.status === "absent").length,
+      maxScore: maxScore == null ? null : Number(maxScore),
+      avgScore: avg,
+      avgPct:
+        avg !== null && maxScore != null && Number(maxScore) > 0
+          ? Math.round((avg / Number(maxScore)) * 100)
+          : null,
+      topScore: scores.length > 0 ? Math.max(...scores) : null,
+      bottomScore: scores.length > 0 ? Math.min(...scores) : null,
+    };
+  });
+}
+
 // 학생 본인 — 과제에 붙은 오프라인 테스트의 내 결과 (과제 상세 카드용).
 // 요청 클라이언트 RLS: offline_tests 는 반 멤버 read, results 는 select_own.
 export interface MyOfflineTestResult {
