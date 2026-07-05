@@ -1,15 +1,22 @@
 // feat-8-017 Onboarding wizard — 가입 후 첫 화면.
-// 3 steps: 응시 계획 / 분석 동의 / 학습 목표. 각 step submit 시 데이터 저장 + 진행.
+// 4 steps: 응시 계획 / 분석 동의 / 학습 목표 / 기능 둘러보기(웰컴 투어).
 // 어느 step 에서든 "건너뛰기" 가능. 완료 또는 skip 시 profile.onboarded_at 설정.
 import type { Route } from "./+types/welcome";
 
 import {
+  BarChart3Icon,
+  BookOpenIcon,
   CheckCircle2Icon,
+  ChevronLeftIcon,
   ChevronRightIcon,
+  CompassIcon,
   GraduationCapIcon,
+  HelpCircleIcon,
+  ListChecksIcon,
   ShieldCheckIcon,
   TargetIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { Form, Link, data, redirect } from "react-router";
 import { z } from "zod";
 
@@ -34,7 +41,7 @@ export const meta: Route.MetaFunction = () => [
   { title: "환영합니다 | 리담변리사학원" },
 ];
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 export async function loader({ request }: Route.LoaderArgs) {
   const [client] = makeServerClient(request);
@@ -160,8 +167,13 @@ export async function action({ request }: Route.ActionArgs) {
           : Number(parsed.data.targetScore),
       notes: null,
     });
+    throw redirect("/onboarding/welcome?step=4");
+  }
+
+  // 투어 완료 — 대시보드 또는 이용 가이드로.
+  if (intent === "finish" || intent === "finish_guide") {
     await markOnboarded(client, user.id);
-    throw redirect("/dashboard");
+    throw redirect(intent === "finish_guide" ? "/guide" : "/dashboard");
   }
 
   if (intent === "skip") {
@@ -192,14 +204,14 @@ export default function OnboardingWelcome({
             {name}님, 환영합니다
           </h1>
           <p className="text-muted-foreground text-sm">
-            1분이면 충분합니다. 세 가지를 알려주시면 합격자 데이터가 누적되는
-            대로 비교 컨설팅을 받아볼 수 있습니다.
+            1분이면 충분합니다. 응시 계획과 학습 목표를 알려주시고, 핵심 기능을
+            가볍게 둘러보세요.
           </p>
         </header>
 
         {/* 진행 표시 */}
         <ol className="mb-6 flex items-center justify-center gap-2">
-          {[1, 2, 3].map((s) => (
+          {[1, 2, 3, 4].map((s) => (
             <li key={s} className="flex items-center gap-2">
               <span
                 className={cn(
@@ -213,7 +225,7 @@ export default function OnboardingWelcome({
               >
                 {s < step ? <CheckCircle2Icon className="size-3.5" /> : s}
               </span>
-              {s < 3 ? (
+              {s < TOTAL_STEPS ? (
                 <span
                   className={cn(
                     "h-px w-8",
@@ -230,8 +242,10 @@ export default function OnboardingWelcome({
           <PlanStep currentYear={currentYear} profile={profile} />
         ) : step === 2 ? (
           <ConsentStep />
-        ) : (
+        ) : step === 3 ? (
           <GoalsStep currentYear={currentYear} />
+        ) : (
+          <TourStep />
         )}
 
         {/* 건너뛰기 */}
@@ -460,10 +474,115 @@ function GoalsStep({ currentYear }: { currentYear: number }) {
           </div>
           <div className="flex justify-end">
             <Button type="submit" size="default">
-              완료하고 대시보드로 →
+              다음 <ChevronRightIcon className="size-3.5" />
             </Button>
           </div>
         </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Step 4 — 기능 둘러보기(웰컴 투어) ───────────────────────────────────────
+// 핵심 동선 4장 카드. 마지막 장에서 완료(대시보드) 또는 이용 가이드로 이동.
+
+const TOUR_CARDS = [
+  {
+    Icon: BookOpenIcon,
+    title: "조문·판례·문제가 이어집니다",
+    body: "학습과목에서 조문을 열면 옆에 관련 판례와 문제가 함께 붙습니다. 조문을 읽다가 판례로, 판례에서 문제로 끊김 없이 오가며 공부해 보세요.",
+  },
+  {
+    Icon: ListChecksIcon,
+    title: "틀린 문제는 자동으로 모입니다",
+    body: "문제를 풀면 틀린 문제가 오답노트에 자동으로 쌓이고, 다시 풀어 맞히면 알아서 빠집니다. 하이라이트·포스트잇 같은 기록은 학습노트에 모입니다.",
+  },
+  {
+    Icon: BarChart3Icon,
+    title: "약점을 찾고, 복습은 알아서",
+    body: "학습현황에서 어느 단원이 약한지 한눈에 보입니다. 복습과 암기 카드는 잊을 때쯤 자동으로 다시 물어봅니다.",
+  },
+  {
+    Icon: HelpCircleIcon,
+    title: "막힐 땐 ? 버튼",
+    body: "화면 구석의 ? 버튼을 누르면 그 화면 사용법이 바로 열립니다. 커뮤니티의 이용 가이드에서 영상 설명도 볼 수 있습니다.",
+  },
+] as const;
+
+function TourStep() {
+  const [idx, setIdx] = useState(0);
+  const card = TOUR_CARDS[idx];
+  const last = idx === TOUR_CARDS.length - 1;
+  return (
+    <Card>
+      <CardHeader className="px-5 pb-2">
+        <div className="flex items-center gap-2">
+          <CompassIcon className="text-link size-5" />
+          <p className="text-base font-semibold">
+            1분 둘러보기 ({idx + 1}/{TOUR_CARDS.length})
+          </p>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5 pb-5">
+        <div className="bg-muted/30 border-border rounded-xl border p-5 text-center">
+          <card.Icon className="text-link mx-auto size-8" />
+          <p className="text-foreground mt-3 text-base font-bold">
+            {card.title}
+          </p>
+          <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm leading-relaxed">
+            {card.body}
+          </p>
+        </div>
+        {/* 진행 점 */}
+        <div className="mt-3 flex items-center justify-center gap-1.5">
+          {TOUR_CARDS.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`${i + 1}번째 카드`}
+              onClick={() => setIdx(i)}
+              className={cn(
+                "size-2 rounded-full transition-colors",
+                i === idx ? "bg-primary" : "bg-muted",
+              )}
+            />
+          ))}
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={idx === 0}
+            onClick={() => setIdx((v) => Math.max(0, v - 1))}
+          >
+            <ChevronLeftIcon className="size-3.5" /> 이전
+          </Button>
+          {last ? (
+            <div className="flex items-center gap-2">
+              <Form method="post" className="inline">
+                <input type="hidden" name="intent" value="finish_guide" />
+                <Button type="submit" variant="outline" size="sm">
+                  이용 가이드 보기
+                </Button>
+              </Form>
+              <Form method="post" className="inline">
+                <input type="hidden" name="intent" value="finish" />
+                <Button type="submit" size="sm">
+                  시작하기 →
+                </Button>
+              </Form>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIdx((v) => Math.min(TOUR_CARDS.length - 1, v + 1))}
+            >
+              다음 <ChevronRightIcon className="size-3.5" />
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

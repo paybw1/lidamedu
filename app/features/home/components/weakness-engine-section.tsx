@@ -43,7 +43,7 @@ export function WeaknessEngineSection() {
       <SectionHeader
         eyebrow="WEAKNESS ENGINE · 약점 진단"
         title="어디가 약한지 알아야, 거기를 채웁니다"
-        subtitle="단원 × 지식종류로 약점을 짚고, 틀린 문제는 복습 큐가 잊을 때쯤 다시 꺼냅니다. 지금 바로 작동하는 분석 엔진입니다."
+        subtitle={"단원 × 지식종류로 약점을 짚고, 틀린 문제는 복습 큐가 잊을 때쯤 다시 꺼냅니다.\n지금 바로 작동하는 분석 엔진입니다."}
       />
 
       <div
