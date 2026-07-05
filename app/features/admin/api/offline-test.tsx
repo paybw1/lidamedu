@@ -25,6 +25,7 @@ import {
   updateOfflineTest,
   type OfflineQuestionRef,
 } from "~/features/offline-tests/queries.server";
+import { saveOfflineTestResults } from "~/features/offline-tests/results.server";
 import { lawSubjectSlugSchema } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/offline-test";
@@ -196,6 +197,57 @@ export async function action({ request }: Route.ActionArgs) {
     }
     await moveTestQuestion(client, testId, questionId, dirParse.data);
     return data({ ok: true });
+  }
+
+  // ── 3단계: 오프라인 채점 결과 저장 (문항별 정오 → 학습 신호 합류) ──
+  // adminClient 로 학생 명의 기록을 쓰는 의도적 예외 — 위 staff+반 소유권 게이트에
+  // 더해, 대상 학생 전원이 이 반 멤버인지 재검증(fail-closed) 후에만 실행.
+  if (intent === "save_results") {
+    const entriesSchema = z
+      .array(
+        z.object({
+          userId: z.string().uuid(),
+          status: z.enum(["taken", "absent"]),
+          wrongOrds: z.array(z.number().int().min(0).max(998)).max(500),
+        }),
+      )
+      .min(1)
+      .max(300);
+    let entriesRaw: unknown;
+    try {
+      entriesRaw = JSON.parse(String(fd.get("entries") ?? "[]"));
+    } catch {
+      return data({ error: "결과 형식 오류" }, { status: 400 });
+    }
+    const parsed = entriesSchema.safeParse(entriesRaw);
+    if (!parsed.success) {
+      return data({ error: "결과 형식 오류" }, { status: 400 });
+    }
+    const takenAt = String(fd.get("takenAt") ?? "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(takenAt)) {
+      return data({ error: "응시일을 입력하세요" }, { status: 400 });
+    }
+
+    const { data: members, error: mErr } = await adminClient
+      .from("cohort_members")
+      .select("profile_id")
+      .eq("cohort_id", cohortId);
+    if (mErr) return data({ error: "멤버 조회 실패" }, { status: 500 });
+    const memberIds = new Set((members ?? []).map((m) => m.profile_id));
+    if (parsed.data.some((e) => !memberIds.has(e.userId))) {
+      return data(
+        { error: "이 반 학생이 아닌 대상이 포함되어 있습니다" },
+        { status: 403 },
+      );
+    }
+
+    const summary = await saveOfflineTestResults(adminClient, {
+      testId,
+      entries: parsed.data,
+      takenAt,
+      enteredBy: user.id,
+    });
+    return data({ ok: true, ...summary });
   }
 
   if (intent === "set_points") {

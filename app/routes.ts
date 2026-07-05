@@ -656,6 +656,10 @@ export default [
         "/admin/cohorts/:cohortId/assignments/:assignmentId/tests/:testId/print",
         "features/admin/screens/admin-offline-test-print.tsx",
       ),
+      route(
+        "/admin/cohorts/:cohortId/assignments/:assignmentId/tests/:testId/results",
+        "features/admin/screens/admin-offline-test-results.tsx",
+      ),
       route("/api/admin/assignment", "features/admin/api/assignment.tsx"),
       route("/api/admin/offline-test", "features/admin/api/offline-test.tsx"),
       route(
