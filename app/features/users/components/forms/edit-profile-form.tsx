@@ -156,7 +156,7 @@ export default function EditProfileForm({
                 }}
               />
               <p className="text-muted-foreground text-xs">
-                카카오 알림톡으로 알림을 받으려면 휴대폰 번호를 입력하세요.
+                카카오 알림톡으로 알림을 받으려면 휴대폰 번호를 입력해 주세요.
               </p>
               {fetcher.data &&
               "fieldErrors" in fetcher.data &&
@@ -192,7 +192,7 @@ export default function EditProfileForm({
                 </label>
               </div>
               <p className="text-muted-foreground text-xs">
-                최소 한 개 이상 선택해야 합니다. 둘 다 끄면 이메일로 발송됩니다.
+                한 개 이상 선택해야 합니다. 둘 다 끄면 이메일로 발송됩니다.
               </p>
               {fetcher.data &&
               "fieldErrors" in fetcher.data &&
@@ -227,7 +227,7 @@ export default function EditProfileForm({
             className="w-full"
           />
           {fetcher.data && "success" in fetcher.data && fetcher.data.success ? (
-            <FormSuccess message="프로필이 저장되었습니다" />
+            <FormSuccess message="프로필이 저장되었습니다." />
           ) : null}
           {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
             <FormErrors errors={[fetcher.data.error]} />

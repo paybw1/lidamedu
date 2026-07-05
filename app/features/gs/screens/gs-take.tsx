@@ -199,7 +199,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
       category="gs"
       width="wide"
       title={round.title}
-      desc="종이 답안지를 페이지별로 사진(또는 PDF)으로 업로드하고, 각 페이지가 어느 문항에 해당하는지 매핑하세요."
+      desc="종이 답안지를 페이지별로 사진(또는 PDF)으로 업로드하고, 각 페이지가 어느 문항에 해당하는지 매핑해 주세요."
       backLink={{ to: "/gs", label: "온라인 GS" }}
       headerRight={
         <div className="flex items-center gap-2.5">
@@ -222,7 +222,7 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
       <div className="border-primary/15 bg-primary/[0.05] mb-3 flex flex-col gap-2.5 rounded-2xl border p-4 sm:flex-row sm:items-center">
         <FileTextIcon className="text-link size-5 shrink-0" />
         <p className="text-foreground min-w-0 flex-1 text-[13px] leading-relaxed">
-          오프라인 답안지에 작성한 후 페이지별로 사진(JPG/PNG/WebP) 또는 PDF 를
+          오프라인 답안지에 작성한 후 페이지별로 사진(JPG/PNG/WebP) 또는 PDF를
           업로드합니다. 각 페이지를 칩으로 문항에 매핑하고 페이지마다{" "}
           <strong>판독 가능 확인</strong>을 채워야 제출할 수 있습니다.
         </p>
@@ -374,13 +374,13 @@ export default function GsTake({ loaderData }: Route.ComponentProps) {
             <p className="text-foreground font-semibold tracking-tight">
               {allReady
                 ? unmappedCount > 0
-                  ? `제출 가능 (미매핑 문항 ${unmappedCount}건은 0점 처리)`
-                  : "제출 가능 — 모든 페이지 판독 확인 완료."
+                  ? `제출할 수 있습니다. 미매핑 문항 ${unmappedCount}건은 0점으로 처리됩니다.`
+                  : "제출할 수 있습니다. 모든 페이지의 판독 확인을 마쳤습니다."
                 : "제출 조건을 채워 주세요."}
             </p>
             <p className="text-muted-foreground mt-0.5 text-xs">
               {allReady
-                ? `${pages.length}/${round.expectedPages} 페이지 업로드. 제출 후에는 답안 변경이 불가합니다.`
+                ? `${pages.length}/${round.expectedPages} 페이지를 업로드했습니다. 제출 후에는 답안을 변경할 수 없습니다.`
                 : [
                     pages.length === 0 ? "답안 1페이지 이상 업로드" : "",
                     !withinPageLimit
@@ -544,7 +544,7 @@ function PageSlot({
   const handleFile = async (file: File) => {
     setError(null);
     if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-      setError("JPG/PNG/WebP/PDF 만 업로드할 수 있습니다.");
+      setError("JPG/PNG/WebP/PDF만 업로드할 수 있습니다.");
       return;
     }
 
@@ -560,16 +560,16 @@ function PageSlot({
           const end = start + numPages - 1;
           if (end > round.expectedPages) {
             setError(
-              `이 PDF 는 ${numPages}페이지인데 슬롯 ${start}~${end} 가 필요합니다 ` +
+              `이 PDF는 ${numPages}페이지인데 슬롯 ${start}~${end}이 필요합니다 ` +
                 `(회차 최대 ${round.expectedPages}페이지). 시작 슬롯을 앞쪽으로 옮기거나 ` +
                 `회차의 답안지 페이지 수를 늘려 주세요.`,
             );
             return;
           }
           const yes = window.confirm(
-            `이 PDF 는 ${numPages}페이지입니다.\n\n` +
-              `[확인] 슬롯 ${start}~${end} 에 페이지별 이미지로 자동 분배 (각 페이지 OCR 가능).\n` +
-              `[취소] 슬롯 ${start} 에 PDF 그대로 첨부 (다페이지 PDF 1개로 1슬롯).`,
+            `이 PDF는 ${numPages}페이지입니다.\n\n` +
+              `[확인] 슬롯 ${start}~${end}에 페이지별 이미지로 자동 분배합니다 (각 페이지 자동 인식(OCR) 가능).\n` +
+              `[취소] 슬롯 ${start}에 PDF 그대로 첨부합니다 (다페이지 PDF 1개로 1슬롯).`,
           );
           if (yes) {
             setSplitProgress({ phase: "split", cur: 0, total: numPages });
@@ -621,7 +621,7 @@ function PageSlot({
         height = dim.height;
         if (width < 600 || height < 600) {
           setError(
-            `이미지 해상도가 너무 낮습니다 (${width}x${height}). 1200x1600 이상 권장.`,
+            `이미지 해상도가 너무 낮습니다 (${width}x${height}). 1200x1600 이상을 권장합니다.`,
           );
           return;
         }
@@ -862,8 +862,8 @@ function PageSlot({
             <PagePreview attachment={page.attachment} />
             {isSplitting ? (
               <p className="text-muted-foreground px-3 text-[10px]">
-                다페이지 PDF 를 슬롯 {pageNumber}부터{" "}
-                {pageNumber + splitProgress.total - 1} 까지 분배 중…
+                다페이지 PDF를 슬롯 {pageNumber}부터{" "}
+                {pageNumber + splitProgress.total - 1}까지 분배하고 있습니다…
               </p>
             ) : null}
             {error ? (
@@ -927,7 +927,8 @@ function PageSlot({
                   {confirmed ? "판독 확인 완료." : "판독 가능 확인."}
                 </span>{" "}
                 <span className="text-muted-foreground">
-                  풀사이즈로 확인했고 채점자(AI/강사)가 알아볼 수 있는 수준임.
+                  풀사이즈로 확인했고 채점자(AI/강사)가 알아볼 수 있는
+                  수준입니다.
                 </span>
               </span>
             </label>

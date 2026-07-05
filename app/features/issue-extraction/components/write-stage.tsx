@@ -81,7 +81,7 @@ export function WriteStage({
 
   const submit = () => {
     if (text.trim().length < 2) {
-      alert("최소 한 줄은 작성해주세요.");
+      alert("최소 한 줄은 작성해 주세요.");
       return;
     }
     if (
@@ -104,8 +104,8 @@ export function WriteStage({
         <p className="text-foreground">
           {hint ?? (
             <>
-              <strong>한 줄에 한 쟁점</strong>씩 적는 걸 권장합니다 (자유 형식도
-              OK). 모범답안은 제출 전에 절대 보지 마세요.
+              <strong>한 줄에 한 쟁점</strong>씩 적는 걸 권장합니다 (자유
+              형식도 괜찮습니다). 모범답안은 제출 전에 절대 보지 마세요.
             </>
           )}
         </p>

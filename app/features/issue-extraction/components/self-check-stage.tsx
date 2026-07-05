@@ -93,7 +93,7 @@ export function SelfCheckStage({
     if (
       !confirm(
         aiConfirmMessage ??
-          "AI 의견을 받습니다. (Claude 호출 — 비용 가드 적용). 자기채점 결과는 그대로 유지됩니다.",
+          "AI 의견을 받습니다. AI 사용 한도가 적용되며, 자기채점 결과는 그대로 유지됩니다. 계속하시겠습니까?",
       )
     )
       return;
@@ -223,8 +223,8 @@ export function SelfCheckStage({
                     ) : null}
                     {aiHit?.evidence ? (
                       <p className="text-muted-foreground mt-1 text-[11px] italic">
-                        AI 근거: "{aiHit.evidence}" — 사람 판단으로 최종
-                        결정하세요.
+                        AI 근거: "{aiHit.evidence}" — 최종 판단은 직접 내려
+                        주세요.
                       </p>
                     ) : null}
                   </div>
@@ -306,7 +306,8 @@ function AiAdvisorPanel({
           오늘의 AI 보조 한도에 도달했습니다
         </p>
         <p className="text-muted-foreground mt-0.5 text-xs">
-          자기채점은 그대로 가능합니다. 강사 직접 채점도 받을 수 있어요.
+          자기채점은 그대로 진행할 수 있습니다. 강사 직접 채점도 받을 수
+          있습니다.
         </p>
       </div>
     );
@@ -319,8 +320,9 @@ function AiAdvisorPanel({
           <div className="flex-1 text-xs leading-relaxed">
             <p className="text-foreground font-bold">AI 의견 받기 (선택)</p>
             <p className="text-muted-foreground mt-0.5">
-              AI 가 모범 쟁점과 학생 작성을 비교해 "짚음/빠뜨림" 가능성을
-              알려줍니다. <em>단정 X — 사람 판단이 최종</em>.
+              AI가 모범 쟁점과 내 작성을 비교해 "짚음/빠뜨림" 가능성을
+              알려줍니다. <em>AI는 단정하지 않으며, 최종 판단은 직접 해
+              주세요</em>.
             </p>
             {aiError ? (
               <p className="text-rose-600 dark:text-rose-300 mt-1">
@@ -349,16 +351,17 @@ function AiAdvisorPanel({
     <div className="border-amber-300/40 bg-amber-50/30 dark:border-amber-700/40 dark:bg-amber-950/30 rounded-2xl border p-3">
       <p className="text-foreground text-sm font-bold">AI 의견</p>
       <p className="text-muted-foreground mt-0.5 text-[11px] italic">
-        ※ 보조 의견. 자기채점이 최종.
+        ※ 보조 의견이며, 자기채점 결과가 최종입니다.
       </p>
       <ul className="text-muted-foreground mt-2 list-disc pl-5 text-xs leading-relaxed">
         <li>
-          AI 가 짚었다고 본: {aiResult.hits.length}건 / {masterIssues.length}건
+          AI가 짚었다고 본 쟁점: {aiResult.hits.length}건 /{" "}
+          {masterIssues.length}건
         </li>
         <li>
-          AI 가 빠뜨렸다고 본: 핵심 {coreMissed}건 + 부차 {sideMissed}건
+          AI가 빠뜨렸다고 본 쟁점: 핵심 {coreMissed}건 + 부차 {sideMissed}건
         </li>
-        <li>AI 가 자작/외전으로 본: {aiResult.extras.length}건</li>
+        <li>AI가 모범에 없다고 본 쟁점: {aiResult.extras.length}건</li>
       </ul>
     </div>
   );

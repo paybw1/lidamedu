@@ -12,7 +12,7 @@ import {
 } from "~/features/home/lib/landing";
 
 export function Hero() {
-  const h1 = "변리사 시험,\n이 곳에서 합격까지\n함께 해요";
+  const h1 = "변리사 시험,\n이곳에서 합격까지\n함께해요";
   const words = h1.split(/(\s+|\n)/).filter(Boolean);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {

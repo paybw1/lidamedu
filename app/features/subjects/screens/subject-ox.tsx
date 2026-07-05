@@ -85,7 +85,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
           <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
             {shuffled.length > 0 ? (
               <>
-                전체 정오문제 가능 지문{" "}
+                정오문제로 풀 수 있는 전체 지문{" "}
                 <span className="font-bold tabular-nums text-foreground">
                   {shuffled.length}
                 </span>
@@ -101,7 +101,7 @@ export default function SubjectOx({ loaderData }: Route.ComponentProps) {
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20 text-center">
             <ShuffleIcon className="mb-3 size-10 text-muted-foreground/40" />
             <p className="text-sm font-medium text-muted-foreground">
-              등록된 정오문제 가능 지문이 없습니다.
+              정오문제로 풀 수 있는 지문이 아직 없습니다.
             </p>
           </div>
         ) : (

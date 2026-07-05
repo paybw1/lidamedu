@@ -276,7 +276,8 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
               오답 {wrongCount}문항 묶어 다시 풀기
             </p>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              이번 응시 오답만 모아 새 응시로. 같은 문제·같은 순서.
+              이번 응시의 오답만 모아 새 풀이를 시작합니다. 문제와 순서는
+              동일합니다.
             </p>
           </div>
           <Form
@@ -385,7 +386,7 @@ export default function McqPackResult({ loaderData }: Route.ComponentProps) {
           <p className="mt-6 mb-2 text-sm font-bold tracking-tight">
             오답별 근거 바로가기
             <span className="text-muted-foreground ml-2 text-xs font-normal">
-              틀린 문제의 근거 조문·판례로 즉시 이동하세요.
+              틀린 문제의 근거 조문·판례로 바로 이동할 수 있습니다.
             </span>
           </p>
           <ul className="space-y-2.5">
@@ -443,7 +444,7 @@ function WrongEvidenceCard({
 
       {!hasEvidence ? (
         <p className="text-muted-foreground text-xs">
-          근거 정보가 없습니다. 강사 Q&amp;A 또는 해설을 참고하세요.
+          근거 정보가 없습니다. 강사 Q&amp;A 또는 해설을 참고해 주세요.
         </p>
       ) : (
         <div className="space-y-2">
@@ -496,7 +497,7 @@ function WrongEvidenceCard({
           {evidence!.aiChunks.length > 0 ? (
             <div className="border-border/60 mt-1 rounded-md border bg-muted/30 p-2">
               <p className="text-muted-foreground mb-1 text-[10px] font-bold tracking-wide uppercase">
-                AI 근거 청크 ({evidence!.aiChunks.length})
+                AI 근거 자료 ({evidence!.aiChunks.length})
               </p>
               <ul className="space-y-1">
                 {evidence!.aiChunks.slice(0, 2).map((ch) => (

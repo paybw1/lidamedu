@@ -137,7 +137,7 @@ export default function CaseTrainingConclusion({
           selfCheckActionUrl="/api/case-training/conclusion-attempt"
           aiActionUrl="/api/case-training/conclusion-analyze"
           hiddenFields={hiddenFields}
-          aiConfirmMessage="AI 강약 코칭을 받습니다 (Claude 호출 — 비용 가드). 자기채점 결과는 그대로 유지됩니다."
+          aiConfirmMessage="AI 강약 코칭을 받습니다. AI 사용 한도가 적용되며, 자기채점 결과는 그대로 유지됩니다. 계속하시겠습니까?"
         />
       ) : (
         <ConclusionDoneStage

@@ -62,8 +62,8 @@ export default function PasserSummaries({ loaderData }: Route.ComponentProps) {
           표시됩니다. 본인도 합격 후{" "}
           <Link to="/me/exam-results" className="text-link underline">
             결과 입력
-          </Link>{" "}
-          + 동의 시 후배에게 공유할 수 있습니다.
+          </Link>
+          과 동의를 마치면 후배에게 공유할 수 있습니다.
         </p>
       </header>
 

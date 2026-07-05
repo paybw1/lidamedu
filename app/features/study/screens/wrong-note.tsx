@@ -159,7 +159,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
         <SessionBanner
           action="/api/study/session-from-wrong"
           count={mcq.length}
-          hint="학습 모드는 즉시 해설, 시험 모드는 타이머·일괄 채점."
+          hint="학습 모드는 해설이 바로 보이고, 시험 모드는 타이머·일괄 채점으로 진행됩니다."
           testidPrefix="wrong-start"
           hidden={
             subject !== null ? (

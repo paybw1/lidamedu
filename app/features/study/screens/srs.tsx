@@ -158,8 +158,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
           복습
         </h1>
         <p className="text-ink-soft mt-2 text-sm leading-relaxed">
-          틀리면 1일·맞으면 3·7·14·30·60일 간격으로 자동 일정. 지금 봐야 할
-          객관식 문제와 빈칸을 시스템이 끌어옵니다.
+          틀리면 1일, 맞으면 3·7·14·30·60일 간격으로 일정이 자동으로 잡힙니다.
+          지금 봐야 할 객관식 문제와 빈칸을 모아서 보여 드립니다.
         </p>
       </header>
 
@@ -175,8 +175,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
                   오늘 복습할 것
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  종류별로 묶음 복습을 시작하세요. 객관식·빈칸은 아래 과목별
-                  버튼, 정오문제는 여기서 바로 풀이가 됩니다.
+                  종류별로 묶음 복습을 시작해 보세요. 객관식·빈칸은 아래 과목별
+                  버튼으로, 정오문제는 여기서 바로 시작할 수 있습니다.
                 </p>
               </div>
               {oxCounts.due > 0 ? (
@@ -264,7 +264,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <p className="text-xs">
               {counts.total === 0
                 ? "문제를 한 번 풀면 자동으로 복습 일정에 들어갑니다."
-                : `다음 복습까지 7일 안 ${counts.upcoming7d}건.`}
+                : `7일 안에 ${counts.upcoming7d}건이 예정되어 있습니다.`}
             </p>
             <div className="flex justify-center gap-2 pt-2">
               <Button asChild size="sm" variant="outline">
@@ -430,7 +430,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <p>
               {blankCounts.totalBlanks === 0
                 ? "아직 복습 일정에 들어간 빈칸이 없습니다. 빈칸 세트를 한 번 풀면 자동으로 일정이 잡힙니다."
-                : `지금 풀 빈칸이 없습니다. 7일 안 ${blankCounts.upcoming7dSets}세트 예정.`}
+                : `지금 풀 빈칸이 없습니다. 7일 안에 ${blankCounts.upcoming7dSets}세트가 예정되어 있습니다.`}
             </p>
           </CardContent>
         </Card>
@@ -511,7 +511,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <p>
               {oxCounts.total === 0
                 ? "아직 복습 일정에 들어간 정오문제 항목이 없습니다. 정오문제 모드에서 선택지/박스를 풀면 자동으로 일정이 잡힙니다."
-                : `지금 풀 정오문제 항목이 없습니다. 7일 안 ${oxCounts.upcoming7d}건 예정.`}
+                : `지금 풀 정오문제 항목이 없습니다. 7일 안에 ${oxCounts.upcoming7d}건이 예정되어 있습니다.`}
             </p>
           </CardContent>
         </Card>
@@ -573,8 +573,8 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
             <RepeatIcon className="mx-auto size-6 opacity-30" />
             <p>
               {articleCounts.totalVisitedArticles === 0
-                ? "아직 방문한 조문이 없습니다. 조문 한 번 열면 자동으로 복습 일정에 들어갑니다."
-                : `다시 볼 조문이 없습니다. 7일 안 ${articleCounts.upcoming7d}건 예정.`}
+                ? "아직 방문한 조문이 없습니다. 조문을 한 번 열면 자동으로 복습 일정에 들어갑니다."
+                : `다시 볼 조문이 없습니다. 7일 안에 ${articleCounts.upcoming7d}건이 예정되어 있습니다.`}
             </p>
           </CardContent>
         </Card>
@@ -617,7 +617,7 @@ export default function StudySrs({ loaderData }: Route.ComponentProps) {
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
         복습 일정: 맞히면 1 → 3 → 7 → 14 → 30 → 60일(최대 90일) 간격으로
         벌어집니다. 틀리면 다음 날 다시 풀게 잡힙니다. 객관식·빈칸·정오문제 모두
-        같은 방식이고, 조문 정독은 방문 횟수에 따라 7·14·30·60일.
+        같은 방식이고, 조문 정독은 방문 횟수에 따라 7·14·30·60일 간격입니다.
       </p>
     </StudentShell>
   );
@@ -662,7 +662,7 @@ function SrsTrendChart({ trend }: { trend: SrsTrend }) {
               <div
                 key={d.date}
                 className="bg-muted relative h-24 flex-1 rounded-sm"
-                title={`${d.date} · 신규 ${d.added} · 재처리 ${d.reviewed}`}
+                title={`${d.date} · 새로 들어옴 ${d.added} · 다시 풂 ${d.reviewed}`}
               >
                 {reviewedPct > 0 ? (
                   <div
@@ -724,8 +724,9 @@ function PasserBenchmarkSection({
           합격자 평균 vs 본인
         </h2>
         <p className="text-muted-foreground text-xs">
-          분석에 동의한 합격자 {benchmark.sampleSize}명 표본. 복습 항목 평균과
-          본인 비교. 숫자가 작을수록 잘 따라가고 있다는 뜻.
+          분석에 동의한 합격자 {benchmark.sampleSize}명 표본으로 복습 항목
+          평균과 본인을 비교합니다. 숫자가 작을수록 잘 따라가고 있다는
+          뜻입니다.
         </p>
       </CardHeader>
       <CardContent className="space-y-2 pb-4">

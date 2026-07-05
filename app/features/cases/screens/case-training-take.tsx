@@ -128,7 +128,7 @@ export default function CaseTrainingTake({
           selfCheckActionUrl="/api/case-training/attempt"
           aiActionUrl="/api/case-training/analyze"
           hiddenFields={hiddenFields}
-          aiConfirmMessage="AI 의견을 받습니다 (Claude 호출 — 비용 가드 적용). 자기채점 결과는 그대로 유지됩니다."
+          aiConfirmMessage="AI 의견을 받습니다. AI 사용 한도가 적용되며, 자기채점 결과는 그대로 유지됩니다. 계속하시겠습니까?"
         />
       ) : (
         <DoneStage
@@ -173,7 +173,7 @@ export default function CaseTrainingTake({
                       🎉 채점 완료 — 판례 전문이 공개되었습니다
                     </p>
                     <p className="text-muted-foreground mt-0.5">
-                      출제자가 실제로 어떻게 판단했는지 확인해보세요.
+                      출제자가 실제로 어떻게 판단했는지 확인해 보세요.
                     </p>
                   </div>
                   <a

@@ -297,7 +297,7 @@ export default function McqPackDetail({ loaderData }: Route.ComponentProps) {
           <p className="text-muted-foreground p-6 text-center text-sm">
             {canEdit
               ? "문제가 비어 있습니다. 위 검색으로 문제를 추가하세요."
-              : "문제가 비어 있습니다."}
+              : "아직 등록된 문제가 없습니다."}
           </p>
         ) : (
           <ol className="divide-border divide-y">

@@ -97,7 +97,7 @@ export default function ChangePasswordForm({
             submitting={fetcher.state === "submitting"}
           />
           {fetcher.data && "success" in fetcher.data && fetcher.data.success ? (
-            <FormSuccess message="비밀번호가 변경되었습니다" />
+            <FormSuccess message="비밀번호가 변경되었습니다." />
           ) : null}
           {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
             <FormErrors errors={[fetcher.data.error]} />

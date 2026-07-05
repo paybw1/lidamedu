@@ -153,8 +153,8 @@ async function pickWeakProblem(
       title: `복습 예정 — ${top.primaryArticleLabel ?? "미분류"}`,
       body:
         extraCount > 0
-          ? `복습 시점 도래. 복습 큐 ${due.length}건 (${overdueDays}일 지남).`
-          : `복습 시점 도래 (${overdueDays}일 지남). 간격 ${top.intervalDays}일 · 실패 ${top.lapses}회.`,
+          ? `복습할 때가 됐습니다. 기다리는 복습이 ${due.length}건입니다 (${overdueDays}일 지남).`
+          : `복습할 때가 됐습니다 (${overdueDays}일 지남). 간격 ${top.intervalDays}일 · 틀림 ${top.lapses}회.`,
       ctaLabel: extraCount > 0 ? `복습 시작 (+${extraCount}건)` : "이 문제 풀기",
       ctaUrl: `/subjects/${top.lawCode}/problems/${top.problemId}`,
       estimatedMinutes: 3,
@@ -174,7 +174,7 @@ async function pickWeakProblem(
   return {
     kind: "weak_problem",
     title: `약점 문제 재시도 — ${top.primaryArticleLabel ?? "미분류"}`,
-    body: `최근 오답이면서 전체 정답률이 가장 낮은 문제. 글로벌 ${
+    body: `최근 오답이면서 전체 정답률이 가장 낮은 문제입니다. 전체 정답률 ${
       top.globalAccuracyPct ?? "—"
     }%${failHint ? ` · ${failHint}` : ""}`,
     ctaLabel: "이 문제 풀기",
@@ -235,7 +235,7 @@ async function pickWeakArticle(
   return {
     kind: "weak_article",
     title: `약점 조문 학습 — ${pick.displayLabel}`,
-    body: "최근 오답 문제의 근거 조문. 아직 학습 기록이 없는 핵심 조문부터.",
+    body: "최근 오답 문제의 근거 조문입니다. 아직 학습 기록이 없는 핵심 조문부터 읽어 보세요.",
     ctaLabel: "조문 읽기",
     ctaUrl: `/subjects/${pick.lawCode}/articles/${pick.articleNumber}`,
     estimatedMinutes: 7,
@@ -277,7 +277,7 @@ async function pickUnreadCase(
   return {
     kind: "unread_case",
     title: `중요 판례 정독 — ${pick.case_title ?? pick.case_number}`,
-    body: `중요도 ${pick.importance}★ · 아직 안 열어본 핵심 판례.`,
+    body: `중요도 ${pick.importance}★ · 아직 안 본 핵심 판례입니다.`,
     ctaLabel: "판례 보기",
     ctaUrl: `/subjects/${lawCode}/cases/${pick.case_id}`,
     estimatedMinutes: 5,
@@ -303,8 +303,8 @@ async function pickBlankDue(
       title: `빈칸 복습 예정 — ${top.displayLabel}`,
       body:
         extra > 0
-          ? `${top.dueBlankCount}개 빈칸 복습 시점 도래 (${overdueDays}일 지남). 다른 ${extra}개 세트도 복습 예정.`
-          : `${top.dueBlankCount}개 빈칸 복습 시점 도래 (${overdueDays}일 지남).`,
+          ? `빈칸 ${top.dueBlankCount}개를 복습할 때가 됐습니다 (${overdueDays}일 지남). 다른 ${extra}개 세트도 복습이 예정되어 있습니다.`
+          : `빈칸 ${top.dueBlankCount}개를 복습할 때가 됐습니다 (${overdueDays}일 지남).`,
       ctaLabel: "복습 시작",
       ctaUrl: `/subjects/${top.lawCode}/articles/${top.articleNumber}?blank=${top.setId}`,
       estimatedMinutes: 5,
@@ -348,7 +348,7 @@ async function pickBlankDue(
   return {
     kind: "blank_due",
     title: `빈칸 학습 — ${pick.displayLabel}`,
-    body: "아직 한 번도 시도하지 않은 빈칸 세트. 핵심 문구 암기.",
+    body: "아직 한 번도 풀지 않은 빈칸 세트입니다. 핵심 문구를 외워 보세요.",
     ctaLabel: "빈칸 풀기",
     ctaUrl: `/subjects/${pick.lawCode}/articles/${pick.articleNumber}?blank=${pick.setId}`,
     estimatedMinutes: 5,
@@ -411,7 +411,7 @@ async function pickGapProblems(
   return {
     kind: "gap_problems",
     title: "새 객관식 5문항",
-    body: "응시 과목 중 아직 풀지 않은 문제 5개. 진도 채우기.",
+    body: "응시 과목 중 아직 풀지 않은 문제 5개로 진도를 채워 보세요.",
     ctaLabel: "5문항 풀기",
     // 첫 문제 viewer 진입. 풀이 후 next/prev 로 이어 풀이 가능.
     ctaUrl: `/subjects/${lawCode}/problems/${picks[0].problem_id}`,
@@ -435,7 +435,7 @@ async function pickCohortTrack(userId: string): Promise<DailyMenuItem | null> {
   return {
     kind: "cohort_track",
     title: `이번 주 트랙 — ${next.label}`,
-    body: `${track.cohortName} · ${track.weekNumber}주차 (${track.completedCount}/${track.totalCount} 완수). 다음 항목.`,
+    body: `${track.cohortName} · ${track.weekNumber}주차 (${track.completedCount}/${track.totalCount} 완수). 다음 항목을 이어서 진행해 보세요.`,
     ctaLabel: "트랙 항목 시작",
     ctaUrl: next.entryUrl ?? `/dashboard`,
     estimatedMinutes: 10,
@@ -465,8 +465,8 @@ async function pickArticleReview(
     title: `조문 복습 — ${top.displayLabel}`,
     body:
       extra > 0
-        ? `${top.visitCount}회 방문 · ${overdueDays}일 지남. 다른 ${extra}개 조문도 복습 시점.`
-        : `${top.visitCount}회 방문 후 ${overdueDays}일 지남. 다시 한 번 정독.`,
+        ? `${top.visitCount}회 방문 · ${overdueDays}일 지남. 다른 ${extra}개 조문도 복습할 때입니다.`
+        : `${top.visitCount}회 방문 후 ${overdueDays}일이 지났습니다. 다시 한 번 정독해 보세요.`,
     ctaLabel: "조문 보기",
     ctaUrl: `/subjects/${top.lawCode}/articles/${top.articleNumber}`,
     estimatedMinutes: 5,

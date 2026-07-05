@@ -114,7 +114,7 @@ export function CasesTab({
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
   const { axis } = useSortAxis();
-  const axisLabel = axis === "systematic" ? "테크 트리" : "조문";
+  const axisLabel = axis === "systematic" ? "체계도" : "조문";
   const treeFilter = filters.tree ?? null;
   const systematicEmpty = systematicNodes.length === 0;
   const treeFilterLabel = useMemo(() => {

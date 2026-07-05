@@ -119,7 +119,7 @@ export default function StudentInbox({ loaderData }: Route.ComponentProps) {
                 : "hover:bg-accent",
             )}
           >
-            미읽음 {unreadCount > 0 ? `(${unreadCount})` : ""}
+            안 읽음 {unreadCount > 0 ? `(${unreadCount})` : ""}
           </Link>
         </div>
       </header>
@@ -127,7 +127,7 @@ export default function StudentInbox({ loaderData }: Route.ComponentProps) {
       {items.length === 0 ? (
         <div className="bg-muted/40 rounded-md border border-dashed p-10 text-center">
           <p className="text-muted-foreground text-sm">
-            {onlyUnread ? "미읽음 알림이 없습니다." : "알림이 없습니다."}
+            {onlyUnread ? "안 읽은 알림이 없습니다." : "알림이 없습니다."}
           </p>
         </div>
       ) : (

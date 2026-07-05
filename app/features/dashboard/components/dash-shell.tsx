@@ -132,7 +132,7 @@ export function DashSidebar({
           >
             ☕ 27기 종합반
           </div>
-          학원 상담은 평일 10~18시.
+          학원 상담은 평일 10~18시에 가능합니다.
           <Link
             to="/contact"
             style={{

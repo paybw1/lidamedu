@@ -77,7 +77,7 @@ export default function GsIssuesIndex({ loaderData }: Route.ComponentProps) {
       category="gs"
       width="feed"
       title="논점 추출 훈련"
-      desc="사례를 보고 핵심 논점을 백지에서 직접 적은 뒤 모범 논점과 대조합니다. 답안 전체를 쓰는 게 아니라 빠르게 반복하세요."
+      desc="사례를 보고 핵심 논점을 백지에서 직접 적은 뒤 모범 논점과 대조합니다. 답안 전체를 쓰는 게 아니라 빠르게 반복해 보세요."
       backLink={{ to: "/gs", label: "온라인 GS" }}
     >
       {/* 과목 필터 */}

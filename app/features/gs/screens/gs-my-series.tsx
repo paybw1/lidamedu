@@ -356,8 +356,8 @@ function ZScoreTrend({
         })}
       </div>
       <p className="text-muted-foreground text-[11px] leading-relaxed">
-        세로 가운데 선이 반 평균(0σ). 위로 갈수록 상위권, 아래로 갈수록
-        하위권.
+        세로 가운데 선이 반 평균(0σ)입니다. 위로 갈수록 상위권, 아래로 갈수록
+        하위권입니다.
       </p>
     </div>
   );

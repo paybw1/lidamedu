@@ -375,7 +375,7 @@ function CommentForm({ postId }: { postId: string }) {
         name="bodyMd"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="댓글을 입력하세요"
+        placeholder="댓글을 입력해 주세요"
         rows={3}
         maxLength={10000}
         className="text-sm leading-relaxed"

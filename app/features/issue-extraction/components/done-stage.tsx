@@ -99,12 +99,12 @@ export function DoneStage({
         <div className="border-amber-300/40 bg-amber-50/40 dark:border-amber-700/40 dark:bg-amber-950/30 rounded-2xl border p-3">
           <p className="text-foreground text-sm font-bold">AI 의견 (저장됨)</p>
           <p className="text-muted-foreground mt-0.5 text-[11px] italic">
-            ※ 보조 의견. 자기채점이 최종.
+            ※ 보조 의견이며, 자기채점 결과가 최종입니다.
           </p>
           <ul className="text-muted-foreground mt-2 list-disc pl-5 text-xs leading-relaxed">
-            <li>AI 가 짚었다고 본: {savedAiAnalysis.hits.length}건</li>
+            <li>AI가 짚었다고 본 쟁점: {savedAiAnalysis.hits.length}건</li>
             <li>
-              AI 가 빠뜨렸다고 본:{" "}
+              AI가 빠뜨렸다고 본 쟁점:{" "}
               {
                 savedAiAnalysis.missed.filter((m) => m.severity === "core")
                   .length
@@ -116,7 +116,9 @@ export function DoneStage({
               }
               건 부차
             </li>
-            <li>AI 가 자작/외전으로 본: {savedAiAnalysis.extras.length}건</li>
+            <li>
+              AI가 모범에 없다고 본 쟁점: {savedAiAnalysis.extras.length}건
+            </li>
           </ul>
         </div>
       ) : null}

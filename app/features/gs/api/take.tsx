@@ -160,7 +160,7 @@ export async function action({ request }: Route.ActionArgs) {
     if (parsed.data.pageNumber > round.expectedPages) {
       return data(
         {
-          error: `이 회차의 답안지는 최대 ${round.expectedPages} 페이지입니다.`,
+          error: `이 회차의 답안지는 최대 ${round.expectedPages}페이지입니다.`,
         },
         { status: 400 },
       );
@@ -172,16 +172,16 @@ export async function action({ request }: Route.ActionArgs) {
     }
     if (!ALLOWED_MIME.has(file.type)) {
       return data(
-        { error: "허용되지 않은 형식 — JPG/PNG/WebP/PDF 만 가능합니다." },
+        { error: "허용되지 않은 형식입니다. JPG/PNG/WebP/PDF만 업로드할 수 있습니다." },
         { status: 400 },
       );
     }
     if (file.size > MAX_FILE_SIZE) {
-      return data({ error: "파일이 10MB 를 초과합니다." }, { status: 400 });
+      return data({ error: "파일이 10MB를 초과합니다." }, { status: 400 });
     }
     if (file.size < MIN_FILE_SIZE) {
       return data(
-        { error: "파일이 너무 작습니다(20KB 미만). 썸네일이 아닌 원본을 올려주세요." },
+        { error: "파일이 너무 작습니다(20KB 미만). 썸네일이 아닌 원본을 올려 주세요." },
         { status: 400 },
       );
     }
@@ -429,7 +429,7 @@ export async function action({ request }: Route.ActionArgs) {
     for (const p of pages) {
       if (!p.legibilityConfirmed) {
         return data(
-          { error: `페이지 ${p.pageNumber} 의 판독 가능 여부를 확인해 주세요.` },
+          { error: `페이지 ${p.pageNumber}의 판독 가능 여부를 확인해 주세요.` },
           { status: 400 },
         );
       }

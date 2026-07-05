@@ -285,7 +285,7 @@ export default function MyExamResults({ loaderData }: Route.ComponentProps) {
         </div>
         {results.length === 0 ? (
           <p className="text-muted-foreground text-xs">
-            아직 기록된 결과가 없습니다. 아래에서 추가하세요.
+            아직 기록된 결과가 없습니다. 아래에서 추가해 보세요.
           </p>
         ) : filteredResults.length === 0 ? (
           <p className="text-muted-foreground text-xs">
@@ -668,7 +668,7 @@ function NewResultCard({ currentYear }: { currentYear: number }) {
       <CardHeader className="px-4 pb-2">
         <p className="text-sm font-semibold">새 결과 추가</p>
         <p className="text-muted-foreground text-[11px]">
-          같은 연도·차수에 중복 추가 시 기존 기록을 덮어씁니다.
+          같은 연도·차수로 다시 추가하면 기존 기록을 덮어씁니다.
         </p>
       </CardHeader>
       <CardContent className="px-4 pb-3">

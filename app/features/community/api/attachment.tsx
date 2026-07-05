@@ -62,11 +62,11 @@ export async function action({ request }: Route.ActionArgs) {
     if (!(file instanceof File))
       return data({ error: "file 필수" }, { status: 400 });
     if (file.size > MAX_SIZE)
-      return data({ error: "10MB 이하" }, { status: 400 });
+      return data({ error: "파일은 10MB 이하만 첨부할 수 있습니다." }, { status: 400 });
     const kind = classifyKind(file.type);
     if (!kind)
       return data(
-        { error: "이미지(jpg/png/webp/gif) 또는 PDF 만 허용" },
+        { error: "이미지(jpg·png·webp·gif) 또는 PDF만 첨부할 수 있습니다." },
         { status: 400 },
       );
 

@@ -693,7 +693,7 @@ function MilestonesCard({ overall }: { overall: StatsData["overall"] }) {
           <AwardIcon className="size-4" /> 마일스톤
         </h2>
         <p className="text-muted-foreground text-xs">
-          조문·판례·문제 진척률 25/50/75/100% 단계.
+          조문·판례·문제 진척률을 25/50/75/100% 단계로 보여 줍니다.
         </p>
       </div>
       <div className="px-6 pb-6">
@@ -714,7 +714,7 @@ function MilestonesCard({ overall }: { overall: StatsData["overall"] }) {
               {m.label} {m.pct}%
               {m.achievedAt
                 ? ` · ${m.achievedAt}% 달성`
-                : ` · 다음 25% 까지 ${Math.max(0, 25 - m.pct)}%p`}
+                : ` · 다음 25%까지 ${Math.max(0, 25 - m.pct)}%p`}
             </Badge>
           ))}
         </div>
@@ -737,7 +737,8 @@ function MasteryCard({ rows }: { rows: StatsData["nodeMastery"] }) {
           <BrainIcon className="size-4" /> 단원 마스터리
         </h2>
         <p className="text-muted-foreground text-xs">
-          학습한 단원의 숙련도 · 마스터 = 정답률 85%+ &amp; 복습 2회 통과(파지).
+          학습한 단원의 숙련도입니다 · 정답률 85% 이상에 복습 2회를 통과하면
+          마스터가 됩니다.
         </p>
       </div>
       <div className="space-y-3 px-6 pb-6">
@@ -815,7 +816,8 @@ function GrowthCard({ g }: { g: StatsData["gamification"] }) {
           <TrendingUpIcon className="size-4" /> 성장
         </h2>
         <p className="text-muted-foreground text-xs">
-          단원을 마스터할수록 단계가 올라가요 · 꾸준함은 이번 주 학습일로.
+          단원을 마스터할수록 단계가 올라가요 · 꾸준함은 이번 주 학습일로
+          보여 드려요.
         </p>
       </div>
       <div className="space-y-3 px-6 pb-6">
@@ -943,7 +945,7 @@ function StudyTimeTrendCard({
           <TrendingUpIcon className="size-4" /> 주별 학습시간
         </h2>
         <p className="text-muted-foreground text-xs">
-          선택 기간 주별 문제 풀이 시간 · 가장 오른쪽 = 최근 주.
+          선택한 기간의 주별 문제 풀이 시간입니다 · 가장 오른쪽이 최근 주예요.
         </p>
       </div>
       <div className="px-6 pb-6">
@@ -1060,7 +1062,7 @@ function OverviewTab({ data }: { data: StatsData }) {
             학습 활동 히트맵
           </h2>
           <p className="text-muted-foreground text-xs">
-            최근 365일 · 요일·시간대 패턴까지 한눈에.
+            최근 365일 · 요일·시간대 패턴까지 한눈에 볼 수 있습니다.
           </p>
         </div>
         <div className="px-6 pb-6">
@@ -1214,7 +1216,7 @@ function WeaknessTab({ data }: { data: StatsData }) {
         <div className="px-6 pt-6 pb-3">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              약점 — 어려운 글로벌 + 내 오답
+              약점 — 전체 정답률이 낮은 문제 + 내 오답
             </p>
             <Badge variant="outline" className="text-[10px]">
               상위 5건
@@ -1229,7 +1231,7 @@ function WeaknessTab({ data }: { data: StatsData }) {
               <TableRow>
                 <TableHead>문제</TableHead>
                 <TableHead className="w-20 text-xs">조문</TableHead>
-                <TableHead className="w-20 text-right">글로벌</TableHead>
+                <TableHead className="w-20 text-right">전체 정답률</TableHead>
                 <TableHead className="w-20 text-right">내 시도</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
@@ -1474,7 +1476,7 @@ function WeakReviewCard({ weakAreas }: { weakAreas: StatsData["weakAreas"] }) {
                       {w.lawCode}
                       {w.year ? ` · ${w.year}` : ""}
                       {w.globalAccuracyPct !== null
-                        ? ` · 글로벌 ${w.globalAccuracyPct}%`
+                        ? ` · 전체 정답률 ${w.globalAccuracyPct}%`
                         : ""}
                     </p>
                   </div>
@@ -1513,7 +1515,7 @@ function PassPredictionTrendCard({
         </div>
         <div className="px-6 pb-6">
           <p className="text-muted-foreground text-center text-xs">
-            아직 스냅샷이 없습니다. 매일 자동 누적됩니다.
+            아직 기록이 없습니다. 매일 자동으로 쌓입니다.
           </p>
         </div>
       </Surface>

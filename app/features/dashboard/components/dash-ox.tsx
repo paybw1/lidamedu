@@ -92,7 +92,7 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
           <p style={{ margin: 0 }}>
             아직 정오문제 응시 이력이 없습니다.
             <br />
-            1차 모의고사 문제집에서 <strong>정오문제 시험</strong> 으로 풀어 보세요.
+            1차 모의고사 문제집에서 <strong>정오문제 시험</strong>으로 풀어 보세요.
           </p>
           <Link
             to="/latest/mcq?kind=mock_progressive"
@@ -194,8 +194,8 @@ export function OxRecentCard({ data }: { data: OxRecentData }) {
               margin: "8px 0 0",
             }}
           >
-            막대 = 최근 {recent.length}건의 정답률(좌→우 시간순). 클릭 시 해당
-            문제집의 정오문제 시험 화면으로 이동.
+            막대는 최근 {recent.length}건의 정답률입니다(좌→우 시간순). 클릭하면
+            해당 문제집의 정오문제 시험 화면으로 이동합니다.
           </p>
         </>
       )}

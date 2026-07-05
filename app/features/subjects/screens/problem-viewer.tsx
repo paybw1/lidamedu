@@ -861,7 +861,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                   </div>
                   {systematicEmpty ? (
                     <p className="text-muted-foreground px-4 py-6 text-xs">
-                      체계도 데이터 미입력
+                      체계도가 아직 등록되지 않았습니다.
                     </p>
                   ) : (
                     <ProblemSystematicTree
@@ -912,7 +912,7 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                 <div className="px-3 pb-4">
                   {systematicEmpty ? (
                     <p className="text-muted-foreground px-2 py-4 text-xs">
-                      체계도 데이터 미입력
+                      체계도가 아직 등록되지 않았습니다.
                     </p>
                   ) : (
                     <ProblemSystematicTree
@@ -2261,7 +2261,7 @@ function ReviewSection({
       <div className="space-y-3 p-5 text-xs">
         {!submitted ? (
           <p className="text-muted-foreground">
-            자기채점 완료 후에 첨삭 요청이 가능합니다.
+            자기채점을 완료하면 첨삭을 요청할 수 있습니다.
           </p>
         ) : completed ? (
           <div className="space-y-3">

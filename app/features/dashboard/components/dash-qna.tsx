@@ -89,9 +89,7 @@ export function QnaRecentCard({
               margin: 0,
             }}
           >
-            궁금한 점을 질문하면 AI 가 즉시
-            <br />
-            답하고, 강사가 확인·보완합니다.
+            궁금한 점을 질문하면 AI가 바로 답하고, 강사가 확인해 보완합니다.
           </p>
           <Link
             to="/qna/new?targetType=study_method"

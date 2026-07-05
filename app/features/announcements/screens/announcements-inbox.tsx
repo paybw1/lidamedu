@@ -52,7 +52,7 @@ export default function AnnouncementsInbox({
   const unreadCount = items.filter((i) => i.isUnread).length;
 
   const descParts = [`총 ${items.length}건`];
-  if (unreadCount > 0) descParts.push(`미읽음 ${unreadCount}건`);
+  if (unreadCount > 0) descParts.push(`안 읽음 ${unreadCount}건`);
 
   return (
     <CommunityShell
@@ -140,7 +140,7 @@ function InboxCard({ item }: { item: AnnouncementListItem }) {
         </Chip>
         {isUnread ? (
           <Chip tone="coral">
-            <EyeOffIcon className="size-2.5" /> 미읽음
+            <EyeOffIcon className="size-2.5" /> 안 읽음
           </Chip>
         ) : (
           <Chip tone="outline">

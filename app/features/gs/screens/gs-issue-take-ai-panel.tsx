@@ -34,9 +34,10 @@ export function AiAdvisorPanel({
               AI 의견 받기 (선택)
             </p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              AI 가 모범 논점과 의미 매칭해 "짚은 것 / 빠뜨렸을 가능성 / 자작"
-              을 제안합니다. <strong>AI 는 단정하지 않으며</strong>, 최종 판단은
-              자기채점으로 직접 하세요.
+              AI가 내 답안을 모범 논점과 비교해 "짚은 것 / 빠뜨렸을 가능성 /
+              모범에 없는 논점"을 제안합니다.{" "}
+              <strong>AI는 단정하지 않으며</strong>, 최종 판단은 자기채점으로
+              직접 해 주세요.
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
@@ -51,7 +52,8 @@ export function AiAdvisorPanel({
               {capBlocked ? (
                 <span className="text-rose-600 inline-flex items-center gap-1 text-xs">
                   <AlertTriangleIcon className="size-3" />
-                  {aiError ?? "오늘 AI 한도 도달 — 자기채점으로 진행하세요."}
+                  {aiError ??
+                    "오늘 AI 사용 한도에 도달했습니다. 자기채점으로 진행해 주세요."}
                 </span>
               ) : aiError ? (
                 <span className="text-rose-600 inline-flex items-center gap-1 text-xs">
@@ -79,7 +81,7 @@ export function AiAdvisorPanel({
         <div className="min-w-0 flex-1">
           <p className="text-foreground text-sm font-bold">AI 의견</p>
           <p className="text-muted-foreground mt-0.5 text-[11px] italic">
-            ※ AI 보조 의견입니다. 최종 결정은 자기채점으로 직접 하세요.
+            ※ AI 보조 의견입니다. 최종 결정은 자기채점으로 직접 해 주세요.
           </p>
 
           <div className="mt-2 space-y-1.5 text-xs">
@@ -96,7 +98,7 @@ export function AiAdvisorPanel({
               <p className="text-rose-600">
                 <Chip tone="coral">핵심 빠뜨렸을 가능성 {missedCore.length}건</Chip>
                 <span className="text-muted-foreground ml-1.5">
-                  카드에서 "AI: 빠뜨렸을 가능성" 표시 — 확인해보세요.
+                  카드의 "AI: 빠뜨렸을 가능성" 표시를 확인해 보세요.
                 </span>
               </p>
             ) : null}
@@ -107,15 +109,17 @@ export function AiAdvisorPanel({
             ) : null}
             {aiResult.extras.length > 0 ? (
               <div>
-                <Chip tone="neutral">자작/외전 {aiResult.extras.length}건</Chip>
+                <Chip tone="neutral">
+                  모범에 없는 논점 {aiResult.extras.length}건
+                </Chip>
                 <ul className="text-muted-foreground ml-1.5 mt-0.5 list-disc pl-5">
                   {aiResult.extras.map((x, i) => (
                     <li key={i}>{x}</li>
                   ))}
                 </ul>
                 <p className="text-muted-foreground mt-1 text-[11px]">
-                  ↑ 모범에 없는 내용이라고 AI 가 봤지만, 실제 정답에 가까울 수도
-                  있습니다. 강의노트로 다시 확인.
+                  ↑ 모범에 없는 내용이라고 AI가 봤지만, 실제 정답에 가까울 수도
+                  있습니다. 강의노트에서 다시 확인해 보세요.
                 </p>
               </div>
             ) : null}

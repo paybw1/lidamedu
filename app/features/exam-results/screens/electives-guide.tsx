@@ -75,8 +75,8 @@ export default function ElectivesGuide({ loaderData }: Route.ComponentProps) {
           2차 선택과목별 평균·과락
         </h1>
         <p className="text-muted-foreground text-sm">
-          출처: 한국산업인력공단(큐넷) 공식 채점통계. 선택과목은 50점 이상 Pass
-          / 미만 Fail (총점 미산입).{" "}
+          출처는 한국산업인력공단(큐넷) 공식 채점통계입니다. 선택과목은 50점
+          이상 Pass / 미만 Fail이며 총점에 들어가지 않습니다.{" "}
           <span className="font-medium">
             합격률 지표는 필수과목 실력에 좌우
           </span>

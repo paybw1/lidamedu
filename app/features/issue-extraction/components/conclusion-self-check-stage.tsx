@@ -122,7 +122,7 @@ export function ConclusionSelfCheckStage({
     if (
       !confirm(
         aiConfirmMessage ??
-          "AI 강약 코칭을 받습니다 (Claude 호출 — 비용 가드 적용). 자기채점 결과는 그대로 유지됩니다.",
+          "AI 강약 코칭을 받습니다. AI 사용 한도가 적용되며, 자기채점 결과는 그대로 유지됩니다. 계속하시겠습니까?",
       )
     )
       return;
@@ -311,7 +311,7 @@ function CoachingPanel({
           오늘의 AI 보조 한도에 도달했습니다
         </p>
         <p className="text-muted-foreground mt-0.5 text-xs">
-          자기채점은 그대로 가능합니다.
+          자기채점은 그대로 진행할 수 있습니다.
         </p>
       </div>
     );
@@ -324,8 +324,8 @@ function CoachingPanel({
           <div className="flex-1 text-xs leading-relaxed">
             <p className="text-foreground font-bold">AI 강약 코칭 (선택)</p>
             <p className="text-muted-foreground mt-0.5">
-              AI 가 학생 강약과 권장 강약을 대조해 코칭 메모를 남깁니다.
-              <em> 단정 X — 사람 판단이 최종</em>.
+              AI가 내 강약과 권장 강약을 대조해 코칭 메모를 남깁니다.
+              <em> AI는 단정하지 않으며, 최종 판단은 직접 해 주세요</em>.
             </p>
             {aiError ? (
               <p className="text-rose-600 dark:text-rose-300 mt-1">
@@ -352,7 +352,7 @@ function CoachingPanel({
     <div className="border-amber-300/40 bg-amber-50/30 dark:border-amber-700/40 dark:bg-amber-950/30 rounded-2xl border p-3">
       <p className="text-foreground text-sm font-bold">AI 코칭</p>
       <p className="text-muted-foreground mt-0.5 text-[11px] italic">
-        ※ 보조 의견. 자기채점이 최종.
+        ※ 보조 의견이며, 자기채점 결과가 최종입니다.
       </p>
       {overall ? (
         <p className="text-foreground mt-1 text-xs leading-relaxed">

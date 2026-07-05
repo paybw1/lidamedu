@@ -93,14 +93,14 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
           정오문제 응시 이력
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          1차 객관식 문제집을 정오문제 시험 모드로 푼 이력. 정답률·미응답·소요
-          시간을 한 눈에 확인합니다.
+          1차 객관식 문제집을 정오문제 시험 모드로 푼 이력입니다.
+          정답률·미응답·소요 시간을 한눈에 확인할 수 있습니다.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="tabular-nums">
             {isRangeSelectionAll(rangeSel) && subjectSel === "all"
-              ? `총 ${sessions.length} 회`
-              : `${visible.length} / ${sessions.length} 회`}
+              ? `총 ${sessions.length}회`
+              : `${visible.length} / ${sessions.length}회`}
           </Badge>
           <div className="ml-auto flex items-center gap-2">
             <Button asChild size="sm">
@@ -162,7 +162,7 @@ export default function MyOxSessions({ loaderData }: Route.ComponentProps) {
             {sessions.length === 0 ? (
               <>
                 아직 정오문제 시험 응시 이력이 없습니다. 1차 모의고사 또는 기출
-                문제집에서 <strong>정오문제 시험</strong> 버튼으로 풀어보세요.
+                문제집에서 <strong>정오문제 시험</strong> 버튼으로 풀어 보세요.
               </>
             ) : (
               "선택한 기간에 해당하는 응시 이력이 없습니다."

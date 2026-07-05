@@ -41,7 +41,7 @@ const changePasswordSchema = z
     confirmPassword: z.string().min(8),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords must match",
+    message: "비밀번호가 일치하지 않습니다.",
     path: ["confirmPassword"],
   });
 

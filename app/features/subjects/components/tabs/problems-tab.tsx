@@ -304,8 +304,8 @@ export function ProblemsTab({
                 오답 {wrongCount}개 · 우선 복습 추천
               </p>
               <p className="text-muted-foreground mt-0.5 text-xs">
-                마지막 시도가 오답인 문제가 있습니다. 오답노트에서 재풀이를
-                권장합니다.
+                마지막 시도가 오답인 문제가 있습니다. 오답노트에서 다시 풀어
+                보세요.
               </p>
             </div>
             <Button asChild size="sm" className="h-8 shrink-0 rounded-full">
@@ -326,7 +326,7 @@ export function ProblemsTab({
               <ModeCard
                 icon={<SlidersHorizontalIcon className="size-[18px]" />}
                 title="맞춤 퀴즈"
-                desc="유형/연도/극성으로 N문제 묶음 · 시험 모드 가능"
+                desc="유형·연도·극성으로 문제를 골라 묶어 풉니다. 시험 모드도 선택할 수 있습니다."
                 href={`/subjects/${subject.slug}/quiz/setup`}
                 cta="설정"
                 ctaVariant="outline"
@@ -334,7 +334,7 @@ export function ProblemsTab({
               <ModeCard
                 icon={<CheckSquareIcon className="size-[18px]" />}
                 title="정오문제"
-                desc="정오문제 지문 무작위 빠른 풀이"
+                desc="정오문제 지문을 무작위 순서로 빠르게 풉니다."
                 href={`/subjects/${subject.slug}/ox`}
                 cta="시작"
                 ctaVariant="outline"
@@ -356,8 +356,8 @@ export function ProblemsTab({
                   정오문제 불가 문제 풀기
                 </span>
                 <span className="text-muted-foreground block text-xs leading-relaxed">
-                  순서나열·개수형 등 정오문제로 만들 수 없어 OX 드릴에서 빠지는 문제를
-                  일반 객관식으로 모아 풀이
+                  순서나열·개수형 등 정오문제로 풀 수 없는 문제를 일반
+                  객관식으로 모아 풉니다.
                 </span>
               </span>
               {/* 범위 — 체계도 1·2단계 노드(미선택 시 과목 전체) */}

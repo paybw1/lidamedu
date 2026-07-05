@@ -55,7 +55,7 @@ export default function GsPoints({ loaderData }: Route.ComponentProps) {
       width="narrow"
       backLink={{ to: "/gs", label: "온라인 GS" }}
       title="GS 포인트"
-      desc="응시·동료 채점으로 적립하고 우수 답안 열람·자료 구입으로 차감됩니다."
+      desc="응시·동료 채점으로 적립되고 우수 답안 보기·자료 구입으로 차감됩니다."
     >
       <Card className="border-transparent bg-amber-500/[0.12] dark:bg-amber-500/[0.1]">
         <CardContent className="flex items-center gap-4 py-6">

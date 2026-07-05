@@ -231,8 +231,8 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="tabular-nums">
             {isRangeSelectionAll(rangeSel)
-              ? `오답 ${items.length} 개`
-              : `${visible.length} / ${items.length} 개`}
+              ? `오답 ${items.length}개`
+              : `${visible.length} / ${items.length}개`}
           </Badge>
           <Button asChild size="sm" variant="outline" className="ml-auto">
             <Link to="/me/ox-sessions">
@@ -257,7 +257,7 @@ export default function MyOxWrongNote({ loaderData }: Route.ComponentProps) {
           />
           <p className="text-muted-foreground mt-3 text-sm">
             {items.length === 0
-              ? "오답 노트가 비어있습니다. 모두 정답 처리되었거나 아직 정오문제 시험 응시 이력이 없습니다."
+              ? "오답 노트가 비어 있습니다. 모두 정답 처리되었거나 아직 정오문제 시험 응시 이력이 없습니다."
               : "선택한 기간에 해당하는 오답 지문이 없습니다."}
           </p>
         </div>

@@ -106,7 +106,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
       width="narrow"
       backLink={{ to: "/gs", label: "온라인 GS" }}
       title={`동료 채점 · ${round.title}`}
-      desc="익명 답안을 문항별로 채점합니다. 점수와 피드백을 모두 입력한 뒤 제출하세요."
+      desc="익명 답안을 문항별로 채점합니다. 점수와 피드백을 모두 입력한 뒤 제출해 주세요."
       headerRight={
         isSubmitted ? (
           <Chip tone="emerald">
@@ -130,7 +130,7 @@ export default function GsPeerReview({ loaderData }: Route.ComponentProps) {
               작성자를 알 수 없습니다. 본인의 채점도 작성자에게 익명으로
               전달됩니다. 점수와 피드백을 모두 입력하고 마지막에{" "}
               <strong className="text-foreground">채점 제출</strong> 버튼을 눌러야
-              마무리됩니다. 제출 전까지는 언제든 수정 가능합니다.
+              마무리됩니다. 제출 전까지는 언제든 수정할 수 있습니다.
             </p>
           </div>
         </CardContent>
@@ -313,7 +313,9 @@ function PeerQuestionCard({
             동료의 답안 — 매핑된 페이지 (익명)
           </p>
           {mappedPages.length === 0 ? (
-            <p className="text-muted-foreground text-sm italic">제출 없음</p>
+            <p className="text-muted-foreground text-sm italic">
+              제출된 페이지가 없습니다.
+            </p>
           ) : (
             <div className="space-y-2">
               {mappedPages.map((p) => (

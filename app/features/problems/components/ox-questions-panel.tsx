@@ -170,7 +170,7 @@ export function OxQuestionsPanel({
   if (items.length === 0) {
     return (
       <p className="text-muted-foreground text-xs leading-relaxed">
-        이 조문에 정오문제 가능 지문이 아직 분류되지 않았습니다.
+        이 조문에는 정오문제로 풀 수 있는 지문이 아직 없습니다.
       </p>
     );
   }
@@ -596,7 +596,7 @@ export function OxQuestionsPanel({
                 comments={curAnno?.comments ?? []}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
-                emptyHint="이 정오문제 지문에 대한 코멘트가 아직 없습니다"
+                emptyHint="이 정오문제 지문에 대한 코멘트가 아직 없습니다."
               />
             </div>
           ) : null}

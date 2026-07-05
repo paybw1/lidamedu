@@ -234,7 +234,7 @@ export function SystematicTree({
   if (visibleNodes.length === 0) {
     return (
       <p className="text-muted-foreground px-2 py-4 text-xs">
-        {emptyHint ?? "테크 트리 데이터가 등록되지 않았습니다."}
+        {emptyHint ?? "체계도가 아직 등록되지 않았습니다."}
       </p>
     );
   }
@@ -311,7 +311,7 @@ export function SystematicTree({
       {visible.length === 0 ? (
         <p className="text-muted-foreground px-2 py-4 text-xs">
           {query
-            ? `"${searchQuery.trim()}" 매칭 결과가 없습니다.`
+            ? `"${searchQuery.trim()}" 와 일치하는 항목이 없습니다.`
             : bookmarkFilter !== 0
             ? `즐겨찾기 ${BOOKMARK_LABELS[bookmarkFilter]} 조문이 없습니다.`
             : `중요도 ${IMPORTANCE_LABELS[importanceFilter]} 조문이 없습니다.`}

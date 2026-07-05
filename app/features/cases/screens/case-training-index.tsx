@@ -32,7 +32,7 @@ export default function CaseTrainingIndex({ loaderData }: Route.ComponentProps) 
           판례 기반 쟁점추출 훈련
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          강사가 선별한 판례의 사실관계를 읽고 백지에서 쟁점을 추출해보세요.
+          강사가 선별한 판례의 사실관계를 읽고 백지에서 쟁점을 추출해 보세요.
           채점 후에 판례 전문이 공개됩니다.
         </p>
       </header>
@@ -67,7 +67,7 @@ export default function CaseTrainingIndex({ loaderData }: Route.ComponentProps) 
                   </p>
                   <p className="text-muted-foreground mt-1 text-xs">
                     사실관계 약 {it.factsSummaryMd.length}자 — 1~2분 안에 읽고
-                    쟁점을 떠올려보세요.
+                    쟁점을 떠올려 보세요.
                   </p>
                 </Link>
                 <div className="mt-3 flex flex-wrap gap-2">

@@ -122,7 +122,7 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
               최근 30일 복습량
             </h2>
             <p className="text-muted-foreground text-xs">
-              회색 = 전체 복습, 초록 = 잘 떠올린 카드(보통·쉬웠음).
+              회색은 전체 복습, 초록은 잘 떠올린 카드(보통·쉬웠음)입니다.
             </p>
           </div>
           <div className="px-6 pb-5">
@@ -137,8 +137,8 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
               향후 7일 복습 예정
             </h2>
             <p className="text-muted-foreground text-xs">
-              날짜별로 복습이 잡혀 있는 카드 수. 하루에 몰리지 않는지
-              확인하세요.
+              날짜별로 복습이 잡혀 있는 카드 수입니다. 하루에 몰리지 않는지
+              확인해 보세요.
             </p>
           </div>
           <div className="px-6 pb-5">

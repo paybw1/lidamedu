@@ -188,7 +188,7 @@ export function SubjectCard({
             아직 시작하지 않은 과목입니다
           </p>
           <p className="text-ink-soft mt-1 text-xs leading-relaxed">
-            첫 조문을 열람하면 진도와 합격자 비교가 표시됩니다.
+            첫 조문을 열어 보면 진도와 합격자 비교가 표시됩니다.
           </p>
         </div>
         <Button

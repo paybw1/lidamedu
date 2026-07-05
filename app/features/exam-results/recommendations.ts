@@ -96,7 +96,7 @@ export function generateRecommendedActions(
         icon: "alert",
         title: `🚨 과제 마감 지남 — ${a.title}`,
         body: `진척 ${pct}%. 마감일이 지났습니다. 지금 풀이 시작 권장.`,
-        ctaLabel: "과제 풀러가기",
+        ctaLabel: "과제 풀러 가기",
         ctaUrl: `/assignments/${a.assignmentId}`,
         metric: `${a.completedItems}/${a.totalItems}`,
       });
@@ -107,7 +107,7 @@ export function generateRecommendedActions(
         icon: "calendar",
         title: `마감 D-${daysLeft} — ${a.title}`,
         body: `진척 ${pct}%. 마감일까지 ${daysLeft}일 남았습니다.`,
-        ctaLabel: "과제 풀러가기",
+        ctaLabel: "과제 풀러 가기",
         ctaUrl: `/assignments/${a.assignmentId}`,
         metric: `${a.completedItems}/${a.totalItems}`,
       });

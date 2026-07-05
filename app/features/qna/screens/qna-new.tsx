@@ -393,7 +393,7 @@ function QnaTargetPicker() {
     <CommunityShell
       category="qna"
       title="새 질문"
-      desc="조문·판례·문제를 특정하거나, 공부방법을 골라 질문하면 AI/강사가 답변합니다."
+      desc="조문·판례·문제를 특정하거나, 공부방법을 골라 질문하면 AI와 강사가 답변해 드립니다."
       backLink={{ to: "/qna", label: "Q&A 목록" }}
       width="narrow"
     >
@@ -519,7 +519,7 @@ function QnaTargetPicker() {
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-muted-foreground mb-1.5 block font-mono text-[11px] font-bold tracking-[0.1em] uppercase">
-                    년도
+                    연도
                   </span>
                   <Input
                     value={year}
@@ -668,7 +668,7 @@ function QnaForm({
       title="새 질문"
       desc={
         mode === "study_method"
-          ? "공부방법에 대해 질문하면 강사가 답변합니다. 과목을 선택해 주세요."
+          ? "공부방법에 대해 질문하면 강사가 답변해 드립니다. 과목을 선택해 주세요."
           : "조문·판례·문제 화면에서 클릭한 대상에 대해 질문할 수 있습니다."
       }
       backLink={{ to: "/qna", label: "Q&A 목록" }}

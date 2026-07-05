@@ -147,7 +147,7 @@ export function WeakReviewCard({
                       marginTop: 2,
                     }}
                   >
-                    전역 정답률
+                    전체 정답률
                   </Sub>
                 </div>
                 <ChevronRightIcon size={14} color={T.inkMute} />
@@ -289,7 +289,7 @@ export function WeakNodesCard({
                       </strong>{" "}
                       {gap !== null && gap > 0
                         ? `· +${gap}회 더 풀어 보세요`
-                        : "· 평균 이상 달성"}
+                        : "· 이미 평균 이상입니다"}
                     </span>
                   </div>
                 ) : null}

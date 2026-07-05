@@ -300,14 +300,14 @@ function Prescription({
             <>
               <strong className="font-semibold">{label}</strong> 지문 정답률이
               낮은 편입니다 ({weakest.accuracyPct}% · {weakest.attempts}건).{" "}
-              {label} 관련 학습을 한 번 점검해보세요.
+              {label} 관련 학습을 한 번 점검해 보세요.
             </>
           ) : (
             <>
               이 학생은 <strong className="font-semibold">{label}</strong> 지문
               정답률이 낮은 편입니다 ({weakest.accuracyPct}% ·{" "}
               {weakest.attempts}건).
-              {label} 학습 지도를 점검해보세요.
+              {label} 학습 지도를 점검해 보세요.
             </>
           )}
           <span className="text-muted-foreground block text-xs">
@@ -682,7 +682,8 @@ function FlatMatrix({
         </div>
         {overflow > 0 ? (
           <p className="text-muted-foreground mt-2 text-[11px]">
-            + 단원 {overflow}개 더 있음 (약점 상위 {MAX_MATRIX_NODES}개만 표시)
+            + 단원 {overflow}개가 더 있습니다 (약점 상위 {MAX_MATRIX_NODES}개만
+            표시).
           </p>
         ) : null}
       </CardContent>

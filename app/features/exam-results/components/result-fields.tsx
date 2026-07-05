@@ -80,8 +80,8 @@ export function SubjectScoreFields({
         ))}
       </div>
       <p className="text-muted-foreground text-[10px]">
-        과목 40점 미만 = 과락(불합격 확정). 합격은 상대선발이라 커트라인 사후
-        추정.
+        과목 40점 미만이면 과락(불합격 확정)입니다. 합격은 상대선발이라
+        커트라인은 사후에 추정됩니다.
       </p>
     </div>
   );
@@ -174,8 +174,8 @@ export function SecondRoundSubjectFields({
         </div>
       </div>
       <p className="text-muted-foreground text-[10px]">
-        필수 3과목(특허법·상표법·민사소송법) 각 40점 미만 = 과락. 선택과목은
-        P/F(50점)이며 평균에 미산입.
+        필수 3과목(특허법·상표법·민사소송법)은 각 40점 미만이면 과락입니다.
+        선택과목은 P/F(50점)이며 평균에 들어가지 않습니다.
       </p>
     </div>
   );

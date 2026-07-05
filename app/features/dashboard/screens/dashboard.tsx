@@ -513,8 +513,8 @@ function DailyMenuBanner() {
       <div className="min-w-0 flex-1">
         <p className="text-foreground text-sm font-bold">오늘의 학습 메뉴</p>
         <p className="text-muted-foreground mt-0.5 text-xs">
-          본인 약점·미열람·진도 데이터를 합성한 자동 추천 5개. 오늘 어디부터
-          시작할지 정해드립니다.
+          약점·아직 안 본 내용·진도 데이터를 바탕으로 오늘 할 학습 5개를 자동
+          추천해 드립니다.
         </p>
       </div>
       <ArrowRightIcon className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />

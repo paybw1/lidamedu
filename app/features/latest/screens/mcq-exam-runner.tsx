@@ -144,7 +144,7 @@ function StatusBanner({
           전 교시 응시 완료
         </p>
         <p className="text-muted-foreground mt-1 text-sm">
-          채점 결과와 합격 판정·등수를 확인하세요.
+          채점 결과와 합격 판정·등수를 확인해 보세요.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button asChild className="rounded-full">

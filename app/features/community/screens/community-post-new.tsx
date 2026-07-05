@@ -107,7 +107,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
     });
     setWarn(
       rejected
-        ? `이미지는 최대 ${MAX_IMAGES}장, 장당 10MB 까지 첨부할 수 있습니다.`
+        ? `이미지는 최대 ${MAX_IMAGES}장, 장당 10MB까지 첨부할 수 있습니다.`
         : null,
     );
   }
@@ -210,7 +210,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
               name="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="제목을 입력하세요"
+              placeholder="제목을 입력해 주세요"
               maxLength={200}
               required
             />
@@ -225,7 +225,7 @@ export default function CommunityPostNew({ loaderData }: Route.ComponentProps) {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onPaste={onPaste}
-              placeholder="내용을 입력하세요. 이미지는 붙여넣기(Ctrl+V)하거나 아래 ‘이미지 추가’로 첨부할 수 있습니다."
+              placeholder="내용을 입력해 주세요. 이미지는 붙여넣기(Ctrl+V)하거나 아래 ‘이미지 추가’로 첨부할 수 있습니다."
               rows={12}
               maxLength={20000}
               className="text-sm leading-relaxed"

@@ -66,7 +66,7 @@ export function DashHeader({ data }: { data: DashHeaderData }) {
             margin: 0,
           }}
         >
-          어서오세요, {data.userName}님 ☕
+          어서 오세요, {data.userName}님 ☕
         </h1>
         <p
           style={{

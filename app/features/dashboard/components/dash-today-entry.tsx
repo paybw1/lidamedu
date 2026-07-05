@@ -44,7 +44,8 @@ export function TodayEntryCard({
   if (totalRec > 0) parts.push(`추천 ${totalRec}개`);
   if (isCohort && totalAssign > 0 && !hideAssignmentChip)
     parts.push(`과제 ${totalAssign}개`);
-  const oneLine = parts.length > 0 ? parts.join(" · ") : "오늘 할 일 없음";
+  const oneLine =
+    parts.length > 0 ? parts.join(" · ") : "오늘 할 일이 없습니다.";
 
   return (
     <Surface tone="default" pad={6}>

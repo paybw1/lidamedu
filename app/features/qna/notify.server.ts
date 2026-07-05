@@ -177,7 +177,7 @@ export async function notifyNewQuestion(
 
     const link = `${APP_URL}/qna/${payload.threadId}`;
     const targetLabel = QNA_TARGET_LABEL[payload.targetType];
-    const askerName = payload.askerName ?? "수험생";
+    const askerName = payload.askerName ?? "학생";
 
     // in-app fanout — 강사 인박스 카드. best-effort.
     void createStaffNotifications({

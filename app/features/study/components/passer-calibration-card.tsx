@@ -134,19 +134,20 @@ export function PasserCalibrationCard({
             </strong>
             <div className="mt-1 opacity-80">
               남은 {totalDaysLeft}일 동안 합격자 평균(
-              {passerHours !== null ? `${Math.round(passerHours)}h` : "—"}) 까지
+              {passerHours !== null ? `${Math.round(passerHours)}h` : "—"})까지
               따라잡으려면 매일{" "}
               <strong className="tabular-nums">
                 {calibratedDailyHours.toFixed(1)}h
               </strong>{" "}
-              학습 필요.{" "}
+              학습해야 합니다.{" "}
               {targetGapPct !== null && targetGapPct !== 0 ? (
                 <span>
-                  현재 목표({dailyHourTarget}h){" "}
+                  현재 목표({dailyHourTarget}h)보다{" "}
                   <strong>
                     {Math.abs(targetGapPct)}%{" "}
-                    {targetGapPct > 0 ? "더 늘려" : "여유 있음"}
+                    {targetGapPct > 0 ? "더 늘려야 합니다" : "여유가 있습니다"}
                   </strong>
+                  .
                 </span>
               ) : null}
             </div>

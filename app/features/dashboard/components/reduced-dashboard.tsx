@@ -48,7 +48,7 @@ export function ReducedDashboard({
               이용할 수 있습니다.
             </p>
             <p className="text-muted-foreground text-xs">
-              ※ 합격자 비교는 실 합격자 데이터가 일정 수 이상 누적되면
+              ※ 합격자 비교는 실제 합격자 데이터가 일정 수 이상 쌓이면
               활성화됩니다.
             </p>
             <p className="text-muted-foreground">

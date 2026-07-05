@@ -216,7 +216,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         <AnswerForm threadId={thread.threadId} />
       ) : isStaff && thread.status === "open" ? (
         <div className="border-border bg-muted/40 text-muted-foreground rounded-2xl border p-4 text-sm">
-          이미 다른 강사가 답변 중인 스레드입니다.
+          이미 다른 강사가 답변 중인 질문입니다.
         </div>
       ) : null}
 
@@ -227,7 +227,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
       {thread.status === "closed" ? (
         <div className="flex items-center gap-2 rounded-2xl border border-transparent bg-emerald-500/[0.1] p-4 text-emerald-700 dark:text-emerald-300">
           <CheckCircle2Icon className="size-4" />
-          <span className="text-[13px] font-bold">스레드가 종료됐습니다</span>
+          <span className="text-[13px] font-bold">질문이 종료되었습니다</span>
         </div>
       ) : null}
     </CommunityShell>
@@ -275,8 +275,8 @@ function AiAnswerCard({
       ) : null}
       {message.verdict === "incorrect" && !isStaff ? (
         <p className="mt-3 rounded-lg bg-rose-500/[0.08] px-3 py-2 text-[12px] leading-relaxed text-rose-700 dark:text-rose-300">
-          이 AI 답변은 강사가 <strong>부정확</strong> 으로 평가했습니다. 아래 강사
-          답변을 확인하세요.
+          이 AI 답변은 강사가 <strong>부정확</strong>으로 평가했습니다. 아래 강사
+          답변을 확인해 주세요.
         </p>
       ) : null}
       {isStaff ? <VerdictControl message={message} /> : null}
@@ -443,7 +443,7 @@ function CloseButton({ threadId }: { threadId: string }) {
       <input type="hidden" name="threadId" value={threadId} />
       <CheckCircle2Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
       <p className="text-muted-foreground min-w-[12rem] flex-1 text-[13px] leading-relaxed">
-        충분히 답변되었나요? 종료하면 다른 학생에게 닫힌 스레드로 표시됩니다.
+        충분히 답변되었나요? 종료하면 다른 학생에게 종료된 질문으로 표시됩니다.
       </p>
       <Button
         type="submit"
@@ -452,7 +452,7 @@ function CloseButton({ threadId }: { threadId: string }) {
         className="rounded-full"
         disabled={isSubmitting}
       >
-        스레드 종료
+        질문 종료
       </Button>
     </fetcher.Form>
   );

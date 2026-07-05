@@ -39,15 +39,15 @@ export async function action({ request }: Route.ActionArgs) {
   const parsed = schema.safeParse(Object.fromEntries(fd));
   if (!parsed.success)
     return data(
-      { error: parsed.error.issues[0]?.message ?? "입력 오류" },
+      { error: parsed.error.issues[0]?.message ?? "입력 내용이 올바르지 않습니다" },
       { status: 400 },
     );
 
   const plan = await getPlanByCode(client, parsed.data.planCode);
   if (!plan)
-    return data({ error: "플랜을 찾을 수 없습니다" }, { status: 404 });
+    return data({ error: "상품을 찾을 수 없습니다" }, { status: 404 });
   if (plan.priceKrw <= 0)
-    return data({ error: "유료 플랜만 결제 가능합니다" }, { status: 400 });
+    return data({ error: "유료 상품만 결제할 수 있습니다" }, { status: 400 });
   if (plan.availableFrom && new Date(plan.availableFrom).getTime() > Date.now())
     return data(
       { error: "아직 오픈 전 상품입니다" },
@@ -83,7 +83,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!disc.ok) return data({ error: disc.error }, { status: 400 });
   if (disc.amountKrw <= 0)
     return data(
-      { error: "할인 후 결제 금액이 0원입니다. 운영자에게 문의하세요." },
+      { error: "할인 후 결제 금액이 0원입니다. 운영자에게 문의해 주세요." },
       { status: 400 },
     );
 

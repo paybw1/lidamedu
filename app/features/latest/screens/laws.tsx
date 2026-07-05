@@ -292,7 +292,7 @@ export default function LatestLaws({ loaderData }: Route.ComponentProps) {
                               isStaff ? "" : "ml-auto",
                             )}
                           >
-                            보러가기 →
+                            보러 가기 →
                           </Link>
                         </div>
                       </Td>
@@ -484,7 +484,7 @@ function PdfView({ title, url }: { title: string; url: string | null }) {
 function VideoView({ url }: { url: string | null }) {
   if (!url) {
     return (
-      <p className="text-muted-foreground text-sm">동영상 URL 이 없습니다.</p>
+      <p className="text-muted-foreground text-sm">동영상 URL이 없습니다.</p>
     );
   }
   const embedUrl = toEmbedUrl(url);
@@ -510,8 +510,8 @@ function VideoView({ url }: { url: string | null }) {
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">
-          이 URL 은 인라인 임베드를 지원하지 않습니다. 위 링크로 새 탭에서
-          열어주세요.
+          이 URL은 화면 안에서 바로 재생할 수 없습니다. 위 링크로 새 탭에서
+          열어 주세요.
         </p>
       )}
     </div>

@@ -221,7 +221,7 @@ export default function GsResult({ loaderData }: Route.ComponentProps) {
       <Section eyebrow={`답안지 페이지 · ${pages.length}/${round.expectedPages}`}>
         {pages.length === 0 ? (
           <p className="text-muted-foreground text-sm italic">
-            제출된 페이지 없음
+            제출된 페이지가 없습니다.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -461,7 +461,7 @@ function ResultQuestionCard({
         </p>
         {mappedPages.length === 0 ? (
           <p className="text-muted-foreground text-sm italic">
-            매핑된 페이지 없음
+            매핑된 페이지가 없습니다.
           </p>
         ) : (
           <div className="flex flex-wrap gap-1">

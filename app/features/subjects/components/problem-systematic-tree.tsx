@@ -133,7 +133,7 @@ export function ProblemSystematicTree({
       ) : null}
       {tree.length === 0 ? (
         <p className="text-muted-foreground px-2 py-4 text-xs">
-          {`"${searchQuery.trim()}" 매칭 결과가 없습니다.`}
+          {`"${searchQuery.trim()}" 와 일치하는 항목이 없습니다.`}
         </p>
       ) : (
         <ul className="space-y-0.5 text-sm">

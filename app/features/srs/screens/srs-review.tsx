@@ -533,7 +533,7 @@ function CompleteCard({ total }: { total: number }) {
         <CheckCircle2Icon className="mx-auto size-10 text-emerald-500" />
         <p className="text-foreground text-lg font-bold">오늘 암기 완료</p>
         <p className="text-muted-foreground text-sm">
-          총 {total}건 처리. 통계에서 결과를 확인하세요.
+          총 {total}건을 처리했습니다. 통계에서 결과를 확인해 보세요.
         </p>
         <div className="flex justify-center gap-2 pt-2">
           <Button asChild size="sm" variant="outline">

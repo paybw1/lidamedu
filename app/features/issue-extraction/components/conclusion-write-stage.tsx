@@ -113,12 +113,12 @@ export function ConclusionWriteStage({
       (i) => (conclusions[i.issueId]?.direction ?? "").trim().length > 0,
     ).length;
     if (filledCount < Math.min(2, masterIssues.length)) {
-      alert("최소 2개 쟁점의 결론은 적어주세요.");
+      alert("최소 2개 쟁점의 결론은 적어 주세요.");
       return;
     }
     if (
       !confirm(
-        "제출 후엔 모범 결론·권장 강약이 공개되고 자기채점 단계로 넘어갑니다. 제출하시겠습니까?",
+        "제출 후에는 모범 결론·권장 강약이 공개되고 자기채점 단계로 넘어갑니다. 제출하시겠습니까?",
       )
     )
       return;
@@ -139,8 +139,8 @@ export function ConclusionWriteStage({
           {hint ?? (
             <>
               각 쟁점에 <strong>결론(방향)</strong>과 <strong>강약</strong>을
-              표시하고, 아래에 답안 목차를 짜보세요. 모범 결론은 제출 전에 절대
-              보지 마세요.
+              표시하고, 아래에 답안 목차를 짜 보세요. 모범 결론은 제출 전에
+              절대 보지 마세요.
             </>
           )}
         </p>

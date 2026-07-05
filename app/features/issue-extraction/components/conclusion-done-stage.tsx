@@ -124,7 +124,7 @@ export function ConclusionDoneStage({
         <div className="border-amber-300/40 bg-amber-50/40 dark:border-amber-700/40 dark:bg-amber-950/30 rounded-2xl border p-3">
           <p className="text-foreground text-sm font-bold">AI 종합 코칭</p>
           <p className="text-muted-foreground mt-0.5 text-[11px] italic">
-            ※ 보조 의견. 자기채점이 최종.
+            ※ 보조 의견이며, 자기채점 결과가 최종입니다.
           </p>
           <p className="text-foreground mt-1 text-xs leading-relaxed">
             {overall.note}

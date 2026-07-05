@@ -447,7 +447,7 @@ function CommentForm({ postId }: { postId: string }) {
         name="bodyMd"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="댓글을 입력하세요"
+        placeholder="댓글을 입력해 주세요"
         rows={3}
         maxLength={5000}
         className="text-sm leading-relaxed"
@@ -530,7 +530,7 @@ function AttachmentItem({
   }
 
   function doDelete() {
-    if (!confirm(`첨부 "${a.originalFilename}" 를 삭제하시겠습니까?`)) return;
+    if (!confirm(`첨부 파일 "${a.originalFilename}"을(를) 삭제하시겠습니까?`)) return;
     const fd = new FormData();
     fd.set("intent", "delete");
     fd.set("attachmentId", a.attachmentId);
@@ -844,7 +844,7 @@ function ReportButton({
             rows={2}
             maxLength={500}
             required
-            placeholder="구체적인 사유를 입력하세요"
+            placeholder="구체적인 사유를 입력해 주세요"
             className="bg-background border-input focus:border-primary w-full rounded-md border px-2 py-1.5 text-xs outline-none"
             disabled={busy}
           />

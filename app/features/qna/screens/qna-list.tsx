@@ -362,7 +362,7 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
             body={
               filterActive
                 ? "검색어나 분류·대상·과목 필터를 바꿔 다시 찾아보세요."
-                : "조문·판례·문제 상세 화면, 또는 ‘공부방법 질문’ 으로 질문할 수 있습니다. AI/강사가 답변을 합니다."
+                : "조문·판례·문제 상세 화면이나 ‘공부방법 질문’으로 질문할 수 있습니다. AI와 강사가 답변해 드립니다."
             }
           />
         )

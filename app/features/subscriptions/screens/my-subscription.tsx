@@ -194,7 +194,7 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
 
       <Card className="mb-5">
         <CardHeader className="px-4 pb-2">
-          <p className="text-sm font-semibold">현재 플랜</p>
+          <p className="text-sm font-semibold">현재 요금제</p>
         </CardHeader>
         <CardContent className="space-y-3 px-4 pb-4">
           {active.hasActive && active.subscription ? (
@@ -268,7 +268,7 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/pricing">플랜 비교 / 연장</Link>
+                  <Link to="/pricing">요금제 비교 / 연장</Link>
                 </Button>
                 {active.subscription ? (
                   <Form
@@ -307,10 +307,10 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
           ) : (
             <>
               <p className="text-sm">
-                현재 <strong>무료 플랜</strong> 사용 중입니다.
+                현재 <strong>무료 요금제</strong> 사용 중입니다.
               </p>
               <p className="text-muted-foreground text-xs">
-                기본 학습은 무료로 계속 사용 가능하며, 합격자 컨설팅 기능을 모두
+                기본 학습은 무료로 계속 이용할 수 있으며, 합격자 컨설팅 기능을 모두
                 풀어 보려면 자기주도 구독을 추천합니다. (합격자 비교는 실 합격자
                 데이터가 누적되면 활성화됩니다.)
               </p>
@@ -338,7 +338,7 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>일시</TableHead>
-                  <TableHead>플랜</TableHead>
+                  <TableHead>상품</TableHead>
                   <TableHead className="text-right">금액</TableHead>
                   <TableHead>상태</TableHead>
                 </TableRow>

@@ -116,7 +116,7 @@ export default function GsIssueTake({ loaderData }: Route.ComponentProps) {
       category="gs"
       width="narrow"
       title={question.title ?? `Q${question.orderIndex + 1} — 논점 추출`}
-      desc="사례를 읽고 떠오르는 핵심 논점을 한 줄씩 적어보세요. 모범 논점은 제출 후에 공개됩니다."
+      desc="사례를 읽고 떠오르는 핵심 논점을 한 줄씩 적어 보세요. 모범 논점은 제출 후에 공개됩니다."
       backLink={{ to: "/gs/issues", label: "논점 훈련 목록" }}
       headerRight={
         <Chip tone="primary">
@@ -212,7 +212,7 @@ function WriteStage({
 
   const submit = () => {
     if (text.trim().length < 2) {
-      alert("최소 한 줄은 작성해주세요.");
+      alert("최소 한 줄은 작성해 주세요.");
       return;
     }
     if (
@@ -325,7 +325,7 @@ function SelfCheckStage({
   const runAi = () => {
     if (
       !confirm(
-        "AI 의견을 받습니다. (Claude 호출 — GS 비용 가드 적용). 학생이 자기채점한 결과는 그대로 유지됩니다.",
+        "AI 의견을 받습니다. AI 사용 한도가 적용되며, 직접 자기채점한 결과는 그대로 유지됩니다. 계속하시겠습니까?",
       )
     )
       return;
@@ -466,7 +466,7 @@ function SelfCheckStage({
                   ) : null}
                   {aiHit?.evidence ? (
                     <p className="text-muted-foreground mt-1 text-[11px] italic">
-                      AI 근거: "{aiHit.evidence}" — 사람 판단으로 최종 결정하세요.
+                      AI 근거: "{aiHit.evidence}" — 최종 판단은 직접 내려 주세요.
                     </p>
                   ) : null}
                 </div>
@@ -601,12 +601,12 @@ function DoneStage({
             AI 의견 (제출 시 받음)
           </p>
           <p className="text-muted-foreground mt-0.5 text-[11px] italic">
-            ※ 보조 의견. 자기채점이 최종.
+            ※ 보조 의견이며, 자기채점 결과가 최종입니다.
           </p>
           <ul className="text-muted-foreground mt-2 list-disc pl-5 text-xs leading-relaxed">
-            <li>AI 가 짚었다고 본: {attempt.aiAnalysis.hits.length}건</li>
+            <li>AI가 짚었다고 본 논점: {attempt.aiAnalysis.hits.length}건</li>
             <li>
-              AI 가 빠뜨렸다고 본:{" "}
+              AI가 빠뜨렸다고 본 논점:{" "}
               {
                 attempt.aiAnalysis.missed.filter((m) => m.severity === "core")
                   .length
@@ -618,7 +618,9 @@ function DoneStage({
               }
               건 부차
             </li>
-            <li>AI 가 자작/외전으로 본: {attempt.aiAnalysis.extras.length}건</li>
+            <li>
+              AI가 모범에 없다고 본 논점: {attempt.aiAnalysis.extras.length}건
+            </li>
           </ul>
         </div>
       ) : null}

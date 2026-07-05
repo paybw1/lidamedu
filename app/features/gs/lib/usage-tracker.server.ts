@@ -210,7 +210,7 @@ export function capBlockedMessage(check: CapCheck): string {
       return "AI 채점 초안 일일 한도에 도달했습니다. 강사 직접 채점을 이용해 주세요.";
     case "ocr_daily_cost":
     case "ocr_daily_calls":
-      return "OCR 일일 한도에 도달했습니다. 답안지 페이지는 정상 저장되며, 글자 추출은 잠시 보류됩니다.";
+      return "자동 인식(OCR) 일일 한도에 도달했습니다. 답안지 페이지는 정상 저장되며, 글자 추출은 잠시 보류됩니다.";
     default:
       return "현재 보조 기능이 일시 제한됩니다.";
   }

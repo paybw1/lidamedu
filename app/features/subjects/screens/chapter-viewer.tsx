@@ -679,7 +679,7 @@ function Inner({
                 {totalPages > 1 ? (
                   <>
                     {" "}
-                    (<b>{totalPages}페이지</b>로 끝까지 열람)
+                    (<b>{totalPages}페이지</b>로 끝까지 볼 수 있습니다)
                   </>
                 ) : null}
                 . 즐겨찾기·포스트잇·관련 문제·빈칸 자료 등 전체 기능은 좌측
@@ -819,7 +819,7 @@ function Inner({
                             </div>
                           ) : (
                             <p className="text-muted-foreground text-sm">
-                              본문이 등록되지 않았거나 파싱할 수 없는
+                              본문이 등록되지 않았거나 표시할 수 없는
                               형식입니다.
                             </p>
                           )}

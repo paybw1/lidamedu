@@ -45,7 +45,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
         <Await
           resolve={profile}
           errorElement={
-            <div className="text-red-500">프로필을 불러오지 못했습니다</div>
+            <div className="text-red-500">프로필을 불러오지 못했습니다.</div>
           }
         >
           {(profile) => {
@@ -74,14 +74,14 @@ export default function Account({ loaderData }: Route.ComponentProps) {
         <Await
           resolve={identities}
           errorElement={
-            <div className="text-red-500">소셜 계정을 불러오지 못했습니다</div>
+            <div className="text-red-500">소셜 계정을 불러오지 못했습니다.</div>
           }
         >
           {({ data, error }) => {
             if (!data) {
               return (
                 <div className="text-red-500">
-                  <span>소셜 계정을 불러오지 못했습니다</span>
+                  <span>소셜 계정을 불러오지 못했습니다.</span>
                   <span className="text-xs">오류 코드: {error.code}</span>
                   <span className="text-xs">메시지: {error.message}</span>
                 </div>

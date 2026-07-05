@@ -80,7 +80,7 @@ export function ArticlesTab({
           <SystematicTree
             nodes={systematicNodes}
             lawCode={subject.slug}
-            emptyHint={`${subject.name} 테크 트리가 아직 등록되지 않았습니다.`}
+            emptyHint={`${subject.name} 체계도가 아직 등록되지 않았습니다.`}
             bookmarkLevels={bookmarkLevels}
             annotationCounts={annotationCounts}
             progressByArticle={progressByArticle}

@@ -421,8 +421,8 @@ export function CasesTree({
             ? `"${trimmedQuery}" 와 일치하는 항목이 없습니다.`
             : emptyHint ??
               (renderSystematic
-                ? "체계도 노드에 매핑된 판례가 없습니다."
-                : "조문에 매핑된 판례가 없습니다.")}
+                ? "체계도 단원에 연결된 판례가 없습니다."
+                : "조문에 연결된 판례가 없습니다.")}
         </p>
       ) : renderSystematic ? (
         <ul className="space-y-0.5 text-sm">

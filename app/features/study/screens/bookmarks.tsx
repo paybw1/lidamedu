@@ -130,7 +130,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
       active="bookmarks"
       tabCounts={toTabCounts(aidCounts)}
       title="즐겨찾기"
-      desc="별점을 매겨 둔 조문 · 판례 · 문제 · 정오문제 모음. 별점 높은 순으로 정렬됩니다."
+      desc="별점을 매겨 둔 조문 · 판례 · 문제 · 정오문제가 모이는 곳입니다. 별점 높은 순으로 정렬됩니다."
       printHref="/study/bookmarks/print"
       summaryStats={[
         { label: "전체", value: counts.total, dotClass: "bg-primary" },
@@ -214,7 +214,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
         <SessionBanner
           action="/api/study/session-from-bookmarks"
           count={problemCount}
-          hint="필터 결과 안의 객관식 문제만 묶어 한 번에 풀기."
+          hint="필터 결과 안의 객관식 문제만 묶어 한 번에 풉니다."
           testidPrefix="bookmark-start"
           hidden={
             <>

@@ -110,7 +110,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
       <div className="space-y-4">
         <TrendChartCard
           title="주별 학습 시간 (h)"
-          subtitle="study_sessions 기준"
+          subtitle="학습 시간 기록 기준"
           series={trend.studyHours}
           unit="h"
           decimals={1}
@@ -119,7 +119,7 @@ export default function PasserTrend({ loaderData }: Route.ComponentProps) {
         />
         <TrendChartCard
           title="주별 문제 풀이 (회)"
-          subtitle="user_problem_attempts 기준"
+          subtitle="문제 풀이 기록 기준"
           series={trend.problemAttempts}
           unit="회"
           decimals={0}

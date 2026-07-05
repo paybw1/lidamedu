@@ -484,14 +484,14 @@ function QuestionMatrixCard({
               {criteria.length === 0 ? (
                 <tr className="border-border/60 border-b">
                   <td className="bg-card text-muted-foreground sticky left-0 z-10 px-3 py-3 text-[11px]">
-                    채점기준 미설정 — 운영자에게 문의
+                    채점 기준 미설정
                   </td>
                   <td
                     colSpan={columns.length + 1}
                     className="text-muted-foreground border-l px-3 py-3 text-center text-xs"
                   >
-                    rubric 이 설정되지 않은 문제는 매트릭스 채점을 사용할 수
-                    없습니다.
+                    채점 기준이 설정되지 않은 문제는 매트릭스 채점을 사용할 수
+                    없습니다. 운영자에게 문의해 주세요.
                   </td>
                 </tr>
               ) : (
@@ -660,7 +660,7 @@ function AnswerPagesPreview({
           {ocrText ? (
             <details className="mt-1">
               <summary className="cursor-pointer text-[10px] text-muted-foreground hover:underline">
-                OCR 텍스트 보기
+                자동 인식(OCR) 텍스트 보기
               </summary>
               <pre className="mt-1 max-h-40 overflow-auto rounded border bg-background p-2 text-[10px] whitespace-pre-line">
                 {ocrText}
@@ -753,7 +753,7 @@ function PerAssignmentSubmit({
       <Card>
         <CardContent className="space-y-3 py-5">
           <p className="text-muted-foreground text-xs">
-            답안 컬럼별로 모든 입력이 완료되면 "제출"을 누르세요. 제출 후에는
+            답안별로 모든 입력을 마치면 "채점 제출"을 눌러 주세요. 제출 후에는
             수정할 수 없습니다.
           </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

@@ -52,7 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
     );
   if (!attempt.studentIssuesMd.trim()) {
     return data(
-      { error: "빈 답안은 분석 불가합니다." },
+      { error: "빈 답안은 분석할 수 없습니다." },
       { status: 400 },
     );
   }
@@ -102,7 +102,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (!result) {
     return data(
-      { error: "AI 분석 실패. 잠시 후 다시 시도해주세요." },
+      { error: "AI 분석에 실패했습니다. 잠시 후 다시 시도해 주세요." },
       { status: 500 },
     );
   }

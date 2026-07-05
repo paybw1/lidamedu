@@ -90,7 +90,11 @@ export default function CohortBoardPostNew({
       else if (f.size > ATTACH_MAX_SIZE) rejected.push(`${f.name} (10MB 초과)`);
       else accepted.push(f);
     }
-    setError(rejected.length ? `첨부 제외: ${rejected.join(", ")}` : null);
+    setError(
+      rejected.length
+        ? `다음 파일은 첨부할 수 없어 제외했습니다: ${rejected.join(", ")}`
+        : null,
+    );
     setFiles((prev) => [...prev, ...accepted]);
   }
 
@@ -156,7 +160,7 @@ export default function CohortBoardPostNew({
     navigate(`/cohort-boards/${boardId}/${postId}`, {
       viewTransition: true,
       state: failed.length
-        ? { attachWarning: `일부 첨부 업로드 실패: ${failed.join(", ")}` }
+        ? { attachWarning: `일부 첨부 파일 업로드에 실패했습니다: ${failed.join(", ")}` }
         : undefined,
     });
   }
@@ -178,7 +182,7 @@ export default function CohortBoardPostNew({
               name="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="제목을 입력하세요"
+              placeholder="제목을 입력해 주세요"
               maxLength={200}
               required
             />
@@ -192,7 +196,7 @@ export default function CohortBoardPostNew({
               name="bodyMd"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="내용을 입력하세요"
+              placeholder="내용을 입력해 주세요"
               rows={12}
               maxLength={20000}
               className="text-sm leading-relaxed"
@@ -240,7 +244,7 @@ export default function CohortBoardPostNew({
               className="text-[13px]"
             />
             <p className="text-muted-foreground mt-1 text-[11px]">
-              이미지(jpg·png·webp·gif) 또는 PDF, 개당 10MB 이하. 여러 개 선택 가능.
+              이미지(jpg·png·webp·gif)나 PDF를 개당 10MB 이하로 여러 개 첨부할 수 있습니다.
             </p>
           </div>
 

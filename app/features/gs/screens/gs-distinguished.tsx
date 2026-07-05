@@ -393,7 +393,7 @@ function DistinguishedItem({
         {item.ocrTexts.length > 0 ? (
           <details className="bg-background rounded-xl border p-2">
             <summary className="text-muted-foreground cursor-pointer text-[11px] font-medium">
-              OCR 텍스트 펼치기
+              자동 인식(OCR) 텍스트 펼치기
             </summary>
             <p className="text-foreground/80 mt-2 font-mono text-[11px] leading-relaxed whitespace-pre-line">
               {item.ocrTexts.join("\n\n---\n\n")}

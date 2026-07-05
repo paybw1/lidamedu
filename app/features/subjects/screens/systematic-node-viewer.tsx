@@ -604,7 +604,7 @@ function Inner({
               {/* eyebrow + 형제 노드 ←/→ — 같은 parent 안 ord 순. 조문 viewer 와 동일 위치. */}
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-link text-[11px] font-bold tracking-widest uppercase">
-                  {subject.name} · 체계도 노드{" "}
+                  {subject.name} · 체계도 단원{" "}
                   {nodePrevNext.total > 1 ? (
                     <span className="text-muted-foreground ml-1 tracking-normal normal-case">
                       ({nodePrevNext.idx + 1} / {nodePrevNext.total})
@@ -645,7 +645,7 @@ function Inner({
                 </h1>
               </div>
               <p className="text-muted-foreground mt-1 text-sm">
-                매핑된 조문{" "}
+                연결된 조문{" "}
                 <span className="text-foreground font-medium tabular-nums">
                   {node.articles.length}
                 </span>
@@ -780,7 +780,7 @@ function Inner({
             <Card className="rounded-xl border shadow-sm">
               <CardContent className="py-16 text-center">
                 <p className="text-muted-foreground text-sm">
-                  이 노드에 매핑된 조문이 없습니다.
+                  이 단원에 연결된 조문이 없습니다.
                 </p>
               </CardContent>
             </Card>
@@ -904,7 +904,7 @@ function Inner({
                             </div>
                           ) : (
                             <p className="text-muted-foreground text-sm">
-                              본문이 등록되지 않았거나 파싱할 수 없는
+                              본문이 등록되지 않았거나 표시할 수 없는
                               형식입니다.
                             </p>
                           )}
@@ -998,7 +998,7 @@ function NodePrevNextButton({
   label: string | null;
 }) {
   const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
-  const aria = direction === "prev" ? "이전 노드" : "다음 노드";
+  const aria = direction === "prev" ? "이전 단원" : "다음 단원";
   if (!nodeId || !label) {
     return (
       <button

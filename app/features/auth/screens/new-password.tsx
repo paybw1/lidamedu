@@ -40,7 +40,7 @@ export async function action({ request }: Route.ActionArgs) {
   });
   if (!parsed.success) {
     return data(
-      { error: parsed.error.issues[0]?.message ?? "입력값을 확인해주세요." },
+      { error: parsed.error.issues[0]?.message ?? "입력 내용을 확인해 주세요." },
       { status: 400 },
     );
   }
@@ -53,7 +53,7 @@ export async function action({ request }: Route.ActionArgs) {
     return data(
       {
         error:
-          "재설정 세션이 만료됐습니다. 비밀번호 재설정 메일을 다시 받아주세요.",
+          "재설정 링크가 만료되었습니다. 비밀번호 재설정 메일을 다시 받아 주세요.",
       },
       { status: 401 },
     );
@@ -111,7 +111,7 @@ export default function NewPassword({ actionData }: Route.ComponentProps) {
               margin: "0 0 24px",
             }}
           >
-            안전하게 사용할 새 비밀번호를 입력해주세요.
+            안전하게 사용할 새 비밀번호를 입력해 주세요.
           </p>
 
           <Form method="post" style={{ textAlign: "left" }}>
@@ -217,7 +217,7 @@ export default function NewPassword({ actionData }: Route.ComponentProps) {
               to="/forgot-password"
               style={{ color: PALETTE.primary, textDecoration: "underline" }}
             >
-              메일을 다시 받기
+              재설정 메일 다시 받기
             </Link>
           </p>
         </div>

@@ -53,7 +53,7 @@ export default function StudentAssignments({
           과제
         </h1>
         <p className="text-ink-soft mt-2 text-sm">
-          마감이 가까운 과제부터 보여드립니다. 완수는 자동으로 판정됩니다.
+          마감이 가까운 과제부터 보여 드립니다. 완수는 자동으로 판정됩니다.
         </p>
       </header>
 
@@ -160,7 +160,7 @@ function AssignmentCard({
               진척 {sub?.completedItems ?? 0}/{sub?.totalItems ?? a.itemCount}
             </span>
             <span className="ml-auto inline-flex items-center gap-1 text-xs">
-              풀러가기 <ArrowRightIcon className="size-3" />
+              풀러 가기 <ArrowRightIcon className="size-3" />
             </span>
           </div>
         </CardContent>

@@ -188,8 +188,9 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
             필요한 과목만, 원하는 만큼
           </h1>
           <p className="text-muted-foreground mx-auto mt-2 max-w-xl text-sm">
-            과목별로 결제하거나 번들로 한 번에. 자연과학은 기본 무료로 함께
-            열립니다. 상담·과제·1차 모의고사·반별 게시판은 종합반에서 제공됩니다.
+            과목별로 결제하거나 번들로 한 번에 결제할 수 있습니다. 자연과학은
+            기본 무료로 함께 열립니다. 상담·과제·1차 모의고사·반별 게시판은
+            종합반에서 제공됩니다.
           </p>
         </header>
 
@@ -214,8 +215,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
         {locked ? (
           <Card className="mb-4 border-amber-300 bg-amber-50/70 dark:border-amber-700/50 dark:bg-amber-950/30">
             <CardContent className="px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-              🔒 <strong>{lockedLabel(locked)}</strong> 은(는) 결제 후 이용할 수
-              있습니다. 아래에서 상품을 확인하세요.
+              🔒 <strong>{lockedLabel(locked)}</strong>은(는) 결제 후 이용할 수
+              있습니다. 아래에서 상품을 확인해 보세요.
             </CardContent>
           </Card>
         ) : null}
@@ -242,7 +243,7 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
             />
             {coupon.trim() ? (
               <span className="text-muted-foreground text-xs">
-                결제 시 자동 적용됩니다
+                결제 시 자동 적용됩니다.
               </span>
             ) : null}
           </div>
@@ -738,7 +739,7 @@ async function startSubscriptionCheckout(
     error?: string;
   };
   if (!json.ok || !json.orderId) {
-    alert(`결제 준비 실패: ${json.error ?? "알 수 없는 오류"}`);
+    alert(`결제 준비에 실패했습니다: ${json.error ?? "알 수 없는 오류"}`);
     return;
   }
   // 서버가 계산한 할인 후 금액으로 결제(정가 아님 — confirm 금액 검증과 정합).
@@ -756,7 +757,7 @@ async function startSubscriptionCheckout(
       failUrl: `${window.location.origin}/me/subscription?failed=1`,
     });
   } catch (e) {
-    alert(`결제 SDK 오류: ${e instanceof Error ? e.message : String(e)}`);
+    alert(`결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 
@@ -784,6 +785,6 @@ async function startBillingCheckout(
       failUrl: `${window.location.origin}/me/subscription?failed=1`,
     });
   } catch (e) {
-    alert(`자동결제 SDK 오류: ${e instanceof Error ? e.message : String(e)}`);
+    alert(`자동결제 중 오류가 발생했습니다: ${e instanceof Error ? e.message : String(e)}`);
   }
 }

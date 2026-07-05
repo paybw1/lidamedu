@@ -28,7 +28,7 @@ export function TrialNoticeBanner({ daysLeft }: { daysLeft: number }) {
       <span className="min-w-0">
         <strong className="tabular-nums">무료 체험 D-{daysLeft}</strong> ·{" "}
         {urgent
-          ? "곧 학습과목(조문·판례·문제) 열람이 잠기고 무료회원으로 전환됩니다. 계속 학습하려면 구독하세요."
+          ? "곧 학습과목(조문·판례·문제)이 잠기고 무료회원으로 전환됩니다. 계속 학습하려면 구독해 주세요."
           : "특허법 학습과목을 무료로 이용 중입니다. 다른 과목과 전체 기능은 구독 시 열립니다."}
       </span>
       <Link

@@ -26,7 +26,7 @@ export interface DailyMenuItem {
 export const KIND_LABEL: Record<DailyMenuKind, string> = {
   weak_problem: "약점 재시도",
   weak_article: "약점 조문",
-  unread_case: "미열람 판례",
+  unread_case: "안 본 판례",
   blank_due: "빈칸 학습",
   gap_problems: "진도 보충",
   cohort_track: "이번 주 트랙",

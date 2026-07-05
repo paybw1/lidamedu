@@ -1318,7 +1318,7 @@ function ArticleViewerInner({
                         </div>
                       ) : (
                         <p className="text-muted-foreground text-sm">
-                          본문이 등록되지 않았거나 파싱할 수 없는 형식입니다.
+                          본문이 등록되지 않았거나 표시할 수 없는 형식입니다.
                         </p>
                       )}
                     </HighlightOverlay>

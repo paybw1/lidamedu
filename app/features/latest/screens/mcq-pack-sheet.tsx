@@ -831,7 +831,7 @@ function UnansweredModal({
         </h2>
         <p className="text-muted-foreground mb-3 text-xs">
           {isExam
-            ? "시험 모드 — 그래도 제출하면 미응답은 0점 처리됩니다."
+            ? "시험 모드에서는 그래도 제출하면 미응답이 0점으로 처리됩니다."
             : "그래도 제출하면 결과 통계로 이동합니다."}
         </p>
         <div className="mb-4 flex flex-wrap gap-1.5">

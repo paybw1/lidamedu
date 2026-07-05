@@ -17,7 +17,7 @@ export const meta: Route.MetaFunction = () => [
 ];
 
 const schema = z.object({
-  email: z.string().email("올바른 이메일 주소를 입력해주세요."),
+  email: z.string().email("올바른 이메일 주소를 입력해 주세요."),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -25,7 +25,7 @@ export async function action({ request }: Route.ActionArgs) {
   const parsed = schema.safeParse({ email: fd.get("email") });
   if (!parsed.success) {
     return data(
-      { error: parsed.error.issues[0]?.message ?? "이메일을 확인해주세요." },
+      { error: parsed.error.issues[0]?.message ?? "이메일을 확인해 주세요." },
       { status: 400 },
     );
   }
@@ -100,7 +100,7 @@ export default function ForgotPassword({ actionData }: Route.ComponentProps) {
                 font: `500 14px/1.5 ${FONT}`,
               }}
             >
-              메일을 보냈습니다. 메일함을 확인해주세요.
+              메일을 보냈습니다. 메일함을 확인해 주세요.
             </div>
           ) : (
             <Form method="post" style={{ textAlign: "left" }}>
