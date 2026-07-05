@@ -140,6 +140,7 @@ export default [
       route("/user-role", "features/admin/api/user-role.tsx"),
       route("/user-access", "features/admin/api/user-access.tsx"),
       route("/popup-notice", "features/admin/api/popup-notice.tsx"),
+      route("/guide", "features/admin/api/guide.tsx"),
       route("/cohort", "features/admin/api/cohort.tsx"),
       route("/cohort-board", "features/admin/api/cohort-board.tsx"),
       route(
@@ -512,6 +513,9 @@ export default [
             "/announcements",
             "features/announcements/screens/announcements-inbox.tsx",
           ),
+          // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
+          route("/guide", "features/guide/screens/guide-index.tsx"),
+          route("/guide/:guideId", "features/guide/screens/guide-detail.tsx"),
         ],
       ),
       route("/admin", "features/admin/screens/admin.tsx"),
@@ -578,6 +582,7 @@ export default [
         "/admin/popup-notices",
         "features/admin/screens/admin-popup-notices.tsx",
       ),
+      route("/admin/guides", "features/admin/screens/admin-guides.tsx"),
       route(
         "/admin/membership-test",
         "features/admin/screens/admin-membership-test.tsx",

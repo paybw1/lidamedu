@@ -3682,6 +3682,63 @@ export type Database = {
           },
         ]
       }
+      guide_articles: {
+        Row: {
+          body_md: string
+          category: string
+          created_at: string
+          created_by: string | null
+          display_order: number
+          guide_id: string
+          is_published: boolean
+          screen_key: string | null
+          title: string
+          updated_at: string
+          youtube_url: string | null
+        }
+        Insert: {
+          body_md?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          guide_id?: string
+          is_published?: boolean
+          screen_key?: string | null
+          title: string
+          updated_at?: string
+          youtube_url?: string | null
+        }
+        Update: {
+          body_md?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          guide_id?: string
+          is_published?: boolean
+          screen_key?: string | null
+          title?: string
+          updated_at?: string
+          youtube_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_articles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "guide_articles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       instructor_qna_credits: {
         Row: {
           amount_krw: number

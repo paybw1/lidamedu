@@ -138,6 +138,8 @@ export const NAV_GROUP_POOL = {
       { label: "반별 게시판", to: "/cohort-boards", feature: "cohort_curriculum" },
       { label: "Q&A", to: "/qna" },
       { label: "합격 수기", to: "/community/review" },
+      // 이용 가이드 허브 — 기능 사용법(글+영상). 운영자 작성(/admin/guides).
+      { label: "이용 가이드", to: "/guide" },
     ],
   },
 } satisfies Record<string, NavGroup>;
