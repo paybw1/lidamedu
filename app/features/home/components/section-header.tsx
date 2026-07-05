@@ -5,6 +5,8 @@ interface SectionHeaderProps {
   title: string;
   subtitle?: string;
   align?: "center" | "left";
+  /** 부제 최대폭(px). 문장 단위 \n 줄바꿈이 접히지 않게 긴 문장 섹션에서 넓힌다. */
+  subtitleMaxWidth?: number;
 }
 
 export function SectionHeader({
@@ -12,6 +14,7 @@ export function SectionHeader({
   title,
   subtitle,
   align = "center",
+  subtitleMaxWidth = 560,
 }: SectionHeaderProps) {
   return (
     <header
@@ -69,7 +72,7 @@ export function SectionHeader({
               font: "400 16px/1.7 Pretendard, sans-serif",
               color: PALETTE.inkSoft,
               margin: "14px auto 0",
-              maxWidth: 560,
+              maxWidth: subtitleMaxWidth,
               letterSpacing: "-0.01em",
               whiteSpace: "pre-line",
             }}
