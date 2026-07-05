@@ -191,13 +191,13 @@ export default function ScienceQuizSetup({
 
           {/* Section filter card */}
           <div className="rounded-xl border bg-card shadow-sm">
-            <div className="border-b px-6 py-4">
-              <h2 className="text-sm font-bold">단원</h2>
+            <div className="border-b px-5 py-3.5">
+              <h2 className="text-sm font-bold tracking-tight">단원</h2>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 선택하지 않으면 전체 단원에서 출제됩니다.
               </p>
             </div>
-            <div className="divide-y px-6 py-2">
+            <div className="divide-y px-5 py-2">
               {sections.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   등록된 단원이 없습니다.
@@ -233,13 +233,13 @@ export default function ScienceQuizSetup({
           {/* Year filter card — 기출 연도별 분류 */}
           {years.length > 0 ? (
             <div className="rounded-xl border bg-card shadow-sm">
-              <div className="border-b px-6 py-4">
-                <h2 className="text-sm font-bold">출제 연도</h2>
+              <div className="border-b px-5 py-3.5">
+                <h2 className="text-sm font-bold tracking-tight">출제 연도</h2>
                 <p className="text-muted-foreground mt-0.5 text-xs">
                   선택하지 않으면 전체 연도에서 출제됩니다.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2 px-6 py-4">
+              <div className="flex flex-wrap gap-2 px-5 py-4">
                 {years.map((y) => (
                   <label key={y.year} className="cursor-pointer">
                     <input
@@ -268,10 +268,10 @@ export default function ScienceQuizSetup({
 
           {/* Count card */}
           <div className="rounded-xl border bg-card shadow-sm">
-            <div className="border-b px-6 py-4">
-              <h2 className="text-sm font-bold">문항 수</h2>
+            <div className="border-b px-5 py-3.5">
+              <h2 className="text-sm font-bold tracking-tight">문항 수</h2>
             </div>
-            <div className="flex flex-wrap gap-2 px-6 py-4">
+            <div className="flex flex-wrap gap-2 px-5 py-4">
               {COUNT_OPTS.map((n) => (
                 <label key={n} className="cursor-pointer">
                   <input
@@ -297,10 +297,10 @@ export default function ScienceQuizSetup({
 
           {/* Mode card */}
           <div className="rounded-xl border bg-card shadow-sm">
-            <div className="border-b px-6 py-4">
-              <h2 className="text-sm font-bold">모드</h2>
+            <div className="border-b px-5 py-3.5">
+              <h2 className="text-sm font-bold tracking-tight">모드</h2>
             </div>
-            <div className="flex flex-wrap gap-2 px-6 py-4">
+            <div className="flex flex-wrap gap-2 px-5 py-4">
               {(
                 [
                   { value: "study", label: "학습 모드 (즉시 해설)", defaultChecked: true },

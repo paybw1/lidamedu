@@ -8,11 +8,11 @@ import {
   ChevronRightIcon,
   CircleCheckIcon,
   CircleXIcon,
+  FlagIcon,
   HeartIcon,
   LightbulbIcon,
   MessageCircleQuestionIcon,
   PencilIcon,
-  PlayIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, data, useFetcher } from "react-router";
@@ -204,6 +204,22 @@ export default function ScienceProblemViewer({
     attemptFetcher.submit(fd, { method: "post" });
   };
 
+  // 세션 끝내기 — 공용 session-complete API 로 completed_at 확정 후 결과 화면으로.
+  const completeFetcher = useFetcher();
+  const completeSession = () => {
+    if (!sessionId) return;
+    const fd = new FormData();
+    fd.set("sessionId", sessionId);
+    fd.set(
+      "redirectTo",
+      `/subjects/science/${sciencePath}/quiz/result/${sessionId}`,
+    );
+    completeFetcher.submit(fd, {
+      method: "post",
+      action: "/api/study/session-complete",
+    });
+  };
+
   return (
     <div className="min-h-[calc(100vh-56px)] bg-background">
       {/* 과목 토글 고정 바 — 풀이 중에도 언제든 과목 전환(→ 그 과목 허브) */}
@@ -236,6 +252,17 @@ export default function ScienceProblemViewer({
               >
                 <PencilIcon className="size-3.5" /> 수정
               </Link>
+            ) : null}
+            {sessionId ? (
+              <button
+                type="button"
+                onClick={completeSession}
+                disabled={completeFetcher.state !== "idle"}
+                data-testid="science-finish-session"
+                className="text-muted-foreground hover:text-link inline-flex items-center gap-1 text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                <FlagIcon className="size-3.5" /> 끝내기
+              </button>
             ) : null}
             <span
               className={cn(
@@ -427,11 +454,16 @@ export default function ScienceProblemViewer({
                 다음 <ChevronRightIcon className="size-4" />
               </Link>
             </Button>
-          ) : position && !position.nextId ? (
-            <Button asChild size="sm" className="rounded-full">
-              <Link to={`/subjects/science/${sciencePath}`}>
-                <PlayIcon className="size-4" /> 완료
-              </Link>
+          ) : position && !position.nextId && sessionId ? (
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-full"
+              onClick={completeSession}
+              disabled={completeFetcher.state !== "idle"}
+              data-testid="science-see-result"
+            >
+              <FlagIcon className="size-4" /> 결과 보기
             </Button>
           ) : null}
         </div>

@@ -432,6 +432,10 @@ export default [
               "/:scienceSubject/problems/:problemId",
               "features/subjects/screens/science/problem-viewer.tsx",
             ),
+            route(
+              "/:scienceSubject/quiz/result/:sessionId",
+              "features/subjects/screens/science/quiz-result.tsx",
+            ),
           ]),
         ]),
       ]),

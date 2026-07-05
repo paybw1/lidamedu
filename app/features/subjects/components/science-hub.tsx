@@ -61,7 +61,7 @@ function ScienceBookmarkSearch({
       )
     : items;
   return (
-    <div className="bg-card rounded-xl border shadow-sm">
+    <div className="bg-card shrink-0 rounded-xl border shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
         <h2 className="text-sm font-bold tracking-tight">
           내 즐겨찾기{" "}
@@ -77,7 +77,7 @@ function ScienceBookmarkSearch({
           className="border-border focus:border-primary h-8 w-32 rounded-md border bg-transparent px-2 text-xs outline-none"
         />
       </div>
-      <div className="divide-y">
+      <div className="max-h-72 divide-y overflow-y-auto">
         {filtered.length === 0 ? (
           <p className="text-muted-foreground px-5 py-5 text-center text-xs">
             {query ? "검색 결과가 없습니다." : "즐겨찾기한 문제가 없습니다."}
@@ -239,8 +239,10 @@ export default function ScienceHub({
           </div>
         ) : null}
 
-        {/* 본문 2열 — 좌: 단원별 훈련 / 우: 연도별 기출·즐겨찾기 */}
-        <div className="grid items-start gap-6 lg:grid-cols-3">
+        {/* 본문 2열 — 좌: 단원별 훈련 / 우: 연도별 기출·즐겨찾기.
+            우측 컬럼은 lg 에서 h-0+min-h-full 로 좌측 카드 높이에 정확히 맞추고
+            (행 높이 산정에 기여하지 않음), 연도 목록은 카드 안에서 스크롤. */}
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* 단원별 훈련 */}
           <div className="bg-card rounded-xl border shadow-sm lg:col-span-2">
             <div className="border-b px-5 py-3.5">
@@ -390,10 +392,10 @@ export default function ScienceHub({
           </div>
 
           {/* 우측 — 연도별 기출 + 즐겨찾기 */}
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6 lg:h-0 lg:min-h-full">
             {years.length > 0 ? (
-              <div className="bg-card rounded-xl border shadow-sm">
-                <div className="border-b px-5 py-3.5">
+              <div className="bg-card flex flex-col rounded-xl border shadow-sm lg:min-h-0 lg:flex-1">
+                <div className="shrink-0 border-b px-5 py-3.5">
                   <h2 className="text-sm font-bold tracking-tight">
                     연도별 기출{" "}
                     <span className="text-muted-foreground font-normal">
@@ -404,7 +406,7 @@ export default function ScienceHub({
                     연도를 누르면 번호 순서대로 바로 풉니다.
                   </p>
                 </div>
-                <div className="divide-y">
+                <div className="divide-y lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                   {years.map((y) => (
                     <Form key={y.year} method="post" action={setupAction}>
                       <input type="hidden" name="years" value={y.year} />
