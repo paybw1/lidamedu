@@ -21,7 +21,9 @@ import { FlowSection } from "~/features/home/components/flow-section";
 import { Hero } from "~/features/home/components/hero";
 import { IntegratedFlowSection } from "~/features/home/components/integrated-flow-section";
 import { LatestSection } from "~/features/home/components/latest-section";
-import { PasserStatsSection } from "~/features/home/components/passer-stats-section";
+// 합격자 데이터 기반 컨설팅 섹션 — 올해는 데이터 축적 단계라 숨김(사용자 결정 2026-07-05).
+//   첫 합격자 데이터가 쌓이는 내년에 아래 render 주석과 함께 복원.
+// import { PasserStatsSection } from "~/features/home/components/passer-stats-section";
 import { PreviewSection } from "~/features/home/components/preview-section";
 import { PricingTeaserSection } from "~/features/home/components/pricing-teaser-section";
 import { SubjectsSection } from "~/features/home/components/subjects-section";
@@ -33,18 +35,18 @@ export const meta: Route.MetaFunction = ({ data }) => [
   {
     title:
       data?.title ??
-      "리담변리사학원 — 변리사 시험, 이 곳에서 합격까지 함께 해요",
+      "리담변리사학원 — 변리사 시험, 이곳에서 합격까지 함께해요",
   },
   {
     name: "description",
     content:
       data?.subtitle ??
-      "조문·판례·문제·논문이 끊김 없이 이어지는 변리사 학습 플랫폼. 합격자 데이터 기반 컨설팅으로 본인의 학습이 합격자 평균에 얼마나 가까운지 한눈에.",
+      "조문·판례·문제·논문이 끊김 없이 이어지는 변리사 학습 플랫폼. 정오문제 약점 진단과 복습 설계로 부족한 단원을 한눈에 잡아 줍니다.",
   },
   { property: "og:title", content: "리담변리사학원 — 변리사 학습 플랫폼" },
   {
     property: "og:description",
-    content: "합격자 데이터 기반 컨설팅 + 조문·판례·문제 통합 흐름",
+    content: "약점 진단·복습 설계 + 조문·판례·문제 통합 흐름",
   },
   { property: "og:type", content: "website" },
 ];
@@ -150,7 +152,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       <Band tone="shelf">
         <SubjectsSection />
       </Band>
-      <PasserStatsSection />
+      {/* <PasserStatsSection /> — 내년 합격자 데이터 확보 후 재노출 (위 import 주석과 함께 복원) */}
       <Band tone="shelf">
         <LatestSection items={loaderData.latestFeed} />
       </Band>
