@@ -484,10 +484,30 @@ function ArticleMatchCell({
   };
 
   if (decidedNoArticle) {
+    // 확정 후에도 수동 재연결 경로는 남긴다 — "나중에 수동으로 고침" 운영 흐름.
     return (
-      <span className="text-muted-foreground text-[11px]">
-        조문 없음 확정 (판례·이론)
-      </span>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-muted-foreground text-[11px]">
+          조문 없음 확정 (판례·이론)
+        </span>
+        <div className="flex items-center gap-1">
+          <input
+            value={manual}
+            onChange={(e) => setManual(e.target.value)}
+            placeholder="조 번호"
+            aria-label="조문 번호 직접 입력"
+            className="border-border bg-background h-6 w-16 rounded border px-1.5 text-[11px]"
+          />
+          <button
+            type="button"
+            disabled={isSubmitting || !/^\d+(의\d+)?$/.test(manual.trim())}
+            onClick={() => connect(manual.trim(), "rejected")}
+            className="border-border text-muted-foreground hover:bg-muted h-6 rounded border px-2 text-[11px] font-semibold transition-colors disabled:opacity-40"
+          >
+            연결
+          </button>
+        </div>
+      </div>
     );
   }
 
