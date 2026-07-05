@@ -36,7 +36,7 @@ export function TrialCalloutSection() {
               marginBottom: 12,
             }}
           >
-            <GiftIcon size={14} strokeWidth={2} /> 무료 체험
+            <GiftIcon size={14} strokeWidth={2} /> 무료 체험 이벤트
           </div>
           <h2
             style={{
@@ -46,7 +46,7 @@ export function TrialCalloutSection() {
               margin: "0 0 10px",
             }}
           >
-            가입하면 15일간 특허법을 무료로
+            가입하고 특허법 학습을 무료로 체험해 보세요
           </h2>
           <p
             style={{
