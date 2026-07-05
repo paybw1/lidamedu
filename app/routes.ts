@@ -120,6 +120,8 @@ export default [
     ),
     // 화면 안 "?" 도움 버튼 — ?key=<screenKey> 발행 가이드 조회.
     route("/guide-help", "features/guide/api/help.tsx"),
+    // "?" 버튼 노출 판정 — staff 상시 / 학생은 구독 시작 3개월까지.
+    route("/guide-help-visibility", "features/guide/api/help-visibility.tsx"),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
