@@ -102,7 +102,13 @@ export function PopupNoticeModal({
         <div className="max-h-[70vh] space-y-3 overflow-y-auto px-5 py-4">
           {current.imageUrl ? (
             current.linkUrl ? (
-              <a href={current.linkUrl} aria-label={current.linkLabel || "자세히 보기"}>
+              // ★링크 클릭 시 닫힘 기억을 먼저 기록 — 전체 페이지 이동 후 도착 화면에서
+              //   같은 팝업이 즉시 재등장해 "이동이 안 된 것처럼" 보이는 문제 방지.
+              <a
+                href={current.linkUrl}
+                aria-label={current.linkLabel || "자세히 보기"}
+                onClick={() => closeCurrent(false)}
+              >
                 <img
                   src={current.imageUrl}
                   alt={current.title}
@@ -144,7 +150,9 @@ export function PopupNoticeModal({
             {/* 이미지 팝업은 이미지 안 CTA + 이미지 클릭이 링크 역할 — 푸터 버튼 중복 제거. */}
             {current.linkUrl && !current.imageUrl ? (
               <Button asChild size="sm">
-                <a href={current.linkUrl}>{current.linkLabel || "자세히 보기"}</a>
+                <a href={current.linkUrl} onClick={() => closeCurrent(false)}>
+                  {current.linkLabel || "자세히 보기"}
+                </a>
               </Button>
             ) : null}
             <Button size="sm" variant="outline" onClick={() => closeCurrent(false)}>
