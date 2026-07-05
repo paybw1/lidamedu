@@ -33,8 +33,6 @@ import {
 import {
   FIRST_EXAM_LAW_SLUGS,
   LAW_SUBJECTS,
-  LAW_SUBJECT_SLUGS,
-  SECOND_EXAM_LAW_SLUGS,
   type LawSubjectSlug,
 } from "~/features/subjects/lib/subjects";
 
@@ -79,7 +77,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const url = new URL(request.url);
   const subjectParam = url.searchParams.get("subject") ?? "patent";
-  const subject: LawSubjectSlug = LAW_SUBJECT_SLUGS.includes(
+  // 정오문제(OX)는 1차 객관식 파생 콘텐츠 — 1차 과목만 허용(그 외는 기본값 폴백).
+  const subject: LawSubjectSlug = FIRST_EXAM_LAW_SLUGS.includes(
     subjectParam as never,
   )
     ? (subjectParam as LawSubjectSlug)
@@ -160,16 +159,10 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
         <div className="flex flex-wrap items-center gap-3">
           <Form method="get" className="flex flex-wrap items-center gap-3">
             <FilterGroup label="과목">
+              {/* 정오문제(OX)는 1차 객관식에서만 파생 — 2차 과목은 대상 아님 */}
               <AdminSelect name="subject" defaultValue={subject}>
-                <optgroup label="1차 · 객관식">
+                <optgroup label="1차 과목">
                   {FIRST_EXAM_LAW_SLUGS.map((s) => (
-                    <option key={s} value={s}>
-                      {LAW_SUBJECTS[s].name}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="2차 · 주관식">
-                  {SECOND_EXAM_LAW_SLUGS.map((s) => (
                     <option key={s} value={s}>
                       {LAW_SUBJECTS[s].name}
                     </option>
