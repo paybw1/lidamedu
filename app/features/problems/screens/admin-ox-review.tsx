@@ -161,13 +161,11 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
             <FilterGroup label="과목">
               {/* 정오문제(OX)는 1차 객관식에서만 파생 — 2차 과목은 대상 아님 */}
               <AdminSelect name="subject" defaultValue={subject}>
-                <optgroup label="1차 과목">
-                  {FIRST_EXAM_LAW_SLUGS.map((s) => (
-                    <option key={s} value={s}>
-                      {LAW_SUBJECTS[s].name}
-                    </option>
-                  ))}
-                </optgroup>
+                {FIRST_EXAM_LAW_SLUGS.map((s) => (
+                  <option key={s} value={s}>
+                    {LAW_SUBJECTS[s].name}
+                  </option>
+                ))}
               </AdminSelect>
             </FilterGroup>
             <FilterGroup label="연도">
