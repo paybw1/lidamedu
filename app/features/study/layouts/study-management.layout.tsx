@@ -19,16 +19,29 @@ export async function loader({ request }: Route.LoaderArgs) {
   const {
     data: { user },
   } = await client.auth.getUser();
-  if (user) {
-    await requireFeature(client, user.id, "area_study_mgmt");
+  if (!user) {
+    return data(
+      { gradeStaff: false, features: [] as string[] },
+      { headers },
+    );
   }
-  return data(null, { headers });
+  const access = await requireFeature(client, user.id, "area_study_mgmt");
+  // 탭 노출 판정(종합반 전용 과제·상담) — 게이트에서 얻은 access 재사용.
+  return data(
+    { gradeStaff: access.grade === "staff", features: access.features },
+    { headers },
+  );
 }
 
-export default function StudyManagementLayout() {
+export default function StudyManagementLayout({
+  loaderData,
+}: Route.ComponentProps) {
   return (
     <>
-      <StudyMgmtTabs />
+      <StudyMgmtTabs
+        isStaff={loaderData.gradeStaff}
+        features={loaderData.features}
+      />
       <Outlet />
     </>
   );

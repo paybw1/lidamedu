@@ -19,11 +19,14 @@ import {
 import { useMemo } from "react";
 
 // staffOnly: 학생에게 숨기고 staff(강사·관리자·원장)에게만 노출. 오픈 준비 중 기능 임시 숨김용.
+// feature: 이 기능 플래그(getMembershipAccess features)가 있는 학생에게만 노출(staff 면제).
+//   종합반 전용 항목(상담·과제·반별 게시판) 숨김용 — 서버/RLS 가 권위, nav 는 노출 제어.
 export type NavLink = {
   label: string;
   to: string;
   meta?: string;
   staffOnly?: boolean;
+  feature?: string;
 };
 export type NavGroup = {
   // id 는 풀의 키 — 호출처에서 keyof typeof NAV_GROUP_POOL 로 narrow.
@@ -83,8 +86,9 @@ export const NAV_GROUP_POOL = {
       // feat — 학습 목표·진도 + 통계를 한 화면으로 통합(통폐합 3b). /goals 는 redirect.
       // OX 약점 진단도 "학습현황 > 정오문제 약점" 탭으로 흡수. 진입점 일원화.
       { label: "학습현황", to: "/study/stats" },
-      { label: "과제", to: "/assignments" },
-      { label: "상담", to: "/me/consult" },
+      // 과제·상담 = 종합반 전용 — 일반 수험생에게 숨김(cohort 플랜 기능 플래그).
+      { label: "과제", to: "/assignments", feature: "cohort_curriculum" },
+      { label: "상담", to: "/me/consult", feature: "one_on_one_consult" },
     ],
     area: "area_study_mgmt",
   },
@@ -130,7 +134,8 @@ export const NAV_GROUP_POOL = {
       { label: "공지사항", to: "/announcements" },
       { label: "자유게시판", to: "/community/free" },
       { label: "스터디 모집", to: "/community/study" },
-      { label: "반별 게시판", to: "/cohort-boards" },
+      // 종합반 전용 — 일반 수험생에게 숨김(콘텐츠 접근은 RLS 가 권위).
+      { label: "반별 게시판", to: "/cohort-boards", feature: "cohort_curriculum" },
       { label: "Q&A", to: "/qna" },
       { label: "합격 수기", to: "/community/review" },
     ],
@@ -235,8 +240,18 @@ export const TOPBAR_DROPDOWNS: ReadonlyArray<{
 ];
 
 // staffOnly 항목은 학생에게 숨김(staff 는 전부). isStaff 미지정 시 전부 노출(안전 기본).
-export function visibleItems(items: NavLink[], isStaff: boolean): NavLink[] {
-  return items.filter((i) => isStaff || !i.staffOnly);
+// feature 항목은 해당 기능 플래그 보유 학생에게만(staff 면제) — features 미전달(미산정 포함) 시 숨김.
+export function visibleItems(
+  items: NavLink[],
+  isStaff: boolean,
+  features?: string[],
+): NavLink[] {
+  return items.filter((i) => {
+    if (isStaff) return true;
+    if (i.staffOnly) return false;
+    if (i.feature) return (features ?? []).includes(i.feature);
+    return true;
+  });
 }
 
 // 상단바 드롭다운 항목 = 구성 그룹들의 items 평탄화(단일 소스 파생).
@@ -244,9 +259,10 @@ export function visibleItems(items: NavLink[], isStaff: boolean): NavLink[] {
 export function topbarDropdownItems(
   groupIds: ReadonlyArray<NavGroupId>,
   isStaff: boolean = true,
+  features?: string[],
 ): NavLink[] {
   return groupIds.flatMap((id) =>
-    visibleItems([...NAV_GROUP_POOL[id].items], isStaff),
+    visibleItems([...NAV_GROUP_POOL[id].items], isStaff, features),
   );
 }
 
@@ -290,24 +306,30 @@ export function getCoreTabIds(): ReadonlyArray<NavGroupId> {
  * useMemo 로 stable reference — 호출처 useEffect/useMemo 의 deps 무한루프 방지.
  * getCoreTabIds() 가 user preference 로 교체될 때는 그 deps 도 추가 필요.
  */
-export function useNavLayout(isStaff: boolean = true): {
+export function useNavLayout(
+  isStaff: boolean = true,
+  features?: string[],
+): {
   core: NavGroup[];
   secondary: NavGroup[];
 } {
+  // features 배열 identity 가 렌더마다 바뀌어도 내용이 같으면 재계산하지 않도록 키로 직렬화.
+  const featureKey = features ? features.join("|") : null;
   return useMemo(() => {
     const coreIds = getCoreTabIds();
     const coreSet = new Set<NavGroupId>(coreIds);
-    // staffOnly 항목을 학생에게서 필터(오픈 준비 중 기능 숨김). staff 는 전부.
+    // staffOnly·feature 항목을 학생에게서 필터(오픈 준비 중·종합반 전용 숨김). staff 는 전부.
     const withVisible = (id: NavGroupId): NavGroup => {
       const g = NAV_GROUP_POOL[id];
-      return { ...g, items: visibleItems([...g.items], isStaff) };
+      return { ...g, items: visibleItems([...g.items], isStaff, features) };
     };
     const core = coreIds.map(withVisible);
     const secondary = (Object.keys(NAV_GROUP_POOL) as NavGroupId[])
       .filter((id) => !coreSet.has(id))
       .map(withVisible);
     return { core, secondary };
-  }, [isStaff]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStaff, featureKey]);
 }
 
 // Flat — 그룹이 아니라 단일 link.

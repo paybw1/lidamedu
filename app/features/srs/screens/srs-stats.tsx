@@ -18,6 +18,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
 import { getStats } from "~/features/srs/srs.server";
 import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "암기 카드 통계 | 리담" },
@@ -29,8 +30,18 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/srs/stats");
-  const stats = await getStats(client, user.id);
-  return stats;
+  // 학습관리 탭 노출 판정(종합반 전용 과제·상담) — StudyMgmtTabs 배선용.
+  const [stats, access] = await Promise.all([
+    getStats(client, user.id),
+    getMembershipAccess(client, user.id),
+  ]);
+  return {
+    ...stats,
+    mgmtNav: {
+      gradeStaff: access.grade === "staff",
+      features: access.features,
+    },
+  };
 }
 
 export default function SrsStats({ loaderData }: Route.ComponentProps) {
@@ -41,12 +52,13 @@ export default function SrsStats({ loaderData }: Route.ComponentProps) {
     retentionPct,
     byDay,
     forecast7d,
+    mgmtNav,
   } = loaderData;
   const recent7Reviewed = byDay.slice(-7).reduce((s, d) => s + d.reviewed, 0);
 
   return (
     <>
-      <StudyMgmtTabs />
+      <StudyMgmtTabs isStaff={mgmtNav.gradeStaff} features={mgmtNav.features} />
       <StudentShell>
         <PageHeader
           area="manage"

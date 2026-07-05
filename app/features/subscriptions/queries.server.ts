@@ -260,12 +260,13 @@ export async function requireFeature(
   client: SupabaseClient<Database>,
   userId: string,
   feature: string,
-): Promise<void> {
+) {
   const access = await getMembershipAccess(client, userId);
-  if (access.grade === "staff") return;
+  if (access.grade === "staff") return access;
   if (!access.features.includes(feature)) {
     throw redirect(`/pricing?locked=${encodeURIComponent(feature)}`);
   }
+  return access;
 }
 
 // ─── 결제 ───

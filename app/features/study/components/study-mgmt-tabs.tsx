@@ -29,9 +29,18 @@ const MATCH_BY_TO: Record<string, string[]> = {
   "/srs": ["/srs", "/srs/stats"],
 };
 
-export function StudyMgmtTabs() {
+// isStaff/features — 종합반 전용 항목(과제·상담) 노출 판정. 미전달 시 학생에겐 숨김(안전 기본).
+export function StudyMgmtTabs({
+  isStaff = false,
+  features,
+}: {
+  isStaff?: boolean;
+  features?: string[];
+}) {
   const items: SectionTabItem[] = topbarDropdownItems(
     AREA_GROUP_IDS.manage,
+    isStaff,
+    features,
   ).map((link) => {
     const path = link.to.split("?")[0];
     return {

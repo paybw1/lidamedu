@@ -26,6 +26,7 @@ import {
 } from "~/features/srs/srs.server";
 import { MyAnalysisOffNotice } from "~/features/study/components/my-analysis-off-notice";
 import { StudyMgmtTabs } from "~/features/study/components/study-mgmt-tabs";
+import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
   LAW_SUBJECTS,
   LAW_SUBJECT_SLUGS,
@@ -44,9 +45,15 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw redirect("/login?next=/srs");
+  // 학습관리 탭 노출 판정(종합반 전용 과제·상담) — StudyMgmtTabs 배선용.
+  const access = await getMembershipAccess(client, user.id);
+  const mgmtNav = {
+    gradeStaff: access.grade === "staff",
+    features: access.features,
+  };
   // feat-8-026b A 게이트 — 미동의/철회 시 암기 미표시(데이터는 보존, 재동의 시 복구).
   if (!(await hasMyAnalysisConsent(client, user.id))) {
-    return { myAnalysisOff: true as const };
+    return { myAnalysisOff: true as const, mgmtNav };
   }
   // feat-2-024 — 종류(조문/판례)·과목 필터 + 종류별 밀림 배지.
   const url = new URL(request.url);
@@ -65,6 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
   return {
     myAnalysisOff: false as const,
+    mgmtNav,
     ...queue,
     filter: { sourceType, subject },
     cardDue: {
@@ -196,7 +204,10 @@ function SrsReviewInner({
 
   return (
     <>
-      <StudyMgmtTabs />
+      <StudyMgmtTabs
+        isStaff={data.mgmtNav.gradeStaff}
+        features={data.mgmtNav.features}
+      />
       <StudentShell width="narrow">
         <PageHeader
           area="manage"

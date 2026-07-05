@@ -496,7 +496,11 @@ export function NavigationBar({
                   <SimpleDropdown
                     key={d.label}
                     label={d.label}
-                    items={topbarDropdownItems(d.groupIds ?? [], lockStaff)}
+                    items={topbarDropdownItems(
+                      d.groupIds ?? [],
+                      lockStaff,
+                      features,
+                    )}
                     locked={isAreaLocked(d.area, lockStaff, features)}
                   />
                 ),
