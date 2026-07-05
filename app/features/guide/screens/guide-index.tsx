@@ -21,13 +21,32 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { guides };
 }
 
+// 카테고리 표시 순서 — 학습 흐름 순. 목록에 없는 새 카테고리는 뒤에 등장 순서대로.
+const CATEGORY_ORDER = [
+  "시작하기",
+  "학습과목",
+  "문제 풀이",
+  "학습노트",
+  "학습관리",
+  "모의고사",
+  "질문하기",
+  "수강권·결제",
+];
+
 export default function GuideIndex({ loaderData }: Route.ComponentProps) {
   const { guides } = loaderData;
-  // 카테고리 순서는 저장 순서(정렬된 목록의 등장 순서) 유지.
   const categories: string[] = [];
   for (const g of guides) {
     if (!categories.includes(g.category)) categories.push(g.category);
   }
+  categories.sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a);
+    const bi = CATEGORY_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
