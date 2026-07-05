@@ -838,6 +838,8 @@ export default [
         "/admin/qna/answerers",
         "features/qna/screens/admin-qna-answerers.tsx",
       ),
+      // Q&A 답변 현황(SLA) — 대기 큐 + 응답 시간 지표. manager+.
+      route("/admin/qna/sla", "features/qna/screens/admin-qna-sla.tsx"),
       route("/onboarding/welcome", "features/onboarding/screens/welcome.tsx"),
       route("/pricing", "features/subscriptions/screens/pricing.tsx"),
       route(

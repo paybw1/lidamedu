@@ -132,6 +132,62 @@ export interface QnaCitation {
   headingPath: string;
 }
 
+// ── 응답 SLA(운영 대시보드) ─────────────────────────────────────────────
+// "강사 응답" = 정식 답변(answered_at) · AI 답변 '정확' 확인 · 강사 메시지 중
+// 가장 빠른 것. AI 즉답만으로는 SLA 미충족(강사 확인이 목표).
+/** 목표 응답 시간(시간). 이내 응답 = SLA 준수. */
+export const QNA_SLA_TARGET_HOURS = 24;
+/** 위반 경보 기준(시간). 초과 대기 = 즉시 조치 대상. */
+export const QNA_SLA_BREACH_HOURS = 48;
+
+export interface QnaSlaPendingItem {
+  threadId: string;
+  title: string;
+  subject: string | null;
+  targetType: QnaTargetType;
+  status: QnaStatus;
+  askerName: string | null;
+  createdAt: string;
+  /** 질문 등록 후 경과 시간. */
+  ageHours: number;
+}
+
+export interface QnaSlaWeekStat {
+  /** 주 시작일(월요일, KST, YYYY-MM-DD). */
+  weekStart: string;
+  asked: number;
+  responded: number;
+  medianHours: number | null;
+  /** 목표 시간 내 응답 건수. */
+  withinTarget: number;
+}
+
+export interface QnaSlaAnswererStat {
+  profileId: string;
+  name: string | null;
+  responded: number;
+  medianHours: number | null;
+}
+
+export interface QnaSlaDashboard {
+  pending: QnaSlaPendingItem[];
+  pendingCounts: { total: number; overTarget: number; overBreach: number };
+  /** 최근 30일(질문 등록 기준) 지표. */
+  window30: {
+    asked: number;
+    responded: number;
+    responseRatePct: number | null;
+    medianHours: number | null;
+    avgHours: number | null;
+    /** 목표 시간 내 응답 비율 — 분모는 응답됐거나 목표 시간을 넘긴 질문. */
+    withinTargetPct: number | null;
+  };
+  /** 최근 8주(오래된 주부터). */
+  weekly: QnaSlaWeekStat[];
+  /** 최근 30일 응답자별 현황(응답 수 내림차순). */
+  answerers: QnaSlaAnswererStat[];
+}
+
 /** 스레드 타임라인 메시지(질문 후속 / AI 즉답 / 강사). */
 export interface QnaMessage {
   messageId: string;

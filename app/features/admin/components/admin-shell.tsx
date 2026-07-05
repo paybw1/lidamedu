@@ -247,6 +247,7 @@ export const ADMIN_NAV: NavCluster[] = [
       { label: "팝업 공지", to: "/admin/popup-notices" },
       { label: "이용 가이드 관리", to: "/admin/guides" },
       { label: "받은 알림함", to: "/admin/inbox" },
+      { label: "Q&A 답변 현황", to: "/admin/qna/sla" },
       { label: "Q&A 답변자 지정", to: "/admin/qna/answerers" },
       { label: "감사 기록", to: "/admin/audit-logs" },
       { label: "커뮤니티 신고", to: "/admin/community/reports" },
