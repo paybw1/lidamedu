@@ -15,6 +15,7 @@ import type {
   ProblemScope,
 } from "./labels";
 
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
 import { getBookmarksByTargets } from "~/features/annotations/queries.server";
 import { listCommentsBulk } from "~/features/comments/queries.server";
@@ -608,6 +609,7 @@ export type OxReviewStatus =
   | "active"
   | "ineligible"
   | "untruthed"
+  | "unmapped"
   | "hidden";
 export interface OxReviewItem {
   refType: "choice" | "box";
@@ -739,6 +741,12 @@ export async function listOxItemsForReview(
         !it.oxIneligible && (it.oxTruth == null || it.relatedArticleId == null)
       );
     }
+    // 조문 미매칭 — 정오 가능 + 정답 설정됐는데 조문만 없는 것 (매칭 큐 대상).
+    if (status === "unmapped") {
+      return (
+        !it.oxIneligible && it.oxTruth != null && it.relatedArticleId == null
+      );
+    }
     if (status === "hidden") {
       return it.oxHidden === true;
     }
@@ -841,6 +849,109 @@ export async function updateOxReviewItem(
       .eq("box_item_id", refId);
     if (error) throw error;
   }
+}
+
+// 운영자가 review 화면에서 지문의 관련 조문을 연결/해제할 때 사용.
+// articleNumber 는 "126"·"826의2" 형식 — 해당 과목 조문(level=article)에 실재해야 연결.
+export async function setOxItemArticle(
+  client: SupabaseClient<Database>,
+  lawCode: LawSubjectSlug,
+  refType: "choice" | "box",
+  refId: string,
+  articleNumber: string | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  let articleId: string | null = null;
+  if (articleNumber) {
+    const { data: law } = await client
+      .from("laws")
+      .select("law_id")
+      .eq("law_code", lawCode)
+      .single();
+    if (!law) return { ok: false, error: "과목을 찾을 수 없습니다" };
+    const { data: art } = await client
+      .from("articles")
+      .select("article_id")
+      .eq("law_id", law.law_id)
+      .eq("level", "article")
+      .eq("article_number", articleNumber)
+      .maybeSingle();
+    if (!art)
+      return { ok: false, error: `제${articleNumber}조를 찾을 수 없습니다` };
+    articleId = art.article_id;
+  }
+  const patch = {
+    related_article_id: articleId,
+    related_article_number: articleNumber,
+  };
+  const table = refType === "choice" ? "problem_choices" : "problem_box_items";
+  const idCol = refType === "choice" ? "choice_id" : "box_item_id";
+  const { error } = await client.from(table).update(patch).eq(idCol, refId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// ── 조문 매칭 AI 제안 (ox_article_suggestions) ─────────────────────────────
+// 테이블은 RLS 정책 없음(service_role 전용) — 운영자 화면 전용 데이터라 adminClient 로만
+// 접근한다. 호출부(loader/action)는 staff 게이트 통과가 전제.
+export interface OxArticleSuggestion {
+  refType: "choice" | "box";
+  refId: string;
+  suggestedArticleNumber: string | null;
+  rationale: string | null;
+  verified: boolean;
+  status: "pending" | "approved" | "rejected" | "no_article";
+}
+
+export async function getOxArticleSuggestions(
+  refIds: string[],
+): Promise<Map<string, OxArticleSuggestion>> {
+  const map = new Map<string, OxArticleSuggestion>();
+  if (refIds.length === 0) return map;
+  const rows = await fetchAllIn(refIds, (ids) =>
+    adminClient
+      .from("ox_article_suggestions")
+      .select(
+        "ref_type, ref_id, suggested_article_number, rationale, verified, status",
+      )
+      .in("ref_id", ids)
+      .order("suggestion_id"),
+  );
+  for (const r of rows) {
+    map.set(`${r.ref_type}:${r.ref_id}`, {
+      refType: r.ref_type as "choice" | "box",
+      refId: r.ref_id,
+      suggestedArticleNumber: r.suggested_article_number,
+      rationale: r.rationale,
+      verified: r.verified,
+      status: r.status as OxArticleSuggestion["status"],
+    });
+  }
+  return map;
+}
+
+// 운영자 결정 기록 — approved(제안 승인)/rejected(다른 조문 수동 연결)/no_article(조문 없음 확정).
+// 제안 행이 없는 지문(수동 연결 등)의 결정도 기록해야 큐에서 빠진다 → upsert.
+export async function decideOxArticleSuggestion(
+  refType: "choice" | "box",
+  refId: string,
+  problemId: string,
+  lawCode: string,
+  status: "approved" | "rejected" | "no_article",
+  decidedBy: string,
+): Promise<void> {
+  const { error } = await adminClient.from("ox_article_suggestions").upsert(
+    {
+      ref_type: refType,
+      ref_id: refId,
+      problem_id: problemId,
+      law_code: lawCode,
+      status,
+      decided_by: decidedBy,
+      decided_at: new Date().toISOString(),
+    },
+    { onConflict: "ref_type,ref_id" },
+  );
+  if (error) throw error;
 }
 
 // 본인의 OX 오답 노트 — user_problem_attempts.ox_answer IS NOT NULL 의 최근 응시가

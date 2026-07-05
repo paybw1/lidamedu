@@ -4666,6 +4666,73 @@ export type Database = {
           },
         ]
       }
+      ox_article_suggestions: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          law_code: string
+          problem_id: string
+          rationale: string | null
+          ref_id: string
+          ref_type: string
+          status: string
+          suggested_article_number: string | null
+          suggestion_id: string
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          law_code: string
+          problem_id: string
+          rationale?: string | null
+          ref_id: string
+          ref_type: string
+          status?: string
+          suggested_article_number?: string | null
+          suggestion_id?: string
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          law_code?: string
+          problem_id?: string
+          rationale?: string | null
+          ref_id?: string
+          ref_type?: string
+          status?: string
+          suggested_article_number?: string | null
+          suggestion_id?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ox_article_suggestions_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ox_article_suggestions_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ox_article_suggestions_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
+          },
+        ]
+      }
       paper_article_links: {
         Row: {
           article_id: string

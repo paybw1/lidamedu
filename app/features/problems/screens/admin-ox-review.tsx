@@ -2,7 +2,8 @@
 // 학생 노출 조건(active) 외에도 `ineligible`, `untruthed` 항목을 함께 보고 토글 가능.
 // P6 REVIEW QUEUE 패턴 — AdminShell + IndexTable + 인라인 필터 + Chip.
 
-import { CheckCircle2Icon, EditIcon } from "lucide-react";
+import { CheckCircle2Icon, EditIcon, SparklesIcon } from "lucide-react";
+import { useState } from "react";
 import {
   Form,
   Link,
@@ -25,8 +26,10 @@ import {
 } from "~/features/admin/components/admin-ui";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
+  getOxArticleSuggestions,
   listOxItemsForReview,
   listProblemYears,
+  type OxArticleSuggestion,
   type OxReviewItem,
   type OxReviewStatus,
 } from "~/features/problems/queries.server";
@@ -60,6 +63,11 @@ const STATUS_OPTIONS: { value: OxReviewStatus; label: string; hint: string }[] =
     hint: "ox_truth NULL 또는 조문 미매핑",
   },
   {
+    value: "unmapped",
+    label: "조문 미매칭",
+    hint: "정답 설정 완료 + 조문만 미연결 — AI 제안 검토·승인 큐",
+  },
+  {
     value: "hidden",
     label: "숨김처리됨",
     hint: "스태프가 OX 패널에서 수동 숨김 (학생 비노출)",
@@ -89,6 +97,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     statusParam === "active" ||
     statusParam === "ineligible" ||
     statusParam === "untruthed" ||
+    statusParam === "unmapped" ||
     statusParam === "hidden"
       ? statusParam
       : "all";
@@ -96,7 +105,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const yearParam = url.searchParams.get("year");
   const year = yearParam ? Number(yearParam) : null;
 
-  const [items, years] = await Promise.all([
+  let [items, years] = await Promise.all([
     listOxItemsForReview(client, subject, {
       status,
       year: Number.isFinite(year) ? year : null,
@@ -106,11 +115,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
 
   // 카운트 — 상태별 (현재 subject + 연도 필터 기준).
-  const counts = await listOxItemsForReview(client, subject, {
+  const all = await listOxItemsForReview(client, subject, {
     status: "all",
     year: Number.isFinite(year) ? year : null,
     limit: 5000,
-  }).then((all) => ({
+  });
+
+  // 조문 미매칭 항목의 AI 제안 + 운영자 결정 상태 (adminClient — staff 게이트 통과 후).
+  const unmappedAll = all.filter(
+    (it) => !it.oxIneligible && it.oxTruth != null && it.relatedArticleId == null,
+  );
+  const suggestionMap = await getOxArticleSuggestions(
+    unmappedAll.map((it) => it.refId),
+  );
+  const suggestions: Record<string, OxArticleSuggestion> = {};
+  for (const [k, v] of suggestionMap) suggestions[k] = v;
+  const isDecidedNoArticle = (it: { refType: string; refId: string }) =>
+    suggestions[`${it.refType}:${it.refId}`]?.status === "no_article";
+
+  // "조문 미매칭" 큐에서는 운영자가 '조문 없음'으로 확정한 지문을 제외(큐 소진 가시화).
+  if (status === "unmapped") {
+    items = items.filter((it) => !isDecidedNoArticle(it));
+  }
+
+  const counts = {
     all: all.length,
     active: all.filter(
       (it) => !it.oxIneligible && it.oxTruth != null && it.relatedArticleId != null,
@@ -119,14 +147,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     untruthed: all.filter(
       (it) => !it.oxIneligible && (it.oxTruth == null || it.relatedArticleId == null),
     ).length,
+    unmapped: unmappedAll.filter((it) => !isDecidedNoArticle(it)).length,
     hidden: all.filter((it) => it.oxHidden).length,
-  }));
+  };
 
-  return { subject, status, year: Number.isFinite(year) ? year : null, items, years, counts, role };
+  return { subject, status, year: Number.isFinite(year) ? year : null, items, years, counts, suggestions, role };
 }
 
 export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
-  const { subject, status, year, items, years, counts, role } = loaderData;
+  const { subject, status, year, items, years, counts, suggestions, role } =
+    loaderData;
   const [searchParams] = useSearchParams();
   const querySuffix = (next: Record<string, string>) => {
     const sp = new URLSearchParams(searchParams);
@@ -240,6 +270,7 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
               key={`${it.refType}:${it.refId}`}
               item={it}
               subject={subject}
+              suggestion={suggestions[`${it.refType}:${it.refId}`] ?? null}
             />
           ))}
         </IndexTable>
@@ -253,9 +284,11 @@ export default function AdminOxReview({ loaderData }: Route.ComponentProps) {
 function OxReviewRow({
   item,
   subject,
+  suggestion,
 }: {
   item: OxReviewItem;
   subject: LawSubjectSlug;
+  suggestion: OxArticleSuggestion | null;
 }) {
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state !== "idle";
@@ -360,6 +393,14 @@ function OxReviewRow({
           >
             {item.relatedArticleLabel ?? item.relatedArticleNumber}
           </Link>
+        ) : !ineligible && truth != null ? (
+          <ArticleMatchCell
+            item={item}
+            subject={subject}
+            suggestion={suggestion}
+            submit={submit}
+            isSubmitting={isSubmitting}
+          />
         ) : (
           <span className="text-muted-foreground text-xs italic">미매핑</span>
         )}
@@ -407,5 +448,117 @@ function OxReviewRow({
         </Button>
       </TD>
     </TR>
+  );
+}
+
+/* ── 조문 매칭 셀 — AI 제안 승인 / 수동 연결 / 조문 없음 확정 ─────────────── */
+// 신뢰성 원칙: 여기서 승인(=related_article 기입)된 지문만 조문 뷰어에 노출된다.
+
+function ArticleMatchCell({
+  item,
+  subject,
+  suggestion,
+  submit,
+  isSubmitting,
+}: {
+  item: OxReviewItem;
+  subject: LawSubjectSlug;
+  suggestion: OxArticleSuggestion | null;
+  submit: (patch: Record<string, string>) => void;
+  isSubmitting: boolean;
+}) {
+  const [manual, setManual] = useState("");
+  const decidedNoArticle = suggestion?.status === "no_article";
+  const suggestedNum = suggestion?.suggestedArticleNumber ?? null;
+
+  const connect = (num: string, decision: "approved" | "rejected") => {
+    submit({
+      relatedArticleNumber: num,
+      subject,
+      suggestion: decision,
+      problemId: item.problemId,
+    });
+  };
+  const markNoArticle = () => {
+    submit({ suggestion: "no_article", subject, problemId: item.problemId });
+  };
+
+  if (decidedNoArticle) {
+    return (
+      <span className="text-muted-foreground text-[11px]">
+        조문 없음 확정 (판례·이론)
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {suggestion ? (
+        suggestedNum ? (
+          <div className="flex flex-wrap items-center gap-1">
+            <span
+              title={suggestion.rationale ?? undefined}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                suggestion.verified
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  : "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300",
+              )}
+            >
+              <SparklesIcon className="size-3" />
+              제{suggestedNum}조{suggestion.verified ? " · 검증됨" : " · 미검증"}
+            </span>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => connect(suggestedNum, "approved")}
+              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground h-6 rounded border px-2 text-[11px] font-bold transition-colors disabled:opacity-50"
+            >
+              연결
+            </button>
+          </div>
+        ) : (
+          <span
+            title={suggestion.rationale ?? undefined}
+            className="text-muted-foreground text-[11px]"
+          >
+            AI: 조문 특정 불가 (판례·이론)
+          </span>
+        )
+      ) : (
+        <span className="text-muted-foreground text-xs italic">미매핑</span>
+      )}
+      <div className="flex items-center gap-1">
+        <input
+          value={manual}
+          onChange={(e) => setManual(e.target.value)}
+          placeholder="조 번호"
+          aria-label="조문 번호 직접 입력"
+          className="border-border bg-background h-6 w-16 rounded border px-1.5 text-[11px]"
+        />
+        <button
+          type="button"
+          disabled={isSubmitting || !/^\d+(의\d+)?$/.test(manual.trim())}
+          onClick={() =>
+            connect(
+              manual.trim(),
+              manual.trim() === suggestedNum ? "approved" : "rejected",
+            )
+          }
+          className="border-border text-muted-foreground hover:bg-muted h-6 rounded border px-2 text-[11px] font-semibold transition-colors disabled:opacity-40"
+        >
+          연결
+        </button>
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={markNoArticle}
+          title="대응 조문이 없는 판례·이론 지문으로 확정 — 큐에서 제외"
+          className="border-border text-muted-foreground hover:bg-muted h-6 rounded border px-2 text-[11px] transition-colors disabled:opacity-40"
+        >
+          조문 없음
+        </button>
+      </div>
+    </div>
   );
 }
