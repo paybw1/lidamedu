@@ -6609,6 +6609,75 @@ export type Database = {
           },
         ]
       }
+      subscription_admin_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          detail: Json | null
+          log_id: string
+          note: string | null
+          subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          log_id?: string
+          note?: string | null
+          subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json | null
+          log_id?: string
+          note?: string | null
+          subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_admin_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "subscription_admin_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "subscription_admin_logs_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["subscription_id"]
+          },
+          {
+            foreignKeyName: "subscription_admin_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "subscription_admin_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           available_from: string | null
@@ -7686,10 +7755,12 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          admin_note: string | null
           auto_renew: boolean
           cancelled_at: string | null
           created_at: string
           expires_at: string
+          granted_by: string | null
           payment_id: string | null
           plan_id: string
           started_at: string
@@ -7700,10 +7771,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          admin_note?: string | null
           auto_renew?: boolean
           cancelled_at?: string | null
           created_at?: string
           expires_at: string
+          granted_by?: string | null
           payment_id?: string | null
           plan_id: string
           started_at?: string
@@ -7714,10 +7787,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          admin_note?: string | null
           auto_renew?: boolean
           cancelled_at?: string | null
           created_at?: string
           expires_at?: string
+          granted_by?: string | null
           payment_id?: string | null
           plan_id?: string
           started_at?: string
@@ -7728,6 +7803,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "user_subscriptions_payment_id_fkey"
             columns: ["payment_id"]
