@@ -329,7 +329,7 @@ function NoticeForm({
             placeholder="예: 자세히 보기"
           />
         </FormField>
-        <div className="flex items-end pb-1">
+        <div className="flex flex-col justify-end gap-1.5 pb-1">
           <label className="inline-flex items-center gap-1.5 text-xs">
             <input
               type="checkbox"
@@ -340,6 +340,17 @@ function NoticeForm({
             />
             활성 (체크 해제 시 저장만 하고 노출 안 함)
           </label>
+          {mode === "create" ? (
+            <label className="inline-flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                name="alsoAnnounce"
+                value="1"
+                className="size-3.5"
+              />
+              커뮤니티 공지사항에도 게시 (전체 공지로 즉시 발행)
+            </label>
+          ) : null}
         </div>
       </div>
 

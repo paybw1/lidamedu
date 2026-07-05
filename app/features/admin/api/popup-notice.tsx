@@ -12,6 +12,7 @@ import {
   deletePopupNotice,
   updatePopupNotice,
 } from "~/features/admin/queries/popup-notices.server";
+import { createAnnouncement } from "~/features/announcements/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 
 import type { Route } from "./+types/popup-notice";
@@ -162,6 +163,32 @@ export async function action({ request }: Route.ActionArgs) {
       entityId: res.noticeId,
       metadata: { title: input.title },
     });
+    // 옵션 — 커뮤니티 공지사항(/announcements)에도 같은 내용으로 전체 공지 게시.
+    //   이미지·본문·링크를 마크다운으로 합성. 실패해도 팝업 등록은 유효(에러만 안내).
+    if (fd.get("alsoAnnounce") === "1") {
+      const parts: string[] = [];
+      if (input.imageUrl) parts.push(`![${input.title}](${input.imageUrl})`);
+      if (input.bodyMd.trim()) parts.push(input.bodyMd.trim());
+      if (input.youtubeUrl) parts.push(`영상: ${input.youtubeUrl}`);
+      if (input.linkUrl) {
+        parts.push(`[${input.linkLabel || "자세히 보기"}](${input.linkUrl})`);
+      }
+      const ann = await createAnnouncement(client, {
+        title: input.title,
+        bodyMd: parts.join("\n\n") || input.title,
+        authorId: user.id,
+        audienceKind: "all",
+        audiences: [],
+        isPinned: false,
+        publish: true,
+      });
+      if (!ann.ok) {
+        return data(
+          { error: `팝업은 등록됐지만 공지사항 게시에 실패했습니다: ${ann.error}` },
+          { status: 400 },
+        );
+      }
+    }
     return data({ ok: true });
   }
 
