@@ -170,7 +170,17 @@ const CASE_SORTS: readonly CaseSubjectSort[] = [
   "decided_desc",
   "decided_asc",
   "case_no",
+  "case_no_desc",
   "source_asc",
+  // 컬럼 헤더 클릭 정렬 (cases-tab SortableCaseHead).
+  "importance_desc",
+  "importance_asc",
+  "court_asc",
+  "court_desc",
+  "type_asc",
+  "type_desc",
+  "enbanc_desc",
+  "enbanc_asc",
 ];
 const CASE_COURT_FILTERS: readonly CaseCourtFilter[] = [
   "all",

@@ -144,7 +144,17 @@ export type CaseSubjectSort =
   | "decided_desc"
   | "decided_asc"
   | "case_no"
-  | "source_asc";
+  | "case_no_desc"
+  | "source_asc"
+  // 컬럼 헤더 클릭 정렬(문제 탭과 동일 UX) — 중요도·법원·사건유형·전합.
+  | "importance_desc"
+  | "importance_asc"
+  | "court_asc"
+  | "court_desc"
+  | "type_asc"
+  | "type_desc"
+  | "enbanc_desc"
+  | "enbanc_asc";
 export type CaseExamFilter = "any" | "exam_1st" | "exam_2nd" | "exam_both";
 export type CaseCourtFilter = "all" | CaseCourt;
 
@@ -235,11 +245,55 @@ export async function listCasesBySubject(
       case "case_no":
         q = q.order("case_number", { ascending: true });
         break;
+      case "case_no_desc":
+        q = q.order("case_number", { ascending: false });
+        break;
       case "source_asc":
         // 원본 자료 순서 — cases.source_seq (precedents.json seqInSection 백필).
         q = q
           .order("source_seq", { ascending: true, nullsFirst: false })
           .order("case_number", { ascending: true });
+        break;
+      // 컬럼 헤더 정렬 — 동률은 선고일 최신순으로 2차 정렬(안정성은 아래 case_id 가 보장).
+      case "importance_desc":
+        q = q
+          .order("importance", { ascending: false })
+          .order("decided_at", { ascending: false });
+        break;
+      case "importance_asc":
+        q = q
+          .order("importance", { ascending: true })
+          .order("decided_at", { ascending: false });
+        break;
+      case "court_asc":
+        q = q
+          .order("court", { ascending: true })
+          .order("decided_at", { ascending: false });
+        break;
+      case "court_desc":
+        q = q
+          .order("court", { ascending: false })
+          .order("decided_at", { ascending: false });
+        break;
+      case "type_asc":
+        q = q
+          .order("case_type", { ascending: true, nullsFirst: false })
+          .order("decided_at", { ascending: false });
+        break;
+      case "type_desc":
+        q = q
+          .order("case_type", { ascending: false, nullsFirst: false })
+          .order("decided_at", { ascending: false });
+        break;
+      case "enbanc_desc":
+        q = q
+          .order("is_en_banc", { ascending: false })
+          .order("decided_at", { ascending: false });
+        break;
+      case "enbanc_asc":
+        q = q
+          .order("is_en_banc", { ascending: true })
+          .order("decided_at", { ascending: false });
         break;
       default:
         q = q.order("decided_at", { ascending: false });

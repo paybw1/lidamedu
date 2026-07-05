@@ -152,12 +152,6 @@ export function CasesTab({
     sp.delete("case_node");
     return `?${sp.toString()}`;
   }, [searchParams]);
-  // "전체" 컬럼 클릭 정렬 — case_sort 만 바꾸고 나머지 필터·트리·검색은 보존.
-  const overallSortHref = (value: "overall_asc" | "overall_desc") => {
-    const sp = new URLSearchParams(searchParams);
-    sp.set("case_sort", value);
-    return `?${sp.toString()}`;
-  };
   // 검색어 해제 href — q 만 제거 (트리·정렬·법원·기출 필터는 유지).
   const clearQueryHref = useMemo(() => {
     const sp = new URLSearchParams(searchParams);
@@ -446,53 +440,60 @@ export function CasesTab({
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="text-muted-foreground/70 w-10 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
-                    ★
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-12 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
-                    <Link
-                      to={overallSortHref(
-                        filters.sort === "overall_asc"
-                          ? "overall_desc"
-                          : "overall_asc",
-                      )}
-                      preventScrollReset
-                      title="체계도 전체 순번으로 정렬"
-                      className={`inline-flex items-center gap-1 transition-colors hover:text-foreground ${
-                        filters.sort === "overall_asc" ||
-                        filters.sort === "overall_desc"
-                          ? "text-foreground"
-                          : ""
-                      }`}
-                    >
-                      전체
-                      {filters.sort === "overall_asc" ? (
-                        <ArrowUpIcon className="size-3" />
-                      ) : filters.sort === "overall_desc" ? (
-                        <ArrowDownIcon className="size-3" />
-                      ) : (
-                        <ArrowUpDownIcon className="size-3 opacity-30" />
-                      )}
-                    </Link>
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    법원
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    선고일
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 w-24 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:w-32">
-                    사건번호
-                  </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-28 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    사건유형
-                  </TableHead>
+                  <SortableCaseHead
+                    label="★"
+                    column="importance"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="w-10"
+                    align="center"
+                  />
+                  <SortableCaseHead
+                    label="전체"
+                    column="overall"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="w-12"
+                  />
+                  <SortableCaseHead
+                    label="법원"
+                    column="court"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="hidden w-24 md:table-cell"
+                  />
+                  <SortableCaseHead
+                    label="선고일"
+                    column="decided"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="hidden w-28 md:table-cell"
+                  />
+                  <SortableCaseHead
+                    label="사건번호"
+                    column="caseNo"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="w-24 md:w-32"
+                  />
+                  <SortableCaseHead
+                    label="사건유형"
+                    column="type"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="hidden w-28 md:table-cell"
+                  />
                   <TableHead className="text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase">
                     사건명 / 기출
                   </TableHead>
-                  <TableHead className="text-muted-foreground/70 hidden w-14 text-center font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                    전합
-                  </TableHead>
+                  <SortableCaseHead
+                    label="전합"
+                    column="enbanc"
+                    sort={filters.sort}
+                    searchParams={searchParams}
+                    className="hidden w-14 md:table-cell"
+                    align="center"
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -562,6 +563,12 @@ function FilterGroup<T extends string>({
           className="border-border bg-background text-foreground h-8 appearance-none rounded-full border py-0 pr-7 pl-3 text-xs font-medium focus:outline-none"
           aria-label={label}
         >
+          {/* 컬럼 헤더 클릭 정렬 값(드롭다운 목록 밖) — 현재 값을 유지·표시하는 자리표시 옵션 */}
+          {!options.some((o) => o.value === value) ? (
+            <option value={value} hidden>
+              컬럼 정렬
+            </option>
+          ) : null}
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -571,6 +578,79 @@ function FilterGroup<T extends string>({
         <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 size-3 -translate-y-1/2" />
       </div>
     </Form>
+  );
+}
+
+// 정렬 가능한 컬럼 헤더 — 문제 탭 SortableHead 와 동일 UX.
+// 3단 순환: 비활성 → 기본방향 → 반대방향 → 해제(case_sort 제거 = 기본 정렬 복귀).
+// 서버 정렬(listCasesBySubject / loader overall 재정렬)이라 GET 링크. 다른 필터·트리·검색 보존.
+const CASE_HEAD_SORTS = {
+  importance: { asc: "importance_asc", desc: "importance_desc", def: "desc" },
+  overall: { asc: "overall_asc", desc: "overall_desc", def: "asc" },
+  court: { asc: "court_asc", desc: "court_desc", def: "asc" },
+  decided: { asc: "decided_asc", desc: "decided_desc", def: "desc" },
+  caseNo: { asc: "case_no", desc: "case_no_desc", def: "asc" },
+  type: { asc: "type_asc", desc: "type_desc", def: "asc" },
+  enbanc: { asc: "enbanc_asc", desc: "enbanc_desc", def: "desc" },
+} as const;
+
+function SortableCaseHead({
+  label,
+  column,
+  sort,
+  searchParams,
+  className,
+  align = "left",
+}: {
+  label: string;
+  column: keyof typeof CASE_HEAD_SORTS;
+  sort: CaseFiltersApplied["sort"];
+  searchParams: URLSearchParams;
+  className?: string;
+  align?: "left" | "center";
+}) {
+  const conf = CASE_HEAD_SORTS[column];
+  const dir: "asc" | "desc" | null =
+    sort === conf.asc ? "asc" : sort === conf.desc ? "desc" : null;
+  const active = dir !== null;
+  const opp = conf.def === "asc" ? "desc" : "asc";
+  const willClear = active && dir === opp;
+  const sp = new URLSearchParams(searchParams);
+  if (willClear) {
+    sp.delete("case_sort");
+  } else {
+    sp.set("case_sort", active ? conf[opp] : conf[conf.def]);
+  }
+  return (
+    <TableHead
+      className={`text-muted-foreground/70 font-mono text-[11px] font-bold tracking-[0.04em] uppercase ${className ?? ""}`}
+    >
+      <Link
+        to={`?${sp.toString()}`}
+        preventScrollReset
+        title={
+          willClear
+            ? "정렬 해제 (기본 순서)"
+            : active
+              ? "정렬 방향 전환"
+              : "이 기준으로 정렬"
+        }
+        className={`hover:text-foreground inline-flex items-center gap-1 transition-colors ${
+          align === "center" ? "w-full justify-center" : ""
+        } ${active ? "text-foreground" : ""}`}
+      >
+        {label}
+        {active ? (
+          dir === "asc" ? (
+            <ArrowUpIcon className="size-3" />
+          ) : (
+            <ArrowDownIcon className="size-3" />
+          )
+        ) : (
+          <ArrowUpDownIcon className="size-3 opacity-30" />
+        )}
+      </Link>
+    </TableHead>
   );
 }
 
