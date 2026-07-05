@@ -3,15 +3,25 @@
 import type { Route } from "./+types/pricing";
 
 import { CheckIcon, SparklesIcon } from "lucide-react";
-import { type ReactNode, useState } from "react";
-import { Link } from "react-router";
+import { type ReactNode, useEffect, useState } from "react";
+import { Link, useFetcher } from "react-router";
+import { toast } from "sonner";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/core/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/core/components/ui/dialog";
 import { Input } from "~/core/components/ui/input";
+import { Textarea } from "~/core/components/ui/textarea";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { cn } from "~/core/lib/utils";
+import { hasPendingUpgradeRequest } from "~/features/cohorts/upgrade-requests.server";
 import { listActiveDiscounts } from "~/features/subscriptions/discounts.server";
 import {
   type Discount,
@@ -66,15 +76,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   // feat-8-028 — 이미 보유(결제/종합반/staff)한 과목. "보유 중" 표시용.
   let ownedSubjects: "all" | string[] = [];
   let isStaff = false;
+  let isCohortMember = false;
+  let upgradePending = false;
   if (user) {
     const access = await getMembershipAccess(client, user.id);
     isStaff = access.grade === "staff";
+    isCohortMember = access.grade === "cohort";
     ownedSubjects =
       access.grade === "self_study" ||
       access.grade === "cohort" ||
       access.grade === "staff"
         ? access.subjects
         : [];
+    // 종합반 카드 CTA — 대기 중 등업 신청 여부.
+    if (!isStaff && !isCohortMember) {
+      upgradePending = await hasPendingUpgradeRequest(client, user.id);
+    }
   }
   // 관리자 결제 테스트 모드 — staff 는 전 과목 "보유 중"이라 결제 UI가 안 뜬다.
   // ?testStudent=1 이면 (staff 한정) 미보유로 취급해 학생처럼 결제 흐름을 볼 수 있게.
@@ -111,6 +128,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     comingSoon,
     isStaff,
     testStudentMode,
+    isCohortMember,
+    upgradePending,
   };
 }
 
@@ -127,6 +146,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
     comingSoon,
     isStaff,
     testStudentMode,
+    isCohortMember,
+    upgradePending,
   } = loaderData;
   const [coupon, setCoupon] = useState("");
   const nowMs = Date.now();
@@ -151,6 +172,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
     nowMs,
     coupon: coupon.trim() || null,
     learningSoon: comingSoon,
+    isCohortMember,
+    upgradePending,
   });
 
   return (
@@ -250,8 +273,8 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
         ) : null}
 
         <p className="text-muted-foreground mt-2 text-center text-[11px]">
-          모든 결제는 토스페이먼츠를 통해 안전하게 처리됩니다. 종합반은 학원 직접
-          상담을 권장합니다.
+          모든 결제는 토스페이먼츠를 통해 안전하게 처리됩니다. 종합반은 등업
+          신청 후 운영자 확인을 거쳐 배정됩니다.
         </p>
       </div>
     </div>
@@ -293,6 +316,8 @@ function PlanCard({
   nowMs,
   coupon,
   learningSoon,
+  isCohortMember,
+  upgradePending,
 }: {
   plan: SubscriptionPlan;
   owned: boolean;
@@ -304,6 +329,8 @@ function PlanCard({
   nowMs: number;
   coupon: string | null;
   learningSoon: { slugs: string[]; note: string } | null;
+  isCohortMember: boolean;
+  upgradePending: boolean;
 }) {
   const isFree = plan.code === "free";
   const isCohort = plan.code === "cohort";
@@ -448,6 +475,8 @@ function PlanCard({
           tossClientKey={tossClientKey}
           activeCode={activeCode}
           coupon={coupon}
+          isCohortMember={isCohortMember}
+          upgradePending={upgradePending}
         />
       </CardContent>
     </Card>
@@ -466,6 +495,8 @@ function PlanCta({
   tossClientKey,
   activeCode,
   coupon,
+  isCohortMember,
+  upgradePending,
 }: {
   plan: SubscriptionPlan;
   owned: boolean;
@@ -478,6 +509,8 @@ function PlanCta({
   tossClientKey: string | null;
   activeCode: string;
   coupon: string | null;
+  isCohortMember: boolean;
+  upgradePending: boolean;
 }) {
   if (comingSoon && !isFree && !isCohort) {
     return (
@@ -498,9 +531,11 @@ function PlanCta({
   }
   if (isCohort) {
     return (
-      <Button asChild variant="outline" size="sm">
-        <Link to="/contact">학원 상담</Link>
-      </Button>
+      <CohortUpgradeCta
+        isAuthed={isAuthed}
+        isCohortMember={isCohortMember}
+        upgradePending={upgradePending}
+      />
     );
   }
   if (owned) {
@@ -518,6 +553,93 @@ function PlanCta({
       tossClientKey={tossClientKey}
       coupon={coupon}
     />
+  );
+}
+
+// 종합반 CTA — 등업 신청(운영자 승인으로 반 배정) 흐름. feat-8-027 종합반 승인.
+function CohortUpgradeCta({
+  isAuthed,
+  isCohortMember,
+  upgradePending,
+}: {
+  isAuthed: boolean;
+  isCohortMember: boolean;
+  upgradePending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  const fetcher = useFetcher<{ error?: string; ok?: boolean }>();
+  const busy = fetcher.state !== "idle";
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      if (fetcher.data.error) toast.error(fetcher.data.error);
+      else {
+        toast.success("등업 신청이 접수됐습니다. 운영자 확인 후 배정됩니다.");
+        setSent(true);
+        setOpen(false);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+
+  if (isCohortMember) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        <CheckIcon className="size-3.5" /> 현재 등급
+      </Button>
+    );
+  }
+  if (!isAuthed) {
+    return (
+      <Button asChild variant="outline" size="sm">
+        <Link to="/login?next=/pricing">로그인 후 등업 신청</Link>
+      </Button>
+    );
+  }
+  if (upgradePending || sent) {
+    return (
+      <Button size="sm" variant="outline" disabled>
+        등업 신청 접수됨 — 확인 중
+      </Button>
+    );
+  }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">종합반 등업 신청</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>종합반 등업 신청</DialogTitle>
+        </DialogHeader>
+        <fetcher.Form
+          method="post"
+          action="/api/cohorts/upgrade-request"
+          className="space-y-3 text-sm"
+        >
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            신청하면 운영자가 확인 후 반에 배정해 드립니다. 배정이 완료되면
+            알림으로 안내되고 전 과목·상담·과제·반별 게시판이 열립니다. 수강료
+            결제는 학원 안내에 따라 별도로 진행됩니다.
+          </p>
+          <label className="block space-y-1">
+            <span className="text-muted-foreground text-xs font-semibold">
+              남기실 말 (선택)
+            </span>
+            <Textarea
+              name="message"
+              maxLength={500}
+              rows={3}
+              placeholder="예: 연락 가능한 시간대, 문의 사항 등"
+              className="text-xs"
+            />
+          </label>
+          <Button type="submit" size="sm" disabled={busy} className="w-full">
+            {busy ? "접수 중…" : "등업 신청"}
+          </Button>
+        </fetcher.Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -2087,6 +2087,78 @@ export type Database = {
           },
         ]
       }
+      cohort_upgrade_requests: {
+        Row: {
+          admin_note: string | null
+          cohort_id: string | null
+          created_at: string
+          message: string | null
+          processed_at: string | null
+          processed_by: string | null
+          request_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          cohort_id?: string | null
+          created_at?: string
+          message?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          request_id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          cohort_id?: string | null
+          created_at?: string
+          message?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          request_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_upgrade_requests_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "cohort_upgrade_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_upgrade_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_upgrade_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "cohort_upgrade_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       cohorts: {
         Row: {
           access_scope: string
@@ -8704,6 +8776,8 @@ export type Database = {
         | "gs_cap_reached"
         | "bug_report_created"
         | "trial_expiry_warning"
+        | "cohort_upgrade_requested"
+        | "cohort_upgrade_processed"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -8970,6 +9044,8 @@ export const Constants = {
         "gs_cap_reached",
         "bug_report_created",
         "trial_expiry_warning",
+        "cohort_upgrade_requested",
+        "cohort_upgrade_processed",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

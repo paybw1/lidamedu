@@ -113,6 +113,11 @@ export default [
         "features/cohort-boards/api/attachment-signed-url.tsx",
       ),
     ]),
+    // 종합반 등업 신청 (학생, pricing 카드) — 운영자 승인은 /api/admin/cohort-request.
+    route(
+      "/cohorts/upgrade-request",
+      "features/cohorts/api/upgrade-request.tsx",
+    ),
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
@@ -582,6 +587,15 @@ export default [
         "features/admin/screens/admin-community-reports.tsx",
       ),
       route("/admin/cohorts", "features/admin/screens/admin-cohorts.tsx"),
+      // 종합반 등업 신청 — pricing 신청 → 운영자 승인(반 배정).
+      route(
+        "/admin/cohort-requests",
+        "features/admin/screens/admin-cohort-requests.tsx",
+      ),
+      route(
+        "/api/admin/cohort-request",
+        "features/admin/api/cohort-request.tsx",
+      ),
       route(
         "/admin/cohort-boards",
         "features/admin/screens/admin-cohort-boards.tsx",

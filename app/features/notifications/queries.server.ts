@@ -16,6 +16,7 @@ const STAFF_KINDS: NotificationKind[] = [
   "cohort_inactive_alert",
   "exam_certificate_submitted",
   "bug_report_created",
+  "cohort_upgrade_requested",
 ];
 
 // 학생용 kinds.
@@ -26,6 +27,7 @@ const STUDENT_KINDS: NotificationKind[] = [
   "student_note_shared",
   "exam_result_reminder",
   "trial_expiry_warning",
+  "cohort_upgrade_processed",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {

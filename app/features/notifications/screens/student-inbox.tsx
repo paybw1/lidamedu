@@ -53,6 +53,7 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   student_note_shared: "상담 코멘트",
   exam_result_reminder: "응시 결과",
   trial_expiry_warning: "체험 만료 임박",
+  cohort_upgrade_processed: "종합반 등업",
 };
 
 const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {

@@ -173,6 +173,8 @@ export const ADMIN_NAV: NavCluster[] = [
     Icon: GraduationCapIcon,
     screens: [
       { label: "반 관리", to: "/admin/cohorts" },
+      // pricing "종합반 등업 신청" 접수 → 승인(반 배정=등업)/반려.
+      { label: "등업 신청", to: "/admin/cohort-requests" },
       { label: "반별 게시판 관리", to: "/admin/cohort-boards" },
       { label: "커리큘럼 관리", to: "/admin/curricula" },
     ],
