@@ -37,6 +37,10 @@ import {
   listAssignmentProgress,
 } from "~/features/assignments/queries.server";
 import {
+  listOfflineTests,
+  type OfflineTestSummary,
+} from "~/features/offline-tests/queries.server";
+import {
   ASSIGNMENT_ITEM_KINDS,
   ASSIGNMENT_ITEM_KIND_LABEL,
   ASSIGNMENT_STATUS_LABEL,
@@ -84,8 +88,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("cohort 불일치", { status: 400 });
   }
 
-  const progress = await listAssignmentProgress(params.assignmentId);
-  return { cohort, assignment, progress, role };
+  const [progress, offlineTests] = await Promise.all([
+    listAssignmentProgress(params.assignmentId),
+    listOfflineTests(client, params.assignmentId),
+  ]);
+  return { cohort, assignment, progress, role, offlineTests };
 }
 
 function useReload() {
@@ -101,7 +108,7 @@ function useReload() {
 export default function AdminAssignmentEdit({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, assignment, progress, role } = loaderData;
+  const { cohort, assignment, progress, role, offlineTests } = loaderData;
   const navigate = useNavigate();
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
   useEffect(() => {
@@ -207,6 +214,15 @@ export default function AdminAssignmentEdit({
 
       <Separator className="my-6" />
 
+      {/* feat-7-042 — 오프라인 테스트 (시험지 제작·PDF·결과 입력) */}
+      <OfflineTestsSection
+        cohortId={cohort.cohortId}
+        assignmentId={assignment.assignmentId}
+        tests={offlineTests}
+      />
+
+      <Separator className="my-6" />
+
       {/* 학생별 진척 */}
       <section className="space-y-3">
         <h2 className="text-base font-semibold">
@@ -286,6 +302,124 @@ function ProgressRow({
         {m.completedAt ? m.completedAt.slice(0, 16).replace("T", " ") : "—"}
       </TD>
     </TR>
+  );
+}
+
+// feat-7-042 — 오프라인 테스트 목록 + 새로 만들기. 만들면 빌더로 이동.
+function OfflineTestsSection({
+  cohortId,
+  assignmentId,
+  tests,
+}: {
+  cohortId: string;
+  assignmentId: string;
+  tests: OfflineTestSummary[];
+}) {
+  const navigate = useNavigate();
+  const fetcher = useFetcher<{ ok?: true; testId?: string; error?: string }>();
+  const [creating, setCreating] = useState(false);
+  useEffect(() => {
+    if (
+      fetcher.state === "idle" &&
+      fetcher.data &&
+      "ok" in fetcher.data &&
+      fetcher.data.ok &&
+      fetcher.data.testId
+    ) {
+      navigate(
+        `/admin/cohorts/${cohortId}/assignments/${assignmentId}/tests/${fetcher.data.testId}`,
+      );
+    }
+  }, [fetcher.state, fetcher.data, navigate, cohortId, assignmentId]);
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-base font-semibold">
+        오프라인 테스트 ({tests.length})
+      </h2>
+      <p className="text-muted-foreground text-xs">
+        빈칸·OX·객관식을 조합한 시험지를 만들어 인쇄(PDF)로 배포하고, 채점
+        결과를 입력하면 학생 학습 통계에 합산됩니다.
+      </p>
+      {tests.length > 0 ? (
+        <ul className="border-border bg-card divide-border divide-y rounded-xl border shadow-sm">
+          {tests.map((t) => (
+            <li key={t.testId} className="flex items-center gap-2 px-3 py-2">
+              <Chip tone="outline">{LAW_SUBJECTS[t.lawCode].name}</Chip>
+              <Link
+                to={`/admin/cohorts/${cohortId}/assignments/${assignmentId}/tests/${t.testId}`}
+                className="hover:text-link min-w-0 flex-1 truncate text-xs font-medium"
+              >
+                {t.title}
+              </Link>
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {t.questionCount}문항 · {t.totalPoints}점
+              </span>
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                결과 {t.resultCount}명
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {creating ? (
+        <fetcher.Form
+          method="post"
+          action="/api/admin/offline-test"
+          className="bg-muted/30 flex flex-wrap items-end gap-2 rounded-xl border p-3"
+        >
+          <input type="hidden" name="intent" value="create_test" />
+          <input type="hidden" name="assignmentId" value={assignmentId} />
+          <div className="flex min-w-48 flex-1 flex-col gap-1">
+            <Label className="text-[11px]">시험명</Label>
+            <Input
+              name="title"
+              required
+              maxLength={200}
+              placeholder="예: 특허법 중간점검 1회"
+              className="h-9 text-xs"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px]">과목</Label>
+            <select
+              name="lawCode"
+              required
+              className="border-input bg-background h-9 rounded-md border px-2 text-[13px]"
+            >
+              {LAW_SUBJECT_SLUGS.map((s) => (
+                <option key={s} value={s}>
+                  {LAW_SUBJECTS[s].name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+            만들기
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setCreating(false)}
+          >
+            취소
+          </Button>
+          {fetcher.data && "error" in fetcher.data && fetcher.data.error ? (
+            <p className="w-full text-xs text-rose-600">{fetcher.data.error}</p>
+          ) : null}
+        </fetcher.Form>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full"
+          onClick={() => setCreating(true)}
+        >
+          <PlusIcon className="size-3.5" /> 오프라인 테스트 만들기
+        </Button>
+      )}
+    </section>
   );
 }
 
