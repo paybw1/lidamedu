@@ -119,7 +119,9 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
         <Await resolve={userPromise}>
           {({ data: { user } }) =>
             user === null ? (
-              <NavigationBar loading={false} hideAll={isSidebar} />
+              // 비로그인 — 사이드바 모드 쿠키가 있어도 상단 바를 유지한다.
+              // (사이드바는 인증 사용자 전용이라 hideAll 로 숨기면 내비가 통째로 사라짐)
+              <NavigationBar loading={false} hideAll={false} />
             ) : (
               <Suspense
                 fallback={

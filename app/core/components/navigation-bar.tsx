@@ -159,11 +159,14 @@ function Actions({
   inboxUnread,
   inboxHref,
   orientation = "horizontal",
+  showNavModeToggle = true,
 }: {
   inboxUnread: number | null;
   inboxHref: string | null;
   /** sidebar 안에선 수직(아이콘 stack), topbar 에선 수평. */
   orientation?: "horizontal" | "vertical";
+  /** 사이드바 전환 토글 — 사이드바는 인증 전용이라 비로그인에선 숨김. */
+  showNavModeToggle?: boolean;
 }) {
   const isVertical = orientation === "vertical";
   return (
@@ -205,7 +208,7 @@ function Actions({
         </Button>
       ) : null}
       <ThemeSwitcher />
-      <NavModeIconButton isVertical={isVertical} />
+      {showNavModeToggle ? <NavModeIconButton isVertical={isVertical} /> : null}
     </div>
   );
 }
@@ -515,7 +518,11 @@ export function NavigationBar({
 
         {/* '운영자' 이후 — 오른쪽 정렬 */}
         <div className="ml-auto hidden h-full items-center gap-3 md:flex">
-          <Actions inboxUnread={inboxUnread} inboxHref={inboxHref} />
+          <Actions
+            inboxUnread={inboxUnread}
+            inboxHref={inboxHref}
+            showNavModeToggle={Boolean(name)}
+          />
           <Separator orientation="vertical" />
 
           {loading ? (
@@ -616,6 +623,7 @@ export function NavigationBar({
                         <Actions
                           inboxUnread={inboxUnread}
                           inboxHref={inboxHref}
+                          showNavModeToggle={false}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
