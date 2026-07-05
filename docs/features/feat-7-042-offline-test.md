@@ -110,10 +110,21 @@ attempts/sessions 는 기존 테이블 RLS 그대로(학생 본인 소유).
 - 반 모니터링(admin-cohort-stats)에 오프라인 테스트 결과 카드(테스트별 평균,
   온라인 정답률 대비).
 
-## 5. 범위 밖 (후속)
-- 자연과학 과목 시험지(조문·판례 기반이 아니라 v1 제외)
-- 오프라인 테스트의 온라인 응시 모드(만들어진 조합을 quiz_session 으로 바로
-  풀게 하는 것 — 구조상 쉬우나 요구 확정 후)
+## 5. 확장 (2026-07-05 당일 후속 구현)
+- **자연과학 시험지**(22d1390): 과목 = law_code XOR science_subject(DB check).
+  자과=객관식 전용·파트=science_sections·중요도 필터 숨김. 과목명 SSOT =
+  labels.offlineTestSubjectName.
+- **온라인 응시 모드**(34e5bac): 객관식만으로 구성된 테스트 한정. 학생 과제
+  상세 [온라인 응시] → `/api/offline-test/online-start` 가 세션
+  (scope_payload.source='offline_test_online', exam+시험시간) 생성 → 기존 문제
+  뷰어 러너. 접근 증명 = RLS 멤버 read(offline_test_questions member-read 정책).
+  결과 입력 화면 [온라인 응시 불러오기] = 완료 세션의 문항별 정오 프리필
+  (미응답=오답) → 저장 시 **스냅샷만 기록 + 학생 세션 연결**(시도 재기록 없음
+  = 이중 신호 방지). saveOfflineTestResults 의 세션 재사용·철회는
+  source='offline_test' 세션으로 한정 — 온라인 세션(학생 실기록)은 불가침.
+
+## 5b. 범위 밖 (후속)
+- OX·빈칸 혼합 시험지의 온라인 응시(혼합형 러너 부재)
 - OMR 스캔/CSV 업로드 입력, 문항별 부분 점수
 
 ## 6. 진행 로그
