@@ -187,20 +187,31 @@ export const PREPARING_HINT = "준비 중";
 // feat-8-027 — 학습과목 내 개별 과목 잠금 판정(체험=특허법만, 자기학습=결제 과목 등).
 //   subjects='all' 또는 slug 포함 시 미잠금. staff 면제, 미산정(undefined) 시 미표시(로딩).
 //   ★준비 중 과목(STUDENT_DISABLED_SUBJECTS)은 등급 무관하게 학생 잠금.
+//   ★준비 중 과목의 staff 접근은 세분화(feat-7-041): admin/manager=전체("all"),
+//     instructor=담당 과목(instructor_subjects)만. staffPreparing 미전달 시 기존대로 staff 전체 허용.
 export function isSubjectLocked(
   slug: string,
   isStaff: boolean,
   subjects: "all" | string[] | undefined,
+  staffPreparing?: "all" | string[],
 ): boolean {
-  if (isStaff) return false;
+  if (isStaff) {
+    if (!STUDENT_DISABLED_SUBJECTS.includes(slug)) return false;
+    if (staffPreparing === undefined || staffPreparing === "all") return false;
+    return !staffPreparing.includes(slug);
+  }
   if (STUDENT_DISABLED_SUBJECTS.includes(slug)) return true;
   if (subjects === undefined || subjects === "all") return false;
   return !subjects.includes(slug);
 }
 
 // 과목 비활성 사유 힌트 — 준비 중 과목은 구독과 무관하므로 문구를 구분.
-export function subjectLockedHint(slug: string): string {
-  return STUDENT_DISABLED_SUBJECTS.includes(slug) ? PREPARING_HINT : LOCKED_HINT;
+//   staff(강사)에게 잠긴 준비 중 과목은 담당 과목 미지정이 사유.
+export function subjectLockedHint(slug: string, isStaff = false): string {
+  if (STUDENT_DISABLED_SUBJECTS.includes(slug)) {
+    return isStaff ? "담당 과목 아님" : PREPARING_HINT;
+  }
+  return LOCKED_HINT;
 }
 
 // 상단바 표면 매핑 — 6 드롭다운을 풀 그룹 조합으로 정의(SSOT 단일 소비).

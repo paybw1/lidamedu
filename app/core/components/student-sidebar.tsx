@@ -54,6 +54,8 @@ interface StudentSidebarProps {
   features?: string[];
   // feat-8-027 — 학습과목 열람 가능 과목('all' | slug[]). 미허용 과목은 비활성.
   subjects?: "all" | string[];
+  // feat-7-041 — 준비 중 과목의 staff 접근 목록. admin/manager='all', instructor=담당 과목만.
+  staffPreparing?: "all" | string[];
 }
 
 export function StudentSidebar({
@@ -64,6 +66,7 @@ export function StudentSidebar({
   inboxHref,
   features,
   subjects,
+  staffPreparing,
 }: StudentSidebarProps) {
   // 잠금·staffOnly 항목 판정은 등급 기준(원장 체험 모드 반영) — 운영관리 링크 노출은 역할(isStaff) 기준 유지.
   const lockStaff = gradeStaff ?? isStaff;
@@ -210,6 +213,7 @@ export function StudentSidebar({
                 locked={lockOf(g.area)}
                 isStaff={lockStaff}
                 subjects={subjects}
+                staffPreparing={staffPreparing}
               />
             );
           }
@@ -534,6 +538,7 @@ interface SubjectsRowProps {
   locked?: boolean;
   isStaff?: boolean;
   subjects?: "all" | string[];
+  staffPreparing?: "all" | string[];
 }
 function SubjectsRow({
   collapsed,
@@ -546,6 +551,7 @@ function SubjectsRow({
   locked,
   isStaff,
   subjects,
+  staffPreparing,
 }: SubjectsRowProps) {
   if (collapsed)
     return (
@@ -566,6 +572,7 @@ function SubjectsRow({
       locked={locked}
       isStaff={isStaff}
       subjects={subjects}
+      staffPreparing={staffPreparing}
     />
   );
 }
@@ -579,6 +586,7 @@ function SubjectsFull({
   locked,
   isStaff = false,
   subjects,
+  staffPreparing,
 }: Omit<SubjectsRowProps, "collapsed" | "onExpand">) {
   return (
     <div>
@@ -606,12 +614,17 @@ function SubjectsFull({
           {SUBJECT_NAV_ITEMS.map((item) => {
             const active = isNavActive(item.href, path, search);
             const slug = subjectSlugFromHref(item.href);
-            const subjLocked = isSubjectLocked(slug, isStaff, subjects);
+            const subjLocked = isSubjectLocked(
+              slug,
+              isStaff,
+              subjects,
+              staffPreparing,
+            );
             if (subjLocked) {
               return (
                 <span
                   key={item.href}
-                  title={subjectLockedHint(slug)}
+                  title={subjectLockedHint(slug, isStaff)}
                   aria-disabled="true"
                   className={cn(
                     "text-muted-foreground rounded-md px-1.5 py-1 text-xs",

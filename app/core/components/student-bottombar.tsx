@@ -61,6 +61,7 @@ export function StudentBottomBar({
   onToggleCollapse,
   features,
   subjects,
+  staffPreparing,
 }: {
   isStaff: boolean;
   // 잠금(dim) 판정용 — 등급 리졸버 기준(체험 모드 반영). 미전달 시 isStaff 폴백.
@@ -76,6 +77,8 @@ export function StudentBottomBar({
   features?: string[];
   // feat-8-027 — 학습과목 열람 가능 과목('all' | slug[]). 미허용 과목은 시트에서 비활성.
   subjects?: "all" | string[];
+  // feat-7-041 — 준비 중 과목의 staff 접근 목록. admin/manager='all', instructor=담당 과목만.
+  staffPreparing?: "all" | string[];
 }) {
   // 잠금·staffOnly 항목 판정은 등급 기준(원장 체험 모드 반영) — 운영관리 링크 노출은 역할(isStaff) 기준 유지.
   const lockStaff = gradeStaff ?? isStaff;
@@ -273,6 +276,7 @@ export function StudentBottomBar({
                 locked={lockOf(core.find((g) => g.id === "subjects")?.area)}
                 isStaff={lockStaff}
                 subjects={subjects}
+                staffPreparing={staffPreparing}
               />
             ) : sheetTab ? (
               <GroupSheet
@@ -351,6 +355,7 @@ function SubjectsSheet({
   locked,
   isStaff = false,
   subjects,
+  staffPreparing,
 }: {
   onPick: () => void;
   path: string;
@@ -358,6 +363,7 @@ function SubjectsSheet({
   locked?: boolean;
   isStaff?: boolean;
   subjects?: "all" | string[];
+  staffPreparing?: "all" | string[];
 }) {
   return (
     <div>
@@ -372,11 +378,11 @@ function SubjectsSheet({
         {SUBJECT_NAV_ITEMS.map((item) => {
           const active = isNavActive(item.href, path, search);
           const slug = subjectSlugFromHref(item.href);
-          if (isSubjectLocked(slug, isStaff, subjects)) {
+          if (isSubjectLocked(slug, isStaff, subjects, staffPreparing)) {
             return (
               <span
                 key={item.href}
-                title={subjectLockedHint(slug)}
+                title={subjectLockedHint(slug, isStaff)}
                 aria-disabled="true"
                 className={cn(
                   "border-border bg-muted/30 rounded-md border px-2.5 py-1 text-xs",

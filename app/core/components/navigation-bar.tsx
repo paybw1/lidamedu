@@ -322,10 +322,12 @@ function SubjectsDropdown({
   locked,
   isStaff = false,
   subjects,
+  staffPreparing,
 }: {
   locked: boolean;
   isStaff?: boolean;
   subjects?: "all" | string[];
+  staffPreparing?: "all" | string[];
 }) {
   return (
     <NavigationMenuItem>
@@ -340,7 +342,12 @@ function SubjectsDropdown({
         <div className="flex max-h-[calc(100vh-7rem)] w-max max-w-[calc(100vw-2rem)] flex-col items-start gap-1 overflow-y-auto p-3">
           {SUBJECT_NAV_ITEMS.map((item) => {
             const slug = subjectSlugFromHref(item.href);
-            const subjLocked = isSubjectLocked(slug, isStaff, subjects);
+            const subjLocked = isSubjectLocked(
+              slug,
+              isStaff,
+              subjects,
+              staffPreparing,
+            );
             if (subjLocked) {
               return (
                 <span
@@ -350,7 +357,7 @@ function SubjectsDropdown({
                     "whitespace-nowrap",
                     LOCKED_DIM_CLASS,
                   )}
-                  title={subjectLockedHint(slug)}
+                  title={subjectLockedHint(slug, isStaff)}
                   aria-disabled="true"
                 >
                   {item.name}
@@ -406,6 +413,7 @@ export function NavigationBar({
   gradeStaff,
   features,
   subjects,
+  staffPreparing,
   hideMenus = false,
   hideAll = false,
 }: {
@@ -427,6 +435,8 @@ export function NavigationBar({
   features?: string[];
   // feat-8-027 — 학습과목 열람 가능 과목('all' | slug[]). 미허용 과목은 드롭다운서 비활성.
   subjects?: "all" | string[];
+  // feat-7-041 — 준비 중 과목의 staff 접근 목록. admin/manager='all', instructor=담당 과목만.
+  staffPreparing?: "all" | string[];
   // 새 nav 검증용 — 학생 사이드바 병존 시 기존 메뉴 dropdown 들 숨김. 로고·알림·유저메뉴는 유지.
   hideMenus?: boolean;
   // 사이드바 모드 — 상단 nav 전체 숨김(로고·도구·유저메뉴 포함). 사이드바가 모든 역할 흡수.
@@ -480,6 +490,7 @@ export function NavigationBar({
                     locked={isAreaLocked(d.area, lockStaff, features)}
                     isStaff={lockStaff}
                     subjects={subjects}
+                    staffPreparing={staffPreparing}
                   />
                 ) : (
                   <SimpleDropdown

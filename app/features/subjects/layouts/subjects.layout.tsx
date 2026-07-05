@@ -19,10 +19,12 @@ import {
   subjectLockedHint,
 } from "~/core/lib/nav-groups";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getInstructorSubjects } from "~/core/lib/staff-subject-guard.server";
 import {
   SUBJECT_NAV_ITEMS,
   subjectSlugFromHref,
 } from "~/core/lib/subject-groups";
+import { getStaffRole } from "~/features/laws/queries.server";
 import { SubjectAxisChips } from "~/features/subjects/components/subject-bookmark-rail";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import {
@@ -45,7 +47,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   // 비로그인은 상위 private.layout 이 처리.
   if (!user) {
     return data(
-      { subjectAccess: [] as "all" | string[], isStaff: false },
+      {
+        subjectAccess: [] as "all" | string[],
+        isStaff: false,
+        staffPreparing: "all" as "all" | string[],
+      },
       { headers },
     );
   }
@@ -55,6 +61,22 @@ export async function loader({ request }: Route.LoaderArgs) {
   // URL: /subjects/<subject>/... — 2번째 세그먼트가 과목 슬러그.
   const seg = new URL(request.url).pathname.split("/").filter(Boolean);
   const subjectSlug = seg[1];
+  // feat-7-041 — 준비 중 과목의 staff 접근: admin/manager=전체, instructor=담당 과목만.
+  let staffPreparing: "all" | string[] = "all";
+  if (isStaff) {
+    const role = await getStaffRole(client, user.id);
+    if (role === "instructor") {
+      staffPreparing = await getInstructorSubjects(user.id);
+      if (
+        subjectSlug &&
+        STUDENT_DISABLED_SUBJECTS.includes(subjectSlug) &&
+        !staffPreparing.includes(subjectSlug)
+      ) {
+        // 담당 과목이 아닌 준비 중 과목 — 강사도 차단(원장·스태프만 전체).
+        throw redirect("/dashboard");
+      }
+    }
+  }
   // 서버 게이트(리졸버 권위): area_subjects 없음(무료회원) 차단 + 미허용 과목 차단.
   if (!isStaff) {
     // 준비 중 과목(민법·민소) — 등급·구매 무관 학생 차단. 결제 유도가 아니므로 대시보드로.
@@ -75,11 +97,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       );
     }
   }
-  return data({ subjectAccess: access.subjects, isStaff }, { headers });
+  return data({ subjectAccess: access.subjects, isStaff, staffPreparing }, { headers });
 }
 
 export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
-  const { subjectAccess, isStaff } = loaderData;
+  const { subjectAccess, isStaff, staffPreparing } = loaderData;
   const location = useLocation();
   const matches = useMatches();
 
@@ -120,14 +142,14 @@ export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
   // 학습과목 토글 — 6과목(SUBJECT_NAV_ITEMS) 파생. 권한 없는 과목은 비활성 표시.
   const tabItems: SectionTabItem[] = SUBJECT_NAV_ITEMS.map((s) => {
     const slug = subjectSlugFromHref(s.href);
-    const disabled = isSubjectLocked(slug, isStaff, subjectAccess);
+    const disabled = isSubjectLocked(slug, isStaff, subjectAccess, staffPreparing);
     return {
       id: s.href,
       to: s.href,
       label: s.name,
       match: [s.href],
       disabled,
-      disabledHint: disabled ? subjectLockedHint(slug) : undefined,
+      disabledHint: disabled ? subjectLockedHint(slug, isStaff) : undefined,
     };
   });
   // 모바일 트리/학습보조 Sheet(모달 Radix Dialog)가 열린 채 트리 링크로 다른

@@ -5,6 +5,7 @@ import { Await, Link, Outlet, data } from "react-router";
 
 import { BugReportWidget } from "~/features/bug-reports/components/bug-report-widget";
 import { listActivePopupNotices } from "~/features/admin/queries/popup-notices.server";
+import { getInstructorSubjects } from "~/core/lib/staff-subject-guard.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import { getUnreadCount } from "~/features/notifications/queries.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
@@ -46,12 +47,17 @@ export async function loader({ request }: Route.LoaderArgs) {
         unread: 0,
         features: [] as string[],
         subjects: [] as "all" | string[],
+        staffPreparing: "all" as "all" | string[],
       };
     const role = await getStaffRole(client, user.id);
     const audience: "staff" | "student" = role ? "staff" : "student";
-    const [unread, access] = await Promise.all([
+    const [unread, access, staffPreparing] = await Promise.all([
       getUnreadCount(client, user.id, audience),
       getMembershipAccess(client, user.id),
+      // feat-7-041 — 준비 중 과목의 staff 접근: admin/manager=전체, instructor=담당 과목만.
+      role === "instructor"
+        ? getInstructorSubjects(user.id)
+        : Promise.resolve<"all" | string[]>("all"),
     ]);
     return {
       isStaff: role !== null,
@@ -61,6 +67,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       unread,
       features: access.features,
       subjects: access.subjects,
+      staffPreparing,
     };
   })();
   // 팝업 공지 — 활성+기간내 공지(RLS 필터). 부가 기능이라 스트리밍(promise)으로 비차단.
@@ -138,6 +145,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       gradeStaff={inbox.gradeStaff}
                       features={inbox.features}
                       subjects={inbox.subjects}
+                      staffPreparing={inbox.staffPreparing}
                       hideAll={isSidebar}
                     />
                   )}
@@ -191,6 +199,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                         inboxHref={inbox.isStaff ? "/admin/inbox" : "/inbox"}
                         features={inbox.features}
                         subjects={inbox.subjects}
+                        staffPreparing={inbox.staffPreparing}
                       />
                     ) : null
                   }
@@ -237,6 +246,7 @@ export default function NavigationLayout({ loaderData }: Route.ComponentProps) {
                       onToggleCollapse={toggleNav}
                       features={inbox.features}
                       subjects={inbox.subjects}
+                      staffPreparing={inbox.staffPreparing}
                     />
                   )}
                 </Await>
