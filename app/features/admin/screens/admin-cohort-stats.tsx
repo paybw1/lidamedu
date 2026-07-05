@@ -41,10 +41,8 @@ import {
   getCohortSrsAggregate,
 } from "~/features/admin/queries/cohort-srs.server";
 import { getCohortWeakNodes } from "~/features/admin/queries/cohort-weakness.server";
-import {
-  listCohortOfflineTestStats,
-  type CohortOfflineTestStat,
-} from "~/features/offline-tests/results.server";
+import type { CohortOfflineTestStat } from "~/features/offline-tests/labels";
+import { listCohortOfflineTestStats } from "~/features/offline-tests/results.server";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Bar, IndexTable, TD, TR } from "~/features/admin/components/admin-ui";
 

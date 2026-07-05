@@ -34,16 +34,18 @@ import { getCohortById } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
 import {
   OFFLINE_QUESTION_TYPE_LABEL,
-  getOfflineTestWithQuestions,
-  listBlankCandidates,
-  listMcqCandidates,
-  listOxCandidates,
   type BlankCandidate,
   type McqCandidate,
   type OfflineQuestionRef,
   type OfflineQuestionType,
   type OfflineTestQuestion,
   type OxCandidate,
+} from "~/features/offline-tests/labels";
+import {
+  getOfflineTestWithQuestions,
+  listBlankCandidates,
+  listMcqCandidates,
+  listOxCandidates,
 } from "~/features/offline-tests/queries.server";
 import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
 

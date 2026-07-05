@@ -7,52 +7,28 @@ import type { Database } from "database.types";
 import { fetchAllIn } from "~/core/lib/supa-batch.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
-export type OfflineQuestionType = "mcq" | "ox" | "blank";
+import type {
+  BlankCandidate,
+  McqCandidate,
+  OfflineQuestionRef,
+  OfflineQuestionType,
+  OfflineTestDetail,
+  OfflineTestQuestion,
+  OfflineTestSummary,
+  OxCandidate,
+} from "./labels";
 
-export const OFFLINE_QUESTION_TYPE_LABEL: Record<OfflineQuestionType, string> = {
-  mcq: "객관식",
-  ox: "OX",
-  blank: "빈칸",
-};
-
-export interface OfflineTestSummary {
-  testId: string;
-  assignmentId: string;
-  cohortId: string;
-  title: string;
-  lawCode: LawSubjectSlug;
-  durationMin: number | null;
-  questionCount: number;
-  totalPoints: number;
-  resultCount: number;
-  createdAt: string;
-}
-
-export interface OfflineTestQuestion {
-  questionId: string;
-  ord: number;
-  points: number;
-  questionType: OfflineQuestionType;
-  problemId: string | null;
-  oxRefType: "choice" | "box" | null;
-  oxRefId: string | null;
-  oxProblemId: string | null;
-  blankSetId: string | null;
-  // 표시용
-  label: string;
-  sub: string | null;
-}
-
-export interface OfflineTestDetail {
-  testId: string;
-  assignmentId: string;
-  cohortId: string;
-  title: string;
-  lawCode: LawSubjectSlug;
-  durationMin: number | null;
-  instructionsMd: string | null;
-  questions: OfflineTestQuestion[];
-}
+// 타입·라벨은 클라이언트 안전한 ./labels 가 SSOT — 서버 소비자 편의로 재노출.
+export type {
+  BlankCandidate,
+  McqCandidate,
+  OfflineQuestionRef,
+  OfflineQuestionType,
+  OfflineTestDetail,
+  OfflineTestQuestion,
+  OfflineTestSummary,
+  OxCandidate,
+} from "./labels";
 
 const snippet = (s: string | null | undefined, n = 90): string => {
   const t = (s ?? "").replace(/\s+/g, " ").trim();
@@ -307,15 +283,6 @@ export async function getOfflineTestWithQuestions(
 }
 
 // ── 문항 추가/삭제/순서/배점 ─────────────────────────────────────────────────
-
-export interface OfflineQuestionRef {
-  questionType: OfflineQuestionType;
-  problemId?: string;
-  oxRefType?: "choice" | "box";
-  oxRefId?: string;
-  oxProblemId?: string;
-  blankSetId?: string;
-}
 
 const refKey = (r: OfflineQuestionRef): string =>
   r.questionType === "mcq"
@@ -656,33 +623,6 @@ export async function getOfflineTestPrintData(
 }
 
 // ── 후보 탐색 (과목 · 파트(체계도 노드) · 중요도) ────────────────────────────
-
-export interface McqCandidate {
-  problemId: string;
-  snippet: string;
-  year: number | null;
-  problemNumber: number | null;
-  importance: number;
-  format: string;
-}
-
-export interface OxCandidate {
-  refType: "choice" | "box";
-  refId: string;
-  problemId: string;
-  snippet: string;
-  oxTruth: "O" | "X";
-  year: number | null;
-  importance: number;
-}
-
-export interface BlankCandidate {
-  setId: string;
-  articleLabel: string;
-  displayName: string | null;
-  blanksCount: number;
-  articleImportance: number;
-}
 
 // 노드에 귀속되는 문제 id — primary_node_id 직접 + primary_article_id→링크 간접
 // (getOxQuestionsForNode 와 동일 규칙).

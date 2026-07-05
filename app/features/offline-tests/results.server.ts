@@ -14,6 +14,7 @@ import type { Database } from "database.types";
 
 import { fetchAllIn } from "~/core/lib/supa-batch.server";
 
+import type { CohortOfflineTestStat } from "./labels";
 import { getOfflineTestPrintData } from "./queries.server";
 
 export interface OfflineResultRow {
@@ -51,20 +52,8 @@ export async function listOfflineTestResults(
 }
 
 // 4단계 — 반 단위 오프라인 테스트 통계 (반 통계 화면 카드용).
-export interface CohortOfflineTestStat {
-  testId: string;
-  assignmentId: string;
-  title: string;
-  lawCode: string;
-  createdAt: string;
-  takenCount: number;
-  absentCount: number;
-  maxScore: number | null;
-  avgScore: number | null;
-  avgPct: number | null;
-  topScore: number | null;
-  bottomScore: number | null;
-}
+// 타입은 클라이언트 안전한 ./labels 가 SSOT.
+export type { CohortOfflineTestStat } from "./labels";
 
 export async function listCohortOfflineTestStats(
   client: SupabaseClient<Database>,

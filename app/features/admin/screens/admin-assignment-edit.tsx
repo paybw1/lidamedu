@@ -36,10 +36,8 @@ import {
   getAssignmentWithItems,
   listAssignmentProgress,
 } from "~/features/assignments/queries.server";
-import {
-  listOfflineTests,
-  type OfflineTestSummary,
-} from "~/features/offline-tests/queries.server";
+import type { OfflineTestSummary } from "~/features/offline-tests/labels";
+import { listOfflineTests } from "~/features/offline-tests/queries.server";
 import {
   ASSIGNMENT_ITEM_KINDS,
   ASSIGNMENT_ITEM_KIND_LABEL,

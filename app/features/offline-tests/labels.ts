@@ -1,0 +1,102 @@
+// feat-7-042 — 오프라인 테스트 공용 타입·라벨. 클라이언트/서버 양쪽 import 가능.
+// (컴포넌트가 쓰는 값·타입은 *.server.ts 에 두면 클라이언트 번들 위반 — 여기로 분리.)
+
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
+
+export type OfflineQuestionType = "mcq" | "ox" | "blank";
+
+export const OFFLINE_QUESTION_TYPE_LABEL: Record<OfflineQuestionType, string> = {
+  mcq: "객관식",
+  ox: "OX",
+  blank: "빈칸",
+};
+
+export interface OfflineTestSummary {
+  testId: string;
+  assignmentId: string;
+  cohortId: string;
+  title: string;
+  lawCode: LawSubjectSlug;
+  durationMin: number | null;
+  questionCount: number;
+  totalPoints: number;
+  resultCount: number;
+  createdAt: string;
+}
+
+export interface OfflineTestQuestion {
+  questionId: string;
+  ord: number;
+  points: number;
+  questionType: OfflineQuestionType;
+  problemId: string | null;
+  oxRefType: "choice" | "box" | null;
+  oxRefId: string | null;
+  oxProblemId: string | null;
+  blankSetId: string | null;
+  // 표시용
+  label: string;
+  sub: string | null;
+}
+
+export interface OfflineTestDetail {
+  testId: string;
+  assignmentId: string;
+  cohortId: string;
+  title: string;
+  lawCode: LawSubjectSlug;
+  durationMin: number | null;
+  instructionsMd: string | null;
+  questions: OfflineTestQuestion[];
+}
+
+export interface OfflineQuestionRef {
+  questionType: OfflineQuestionType;
+  problemId?: string;
+  oxRefType?: "choice" | "box";
+  oxRefId?: string;
+  oxProblemId?: string;
+  blankSetId?: string;
+}
+
+export interface McqCandidate {
+  problemId: string;
+  snippet: string;
+  year: number | null;
+  problemNumber: number | null;
+  importance: number;
+  format: string;
+}
+
+export interface OxCandidate {
+  refType: "choice" | "box";
+  refId: string;
+  problemId: string;
+  snippet: string;
+  oxTruth: "O" | "X";
+  year: number | null;
+  importance: number;
+}
+
+export interface BlankCandidate {
+  setId: string;
+  articleLabel: string;
+  displayName: string | null;
+  blanksCount: number;
+  articleImportance: number;
+}
+
+export interface CohortOfflineTestStat {
+  testId: string;
+  assignmentId: string;
+  title: string;
+  lawCode: string;
+  createdAt: string;
+  takenCount: number;
+  absentCount: number;
+  maxScore: number | null;
+  avgScore: number | null;
+  avgPct: number | null;
+  topScore: number | null;
+  bottomScore: number | null;
+}
