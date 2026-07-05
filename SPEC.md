@@ -532,7 +532,7 @@
 | feat-7-042 | **오프라인 테스트** — 종합반 과제에 시험지 제작(빈칸·OX·객관식을 과목/파트/중요도로 조합) + 실제 시험지 양식 인쇄/PDF(문제지·정답해설지) + 오프라인 채점 결과 문항별 입력(그리드, 오답만 클릭) → 학생별 quiz_session(scope_payload.source='offline_test') + attempts 기록으로 **온라인 학습 신호에 합류**(약점진단·마스터리·반 통계 자동 통합) + 테스트·반 통계. 테이블 3종 `offline_tests`/`offline_test_questions`/`offline_test_results`. 상세: `docs/features/feat-7-042-offline-test.md`. | P1 | ✅ |
 | feat-7-043 | **출결 대장** — 종합반 오프라인 수업 회차(`cohort_class_sessions`)별 출석(`cohort_attendance`: 출석/지각/결석/온라인 대체/공결). `/admin/cohorts/:id/attendance` 회차 관리+학생별 누계 출석률, 회차별 출석 체크 그리드(전원 출석 기본·예외만 변경). 학생 `/assignments` 출결 요약 카드 + at-risk "최근 결석" 신호 합류. 온·오프 병행 종합반 주간 리듬 P0-①. 상세: `docs/features/feat-7-043-attendance.md`. | P0 | ✅ |
 
-| feat-7-045 | **약점 개인 보충 과제 자동 생성** — assignments.target_profile_id(개인 과제, RLS member_read 개인 필터) + 학생별 약점(getWeakNodes)→picker seam→개인 과제 N문항. 반 과제 화면 [지금 생성]+자동 토글(cohorts.weak_assignment_auto), /api/cron/weak-assignments 주간. 주 1회 가드·최근 4주 출제 제외. 병행 종합반 P0-③(진단→처방 루프 폐쇄). 상세: `docs/features/feat-7-045-weak-personal-assignment.md`. | P0 | 🟡 |
+| feat-7-045 | **약점 개인 보충 과제 자동 생성** — assignments.target_profile_id(개인 과제, RLS member_read 개인 필터) + 학생별 약점(getWeakNodes)→picker seam→개인 과제 N문항. 반 과제 화면 [지금 생성]+자동 토글(cohorts.weak_assignment_auto), /api/cron/weak-assignments 주간. 주 1회 가드·최근 4주 출제 제외. 병행 종합반 P0-③(진단→처방 루프 폐쇄). 상세: `docs/features/feat-7-045-weak-personal-assignment.md`. | P0 | ✅ |
 
 상세 스펙: `docs/spec-detail-5-7-admin.md` (작성 예정).
 

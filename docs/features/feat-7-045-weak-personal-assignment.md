@@ -1,6 +1,6 @@
 # feat-7-045 — 약점 개인 보충 과제 자동 생성
 
-> 상태: 🟡 진행 중 (2026-07-06 착수)
+> 상태: ✅ 전 단계 구현 완료 (2026-07-06)
 > 관련: feat-7-021(과제) · feat-7-040(약점 seam) · 온·오프 병행 종합반 로드맵 P0-③
 
 ## 1. 목적
@@ -34,3 +34,11 @@
 
 ## 3. 진행 로그
 - 2026-07-06: 착수. DB(target_profile_id·weak_assignment_auto·RLS 재생성) 운영 적용.
+- 2026-07-06: 전 단계 구현·푸시(80b3b37·012bec6). 구현 파일:
+  assignments/weak-personal.server.ts(생성기), admin/api/assignment.tsx
+  (generate_weak_personal·toggle_weak_auto), admin-cohort-assignments.tsx(블록·
+  개인 chip·기본 접힘), cron/api/weak-assignments.tsx.
+- 주의: pickWeakProblemsForUser 는 session-from-weakness("D")의 로직 사본 —
+  선택 규칙 변경 시 양쪽 동기화 필요.
+- 주간 자동은 반별 opt-in(과제 화면 토글) + 외부 cron 이
+  /api/cron/weak-assignments?secret=CRON_SECRET 를 주 1회 호출해야 발화.
