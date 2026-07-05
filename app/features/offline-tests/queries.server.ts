@@ -164,7 +164,7 @@ export async function getOfflineTestWithQuestions(
   const { data: t, error } = await client
     .from("offline_tests")
     .select(
-      "test_id, assignment_id, cohort_id, title, law_code, science_subject, duration_min, instructions_md",
+      "test_id, assignment_id, cohort_id, title, law_code, science_subject, duration_min, instructions_md, series_id, series_round_no",
     )
     .eq("test_id", testId)
     .is("deleted_at", null)
@@ -286,6 +286,8 @@ export async function getOfflineTestWithQuestions(
     scienceSubject: t.science_subject as ScienceSubjectSlug | null,
     durationMin: t.duration_min,
     instructionsMd: t.instructions_md,
+    seriesId: t.series_id,
+    seriesRoundNo: t.series_round_no,
     questions,
   };
 }

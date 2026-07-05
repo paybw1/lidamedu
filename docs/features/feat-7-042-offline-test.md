@@ -137,3 +137,12 @@ attempts/sessions 는 기존 테이블 RLS 그대로(학생 본인 소유).
 - 알려진 한계: 빈칸 시도(user_blank_attempts)는 세션 컬럼이 없어 append-only —
   재저장은 최신 시도 우선 규칙이 흡수하지만 taken→absent 전환 시 빈칸 기록은
   철회되지 않음(객관식·OX 는 세션 삭제로 철회됨).
+
+## 7. feat-7-044 — 테스트 시리즈·성적 추이 (2026-07-06, 병행 종합반 P0-②)
+- `offline_test_series`(반 단위 묶음) + offline_tests.series_id/series_round_no.
+  빌더 "시리즈" 영역에서 지정(회차 미입력=다음 회차 자동), 새 시리즈 인라인 생성.
+- `/admin/cohorts/:id/test-series` — 학생×회차 매트릭스(점수% 톤, 툴팁=점수·석차·
+  상위%), 반 평균 행, 학생 평균·추세(최근−직전 %p) 컬럼. 반 상세 [시험 추이] 진입.
+- 학생 /assignments "내 시험 추이" 카드 — 최근 시리즈 회차별 내 점수% + 반 평균
+  (반 평균은 adminClient 집계, 개인 식별 없음).
+- 파생값(순위·평균) 저장 안 함 — getSeriesTrend 가 조회 시 계산.

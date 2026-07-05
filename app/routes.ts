@@ -635,6 +635,11 @@ export default [
         "features/admin/screens/admin-attendance-check.tsx",
       ),
       route("/api/admin/attendance", "features/admin/api/attendance.tsx"),
+      // feat-7-044 — 테스트 시리즈 성적 추이.
+      route(
+        "/admin/cohorts/:cohortId/test-series",
+        "features/admin/screens/admin-cohort-test-series.tsx",
+      ),
       route(
         "/admin/cohorts/:cohortId/progress",
         "features/admin/screens/admin-cohort-progress.tsx",

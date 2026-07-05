@@ -49,6 +49,10 @@ import {
   listOxCandidates,
   listScienceMcqCandidates,
 } from "~/features/offline-tests/queries.server";
+import {
+  listSeries,
+  type SeriesSummary,
+} from "~/features/offline-tests/series.server";
 
 import type { Route } from "./+types/admin-offline-test-edit";
 
@@ -139,6 +143,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }));
   }
 
+  const series = await listSeries(client, test.cohortId);
+
   return {
     cohort,
     test,
@@ -149,6 +155,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     oxCands,
     blankCands,
     nodes,
+    series,
   };
 }
 
@@ -177,6 +184,7 @@ export default function AdminOfflineTestEdit({
     oxCands,
     blankCands,
     nodes,
+    series,
   } = loaderData;
   const basePath = `/admin/cohorts/${cohort.cohortId}/assignments/${test.assignmentId}`;
   const totalPoints = test.questions.reduce((s, q) => s + q.points, 0);
@@ -218,12 +226,21 @@ export default function AdminOfflineTestEdit({
         ← 과제로
       </Link>
 
-      <TestMetaForm
-        testId={test.testId}
-        title={test.title}
-        durationMin={test.durationMin}
-        instructionsMd={test.instructionsMd}
-      />
+      <div className="flex flex-wrap items-start gap-2">
+        <TestMetaForm
+          testId={test.testId}
+          title={test.title}
+          durationMin={test.durationMin}
+          instructionsMd={test.instructionsMd}
+        />
+        <SeriesForm
+          testId={test.testId}
+          cohortId={cohort.cohortId}
+          seriesId={test.seriesId}
+          seriesRoundNo={test.seriesRoundNo}
+          series={series}
+        />
+      </div>
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         {/* 좌: 후보 탐색 */}
@@ -363,6 +380,157 @@ function TestMetaForm({
         </Button>
       </div>
     </fetcher.Form>
+  );
+}
+
+// feat-7-044 — 시리즈(주간 테스트 묶음) 지정. 시리즈에 넣어야 성적 추이에 잡힌다.
+function SeriesForm({
+  testId,
+  cohortId,
+  seriesId,
+  seriesRoundNo,
+  series,
+}: {
+  testId: string;
+  cohortId: string;
+  seriesId: string | null;
+  seriesRoundNo: number | null;
+  series: SeriesSummary[];
+}) {
+  const assignFetcher = useFetcher<{ ok?: true; error?: string }>();
+  const createFetcher = useFetcher<{ ok?: true; seriesId?: string; error?: string }>();
+  const reload = useReload();
+  const [creating, setCreating] = useState(false);
+  useEffect(() => {
+    if (
+      assignFetcher.state === "idle" &&
+      assignFetcher.data &&
+      "ok" in assignFetcher.data &&
+      assignFetcher.data.ok
+    ) {
+      reload();
+    }
+  }, [assignFetcher.state, assignFetcher.data, reload]);
+  // 새 시리즈 생성 → 이 테스트를 바로 그 시리즈에 연결.
+  useEffect(() => {
+    if (
+      createFetcher.state === "idle" &&
+      createFetcher.data &&
+      "ok" in createFetcher.data &&
+      createFetcher.data.ok &&
+      createFetcher.data.seriesId
+    ) {
+      setCreating(false);
+      const fd = new FormData();
+      fd.set("intent", "set_series");
+      fd.set("testId", testId);
+      fd.set("seriesId", createFetcher.data.seriesId);
+      assignFetcher.submit(fd, { method: "post", action: API });
+    }
+    // assignFetcher 는 안정 참조가 아니므로 의존성에서 제외해도 안전(제출 1회 목적).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createFetcher.state, createFetcher.data, testId]);
+
+  const current = series.find((s) => s.seriesId === seriesId);
+
+  return (
+    <div className="border-border bg-muted/30 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2">
+      <span className="text-muted-foreground text-[11px] font-semibold">
+        시리즈
+      </span>
+      {current ? (
+        <span className="text-xs font-medium">
+          {current.title}
+          {seriesRoundNo ? (
+            <span className="text-link ml-1 tabular-nums">{seriesRoundNo}회차</span>
+          ) : null}
+        </span>
+      ) : (
+        <span className="text-muted-foreground text-xs">
+          미지정 — 시리즈에 넣으면 회차별 성적 추이에 집계됩니다.
+        </span>
+      )}
+      <assignFetcher.Form method="post" action={API} className="flex items-center gap-1.5">
+        <input type="hidden" name="intent" value="set_series" />
+        <input type="hidden" name="testId" value={testId} />
+        <select
+          name="seriesId"
+          defaultValue={seriesId ?? ""}
+          className="border-input bg-background h-7 rounded-md border px-1.5 text-[11px]"
+        >
+          <option value="">시리즈 없음</option>
+          {series.map((s) => (
+            <option key={s.seriesId} value={s.seriesId}>
+              {s.title} ({s.testCount})
+            </option>
+          ))}
+        </select>
+        <Input
+          name="roundNo"
+          type="number"
+          min={1}
+          max={999}
+          defaultValue={seriesRoundNo ?? ""}
+          placeholder="회차(자동)"
+          className="h-7 w-20 text-[11px] tabular-nums"
+        />
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          className="h-7 text-[11px]"
+          disabled={assignFetcher.state !== "idle"}
+        >
+          지정
+        </Button>
+      </assignFetcher.Form>
+      {creating ? (
+        <createFetcher.Form method="post" action={API} className="flex items-center gap-1.5">
+          <input type="hidden" name="intent" value="create_series" />
+          <input type="hidden" name="cohortId" value={cohortId} />
+          <Input
+            name="title"
+            required
+            maxLength={200}
+            placeholder="예: 주간 테스트"
+            className="h-7 w-36 text-[11px]"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            className="h-7 text-[11px]"
+            disabled={createFetcher.state !== "idle"}
+          >
+            만들기
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 text-[11px]"
+            onClick={() => setCreating(false)}
+          >
+            취소
+          </Button>
+        </createFetcher.Form>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 text-[11px]"
+          onClick={() => setCreating(true)}
+        >
+          + 새 시리즈
+        </Button>
+      )}
+      {assignFetcher.data && "error" in assignFetcher.data && assignFetcher.data.error ? (
+        <p className="w-full text-[11px] text-rose-600">{assignFetcher.data.error}</p>
+      ) : null}
+      {createFetcher.data && "error" in createFetcher.data && createFetcher.data.error ? (
+        <p className="w-full text-[11px] text-rose-600">{createFetcher.data.error}</p>
+      ) : null}
+    </div>
   );
 }
 

@@ -20,6 +20,8 @@ import {
   attendanceRatePct,
 } from "~/features/attendance/labels";
 import { getMyAttendance } from "~/features/attendance/queries.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
+import { getMySeriesTrend } from "~/features/offline-tests/series.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "과제 | 리담변리사학원" },
@@ -31,11 +33,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
-  const [assignments, attendance] = await Promise.all([
+  const [assignments, attendance, seriesTrend] = await Promise.all([
     listStudentAssignments(user.id),
     getMyAttendance(client, user.id),
+    // 반 평균은 adminClient 집계(개인 식별 없음) — 내 결과는 RLS own.
+    getMySeriesTrend(client, adminClient, user.id),
   ]);
-  return { assignments, attendance };
+  return { assignments, attendance, seriesTrend };
 }
 
 const STATUS_TONE: Record<AssignmentStatus, string> = {
@@ -47,7 +51,7 @@ const STATUS_TONE: Record<AssignmentStatus, string> = {
 export default function StudentAssignments({
   loaderData,
 }: Route.ComponentProps) {
-  const { assignments, attendance } = loaderData;
+  const { assignments, attendance, seriesTrend } = loaderData;
   const attendanceRate = attendance ? attendanceRatePct(attendance.counts) : null;
   const now = Date.now();
   const pending = assignments.filter(
@@ -104,6 +108,49 @@ export default function StudentAssignments({
                     {r.sessionNo}회{" "}
                     {r.status ? ATTENDANCE_STATUS_LABEL[r.status] : "미기록"}
                   </span>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
+
+      {/* feat-7-044 — 내 시험 추이 (최근 시리즈, 반 평균 병기) */}
+      {seriesTrend ? (
+        <section className="mb-6">
+          <Card>
+            <CardContent className="px-4 py-3">
+              <p className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-wide uppercase">
+                내 시험 추이 — {seriesTrend.seriesTitle}
+              </p>
+              <div className="flex flex-wrap items-end gap-3">
+                {seriesTrend.rounds.map((r) => (
+                  <div
+                    key={r.roundNo}
+                    className="text-center"
+                    title={`${r.title}${r.avgPct !== null ? ` · 반 평균 ${r.avgPct}%` : ""}`}
+                  >
+                    <p
+                      className={cn(
+                        "text-base font-bold tabular-nums",
+                        r.myPct === null
+                          ? "text-muted-foreground/50"
+                          : r.myPct >= 80
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : r.myPct >= 60
+                              ? "text-lime-600 dark:text-lime-400"
+                              : r.myPct >= 40
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-rose-600 dark:text-rose-400",
+                      )}
+                    >
+                      {r.myPct === null ? "—" : `${r.myPct}%`}
+                    </p>
+                    <p className="text-muted-foreground text-[10px] tabular-nums">
+                      {r.roundNo}회
+                      {r.avgPct !== null ? ` · 반 ${r.avgPct}%` : ""}
+                    </p>
+                  </div>
                 ))}
               </div>
             </CardContent>

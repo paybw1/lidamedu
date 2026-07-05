@@ -29,6 +29,10 @@ import {
   type OfflineQuestionRef,
 } from "~/features/offline-tests/queries.server";
 import { saveOfflineTestResults } from "~/features/offline-tests/results.server";
+import {
+  assignTestToSeries,
+  createSeries,
+} from "~/features/offline-tests/series.server";
 
 import type { Route } from "./+types/offline-test";
 
@@ -55,6 +59,9 @@ async function resolveCohortId(
       .eq("assignment_id", aid)
       .maybeSingle();
     return a?.cohort_id ?? null;
+  }
+  if (intent === "create_series") {
+    return String(fd.get("cohortId") ?? "") || null;
   }
   const testId = String(fd.get("testId") ?? "");
   if (!testId) return null;
@@ -111,7 +118,40 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ ok: true, testId, cohortId, assignmentId });
   }
 
+  // feat-7-044 — 시리즈 생성 (반 단위).
+  if (intent === "create_series") {
+    const title = String(fd.get("title") ?? "").trim().slice(0, 200);
+    if (!title) return data({ error: "시리즈 이름을 입력하세요" }, { status: 400 });
+    const seriesId = await createSeries(client, {
+      cohortId,
+      title,
+      createdBy: user.id,
+    });
+    return data({ ok: true, seriesId });
+  }
+
   const testId = String(fd.get("testId") ?? "");
+
+  // feat-7-044 — 테스트 ↔ 시리즈 연결/해제. seriesId 빈값 = 해제.
+  if (intent === "set_series") {
+    const seriesId = String(fd.get("seriesId") ?? "") || null;
+    const roundRaw = String(fd.get("roundNo") ?? "");
+    const roundNo = roundRaw === "" ? null : Math.max(1, Math.min(999, Number(roundRaw) || 0));
+    if (seriesId) {
+      // 시리즈가 이 반 소유인지 확인 (교차 반 연결 차단).
+      const { data: s } = await adminClient
+        .from("offline_test_series")
+        .select("cohort_id")
+        .eq("series_id", seriesId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!s || s.cohort_id !== cohortId) {
+        return data({ error: "시리즈를 찾을 수 없습니다" }, { status: 404 });
+      }
+    }
+    await assignTestToSeries(client, testId, seriesId, roundNo);
+    return data({ ok: true });
+  }
 
   if (intent === "update_test") {
     const title = fd.get("title") ? String(fd.get("title")).trim().slice(0, 200) : undefined;

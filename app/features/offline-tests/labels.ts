@@ -80,6 +80,9 @@ export interface OfflineTestDetail extends OfflineTestSubject {
   title: string;
   durationMin: number | null;
   instructionsMd: string | null;
+  // feat-7-044 — 시리즈(주간 테스트 묶음) 소속.
+  seriesId: string | null;
+  seriesRoundNo: number | null;
   questions: OfflineTestQuestion[];
 }
 

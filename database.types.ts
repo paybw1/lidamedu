@@ -4949,6 +4949,55 @@ export type Database = {
           },
         ]
       }
+      offline_test_series: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          series_id: string
+          title: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          series_id?: string
+          title: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          series_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_test_series_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["cohort_id"]
+          },
+          {
+            foreignKeyName: "offline_test_series_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "offline_test_series_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       offline_tests: {
         Row: {
           assignment_id: string
@@ -4960,6 +5009,8 @@ export type Database = {
           instructions_md: string | null
           law_code: string | null
           science_subject: string | null
+          series_id: string | null
+          series_round_no: number | null
           test_id: string
           title: string
           updated_at: string
@@ -4974,6 +5025,8 @@ export type Database = {
           instructions_md?: string | null
           law_code?: string | null
           science_subject?: string | null
+          series_id?: string | null
+          series_round_no?: number | null
           test_id?: string
           title: string
           updated_at?: string
@@ -4988,6 +5041,8 @@ export type Database = {
           instructions_md?: string | null
           law_code?: string | null
           science_subject?: string | null
+          series_id?: string | null
+          series_round_no?: number | null
           test_id?: string
           title?: string
           updated_at?: string
@@ -5020,6 +5075,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "offline_tests_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "offline_test_series"
+            referencedColumns: ["series_id"]
           },
         ]
       }
