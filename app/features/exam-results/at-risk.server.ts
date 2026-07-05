@@ -263,14 +263,59 @@ async function getCohortTrendSignals(
   return out;
 }
 
+// ─── feat-7-043 — 출결 신호 ───
+// 최근 N개 회차 중 결석이 임계 이상이면 위험 사유로 가산. 오프라인 이탈은
+// 온라인 지표보다 먼저 나타나는 경우가 많다(병행 종합반).
+const ATTENDANCE_RECENT_SESSIONS = 4;
+const ATTENDANCE_ABSENT_THRESHOLD = 2;
+const W_ATTENDANCE = 0.25;
+
+async function getRecentAbsenceSignals(
+  admin: SupabaseClient<Database>,
+  cohortId: string,
+): Promise<Map<string, { reason: string; score: number }>> {
+  const out = new Map<string, { reason: string; score: number }>();
+  const { data: sessions } = await admin
+    .from("cohort_class_sessions")
+    .select("class_session_id")
+    .eq("cohort_id", cohortId)
+    .is("deleted_at", null)
+    .order("held_on", { ascending: false })
+    .order("session_no", { ascending: false })
+    .limit(ATTENDANCE_RECENT_SESSIONS);
+  const sessionIds = (sessions ?? []).map((s) => s.class_session_id);
+  if (sessionIds.length === 0) return out;
+
+  const { data: rows } = await admin
+    .from("cohort_attendance")
+    .select("profile_id, status")
+    .in("class_session_id", sessionIds);
+  const absentByUser = new Map<string, number>();
+  for (const r of rows ?? []) {
+    if (r.status === "absent") {
+      absentByUser.set(r.profile_id, (absentByUser.get(r.profile_id) ?? 0) + 1);
+    }
+  }
+  for (const [profileId, n] of absentByUser) {
+    if (n >= ATTENDANCE_ABSENT_THRESHOLD) {
+      out.set(profileId, {
+        reason: `최근 수업 ${sessionIds.length}회 중 결석 ${n}회`,
+        score: W_ATTENDANCE,
+      });
+    }
+  }
+  return out;
+}
+
 export async function getAtRiskStudents(
   cohortId: string,
 ): Promise<AtRiskSummary> {
   const admin = adminClient as SupabaseClient<Database>;
 
-  const [baseline, members] = await Promise.all([
+  const [baseline, members, absenceSignals] = await Promise.all([
     computePasserBaseline(),
     listCohortProgressSummary(cohortId),
+    getRecentAbsenceSignals(adminClient as SupabaseClient<Database>, cohortId),
   ]);
 
   if (members.length === 0) {
@@ -372,6 +417,13 @@ export async function getAtRiskStudents(
         reasons.unshift(...trendReasons);
         score += trend.accScore + trend.activityScore + trend.stallScore;
       }
+    }
+
+    // feat-7-043 — 출결 신호. 오프라인 이탈은 가장 이른 경고라 맨 앞에 노출.
+    const absence = absenceSignals.get(m.profileId);
+    if (absence) {
+      reasons.unshift(absence.reason);
+      score += absence.score;
     }
 
     const riskScore = clamp01(score);

@@ -14,6 +14,12 @@ import {
   type AssignmentStatus,
 } from "~/features/assignments/labels";
 import { listStudentAssignments } from "~/features/assignments/queries.server";
+import {
+  ATTENDANCE_STATUS_LABEL,
+  ATTENDANCE_STATUS_TONE,
+  attendanceRatePct,
+} from "~/features/attendance/labels";
+import { getMyAttendance } from "~/features/attendance/queries.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "과제 | 리담변리사학원" },
@@ -25,8 +31,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
-  const assignments = await listStudentAssignments(user.id);
-  return { assignments };
+  const [assignments, attendance] = await Promise.all([
+    listStudentAssignments(user.id),
+    getMyAttendance(client, user.id),
+  ]);
+  return { assignments, attendance };
 }
 
 const STATUS_TONE: Record<AssignmentStatus, string> = {
@@ -38,7 +47,8 @@ const STATUS_TONE: Record<AssignmentStatus, string> = {
 export default function StudentAssignments({
   loaderData,
 }: Route.ComponentProps) {
-  const { assignments } = loaderData;
+  const { assignments, attendance } = loaderData;
+  const attendanceRate = attendance ? attendanceRatePct(attendance.counts) : null;
   const now = Date.now();
   const pending = assignments.filter(
     (a) => a.submission?.status !== "completed",
@@ -56,6 +66,50 @@ export default function StudentAssignments({
           마감이 가까운 과제부터 보여 드립니다. 완수는 자동으로 판정됩니다.
         </p>
       </header>
+
+      {/* feat-7-043 — 내 출결 요약 (종합반 오프라인 수업) */}
+      {attendance && attendance.recorded > 0 ? (
+        <section className="mb-6">
+          <Card>
+            <CardContent className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
+              <div>
+                <p className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                  내 출결
+                </p>
+                <p className="text-lg font-bold tabular-nums">
+                  {attendanceRate !== null ? `${attendanceRate}%` : "—"}
+                  <span className="text-muted-foreground ml-1 text-xs font-normal">
+                    출석률 · 기록 {attendance.recorded}회
+                    {attendance.counts.absent > 0
+                      ? ` · 결석 ${attendance.counts.absent}`
+                      : ""}
+                    {attendance.counts.late > 0
+                      ? ` · 지각 ${attendance.counts.late}`
+                      : ""}
+                  </span>
+                </p>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
+                {attendance.recent.map((r) => (
+                  <span
+                    key={`${r.sessionNo}-${r.heldOn}`}
+                    title={`${r.sessionNo}회차 · ${r.heldOn}${r.title ? ` · ${r.title}` : ""}`}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      r.status
+                        ? ATTENDANCE_STATUS_TONE[r.status]
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {r.sessionNo}회{" "}
+                    {r.status ? ATTENDANCE_STATUS_LABEL[r.status] : "미기록"}
+                  </span>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
 
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-semibold">
