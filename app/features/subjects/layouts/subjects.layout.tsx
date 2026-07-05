@@ -13,6 +13,7 @@ import {
 } from "react-router";
 
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
+import { cn } from "~/core/lib/utils";
 import {
   STUDENT_DISABLED_SUBJECTS,
   isSubjectLocked,
@@ -166,8 +167,18 @@ export default function SubjectsLayout({ loaderData }: Route.ComponentProps) {
   return (
     <>
       {/* SectionTabs 는 -mx-4(full-bleed) 전제라 패딩 컨테이너로 감싸 상쇄 —
-          맨몸으로 두면 우측 16px 초과로 모바일 가로 스크롤이 생긴다. */}
-      <div className="overflow-x-clip px-4 sm:px-6 md:px-8">
+          맨몸으로 두면 우측 16px 초과로 모바일 가로 스크롤이 생긴다.
+          내부 SectionTabs 의 sticky 는 래퍼 높이=바 높이라 무효(고정될 공간 없음).
+          자연과학은 과목(물/화/생/지) 바가 이 바로 아래 sticky 로 이어지므로
+          래퍼 자체를 고정해 학습과목 바도 함께 남긴다. 법률 뷰어는 자체 세션
+          top-bar 가 같은 위치(top-14)에 붙어 충돌하므로 science 한정. */}
+      <div
+        className={cn(
+          "overflow-x-clip px-4 sm:px-6 md:px-8",
+          currentSubject === "science" &&
+            "sticky top-0 z-20 md:top-[var(--area-sticky-top)]",
+        )}
+      >
         <AreaTabs
           ariaLabel="학습과목"
           items={tabItems}
