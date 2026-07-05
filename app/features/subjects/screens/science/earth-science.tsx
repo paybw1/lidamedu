@@ -2,6 +2,7 @@ import type { Route } from "./+types/earth-science";
 
 import makeServerClient from "~/core/lib/supa-client.server";
 import ScienceHub from "~/features/subjects/components/science-hub";
+import { ScienceSubjectBar } from "~/features/subjects/components/science-subject-bar";
 import { loadScienceHubData } from "~/features/subjects/lib/science.server";
 
 export const meta: Route.MetaFunction = () => [
@@ -20,14 +21,17 @@ export default function SubjectEarthScience({
   loaderData,
 }: Route.ComponentProps) {
   return (
-    <ScienceHub
-      subject="earth_science"
-      sections={loaderData.sections}
-      years={loaderData.years}
-      progress={loaderData.progress}
-      bookmarks={loaderData.bookmarks}
-      resume={loaderData.resume}
-      wrongCount={loaderData.wrongCount}
-    />
+    <>
+      <ScienceSubjectBar active="earth_science" />
+      <ScienceHub
+        subject="earth_science"
+        sections={loaderData.sections}
+        years={loaderData.years}
+        progress={loaderData.progress}
+        bookmarks={loaderData.bookmarks}
+        resume={loaderData.resume}
+        wrongCount={loaderData.wrongCount}
+      />
+    </>
   );
 }

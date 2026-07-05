@@ -108,6 +108,7 @@ function ScienceBookmarkSearch({
   );
 }
 
+// 항상 ScienceSubjectBar(고정 과목 토글) 아래에 렌더된다 — 백링크·eyebrow 는 바가 대체.
 export default function ScienceHub({
   subject,
   sections,
@@ -116,7 +117,6 @@ export default function ScienceHub({
   bookmarks = [],
   resume = null,
   wrongCount = 0,
-  hideBackLink = false,
 }: {
   subject: ScienceSubjectSlug;
   sections: ScienceSectionStats[];
@@ -125,8 +125,6 @@ export default function ScienceHub({
   bookmarks?: ScienceBookmark[];
   resume?: ScienceResumeInfo | null;
   wrongCount?: number;
-  // /subjects/science 허브에 탭으로 임베드될 때 "← 자연과학" 백링크·eyebrow 숨김(중복).
-  hideBackLink?: boolean;
 }) {
   const meta = SCIENCE_SUBJECTS[subject];
   const totalProblems = sections.reduce((s, x) => s + x.problemCount, 0);
@@ -140,38 +138,12 @@ export default function ScienceHub({
 
   return (
     <div className="bg-background min-h-[calc(100vh-56px)]">
-      <div
-        className={cn(
-          "mx-auto w-full max-w-screen-lg px-5 md:px-10",
-          hideBackLink ? "py-6" : "py-8 md:py-10",
-        )}
-      >
+      <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10">
         {/* Page header — 제목 + 우측 요약 통계 한 줄 */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-          <div>
-            {hideBackLink ? null : (
-              <>
-                <Link
-                  to="/subjects/science"
-                  className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-xs transition-colors"
-                >
-                  <ChevronRightIcon className="size-3 rotate-180" /> 자연과학
-                </Link>
-                <p className="text-link mb-1 font-mono text-[11px] font-bold tracking-widest uppercase">
-                  자연과학 · 1차 필수
-                </p>
-              </>
-            )}
-            <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
-              {meta.name}
-            </h1>
-            {hideBackLink ? null : (
-              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                자연과학은 4과목을 모두 응시합니다 — 과목당 10문항, 고르게
-                학습하세요.
-              </p>
-            )}
-          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">
+            {meta.name}
+          </h1>
           {progress.total > 0 ? (
             <p className="text-muted-foreground pb-0.5 text-xs">
               내 풀이{" "}

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { cn } from "~/core/lib/utils";
 import makeServerClient from "~/core/lib/supa-client.server";
 import { createQuizSession } from "~/features/study/queries.server";
+import { ScienceSubjectBar } from "~/features/subjects/components/science-subject-bar";
 import {
   SCIENCE_SUBJECTS,
   normalizeScienceSlug,
@@ -161,9 +162,12 @@ export default function ScienceQuizSetup({
 
   return (
     <div className="min-h-[calc(100vh-56px)] bg-background">
-      <div className="mx-auto w-full max-w-screen-md px-5 py-8 md:px-10 md:py-10">
+      {/* 과목 토글 고정 바 — 설정 중에도 언제든 과목 전환(→ 그 과목 허브) */}
+      <ScienceSubjectBar active={scienceSubject} />
+
+      <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
         <Link
-          to={`/subjects/science/${sciencePath}`}
+          to={`/subjects/science?subject=${sciencePath}`}
           viewTransition
           className="text-muted-foreground hover:text-foreground mb-5 inline-flex items-center gap-1 text-sm transition-colors"
         >

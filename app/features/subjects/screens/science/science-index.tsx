@@ -1,17 +1,12 @@
 // /subjects/science — 자연과학 허브. nav 의 "자연과학" 단일 진입점에서 도달한다.
-// 상단 과목 탭(물/화/생/지)을 클릭하면 다른 화면으로 넘어가지 않고, 같은 허브
-// 화면에서 그 과목 내용(과목별 ScienceHub 뷰)이 바로 교체되어 보인다(?subject=).
-// 탭에는 과목별 진척 링을 내장 — "4과목 고르게" 균형이 탭에서 바로 보인다.
+// 상단 과목 바(물/화/생/지, sticky)를 클릭하면 다른 화면으로 넘어가지 않고, 같은
+// 허브 화면에서 그 과목 내용(과목별 ScienceHub 뷰)이 바로 교체되어 보인다(?subject=).
 // 진입 게이트(area_subjects)는 상위 subjects.layout 이 담당.
 
-import { Link } from "react-router";
-
 import makeServerClient from "~/core/lib/supa-client.server";
-import { cn } from "~/core/lib/utils";
 import ScienceHubView from "~/features/subjects/components/science-hub";
+import { ScienceSubjectBar } from "~/features/subjects/components/science-subject-bar";
 import {
-  SCIENCE_SUBJECT_SLUGS,
-  SCIENCE_SUBJECTS,
   type ScienceSubjectSlug,
   normalizeScienceSlug,
 } from "~/features/subjects/lib/science";
@@ -25,11 +20,6 @@ import type { Route } from "./+types/science-index";
 export const meta: Route.MetaFunction = () => [
   { title: "자연과학 | 리담변리사학원" },
 ];
-
-// earth_science 만 URL 표기가 다름(earth-science). 그 외는 동일.
-function toParam(slug: ScienceSubjectSlug): string {
-  return slug === "earth_science" ? "earth-science" : slug;
-}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -47,37 +37,6 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { subject, ...hub, allProgress };
 }
 
-// 탭 진척 미니 링 — currentColor 로 활성/비활성 톤을 그대로 따른다.
-function TabProgressRing({ pct }: { pct: number }) {
-  const r = 5.5;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox="0 0 14 14" className="size-3.5 -rotate-90" aria-hidden="true">
-      <circle
-        cx="7"
-        cy="7"
-        r={r}
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.25"
-        strokeWidth="2.5"
-      />
-      {pct > 0 ? (
-        <circle
-          cx="7"
-          cy="7"
-          r={r}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeDasharray={`${(c * pct) / 100} ${c}`}
-        />
-      ) : null}
-    </svg>
-  );
-}
-
 export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
   const {
     subject,
@@ -91,58 +50,11 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
   } = loaderData;
   return (
     <div className="bg-background">
-      {/* 과목 탭 — 클릭 시 같은 화면에서 내용만 교체(페이지 전환 아님). */}
-      <div className="mx-auto w-full max-w-screen-lg px-5 pt-6 md:px-10">
-        <p className="text-link mb-2 font-mono text-[11px] font-bold tracking-widest uppercase">
-          자연과학 · 1차 필수
-        </p>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {SCIENCE_SUBJECT_SLUGS.map((slug) => {
-            const active = slug === subject;
-            const m = SCIENCE_SUBJECTS[slug];
-            const prog = allProgress?.find((p) => p.slug === slug);
-            const pct =
-              prog && prog.total > 0
-                ? Math.round((prog.attempted / prog.total) * 100)
-                : null;
-            return (
-              <Link
-                key={slug}
-                to={`/subjects/science?subject=${toParam(slug)}`}
-                preventScrollReset
-                viewTransition
-                aria-current={active ? "page" : undefined}
-                title={
-                  prog && prog.total > 0
-                    ? `내 풀이 ${prog.attempted}/${prog.total}`
-                    : undefined
-                }
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-card hover:border-primary hover:text-link",
-                )}
-              >
-                {pct != null ? <TabProgressRing pct={pct} /> : null}
-                {m.name}
-                {pct != null ? (
-                  <span
-                    className={cn(
-                      "font-mono text-[10px] tabular-nums",
-                      active
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {pct}%
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+      <ScienceSubjectBar
+        active={subject}
+        progress={allProgress}
+        preventScrollReset
+      />
 
       {/* 선택 과목 내용 — 과목별 화면과 동일 뷰를 인라인으로 */}
       <ScienceHubView
@@ -153,7 +65,6 @@ export default function ScienceIndex({ loaderData }: Route.ComponentProps) {
         bookmarks={bookmarks}
         resume={resume}
         wrongCount={wrongCount}
-        hideBackLink
       />
     </div>
   );

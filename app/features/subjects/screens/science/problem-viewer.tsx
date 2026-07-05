@@ -34,6 +34,7 @@ import {
   getQuizSession,
   recordProblemAttempt,
 } from "~/features/study/queries.server";
+import { ScienceSubjectBar } from "~/features/subjects/components/science-subject-bar";
 import {
   SCIENCE_SUBJECTS,
   normalizeScienceSlug,
@@ -205,13 +206,16 @@ export default function ScienceProblemViewer({
 
   return (
     <div className="min-h-[calc(100vh-56px)] bg-background">
-      <div className="mx-auto w-full max-w-screen-md px-5 py-8 md:px-10 md:py-10">
+      {/* 과목 토글 고정 바 — 풀이 중에도 언제든 과목 전환(→ 그 과목 허브) */}
+      <ScienceSubjectBar active={scienceSubject} />
+
+      <div className="mx-auto w-full max-w-screen-md px-5 py-6 md:px-10 md:py-8">
 
         {/* Header bar */}
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <header className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              to={`/subjects/science/${sciencePath}`}
+              to={`/subjects/science?subject=${sciencePath}`}
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
             >
               <ArrowLeftIcon className="size-4" /> {subjectMeta.name}
@@ -246,6 +250,20 @@ export default function ScienceProblemViewer({
           </div>
         </header>
 
+        {/* 세션 진행 바 — 허브의 진도바와 같은 톤 */}
+        <div className="mb-6">
+          {position ? (
+            <div className="bg-muted h-1 overflow-hidden rounded-full">
+              <div
+                className="bg-primary h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Math.round((position.cur / position.total) * 100))}%`,
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+
         {/* Problem card */}
         <div className="mb-4 rounded-xl border bg-card shadow-sm">
           {/* 출제 정보 — 기출 연도·과목·번호 */}
@@ -263,7 +281,6 @@ export default function ScienceProblemViewer({
           {/* Problem body */}
           <div className="border-b px-6 py-5">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 text-xl">{subjectMeta.emoji}</span>
               <div className="flex-1 text-base font-medium leading-relaxed">
                 <MarkdownView
                   text={stem}
@@ -422,30 +439,38 @@ export default function ScienceProblemViewer({
         {/* 문제 해설 — study 모드 제출 후 노출(문제 단위 explanation_md). 시험 모드는 showResult=false 라 미노출 */}
         {showResult && problem.explanationMd ? (
           <div
-            className="mt-6 rounded-xl border bg-card p-5 shadow-sm"
+            className="mt-6 rounded-xl border bg-card shadow-sm"
             data-testid="science-explanation"
           >
-            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-              <LightbulbIcon className="size-4 text-amber-500" /> 해설
-            </h2>
-            <MarkdownView
-              text={problem.explanationMd}
-              className="text-[length:calc(15px*var(--study-fs))] leading-relaxed"
-            />
+            <div className="border-b px-5 py-3.5">
+              <h2 className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
+                <LightbulbIcon className="size-4 text-amber-500" /> 해설
+              </h2>
+            </div>
+            <div className="px-5 py-4">
+              <MarkdownView
+                text={problem.explanationMd}
+                className="text-[length:calc(15px*var(--study-fs))] leading-relaxed"
+              />
+            </div>
           </div>
         ) : null}
 
         {/* 즐겨찾기 + 메모 — 본문이 이미지라 텍스트 선택형 포스트잇 대신 일반 메모(content_comments) 사용 */}
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <section className="bg-card rounded-xl border p-4 shadow-sm">
-            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-              <HeartIcon className="size-4 text-rose-500" /> 즐겨찾기
-            </h2>
-            <BookmarkStars
-              targetType="problem"
-              targetId={problem.problemId}
-              initial={bookmark}
-            />
+        <div className="mt-8 grid items-start gap-4 md:grid-cols-2">
+          <section className="bg-card rounded-xl border shadow-sm">
+            <div className="border-b px-5 py-3.5">
+              <h2 className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
+                <HeartIcon className="size-4 text-rose-500" /> 즐겨찾기
+              </h2>
+            </div>
+            <div className="px-5 py-4">
+              <BookmarkStars
+                targetType="problem"
+                targetId={problem.problemId}
+                initial={bookmark}
+              />
+            </div>
           </section>
           <section className="bg-card rounded-xl border p-4 shadow-sm">
             <CommentsPanel
@@ -459,16 +484,20 @@ export default function ScienceProblemViewer({
           </section>
         </div>
 
-        <section className="bg-card mt-4 rounded-xl border p-4 shadow-sm">
-          <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-            <MessageCircleQuestionIcon className="text-link size-4" />
-            강사 질의 (Q&A)
-          </h2>
-          <QnaPanel
-            threads={qnaThreads}
-            targetType="problem"
-            targetId={problem.problemId}
-          />
+        <section className="bg-card mt-4 rounded-xl border shadow-sm">
+          <div className="border-b px-5 py-3.5">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold tracking-tight">
+              <MessageCircleQuestionIcon className="text-link size-4" />
+              강사 질의 (Q&A)
+            </h2>
+          </div>
+          <div className="px-5 py-4">
+            <QnaPanel
+              threads={qnaThreads}
+              targetType="problem"
+              targetId={problem.problemId}
+            />
+          </div>
         </section>
       </div>
     </div>
