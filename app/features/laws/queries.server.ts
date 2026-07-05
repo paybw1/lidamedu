@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "database.types";
 
+import { fetchAllIn } from "~/core/lib/supa-batch.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export type ArticleLevel = Database["public"]["Enums"]["article_level"];
@@ -453,19 +454,21 @@ export async function getSystematicSkeleton(
   if (nodeErr) throw nodeErr;
   if (!nodes || nodes.length === 0) return [];
 
-  const { data: links, error: linkErr } = await client
-    .from("article_systematic_links")
-    .select(
-      "node_id, articles(article_id, article_number, display_label, importance)",
-    )
-    .in(
-      "node_id",
-      nodes.map((n) => n.node_id),
-    );
-  if (linkErr) throw linkErr;
+  // ★배치+페이지네이션 — 민법 링크 1193건은 단일 요청 max-rows(1000)를 넘는다.
+  const links = await fetchAllIn(
+    nodes.map((n) => n.node_id),
+    (slice) =>
+      client
+        .from("article_systematic_links")
+        .select(
+          "node_id, articles(article_id, article_number, display_label, importance)",
+        )
+        .in("node_id", slice)
+        .order("article_id"),
+  );
 
   const articlesByNode = new Map<string, SystematicArticleRef[]>();
-  for (const l of links ?? []) {
+  for (const l of links) {
     const a = l.articles;
     if (!a) continue;
     const list = articlesByNode.get(l.node_id) ?? [];
@@ -536,20 +539,22 @@ export async function getSystematicNodeWithArticles(
     })
     .map((n) => n.node_id);
 
-  // 3. 부분트리 article 모두 (DISTINCT)
-  const { data: links, error: linkErr } = await client
-    .from("article_systematic_links")
-    .select(
-      "articles(article_id, article_number, display_label, importance, current_revision_id)",
-    )
-    .in("node_id", subtreeIds);
-  if (linkErr) throw linkErr;
+  // 3. 부분트리 article 모두 (DISTINCT) — 배치+페이지네이션(민법 subtree 1000행 초과 가능).
+  const links = await fetchAllIn(subtreeIds, (slice) =>
+    client
+      .from("article_systematic_links")
+      .select(
+        "articles(article_id, article_number, display_label, importance, current_revision_id)",
+      )
+      .in("node_id", slice)
+      .order("article_id"),
+  );
 
   const linkedArticlesMap = new Map<
     string,
-    NonNullable<NonNullable<typeof links>[number]["articles"]>
+    NonNullable<(typeof links)[number]["articles"]>
   >();
-  for (const l of links ?? []) {
+  for (const l of links) {
     const a = l.articles;
     if (a) linkedArticlesMap.set(a.article_id, a);
   }

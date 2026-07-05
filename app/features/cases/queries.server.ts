@@ -11,6 +11,7 @@ import {
   type SummaryItem,
 } from "./labels";
 
+import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { ExamProblemRef } from "~/features/problems/labels";
 import { getExamProblemsByCase } from "~/features/problems/queries.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
@@ -318,37 +319,50 @@ export async function getCasePlacementMaps(
   lawCode: string,
   lawId: string,
 ): Promise<CasePlacementMaps> {
-  // 3개 쿼리 병렬 — round trip 합산. 데이터셋 규모가 작아 페이지네이션 없이 한 번에 처리.
-  // inner join 도 articles 의 단순 lookup map 으로 대체해 join 오버헤드 제거.
-  const [caseRowsRes, aslRowsRes, articlesRes, aclRes] = await Promise.all([
-    client
-      .from("cases")
-      .select("case_id, primary_article_id, primary_node_id")
-      .contains("subject_laws", [lawCode])
-      .is("deleted_at", null),
-    client
-      .from("article_systematic_links")
-      .select("article_id, node_id"),
-    client.from("articles").select("article_id, law_id, deleted_at"),
-    client.from("article_case_links").select("article_id, case_id"),
+  // ★전 테이블 무제한 select 는 max-rows(1000)에서 잘린다(articles 전체 2400+, 링크 1759).
+  //   과목 스코프로 좁혀 배치+페이지네이션 헬퍼로 전량 조회.
+  const [caseRows, lawArticles] = await Promise.all([
+    fetchAllPages(() =>
+      client
+        .from("cases")
+        .select("case_id, primary_article_id, primary_node_id")
+        .contains("subject_laws", [lawCode])
+        .is("deleted_at", null)
+        .order("case_id"),
+    ),
+    fetchAllPages(() =>
+      client
+        .from("articles")
+        .select("article_id")
+        .eq("law_id", lawId)
+        .is("deleted_at", null)
+        .order("article_id"),
+    ),
   ]);
-  if (caseRowsRes.error) throw caseRowsRes.error;
-  if (aslRowsRes.error) throw aslRowsRes.error;
-  if (articlesRes.error) throw articlesRes.error;
-  if (aclRes.error) throw aclRes.error;
-
-  const caseRows = caseRowsRes.data ?? [];
-  const allArticles = articlesRes.data ?? [];
   // 과목 articles set — law 필터링용.
-  const articleIdsInLaw = new Set<string>();
-  for (const a of allArticles) {
-    if (a.law_id === lawId && !a.deleted_at) articleIdsInLaw.add(a.article_id);
-  }
+  const articleIdsInLaw = new Set<string>(lawArticles.map((a) => a.article_id));
+  const lawArticleIds = [...articleIdsInLaw];
+
+  const [aslRows, aclRows] = await Promise.all([
+    fetchAllIn(lawArticleIds, (slice) =>
+      client
+        .from("article_systematic_links")
+        .select("article_id, node_id")
+        .in("article_id", slice)
+        .order("article_id"),
+    ),
+    fetchAllIn(lawArticleIds, (slice) =>
+      client
+        .from("article_case_links")
+        .select("article_id, case_id")
+        .in("article_id", slice)
+        .order("case_id"),
+    ),
+  ]);
 
   // article → systematic nodes map (과목 article 만).
   const nodesByArticle = new Map<string, Set<string>>();
-  for (const r of aslRowsRes.data ?? []) {
-    if (!articleIdsInLaw.has(r.article_id)) continue;
+  for (const r of aslRows) {
     const s = nodesByArticle.get(r.article_id) ?? new Set();
     s.add(r.node_id);
     nodesByArticle.set(r.article_id, s);
@@ -357,8 +371,7 @@ export async function getCasePlacementMaps(
   // 과목 case 들의 set + article_case_links 를 case 별로 grouping (과목 한정).
   const caseIdsInSubject = new Set(caseRows.map((c) => c.case_id));
   const aclByCase = new Map<string, Set<string>>();
-  for (const r of aclRes.data ?? []) {
-    if (!articleIdsInLaw.has(r.article_id)) continue;
+  for (const r of aclRows) {
     if (!caseIdsInSubject.has(r.case_id)) continue;
     const s = aclByCase.get(r.case_id) ?? new Set();
     s.add(r.article_id);

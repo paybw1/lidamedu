@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { fetchAllPages } from "~/core/lib/supa-batch.server";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export interface UnmappedArticle {
@@ -58,23 +59,26 @@ export async function getRelationGaps(
   }
   const lawId = law.law_id;
 
-  // 2. 모든 article + 매핑된 article.
-  const [articlesRes, mappedRes] = await Promise.all([
-    client
-      .from("articles")
-      .select("article_id, article_number, display_label, level")
-      .eq("law_id", lawId)
-      .eq("level", "article")
-      .is("deleted_at", null),
-    client
-      .from("article_systematic_links")
-      .select("article_id, systematic_nodes!inner(law_code)")
-      .eq("systematic_nodes.law_code", lawCode),
+  // 2. 모든 article + 매핑된 article — 민법 조문 1193·링크 1193 은 max-rows(1000) 초과라 페이지네이션.
+  const [allArticles, mappedRows] = await Promise.all([
+    fetchAllPages(() =>
+      client
+        .from("articles")
+        .select("article_id, article_number, display_label, level")
+        .eq("law_id", lawId)
+        .eq("level", "article")
+        .is("deleted_at", null)
+        .order("article_id"),
+    ),
+    fetchAllPages(() =>
+      client
+        .from("article_systematic_links")
+        .select("article_id, systematic_nodes!inner(law_code)")
+        .eq("systematic_nodes.law_code", lawCode)
+        .order("article_id"),
+    ),
   ]);
-  const allArticles = articlesRes.data ?? [];
-  const mappedSet = new Set(
-    (mappedRes.data ?? []).map((r) => r.article_id),
-  );
+  const mappedSet = new Set(mappedRows.map((r) => r.article_id));
   const unmappedArticles: UnmappedArticle[] = allArticles
     .filter((a) => !mappedSet.has(a.article_id))
     .slice(0, limit)

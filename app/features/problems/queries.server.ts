@@ -15,6 +15,7 @@ import type {
   ProblemScope,
 } from "./labels";
 
+import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
 import { getBookmarksByTargets } from "~/features/annotations/queries.server";
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { articleSlug } from "~/features/laws/lib/identifier";
@@ -324,27 +325,39 @@ export async function attachProblemOverallNo(
     .maybeSingle();
   if (!law) return;
 
-  const [nodesRes, aslRes, placRes] = await Promise.all([
-    client
-      .from("systematic_nodes")
-      .select("node_id, path")
-      .eq("law_code", lawCode)
-      .order("path"),
-    client.from("article_systematic_links").select("article_id, node_id"),
-    client
-      .from("problems")
-      .select("problem_id, primary_node_id")
-      .eq("law_id", law.law_id)
-      .is("deleted_at", null),
+  const { data: nodesData } = await client
+    .from("systematic_nodes")
+    .select("node_id, path")
+    .eq("law_code", lawCode)
+    .order("path");
+  const nodes = nodesData ?? [];
+  // ★링크·문제는 1000행(max-rows) 초과 가능(민법 링크 1193·특허 문제 1176) — 배치 헬퍼로 전량 조회.
+  const [aslRows, placRows] = await Promise.all([
+    fetchAllIn(
+      nodes.map((n) => n.node_id),
+      (slice) =>
+        client
+          .from("article_systematic_links")
+          .select("article_id, node_id")
+          .in("node_id", slice)
+          .order("article_id"),
+    ),
+    fetchAllPages(() =>
+      client
+        .from("problems")
+        .select("problem_id, primary_node_id")
+        .eq("law_id", law.law_id)
+        .is("deleted_at", null)
+        .order("problem_id"),
+    ),
   ]);
 
-  const nodes = nodesRes.data ?? [];
   const nodeRank = new Map<string, number>();
   nodes.forEach((n, i) => nodeRank.set(n.node_id, i));
 
   // 조문 → 트리에서 가장 이른(rank 최소) 노드 rank.
   const articleMinRank = new Map<string, number>();
-  for (const r of aslRes.data ?? []) {
+  for (const r of aslRows) {
     const rank = nodeRank.get(r.node_id);
     if (rank === undefined) continue;
     const cur = articleMinRank.get(r.article_id);
@@ -352,7 +365,7 @@ export async function attachProblemOverallNo(
   }
 
   const primaryNodeByProblem = new Map<string, string | null>();
-  for (const r of placRes.data ?? [])
+  for (const r of placRows)
     primaryNodeByProblem.set(r.problem_id, r.primary_node_id);
 
   const UNPLACED = nodes.length; // 미배치는 맨 뒤.
@@ -2234,29 +2247,26 @@ async function fetchPlacedProblemRows(
 ): Promise<PlacedProblemRow[]> {
   const SEL =
     "problem_id, primary_article_id, primary_node_id, year, problem_number, importance";
-  const CHUNK = 150;
   const byId = new Map<string, PlacedProblemRow>();
-  for (let i = 0; i < subtreeNodeIds.length; i += CHUNK) {
-    const slice = subtreeNodeIds.slice(i, i + CHUNK);
-    if (slice.length === 0) continue;
-    const { data } = await client
+  const pinned = await fetchAllIn(subtreeNodeIds, (slice) =>
+    client
       .from("problems")
       .select(SEL)
       .in("primary_node_id", slice)
-      .is("deleted_at", null);
-    for (const r of data ?? []) byId.set(r.problem_id, r);
-  }
-  for (let i = 0; i < articleIds.length; i += CHUNK) {
-    const slice = articleIds.slice(i, i + CHUNK);
-    if (slice.length === 0) continue;
-    const { data } = await client
+      .is("deleted_at", null)
+      .order("problem_id"),
+  );
+  for (const r of pinned) byId.set(r.problem_id, r);
+  const derived = await fetchAllIn(articleIds, (slice) =>
+    client
       .from("problems")
       .select(SEL)
       .in("primary_article_id", slice)
       .is("primary_node_id", null)
-      .is("deleted_at", null);
-    for (const r of data ?? []) byId.set(r.problem_id, r);
-  }
+      .is("deleted_at", null)
+      .order("problem_id"),
+  );
+  for (const r of derived) byId.set(r.problem_id, r);
   return [...byId.values()].sort((x, y) => {
     if ((y.year ?? 0) !== (x.year ?? 0)) return (y.year ?? 0) - (x.year ?? 0);
     return (x.problem_number ?? 0) - (y.problem_number ?? 0);
@@ -2289,11 +2299,14 @@ export async function listSystematicTopNodes(
       .map((n) => n.node_id);
     let articleIds: string[] = [];
     if (subtreeNodeIds.length > 0) {
-      const { data: links } = await client
-        .from("article_systematic_links")
-        .select("article_id")
-        .in("node_id", subtreeNodeIds);
-      articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
+      const links = await fetchAllIn(subtreeNodeIds, (slice) =>
+        client
+          .from("article_systematic_links")
+          .select("article_id")
+          .in("node_id", slice)
+          .order("article_id"),
+      );
+      articleIds = [...new Set(links.map((l) => l.article_id))];
     }
     // feat-4-A-340 — node-pinned + 조문 파생 합산.
     const placed = await fetchPlacedProblemRows(
@@ -2357,11 +2370,14 @@ export async function getSystematicNodeProblems(
     .map((n) => n.node_id);
 
   // subtree 에 매핑된 article_id 들.
-  const { data: links } = await client
-    .from("article_systematic_links")
-    .select("article_id")
-    .in("node_id", subtreeIds);
-  const articleIds = [...new Set((links ?? []).map((l) => l.article_id))];
+  const links = await fetchAllIn(subtreeIds, (slice) =>
+    client
+      .from("article_systematic_links")
+      .select("article_id")
+      .in("node_id", slice)
+      .order("article_id"),
+  );
+  const articleIds = [...new Set(links.map((l) => l.article_id))];
   if (articleIds.length === 0) {
     return {
       node: {
@@ -2375,10 +2391,13 @@ export async function getSystematicNodeProblems(
   }
 
   // article 정보 (path/article_number/display_label) — 조문 순서로 정렬.
-  const { data: articles } = await client
-    .from("articles")
-    .select("article_id, article_number, display_label, path")
-    .in("article_id", articleIds);
+  const articles = await fetchAllIn(articleIds, (slice) =>
+    client
+      .from("articles")
+      .select("article_id, article_number, display_label, path")
+      .in("article_id", slice)
+      .order("article_id"),
+  );
   const sortedArticles = [...(articles ?? [])].sort((a, b) =>
     compareArticlePath(String(a.path), String(b.path)),
   );
@@ -2387,15 +2406,16 @@ export async function getSystematicNodeProblems(
   const placedIds = (
     await fetchPlacedProblemRows(client, subtreeIds, articleIds)
   ).map((p) => p.problem_id);
-  const { data: problemRows } = await client
-    .from("problems")
-    .select(
-      "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
-    )
-    .in("problem_id", placedIds)
-    .is("deleted_at", null);
-
-  const problemList = problemRows ?? [];
+  const problemList = await fetchAllIn(placedIds, (slice) =>
+    client
+      .from("problems")
+      .select(
+        "problem_id, display_no, exam_round, format, origin, polarity, scope, year, exam_round_no, problem_number, body_md, importance, primary_article_id, reviewed_at, mismatch_flagged_at, explanation_md, model_answer_md, grading_rubric_md, video_url, subjective_kind, subjective_keywords, subjective_topic, rubric_items, articles!primary_article_id(article_number, display_label)",
+      )
+      .in("problem_id", slice)
+      .is("deleted_at", null)
+      .order("problem_id"),
+  );
   const problemIds = problemList.map((p) => p.problem_id);
 
   // 박스 항목 batch.
@@ -2585,11 +2605,14 @@ export async function getSystematicNodeProblemSequence(
     )
     .map((n) => n.node_id);
 
-  const { data: links } = await client
-    .from("article_systematic_links")
-    .select("article_id")
-    .in("node_id", subtreeIds);
-  const linkArticleIds = [...new Set((links ?? []).map((l) => l.article_id))];
+  const links = await fetchAllIn(subtreeIds, (slice) =>
+    client
+      .from("article_systematic_links")
+      .select("article_id")
+      .in("node_id", slice)
+      .order("article_id"),
+  );
+  const linkArticleIds = [...new Set(links.map((l) => l.article_id))];
 
   // feat-4-A-340 — node-pinned(primary_node_id) 우선 + 조문 파생. 핀은 노드에 조문 링크가
   // 없어도(임의 노드 고정) fetchPlacedProblemRows 가 잡으므로 링크 0개여도 빈 반환 금지.
@@ -2677,53 +2700,43 @@ export async function getSystematicNodeProblemStats(
     .eq("law_code", lawCode);
   if (!nodes || nodes.length === 0) return {};
 
-  // 1) 노드 ↔ 조문 링크 (node_id IN — 필요 시 150개 chunk).
+  // 1) 노드 ↔ 조문 링크 — 배치+페이지네이션 (민법 링크 1193 > max-rows 1000).
   const nodeIds = nodes.map((n) => n.node_id);
-  const links: { node_id: string; article_id: string }[] = [];
-  for (let i = 0; i < nodeIds.length; i += 150) {
-    const { data } = await client
+  const links = await fetchAllIn(nodeIds, (slice) =>
+    client
       .from("article_systematic_links")
       .select("node_id, article_id")
-      .in("node_id", nodeIds.slice(i, i + 150));
-    for (const r of data ?? []) links.push(r);
-  }
+      .in("node_id", slice)
+      .order("article_id"),
+  );
 
   // 2) 링크된 조문의 문제 (primary_article_id 기준) + primary_node_id 동반 fetch.
   const articleIds = [...new Set(links.map((l) => l.article_id))];
-  const probRows: {
-    problem_id: string;
-    primary_article_id: string | null;
-    primary_node_id: string | null;
-    year: number | null;
-    problem_number: number | null;
-    importance: number | null;
-  }[] = [];
-  for (let i = 0; i < articleIds.length; i += 150) {
-    const { data } = await client
+  const PROB_SEL =
+    "problem_id, primary_article_id, primary_node_id, year, problem_number, importance";
+  const probRows = await fetchAllIn(articleIds, (slice) =>
+    client
       .from("problems")
-      .select(
-        "problem_id, primary_article_id, primary_node_id, year, problem_number, importance",
-      )
-      .in("primary_article_id", articleIds.slice(i, i + 150))
-      .is("deleted_at", null);
-    for (const r of data ?? []) probRows.push(r);
-  }
+      .select(PROB_SEL)
+      .in("primary_article_id", slice)
+      .is("deleted_at", null)
+      .order("problem_id"),
+  );
   // node-pinned 문제 — 조문이 어느 노드에도 링크 안 됐어도(임의 노드 고정) 직접 잡는다.
   const seenIds = new Set(probRows.map((r) => r.problem_id));
-  for (let i = 0; i < nodeIds.length; i += 150) {
-    const { data } = await client
+  const pinnedRows = await fetchAllIn(nodeIds, (slice) =>
+    client
       .from("problems")
-      .select(
-        "problem_id, primary_article_id, primary_node_id, year, problem_number, importance",
-      )
-      .in("primary_node_id", nodeIds.slice(i, i + 150))
-      .is("deleted_at", null);
-    for (const r of data ?? [])
-      if (!seenIds.has(r.problem_id)) {
-        seenIds.add(r.problem_id);
-        probRows.push(r);
-      }
-  }
+      .select(PROB_SEL)
+      .in("primary_node_id", slice)
+      .is("deleted_at", null)
+      .order("problem_id"),
+  );
+  for (const r of pinnedRows)
+    if (!seenIds.has(r.problem_id)) {
+      seenIds.add(r.problem_id);
+      probRows.push(r);
+    }
 
   // year DESC, problem_number ASC.
   const sorted = [...probRows].sort((x, y) => {

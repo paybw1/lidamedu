@@ -9,6 +9,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
+
 export interface ScatteredNode {
   nodeId: string;
   path: string;
@@ -42,44 +44,59 @@ export async function getCaseSystematicViolations(
   if (!lawRow) return [];
   const lawId = lawRow.law_id;
 
-  const [articlesRes, casesRes, aslRes, aclRes, nodesRes] = await Promise.all([
-    client
-      .from("articles")
-      .select("article_id, article_number, deleted_at, law_id"),
-    client
-      .from("cases")
-      .select(
-        "case_id, case_number, case_title, primary_article_id, primary_node_id, subject_laws, deleted_at",
-      ),
-    client.from("article_systematic_links").select("article_id, node_id"),
-    client.from("article_case_links").select("article_id, case_id"),
-    client
-      .from("systematic_nodes")
-      .select("node_id, parent_id, display_label, ord, law_code"),
+  // ★전 테이블 무제한 select 는 max-rows(1000)에서 잘림(articles 2400+·링크 1759) —
+  //   과목 스코프 페이지네이션으로 전량 조회.
+  const [articleRows, cases, nodeRows] = await Promise.all([
+    fetchAllPages(() =>
+      client
+        .from("articles")
+        .select("article_id, article_number")
+        .eq("law_id", lawId)
+        .is("deleted_at", null)
+        .order("article_id"),
+    ),
+    fetchAllPages(() =>
+      client
+        .from("cases")
+        .select(
+          "case_id, case_number, case_title, primary_article_id, primary_node_id, subject_laws",
+        )
+        .contains("subject_laws", [lawCode])
+        .is("deleted_at", null)
+        .order("case_id"),
+    ),
+    fetchAllPages(() =>
+      client
+        .from("systematic_nodes")
+        .select("node_id, parent_id, display_label, ord, law_code")
+        .order("node_id"),
+    ),
+  ]);
+  const lawArticles = new Map<string, { articleNumber: string | null }>();
+  for (const a of articleRows) {
+    lawArticles.set(a.article_id, { articleNumber: a.article_number ?? null });
+  }
+  const lawArticleIds = [...lawArticles.keys()];
+
+  const [aslRows, aclRows] = await Promise.all([
+    fetchAllIn(lawArticleIds, (slice) =>
+      client
+        .from("article_systematic_links")
+        .select("article_id, node_id")
+        .in("article_id", slice)
+        .order("article_id"),
+    ),
+    fetchAllIn(lawArticleIds, (slice) =>
+      client
+        .from("article_case_links")
+        .select("article_id, case_id")
+        .in("article_id", slice)
+        .order("case_id"),
+    ),
   ]);
 
-  if (articlesRes.error) throw articlesRes.error;
-  if (casesRes.error) throw casesRes.error;
-  if (aslRes.error) throw aslRes.error;
-  if (aclRes.error) throw aclRes.error;
-  if (nodesRes.error) throw nodesRes.error;
-
-  const lawArticles = new Map<string, { articleNumber: string | null }>();
-  for (const a of articlesRes.data ?? []) {
-    if (a.law_id === lawId && !a.deleted_at) {
-      lawArticles.set(a.article_id, {
-        articleNumber: a.article_number ?? null,
-      });
-    }
-  }
-
-  const cases = (casesRes.data ?? []).filter(
-    (c) => !c.deleted_at && (c.subject_laws ?? []).includes(lawCode),
-  );
-
   const nodesByArticle = new Map<string, Set<string>>();
-  for (const r of aslRes.data ?? []) {
-    if (!lawArticles.has(r.article_id)) continue;
+  for (const r of aslRows) {
     let s = nodesByArticle.get(r.article_id);
     if (!s) {
       s = new Set();
@@ -90,7 +107,7 @@ export async function getCaseSystematicViolations(
 
   const caseIdSet = new Set(cases.map((c) => c.case_id));
   const articlesByCase = new Map<string, Set<string>>();
-  for (const r of aclRes.data ?? []) {
+  for (const r of aclRows) {
     if (!caseIdSet.has(r.case_id) || !lawArticles.has(r.article_id)) continue;
     let s = articlesByCase.get(r.case_id);
     if (!s) {
@@ -101,7 +118,7 @@ export async function getCaseSystematicViolations(
   }
 
   const nodeMap = new Map(
-    (nodesRes.data ?? []).map(
+    nodeRows.map(
       (n) =>
         [
           n.node_id,
