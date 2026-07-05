@@ -2,7 +2,7 @@
 // 그리드: 행=반 학생, 열=문항 번호. 응시로 표시하면 전부 정답 기본 →
 // 틀린 문항 번호만 클릭(채점 관행). 저장 시 학습 신호(quiz_session+attempts) 합류.
 
-import { CheckIcon, SaveIcon } from "lucide-react";
+import { CheckIcon, MonitorIcon, SaveIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, data, useFetcher, useLocation, useNavigate } from "react-router";
 
@@ -14,9 +14,13 @@ import { roleAtLeast } from "~/core/lib/roles";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { getCohortById, listCohortMembers } from "~/features/cohorts/queries.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import adminClient from "~/core/lib/supa-admin-client.server";
 import { offlineTestSubjectName } from "~/features/offline-tests/labels";
 import { getOfflineTestWithQuestions } from "~/features/offline-tests/queries.server";
-import { listOfflineTestResults } from "~/features/offline-tests/results.server";
+import {
+  getOnlineSessionPrefill,
+  listOfflineTestResults,
+} from "~/features/offline-tests/results.server";
 
 import type { Route } from "./+types/admin-offline-test-results";
 
@@ -48,9 +52,11 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw data("Test not found", { status: 404 });
   }
 
-  const [members, results] = await Promise.all([
+  // 온라인 응시 프리필 — 학생 세션 조회라 adminClient(읽기 전용). 위 소유권 게이트 선행.
+  const [members, results, onlinePrefill] = await Promise.all([
     listCohortMembers(client, params.cohortId),
     listOfflineTestResults(client, params.testId),
+    getOnlineSessionPrefill(adminClient, params.testId),
   ]);
 
   // KST 오늘 — 응시일 기본값.
@@ -65,6 +71,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       .filter((m) => m.role === "student")
       .map((m) => ({ profileId: m.profileId, name: m.name })),
     results,
+    onlinePrefill,
     today,
   };
 }
@@ -156,12 +163,15 @@ type RowStatus = "none" | "taken" | "absent";
 interface RowState {
   status: RowStatus;
   wrong: Set<number>;
+  // 온라인 응시 결과에서 불러온 행 — 저장 시 스냅샷만 기록(시도 재기록 없음).
+  onlineSessionId?: string | null;
 }
 
 export default function AdminOfflineTestResults({
   loaderData,
 }: Route.ComponentProps) {
-  const { cohort, test, role, members, results, today } = loaderData;
+  const { cohort, test, role, members, results, onlinePrefill, today } =
+    loaderData;
   const basePath = `/admin/cohorts/${cohort.cohortId}/assignments/${test.assignmentId}`;
   const navigate = useNavigate();
   const location = useLocation();
@@ -213,6 +223,25 @@ export default function AdminOfflineTestResults({
       return next;
     });
 
+  // 온라인 응시 결과를 그리드에 반영 — 반 학생인 세션만.
+  const memberIdSet = useMemo(
+    () => new Set(members.map((m) => m.profileId)),
+    [members],
+  );
+  const applicablePrefill = onlinePrefill.filter((p) => memberIdSet.has(p.userId));
+  const applyOnlinePrefill = () =>
+    setRows((prev) => {
+      const next = new Map(prev);
+      for (const p of applicablePrefill) {
+        next.set(p.userId, {
+          status: "taken",
+          wrong: new Set(p.wrongOrds),
+          onlineSessionId: p.sessionId,
+        });
+      }
+      return next;
+    });
+
   const entryCount = [...rows.values()].filter((r) => r.status !== "none").length;
 
   const save = () => {
@@ -224,6 +253,9 @@ export default function AdminOfflineTestResults({
           userId: m.profileId,
           status: r.status,
           wrongOrds: r.status === "taken" ? [...r.wrong].sort((a, b) => a - b) : [],
+          ...(r.status === "taken" && r.onlineSessionId
+            ? { onlineSessionId: r.onlineSessionId }
+            : {}),
         };
       })
       .filter(Boolean);
@@ -282,10 +314,17 @@ export default function AdminOfflineTestResults({
         <Button size="sm" variant="outline" onClick={markAllTaken}>
           <CheckIcon className="size-3.5" /> 미입력 전원 응시로 표시
         </Button>
+        {applicablePrefill.length > 0 ? (
+          <Button size="sm" variant="outline" onClick={applyOnlinePrefill}>
+            <MonitorIcon className="size-3.5" /> 온라인 응시 불러오기 (
+            {applicablePrefill.length}명)
+          </Button>
+        ) : null}
         <p className="text-muted-foreground text-xs">
           응시로 표시하면 <strong>전부 정답</strong>이 기본입니다 — 틀린 문항
           번호만 클릭하세요. 저장 시 문항별 정오가 학생의 학습 기록에
-          합류합니다(재저장 시 덮어씀).
+          합류합니다(재저장 시 덮어씀). 온라인 응시분은 이미 기록된 학생
+          세션을 그대로 연결해 점수만 확정합니다.
         </p>
       </div>
 
@@ -367,6 +406,11 @@ export default function AdminOfflineTestResults({
                         <option value="taken">응시</option>
                         <option value="absent">미응시</option>
                       </select>
+                      {r.onlineSessionId ? (
+                        <span className="text-link ml-1.5 align-middle text-[10px] font-semibold">
+                          온라인
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-2 py-2">
                       {r.status === "taken" ? (

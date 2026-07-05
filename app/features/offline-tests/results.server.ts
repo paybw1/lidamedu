@@ -117,52 +117,171 @@ export async function listCohortOfflineTestStats(
   });
 }
 
-// 학생 본인 — 과제에 붙은 오프라인 테스트의 내 결과 (과제 상세 카드용).
-// 요청 클라이언트 RLS: offline_tests 는 반 멤버 read, results 는 select_own.
-export interface MyOfflineTestResult {
+// 학생 본인 — 과제에 붙은 오프라인 테스트 목록 + 내 결과 + 온라인 응시 가능 여부.
+// 요청 클라이언트 RLS: offline_tests/questions 는 반 멤버 read, results 는 select_own.
+export interface MyOfflineTest {
   testId: string;
   title: string;
-  status: "taken" | "absent";
-  score: number | null;
-  maxScore: number | null;
-  takenAt: string | null;
+  questionCount: number;
+  // 온라인 응시 가능 = 객관식만으로 구성 (OX·빈칸 혼합은 지면 응시).
+  allMcq: boolean;
+  durationMin: number | null;
+  result: {
+    status: "taken" | "absent";
+    score: number | null;
+    maxScore: number | null;
+    takenAt: string | null;
+  } | null;
 }
 
-export async function listMyOfflineTestResultsForAssignment(
+export async function listMyOfflineTestsForAssignment(
   client: SupabaseClient<Database>,
   userId: string,
   assignmentId: string,
-): Promise<MyOfflineTestResult[]> {
+): Promise<MyOfflineTest[]> {
   const { data: tests, error } = await client
     .from("offline_tests")
-    .select("test_id, title")
+    .select("test_id, title, duration_min")
     .eq("assignment_id", assignmentId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
   if (error) throw error;
   const list = tests ?? [];
   if (list.length === 0) return [];
-  const { data: results, error: rErr } = await client
-    .from("offline_test_results")
-    .select("test_id, status, score, max_score, taken_at")
-    .eq("user_id", userId)
-    .in(
-      "test_id",
-      list.map((t) => t.test_id),
-    );
+  const testIds = list.map((t) => t.test_id);
+
+  const [{ data: results, error: rErr }, qRows] = await Promise.all([
+    client
+      .from("offline_test_results")
+      .select("test_id, status, score, max_score, taken_at")
+      .eq("user_id", userId)
+      .in("test_id", testIds),
+    fetchAllIn(testIds, (slice) =>
+      client
+        .from("offline_test_questions")
+        .select("test_id, question_type, question_id")
+        .in("test_id", slice)
+        .order("question_id"),
+    ),
+  ]);
   if (rErr) throw rErr;
   const byTest = new Map((results ?? []).map((r) => [r.test_id, r]));
-  const out: MyOfflineTestResult[] = [];
-  for (const t of list) {
+  const qByTest = new Map<string, { n: number; allMcq: boolean }>();
+  for (const q of qRows) {
+    const cur = qByTest.get(q.test_id) ?? { n: 0, allMcq: true };
+    cur.n += 1;
+    if (q.question_type !== "mcq") cur.allMcq = false;
+    qByTest.set(q.test_id, cur);
+  }
+
+  return list.map((t) => {
     const r = byTest.get(t.test_id);
-    if (!r) continue; // 결과 미입력 테스트는 노출하지 않는다.
-    out.push({
+    const q = qByTest.get(t.test_id) ?? { n: 0, allMcq: false };
+    return {
       testId: t.test_id,
       title: t.title,
-      status: r.status as "taken" | "absent",
-      score: r.score === null ? null : Number(r.score),
-      maxScore: r.max_score === null ? null : Number(r.max_score),
-      takenAt: r.taken_at,
+      questionCount: q.n,
+      allMcq: q.n > 0 && q.allMcq,
+      durationMin: t.duration_min,
+      result: r
+        ? {
+            status: r.status as "taken" | "absent",
+            score: r.score === null ? null : Number(r.score),
+            maxScore: r.max_score === null ? null : Number(r.max_score),
+            takenAt: r.taken_at,
+          }
+        : null,
+    };
+  });
+}
+
+// ── 온라인 응시 결과 프리필 (결과 입력 그리드) ──────────────────────────────
+// 학생이 온라인 응시(source='offline_test_online')한 완료 세션의 문항별 정오를
+// 오답 ord 로 환산 — 운영자가 그리드에 불러와 검토 후 저장(스냅샷만, 시도 재기록 없음).
+export interface OnlinePrefillEntry {
+  userId: string;
+  sessionId: string;
+  wrongOrds: number[];
+  completedAt: string;
+}
+
+export async function getOnlineSessionPrefill(
+  admin: SupabaseClient<Database>,
+  testId: string,
+): Promise<OnlinePrefillEntry[]> {
+  const { data: sessions, error } = await admin
+    .from("quiz_sessions")
+    .select("session_id, user_id, completed_at")
+    .eq("scope_payload->>source", "offline_test_online")
+    .eq("scope_payload->>testId", testId)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  // 학생별 최신 완료 세션 1개.
+  const latestByUser = new Map<string, { sessionId: string; completedAt: string }>();
+  for (const s of sessions ?? []) {
+    if (!latestByUser.has(s.user_id)) {
+      latestByUser.set(s.user_id, {
+        sessionId: s.session_id,
+        completedAt: s.completed_at as string,
+      });
+    }
+  }
+  if (latestByUser.size === 0) return [];
+
+  // 문항 ord ↔ 문제 매핑 (온라인 응시는 전부 객관식).
+  const { data: qs, error: qErr } = await admin
+    .from("offline_test_questions")
+    .select("ord, problem_id")
+    .eq("test_id", testId)
+    .eq("question_type", "mcq")
+    .order("ord");
+  if (qErr) throw qErr;
+  const ordByProblem = new Map(
+    (qs ?? [])
+      .filter((q) => q.problem_id)
+      .map((q) => [q.problem_id as string, q.ord] as const),
+  );
+  const allOrds = (qs ?? []).map((q) => q.ord);
+
+  const sessionIds = [...latestByUser.values()].map((v) => v.sessionId);
+  const attempts = await fetchAllIn(sessionIds, (slice) =>
+    admin
+      .from("user_problem_attempts")
+      .select("session_id, problem_id, is_correct, attempted_at")
+      .in("session_id", slice)
+      .order("attempted_at", { ascending: false }),
+  );
+  // 세션별 · 문제별 최신 시도.
+  const latestBySessionProblem = new Map<string, boolean>();
+  for (const a of attempts) {
+    const key = `${a.session_id}:${a.problem_id}`;
+    if (!latestBySessionProblem.has(key)) {
+      latestBySessionProblem.set(key, a.is_correct);
+    }
+  }
+
+  const out: OnlinePrefillEntry[] = [];
+  for (const [userId, { sessionId, completedAt }] of latestByUser) {
+    const wrong: number[] = [];
+    for (const [problemId, ord] of ordByProblem) {
+      const correct = latestBySessionProblem.get(`${sessionId}:${problemId}`);
+      // 미응답도 오답 처리(시험 관행).
+      if (correct !== true) wrong.push(ord);
+    }
+    // 전 문항 미응답(=사실상 미응시)은 프리필에서 제외.
+    if (wrong.length >= allOrds.length && allOrds.length > 0) {
+      const answered = [...ordByProblem].some(([pid]) =>
+        latestBySessionProblem.has(`${sessionId}:${pid}`),
+      );
+      if (!answered) continue;
+    }
+    out.push({
+      userId,
+      sessionId,
+      wrongOrds: wrong.sort((a, b) => a - b),
+      completedAt,
     });
   }
   return out;
@@ -172,6 +291,9 @@ export interface OfflineResultEntry {
   userId: string;
   status: "taken" | "absent";
   wrongOrds: number[];
+  // 온라인 응시 결과를 불러온 행 — 시도는 이미 학생 세션에 있으므로
+  // 스냅샷(offline_test_results)만 기록하고 시도 재기록은 하지 않는다.
+  onlineSessionId?: string | null;
 }
 
 export interface SaveOfflineResultsSummary {
@@ -260,13 +382,33 @@ export async function saveOfflineTestResults(
     }
   }
 
-  // 기존 결과(세션 재사용) 로드.
+  // 기존 결과(세션 재사용) 로드. ★재사용·철회는 이 흐름이 만든 오프라인 세션
+  // (source='offline_test')만 — 온라인 응시 세션은 학생의 실제 기록이라 건드리지 않는다.
   const { data: sessRows } = await admin
     .from("offline_test_results")
     .select("user_id, session_id")
     .eq("test_id", input.testId);
+  const linkedSessionIds = (sessRows ?? [])
+    .map((r) => r.session_id)
+    .filter((v): v is string => !!v);
+  const offlineSessionIds = new Set<string>();
+  if (linkedSessionIds.length > 0) {
+    const sess = await fetchAllIn(linkedSessionIds, (slice) =>
+      admin
+        .from("quiz_sessions")
+        .select("session_id, scope_payload")
+        .in("session_id", slice)
+        .order("session_id"),
+    );
+    for (const s of sess) {
+      const payload = s.scope_payload as { source?: string } | null;
+      if (payload?.source === "offline_test") offlineSessionIds.add(s.session_id);
+    }
+  }
   const sessionByUser = new Map(
-    (sessRows ?? []).map((r) => [r.user_id, r.session_id] as const),
+    (sessRows ?? [])
+      .filter((r) => r.session_id && offlineSessionIds.has(r.session_id))
+      .map((r) => [r.user_id, r.session_id as string] as const),
   );
 
   let saved = 0;
@@ -275,6 +417,32 @@ export async function saveOfflineTestResults(
   for (const entry of input.entries) {
     const wrongSet = new Set(entry.wrongOrds.filter((o) => validOrds.has(o)));
     let sessionId = sessionByUser.get(entry.userId) ?? null;
+
+    // 온라인 응시 불러오기 행 — 스냅샷만 기록 (시도는 학생 세션에 이미 존재).
+    if (entry.status === "taken" && entry.onlineSessionId) {
+      let score = 0;
+      for (const q of questions) {
+        if (!wrongSet.has(q.ord)) score += Number(q.points ?? 0);
+      }
+      const { error: upErr } = await admin.from("offline_test_results").upsert(
+        {
+          test_id: input.testId,
+          user_id: entry.userId,
+          status: "taken",
+          score,
+          max_score: maxScore,
+          wrong_ords: [...wrongSet].sort((a, b) => a - b),
+          session_id: entry.onlineSessionId,
+          taken_at: input.takenAt,
+          entered_by: input.enteredBy,
+          entered_at: new Date().toISOString(),
+        },
+        { onConflict: "test_id,user_id" },
+      );
+      if (upErr) throw upErr;
+      saved++;
+      continue;
+    }
 
     if (entry.status === "absent") {
       // 이전에 taken 으로 기록했던 세션 시도는 철회.

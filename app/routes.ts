@@ -663,6 +663,10 @@ export default [
       route("/api/admin/assignment", "features/admin/api/assignment.tsx"),
       route("/api/admin/offline-test", "features/admin/api/offline-test.tsx"),
       route(
+        "/api/offline-test/online-start",
+        "features/assignments/api/offline-test-online.tsx",
+      ),
+      route(
         "/api/admin/search-content",
         "features/admin/api/search-content.tsx",
       ),

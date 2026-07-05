@@ -9,7 +9,7 @@ import {
   ClipboardListIcon,
   RefreshCwIcon,
 } from "lucide-react";
-import { Link, data, useNavigate, useLocation } from "react-router";
+import { Form, Link, data, useNavigate, useLocation } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -22,7 +22,7 @@ import {
   ASSIGNMENT_STATUS_LABEL,
   type AssignmentStatus,
 } from "~/features/assignments/labels";
-import { listMyOfflineTestResultsForAssignment } from "~/features/offline-tests/results.server";
+import { listMyOfflineTestsForAssignment } from "~/features/offline-tests/results.server";
 
 import type { Route } from "./+types/student-assignment-detail";
 
@@ -40,12 +40,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   if (!user) throw data("Unauthorized", { status: 401 });
   const res = await getStudentAssignment(params.assignmentId, user.id);
   if (!res) throw data("과제를 찾을 수 없거나 접근 권한이 없습니다", { status: 404 });
-  const offlineResults = await listMyOfflineTestResultsForAssignment(
+  const offlineTests = await listMyOfflineTestsForAssignment(
     client,
     user.id,
     params.assignmentId,
   );
-  return { ...res, offlineResults };
+  return { ...res, offlineTests };
 }
 
 const STATUS_TONE: Record<AssignmentStatus, string> = {
@@ -57,7 +57,7 @@ const STATUS_TONE: Record<AssignmentStatus, string> = {
 export default function StudentAssignmentDetail({
   loaderData,
 }: Route.ComponentProps) {
-  const { detail, submission, offlineResults } = loaderData;
+  const { detail, submission, offlineTests } = loaderData;
   const navigate = useNavigate();
   const location = useLocation();
   const status: AssignmentStatus = submission?.status ?? "pending";
@@ -160,37 +160,55 @@ export default function StudentAssignmentDetail({
         </div>
       </header>
 
-      {/* feat-7-042 — 오프라인 테스트 결과 (운영자 채점 입력분) */}
-      {offlineResults.length > 0 ? (
+      {/* feat-7-042 — 오프라인 테스트: 결과(운영자 채점) + 온라인 응시(객관식 구성 한정) */}
+      {offlineTests.length > 0 ? (
         <section className="mb-5 space-y-2">
-          <h2 className="text-sm font-semibold">오프라인 테스트</h2>
+          <h2 className="text-sm font-semibold">시험 (테스트)</h2>
           <ul className="space-y-1.5">
-            {offlineResults.map((r) => (
-              <li key={r.testId}>
+            {offlineTests.map((t) => (
+              <li key={t.testId}>
                 <Card>
-                  <CardContent className="flex items-center gap-3 px-4 py-3">
+                  <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3">
                     <Badge variant="outline" className="text-[10px]">
                       시험
                     </Badge>
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-1 text-sm">{r.title}</p>
-                      {r.takenAt ? (
-                        <p className="text-muted-foreground text-[10px] tabular-nums">
-                          응시일 {r.takenAt}
-                        </p>
-                      ) : null}
-                    </div>
-                    {r.status === "absent" ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        미응시
-                      </Badge>
-                    ) : (
-                      <p className="text-sm font-bold tabular-nums">
-                        {r.score ?? 0}
-                        <span className="text-muted-foreground text-xs font-normal">
-                          /{r.maxScore ?? "—"}점
-                        </span>
+                      <p className="line-clamp-1 text-sm">{t.title}</p>
+                      <p className="text-muted-foreground text-[10px] tabular-nums">
+                        {t.questionCount}문항
+                        {t.durationMin ? ` · ${t.durationMin}분` : ""}
+                        {t.result?.takenAt ? ` · 응시일 ${t.result.takenAt}` : ""}
                       </p>
+                    </div>
+                    {t.result ? (
+                      t.result.status === "absent" ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          미응시
+                        </Badge>
+                      ) : (
+                        <p className="text-sm font-bold tabular-nums">
+                          {t.result.score ?? 0}
+                          <span className="text-muted-foreground text-xs font-normal">
+                            /{t.result.maxScore ?? "—"}점
+                          </span>
+                        </p>
+                      )
+                    ) : t.allMcq ? (
+                      <Form method="post" action="/api/offline-test/online-start">
+                        <input type="hidden" name="testId" value={t.testId} />
+                        <input
+                          type="hidden"
+                          name="assignmentId"
+                          value={detail.assignmentId}
+                        />
+                        <Button type="submit" size="sm" className="rounded-full">
+                          온라인 응시 <ArrowRightIcon className="size-3" />
+                        </Button>
+                      </Form>
+                    ) : (
+                      <span className="text-muted-foreground text-[11px]">
+                        지면 응시 (시험지 배포)
+                      </span>
                     )}
                   </CardContent>
                 </Card>

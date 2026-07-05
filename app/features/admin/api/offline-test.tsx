@@ -226,6 +226,8 @@ export async function action({ request }: Route.ActionArgs) {
           userId: z.string().uuid(),
           status: z.enum(["taken", "absent"]),
           wrongOrds: z.array(z.number().int().min(0).max(998)).max(500),
+          // 온라인 응시 불러오기 행 — 스냅샷만 기록(시도 재기록 없음).
+          onlineSessionId: z.string().uuid().optional(),
         }),
       )
       .min(1)
