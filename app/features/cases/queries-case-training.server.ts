@@ -19,7 +19,8 @@ type Client = SupabaseClient<Database>;
 
 export interface CaseTrainingItem {
   itemId: string;
-  caseId: string;
+  /** 판례 소스. feat-2-028 부터 problem_id 와 XOR — 기출 소스면 null. */
+  caseId: string | null;
   factsSummaryMd: string;
   factsGeneratedBy: "ai" | "staff";
   reviewStatus: "draft" | "approved" | "rejected";
@@ -124,7 +125,7 @@ export async function listApprovedCaseTrainingItems(
       createdAt: r.created_at,
       linkedGsRoundId: r.linked_gs_round_id,
       caseRef: {
-        caseId: c?.case_id ?? r.case_id,
+        caseId: c?.case_id ?? r.case_id ?? "",
         caseTitle: c?.case_title ?? "",
         caseNumber: c?.case_number ?? "",
         court: c?.court ?? "",
@@ -210,7 +211,7 @@ export async function getApprovedCaseTrainingItem(
       linkedGsRoundId: itemRow.linked_gs_round_id,
     },
     caseRef: {
-      caseId: c?.case_id ?? itemRow.case_id,
+      caseId: c?.case_id ?? itemRow.case_id ?? "",
       caseTitle: c?.case_title ?? "",
       caseNumber: c?.case_number ?? "",
       court: c?.court ?? "",
@@ -268,7 +269,7 @@ export async function listCaseTrainingItemsForStaff(
       createdAt: r.created_at,
       linkedGsRoundId: r.linked_gs_round_id,
       caseRef: {
-        caseId: c?.case_id ?? r.case_id,
+        caseId: c?.case_id ?? r.case_id ?? "",
         caseTitle: c?.case_title ?? "",
         caseNumber: c?.case_number ?? "",
         court: c?.court ?? "",
@@ -337,7 +338,7 @@ export async function getCaseTrainingItemForStaff(
       linkedGsRoundId: itemRow.linked_gs_round_id,
     },
     caseRef: {
-      caseId: c?.case_id ?? itemRow.case_id,
+      caseId: c?.case_id ?? itemRow.case_id ?? "",
       caseTitle: c?.case_title ?? "",
       caseNumber: c?.case_number ?? "",
       court: c?.court ?? "",

@@ -1537,7 +1537,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          case_id: string
+          case_id: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -1545,6 +1545,7 @@ export type Database = {
           facts_summary_md: string
           item_id: string
           linked_gs_round_id: string | null
+          problem_id: string | null
           rejected_reason: string | null
           review_status: Database["public"]["Enums"]["problem_review_status"]
           updated_at: string
@@ -1552,7 +1553,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          case_id: string
+          case_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -1560,6 +1561,7 @@ export type Database = {
           facts_summary_md?: string
           item_id?: string
           linked_gs_round_id?: string | null
+          problem_id?: string | null
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
@@ -1567,7 +1569,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          case_id?: string
+          case_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -1575,6 +1577,7 @@ export type Database = {
           facts_summary_md?: string
           item_id?: string
           linked_gs_round_id?: string | null
+          problem_id?: string | null
           rejected_reason?: string | null
           review_status?: Database["public"]["Enums"]["problem_review_status"]
           updated_at?: string
@@ -1593,6 +1596,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "gs_rounds"
             referencedColumns: ["round_id"]
+          },
+          {
+            foreignKeyName: "case_training_items_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["problem_id"]
           },
         ]
       }
