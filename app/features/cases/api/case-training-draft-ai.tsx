@@ -9,7 +9,10 @@ import { runAfterResponse } from "~/core/lib/wait-until.server";
 import {
   draftCaseFactsFromCase,
   draftCaseIssuesFromCase,
+  draftIssuesFromProblem,
 } from "~/features/cases/lib/ai-case-drafter.server";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import { draftCaseConclusionsFromIssues } from "~/features/cases/lib/ai-case-conclusion-drafter.server";
 import {
   bulkApplyAiConclusionDrafts,
@@ -55,7 +58,26 @@ export async function action({ request }: Route.ActionArgs) {
 
   const item = await getCaseTrainingItemForStaff(client, parsed.data.itemId);
   if (!item) return data({ error: "Item not found" }, { status: 404 });
-  if (!item.caseOfficialTextMd || item.caseOfficialTextMd.trim().length < 200) {
+
+  // feat-2-028 — 기출 문항 소스: 발문이 지문. facts 모드는 불필요.
+  const isProblemSource = !!item.problemRef;
+  if (isProblemSource) {
+    if (parsed.data.mode === "facts") {
+      return data(
+        { error: "기출 소스는 발문이 지문입니다 — 사실관계 초안이 필요 없습니다." },
+        { status: 400 },
+      );
+    }
+    if (!item.problemRef?.bodyMd || item.problemRef.bodyMd.trim().length < 30) {
+      return data(
+        { error: "발문이 비어있어 AI 초안 생성 불가합니다." },
+        { status: 400 },
+      );
+    }
+  } else if (
+    !item.caseOfficialTextMd ||
+    item.caseOfficialTextMd.trim().length < 200
+  ) {
     return data(
       { error: "판례 전문이 비어있거나 너무 짧아 AI 초안 생성 불가합니다." },
       { status: 400 },
@@ -93,7 +115,7 @@ export async function action({ request }: Route.ActionArgs) {
     caseNumber: item.caseRef.caseNumber,
     court: item.caseRef.court,
     decidedAt: item.caseRef.decidedAt,
-    officialTextMd: item.caseOfficialTextMd,
+    officialTextMd: item.caseOfficialTextMd ?? "",
     usage: { meta: { userId: user.id } },
   };
 
@@ -110,7 +132,19 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (parsed.data.mode === "issues") {
-    const issues = await draftCaseIssuesFromCase(args);
+    const issues = isProblemSource
+      ? await draftIssuesFromProblem({
+          subjectLabel: item.problemRef?.lawCode
+            ? (LAW_SUBJECTS[item.problemRef.lawCode as LawSubjectSlug]?.name ??
+              item.problemRef.lawCode)
+            : "과목 미상",
+          year: item.problemRef?.year ?? null,
+          problemNumber: item.problemRef?.problemNumber ?? null,
+          bodyMd: item.problemRef?.bodyMd ?? "",
+          explanationMd: item.problemExplanationMd,
+          usage: { meta: { userId: user.id } },
+        })
+      : await draftCaseIssuesFromCase(args);
     if (!issues) {
       return data(
         { error: "AI 쟁점 초안 생성 실패 — API 키/전문 점검 필요." },
@@ -138,10 +172,17 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
   const conclusions = await draftCaseConclusionsFromIssues({
-    caseTitle: item.caseRef.caseTitle,
-    caseNumber: item.caseRef.caseNumber,
-    factsSummaryMd: item.item.factsSummaryMd,
-    officialTextMd: item.caseOfficialTextMd,
+    caseTitle: isProblemSource
+      ? `${item.problemRef?.lawCode ? (LAW_SUBJECTS[item.problemRef.lawCode as LawSubjectSlug]?.name ?? item.problemRef.lawCode) : ""} ${item.problemRef?.year ?? "?"}년 2차 제${item.problemRef?.problemNumber ?? "?"}문`.trim()
+      : item.caseRef.caseTitle,
+    caseNumber: isProblemSource ? "기출" : item.caseRef.caseNumber,
+    factsSummaryMd: isProblemSource
+      ? (item.problemRef?.bodyMd ?? "")
+      : item.item.factsSummaryMd,
+    officialTextMd: isProblemSource
+      ? (item.problemExplanationMd ?? "(해설 없음)")
+      : (item.caseOfficialTextMd ?? ""),
+    sourceKind: isProblemSource ? "problem" : "case",
     issues: liveIssues.map((i) => ({
       issueId: i.issueId,
       label: i.label,

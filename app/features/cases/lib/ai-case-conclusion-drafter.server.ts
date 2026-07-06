@@ -31,6 +31,8 @@ interface DraftArgs {
     refHint: string | null;
   }>;
   usage?: { meta?: UsageMeta };
+  /** feat-2-028 — "problem"이면 기출 발문+해설 기반 프롬프트로 전환(기본 case). */
+  sourceKind?: "case" | "problem";
 }
 
 const SYSTEM_PROMPT = `당신은 대한민국 변리사 시험 판례 학습 코치입니다. 주어진 판례·쟁점들에 \
@@ -42,6 +44,17 @@ const SYSTEM_PROMPT = `당신은 대한민국 변리사 시험 판례 학습 코
 - weight: 답안에서 권장 비중(0~100). NULL 도 가능(importance 만으로 판정).
   - 권장: core 는 60~80, side 는 10~30 정도. 합산 100 강제 아님.
 - 추가 발명 금지. 판례 전문에 등장한 판단/결론만.`;
+
+// feat-2-028 — 기출 발문+해설/채점평 기반 변형.
+const SYSTEM_PROMPT_PROBLEM = `당신은 대한민국 변리사 2차(주관식) 시험 학습 코치입니다. 주어진 기출 \
+발문·쟁점들에 대해 각 쟁점의 (a) 모범 결론 방향 (b) 짧은 결론 근거 (c) 권장 비중(weight 0~100, 선택) 을 작성합니다.
+
+규칙:
+- direction: 짧은 단어(예: "인정", "부정", "성립", "불성립", "위반", "미위반", "유효", "무효"). 자유 텍스트 가능하지만 짧게.
+- rationale_md: 1~2문장. 왜 그 결론인지 핵심 근거(조문·판례 법리).
+- weight: 답안에서 권장 비중(0~100). NULL 도 가능(importance 만으로 판정).
+  - 권장: core 는 60~80, side 는 10~30 정도. 합산 100 강제 아님.
+- 추가 발명 금지. 해설/채점평이 있으면 그 판단을 따르고, 없으면 통설·판례 법리에 따른 표준 결론만.`;
 
 export async function draftCaseConclusionsFromIssues(
   args: DraftArgs,
@@ -67,14 +80,15 @@ export async function draftCaseConclusionsFromIssues(
         `- [issue_id=${i.issueId}] (${i.importance}) ${i.label}${i.refHint ? ` — ${i.refHint}` : ""}\n  ${i.descriptionMd ?? ""}`,
     )
     .join("\n");
+  const isProblem = args.sourceKind === "problem";
   const prompt = [
-    `# 판례`,
+    isProblem ? `# 2차 기출 문항` : `# 판례`,
     `- ${args.caseTitle} (${args.caseNumber})`,
     "",
-    `# 사실관계`,
+    isProblem ? `# 발문` : `# 사실관계`,
     args.factsSummaryMd || "(미설정)",
     "",
-    `# 판례 전문 (요약 가능)`,
+    isProblem ? `# 해설/채점평 (근거 자료)` : `# 판례 전문 (요약 가능)`,
     args.officialTextMd,
     "",
     `# 쟁점 목록 (issue_id 그대로 사용)`,
@@ -116,7 +130,7 @@ export async function draftCaseConclusionsFromIssues(
           },
         },
       },
-      system: SYSTEM_PROMPT,
+      system: isProblem ? SYSTEM_PROMPT_PROBLEM : SYSTEM_PROMPT,
       messages: [{ role: "user", content: prompt }],
     });
   } catch (e) {

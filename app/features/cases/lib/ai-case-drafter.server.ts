@@ -162,10 +162,81 @@ const ISSUES_SYSTEM_PROMPT = `당신은 대한민국 변리사 시험 판례 분
   명시 없으면 비워두세요(추측 금지).
 - 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.`;
 
+// feat-2-028 — 2차 기출 문항 소스: 발문(+해설/채점평)에서 답안 필수 쟁점 추출.
+const PROBLEM_ISSUES_SYSTEM_PROMPT = `당신은 대한민국 변리사 2차(주관식) 시험 출제 분석가입니다. \
+주어진 기출 발문에서 **답안에 반드시 다뤄야 채점되는 핵심 쟁점**을 짧은 라벨 형태로 추출합니다.
+
+규칙:
+- 발문이 실제로 묻는 쟁점만 추출. 해설/채점평이 있으면 근거로 활용하되, 발문과 무관한 쟁점 발명 금지.
+- 한 쟁점 = 한 줄 라벨 (15자 내외 권장, 최대 30자). 예: "신규성 위반 여부", "국내우선권주장의 효과".
+- description_md 는 1~2문장으로 어떤 판단 기준·법리가 적용되는지 압축.
+- importance:
+  - "core" — 빠뜨리면 합격선 미달이 되는 결정적 쟁점 (보통 2~5개).
+  - "side" — 보조·부수 쟁점.
+- ref_hint 는 발문·해설에 명시된 조문/판례 식별자만 (예: "특허법 제29조 제1항"). 명시 없으면 비워두세요(추측 금지).
+- 추출 개수: 3~8개. 너무 잘게 쪼개지 마세요.`;
+
+export interface ProblemSourceArgs {
+  subjectLabel: string;
+  year: number | null;
+  problemNumber: number | null;
+  bodyMd: string;
+  explanationMd: string | null;
+  usage?: { meta?: UsageMeta };
+}
+
+export async function draftIssuesFromProblem(
+  args: ProblemSourceArgs,
+): Promise<DraftedIssue[] | null> {
+  const prompt = [
+    `# 2차 기출 문항`,
+    `- ${args.subjectLabel} ${args.year ?? "?"}년 제${args.problemNumber ?? "?"}문`,
+    "",
+    `# 발문`,
+    args.bodyMd,
+    "",
+    ...(args.explanationMd?.trim()
+      ? [`# 해설/채점평 (근거 자료)`, args.explanationMd, ""]
+      : []),
+    "위 발문이 답안에서 요구하는 핵심 쟁점을 JSON 배열로 추출하세요.",
+  ].join("\n");
+  return requestDraftedIssues({
+    system: PROBLEM_ISSUES_SYSTEM_PROMPT,
+    prompt,
+    meta: args.usage?.meta,
+  });
+}
+
 export async function draftCaseIssuesFromCase(
   args: CaseSourceArgs,
 ): Promise<DraftedIssue[] | null> {
-  const meta = args.usage?.meta;
+  const prompt = [
+    `# 판례`,
+    `- 사건명: ${args.caseTitle}`,
+    `- 사건번호: ${args.caseNumber}`,
+    `- 법원/선고일: ${args.court} ${args.decidedAt}`,
+    "",
+    `# 판례 전문`,
+    args.officialTextMd,
+    "",
+    "위 판례의 핵심 쟁점을 JSON 배열로 추출하세요.",
+  ].join("\n");
+  return requestDraftedIssues({
+    system: ISSUES_SYSTEM_PROMPT,
+    prompt,
+    meta: args.usage?.meta,
+  });
+}
+
+async function requestDraftedIssues({
+  system,
+  prompt,
+  meta,
+}: {
+  system: string;
+  prompt: string;
+  meta?: UsageMeta;
+}): Promise<DraftedIssue[] | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     await recordAiUsage({
@@ -180,17 +251,6 @@ export async function draftCaseIssuesFromCase(
     return null;
   }
   const client = new Anthropic({ apiKey });
-  const prompt = [
-    `# 판례`,
-    `- 사건명: ${args.caseTitle}`,
-    `- 사건번호: ${args.caseNumber}`,
-    `- 법원/선고일: ${args.court} ${args.decidedAt}`,
-    "",
-    `# 판례 전문`,
-    args.officialTextMd,
-    "",
-    "위 판례의 핵심 쟁점을 JSON 배열로 추출하세요.",
-  ].join("\n");
 
   let response: Awaited<ReturnType<typeof client.messages.create>>;
   try {
@@ -226,7 +286,7 @@ export async function draftCaseIssuesFromCase(
           },
         },
       },
-      system: ISSUES_SYSTEM_PROMPT,
+      system,
       messages: [{ role: "user", content: prompt }],
     });
   } catch (e) {

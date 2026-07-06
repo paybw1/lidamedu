@@ -64,23 +64,44 @@ export default function AdminCaseTrainingList({ loaderData }: Route.ComponentPro
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <StatusChip status={it.reviewStatus} />
-                    <Chip tone="outline">{it.caseRef.caseNumber}</Chip>
-                    <Chip tone="outline">{it.caseRef.court}</Chip>
-                    <Chip tone="outline">{it.caseRef.decidedAt}</Chip>
+                    {it.problemRef ? (
+                      <>
+                        <Chip tone="primary">2차 기출</Chip>
+                        <Chip tone="outline">
+                          {it.problemRef.year ?? "—"}년 제
+                          {it.problemRef.problemNumber ?? "—"}문
+                        </Chip>
+                      </>
+                    ) : (
+                      <>
+                        <Chip tone="outline">{it.caseRef.caseNumber}</Chip>
+                        <Chip tone="outline">{it.caseRef.court}</Chip>
+                        <Chip tone="outline">{it.caseRef.decidedAt}</Chip>
+                      </>
+                    )}
                   </div>
                   <p className="text-foreground mt-1 font-bold">
-                    {it.caseRef.caseTitle || "(제목 없음)"}
+                    {it.problemRef
+                      ? it.problemRef.bodyMd.replace(/\s+/g, " ").slice(0, 80) ||
+                        "(발문 없음)"
+                      : it.caseRef.caseTitle || "(제목 없음)"}
                   </p>
                   <p className="text-muted-foreground mt-1 text-xs">
                     쟁점{" "}
                     <strong className="text-foreground tabular-nums">
                       {it.approvedIssueCount}
                     </strong>
-                    /{it.issueCount}건 승인 · 사실관계{" "}
-                    {it.factsSummaryMd.length > 0
-                      ? `${it.factsSummaryMd.length}자`
-                      : "없음"}{" "}
-                    ({it.factsGeneratedBy === "ai" ? "AI 초안" : "직접 작성"})
+                    /{it.issueCount}건 승인
+                    {it.problemRef ? null : (
+                      <>
+                        {" "}
+                        · 사실관계{" "}
+                        {it.factsSummaryMd.length > 0
+                          ? `${it.factsSummaryMd.length}자`
+                          : "없음"}{" "}
+                        ({it.factsGeneratedBy === "ai" ? "AI 초안" : "직접 작성"})
+                      </>
+                    )}
                   </p>
                 </div>
                 <Button asChild size="sm" variant="outline" className="rounded-full">

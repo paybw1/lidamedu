@@ -21,6 +21,8 @@ export interface CaseTrainingItem {
   itemId: string;
   /** 판례 소스. feat-2-028 부터 problem_id 와 XOR — 기출 소스면 null. */
   caseId: string | null;
+  /** 2차 기출 문항 소스 — 판례 소스면 null. */
+  problemId: string | null;
   factsSummaryMd: string;
   factsGeneratedBy: "ai" | "staff";
   reviewStatus: "draft" | "approved" | "rejected";
@@ -54,6 +56,37 @@ export interface CaseRefForTraining {
   hasPdf: boolean;
 }
 
+/** feat-2-028 — 2차 기출 문항 소스 참조(발문=지문). */
+export interface ProblemRefForTraining {
+  problemId: string;
+  lawCode: string | null;
+  year: number | null;
+  problemNumber: number | null;
+  bodyMd: string;
+}
+
+type ProblemJoinRow = {
+  problem_id: string;
+  year: number | null;
+  problem_number: number | null;
+  body_md: string | null;
+  laws: { law_code: string } | null;
+} | null;
+
+function mapProblemRef(p: ProblemJoinRow): ProblemRefForTraining | null {
+  if (!p) return null;
+  return {
+    problemId: p.problem_id,
+    lawCode: p.laws?.law_code ?? null,
+    year: p.year,
+    problemNumber: p.problem_number,
+    bodyMd: p.body_md ?? "",
+  };
+}
+
+const PROBLEM_JOIN =
+  "problems:problem_id ( problem_id, year, problem_number, body_md, laws ( law_code ) )";
+
 export interface CaseTrainingAttempt {
   attemptId: string;
   itemId: string;
@@ -83,13 +116,15 @@ export async function listApprovedCaseTrainingItems(
   const { data, error } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
        case_training_issues ( review_status, deleted_at, model_conclusion_direction )`,
     )
     .eq("review_status", "approved")
     .is("deleted_at", null)
+    // Stage 1 가드 — 기출 소스는 학생 화면(Stage 2) 전까지 비노출.
+    .not("case_id", "is", null)
     .order("approved_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((r) => {
@@ -116,6 +151,7 @@ export async function listApprovedCaseTrainingItems(
     return {
       itemId: r.item_id,
       caseId: r.case_id,
+      problemId: r.problem_id,
       factsSummaryMd: r.facts_summary_md,
       factsGeneratedBy: r.facts_generated_by as "ai" | "staff",
       reviewStatus: r.review_status as "draft" | "approved" | "rejected",
@@ -150,13 +186,15 @@ export async function getApprovedCaseTrainingItem(
   const { data: itemRow, error: itemErr } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path )`,
     )
     .eq("item_id", itemId)
     .eq("review_status", "approved")
     .is("deleted_at", null)
+    // Stage 1 가드 — 기출 소스는 학생 화면(Stage 2) 전까지 비노출.
+    .not("case_id", "is", null)
     .maybeSingle();
   if (itemErr) throw itemErr;
   if (!itemRow) return null;
@@ -201,6 +239,7 @@ export async function getApprovedCaseTrainingItem(
     item: {
       itemId: itemRow.item_id,
       caseId: itemRow.case_id,
+      problemId: itemRow.problem_id,
       factsSummaryMd: itemRow.facts_summary_md,
       factsGeneratedBy: itemRow.facts_generated_by as "ai" | "staff",
       reviewStatus: itemRow.review_status as "draft" | "approved" | "rejected",
@@ -229,13 +268,14 @@ export async function getApprovedCaseTrainingItem(
 
 export async function listCaseTrainingItemsForStaff(
   client: Client,
-): Promise<Array<CaseTrainingItem & { caseRef: CaseRefForTraining; issueCount: number; approvedIssueCount: number }>> {
+): Promise<Array<CaseTrainingItem & { caseRef: CaseRefForTraining; problemRef: ProblemRefForTraining | null; issueCount: number; approvedIssueCount: number }>> {
   const { data, error } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
+       ${PROBLEM_JOIN},
        case_training_issues ( issue_id, review_status, deleted_at )`,
     )
     .is("deleted_at", null)
@@ -260,6 +300,7 @@ export async function listCaseTrainingItemsForStaff(
     return {
       itemId: r.item_id,
       caseId: r.case_id,
+      problemId: r.problem_id,
       factsSummaryMd: r.facts_summary_md,
       factsGeneratedBy: r.facts_generated_by as "ai" | "staff",
       reviewStatus: r.review_status as "draft" | "approved" | "rejected",
@@ -277,6 +318,7 @@ export async function listCaseTrainingItemsForStaff(
         hasOfficialText: !!c?.official_text_md,
         hasPdf: !!c?.official_text_pdf_path,
       },
+      problemRef: mapProblemRef((r.problems ?? null) as ProblemJoinRow),
       issueCount: liveIssues.length,
       approvedIssueCount: liveIssues.filter((i) => i.review_status === "approved").length,
     };
@@ -290,14 +332,18 @@ export async function getCaseTrainingItemForStaff(
   item: CaseTrainingItem;
   caseRef: CaseRefForTraining;
   caseOfficialTextMd: string | null;
+  problemRef: ProblemRefForTraining | null;
+  /** 기출 소스의 해설/채점평 — AI 초안 입력용. */
+  problemExplanationMd: string | null;
   issues: CaseTrainingIssueRow[];
 } | null> {
   const { data: itemRow, error: itemErr } = await client
     .from("case_training_items")
     .select(
-      `item_id, case_id, facts_summary_md, facts_generated_by, review_status,
+      `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
-       cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path )`,
+       cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
+       problems:problem_id ( problem_id, year, problem_number, body_md, explanation_md, laws ( law_code ) )`,
     )
     .eq("item_id", itemId)
     .is("deleted_at", null)
@@ -328,6 +374,7 @@ export async function getCaseTrainingItemForStaff(
     item: {
       itemId: itemRow.item_id,
       caseId: itemRow.case_id,
+      problemId: itemRow.problem_id,
       factsSummaryMd: itemRow.facts_summary_md,
       factsGeneratedBy: itemRow.facts_generated_by as "ai" | "staff",
       reviewStatus: itemRow.review_status as "draft" | "approved" | "rejected",
@@ -347,6 +394,10 @@ export async function getCaseTrainingItemForStaff(
       hasPdf: !!c?.official_text_pdf_path,
     },
     caseOfficialTextMd: c?.official_text_md ?? null,
+    problemRef: mapProblemRef((itemRow.problems ?? null) as ProblemJoinRow),
+    problemExplanationMd:
+      (itemRow.problems as { explanation_md?: string | null } | null)
+        ?.explanation_md ?? null,
     issues: (issueRows ?? []).map((r) => ({
       issueId: r.issue_id,
       label: r.label,
@@ -373,6 +424,25 @@ export async function createCaseTrainingItem(
   const { data, error } = await client
     .from("case_training_items")
     .insert({ case_id: caseId, facts_summary_md: "", created_by: createdBy })
+    .select("item_id")
+    .single();
+  if (error) throw error;
+  return data.item_id;
+}
+
+/** feat-2-028 — 2차 기출 문항 소스 훈련 항목 생성(발문=지문, facts 불필요). */
+export async function createProblemTrainingItem(
+  client: Client,
+  problemId: string,
+  createdBy: string,
+): Promise<string> {
+  const { data, error } = await client
+    .from("case_training_items")
+    .insert({
+      problem_id: problemId,
+      facts_summary_md: "",
+      created_by: createdBy,
+    })
     .select("item_id")
     .single();
   if (error) throw error;

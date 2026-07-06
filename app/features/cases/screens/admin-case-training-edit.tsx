@@ -23,6 +23,8 @@ import { Chip } from "~/features/community/components/community-ui";
 import { lintFactsForLeakage } from "~/features/cases/lib/leakage-lint";
 import { getCaseTrainingItemForStaff } from "~/features/cases/queries-case-training.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/admin-case-training-edit";
 
@@ -64,14 +66,21 @@ export default function AdminCaseTrainingEdit({
   loaderData,
 }: Route.ComponentProps) {
   const { item: itemBundle, gsRounds } = loaderData;
-  const { item, caseRef, caseOfficialTextMd, issues } = itemBundle;
+  const { item, caseRef, caseOfficialTextMd, problemRef, issues } = itemBundle;
   const itemId = item.itemId;
 
+  // feat-2-028 — 기출 소스: 발문이 지문이라 사실관계 요건 없음.
+  const isProblemSource = !!problemRef;
   const approvedIssueCount = issues.filter(
     (i) => i.reviewStatus === "approved",
   ).length;
-  const canApprove =
-    item.factsSummaryMd.trim().length >= 50 && approvedIssueCount >= 2;
+  const canApprove = isProblemSource
+    ? approvedIssueCount >= 2
+    : item.factsSummaryMd.trim().length >= 50 && approvedIssueCount >= 2;
+  const subjectLabel = problemRef?.lawCode
+    ? (LAW_SUBJECTS[problemRef.lawCode as LawSubjectSlug]?.name ??
+      problemRef.lawCode)
+    : null;
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8">
@@ -81,15 +90,33 @@ export default function AdminCaseTrainingEdit({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <StatusChip status={item.reviewStatus} />
-              <Chip tone="outline">{caseRef.caseNumber}</Chip>
-              <Chip tone="outline">{caseRef.court}</Chip>
-              <Chip tone="outline">{caseRef.decidedAt}</Chip>
+              {isProblemSource ? (
+                <>
+                  <Chip tone="primary">2차 기출</Chip>
+                  <Chip tone="outline">{subjectLabel ?? "과목 미상"}</Chip>
+                  <Chip tone="outline">
+                    {problemRef?.year ?? "—"}년 제
+                    {problemRef?.problemNumber ?? "—"}문
+                  </Chip>
+                </>
+              ) : (
+                <>
+                  <Chip tone="outline">{caseRef.caseNumber}</Chip>
+                  <Chip tone="outline">{caseRef.court}</Chip>
+                  <Chip tone="outline">{caseRef.decidedAt}</Chip>
+                </>
+              )}
             </div>
             <p className="text-foreground mt-1 text-lg font-bold">
-              {caseRef.caseTitle}
+              {isProblemSource
+                ? `${subjectLabel ?? ""} ${problemRef?.year ?? "?"}년 2차 제${problemRef?.problemNumber ?? "?"}문`.trim()
+                : caseRef.caseTitle}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
-              사실관계 {item.factsSummaryMd.length}자 · 쟁점{" "}
+              {isProblemSource
+                ? `발문 ${problemRef?.bodyMd.length ?? 0}자`
+                : `사실관계 ${item.factsSummaryMd.length}자`}{" "}
+              · 쟁점{" "}
               <strong className="text-foreground">{approvedIssueCount}</strong>/
               {issues.length}건 승인
             </p>
@@ -108,24 +135,42 @@ export default function AdminCaseTrainingEdit({
         </div>
         {!canApprove && item.reviewStatus !== "approved" ? (
           <p className="text-muted-foreground mt-2 text-xs">
-            ⓘ 항목 승인 요건: 사실관계 50자 이상 + 승인된 쟁점 2건 이상.
+            {isProblemSource
+              ? "ⓘ 항목 승인 요건: 승인된 쟁점 2건 이상."
+              : "ⓘ 항목 승인 요건: 사실관계 50자 이상 + 승인된 쟁점 2건 이상."}
           </p>
         ) : null}
       </header>
 
-      {/* 사실관계 요약 */}
-      <FactsSection
-        itemId={itemId}
-        initialFacts={item.factsSummaryMd}
-        factsGeneratedBy={item.factsGeneratedBy}
-        hasOfficialText={!!caseOfficialTextMd}
-      />
+      {isProblemSource ? (
+        // 기출 소스 — 발문이 지문(읽기 전용). 사실관계 편집 대신 발문 미리보기.
+        <section className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+          <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-widest uppercase">
+            발문 (지문 — 학생에게 그대로 제시)
+          </p>
+          <div className="text-[15px] leading-relaxed whitespace-pre-line">
+            {problemRef?.bodyMd || "(발문 없음)"}
+          </div>
+        </section>
+      ) : (
+        /* 사실관계 요약 */
+        <FactsSection
+          itemId={itemId}
+          initialFacts={item.factsSummaryMd}
+          factsGeneratedBy={item.factsGeneratedBy}
+          hasOfficialText={!!caseOfficialTextMd}
+        />
+      )}
 
-      {/* 쟁점 목록 */}
+      {/* 쟁점 목록 — 기출 소스는 발문 존재가 AI 초안 가능 조건 */}
       <IssuesSection
         itemId={itemId}
         issues={issues}
-        hasOfficialText={!!caseOfficialTextMd}
+        hasOfficialText={
+          isProblemSource
+            ? (problemRef?.bodyMd.trim().length ?? 0) >= 30
+            : !!caseOfficialTextMd
+        }
       />
 
       {/* ③④ 결론·강약 기준 + ⑤ GS 답안작성 연결 */}
@@ -134,7 +179,11 @@ export default function AdminCaseTrainingEdit({
         issues={issues}
         linkedGsRoundId={item.linkedGsRoundId}
         gsRounds={gsRounds}
-        hasOfficialText={!!caseOfficialTextMd}
+        hasOfficialText={
+          isProblemSource
+            ? (problemRef?.bodyMd.trim().length ?? 0) >= 30
+            : !!caseOfficialTextMd
+        }
       />
     </main>
   );

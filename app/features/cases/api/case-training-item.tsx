@@ -8,6 +8,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import {
   approveCaseTrainingItem,
   createCaseTrainingItem,
+  createProblemTrainingItem,
   softDeleteCaseTrainingItem,
   unapproveCaseTrainingItem,
   updateCaseTrainingItemFacts,
@@ -21,6 +22,11 @@ const schema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("create"),
     caseId: z.string().uuid(),
+  }),
+  // feat-2-028 — 2차 기출 문항 소스.
+  z.object({
+    intent: z.literal("create_problem"),
+    problemId: z.string().uuid(),
   }),
   z.object({
     intent: z.literal("update_facts"),
@@ -73,6 +79,14 @@ export async function action({ request }: Route.ActionArgs) {
   switch (input.intent) {
     case "create": {
       const itemId = await createCaseTrainingItem(client, input.caseId, user.id);
+      return redirect(`/admin/case-training/${itemId}`);
+    }
+    case "create_problem": {
+      const itemId = await createProblemTrainingItem(
+        client,
+        input.problemId,
+        user.id,
+      );
       return redirect(`/admin/case-training/${itemId}`);
     }
     case "update_facts": {
