@@ -116,14 +116,15 @@ const SECTION_DEFS = [
 const normalizePara = (t) => t.replace(/^(\[\d+\]|\(\d+\))(?=\S)/, "$1 ");
 // 평석 등 표 셀에서 추출된 텍스트는 여러 문단이 단일 \n 으로 뭉쳐 있음 — 줄 단위로
 // 별도 p 블록 분리(문단 간격 확보 + [2][3] 선두 정규화 적용).
-// ★인라인 이미지 마커 ⟦IMG:binId⟧ → ![](url) 이미지 단독 문단으로 변환 — 뷰어(Prose)의
-//   따옴표 문맥 인라인 임베드가 원 위치("" 사이 표장)에 렌더한다. URL 미확보 마커는 제거.
+// ★인라인 이미지 마커 ⟦IMG:binId⟧ → ![](url) 를 문장 내 그 자리에 유지 — 뷰어(Prose)가
+//   텍스트 흐름 안에 작은 인라인 이미지로 렌더. 단독 줄이던 이미지는 단독 문단(블록 렌더).
+//   URL 미확보 마커는 제거.
 const toParaBlocks = (arr, imageUrlByBin) =>
   (arr ?? [])
     .map((t) =>
       t.replace(/⟦IMG:([^⟧]*)⟧/g, (_, bin) => {
         const url = imageUrlByBin?.get(bin.toLowerCase());
-        return url ? `\n![](${url})\n` : "";
+        return url ? `![](${url})` : "";
       }),
     )
     .flatMap((t) => t.split(/\n+/))

@@ -29,6 +29,7 @@ import {
 import {
   COURT_LABELS,
   type BookSection,
+  type BookSectionBlock,
   type BookSectionCell,
   type CaseDetail,
   type CaseImage,
@@ -1089,10 +1090,41 @@ function renderNumberedText(text: string): ReactNode {
   });
 }
 
+// 문장 속 인라인 이미지 — `…“![](url)”…` 처럼 텍스트 중간의 마크다운 이미지를
+// 텍스트 흐름 안 작은 글리프(EmbeddedInlineImage)로 렌더. 상표 표장이 문장 안에
+// 삽입된 교재 원문 배치 보존 (feat-3-213 인라인 이미지 복원).
+const INLINE_IMG_RE = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
+function renderWithUnderline(text: string): ReactNode {
+  if (!text || !text.includes("![")) return renderUnderlineOnly(text);
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  INLINE_IMG_RE.lastIndex = 0;
+  while ((m = INLINE_IMG_RE.exec(text)) !== null) {
+    if (m.index > cursor)
+      parts.push(
+        <Fragment key={`t-${cursor}`}>
+          {renderUnderlineOnly(text.slice(cursor, m.index))}
+        </Fragment>,
+      );
+    parts.push(
+      <EmbeddedInlineImage key={`img-${m.index}`} alt={m[1]} url={m[2]} />,
+    );
+    cursor = m.index + m[0].length;
+  }
+  if (cursor < text.length)
+    parts.push(
+      <Fragment key={`t-${cursor}`}>
+        {renderUnderlineOnly(text.slice(cursor))}
+      </Fragment>,
+    );
+  return parts;
+}
+
 // `<u>...</u>` 마커를 React fragment + <u> element 시퀀스로 변환.
 // HighlightOverlay 는 CSS Highlight API 기반(DOM 누적 text-node offset)이라 `<u>`
 // element 가 끼어들어도 textContent 시퀀스는 동일 — 하이라이트 offset 정합성 유지.
-function renderWithUnderline(text: string): ReactNode {
+function renderUnderlineOnly(text: string): ReactNode {
   if (!text) return null;
   if (!text.includes("<u>")) return text;
   const parts: ReactNode[] = [];
