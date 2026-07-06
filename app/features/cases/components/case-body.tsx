@@ -576,29 +576,41 @@ function groupBookBlocks(
 // ── feat-3-213: 판례집 구조화 표 (쟁점상표 도표·사실관계 도식) ─────────────
 // 첫 행 = 헤더(구분/등록상표/지정상품…), 셀에 상표 도형 이미지 포함 가능.
 // 이미지 셀: 흰 배경 + object-contain (투명 GIF/도형 대응), 클릭 시 원본 새 탭.
+// 셀 텍스트에서 ![](url) 마크다운 이미지 분리 — {textOnly, imgUrls}
+const CELL_IMG_RE = /!\[[^\]]*\]\(([^)\s]+)\)/g;
+function splitCellImages(text: string): { textOnly: string; imgUrls: string[] } {
+  const imgUrls: string[] = [];
+  const textOnly = text
+    .replace(CELL_IMG_RE, (_, url: string) => {
+      imgUrls.push(url);
+      return "";
+    })
+    .trim();
+  return { textOnly, imgUrls };
+}
+
 function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   if (rows.length === 0) return null;
   // 이미지 전용 표(HWP 의 그림 배치용 표 — 텍스트 없이 그림만) — 테두리 없는 가로 이미지
-  // 행으로 렌더 (교재의 그림 나열 배치 보존).
+  // 행으로 렌더 (교재의 그림 나열 배치 보존). 셀 이미지는 images 배열 + 텍스트 내 md 양쪽 지원.
   const allCells = rows.flat();
-  if (allCells.every((c) => !c.text.trim()) && allCells.some((c) => c.images.length > 0)) {
+  const cellParts = allCells.map((c) => splitCellImages(c.text));
+  if (
+    cellParts.every((p) => !p.textOnly) &&
+    allCells.some((c, i) => c.images.length + cellParts[i].imgUrls.length > 0)
+  ) {
     return (
       <div className="flex flex-wrap items-center justify-center gap-3">
         {allCells.flatMap((c, ci) =>
-          c.images.map((img, ii) => (
+          [...cellParts[ci].imgUrls, ...c.images.map((im) => im.url)].map((url, ii) => (
             <a
               key={`${ci}-${ii}`}
-              href={img.url}
+              href={url}
               target="_blank"
               rel="noreferrer"
               className="border-border block rounded-lg border bg-white p-1.5"
             >
-              <img
-                src={img.url}
-                alt={img.alt}
-                loading="lazy"
-                className="max-h-[180px] w-auto object-contain"
-              />
+              <img src={url} alt="" loading="lazy" className="max-h-[180px] w-auto object-contain" />
             </a>
           )),
         )}
@@ -606,11 +618,17 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
     );
   }
   const [head, ...body] = rows;
-  // 원본(HWP)의 열 병합 정보는 파싱 시 소실 — 셀 수가 적은 행은 마지막 셀이 남은 열을
-  // 병합(colSpan)해 표 폭을 채운다 (예: "출원일/등록일 | 값" 2셀 행이 3열 표를 채움).
-  const cols = Math.max(...rows.map((r) => r.length));
-  const spanFor = (row: BookSectionCell[], ci: number) =>
-    ci === row.length - 1 ? cols - row.length + 1 : 1;
+  // 열 병합: 원본 HWPX 의 cellSpan(colSpan) 이 있으면 그대로, 없으면(구 데이터 폴백)
+  // 셀 수가 적은 행의 마지막 셀이 남은 열을 병합해 표 폭을 채운다.
+  const rowWidth = (r: BookSectionCell[]) => r.reduce((a, c) => a + (c.colSpan ?? 1), 0);
+  const cols = Math.max(...rows.map(rowWidth));
+  const spanFor = (row: BookSectionCell[], ci: number) => {
+    const c = row[ci];
+    if (c.colSpan && c.colSpan > 1) return c.colSpan;
+    // 폴백 — 명시 span 없는 행에서 마지막 셀이 잔여 폭을 채움
+    if (ci === row.length - 1 && rowWidth(row) < cols) return cols - rowWidth(row) + 1;
+    return 1;
+  };
   // 쟁점상표 도표(헤더 첫 셀 = "구분") — 구분 열은 고정폭, 나머지 열(등록상표·지정상품 등)은
   // 균등 분할 (fixed layout 에서 폭 미지정 col 은 남은 폭을 동일하게 나눔).
   const isGubun = head[0]?.text.trim() === "구분";
@@ -636,6 +654,7 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
               <th
                 key={i}
                 colSpan={spanFor(head, i)}
+                rowSpan={head[i].rowSpan ?? 1}
                 className={cn(
                   "border-border bg-muted/60 text-foreground border px-3 py-2 text-center text-[13px] font-bold",
                   // 라벨(첫) 열은 내용 폭으로 축소 — 긴 본문 열에 밀려 줄바꿈되지 않게.
@@ -657,6 +676,7 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
                   <td
                     key={ci}
                     colSpan={spanFor(row, ci)}
+                    rowSpan={c.rowSpan ?? 1}
                     className={cn(
                       "border-border border px-3 py-2 align-middle leading-[1.7]",
                       // 첫 열(라벨: 상표/출원일/권리자 등)은 헤더 톤 + 한 줄 고정 + 내용 폭
@@ -684,14 +704,25 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
 }
 
 function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: boolean }) {
+  // 셀 텍스트: 이미지만 있으면(도표의 표장 셀) 크게 단독 렌더, 글과 섞이면 문장 흐름
+  // 안 인라인 글리프(renderWithUnderline 의 ![](url) 처리)로 — "글자 사이 배치" 보존.
+  const { textOnly, imgUrls } = splitCellImages(cell.text);
+  const imageOnly = !textOnly && imgUrls.length > 0;
   return (
     <div className="space-y-1.5">
-      {cell.text ? (
+      {cell.text && !imageOnly ? (
         // 라벨 셀(출원일/등록일 등)은 한 줄 고정 — pre-wrap 이면 "/" 뒤에서 꺾인다.
         <span className={nowrap ? "whitespace-nowrap" : "whitespace-pre-wrap"}>
-          {cell.text}
+          {renderWithUnderline(cell.text)}
         </span>
       ) : null}
+      {imageOnly
+        ? imgUrls.map((url, i) => (
+            <a key={`io-${i}`} href={url} target="_blank" rel="noreferrer" className="mx-auto block w-fit rounded bg-white p-1">
+              <img src={url} alt="" loading="lazy" className="max-h-[140px] w-auto object-contain" />
+            </a>
+          ))
+        : null}
       {cell.images.map((img, i) => (
         <a
           key={i}

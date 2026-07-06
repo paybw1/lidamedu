@@ -157,6 +157,9 @@ export function parseCaseImages(raw: unknown): CaseImage[] {
 export interface BookSectionCell {
   text: string;
   images: { url: string; alt: string }[];
+  /** 원본 표의 셀 병합 — 미지정=1. */
+  colSpan?: number;
+  rowSpan?: number;
 }
 export type BookSectionBlock =
   | { type: "p"; text: string }
@@ -193,7 +196,10 @@ export function parseBookSections(raw: unknown): BookSection[] {
           if (!Array.isArray(row)) continue;
           rows.push(
             row
-              .filter((c): c is { text?: unknown; images?: unknown } => !!c && typeof c === "object")
+              .filter(
+                (c): c is { text?: unknown; images?: unknown; colSpan?: unknown; rowSpan?: unknown } =>
+                  !!c && typeof c === "object",
+              )
               .map((c) => ({
                 text: typeof c.text === "string" ? c.text : "",
                 images: Array.isArray(c.images)
@@ -204,6 +210,8 @@ export function parseBookSections(raw: unknown): BookSection[] {
                       )
                       .map((im) => ({ url: im.url, alt: typeof im.alt === "string" ? im.alt : "" }))
                   : [],
+                ...(typeof c.colSpan === "number" && c.colSpan > 1 ? { colSpan: c.colSpan } : {}),
+                ...(typeof c.rowSpan === "number" && c.rowSpan > 1 ? { rowSpan: c.rowSpan } : {}),
               })),
           );
         }

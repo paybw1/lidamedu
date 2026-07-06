@@ -102,6 +102,8 @@ const bookSectionsSchema = z
                             }),
                           )
                           .max(10),
+                        colSpan: z.number().int().min(1).max(12).optional(),
+                        rowSpan: z.number().int().min(1).max(60).optional(),
                       }),
                     )
                     .max(12),

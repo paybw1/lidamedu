@@ -152,17 +152,34 @@ function spliceTables(paraBlocks, tableBlocks) {
 
 function buildSections(c, imageUrlByBin) {
   const sections = [];
-  const cellToBlock = (cell) => ({
-    // 도표 셀 안의 중첩 표 마커는 렌더 대상 아님 — 제거
-    text: (cell.text ?? "").replace(/⟦TBL⟧/g, "").trim(),
-    images: (cell.imgs ?? [])
-      .map((bin) => imageUrlByBin.get(bin.toLowerCase()))
-      .filter(Boolean)
-      .map((url) => ({ url, alt: "" })),
-  });
+  const cellToBlock = (cell) => {
+    // 셀 텍스트 속 이미지 마커 → ![](url) 인라인 유지 (글자 사이 배치 보존).
+    // 마커로 커버된 이미지는 images 배열에서 제외(중복 방지) — 마커 없는 잔여분만 배열로.
+    const inlined = new Set();
+    const text = (cell.text ?? "")
+      .replace(/⟦TBL⟧/g, "")
+      .replace(/⟦IMG:([^⟧]*)⟧/g, (_, bin) => {
+        const url = imageUrlByBin.get(bin.toLowerCase());
+        if (!url) return "";
+        inlined.add(bin.toLowerCase());
+        return `![](${url})`;
+      })
+      .trim();
+    return {
+      text,
+      images: (cell.imgs ?? [])
+        .filter((bin) => !inlined.has(bin.toLowerCase()))
+        .map((bin) => imageUrlByBin.get(bin.toLowerCase()))
+        .filter(Boolean)
+        .map((url) => ({ url, alt: "" })),
+      ...(Number(cell.colSpan ?? 1) > 1 ? { colSpan: Number(cell.colSpan) } : {}),
+      ...(Number(cell.rowSpan ?? 1) > 1 ? { rowSpan: Number(cell.rowSpan) } : {}),
+    };
+  };
   // "참고" 박스(라벨 셀 = 참고/참고 1/참고 2) — 표가 아니라 별도 "참고" 섹션으로 분리.
+  const cleanText = (s) => (s ?? "").replace(/⟦IMG:[^⟧]*⟧/g, "").replace(/⟦TBL⟧/g, "").trim();
   const isRefBox = (t) =>
-    (t.cellRows ?? []).flat().some((cell) => REF_LABEL_RE.test((cell.text ?? "").trim()));
+    (t.cellRows ?? []).flat().some((cell) => REF_LABEL_RE.test(cleanText(cell.text)));
   const refBoxes = c.infoTables.filter(isRefBox);
   const normalTables = c.infoTables.filter((t) => !isRefBox(t));
   const tablesFor = (key) =>
@@ -180,20 +197,25 @@ function buildSections(c, imageUrlByBin) {
         let title = null;
         const paras = [];
         for (const row of t.cellRows ?? []) {
-          const isLabelRow = row.some((cell) => REF_LABEL_RE.test((cell.text ?? "").trim()));
+          const isLabelRow = row.some((cell) => REF_LABEL_RE.test(cleanText(cell.text)));
           for (const cell of row) {
             const text = (cell.text ?? "").trim();
-            if (!text) continue;
-            if (REF_LABEL_RE.test(text)) {
-              label = text.replace(/\s+/g, " ");
+            const clean = cleanText(text);
+            if (!clean) continue;
+            if (REF_LABEL_RE.test(clean)) {
+              label = clean.replace(/\s+/g, " ");
               continue;
             }
             // 라벨과 같은 행의 나머지 셀 = 박스 소제목 (헤더 우측 표시)
             if (isLabelRow) {
-              title = title ? `${title} — ${text.replace(/\s+/g, " ")}` : text.replace(/\s+/g, " ");
+              title = title ? `${title} — ${clean.replace(/\s+/g, " ")}` : clean.replace(/\s+/g, " ");
               continue;
             }
-            for (const line of text.split(/\n+/)) {
+            const converted = text.replace(/⟦IMG:([^⟧]*)⟧/g, (_, bin) => {
+              const url = imageUrlByBin?.get(bin.toLowerCase());
+              return url ? `![](${url})` : "";
+            });
+            for (const line of converted.split(/\n+/)) {
               const l = line.trim();
               if (l && l !== "⟦TBL⟧") paras.push({ type: "p", text: normalizePara(l) });
             }
@@ -241,11 +263,17 @@ function buildSections(c, imageUrlByBin) {
         : lowerKeyRelabeled && key === "lower"
           ? "__none__"
           : key;
+    // 인덱스 섹션의 표(관련판례 비교표 등)는 본문이 아니라 "참고" 섹션으로 분리.
+    const secTables = tablesFor(originKey);
+    const isIndex = key === "index";
     const blocks = spliceTables(
       toParaBlocks(secText[key], imageUrlByBin),
-      tablesFor(originKey),
+      isIndex ? [] : secTables,
     );
     const refs = refSectionsFor(originKey);
+    if (isIndex && secTables.length > 0) {
+      refs.unshift({ key: "reference-idx", label: "참고", blocks: secTables, source: null, title: null });
+    }
     if (!blocks.length) {
       sections.push(...refs);
       continue;

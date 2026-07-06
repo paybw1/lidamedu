@@ -123,6 +123,12 @@ function cellText(node) {
           return;
         }
         if (t === "hp:shapeComment" || t === "hp:tbl" || t === "hp:p") return;
+        // 셀 본문 속 인라인 이미지(평석 문장 안 표장 등) — 위치 마커 보존
+        const ref = attrsOf(m)["@_binaryItemIDRef"] ?? attrsOf(m)["@_BinaryItemIDRef"];
+        if (ref) {
+          s += `⟦IMG:${ref}⟧`;
+          return;
+        }
         for (const c of childrenOf(m)) tWalk(c);
       };
       for (const c of childrenOf(n)) tWalk(c);
@@ -148,10 +154,24 @@ function parseTable(tblNode) {
       (function cw(m) {
         if (tagOf(m) === "hp:tc") {
           const text = cellText(m);
+          // 실제 셀 병합(colSpan/rowSpan) — 표 렌더 정합의 근거 (hp:cellSpan)
+          let colSpan = 1, rowSpan = 1;
+          (function findSpan(x) {
+            if (tagOf(x) === "hp:cellSpan") {
+              const a = attrsOf(x);
+              colSpan = Number(a["@_colSpan"] ?? 1) || 1;
+              rowSpan = Number(a["@_rowSpan"] ?? 1) || 1;
+              return;
+            }
+            if (tagOf(x) === "hp:subList") return; // 셀 내용 안까지 내려가지 않음
+            for (const ch of childrenOf(x)) findSpan(ch);
+          })(m);
           cells.push(text);
           rich.push({
             text,
             imgs: cellImages(m),
+            colSpan,
+            rowSpan,
             // 중첩 표(평석 박스 속 비교표 등) — 구조 보존, ⟦TBL⟧ 마커 위치에 배치
             tables: cellNestedTables(m).map(parseTable),
           });
@@ -264,8 +284,10 @@ function parseTopic(text) {
 const COURTS =
   "대법원|특허법원|헌법재판소|서울고등법원|광주고등법원|부산고등법원|대구고등법원|대전고등법원|수원고등법원|서울중앙지방법원|서울지방법원|서울행정법원|서울민사지방법원";
 // 서식 변형 허용: 판결/결정 단어 생략, [사건명] 뒤 (전합)/(확정)/(상고취하 확정)/괄호 오탈자([등록취소](상)], ]] 등)
+// 닉네임은 1단계 중첩 괄호 허용 — "(일사부재리 (3))"
+const NICK = `\\(((?:[^()]|\\([^()]*\\))+)\\)`;
 const HEADER_RE = new RegExp(
-  `^(?:\\(([^)]+)\\)\\s*)?(${COURTS})\\s+(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.?\\s*(?:선고|자)\\s+([0-9가-힣,·\\s의]+?)\\s*(전원합의체)?\\s*(판결|결정)?\\s*(?:\\[([^\\]]*)\\]?)?((?:\\s*\\([^)]*\\)|[\\]\\)\\s])*)$`,
+  `^(?:${NICK}\\s*)?(${COURTS})\\s+(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.?\\s*(?:선고|자)\\.?\\s+([0-9가-힣,·\\s의]+?)\\s*(전원합의체)?\\s*(판결|결정|사건)?\\s*(?:\\[([^\\]]*)\\]?)?((?:\\s*\\([^)]*\\)|[\\]\\)\\s])*)$`,
 );
 // 병합 수록(두 사건 한 항목): "… 2005후1356 판결, 2006. 4. 27. 선고 2004후3454 판결 [—]"
 const MERGED_RE = new RegExp(
@@ -287,7 +309,7 @@ function parseHeader(text) {
   }
   const m = HEADER_RE.exec(text);
   if (!m) return null;
-  const caseNumber = m[6].trim().replace(/\s*판결$/, "");
+  const caseNumber = m[6].trim().replace(/\s*(판결|결정|사건)$/, "");
   if (!/\d{2,4}[가-힣]+\d+/.test(caseNumber)) return null; // 사건번호 형태 검증
   const tail = m[10] ?? "";
   return {
@@ -301,9 +323,28 @@ function parseHeader(text) {
     confirmed: /확정/.test(tail),
   };
 }
-const HEADER_START_RE = new RegExp(`^(?:\\([^)]+\\)\\s*)?(${COURTS})\\s+\\d{4}\\.`);
+// 닉네임이 괄호 없이 붙는 변형("백남준 미술관(취소심판) 대법원 2011. …") 허용 —
+// 짧은(≤25자) 평문 접두를 닉네임으로 분리해 재파싱. "[관련판례 N]" 은 참고 인용이라 제외.
+const PLAIN_PREFIX_RE = new RegExp(
+  `^([^\\[\\(\\s][^\\[]{0,24}?)\\s+((?:${COURTS})\\s+\\d{4}\\..*)$`,
+);
+function parseHeaderLoose(raw) {
+  const text = raw.replace(/[\s\\]+$/, ""); // 후행 공백·역슬래시 잔재 제거
+  const direct = parseHeader(text);
+  if (direct) return direct;
+  const pm = PLAIN_PREFIX_RE.exec(text);
+  if (!pm) return null;
+  const h = parseHeader(pm[2]);
+  if (!h) return null;
+  return { ...h, nickname: h.nickname ?? pm[1].trim() };
+}
+const HEADER_START_RE = new RegExp(
+  `^(?:${NICK}\\s*)?(?:[^\\[\\(\\s][^\\[]{0,24}?\\s+)?(${COURTS})\\s+\\d{4}\\.`,
+);
+// "판결/결정" 단어가 생략된 헤더 변형("(GS HOBBY) 특허법원 … 선고 2019허6747 [등록무효(상)]")
+// 도 잡는다 — 최종 판정은 parseHeaderLoose 의 $-앵커 정규식이 하므로 여기선 과포함 허용.
 const isHeaderLine = (p) =>
-  HEADER_START_RE.test(p.text) && /(선고|자)\s/.test(p.text) && /(판결|결정)/.test(p.text);
+  HEADER_START_RE.test(p.text) && /(선고|자)\.?\s/.test(p.text);
 
 // ── 섹션 라벨 ──
 const SECTION_KEYS = {
@@ -353,14 +394,13 @@ for (let i = 0; i < paras.length; i++) {
   // 판례 헤더 — 직전 케이스 헤더와 동일 텍스트면(중복 수록) skip
   if (isHeaderLine({ text: plain }) && plain) {
     if (curCase && curCase.headerText === plain) continue; // 연속 중복
-    const h = parseHeader(plain);
+    const h = parseHeaderLoose(plain);
     if (!h) {
-      // 본문 속 판례 인용(긴 문장)은 헤더가 아님 — 현재 섹션 본문으로 유지
-      if (plain.length > 140) {
-        pushText(curCase ?? { sections: {} }, curSection, p.text);
-        continue;
+      // 본문 속 판례 인용은 헤더가 아님 — 현재 섹션 본문으로 유지 (내용 유실 금지).
+      pushText(curCase ?? { sections: {} }, curSection, p.text);
+      if (plain.length <= 140) {
+        warnings.push({ type: "header_like_kept_as_body", text: plain.slice(0, 120) });
       }
-      warnings.push({ type: "header_parse_fail", text: plain.slice(0, 120) });
       continue;
     }
     curCase = {
@@ -382,19 +422,25 @@ for (let i = 0; i < paras.length; i++) {
   }
 
   // 표 — 평석 박스(라벨+본문 2셀) vs 도표(구분/등록상표/…)/도식
+  // ★판정은 이미지 마커 제거본으로 — 라벨(로고 이미지) 셀이 마커 때문에 길어 보이면 안 됨.
   if (p.tables.length > 0) {
     for (const { rows, cellRows } of p.tables) {
-      const flat = rows.flat();
+      const cleanCell = (c) => c.replace(IMG_MARKER_RE, "").replace(/⟦TBL⟧/g, "").trim();
+      const flat = rows.flat().map(cleanCell);
       // 평석 박스: ≤2행, 라벨(이미지/특수글자 → 빈 값 또는 ≤6자) 셀들 + 긴 본문 셀
-      const firstRowShort = (rows[0] ?? []).every((c) => c.trim().length <= 6);
-      const hasLong = flat.some((c) => c.trim().length > 80);
+      const firstRowShort = (rows[0] ?? []).every((c) => cleanCell(c).length <= 6);
+      const hasLong = flat.some((c) => c.length > 80);
       const isCommentBox =
-        flat.some((c) => c.trim() === "ㅇㅌㅍ") || (rows.length <= 2 && firstRowShort && hasLong);
+        flat.some((c) => c === "ㅇㅌㅍ") || (rows.length <= 2 && firstRowShort && hasLong);
       if (isCommentBox) {
         for (const row of cellRows) {
           for (const cell of row) {
-            const t = (cell.text ?? "").trim();
-            if (t && t !== "ㅇㅌㅍ" && t.length > 6) pushText(curCase, "comment", t);
+            const clean = cleanCell(cell.text ?? "");
+            // 본문 셀만 push (라벨 글자·로고 이미지 셀 제외). 원문 텍스트(마커 포함) 유지 —
+            // 평석 문장 속 표장 이미지가 제자리에 렌더되게.
+            if (clean && clean !== "ㅇㅌㅍ" && clean.length > 6) {
+              pushText(curCase, "comment", cell.text.trim());
+            }
             // 박스 속 중첩 표(비교표) — comment 섹션 표로 보존, ⟦TBL⟧ 마커 위치에 배치
             for (const nt of cell.tables ?? []) {
               curCase.infoTables.push({ section: "comment", rows: nt.rows, cellRows: nt.cellRows });
