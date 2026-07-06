@@ -19,14 +19,18 @@ import {
   WriteStage,
   determinePhase,
 } from "~/features/issue-extraction";
+import { LAW_SUBJECTS } from "~/features/subjects/lib/subjects";
+import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 import type { Route } from "./+types/case-training-take";
 
 export const meta: Route.MetaFunction = ({ data: d }) => [
   {
-    title: d?.itemBundle?.caseRef.caseTitle
-      ? `${d.itemBundle.caseRef.caseTitle} — 쟁점추출 | 리담변리사학원`
-      : "쟁점추출 훈련 | 리담변리사학원",
+    title: d?.itemBundle?.problemRef
+      ? `${d.itemBundle.problemRef.year ?? "?"}년 2차 제${d.itemBundle.problemRef.problemNumber ?? "?"}문 — 쟁점추출 | 리담변리사학원`
+      : d?.itemBundle?.caseRef.caseTitle
+        ? `${d.itemBundle.caseRef.caseTitle} — 쟁점추출 | 리담변리사학원`
+        : "쟁점추출 훈련 | 리담변리사학원",
   },
 ];
 
@@ -76,8 +80,12 @@ export default function CaseTrainingTake({
   loaderData,
 }: Route.ComponentProps) {
   const { itemBundle, attempt, phase, pdfUrl, conclusionReady } = loaderData;
-  const { item, caseRef, approvedIssues } = itemBundle;
+  const { item, caseRef, problemRef, approvedIssues } = itemBundle;
   const hiddenFields = { itemId: item.itemId };
+  const subjectLabel = problemRef?.lawCode
+    ? (LAW_SUBJECTS[problemRef.lawCode as LawSubjectSlug]?.name ??
+      problemRef.lawCode)
+    : null;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
@@ -89,24 +97,32 @@ export default function CaseTrainingTake({
           ← 목록으로
         </Link>
         <h1 className="text-foreground mt-2 text-xl font-extrabold tracking-tight">
-          {caseRef.caseTitle}
+          {problemRef
+            ? `${subjectLabel ?? ""} ${problemRef.year ?? "?"}년 2차 제${problemRef.problemNumber ?? "?"}문`.trim()
+            : caseRef.caseTitle}
         </h1>
         <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
-          <Chip tone="outline">{caseRef.court}</Chip>
-          <Chip tone="outline">{caseRef.decidedAt}</Chip>
-          {phase === "self-checked" ? (
-            <Chip tone="outline">{caseRef.caseNumber}</Chip>
-          ) : null}
+          {problemRef ? (
+            <Chip tone="primary">2차 기출</Chip>
+          ) : (
+            <>
+              <Chip tone="outline">{caseRef.court}</Chip>
+              <Chip tone="outline">{caseRef.decidedAt}</Chip>
+              {phase === "self-checked" ? (
+                <Chip tone="outline">{caseRef.caseNumber}</Chip>
+              ) : null}
+            </>
+          )}
         </div>
       </header>
 
-      {/* 사실관계 — 모든 phase 노출. 쟁점·판단 누출 금지(강사 lint 통과 후 노출). */}
+      {/* 지문 — 모든 phase 노출. 판례=사실관계(누출 lint 통과분) / 기출=발문 원문. */}
       <section className="border-border bg-card mb-4 rounded-2xl border p-4 shadow-sm">
         <p className="text-muted-foreground mb-1 font-mono text-[10px] font-bold tracking-[0.06em] uppercase">
-          사실관계
+          {problemRef ? "발문" : "사실관계"}
         </p>
         <p className="text-foreground whitespace-pre-line text-sm leading-relaxed">
-          {item.factsSummaryMd}
+          {problemRef ? problemRef.bodyMd : item.factsSummaryMd}
         </p>
       </section>
 

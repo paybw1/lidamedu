@@ -109,6 +109,7 @@ export async function listApprovedCaseTrainingItems(
   Array<
     CaseTrainingItem & {
       caseRef: CaseRefForTraining;
+      problemRef: ProblemRefForTraining | null;
       conclusionReadyCount: number;
     }
   >
@@ -119,12 +120,11 @@ export async function listApprovedCaseTrainingItems(
       `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
        cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
+       ${PROBLEM_JOIN},
        case_training_issues ( review_status, deleted_at, model_conclusion_direction )`,
     )
     .eq("review_status", "approved")
     .is("deleted_at", null)
-    // Stage 1 가드 — 기출 소스는 학생 화면(Stage 2) 전까지 비노출.
-    .not("case_id", "is", null)
     .order("approved_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((r) => {
@@ -169,6 +169,7 @@ export async function listApprovedCaseTrainingItems(
         hasOfficialText: !!c?.official_text_md,
         hasPdf: !!c?.official_text_pdf_path,
       },
+      problemRef: mapProblemRef((r.problems ?? null) as ProblemJoinRow),
       conclusionReadyCount,
     };
   });
@@ -181,6 +182,7 @@ export async function getApprovedCaseTrainingItem(
 ): Promise<{
   item: CaseTrainingItem;
   caseRef: CaseRefForTraining;
+  problemRef: ProblemRefForTraining | null;
   approvedIssues: CaseTrainingIssueRow[];
 } | null> {
   const { data: itemRow, error: itemErr } = await client
@@ -188,13 +190,12 @@ export async function getApprovedCaseTrainingItem(
     .select(
       `item_id, case_id, problem_id, facts_summary_md, facts_generated_by, review_status,
        approved_at, rejected_reason, created_by, created_at, linked_gs_round_id,
-       cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path )`,
+       cases:case_id ( case_id, case_title, case_number, court, decided_at, official_text_md, official_text_pdf_path ),
+       ${PROBLEM_JOIN}`,
     )
     .eq("item_id", itemId)
     .eq("review_status", "approved")
     .is("deleted_at", null)
-    // Stage 1 가드 — 기출 소스는 학생 화면(Stage 2) 전까지 비노출.
-    .not("case_id", "is", null)
     .maybeSingle();
   if (itemErr) throw itemErr;
   if (!itemRow) return null;
@@ -258,6 +259,7 @@ export async function getApprovedCaseTrainingItem(
       hasOfficialText: !!c?.official_text_md,
       hasPdf: !!c?.official_text_pdf_path,
     },
+    problemRef: mapProblemRef((itemRow.problems ?? null) as ProblemJoinRow),
     approvedIssues,
   };
 }

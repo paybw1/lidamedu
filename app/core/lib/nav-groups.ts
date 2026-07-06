@@ -119,7 +119,7 @@ export const NAV_GROUP_POOL = {
       { label: "1차 진도별 모의고사", to: "/latest/mcq?kind=mock_progressive" },
       { label: "2차 모의고사 (온라인 GS)", to: "/gs" },
       { label: "GS 논점추출", to: "/gs/issues" },
-      { label: "판례 쟁점훈련", to: "/case-training" },
+      { label: "쟁점·목차 훈련", to: "/case-training" },
       // 모의고사 그룹 = "시험 보기·훈련"만. 내 결과/기록은 다른 곳으로 편입(라우트·CTA 유지):
       //   응시 결과(실제 시험) → 대시보드 입력 허브 + /me/exam-results 전체관리.
       //   정오문제 응시 이력 → 학습현황 약점 탭(/study/stats?tab=ox_diagnosis) + /me/ox-sessions.
