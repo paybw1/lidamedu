@@ -43,6 +43,8 @@ const ORD = args.ord ? Number(args.ord) : 50;
 const REVNUM = args.revnum ?? `${DISPLAY} 조문 시드`;
 const REASON = args.reason ?? null;
 const EFFECTIVE = args.effective ?? null; // 기본 NULL = 시각 편집 가능
+// 기출 등 problems 가 이미 적재된 법령의 조문만 재시드할 때 — problems wipe 를 건너뛴다.
+const KEEP_PROBLEMS = args.keepProblems === true || args.keepProblems === "true";
 const PROMULGATED = args.promulgated ?? null;
 // 강사 메모(content_comments) 작성자 — 기본 admin 임병웅.
 const NOTES_AUTHOR = args.notesAuthor ?? "8dbc9c0e-a32d-456e-bf53-bf89160669e0";
@@ -107,7 +109,8 @@ async function getOrCreateLaw() {
       if (cErr) console.warn(`  content_comments cleanup: ${cErr.message}`);
       else console.log(`  - content_comments(시드분): cleaned`);
     }
-    await delAll("problems", { law_id: existing.law_id });
+    if (KEEP_PROBLEMS) console.log("  - problems: 유지 (--keepProblems)");
+    else await delAll("problems", { law_id: existing.law_id });
     await delAll("articles", { law_id: existing.law_id });
     await delAll("law_revisions", { law_id: existing.law_id });
     await supa
