@@ -30,12 +30,12 @@ export const meta: Route.MetaFunction = () => [
   { title: "논점 추출 훈련 | 리담변리사학원" },
 ];
 
+// 2차(주관식) 과목만 — 민법은 1차 전용이라 논점 추출 훈련 대상 아님.
 const SUBJECT_OPTIONS: Array<{ value: LawSubjectSlug | "all"; label: string }> = [
   { value: "all", label: "전체 과목" },
   { value: "patent", label: "특허법" },
   { value: "trademark", label: "상표법" },
   { value: "design", label: "디자인보호법" },
-  { value: "civil", label: "민법" },
   { value: "civil-procedure", label: "민사소송법" },
 ];
 
@@ -48,11 +48,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const url = new URL(request.url);
   const subjectRaw = url.searchParams.get("subject");
+  // 민법(civil)은 1차 전용 — 딥링크로 들어와도 전체로 폴백.
   const subject: LawSubjectSlug | undefined =
     subjectRaw === "patent" ||
     subjectRaw === "trademark" ||
     subjectRaw === "design" ||
-    subjectRaw === "civil" ||
     subjectRaw === "civil-procedure"
       ? subjectRaw
       : undefined;
