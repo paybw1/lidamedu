@@ -292,6 +292,14 @@ function buildSections(c, imageUrlByBin) {
     if (isIndex && secTables.length > 0) {
       refs.unshift({ key: "reference-idx", label: "참고", blocks: secTables, source: null, title: null });
     }
+    // 인덱스 말미의 "[관련판례 N] …" 블록들 → 별도 "관련판례" 섹션으로 분리.
+    if (isIndex) {
+      const at = blocks.findIndex((b) => b.type === "p" && /^\[관련\s*판례/.test(b.text.trim()));
+      if (at >= 0) {
+        const moved = blocks.splice(at);
+        refs.unshift({ key: "related-cases", label: "관련판례", blocks: moved, source: null, title: null });
+      }
+    }
     if (!blocks.length) {
       sections.push(...refs);
       continue;

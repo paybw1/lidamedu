@@ -37,6 +37,7 @@ const SECTION_CHOICES: { key: string; group: string; labels: string[] }[] = [
     labels: ["본심의 판단", "대법원의 판단", "특허법원의 판단"],
   },
   { key: "index", group: "인덱스", labels: ["인덱스"] },
+  { key: "related-cases", group: "관련판례", labels: ["관련판례"] },
   { key: "comment", group: "평석 (출처 입력)", labels: ["평석"] },
   { key: "reference", group: "참고 (제목 입력)", labels: ["참고", "참고 1", "참고 2"] },
 ];
