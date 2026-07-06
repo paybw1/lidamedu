@@ -31,6 +31,14 @@ const SECTION_DEFS = [
 
 // 선두 [N]/(N) 마커 뒤에 공백이 없으면 삽입 — 평석 원문이 "[1]상표법은…" 처럼 붙어 있음.
 const normalizePara = (t) => t.replace(/^(\[\d+\]|\(\d+\))(?=\S)/, "$1 ");
+// 평석 등 표 셀에서 추출된 텍스트는 여러 문단이 단일 \n 으로 뭉쳐 있음 — 줄 단위로
+// 별도 p 블록 분리(문단 간격 확보 + [2][3] 선두 정규화 적용).
+const toParaBlocks = (arr) =>
+  (arr ?? [])
+    .flatMap((t) => t.split(/\n+/))
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => ({ type: "p", text: normalizePara(t) }));
 
 function buildSections(c, imageUrlByBin) {
   const sections = [];
@@ -49,13 +57,13 @@ function buildSections(c, imageUrlByBin) {
   // 쟁점상표 — 헤더 직후(preamble) 도표
   const infoBlocks = [
     ...tablesFor("preamble"),
-    ...(c.sections.preamble ?? []).map((t) => ({ type: "p", text: normalizePara(t) })),
+    ...toParaBlocks(c.sections.preamble),
   ];
   if (infoBlocks.length) sections.push({ key: "mark", label: "쟁점상표", blocks: infoBlocks });
 
   for (const [key, label] of SECTION_DEFS) {
     const blocks = [
-      ...(c.sections[key] ?? []).map((t) => ({ type: "p", text: normalizePara(t) })),
+      ...toParaBlocks(c.sections[key]),
       ...tablesFor(key),
     ];
     if (blocks.length) sections.push({ key, label, blocks });
