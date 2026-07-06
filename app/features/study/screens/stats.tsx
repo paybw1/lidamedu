@@ -58,6 +58,10 @@ import {
   getUserAutoBlankStats,
   getUserBlankStats,
 } from "~/features/blanks/queries.server";
+import {
+  type MyIssueTrainingStats,
+  getMyIssueTrainingStats,
+} from "~/features/cases/queries-case-training.server";
 import { getPasserBenchmarks } from "~/features/exam-results/analytics.server";
 import { isPasserBenchmarkEnabled } from "~/features/exam-results/passer-benchmark-gate.server";
 import {
@@ -298,6 +302,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     lastPoints,
     nodeMastery,
     examOptions,
+    trainingStats,
   ] = await Promise.all([
     getOverallProgress(client, user.id),
     getDashboardKpis(client, user.id, since),
@@ -339,6 +344,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     getNodeMastery(client, user.id, [...LAW_SUBJECT_SLUGS]),
     // 응시 시험 옵션 — 운영자 관리 시험 일정(exam_schedules).
     listExamPlanOptions(client),
+    // feat-2-028 Stage 3 — 손공부(쟁점·목차 훈련) 지표.
+    getMyIssueTrainingStats(client, user.id),
   ]);
 
   const erRaw = examRoundRow.data?.next_exam_round;
@@ -397,6 +404,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     nodeMastery,
     gamification,
     cohortStudyBand,
+    trainingStats,
     blanks: {
       content: blankContent,
       subject: blankSubject,
@@ -727,6 +735,64 @@ function MilestonesCard({ overall }: { overall: StatsData["overall"] }) {
   );
 }
 
+// feat-2-028 Stage 3 — 손공부(쟁점·목차 훈련) 지표. 눈공부 지표와 대비되는
+// "산출" 신호: 쟁점추출 완료·평균 쟁점 적중률·결론·강약(목차) 완주.
+function TrainingCard({ t }: { t: MyIssueTrainingStats }) {
+  return (
+    <Surface pad={0} tone="subtle">
+      <div className="px-6 pt-6 pb-3">
+        <h2 className="inline-flex items-center gap-1.5 text-base font-bold tracking-tight">
+          <PencilLineIcon className="size-4" /> 손공부 — 쟁점·목차 훈련
+        </h2>
+        <p className="text-muted-foreground text-xs">
+          발문·판례에서 쟁점을 직접 뽑고 결론·목차를 손으로 정리한 기록입니다.
+        </p>
+      </div>
+      <div className="px-6 pb-6">
+        {t.issueDone === 0 && t.conclusionDone === 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-muted-foreground text-sm">
+              아직 훈련 기록이 없습니다. 2차 답안의 절반은 쟁점 파악 —
+              5분짜리 쟁점추출부터 시작해 보세요.
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/case-training" viewTransition>
+                쟁점·목차 훈련 <ArrowRightIcon className="size-3.5" />
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="gap-1 text-xs">
+                쟁점추출 완료 {t.issueDone}회
+              </Badge>
+              {t.avgHitPct !== null ? (
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  평균 쟁점 적중 {t.avgHitPct}%
+                </Badge>
+              ) : null}
+              <Badge variant="secondary" className="gap-1 text-xs">
+                결론·목차 완주 {t.conclusionDone}회
+              </Badge>
+              {t.lastAt ? (
+                <Badge variant="outline" className="gap-1 text-xs">
+                  최근 {t.lastAt.slice(0, 10)}
+                </Badge>
+              ) : null}
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/case-training" viewTransition>
+                이어서 훈련 <ArrowRightIcon className="size-3.5" />
+              </Link>
+            </Button>
+          </div>
+        )}
+      </div>
+    </Surface>
+  );
+}
+
 // feat-2-027 Phase 1 — 단원 마스터리(학습한 단원의 숙련도 분포 + 정복 = 마스터 단원).
 //   ★질 게이트는 서버(computeNodeMastery)에 — 여기선 분포/정복만 담백하게 표시.
 function MasteryCard({ rows }: { rows: StatsData["nodeMastery"] }) {
@@ -1000,6 +1066,7 @@ function OverviewTab({ data }: { data: StatsData }) {
     nodeMastery,
     gamification,
     cohortStudyBand,
+    trainingStats,
   } = data;
   const totalHours = Math.round(kpis.totalProblemTimeMs / 1000 / 3600);
   const goalDday = studyGoals.examDate
@@ -1048,6 +1115,9 @@ function OverviewTab({ data }: { data: StatsData }) {
       <MasteryCard rows={nodeMastery} />
 
       <GrowthCard g={gamification} />
+
+      {/* feat-2-028 Stage 3 — 손공부(쟁점·목차 훈련) 지표. */}
+      <TrainingCard t={trainingStats} />
 
       <StudyVolumeCard g={gamification} cohort={cohortStudyBand} />
 

@@ -1010,3 +1010,60 @@ export async function isConclusionTrainingReady(
     .not("model_conclusion_direction", "is", null);
   return (count ?? 0) >= 2;
 }
+
+// ============================================================================
+// feat-2-028 Stage 3 — 학습현황 손공부 지표(본인 훈련 시도 요약)
+// ============================================================================
+
+export interface MyIssueTrainingStats {
+  /** 쟁점추출 자기채점 완료 횟수. */
+  issueDone: number;
+  /** 결론·강약(목차) 완주 횟수. */
+  conclusionDone: number;
+  /** 자기채점 기준 평균 쟁점 적중률(%) — hits/(hits+missed). 표본 없으면 null. */
+  avgHitPct: number | null;
+  /** 마지막 훈련 활동 시각. */
+  lastAt: string | null;
+}
+
+export async function getMyIssueTrainingStats(
+  client: Client,
+  userId: string,
+): Promise<MyIssueTrainingStats> {
+  const [{ data: ia }, { data: ca }] = await Promise.all([
+    client
+      .from("case_issue_attempts")
+      .select("self_check, done_at")
+      .eq("user_id", userId)
+      .is("deleted_at", null),
+    client
+      .from("case_conclusion_attempts")
+      .select("done_at")
+      .eq("user_id", userId)
+      .is("deleted_at", null),
+  ]);
+  const issueRows = (ia ?? []).filter((a) => a.done_at);
+  let hitSum = 0;
+  let hitDen = 0;
+  let lastAt: string | null = null;
+  for (const a of issueRows) {
+    const sc = a.self_check as SelfCheck | null;
+    const h = sc?.hits?.length ?? 0;
+    const m = sc?.missed?.length ?? 0;
+    if (h + m > 0) {
+      hitSum += h / (h + m);
+      hitDen += 1;
+    }
+    if (a.done_at && (!lastAt || a.done_at > lastAt)) lastAt = a.done_at;
+  }
+  const conclRows = (ca ?? []).filter((a) => a.done_at);
+  for (const a of conclRows) {
+    if (a.done_at && (!lastAt || a.done_at > lastAt)) lastAt = a.done_at;
+  }
+  return {
+    issueDone: issueRows.length,
+    conclusionDone: conclRows.length,
+    avgHitPct: hitDen > 0 ? Math.round((hitSum / hitDen) * 100) : null,
+    lastAt,
+  };
+}
