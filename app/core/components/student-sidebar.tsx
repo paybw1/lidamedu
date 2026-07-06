@@ -161,11 +161,17 @@ export function StudentSidebar({
               className="size-8 shrink-0 object-contain"
             />
           ) : (
-            <img
-              src="/lidam-logo.png"
-              alt="리담변리사학원"
-              className="h-auto max-h-7 w-auto max-w-full object-contain dark:[filter:invert(1)_hue-rotate(180deg)]"
-            />
+            // 사이드바는 폭이 좁아 태그라인을 로고 아래 스택으로(상단 바의 안 2 변형).
+            <span className="flex flex-col items-start gap-0.5">
+              <img
+                src="/lidam-logo.png"
+                alt="리담변리사학원"
+                className="h-auto max-h-7 w-auto max-w-full object-contain dark:[filter:invert(1)_hue-rotate(180deg)]"
+              />
+              <span className="text-muted-foreground text-[10px] font-medium tracking-[0.08em] whitespace-nowrap">
+                Study Platform
+              </span>
+            </span>
           )}
         </button>
       </div>

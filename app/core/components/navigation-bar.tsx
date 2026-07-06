@@ -461,7 +461,11 @@ export function NavigationBar({
       )}
     >
       <div className="mx-auto flex h-full w-full max-w-[1200px] items-center gap-4">
-        <Link to="/" aria-label="리담변리사학원 홈" className="shrink-0">
+        <Link
+          to="/"
+          aria-label="리담변리사학원 홈 — Study Platform"
+          className="flex shrink-0 items-center gap-3"
+        >
           {/* 로고 PNG 의 텍스트 부분이 검정이라 dark 모드에서 안 보임. invert + hue-rotate(180)
               조합으로 검정→흰색 변환하면서 심볼 브랜드 컬러는 그대로 보존. */}
           {/* shrink-0(Link) + max-w-none(img): 네비가 좁아져도 Tailwind preflight 의
@@ -471,6 +475,12 @@ export function NavigationBar({
             alt="리담변리사학원"
             className="h-7 w-auto max-w-none dark:[filter:invert(1)_hue-rotate(180deg)]"
           />
+          {/* 학습 플랫폼 태그라인(lidamipedu ↔ lidamedu 구분) — 메뉴가 붐비는
+              md~lg 폭에서는 숨겨 로고만 유지. */}
+          <span aria-hidden className="bg-foreground/15 hidden h-4 w-px lg:block" />
+          <span className="text-muted-foreground hidden text-[11.5px] font-medium tracking-wide whitespace-nowrap lg:block">
+            Study Platform
+          </span>
         </Link>
 
         {/* 데스크톱 네비게이션 — 로고 바로 오른쪽, '운영자'까지 왼쪽 정렬 */}

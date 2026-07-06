@@ -64,10 +64,12 @@ export function DashSidebar({
       {/* 로고 — 다른 페이지(navigation-bar)와 동일한 리담변리사학원 PNG. */}
       <Link
         to="/"
-        aria-label="리담변리사학원 홈"
+        aria-label="리담변리사학원 홈 — Study Platform"
         style={{
           display: "inline-flex",
-          alignItems: "center",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: 3,
           padding: "0 8px",
           marginBottom: 24,
           textDecoration: "none",
@@ -78,6 +80,16 @@ export function DashSidebar({
           alt="리담변리사학원"
           style={{ height: 28, width: "auto", maxWidth: "none" }}
         />
+        <span
+          style={{
+            font: `500 10px/1 ${T.font}`,
+            letterSpacing: "0.08em",
+            color: T.inkMute,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Study Platform
+        </span>
       </Link>
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
