@@ -92,14 +92,39 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       : 1;
 
   // 첫 화면은 로더에서 바로 서명해 추가 왕복 없이 그린다.
-  const initialUrls = await getLectureNotePageUrls(
-    kind,
-    id,
-    Math.max(1, page - 2),
-    Math.min(totalPages, page + PAGE_WINDOW),
-  );
+  const [initialUrls, { data: me }] = await Promise.all([
+    getLectureNotePageUrls(
+      kind,
+      id,
+      Math.max(1, page - 2),
+      Math.min(totalPages, page + PAGE_WINDOW),
+    ),
+    client
+      .from("profiles")
+      .select("name, member_no")
+      .eq("profile_id", user.id)
+      .maybeSingle(),
+  ]);
 
-  return { kind, id, page, totalPages, title, initialUrls };
+  // 유출방지 ② — 열람자 식별 워터마크(캡처·촬영 유출 시 유출자 특정).
+  const stampedAt = new Date().toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const watermark = [
+    me?.name ?? "회원",
+    me?.member_no != null ? `No.${me.member_no}` : null,
+    stampedAt,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return { kind, id, page, totalPages, title, initialUrls, watermark };
 }
 
 type UrlMap = Record<number, string>;
@@ -107,8 +132,15 @@ type UrlMap = Record<number, string>;
 export default function LectureNoteViewer({
   loaderData,
 }: Route.ComponentProps) {
-  const { kind, id, page: initialPage, totalPages, title, initialUrls } =
-    loaderData;
+  const {
+    kind,
+    id,
+    page: initialPage,
+    totalPages,
+    title,
+    initialUrls,
+    watermark,
+  } = loaderData;
 
   const [pageNum, setPageNum] = useState(initialPage);
   const [scale, setScale] = useState(DEFAULT_SCALE);
@@ -265,16 +297,36 @@ export default function LectureNoteViewer({
         className="relative flex flex-1 justify-center overflow-auto p-3"
       >
         {currentUrl ? (
-          <img
-            key={`${pageNum}`}
-            src={currentUrl}
-            alt={`${title} ${pageNum}페이지`}
-            draggable={false}
-            onDragStart={(e) => e.preventDefault()}
-            onError={() => void ensureUrls(pageNum, true)}
-            className="h-auto self-start rounded shadow-sm select-none"
+          <div
+            className="relative self-start"
             style={{ width: `${Math.round(scale * 100)}%`, maxWidth: "none" }}
-          />
+          >
+            <img
+              key={`${pageNum}`}
+              src={currentUrl}
+              alt={`${title} ${pageNum}페이지`}
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+              onError={() => void ensureUrls(pageNum, true)}
+              className="h-auto w-full rounded shadow-sm select-none"
+            />
+            {/* 유출방지 ② — 열람자 식별 워터마크. 캡처·촬영물에 신원이 남는다. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded select-none"
+            >
+              <div className="absolute -inset-[40%] flex rotate-[-20deg] flex-wrap content-around justify-around gap-x-16 gap-y-20">
+                {Array.from({ length: 24 }, (_, i) => (
+                  <span
+                    key={i}
+                    className="text-[13px] font-semibold whitespace-nowrap text-[rgba(51,65,85,0.10)]"
+                  >
+                    {watermark}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : loadError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
             <p className="text-muted-foreground text-sm">
