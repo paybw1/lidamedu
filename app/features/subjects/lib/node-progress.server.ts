@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
+import { fetchAllIn } from "~/core/lib/supa-batch.server";
 import type {
   ArticleProgressUnit,
   NodeProgressByArticle,
@@ -31,21 +32,30 @@ export async function buildNodeProgressByArticle(
   if (articleIds.length === 0) return out;
 
   // 1. 본인이 열람한 조문/판례 ids (study_sessions 기준).
+  // ★articleIds 는 전 과목 체계도를 합치면 수천 개 — 단일 .in() 은 URL 초과(400)로
+  //   조용히 빈 결과가 되어 약점이 항상 0으로 나온다 → fetchAllIn 배치 필수.
   const [articleViewRows, caseLinkRows, problemRows] = await Promise.all([
     client
       .from("study_sessions")
       .select("scope")
       .eq("user_id", userId)
       .limit(5000),
-    client
-      .from("article_case_links")
-      .select("article_id, case_id")
-      .in("article_id", articleIds),
-    client
-      .from("problems")
-      .select("problem_id, primary_article_id")
-      .in("primary_article_id", articleIds)
-      .is("deleted_at", null),
+    fetchAllIn(articleIds, (slice) =>
+      client
+        .from("article_case_links")
+        .select("article_id, case_id")
+        .in("article_id", slice)
+        .order("article_id", { ascending: true })
+        .order("case_id", { ascending: true }),
+    ),
+    fetchAllIn(articleIds, (slice) =>
+      client
+        .from("problems")
+        .select("problem_id, primary_article_id")
+        .in("primary_article_id", slice)
+        .is("deleted_at", null)
+        .order("problem_id", { ascending: true }),
+    ),
   ]);
 
   const viewedArticles = new Set<string>();
@@ -63,7 +73,7 @@ export async function buildNodeProgressByArticle(
   // 2. article→cases 매핑.
   const casesByArticle = new Map<string, Set<string>>();
   const allCaseIds = new Set<string>();
-  for (const r of caseLinkRows.data ?? []) {
+  for (const r of caseLinkRows) {
     if (!r.article_id || !r.case_id) continue;
     if (!casesByArticle.has(r.article_id))
       casesByArticle.set(r.article_id, new Set());
@@ -74,7 +84,7 @@ export async function buildNodeProgressByArticle(
   // 3. article→problems 매핑.
   const problemsByArticle = new Map<string, string[]>();
   const allProblemIds: string[] = [];
-  for (const r of problemRows.data ?? []) {
+  for (const r of problemRows) {
     if (!r.primary_article_id) continue;
     if (!problemsByArticle.has(r.primary_article_id))
       problemsByArticle.set(r.primary_article_id, []);
@@ -88,11 +98,15 @@ export async function buildNodeProgressByArticle(
     { attempts: number; correct: number }
   >();
   if (allProblemIds.length > 0) {
-    const { data: attempts } = await client
-      .from("user_problem_attempts")
-      .select("problem_id, is_correct")
-      .eq("user_id", userId)
-      .in("problem_id", allProblemIds);
+    // ★allProblemIds 도 수천 개 가능 — 배치 필수.
+    const attempts = await fetchAllIn(allProblemIds, (slice) =>
+      client
+        .from("user_problem_attempts")
+        .select("problem_id, is_correct, attempt_id")
+        .eq("user_id", userId)
+        .in("problem_id", slice)
+        .order("attempt_id", { ascending: true }),
+    );
     for (const a of attempts ?? []) {
       const s = attemptStats.get(a.problem_id) ?? {
         attempts: 0,
