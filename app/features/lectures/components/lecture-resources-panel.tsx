@@ -183,7 +183,7 @@ function ResourceCard({
   const deleting =
     deleteFetcher.state === "submitting" || deleteFetcher.state === "loading";
 
-  // signed URL 응답 받으면 새 탭 open.
+  // signed URL 응답 받으면 새 탭 open (staff 원본 다운로드 전용).
   useEffect(() => {
     const d = openFetcher.data;
     if (!d) return;
@@ -200,16 +200,27 @@ function ResourceCard({
     }
   }, [deleteFetcher.data, onDeleted]);
 
+  // 유출방지 ① — PDF 조각은 원본 파일 대신 인앱 이미지 뷰어로 연다.
+  // 통합본 매핑 조각 = 통합본 뷰어의 해당 페이지 / 미매핑 = 조각 자체 페이지 이미지.
   function handleOpen() {
     if (resource.url) {
       window.open(resource.url, "_blank", "noopener,noreferrer");
       return;
     }
     if (!resource.pdfUrl) return;
+    const href =
+      resource.sourcePdfId && resource.sourcePageStart
+        ? `/lecture-note/${resource.sourcePdfId}?page=${resource.sourcePageStart}`
+        : `/lecture-note/${resource.resourceId}`;
+    window.open(href, "_blank", "noopener,noreferrer");
+  }
+
+  // staff 전용 — 유지관리용 원본 PDF 다운로드(학생 경로에서는 제거됨).
+  function handleStaffDownload() {
+    if (!resource.pdfUrl) return;
     const fd = new FormData();
     fd.set("intent", "signed-url");
     fd.set("pdfPath", resource.pdfUrl);
-    // 저장 시 파일명 = 제목.pdf (파일 시스템 금지문자만 치환, 한글 유지).
     const downloadName =
       resource.title
         .replace(/[\\/:*?"<>|]/g, " ")
@@ -256,16 +267,29 @@ function ResourceCard({
             size="sm"
             variant="secondary"
             onClick={handleOpen}
-            disabled={opening || (!resource.pdfUrl && !resource.url)}
+            disabled={!resource.pdfUrl && !resource.url}
             className="h-7"
           >
-            {opening ? (
-              <Loader2Icon className="size-3.5 animate-spin" />
-            ) : (
-              <ExternalLinkIcon className="size-3.5" />
-            )}
+            <ExternalLinkIcon className="size-3.5" />
             열기
           </Button>
+          {canManage && resource.pdfUrl ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleStaffDownload}
+              disabled={opening}
+              className="text-muted-foreground h-7"
+              title="원본 PDF 다운로드 (운영자 전용)"
+            >
+              {opening ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <FileTextIcon className="size-3.5" />
+              )}
+              원본
+            </Button>
+          ) : null}
           {canManage ? (
             <Button
               size="sm"

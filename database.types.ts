@@ -4366,6 +4366,7 @@ export type Database = {
           duration_sec: number | null
           kind: Database["public"]["Enums"]["resource_kind"]
           ord: number
+          page_count: number | null
           pdf_url: string | null
           resource_id: string
           source_page_end: number | null
@@ -4384,6 +4385,7 @@ export type Database = {
           duration_sec?: number | null
           kind: Database["public"]["Enums"]["resource_kind"]
           ord?: number
+          page_count?: number | null
           pdf_url?: string | null
           resource_id?: string
           source_page_end?: number | null
@@ -4402,6 +4404,7 @@ export type Database = {
           duration_sec?: number | null
           kind?: Database["public"]["Enums"]["resource_kind"]
           ord?: number
+          page_count?: number | null
           pdf_url?: string | null
           resource_id?: string
           source_page_end?: number | null

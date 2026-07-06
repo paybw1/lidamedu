@@ -743,10 +743,16 @@ export default [
         "/lectures/:itemId",
         "features/lectures/screens/lecture-viewer.tsx",
       ),
-      // 인앱 강의노트 PDF 뷰어 — 위치 링크(?page=N)가 통합본의 해당 페이지를 연다.
+      // 인앱 강의노트 뷰어 — 위치 링크(?page=N)가 통합본의 해당 페이지를 연다.
+      // :sourcePdfId 는 통합본 source_pdf_id 또는 (통합본 미매핑 조각의) resource_id.
       route(
         "/lecture-note/:sourcePdfId",
         "features/lectures/screens/lecture-note-viewer.tsx",
+      ),
+      // 페이지 이미지 signed URL 창 발급(유출방지 ① — 원본 PDF 비전달).
+      route(
+        "/api/lecture-note-pages",
+        "features/lectures/api/lecture-note-pages.tsx",
       ),
       route("/api/admin/student-note", "features/admin/api/student-note.tsx"),
       route(

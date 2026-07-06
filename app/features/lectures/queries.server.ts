@@ -324,6 +324,37 @@ export async function getLectureResourceSignedUrl(
   return data.signedUrl;
 }
 
+// ── 페이지 이미지 서빙(유출방지 ①) ────────────────────────────────────
+// 원본 PDF 를 클라이언트에 전달하지 않는다 — 사전 렌더된 페이지 WebP 만 서명.
+// 배치: scripts/lecture-notes/render-page-images.mjs
+export const LECTURE_PAGES_BUCKET = "lecture-note-pages";
+const PAGE_URL_EXPIRES_SEC = 600; // 10 min — 만료 시 뷰어가 재요청
+
+export type LectureNotePageKind = "src" | "res";
+
+// private 버킷(storage RLS 정책 없음)이라 admin 클라이언트로 서명 —
+// 호출측(loader/API)이 인증·노출 플래그 게이트를 먼저 통과시킨다.
+export async function getLectureNotePageUrls(
+  kind: LectureNotePageKind,
+  id: string,
+  fromPage: number,
+  toPage: number,
+): Promise<Record<number, string>> {
+  const pages: number[] = [];
+  for (let p = fromPage; p <= toPage; p++) pages.push(p);
+  if (pages.length === 0) return {};
+  const paths = pages.map((p) => `${kind}/${id}/${p}.webp`);
+  const { data, error } = await adminClient.storage
+    .from(LECTURE_PAGES_BUCKET)
+    .createSignedUrls(paths, PAGE_URL_EXPIRES_SEC);
+  if (error) throw error;
+  const out: Record<number, string> = {};
+  (data ?? []).forEach((entry, i) => {
+    if (!entry.error && entry.signedUrl) out[pages[i]] = entry.signedUrl;
+  });
+  return out;
+}
+
 // 통합본 원본 PDF inline signed URL — download 옵션 미사용(브라우저 네이티브 뷰어 inline),
 // #page=N 점프 가능. 통PDF 장시간 열람 대비 기본 1h.
 export async function getOriginalPdfSignedUrl(

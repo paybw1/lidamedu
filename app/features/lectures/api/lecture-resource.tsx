@@ -11,6 +11,7 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { getStaffRole } from "~/features/laws/queries.server";
 import {
   LECTURE_NOTES_BUCKET,
   type LectureResourceListItem,
@@ -55,8 +56,12 @@ export async function action({ request }: Route.ActionArgs) {
   const fd = await request.formData();
   const intent = String(fd.get("intent") ?? "");
 
-  // ── signed URL (학생도 호출 가능; RLS 가 read 허용) ──
+  // ── signed URL (staff 전용 — 유출방지 ①: 학생은 인앱 이미지 뷰어만) ──
   if (intent === "signed-url") {
+    const staffRole = await getStaffRole(client, user.id);
+    if (staffRole === null) {
+      return data({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
     const parsed = signedUrlSchema.safeParse({
       pdfPath: fd.get("pdfPath"),
       downloadName: fd.get("downloadName") || undefined,
