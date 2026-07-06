@@ -911,14 +911,15 @@ export async function findActiveCaseByDeletedId(
       deletedCaseNumber: deletedRow?.case_number ?? null,
     };
   }
-  const { data: activeRow } = await client
+  // 사건번호는 법률 단위 유일 — 특허·상표 양쪽 판례집에 수록된 판례는 활성 행이 2개일 수 있다.
+  const { data: activeRows } = await client
     .from("cases")
     .select("case_id")
     .eq("case_number", deletedRow.case_number)
     .is("deleted_at", null)
-    .maybeSingle();
+    .limit(1);
   return {
-    replacementCaseId: activeRow?.case_id ?? null,
+    replacementCaseId: activeRows?.[0]?.case_id ?? null,
     deletedCaseNumber: deletedRow.case_number,
   };
 }

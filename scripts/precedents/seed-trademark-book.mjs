@@ -176,9 +176,12 @@ for (const topic of data.topics) {
     continue;
   }
 
-  // 주제 노드 (재사용 우선)
+  // 주제 노드 (재사용 우선) — 라벨 = "주제N 제목" (2026-07-07 원장 지시)
+  const topicLabel = `주제${topic.no} ${topic.title}`;
   let topicNode = nodes.find(
-    (n) => n.parent_id === parent.node_id && n.display_label === topic.title,
+    (n) =>
+      n.parent_id === parent.node_id &&
+      (n.display_label === topicLabel || n.display_label === topic.title),
   );
   if (!topicNode && APPLY) {
     const { data: sibs } = await sb
@@ -195,7 +198,8 @@ for (const topic of data.topics) {
         parent_id: parent.node_id,
         path: `${parent.path}.b${ord}`,
         ord,
-        display_label: topic.title,
+        display_label: topicLabel,
+        case_display_label: topicLabel,
         case_only: true,
       })
       .select("node_id, parent_id, path, display_label, ord")

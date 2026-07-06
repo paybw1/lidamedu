@@ -59,6 +59,34 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { lawCode, rows, role };
 }
 
+// 사건번호 → case_id. 사건번호는 법률(과목) 단위 유일 — 같은 판례가 특허·상표 판례집에
+// 각자 행으로 존재할 수 있으므로, 문제의 과목과 subject_laws 가 일치하는 행을 우선한다.
+async function resolveCaseIdForProblem(
+  client: ReturnType<typeof makeServerClient>[0],
+  problemId: string,
+  caseNumber: string,
+): Promise<string | null> {
+  const [{ data: prob }, { data: caseRows }] = await Promise.all([
+    client
+      .from("problems")
+      .select("law_id, laws(law_code)")
+      .eq("problem_id", problemId)
+      .maybeSingle(),
+    client
+      .from("cases")
+      .select("case_id, subject_laws, decided_at")
+      .eq("case_number", caseNumber)
+      .is("deleted_at", null)
+      .order("decided_at", { ascending: false }),
+  ]);
+  if (!caseRows || caseRows.length === 0) return null;
+  const lawCode = prob?.laws?.law_code ?? null;
+  const lawMatch = lawCode
+    ? caseRows.find((r) => (r.subject_laws ?? []).includes(lawCode))
+    : undefined;
+  return (lawMatch ?? caseRows[0]).case_id;
+}
+
 export async function action({ request }: Route.ActionArgs) {
   const [client] = makeServerClient(request);
   const {
@@ -97,13 +125,8 @@ export async function action({ request }: Route.ActionArgs) {
         { status: 400 },
       );
     }
-    const { data: caseRow } = await client
-      .from("cases")
-      .select("case_id")
-      .eq("case_number", token)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (!caseRow) {
+    const caseId = await resolveCaseIdForProblem(client, problemId, token);
+    if (!caseId) {
       return data(
         { error: `판례 ${token} 를 판례 DB 에서 찾을 수 없습니다` },
         { status: 400 },
@@ -112,7 +135,7 @@ export async function action({ request }: Route.ActionArgs) {
     const { error } = await client.from("problem_case_links").upsert(
       {
         problem_id: problemId,
-        case_id: caseRow.case_id,
+        case_id: caseId,
         relation_type: "cited",
         created_by: user.id,
       },
@@ -181,13 +204,8 @@ export async function action({ request }: Route.ActionArgs) {
         message: `해설을 저장했습니다. "${citation}" 에서 사건번호를 추출하지 못했습니다.`,
       });
     }
-    const { data: caseRow } = await client
-      .from("cases")
-      .select("case_id")
-      .eq("case_number", token)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (!caseRow) {
+    const caseId = await resolveCaseIdForProblem(client, problemId, token);
+    if (!caseId) {
       return data({
         ok: true,
         message: `해설을 저장했습니다. 사건번호 ${token} 는 판례 DB 에서 찾을 수 없어 연결되지 않았습니다.`,
@@ -198,7 +216,7 @@ export async function action({ request }: Route.ActionArgs) {
       .upsert(
         {
           problem_id: problemId,
-          case_id: caseRow.case_id,
+          case_id: caseId,
           relation_type: "cited",
           created_by: user.id,
         },
