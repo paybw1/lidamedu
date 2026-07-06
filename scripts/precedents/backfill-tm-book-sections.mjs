@@ -7,6 +7,10 @@
 //   node scripts/precedents/backfill-tm-book-sections.mjs --apply
 import "dotenv/config";
 import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import AdmZip from "adm-zip";
+import sharp from "sharp";
+import bmp from "bmp-js";
 import { createClient } from "@supabase/supabase-js";
 
 const APPLY = process.argv.includes("--apply");
@@ -14,6 +18,85 @@ const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_R
   auth: { persistSession: false },
 });
 const data = JSON.parse(readFileSync("source/_converted/tm-precedents.json", "utf8"));
+
+// ── 이미지 업로드 동기화 — 파서가 새로 발견한 인라인 binId(본문 문장 속 표장)가
+//    cases.images 에 없으면 변환·업로드 후 append (seed 는 기존 판례 skip 이라 여기서 보충).
+const zip = new AdmZip("source/상표업로드/판례.hwpx");
+const binByStem = new Map();
+for (const e of zip.getEntries()) {
+  const m = /^BinData\/([^.]+)\.(\w+)$/.exec(e.entryName);
+  if (m) binByStem.set(m[1].toLowerCase(), { entry: e, ext: m[2].toLowerCase() });
+}
+async function toWebp(binId) {
+  const hit = binByStem.get(binId.toLowerCase());
+  if (!hit) return { error: "binData 없음" };
+  const buf = hit.entry.getData();
+  try {
+    let img;
+    const magic = buf.slice(0, 3).toString("hex");
+    if (magic.startsWith("ffd8")) img = sharp(buf, { failOn: "none" });
+    else if (hit.ext === "bmp") {
+      const d = bmp.decode(buf);
+      const px = d.data;
+      let hasAlpha = false;
+      for (let i = 0; i < px.length; i += 4) if (px[i] !== 0) { hasAlpha = true; break; }
+      for (let i = 0; i < px.length; i += 4) {
+        const a = px[i], b = px[i + 1], g = px[i + 2], r = px[i + 3];
+        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = hasAlpha ? a : 255;
+      }
+      img = sharp(px, { raw: { width: d.width, height: d.height, channels: 4 } });
+    } else if (["wmf", "emf", "ole"].includes(hit.ext)) return { error: `미지원 ${hit.ext}` };
+    else img = sharp(buf, { failOn: "none" });
+    const out = await img.webp({ quality: 88 }).toBuffer({ resolveWithObject: true });
+    return { buffer: out.data, width: out.info.width, height: out.info.height };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+async function syncMissingImages(row, bookImages) {
+  const have = new Set(
+    (row.images ?? [])
+      .map((i) => /tm16-([^./]+)\.webp$/.exec(i.storagePath ?? "")?.[1]?.toLowerCase())
+      .filter(Boolean),
+  );
+  const missing = bookImages.filter((b) => !have.has(b.toLowerCase()));
+  if (!missing.length || !APPLY) return { images: row.images ?? [], added: 0 };
+  const next = [...(row.images ?? [])];
+  let added = 0;
+  for (const bin of missing) {
+    const conv = await toWebp(bin);
+    if (conv.error) {
+      console.log(`  ! ${row.case_number} 인라인 ${bin}: ${conv.error}`);
+      continue;
+    }
+    const storagePath = `${row.case_id}/tm16-${bin}.webp`;
+    const { error } = await sb.storage
+      .from("case-images")
+      .upload(storagePath, conv.buffer, { contentType: "image/webp", upsert: true });
+    if (error) {
+      console.log(`  ! ${row.case_number} 업로드 ${bin}: ${error.message}`);
+      continue;
+    }
+    const { data: pub } = sb.storage.from("case-images").getPublicUrl(storagePath);
+    next.push({
+      id: randomUUID(),
+      url: pub.publicUrl,
+      storagePath,
+      mimeType: "image/webp",
+      width: conv.width,
+      height: conv.height,
+      alt: "",
+      position: "summary",
+      sortOrder: next.length,
+    });
+    added++;
+  }
+  if (added > 0) {
+    const { error } = await sb.from("cases").update({ images: next }).eq("case_id", row.case_id);
+    if (error) console.log(`  ! ${row.case_number} images 갱신: ${error.message}`);
+  }
+  return { images: next, added };
+}
 
 // 최초 수록분 기준 (시드와 동일 정책)
 const bookCase = new Map();
@@ -33,8 +116,16 @@ const SECTION_DEFS = [
 const normalizePara = (t) => t.replace(/^(\[\d+\]|\(\d+\))(?=\S)/, "$1 ");
 // 평석 등 표 셀에서 추출된 텍스트는 여러 문단이 단일 \n 으로 뭉쳐 있음 — 줄 단위로
 // 별도 p 블록 분리(문단 간격 확보 + [2][3] 선두 정규화 적용).
-const toParaBlocks = (arr) =>
+// ★인라인 이미지 마커 ⟦IMG:binId⟧ → ![](url) 이미지 단독 문단으로 변환 — 뷰어(Prose)의
+//   따옴표 문맥 인라인 임베드가 원 위치("" 사이 표장)에 렌더한다. URL 미확보 마커는 제거.
+const toParaBlocks = (arr, imageUrlByBin) =>
   (arr ?? [])
+    .map((t) =>
+      t.replace(/⟦IMG:([^⟧]*)⟧/g, (_, bin) => {
+        const url = imageUrlByBin?.get(bin.toLowerCase());
+        return url ? `\n![](${url})\n` : "";
+      }),
+    )
     .flatMap((t) => t.split(/\n+/))
     .map((t) => t.trim())
     .filter(Boolean)
@@ -103,7 +194,7 @@ function buildSections(c, imageUrlByBin) {
   // 쟁점상표 — 헤더 직후(preamble) 도표
   const infoBlocks = [
     ...tablesFor("preamble"),
-    ...toParaBlocks(c.sections.preamble),
+    ...toParaBlocks(c.sections.preamble, imageUrlByBin),
   ];
   if (infoBlocks.length) sections.push({ key: "mark", label: "쟁점상표", blocks: infoBlocks });
   sections.push(...refSectionsFor("preamble"));
@@ -130,7 +221,7 @@ function buildSections(c, imageUrlByBin) {
         : lowerKeyRelabeled && key === "lower"
           ? "__none__"
           : key;
-    const blocks = [...toParaBlocks(secText[key]), ...tablesFor(originKey)];
+    const blocks = [...toParaBlocks(secText[key], imageUrlByBin), ...tablesFor(originKey)];
     const refs = refSectionsFor(originKey);
     if (!blocks.length) {
       sections.push(...refs);
@@ -164,7 +255,7 @@ const { data: rows, error } = await sb
   .is("deleted_at", null);
 if (error) throw error;
 
-let updated = 0, noBook = 0, failed = 0;
+let updated = 0, noBook = 0, failed = 0, imgAdded = 0;
 for (const r of rows) {
   const c = bookCase.get(r.case_number);
   if (!c) {
@@ -172,9 +263,11 @@ for (const r of rows) {
     console.log("? 교재 미수록:", r.case_number);
     continue;
   }
-  // binId → 업로드된 URL
+  // 인라인 신규 이미지 업로드 동기화 → binId → URL 맵
+  const { images: syncedImages, added } = await syncMissingImages(r, c.images ?? []);
+  imgAdded += added;
   const imageUrlByBin = new Map();
-  for (const img of r.images ?? []) {
+  for (const img of syncedImages) {
     const m = /tm16-([^./]+)\.webp$/.exec(img.storagePath ?? "");
     if (m) imageUrlByBin.set(m[1].toLowerCase(), img.url);
   }
@@ -194,4 +287,6 @@ for (const r of rows) {
     console.log("!", r.case_number, uErr.message);
   } else updated++;
 }
-console.log(`${APPLY ? "적용" : "dry-run"}: 대상 ${rows.length} / 갱신 ${updated} / 교재외 ${noBook} / 실패 ${failed}`);
+console.log(
+  `${APPLY ? "적용" : "dry-run"}: 대상 ${rows.length} / 갱신 ${updated} / 교재외 ${noBook} / 실패 ${failed} / 인라인 이미지 추가 ${imgAdded}`,
+);

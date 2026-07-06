@@ -45,17 +45,22 @@ const tagOf = (node) => Object.keys(node).filter((k) => k !== ":@")[0] ?? null;
 const attrsOf = (node) => node[":@"] ?? {};
 
 // 텍스트 추출 — hp:tbl 서브트리 제외(표는 별도 파싱), 그림 캡션(hp:shapeComment) 제외,
-// 중첩 hp:p(글상자 내부 문단 — 별도 문단으로 펼침) 제외
+// 중첩 hp:p(글상자 내부 문단 — 별도 문단으로 펼침) 제외.
+// ★본문 인라인 이미지(문장 속 표장 그림)는 위치 마커 ⟦IMG:binId⟧ 로 남긴다 —
+//   백필이 ![](url) 마크다운으로 변환해 원 위치에 렌더(사실관계 "" 사이 표장 등).
 function textOf(node, { skipTables = true, root = true } = {}) {
   const tag = tagOf(node);
   if (tag === "#text") return String(node["#text"] ?? "");
   if (tag === "hp:shapeComment") return "";
   if (skipTables && tag === "hp:tbl") return "";
   if (!root && tag === "hp:p") return "";
+  const ref = attrsOf(node)["@_binaryItemIDRef"] ?? attrsOf(node)["@_BinaryItemIDRef"];
+  if (ref) return `⟦IMG:${ref}⟧`;
   let s = "";
   for (const c of childrenOf(node)) s += textOf(c, { skipTables, root: false });
   return s;
 }
+const IMG_MARKER_RE = /⟦IMG:[^⟧]*⟧/g;
 
 // 글상자 등 컨테이너 내부의 중첩 문단 (표 내부 제외) — 앵커 문단 뒤에 순서대로 펼친다
 function boxParasOf(pNode) {
@@ -306,10 +311,12 @@ function pushText(kase, section, text) {
 
 for (let i = 0; i < paras.length; i++) {
   const p = paras[i];
+  // 구조 판정(주제/헤더/섹션라벨)은 이미지 마커 제거본으로 — 본문 push 는 마커 보존.
+  const plain = p.text.replace(IMG_MARKER_RE, "").replace(/\s+/g, " ").trim();
 
   // 주제 마커
-  if (p.style === "27" && /주제\s*\d+/.test(p.text)) {
-    const t = parseTopic(p.text);
+  if (p.style === "27" && /주제\s*\d+/.test(plain)) {
+    const t = parseTopic(plain);
     if (t) {
       curTopic = { ...t, cases: [] };
       topics.push(curTopic);
@@ -320,20 +327,20 @@ for (let i = 0; i < paras.length; i++) {
   if (!curTopic) continue; // 머리말 등 서두
 
   // 판례 헤더 — 직전 케이스 헤더와 동일 텍스트면(중복 수록) skip
-  if (isHeaderLine(p.text ? p : { text: "" }) && p.text) {
-    if (curCase && curCase.headerText === p.text) continue; // 연속 중복
-    const h = parseHeader(p.text);
+  if (isHeaderLine({ text: plain }) && plain) {
+    if (curCase && curCase.headerText === plain) continue; // 연속 중복
+    const h = parseHeader(plain);
     if (!h) {
       // 본문 속 판례 인용(긴 문장)은 헤더가 아님 — 현재 섹션 본문으로 유지
-      if (p.text.length > 140) {
+      if (plain.length > 140) {
         pushText(curCase ?? { sections: {} }, curSection, p.text);
         continue;
       }
-      warnings.push({ type: "header_parse_fail", text: p.text.slice(0, 120) });
+      warnings.push({ type: "header_parse_fail", text: plain.slice(0, 120) });
       continue;
     }
     curCase = {
-      headerText: p.text,
+      headerText: plain,
       seqInTopic: curTopic.cases.length + 1,
       ...h,
       infoTables: [], // [{rows, images}]
@@ -380,14 +387,14 @@ for (let i = 0; i < paras.length; i++) {
   if (!p.text) continue;
 
   // 섹션 라벨
-  const secM = /^\[([^\]]{1,20})\]$/.exec(p.text);
+  const secM = /^\[([^\]]{1,20})\]$/.exec(plain);
   if (secM && SECTION_KEYS[secM[1]]) {
     curSection = SECTION_KEYS[secM[1]];
     continue;
   }
 
   // 평석 마커
-  if (/^ㅇㅌㅍ/.test(p.text)) {
+  if (/^ㅇㅌㅍ/.test(plain)) {
     curSection = "comment";
     const rest = p.text.replace(/^ㅇㅌㅍ\s*/, "").trim();
     if (rest) pushText(curCase, "comment", rest);

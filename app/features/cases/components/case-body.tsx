@@ -340,11 +340,13 @@ export function CaseBody({
                   viewerIsStaff={viewerIsStaff}
                 >
                   <div className="space-y-4">
-                    {sec.blocks.map((b, i) =>
-                      b.type === "table" ? (
-                        <BookTable key={i} rows={b.rows} />
+                    {/* 연속된 문단 블록은 하나의 Prose 로 합쳐 렌더 — 따옴표 문맥의
+                        인라인 이미지 임베드("" 사이 표장)가 문단 경계를 넘어 작동. */}
+                    {groupBookBlocks(sec.blocks).map((run, i) =>
+                      run.type === "table" ? (
+                        <BookTable key={i} rows={run.rows} />
                       ) : (
-                        <Prose key={i} text={b.text} />
+                        <Prose key={i} text={run.text} />
                       ),
                     )}
                   </div>
@@ -553,6 +555,23 @@ function CaseImagesGrid({ images }: { images: CaseImage[] }) {
   );
 }
 
+// 연속 p 블록 → 단일 Prose 텍스트("\n\n" 결합) run 으로 그룹화.
+function groupBookBlocks(
+  blocks: BookSectionBlock[],
+): ({ type: "p"; text: string } | { type: "table"; rows: BookSectionCell[][] })[] {
+  const out: ({ type: "p"; text: string } | { type: "table"; rows: BookSectionCell[][] })[] = [];
+  for (const b of blocks) {
+    if (b.type === "table") {
+      out.push(b);
+      continue;
+    }
+    const last = out[out.length - 1];
+    if (last && last.type === "p") last.text += `\n\n${b.text}`;
+    else out.push({ type: "p", text: b.text });
+  }
+  return out;
+}
+
 // ── feat-3-213: 판례집 구조화 표 (쟁점상표 도표·사실관계 도식) ─────────────
 // 첫 행 = 헤더(구분/등록상표/지정상품…), 셀에 상표 도형 이미지 포함 가능.
 // 이미지 셀: 흰 배경 + object-contain (투명 GIF/도형 대응), 클릭 시 원본 새 탭.
@@ -613,12 +632,15 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
                     className={cn(
                       "border-border border px-3 py-2 align-middle leading-[1.7]",
                       // 첫 열(라벨: 상표/출원일/권리자 등)은 헤더 톤 + 한 줄 고정 + 내용 폭
+                      // 쟁점상표(구분) 표는 본문 셀도 가운데 정렬.
                       isLabel
                         ? cn(
                             "bg-muted/40 text-center text-[13px] font-semibold",
                             !isGubun && "w-px",
                           )
-                        : "text-left",
+                        : isGubun
+                          ? "text-center"
+                          : "text-left",
                     )}
                   >
                     <BookCell cell={c} nowrap={isLabel} />
