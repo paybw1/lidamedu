@@ -4311,6 +4311,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lecture_note_views: {
+        Row: {
+          from_page: number
+          kind: string
+          profile_id: string
+          target_id: string
+          to_page: number
+          view_id: string
+          viewed_at: string
+        }
+        Insert: {
+          from_page: number
+          kind: string
+          profile_id: string
+          target_id: string
+          to_page: number
+          view_id?: string
+          viewed_at?: string
+        }
+        Update: {
+          from_page?: number
+          kind?: string
+          profile_id?: string
+          target_id?: string
+          to_page?: number
+          view_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_note_views_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "lecture_note_views_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       lecture_pdf_locations: {
         Row: {
           created_at: string
@@ -9400,6 +9445,7 @@ export type Database = {
         | "cohort_upgrade_requested"
         | "cohort_upgrade_processed"
         | "trial_ended"
+        | "lecture_note_abuse"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -9670,6 +9716,7 @@ export const Constants = {
         "cohort_upgrade_requested",
         "cohort_upgrade_processed",
         "trial_ended",
+        "lecture_note_abuse",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

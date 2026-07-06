@@ -17,7 +17,9 @@ import { data } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { logLectureNoteView } from "~/features/lectures/abuse.server";
 import {
   type LectureNotePageKind,
   getLectureNotePageUrls,
@@ -123,6 +125,19 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   ]
     .filter(Boolean)
     .join(" · ");
+
+  // 유출방지 ③ — 초기 서명분 열람 로그(응답 후 best-effort, staff 제외).
+  if (staffRole === null) {
+    runAfterResponse(
+      logLectureNoteView({
+        profileId: user.id,
+        kind,
+        targetId: id,
+        fromPage: Math.max(1, page - 2),
+        toPage: Math.min(totalPages, page + PAGE_WINDOW),
+      }),
+    );
+  }
 
   return { kind, id, page, totalPages, title, initialUrls, watermark };
 }

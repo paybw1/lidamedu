@@ -17,6 +17,7 @@ const STAFF_KINDS: NotificationKind[] = [
   "exam_certificate_submitted",
   "bug_report_created",
   "cohort_upgrade_requested",
+  "lecture_note_abuse",
 ];
 
 // 학생용 kinds.

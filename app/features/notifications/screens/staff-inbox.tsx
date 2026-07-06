@@ -7,6 +7,7 @@ import {
   CheckCheckIcon,
   ClipboardCheckIcon,
   MessageCircleQuestionIcon,
+  ShieldAlertIcon,
 } from "lucide-react";
 import { Link, data, useFetcher } from "react-router";
 
@@ -52,6 +53,7 @@ const KIND_LABEL: Partial<Record<StaffNotificationKind, string>> = {
   qna_new_question: "Q&A 질문",
   bug_report_created: "오류 신고",
   cohort_upgrade_requested: "종합반 등업 신청",
+  lecture_note_abuse: "강의노트 이상 열람",
 };
 
 const KIND_ICON: Partial<
@@ -60,6 +62,7 @@ const KIND_ICON: Partial<
   subjective_review_request: ClipboardCheckIcon,
   qna_new_question: MessageCircleQuestionIcon,
   bug_report_created: BugIcon,
+  lecture_note_abuse: ShieldAlertIcon,
 };
 
 function formatRelative(iso: string): string {

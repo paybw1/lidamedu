@@ -5,7 +5,9 @@ import { data } from "react-router";
 import { z } from "zod";
 
 import makeServerClient from "~/core/lib/supa-client.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
 import { getStaffRole } from "~/features/laws/queries.server";
+import { logLectureNoteView } from "~/features/lectures/abuse.server";
 import { getLectureNotePageUrls } from "~/features/lectures/queries.server";
 import { getPdfLocationsEnabled } from "~/features/lectures/settings.server";
 
@@ -74,5 +76,20 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (from > clampedTo) return data({ error: "Invalid range" }, { status: 400 });
 
   const urls = await getLectureNotePageUrls(kind, id, from, clampedTo);
+
+  // 유출방지 ③ — 열람 로그 + 이상 패턴 감지(응답 후 best-effort).
+  // staff 는 운영 검수 작업이 대량 열람과 구분되지 않아 기록·감지 대상에서 제외.
+  if (staffRole === null) {
+    runAfterResponse(
+      logLectureNoteView({
+        profileId: user.id,
+        kind,
+        targetId: id,
+        fromPage: from,
+        toPage: clampedTo,
+      }),
+    );
+  }
+
   return data({ urls });
 }
