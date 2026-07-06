@@ -9456,6 +9456,7 @@ export type Database = {
         | "cohort_upgrade_processed"
         | "trial_ended"
         | "lecture_note_abuse"
+        | "bug_report_resolved"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -9727,6 +9728,7 @@ export const Constants = {
         "cohort_upgrade_processed",
         "trial_ended",
         "lecture_note_abuse",
+        "bug_report_resolved",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

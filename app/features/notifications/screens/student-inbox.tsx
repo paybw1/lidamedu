@@ -9,6 +9,7 @@ import {
   MessageCircleIcon,
   MessageSquareTextIcon,
   TriangleAlertIcon,
+  WrenchIcon,
 } from "lucide-react";
 import { Form, Link, data, useFetcher } from "react-router";
 
@@ -55,6 +56,7 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   trial_expiry_warning: "체험 만료 임박",
   trial_ended: "체험 종료",
   cohort_upgrade_processed: "종합반 등업",
+  bug_report_resolved: "오류신고 처리",
 };
 
 const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
@@ -65,6 +67,7 @@ const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
   exam_result_reminder: CalendarClockIcon,
   trial_expiry_warning: TriangleAlertIcon,
   trial_ended: TriangleAlertIcon,
+  bug_report_resolved: WrenchIcon,
 };
 
 function formatRelative(iso: string): string {

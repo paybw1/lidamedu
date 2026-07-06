@@ -30,6 +30,7 @@ const STUDENT_KINDS: NotificationKind[] = [
   "trial_expiry_warning",
   "trial_ended",
   "cohort_upgrade_processed",
+  "bug_report_resolved",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {

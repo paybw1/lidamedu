@@ -18,7 +18,13 @@ import {
   type BugReportRow,
   type BugReportStatus,
 } from "../labels";
-import { listAllBugReports, updateBugReportStatus } from "../queries.server";
+import { runAfterResponse } from "~/core/lib/wait-until.server";
+import { notifyReporterBugResolved } from "../notify.server";
+import {
+  getBugReport,
+  listAllBugReports,
+  updateBugReportStatus,
+} from "../queries.server";
 
 import type { Route } from "./+types/admin-bug-reports";
 
@@ -57,7 +63,24 @@ export async function action({ request }: Route.ActionArgs) {
   ) {
     return data({ ok: false }, { status: 400 });
   }
+  // 완료로 "전환"될 때만 신고자에게 인박스 알림(이미 done 이었으면 재알림 없음).
+  const prev = await getBugReport(reportId);
   await updateBugReportStatus(reportId, status as BugReportStatus);
+  if (
+    status === "done" &&
+    prev &&
+    prev.status !== "done" &&
+    prev.reporterId
+  ) {
+    runAfterResponse(
+      notifyReporterBugResolved({
+        reportId,
+        reporterId: prev.reporterId,
+        url: prev.url,
+        message: prev.message,
+      }),
+    );
+  }
   return data({ ok: true });
 }
 

@@ -66,3 +66,27 @@ export async function updateBugReportStatus(
   const admin = adminClient as SupabaseClient<Database>;
   await admin.from("bug_reports").update({ status }).eq("report_id", reportId);
 }
+
+/** 상태 전환 판정·알림용 단건 조회 (staff 경로 — admin client). */
+export async function getBugReport(reportId: string): Promise<{
+  reportId: string;
+  reporterId: string | null;
+  url: string;
+  message: string;
+  status: BugReportStatus;
+} | null> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { data } = await admin
+    .from("bug_reports")
+    .select("report_id, reporter_id, url, message, status")
+    .eq("report_id", reportId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    reportId: data.report_id,
+    reporterId: data.reporter_id,
+    url: data.url,
+    message: data.message,
+    status: data.status as BugReportStatus,
+  };
+}

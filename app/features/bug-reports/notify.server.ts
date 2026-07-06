@@ -53,3 +53,35 @@ export async function notifyStaffNewBugReport(
     payload: { url: payload.url, reporterName },
   });
 }
+
+/** 오류신고 완료 처리 → 신고자 인박스 알림. best-effort(runAfterResponse 로 감쌈). */
+export async function notifyReporterBugResolved(payload: {
+  reportId: string;
+  reporterId: string;
+  url: string;
+  message: string;
+}): Promise<void> {
+  const body =
+    payload.message.length > MAX_BODY
+      ? payload.message.slice(0, MAX_BODY) + "…"
+      : payload.message;
+  // 신고 url 은 보통 절대 URL(window.location.href) — 앱 내 경로로 변환해
+  // 신고했던 화면으로 돌아가 확인할 수 있게 한다.
+  let href = "/me/inbox";
+  try {
+    const u = new URL(payload.url);
+    href = u.pathname + u.search;
+  } catch {
+    if (payload.url.startsWith("/")) href = payload.url;
+  }
+  await createUserNotifications({
+    recipientIds: [payload.reporterId],
+    kind: "bug_report_resolved",
+    entityType: "bug_report",
+    entityId: payload.reportId,
+    title: "신고하신 오류가 처리되었습니다",
+    body: `신고 내용: ${body}`,
+    href,
+    payload: { url: payload.url },
+  });
+}
