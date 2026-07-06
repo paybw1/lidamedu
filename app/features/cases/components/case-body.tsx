@@ -564,9 +564,25 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   const cols = Math.max(...rows.map((r) => r.length));
   const spanFor = (row: BookSectionCell[], ci: number) =>
     ci === row.length - 1 ? cols - row.length + 1 : 1;
+  // 쟁점상표 도표(헤더 첫 셀 = "구분") — 구분 열은 고정폭, 나머지 열(등록상표·지정상품 등)은
+  // 균등 분할 (fixed layout 에서 폭 미지정 col 은 남은 폭을 동일하게 나눔).
+  const isGubun = head[0]?.text.trim() === "구분";
   return (
     <div className="overflow-x-auto">
-      <table className="border-border w-full border-collapse text-[length:calc(15px*var(--study-fs))]">
+      <table
+        className={cn(
+          "border-border w-full border-collapse text-[length:calc(15px*var(--study-fs))]",
+          isGubun && "table-fixed",
+        )}
+      >
+        {isGubun ? (
+          <colgroup>
+            <col className="w-[7.5rem]" />
+            {Array.from({ length: cols - 1 }, (_, i) => (
+              <col key={i} />
+            ))}
+          </colgroup>
+        ) : null}
         <thead>
           <tr>
             {head.map((c, i) => (
@@ -576,7 +592,8 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
                 className={cn(
                   "border-border bg-muted/60 text-foreground border px-3 py-2 text-center text-[13px] font-bold",
                   // 라벨(첫) 열은 내용 폭으로 축소 — 긴 본문 열에 밀려 줄바꿈되지 않게.
-                  i === 0 && "w-px",
+                  // (구분 표는 colgroup 이 폭을 관리하므로 제외)
+                  i === 0 && !isGubun && "w-px",
                 )}
               >
                 <BookCell cell={c} nowrap />
@@ -597,7 +614,10 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
                       "border-border border px-3 py-2 align-middle leading-[1.7]",
                       // 첫 열(라벨: 상표/출원일/권리자 등)은 헤더 톤 + 한 줄 고정 + 내용 폭
                       isLabel
-                        ? "bg-muted/40 w-px text-center text-[13px] font-semibold"
+                        ? cn(
+                            "bg-muted/40 text-center text-[13px] font-semibold",
+                            !isGubun && "w-px",
+                          )
                         : "text-left",
                     )}
                   >
