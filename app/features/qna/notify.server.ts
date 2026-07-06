@@ -23,7 +23,12 @@ import {
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
 const REPLY_TO_EMAIL = process.env.RESEND_REPLY_TO_EMAIL ?? "bwyim@lidamip.com";
-const APP_URL = process.env.APP_URL ?? "http://localhost:5173";
+// APP_URL 미설정 배포에서 이메일/알림톡 링크가 localhost 로 나가지 않도록 SITE_URL 폴백.
+const APP_URL = (
+  process.env.APP_URL ??
+  process.env.SITE_URL ??
+  "http://localhost:5173"
+).replace(/\/$/, "");
 
 type NotifyChannel = "email" | "kakao";
 
@@ -220,6 +225,8 @@ export async function notifyNewQuestion(
         askerName,
         excerpt,
         link,
+        // (링크) 템플릿 WL 버튼 URL 변수 — https://…/qna/#{threadId}.
+        threadId: payload.threadId,
       },
       fallbackText: `[리담변리사학원] 새 ${targetLabel} 질문 — ${payload.title}\n${excerpt}\n${link}`,
     };
@@ -295,6 +302,8 @@ export async function notifyNewAnswer(payload: NewAnswerPayload): Promise<void> 
         gradeLabel,
         excerpt,
         link,
+        // (링크) 템플릿 WL 버튼 URL 변수 — https://…/qna/#{threadId}.
+        threadId: payload.threadId,
       },
       fallbackText: `[리담변리사학원] ${targetLabel} 답변 도착 — ${payload.title}\n수준: ${gradeLabel}\n${excerpt}\n${link}`,
     };

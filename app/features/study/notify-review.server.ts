@@ -18,7 +18,12 @@ import ReviewRequestedEmail from "../../../transactional-emails/emails/review-re
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "noreply@lidamedu.com";
 const REPLY_TO_EMAIL = process.env.RESEND_REPLY_TO_EMAIL ?? "bwyim@lidamip.com";
-const APP_URL = process.env.APP_URL ?? "http://localhost:5173";
+// APP_URL 미설정 배포에서 이메일/알림톡 링크가 localhost 로 나가지 않도록 SITE_URL 폴백.
+const APP_URL = (
+  process.env.APP_URL ??
+  process.env.SITE_URL ??
+  "http://localhost:5173"
+).replace(/\/$/, "");
 
 type NotifyChannel = "email" | "kakao";
 
@@ -187,11 +192,14 @@ export async function notifyReviewRequested(
       payload.excerpt.length > 80
         ? payload.excerpt.slice(0, 80) + "…"
         : payload.excerpt;
+    // ★변수명은 승인 템플릿(#{targetLabel}/#{title}/#{askerName}/#{excerpt}) 기준 —
+    //   studentName/problemLabel 로 보내면 변수 불일치로 발송이 거부된다.
     const kakaoPayload: KakaoPayload = {
       template: "review-requested",
       variables: {
-        studentName,
-        problemLabel: payload.problemLabel,
+        targetLabel: "주관식 문제",
+        title: payload.problemLabel,
+        askerName: studentName,
         excerpt: excerptShort,
         link,
       },
@@ -270,14 +278,17 @@ export async function notifyReviewCompleted(
     })();
     const scoreText =
       payload.score !== null ? `${payload.score}점` : "점수 미입력";
+    // ★변수명은 승인 템플릿(#{targetLabel}/#{title}/#{answererName}/#{excerpt}) 기준.
     const kakaoPayload: KakaoPayload = {
       template: "review-completed",
       variables: {
-        reviewerName,
-        problemLabel: payload.problemLabel,
-        score: scoreText,
-        excerpt: commentExcerpt,
+        targetLabel: "주관식 문제",
+        title: payload.problemLabel,
+        answererName: reviewerName,
+        excerpt: `${scoreText} · ${commentExcerpt}`,
         link,
+        // (링크) 템플릿 WL 버튼 URL 변수 — https://…#{path}.
+        path: payload.problemHref,
       },
       fallbackText: `[리담변리사학원] 주관식 첨삭 완료 — ${payload.problemLabel}\n강사: ${reviewerName} · ${scoreText}\n${commentExcerpt}\n${link}`,
     };
