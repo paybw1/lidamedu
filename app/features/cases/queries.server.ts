@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "database.types";
 
 import {
+  parseBookSections,
   parseCaseImages,
   type CaseCourt,
   type CaseDetail,
@@ -865,7 +866,7 @@ export async function getCaseById(
   const { data, error } = await client
     .from("cases")
     .select(
-      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md, related_md, images, primary_article_id, primary_node_id, official_text_pdf_path",
+      "case_id, court, decided_at, case_number, case_title, nickname, case_type, is_en_banc, importance, summary_title, subject_laws, exam_1st_years, exam_2nd_years, summary_body_md, summary_items, reasoning_md, full_text_pdf, comment_source, comment_body_md, related_md, images, primary_article_id, primary_node_id, official_text_pdf_path, book_sections",
     )
     .eq("case_id", caseId)
     .is("deleted_at", null)
@@ -886,6 +887,7 @@ export async function getCaseById(
     primaryArticleId: data.primary_article_id,
     primaryNodeId: data.primary_node_id,
     officialTextPdfPath: data.official_text_pdf_path,
+    bookSections: parseBookSections(data.book_sections),
   };
 }
 

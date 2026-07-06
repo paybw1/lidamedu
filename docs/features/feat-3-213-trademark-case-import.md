@@ -43,6 +43,21 @@
 - 교재 내 중복 수록(4건: 2017나1148·96후1866·2002후567·2000후3708)은 최초 주제에만 insert — primary 단일 배치 제약
 - 주제 노드는 같은 부모+같은 라벨이면 재사용
 
+## 3-A. 뷰어 — 교재 구조 렌더 (2026-07-07 원장 지시로 특허와 분리)
+
+상표 판례 본문은 특허의 generic 3섹션(요지/판시이유/비고)이 아니라 **교재 구조 그대로** 렌더:
+**쟁점상표(표 — 도형 이미지 셀 포함) → 사안의 쟁점 → 사실관계 → 전심의 판단 → 관련 법리 →
+본심의 판단 → 인덱스 → 평석**.
+
+- 저장: `cases.book_sections` jsonb — `{kind:"tm-book", sections:[{key,label,blocks:[{type:"p",text}|
+  {type:"table",rows:[[{text,images:[{url,alt}]}]]}]}]}` (`scripts/sql/20260707_cases_book_sections.sql`,
+  백필 `scripts/precedents/backfill-tm-book-sections.mjs` — 337/337)
+- 렌더: `CaseBody` 가 `bookSections` 있으면 교재 구조(BookTable=도형 셀 이미지), 없으면 기존
+  generic 렌더(특허 무변화). 하이라이트 fieldPath = `case.book.{key}`.
+- 기존 필드(summary_items/reasoning_md/comment_body_md)는 **검색·목록 제목용으로 병행 유지** —
+  단 상표 뷰어 표시는 book_sections 가 SSOT 라 admin-case-edit 의 본문 수정은 상표 뷰어에 반영되지
+  않음(후속: book_sections 편집 UI 필요 시 별도 태스크).
+
 ## 3. 화면 (특허와 동일 표면 재사용 — 신규 코드 0)
 
 | 용도 | 경로 | 비고 |

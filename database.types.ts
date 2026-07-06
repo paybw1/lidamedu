@@ -1608,6 +1608,7 @@ export type Database = {
       }
       cases: {
         Row: {
+          book_sections: Json | null
           case_id: string
           case_number: string
           case_title: string
@@ -1644,6 +1645,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          book_sections?: Json | null
           case_id?: string
           case_number: string
           case_title: string
@@ -1680,6 +1682,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          book_sections?: Json | null
           case_id?: string
           case_number?: string
           case_title?: string

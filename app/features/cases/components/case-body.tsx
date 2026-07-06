@@ -28,6 +28,8 @@ import {
 } from "~/features/cases/components/exam-year-chip";
 import {
   COURT_LABELS,
+  type BookSection,
+  type BookSectionCell,
   type CaseDetail,
   type CaseImage,
   type CaseImagePosition,
@@ -139,11 +141,17 @@ export function CaseBody({
   // 변경 저장 후 같은 페이지로 돌아오게 한다. safeReturnTo (api/admin/case.tsx) 가 화이트리스트.
   const location = useLocation();
   const editReturnTo = `${location.pathname}${location.search}`;
+  // feat-3-213 — 판례집 구조화 본문(쟁점상표/사안의 쟁점/…/평석). 있으면 교재 구조로 렌더하고
+  // generic 판결요지·판시이유·비고 섹션은 생략(같은 내용의 다른 포맷이라 중복).
+  const bookSections = kase.bookSections;
+  const bookMode = bookSections.length > 0;
   // 본문 이미지 — position 별로 그룹화. summary/reasoning/comment 섹션 뒤에 렌더.
   // pending 은 본문 끝에 별도 섹션으로 묶음.
   // 본문 markdown 안 ![](url) 인라인 이미지로 이미 박혀 있는 url 은 그리드에서 제외 —
   // 같은 이미지가 본문 + 그리드 두 곳에 중복 표시되는 것 방지.
+  // book 모드에선 쟁점상표 표 셀에 박힌 이미지도 그리드에서 제외.
   const inlineImageUrls = collectInlineImageUrls(kase);
+  for (const url of collectBookSectionImageUrls(bookSections)) inlineImageUrls.add(url);
   const imagesByPosition = groupImagesByPosition(
     kase.images.filter((img) => !inlineImageUrls.has(img.url)),
   );
@@ -312,7 +320,36 @@ export function CaseBody({
 
       {/* 본문 섹션들 */}
       <CardContent className="space-y-8 px-6 py-7">
-        {summaryItems.length > 0 ? (
+        {/* feat-3-213 — 판례집 구조(쟁점상표 표 → 사안의 쟁점 → … → 평석). 상표 제16판 등. */}
+        {bookMode
+          ? bookSections.map((sec) => (
+              <BodySection
+                key={sec.key}
+                title={sec.label}
+                meta={sec.key === "comment" ? (kase.commentSource ?? undefined) : undefined}
+              >
+                <MaybeHighlight
+                  on={enableHighlights}
+                  fieldPath={`case.book.${sec.key}`}
+                  caseId={kase.caseId}
+                  highlights={highlights}
+                  viewerIsStaff={viewerIsStaff}
+                >
+                  <div className="space-y-4">
+                    {sec.blocks.map((b, i) =>
+                      b.type === "table" ? (
+                        <BookTable key={i} rows={b.rows} />
+                      ) : (
+                        <Prose key={i} text={b.text} />
+                      ),
+                    )}
+                  </div>
+                </MaybeHighlight>
+              </BodySection>
+            ))
+          : null}
+
+        {!bookMode && summaryItems.length > 0 ? (
           <BodySection title="판결요지">
             <MaybeHighlight
               on={enableHighlights}
@@ -339,7 +376,7 @@ export function CaseBody({
           </BodySection>
         ) : null}
 
-        {kase.reasoningMd ? (
+        {!bookMode && kase.reasoningMd ? (
           <BodySection title="판시이유">
             <MaybeHighlight
               on={enableHighlights}
@@ -390,7 +427,7 @@ export function CaseBody({
           />
         ) : null}
 
-        {kase.commentBodyMd ? (
+        {!bookMode && kase.commentBodyMd ? (
           <BodySection title="비고 (전체 판결문)">
             <MaybeHighlight
               on={enableHighlights}
@@ -510,6 +547,88 @@ function CaseImagesGrid({ images }: { images: CaseImage[] }) {
       ))}
     </ul>
   );
+}
+
+// ── feat-3-213: 판례집 구조화 표 (쟁점상표 도표·사실관계 도식) ─────────────
+// 첫 행 = 헤더(구분/등록상표/지정상품…), 셀에 상표 도형 이미지 포함 가능.
+// 이미지 셀: 흰 배경 + object-contain (투명 GIF/도형 대응), 클릭 시 원본 새 탭.
+function BookTable({ rows }: { rows: BookSectionCell[][] }) {
+  if (rows.length === 0) return null;
+  const [head, ...body] = rows;
+  return (
+    <div className="overflow-x-auto">
+      <table className="border-border w-full border-collapse text-[length:calc(15px*var(--study-fs))]">
+        <thead>
+          <tr>
+            {head.map((c, i) => (
+              <th
+                key={i}
+                className="border-border bg-muted/60 text-foreground border px-3 py-2 text-center text-[13px] font-bold whitespace-nowrap"
+              >
+                <BookCell cell={c} />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {body.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((c, ci) => (
+                <td
+                  key={ci}
+                  className={cn(
+                    "border-border border px-3 py-2 align-middle leading-relaxed",
+                    // 첫 열(라벨: 상표/출원일/권리자 등)은 헤더 톤
+                    ci === 0 && row.length > 1
+                      ? "bg-muted/40 text-center text-[13px] font-semibold whitespace-nowrap"
+                      : "text-left",
+                  )}
+                >
+                  <BookCell cell={c} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BookCell({ cell }: { cell: BookSectionCell }) {
+  return (
+    <div className="space-y-1.5">
+      {cell.text ? <span className="whitespace-pre-wrap">{cell.text}</span> : null}
+      {cell.images.map((img, i) => (
+        <a
+          key={i}
+          href={img.url}
+          target="_blank"
+          rel="noreferrer"
+          className="mx-auto block w-fit rounded bg-white p-1"
+        >
+          <img
+            src={img.url}
+            alt={img.alt}
+            loading="lazy"
+            className="max-h-[140px] w-auto object-contain"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+// book_sections 표 셀에 박힌 이미지 url — 하단 그리드 중복 제거에 사용.
+function collectBookSectionImageUrls(sections: BookSection[]): Set<string> {
+  const out = new Set<string>();
+  for (const s of sections) {
+    for (const b of s.blocks) {
+      if (b.type !== "table") continue;
+      for (const row of b.rows) for (const c of row) for (const im of c.images) out.add(im.url);
+    }
+  }
+  return out;
 }
 
 // 본문 markdown 의 ![](url) 인라인 이미지 url 들 — 그리드 중복 제거에 사용.

@@ -151,6 +151,66 @@ export function parseCaseImages(raw: unknown): CaseImage[] {
   return out;
 }
 
+// ── feat-3-213: 판례집 구조화 본문 (상표 제16판 등) ─────────────────────────
+// 교재 섹션 구조 그대로: 쟁점상표(표+도형 셀) / 사안의 쟁점 / 사실관계 / 전심의 판단 /
+// 관련 법리 / 본심의 판단 / 인덱스 / 평석. null(빈 배열)이면 기존 필드 렌더(특허 등).
+export interface BookSectionCell {
+  text: string;
+  images: { url: string; alt: string }[];
+}
+export type BookSectionBlock =
+  | { type: "p"; text: string }
+  | { type: "table"; rows: BookSectionCell[][] };
+export interface BookSection {
+  key: string;
+  label: string;
+  blocks: BookSectionBlock[];
+}
+
+// jsonb 방어적 파싱 — 형태가 어긋난 항목은 조용히 skip (뷰어가 기존 필드로 폴백).
+export function parseBookSections(raw: unknown): BookSection[] {
+  if (!raw || typeof raw !== "object") return [];
+  const sections = (raw as { sections?: unknown }).sections;
+  if (!Array.isArray(sections)) return [];
+  const out: BookSection[] = [];
+  for (const s of sections) {
+    if (!s || typeof s !== "object") continue;
+    const { key, label, blocks } = s as { key?: unknown; label?: unknown; blocks?: unknown };
+    if (typeof key !== "string" || typeof label !== "string" || !Array.isArray(blocks)) continue;
+    const parsed: BookSectionBlock[] = [];
+    for (const b of blocks) {
+      if (!b || typeof b !== "object") continue;
+      const t = (b as { type?: unknown }).type;
+      if (t === "p" && typeof (b as { text?: unknown }).text === "string") {
+        parsed.push({ type: "p", text: (b as { text: string }).text });
+      } else if (t === "table" && Array.isArray((b as { rows?: unknown }).rows)) {
+        const rows: BookSectionCell[][] = [];
+        for (const row of (b as { rows: unknown[] }).rows) {
+          if (!Array.isArray(row)) continue;
+          rows.push(
+            row
+              .filter((c): c is { text?: unknown; images?: unknown } => !!c && typeof c === "object")
+              .map((c) => ({
+                text: typeof c.text === "string" ? c.text : "",
+                images: Array.isArray(c.images)
+                  ? c.images
+                      .filter(
+                        (im): im is { url: string; alt?: string } =>
+                          !!im && typeof im === "object" && typeof (im as { url?: unknown }).url === "string",
+                      )
+                      .map((im) => ({ url: im.url, alt: typeof im.alt === "string" ? im.alt : "" }))
+                  : [],
+              })),
+          );
+        }
+        if (rows.length > 0) parsed.push({ type: "table", rows });
+      }
+    }
+    if (parsed.length > 0) out.push({ key, label, blocks: parsed });
+  }
+  return out;
+}
+
 export interface CaseDetail extends CaseListItem {
   summaryBodyMd: string | null;
   summaryItems: SummaryItem[];
@@ -167,6 +227,8 @@ export interface CaseDetail extends CaseListItem {
   primaryNodeId: string | null;
   /** 국가법령정보 OPEN API 자동 생성 PDF — Storage 경로. signed URL 발급용. */
   officialTextPdfPath: string | null;
+  /** feat-3-213 — 판례집 구조화 본문. 비어 있으면 기존 필드(summary/reasoning/comment) 렌더. */
+  bookSections: BookSection[];
 }
 
 // feat-4-A-214 관련논문/기사 링크.

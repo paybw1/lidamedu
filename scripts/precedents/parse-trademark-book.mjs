@@ -72,6 +72,18 @@ function boxParasOf(pNode) {
   return out;
 }
 
+// 셀 내부 이미지 ref (dedup)
+function cellImages(node) {
+  const refs = [];
+  (function walk(n) {
+    const attrs = attrsOf(n);
+    const ref = attrs["@_binaryItemIDRef"] ?? attrs["@_BinaryItemIDRef"];
+    if (ref && !refs.includes(ref)) refs.push(ref);
+    for (const c of childrenOf(n)) walk(c);
+  })(node);
+  return refs;
+}
+
 // 셀 텍스트 — 내부 문단들을 줄바꿈으로 연결 (중첩 p 포함, 캡션 제외)
 function cellText(node) {
   const parts = [];
@@ -101,25 +113,30 @@ function cellText(node) {
   return parts.join("\n");
 }
 
-// 표 파싱 — hp:tbl → rows[][] (셀 텍스트)
+// 표 파싱 — hp:tbl → rows[][] (셀 텍스트) + cellRows[][] ({text, imgs} — 도형 셀 렌더용)
 function parseTable(tblNode) {
   const rows = [];
+  const cellRows = [];
   (function walk(n) {
     if (tagOf(n) === "hp:tr") {
       const cells = [];
+      const rich = [];
       (function cw(m) {
         if (tagOf(m) === "hp:tc") {
-          cells.push(cellText(m));
+          const text = cellText(m);
+          cells.push(text);
+          rich.push({ text, imgs: cellImages(m) });
           return;
         }
         for (const c of childrenOf(m)) cw(c);
       })(n);
       rows.push(cells);
+      cellRows.push(rich);
       return;
     }
     for (const c of childrenOf(n)) walk(c);
   })(tblNode);
-  return rows;
+  return { rows, cellRows };
 }
 
 // 이미지 ref 수집 (표 포함, dedup)
@@ -335,7 +352,7 @@ for (let i = 0; i < paras.length; i++) {
 
   // 표 — 평석 박스(라벨+본문 2셀) vs 도표(구분/등록상표/…)/도식
   if (p.tables.length > 0) {
-    for (const rows of p.tables) {
+    for (const { rows, cellRows } of p.tables) {
       const flat = rows.flat();
       // 평석 박스: ≤2행, 라벨(이미지/특수글자 → 빈 값 또는 ≤6자) 셀들 + 긴 본문 셀
       const firstRowShort = (rows[0] ?? []).every((c) => c.trim().length <= 6);
@@ -348,7 +365,7 @@ for (let i = 0; i < paras.length; i++) {
           if (t && t !== "ㅇㅌㅍ" && t.length > 6) pushText(curCase, "comment", t);
         }
       } else {
-        curCase.infoTables.push({ section: curSection, rows });
+        curCase.infoTables.push({ section: curSection, rows, cellRows });
       }
     }
     for (const img of p.images) if (!curCase.images.includes(img)) curCase.images.push(img);
