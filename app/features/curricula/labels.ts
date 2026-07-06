@@ -26,6 +26,17 @@ export const CURRICULUM_ITEM_KIND_LABEL: Record<CurriculumItemKind, string> = {
   lecture: "강의 영상",
 };
 
+// 플립드 러닝 단계 — 예습(수업 전)/복습(수업 후). null=단계 미지정(일반 항목).
+export type CurriculumItemPhase = "pre" | "post";
+
+export const CURRICULUM_ITEM_PHASES: CurriculumItemPhase[] = ["pre", "post"];
+
+export const CURRICULUM_ITEM_PHASE_LABEL: Record<CurriculumItemPhase, string> =
+  {
+    pre: "예습",
+    post: "복습",
+  };
+
 export interface CurriculumListItem {
   curriculumId: string;
   name: string;
@@ -59,6 +70,8 @@ export interface CurriculumItem {
   lectureDurationMin: number | null;
   targetQuantity: number | null;
   note: string | null;
+  /** 플립드 러닝 — 예습/복습. null=미지정. */
+  phase: CurriculumItemPhase | null;
 }
 
 export interface CurriculumWeek {

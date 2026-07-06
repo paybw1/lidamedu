@@ -244,3 +244,14 @@ CREATE TABLE assignment_submissions (
 - 시계열 완수율 추이 차트 (assignment 단위)
 - 학생 자율 학습 트랙 (현 모델은 학원이 짠 트랙만)
 - 라이브 강의/Zoom 통합 (외부 위임 유지)
+
+## 플립드 러닝 — 예습/복습 태그 (2026-07-06, P2-ⓐ)
+
+온·오프 병행 종합반: 커리큘럼 항목에 수업 전(예습)/수업 후(복습) 단계를 태그.
+
+- `curriculum_items.phase` enum(`pre`/`post`, null=미지정) — `scripts/sql/20260706_curriculum_item_phase.sql`
+- 관리자 편집: 항목 추가 폼 "단계 없음/예습/복습" select + 기존 항목은 순번 옆
+  태그 칩 클릭으로 순환 토글(미지정→예습→복습→미지정, intent `set_item_phase`)
+- 학생 대시보드 "이번 주 트랙": 태그가 하나라도 있으면 "수업 전 · 예습 / 일반 /
+  수업 후 · 복습" 섹션으로 그룹핑(그룹별 완수 카운트). 태그 없으면 기존 평면 유지
+- 과제 변환(convertWeekToAssignment)은 무변경 — 주차 전체가 한 과제(phase 는 표시 축)

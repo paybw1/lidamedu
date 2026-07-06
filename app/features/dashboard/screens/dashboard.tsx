@@ -63,6 +63,11 @@ import {
 } from "~/features/dashboard/components/dash-weak";
 import { InstructorAccessNotice } from "~/features/dashboard/components/instructor-access-notice";
 import { TrialNoticeBanner } from "~/features/dashboard/components/trial-notice-banner";
+import {
+  notifyTrialEndedIfDue,
+  notifyTrialExpiryIfDue,
+  TRIAL_ENDED_BANNER_DAYS,
+} from "~/features/subscriptions/trial.server";
 import { ReducedDashboard } from "~/features/dashboard/components/reduced-dashboard";
 import { StudentInputHub } from "~/features/dashboard/components/student-input-hub";
 import {
@@ -116,7 +121,6 @@ import {
 import { getWeakNodes } from "~/features/subjects/lib/weak-nodes.server";
 import { getMembershipAccess } from "~/features/subscriptions/membership.server";
 import { getActiveSubscription } from "~/features/subscriptions/queries.server";
-import { notifyTrialExpiryIfDue } from "~/features/subscriptions/trial.server";
 
 export const meta: Route.MetaFunction = () => [
   { title: "대시보드 | 리담변리사학원" },
@@ -164,7 +168,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   // pass-predict 차수 분기용 — next_exam_round 조회. null = 1차 default.
   const { data: predictProfile } = await client
     .from("profiles")
-    .select("next_exam_round, next_exam_year, my_analysis_consent_at, pool_consent_at")
+    .select(
+      "next_exam_round, next_exam_year, my_analysis_consent_at, pool_consent_at, trial_ends_at",
+    )
     .eq("profile_id", user.id)
     .maybeSingle();
   const userExamRound = (predictProfile?.next_exam_round ?? null) as
@@ -416,11 +422,26 @@ export async function loader({ request }: Route.LoaderArgs) {
       : null;
   if (trial) runAfterResponse(notifyTrialExpiryIfDue(user.id));
 
+  // 체험 종료(무료회원 강등) — 종료 통지 1회 + 종료 후 N일간 전환 넛지 배너.
+  //   구독·종합반으로 전환한 사용자(grade!==free_member)에게는 발화하지 않는다.
+  const trialEndsAtMs = predictProfile?.trial_ends_at
+    ? new Date(predictProfile.trial_ends_at).getTime()
+    : null;
+  const trialEnded =
+    access.grade === "free_member" &&
+    trialEndsAtMs !== null &&
+    trialEndsAtMs <= Date.now();
+  if (trialEnded) runAfterResponse(notifyTrialEndedIfDue(user.id));
+  const trialEndedBanner =
+    trialEnded &&
+    Date.now() - trialEndsAtMs! <= TRIAL_ENDED_BANNER_DAYS * 86_400_000;
+
   return {
     isStaff,
     hasMgmt,
     planCode,
     trial,
+    trialEndedBanner,
     // feat-8-026b — 선택 동의(A/B) 토글을 대시보드에서(응시 결과에서 이전).
     myAnalysisConsentAt: predictProfile?.my_analysis_consent_at ?? null,
     poolConsentAt: predictProfile?.pool_consent_at ?? null,
@@ -722,6 +743,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
           {/* feat-8-027 — 체험(가입 15일) 안내 배너. 특허법만 무료·만료 후 무료회원 전환 사전공지. */}
           {loaderData.trial ? (
             <TrialNoticeBanner daysLeft={loaderData.trial.daysLeft} />
+          ) : loaderData.trialEndedBanner ? (
+            <TrialNoticeBanner daysLeft={0} ended />
           ) : null}
 
           {/* 내 정보 설정 허브 — 목표·시험결과·동의를 한 Sheet 3블록으로(각 독립 저장).

@@ -27,6 +27,7 @@ const STUDENT_KINDS: NotificationKind[] = [
   "student_note_shared",
   "exam_result_reminder",
   "trial_expiry_warning",
+  "trial_ended",
   "cohort_upgrade_processed",
 ];
 

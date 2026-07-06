@@ -43,3 +43,35 @@ export async function notifyTrialExpiryIfDue(userId: string): Promise<void> {
     .update({ trial_expiry_notified_at: new Date().toISOString() })
     .eq("profile_id", userId);
 }
+
+/** 체험 종료 후 대시보드 배너 노출 기간(일) — 전환 넛지 창. */
+export const TRIAL_ENDED_BANNER_DAYS = 7;
+
+// 체험 종료(무료회원 강등) 후 인박스 알림 1회 발송 + 플래그 세팅.
+// 호출자(대시보드 로더)가 grade==="free_member" 확정 후 runAfterResponse 로 부른다 —
+// 구독·종합반 전환자에게는 발송되지 않는다.
+export async function notifyTrialEndedIfDue(userId: string): Promise<void> {
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("trial_ends_at, trial_ended_notified_at")
+    .eq("profile_id", userId)
+    .maybeSingle();
+  if (!prof?.trial_ends_at || prof.trial_ended_notified_at) return;
+  if (new Date(prof.trial_ends_at).getTime() > Date.now()) return;
+
+  await createUserNotifications({
+    recipientIds: [userId],
+    kind: "trial_ended",
+    entityType: "trial",
+    entityId: userId,
+    title: "무료 체험이 종료되었습니다",
+    body: "무료회원으로 전환되어 학습과목(조문·판례·문제) 열람이 비활성화되었습니다. 학습 기록은 그대로 보관 중이니 구독을 시작하면 이어서 학습할 수 있습니다.",
+    href: "/pricing",
+    payload: { trialEndsAt: prof.trial_ends_at },
+  });
+
+  await admin
+    .from("profiles")
+    .update({ trial_ended_notified_at: new Date().toISOString() })
+    .eq("profile_id", userId);
+}

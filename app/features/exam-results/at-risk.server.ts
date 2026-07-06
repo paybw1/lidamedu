@@ -103,6 +103,11 @@ const W_TREND_STALL = 0.15; // 추세 가산 가중(진도 정체)
 const STALL_MIN_ACTIVE_DAYS = 2; // 최근 7d 접속(study_session) 일수 ≥ — "활동은 있음"
 const STALL_MAX_RECENT_ATTEMPTS = 3; // 최근 7d 풀이 ≤ — "문제 진도 정체"
 const STALL_MIN_PRIOR_ATTEMPTS = 10; // 직전 7d 풀이 ≥ — "원래 풀던 학생"(표본 가드)
+// ─── 강의만 시청(P2) — 시청은 하는데 문제를 안 푸는 수동 학습 패턴 ───
+// lecture_views(feat-7-029) 기준. 진도 정체(stall)와 겹치면 이 신호만 발화(이중 가산 방지).
+const LECTURE_ONLY_MIN_VIEWS = 2; // 최근 14d 시청 강의 수 ≥ — 1회 열람 오탐 차단
+const LECTURE_ONLY_MAX_ATTEMPTS = 5; // 최근 14d 풀이 ≤ — "문제는 안 푼다"
+const W_LECTURE_ONLY = 0.2;
 
 interface TrendSignal {
   accReason: string | null;
@@ -111,6 +116,10 @@ interface TrendSignal {
   activityScore: number;
   stallReason: string | null;
   stallScore: number;
+  lectureOnlyReason: string | null;
+  lectureOnlyScore: number;
+  /** 최근 28d 마지막 강의 시청 시각 — "미접속" 판정에 합산(강의 시청=활동). */
+  lastLectureAt: string | null;
 }
 
 // ISO → KST 날짜 문자열(YYYY-MM-DD). 진도 정체의 "접속 일수" 집계용.
@@ -208,6 +217,28 @@ async function getCohortTrendSignals(
     }
   }
 
+  // 강의만 시청용 — 최근 28d lecture_views(시청 강의 수 + 마지막 시청 시각).
+  const lectureRecent = new Map<string, Set<string>>(); // 최근 14d 시청 강의(item)
+  const lastLecture = new Map<string, string>(); // 최근 28d 마지막 시청 시각
+  {
+    const { data } = await admin
+      .from("lecture_views")
+      .select("user_id, item_id, updated_at")
+      .in("user_id", memberIds)
+      .gte("updated_at", new Date(fetchCut).toISOString())
+      .limit(10000);
+    for (const r of data ?? []) {
+      if (!r.updated_at) continue;
+      const prev = lastLecture.get(r.user_id);
+      if (!prev || r.updated_at > prev) lastLecture.set(r.user_id, r.updated_at);
+      if (new Date(r.updated_at).getTime() >= accCut) {
+        const set = lectureRecent.get(r.user_id) ?? new Set<string>();
+        set.add(r.item_id);
+        lectureRecent.set(r.user_id, set);
+      }
+    }
+  }
+
   for (const id of memberIds) {
     const b = buckets.get(id)!;
     let accReason: string | null = null;
@@ -240,9 +271,23 @@ async function getCohortTrendSignals(
       }
     }
 
+    // 강의만 시청 — 최근 14d 강의는 보는데 문제 풀이가 저조(수동 학습 패턴).
+    let lectureOnlyReason: string | null = null;
+    let lectureOnlyScore = 0;
+    const recentLectureCount = lectureRecent.get(id)?.size ?? 0;
+    if (
+      recentLectureCount >= LECTURE_ONLY_MIN_VIEWS &&
+      b.recentAccTotal <= LECTURE_ONLY_MAX_ATTEMPTS
+    ) {
+      lectureOnlyReason = `강의만 시청 (2주간 ${recentLectureCount}편, 풀이 ${b.recentAccTotal}문)`;
+      lectureOnlyScore = W_LECTURE_ONLY;
+    }
+
     // 진도 정체 — 접속(study_session)은 있으나 새 문제 풀이가 멈춤. 직전 7d 에 풀던 학생만(표본 가드).
+    // 강의만 시청과 원인이 같으면(풀이 없음) 더 구체적인 그 신호만 발화.
     const recentActiveDays = activeDays.get(id)?.size ?? 0;
     if (
+      lectureOnlyReason === null &&
       recentActiveDays >= STALL_MIN_ACTIVE_DAYS &&
       b.recentCount7d <= STALL_MAX_RECENT_ATTEMPTS &&
       b.priorCount7d >= STALL_MIN_PRIOR_ATTEMPTS
@@ -258,6 +303,9 @@ async function getCohortTrendSignals(
       activityScore,
       stallReason,
       stallScore,
+      lectureOnlyReason,
+      lectureOnlyScore,
+      lastLectureAt: lastLecture.get(id) ?? null,
     });
   }
   return out;
@@ -336,10 +384,16 @@ export async function getAtRiskStudents(
     now,
   );
   const students: AtRiskStudent[] = members.map((m) => {
-    // 비활성 일수
-    const daysSinceActive = m.lastActivityAt
-      ? Math.floor((now - new Date(m.lastActivityAt).getTime()) / 86_400_000)
-      : null;
+    const trend = trendSignals.get(m.profileId);
+    // 비활성 일수 — 강의 시청(lecture_views)도 활동으로 합산.
+    //   강의만 듣는 학생이 "미접속"으로 이중 감점되는 모순 방지(전용 신호가 따로 잡음).
+    const lastActivityCandidates = [m.lastActivityAt, trend?.lastLectureAt]
+      .filter((t): t is string => !!t)
+      .map((t) => new Date(t).getTime());
+    const daysSinceActive =
+      lastActivityCandidates.length > 0
+        ? Math.floor((now - Math.max(...lastActivityCandidates)) / 86_400_000)
+        : null;
 
     let problemsGap = 0;
     let accuracyGap: number | null = null;
@@ -406,16 +460,20 @@ export async function getAtRiskStudents(
     }
 
     // feat-7-040 P2 — 추세 신호 가산. reasons 앞에 prepend("무너지기 시작" 우선 노출).
-    const trend = trendSignals.get(m.profileId);
     if (trend) {
       const trendReasons = [
         trend.accReason,
         trend.activityReason,
         trend.stallReason,
+        trend.lectureOnlyReason,
       ].filter((r): r is string => r !== null);
       if (trendReasons.length > 0) {
         reasons.unshift(...trendReasons);
-        score += trend.accScore + trend.activityScore + trend.stallScore;
+        score +=
+          trend.accScore +
+          trend.activityScore +
+          trend.stallScore +
+          trend.lectureOnlyScore;
       }
     }
 

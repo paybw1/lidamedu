@@ -513,8 +513,9 @@ export default function AdminAtRisk({ loaderData }: Route.ComponentProps) {
           aria-hidden
         />
         risk score = 정답률 격차 0.5 + 풀이 격차 0.3 + 비활성 0.2 (합격자 평균
-        기준) + 최근 추세 가산(정답률 급락·공부량 급감, 표본 충분 시만). 같은 학생이
-        여러 반에 있으면 가장 높은 risk 만 노출.
+        기준) + 최근 추세 가산(정답률 급락·공부량 급감·진도 정체·강의만 시청·결석,
+        표본 충분 시만). 강의 시청은 활동으로 인정되어 "미접속"에서 제외됩니다.
+        같은 학생이 여러 반에 있으면 가장 높은 risk 만 노출.
       </p>
     </AdminShell>
   );

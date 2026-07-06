@@ -53,6 +53,7 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   student_note_shared: "상담 코멘트",
   exam_result_reminder: "응시 결과",
   trial_expiry_warning: "체험 만료 임박",
+  trial_ended: "체험 종료",
   cohort_upgrade_processed: "종합반 등업",
 };
 
@@ -63,6 +64,7 @@ const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
   student_note_shared: MessageSquareTextIcon,
   exam_result_reminder: CalendarClockIcon,
   trial_expiry_warning: TriangleAlertIcon,
+  trial_ended: TriangleAlertIcon,
 };
 
 function formatRelative(iso: string): string {

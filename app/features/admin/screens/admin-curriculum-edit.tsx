@@ -23,6 +23,7 @@ import { Input } from "~/core/components/ui/input";
 import { Label } from "~/core/components/ui/label";
 import { Separator } from "~/core/components/ui/separator";
 import makeServerClient from "~/core/lib/supa-client.server";
+import { cn } from "~/core/lib/utils";
 import { ContentPicker } from "~/features/admin/components/content-picker";
 import { AdminShell } from "~/features/admin/components/admin-shell";
 import { Chip, Field, StatusChip } from "~/features/admin/components/admin-ui";
@@ -30,6 +31,8 @@ import { getCurriculumWithWeeks } from "~/features/curricula/queries.server";
 import {
   CURRICULUM_ITEM_KINDS,
   CURRICULUM_ITEM_KIND_LABEL,
+  CURRICULUM_ITEM_PHASES,
+  CURRICULUM_ITEM_PHASE_LABEL,
   type CurriculumDetail,
   type CurriculumItem,
   type CurriculumItemKind,
@@ -558,11 +561,35 @@ function ItemRow({ item }: { item: CurriculumItem }) {
             ? (item.blankSetLabel ?? item.blankSetId ?? "—")
             : item.lectureTitle ?? item.lectureUrl ?? "—";
 
+  // 예습/복습 태그 순환 토글: 미지정 → 예습 → 복습 → 미지정.
+  const nextPhase =
+    item.phase === null ? "pre" : item.phase === "pre" ? "post" : "";
+
   return (
     <li className="flex items-center gap-2 py-2">
       <span className="text-muted-foreground w-6 text-center text-xs tabular-nums">
         {item.ord + 1}
       </span>
+      <fetcher.Form method="post" action="/api/admin/curriculum">
+        <input type="hidden" name="intent" value="set_item_phase" />
+        <input type="hidden" name="itemId" value={item.itemId} />
+        <input type="hidden" name="phase" value={nextPhase} />
+        <button
+          type="submit"
+          disabled={fetcher.state !== "idle"}
+          title="클릭해서 예습/복습 태그 전환"
+          className={cn(
+            "inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-semibold transition-colors",
+            item.phase === "pre"
+              ? "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+              : item.phase === "post"
+                ? "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                : "border-border text-muted-foreground/60 border-dashed hover:text-muted-foreground",
+          )}
+        >
+          {item.phase ? CURRICULUM_ITEM_PHASE_LABEL[item.phase] : "단계"}
+        </button>
+      </fetcher.Form>
       <Chip tone="outline">{CURRICULUM_ITEM_KIND_LABEL[item.kind]}</Chip>
       <div className="min-w-0 flex-1 truncate text-xs">{refLabel}</div>
       {item.targetQuantity ? (
@@ -678,7 +705,20 @@ function NewItemForm({ weekId, nextOrd }: { weekId: string; nextOrd: number }) {
           />
         </div>
       ) : null}
-      <div className="grid grid-cols-[100px_1fr] gap-2">
+      <div className="grid grid-cols-[100px_100px_1fr] gap-2">
+        <select
+          name="phase"
+          defaultValue=""
+          title="플립드 러닝 — 수업 전 예습 / 수업 후 복습"
+          className="border-input bg-background focus:border-primary h-8 rounded-md border px-2 text-xs outline-none"
+        >
+          <option value="">단계 없음</option>
+          {CURRICULUM_ITEM_PHASES.map((p) => (
+            <option key={p} value={p}>
+              {CURRICULUM_ITEM_PHASE_LABEL[p]}
+            </option>
+          ))}
+        </select>
         <Input
           name="targetQuantity"
           type="number"

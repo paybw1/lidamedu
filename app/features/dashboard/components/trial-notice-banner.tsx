@@ -8,8 +8,15 @@ import { cn } from "~/core/lib/utils";
 // 만료 임박 경고 임계값 — trial.server.ts TRIAL_EXPIRY_NOTICE_DAYS 와 동일(인박스 공지와 정합).
 const URGENT_DAYS = 3;
 
-export function TrialNoticeBanner({ daysLeft }: { daysLeft: number }) {
-  const urgent = daysLeft <= URGENT_DAYS;
+export function TrialNoticeBanner({
+  daysLeft,
+  ended = false,
+}: {
+  daysLeft: number;
+  /** 체험 종료 후 전환 넛지 변형 — 종료 후 7일간 노출(대시보드 로더가 판정). */
+  ended?: boolean;
+}) {
+  const urgent = ended || daysLeft <= URGENT_DAYS;
   return (
     <div
       className={cn(
@@ -26,10 +33,19 @@ export function TrialNoticeBanner({ daysLeft }: { daysLeft: number }) {
         <SparklesIcon className="text-link size-4 shrink-0" />
       )}
       <span className="min-w-0">
-        <strong className="tabular-nums">무료 체험 D-{daysLeft}</strong> ·{" "}
-        {urgent
-          ? "곧 학습과목(조문·판례·문제)이 잠기고 무료회원으로 전환됩니다. 계속 학습하려면 구독해 주세요."
-          : "특허법 학습과목을 무료로 이용 중입니다. 다른 과목과 전체 기능은 구독 시 열립니다."}
+        {ended ? (
+          <>
+            <strong>무료 체험이 종료되었습니다</strong> · 학습 기록은 그대로
+            보관 중입니다. 구독을 시작하면 이어서 학습할 수 있습니다.
+          </>
+        ) : (
+          <>
+            <strong className="tabular-nums">무료 체험 D-{daysLeft}</strong> ·{" "}
+            {urgent
+              ? "곧 학습과목(조문·판례·문제)이 잠기고 무료회원으로 전환됩니다. 계속 학습하려면 구독해 주세요."
+              : "특허법 학습과목을 무료로 이용 중입니다. 다른 과목과 전체 기능은 구독 시 열립니다."}
+          </>
+        )}
       </span>
       <Link
         to="/pricing"

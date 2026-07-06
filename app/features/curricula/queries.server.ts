@@ -11,6 +11,7 @@ import type {
   CurriculumDetail,
   CurriculumItem,
   CurriculumItemKind,
+  CurriculumItemPhase,
   CurriculumListItem,
   CurriculumWeek,
 } from "./labels";
@@ -20,6 +21,7 @@ export type {
   CurriculumDetail,
   CurriculumItem,
   CurriculumItemKind,
+  CurriculumItemPhase,
   CurriculumListItem,
   CurriculumWeek,
 } from "./labels";
@@ -123,7 +125,7 @@ export async function getCurriculumWithWeeks(
     const { data: itemRows } = await admin
       .from("curriculum_items")
       .select(
-        "item_id, week_id, ord, kind, article_id, case_id, problem_id, blank_set_id, lecture_title, lecture_url, lecture_duration_min, target_quantity, note, articles(display_label), cases(case_title, case_number), problems(body_md, year, problem_number), article_blank_sets(display_name, blanks)",
+        "item_id, week_id, ord, kind, phase, article_id, case_id, problem_id, blank_set_id, lecture_title, lecture_url, lecture_duration_min, target_quantity, note, articles(display_label), cases(case_title, case_number), problems(body_md, year, problem_number), article_blank_sets(display_name, blanks)",
       )
       .in("week_id", weekIds)
       .order("ord", { ascending: true });
@@ -157,6 +159,7 @@ export async function getCurriculumWithWeeks(
         lectureDurationMin: r.lecture_duration_min,
         targetQuantity: r.target_quantity,
         note: r.note,
+        phase: (r.phase as CurriculumItem["phase"]) ?? null,
       });
     }
   }
@@ -318,6 +321,8 @@ export interface UpsertItemInput {
   lectureDurationMin?: number | null;
   targetQuantity?: number | null;
   note?: string | null;
+  /** 플립드 러닝 — 예습/복습. null=미지정. */
+  phase?: CurriculumItemPhase | null;
 }
 
 export async function upsertItem(
@@ -338,6 +343,7 @@ export async function upsertItem(
     lecture_duration_min: null as number | null,
     target_quantity: input.targetQuantity ?? null,
     note: input.note ?? null,
+    phase: input.phase ?? null,
   };
   if (input.kind === "article" || input.kind === "recitation") {
     base.article_id = input.articleId ?? null;
@@ -386,6 +392,20 @@ export async function deleteItem(
   const { error } = await admin
     .from("curriculum_items")
     .delete()
+    .eq("item_id", itemId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// 기존 항목의 예습/복습 태그만 변경 — kind 참조 컬럼을 건드리지 않는 경량 경로.
+export async function setItemPhase(
+  itemId: string,
+  phase: CurriculumItemPhase | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = adminClient as SupabaseClient<Database>;
+  const { error } = await admin
+    .from("curriculum_items")
+    .update({ phase })
     .eq("item_id", itemId);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
@@ -458,6 +478,8 @@ export interface WeekTrackItem {
   itemId: string;
   ord: number;
   kind: CurriculumItemKind;
+  /** 플립드 러닝 — 예습/복습. null=미지정. */
+  phase: CurriculumItemPhase | null;
   label: string;
   hint: string | null;
   entryUrl: string | null;
@@ -562,7 +584,7 @@ export async function getCurrentWeekTrack(
   const { data: itemRows } = await admin
     .from("curriculum_items")
     .select(
-      "item_id, ord, kind, article_id, case_id, problem_id, blank_set_id, lecture_title, lecture_url, lecture_duration_min, target_quantity, note, articles(display_label, article_number, laws(law_code)), cases(case_title, case_number, subject_laws), problems(body_md, year, problem_number, laws(law_code)), article_blank_sets(display_name, blanks, articles(article_number, laws(law_code)))",
+      "item_id, ord, kind, phase, article_id, case_id, problem_id, blank_set_id, lecture_title, lecture_url, lecture_duration_min, target_quantity, note, articles(display_label, article_number, laws(law_code)), cases(case_title, case_number, subject_laws), problems(body_md, year, problem_number, laws(law_code)), article_blank_sets(display_name, blanks, articles(article_number, laws(law_code)))",
     )
     .eq("week_id", week.week_id)
     .order("ord", { ascending: true });
@@ -757,6 +779,7 @@ export async function getCurrentWeekTrack(
       itemId: r.item_id,
       ord: r.ord,
       kind: r.kind as CurriculumItemKind,
+      phase: (r.phase as CurriculumItemPhase | null) ?? null,
       label,
       hint,
       entryUrl,

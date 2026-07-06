@@ -2810,6 +2810,7 @@ export type Database = {
           lecture_url: string | null
           note: string | null
           ord: number
+          phase: Database["public"]["Enums"]["curriculum_item_phase"] | null
           problem_id: string | null
           target_quantity: number | null
           week_id: string
@@ -2826,6 +2827,7 @@ export type Database = {
           lecture_url?: string | null
           note?: string | null
           ord: number
+          phase?: Database["public"]["Enums"]["curriculum_item_phase"] | null
           problem_id?: string | null
           target_quantity?: number | null
           week_id: string
@@ -2842,6 +2844,7 @@ export type Database = {
           lecture_url?: string | null
           note?: string | null
           ord?: number
+          phase?: Database["public"]["Enums"]["curriculum_item_phase"] | null
           problem_id?: string | null
           target_quantity?: number | null
           week_id?: string
@@ -6333,6 +6336,7 @@ export type Database = {
           recommendation_prefs: Json
           role: Database["public"]["Enums"]["user_role"]
           service_data_consent_at: string | null
+          trial_ended_notified_at: string | null
           trial_ends_at: string | null
           trial_expiry_notified_at: string | null
           updated_at: string
@@ -6364,6 +6368,7 @@ export type Database = {
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
           service_data_consent_at?: string | null
+          trial_ended_notified_at?: string | null
           trial_ends_at?: string | null
           trial_expiry_notified_at?: string | null
           updated_at?: string
@@ -6395,6 +6400,7 @@ export type Database = {
           recommendation_prefs?: Json
           role?: Database["public"]["Enums"]["user_role"]
           service_data_consent_at?: string | null
+          trial_ended_notified_at?: string | null
           trial_ends_at?: string | null
           trial_expiry_notified_at?: string | null
           updated_at?: string
@@ -9309,6 +9315,7 @@ export type Database = {
         | "blank_set"
         | "recitation"
         | "lecture"
+      curriculum_item_phase: "pre" | "post"
       deadline_policy: "recommended" | "late_allowed" | "strict"
       exam_result_status: "absent" | "pending" | "failed" | "passed"
       exam_round: "first" | "second"
@@ -9382,6 +9389,7 @@ export type Database = {
         | "trial_expiry_warning"
         | "cohort_upgrade_requested"
         | "cohort_upgrade_processed"
+        | "trial_ended"
       student_note_visibility: "staff_only" | "share_with_student"
       subjective_kind: "case_based" | "theory" | "mixed"
       subscription_status: "pending" | "active" | "expired" | "cancelled"
@@ -9572,6 +9580,7 @@ export const Constants = {
         "recitation",
         "lecture",
       ],
+      curriculum_item_phase: ["pre", "post"],
       deadline_policy: ["recommended", "late_allowed", "strict"],
       exam_result_status: ["absent", "pending", "failed", "passed"],
       exam_round: ["first", "second"],
@@ -9650,6 +9659,7 @@ export const Constants = {
         "trial_expiry_warning",
         "cohort_upgrade_requested",
         "cohort_upgrade_processed",
+        "trial_ended",
       ],
       student_note_visibility: ["staff_only", "share_with_student"],
       subjective_kind: ["case_based", "theory", "mixed"],

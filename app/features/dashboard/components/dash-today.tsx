@@ -38,11 +38,23 @@ export interface WeekTrackData {
   items: ReadonlyArray<{
     itemId: string;
     ord: number;
+    /** 플립드 러닝 — 예습(수업 전)/복습(수업 후). null=단계 미지정. */
+    phase: "pre" | "post" | null;
     label: string;
     isDone: boolean;
     entryUrl: string | null;
   }>;
 }
+
+// 플립드 러닝 표시 그룹 — 태그가 하나라도 있으면 예습→일반→복습 순으로 묶어 보여준다.
+const PHASE_GROUPS: ReadonlyArray<{
+  key: "pre" | null | "post";
+  label: string;
+}> = [
+  { key: "pre", label: "수업 전 · 예습" },
+  { key: null, label: "일반" },
+  { key: "post", label: "수업 후 · 복습" },
+];
 
 export function WeekTrackCard({ track }: { track: WeekTrackData }) {
   const pct =
@@ -89,6 +101,38 @@ export function WeekTrackCard({ track }: { track: WeekTrackData }) {
         >
           이번 주 학습 항목이 비어 있습니다.
         </p>
+      ) : items.some((i) => i.phase) ? (
+        // 플립드 러닝 — 예습/복습 태그가 있으면 단계별 섹션으로 묶는다.
+        <div style={{ margin: "14px 0 0" }}>
+          {PHASE_GROUPS.map(({ key, label }) => {
+            const group = items.filter((i) => i.phase === key);
+            if (group.length === 0) return null;
+            return (
+              <div key={label} style={{ marginBottom: 6 }}>
+                <Eyebrow style={{ margin: "8px 8px 2px" }}>
+                  {label} · {group.filter((i) => i.isDone).length}/
+                  {group.length}
+                </Eyebrow>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                  }}
+                >
+                  {group.map((it) => (
+                    <li key={it.itemId}>
+                      <TrackRow item={it} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <ul
           style={{

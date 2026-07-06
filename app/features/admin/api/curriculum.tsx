@@ -12,6 +12,7 @@ import {
   deleteItem,
   deleteWeek,
   removeCurriculumFromCohort,
+  setItemPhase,
   updateCurriculum,
   upsertItem,
   upsertWeek,
@@ -61,6 +62,8 @@ const itemSchema = z.object({
   lectureDurationMin: z.coerce.number().int().min(0).max(999).nullable().optional(),
   targetQuantity: z.coerce.number().int().min(0).max(9999).nullable().optional(),
   note: z.string().trim().max(2000).nullable().optional(),
+  // 플립드 러닝 — 예습/복습. 빈 문자열=미지정(null).
+  phase: z.enum(["pre", "post"]).nullable().optional(),
 });
 
 export async function action({ request }: Route.ActionArgs) {
@@ -179,6 +182,7 @@ export async function action({ request }: Route.ActionArgs) {
       lectureDurationMin: fd.get("lectureDurationMin") || undefined,
       targetQuantity: fd.get("targetQuantity") || undefined,
       note: emptyToNull(fd.get("note")),
+      phase: emptyToNull(fd.get("phase"), 10),
     });
     if (!parsed.success) {
       return data(
@@ -195,6 +199,17 @@ export async function action({ request }: Route.ActionArgs) {
     const itemId = String(fd.get("itemId") ?? "");
     if (!itemId) return data({ error: "itemId 누락" }, { status: 400 });
     const res = await deleteItem(itemId);
+    if (!res.ok) return data({ error: res.error }, { status: 400 });
+    return data({ ok: true });
+  }
+
+  // 기존 항목 예습/복습 태그 토글 (플립드 러닝).
+  if (intent === "set_item_phase") {
+    const itemId = String(fd.get("itemId") ?? "");
+    if (!itemId) return data({ error: "itemId 누락" }, { status: 400 });
+    const raw = String(fd.get("phase") ?? "");
+    const phase = raw === "pre" || raw === "post" ? raw : null;
+    const res = await setItemPhase(itemId, phase);
     if (!res.ok) return data({ error: res.error }, { status: 400 });
     return data({ ok: true });
   }

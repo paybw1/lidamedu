@@ -44,3 +44,16 @@
 - **Judgment**: 스펙상 필수(수익화·차등 접근). 기존 구독 인프라 재사용이라 중복 최소.
 - **Structure**: 등급은 파생값(저장 안 함), 승인은 기존 status 상태머신, 과목은 subject_code, 종류는 cohorts 컬럼. 게이트는 서버(리졸버) 권위.
 - **Code**: 등급 SSOT = membership.server.ts. features = subscription_plans DB SSOT.
+
+## Stage 3 마무리 — 체험 종료(강등) 통지 (2026-07-06)
+
+만료 임박(D-3 배너+인박스 1회)은 기존 구현. 빠져 있던 "종료 시점" 조각 추가:
+
+- `notifyTrialEndedIfDue` (trial.server.ts) — trial_ends_at 경과 + 미통지 시 인박스
+  `trial_ended` 알림 1회(`profiles.trial_ended_notified_at` 플래그). 대시보드 로더가
+  grade==free_member 확정 후 runAfterResponse 트리거 — 구독·종합반 전환자 미발송
+- 대시보드 배너: 종료 후 7일간(TRIAL_ENDED_BANNER_DAYS) "체험 종료 · 학습 기록 보관
+  중 · 구독하면 이어서" 전환 넛지(TrialNoticeBanner ended 변형)
+- enum staff_notification_kind 에 'trial_ended' 추가 + STUDENT_KINDS·인박스 라벨 등록
+- 잔여로 지목됐던 ②과목별 결제(상품 방식으로 완결)·③종합반 승인(등업 신청→반 배정
+  완결)은 조사 결과 이미 구현 — 추가 작업 없음
