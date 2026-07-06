@@ -56,16 +56,20 @@ export async function loader({ request }: Route.LoaderArgs) {
     )
     .eq("profile_id", user.id)
     .maybeSingle();
-  if (profile?.onboarded_at) {
+  const url = new URL(request.url);
+  // 둘러보기 다시 보기(?replay=1) — 온보딩 완료자도 투어 스텝만 재열람.
+  const replay = url.searchParams.get("replay") === "1";
+  if (profile?.onboarded_at && !replay) {
     // 이미 완료 — 대시보드로
     throw redirect("/dashboard");
   }
-  const url = new URL(request.url);
-  const step = Math.max(
-    1,
-    Math.min(TOTAL_STEPS, Number(url.searchParams.get("step") ?? 1)),
-  );
-  return { profile, step };
+  const step = replay
+    ? TOTAL_STEPS
+    : Math.max(
+        1,
+        Math.min(TOTAL_STEPS, Number(url.searchParams.get("step") ?? 1)),
+      );
+  return { profile, step, replay };
 }
 
 const planSchema = z.object({
@@ -188,7 +192,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function OnboardingWelcome({
   loaderData,
 }: Route.ComponentProps) {
-  const { profile, step } = loaderData;
+  const { profile, step, replay } = loaderData;
   const name = profile?.name?.trim() || "학습자";
   const currentYear = new Date().getFullYear();
 
@@ -198,19 +202,25 @@ export default function OnboardingWelcome({
         {/* 헤더 */}
         <header className="mb-6 space-y-1 text-center">
           <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-            🌱 Onboarding
+            {replay ? "🧭 다시 둘러보기" : "🌱 Onboarding"}
           </p>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            {name}님, 환영합니다
+            {replay ? "핵심 기능 둘러보기" : `${name}님, 환영합니다`}
           </h1>
           <p className="text-muted-foreground text-sm">
-            1분이면 충분합니다. 응시 계획과 학습 목표를 알려주시고, 핵심 기능을
-            가볍게 둘러보세요.
+            {replay
+              ? "처음 안내했던 핵심 기능을 다시 확인해 보세요."
+              : "1분이면 충분합니다. 응시 계획과 학습 목표를 알려주시고, 핵심 기능을 가볍게 둘러보세요."}
           </p>
         </header>
 
-        {/* 진행 표시 */}
-        <ol className="mb-6 flex items-center justify-center gap-2">
+        {/* 진행 표시 — 다시 보기 모드에선 단계 없음 */}
+        <ol
+          className={cn(
+            "mb-6 flex items-center justify-center gap-2",
+            replay && "hidden",
+          )}
+        >
           {[1, 2, 3, 4].map((s) => (
             <li key={s} className="flex items-center gap-2">
               <span
@@ -245,23 +255,25 @@ export default function OnboardingWelcome({
         ) : step === 3 ? (
           <GoalsStep currentYear={currentYear} />
         ) : (
-          <TourStep />
+          <TourStep replay={replay} />
         )}
 
-        {/* 건너뛰기 */}
-        <div className="mt-6 text-center">
-          <Form method="post" className="inline">
-            <input type="hidden" name="intent" value="skip" />
-            <Button
-              type="submit"
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground text-xs"
-            >
-              지금은 건너뛰기 →
-            </Button>
-          </Form>
-        </div>
+        {/* 건너뛰기 — 다시 보기 모드에선 불필요 */}
+        {!replay ? (
+          <div className="mt-6 text-center">
+            <Form method="post" className="inline">
+              <input type="hidden" name="intent" value="skip" />
+              <Button
+                type="submit"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground text-xs"
+              >
+                지금은 건너뛰기 →
+              </Button>
+            </Form>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -509,7 +521,7 @@ const TOUR_CARDS = [
   },
 ] as const;
 
-function TourStep() {
+function TourStep({ replay = false }: { replay?: boolean }) {
   const [idx, setIdx] = useState(0);
   const card = TOUR_CARDS[idx];
   const last = idx === TOUR_CARDS.length - 1;
@@ -559,20 +571,32 @@ function TourStep() {
             <ChevronLeftIcon className="size-3.5" /> 이전
           </Button>
           {last ? (
-            <div className="flex items-center gap-2">
-              <Form method="post" className="inline">
-                <input type="hidden" name="intent" value="finish_guide" />
-                <Button type="submit" variant="outline" size="sm">
-                  이용 가이드 보기
+            replay ? (
+              // 다시 보기 — 이미 온보딩 완료 상태라 링크로만 마무리(재기록 없음).
+              <div className="flex items-center gap-2">
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/guide">이용 가이드 보기</Link>
                 </Button>
-              </Form>
-              <Form method="post" className="inline">
-                <input type="hidden" name="intent" value="finish" />
-                <Button type="submit" size="sm">
-                  시작하기 →
+                <Button asChild size="sm">
+                  <Link to="/dashboard">대시보드로 →</Link>
                 </Button>
-              </Form>
-            </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Form method="post" className="inline">
+                  <input type="hidden" name="intent" value="finish_guide" />
+                  <Button type="submit" variant="outline" size="sm">
+                    이용 가이드 보기
+                  </Button>
+                </Form>
+                <Form method="post" className="inline">
+                  <input type="hidden" name="intent" value="finish" />
+                  <Button type="submit" size="sm">
+                    시작하기 →
+                  </Button>
+                </Form>
+              </div>
+            )
           ) : (
             <Button
               type="button"

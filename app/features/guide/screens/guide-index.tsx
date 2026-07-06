@@ -1,5 +1,5 @@
 // 이용 가이드 허브 — 기능 사용법(글+영상) 카드 목록. 카테고리별 묶음.
-import { BookOpenIcon, PlayCircleIcon } from "lucide-react";
+import { BookOpenIcon, CompassIcon, PlayCircleIcon } from "lucide-react";
 import { Link, data } from "react-router";
 
 import makeServerClient from "~/core/lib/supa-client.server";
@@ -52,17 +52,26 @@ export default function GuideIndex({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
-      <header className="mb-6 space-y-1.5">
-        <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
-          <BookOpenIcon className="size-3.5" /> 이용 가이드
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight">
-          이렇게 활용해 보세요
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          처음 오셨거나 기능이 낯설 때 여기서 사용법을 확인할 수 있습니다. 짧은
-          글(영상)로 준비했습니다.
-        </p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1.5">
+          <p className="text-muted-foreground inline-flex items-center gap-1 text-xs font-semibold tracking-wide uppercase">
+            <BookOpenIcon className="size-3.5" /> 이용 가이드
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            이렇게 활용해 보세요
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            처음 오셨거나 기능이 낯설 때 여기서 사용법을 확인할 수 있습니다.
+            짧은 글(영상)로 준비했습니다.
+          </p>
+        </div>
+        {/* 가입 때 봤던 핵심 기능 투어를 언제든 재열람. */}
+        <Link
+          to="/onboarding/welcome?replay=1"
+          className="border-border text-muted-foreground hover:border-primary hover:text-foreground inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors"
+        >
+          <CompassIcon className="size-3.5" /> 핵심 기능 둘러보기
+        </Link>
       </header>
 
       {guides.length === 0 ? (
