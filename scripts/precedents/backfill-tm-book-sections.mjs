@@ -40,6 +40,8 @@ const toParaBlocks = (arr) =>
     .filter(Boolean)
     .map((t) => ({ type: "p", text: normalizePara(t) }));
 
+const REF_LABEL_RE = /^참고(\s*\d+)?$/;
+
 function buildSections(c, imageUrlByBin) {
   const sections = [];
   const cellToBlock = (cell) => ({
@@ -49,10 +51,54 @@ function buildSections(c, imageUrlByBin) {
       .filter(Boolean)
       .map((url) => ({ url, alt: "" })),
   });
+  // "참고" 박스(라벨 셀 = 참고/참고 1/참고 2) — 표가 아니라 별도 "참고" 섹션으로 분리.
+  const isRefBox = (t) =>
+    (t.cellRows ?? []).flat().some((cell) => REF_LABEL_RE.test((cell.text ?? "").trim()));
+  const refBoxes = c.infoTables.filter(isRefBox);
+  const normalTables = c.infoTables.filter((t) => !isRefBox(t));
   const tablesFor = (key) =>
-    c.infoTables
+    normalTables
       .filter((t) => t.section === key)
       .map((t) => ({ type: "table", rows: (t.cellRows ?? t.rows.map((r) => r.map((x) => ({ text: x, imgs: [] })))).map((row) => row.map(cellToBlock)) }));
+  // 참고 박스 → 섹션 블록: 라벨 셀 제외, 나머지 셀을 줄 단위 문단으로.
+  let refSeq = 0;
+  const refSectionsFor = (key) =>
+    refBoxes
+      .filter((t) => t.section === key)
+      .map((t) => {
+        refSeq++;
+        let label = "참고";
+        let title = null;
+        const paras = [];
+        for (const row of t.cellRows ?? []) {
+          const isLabelRow = row.some((cell) => REF_LABEL_RE.test((cell.text ?? "").trim()));
+          for (const cell of row) {
+            const text = (cell.text ?? "").trim();
+            if (!text) continue;
+            if (REF_LABEL_RE.test(text)) {
+              label = text.replace(/\s+/g, " ");
+              continue;
+            }
+            // 라벨과 같은 행의 나머지 셀 = 박스 소제목 (헤더 우측 표시)
+            if (isLabelRow) {
+              title = title ? `${title} — ${text.replace(/\s+/g, " ")}` : text.replace(/\s+/g, " ");
+              continue;
+            }
+            for (const line of text.split(/\n+/)) {
+              const l = line.trim();
+              if (l) paras.push({ type: "p", text: normalizePara(l) });
+            }
+          }
+        }
+        return {
+          key: refSeq > 1 ? `reference-${refSeq}` : "reference",
+          label,
+          blocks: paras,
+          source: null,
+          title,
+        };
+      })
+      .filter((s) => s.blocks.length > 0);
 
   // 쟁점상표 — 헤더 직후(preamble) 도표
   const infoBlocks = [
@@ -60,13 +106,36 @@ function buildSections(c, imageUrlByBin) {
     ...toParaBlocks(c.sections.preamble),
   ];
   if (infoBlocks.length) sections.push({ key: "mark", label: "쟁점상표", blocks: infoBlocks });
+  sections.push(...refSectionsFor("preamble"));
+
+  // ★법원이 대법원이 아닌 판결(특허법원 확정 등)은 [특허법원의 판단]=본심 — 파서가 lower 로
+  //   합쳤으므로 holding 이 비어 있으면 lower 를 본심의 판단으로 재배치.
+  const secText = { ...c.sections };
+  let lowerKeyRelabeled = false;
+  if (
+    c.court !== "대법원" &&
+    (secText.lower ?? []).length > 0 &&
+    (secText.holding ?? []).length === 0
+  ) {
+    secText.holding = secText.lower;
+    secText.lower = [];
+    lowerKeyRelabeled = true;
+  }
 
   for (const [key, label] of SECTION_DEFS) {
-    const blocks = [
-      ...toParaBlocks(c.sections[key]),
-      ...tablesFor(key),
-    ];
-    if (!blocks.length) continue;
+    // 재배치 시 표·참고 박스의 원 섹션(lower)도 holding 을 따라간다.
+    const originKey =
+      lowerKeyRelabeled && key === "holding"
+        ? "lower"
+        : lowerKeyRelabeled && key === "lower"
+          ? "__none__"
+          : key;
+    const blocks = [...toParaBlocks(secText[key]), ...tablesFor(originKey)];
+    const refs = refSectionsFor(originKey);
+    if (!blocks.length) {
+      sections.push(...refs);
+      continue;
+    }
     const section = { key, label, blocks, source: null };
     // 평석 — 끝의 완전 괄호 인용 문단("(손천우, …, 대법원 판례해설 …, 508-530면 참고)")을
     // 출처로 승격 (섹션 헤더 우측 "출처: …" 표시).
@@ -78,9 +147,12 @@ function buildSections(c, imageUrlByBin) {
         srcParts.unshift(blocks.pop().text.trim());
       }
       if (srcParts.length) section.source = srcParts.join(" / ");
-      if (!blocks.length) continue; // 출처만 있고 본문 없으면(이례) 섹션 생략
+      if (!blocks.length) {
+        sections.push(...refs);
+        continue; // 출처만 있고 본문 없으면(이례) 섹션 생략
+      }
     }
-    sections.push(section);
+    sections.push(section, ...refs);
   }
   return sections;
 }

@@ -81,6 +81,7 @@ const bookSectionsSchema = z
       key: z.string().trim().min(1).max(40),
       label: z.string().trim().min(1).max(60),
       source: z.string().max(500).nullable().optional(),
+      title: z.string().max(300).nullable().optional(),
       blocks: z
         .array(
           z.union([
@@ -774,6 +775,7 @@ export async function action({ request }: Route.ActionArgs) {
       .map((s) => ({
         ...s,
         source: (s.source ?? "").trim() === "" ? null : s.source!.trim(),
+        title: (s.title ?? "").trim() === "" ? null : s.title!.trim(),
         blocks: s.blocks.filter((b) =>
           b.type === "p"
             ? b.text.trim() !== ""

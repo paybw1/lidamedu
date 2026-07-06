@@ -326,7 +326,11 @@ export function CaseBody({
               <BodySection
                 key={sec.key}
                 title={sec.label}
-                meta={sec.source ?? undefined}
+                meta={
+                  sec.source
+                    ? `출처: ${sec.source}`
+                    : (sec.title ?? undefined)
+                }
               >
                 <MaybeHighlight
                   on={enableHighlights}
@@ -757,7 +761,7 @@ function BodySection({
           {title}
         </h2>
         {meta ? (
-          <span className="text-muted-foreground text-xs">출처: {meta}</span>
+          <span className="text-muted-foreground text-xs">{meta}</span>
         ) : null}
       </div>
       <div className="border-border/60 border-t" />

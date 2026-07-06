@@ -18,17 +18,32 @@ import type {
   BookSectionCell,
 } from "~/features/cases/labels";
 
-// 교재 표준 섹션 프리셋 — 추가 셀렉트에 노출 (라벨은 원장 확정 용어).
-const SECTION_PRESETS: { key: string; label: string }[] = [
-  { key: "mark", label: "쟁점상표" },
-  { key: "issues", label: "사안의 쟁점" },
-  { key: "facts", label: "사실관계" },
-  { key: "lower", label: "전심의 판단" },
-  { key: "doctrine", label: "관련 법리" },
-  { key: "holding", label: "본심의 판단" },
-  { key: "index", label: "인덱스" },
-  { key: "comment", label: "평석" },
+// 교재 표준 섹션 구분 — 구분(key)별 허용 제목 변형 (원장 확정 용어, 2026-07-07).
+//   본심의 판단 = 대법원 판결이면 "대법원의 판단", 특허법원 확정 판결이면 "특허법원의 판단" 등
+//   원심의 판단 = "특허법원의 판단"(대법원 판결의 원심), "심판원의 판단" 등
+const SECTION_CHOICES: { key: string; group: string; labels: string[] }[] = [
+  { key: "mark", group: "쟁점상표", labels: ["쟁점상표"] },
+  { key: "issues", group: "사안의 쟁점", labels: ["사안의 쟁점"] },
+  { key: "facts", group: "사실관계", labels: ["사실관계"] },
+  {
+    key: "lower",
+    group: "원심의 판단",
+    labels: ["원심의 판단", "전심의 판단", "특허법원의 판단", "심판원의 판단"],
+  },
+  { key: "doctrine", group: "관련 법리", labels: ["관련 법리"] },
+  {
+    key: "holding",
+    group: "본심의 판단",
+    labels: ["본심의 판단", "대법원의 판단", "특허법원의 판단"],
+  },
+  { key: "index", group: "인덱스", labels: ["인덱스"] },
+  { key: "comment", group: "평석 (출처 입력)", labels: ["평석"] },
+  { key: "reference", group: "참고 (제목 입력)", labels: ["참고", "참고 1", "참고 2"] },
 ];
+
+// "reference-2" 같은 파생 key 도 기본 구분으로 조회.
+const choiceForKey = (key: string) =>
+  SECTION_CHOICES.find((c) => c.key === key.replace(/-\d+$/, ""));
 
 const emptyCell = (): BookSectionCell => ({ text: "", images: [] });
 
@@ -38,7 +53,9 @@ export function BookSectionsEditor({
   defaultSections: BookSection[];
 }) {
   const [sections, setSections] = useState<BookSection[]>(defaultSections);
-  const [presetKey, setPresetKey] = useState(SECTION_PRESETS[0].key);
+  const [presetValue, setPresetValue] = useState(
+    `${SECTION_CHOICES[0].key}|${SECTION_CHOICES[0].labels[0]}`,
+  );
   const set = (updater: (prev: BookSection[]) => BookSection[]) =>
     flushSync(() => setSections(updater));
   const patchSection = (si: number, p: Partial<BookSection>) =>
@@ -79,14 +96,31 @@ export function BookSectionsEditor({
         >
           <div className="flex flex-wrap items-center gap-2">
             <GripVerticalIcon className="text-muted-foreground size-3.5" />
-            <Input
-              value={sec.label}
-              onChange={(e) => patchSection(si, { label: e.target.value })}
-              className="h-7 w-44 text-xs font-semibold"
-              maxLength={60}
-            />
+            {/* 구분 제목 — 정해진 변형에서 선택 (예: 본심의 판단 ↔ 대법원의 판단) */}
+            {choiceForKey(sec.key) ? (
+              <select
+                value={sec.label}
+                onChange={(e) => patchSection(si, { label: e.target.value })}
+                className="border-input bg-background h-7 rounded-md border px-2 text-xs font-semibold"
+              >
+                {[
+                  ...new Set([...(choiceForKey(sec.key)?.labels ?? []), sec.label]),
+                ].map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                value={sec.label}
+                onChange={(e) => patchSection(si, { label: e.target.value })}
+                className="h-7 w-44 text-xs font-semibold"
+                maxLength={60}
+              />
+            )}
             <span className="text-muted-foreground font-mono text-[10px]">
-              {sec.key}
+              {choiceForKey(sec.key)?.group ?? sec.key}
             </span>
             <div className="ml-auto flex items-center gap-1">
               <Button
@@ -121,7 +155,7 @@ export function BookSectionsEditor({
             </div>
           </div>
 
-          {/* 섹션 출처 — 평석의 인용 표기. 뷰어 섹션 헤더 우측 "출처: …" 로 표시. */}
+          {/* 평석 → 출처 입력. 뷰어 섹션 헤더 우측 "출처: …" 로 표시. */}
           {sec.key === "comment" || sec.source ? (
             <Input
               value={sec.source ?? ""}
@@ -133,6 +167,20 @@ export function BookSectionsEditor({
               placeholder="출처 — 예: (손천우, …, 대법원 판례해설 제126호(2020년 하), 법원도서관, 2021년, 508-530면 참고)"
               className="h-7 text-xs"
               maxLength={500}
+            />
+          ) : null}
+          {/* 참고 → 제목 입력. 뷰어 섹션 헤더 우측 표시. */}
+          {sec.key.startsWith("reference") || sec.title ? (
+            <Input
+              value={sec.title ?? ""}
+              onChange={(e) =>
+                patchSection(si, {
+                  title: e.target.value.trim() === "" ? null : e.target.value,
+                })
+              }
+              placeholder="제목 — 예: 특허청 심사관 및 특허심판원의 판단"
+              className="h-7 text-xs"
+              maxLength={300}
             />
           ) : null}
 
@@ -212,15 +260,25 @@ export function BookSectionsEditor({
 
       <div className="flex items-center gap-2">
         <select
-          value={presetKey}
-          onChange={(e) => setPresetKey(e.target.value)}
+          value={presetValue}
+          onChange={(e) => setPresetValue(e.target.value)}
           className="border-input bg-background h-7 rounded-md border px-2 text-xs"
         >
-          {SECTION_PRESETS.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.label}
-            </option>
-          ))}
+          {SECTION_CHOICES.map((c) =>
+            c.labels.length === 1 ? (
+              <option key={c.key} value={`${c.key}|${c.labels[0]}`}>
+                {c.group}
+              </option>
+            ) : (
+              <optgroup key={c.key} label={c.group}>
+                {c.labels.map((l) => (
+                  <option key={l} value={`${c.key}|${l}`}>
+                    {l}
+                  </option>
+                ))}
+              </optgroup>
+            ),
+          )}
         </select>
         <Button
           type="button"
@@ -228,16 +286,21 @@ export function BookSectionsEditor({
           variant="outline"
           className="h-7 gap-1 text-xs"
           onClick={() => {
-            const preset = SECTION_PRESETS.find((p) => p.key === presetKey)!;
-            set((prev) => [
-              ...prev,
-              {
-                key: preset.key,
-                label: preset.label,
-                blocks: [{ type: "p", text: "" }],
-                source: null,
-              },
-            ]);
+            const [key, label] = presetValue.split("|");
+            set((prev) => {
+              // 같은 구분이 이미 있으면 key 에 -2, -3 접미 (참고 2개 등)
+              const dup = prev.filter((s) => s.key.replace(/-\d+$/, "") === key).length;
+              return [
+                ...prev,
+                {
+                  key: dup > 0 ? `${key}-${dup + 1}` : key,
+                  label,
+                  blocks: [{ type: "p", text: "" }],
+                  source: null,
+                  title: null,
+                },
+              ];
+            });
           }}
         >
           <PlusIcon className="size-3.5" /> 섹션 추가
