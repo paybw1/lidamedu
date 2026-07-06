@@ -80,6 +80,7 @@ const bookSectionsSchema = z
     z.object({
       key: z.string().trim().min(1).max(40),
       label: z.string().trim().min(1).max(60),
+      source: z.string().max(500).nullable().optional(),
       blocks: z
         .array(
           z.union([
@@ -772,6 +773,7 @@ export async function action({ request }: Route.ActionArgs) {
     const cleaned = secParsed.data
       .map((s) => ({
         ...s,
+        source: (s.source ?? "").trim() === "" ? null : s.source!.trim(),
         blocks: s.blocks.filter((b) =>
           b.type === "p"
             ? b.text.trim() !== ""
@@ -807,6 +809,8 @@ export async function action({ request }: Route.ActionArgs) {
         if (texts.length) reasoningParts.push(`### ${label}\n\n${texts.join("\n\n")}`);
       }
       const commentParts = paraTexts("comment");
+      const commentSource = cleaned.find((s) => s.key === "comment")?.source;
+      if (commentSource) commentParts.push(commentSource);
       const indexTexts = paraTexts("index");
       if (indexTexts.length) commentParts.push(`**[Index]** ${indexTexts.join(" / ")}`);
       bookSectionsPatch = {

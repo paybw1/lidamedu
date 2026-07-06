@@ -121,6 +121,21 @@ export function BookSectionsEditor({
             </div>
           </div>
 
+          {/* 섹션 출처 — 평석의 인용 표기. 뷰어 섹션 헤더 우측 "출처: …" 로 표시. */}
+          {sec.key === "comment" || sec.source ? (
+            <Input
+              value={sec.source ?? ""}
+              onChange={(e) =>
+                patchSection(si, {
+                  source: e.target.value.trim() === "" ? null : e.target.value,
+                })
+              }
+              placeholder="출처 — 예: (손천우, …, 대법원 판례해설 제126호(2020년 하), 법원도서관, 2021년, 508-530면 참고)"
+              className="h-7 text-xs"
+              maxLength={500}
+            />
+          ) : null}
+
           {sec.blocks.map((b, bi) => (
             <div key={bi} className="group/block relative">
               {b.type === "p" ? (
@@ -216,7 +231,12 @@ export function BookSectionsEditor({
             const preset = SECTION_PRESETS.find((p) => p.key === presetKey)!;
             set((prev) => [
               ...prev,
-              { key: preset.key, label: preset.label, blocks: [{ type: "p", text: "" }] },
+              {
+                key: preset.key,
+                label: preset.label,
+                blocks: [{ type: "p", text: "" }],
+                source: null,
+              },
             ]);
           }}
         >

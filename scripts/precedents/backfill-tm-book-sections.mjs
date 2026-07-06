@@ -66,7 +66,21 @@ function buildSections(c, imageUrlByBin) {
       ...toParaBlocks(c.sections[key]),
       ...tablesFor(key),
     ];
-    if (blocks.length) sections.push({ key, label, blocks });
+    if (!blocks.length) continue;
+    const section = { key, label, blocks, source: null };
+    // 평석 — 끝의 완전 괄호 인용 문단("(손천우, …, 대법원 판례해설 …, 508-530면 참고)")을
+    // 출처로 승격 (섹션 헤더 우측 "출처: …" 표시).
+    if (key === "comment") {
+      const srcParts = [];
+      while (blocks.length > 0) {
+        const last = blocks[blocks.length - 1];
+        if (last.type !== "p" || !/^\(.+\)$/.test(last.text.trim())) break;
+        srcParts.unshift(blocks.pop().text.trim());
+      }
+      if (srcParts.length) section.source = srcParts.join(" / ");
+      if (!blocks.length) continue; // 출처만 있고 본문 없으면(이례) 섹션 생략
+    }
+    sections.push(section);
   }
   return sections;
 }

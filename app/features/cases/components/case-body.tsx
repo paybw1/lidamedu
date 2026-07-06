@@ -326,7 +326,7 @@ export function CaseBody({
               <BodySection
                 key={sec.key}
                 title={sec.label}
-                meta={sec.key === "comment" ? (kase.commentSource ?? undefined) : undefined}
+                meta={sec.source ?? undefined}
               >
                 <MaybeHighlight
                   on={enableHighlights}

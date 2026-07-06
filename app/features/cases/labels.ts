@@ -165,6 +165,8 @@ export interface BookSection {
   key: string;
   label: string;
   blocks: BookSectionBlock[];
+  /** 섹션 출처 — 평석의 인용 표기(예: "(손천우, …, 대법원 판례해설 제126호, …)"). 헤더 우측 "출처:" 로 표시. */
+  source: string | null;
 }
 
 // jsonb 방어적 파싱 — 형태가 어긋난 항목은 조용히 skip (뷰어가 기존 필드로 폴백).
@@ -206,7 +208,15 @@ export function parseBookSections(raw: unknown): BookSection[] {
         if (rows.length > 0) parsed.push({ type: "table", rows });
       }
     }
-    if (parsed.length > 0) out.push({ key, label, blocks: parsed });
+    if (parsed.length > 0) {
+      const source = (s as { source?: unknown }).source;
+      out.push({
+        key,
+        label,
+        blocks: parsed,
+        source: typeof source === "string" && source.trim() !== "" ? source : null,
+      });
+    }
   }
   return out;
 }
