@@ -182,19 +182,17 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
           ) : null}
         </div>
       ) : (
+        // 가로 스크롤 방지 — 이메일은 회원명 아래 줄, 소속·수강/가입·접속은 병합해
+        // 일반 노트북 폭(사이드바 포함)에 맞춘다.
         <IndexTable
-          minWidth={1280}
+          minWidth={960}
           headers={[
-            { label: "No", align: "center", width: "3rem" },
             { label: "회원번호", align: "center", width: "4.5rem" },
-            { label: "소속", width: "7rem" },
-            { label: "회원명 (회원아이디)", width: "13rem" },
+            { label: "회원명 (회원아이디)" },
             { label: "휴대전화", width: "8.5rem" },
-            { label: "이메일" },
-            { label: "수강", width: "9rem" },
-            { label: "실결제금액", align: "right", width: "7rem" },
-            { label: "접속일", align: "right", width: "6.5rem" },
-            { label: "가입일", align: "right", width: "6.5rem" },
+            { label: "소속·수강", width: "9rem" },
+            { label: "실결제금액", align: "right", width: "6.5rem" },
+            { label: "가입 · 접속", align: "right", width: "6.5rem" },
             { label: "상태", width: "11rem" },
           ]}
           footer={
@@ -212,11 +210,10 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
             </div>
           }
         >
-          {items.map((u, i) => (
+          {items.map((u) => (
             <UserRow
               key={u.profileId}
               user={u}
-              index={(filters.page - 1) * filters.pageSize + i + 1}
               isCurrentUser={u.profileId === currentUserId}
             />
           ))}
@@ -228,11 +225,9 @@ export default function AdminUsers({ loaderData }: Route.ComponentProps) {
 
 function UserRow({
   user,
-  index,
   isCurrentUser,
 }: {
   user: AdminUserRow;
-  index: number;
   isCurrentUser: boolean;
 }) {
   const fetcher = useFetcher<{ ok?: true; error?: string }>();
@@ -260,20 +255,8 @@ function UserRow({
 
   return (
     <TR>
-      <TD align="center" soft mono>
-        {index}
-      </TD>
       <TD align="center" mono>
         {user.memberNo ?? "—"}
-      </TD>
-      <TD soft>
-        {user.cohortNames.length > 0 ? (
-          <span className="block max-w-[7rem] truncate" title={user.cohortNames.join(", ")}>
-            {user.cohortNames.join(", ")}
-          </span>
-        ) : (
-          "—"
-        )}
       </TD>
       <TD>
         <div className="flex items-center gap-2">
@@ -295,6 +278,17 @@ function UserRow({
               ) : null}
               {isCurrentUser ? <Chip tone="outline">본인</Chip> : null}
             </div>
+            {/* 이메일은 별도 컬럼 대신 이름 아래 줄 — 가로 폭 절약. */}
+            <span className="text-muted-foreground flex items-center gap-1 truncate text-[11px]">
+              <MailIcon className="size-3 shrink-0" />
+              <span className="truncate">{user.email ?? "(이메일 없음)"}</span>
+              {user.emailConfirmedAt ? (
+                <CheckCircle2Icon
+                  className="size-3 shrink-0 text-emerald-600"
+                  aria-label="이메일 인증 완료"
+                />
+              ) : null}
+            </span>
             {user.nickname && user.nickname !== user.name ? (
               <span className="text-muted-foreground block truncate text-[11px]">
                 {user.nickname}
@@ -307,23 +301,19 @@ function UserRow({
         {user.phoneE164 ?? "—"}
       </TD>
       <TD soft>
-        <span className="inline-flex items-center gap-1">
-          <MailIcon className="size-3" />
-          {user.email ?? "(이메일 없음)"}
-        </span>
-        {user.emailConfirmedAt ? (
-          <CheckCircle2Icon
-            className="ml-1 inline-block size-3 text-emerald-600"
-            aria-label="이메일 인증 완료"
-          />
-        ) : null}
-      </TD>
-      <TD>
         {user.cohortNames.length > 0 ? (
-          <Chip tone="violet">종합반</Chip>
+          <span className="flex items-center gap-1">
+            <Chip tone="violet">종합반</Chip>
+            <span
+              className="block max-w-[5rem] truncate text-[11px]"
+              title={user.cohortNames.join(", ")}
+            >
+              {user.cohortNames.join(", ")}
+            </span>
+          </span>
         ) : user.activePlanNames.length > 0 ? (
           <span
-            className="block max-w-[9rem] truncate text-[12px]"
+            className="block max-w-[8.5rem] truncate text-[12px]"
             title={user.activePlanNames.join(", ")}
           >
             {user.activePlanNames.join(", ")}
@@ -336,10 +326,13 @@ function UserRow({
         {user.netPaidKrw > 0 ? `₩${user.netPaidKrw.toLocaleString("ko-KR")}` : "—"}
       </TD>
       <TD align="right" mono soft>
-        {user.lastSignInAt ? user.lastSignInAt.slice(0, 10) : "—"}
-      </TD>
-      <TD align="right" mono soft>
-        {user.createdAt.slice(0, 10)}
+        <span className="block leading-tight">{user.createdAt.slice(0, 10)}</span>
+        <span
+          className="text-muted-foreground/70 block text-[10px] leading-tight"
+          title="마지막 접속일"
+        >
+          {user.lastSignInAt ? user.lastSignInAt.slice(0, 10) : "접속 없음"}
+        </span>
       </TD>
       <TD>
         <div className="flex flex-col gap-1">
