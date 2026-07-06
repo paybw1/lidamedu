@@ -184,6 +184,8 @@ export interface CommentListItem {
   targetType: CommentTargetType;
   /** 자연과학 문제는 law 가 없어 null. */
   lawCode: string | null;
+  /** 자연과학 문제의 과학 과목(physics 등) — 과목 필터 축. 그 외 null. */
+  scienceSubject: string | null;
   /** 대상 콘텐츠 제목 (조문 라벨 / 판례명 / 문제 연도·번호). */
   primaryLabel: string;
   secondaryLabel: string | null;
@@ -351,6 +353,7 @@ export async function listAllComments(
         {
           ...base,
           lawCode: a.lawCode,
+          scienceSubject: null,
           primaryLabel: a.displayLabel,
           secondaryLabel: null,
           bodySnippet: null,
@@ -365,6 +368,7 @@ export async function listAllComments(
         {
           ...base,
           lawCode: c.lawCode,
+          scienceSubject: null,
           primaryLabel: c.caseTitle ?? c.caseNumber,
           secondaryLabel: c.caseTitle ? c.caseNumber : null,
           bodySnippet: null,
@@ -384,6 +388,7 @@ export async function listAllComments(
         {
           ...base,
           lawCode: sci ? null : p.lawCode,
+          scienceSubject: sci,
           primaryLabel: sci ? `${scienceSubjectName(sci)} ${yearLabel}` : yearLabel,
           secondaryLabel: null,
           bodySnippet: p.bodySnippet,
@@ -403,6 +408,7 @@ export async function listAllComments(
         {
           ...base,
           lawCode: p.lawCode,
+          scienceSubject: null,
           primaryLabel: "정오문제 지문",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
@@ -423,6 +429,7 @@ export async function listAllComments(
         {
           ...base,
           lawCode: p.lawCode,
+          scienceSubject: null,
           primaryLabel: "정오문제 박스 항목",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`

@@ -10,6 +10,7 @@ import makeServerClient from "~/core/lib/supa-client.server";
 import { listAllBookmarks } from "~/features/annotations/queries.server";
 import {
   ALL_RANGE_SELECTION,
+  AidSubjectFilterGroup,
   CardCta,
   CardHeaderRow,
   EmptyState,
@@ -25,7 +26,9 @@ import {
   StarBar,
   formatRelative,
   inRangeSelection,
+  isLawAidSubject,
   isRangeSelectionAll,
+  matchesAidSubject,
   subjectName,
 } from "~/features/study/components/study-aids-list";
 import {
@@ -33,11 +36,6 @@ import {
   toTabCounts,
 } from "~/features/study/components/study-aids-shell";
 import { getStudyAidCounts } from "~/features/study/queries.server";
-import {
-  FIRST_EXAM_LAW_SLUGS,
-  LAW_SUBJECTS,
-  SECOND_EXAM_LAW_SLUGS,
-} from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
   { title: "즐겨찾기 | 리담변리사학원" },
@@ -104,7 +102,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
 
   const q = query.trim().toLowerCase();
   const items = all.filter((b) => {
-    if (subject && b.lawCode !== subject) return false;
+    if (!matchesAidSubject(b, subject)) return false;
     if (type === "ox") {
       if (
         b.targetType !== "problem_choice" &&
@@ -152,32 +150,7 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
           />
         </FilterGroup>
         <FilterDivider />
-        <FilterGroup label="1차 과목">
-          <FilterChip selected={!subject} onClick={() => setSubject(null)}>
-            전체
-          </FilterChip>
-          {FIRST_EXAM_LAW_SLUGS.map((s) => (
-            <FilterChip
-              key={s}
-              selected={subject === s}
-              onClick={() => setSubject(s)}
-            >
-              {LAW_SUBJECTS[s].name}
-            </FilterChip>
-          ))}
-        </FilterGroup>
-        <FilterDivider />
-        <FilterGroup label="2차 과목">
-          {SECOND_EXAM_LAW_SLUGS.map((s) => (
-            <FilterChip
-              key={s}
-              selected={subject === s}
-              onClick={() => setSubject(s)}
-            >
-              {LAW_SUBJECTS[s].name}
-            </FilterChip>
-          ))}
-        </FilterGroup>
+        <AidSubjectFilterGroup value={subject} onChange={setSubject} />
         <FilterDivider />
         <FilterGroup label="유형">
           <FilterChip selected={!type} onClick={() => setType(null)}>
@@ -211,7 +184,8 @@ export default function Bookmarks({ loaderData }: Route.ComponentProps) {
         <RangeSelectionGroup value={rangeSel} onChange={setRangeSel} />
       </FilterBar>
 
-      {problemCount > 0 ? (
+      {/* 묶어 풀기는 법과목 세션 전용 — 자연과학 과목 선택 시 숨김. */}
+      {problemCount > 0 && isLawAidSubject(subject) ? (
         <SessionBanner
           action="/api/study/session-from-bookmarks"
           count={problemCount}

@@ -504,6 +504,8 @@ export interface BookmarkListItem {
   updatedAt: string;
   // 표시 정보.
   lawCode: string | null;
+  /** 자연과학 문제의 과학 과목(physics 등). 법률·조문·판례는 null — 과목 필터 축. */
+  scienceSubject: string | null;
   primaryLabel: string;
   secondaryLabel: string | null;
   bodySnippet: string | null;
@@ -705,6 +707,7 @@ export async function listAllBookmarks(
           notePreview: preview,
           updatedAt: r.updated_at,
           lawCode: a.lawCode,
+          scienceSubject: null,
           primaryLabel: a.displayLabel,
           secondaryLabel: a.articleNumber
             ? articleDisplayPrefix(a.articleNumber)
@@ -727,6 +730,7 @@ export async function listAllBookmarks(
           notePreview: preview,
           updatedAt: r.updated_at,
           lawCode: c.lawCode,
+          scienceSubject: null,
           primaryLabel: c.caseTitle ?? c.caseNumber,
           secondaryLabel: c.caseTitle ? c.caseNumber : null,
           bodySnippet: null,
@@ -752,6 +756,7 @@ export async function listAllBookmarks(
           notePreview: preview,
           updatedAt: r.updated_at,
           lawCode: sci ? null : p.lawCode,
+          scienceSubject: sci,
           primaryLabel: yearLabel,
           secondaryLabel: sci ? scienceSubjectName(sci) : null,
           bodySnippet: p.bodySnippet,
@@ -777,6 +782,7 @@ export async function listAllBookmarks(
           notePreview: preview,
           updatedAt: r.updated_at,
           lawCode: p.lawCode,
+          scienceSubject: p.scienceSubject,
           primaryLabel: `정오문제 지문`,
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
@@ -803,6 +809,7 @@ export async function listAllBookmarks(
           notePreview: preview,
           updatedAt: r.updated_at,
           lawCode: p.lawCode,
+          scienceSubject: p.scienceSubject,
           primaryLabel: `정오문제 박스 항목`,
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
@@ -829,6 +836,7 @@ export interface MemoListItem {
   updatedAt: string;
   // 표시 정보.
   lawCode: string | null;
+  scienceSubject: string | null;
   primaryLabel: string;
   secondaryLabel: string | null;
   bodySnippet: string | null;
@@ -991,6 +999,7 @@ export async function listAllMemos(
         {
           ...base,
           lawCode: a.lawCode,
+          scienceSubject: null,
           primaryLabel: a.displayLabel,
           secondaryLabel: a.articleNumber
             ? articleDisplayPrefix(a.articleNumber)
@@ -1007,6 +1016,7 @@ export async function listAllMemos(
         {
           ...base,
           lawCode: c.lawCode,
+          scienceSubject: null,
           primaryLabel: c.caseTitle ?? c.caseNumber,
           secondaryLabel: c.caseTitle ? c.caseNumber : null,
           bodySnippet: null,
@@ -1026,6 +1036,7 @@ export async function listAllMemos(
         {
           ...base,
           lawCode: sci ? null : p.lawCode,
+          scienceSubject: sci,
           primaryLabel: yearLabel,
           secondaryLabel: sci ? scienceSubjectName(sci) : null,
           bodySnippet: p.bodySnippet,
@@ -1045,6 +1056,7 @@ export async function listAllMemos(
         {
           ...base,
           lawCode: p.lawCode,
+          scienceSubject: p.scienceSubject,
           primaryLabel: "정오문제 지문",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
@@ -1065,6 +1077,7 @@ export async function listAllMemos(
         {
           ...base,
           lawCode: p.lawCode,
+          scienceSubject: p.scienceSubject,
           primaryLabel: "정오문제 박스 항목",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
@@ -1092,6 +1105,7 @@ export interface HighlightListItem {
   fieldPath: string;
   createdAt: string;
   lawCode: string | null;
+  scienceSubject: string | null;
   primaryLabel: string;
   secondaryLabel: string | null;
   bodySnippet: string | null;
@@ -1255,6 +1269,7 @@ export async function listAllHighlights(
         {
           ...base,
           lawCode: a.lawCode,
+          scienceSubject: null,
           primaryLabel: a.displayLabel,
           secondaryLabel: a.articleNumber
             ? articleDisplayPrefix(a.articleNumber)
@@ -1271,6 +1286,7 @@ export async function listAllHighlights(
         {
           ...base,
           lawCode: c.lawCode,
+          scienceSubject: null,
           primaryLabel: c.caseTitle ?? c.caseNumber,
           secondaryLabel: c.caseTitle ? c.caseNumber : null,
           bodySnippet: null,
@@ -1290,6 +1306,7 @@ export async function listAllHighlights(
         {
           ...base,
           lawCode: sci ? null : p.lawCode,
+          scienceSubject: sci,
           primaryLabel: yearLabel,
           secondaryLabel: sci ? scienceSubjectName(sci) : null,
           bodySnippet: p.bodySnippet,
@@ -1309,6 +1326,7 @@ export async function listAllHighlights(
         {
           ...base,
           lawCode: p.lawCode,
+          scienceSubject: p.scienceSubject,
           primaryLabel: "정오문제 지문",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`
@@ -1329,6 +1347,7 @@ export async function listAllHighlights(
         {
           ...base,
           lawCode: p.lawCode,
+          scienceSubject: p.scienceSubject,
           primaryLabel: "정오문제 박스 항목",
           secondaryLabel: p.year
             ? `${p.year}년${p.problemNumber ? ` · ${p.problemNumber}번` : ""}`

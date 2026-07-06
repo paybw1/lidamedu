@@ -2089,6 +2089,67 @@ export async function listWrongAttempts(
   return out;
 }
 
+// 자연과학 오답 — listWrongAttempts 와 동일 룰(가장 최근 시도가 오답).
+// listWrongAttempts 는 laws!inner 조인이라 law 없는 자과 문제가 원천 제외되므로 별도 함수.
+export interface ScienceWrongAttemptItem {
+  problemId: string;
+  lastAttemptedAt: string;
+  attempts: number;
+  bodySnippet: string;
+  scienceSubject: string;
+  year: number | null;
+  problemNumber: number | null;
+}
+
+export async function listScienceWrongAttempts(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<ScienceWrongAttemptItem[]> {
+  const { data: rows, error } = await client
+    .from("user_problem_attempts")
+    .select(
+      "problem_id, is_correct, attempted_at, problems!inner(body_md, year, problem_number, science_subject)",
+    )
+    .eq("user_id", userId)
+    .is("ox_answer", null)
+    .not("problems.science_subject", "is", null)
+    .order("attempted_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  const list = rows ?? [];
+  const lastByProblem = new Map<
+    string,
+    { row: (typeof list)[number]; attempts: number }
+  >();
+  for (const r of list) {
+    const cur = lastByProblem.get(r.problem_id);
+    if (!cur) lastByProblem.set(r.problem_id, { row: r, attempts: 1 });
+    else cur.attempts += 1;
+  }
+  const out: ScienceWrongAttemptItem[] = [];
+  for (const { row, attempts } of lastByProblem.values()) {
+    if (row.is_correct) continue;
+    const sci = row.problems.science_subject;
+    if (!sci) continue;
+    const body = row.problems.body_md ?? "";
+    out.push({
+      problemId: row.problem_id,
+      lastAttemptedAt: row.attempted_at,
+      attempts,
+      bodySnippet: body.length > 120 ? `${body.slice(0, 120)}…` : body,
+      scienceSubject: sci,
+      year: row.problems.year,
+      problemNumber: row.problems.problem_number,
+    });
+  }
+  out.sort(
+    (a, b) =>
+      new Date(b.lastAttemptedAt).getTime() -
+      new Date(a.lastAttemptedAt).getTime(),
+  );
+  return out;
+}
+
 export interface OxWrongAttemptItem {
   refType: "choice" | "box";
   refId: string;

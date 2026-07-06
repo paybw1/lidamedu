@@ -57,6 +57,69 @@ export function subjectName(code: string | null | undefined): string | null {
   return null;
 }
 
+// ── 학습노트 공용 과목 필터(법률+자연과학 단일 축) ──────────────────────────
+// 1차/2차 그룹 폐기 — 전체·민법·특허법·상표법·디자인보호법·물·화·생·지·민소 순 flat.
+export const AID_SUBJECT_OPTIONS = [
+  { key: "civil", name: "민법", kind: "law" },
+  { key: "patent", name: "특허법", kind: "law" },
+  { key: "trademark", name: "상표법", kind: "law" },
+  { key: "design", name: "디자인보호법", kind: "law" },
+  { key: "physics", name: "물리", kind: "science" },
+  { key: "chemistry", name: "화학", kind: "science" },
+  { key: "biology", name: "생물", kind: "science" },
+  { key: "earth_science", name: "지구과학", kind: "science" },
+  { key: "civil-procedure", name: "민사소송법", kind: "law" },
+] as const;
+
+export type AidSubjectKey = (typeof AID_SUBJECT_OPTIONS)[number]["key"];
+
+/** 선택 키가 법률 과목인가 — 세션 만들기(법과목 전용) 배너 노출 판정용. */
+export function isLawAidSubject(key: string | null): boolean {
+  if (!key) return true;
+  return (
+    AID_SUBJECT_OPTIONS.find((o) => o.key === key)?.kind !== "science"
+  );
+}
+
+/** 항목이 선택 과목에 해당하는가 — 법률=lawCode, 자연과학=scienceSubject 로 매칭. */
+export function matchesAidSubject(
+  item: { lawCode: string | null; scienceSubject?: string | null },
+  key: string | null,
+): boolean {
+  if (!key) return true;
+  const opt = AID_SUBJECT_OPTIONS.find((o) => o.key === key);
+  if (!opt) return true;
+  return opt.kind === "science"
+    ? (item.scienceSubject ?? null) === key
+    : item.lawCode === key;
+}
+
+/** 과목 필터 chip 그룹 — 학습노트 5탭 공용. */
+export function AidSubjectFilterGroup({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <FilterGroup label="과목">
+      <FilterChip selected={value === null} onClick={() => onChange(null)}>
+        전체
+      </FilterChip>
+      {AID_SUBJECT_OPTIONS.map((o) => (
+        <FilterChip
+          key={o.key}
+          selected={value === o.key}
+          onClick={() => onChange(o.key)}
+        >
+          {o.name}
+        </FilterChip>
+      ))}
+    </FilterGroup>
+  );
+}
+
 export function TypeBadge({ type }: { type: DisplayType }) {
   const m = TYPE_META[normalizeType(type)];
   return (

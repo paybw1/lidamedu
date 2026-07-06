@@ -20,6 +20,7 @@ import {
 } from "~/features/annotations/queries.server";
 import {
   ALL_RANGE_SELECTION,
+  AidSubjectFilterGroup,
   CardCta,
   CardHeaderRow,
   EmptyState,
@@ -34,6 +35,7 @@ import {
   formatRelative,
   inRangeSelection,
   isRangeSelectionAll,
+  matchesAidSubject,
   subjectName,
 } from "~/features/study/components/study-aids-list";
 import {
@@ -41,11 +43,6 @@ import {
   toTabCounts,
 } from "~/features/study/components/study-aids-shell";
 import { getStudyAidCounts } from "~/features/study/queries.server";
-import {
-  FIRST_EXAM_LAW_SLUGS,
-  LAW_SUBJECTS,
-  SECOND_EXAM_LAW_SLUGS,
-} from "~/features/subjects/lib/subjects";
 
 export const meta: Route.MetaFunction = () => [
   { title: "하이라이트 | 리담변리사학원" },
@@ -147,7 +144,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
 
   const needle = q.trim().toLowerCase();
   const items = all.filter((h) => {
-    if (subject && h.lawCode !== subject) return false;
+    if (!matchesAidSubject(h, subject)) return false;
     if (type === "ox") {
       if (
         h.targetType !== "problem_choice" &&
@@ -210,32 +207,7 @@ export default function Highlights({ loaderData }: Route.ComponentProps) {
           placeholder: "하이라이트 발췌 검색",
         }}
       >
-        <FilterGroup label="1차 과목">
-          <FilterChip selected={!subject} onClick={() => setSubject(null)}>
-            전체
-          </FilterChip>
-          {FIRST_EXAM_LAW_SLUGS.map((s) => (
-            <FilterChip
-              key={s}
-              selected={subject === s}
-              onClick={() => setSubject(s)}
-            >
-              {LAW_SUBJECTS[s].name}
-            </FilterChip>
-          ))}
-        </FilterGroup>
-        <FilterDivider />
-        <FilterGroup label="2차 과목">
-          {SECOND_EXAM_LAW_SLUGS.map((s) => (
-            <FilterChip
-              key={s}
-              selected={subject === s}
-              onClick={() => setSubject(s)}
-            >
-              {LAW_SUBJECTS[s].name}
-            </FilterChip>
-          ))}
-        </FilterGroup>
+        <AidSubjectFilterGroup value={subject} onChange={setSubject} />
         <FilterDivider />
         <FilterGroup label="유형">
           <FilterChip selected={!type} onClick={() => setType(null)}>

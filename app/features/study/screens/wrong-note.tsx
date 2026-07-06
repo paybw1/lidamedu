@@ -9,13 +9,12 @@ import { Link, data } from "react-router";
 import makeServerClient from "~/core/lib/supa-client.server";
 import {
   ALL_RANGE_SELECTION,
+  AidSubjectFilterGroup,
   CardCta,
   CardHeaderRow,
   EmptyState,
   FilterBar,
-  FilterChip,
   FilterDivider,
-  FilterGroup,
   ListStack,
   type RangeSelection,
   RangeSelectionGroup,
@@ -23,7 +22,9 @@ import {
   SectionTitle,
   SessionBanner,
   inRangeSelection,
+  isLawAidSubject,
   isRangeSelectionAll,
+  matchesAidSubject,
   subjectName,
 } from "~/features/study/components/study-aids-list";
 import {
@@ -33,13 +34,13 @@ import {
 import {
   getStudyAidCounts,
   listOxWrongAttempts,
+  listScienceWrongAttempts,
   listWrongAttempts,
 } from "~/features/study/queries.server";
 import {
-  FIRST_EXAM_LAW_SLUGS,
-  LAW_SUBJECTS,
-  SECOND_EXAM_LAW_SLUGS,
-} from "~/features/subjects/lib/subjects";
+  scienceProblemHref,
+  scienceSubjectName,
+} from "~/features/subjects/lib/science";
 
 export const meta: Route.MetaFunction = () => [
   { title: "오답노트 | 리담변리사학원" },
@@ -52,11 +53,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   } = await client.auth.getUser();
   if (!user) throw data("Unauthorized", { status: 401 });
 
-  const [items, oxItems, aidCounts] = await Promise.all([
+  const [lawItems, sciItems, oxItems, aidCounts] = await Promise.all([
     listWrongAttempts(client, user.id),
+    listScienceWrongAttempts(client, user.id),
     listOxWrongAttempts(client, user.id),
     getStudyAidCounts(client, user.id),
   ]);
+  // 법률 + 자연과학 오답을 한 목록으로 — 과목 필터(law/science 단일 축) 공용.
+  const items = [
+    ...lawItems.map((p) => ({
+      ...p,
+      lawCode: p.lawCode as string | null,
+      scienceSubject: null as string | null,
+    })),
+    ...sciItems.map((p) => ({
+      ...p,
+      lawCode: null as string | null,
+      scienceSubject: p.scienceSubject as string | null,
+      primaryArticleLabel: null as string | null,
+    })),
+  ].sort(
+    (a, b) =>
+      new Date(b.lastAttemptedAt).getTime() -
+      new Date(a.lastAttemptedAt).getTime(),
+  );
   return { items, oxItems, aidCounts };
 }
 
@@ -85,15 +105,17 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
   const [rangeSel, setRangeSel] = useState<RangeSelection>(ALL_RANGE_SELECTION);
 
   const mcq = items.filter((p) => {
-    if (subject && p.lawCode !== subject) return false;
+    if (!matchesAidSubject(p, subject)) return false;
     if (!inRangeSelection(p.lastAttemptedAt, rangeSel)) return false;
     return true;
   });
   const ox = oxItems.filter((o) => {
-    if (subject && o.lawCode !== subject) return false;
+    if (!matchesAidSubject(o, subject)) return false;
     if (!inRangeSelection(o.lastAttemptedAt, rangeSel)) return false;
     return true;
   });
+  // 세션 만들기는 법과목 전용 — 배너 카운트도 법률 오답만.
+  const lawMcqCount = mcq.filter((p) => p.lawCode !== null).length;
 
   return (
     <StudyAidsShell
@@ -119,35 +141,7 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
           setRangeSel(ALL_RANGE_SELECTION);
         }}
       >
-        <FilterGroup label="1차 과목">
-          <FilterChip
-            selected={subject === null}
-            onClick={() => setSubject(null)}
-          >
-            전체
-          </FilterChip>
-          {FIRST_EXAM_LAW_SLUGS.map((s) => (
-            <FilterChip
-              key={s}
-              selected={subject === s}
-              onClick={() => setSubject(s)}
-            >
-              {LAW_SUBJECTS[s].name}
-            </FilterChip>
-          ))}
-        </FilterGroup>
-        <FilterDivider />
-        <FilterGroup label="2차 과목">
-          {SECOND_EXAM_LAW_SLUGS.map((s) => (
-            <FilterChip
-              key={s}
-              selected={subject === s}
-              onClick={() => setSubject(s)}
-            >
-              {LAW_SUBJECTS[s].name}
-            </FilterChip>
-          ))}
-        </FilterGroup>
+        <AidSubjectFilterGroup value={subject} onChange={setSubject} />
         <FilterDivider />
         <RangeSelectionGroup
           value={rangeSel}
@@ -156,10 +150,10 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
         />
       </FilterBar>
 
-      {mcq.length > 0 ? (
+      {lawMcqCount > 0 && isLawAidSubject(subject) ? (
         <SessionBanner
           action="/api/study/session-from-wrong"
-          count={mcq.length}
+          count={lawMcqCount}
           hint="학습 모드는 해설이 바로 보이고, 시험 모드는 타이머·일괄 채점으로 진행됩니다."
           testidPrefix="wrong-start"
           hidden={
@@ -185,11 +179,19 @@ export default function WrongNote({ loaderData }: Route.ComponentProps) {
             {mcq.map((p) => (
               <ResultCard
                 key={p.problemId}
-                to={`/subjects/${p.lawCode}/problems/${p.problemId}`}
+                to={
+                  p.scienceSubject
+                    ? scienceProblemHref(p.scienceSubject, p.problemId)
+                    : `/subjects/${p.lawCode}/problems/${p.problemId}`
+                }
               >
                 <CardHeaderRow
                   type="problem"
-                  lawName={subjectName(p.lawCode)}
+                  lawName={
+                    p.scienceSubject
+                      ? scienceSubjectName(p.scienceSubject)
+                      : subjectName(p.lawCode)
+                  }
                   secondary={metaLine(
                     p.primaryArticleLabel,
                     p.year,
