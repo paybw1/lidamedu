@@ -40,6 +40,8 @@ const schema = z.object({
   screenKey: z.string().max(60).nullable(),
   isPublished: z.boolean(),
   displayOrder: z.coerce.number().int().min(0).max(999),
+  // student=전체 학생 / staff=운영자·강사 전용(종합반 운영 가이드 등).
+  audience: z.enum(["student", "staff"]).default("student"),
 });
 
 function toNullable(v: FormDataEntryValue | null): string | null {
@@ -90,6 +92,7 @@ export async function action({ request }: Route.ActionArgs) {
     screenKey: toNullable(fd.get("screenKey")),
     isPublished: fd.get("isPublished") === "1",
     displayOrder: fd.get("displayOrder") ?? 0,
+    audience: fd.get("audience") === "staff" ? "staff" : "student",
   });
   if (!parsed.success) {
     return data(
@@ -106,6 +109,7 @@ export async function action({ request }: Route.ActionArgs) {
     screenKey: parsed.data.screenKey,
     isPublished: parsed.data.isPublished,
     displayOrder: parsed.data.displayOrder,
+    audience: parsed.data.audience,
   };
 
   if (parsed.data.intent === "create") {

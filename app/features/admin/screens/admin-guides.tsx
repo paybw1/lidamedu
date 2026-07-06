@@ -146,6 +146,7 @@ function GuideRow({
           ) : (
             <Chip tone="neutral">임시저장</Chip>
           )}
+          {g.audience === "staff" ? <Chip tone="amber">운영자</Chip> : null}
         </TD>
         <TD align="right" mono soft>
           {g.updatedAt.slice(0, 10)}
@@ -259,7 +260,7 @@ function GuideForm({
         <input type="hidden" name="guideId" value={g!.guideId} />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-5">
         <FormField label="제목 *">
           <Input
             name="title"
@@ -295,6 +296,16 @@ function GuideForm({
             defaultValue={g?.displayOrder ?? 0}
             className="h-8 text-xs"
           />
+        </FormField>
+        <FormField label="대상">
+          <select
+            name="audience"
+            defaultValue={g?.audience ?? "student"}
+            className="border-input bg-background focus:border-primary h-8 w-full rounded-md border px-2 text-xs outline-none"
+          >
+            <option value="student">학생 전체</option>
+            <option value="staff">운영자·강사 전용</option>
+          </select>
         </FormField>
         <div className="flex items-end pb-1">
           <label className="inline-flex items-center gap-1.5 text-xs">

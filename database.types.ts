@@ -3831,6 +3831,7 @@ export type Database = {
       }
       guide_articles: {
         Row: {
+          audience: string
           body_md: string
           category: string
           created_at: string
@@ -3844,6 +3845,7 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          audience?: string
           body_md?: string
           category?: string
           created_at?: string
@@ -3857,6 +3859,7 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          audience?: string
           body_md?: string
           category?: string
           created_at?: string

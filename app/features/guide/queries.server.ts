@@ -5,6 +5,8 @@ import type { Database } from "database.types";
 
 import adminClient from "~/core/lib/supa-admin-client.server";
 
+export type GuideAudience = "student" | "staff";
+
 export interface GuideArticle {
   guideId: string;
   title: string;
@@ -14,6 +16,8 @@ export interface GuideArticle {
   screenKey: string | null;
   isPublished: boolean;
   displayOrder: number;
+  /** student=전체 학생 노출 / staff=운영자·강사 전용(RLS 가 학생에게 숨김). */
+  audience: GuideAudience;
   updatedAt: string;
 }
 
@@ -26,6 +30,7 @@ function rowToGuide(r: {
   screen_key: string | null;
   is_published: boolean;
   display_order: number;
+  audience: string;
   updated_at: string;
 }): GuideArticle {
   return {
@@ -37,12 +42,13 @@ function rowToGuide(r: {
     screenKey: r.screen_key,
     isPublished: r.is_published,
     displayOrder: r.display_order,
+    audience: r.audience === "staff" ? "staff" : "student",
     updatedAt: r.updated_at,
   };
 }
 
 const COLS =
-  "guide_id, title, category, body_md, youtube_url, screen_key, is_published, display_order, updated_at";
+  "guide_id, title, category, body_md, youtube_url, screen_key, is_published, display_order, audience, updated_at";
 
 /** 학생 — 발행된 가이드 전체(카테고리·순서 정렬). RLS 가 발행본만 반환. */
 export async function listPublishedGuides(
@@ -108,6 +114,7 @@ export interface GuideInput {
   screenKey: string | null;
   isPublished: boolean;
   displayOrder: number;
+  audience: GuideAudience;
 }
 
 export async function createGuide(
@@ -124,6 +131,7 @@ export async function createGuide(
       screen_key: input.screenKey,
       is_published: input.isPublished,
       display_order: input.displayOrder,
+      audience: input.audience,
       created_by: actorId,
     })
     .select("guide_id")
@@ -146,6 +154,7 @@ export async function updateGuide(
       screen_key: input.screenKey,
       is_published: input.isPublished,
       display_order: input.displayOrder,
+      audience: input.audience,
       updated_at: new Date().toISOString(),
     })
     .eq("guide_id", guideId);

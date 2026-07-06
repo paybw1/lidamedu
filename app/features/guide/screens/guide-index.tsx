@@ -33,6 +33,8 @@ const CATEGORY_ORDER = [
   "질문하기",
   "커뮤니티",
   "수강권·결제",
+  // staff 전용(RLS 로 학생에게 안 보임) — 맨 뒤.
+  "종합반 운영",
 ];
 
 export default function GuideIndex({ loaderData }: Route.ComponentProps) {
@@ -86,6 +88,13 @@ export default function GuideIndex({ loaderData }: Route.ComponentProps) {
             <section key={cat}>
               <h2 className="text-foreground mb-2.5 text-sm font-bold">
                 {cat}
+                {guides.some(
+                  (g) => g.category === cat && g.audience === "staff",
+                ) ? (
+                  <span className="ml-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                    운영자·강사 전용
+                  </span>
+                ) : null}
               </h2>
               <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {guides
