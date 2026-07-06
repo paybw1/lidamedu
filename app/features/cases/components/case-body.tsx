@@ -555,6 +555,11 @@ function CaseImagesGrid({ images }: { images: CaseImage[] }) {
 function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   if (rows.length === 0) return null;
   const [head, ...body] = rows;
+  // 원본(HWP)의 열 병합 정보는 파싱 시 소실 — 셀 수가 적은 행은 마지막 셀이 남은 열을
+  // 병합(colSpan)해 표 폭을 채운다 (예: "출원일/등록일 | 값" 2셀 행이 3열 표를 채움).
+  const cols = Math.max(...rows.map((r) => r.length));
+  const spanFor = (row: BookSectionCell[], ci: number) =>
+    ci === row.length - 1 ? cols - row.length + 1 : 1;
   return (
     <div className="overflow-x-auto">
       <table className="border-border w-full border-collapse text-[length:calc(15px*var(--study-fs))]">
@@ -563,6 +568,7 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
             {head.map((c, i) => (
               <th
                 key={i}
+                colSpan={spanFor(head, i)}
                 className="border-border bg-muted/60 text-foreground border px-3 py-2 text-center text-[13px] font-bold whitespace-nowrap"
               >
                 <BookCell cell={c} />
@@ -576,6 +582,7 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
               {row.map((c, ci) => (
                 <td
                   key={ci}
+                  colSpan={spanFor(row, ci)}
                   className={cn(
                     "border-border border px-3 py-2 align-middle leading-relaxed",
                     // 첫 열(라벨: 상표/출원일/권리자 등)은 헤더 톤
