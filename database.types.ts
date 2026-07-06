@@ -5404,6 +5404,47 @@ export type Database = {
           },
         ]
       }
+      payment_webhook_events: {
+        Row: {
+          detail: string | null
+          event_id: string
+          event_type: string | null
+          outcome: string
+          payment_id: string | null
+          raw: Json | null
+          received_at: string
+          toss_order_id: string | null
+        }
+        Insert: {
+          detail?: string | null
+          event_id?: string
+          event_type?: string | null
+          outcome: string
+          payment_id?: string | null
+          raw?: Json | null
+          received_at?: string
+          toss_order_id?: string | null
+        }
+        Update: {
+          detail?: string | null
+          event_id?: string
+          event_type?: string | null
+          outcome?: string
+          payment_id?: string | null
+          raw?: Json | null
+          received_at?: string
+          toss_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_webhook_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["payment_id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_krw: number

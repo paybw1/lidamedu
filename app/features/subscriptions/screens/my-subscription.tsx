@@ -62,6 +62,8 @@ export async function loader({ request }: Route.LoaderArgs) {
         : null;
   const url = new URL(request.url);
   const paid = url.searchParams.get("paid") === "1";
+  // 가상계좌 발급 완료·입금 대기 — 입금 확인(웹훅) 후 구독이 활성화된다.
+  const deposit = url.searchParams.get("deposit") === "1";
   const failed = url.searchParams.get("failed") === "1";
   const failMsg = url.searchParams.get("msg");
   const refunded = url.searchParams.get("refunded") === "1";
@@ -90,6 +92,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     active,
     payments,
     paid,
+    deposit,
     failed,
     failMsg,
     refunded,
@@ -120,6 +123,7 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
     active,
     payments,
     paid,
+    deposit,
     failed,
     failMsg,
     refunded,
@@ -150,6 +154,15 @@ export default function MySubscription({ loaderData }: Route.ComponentProps) {
             <CheckCircle2Icon className="mr-1 inline size-4" />
             결제가 완료되어 구독이 활성화되었습니다. 대시보드에서 새 기능을
             확인해 보세요.
+          </CardContent>
+        </Card>
+      ) : null}
+      {deposit ? (
+        <Card className="mb-4 border-amber-300 bg-amber-50/60">
+          <CardContent className="px-4 py-3 text-sm text-amber-900">
+            <CircleAlertIcon className="mr-1 inline size-4" />
+            가상계좌가 발급되었습니다. 입금이 확인되면 구독이 자동으로
+            활성화됩니다.
           </CardContent>
         </Card>
       ) : null}

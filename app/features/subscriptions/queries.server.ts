@@ -310,7 +310,7 @@ export interface ConfirmPaymentInput {
 //  · 같은 플랜·과목의 활성 구독 있으면 만료일 연장, 없으면 신규.
 //  · 신규 + 가입 15일 체험 중이면 유료 기간을 체험 종료일부터 시작(#3).
 //  · autoRenew 지정 시 정기결제 여부 반영(빌링=true).
-async function upsertPaidSubscription(
+export async function upsertPaidSubscription(
   admin: SupabaseClient<Database>,
   input: {
     userId: string;
@@ -412,10 +412,13 @@ async function upsertPaidSubscription(
 }
 
 // 토스 confirm API 호출 후 payment + subscription row 갱신.
+//   가상계좌(WAITING_FOR_DEPOSIT)는 승인만 된 상태 — 구독을 활성화하지 않고
+//   pending 으로 두며, 입금 완료는 웹훅(/api/payments/toss/webhook)이 반영한다.
 export async function confirmPayment(
   input: ConfirmPaymentInput,
 ): Promise<
   | { ok: true; subscription: UserSubscription }
+  | { ok: true; pendingDeposit: true }
   | { ok: false; error: string }
 > {
   const admin = adminClient as SupabaseClient<Database>;
@@ -473,6 +476,34 @@ export async function confirmPayment(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: `Toss API 호출 실패: ${msg}` };
+  }
+
+  // 2.5) 승인 응답의 실제 상태 검증 — HTTP 200 이어도 DONE 이어야 완료.
+  const tossStatus =
+    typeof tossPayload?.status === "string" ? tossPayload.status : null;
+  if (tossStatus === "WAITING_FOR_DEPOSIT") {
+    // 가상계좌 발급 완료·입금 전 — 키/응답만 저장하고 pending 유지(입금=웹훅).
+    await admin
+      .from("payments")
+      .update({
+        toss_payment_key: input.tossPaymentKey,
+        toss_response: tossPayload as never,
+      })
+      .eq("payment_id", payRow.payment_id);
+    return { ok: true, pendingDeposit: true };
+  }
+  if (tossStatus !== "DONE") {
+    const msg = `승인 상태 이상 (${tossStatus ?? "unknown"})`;
+    await admin
+      .from("payments")
+      .update({
+        status: "failed",
+        failure_reason: msg,
+        toss_payment_key: input.tossPaymentKey,
+        toss_response: tossPayload as never,
+      })
+      .eq("payment_id", payRow.payment_id);
+    return { ok: false, error: msg };
   }
 
   // 3) payment 완료 마킹

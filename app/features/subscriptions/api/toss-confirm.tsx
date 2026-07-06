@@ -37,5 +37,9 @@ export async function loader({ request }: Route.LoaderArgs) {
     });
     throw redirect(`/me/subscription?${params.toString()}`);
   }
+  // 가상계좌 — 입금 전이라 구독 미활성. 입금 완료는 토스 웹훅이 반영.
+  if ("pendingDeposit" in res) {
+    throw redirect("/me/subscription?deposit=1");
+  }
   throw redirect("/me/subscription?paid=1");
 }

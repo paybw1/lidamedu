@@ -46,3 +46,28 @@
 ## 오픈일 · 티저 대표가 (2026-07-02)
 - `subscription_plans.available_from`(nullable) — 오픈 예정 상품. 상표법·디자인보호법 및 이를 포함한 번들(bundle_ip/bundle_all) = 2026-08-01(데이터 고도화 중). pricing "N월 오픈" 배지 + 구매 차단(create-order 가드), admin-plans 오픈일 필드. KST 월 라벨 `openMonthLabel`.
 - 요금표 티저(랜딩)에 대표 번들(1차 전체 통합) 할인가 노출 — home 로더가 bundle_all + 활성 할인으로 유효가 산출→PricingTeaserSection. 번들 자동 할인 ₩45,000(기존 '오픈 기념 할인' ₩50,000은 비활성 전환).
+
+## 토스 웹훅 (2026-07-06)
+
+가상계좌 입금·결제취소·환불을 DB(payments·user_subscriptions)에 동기화.
+
+- **엔드포인트**: `POST /api/payments/toss/webhook` (`subscriptions/api/toss-webhook.tsx`,
+  비인증 리소스 라우트). 토스 개발자센터에 `https://www.lidamipedu.com/api/payments/toss/webhook` 등록 필요.
+- **보안 모델**: 토스 웹훅은 서명이 없어 **페이로드를 신뢰하지 않는다** — orderId 로 우리
+  결제 행을 먼저 대조(없으면 토스 호출 없이 종료)하고, `GET /v1/payments/orders/{orderId}`
+  를 시크릿 키로 호출해 권위 상태를 받아 반영. 위조 웹훅 = 무해한 재동기화 트리거.
+- **상태 매핑** (`webhook.server.ts` syncPaymentFromToss, 전이마다 현재 상태 가드 = 멱등):
+  - `DONE` → pending 이면 completed + 구독 활성화(upsertPaidSubscription 재사용, 금액 불일치는 반영 안 함)
+  - `CANCELED` → completed 면 refunded + 연결 활성 구독 종료 / pending(입금 전 취소)이면 failed
+  - `PARTIAL_CANCELED` → refund_amount_krw 기록만(구독 유지, 정산 환불차감이 집계)
+  - `ABORTED`·`EXPIRED` → pending 이면 failed(가상계좌 기한 만료 등)
+  - `WAITING_FOR_DEPOSIT` → 키 저장, pending 유지
+- **응답 규약**: 반영/무시=200(재전송 중단), 토스 API 일시 실패만 500(토스 재시도).
+- **감사 로그**: `payment_webhook_events` (event_type·orderId·outcome·detail·raw,
+  staff read RLS·쓰기 service_role). 마이그 `scripts/sql/20260706_payment_webhook_events.sql`.
+- **confirm 보강**: `confirmPayment` 가 승인 응답의 `status` 를 검증 — `WAITING_FOR_DEPOSIT`
+  (가상계좌)은 구독을 활성화하지 않고 pending 유지(`/me/subscription?deposit=1` 안내 배너),
+  입금 완료는 웹훅이 반영. DONE 아닌 상태는 failed 처리. (기존엔 HTTP 200 이면 무조건
+  completed — 가상계좌 도입 시 입금 전 활성화 버그였을 지점.)
+- 검증: 로컬 dev(운영 DB)로 GET 헬스체크·orderId 없음·미지 주문·실주문(이미 completed →
+  "이미 completed" 멱등 무시) 4경로 + 이벤트 로그 기록 확인.

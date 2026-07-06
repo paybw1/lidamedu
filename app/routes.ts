@@ -859,6 +859,11 @@ export default [
         "/api/payments/toss/confirm",
         "features/subscriptions/api/toss-confirm.tsx",
       ),
+      // 토스 웹훅(비인증 리소스 라우트) — 가상계좌 입금·취소·환불 동기화.
+      route(
+        "/api/payments/toss/webhook",
+        "features/subscriptions/api/toss-webhook.tsx",
+      ),
       // feat-8-028 Stage 5 — 자동결제 카드 등록 콜백(빌링키 발급 + 첫 달 청구).
       route(
         "/api/payments/toss/billing-confirm",
