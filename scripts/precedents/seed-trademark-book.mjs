@@ -65,10 +65,19 @@ async function toWebp(binId) {
     if (hit.ext === "bmp") {
       const decoded = bmp.decode(buf);
       // bmp-js 는 ABGR 순 — sharp raw 는 RGBA 기대. 채널 스왑.
+      // ★24비트 BMP 는 bmp-js 가 알파를 0 으로 채움 → 그대로 두면 전면 투명(백지).
+      //   알파가 전부 0 이면 불투명(255)으로 보정.
       const px = decoded.data;
+      let hasAlpha = false;
+      for (let i = 0; i < px.length; i += 4) {
+        if (px[i] !== 0) {
+          hasAlpha = true;
+          break;
+        }
+      }
       for (let i = 0; i < px.length; i += 4) {
         const a = px[i], b = px[i + 1], g = px[i + 2], r = px[i + 3];
-        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = a;
+        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = hasAlpha ? a : 255;
       }
       img = sharp(px, { raw: { width: decoded.width, height: decoded.height, channels: 4 } });
     } else if (["wmf", "emf", "ole"].includes(hit.ext)) {

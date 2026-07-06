@@ -73,6 +73,46 @@ const upsertSchema = z.object({
   exam2ndYears: z.array(z.number().int().min(1990).max(2099)),
 });
 
+// feat-3-213 — 판례집 구조화 본문(book_sections) 편집. 폼에 bookSections 필드가 있을 때만
+// 반영(없으면 컬럼 불변). 섹션 0개면 null 저장 → 뷰어가 generic 필드 렌더로 복귀.
+const bookSectionsSchema = z
+  .array(
+    z.object({
+      key: z.string().trim().min(1).max(40),
+      label: z.string().trim().min(1).max(60),
+      blocks: z
+        .array(
+          z.union([
+            z.object({ type: z.literal("p"), text: z.string().max(20_000) }),
+            z.object({
+              type: z.literal("table"),
+              rows: z
+                .array(
+                  z
+                    .array(
+                      z.object({
+                        text: z.string().max(4_000),
+                        images: z
+                          .array(
+                            z.object({
+                              url: z.string().url().max(1_000),
+                              alt: z.string().max(300),
+                            }),
+                          )
+                          .max(10),
+                      }),
+                    )
+                    .max(12),
+                )
+                .max(60),
+            }),
+          ]),
+        )
+        .max(80),
+    }),
+  )
+  .max(20);
+
 // 판결전문 PDF storage 버킷.
 const FULL_TEXT_PDF_BUCKET = "case-full-text-pdfs";
 const FULL_TEXT_PDF_MAX_BYTES = 30 * 1024 * 1024;
@@ -701,8 +741,44 @@ export async function action({ request }: Route.ActionArgs) {
         (it.commentMd !== undefined && it.commentMd !== ""),
     );
 
+  // book_sections — 폼에 필드가 있을 때만 반영. 빈 문단·빈 섹션 정리 후 0개면 null.
+  let bookSectionsPatch: { book_sections: Json } | Record<string, never> = {};
+  const bookSectionsRaw = fd.get("bookSections");
+  if (bookSectionsRaw !== null) {
+    let parsedSections: unknown;
+    try {
+      parsedSections = JSON.parse(String(bookSectionsRaw));
+    } catch {
+      return data({ error: "교재 구조 본문 형식이 올바르지 않습니다." }, { status: 400 });
+    }
+    const secParsed = bookSectionsSchema.safeParse(parsedSections);
+    if (!secParsed.success) {
+      return data(
+        { error: `교재 구조 본문: ${secParsed.error.issues[0]?.message ?? "Invalid"}` },
+        { status: 400 },
+      );
+    }
+    const cleaned = secParsed.data
+      .map((s) => ({
+        ...s,
+        blocks: s.blocks.filter((b) =>
+          b.type === "p"
+            ? b.text.trim() !== ""
+            : b.rows.some((row) => row.some((c) => c.text.trim() !== "" || c.images.length > 0)),
+        ),
+      }))
+      .filter((s) => s.blocks.length > 0);
+    bookSectionsPatch = {
+      book_sections:
+        cleaned.length > 0
+          ? (JSON.parse(JSON.stringify({ kind: "tm-book", sections: cleaned })) as Json)
+          : null,
+    };
+  }
+
   // full_text_pdf 컬럼은 별도 intent(upload/remove)로만 변경 — 메타 폼은 건드리지 않는다.
   const payload = {
+    ...bookSectionsPatch,
     subject_laws: input.subjectLaws,
     court: input.court,
     decided_at: input.decidedAt,

@@ -36,11 +36,13 @@ import {
   CASE_IMAGE_POSITIONS,
   CASE_IMAGE_POSITION_LABELS,
   COURT_LABELS,
+  parseBookSections,
   parseCaseImages,
   type CaseImage,
   type CaseImagePosition,
 } from "~/features/cases/labels";
 import { AdminShell } from "~/features/admin/components/admin-shell";
+import { BookSectionsEditor } from "~/features/admin/components/book-sections-editor";
 import { CaseCitationsCard } from "~/features/admin/components/case-citations-card";
 import { AdminSelect, Field } from "~/features/admin/components/admin-ui";
 import {
@@ -359,6 +361,26 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
                 imagePosition="reasoning"
               />
             </Field>
+          </CardContent>
+        </Card>
+
+        {/* feat-3-213 — 판례집 구조화 본문 (상표 제16판 등). 있으면 학생 뷰어 표시의 SSOT.
+            섹션 0개로 저장하면 null → 위의 generic 필드(요지/판시이유/비고)로 렌더 복귀. */}
+        <Card>
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              교재 구조 본문 (쟁점상표 표 → 사안의 쟁점 → … → 평석)
+            </p>
+            <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+              이 섹션이 있으면 학생 뷰어는 <strong>교재 구조로만</strong> 렌더합니다 —
+              위의 요지·판시이유·비고 필드는 검색/목록 제목에만 쓰입니다. 표 셀 이미지는
+              아래 "본문 이미지" 카드에 업로드한 뒤 URL 을 셀에 붙여넣으세요.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <BookSectionsEditor
+              defaultSections={parseBookSections(kase?.book_sections)}
+            />
           </CardContent>
         </Card>
 

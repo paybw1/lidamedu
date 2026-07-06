@@ -34,9 +34,17 @@ async function toWebp(binId) {
     if (hit.ext === "bmp") {
       const d = bmp.decode(buf);
       const px = d.data;
+      // ★24비트 BMP 는 bmp-js 알파=0 → 불투명 보정 (seed-trademark-book.mjs 와 동일)
+      let hasAlpha = false;
+      for (let i = 0; i < px.length; i += 4) {
+        if (px[i] !== 0) {
+          hasAlpha = true;
+          break;
+        }
+      }
       for (let i = 0; i < px.length; i += 4) {
         const a = px[i], b = px[i + 1], g = px[i + 2], r = px[i + 3];
-        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = a;
+        px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = hasAlpha ? a : 255;
       }
       img = sharp(px, { raw: { width: d.width, height: d.height, channels: 4 } });
     } else if (["wmf", "emf", "ole"].includes(hit.ext)) {
