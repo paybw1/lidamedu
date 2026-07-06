@@ -337,7 +337,9 @@ function buildSections(c, imageUrlByBin) {
       title: ex.title,
     });
   }
-  return sections;
+  // 참고 섹션은 항상 문서 끝(평석 뒤)에 — 원 섹션 인접 배치에서 전역 재배치(원장 지시 2026-07-07).
+  const isRef = (s) => s.key === "reference" || s.key.startsWith("reference-");
+  return [...sections.filter((s) => !isRef(s)), ...sections.filter(isRef)];
 }
 
 const { data: rows, error } = await sb
