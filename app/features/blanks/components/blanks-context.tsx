@@ -389,9 +389,21 @@ export function BlanksRenderProvider({
   );
 
   const checkAnswer = useCallback(
-    (idx: number, rawInput: string) => {
+    (idx: number, rawInput: string, composing = false) => {
       const blank = blanks.find((b) => b.idx === idx);
       if (!blank?.answer) return;
+
+      // ★한글 IME 조합 중에는 어떤 DOM 조작·값 변형도 하지 않는다 — 조합 중
+      // el.value 재작성(아래 leak 차단 포함)이 조합을 파괴해 "첫 글자가 지워지는"
+      // 버그의 원인. 조합 중엔 상태만 반영하고, 최종 판정은 compositionend 의
+      // onChange(composing=false) 에서 수행한다.
+      if (composing) {
+        updateState(idx, {
+          input: rawInput,
+          status: rawInput.length > 0 ? "wrong" : "empty",
+        });
+        return;
+      }
 
       // 외부 메커니즘(IME 단어학습/Ginger 같은 확장/autofill) 이 input 에
       // 직전 답 (또는 그 일부) 를 prefill 하는 leak 차단.
@@ -544,7 +556,7 @@ export function BlanksRenderProvider({
               status={showRevealed ? "revealed" : state.status}
               widthCh={widthCh}
               hintNext={hintNextIdx === h.blank.idx}
-              onChange={(v) => checkAnswer(h.blank.idx, v)}
+              onChange={(v, composing) => checkAnswer(h.blank.idx, v, composing)}
               onFocusInput={() => setHintNextIdx(null)}
               registerInput={registerInput}
               voiceSupported={voice.isSupported}
@@ -632,13 +644,16 @@ function BlankInputInline({
   status: BlankState["status"];
   widthCh: number;
   hintNext: boolean;
-  onChange: (v: string) => void;
+  onChange: (v: string, composing: boolean) => void;
   onFocusInput: () => void;
   registerInput: (idx: number, el: HTMLInputElement | null) => void;
   voiceSupported: boolean;
   voiceActive: boolean;
   onToggleVoice: (idx: number) => void;
 }) {
+  // 한글 IME 조합 진행 여부 — 조합 중엔 DOM 값 강제 동기화·판정 변형을 전부
+  // 건너뛴다(조합 파괴 = 첫 글자 소실 버그). ref 라 리렌더 없음.
+  const composingRef = useRef(false);
   const cls = cn(
     "mx-0.5 inline-block rounded border-b-2 px-1 align-baseline focus:outline-none",
     status === "correct" || status === "revealed"
@@ -663,7 +678,7 @@ function BlankInputInline({
         rawLen: raw.length,
       });
     }
-    onChange(raw);
+    onChange(raw, composingRef.current);
   };
   return (
     // span 으로 inline. <form> wrap 은 <p> 안에 nested 불가(HTML 위반)라
@@ -697,12 +712,21 @@ function BlankInputInline({
           onFocusInput();
         }}
         onCompositionStart={(e) => {
+          // 조합 시작 직전 — 아직 삽입 전이라 autofill leak 정리는 안전.
           if (e.currentTarget.value !== value) {
             e.currentTarget.value = value;
           }
+          composingRef.current = true;
+        }}
+        onCompositionEnd={(e) => {
+          composingRef.current = false;
+          // 조합 확정값으로 최종 판정(조합 중엔 상태 반영만 했음).
+          onChange(e.currentTarget.value, false);
         }}
         onBeforeInput={(e) => {
-          if (e.currentTarget.value !== value) {
+          // ★조합 중 강제 동기화 금지 — 리렌더가 한 박자 늦은 시점에 stale 값으로
+          // 되돌리면 조합이 파괴돼 첫 글자가 지워진다.
+          if (!composingRef.current && e.currentTarget.value !== value) {
             e.currentTarget.value = value;
           }
         }}
