@@ -77,24 +77,43 @@ function boxParasOf(pNode) {
   return out;
 }
 
-// 셀 내부 이미지 ref (dedup)
+// 셀 내부 이미지 ref (dedup) — 중첩 표 내부는 제외(중첩 표의 자기 셀에서 수집)
 function cellImages(node) {
   const refs = [];
-  (function walk(n) {
+  (function walk(n, root) {
+    if (!root && tagOf(n) === "hp:tbl") return;
     const attrs = attrsOf(n);
     const ref = attrs["@_binaryItemIDRef"] ?? attrs["@_BinaryItemIDRef"];
     if (ref && !refs.includes(ref)) refs.push(ref);
-    for (const c of childrenOf(n)) walk(c);
-  })(node);
+    for (const c of childrenOf(n)) walk(c, false);
+  })(node, true);
   return refs;
 }
 
-// 셀 텍스트 — 내부 문단들을 줄바꿈으로 연결 (중첩 p 포함, 캡션 제외)
+// 셀 내부의 중첩 표(1단계) — 평석 박스 속 비교표 등을 구조 보존.
+function cellNestedTables(node) {
+  const out = [];
+  (function walk(n, root) {
+    if (!root && tagOf(n) === "hp:tbl") {
+      out.push(n);
+      return;
+    }
+    for (const c of childrenOf(n)) walk(c, false);
+  })(node, true);
+  return out;
+}
+
+// 셀 텍스트 — 내부 문단들을 줄바꿈으로 연결 (중첩 p 포함, 캡션 제외).
+// ★중첩 표는 텍스트로 흡수하지 않고 위치 마커 ⟦TBL⟧ 라인으로 남긴다(구조는 cellNestedTables 로).
 function cellText(node) {
   const parts = [];
   (function walk(n) {
     const tag = tagOf(n);
     if (tag === "hp:shapeComment") return;
+    if (tag === "hp:tbl") {
+      parts.push("⟦TBL⟧");
+      return;
+    }
     if (tag === "hp:p") {
       let s = "";
       const tWalk = (m) => {
@@ -130,7 +149,12 @@ function parseTable(tblNode) {
         if (tagOf(m) === "hp:tc") {
           const text = cellText(m);
           cells.push(text);
-          rich.push({ text, imgs: cellImages(m) });
+          rich.push({
+            text,
+            imgs: cellImages(m),
+            // 중첩 표(평석 박스 속 비교표 등) — 구조 보존, ⟦TBL⟧ 마커 위치에 배치
+            tables: cellNestedTables(m).map(parseTable),
+          });
           return;
         }
         for (const c of childrenOf(m)) cw(c);
@@ -367,9 +391,15 @@ for (let i = 0; i < paras.length; i++) {
       const isCommentBox =
         flat.some((c) => c.trim() === "ㅇㅌㅍ") || (rows.length <= 2 && firstRowShort && hasLong);
       if (isCommentBox) {
-        for (const cell of flat) {
-          const t = cell.trim();
-          if (t && t !== "ㅇㅌㅍ" && t.length > 6) pushText(curCase, "comment", t);
+        for (const row of cellRows) {
+          for (const cell of row) {
+            const t = (cell.text ?? "").trim();
+            if (t && t !== "ㅇㅌㅍ" && t.length > 6) pushText(curCase, "comment", t);
+            // 박스 속 중첩 표(비교표) — comment 섹션 표로 보존, ⟦TBL⟧ 마커 위치에 배치
+            for (const nt of cell.tables ?? []) {
+              curCase.infoTables.push({ section: "comment", rows: nt.rows, cellRows: nt.cellRows });
+            }
+          }
         }
       } else {
         curCase.infoTables.push({ section: curSection, rows, cellRows });

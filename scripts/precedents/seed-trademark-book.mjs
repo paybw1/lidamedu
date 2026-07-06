@@ -117,8 +117,10 @@ function matchParent(label) {
 }
 
 // ── md 조립 ──
-const stripNum = (s) => s.replace(/^\[\d+\]\s*/, "").replace(/^\(\d+\)\s*/, "").trim();
-const mdEscapeCell = (s) => s.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
+// 파서 위치 마커(⟦IMG:binId⟧/⟦TBL⟧)는 검색용 미러(md)에서 제거 — 렌더는 book_sections 가 담당.
+const stripMarkers = (s) => s.replace(/⟦IMG:[^⟧]*⟧/g, "").replace(/⟦TBL⟧/g, "");
+const stripNum = (s) => stripMarkers(s).replace(/^\[\d+\]\s*/, "").replace(/^\(\d+\)\s*/, "").trim();
+const mdEscapeCell = (s) => stripMarkers(s).replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 function tableMd(rows) {
   const width = Math.max(...rows.map((r) => r.length));
   const norm = rows.map((r) => [...r, ...Array(width - r.length).fill("")]);
@@ -145,16 +147,16 @@ function buildReasoningMd(c) {
   ];
   for (const [key, label] of SECTIONS) {
     const body = [];
-    if (sec[key]?.length) body.push(sec[key].join("\n\n"));
+    if (sec[key]?.length) body.push(stripMarkers(sec[key].join("\n\n")));
     body.push(...tbl(key));
     if (body.length) parts.push(`### ${label}\n\n${body.join("\n\n")}`);
   }
-  return parts.length ? parts.join("\n\n") : null;
+  return parts.length ? stripMarkers(parts.join("\n\n")) : null;
 }
 function buildCommentMd(c) {
   const parts = [];
-  if (c.sections.comment?.length) parts.push(c.sections.comment.join("\n\n"));
-  if (c.sections.index?.length) parts.push(`**[Index]** ${c.sections.index.join(" / ")}`);
+  if (c.sections.comment?.length) parts.push(stripMarkers(c.sections.comment.join("\n\n")));
+  if (c.sections.index?.length) parts.push(`**[Index]** ${stripMarkers(c.sections.index.join(" / "))}`);
   return parts.length ? parts.join("\n\n") : null;
 }
 

@@ -134,10 +134,27 @@ const toParaBlocks = (arr, imageUrlByBin) =>
 
 const REF_LABEL_RE = /^참고(\s*\d+)?$/;
 
+// 문단 블록 속 ⟦TBL⟧ 마커 라인 → 그 위치에 표 블록 삽입 (순서대로 소비, 잔여 표는 끝에).
+function spliceTables(paraBlocks, tableBlocks) {
+  const queue = [...tableBlocks];
+  const out = [];
+  for (const b of paraBlocks) {
+    if (b.type === "p" && b.text.trim() === "⟦TBL⟧") {
+      const t = queue.shift();
+      if (t) out.push(t);
+      continue;
+    }
+    out.push(b);
+  }
+  out.push(...queue);
+  return out;
+}
+
 function buildSections(c, imageUrlByBin) {
   const sections = [];
   const cellToBlock = (cell) => ({
-    text: cell.text,
+    // 도표 셀 안의 중첩 표 마커는 렌더 대상 아님 — 제거
+    text: (cell.text ?? "").replace(/⟦TBL⟧/g, "").trim(),
     images: (cell.imgs ?? [])
       .map((bin) => imageUrlByBin.get(bin.toLowerCase()))
       .filter(Boolean)
@@ -178,7 +195,7 @@ function buildSections(c, imageUrlByBin) {
             }
             for (const line of text.split(/\n+/)) {
               const l = line.trim();
-              if (l) paras.push({ type: "p", text: normalizePara(l) });
+              if (l && l !== "⟦TBL⟧") paras.push({ type: "p", text: normalizePara(l) });
             }
           }
         }
@@ -192,10 +209,12 @@ function buildSections(c, imageUrlByBin) {
       })
       .filter((s) => s.blocks.length > 0);
 
-  // 쟁점상표 — 헤더 직후(preamble) 도표
+  // 쟁점상표 — 헤더 직후(preamble) 도표 (도표 먼저, 마커 잔재 라인 제거)
   const infoBlocks = [
     ...tablesFor("preamble"),
-    ...toParaBlocks(c.sections.preamble, imageUrlByBin),
+    ...toParaBlocks(c.sections.preamble, imageUrlByBin).filter(
+      (b) => !(b.type === "p" && b.text.trim() === "⟦TBL⟧"),
+    ),
   ];
   if (infoBlocks.length) sections.push({ key: "mark", label: "쟁점상표", blocks: infoBlocks });
   sections.push(...refSectionsFor("preamble"));
@@ -222,7 +241,10 @@ function buildSections(c, imageUrlByBin) {
         : lowerKeyRelabeled && key === "lower"
           ? "__none__"
           : key;
-    const blocks = [...toParaBlocks(secText[key], imageUrlByBin), ...tablesFor(originKey)];
+    const blocks = spliceTables(
+      toParaBlocks(secText[key], imageUrlByBin),
+      tablesFor(originKey),
+    );
     const refs = refSectionsFor(originKey);
     if (!blocks.length) {
       sections.push(...refs);
