@@ -144,6 +144,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
 type UrlMap = Record<number, string>;
 
+// 유출방지 ④ — 저작권 고지 확인(기기당 1회). 문구 개정 시 키 버전을 올린다.
+const NOTICE_KEY = "lecture-note-copyright-notice-v1";
+
 export default function LectureNoteViewer({
   loaderData,
 }: Route.ComponentProps) {
@@ -164,6 +167,24 @@ export default function LectureNoteViewer({
   const [loadError, setLoadError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const fetchingRef = useRef<Set<number>>(new Set());
+
+  // 고지 확인 — SSR 은 null(미판정)로 두고 클라이언트에서 판정해 하이드레이션 불일치 방지.
+  const [noticeAck, setNoticeAck] = useState<boolean | null>(null);
+  useEffect(() => {
+    try {
+      setNoticeAck(window.localStorage.getItem(NOTICE_KEY) === "1");
+    } catch {
+      setNoticeAck(true); // storage 불가 환경은 고지 없이 진행(차단이 목적이 아님)
+    }
+  }, []);
+  function acknowledgeNotice() {
+    try {
+      window.localStorage.setItem(NOTICE_KEY, "1");
+    } catch {
+      // 무시 — 세션 내 상태로만 유지
+    }
+    setNoticeAck(true);
+  }
 
   const clampPage = useCallback(
     (n: number) => Math.min(Math.max(1, n), totalPages),
@@ -306,6 +327,12 @@ export default function LectureNoteViewer({
         </div>
       </div>
 
+      {/* 상시 경고 문구 — 유출방지 ④ */}
+      <div className="bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200 border-b px-3 py-1.5 text-center text-[11px]">
+        저작권 보호 자료입니다. 무단 복제·배포는 법적 책임 대상이며, 열람
+        기록과 열람자 정보가 함께 남습니다.
+      </div>
+
       {/* 렌더 영역 — 이미지 폭 = 컨테이너 폭 × scale */}
       <div
         ref={containerRef}
@@ -361,6 +388,32 @@ export default function LectureNoteViewer({
             <Loader2Icon className="size-4 animate-spin" /> 불러오는 중…
           </div>
         )}
+
+        {/* 유출방지 ④ — 첫 진입 저작권 고지(기기당 1회). 확인 전에는 본문을 가린다. */}
+        {noticeAck === false ? (
+          <div className="bg-background/85 absolute inset-0 z-20 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-card w-full max-w-md space-y-3 rounded-xl border p-5 shadow-lg">
+              <p className="text-base font-bold">저작권 보호 자료 안내</p>
+              <ul className="text-muted-foreground list-disc space-y-1.5 pl-5 text-sm leading-relaxed">
+                <li>
+                  이 강의노트는 리담변리사학원의 저작물로, 본인 학습 외의
+                  복제·캡처·촬영·배포를 금지합니다.
+                </li>
+                <li>
+                  위반 시 이용약관에 따른 이용 제한 및 저작권법에 따른 민·형사상
+                  책임이 발생할 수 있습니다.
+                </li>
+                <li>
+                  모든 열람 기록이 저장되며, 화면에는 열람자 실명·회원번호가
+                  표시됩니다.
+                </li>
+              </ul>
+              <Button size="sm" className="w-full" onClick={acknowledgeNotice}>
+                확인했습니다
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
