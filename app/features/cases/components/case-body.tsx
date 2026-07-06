@@ -43,7 +43,7 @@ import {
   startsWithInlineQuote,
 } from "~/features/cases/lib/case-markdown";
 import {
-  numberingIndentPx,
+  relativeIndentByDepth,
   splitCaseNumbering,
 } from "~/features/cases/lib/case-numbering";
 import type { ExamProblemRef } from "~/features/problems/labels";
@@ -1002,6 +1002,9 @@ function renderNumberedText(text: string): ReactNode {
   if (segments.length === 1 && segments[0].depth === null) {
     return renderWithUnderline(text);
   }
+  // 들여쓰기 = 문단 내 상대 층위(rank) 기준 — "(1)(2)(3)" 만 있는 문단이
+  // 절대 계층(depth 4)대로 4단씩 밀리지 않게 한 글자(14px) 단위로만 구분.
+  const indentByDepth = relativeIndentByDepth(segments);
   return segments.map((seg, i) => {
     if (seg.depth === null) {
       // 마커 없는 선행 세그먼트 — 흐름 그대로.
@@ -1013,7 +1016,7 @@ function renderNumberedText(text: string): ReactNode {
       <span
         key={`seg-${i}`}
         className={cn("block", i > 0 && "mt-1.5")}
-        style={{ paddingLeft: numberingIndentPx(seg.depth) }}
+        style={{ paddingLeft: indentByDepth.get(seg.depth) ?? 0 }}
       >
         {renderWithUnderline(seg.text)}
       </span>

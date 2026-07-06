@@ -90,7 +90,23 @@ export function splitCaseNumbering(text: string): NumberingSegment[] {
   return out;
 }
 
-/** 깊이별 들여쓰기(px). 렌더러 공용 — 마커 계층이 시각적으로 드러나게. */
-export function numberingIndentPx(depth: number): number {
-  return Math.min(depth, 5) * 14;
+/**
+ * 문단 내 상대 들여쓰기(px) — 마커의 절대 계층(depth) 대신, 그 문단에 실제 등장한
+ * 층위들의 순위(rank)로 들여쓴다. "(1)(2)(3)" 처럼 절대 계층상 깊은 마커(depth 4)만
+ * 있는 문단이 4단(56px)씩 밀리는 문제 방지 — 한 글자(14px) 단위로 층위만 구분.
+ * 최상위(N.) 마커로 시작하는 문단은 기존과 동일(rank0 = 0px, 특허 판례 표시 불변).
+ */
+export function relativeIndentByDepth(
+  segments: NumberingSegment[],
+): Map<number, number> {
+  const depths = [
+    ...new Set(
+      segments.map((s) => s.depth).filter((d): d is number => d !== null),
+    ),
+  ].sort((a, b) => a - b);
+  // 문단이 하위 층위부터 시작하면(N. 없이 (1) 등) 첫 층위도 한 글자 들여쓴다.
+  const base = depths.length > 0 && depths[0] > 0 ? 1 : 0;
+  const map = new Map<number, number>();
+  depths.forEach((d, rank) => map.set(d, (rank + base) * 14));
+  return map;
 }
