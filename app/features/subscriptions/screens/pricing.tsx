@@ -192,6 +192,17 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
             기본 무료로 함께 열립니다. 상담·과제·1차 모의고사·반별 게시판은
             종합반에서 제공됩니다.
           </p>
+          {!isAuthed ? (
+            <p className="border-primary/25 bg-primary/[0.06] mx-auto mt-4 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border px-4 py-2 text-xs">
+              <span>
+                🎁 지금 가입하면 <strong>특허법 학습과목 15일 무료 체험</strong>
+                이 바로 열립니다.
+              </span>
+              <Link to="/join" className="text-link font-semibold underline">
+                무료로 시작하기
+              </Link>
+            </p>
+          ) : null}
         </header>
 
         {isStaff ? (
@@ -273,12 +284,63 @@ export default function Pricing({ loaderData }: Route.ComponentProps) {
           </Section>
         ) : null}
 
-        <p className="text-muted-foreground mt-2 text-center text-[11px]">
+        {/* 결제 전 궁금한 것 — 환불·해지·체험 신뢰 요소. */}
+        <section className="mt-10">
+          <h2 className="mb-3 text-center text-lg font-bold tracking-tight">
+            자주 묻는 질문
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FaqCard
+              q="무료 체험은 어떻게 하나요?"
+              a="가입하면 특허법 학습과목이 15일 동안 무료로 열립니다. 체험이 끝나도 학습 기록(풀이·하이라이트·포스트잇)은 그대로 보관되며, 결제하면 이어서 학습할 수 있습니다."
+            />
+            <FaqCard
+              q="환불은 어떻게 되나요?"
+              a={
+                <>
+                  결제 후 3일 이내에는 전액 환불됩니다. 3일이 지나면 해지 시
+                  다음 갱신 청구만 중단되고 남은 기간은 그대로 이용할 수
+                  있습니다.{" "}
+                  <Link
+                    to="/legal/refund-policy"
+                    target="_blank"
+                    className="text-link underline"
+                  >
+                    환불 규정 전문
+                  </Link>
+                </>
+              }
+            />
+            <FaqCard
+              q="자동결제는 언제든 해지할 수 있나요?"
+              a="네. «내 구독»에서 언제든 해지할 수 있고, 해지하면 다음 갱신부터 청구되지 않습니다. 이미 결제한 기간은 만료일까지 이용됩니다."
+            />
+            <FaqCard
+              q="종합반은 어떻게 등록하나요?"
+              a="위 종합반 카드에서 등업 신청을 하면 운영자가 확인 후 반에 배정해 드립니다. 배정되는 즉시 전 과목·상담·과제·반별 게시판이 열리며, 수강료 결제는 학원 안내에 따라 별도로 진행됩니다."
+            />
+          </div>
+        </section>
+
+        <p className="text-muted-foreground mt-6 text-center text-[11px]">
           모든 결제는 토스페이먼츠를 통해 안전하게 처리됩니다. 종합반은 등업
           신청 후 운영자 확인을 거쳐 배정됩니다.
         </p>
       </div>
     </div>
+  );
+}
+
+function FaqCard({ q, a }: { q: string; a: ReactNode }) {
+  return (
+    <Card>
+      <CardContent className="px-4 py-3.5">
+        <p className="text-sm font-semibold">{q}</p>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+          {a}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

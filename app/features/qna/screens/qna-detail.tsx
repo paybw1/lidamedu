@@ -1,13 +1,16 @@
 import {
   CheckCircle2Icon,
   CheckIcon,
+  CornerUpRightIcon,
   ExternalLinkIcon,
   SparklesIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
   UserIcon,
   XIcon,
 } from "lucide-react";
-import { useState } from "react";
-import { Link, data, useFetcher } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, data, useFetcher, useRevalidator } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { Textarea } from "~/core/components/ui/textarea";
@@ -17,6 +20,8 @@ import { CommunityShell } from "~/features/community/components/community-shell"
 import makeServerClient from "~/core/lib/supa-client.server";
 
 import {
+  type CitationHrefMap,
+  citationKey,
   QNA_QUALITY_GRADES,
   QNA_QUALITY_LABEL,
   QNA_STATUS_LABEL,
@@ -29,6 +34,7 @@ import {
   subjectLabel,
 } from "../labels";
 import { getThreadDetail, listThreadMessages } from "../queries.server";
+import { resolveCitationHrefs } from "../lib/citation-links.server";
 import { resolveTargetDisplay } from "../lib/target-display.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
 
@@ -92,12 +98,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     ? await resolveTargetDisplay(client, thread.targetType, thread.targetId)
     : null;
 
-  // 타임라인 메시지(AI 즉답 등). 강사 정식답변은 thread.answerMd 로 별도 표시.
+  // 타임라인 메시지(AI 즉답·후속 질문 등). 강사 정식답변은 thread.answerMd 로 별도 표시.
   const messages = await listThreadMessages(client, params.threadId);
+  // AI 출처 → 뷰어 링크(조문/판례/문제). textbook·practice 는 링크 없음.
+  const citationHrefs = await resolveCitationHrefs(client, messages);
 
   return {
     thread,
     messages,
+    citationHrefs,
     currentUserId: user.id,
     isStaff,
     target,
@@ -105,7 +114,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export default function QnaDetail({ loaderData }: Route.ComponentProps) {
-  const { thread, messages, currentUserId, isStaff, target } = loaderData;
+  const { thread, messages, citationHrefs, currentUserId, isStaff, target } =
+    loaderData;
   const isAsker = thread.askerId === currentUserId;
   // ai_answered/verified 도 강사 정식답변이 없는 상태 — AI 답변을 정확으로 확인한
   // 뒤에도 강사가 보완/정정 답변을 달 수 있다.
@@ -116,7 +126,6 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
     isStaff &&
     thread.answererId === null;
   const isWaiting = thread.status === "open";
-  const aiMessages = messages.filter((m) => m.role === "ai");
 
   return (
     <CommunityShell
@@ -177,10 +186,20 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         />
       </article>
 
-      {/* AI 즉답 카드 — 질문 직후 자동 생성분. 강사 정식답변과 공존. */}
-      {aiMessages.map((m) => (
-        <AiAnswerCard key={m.messageId} message={m} isStaff={isStaff} />
-      ))}
+      {/* 타임라인 — AI 즉답 + 질문자 후속 질문(멀티턴) + 강사 메시지. */}
+      {messages.map((m) =>
+        m.role === "ai" ? (
+          <AiAnswerCard
+            key={m.messageId}
+            message={m}
+            isStaff={isStaff}
+            isAsker={isAsker}
+            citationHrefs={citationHrefs}
+          />
+        ) : (
+          <FollowUpCard key={m.messageId} message={m} />
+        ),
+      )}
 
       {/* 답변 카드 — 에메랄드 좌측 보더 */}
       {thread.answerMd ? (
@@ -220,6 +239,11 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
 
+      {/* 질문자 후속 질문(멀티턴) — 종료 전까지. AI 가 대화 맥락을 이어받아 재응답. */}
+      {isAsker && thread.status !== "closed" ? (
+        <FollowUpForm threadId={thread.threadId} />
+      ) : null}
+
       {isAsker && thread.status === "answered" ? (
         <CloseButton threadId={thread.threadId} />
       ) : null}
@@ -234,13 +258,48 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
   );
 }
 
+// 질문자 후속 질문 / 강사 메시지 카드 — 타임라인 중간 턴.
+function FollowUpCard({ message }: { message: QnaMessage }) {
+  const isStudent = message.role === "student";
+  return (
+    <article
+      className={cn(
+        "bg-card mb-3.5 rounded-2xl border p-4 shadow-sm md:p-5",
+        isStudent ? "border-border" : "border-emerald-300/60",
+      )}
+    >
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <Chip tone={isStudent ? "primary" : "emerald"}>
+          <CornerUpRightIcon className="size-2.5" />
+          {isStudent ? "추가 질문" : "강사"}
+        </Chip>
+        <span className="text-[13px] font-bold">
+          {message.authorName ?? (isStudent ? "질문자" : "강사")}
+        </span>
+        <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+          {new Date(message.createdAt).toLocaleString("ko-KR")}
+        </span>
+      </div>
+      <MarkdownView
+        text={message.bodyMd}
+        trusted={false}
+        className="text-foreground/85 text-[14px] leading-[1.8]"
+      />
+    </article>
+  );
+}
+
 // AI 즉답 카드 — 강사 답변(에메랄드)과 구분되는 인디고 톤 + AI 배지 + 출처칩 + 강사 정오 평가.
 function AiAnswerCard({
   message,
   isStaff,
+  isAsker,
+  citationHrefs,
 }: {
   message: QnaMessage;
   isStaff: boolean;
+  isAsker: boolean;
+  citationHrefs: CitationHrefMap;
 }) {
   return (
     <article className="bg-card mb-3.5 rounded-2xl rounded-l-md border border-l-4 border-indigo-500 p-5 shadow-sm md:p-6">
@@ -271,7 +330,7 @@ function AiAnswerCard({
         className="text-foreground/85 text-[15px] leading-[1.85]"
       />
       {message.citations.length > 0 ? (
-        <CitationList citations={message.citations} />
+        <CitationList citations={message.citations} hrefs={citationHrefs} />
       ) : null}
       {message.verdict === "incorrect" && !isStaff ? (
         <p className="mt-3 rounded-lg bg-rose-500/[0.08] px-3 py-2 text-[12px] leading-relaxed text-rose-700 dark:text-rose-300">
@@ -279,8 +338,59 @@ function AiAnswerCard({
           답변을 확인해 주세요.
         </p>
       ) : null}
+      {isAsker ? <FeedbackButtons message={message} /> : null}
       {isStaff ? <VerdictControl message={message} /> : null}
     </article>
+  );
+}
+
+// 질문자 전용 — AI 답변 도움됐어요 피드백(👍/👎 토글, 같은 값 다시 누르면 해제).
+function FeedbackButtons({ message }: { message: QnaMessage }) {
+  const fetcher = useFetcher();
+  const isSubmitting = fetcher.state !== "idle";
+  const current = message.feedback ?? 0;
+  const options = [
+    { value: 1, label: "도움됐어요", Icon: ThumbsUpIcon },
+    { value: -1, label: "아쉬워요", Icon: ThumbsDownIcon },
+  ] as const;
+  return (
+    <div className="border-border/60 mt-4 flex flex-wrap items-center gap-2 border-t pt-3">
+      <span className="text-muted-foreground text-xs font-semibold">
+        이 답변이 도움됐나요?
+      </span>
+      {options.map((o) => {
+        const active = current === o.value;
+        return (
+          <fetcher.Form key={o.value} method="post" action="/api/qna/thread">
+            <input type="hidden" name="intent" value="feedback" />
+            <input type="hidden" name="messageId" value={message.messageId} />
+            <input
+              type="hidden"
+              name="feedback"
+              value={active ? 0 : o.value}
+            />
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              aria-pressed={active}
+              className={cn(
+                "inline-flex h-[26px] items-center gap-1 rounded-full px-3 text-[12px] font-semibold transition-colors disabled:opacity-50",
+                active
+                  ? o.value === 1
+                    ? "bg-emerald-500 text-white"
+                    : "bg-rose-500 text-white"
+                  : "bg-muted text-foreground/80 hover:bg-muted/70",
+              )}
+            >
+              <o.Icon className="size-3" /> {o.label}
+            </button>
+          </fetcher.Form>
+        );
+      })}
+      <span className="text-muted-foreground text-[11px]">
+        피드백은 답변 품질 개선에 사용됩니다.
+      </span>
+    </div>
   );
 }
 
@@ -342,28 +452,121 @@ function VerdictControl({ message }: { message: QnaMessage }) {
   );
 }
 
-function CitationList({ citations }: { citations: QnaCitation[] }) {
+function CitationList({
+  citations,
+  hrefs,
+}: {
+  citations: QnaCitation[];
+  hrefs: CitationHrefMap;
+}) {
   return (
     <div className="border-border/60 mt-4 border-t pt-3">
       <p className="text-muted-foreground mb-1.5 font-mono text-[10px] font-bold tracking-[0.1em] uppercase">
         출처
       </p>
       <ul className="flex flex-col gap-1">
-        {citations.map((c) => (
-          <li
-            key={`${c.label}-${c.sourceId}`}
-            className="text-muted-foreground flex items-start gap-1.5 text-[12px] leading-relaxed"
-          >
-            <span className="text-foreground/70 font-bold tabular-nums">
-              [{c.label}]
-            </span>
-            <Chip tone="neutral">
-              {CITATION_SOURCE_LABEL[c.sourceType] ?? c.sourceType}
-            </Chip>
-            {c.headingPath ? <span>{c.headingPath}</span> : null}
-          </li>
-        ))}
+        {citations.map((c) => {
+          const href = hrefs[citationKey(c)];
+          return (
+            <li
+              key={`${c.label}-${c.sourceId}`}
+              className="text-muted-foreground flex items-start gap-1.5 text-[12px] leading-relaxed"
+            >
+              <span className="text-foreground/70 font-bold tabular-nums">
+                [{c.label}]
+              </span>
+              <Chip tone="neutral">
+                {CITATION_SOURCE_LABEL[c.sourceType] ?? c.sourceType}
+              </Chip>
+              {href ? (
+                <Link
+                  to={href}
+                  viewTransition
+                  className="text-link inline-flex items-center gap-1 hover:underline"
+                >
+                  {c.headingPath || "원문 보기"}
+                  <ExternalLinkIcon className="size-3 shrink-0" />
+                </Link>
+              ) : c.headingPath ? (
+                <span>{c.headingPath}</span>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
+    </div>
+  );
+}
+
+// 질문자 후속 질문 입력 — 등록 시 AI 가 대화 이력을 이어받아 background 재응답.
+function FollowUpForm({ threadId }: { threadId: string }) {
+  const fetcher = useFetcher<{ ok?: boolean; aiPending?: boolean }>();
+  const revalidator = useRevalidator();
+  const [draft, setDraft] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSubmitting = fetcher.state !== "idle";
+  const aiPending =
+    fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.aiPending;
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) {
+      setDraft("");
+      // AI 재응답은 background 생성 — 잠시 후 한 번 재조회해 자연 갱신.
+      if (fetcher.data.aiPending && !timerRef.current) {
+        timerRef.current = setTimeout(() => {
+          timerRef.current = null;
+          revalidator.revalidate();
+        }, 8000);
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
+
+  return (
+    <div className="border-border bg-card mb-3.5 rounded-2xl border p-4 shadow-sm md:p-5">
+      <p className="text-sm font-bold tracking-tight">추가 질문</p>
+      <p className="text-muted-foreground mt-1 text-xs">
+        답변에 이어서 궁금한 점을 물어보세요. AI 가 대화 맥락을 이어받아
+        답하고, 강사가 확인합니다.
+      </p>
+      <fetcher.Form method="post" action="/api/qna/thread" className="mt-3">
+        <input type="hidden" name="intent" value="reply" />
+        <input type="hidden" name="threadId" value={threadId} />
+        <Textarea
+          name="bodyMd"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="예: 그럼 출원공개 전에 침해가 있었던 경우는 어떻게 되나요?"
+          rows={3}
+          maxLength={4000}
+          className="text-sm leading-relaxed"
+          required
+        />
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          {aiPending ? (
+            <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
+              <SparklesIcon className="size-3" /> AI 답변을 준비하고 있습니다 —
+              잠시 후 표시됩니다.
+            </span>
+          ) : (
+            <span />
+          )}
+          <Button
+            type="submit"
+            size="sm"
+            className="rounded-full"
+            disabled={isSubmitting || !draft.trim()}
+          >
+            {isSubmitting ? "등록 중…" : "추가 질문 등록"}
+          </Button>
+        </div>
+      </fetcher.Form>
     </div>
   );
 }

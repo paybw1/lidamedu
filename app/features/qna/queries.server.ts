@@ -290,6 +290,22 @@ export async function setAiVerdict(
   }
 }
 
+// 질문자 후속 메시지(멀티턴) — RLS(author 본인) 로 insert. AI 재응답은 호출부가 트리거.
+export async function addStudentMessage(
+  client: SupabaseClient<Database>,
+  userId: string,
+  threadId: string,
+  bodyMd: string,
+): Promise<void> {
+  const { error } = await client.from("qna_messages").insert({
+    thread_id: threadId,
+    role: "student",
+    author_id: userId,
+    body_md: bodyMd,
+  });
+  if (error) throw error;
+}
+
 export async function getThreadDetail(
   client: SupabaseClient<Database>,
   threadId: string,

@@ -14,7 +14,10 @@ import type { Database, Json } from "database.types";
 
 import { getAppSetting, setAppSetting } from "~/core/lib/app-settings.server";
 import { classifyRefusal } from "~/features/ai-qna/conversations.server";
-import { answerQuestion } from "~/features/ai-qna/lib/answer.server";
+import {
+  answerQuestion,
+  type AnswerTurn,
+} from "~/features/ai-qna/lib/answer.server";
 import type { Citation } from "~/features/ai-qna/lib/citations";
 import {
   gateModeFromEnv,
@@ -133,7 +136,15 @@ export interface InstantAnswerThread {
   threadId: string;
   questionMd: string;
   subject: string | null;
+  /**
+   * 멀티턴 — 직전 대화(최초 질문·AI/강사 답변·후속 질문). questionMd 가 마지막
+   * user 턴으로 뒤에 붙는다. 미지정 = 단일턴(스레드 최초 질문).
+   */
+  history?: ReadonlyArray<AnswerTurn>;
 }
+
+/** 멀티턴 이력 상한 — 오래된 턴은 잘라 토큰을 bound. */
+const HISTORY_MAX_TURNS = 8;
 
 /**
  * Haiku RAG 즉답 생성 → 성공 시 qna_messages(ai) 저장 + 스레드 ai_answered 전환.
@@ -172,8 +183,9 @@ export async function generateInstantAnswer(
     let tokenUsage = { input: 0, output: 0 };
     let errored = false;
 
+    const history = (thread.history ?? []).slice(-HISTORY_MAX_TURNS);
     for await (const ev of answerQuestion(
-      [{ role: "user", content: question }],
+      [...history, { role: "user", content: question }],
       search.hits,
       { maxTokens: quotas.maxOutputTokens, model: QNA_INSTANT_MODEL },
     )) {

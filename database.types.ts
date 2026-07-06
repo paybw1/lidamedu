@@ -9177,6 +9177,10 @@ export type Database = {
         Args: { p_pinned: boolean; p_post_id: string }
         Returns: undefined
       }
+      set_qna_ai_feedback: {
+        Args: { p_feedback: number; p_message_id: string }
+        Returns: undefined
+      }
       soft_delete_book_update: { Args: { p_id: string }; Returns: undefined }
       soft_delete_cohort_board: {
         Args: { p_board_id: string }

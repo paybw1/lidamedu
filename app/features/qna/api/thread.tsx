@@ -17,10 +17,12 @@ import {
 } from "../labels";
 import { notifyNewAnswer, notifyNewQuestion } from "../notify.server";
 import {
+  addStudentMessage,
   answerThread,
   closeThread,
   createThread,
   getThreadDetail,
+  listThreadMessages,
   setAiVerdict,
   softDeleteThread,
 } from "../queries.server";
@@ -63,13 +65,58 @@ const verdictSchema = z.object({
   verdict: z.enum(["correct", "incorrect"]),
 });
 
+// 질문자 후속 질문(멀티턴) — AI 가 대화 이력을 이어받아 재응답.
+const replySchema = z.object({
+  intent: z.literal("reply"),
+  threadId: z.string().uuid(),
+  bodyMd: z.string().min(1).max(4000),
+});
+
+// 질문자의 AI 답변 도움됐어요 피드백 — 👍 1 / 👎 -1 / 해제 0.
+const feedbackSchema = z.object({
+  intent: z.literal("feedback"),
+  messageId: z.string().uuid(),
+  feedback: z.coerce.number().int().min(-1).max(1),
+});
+
 const schema = z.discriminatedUnion("intent", [
   createSchema,
   answerSchema,
   closeSchema,
   deleteSchema,
   verdictSchema,
+  replySchema,
+  feedbackSchema,
 ]);
+
+// 멀티턴 이력 — 최초 질문 + 타임라인(후속=user, AI/강사=assistant) + 강사 정식답변.
+// Anthropic messages 는 user/assistant 교대가 필요해 연속 같은 role 은 병합한다.
+function buildHistoryTurns(
+  questionMd: string,
+  answerMd: string | null,
+  messages: ReadonlyArray<{ role: string; bodyMd: string }>,
+): Array<{ role: "user" | "assistant"; content: string }> {
+  const raw: Array<{ role: "user" | "assistant"; content: string }> = [
+    { role: "user", content: questionMd },
+  ];
+  for (const m of messages) {
+    raw.push({
+      role: m.role === "student" ? "user" : "assistant",
+      content: m.bodyMd,
+    });
+  }
+  if (answerMd) raw.push({ role: "assistant", content: answerMd });
+  const merged: typeof raw = [];
+  for (const t of raw) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === t.role) {
+      last.content = `${last.content}\n\n${t.content}`;
+    } else {
+      merged.push({ ...t });
+    }
+  }
+  return merged;
+}
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -175,6 +222,59 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ ok: false, error: "not-found" }, { status: 404, headers });
     }
     await closeThread(client, parsed.data.threadId);
+    return data({ ok: true }, { headers });
+  }
+
+  if (parsed.data.intent === "reply") {
+    // 후속 질문은 질문자 본인만 — 공개 스레드의 채팅화 방지.
+    const thread = await getThreadDetail(client, parsed.data.threadId);
+    if (!thread) {
+      return data({ ok: false, error: "not-found" }, { status: 404, headers });
+    }
+    if (thread.askerId !== user.id) {
+      return data({ ok: false, error: "forbidden" }, { status: 403, headers });
+    }
+    if (thread.status === "closed") {
+      return data({ ok: false, error: "closed" }, { status: 400, headers });
+    }
+
+    // 이력은 insert 전에 확보 — 새 후속 질문은 questionMd 파라미터로 전달된다.
+    const prior = await listThreadMessages(client, thread.threadId);
+    const history = buildHistoryTurns(
+      thread.questionMd,
+      thread.answerMd,
+      prior,
+    );
+    await addStudentMessage(
+      client,
+      user.id,
+      thread.threadId,
+      parsed.data.bodyMd,
+    );
+
+    const decision = await shouldAnswerInstantly(client, adminClient, user.id);
+    if (decision.ok) {
+      runAfterResponse(
+        generateInstantAnswer(adminClient, {
+          threadId: thread.threadId,
+          questionMd: parsed.data.bodyMd,
+          subject: thread.subject,
+          history,
+        }),
+      );
+    }
+    return data({ ok: true, aiPending: decision.ok }, { headers });
+  }
+
+  if (parsed.data.intent === "feedback") {
+    // 질문자 검증·컬럼 한정은 SECURITY DEFINER RPC 가 수행(AI 메시지는 author 없음).
+    const { error } = await client.rpc("set_qna_ai_feedback", {
+      p_message_id: parsed.data.messageId,
+      p_feedback: parsed.data.feedback,
+    });
+    if (error) {
+      return data({ ok: false, error: error.message }, { status: 400, headers });
+    }
     return data({ ok: true }, { headers });
   }
 

@@ -132,6 +132,15 @@ export interface QnaCitation {
   headingPath: string;
 }
 
+/** 출처 → 뷰어 href 매핑(loader 가 citation-links.server 로 해소). */
+export type CitationHrefMap = Record<string, string>;
+
+export function citationKey(
+  c: Pick<QnaCitation, "sourceType" | "sourceId">,
+): string {
+  return `${c.sourceType}:${c.sourceId}`;
+}
+
 // ── 응답 SLA(운영 대시보드) ─────────────────────────────────────────────
 // "강사 응답" = 정식 답변(answered_at) · AI 답변 '정확' 확인 · 강사 메시지 중
 // 가장 빠른 것. AI 즉답만으로는 SLA 미충족(강사 확인이 목표).
