@@ -17,8 +17,14 @@ import AdmZip from "adm-zip";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const HWPX = resolve(ROOT, "source/체계도(상표법).hwpx");
-const OUT = resolve(ROOT, "source/_converted/systematic-tree-trademark.json");
+const args = Object.fromEntries(
+  process.argv.slice(2).map((a) => {
+    const m = /^--([^=]+)=(.*)$/.exec(a);
+    return m ? [m[1], m[2]] : [a.replace(/^--/, ""), true];
+  }),
+);
+const HWPX = resolve(ROOT, args.hwpx ?? "source/체계도(상표법).hwpx");
+const OUT = resolve(ROOT, args.out ?? "source/_converted/systematic-tree-trademark.json");
 if (!existsSync(HWPX)) {
   console.error(`hwpx 없음: ${HWPX}`);
   process.exit(1);
