@@ -291,6 +291,21 @@ export function ArticleTree({
 
   const filterActive = importanceFilter !== 0 || bookmarkFilter !== 0;
 
+  // 중요도/즐겨찾기 필터가 켜지면 매칭 조문을 접힌 장(章) 안에 숨기지 않고
+  // 문서 순서 그대로 평면 리스트업 — "목차만 바뀌는" 문제 해소.
+  const flatArticles = useMemo(() => {
+    if (!filterActive) return null;
+    const out: TreeNode[] = [];
+    const walk = (xs: TreeNode[]) => {
+      for (const x of xs) {
+        if (x.level === "article") out.push({ ...x, children: [] });
+        walk(x.children);
+      }
+    };
+    walk(visible);
+    return out;
+  }, [visible, filterActive]);
+
   if (tree.length === 0) {
     return (
       <p className="text-muted-foreground px-2 py-4 text-xs">
@@ -382,6 +397,26 @@ export function ArticleTree({
             ? `즐겨찾기 ${BOOKMARK_FILTER_LABELS[bookmarkFilter]} 조문이 없습니다.`
             : `중요도 ${FILTER_LABELS[importanceFilter]} 조문이 없습니다.`}
         </p>
+      ) : flatArticles ? (
+        <ul className="space-y-0.5 text-sm">
+          {flatArticles.map((n) => (
+            <TreeItem
+              key={n.articleId}
+              node={n}
+              depth={0}
+              activeArticleId={activeArticleId}
+              activeChapterId={activeChapterId}
+              forceOpen={expandedIds}
+              lawCode={lawCode}
+              bookmarkLevels={bookmarkLevels}
+              annotationCounts={annotationCounts}
+              lazyExpand={lazyExpand}
+              loadedParents={loadedParents}
+              pendingParents={pendingParents}
+              requestChildren={requestChildren}
+            />
+          ))}
+        </ul>
       ) : (
         <ul className="space-y-0.5 text-sm">
           {visible.map((n) => (
