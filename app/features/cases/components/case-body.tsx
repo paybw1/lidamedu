@@ -569,9 +569,13 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
               <th
                 key={i}
                 colSpan={spanFor(head, i)}
-                className="border-border bg-muted/60 text-foreground border px-3 py-2 text-center text-[13px] font-bold whitespace-nowrap"
+                className={cn(
+                  "border-border bg-muted/60 text-foreground border px-3 py-2 text-center text-[13px] font-bold",
+                  // 라벨(첫) 열은 내용 폭으로 축소 — 긴 본문 열에 밀려 줄바꿈되지 않게.
+                  i === 0 && "w-px",
+                )}
               >
-                <BookCell cell={c} />
+                <BookCell cell={c} nowrap />
               </th>
             ))}
           </tr>
@@ -579,21 +583,24 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
         <tbody>
           {body.map((row, ri) => (
             <tr key={ri}>
-              {row.map((c, ci) => (
-                <td
-                  key={ci}
-                  colSpan={spanFor(row, ci)}
-                  className={cn(
-                    "border-border border px-3 py-2 align-middle leading-relaxed",
-                    // 첫 열(라벨: 상표/출원일/권리자 등)은 헤더 톤
-                    ci === 0 && row.length > 1
-                      ? "bg-muted/40 text-center text-[13px] font-semibold whitespace-nowrap"
-                      : "text-left",
-                  )}
-                >
-                  <BookCell cell={c} />
-                </td>
-              ))}
+              {row.map((c, ci) => {
+                const isLabel = ci === 0 && row.length > 1;
+                return (
+                  <td
+                    key={ci}
+                    colSpan={spanFor(row, ci)}
+                    className={cn(
+                      "border-border border px-3 py-2 align-middle leading-[1.7]",
+                      // 첫 열(라벨: 상표/출원일/권리자 등)은 헤더 톤 + 한 줄 고정 + 내용 폭
+                      isLabel
+                        ? "bg-muted/40 w-px text-center text-[13px] font-semibold"
+                        : "text-left",
+                    )}
+                  >
+                    <BookCell cell={c} nowrap={isLabel} />
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -602,10 +609,15 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   );
 }
 
-function BookCell({ cell }: { cell: BookSectionCell }) {
+function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: boolean }) {
   return (
     <div className="space-y-1.5">
-      {cell.text ? <span className="whitespace-pre-wrap">{cell.text}</span> : null}
+      {cell.text ? (
+        // 라벨 셀(출원일/등록일 등)은 한 줄 고정 — pre-wrap 이면 "/" 뒤에서 꺾인다.
+        <span className={nowrap ? "whitespace-nowrap" : "whitespace-pre-wrap"}>
+          {cell.text}
+        </span>
+      ) : null}
       {cell.images.map((img, i) => (
         <a
           key={i}
