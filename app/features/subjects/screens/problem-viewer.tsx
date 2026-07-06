@@ -64,7 +64,7 @@ import {
 } from "~/features/problems/labels";
 import {
   deriveBoxItemOxTruth,
-  deriveChoiceOxTruth,
+  deriveDisplayChoiceOx,
 } from "~/features/problems/lib/auto-ox";
 import {
   type AdjacentProblem,
@@ -1542,19 +1542,15 @@ export default function ProblemViewer({ loaderData }: Route.ComponentProps) {
                           {problem.boxItems.length === 0 &&
                             problem.choices.map((c) => {
                               // mc_box: 보기는 박스 묶음이라 per-choice OX 의미 없음 → 정답만 표시.
-                              // mc_short(긍정/부정형 단답): 헬퍼로 polarity 반영해 O/X 산출.
-                              // 그 외(mc_case 등): 정답 여부만 표시.
+                              // mc_short·mc_case: polarity 반영해 O/X 산출 — 정오문제
+                              // 적격성(oxIneligible)과 지문 진위 표시는 별개 개념이라 무시.
                               const derivedOx =
-                                problem.format === "mc_short"
-                                  ? (c.oxTruth ??
-                                    deriveChoiceOxTruth({
-                                      polarity: problem.polarity,
-                                      format: problem.format,
-                                      isCorrect: c.isCorrect,
-                                      // oxIneligible 은 MCQ 해설 O/X 표시엔 무시(OX드릴만 존중).
-                                      oxIneligible: false,
-                                    }))
-                                  : null;
+                                c.oxTruth ??
+                                deriveDisplayChoiceOx({
+                                  polarity: problem.polarity,
+                                  format: problem.format,
+                                  isCorrect: c.isCorrect,
+                                });
                               const label =
                                 problem.format === "mc_box"
                                   ? c.isCorrect

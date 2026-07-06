@@ -52,6 +52,20 @@ export function deriveChoiceOxTruth(args: {
   return applyPolarity(args.polarity, args.isCorrect);
 }
 
+// 표시 전용 — 풀이 화면의 선지 O/X 라벨. 정오문제 적격성(ox_ineligible)은 "단독
+// 정오문제로 성립하는가"의 문제이고, 풀이 시 지문 진위 표시는 별개 개념이라 무시한다.
+// 사례형(mc_case)도 발문 극성만 있으면 정답 여부로 진위를 보여준다.
+// mc_box 의 선지는 보기묶음(ㄱ,ㄴ…)이라 O/X 가 성립하지 않음 → null.
+export function deriveDisplayChoiceOx(args: {
+  polarity: ProblemPolarity | null;
+  format: ProblemFormat;
+  isCorrect: boolean;
+}): OxTruth | null {
+  if (!args.polarity) return null;
+  if (args.format !== "mc_short" && args.format !== "mc_case") return null;
+  return applyPolarity(args.polarity, args.isCorrect);
+}
+
 export function deriveBoxItemOxTruth(args: {
   polarity: ProblemPolarity | null;
   format: ProblemFormat;

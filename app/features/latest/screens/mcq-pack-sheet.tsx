@@ -30,7 +30,7 @@ import {
 } from "~/features/problems/labels";
 import {
   deriveBoxItemOxTruth,
-  deriveChoiceOxTruth,
+  deriveDisplayChoiceOx,
 } from "~/features/problems/lib/auto-ox";
 import { getProblemDetailsByIds } from "~/features/problems/queries.server";
 import {
@@ -695,16 +695,16 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
       </p>
       {problem.boxItems.length > 0
         ? problem.boxItems.map((bi) => {
-            const truth: "O" | "X" | null = bi.oxIneligible
-              ? null
-              : (bi.oxTruth ??
-                deriveBoxItemOxTruth({
-                  polarity: problem.polarity,
-                  format: problem.format,
-                  marker: bi.marker,
-                  correctChoiceBody,
-                  oxIneligible: bi.oxIneligible,
-                }));
+            // oxIneligible(정오문제 부적격)은 풀이 O/X 표시와 별개 개념 → 무시.
+            const truth: "O" | "X" | null =
+              bi.oxTruth ??
+              deriveBoxItemOxTruth({
+                polarity: problem.polarity,
+                format: problem.format,
+                marker: bi.marker,
+                correctChoiceBody,
+                oxIneligible: false,
+              });
             return (
               <div
                 key={bi.boxItemId}
@@ -738,16 +738,14 @@ function ExplanationBlock({ problem }: { problem: ProblemDetail }) {
         <div className="border-border border-t" />
       ) : null}
       {problem.choices.map((c) => {
+        // mc_short·mc_case: 정오문제 적격성과 무관하게 지문 진위 O/X 표시.
         const derivedOx =
-          problem.format === "mc_short"
-            ? (c.oxTruth ??
-              deriveChoiceOxTruth({
-                polarity: problem.polarity,
-                format: problem.format,
-                isCorrect: c.isCorrect,
-                oxIneligible: c.oxIneligible,
-              }))
-            : null;
+          c.oxTruth ??
+          deriveDisplayChoiceOx({
+            polarity: problem.polarity,
+            format: problem.format,
+            isCorrect: c.isCorrect,
+          });
         const label =
           problem.format === "mc_box"
             ? c.isCorrect
