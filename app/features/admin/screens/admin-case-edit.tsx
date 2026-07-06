@@ -162,6 +162,11 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
   } = loaderData;
   const isNew = kase === null;
   const subjectLawsValue = (kase?.subject_laws ?? []).join(",");
+  // feat-3-213 — 교재 구조 본문이 있는 판례(상표 등)는 book_sections 가 표시 SSOT.
+  // 판결요지·판시이유·비고 편집 카드는 숨기고, 값은 hidden 으로 보존(목록 제목·검색용 컬럼이
+  // 저장 시 지워지지 않게). 섹션을 전부 삭제하고 저장하면 다음 진입부터 카드가 다시 보인다.
+  const bookSectionsDefault = parseBookSections(kase?.book_sections);
+  const bookMode = bookSectionsDefault.length > 0;
 
   return (
     <AdminShell
@@ -337,32 +342,47 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
         {/* 공식 전문 PDF (official_text_md 자동 조판) — 재생성 */}
         {!isNew ? <OfficialTextPdfCard kase={kase} /> : null}
 
-        {/* 요지 · 이유 */}
-        <Card>
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              요지 · 이유
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Field label="판결요지 (여러 항목 가능)">
-              <SummaryItemsEditor
-                defaultItems={parseSummaryItems(kase?.summary_items)}
-                caseId={isNew ? null : kase.case_id}
-              />
-            </Field>
-            <Field label="판시이유 (Markdown)" htmlFor="reasoningMd">
-              <ReflowableTextarea
-                name="reasoningMd"
-                defaultValue={kase?.reasoning_md ?? ""}
-                rows={8}
-                fieldLabel="판시이유"
-                caseId={isNew ? null : kase.case_id}
-                imagePosition="reasoning"
-              />
-            </Field>
-          </CardContent>
-        </Card>
+        {/* 요지 · 이유 — 교재 구조 판례는 편집 불필요(표시 SSOT=book_sections), 값만 보존 */}
+        {bookMode ? (
+          <>
+            <input
+              type="hidden"
+              name="summaryItems"
+              value={JSON.stringify(parseSummaryItems(kase?.summary_items))}
+            />
+            <input
+              type="hidden"
+              name="reasoningMd"
+              value={kase?.reasoning_md ?? ""}
+            />
+          </>
+        ) : (
+          <Card>
+            <CardHeader>
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                요지 · 이유
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Field label="판결요지 (여러 항목 가능)">
+                <SummaryItemsEditor
+                  defaultItems={parseSummaryItems(kase?.summary_items)}
+                  caseId={isNew ? null : kase.case_id}
+                />
+              </Field>
+              <Field label="판시이유 (Markdown)" htmlFor="reasoningMd">
+                <ReflowableTextarea
+                  name="reasoningMd"
+                  defaultValue={kase?.reasoning_md ?? ""}
+                  rows={8}
+                  fieldLabel="판시이유"
+                  caseId={isNew ? null : kase.case_id}
+                  imagePosition="reasoning"
+                />
+              </Field>
+            </CardContent>
+          </Card>
+        )}
 
         {/* feat-3-213 — 판례집 구조화 본문 (상표 제16판 등). 있으면 학생 뷰어 표시의 SSOT.
             섹션 0개로 저장하면 null → 위의 generic 필드(요지/판시이유/비고)로 렌더 복귀. */}
@@ -372,45 +392,53 @@ export default function AdminCaseEdit({ loaderData }: Route.ComponentProps) {
               교재 구조 본문 (쟁점상표 표 → 사안의 쟁점 → … → 평석)
             </p>
             <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-              이 섹션이 있으면 학생 뷰어는 <strong>교재 구조로만</strong> 렌더합니다 —
-              위의 요지·판시이유·비고 필드는 검색/목록 제목에만 쓰입니다. 표 셀 이미지는
-              아래 "본문 이미지" 카드에 업로드한 뒤 URL 을 셀에 붙여넣으세요.
+              이 섹션이 있으면 학생 뷰어는 <strong>교재 구조로만</strong> 렌더하며,
+              판결요지·판시이유·비고 편집 카드는 숨겨집니다(값은 검색·목록 제목용으로
+              보존). 표 셀 이미지는 아래 "본문 이미지" 카드에 업로드한 뒤 URL 을 셀에
+              붙여넣으세요.
             </p>
           </CardHeader>
           <CardContent>
-            <BookSectionsEditor
-              defaultSections={parseBookSections(kase?.book_sections)}
-            />
+            <BookSectionsEditor defaultSections={bookSectionsDefault} />
           </CardContent>
         </Card>
 
         {/* 비고 · 평석 — 두 종류 분리 (사용자 결정):
               · 항목별 비고 → SummaryItemsEditor 안 "비고 [N]" textarea (요지별 인라인)
-              · 전체 비고 → 이 textarea. 판결문 전체에 대한 일반 코멘트. */}
-        <Card>
-          <CardHeader>
-            <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-              비고 — 전체 판결문
-            </p>
-            <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
-              요지 [N] 항목별 코멘트는 위 "요지" 섹션 각 항목 안의 비고 [N] 입력란을
-              사용하세요. 이 필드는 <strong>판결문 전체에 걸친 일반 비고</strong>를
-              위한 용도입니다.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Field label="비고 본문 (Markdown)" htmlFor="commentBodyMd">
-              <ReflowableTextarea
-                name="commentBodyMd"
-                defaultValue={kase?.comment_body_md ?? ""}
-                rows={6}
-                fieldLabel="비고 본문"
-                caseId={isNew ? null : kase.case_id}
-                imagePosition="comment"
-              />
-            </Field>
-          </CardContent>
-        </Card>
+              · 전체 비고 → 이 textarea. 판결문 전체에 대한 일반 코멘트.
+            교재 구조 판례는 평석을 book_sections 에서 편집 — 카드 숨기고 값 보존. */}
+        {bookMode ? (
+          <input
+            type="hidden"
+            name="commentBodyMd"
+            value={kase?.comment_body_md ?? ""}
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                비고 — 전체 판결문
+              </p>
+              <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+                요지 [N] 항목별 코멘트는 위 "요지" 섹션 각 항목 안의 비고 [N] 입력란을
+                사용하세요. 이 필드는 <strong>판결문 전체에 걸친 일반 비고</strong>를
+                위한 용도입니다.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Field label="비고 본문 (Markdown)" htmlFor="commentBodyMd">
+                <ReflowableTextarea
+                  name="commentBodyMd"
+                  defaultValue={kase?.comment_body_md ?? ""}
+                  rows={6}
+                  fieldLabel="비고 본문"
+                  caseId={isNew ? null : kase.case_id}
+                  imagePosition="comment"
+                />
+              </Field>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 관련자료 — 그림·표 등 본문 보조 자료. 그림/표 자체는 폼 외부 ImagesCard
             의 position=관련자료 로 업로드, 본문 설명은 여기서 작성. */}
