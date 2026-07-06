@@ -98,9 +98,27 @@ async function syncMissingImages(row, bookImages) {
   return { images: next, added };
 }
 
+// 케이스 경계 수동 보정(원장 지시) — 앞 판례 인덱스 말미에 붙은 법리 블록을 다음 판례의 참고로.
+const CROSS_MOVES = [
+  { from: "2015후1348", heading: "요부관찰 기본법리", to: "2017후2208" },
+];
+
 // 최초 수록분 기준 (시드와 동일 정책)
 const bookCase = new Map();
 for (const t of data.topics) for (const c of t.cases) if (!bookCase.has(c.caseNumber)) bookCase.set(c.caseNumber, c);
+
+// CROSS_MOVES 적용 — from 판례 인덱스에서 heading 부터 끝까지 잘라 to 판례의 참고로.
+for (const mv of CROSS_MOVES) {
+  const src = bookCase.get(mv.from);
+  const dst = bookCase.get(mv.to);
+  if (!src || !dst) continue;
+  const idx = src.sections.index ?? [];
+  const at = idx.findIndex((p) => p.replace(/⟦[^⟧]*⟧/g, "").trim() === mv.heading);
+  if (at < 0) continue;
+  const moved = idx.splice(at);
+  (dst.sections.__refExtra ??= []).push({ title: mv.heading, paras: moved.slice(1) });
+  console.log(`경계 보정: ${mv.from} 인덱스 "${mv.heading}"(${moved.length - 1}문단) → ${mv.to} 참고`);
+}
 
 const SECTION_DEFS = [
   ["issues", "사안의 쟁점"],
@@ -295,6 +313,20 @@ function buildSections(c, imageUrlByBin) {
       }
     }
     sections.push(section, ...refs);
+  }
+  // 경계 보정으로 넘어온 참고 블록 (CROSS_MOVES)
+  let extraSeq = 0;
+  for (const ex of c.sections.__refExtra ?? []) {
+    extraSeq++;
+    const blocks = toParaBlocks(ex.paras, imageUrlByBin);
+    if (blocks.length === 0) continue;
+    sections.push({
+      key: extraSeq > 1 ? `reference-x${extraSeq}` : "reference-x",
+      label: "참고",
+      blocks,
+      source: null,
+      title: ex.title,
+    });
   }
   return sections;
 }
