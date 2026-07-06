@@ -403,6 +403,9 @@ for (let i = 0; i < paras.length; i++) {
         }
       } else {
         curCase.infoTables.push({ section: curSection, rows, cellRows });
+        // 위치 마커 — 섹션 본문 흐름에서 표가 등장한 자리(문단 [1]과 [2] 사이 등)에
+        // 백필(spliceTables)이 표 블록을 삽입할 수 있게 한다.
+        pushText(curCase, curSection, "⟦TBL⟧");
       }
     }
     for (const img of p.images) if (!curCase.images.includes(img)) curCase.images.push(img);

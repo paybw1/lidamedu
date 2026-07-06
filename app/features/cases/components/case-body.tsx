@@ -578,6 +578,33 @@ function groupBookBlocks(
 // 이미지 셀: 흰 배경 + object-contain (투명 GIF/도형 대응), 클릭 시 원본 새 탭.
 function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   if (rows.length === 0) return null;
+  // 이미지 전용 표(HWP 의 그림 배치용 표 — 텍스트 없이 그림만) — 테두리 없는 가로 이미지
+  // 행으로 렌더 (교재의 그림 나열 배치 보존).
+  const allCells = rows.flat();
+  if (allCells.every((c) => !c.text.trim()) && allCells.some((c) => c.images.length > 0)) {
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {allCells.flatMap((c, ci) =>
+          c.images.map((img, ii) => (
+            <a
+              key={`${ci}-${ii}`}
+              href={img.url}
+              target="_blank"
+              rel="noreferrer"
+              className="border-border block rounded-lg border bg-white p-1.5"
+            >
+              <img
+                src={img.url}
+                alt={img.alt}
+                loading="lazy"
+                className="max-h-[180px] w-auto object-contain"
+              />
+            </a>
+          )),
+        )}
+      </div>
+    );
+  }
   const [head, ...body] = rows;
   // 원본(HWP)의 열 병합 정보는 파싱 시 소실 — 셀 수가 적은 행은 마지막 셀이 남은 열을
   // 병합(colSpan)해 표 폭을 채운다 (예: "출원일/등록일 | 값" 2셀 행이 3열 표를 채움).
