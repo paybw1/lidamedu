@@ -130,10 +130,20 @@ if (process.argv[2] === "--status") {
       `${t.name}: ${found.status} — templateId=${found.templateId}` +
         ` → 승인되면 ${t.envName} 교체`,
     );
+    // 반려면 검수 코멘트 노출 — 문구 조정 후 재신청 근거.
+    if (found.status === "REJECTED") {
+      const detail = await api("GET", `/kakao/v2/templates/${found.templateId}`);
+      const last = (detail.json?.comments ?? []).filter((c) => c.isAdmin).at(-1);
+      if (last) console.log(`  반려 사유: ${last.content.replace(/\r?\n/g, " ").slice(0, 300)}`);
+    }
   }
-  process.exit(0);
+  // ★process.exit() 금지 — Windows Node 에서 미정리 fetch 핸들과 겹치면
+  //   libuv assertion(async.c) 으로 비정상 종료 코드가 난다. 자연 종료로 충분.
+} else {
+  await createAndInspect();
 }
 
+async function createAndInspect() {
 const existing = await listV2Templates();
 for (const t of TEMPLATES) {
   const dup = existing.find((x) => x.name === t.name);
@@ -182,3 +192,4 @@ console.log(
   "\n검수는 보통 영업일 1~3일. 상태 확인: node scripts/ops/kakao-template-buttons.mjs --status",
 );
 console.log("승인되면 .env 와 Vercel 의 KAKAO_TEMPLATE_* 값을 새 templateId 로 교체하세요.");
+}
