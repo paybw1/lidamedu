@@ -15,11 +15,13 @@ import type {
 } from "~/features/study/queries.server";
 
 import { ListTreeIcon } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "~/core/components/ui/button";
 import { SheetHeader, SheetTitle } from "~/core/components/ui/sheet";
 
 import { ArticleTree } from "../article-tree";
+import { FilteredArticlesReader } from "../filtered-articles-reader";
 import { MobileNavDrawer } from "../mobile-nav-drawer";
 import { SortAxisToggle, useSortAxis } from "../sort-axis";
 import { SubjectLearningHub } from "../subject-learning-hub";
@@ -65,6 +67,12 @@ export function ArticlesTab({
   const systematicEmpty = systematicNodes.length === 0;
   const renderSystematic = axis === "systematic" && !systematicEmpty;
 
+  // 트리 필터(중요도/즐겨찾기)가 켜지면 가운데 본문 영역을 매칭 조문 정독으로 전환.
+  const [treeFilter, setTreeFilter] = useState({ importance: 0, bookmark: 0 });
+  const filterReading =
+    !renderSystematic &&
+    (treeFilter.importance > 0 || treeFilter.bookmark > 0);
+
   // 목차 트리 — 데스크톱 사이드바 / 모바일 드로어 공용 마크업.
   const treePanel = (
     <div className="border-border bg-muted/30 overflow-hidden rounded-xl border lg:max-h-[calc(100vh-6rem)] lg:overflow-auto">
@@ -95,6 +103,7 @@ export function ArticlesTab({
             lazyExpand={
               subject.slug === "civil" && lawId ? { lawId } : undefined
             }
+            onFilterChange={setTreeFilter}
           />
         )}
         {axis === "systematic" && systematicEmpty ? (
@@ -138,17 +147,28 @@ export function ArticlesTab({
           </MobileNavDrawer>
         </div>
 
-        <SubjectStudyStatus {...studyStatus} kind="article" />
-        <SubjectLearningHub
-          subject={subject}
-          articleCount={articleCount}
-          progress={progress}
-          recommendedArticles={recommendedArticles}
-          cases={cases}
-          casesTotal={casesTotal}
-          problems={problems}
-          problemStats={problemStats}
-        />
+        {filterReading ? (
+          // 필터 정독 — 매칭 조문 전문을 가운데에 순차 로드.
+          <FilteredArticlesReader
+            lawCode={subject.slug}
+            importanceMin={treeFilter.importance}
+            bookmarkMin={treeFilter.bookmark}
+          />
+        ) : (
+          <>
+            <SubjectStudyStatus {...studyStatus} kind="article" />
+            <SubjectLearningHub
+              subject={subject}
+              articleCount={articleCount}
+              progress={progress}
+              recommendedArticles={recommendedArticles}
+              cases={cases}
+              casesTotal={casesTotal}
+              problems={problems}
+              problemStats={problemStats}
+            />
+          </>
+        )}
       </div>
     </div>
   );

@@ -143,6 +143,7 @@ export function ArticleTree({
   annotationCounts,
   lazyExpand,
   searchVisible = true,
+  onFilterChange,
 }: {
   nodes: ArticleNode[];
   emptyHint?: string;
@@ -155,6 +156,8 @@ export function ArticleTree({
   lazyExpand?: LazyExpandConfig;
   // 검색 입력 노출 — 데스크톱 패널은 헤더의 돋보기 아이콘으로 제어(기본 true=모바일 등).
   searchVisible?: boolean;
+  // 중요도/즐겨찾기 필터 변경 통지 — 허브가 가운데 본문 영역을 필터 정독으로 전환.
+  onFilterChange?: (f: { importance: number; bookmark: number }) => void;
 }) {
   // Lazy 모드용 — 펼침 이벤트로 fetch 한 자식 노드 누적.
   // nodes prop 이 바뀌면(다른 법령으로 이동 등) 리셋.
@@ -241,6 +244,11 @@ export function ArticleTree({
   const [bookmarkFilter, setBookmarkFilter] = useState<BookmarkFilter>(0);
   const [searchQuery, setSearchQuery] = useState("");
   const showBookmarkFilter = bookmarkLevels !== undefined;
+  // 필터 변경 통지 — 부모(허브)가 가운데 영역을 필터 정독으로 전환할 수 있게.
+  useEffect(() => {
+    onFilterChange?.({ importance: importanceFilter, bookmark: bookmarkFilter });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importanceFilter, bookmarkFilter]);
   // 검색창을 닫으면 잔여 필터가 보이지 않게 남는 것 방지 — 질의도 함께 비운다.
   useEffect(() => {
     if (!searchVisible) setSearchQuery("");

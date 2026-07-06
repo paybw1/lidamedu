@@ -125,6 +125,11 @@ export default [
     ...prefix("/laws", [
       route("/admin-edit-article", "features/laws/api/admin-edit-article.tsx"),
       route("/article-children", "features/laws/api/article-children.tsx"),
+      // 허브 트리 필터(중요도/즐겨찾기) 매칭 조문 본문 정독 페이지 로드.
+      route(
+        "/filtered-articles",
+        "features/subjects/api/filtered-articles.tsx",
+      ),
     ]),
     ...prefix("/admin", [
       route("/case", "features/admin/api/case.tsx"),
