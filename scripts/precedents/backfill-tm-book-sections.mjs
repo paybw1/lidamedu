@@ -101,6 +101,7 @@ async function syncMissingImages(row, bookImages) {
 // 케이스 경계 수동 보정(원장 지시) — 앞 판례 인덱스 말미에 붙은 법리 블록을 다음 판례의 참고로.
 const CROSS_MOVES = [
   { from: "2015후1348", heading: "요부관찰 기본법리", to: "2017후2208" },
+  { from: "2023도352", heading: "분리관찰 기본법리", to: "2006후4086" },
 ];
 
 // 최초 수록분 기준 (시드와 동일 정책)
