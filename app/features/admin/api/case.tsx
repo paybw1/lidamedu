@@ -742,7 +742,18 @@ export async function action({ request }: Route.ActionArgs) {
     );
 
   // book_sections — 폼에 필드가 있을 때만 반영. 빈 문단·빈 섹션 정리 후 0개면 null.
-  let bookSectionsPatch: { book_sections: Json } | Record<string, never> = {};
+  // 섹션이 있으면 목록 제목·검색용 필드(summary_items/reasoning_md/comment_body_md)를
+  // 교재 구조에서 자동 파생 — 신규 상표 판례를 교재 구조만으로 등록해도 목록·검색 동기화.
+  let bookSectionsPatch:
+    | {
+        book_sections: Json;
+        summary_title?: string | null;
+        summary_body_md?: string | null;
+        summary_items?: Json;
+        reasoning_md?: string | null;
+        comment_body_md?: string | null;
+      }
+    | Record<string, never> = {};
   const bookSectionsRaw = fd.get("bookSections");
   if (bookSectionsRaw !== null) {
     let parsedSections: unknown;
@@ -768,17 +779,59 @@ export async function action({ request }: Route.ActionArgs) {
         ),
       }))
       .filter((s) => s.blocks.length > 0);
-    bookSectionsPatch = {
-      book_sections:
-        cleaned.length > 0
-          ? (JSON.parse(JSON.stringify({ kind: "tm-book", sections: cleaned })) as Json)
-          : null,
-    };
+    if (cleaned.length > 0) {
+      // 검색·목록 미러 파생 — 사안의 쟁점 → 요지 항목, 사실관계~본심 → 판시이유,
+      // 평석+인덱스 → 비고. 표는 셀 텍스트를 이어붙여 검색 인덱스에 포함.
+      const paraTexts = (key: string): string[] => {
+        const sec = cleaned.find((s) => s.key === key);
+        if (!sec) return [];
+        return sec.blocks.flatMap((b) =>
+          b.type === "p"
+            ? [b.text]
+            : b.rows.map((row) => row.map((c) => c.text).filter(Boolean).join(" | ")).filter(Boolean),
+        );
+      };
+      const issueItems = paraTexts("issues").map((t) => ({
+        title: t.replace(/^\[\d+\]\s*/, "").trim().slice(0, 500),
+        body: "",
+      }));
+      const reasoningParts: string[] = [];
+      for (const [key, label] of [
+        ["mark", "쟁점상표"],
+        ["facts", "사실관계"],
+        ["lower", "전심의 판단"],
+        ["doctrine", "관련 법리"],
+        ["holding", "본심의 판단"],
+      ] as const) {
+        const texts = paraTexts(key);
+        if (texts.length) reasoningParts.push(`### ${label}\n\n${texts.join("\n\n")}`);
+      }
+      const commentParts = paraTexts("comment");
+      const indexTexts = paraTexts("index");
+      if (indexTexts.length) commentParts.push(`**[Index]** ${indexTexts.join(" / ")}`);
+      bookSectionsPatch = {
+        book_sections: JSON.parse(
+          JSON.stringify({ kind: "tm-book", sections: cleaned }),
+        ) as Json,
+        ...(issueItems.length > 0
+          ? {
+              summary_items: JSON.parse(JSON.stringify(issueItems)) as Json,
+              summary_title: issueItems[0].title || null,
+              summary_body_md: null,
+            }
+          : {}),
+        reasoning_md: reasoningParts.length ? reasoningParts.join("\n\n") : null,
+        comment_body_md: commentParts.length ? commentParts.join("\n\n") : null,
+      };
+    } else {
+      bookSectionsPatch = { book_sections: null };
+    }
   }
 
   // full_text_pdf 컬럼은 별도 intent(upload/remove)로만 변경 — 메타 폼은 건드리지 않는다.
+  // ★bookSectionsPatch 를 마지막에 spread — 교재 구조가 있으면 파생 미러(summary_items/
+  //   reasoning_md/comment_body_md)가 폼의 generic 필드 값을 덮어쓴다(교재 구조 = SSOT).
   const payload = {
-    ...bookSectionsPatch,
     subject_laws: input.subjectLaws,
     court: input.court,
     decided_at: input.decidedAt,
@@ -795,6 +848,7 @@ export async function action({ request }: Route.ActionArgs) {
     exam_1st_years: input.exam1stYears,
     exam_2nd_years: input.exam2ndYears,
     summary_items: summaryItems,
+    ...bookSectionsPatch,
   };
 
   if (intent === "create") {
