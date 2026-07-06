@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "database.types";
 
 import { fetchAllIn } from "~/core/lib/supa-batch.server";
+import { sortSystematicTreeOrder } from "~/features/laws/lib/systematic-order";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 
 export type ArticleLevel = Database["public"]["Enums"]["article_level"];
@@ -481,7 +482,10 @@ export async function getSystematicSkeleton(
     articlesByNode.set(l.node_id, list);
   }
 
-  return nodes.map((n) => ({
+  // ★트리 표시 순(parent+ord DFS) — path 문자열 정렬은 대분류 10개 초과 시 깨짐(b13 < b2).
+  //   전체 순번(computeCaseOverallOrder) 랭킹이 이 배열 순서를 그대로 쓴다.
+  return sortSystematicTreeOrder(
+    nodes.map((n) => ({
     nodeId: n.node_id,
     parentId: n.parent_id,
     path: typeof n.path === "string" ? n.path : String(n.path ?? ""),
@@ -496,7 +500,8 @@ export async function getSystematicSkeleton(
       const yn = naturalKey(y.articleNumber);
       return xn[0] !== yn[0] ? xn[0] - yn[0] : xn[1] - yn[1];
     }),
-  }));
+    })),
+  );
 }
 
 export interface SystematicNodeWithArticles {

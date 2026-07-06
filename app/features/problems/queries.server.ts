@@ -20,6 +20,7 @@ import { fetchAllIn, fetchAllPages } from "~/core/lib/supa-batch.server";
 import { getBookmarksByTargets } from "~/features/annotations/queries.server";
 import { listCommentsBulk } from "~/features/comments/queries.server";
 import { articleSlug } from "~/features/laws/lib/identifier";
+import { sortSystematicTreeOrder } from "~/features/laws/lib/systematic-order";
 import type { LawSubjectSlug } from "~/features/subjects/lib/subjects";
 import { LAW_SUBJECT_SLUGS } from "~/features/subjects/lib/subjects";
 
@@ -328,10 +329,18 @@ export async function attachProblemOverallNo(
 
   const { data: nodesData } = await client
     .from("systematic_nodes")
-    .select("node_id, path")
-    .eq("law_code", lawCode)
-    .order("path");
-  const nodes = nodesData ?? [];
+    .select("node_id, parent_id, ord, path")
+    .eq("law_code", lawCode);
+  // ★path 문자열 정렬은 대분류 10개 초과 시 깨짐(b13 < b2) — 트리 순(parent+ord DFS)으로 랭킹.
+  const nodes = sortSystematicTreeOrder(
+    (nodesData ?? []).map((n) => ({
+      nodeId: n.node_id,
+      parentId: n.parent_id,
+      ord: n.ord,
+      path: typeof n.path === "string" ? n.path : String(n.path ?? ""),
+      node_id: n.node_id,
+    })),
+  );
   // ★링크·문제는 1000행(max-rows) 초과 가능(민법 링크 1193·특허 문제 1176) — 배치 헬퍼로 전량 조회.
   const [aslRows, placRows] = await Promise.all([
     fetchAllIn(
