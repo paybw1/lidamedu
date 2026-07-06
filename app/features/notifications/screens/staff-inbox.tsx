@@ -8,7 +8,7 @@ import {
   ClipboardCheckIcon,
   MessageCircleQuestionIcon,
 } from "lucide-react";
-import { Form, Link, data, useFetcher } from "react-router";
+import { Link, data, useFetcher } from "react-router";
 
 import { Button } from "~/core/components/ui/button";
 import { cn } from "~/core/lib/utils";
@@ -76,6 +76,9 @@ function formatRelative(iso: string): string {
 
 export default function StaffInbox({ loaderData }: Route.ComponentProps) {
   const { items, unreadCount, onlyUnread, role } = loaderData;
+  // 리소스 라우트(action-only)로의 일반 Form 내비게이션은 제출 후 화면 없는
+  // /api/... 로 이동해 오류가 되므로 fetcher 로 제출(완료 시 loader 자동 재검증).
+  const markAll = useFetcher();
 
   return (
     <AdminShell
@@ -85,12 +88,18 @@ export default function StaffInbox({ loaderData }: Route.ComponentProps) {
       desc="운영진 수신 알림. 미읽음 항목을 우선으로 표시합니다."
       headerRight={
         unreadCount > 0 ? (
-          <Form method="post" action="/api/notifications/mark-read">
+          <markAll.Form method="post" action="/api/notifications/mark-read">
             <input type="hidden" name="all" value="1" />
-            <Button type="submit" size="sm" variant="outline" className="h-8">
+            <Button
+              type="submit"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={markAll.state !== "idle"}
+            >
               <CheckCheckIcon className="size-3.5" /> 모두 읽음 처리
             </Button>
-          </Form>
+          </markAll.Form>
         ) : undefined
       }
     >

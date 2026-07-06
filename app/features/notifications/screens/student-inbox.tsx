@@ -10,7 +10,7 @@ import {
   MessageSquareTextIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { Form, Link, data } from "react-router";
+import { Form, Link, data, useFetcher } from "react-router";
 
 import { Badge } from "~/core/components/ui/badge";
 import { Button } from "~/core/components/ui/button";
@@ -81,6 +81,9 @@ function formatRelative(iso: string): string {
 
 export default function StudentInbox({ loaderData }: Route.ComponentProps) {
   const { items, unreadCount, onlyUnread } = loaderData;
+  // 리소스 라우트(action-only)로의 일반 Form 내비게이션은 제출 후 화면 없는
+  // /api/... 로 이동해 오류가 되므로 fetcher 로 제출(완료 시 loader 자동 재검증).
+  const markAll = useFetcher();
 
   return (
     <div className="mx-auto w-full max-w-screen-lg px-5 py-6 md:px-10 md:py-8">
@@ -91,13 +94,19 @@ export default function StudentInbox({ loaderData }: Route.ComponentProps) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-bold tracking-tight">알림</h1>
           {unreadCount > 0 ? (
-            <Form method="post" action="/api/notifications/mark-read">
+            <markAll.Form method="post" action="/api/notifications/mark-read">
               <input type="hidden" name="audience" value="student" />
               <input type="hidden" name="all" value="1" />
-              <Button type="submit" size="sm" variant="outline" className="h-8">
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                className="h-8"
+                disabled={markAll.state !== "idle"}
+              >
                 <CheckCheckIcon className="size-3.5" /> 모두 읽음 처리
               </Button>
-            </Form>
+            </markAll.Form>
           ) : null}
         </div>
         <div className="flex gap-2 text-xs">
