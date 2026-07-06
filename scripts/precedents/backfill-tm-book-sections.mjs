@@ -29,6 +29,9 @@ const SECTION_DEFS = [
   ["comment", "평석"],
 ];
 
+// 선두 [N]/(N) 마커 뒤에 공백이 없으면 삽입 — 평석 원문이 "[1]상표법은…" 처럼 붙어 있음.
+const normalizePara = (t) => t.replace(/^(\[\d+\]|\(\d+\))(?=\S)/, "$1 ");
+
 function buildSections(c, imageUrlByBin) {
   const sections = [];
   const cellToBlock = (cell) => ({
@@ -46,13 +49,13 @@ function buildSections(c, imageUrlByBin) {
   // 쟁점상표 — 헤더 직후(preamble) 도표
   const infoBlocks = [
     ...tablesFor("preamble"),
-    ...(c.sections.preamble ?? []).map((t) => ({ type: "p", text: t })),
+    ...(c.sections.preamble ?? []).map((t) => ({ type: "p", text: normalizePara(t) })),
   ];
   if (infoBlocks.length) sections.push({ key: "mark", label: "쟁점상표", blocks: infoBlocks });
 
   for (const [key, label] of SECTION_DEFS) {
     const blocks = [
-      ...(c.sections[key] ?? []).map((t) => ({ type: "p", text: t })),
+      ...(c.sections[key] ?? []).map((t) => ({ type: "p", text: normalizePara(t) })),
       ...tablesFor(key),
     ];
     if (blocks.length) sections.push({ key, label, blocks });
