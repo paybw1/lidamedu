@@ -168,7 +168,9 @@ export function StudentSidebar({
                 alt="리담변리사학원"
                 className="h-auto max-h-7 w-auto max-w-full object-contain dark:[filter:invert(1)_hue-rotate(180deg)]"
               />
-              <span className="text-muted-foreground text-[10px] font-medium tracking-[0.08em] whitespace-nowrap">
+              {/* 태그라인은 로고 심볼이 아니라 '리담변리사학원' 텍스트 시작선에 맞춤
+                  (텍스트가 이미지 폭의 18.5% 지점에서 시작, 높이 28px 기준 ≈31px). */}
+              <span className="text-muted-foreground pl-[31px] text-[10px] font-medium tracking-[0.08em] whitespace-nowrap">
                 Study Platform
               </span>
             </span>

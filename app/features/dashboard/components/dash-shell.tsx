@@ -86,6 +86,8 @@ export function DashSidebar({
             letterSpacing: "0.08em",
             color: T.inkMute,
             whiteSpace: "nowrap",
+            // '리담변리사학원' 텍스트 시작선에 맞춤(이미지 폭 18.5%, 높이 28px 기준 ≈31px)
+            paddingLeft: 31,
           }}
         >
           Study Platform
