@@ -301,18 +301,40 @@ export function CaseBody({
           ) : null}
         </div>
 
-        {/* 기출 표시 — 1차는 problem link + 수동 연도 통합(연도 asc), 2차는 연도 배지 */}
+        {/* 기출 표시 — 1차는 problem link + 수동 연도 통합(연도 asc), 2차는 연도 배지.
+            문헌(판례해설·중요판례평석 등 case_references)도 같은 행에 회색 칩으로 노출. */}
         {examProblems.length +
           kase.exam1stExtraYears.length +
-          kase.exam2ndYears.length >
+          kase.exam2ndYears.length +
+          references.length >
         0 ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {mergeFirstRoundChips(examProblems, kase.exam1stExtraYears)}
             {[...kase.exam2ndYears]
               .sort((a, b) => a - b)
               .map((y) => (
                 <ExamYearChip key={`2-${y}`} round="second" year={y} />
               ))}
+            {references.map((r) =>
+              r.url ? (
+                <a
+                  key={r.referenceId}
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground bg-muted/60 hover:text-foreground rounded-full px-2 py-0.5 text-[11px] underline-offset-2 hover:underline"
+                >
+                  {r.title}
+                </a>
+              ) : (
+                <span
+                  key={r.referenceId}
+                  className="text-muted-foreground bg-muted/60 rounded-full px-2 py-0.5 text-[11px]"
+                >
+                  {r.title}
+                </span>
+              ),
+            )}
           </div>
         ) : null}
       </CardHeader>
