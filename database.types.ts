@@ -6733,6 +6733,8 @@ export type Database = {
           answer_md: string | null
           answered_at: string | null
           answerer_id: string | null
+          archive_key: string | null
+          archive_source: string | null
           asker_id: string
           created_at: string
           deleted_at: string | null
@@ -6752,6 +6754,8 @@ export type Database = {
           answer_md?: string | null
           answered_at?: string | null
           answerer_id?: string | null
+          archive_key?: string | null
+          archive_source?: string | null
           asker_id: string
           created_at?: string
           deleted_at?: string | null
@@ -6773,6 +6777,8 @@ export type Database = {
           answer_md?: string | null
           answered_at?: string | null
           answerer_id?: string | null
+          archive_key?: string | null
+          archive_source?: string | null
           asker_id?: string
           created_at?: string
           deleted_at?: string | null
@@ -9364,6 +9370,7 @@ export type Database = {
         | "problem"
         | "textbook"
         | "practice"
+        | "qna"
       cohort_board_attachment_kind: "image" | "pdf" | "file"
       cohort_board_write_scope: "staff" | "members"
       community_board: "free" | "study" | "review"
@@ -9628,7 +9635,14 @@ export const Constants = {
       assignment_status: ["pending", "partial", "completed"],
       auto_blank_type: ["subject", "period"],
       case_court: ["supreme", "patent_court", "high_court", "district_court"],
-      chunk_source_type: ["article", "case", "problem", "textbook", "practice"],
+      chunk_source_type: [
+        "article",
+        "case",
+        "problem",
+        "textbook",
+        "practice",
+        "qna",
+      ],
       cohort_board_attachment_kind: ["image", "pdf", "file"],
       cohort_board_write_scope: ["staff", "members"],
       community_board: ["free", "study", "review"],

@@ -19,15 +19,16 @@ export async function resolveCitationHrefs(
   const articleIds = new Set<string>();
   const caseIds = new Set<string>();
   const problemIds = new Set<string>();
+  const out: CitationHrefMap = {};
   for (const m of messages) {
     for (const c of m.citations) {
       if (c.sourceType === "article") articleIds.add(c.sourceId);
       else if (c.sourceType === "case") caseIds.add(c.sourceId);
       else if (c.sourceType === "problem") problemIds.add(c.sourceId);
+      // 강사 Q&A 아카이브 — sourceId = qna_threads PK, 재조회 없이 직결.
+      else if (c.sourceType === "qna") out[`qna:${c.sourceId}`] = `/qna/${c.sourceId}`;
     }
   }
-
-  const out: CitationHrefMap = {};
   const [articles, cases, problems] = await Promise.all([
     articleIds.size > 0
       ? client

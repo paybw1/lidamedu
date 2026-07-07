@@ -13,8 +13,10 @@ export const DOC_TYPE_LABEL = {
   problem:  "문제",
   textbook: "기본서",
   practice: "실무서",
+  // feat-9-010 — 강사 질의응답 아카이브(qna_threads 소급 적재분 포함). 강사 공인 답변 = 1차.
+  qna:      "강사 Q&A",
 } as const satisfies Record<
-  "article" | "case" | "problem" | "textbook" | "practice",
+  "article" | "case" | "problem" | "textbook" | "practice" | "qna",
   string
 >;
 

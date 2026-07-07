@@ -47,6 +47,7 @@ const CITATION_SOURCE_LABEL: Record<string, string> = {
   problem: "문제",
   textbook: "기본서",
   practice: "실무서",
+  qna: "강사 Q&A",
 };
 
 // 대상 칩 색 — 조문(primary) / 판례(violet) / 문제(amber).

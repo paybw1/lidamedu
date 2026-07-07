@@ -20,7 +20,7 @@ import { type ParsedQuery, parseQuestion } from "./query-parser";
 
 export interface SearchHit {
   chunkId: string;
-  sourceType: "article" | "case" | "problem" | "textbook" | "practice";
+  sourceType: "article" | "case" | "problem" | "textbook" | "practice" | "qna";
   sourceId: string;
   chunkIndex: number;
   lawCode: string | null;
