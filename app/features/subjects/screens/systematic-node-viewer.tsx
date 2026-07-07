@@ -312,9 +312,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // feat-9-010 — 이 쟁점(노드)에 대한 Q&A. node 대상 스레드 + 단원 앵커(node_id)
   // 스레드 합집합 — 아카이브 조문 질문이 주제별(신규성/진보성 등)로 구분 열람된다.
+  // 상한 500 — 최다 노드(국제특허출원 특례 135건 등)도 잘림 없이 전량 노출.
   const [nodeTargetThreads, nodeAnchoredThreads] = await Promise.all([
-    listThreadsForTarget(client, "node", nodeId, 20),
-    listThreadsAnchoredToNode(client, nodeId, 50),
+    listThreadsForTarget(client, "node", nodeId, 100),
+    listThreadsAnchoredToNode(client, nodeId, 500),
   ]);
   const seenThreadIds = new Set<string>();
   const nodeQnaThreads = [...nodeTargetThreads, ...nodeAnchoredThreads]
