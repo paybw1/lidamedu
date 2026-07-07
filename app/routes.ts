@@ -1166,6 +1166,8 @@ export default [
           ...prefix("/qna", [
             index("features/qna/screens/qna-list.tsx"),
             route("/new", "features/qna/screens/qna-new.tsx"),
+            // 질문자 프로필(강사·관리자 전용) — 회원정보·질문 이력(수준·평균)·쪽지.
+            route("/asker/:profileId", "features/qna/screens/qna-asker.tsx"),
             route("/:threadId", "features/qna/screens/qna-detail.tsx"),
           ]),
         ],

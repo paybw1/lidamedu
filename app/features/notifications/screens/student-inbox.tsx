@@ -57,6 +57,7 @@ const KIND_LABEL: Partial<Record<NotificationKind, string>> = {
   trial_ended: "체험 종료",
   cohort_upgrade_processed: "종합반 등업",
   bug_report_resolved: "오류신고 처리",
+  staff_message: "강사 쪽지",
 };
 
 const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
@@ -68,6 +69,7 @@ const KIND_ICON: Partial<Record<NotificationKind, typeof BellIcon>> = {
   trial_expiry_warning: TriangleAlertIcon,
   trial_ended: TriangleAlertIcon,
   bug_report_resolved: WrenchIcon,
+  staff_message: MessageSquareTextIcon,
 };
 
 function formatRelative(iso: string): string {

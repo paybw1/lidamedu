@@ -199,9 +199,21 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           <span className="bg-primary text-primary-foreground inline-flex size-6 items-center justify-center rounded-full text-[11px] font-bold">
             {(thread.askerName ?? "?").slice(0, 1)}
           </span>
-          <span className="text-[13px] font-bold">
-            {thread.askerName ?? "알 수 없음"}
-          </span>
+          {/* 강사·관리자 — 질문자 클릭 시 프로필(질문 이력·수준·쪽지) 화면으로 */}
+          {isStaff && thread.askerId ? (
+            <Link
+              to={`/qna/asker/${thread.askerId}`}
+              viewTransition
+              className="text-link text-[13px] font-bold hover:underline"
+              title="질문자 정보 보기 (강사·관리자)"
+            >
+              {thread.askerName ?? "알 수 없음"}
+            </Link>
+          ) : (
+            <span className="text-[13px] font-bold">
+              {thread.askerName ?? "알 수 없음"}
+            </span>
+          )}
           <span className="text-muted-foreground text-[11px] tabular-nums">
             {new Date(thread.createdAt).toLocaleString("ko-KR")}
           </span>

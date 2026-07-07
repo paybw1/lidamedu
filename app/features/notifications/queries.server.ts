@@ -31,6 +31,8 @@ const STUDENT_KINDS: NotificationKind[] = [
   "trial_ended",
   "cohort_upgrade_processed",
   "bug_report_resolved",
+  // 강사 → 학생 쪽지 (질문자 프로필 화면에서 발송)
+  "staff_message",
 ];
 
 export function isStaffKind(k: NotificationKind): boolean {
