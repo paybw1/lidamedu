@@ -108,6 +108,8 @@ export interface QnaThreadSummary {
   createdAt: string;
   answeredAt: string | null;
   updatedAt: string;
+  /** 단원(체계도 노드) 앵커 — 대상 crumb 의 쟁점 표기에 사용. */
+  nodeId: string | null;
 }
 
 export interface QnaThreadDetail extends QnaThreadSummary {

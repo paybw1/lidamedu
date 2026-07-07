@@ -128,6 +128,9 @@ export async function resolveTargetDisplay(
   client: SupabaseClient<Database>,
   targetType: QnaTargetType,
   targetId: string,
+  // 스레드의 단원 앵커(qna_threads.node_id) — 있으면 조문의 대표 링크 대신 이 노드를
+  // 쟁점 세그먼트로 쓴다(29조처럼 여러 쟁점에 걸친 조문의 오표기 방지).
+  threadNodeId?: string | null,
 ): Promise<TargetDisplay | null> {
   if (targetType === "article") {
     const { data, error } = await client
@@ -139,7 +142,9 @@ export async function resolveTargetDisplay(
       .is("deleted_at", null)
       .maybeSingle();
     if (error || !data || !data.laws) return null;
-    const node = await articleNodeLabel(client, data.article_id);
+    const node = threadNodeId
+      ? await nodeLabelById(client, threadNodeId)
+      : await articleNodeLabel(client, data.article_id);
     // display_label = "제29조 특허요건" — 첫 토큰(조문번호) / 나머지(조문제목)로 분리.
     const [numPart, ...rest] = data.display_label.split(" ");
     const title = rest.join(" ").trim();

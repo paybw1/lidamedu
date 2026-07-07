@@ -181,12 +181,15 @@ export function ArticleRightPanel({
   pdfLocations,
   pdfLocationsEnabled,
   className,
+  qnaFromCtx,
 }: {
   target: { type: AnnotationTargetType; id: string };
   bookmark: BookmarkRecord | null;
   memos: MemoRecord[];
   highlights: HighlightRecord[];
   qnaThreads?: QnaThreadSummary[];
+  /** Q&A prev/next 컨텍스트(?from=) — 노드 뷰어 등 필터된 목록에서 전달. */
+  qnaFromCtx?: string;
   relatedCases?: RelatedCase[];
   // problem-viewer 에서 같은 조문 다른 문제 노출용. undefined 면 탭 미표시.
   relatedProblems?: RelatedProblemItem[];
@@ -466,6 +469,7 @@ export function ArticleRightPanel({
                   targetType={qnaTargetType}
                   targetId={target.id}
                   showQuality={viewerIsStaff}
+                  fromCtx={qnaFromCtx}
                 />
               </TabsContent>
             ) : null}

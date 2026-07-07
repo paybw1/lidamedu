@@ -42,7 +42,12 @@ import {
   type QnaVerdict,
   subjectLabel,
 } from "../labels";
-import { getThreadDetail, listThreadMessages } from "../queries.server";
+import {
+  getNeighborThreads,
+  getThreadDetail,
+  listThreadMessages,
+  parseQnaNeighborCtx,
+} from "../queries.server";
 import { resolveCitationHrefs } from "../lib/citation-links.server";
 import { resolveTargetDisplay } from "../lib/target-display.server";
 import { MarkdownView } from "~/features/problems/components/markdown-view";
@@ -106,7 +111,12 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // study_method 는 콘텐츠 앵커(targetId)가 없어 대상 표시 생략(과목 칩으로 분류 표시).
   const target = thread.targetId
-    ? await resolveTargetDisplay(client, thread.targetType, thread.targetId)
+    ? await resolveTargetDisplay(
+        client,
+        thread.targetType,
+        thread.targetId,
+        thread.nodeId,
+      )
     : null;
 
   // 타임라인 메시지(AI 즉답·후속 질문 등). 강사 정식답변은 thread.answerMd 로 별도 표시.
@@ -114,30 +124,15 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // AI 출처 → 뷰어 링크(조문/판례/문제). textbook·practice 는 링크 없음.
   const citationHrefs = await resolveCitationHrefs(client, messages);
 
-  // prev/next — 목록 기본 정렬(작성일 최신순) 기준 이웃. 아카이브는 같은 시각(09:00)
-  // 다수라 (created_at, thread_id) 복합 타이브레이크 필수.
-  const cur = thread.createdAt;
-  const cid = thread.threadId;
-  const [{ data: newerRow }, { data: olderRow }] = await Promise.all([
-    client
-      .from("qna_threads")
-      .select("thread_id, title")
-      .is("deleted_at", null)
-      .or(`created_at.gt.${cur},and(created_at.eq.${cur},thread_id.gt.${cid})`)
-      .order("created_at", { ascending: true })
-      .order("thread_id", { ascending: true })
-      .limit(1)
-      .maybeSingle(),
-    client
-      .from("qna_threads")
-      .select("thread_id, title")
-      .is("deleted_at", null)
-      .or(`created_at.lt.${cur},and(created_at.eq.${cur},thread_id.lt.${cid})`)
-      .order("created_at", { ascending: false })
-      .order("thread_id", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  // prev/next — 진입한 목록(?from=node:.../artnode:.../target:...)과 동일한 필터·정렬
+  // 기준 이웃. 컨텍스트 없으면 /qna 전체 목록 기준. 아카이브는 같은 시각(09:00) 다수라
+  // (created_at, thread_id) 복합 타이브레이크.
+  const fromRaw = new URL(request.url).searchParams.get("from");
+  const ctx = parseQnaNeighborCtx(fromRaw);
+  const { prev, next } = await getNeighborThreads(client, ctx, {
+    threadId: thread.threadId,
+    createdAt: thread.createdAt,
+  });
 
   return {
     thread,
@@ -147,8 +142,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     isStaff,
     target,
     // 목록이 최신순이므로 '이전(위)' = 더 최신, '다음(아래)' = 더 과거.
-    prevThread: newerRow ? { threadId: newerRow.thread_id, title: newerRow.title } : null,
-    nextThread: olderRow ? { threadId: olderRow.thread_id, title: olderRow.title } : null,
+    prevThread: prev,
+    nextThread: next,
+    fromCtx: ctx ? fromRaw : null,
   };
 }
 
@@ -162,7 +158,10 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
     target,
     prevThread,
     nextThread,
+    fromCtx,
   } = loaderData;
+  // prev/next·삭제 이동 시 목록 컨텍스트 유지.
+  const fromQuery = fromCtx ? `?from=${encodeURIComponent(fromCtx)}` : "";
   const isAsker = thread.askerId === currentUserId;
   // ai_answered/verified 도 강사 정식답변이 없는 상태 — AI 답변을 정확으로 확인한
   // 뒤에도 강사가 보완/정정 답변을 달 수 있다.
@@ -216,9 +215,9 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
                 threadId={thread.threadId}
                 afterHref={
                   nextThread
-                    ? `/qna/${nextThread.threadId}`
+                    ? `/qna/${nextThread.threadId}${fromQuery}`
                     : prevThread
-                      ? `/qna/${prevThread.threadId}`
+                      ? `/qna/${prevThread.threadId}${fromQuery}`
                       : "/qna"
                 }
               />
@@ -377,7 +376,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         <nav className="mt-4 grid gap-2 sm:grid-cols-2">
           {prevThread ? (
             <Link
-              to={`/qna/${prevThread.threadId}`}
+              to={`/qna/${prevThread.threadId}${fromQuery}`}
               viewTransition
               className="border-border bg-card hover:bg-accent/50 rounded-xl border p-3 transition-colors"
             >
@@ -393,7 +392,7 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           )}
           {nextThread ? (
             <Link
-              to={`/qna/${nextThread.threadId}`}
+              to={`/qna/${nextThread.threadId}${fromQuery}`}
               viewTransition
               className="border-border bg-card hover:bg-accent/50 rounded-xl border p-3 text-right transition-colors"
             >

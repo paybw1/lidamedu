@@ -36,6 +36,7 @@ const SUMMARY_COLUMNS = `
   created_at,
   answered_at,
   updated_at,
+  node_id,
   asker:profiles!qna_threads_asker_id_fkey ( profile_id, name ),
   answerer:profiles!qna_threads_answerer_id_fkey ( profile_id, name )
 `;
@@ -55,6 +56,7 @@ type RawSummaryRow = {
   created_at: string;
   answered_at: string | null;
   updated_at: string;
+  node_id: string | null;
   asker: { profile_id: string; name: string } | null;
   answerer: { profile_id: string; name: string } | null;
 };
@@ -80,6 +82,7 @@ function toSummary(row: RawSummaryRow): QnaThreadSummary {
     createdAt: row.created_at,
     answeredAt: row.answered_at,
     updatedAt: row.updated_at,
+    nodeId: row.node_id ?? null,
   };
 }
 
@@ -105,6 +108,7 @@ export async function listThreadsForTarget(
     .eq("target_id", targetId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
+    .order("thread_id", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return (data as unknown as RawSummaryRow[] | null ?? []).map(toSummary);
@@ -126,6 +130,7 @@ export async function listThreadsForArticleInNode(
     .eq("node_id", nodeId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
+    .order("thread_id", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary);
@@ -145,9 +150,84 @@ export async function listThreadsAnchoredToNode(
     .eq("node_id", nodeId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
+    .order("thread_id", { ascending: false })
     .limit(limit);
   if (error) throw error;
   return ((data as unknown as RawSummaryRow[] | null) ?? []).map(toSummary);
+}
+
+// ── prev/next 컨텍스트(from=...) — 진입한 목록과 동일한 필터·정렬로 이웃 계산 ──
+//   node:<nodeId>                : 노드 Q&A 패널(node 대상 ∪ 단원 앵커)
+//   artnode:<articleId>:<nodeId> : 노드 뷰어 안 조문 질문 탭(조문+단원 앵커)
+//   target:<type>:<id>           : 뷰어 대상 패널(조문/문제/판례 등)
+//   (없음)                        : /qna 전체 목록
+export type QnaNeighborCtx =
+  | { kind: "node"; nodeId: string }
+  | { kind: "artnode"; articleId: string; nodeId: string }
+  | { kind: "target"; targetType: QnaTargetType; targetId: string }
+  | null;
+
+export function parseQnaNeighborCtx(raw: string | null): QnaNeighborCtx {
+  if (!raw) return null;
+  const p = raw.split(":");
+  const UUID = /^[0-9a-f-]{36}$/;
+  if (p[0] === "node" && UUID.test(p[1] ?? "")) return { kind: "node", nodeId: p[1] };
+  if (p[0] === "artnode" && UUID.test(p[1] ?? "") && UUID.test(p[2] ?? ""))
+    return { kind: "artnode", articleId: p[1], nodeId: p[2] };
+  if (p[0] === "target" && p[2] && UUID.test(p[2]))
+    return { kind: "target", targetType: p[1] as QnaTargetType, targetId: p[2] };
+  return null;
+}
+
+/** 컨텍스트 목록(작성일 desc, thread_id desc) 기준 이웃 — prev=목록에서 위(더 최신), next=아래(더 과거). */
+export async function getNeighborThreads(
+  client: SupabaseClient<Database>,
+  ctx: QnaNeighborCtx,
+  cur: { threadId: string; createdAt: string },
+): Promise<{
+  prev: { threadId: string; title: string } | null;
+  next: { threadId: string; title: string } | null;
+}> {
+  const base = () => {
+    let q = client
+      .from("qna_threads")
+      .select("thread_id, title")
+      .is("deleted_at", null);
+    if (ctx?.kind === "node")
+      q = q.or(
+        `node_id.eq.${ctx.nodeId},and(target_type.eq.node,target_id.eq.${ctx.nodeId})`,
+      );
+    else if (ctx?.kind === "artnode")
+      q = q
+        .eq("target_type", "article")
+        .eq("target_id", ctx.articleId)
+        .eq("node_id", ctx.nodeId);
+    else if (ctx?.kind === "target")
+      q = q.eq("target_type", ctx.targetType).eq("target_id", ctx.targetId);
+    return q;
+  };
+  const [{ data: newer }, { data: older }] = await Promise.all([
+    base()
+      .or(
+        `created_at.gt.${cur.createdAt},and(created_at.eq.${cur.createdAt},thread_id.gt.${cur.threadId})`,
+      )
+      .order("created_at", { ascending: true })
+      .order("thread_id", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    base()
+      .or(
+        `created_at.lt.${cur.createdAt},and(created_at.eq.${cur.createdAt},thread_id.lt.${cur.threadId})`,
+      )
+      .order("created_at", { ascending: false })
+      .order("thread_id", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  return {
+    prev: newer ? { threadId: newer.thread_id, title: newer.title } : null,
+    next: older ? { threadId: older.thread_id, title: older.title } : null,
+  };
 }
 
 export interface ListFilter {

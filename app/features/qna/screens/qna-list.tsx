@@ -158,7 +158,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   await Promise.all(
     threads.map(async (t) => {
       if (!t.targetId) return;
-      const d = await resolveTargetDisplay(client, t.targetType, t.targetId);
+      const d = await resolveTargetDisplay(
+        client,
+        t.targetType,
+        t.targetId,
+        t.nodeId,
+      );
       if (d?.segments?.length) targetCrumbs[t.threadId] = d.segments;
     }),
   );

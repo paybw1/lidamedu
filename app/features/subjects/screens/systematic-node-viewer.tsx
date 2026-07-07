@@ -682,6 +682,7 @@ function Inner({
                     targetType="node"
                     targetId={node.nodeId}
                     showQuality={loaderData.isStaff}
+                    fromCtx={`node:${node.nodeId}`}
                   />
                 </div>
               </details>
@@ -941,6 +942,7 @@ function Inner({
                           memos={memos}
                           highlights={highlights}
                           qnaThreads={qnaThreads}
+                          qnaFromCtx={`artnode:${a.articleId}:${node.nodeId}`}
                           oxQuestions={oxQuestionsByArticle[a.articleId] ?? []}
                           oxAnnotationsByRef={oxAnnotationsByRef}
                           relatedCases={

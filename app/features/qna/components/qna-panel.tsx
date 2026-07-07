@@ -15,14 +15,18 @@ export function QnaPanel({
   targetType,
   targetId,
   showQuality = false,
+  fromCtx,
 }: {
   threads: QnaThreadSummary[];
   targetType: QnaTargetType;
   targetId: string;
   /** 질문 수준 배지 — 강사·관리자에게만 (원장 지시 2026-07-07). */
   showQuality?: boolean;
+  /** prev/next 컨텍스트 — 상세에서 이 목록 기준 이웃 이동(?from=). 미전달=대상 기준. */
+  fromCtx?: string;
 }) {
   const newHref = `/qna/new?targetType=${targetType}&targetId=${targetId}`;
+  const from = fromCtx ?? `target:${targetType}:${targetId}`;
 
   return (
     <div className="space-y-3">
@@ -47,7 +51,7 @@ export function QnaPanel({
           {threads.map((t) => (
             <li key={t.threadId}>
               <Link
-                to={`/qna/${t.threadId}`}
+                to={`/qna/${t.threadId}?from=${encodeURIComponent(from)}`}
                 viewTransition
                 className="hover:bg-accent/60 block rounded-md border p-2 transition-colors"
               >
