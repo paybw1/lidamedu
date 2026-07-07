@@ -177,6 +177,8 @@ const CASE_SORTS: readonly CaseSubjectSort[] = [
   "importance_asc",
   "court_asc",
   "court_desc",
+  "topic_asc",
+  "topic_desc",
   "type_asc",
   "type_desc",
   "enbanc_desc",
@@ -843,6 +845,36 @@ export async function loadSubjectHub(
         (b.overallNo ?? Number.NEGATIVE_INFINITY) -
         (a.overallNo ?? Number.NEGATIVE_INFINITY),
     );
+  } else if (
+    caseFilters.sort === "topic_asc" ||
+    caseFilters.sort === "topic_desc"
+  ) {
+    // 주제(주제N 노드) 정렬 — primaryNodeId 의 "주제N" 번호 기준. 주제 미배치는 항상 뒤로,
+    // 동률(같은 주제 안)은 체계도 순번(overallNo)으로 안정 정렬.
+    const topicNoByNodeId = new Map<string, number>();
+    for (const n of systematicNodes) {
+      const m = /^주제\s*(\d+)/.exec(n.displayLabel);
+      if (m) topicNoByNodeId.set(n.nodeId, Number(m[1]));
+    }
+    const topicNo = (c: (typeof cases)[number]) =>
+      c.primaryNodeId ? topicNoByNodeId.get(c.primaryNodeId) : undefined;
+    const dir = caseFilters.sort === "topic_asc" ? 1 : -1;
+    cases.sort((a, b) => {
+      const ta = topicNo(a);
+      const tb = topicNo(b);
+      if (ta === undefined && tb === undefined)
+        return (
+          (a.overallNo ?? Number.POSITIVE_INFINITY) -
+          (b.overallNo ?? Number.POSITIVE_INFINITY)
+        );
+      if (ta === undefined) return 1;
+      if (tb === undefined) return -1;
+      if (ta !== tb) return (ta - tb) * dir;
+      return (
+        (a.overallNo ?? Number.POSITIVE_INFINITY) -
+        (b.overallNo ?? Number.POSITIVE_INFINITY)
+      );
+    });
   }
 
   const caseTreeCounts = buildCaseTreeCounts(

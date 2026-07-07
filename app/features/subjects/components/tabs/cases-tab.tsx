@@ -513,9 +513,13 @@ export function CasesTab({
                     className="w-12"
                   />
                   {topicNodes.length > 0 ? (
-                    <TableHead className="text-muted-foreground/70 hidden w-16 font-mono text-[11px] font-bold tracking-[0.04em] uppercase md:table-cell">
-                      주제
-                    </TableHead>
+                    <SortableCaseHead
+                      label="주제"
+                      column="topic"
+                      sort={filters.sort}
+                      searchParams={searchParams}
+                      className="hidden w-16 md:table-cell"
+                    />
                   ) : null}
                   <SortableCaseHead
                     label="법원"
@@ -659,6 +663,7 @@ function FilterGroup<T extends string>({
 const CASE_HEAD_SORTS = {
   importance: { asc: "importance_asc", desc: "importance_desc", def: "desc" },
   overall: { asc: "overall_asc", desc: "overall_desc", def: "asc" },
+  topic: { asc: "topic_asc", desc: "topic_desc", def: "asc" },
   court: { asc: "court_asc", desc: "court_desc", def: "asc" },
   decided: { asc: "decided_asc", desc: "decided_desc", def: "desc" },
   caseNo: { asc: "case_no", desc: "case_no_desc", def: "asc" },

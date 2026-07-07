@@ -158,7 +158,10 @@ export type CaseSubjectSort =
   | "type_asc"
   | "type_desc"
   | "enbanc_desc"
-  | "enbanc_asc";
+  | "enbanc_asc"
+  // 주제(주제N 노드) 정렬 — 쿼리는 기본 정렬로 두고 로더가 in-memory 재정렬(overall 과 동일 패턴).
+  | "topic_asc"
+  | "topic_desc";
 export type CaseExamFilter = "any" | "exam_1st" | "exam_2nd" | "exam_both";
 export type CaseCourtFilter = "all" | CaseCourt;
 
