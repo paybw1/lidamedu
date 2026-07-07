@@ -3,6 +3,7 @@ import {
   CheckIcon,
   CornerUpRightIcon,
   ExternalLinkIcon,
+  PencilIcon,
   SparklesIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
@@ -134,6 +135,8 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
     isStaff &&
     thread.answererId === null;
   const isWaiting = thread.status === "open";
+  // 강사·관리자 — 질문·답변 본문 인라인 수정 모드.
+  const [editing, setEditing] = useState(false);
 
   return (
     <CommunityShell
@@ -160,7 +163,21 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
               ★ 질문 수준 {QNA_QUALITY_LABEL[thread.qualityGrade]}
             </Chip>
           ) : null}
-          {isStaff ? <DeleteThreadButton threadId={thread.threadId} /> : null}
+          {isStaff ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing((v) => !v)}
+                className="text-muted-foreground hover:text-foreground h-6 gap-1 px-2 text-[11px]"
+                title="질문·답변 수정 (강사·관리자)"
+              >
+                <PencilIcon className="size-3" /> {editing ? "수정 취소" : "수정"}
+              </Button>
+              <DeleteThreadButton threadId={thread.threadId} />
+            </>
+          ) : null}
           {target?.href ? (
             <Link
               to={target.href}
@@ -189,11 +206,15 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
             {new Date(thread.createdAt).toLocaleString("ko-KR")}
           </span>
         </div>
-        <MarkdownView
-          text={thread.questionMd}
-          trusted={false}
-          className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85]"
-        />
+        {editing ? (
+          <EditThreadForm thread={thread} onDone={() => setEditing(false)} />
+        ) : (
+          <MarkdownView
+            text={thread.questionMd}
+            trusted={false}
+            className="text-foreground/85 mt-3.5 text-[15px] leading-[1.85]"
+          />
+        )}
       </article>
 
       {/* 타임라인 — 시간 순서: 질문 → (답변 전 메시지) → 정식 답변 → 추가질문·재답변.
@@ -218,8 +239,8 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         ),
       )}
 
-      {/* 답변 카드 — 에메랄드 좌측 보더 */}
-      {thread.answerMd ? (
+      {/* 답변 카드 — 에메랄드 좌측 보더 (수정 모드에서는 편집 폼이 답변 필드를 포함) */}
+      {thread.answerMd && !editing ? (
         <article className="bg-card mb-3.5 rounded-2xl rounded-l-md border border-l-4 border-emerald-500 p-5 shadow-sm md:p-6">
           <div className="mb-3 flex flex-wrap items-center gap-1.5">
             <Chip tone="emerald">
@@ -293,6 +314,75 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
         </div>
       ) : null}
     </CommunityShell>
+  );
+}
+
+// 질문·답변 본문 수정 폼 — 강사·관리자 전용(intent=edit). 답변 없는 스레드는 질문만.
+function EditThreadForm({
+  thread,
+  onDone,
+}: {
+  thread: Route.ComponentProps["loaderData"]["thread"];
+  onDone: () => void;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const revalidator = useRevalidator();
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (fetcher.data?.ok && !doneRef.current) {
+      doneRef.current = true;
+      revalidator.revalidate();
+      onDone();
+    }
+  }, [fetcher.data, revalidator, onDone]);
+  return (
+    <fetcher.Form method="post" action="/api/qna/thread" className="mt-3.5 space-y-3">
+      <input type="hidden" name="intent" value="edit" />
+      <input type="hidden" name="threadId" value={thread.threadId} />
+      <div>
+        <label className="text-muted-foreground mb-1 block text-[11px] font-bold">제목</label>
+        <input
+          name="title"
+          defaultValue={thread.title}
+          required
+          maxLength={200}
+          className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label className="text-muted-foreground mb-1 block text-[11px] font-bold">질문</label>
+        <Textarea
+          name="questionMd"
+          defaultValue={thread.questionMd}
+          required
+          rows={8}
+          className="text-[14px] leading-relaxed"
+        />
+      </div>
+      {thread.answerMd ? (
+        <div>
+          <label className="text-muted-foreground mb-1 block text-[11px] font-bold">답변</label>
+          <Textarea
+            name="answerMd"
+            defaultValue={thread.answerMd}
+            required
+            rows={10}
+            className="text-[14px] leading-relaxed"
+          />
+        </div>
+      ) : null}
+      {fetcher.data?.ok === false ? (
+        <p className="text-xs text-rose-600">저장 실패: {fetcher.data.error}</p>
+      ) : null}
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={fetcher.state !== "idle"}>
+          {fetcher.state !== "idle" ? "저장 중…" : "저장"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          취소
+        </Button>
+      </div>
+    </fetcher.Form>
   );
 }
 

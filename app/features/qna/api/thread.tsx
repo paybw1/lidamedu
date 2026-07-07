@@ -57,6 +57,15 @@ const deleteSchema = z.object({
   threadId: z.string().uuid(),
 });
 
+// 질문·답변 본문 수정 — 강사·관리자 전용(아카이브 정비 포함). 답변이 없는 스레드는 answerMd 생략.
+const editSchema = z.object({
+  intent: z.literal("edit"),
+  threadId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  questionMd: z.string().min(1).max(10000),
+  answerMd: z.string().max(10000).optional(),
+});
+
 // 강사의 AI 답변 정오 평가 — 시험 대비라 binary(정확/부정확).
 const verdictSchema = z.object({
   intent: z.literal("verdict"),
@@ -84,6 +93,7 @@ const schema = z.discriminatedUnion("intent", [
   answerSchema,
   closeSchema,
   deleteSchema,
+  editSchema,
   verdictSchema,
   replySchema,
   feedbackSchema,
@@ -272,6 +282,33 @@ export async function action({ request }: Route.ActionArgs) {
       p_message_id: parsed.data.messageId,
       p_feedback: parsed.data.feedback,
     });
+    if (error) {
+      return data({ ok: false, error: error.message }, { status: 400, headers });
+    }
+    return data({ ok: true }, { headers });
+  }
+
+  if (parsed.data.intent === "edit") {
+    // 강사·관리자 전용 — RLS(staff)가 1차 방어지만 액션 게이트로 명시.
+    const role = await getStaffRole(client, user.id);
+    if (!role) {
+      return data({ ok: false, error: "forbidden" }, { status: 403, headers });
+    }
+    const existing = await getThreadDetail(client, parsed.data.threadId);
+    if (!existing) {
+      return data({ ok: false, error: "not-found" }, { status: 404, headers });
+    }
+    const answerMd = parsed.data.answerMd?.trim();
+    const { error } = await client
+      .from("qna_threads")
+      .update({
+        title: parsed.data.title,
+        question_md: parsed.data.questionMd,
+        // 기존 답변이 있는 스레드만 답변 수정(빈 값으로 답변 삭제는 미지원 — 삭제는 스레드 단위).
+        ...(existing.answerMd && answerMd ? { answer_md: answerMd } : {}),
+      })
+      .eq("thread_id", parsed.data.threadId)
+      .is("deleted_at", null);
     if (error) {
       return data({ ok: false, error: error.message }, { status: 400, headers });
     }
