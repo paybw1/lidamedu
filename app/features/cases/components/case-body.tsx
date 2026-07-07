@@ -576,18 +576,31 @@ function groupBookBlocks(
 // ── feat-3-213: 판례집 구조화 표 (쟁점상표 도표·사실관계 도식) ─────────────
 // 첫 행 = 헤더(구분/등록상표/지정상품…), 셀에 상표 도형 이미지 포함 가능.
 // 이미지 셀: 흰 배경 + object-contain (투명 GIF/도형 대응), 클릭 시 원본 새 탭.
-// 셀 텍스트에서 ![](url) 마크다운 이미지 분리 — {textOnly, imgUrls}
-const CELL_IMG_RE = /!\[[^\]]*\]\(([^)\s]+)\)/g;
-function splitCellImages(text: string): { textOnly: string; imgUrls: string[] } {
-  const imgUrls: string[] = [];
+// 셀 텍스트에서 ![alt](url) 마크다운 이미지 분리 — {textOnly, imgs}
+// alt "lg" = 확대 표기(기본 대비 1.5배 높이 캡) — 운영자가 ![lg](url) 로 지정.
+const CELL_IMG_RE = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
+function splitCellImages(text: string): {
+  textOnly: string;
+  imgs: { url: string; alt: string }[];
+} {
+  const imgs: { url: string; alt: string }[] = [];
   const textOnly = text
-    .replace(CELL_IMG_RE, (_, url: string) => {
-      imgUrls.push(url);
+    .replace(CELL_IMG_RE, (_, alt: string, url: string) => {
+      imgs.push({ url, alt });
       return "";
     })
     .trim();
-  return { textOnly, imgUrls };
+  return { textOnly, imgs };
 }
+// 이미지 높이 캡 — alt "lg" 면 1.5배 (Tailwind 정적 클래스 유지 필수).
+const cellImgClass = (alt: string, flow: "row" | "cell") =>
+  alt.trim() === "lg"
+    ? flow === "row"
+      ? "max-h-[270px] w-auto object-contain"
+      : "max-h-[210px] w-auto object-contain"
+    : flow === "row"
+      ? "max-h-[180px] w-auto object-contain"
+      : "max-h-[140px] w-auto object-contain";
 
 function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   if (rows.length === 0) return null;
@@ -597,22 +610,24 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   const cellParts = allCells.map((c) => splitCellImages(c.text));
   if (
     cellParts.every((p) => !p.textOnly) &&
-    allCells.some((c, i) => c.images.length + cellParts[i].imgUrls.length > 0)
+    allCells.some((c, i) => c.images.length + cellParts[i].imgs.length > 0)
   ) {
     return (
       <div className="flex flex-wrap items-center justify-center gap-3">
         {allCells.flatMap((c, ci) =>
-          [...cellParts[ci].imgUrls, ...c.images.map((im) => im.url)].map((url, ii) => (
-            <a
-              key={`${ci}-${ii}`}
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="border-border block rounded-lg border bg-white p-1.5"
-            >
-              <img src={url} alt="" loading="lazy" className="max-h-[180px] w-auto object-contain" />
-            </a>
-          )),
+          [...cellParts[ci].imgs, ...c.images.map((im) => ({ url: im.url, alt: im.alt }))].map(
+            (im, ii) => (
+              <a
+                key={`${ci}-${ii}`}
+                href={im.url}
+                target="_blank"
+                rel="noreferrer"
+                className="border-border block rounded-lg border bg-white p-1.5"
+              >
+                <img src={im.url} alt="" loading="lazy" className={cellImgClass(im.alt, "row")} />
+              </a>
+            ),
+          ),
         )}
       </div>
     );
@@ -646,7 +661,7 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
   // 첫 열 본문에 이미지가 오는 표("…사용된 상품 및 그 태양" 비교표 등)는 라벨 표가
   // 아니므로 열 폭을 자연 배분 — 좁힌 첫 칸 탓에 두 칸 간격이 어긋나는 문제 방지.
   const hasCellImg = (c: BookSectionCell) =>
-    c.images.length > 0 || splitCellImages(c.text).imgUrls.length > 0;
+    c.images.length > 0 || splitCellImages(c.text).imgs.length > 0;
   const hasLabelCol =
     !isGubun && body.length > 0 && body.every((r) => r[0] !== undefined && !hasCellImg(r[0]));
   return (
@@ -723,8 +738,8 @@ function BookTable({ rows }: { rows: BookSectionCell[][] }) {
 function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: boolean }) {
   // 셀 텍스트: 이미지만 있으면(도표의 표장 셀) 크게 단독 렌더, 글과 섞이면 문장 흐름
   // 안 인라인 글리프(renderWithUnderline 의 ![](url) 처리)로 — "글자 사이 배치" 보존.
-  const { textOnly, imgUrls } = splitCellImages(cell.text);
-  const imageOnly = !textOnly && imgUrls.length > 0;
+  const { textOnly, imgs } = splitCellImages(cell.text);
+  const imageOnly = !textOnly && imgs.length > 0;
   return (
     <div className="space-y-1.5">
       {cell.text && !imageOnly ? (
@@ -734,9 +749,9 @@ function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: bo
         </span>
       ) : null}
       {imageOnly
-        ? imgUrls.map((url, i) => (
-            <a key={`io-${i}`} href={url} target="_blank" rel="noreferrer" className="mx-auto block w-fit rounded bg-white p-1">
-              <img src={url} alt="" loading="lazy" className="max-h-[140px] w-auto object-contain" />
+        ? imgs.map((im, i) => (
+            <a key={`io-${i}`} href={im.url} target="_blank" rel="noreferrer" className="mx-auto block w-fit rounded bg-white p-1">
+              <img src={im.url} alt="" loading="lazy" className={cellImgClass(im.alt, "cell")} />
             </a>
           ))
         : null}
@@ -752,7 +767,7 @@ function BookCell({ cell, nowrap = false }: { cell: BookSectionCell; nowrap?: bo
             src={img.url}
             alt={img.alt}
             loading="lazy"
-            className="max-h-[140px] w-auto object-contain"
+            className={cellImgClass(img.alt, "cell")}
           />
         </a>
       ))}
