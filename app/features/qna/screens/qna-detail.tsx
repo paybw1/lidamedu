@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Link,
   data,
+  redirect,
   useFetcher,
   useNavigate,
   useRevalidator,
@@ -90,7 +91,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const thread = await getThreadDetail(client, params.threadId);
   if (!thread) {
-    throw data("Not found", { status: 404 });
+    // 삭제 직후 재검증 등 — 빈 404 대신 목록으로 복귀.
+    throw redirect("/qna");
   }
 
   const { data: profile } = await client
@@ -210,7 +212,16 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
               >
                 <PencilIcon className="size-3" /> {editing ? "수정 취소" : "수정"}
               </Button>
-              <DeleteThreadButton threadId={thread.threadId} />
+              <DeleteThreadButton
+                threadId={thread.threadId}
+                afterHref={
+                  nextThread
+                    ? `/qna/${nextThread.threadId}`
+                    : prevThread
+                      ? `/qna/${prevThread.threadId}`
+                      : "/qna"
+                }
+              />
             </>
           ) : null}
           {target?.href ? (
@@ -469,13 +480,19 @@ function EditThreadForm({
   );
 }
 
-// 스레드 삭제(soft delete) — 강사·관리자 전용. 성공 시 목록으로 복귀.
-function DeleteThreadButton({ threadId }: { threadId: string }) {
+// 스레드 삭제(soft delete) — 강사·관리자 전용. 성공 시 다음 질문으로(없으면 이전→목록).
+function DeleteThreadButton({
+  threadId,
+  afterHref = "/qna",
+}: {
+  threadId: string;
+  afterHref?: string;
+}) {
   const fetcher = useFetcher<{ ok?: boolean }>();
   const navigate = useNavigate();
   useEffect(() => {
-    if (fetcher.data?.ok) navigate("/qna");
-  }, [fetcher.data, navigate]);
+    if (fetcher.data?.ok) navigate(afterHref, { replace: true });
+  }, [fetcher.data, navigate, afterHref]);
   return (
     <fetcher.Form
       method="post"
