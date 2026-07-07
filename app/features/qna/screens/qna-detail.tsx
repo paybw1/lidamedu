@@ -112,6 +112,31 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // AI 출처 → 뷰어 링크(조문/판례/문제). textbook·practice 는 링크 없음.
   const citationHrefs = await resolveCitationHrefs(client, messages);
 
+  // prev/next — 목록 기본 정렬(작성일 최신순) 기준 이웃. 아카이브는 같은 시각(09:00)
+  // 다수라 (created_at, thread_id) 복합 타이브레이크 필수.
+  const cur = thread.createdAt;
+  const cid = thread.threadId;
+  const [{ data: newerRow }, { data: olderRow }] = await Promise.all([
+    client
+      .from("qna_threads")
+      .select("thread_id, title")
+      .is("deleted_at", null)
+      .or(`created_at.gt.${cur},and(created_at.eq.${cur},thread_id.gt.${cid})`)
+      .order("created_at", { ascending: true })
+      .order("thread_id", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    client
+      .from("qna_threads")
+      .select("thread_id, title")
+      .is("deleted_at", null)
+      .or(`created_at.lt.${cur},and(created_at.eq.${cur},thread_id.lt.${cid})`)
+      .order("created_at", { ascending: false })
+      .order("thread_id", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
   return {
     thread,
     messages,
@@ -119,12 +144,23 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     currentUserId: user.id,
     isStaff,
     target,
+    // 목록이 최신순이므로 '이전(위)' = 더 최신, '다음(아래)' = 더 과거.
+    prevThread: newerRow ? { threadId: newerRow.thread_id, title: newerRow.title } : null,
+    nextThread: olderRow ? { threadId: olderRow.thread_id, title: olderRow.title } : null,
   };
 }
 
 export default function QnaDetail({ loaderData }: Route.ComponentProps) {
-  const { thread, messages, citationHrefs, currentUserId, isStaff, target } =
-    loaderData;
+  const {
+    thread,
+    messages,
+    citationHrefs,
+    currentUserId,
+    isStaff,
+    target,
+    prevThread,
+    nextThread,
+  } = loaderData;
   const isAsker = thread.askerId === currentUserId;
   // ai_answered/verified 도 강사 정식답변이 없는 상태 — AI 답변을 정확으로 확인한
   // 뒤에도 강사가 보완/정정 답변을 달 수 있다.
@@ -143,7 +179,6 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
       category="qna"
       title="Q&A 상세"
       backLink={{ to: "/qna", label: "Q&A 목록" }}
-      width="narrow"
     >
       {/* 질문 카드 */}
       <article className="border-border bg-card mb-3.5 rounded-2xl border p-5 shadow-sm md:p-6">
@@ -324,6 +359,42 @@ export default function QnaDetail({ loaderData }: Route.ComponentProps) {
           <CheckCircle2Icon className="size-4" />
           <span className="text-[13px] font-bold">질문이 종료되었습니다</span>
         </div>
+      ) : null}
+
+      {/* prev/next — 목록(최신순) 기준 이웃 질문 이동 */}
+      {prevThread || nextThread ? (
+        <nav className="mt-4 grid gap-2 sm:grid-cols-2">
+          {prevThread ? (
+            <Link
+              to={`/qna/${prevThread.threadId}`}
+              viewTransition
+              className="border-border bg-card hover:bg-accent/50 rounded-xl border p-3 transition-colors"
+            >
+              <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
+                ← 이전 질문
+              </span>
+              <span className="mt-0.5 line-clamp-1 block text-[13px] font-medium">
+                {prevThread.title}
+              </span>
+            </Link>
+          ) : (
+            <span />
+          )}
+          {nextThread ? (
+            <Link
+              to={`/qna/${nextThread.threadId}`}
+              viewTransition
+              className="border-border bg-card hover:bg-accent/50 rounded-xl border p-3 text-right transition-colors"
+            >
+              <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
+                다음 질문 →
+              </span>
+              <span className="mt-0.5 line-clamp-1 block text-[13px] font-medium">
+                {nextThread.title}
+              </span>
+            </Link>
+          ) : null}
+        </nav>
       ) : null}
     </CommunityShell>
   );
