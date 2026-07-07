@@ -15,6 +15,7 @@ import {
 import { AreaTabs, type SectionTabItem } from "~/core/components/student";
 import { cn } from "~/core/lib/utils";
 import {
+  STAFF_OPEN_PREPARING_SUBJECTS,
   STUDENT_DISABLED_SUBJECTS,
   isSubjectLocked,
   subjectLockedHint,
@@ -71,9 +72,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       if (
         subjectSlug &&
         STUDENT_DISABLED_SUBJECTS.includes(subjectSlug) &&
+        !STAFF_OPEN_PREPARING_SUBJECTS.includes(subjectSlug) &&
         !staffPreparing.includes(subjectSlug)
       ) {
         // 담당 과목이 아닌 준비 중 과목 — 강사도 차단(원장·스태프만 전체).
+        // (상표·디자인·민법은 강사 전원 열람 허용 — STAFF_OPEN_PREPARING_SUBJECTS)
         throw redirect("/dashboard");
       }
     }

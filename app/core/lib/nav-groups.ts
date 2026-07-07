@@ -189,6 +189,13 @@ export const STUDENT_DISABLED_SUBJECTS: ReadonlyArray<string> = [
   "civil",
   "civil-procedure",
 ];
+// 준비 중 과목 가운데 강사 전원(담당 과목 무관)에게 열람을 여는 과목(원장 지시 2026-07-07).
+//   쓰기 게이트(assertSubjectWritable=담당 과목)는 별개로 유지.
+export const STAFF_OPEN_PREPARING_SUBJECTS: ReadonlyArray<string> = [
+  "trademark",
+  "design",
+  "civil",
+];
 export const PREPARING_HINT = "준비 중";
 
 // feat-8-027 — 학습과목 내 개별 과목 잠금 판정(체험=특허법만, 자기학습=결제 과목 등).
@@ -204,6 +211,7 @@ export function isSubjectLocked(
 ): boolean {
   if (isStaff) {
     if (!STUDENT_DISABLED_SUBJECTS.includes(slug)) return false;
+    if (STAFF_OPEN_PREPARING_SUBJECTS.includes(slug)) return false;
     if (staffPreparing === undefined || staffPreparing === "all") return false;
     return !staffPreparing.includes(slug);
   }
