@@ -11,7 +11,6 @@ import { cn } from "~/core/lib/utils";
 import {
   Chip,
   EmptyState,
-  relativeKo,
 } from "~/features/community/components/community-ui";
 import { CommunityShell } from "~/features/community/components/community-shell";
 import { GuideHelpButton } from "~/features/guide/components/guide-help-button";
@@ -413,8 +412,9 @@ export default function QnaList({ loaderData }: Route.ComponentProps) {
                           {isMyAnswer ? (
                             <Chip tone="outline">내 답변</Chip>
                           ) : null}
+                          {/* 질문 날짜 — 아카이브(과거 연도) 질문이 많아 상대 시간 대신 정확한 날짜로 */}
                           <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">
-                            {relativeKo(t.createdAt)}
+                            {new Date(t.createdAt).toLocaleDateString("ko-KR")}
                           </span>
                         </div>
                         {crumb ? <TargetCrumb segments={crumb} /> : null}
